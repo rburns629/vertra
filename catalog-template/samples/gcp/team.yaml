@@ -1,0 +1,13 @@
+# Descriptive metadata about the gcp team itself -- see the top-level
+# README.md's own team.yaml section for the full convention and why
+# this deliberately lists no products.
+name: gcp
+displayName: GCP
+description: >-
+  Real, GCP-API-calling products: provisioning a project, building a
+  container image, deploying it to Cloud Run, and provisioning a Cloud
+  SQL instance for it to use. Every action in this team makes a real
+  Google Cloud API call -- see samples/local for products that need no
+  cloud account at all.
+owner: gcp-team
+contact: gcp-team@example.com

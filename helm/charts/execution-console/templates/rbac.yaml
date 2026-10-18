@@ -1,0 +1,127 @@
+{{/*
+Grants exactly what console/src/k8s.ts calls (registering and revoking
+secrets, creating product ServiceAccounts), one verb at a time -- no
+wildcard resources or verbs. Every write is further fenced to team
+namespaces by write-fence-policy.yaml. A ClusterRole, not a Role: this
+provisions Secrets and ServiceAccounts across every team's namespace (not
+one fixed namespace), and reading a Namespace at all (ensureNamespaceExists,
+which deliberately never creates one) is a cluster-scoped resource a plain
+Role cannot grant access to regardless of scope.
+
+It can't create or change RBAC: secrets are per team and need no Role, so
+only deleting the per-secret Roles and RoleBindings older consoles created
+remains (deleteLegacySecretRole).
+*/}}
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "execution-console.fullname" . }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+rules:
+  # create/update: team namespaces (teamNamespaces.manage), limited by
+  # namespace-policy.yaml. Deleting one comes from the kernel chart's purge
+  # role, when this ServiceAccount is a purger.
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: {{ if .Values.teamNamespaces.manage }}["get", "create", "update"]{{ else }}["get"]{{ end }}
+  # update: only the ServiceAccounts ESO signs in as, whose cloud identity
+  # annotations come from a team's reviewed SecretStore file (the write
+  # fence refuses updating any other).
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "create", "update"]
+  # No get or list: the console never reads a Secret, so a compromised
+  # console can't read a team's secrets through the API. It creates (and
+  # dry-run creates, to learn whether a name is taken), replaces the ones
+  # its own records say are a team's, and deletes them.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "update", "delete"]
+  # Removing the per-secret Roles older consoles created, and their
+  # bindings (found by listing). Never create or update.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles"]
+    verbs: ["delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["list", "delete"]
+  # External Secrets Operator's CRDs (docs/security-model.md). SecretStores are listed cluster-wide (the Team page's list of
+  # secret sources, and spotting two teams' stores sharing one identity),
+  # and written only from a team's reviewed catalog file, through
+  # PUT /teams/:team/secret-store (catalog CI's token). ExternalSecrets are
+  # listed per team and written as *references* only -- no secret value is
+  # ever read, held, or transmitted by this process.
+  - apiGroups: ["external-secrets.io"]
+    resources: ["secretstores"]
+    verbs: ["get", "list", "create", "update"]
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  # listTaskPods -- read-only visibility into a team's own
+  # running work (routes/pods.ts), no different in kind from `kubectl
+  # get pods -n <team>`. Deliberately no "watch" -- this is a plain,
+  # on-demand list, not a live stream held open server-side.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "execution-console.fullname" . }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "execution-console.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "execution-console.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+# Two of the kernel's admission policies, by name and nothing else: the
+# image policy (the Admin page's image sources) and the identity policy
+# (the registered products, productPolicy.ts). Updating them lets the
+# console rewrite those whole policies, not just their lists (Kubernetes
+# doesn't apply admission policies to admission policies, so no guard can
+# narrow it further); the console itself only ever writes the lists, and
+# every kernel upgrade resets the rest to the chart's version. A compromised
+# console could loosen them, but it could already read every team's Secrets
+# (docs/security-model.md); against everything else they still hold.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "execution-console.fullname" . }}-image-policy
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingadmissionpolicies"]
+    resourceNames:
+      - {{ .Values.imagePolicy.policyName | quote }}
+      {{- with .Values.identityPolicy.policyName }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- if and .Values.scanning.enabled .Values.scanning.policyName }}
+      - {{ .Values.scanning.policyName | quote }}
+      {{- end }}
+    verbs: ["get", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "execution-console.fullname" . }}-image-policy
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "execution-console.fullname" . }}-image-policy
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "execution-console.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

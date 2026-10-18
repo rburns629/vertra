@@ -1,0 +1,100 @@
+name: catalog-ci
+
+# A thin wrapper: everything it does is ./catalogctl (tools/catalog.py), the
+# same command a laptop runs in local mode. Where to publish is acyclix.yaml,
+# overridden here by this repository's variables and secrets:
+#
+#   vars.ACYCLIX_REGISTRY       where images go: <registry>/<team>/<product>
+#   vars.ACYCLIX_CONSOLE_URL    the console products are registered with
+#   secrets.ACYCLIX_TOKEN       a console bot token with products:register
+#   vars.ACYCLIX_SIGNING_MODE   none | key | keyless
+#   vars.ACYCLIX_SIGNING_KEY    for key: env://COSIGN_PRIVATE_KEY, gcpkms://..., awskms://...
+#   secrets.COSIGN_PRIVATE_KEY, secrets.COSIGN_PASSWORD   for a generated key
+#
+# Registry sign-in, by whichever of these is set:
+#   vars.GCP_WORKLOAD_IDENTITY_PROVIDER + vars.PUBLISH_GCP_SERVICE_ACCOUNT
+#   vars.REGISTRY_USERNAME + secrets.REGISTRY_PASSWORD
+
+on:
+  pull_request:
+    paths: ["teams/**", "templates/**", "tools/**", "acyclix.yaml", "catalogctl", ".github/CODEOWNERS"]
+  push:
+    branches: [main]
+    paths: ["teams/**", "tools/**", "acyclix.yaml", "catalogctl"]
+  # Checks every product again: base images get new fixes, and the
+  # vulnerability database new findings, without anything here changing.
+  schedule:
+    - cron: "17 5 * * 1"
+  # Rebuilds (and on main republishes) every product.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  # Pull requests and the weekly run: validate, build, test and scan. Never
+  # pushes or registers anything, so it needs no credentials.
+  check:
+    if: github.event_name == 'pull_request' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0   # to diff against the pull request's base
+      - name: Install scanners
+        run: bash .github/scripts/install-scanners.sh trivy osv-scanner
+      - name: Check the changed products
+        env:
+          # Empty (the weekly run) checks everything.
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: ./catalogctl check --changed "$BASE"
+
+  # main: the same checks, then push, sign and register each product that
+  # passed. Runs in the catalog-publish Environment, which only main may
+  # use, so a workflow edited in a pull request never gets its credentials.
+  publish:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment: catalog-publish
+    permissions:
+      contents: read
+      id-token: write   # cloud sign-in through OIDC, and keyless signing
+    env:
+      ACYCLIX_REGISTRY: ${{ vars.ACYCLIX_REGISTRY }}
+      ACYCLIX_CONSOLE_URL: ${{ vars.ACYCLIX_CONSOLE_URL }}
+      ACYCLIX_SIGNING_MODE: ${{ vars.ACYCLIX_SIGNING_MODE }}
+      ACYCLIX_SIGNING_KEY: ${{ vars.ACYCLIX_SIGNING_KEY }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0   # to diff against the push's previous commit
+      - name: Install scanners and cosign
+        run: bash .github/scripts/install-scanners.sh trivy osv-scanner cosign
+
+      - name: Sign in to Google Cloud
+        id: gcp
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PUBLISH_GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        if: steps.gcp.outcome == 'success'
+      - name: Sign Docker in to Artifact Registry
+        if: steps.gcp.outcome == 'success'
+        run: gcloud auth configure-docker "${ACYCLIX_REGISTRY%%/*}" --quiet
+      - name: Sign in to the registry with a username and password
+        if: vars.REGISTRY_USERNAME != ''
+        env:
+          REGISTRY_USERNAME: ${{ vars.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: echo "$REGISTRY_PASSWORD" | docker login "${ACYCLIX_REGISTRY%%/*}" -u "$REGISTRY_USERNAME" --password-stdin
+
+      - name: Check, push, sign and register the changed products
+        env:
+          # Empty (a manual run) publishes everything.
+          BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+          ACYCLIX_TOKEN: ${{ secrets.ACYCLIX_TOKEN }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: ./catalogctl publish --changed "$BASE"

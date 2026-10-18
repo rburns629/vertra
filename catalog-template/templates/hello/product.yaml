@@ -1,0 +1,38 @@
+# The smallest complete product: one action, no cloud, an optional secret.
+# Copy the whole folder to teams/<your-team>/products/hello/ and CHANGE the
+# lines marked below. Nothing here is code: it describes the product for
+# people and for the console.
+name: hello                    # the folder name
+team: try-anna             # CHANGE: your team (the parent folder)
+displayName: Hello
+description: >-
+  Says hello to a name. If asked to, also checks that its secret is there,
+  without ever printing it.
+owner: anna                    # CHANGE: your team
+runtime: python3.12
+actions:
+  - name: greet                # runs actions/greet.py
+    script: actions/greet.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Who to greet.
+        useSecret:
+          type: boolean
+          description: Also check that the hello-secret secret is mounted.
+    output:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string}
+        secretFound: {type: boolean}
+    requiredSecrets:
+      - name: hello-secret
+        keys: [value]
+        description: >-
+          Any value; only needed with useSecret. Read from
+          /platform/secrets/hello-secret/value, never printed or returned.

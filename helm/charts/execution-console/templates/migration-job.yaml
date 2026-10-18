@@ -1,0 +1,69 @@
+{{/*
+Runs db/migrate.ts (Drizzle migrations, then the one-time bootstrap-admin
+seed) before execution-console starts serving -- same reasoning as
+execution-kernel's own migrate Job: Kubernetes has no native "wait for
+another resource" primitive, so this leans on the Job's own backoffLimit
+to ride out Postgres still starting on a fresh install, and on Helm
+itself waiting for hook Jobs to reach Complete before the release is
+considered finished.
+
+Deliberately NOT "hook-succeeded" in the delete policy, unlike execution-
+kernel's otherwise-identical migrate Job: confirmed directly, against a
+real cluster, that a hook-succeeded Job (and the Pod it owns, along with
+that Pod's logs) is gone essentially immediately after `helm install`
+returns -- which would silently destroy the one and only copy of a
+freshly generated BOOTSTRAP_ADMIN_PASSWORD before an operator running the
+ordinary, documented `kubectl logs` steps in this chart's NOTES.txt could
+ever read it. Keeping the Job around (cleaned up only right before the
+*next* install/upgrade creates a new one) trades a harmless leftover
+completed Job for that password actually being retrievable.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "execution-console.fullname" . }}-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": post-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "execution-console.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: {{ include "execution-console.appImage" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+          command: ["node", "dist/db/migrate.js"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "execution-console.fullname" . }}-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.databaseSecretName" . }}
+                  key: {{ include "execution-console.databaseSecretKey" . }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.secretName" . }}
+                  key: jwt-secret
+            {{- if .Values.bootstrapAdmin.password }}
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.secretName" . }}
+                  key: bootstrap-admin-password
+            {{- end }}

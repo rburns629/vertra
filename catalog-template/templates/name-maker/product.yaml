@@ -1,0 +1,27 @@
+# A second tiny product, made to be chained: its output feeds hello's input
+# (templates/dags/chain.json). Copy to teams/<your-team>/products/name-maker/.
+name: name-maker
+team: try-anna             # CHANGE: your team
+displayName: Name maker
+description: >-
+  Builds a full name from a first and an optional last name. Same inputs,
+  same output, every time.
+owner: anna                    # CHANGE: your team
+runtime: python3.12
+actions:
+  - name: make
+    script: actions/make.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [first]
+      properties:
+        first: {type: string}
+        last: {type: string}
+    output:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: The full name, for a later task to use with $fromTask.

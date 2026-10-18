@@ -1,0 +1,42 @@
+# execution-console on GKE (release `console`, namespace default):
+#   helm upgrade --install console helm/charts/execution-console -n default \
+#     --kube-context gke_my-gcp-project_us-central1_acyclix-gke \
+#     -f helm/values/gke/console.yaml
+# No bootstrapAdmin.password here on purpose: a fresh install generates one
+# and prints it once to the migration Job's log.
+image:
+  repository: us-central1-docker.pkg.dev/my-gcp-project/platform-images/execution-console
+  tag: latest
+  pullPolicy: Always
+backup:
+  enabled: false
+kernelApiUrl: http://kernel-execution-kernel-api.default.svc.cluster.local:8000
+# Public, over plain HTTP: put TLS in front of it before real use (TODO.md).
+service:
+  type: LoadBalancer
+  # Keep each browser's real IP, so the login limit (per client IP and
+  # email) applies per attacker. With the default, every client arrives as
+  # one of the nodes' IPs and shares one counter: ten bad guesses then lock
+  # the account out for everyone.
+  externalTrafficPolicy: Local
+# Checks a DAG's images exist in Artifact Registry before running it, with
+# short-lived tokens from Workload Identity (no stored key).
+registryCheck:
+  gcpMetadataToken: true
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: acyclix-console-registry@my-gcp-project.iam.gserviceaccount.com
+# Scan Jobs pull the images they scan as the same read-only registry
+# identity (its Workload Identity binding must also name the scanner
+# ServiceAccount, console-execution-console-scanner).
+scanning:
+  serviceAccountAnnotations:
+    iam.gke.io/gcp-service-account: acyclix-console-registry@my-gcp-project.iam.gserviceaccount.com
+# The "Connect a source" wizard: where the PR goes, and what GCP, Azure and
+# AWS must trust for this cluster's ServiceAccounts.
+secretSources:
+  catalogRepo: my-org/acyclix-catalog
+  clusterIssuer: https://container.googleapis.com/v1/projects/my-gcp-project/locations/us-central1/clusters/acyclix-gke
+  gcpWorkloadIdentityPool: my-gcp-project.svc.id.goog
+  gkeClusterName: acyclix-gke
+  gkeClusterLocation: us-central1

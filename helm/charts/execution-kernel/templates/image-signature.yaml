@@ -1,0 +1,81 @@
+{{/*
+Images from the source registry only run if catalog CI signed them, which it
+does after they pass its security scans. This closes the gap the image
+allowlist (image-policy.yaml) can't: anyone with push access to the source
+registry -- a project editor, a Cloud Build job -- could otherwise publish
+an image that never went through CI and have it run.
+
+Verified by Sigstore's policy-controller, which must already be installed
+(a cluster-wide component, installed once, see docs; its webhook is scoped
+to namespaces labelled with dispatchPolicy.teamNamespaceLabel). This chart
+only adds the policy: which images need a signature, and who may have made
+it: public keys (a generated key pair, or a cloud KMS key; verification
+needs only the public half, never the signing key or the cloud it lives
+in), and/or catalog CI's own identity (keyless). Nothing here is specific
+to one cloud: policy-controller runs on any cluster (GKE, EKS, AKS, kind
+with a reachable registry).
+
+The kernel reports a refusal as a non-retryable IMAGE_NOT_SIGNED.
+
+Careful where policy-controller's webhook reaches: in every namespace it
+covers, it refuses ANY image it can't resolve to a digest, signed or not.
+So its identity must be able to read every registry used there, and a
+namespace the platform's own components run in must stay out of its scope
+(see helm/values/gke/policy-controller.yaml).
+
+Images from the other allowed sources (imagePolicy.additionalSources, or
+added on the Admin page) aren't covered: an admin allowed them as they are.
+*/}}
+{{- if .Values.imageSignature.enabled }}
+{{- if not (.Capabilities.APIVersions.Has "policy.sigstore.dev/v1beta1/ClusterImagePolicy") }}
+{{- fail "imageSignature.enabled needs Sigstore's policy-controller installed first (it provides the ClusterImagePolicy CRD): helm install policy-controller sigstore/policy-controller -n cosign-system --create-namespace, with webhook.namespaceSelector set to the team namespace label (see docs)." }}
+{{- end }}
+{{- $keyless := .Values.imageSignature.keyless }}
+{{- if and $keyless.issuer (not $keyless.subjectRegExp) }}
+{{- fail "imageSignature.keyless needs subjectRegExp with issuer: which workflow's identity may sign (anyone can get a signature from the public issuer)." }}
+{{- end }}
+{{- if not (or .Values.imageSignature.publicKeys $keyless.issuer) }}
+{{- fail "imageSignature.enabled needs a way to verify: imageSignature.publicKeys (PEM: a generated cosign.pub, or a KMS key's from `cosign public-key --key <kms uri>`) or imageSignature.keyless (catalog CI's OIDC identity)." }}
+{{- end }}
+{{- $images := .Values.imageSignature.images }}
+{{- if not $images }}
+{{- $source := .Values.imagePolicy.sourceRegistry | trim | trimPrefix "https://" | trimPrefix "http://" | trimSuffix "/" }}
+{{- if not $source }}
+{{- fail "imageSignature.enabled needs imageSignature.images, or imagePolicy.sourceRegistry to derive it from." }}
+{{- end }}
+{{- $images = list (printf "%s/**" $source) }}
+{{- end }}
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-signed-images
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  images:
+    {{- range $images }}
+    - glob: {{ . | quote }}
+    {{- end }}
+  # Any one of these keys is enough, so a rotation lists the old and new key
+  # until every published image is signed with the new one.
+  authorities:
+    {{- range $i, $key := .Values.imageSignature.publicKeys }}
+    - name: key-{{ $i }}
+      key:
+        data: |
+          {{- $key | trim | nindent 10 }}
+    {{- end }}
+    {{- if $keyless.issuer }}
+    # Keyless: a certificate Fulcio issued to catalog CI's own OIDC identity
+    # (this issuer, a subject matching subjectRegExp: the publish workflow on
+    # main), with the signature in Rekor's transparency log.
+    - name: catalog-ci-keyless
+      keyless:
+        url: {{ $keyless.fulcioUrl | quote }}
+        identities:
+          - issuer: {{ $keyless.issuer | quote }}
+            subjectRegExp: {{ $keyless.subjectRegExp | quote }}
+      ctlog:
+        url: {{ $keyless.rekorUrl | quote }}
+    {{- end }}
+{{- end }}

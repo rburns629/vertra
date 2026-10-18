@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "execution-console.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  # component: app on both the selector and the pod template is load-
+  # bearing, not decorative: this chart also runs a bundled Postgres
+  # Deployment (templates/postgres-deployment.yaml) sharing the same
+  # name/instance labels, distinguished only by ITS OWN component:
+  # postgres label. Without this, this Deployment's selector -- and
+  # templates/service.yaml's -- would match both, and the Service would
+  # silently round-robin roughly half of every request into the Postgres
+  # pod's network namespace on a port nothing listens on there. Confirmed
+  # the hard way: exactly that happened before this label was added.
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "execution-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        {{- include "execution-console.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+      annotations:
+        # A ConfigMap change alone doesn't restart the Pods consuming it
+        # via envFrom -- env vars are injected once at container start,
+        # not live-reloaded. Without this, `helm upgrade` after only a
+        # values.yaml/configmap.yaml change silently updates the
+        # ConfigMap while the running Pod keeps its old env until someone
+        # remembers a manual `kubectl rollout restart`. Confirmed the
+        # hard way. Folding the rendered ConfigMap's content into an
+        # annotation here changes the pod template hash whenever it
+        # changes, so the Deployment controller rolls a fresh Pod
+        # automatically, the same way a real image or resources change
+        # already would.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # Needs real Kubernetes API access -- see templates/rbac.yaml and
+      # console/src/k8s.ts. Unlike execution-kernel's split (only the scheduler
+      # gets one), there's only one workload here, and it's the one that
+      # provisions Secrets/RBAC.
+      serviceAccountName: {{ include "execution-console.serviceAccountName" . }}
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ include "execution-console.appImage" . | quote }}
+          # Explicit, not left to default -- Kubernetes defaults an unset
+          # imagePullPolicy to Always whenever the tag is "latest",
+          # regardless of what's already on the node. Confirmed the hard
+          # way: this container tried a live registry pull even with the
+          # image already loaded locally (kind load docker-image) until
+          # this was set.
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "-e"]
+          args:
+            - |
+              const net = require("net");
+              const tryConnect = () => {
+                const socket = net.createConnection(5432, process.env.POSTGRES_HOST, () => socket.end());
+                socket.on("error", () => setTimeout(tryConnect, 2000));
+              };
+              tryConnect();
+          env:
+            - name: POSTGRES_HOST
+              value: {{ include "execution-console.fullname" . }}-postgres
+      {{- end }}
+      containers:
+        - name: execution-console
+          image: {{ include "execution-console.appImage" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "execution-console.fullname" . }}-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.databaseSecretName" . }}
+                  key: {{ include "execution-console.databaseSecretKey" . }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.secretName" . }}
+                  key: jwt-secret
+            {{- if .Values.registryCheck.pullSecretName }}
+            - name: REGISTRY_AUTH_FILE
+              value: /etc/acyclix/registry/config.json
+            {{- if .Values.registryCheck.copyToTeams }}
+            - name: TEAM_PULL_SECRET_FILE
+              value: /etc/acyclix/registry/config.json
+            {{- end }}
+            {{- end }}
+            - name: REGISTRY_GCP_METADATA_TOKEN
+              value: {{ .Values.registryCheck.gcpMetadataToken | quote }}
+            - name: REGISTRY_MIRRORS
+              value: {{ $mirrors := list }}{{ range $host, $url := .Values.registryCheck.mirrors }}{{ $mirrors = append $mirrors (printf "%s=%s" $host $url) }}{{ end }}{{ join "," $mirrors | quote }}
+            - name: IMAGE_PINNING
+              value: {{ .Values.registryCheck.imagePinning | quote }}
+            {{- if .Values.kernelApiToken.enabled }}
+            - name: KERNEL_API_TOKEN_FILE
+              value: /var/run/secrets/acyclix/kernel-api/token
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.kernelApiToken.enabled }}
+            - name: kernel-api-token
+              mountPath: /var/run/secrets/acyclix/kernel-api
+              readOnly: true
+            {{- end }}
+            {{- if .Values.registryCheck.pullSecretName }}
+            - name: registry-auth
+              mountPath: /etc/acyclix/registry
+              readOnly: true
+            {{- end }}
+      volumes:
+        {{- if .Values.kernelApiToken.enabled }}
+        # This Pod's ServiceAccount token, issued for kernel-api only (its
+        # audience), so it's no use against the Kubernetes API or anything
+        # else. The kubelet rotates it before it expires.
+        - name: kernel-api-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: {{ .Values.kernelApiToken.audience | quote }}
+                  expirationSeconds: 3600
+                  path: token
+        {{- end }}
+        {{- if .Values.registryCheck.pullSecretName }}
+        # Not optional: a configured but missing credential should fail
+        # the rollout, not quietly turn every check into "unverified".
+        - name: registry-auth
+          secret:
+            secretName: {{ .Values.registryCheck.pullSecretName }}
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        {{- end }}

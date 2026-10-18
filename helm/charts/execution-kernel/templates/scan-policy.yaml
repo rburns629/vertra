@@ -1,0 +1,91 @@
+{{/*
+Images that failed their security scan don't run, however the Job reaches
+the cluster: the cluster's copy of the console's scan verdicts
+(console/src/scanning.ts). The console scans every image before a step may
+run it and keeps `blockedDigests` here current: the digests that failed,
+unless an admin accepted one. With requireDigest, every step's image must
+also be pinned (`…@sha256:…`), which the console does at submission, so a
+digest is what's checked, never a tag that could move.
+
+A refusal is a non-retryable IMAGE_SCAN_FAILED (or IMAGE_NOT_PINNED). The
+literal is seeded empty on install and kept on upgrade (lookup), re-encoded
+as JSON, as for identity-policy.yaml.
+*/}}
+{{- if .Values.scanPolicy.enabled }}
+{{- $scheduler := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-kernel.serviceAccountName" .) }}
+{{- $name := printf "%s-scan" (include "execution-kernel.fullname" .) }}
+{{- $blocked := "[]" }}
+{{- $existing := lookup "admissionregistration.k8s.io/v1" "ValidatingAdmissionPolicy" "" $name }}
+{{- if $existing }}
+{{- range $existing.spec.variables }}
+{{- if eq .name "blockedDigests" }}
+{{- $stored := fromJsonArray .expression }}
+{{- range $stored }}
+{{- if not (and (kindIs "string" .) (regexMatch "^sha256:[a-f0-9]{64}$" .)) }}
+{{- fail (printf "%s's blockedDigests isn't a JSON list of sha256 digests; delete the policy and let the console resync it." $name) }}
+{{- end }}
+{{- end }}
+{{- $blocked = toJson $stored }}
+{{- end }}
+{{- end }}
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["jobs"]
+  matchConditions:
+    - name: from-kernel-scheduler
+      expression: request.userInfo.username == {{ $scheduler | quote }}
+  variables:
+    # The one the console edits.
+    - name: blockedDigests
+      expression: {{ $blocked | squote }}
+    - name: images
+      expression: >-
+        object.spec.template.spec.containers.map(c, c.image) +
+          (has(object.spec.template.spec.initContainers) ?
+            object.spec.template.spec.initContainers.map(c, c.image) : [])
+  validations:
+    {{- if .Values.scanPolicy.requireDigest }}
+    - expression: variables.images.all(i, i.contains("@sha256:"))
+      messageExpression: >-
+        "IMAGE_NOT_PINNED: " + variables.images.filter(i, !i.contains("@sha256:")).join(", ") +
+        " isn't pinned by digest, so which image ran can't be known or checked. The console " +
+        "pins every image when a DAG is submitted."
+      reason: Forbidden
+    {{- end }}
+    - expression: >-
+        !variables.images.exists(i, i.contains("@") && i.split("@")[1] in variables.blockedDigests)
+      messageExpression: >-
+        "IMAGE_SCAN_FAILED: " + variables.images.filter(i, i.contains("@") &&
+          i.split("@")[1] in variables.blockedDigests).join(", ") +
+        " failed its security scan (a HIGH or CRITICAL vulnerability with a fix, or a secret in " +
+        "the image). Rebuild it, or an admin can accept it in the console."
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  # Team namespaces only, as for image-policy.yaml.
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: {{ .Values.dispatchPolicy.teamNamespaceLabel | quote }}
+          operator: Exists
+  validationActions: [Deny]
+{{- end }}

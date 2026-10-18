@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: MIT
+import { randomUUID } from "node:crypto";
+import { inArray, like } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { generateApiToken, hashApiToken } from "../src/auth/apiToken.js";
+import { hashPassword } from "../src/auth/password.js";
+import { db } from "../src/db/client.js";
+import {
+  addTeamMember,
+  claimRegisteredImageRepositories,
+  createApiToken,
+  createBotUser,
+  createTeam,
+  createUser,
+  setUserAdmin,
+} from "../src/db/queries.js";
+import { imageRepositories, products, teams, users } from "../src/db/schema.js";
+import { buildApp } from "../src/index.js";
+
+// A product is its team's: no other team may take over its name, or
+// register its image repository as their own product (and so run that code
+// with their own ServiceAccount and Secrets), not even after it's deleted.
+
+const prefix = `own-${randomUUID().slice(0, 6)}`;
+const teamA = `${prefix}-a`;
+const teamB = `${prefix}-b`;
+const emails: string[] = [];
+let app: FastifyInstance;
+let admin: string;
+let memberA: string;
+let memberB: string;
+let catalogCi: string;
+
+const as = (token: string, method: "GET" | "POST" | "DELETE", url: string, payload?: unknown) =>
+  app.inject({ method, url, headers: { authorization: `Bearer ${token}` }, payload: payload as object });
+
+const register = (token: string, body: Record<string, unknown>) => as(token, "POST", "/api/products", body);
+const repo = (name: string) => `example.com/${prefix}/${name}`;
+
+async function newUser(isAdmin: boolean, team?: string): Promise<string> {
+  const email = `${prefix}-${randomUUID().slice(0, 6)}@example.com`;
+  emails.push(email);
+  const user = await createUser(email, await hashPassword("correct-horse-battery"));
+  if (isAdmin) await setUserAdmin(user.id, true);
+  if (team) await addTeamMember(user.id, team);
+  return app.jwt.sign({ userId: user.id });
+}
+
+beforeAll(async () => {
+  app = await buildApp();
+  await app.ready();
+  const a = await createTeam(teamA);
+  const b = await createTeam(teamB);
+  admin = await newUser(true);
+  memberA = await newUser(false, a.id);
+  memberB = await newUser(false, b.id);
+  const botEmail = `${prefix}-ci@bots.acyclix.local`;
+  emails.push(botEmail);
+  const bot = await createBotUser(botEmail);
+  const token = generateApiToken();
+  await createApiToken(bot.id, "catalog CI", hashApiToken(token), ["products:register"]);
+  catalogCi = token;
+});
+
+afterAll(async () => {
+  await db.delete(products).where(like(products.name, `${prefix}%`));
+  await db.delete(imageRepositories).where(like(imageRepositories.repository, `example.com/${prefix}/%`));
+  await db.delete(teams).where(inArray(teams.name, [teamA, teamB]));
+  await db.delete(users).where(inArray(users.email, emails));
+  await app.close();
+});
+
+describe("product names", () => {
+  it("another team can't take over a product's name", async () => {
+    const name = `${prefix}-deploy`;
+    expect((await register(memberA, { name, image: `${repo("deploy")}:1`, action: "run", team: teamA })).statusCode).toBe(200);
+
+    const takeover = await register(memberB, { name, image: `${repo("evil")}:1`, action: "run", team: teamB });
+    expect(takeover.statusCode).toBe(409);
+    expect(takeover.json<{ message: string }>().message).toContain(`team "${teamA}"`);
+
+    // Not even catalog CI's token, which may register for any team.
+    const viaCi = await register(catalogCi, { name, image: `${repo("evil")}:2`, action: "run", team: teamB });
+    expect(viaCi.statusCode).toBe(409);
+
+    const [stored] = await db.select().from(products).where(like(products.name, name));
+    expect(stored?.image).toBe(`${repo("deploy")}:1`);
+  });
+
+  it("its own team can still update it", async () => {
+    const name = `${prefix}-update`;
+    expect((await register(memberA, { name, image: `${repo("update")}:1`, action: "run", team: teamA })).statusCode).toBe(200);
+    const updated = await register(catalogCi, { name, image: `${repo("update")}@sha256:${"a".repeat(64)}`, action: "run", team: teamA });
+    expect(updated.statusCode).toBe(200);
+  });
+
+  it("a team can't take over a platform product's name, nor the platform a team's", async () => {
+    const platformName = `${prefix}-platform`;
+    expect((await register(admin, { name: platformName, image: `${repo("platform")}:1`, action: "run" })).statusCode).toBe(200);
+    const byTeam = await register(memberA, { name: platformName, image: `${repo("x")}:1`, action: "run", team: teamA });
+    expect(byTeam.statusCode).toBe(409);
+    expect(byTeam.json<{ message: string }>().message).toContain("the platform");
+
+    const teamName = `${prefix}-teams`;
+    expect((await register(memberA, { name: teamName, image: `${repo("teams")}:1`, action: "run", team: teamA })).statusCode).toBe(200);
+    expect((await register(admin, { name: teamName, image: `${repo("y")}:1`, action: "run" })).statusCode).toBe(409);
+  });
+});
+
+describe("image repositories", () => {
+  it("only the team that first registered a repository may use it, by any tag or digest", async () => {
+    expect((await register(memberA, { name: `${prefix}-build`, image: `${repo("build")}:1`, action: "build", team: teamA })).statusCode).toBe(200);
+
+    for (const image of [`${repo("build")}:1`, `${repo("build")}:2`, `${repo("build")}@sha256:${"b".repeat(64)}`]) {
+      const borrowed = await register(memberB, { name: `${prefix}-b-build-${randomUUID().slice(0, 4)}`, image, action: "build", team: teamB });
+      expect(borrowed.statusCode).toBe(409);
+      expect(borrowed.json<{ message: string }>().message).toContain(`team "${teamA}"`);
+    }
+    // The owning team may register more products (actions) from it.
+    expect((await register(memberA, { name: `${prefix}-build-check`, image: `${repo("build")}:1`, action: "check", team: teamA })).statusCode).toBe(200);
+  });
+
+  it("stays reserved after its product is deleted, until an admin releases it", async () => {
+    const name = `${prefix}-gone`;
+    const image = `${repo("gone")}:1`;
+    expect((await register(memberA, { name, image, action: "run", team: teamA })).statusCode).toBe(200);
+    expect((await as(memberA, "DELETE", `/api/products/${name}`)).statusCode).toBe(204);
+
+    const afterDelete = await register(memberB, { name: `${prefix}-b-gone`, image, action: "run", team: teamB });
+    expect(afterDelete.statusCode).toBe(409);
+
+    const release = `/api/image-repositories?repository=${encodeURIComponent(repo("gone"))}`;
+    expect((await as(memberA, "DELETE", release)).statusCode).toBe(403);
+    expect((await as(admin, "DELETE", release)).statusCode).toBe(204);
+    expect((await as(admin, "DELETE", release)).statusCode).toBe(404);
+
+    expect((await register(memberB, { name: `${prefix}-b-gone`, image, action: "run", team: teamB })).statusCode).toBe(200);
+  });
+
+  it("can't be released while a product uses it", async () => {
+    expect((await register(memberA, { name: `${prefix}-busy`, image: `${repo("busy")}:1`, action: "run", team: teamA })).statusCode).toBe(200);
+    const release = await as(admin, "DELETE", `/api/image-repositories?repository=${encodeURIComponent(repo("busy"))}`);
+    expect(release.statusCode).toBe(409);
+  });
+
+  it("lists owners for admins only", async () => {
+    expect((await as(memberA, "GET", "/api/image-repositories")).statusCode).toBe(403);
+    const listed = (await as(admin, "GET", "/api/image-repositories")).json<{ repository: string; teamName: string | null; products: number }[]>();
+    expect(listed.find((r) => r.repository === repo("busy"))).toMatchObject({ teamName: teamA, products: 1 });
+  });
+
+  it("is claimed at startup for products registered before repositories had owners", async () => {
+    // Two older products, two teams, one repository: the older one's team wins.
+    const [a, b] = await db.select().from(teams).where(inArray(teams.name, [teamA, teamB]));
+    const ownerA = [a, b].find((t) => t?.name === teamA);
+    const ownerB = [a, b].find((t) => t?.name === teamB);
+    await db.insert(products).values([
+      { name: `${prefix}-old-a`, image: `${repo("old")}:1`, action: "run", teamId: ownerA?.id ?? null, createdAt: new Date(Date.now() - 60_000) },
+      { name: `${prefix}-old-b`, image: `${repo("old")}:2`, action: "run", teamId: ownerB?.id ?? null, createdAt: new Date() },
+    ]);
+    await claimRegisteredImageRepositories();
+    await claimRegisteredImageRepositories(); // idempotent
+    const [owner] = await db.select().from(imageRepositories).where(like(imageRepositories.repository, repo("old")));
+    expect(owner?.teamId).toBe(ownerA?.id);
+    // So team B's existing registration can't be refreshed any more.
+    expect((await register(memberB, { name: `${prefix}-old-b`, image: `${repo("old")}:3`, action: "run", team: teamB })).statusCode).toBe(409);
+  });
+});

@@ -1,0 +1,42 @@
+name: Bug report
+description: Something doesn't work the way the docs say it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security issues don't belong here**: report them privately (see SECURITY.md).
+        Never paste a secret value, token or real credential into an issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest DAG, request or set of steps that shows it. Redact anything sensitive.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors and logs
+      description: The task's error code and message, and relevant kernel or console logs.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Acyclix version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Where it runs
+      description: For example kind, EKS, GKE or AKS, with the Kubernetes version.
+    validations:
+      required: true

@@ -1,0 +1,14 @@
+# Step 3: run hello once. Paste into the console's Submit page.
+# CHANGE: try-anna (twice) to your team.
+# A label for this run, shown in the console. It can repeat: every
+# submission is a new run.
+name: my-first-hello
+tasks:
+  - id: say-hello
+    # CHANGE: <registry>/<your-team>/hello:latest. The console pins it to
+    # its digest when you submit.
+    image: localhost:5001/try-anna/hello:latest
+    action: greet
+    team: try-anna
+    inputs:
+      name: Anna

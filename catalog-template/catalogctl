@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Runs tools/catalog.py in its own virtualenv (.venv/), made on first use and
+# remade whenever tools/requirements.txt changes. ./catalogctl --help for usage.
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")" && pwd)
+venv="$root/.venv"
+requirements="$root/tools/requirements.txt"
+stamp="$venv/.requirements"
+
+if [ ! -x "$venv/bin/python" ] || ! cmp -s "$requirements" "$stamp"; then
+  echo "Setting up $venv (tools/requirements.txt)..." >&2
+  python3 -m venv "$venv"
+  "$venv/bin/pip" install --quiet --disable-pip-version-check -r "$requirements"
+  cp "$requirements" "$stamp"
+fi
+exec "$venv/bin/python" "$root/tools/catalog.py" "$@"

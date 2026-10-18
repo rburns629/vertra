@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""gcp/app-hosting's "create" action: deploys a pre-built image to Cloud Run
+under the given service name, or returns the existing service's URL
+unchanged if that name is already taken.
+
+Run directly by this product's entrypoint.sh, which already guarantees this
+script only ever runs for action="create" -- see product.yaml for this
+action's declared input/output schema.
+
+By default, calls Cloud Run using whatever GOOGLE_APPLICATION_CREDENTIALS/
+ADC the container finds. If GCP_TARGET_SERVICE_ACCOUNT is set, those base
+credentials are never used to call GCP APIs directly -- they're only the
+*source* identity used to impersonate that service account instead
+(short-lived tokens, minted on demand; no static key for the target
+identity ever exists). The source identity must itself hold
+roles/iam.serviceAccountTokenCreator on the target service account, and the
+target service account needs its own IAM grants (run.services.{get,create},
+iam.serviceAccounts.actAs on the Cloud Run runtime service account) -- see
+the gcp team's README.md.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+import google.auth
+import google.auth.credentials
+from google.api_core.exceptions import GoogleAPIError, NotFound
+from google.auth import impersonated_credentials
+from google.cloud import run_v2
+
+INPUT_PATH = Path("/platform/input/request.json")
+OUTPUT_PATH = Path("/platform/output/result.json")
+
+DEFAULT_REGION = "us-central1"
+TARGET_SERVICE_ACCOUNT_ENV_VAR = "GCP_TARGET_SERVICE_ACCOUNT"
+IMPERSONATION_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+
+
+def _write_result(result: dict[str, Any]) -> None:
+    OUTPUT_PATH.write_text(json.dumps(result))
+
+
+def _failure(code: str, message: str, *, retryable: bool = False) -> int:
+    _write_result(
+        {"status": "failed", "error": {"code": code, "message": message, "retryable": retryable}}
+    )
+    return 1
+
+
+def _build_credentials() -> google.auth.credentials.Credentials | None:
+    """Impersonated credentials for GCP_TARGET_SERVICE_ACCOUNT, or None to
+    leave each client's own ADC discovery in charge, unimpersonated, when
+    that env var isn't set -- None is a valid "use the default" value for
+    every google-cloud client's credentials= argument.
+    """
+    target = os.environ.get(TARGET_SERVICE_ACCOUNT_ENV_VAR)
+    if not target:
+        return None
+    source_credentials, _ = google.auth.default()
+    return impersonated_credentials.Credentials(
+        source_credentials=source_credentials,
+        target_principal=target,
+        target_scopes=IMPERSONATION_SCOPES,
+    )
+
+
+def main() -> int:
+    request = json.loads(INPUT_PATH.read_text())
+    inputs = request.get("inputs", {})
+
+    project_id = inputs.get("projectId")
+    service_name = inputs.get("serviceName")
+    image = inputs.get("image")
+    if not project_id or not service_name or not image:
+        return _failure(
+            "MISSING_INPUT",
+            "inputs.projectId, inputs.serviceName, and inputs.image are required",
+        )
+    region = inputs.get("region", DEFAULT_REGION)
+
+    services = run_v2.ServicesClient(credentials=_build_credentials())
+    service_path = services.service_path(project_id, region, service_name)
+
+    # Existing-user path: a service with this name already exists, so this
+    # action is a no-op other than reporting its URL back.
+    try:
+        existing = services.get_service(name=service_path)
+        print(f"service '{service_name}' already exists, skipping deployment")
+        _write_result({"status": "succeeded", "outputs": {"serviceUrl": existing.uri}})
+        return 0
+    except NotFound:
+        pass
+    except GoogleAPIError as error:
+        return _failure("GCP_API_ERROR", str(error), retryable=True)
+
+    container = run_v2.Container(image=image)
+    template = run_v2.RevisionTemplate()
+
+    # See product.yaml's cloudSqlConnectionName field -- this is the actual
+    # wiring for "an API that needs its own database": a volume backed by
+    # the named Cloud SQL instance(s), mounted where the Cloud SQL Auth
+    # Proxy convention expects it, plus an env var so the deployed app's
+    # own code knows the socket path without hardcoding it.
+    cloud_sql_connection_name = inputs.get("cloudSqlConnectionName")
+    if cloud_sql_connection_name:
+        container.volume_mounts = [run_v2.VolumeMount(name="cloudsql", mount_path="/cloudsql")]
+        container.env = [run_v2.EnvVar(name="CLOUD_SQL_CONNECTION_NAME", value=cloud_sql_connection_name)]
+        template.volumes = [
+            run_v2.Volume(
+                name="cloudsql",
+                cloud_sql_instance=run_v2.CloudSqlInstance(instances=[cloud_sql_connection_name]),
+            )
+        ]
+
+    template.containers = [container]
+
+    try:
+        operation = services.create_service(
+            parent=f"projects/{project_id}/locations/{region}",
+            service_id=service_name,
+            service=run_v2.Service(template=template),
+        )
+        service = operation.result()
+    except GoogleAPIError as error:
+        return _failure("GCP_API_ERROR", str(error), retryable=True)
+
+    print(f"deployed service '{service_name}' -> {service.uri}")
+    _write_result({"status": "succeeded", "outputs": {"serviceUrl": service.uri}})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

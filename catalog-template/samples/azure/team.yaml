@@ -1,0 +1,12 @@
+# A sample team whose products call real, billed Azure APIs. Copy it into
+# teams/ (or one product into your own team) once its managed identities
+# exist.
+name: azure
+displayName: Azure samples
+description: >-
+  Real Azure calls: a resource group, a Container App, and a PostgreSQL
+  flexible server with Microsoft Entra sign-in only. Every action looks
+  before it creates. Keyless: AKS Workload Identity supplies each step's
+  credentials.
+owner: azure-team
+contact: azure-team@example.com

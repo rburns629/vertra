@@ -1,0 +1,408 @@
+# Where Acyclix keeps its data
+
+Acyclix has two PostgreSQL databases, one per service, and neither service ever reads the other's:
+
+- **The kernel's** (`execution_kernel`) holds the work itself: every execution, its tasks, their attempts, outputs, logs and events. The kernel knows nothing about people or teams beyond the namespace each task runs in.
+- **The console's** (`execution_console`) holds who may do what: teams, users, bots and their tokens, registered products, which secrets each team has, and which teams can see which execution.
+
+The two meet at one value: an execution's id. The kernel creates it; the console records it in `submitted_executions`, with the teams allowed to see it.
+
+```mermaid
+flowchart LR
+  you([You or a pipeline]) -->|HTTPS + token| console[Console]
+  console -->|teams, users, products, grants| cdb[(execution_console)]
+  console -->|submit / read / cancel| kapi[kernel-api]
+  kapi --> kdb[(execution_kernel)]
+  sched[kernel-scheduler] --> kdb
+  sched -->|Jobs| k8s[Kubernetes]
+```
+
+Times are all `timestamptz` (stored in UTC). Ids are UUIDs unless noted.
+
+## The kernel database (`execution_kernel`)
+
+```mermaid
+erDiagram
+  executions ||--o{ execution_tasks : "has"
+  executions ||--o{ execution_events : "logs"
+  execution_tasks ||--o{ task_dependencies : "depends on"
+  execution_tasks ||--o{ task_attempts : "tried as"
+  execution_tasks ||--o| task_outputs : "produced"
+  execution_tasks ||--o| task_logs : "printed"
+  execution_tasks ||--o{ execution_events : "about"
+  executions {
+    uuid id PK
+    text external_reference
+    text idempotency_key UK
+    varchar state
+  }
+  execution_tasks {
+    uuid id PK
+    uuid execution_id FK
+    text task_key
+    varchar state
+  }
+  task_dependencies {
+    uuid task_id PK,FK
+    uuid depends_on_task_id PK,FK
+  }
+  task_attempts {
+    uuid id PK
+    uuid task_id FK
+    int attempt_number
+  }
+  task_outputs {
+    uuid task_id PK,FK
+    jsonb outputs
+  }
+  task_logs {
+    uuid task_id PK,FK
+    text_array lines
+  }
+  execution_events {
+    bigint id PK
+    uuid execution_id FK
+    uuid task_id FK
+    text event_type
+  }
+```
+
+Deleting an execution deletes everything under it (every foreign key is `ON DELETE CASCADE`). States are plain `varchar` columns with a check, not Postgres enums, so adding a state is an ordinary migration.
+
+### executions
+
+One row per submitted DAG.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | The execution id every API call uses. |
+| `external_reference` | text | no | The DAG's `name`. The column kept its old name when the API field was renamed. |
+| `idempotency_key` | text | no, unique | The DAG's `requestId`. The console prefixes it with the submitting teams (`team-a+team-b/<requestId>`) so two teams can't collide; without one, it's a random UUID. A second submission with the same key returns this execution instead of creating another. |
+| `state` | varchar | no | `PENDING` → `RUNNING` → `SUCCEEDED`, `FAILED` or `CANCELLED`. |
+| `created_at`, `updated_at` | timestamptz | no | |
+
+### execution_tasks
+
+One row per task in a DAG, and the scheduler's work queue: it claims rows from here.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Internal id. |
+| `execution_id` | uuid | no | The execution it belongs to. |
+| `task_key` | text | no | The task's `id` in the DAG; unique within its execution. |
+| `image`, `action` | text | no | What runs: the container image, and the action passed as its argument. |
+| `team` | text | no | The namespace the task's Job runs in. |
+| `service_account` | text | no | The Pod's identity in that namespace. |
+| `secret_refs` | text[] | no | Kubernetes Secrets to mount at `/platform/secrets/<name>`. |
+| `resources` | jsonb | yes | The task's own Pod size: `cpu`, `memory` and `memoryLimit`, as Kubernetes quantities. Null, or a part left out, means the deployment's default (`TASK_DEFAULT_RESOURCES`). |
+| `state` | varchar | no | `BLOCKED` (waiting on dependencies), `READY`, `CLAIMED` (a scheduler took it), `RUNNING` (its Job exists), then `SUCCEEDED`, `FAILED` or `CANCELLED`. |
+| `original_inputs` | jsonb | no | The inputs as submitted, `$fromTask` references included. |
+| `resolved_inputs` | jsonb | yes | The inputs actually sent, with references replaced by upstream outputs. Set at dispatch. |
+| `timeout_seconds` | integer | no | How long one attempt may run. |
+| `max_attempts` | integer | no | Attempts allowed for a retryable failure. |
+| `attempt_count` | integer | no | Attempts started so far. |
+| `dispatch_failures` | integer | no | Starts of the current attempt that raised in a row (an API timeout, say). Each retries the same attempt, so its Job name, adopting what the failed start left; past the scheduler's limit the attempt fails. Back to 0 once a start succeeds. |
+| `lease_owner` | text | yes | Which scheduler holds the task while `CLAIMED`/`RUNNING`. |
+| `lease_expires_at` | timestamptz | yes | If this passes (the scheduler died or was replaced), another scheduler takes the task over: it keeps watching a running task's Job, and a task that hadn't started yet goes back to `READY`. |
+| `available_at` | timestamptz | no | When the task may be claimed: when it became `READY`, or later for an automatic retry (the backoff). Schedulers claim the oldest first. |
+| `executor_handle` | jsonb | yes | Where the current attempt runs: `{"namespace", "jobName"}`. |
+| `failure` | jsonb | yes | Why it failed: `{"code", "message", "retryable"}`. |
+| `created_at`, `updated_at` | timestamptz | no | |
+
+Indexed on `(state, available_at)`, which is exactly the scheduler's "next READY task" query.
+
+### task_dependencies
+
+The DAG's edges: `task_id` waits for `depends_on_task_id`. A table rather than a JSON list, so "have all of this task's dependencies succeeded?" is a join.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `task_id` | uuid | no | The waiting task. |
+| `depends_on_task_id` | uuid | no | The task it waits for. Indexed, to find a finished task's dependents. |
+
+### task_attempts
+
+The retry history: one row per attempt. `execution_tasks.attempt_count` is the live counter.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `task_id` | uuid | no | |
+| `attempt_number` | integer | no | 1, 2, …; unique per task. |
+| `executor_handle` | jsonb | yes | That attempt's Job. |
+| `started_at`, `completed_at` | timestamptz | yes | |
+| `failure` | jsonb | yes | That attempt's failure, if it failed. |
+
+### task_outputs
+
+A task's outputs (from its `result.json`), which downstream `$fromTask` inputs read. One row per task; a retry overwrites it.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `task_id` | uuid | no | |
+| `outputs` | jsonb | no | The `outputs` object the container wrote. |
+| `created_at` | timestamptz | no | |
+
+### task_logs
+
+What the task's container printed. Kept here because the kernel deletes a task's Job and Pod as soon as it finishes. One row per task, overwritten by each attempt.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `task_id` | uuid | no | |
+| `lines` | text[] | no | stdout and stderr, combined, one line per element. |
+| `created_at` | timestamptz | no | |
+
+### execution_events
+
+An append-only log of everything that happened to an execution, in order. It's what the console's event timeline shows.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | bigint | no | Increasing, so it orders events exactly. |
+| `execution_id` | uuid | no | |
+| `task_id` | uuid | yes | Set for task events. |
+| `event_type` | text | no | `EXECUTION_CREATED`, `EXECUTION_STARTED`, `EXECUTION_SUCCEEDED`, `EXECUTION_FAILED`, `EXECUTION_CANCELLED`, `EXECUTION_RESUMED`, `TASK_CLAIMED`, `TASK_STARTED`, `TASK_SUCCEEDED`, `TASK_FAILED`, `TASK_CANCELLED`, `TASK_RETRIED`. |
+| `payload` | jsonb | no | Details for that event, such as a failure. |
+| `created_at` | timestamptz | no | |
+
+`alembic_version` also exists: it records which migration the database is at.
+
+## The console database (`execution_console`)
+
+```mermaid
+erDiagram
+  users ||--o{ team_memberships : "belongs to"
+  teams ||--o{ team_memberships : "has"
+  users ||--o{ api_tokens : "holds"
+  teams ||--o{ products : "owns"
+  wiring_types {
+    text name PK
+    text json_type
+    bool shared
+  }
+  products ||--o{ product_releases : "released as"
+  teams ||--o{ image_repositories : "owns"
+  teams ||--o{ secret_grants : "has"
+  users ||--o{ submitted_executions : "submitted"
+  teams {
+    uuid id PK
+    text name UK
+    timestamptz retired_at
+    timestamptz deleted_at
+  }
+  users {
+    uuid id PK
+    text email UK
+    bool is_admin
+    bool is_bot
+  }
+  team_memberships {
+    uuid user_id PK,FK
+    uuid team_id PK,FK
+  }
+  api_tokens {
+    uuid id PK
+    uuid user_id FK
+    text token_hash UK
+  }
+  products {
+    uuid id PK
+    text name UK
+    uuid team_id FK
+  }
+  product_releases {
+    uuid id PK
+    uuid product_id FK
+    text image
+  }
+  image_repositories {
+    text repository PK
+    uuid team_id FK
+  }
+  image_scans {
+    text digest PK
+    text status
+  }
+  audit_log {
+    bigserial id PK
+    uuid actor_id
+    text route
+  }
+  secret_grants {
+    uuid id PK
+    uuid team_id FK
+    text secret_name
+  }
+  submitted_executions {
+    uuid execution_id PK
+    text_array teams
+    uuid submitted_by FK
+  }
+```
+
+A team's name is also its Kubernetes namespace; there is no separate column for it. `submitted_executions.teams` holds team *names*, which is why a purged team's row is kept: a new team reusing the name would otherwise see the old team's executions.
+
+### teams
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `name` | text | no, unique | The team, and its namespace. |
+| `created_at` | timestamptz | no | |
+| `retired_at` | timestamptz | yes | Set when the team is retired: read-only, products unregistered. Clearing it brings the team back. |
+| `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
+
+### users
+
+People and bots alike.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `email` | text | no, unique | A bot's is made up, such as `team-a-release-pipeline@bots.acyclix.local`. |
+| `password_hash` | text | yes | An argon2 hash. Empty for bots, which use tokens. |
+| `is_admin` | boolean | no | A platform admin: may act on every team and use the Admin page. |
+| `is_bot` | boolean | no | A machine identity, which signs in only with an API token. |
+| `password_changed_at` | timestamptz | yes | Sessions issued before this are rejected, so changing a password signs out every other session. |
+| `created_at` | timestamptz | no | |
+
+### team_memberships
+
+Who is in which team. Membership is what lets someone see a team's executions, submit tasks for it, and manage its secrets and bots.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `user_id` | uuid | no | |
+| `team_id` | uuid | no | |
+| `created_at` | timestamptz | no | |
+
+### api_tokens
+
+Tokens for bots: a team's bots (Team page → Automation) and the catalog's automation token.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `user_id` | uuid | no | The bot it signs in as. |
+| `token_hash` | text | no, unique | SHA-256 of the token. The token itself is shown once and never stored. |
+| `label` | text | no | What uses it, for people reading the Team page. |
+| `scopes` | text[] | no | For an automation token only, its platform-wide permissions, such as `teams:create` or `products:register`. Empty for a team's bot, whose access comes from its team. |
+| `created_at` | timestamptz | no | |
+| `revoked_at` | timestamptz | yes | Set when revoked; the token stops working at once. |
+| `last_used_at` | timestamptz | yes | When it last signed a request in (updated at most every few minutes). |
+
+### products
+
+What a DAG step can run: one row per image and action.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `name` | text | no, unique | |
+| `image` | text | no | The current image, the one CI registered last. |
+| `action` | text | no | Unique together with `image`. |
+| `team_id` | uuid | yes | The owning team. Empty for a platform-provided product. |
+| `input_schema` | jsonb | no | The inputs the action takes, as JSON Schema: what its order form is built from. |
+| `display_name` | text | yes | The product's name for people, such as *GCP Cloud SQL*. |
+| `description` | text | yes | What it does. |
+| `output_schema` | jsonb | no | What the action outputs, as JSON Schema, including which wiring types it provides. |
+| `service_account` | text | yes | The ServiceAccount its tasks run as, in the owning team's namespace. |
+| `required_secrets` | text[] | no | The Secrets it reads, for a task's `secretRefs`. |
+| `resources` | jsonb | yes | The Pod size its tasks get when a task doesn't set its own: `cpu`, `memory`, `memoryLimit` as Kubernetes quantities. Null: the deployment's default. |
+| `created_at` | timestamptz | no | |
+
+Catalog CI registers all of these from the product's `product.yaml` (the catalog's `docs/product-schema.md` describes it). A registration that leaves one out keeps what's stored. Nothing that runs a task reads them: they're for browsing products, building forms and generating DAGs.
+
+### product_releases
+
+Every image a product has been registered with, so the Products page can list its releases.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `product_id` | uuid | no | |
+| `image` | text | no | Unique per product: registering the same image again isn't a new release. |
+| `registered_at` | timestamptz | no | |
+
+### image_repositories
+
+Which team owns each image repository: the first team to register a product from it. Only that team's products may use it, so no team can register another team's code as its own product and run it with its own ServiceAccount and Secrets. A row stays when its products are deleted, so the repository can't be taken over afterwards; an admin releases it (`DELETE /api/image-repositories`) once no product uses it. Products registered before this table existed get their rows when the console starts, the oldest product of a repository deciding.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `repository` | text | no | An image without its tag or digest, normalized the way the kubelet reads it (`node` is `docker.io/library/node`). |
+| `team_id` | uuid | yes | The owning team; null for the platform (products with no team). |
+| `created_at` | timestamptz | no | When it was claimed. |
+
+### audit_log
+
+Who changed what (`src/audit.ts`): one row per request that tried to change something through `/api`, allowed or refused, recorded once it's answered. Sign-in and password routes aren't recorded. Admins read it at `GET /api/audit`; each entry is also logged (`event: "audit"`).
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | bigserial | no | Increasing; pages go by it. |
+| `at` | timestamptz | no | |
+| `actor_id` | uuid | yes | The caller (a user or a bot); null when unauthenticated. |
+| `method` | text | no | POST, PUT, PATCH or DELETE. |
+| `route` | text | no | The route pattern, such as `/api/teams/:teamName/secrets/:secretName`. |
+| `target` | jsonb | no | The route's parameters and the identifying fields of the body (names, teams, images, emails, scopes, reasons); never a secret value, password or token. |
+| `status` | integer | no | The answer's HTTP status: a refusal is recorded too. |
+| `request_id` | text | yes | The request's id, as in the logs. |
+
+### image_scans
+
+One security scan verdict per image digest (`src/scanning.ts`). Every image is scanned before it's registered or run, whoever built it, and again daily while it's in use; a failed one (a HIGH or CRITICAL vulnerability with a fix, or a secret in the image) blocks new registrations and runs until a rescan finds it clean or an admin accepts it. The kernel chart's scan policy holds the failed digests, so the cluster refuses them too.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `digest` | text | no | `sha256:…`. |
+| `image` | text | no | The reference it was scanned as. |
+| `status` | text | no | `pending` (never scanned yet), `passed`, `failed` or `error` (the scan couldn't run). |
+| `findings` | jsonb | yes | Counts (`fixable`, `unfixable`, `secrets`) and up to 25 findings, blocking ones first. |
+| `job_name` | text | yes | The scan Job running now, if any. |
+| `requested_at` | timestamptz | no | When the last scan was started. |
+| `scanned_at` | timestamptz | yes | When the verdict was recorded. |
+| `last_used_at` | timestamptz | no | When it was last registered or run; rescans stop 30 days after. |
+| `accepted_by`, `accepted_reason`, `accepted_at` | uuid, text, timestamptz | yes | An admin accepted a failed verdict, and why. Cleared by a rescan that finds something new. |
+
+### secret_grants
+
+Which secrets each team has registered, never their values. The values live only in Kubernetes Secrets. Any of the team's registered products may mount any of them, when a step lists it in `secretRefs`; the cluster's identity policy holds the same list.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `team_id` | uuid | no | |
+| `secret_name` | text | no | The Kubernetes Secret's name in the team's namespace. Unique per team. |
+| `keys` | text[] | no | The keys inside the Secret. |
+| `source` | text | no | `literal` (a value was pasted in) or `external` (synced by External Secrets from a cloud secret store). |
+| `created_at`, `updated_at` | timestamptz | no | |
+
+### wiring_types
+
+The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a product's input uses to say what it needs (`x-acyclix-needs`) and an output what it provides (`x-acyclix-provides`), such as `gcp.project`. A generated DAG connects a needing input to a providing output through these. Catalog CI replaces the whole set on every change.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `name` | text | no | The type, such as `gcp.cloudsql.connection`. |
+| `json_type` | text | no | The value's JSON type: `string`, `integer`, `number` or `boolean`. |
+| `description` | text | no | What a value of this type is. |
+| `shared` | boolean | no | When nothing in an order provides it, asked once for the whole order instead of once per product. |
+| `default_provider` | text | yes | `<team>/<product>.<action>` added to an order automatically when a required input needs this type and nothing provides it. |
+| `updated_at` | timestamptz | no | |
+
+### submitted_executions
+
+The console's record of every execution submitted through it, and who may see it. The kernel has no idea who submitted what.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `execution_id` | uuid | no | The kernel's execution id. |
+| `teams` | text[] | no | Every team named by a task in the DAG. Members of any of them can see the execution. |
+| `submitted_by` | uuid | yes | The user or bot. Emptied if that account is deleted; the record stays. |
+| `external_reference` | text | no | The DAG's `name`. |
+| `payload` | jsonb | yes | The DAG as sent to the kernel, so **Rerun** can resubmit it. Empty for rows from before this column existed. |
+| `created_at` | timestamptz | no | |
+
+The console's migrations are tracked in the `drizzle` schema, outside `public`.

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Acyclix product (product.yaml)",
+  "description": "One product: a container image and the actions it runs. Its image path is derived from its folder, catalog/<team>/<name>/, so it has no image field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "team", "displayName", "description", "owner", "actions"],
+  "properties": {
+    "name": {
+      "description": "The product's folder name.",
+      "$ref": "#/$defs/dnsLabel"
+    },
+    "team": {
+      "description": "The team (team) folder this product is in.",
+      "$ref": "#/$defs/dnsLabel"
+    },
+    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 4000 },
+    "owner": { "type": "string", "minLength": 1 },
+    "runtime": {
+      "description": "Documentation only: what the image runs on, such as python3.12.",
+      "type": "string"
+    },
+    "serviceAccount": {
+      "description": "Optional. The Kubernetes ServiceAccount the product runs as, for a cloud identity bound to it. Without one, it runs as default.",
+      "$ref": "#/$defs/kubernetesName"
+    },
+    "resources": { "$ref": "#/$defs/resources" },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/action" }
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "kubernetesName": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "quantity": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$"
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": { "$ref": "#/$defs/quantity" },
+        "memory": { "$ref": "#/$defs/quantity" },
+        "memoryLimit": { "$ref": "#/$defs/quantity" }
+      }
+    },
+    "jsonSchemaObject": {
+      "description": "A JSON Schema (draft 2020-12) for an object.",
+      "type": "object",
+      "required": ["type"],
+      "properties": { "type": { "const": "object" } }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "input", "output"],
+      "properties": {
+        "name": { "$ref": "#/$defs/dnsLabel" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "script": {
+          "description": "Documentation only: where the action's code is.",
+          "type": "string"
+        },
+        "input": { "$ref": "#/$defs/jsonSchemaObject" },
+        "output": { "$ref": "#/$defs/jsonSchemaObject" },
+        "requiredSecrets": {
+          "description": "The team secrets this action reads, which a step must list in its secretRefs.",
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "$ref": "#/$defs/kubernetesName" },
+              "keys": { "type": "array", "items": { "type": "string" } },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

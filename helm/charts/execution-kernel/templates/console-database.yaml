@@ -1,0 +1,100 @@
+{{/*
+postgres.consoleDatabase: the console's database on this release's bundled
+Postgres, so the console chart needs no Postgres of its own (set its
+postgres.enabled=false and existingSecret to this Secret's name). One
+instance instead of two: a Pod and a volume fewer.
+
+The console gets its own login role, owning only its own database, with a
+password generated once and kept across upgrades. CONNECT on both
+databases is revoked from PUBLIC, so the console's role can't reach the
+kernel's data (the kernel connects as the instance's superuser, which
+REVOKE doesn't limit).
+
+The Secret is an ordinary release resource, so it exists before the Job
+below runs. The Job is a post-install/post-upgrade hook: on an upgrade that
+turns this on, the Secret has to be applied first.
+*/}}
+{{- if and .Values.postgres.enabled .Values.postgres.consoleDatabase.enabled }}
+{{- $db := .Values.postgres.consoleDatabase }}
+{{- $secretName := printf "%s-console-db" (include "execution-kernel.fullname" .) }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $secretName }}
+{{- $password := randAlphaNum 32 }}
+{{- if and $existing (hasKey (($existing).data | default dict) "password") }}
+  {{- $password = index $existing.data "password" | b64dec }}
+{{- end }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  # The console chart's DATABASE_URL (its existingSecret, key database-url).
+  database-url: "postgresql://{{ $db.username }}:{{ $password }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}"
+  password: {{ $password | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-console-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    app.kubernetes.io/component: console-db
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: console-db
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ensure-console-database
+          image: {{ include "execution-kernel.image" .Values.postgres.image | quote }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          env:
+            - name: PGHOST
+              value: "{{ include "execution-kernel.fullname" . }}-postgres"
+            - name: PGUSER
+              value: {{ .Values.postgres.auth.username | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-kernel.databaseSecretName" . }}
+                  key: postgres-password
+            - name: CONSOLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: password
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until pg_isready -q; do echo "waiting for Postgres"; sleep 2; done
+              psql -v ON_ERROR_STOP=1 -d postgres \
+                -v role={{ $db.username | quote }} -v db={{ $db.database | quote }} \
+                -v kernel_db={{ .Values.postgres.auth.database | quote }} \
+                -v password="$CONSOLE_PASSWORD" <<'SQL'
+              SELECT format('CREATE ROLE %I LOGIN', :'role')
+                WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'role') \gexec
+              SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'role', :'password') \gexec
+              SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'role')
+                WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'db') \gexec
+              SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', :'db') \gexec
+              SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', :'role') \gexec
+              SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', :'kernel_db') \gexec
+              SQL
+              echo "console database {{ $db.database }} ready, owned by {{ $db.username }}"
+{{- end }}

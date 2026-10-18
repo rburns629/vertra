@@ -1,0 +1,80 @@
+{{/*
+What the console may do to namespaces, when it manages team namespaces
+(teamNamespaces.manage). Its ClusterRole has to allow creating and updating
+namespaces in general, so on its own it could label kube-system a team's
+(letting the kernel dispatch steps there) or change anything else about any
+namespace. This policy, applied by the Kubernetes API server to every such
+request from the console's ServiceAccount, allows only:
+
+  - creating a namespace labelled <teamNamespaceLabel>=true;
+  - changing that one label, to "true" or "retired", on a namespace that
+    already has it (a team's): nothing else about it, no other label or
+    annotation;
+
+never on kube-*, this release's namespace or teamNamespaces.protected.
+Deleting one is the kernel chart's purge policy's (retired namespaces only).
+console/src/k8s.ts's setTeamNamespace keeps to the same rules.
+*/}}
+{{- if .Values.teamNamespaces.manage }}
+{{- $console := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-console.serviceAccountName" .) }}
+{{- $name := printf "%s-namespaces" (include "execution-console.fullname" .) }}
+{{- $label := .Values.writeFence.teamNamespaceLabel }}
+{{- $protected := concat (list "kube-system" "kube-public" "kube-node-lease" .Release.Namespace) .Values.teamNamespaces.protected | uniq }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["namespaces"]
+  matchConditions:
+    - name: from-the-console
+      expression: request.userInfo.username == {{ $console | quote }}
+  variables:
+    - name: labels
+      expression: "has(object.metadata.labels) ? object.metadata.labels : {}"
+    - name: oldLabels
+      expression: "request.operation == 'UPDATE' && has(oldObject.metadata.labels) ? oldObject.metadata.labels : {}"
+  validations:
+    - expression: >-
+        !(object.metadata.name in {{ $protected | toJson }}) && !object.metadata.name.startsWith("kube-")
+      messageExpression: >-
+        "The console may not create or change namespace " + object.metadata.name + ": it's protected."
+      reason: Forbidden
+    - expression: >-
+        request.operation != "CREATE" ||
+        ({{ $label | quote }} in variables.labels && variables.labels[{{ $label | quote }}] == "true")
+      message: "The console may only create a namespace labelled {{ $label }}=true."
+      reason: Forbidden
+    - expression: >-
+        request.operation != "UPDATE" || (
+          {{ $label | quote }} in variables.oldLabels &&
+          {{ $label | quote }} in variables.labels &&
+          variables.labels[{{ $label | quote }}] in ["true", "retired"] &&
+          variables.oldLabels.all(k, k == {{ $label | quote }} ||
+            (k in variables.labels && variables.labels[k] == variables.oldLabels[k])) &&
+          variables.labels.all(k, k == {{ $label | quote }} || k in variables.oldLabels) &&
+          (has(object.metadata.annotations) ? object.metadata.annotations : {}) ==
+            (has(oldObject.metadata.annotations) ? oldObject.metadata.annotations : {}))
+      messageExpression: >-
+        "The console may only set the {{ $label }} label (to true or retired) on a team's namespace, and change
+        nothing else about it; " + object.metadata.name + " isn't a team's, or more changed."
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  validationActions: [Deny]
+{{- end }}

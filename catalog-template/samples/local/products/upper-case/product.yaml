@@ -1,0 +1,37 @@
+# One of five language samples (Python, TypeScript, Go, PowerShell, Rust):
+# the same contract, text in and text out, in each language. Chain them with
+# the DAG in its team's README.md (samples/local/README.md).
+name: upper-case
+team: local
+displayName: Upper case (PowerShell)
+description: >-
+  Puts the text in capitals, with the same rules in every locale. A
+  PowerShell sample of the product contract.
+owner: local
+runtime: pwsh7.5
+actions:
+  - name: transform
+    script: actions/transform.ps1
+    input:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text to change, up to 1,000 characters.
+          maxLength: 1000
+    output:
+      type: object
+      additionalProperties: false
+      required: [text, language]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text in capitals, such as "HELLO WORLD".
+        language:
+          type: string
+          title: Language
+          description: The language this product is written in, PowerShell.

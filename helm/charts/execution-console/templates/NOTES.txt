@@ -1,0 +1,22 @@
+execution-console is installed.
+
+execution-console: {{ include "execution-console.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+Check the migration Job finished before logging in -- it also creates the
+bootstrap admin account on first install:
+
+  kubectl get jobs -n {{ .Release.Namespace }} {{ include "execution-console.fullname" . }}-migrate
+
+If BOOTSTRAP_ADMIN_PASSWORD wasn't set, its generated password was printed
+exactly once to that Job's own logs and is not recoverable any other way:
+
+  kubectl logs -n {{ .Release.Namespace }} job/{{ include "execution-console.fullname" . }}-migrate
+
+Port-forward it to try locally:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "execution-console.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  curl http://localhost:{{ .Values.service.port }}/health/ready
+
+kernel-api ({{ .Values.kernelApiUrl }}) accepts only this console's
+ServiceAccount token (kernelApiToken here, api.auth in the kernel chart).
+Still don't expose kernel-api's own Service outside the cluster.

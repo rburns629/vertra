@@ -1,0 +1,35 @@
+# execution-kernel on GKE `acyclix-gke` (release `kernel`, namespace
+# default; a new install uses its own, acyclix-system):
+#   helm upgrade --install kernel helm/charts/execution-kernel -n default \
+#     --kube-context gke_my-gcp-project_us-central1_acyclix-gke \
+#     -f helm/values/gke/kernel.yaml
+image:
+  repository: us-central1-docker.pkg.dev/my-gcp-project/platform-images/execution-kernel
+  tag: latest
+  pullPolicy: Always
+backup:
+  enabled: false
+# Only because this install runs the platform in `default`, which is also
+# an admins' team namespace. A new install in acyclix-system drops this.
+dispatchPolicy:
+  allowReleaseNamespace: true
+# Where catalog CI publishes product images. The image policy seeds from
+# this on first install; afterwards the Admin page owns the list.
+imagePolicy:
+  sourceRegistry: us-central1-docker.pkg.dev/my-gcp-project/catalog-products
+# Catalog images must carry catalog CI's signature (needs policy-controller,
+# helm/values/gke/policy-controller.yaml). The public half of the KMS key
+# catalog-signing/catalog-images; list a second key here during a rotation.
+imageSignature:
+  enabled: true
+  publicKeys:
+    - |
+      -----BEGIN PUBLIC KEY-----
+      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaDo0mkZuGxOGub0gDZwZoWQnqL0t
+      WwmAwv/QbAbjM8xn8prY+E+0b9cf4WaxdVdqaqC+G87jHxa4XNvgcCweKg==
+      -----END PUBLIC KEY-----
+# Nobody but cluster administrators deletes team namespaces: the console
+# leaves a purged team's labelled retired (its teamNamespaces.purge is off).
+# A purger listed here may delete only retired ones.
+purgePolicy:
+  purgers: []

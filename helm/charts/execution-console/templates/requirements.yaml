@@ -1,0 +1,11 @@
+{{/*
+Fails the install, with what to do, on a Helm that can't upgrade this chart
+safely. The console edits lists inside admission policies this chart owns;
+Helm 4's server-side apply sees it as their owner, and upgrades pass
+--force-conflicts to take them back (keeping what the console wrote: the
+chart looks it up first). Helm 3's three-way merge would silently reset
+them instead. (The Kubernetes version is Chart.yaml's kubeVersion.)
+*/}}
+{{- if not (semverCompare ">=4.0.0-0" .Capabilities.HelmVersion.Version) }}
+{{- fail (printf "This chart needs Helm 4 or later (found %s): upgrades rely on its server-side apply. https://helm.sh/docs/intro/install/" .Capabilities.HelmVersion.Version) }}
+{{- end }}

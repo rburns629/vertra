@@ -1,0 +1,66 @@
+name: app-hosting
+team: gcp
+displayName: GCP App Hosting (Cloud Run)
+description: >-
+  Deploys a pre-built container image to Cloud Run under the given service
+  name, or returns the existing service's URL unchanged if that name is
+  already taken in the target project/region. Never builds an image itself
+  -- the image to deploy is always a caller-supplied input.
+owner: gcp-team
+runtime: python3.12
+actions:
+  - name: create
+    script: actions/create.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [projectId, serviceName, image]
+      properties:
+        projectId:
+          type: string
+          description: >-
+            GCP project the service is deployed into. Typically supplied
+            via $fromTask/$output from a gcp/_project create task.
+        serviceName:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{0,61}[a-z0-9]$"
+          description: >-
+            Cloud Run service name. If a service with this name already
+            exists in the given project/region, it is returned unchanged
+            -- this action never redeploys an existing service.
+        region:
+          type: string
+          default: us-central1
+          description: Cloud Run region.
+        image:
+          type: string
+          description: >-
+            Fully-qualified container image to deploy (e.g. an Artifact
+            Registry path), built and pushed ahead of time. This product
+            only deploys a reference to it -- it never builds an image
+            itself.
+        cloudSqlConnectionName:
+          type: string
+          description: >-
+            Optional. A Cloud SQL instance's connectionName (typically
+            gcp/cloud-sql's own output, via $fromTask/$output) -- the
+            concrete answer to "an API that needs its own database": this
+            product deploys the API, gcp/cloud-sql provisions the
+            database, and this one field is what actually wires the
+            deployed service to it. When set, the service is deployed with
+            a Cloud SQL volume mounted at /cloudsql (the Cloud Run <->
+            Cloud SQL Auth Proxy convention) and CLOUD_SQL_CONNECTION_NAME
+            set in its environment. The deployed service's own runtime
+            identity still needs roles/cloudsql.client granted separately
+            -- this product only wires the connection, it doesn't grant
+            IAM on the running service's behalf (same "deploy vs. grant
+            access" split gcp/_project already draws for billing).
+    output:
+      type: object
+      required: [serviceUrl]
+      properties:
+        serviceUrl:
+          type: string
+          description: >-
+            The Cloud Run service's HTTPS URL, whether newly created or
+            pre-existing.

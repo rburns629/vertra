@@ -1,0 +1,43 @@
+# A sample: S3 bucket, with real AWS API calls (billed).
+# Not yet proven against a real account; see the aws team's README.md.
+name: s3-bucket
+team: aws
+displayName: S3 bucket
+description: 'Finds an S3 bucket by name, or creates it with every kind of public access blocked.
+  Bucket names are global: a name another account owns fails with BUCKET_NAME_TAKEN.'
+owner: aws-team
+runtime: python3.12
+actions:
+- name: create
+  script: actions/create.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - bucketName
+    - region
+    properties:
+      bucketName:
+        type: string
+        description: 'The bucket''s name: 3 to 63 lowercase letters, digits, dots or hyphens.'
+        pattern: ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$
+      region:
+        type: string
+        description: The AWS region, such as eu-west-1.
+        pattern: ^[a-z]{2}(-[a-z]+)+-[0-9]$
+  output:
+    type: object
+    required:
+    - bucketName
+    - region
+    - arn
+    properties:
+      bucketName:
+        type: string
+        description: The bucket.
+      region:
+        type: string
+        description: Where it is.
+      arn:
+        type: string
+        description: Its ARN, for IAM policies.

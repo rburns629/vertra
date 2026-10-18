@@ -1,0 +1,251 @@
+name: ci
+
+# Everything that has to pass before a change reaches main:
+#
+#   kernel    ruff, mypy, pytest against a real Postgres. The Kubernetes
+#             tests skip here; the kubernetes job runs them.
+#   kubernetes  on a kind cluster: the kernel's Kubernetes tests (required
+#             there, not skipped) and helm/tests/admission-policies.sh,
+#             which proves the charts' admission policies case by case.
+#   console   typecheck, eslint, vitest against a real Postgres, build;
+#             then the frontend's oxlint, vitest and build.
+#   helm      helm lint on both charts; a render of every environment's
+#             settings in helm/values/, and of the charts' optional branches
+#             (backup destinations, a shared database, policies off), so a
+#             change that breaks a template fails here, not at helm upgrade.
+#   workflows actionlint over .github/workflows and the catalog template's.
+#   catalog-template  the template a new catalog starts from, with every
+#             sample added (.github/scripts/catalog-template.sh):
+#             validated always; built, tested and scanned when it changed,
+#             and weekly.
+#   images    builds the kernel and console images and scans them
+#             (.github/scripts/scan-image.sh): a fixable HIGH/CRITICAL
+#             vulnerability, a baked-in secret or a malicious package fails.
+#
+# Code and secret scanning (Semgrep, gitleaks) are in security.yml. The
+# weekly run catches new CVEs in images that were clean when merged.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 6 * * 1"   # Mondays, 06:41 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kernel
+    services:
+      # The tests' URL (tests/conftest.py) names no user, so asyncpg connects
+      # as the runner's OS user: create that role, trusted, on localhost only.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_DB: execution_kernel_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U runner" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"   # kernel/Dockerfile's base
+          cache: pip
+          cache-dependency-path: kernel/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: mypy .
+      - name: Migrate the test database
+        env:
+          DATABASE_URL: postgresql+asyncpg://localhost/execution_kernel_test
+        run: alembic upgrade head
+      - run: pytest -q -rs
+
+  console:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: console
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_DB: execution_console_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U runner" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://runner@localhost/execution_console_test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"   # console/Dockerfile's base
+          cache: npm
+          cache-dependency-path: |
+            console/package-lock.json
+            console/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Migrate the test database
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          JWT_SECRET: ci-only-unused
+          KERNEL_API_URL: http://unused.invalid
+        run: npm run db:migrate
+      - run: npm test
+      - run: npm run build
+      - name: Frontend
+        working-directory: console/frontend
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          npm run build
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.3.0
+      - run: |
+          helm lint helm/charts/execution-kernel
+          helm lint helm/charts/execution-console
+      - name: Render every environment's settings
+        # --api-versions stands in for policy-controller's CRD, which the
+        # kernel chart requires when imageSignature is enabled (GKE).
+        run: |
+          for env_dir in helm/values/*/; do
+            env_name=$(basename "$env_dir")
+            echo "::group::$env_name"
+            helm template kernel helm/charts/execution-kernel -f "$env_dir/kernel.yaml" \
+              --api-versions policy.sigstore.dev/v1beta1/ClusterImagePolicy > /dev/null
+            helm template console helm/charts/execution-console -f "$env_dir/console.yaml" > /dev/null
+            echo "::endgroup::"
+          done
+      - name: Render the optional branches
+        run: |
+          backup="--set backup.enabled=true --set backup.gcs.bucket=b --set backup.s3.bucket=b
+            --set backup.s3.endpoint=http://s3 --set backup.s3.credentialsSecret=c
+            --set backup.azure.storageAccount=a --set backup.azure.container=c
+            --set backup.pvc.claimName=p"
+          for destination in gcs s3 azure pvc; do
+            # shellcheck disable=SC2086 # $backup is a list of flags
+            helm template kernel helm/charts/execution-kernel $backup \
+              --set backup.destination=$destination --set postgres.consoleDatabase.enabled=true > /dev/null
+            # shellcheck disable=SC2086
+            helm template console helm/charts/execution-console $backup --set kernelApiUrl=http://x \
+              --set postgres.enabled=true --set backup.destination=$destination > /dev/null
+          done
+          helm template kernel helm/charts/execution-kernel --set networkPolicy.enabled=false \
+            --set identityPolicy.enabled=false --set api.auth.enabled=false --set imagePolicy.enabled=false > /dev/null
+          helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
+            --set writeFence.enabled=false --set kernelApiToken.enabled=false > /dev/null
+
+  kubernetes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_DB: execution_kernel_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U runner" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: kernel/pyproject.toml
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.3.0
+      - uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
+        with:
+          cluster_name: acyclix-ci
+      - name: Admission policies
+        run: bash helm/tests/admission-policies.sh
+      - name: Kernel Kubernetes tests
+        working-directory: kernel
+        env:
+          DATABASE_URL: postgresql+asyncpg://localhost/execution_kernel_test
+          KERNEL_TESTS_REQUIRE_KUBERNETES: "1"
+        run: |
+          kubectl create namespace execution-kernel
+          pip install -e ".[dev]"
+          alembic upgrade head
+          pytest -q -rs tests/integration/test_kubernetes_executor.py \
+            tests/integration/test_product_examples.py tests/end_to_end
+
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: bash .github/scripts/install-scanners.sh actionlint
+      - run: actionlint
+      - run: actionlint catalog-template/.github/workflows/*.yml
+
+  catalog-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0   # to see whether the template changed
+      - run: bash .github/scripts/catalog-template.sh validate
+      - name: Did the template change?
+        id: changed
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] \
+             || ! git cat-file -e "$BASE^{commit}" 2>/dev/null \
+             || ! git diff --quiet "$BASE" HEAD -- catalog-template .github/scripts/catalog-template.sh; then
+            echo "check=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.changed.outputs.check == 'true'
+        run: bash .github/scripts/install-scanners.sh trivy osv-scanner
+      - if: steps.changed.outputs.check == 'true'
+        run: bash .github/scripts/catalog-template.sh check
+
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [kernel, console]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: bash .github/scripts/install-scanners.sh trivy osv-scanner
+      - name: Build
+        env:
+          COMPONENT: ${{ matrix.component }}
+        run: docker build --pull -t "acyclix-ci/$COMPONENT:$GITHUB_SHA" "$COMPONENT/"
+      - name: Scan
+        env:
+          COMPONENT: ${{ matrix.component }}
+        run: bash .github/scripts/scan-image.sh "acyclix-ci/$COMPONENT:$GITHUB_SHA" "$COMPONENT"

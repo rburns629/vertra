@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest something Acyclix should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you're trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you'd like to happen
+      description: How it could work, from the point of view of the person using it.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security impact
+      description: Does this change who can run what, or who can reach which secrets? If so, how should that stay safe?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered

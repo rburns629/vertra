@@ -1,0 +1,8 @@
+# Teams
+
+One folder per team: `teams/<team>/` with its `team.yaml`, its
+`products/`, and optionally its `secret-stores/` and `dags/`. Start one from
+`templates/team/team.yaml` and `templates/hello`, or copy a starter product
+in your language from `samples/local/products/` (Python, TypeScript, Go,
+PowerShell, Rust), changing its `team:` to your team's name. The catalog's
+`README.md` has the steps.

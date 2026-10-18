@@ -1,0 +1,42 @@
+name: project
+team: gcp
+displayName: GCP Project
+description: >-
+  Looks up a Google Cloud project by id, creating it (and linking billing)
+  only if it doesn't already exist. Idempotent: re-running against an
+  existing project id is a no-op that still returns its projectId, so the
+  same DAG works whether the caller is a new user (project gets created) or
+  an existing one (project is found and left untouched).
+owner: gcp-team
+runtime: python3.12
+actions:
+  - name: create
+    script: actions/create.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [projectId]
+      properties:
+        projectId:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"
+          description: >-
+            The GCP project id to look up or create. If a project with this
+            id already exists, it is returned unchanged -- this action
+            never modifies an existing project's settings.
+        billingAccountId:
+          type: string
+          pattern: "^[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}$"
+          description: >-
+            Billing account linked ONLY when a new project is created;
+            ignored if the project already exists. Required before the
+            project can run billable services like Cloud Run.
+    output:
+      type: object
+      required: [projectId]
+      properties:
+        projectId:
+          type: string
+          description: >-
+            Echoed back either way, for downstream tasks to reference via
+            $fromTask/$output.

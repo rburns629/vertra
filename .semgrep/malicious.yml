@@ -1,0 +1,112 @@
+# Patterns that have no business in a catalog product: the shapes malicious
+# code takes (fetching and running remote code, hiding a payload, opening a
+# shell to somewhere, mining, sending data to a bare IP), not ordinary bugs.
+# Run by .github/workflows/security.yml; an ERROR here fails the PR.
+#
+# A product with a real, reviewed reason for one of these can suppress that
+# single line with a trailing `# nosemgrep: <rule id>` comment and a reason
+# beside it. The CODEOWNERS review of the PR is what decides whether that
+# reason holds.
+rules:
+  # --- Running code that wasn't in the PR -----------------------------------
+  - id: pipe-download-to-shell
+    languages: [generic]
+    paths:
+      include: ["**/*.sh", "**/Dockerfile", "**/*.py", "**/*.yaml", "**/*.yml"]
+    pattern-regex: '(curl|wget)\b[^\n|;]*\|\s*(sudo\s+)?(ba|z|da)?sh\b'
+    message: >-
+      Downloads something and pipes it straight into a shell, so what runs
+      is whatever that URL serves at build or run time, never what was
+      reviewed. Vendor the script into the PR, or download a pinned version
+      and check its checksum before running it.
+    severity: ERROR
+
+  - id: decode-and-execute
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: exec(...)
+          - pattern: eval(...)
+      - pattern-either:
+          - pattern-inside: exec(<... base64.$F(...) ...>)
+          - pattern-inside: eval(<... base64.$F(...) ...>)
+          - pattern-inside: exec(<... codecs.decode(...) ...>)
+          - pattern-inside: exec(<... zlib.decompress(...) ...>)
+          - pattern-inside: exec(<... marshal.loads(...) ...>)
+          - pattern-inside: exec(<... bytes.fromhex(...) ...>)
+          - pattern-inside: eval(<... bytes.fromhex(...) ...>)
+    message: >-
+      Executes code that's decoded at run time (base64, hex, zlib, marshal).
+      That's how a payload is hidden from review; real product code has no
+      reason to do it.
+    severity: ERROR
+
+  - id: shell-decode-and-execute
+    languages: [generic]
+    paths:
+      include: ["**/*.sh", "**/Dockerfile"]
+    pattern-regex: '(base64\s+(-d|--decode)|xxd\s+-r)[^\n]*\|\s*(ba|z|da)?sh\b'
+    message: Decodes a hidden payload and runs it in a shell.
+    severity: ERROR
+
+  # --- Remote shells ---------------------------------------------------------
+  - id: reverse-shell
+    languages: [generic]
+    paths:
+      include: ["**/*.sh", "**/Dockerfile", "**/*.py"]
+    pattern-regex: '/dev/(tcp|udp)/|\bnc\b[^\n]*\s-(e|c)\s|\bncat\b[^\n]*--exec|socat\b[^\n]*exec:'
+    message: Opens a network shell (/dev/tcp, nc -e, socat exec). That's a reverse shell, not product behaviour.
+    severity: ERROR
+
+  - id: python-reverse-shell
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: os.dup2($SOCK.fileno(), ...)
+          - pattern: pty.spawn(...)
+    message: Wires a socket to the process's stdin/stdout or spawns a pty; the classic Python reverse shell.
+    severity: ERROR
+
+  # --- Sending data somewhere unexpected -------------------------------------
+  - id: http-to-bare-ip
+    languages: [generic]
+    paths:
+      include: ["**/*.sh", "**/*.py", "**/Dockerfile"]
+    pattern-regex: 'https?://(\d{1,3}\.){3}\d{1,3}(:\d+)?(/|["''\s])'
+    message: >-
+      Talks to a bare IP address instead of a named service. Legitimate APIs
+      have hostnames; a raw IP is how exfiltration and command-and-control
+      usually look.
+    severity: ERROR
+
+  - id: kubernetes-token-access
+    languages: [generic]
+    paths:
+      include: ["**/*.sh", "**/*.py"]
+    pattern-regex: '/var/run/secrets/kubernetes\.io/serviceaccount'
+    message: >-
+      Reads the Pod's Kubernetes ServiceAccount token. Products talk to
+      their cloud's APIs, not to the cluster they run in; reading this token
+      is how a task would try to reach other teams' resources.
+    severity: ERROR
+
+  # --- Resource abuse --------------------------------------------------------
+  - id: crypto-miner
+    languages: [generic]
+    paths:
+      include: ["**/*.sh", "**/*.py", "**/Dockerfile", "**/*.yaml"]
+    pattern-regex: '(?i)stratum\+(tcp|ssl)://|\bxmrig\b|\bminerd\b|\bcpuminer\b|cryptonight|nicehash'
+    message: Mentions crypto-mining software or a mining pool.
+    severity: ERROR
+
+  # --- Hiding from review ----------------------------------------------------
+  - id: dynamic-import-of-downloaded-code
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: exec(requests.get(...).text)
+          - pattern: exec(requests.get(...).content)
+          - pattern: exec(urllib.request.urlopen(...).read())
+          - pattern: exec(urllib.request.urlopen(...).read().decode(...))
+    message: Downloads Python source and executes it.
+    severity: ERROR

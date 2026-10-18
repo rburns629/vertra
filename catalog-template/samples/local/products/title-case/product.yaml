@@ -1,0 +1,37 @@
+# One of five language samples (Python, TypeScript, Go, PowerShell, Rust):
+# the same contract, text in and text out, in each language. Chain them with
+# the DAG in its team's README.md (samples/local/README.md).
+name: title-case
+team: local
+displayName: Title case (Python)
+description: >-
+  Capitalizes the first letter of every word, keeping the spacing as it was.
+  A Python sample of the product contract.
+owner: local
+runtime: python3.12
+actions:
+  - name: transform
+    script: actions/transform.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text to change, up to 1,000 characters.
+          maxLength: 1000
+    output:
+      type: object
+      additionalProperties: false
+      required: [text, language]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text with every word capitalized, such as "Hello Acyclix World".
+        language:
+          type: string
+          title: Language
+          description: The language this product is written in, Python.

@@ -1,0 +1,37 @@
+# Three gcp products chained: find (or create) a project, build an image
+# from source in GCS with Cloud Build, and deploy it to Cloud Run. Real,
+# billed calls. Paste into the console's Submit page (it takes YAML), with
+# <registry> and the CHANGE values replaced. `:latest` is pinned to its
+# digest when you submit.
+name: gcp-hello-world-demo
+tasks:
+  - id: create-gcp-project
+    image: <registry>/gcp/project:latest
+    action: create
+    team: gcp
+    inputs:
+      projectId: my-project-id            # CHANGE
+      # billingAccountId: only used when the project is created.
+
+  - id: build-image-from-source
+    image: <registry>/gcp/build-image:latest
+    action: create
+    team: gcp
+    dependsOn: [create-gcp-project]
+    timeoutSeconds: 600                   # a cold Cloud Build needs more than the default 300
+    inputs:
+      projectId: {$fromTask: create-gcp-project, $output: projectId}
+      sourceArchiveUrl: gs://my-bucket/hello-world-source.zip                  # CHANGE
+      imageUri: us-central1-docker.pkg.dev/my-project-id/demo/hello-world-app:latest  # CHANGE
+
+  - id: deploy-cloud-run-service
+    image: <registry>/gcp/app-hosting:latest
+    action: create
+    team: gcp
+    # A $fromTask reference must name a task in dependsOn.
+    dependsOn: [create-gcp-project, build-image-from-source]
+    inputs:
+      projectId: {$fromTask: create-gcp-project, $output: projectId}
+      serviceName: hello-world
+      region: us-central1
+      image: {$fromTask: build-image-from-source, $output: imageUri}

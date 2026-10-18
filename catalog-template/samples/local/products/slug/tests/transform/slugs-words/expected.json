@@ -1,0 +1,7 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "text": "hello-acyclix-world",
+    "language": "Go"
+  }
+}

@@ -1,0 +1,37 @@
+# One of five language samples (Python, TypeScript, Go, PowerShell, Rust):
+# the same contract, text in and text out, in each language. Chain them with
+# the DAG in its team's README.md (samples/local/README.md).
+name: rot13
+team: local
+displayName: ROT13 (Rust)
+description: >-
+  Moves each Latin letter 13 places along the alphabet; running it twice gives
+  the original back. A Rust sample of the product contract.
+owner: local
+runtime: rust1.90
+actions:
+  - name: transform
+    script: src/main.rs
+    input:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text to change, up to 1,000 characters.
+          maxLength: 1000
+    output:
+      type: object
+      additionalProperties: false
+      required: [text, language]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text with its Latin letters rotated, such as "uryyb jbeyq".
+        language:
+          type: string
+          title: Language
+          description: The language this product is written in, Rust.

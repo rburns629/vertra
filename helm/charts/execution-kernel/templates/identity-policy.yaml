@@ -1,0 +1,173 @@
+{{/*
+Which ServiceAccount a step may run as, and which Secrets it may mount: the
+cluster's copy of the console's rule (identityRefusal in console/src/routes/
+executions.ts), so it holds even for a Job the console never checked.
+
+A step runs as "default" with no Secrets, unless it's a registered product:
+then it may run as the ServiceAccount its product.yaml declares and mount
+any Secret its team registered in the console (a team's secrets are its
+products', chosen per step; a Secret nobody registered, such as a
+SecretStore's credentials, can't be mounted at all). A product matches when
+the step is in the product's team namespace (or the product belongs to the
+platform, team ""), runs the same image repository (any tag or digest) and
+the same action (the container's first argument). Anything else is refused
+when the scheduler creates the Job, which the kernel reports as a
+non-retryable IDENTITY_NOT_ALLOWED.
+
+Without this, only the console enforced it: anything that got a Job created
+another way could run as any product's ServiceAccount in that namespace and
+mount any Secret there (the kubelet mounts whatever a Pod names; RBAC
+doesn't apply to mounts).
+
+What's registered lives in this policy itself, as two CEL literals:
+`products`, a JSON list of {team, repository, action, serviceAccount}, and
+`teamSecrets`, a JSON map of team to its registered Secret names,
+comma-separated (CEL wants every value in a literal to have one type;
+Secret names can't contain commas). The console rewrites both whenever
+products or secrets change and at startup (console/src/productPolicy.ts;
+its RBAC allows updating this one policy by name). This chart seeds them
+empty on install and keeps whatever is there on upgrade (lookup),
+re-encoded as JSON so they can only ever be literals. Same reasoning as
+image-policy.yaml for a literal rather than a ConfigMap.
+
+The kernel's Jobs have exactly one container and mount Secrets only as
+volumes; anything else is refused too, so a Secret can't arrive some other
+way unchecked. Images are read the way image-policy.yaml (and the console's
+imageRepository) read them.
+*/}}
+{{- if .Values.identityPolicy.enabled }}
+{{- $scheduler := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-kernel.serviceAccountName" .) }}
+{{- $name := printf "%s-identity" (include "execution-kernel.fullname" .) }}
+{{- $productsExpr := "[]" }}
+{{- $teamSecretsExpr := "{}" }}
+{{- $existing := lookup "admissionregistration.k8s.io/v1" "ValidatingAdmissionPolicy" "" $name }}
+{{- if $existing }}
+{{- range $existing.spec.variables }}
+{{- if eq .name "products" }}
+{{- $kept := list }}
+{{- range fromJsonArray .expression }}
+{{- $entry := . }}
+{{- if or (not (kindIs "map" $entry)) (not (and (kindIs "string" (get $entry "team")) (kindIs "string" (get $entry "repository")) (kindIs "string" (get $entry "action")) (kindIs "string" (get $entry "serviceAccount")))) }}
+{{- fail (printf "%s's products list isn't a JSON list of {team, repository, action, serviceAccount} strings; delete the policy and let the console resync it." $name) }}
+{{- end }}
+{{- /* Only these four: an older console also wrote each product's secrets. */}}
+{{- $kept = append $kept (dict "team" $entry.team "repository" $entry.repository "action" $entry.action "serviceAccount" $entry.serviceAccount) }}
+{{- end }}
+{{- $productsExpr = toJson $kept }}
+{{- end }}
+{{- if eq .name "teamSecrets" }}
+{{- $stored := fromJson .expression }}
+{{- range $team, $names := $stored }}
+{{- if not (kindIs "string" $names) }}
+{{- fail (printf "%s's teamSecrets isn't a JSON map of team to comma-separated Secret names; delete the policy and let the console resync it." $name) }}
+{{- end }}
+{{- end }}
+{{- $teamSecretsExpr = toJson $stored }}
+{{- end }}
+{{- end }}
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["jobs"]
+  matchConditions:
+    - name: from-kernel-scheduler
+      expression: request.userInfo.username == {{ $scheduler | quote }}
+  variables:
+    # The two the console edits.
+    - name: products
+      expression: {{ $productsExpr | squote }}
+    - name: teamSecrets
+      expression: {{ $teamSecretsExpr | squote }}
+    - name: pod
+      expression: object.spec.template.spec
+    - name: serviceAccount
+      expression: >-
+        has(variables.pod.serviceAccountName) && variables.pod.serviceAccountName != "" ?
+          variables.pod.serviceAccountName : "default"
+    - name: secrets
+      expression: >-
+        has(variables.pod.volumes) ?
+          variables.pod.volumes.filter(v, has(v.secret)).map(v, v.secret.secretName) : []
+    # Any other way of reaching a Secret; the kernel never uses one.
+    - name: otherSecretRefs
+      expression: >-
+        (has(variables.pod.volumes) && variables.pod.volumes.exists(v,
+          has(v.projected) && has(v.projected.sources) && v.projected.sources.exists(s, has(s.secret)))) ||
+        variables.pod.containers.exists(c,
+          (has(c.envFrom) && c.envFrom.exists(e, has(e.secretRef))) ||
+          (has(c.env) && c.env.exists(e, has(e.valueFrom) && has(e.valueFrom.secretKeyRef))))
+    - name: image
+      expression: variables.pod.containers[0].image
+    - name: normalizedImage
+      expression: >-
+        (variables.image.contains("/") && (variables.image.split("/")[0].contains(".") ||
+          variables.image.split("/")[0].contains(":") || variables.image.split("/")[0] == "localhost")) ?
+          variables.image :
+          (variables.image.contains("/") ? "docker.io/" + variables.image : "docker.io/library/" + variables.image)
+    - name: repository
+      expression: >-
+        variables.normalizedImage.contains("@") ? variables.normalizedImage.split("@")[0] :
+          (variables.normalizedImage.lastIndexOf(":") > variables.normalizedImage.lastIndexOf("/") ?
+            variables.normalizedImage.substring(0, variables.normalizedImage.lastIndexOf(":")) :
+            variables.normalizedImage)
+    - name: action
+      expression: >-
+        has(variables.pod.containers[0].args) && size(variables.pod.containers[0].args) > 0 ?
+          variables.pod.containers[0].args[0] : ""
+  validations:
+    - expression: >-
+        size(variables.pod.containers) == 1 && !has(variables.pod.initContainers) &&
+        !variables.otherSecretRefs
+      message: >-
+        IDENTITY_NOT_ALLOWED: a step's Job must have exactly one container and
+        mount Secrets only as volumes.
+      reason: Forbidden
+    - expression: >-
+        (variables.serviceAccount == "default" && size(variables.secrets) == 0) ||
+        variables.products.exists(p,
+          (p.team == "" || p.team == request.namespace) &&
+          p.repository == variables.repository && p.action == variables.action &&
+          p.serviceAccount == variables.serviceAccount)
+      messageExpression: >-
+        "IDENTITY_NOT_ALLOWED: " + variables.repository + " (action \"" + variables.action +
+        "\") may not run as ServiceAccount \"" + variables.serviceAccount + "\"" +
+        (size(variables.secrets) > 0 ? " with Secrets" : "") +
+        " in " + request.namespace + ". Only a registered product may, as the ServiceAccount " +
+        "its product.yaml declares; anything else runs as \"default\" with no Secrets."
+      reason: Forbidden
+    - expression: >-
+        size(variables.secrets) == 0 ||
+        (request.namespace in variables.teamSecrets &&
+          variables.secrets.all(s, s in variables.teamSecrets[request.namespace].split(",")))
+      messageExpression: >-
+        "IDENTITY_NOT_ALLOWED: Secrets " + variables.secrets.join(", ") + " aren't all registered " +
+        "for team " + request.namespace + " in the console; only registered secrets may be mounted."
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  # Team namespaces only, as for image-policy.yaml.
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: {{ .Values.dispatchPolicy.teamNamespaceLabel | quote }}
+          operator: Exists
+  validationActions: [Deny]
+{{- end }}

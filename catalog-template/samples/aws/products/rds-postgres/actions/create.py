@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+"""aws/rds-postgres's "create" action: finds an RDS for PostgreSQL instance
+by id, creating it only if it doesn't exist, and waits until it's available.
+
+No password ever passes through the step: RDS generates the master password
+and keeps it in AWS Secrets Manager (ManageMasterUserPassword), and the
+output is that secret's ARN, a reference an app's own identity may be
+granted to read. New instances are encrypted and not publicly accessible.
+Credentials as in the aws team's README.md: boto3's default chain (EKS Pod
+Identity or IRSA), optionally assuming AWS_TARGET_ROLE_ARN.
+"""
+
+import json
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError, WaiterError
+
+INPUT_PATH = Path("/platform/input/request.json")
+OUTPUT_PATH = Path("/platform/output/result.json")
+
+TARGET_ROLE_ENV_VAR = "AWS_TARGET_ROLE_ARN"
+RETRYABLE_CODES = {
+    "Throttling", "ThrottlingException", "RequestLimitExceeded", "TooManyRequestsException",
+    "ServiceUnavailable", "InternalError", "InternalFailure",
+}
+INSTANCE_ID = re.compile(r"^[a-zA-Z](?:[a-zA-Z0-9]|-(?!-)){0,62}$")
+# A first create takes several minutes: 30s x 40 = 20 minutes, inside the
+# step's timeoutSeconds (set it to 1500 or more).
+WAIT = {"Delay": 30, "MaxAttempts": 40}
+
+
+def _write_result(result: dict[str, Any]) -> None:
+    OUTPUT_PATH.write_text(json.dumps(result))
+
+
+def _failure(code: str, message: str, *, retryable: bool = False) -> int:
+    _write_result(
+        {"status": "failed", "error": {"code": code, "message": message, "retryable": retryable}}
+    )
+    return 1
+
+
+def _aws_failure(error: Exception) -> int:
+    if isinstance(error, NoCredentialsError):
+        return _failure("AWS_NO_CREDENTIALS", "No AWS credentials: is the step's ServiceAccount bound to an IAM role?")
+    if isinstance(error, ClientError):
+        details = error.response.get("Error", {})
+        status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+        code = details.get("Code", "Unknown")
+        retryable = code in RETRYABLE_CODES or status >= 500
+        return _failure("AWS_API_ERROR", f"{code}: {details.get('Message', '')}", retryable=retryable)
+    return _failure("AWS_API_ERROR", str(error), retryable=True)
+
+
+def _session(region: str) -> boto3.session.Session:
+    session = boto3.session.Session(region_name=region)
+    target = os.environ.get(TARGET_ROLE_ENV_VAR)
+    if not target:
+        return session
+    credentials = session.client("sts").assume_role(
+        RoleArn=target, RoleSessionName="acyclix-step"
+    )["Credentials"]
+    return boto3.session.Session(
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials["SessionToken"],
+        region_name=region,
+    )
+
+
+def _describe(rds: Any, instance_id: str) -> dict[str, Any] | None:
+    try:
+        return rds.describe_db_instances(DBInstanceIdentifier=instance_id)["DBInstances"][0]
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") == "DBInstanceNotFound":
+            return None
+        raise
+
+
+def _outputs(instance: dict[str, Any]) -> dict[str, Any]:
+    endpoint = instance.get("Endpoint") or {}
+    outputs = {
+        "instanceId": instance["DBInstanceIdentifier"],
+        "endpoint": endpoint.get("Address", ""),
+        "port": endpoint.get("Port", 5432),
+    }
+    secret = (instance.get("MasterUserSecret") or {}).get("SecretArn")
+    if secret:
+        outputs["masterUserSecretArn"] = secret
+    return outputs
+
+
+def main() -> int:
+    inputs = json.loads(INPUT_PATH.read_text()).get("inputs", {})
+    instance_id, region = inputs.get("instanceId"), inputs.get("region")
+    if not instance_id or not region:
+        return _failure("MISSING_INPUT", "inputs.instanceId and inputs.region are required")
+    if not INSTANCE_ID.match(instance_id):
+        return _failure(
+            "INVALID_INPUT",
+            "inputs.instanceId: a letter, then up to 62 letters, digits or single hyphens",
+        )
+
+    try:
+        rds = _session(region).client("rds")
+        instance = _describe(rds, instance_id)
+        if instance is None:
+            create: dict[str, Any] = {
+                "DBInstanceIdentifier": instance_id,
+                "Engine": "postgres",
+                "DBInstanceClass": inputs.get("instanceClass", "db.t4g.micro"),
+                "AllocatedStorage": int(inputs.get("allocatedStorageGb", 20)),
+                "MasterUsername": inputs.get("masterUsername", "acyclix_admin"),
+                "ManageMasterUserPassword": True,
+                "StorageEncrypted": True,
+                "PubliclyAccessible": False,
+                "BackupRetentionPeriod": 7,
+                "CopyTagsToSnapshot": True,
+                "Tags": [{"Key": "managed-by", "Value": "acyclix"}],
+            }
+            if inputs.get("engineVersion"):
+                create["EngineVersion"] = inputs["engineVersion"]
+            rds.create_db_instance(**create)
+            print(f"creating instance '{instance_id}'; this takes several minutes")
+        elif instance.get("DBInstanceStatus") == "available":
+            print(f"instance '{instance_id}' already exists")
+            _write_result({"status": "succeeded", "outputs": _outputs(instance)})
+            return 0
+        else:
+            print(f"instance '{instance_id}' exists ({instance.get('DBInstanceStatus')}); waiting")
+
+        rds.get_waiter("db_instance_available").wait(
+            DBInstanceIdentifier=instance_id, WaiterConfig=WAIT
+        )
+        instance = _describe(rds, instance_id) or {}
+    except WaiterError as error:
+        return _failure(
+            "INSTANCE_NOT_AVAILABLE",
+            f"Instance '{instance_id}' isn't available yet ({error}); running the step again waits for it.",
+            retryable=True,
+        )
+    except (ClientError, BotoCoreError) as error:
+        return _aws_failure(error)
+
+    print(f"instance '{instance_id}' is available")
+    _write_result({"status": "succeeded", "outputs": _outputs(instance)})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

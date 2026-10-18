@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+        # See kernel-scheduler-deployment.yaml's identical annotation --
+        # same ConfigMap, same fix.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "execution-kernel.apiServiceAccountName" . }}
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ include "execution-kernel.appImage" . | quote }}
+          # Explicit, not left to default -- Kubernetes defaults an unset
+          # imagePullPolicy to Always whenever the tag is "latest",
+          # regardless of what's already on the node (confirmed directly:
+          # this container attempted a live registry pull even with the
+          # image already loaded via `kind load docker-image`, in
+          # execution-console's near-identical initContainer, until this
+          # was set there and here).
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python3", "-c"]
+          args:
+            - |
+              import os, socket, time
+              host = os.environ["POSTGRES_HOST"]
+              port = int(os.environ["POSTGRES_PORT"])
+              while True:
+                  try:
+                      socket.create_connection((host, port), timeout=2).close()
+                      break
+                  except OSError:
+                      time.sleep(2)
+          env:
+            - name: POSTGRES_HOST
+              value: {{ include "execution-kernel.fullname" . }}-postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+      {{- end }}
+      containers:
+        - name: api
+          image: {{ include "execution-kernel.appImage" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # --no-access-log: app.observability.http_middleware already logs
+          # every request (structured, with a request id and the route's
+          # path template), so uvicorn's own access log would just duplicate
+          # it in a different format.
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ include "execution-kernel.fullname" . }}-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-kernel.databaseSecretName" . }}
+                  key: {{ include "execution-kernel.databaseSecretKey" . }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
