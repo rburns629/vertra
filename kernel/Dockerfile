@@ -2,7 +2,7 @@
 # selects which process to run via `command:`, matching the modular-monolith
 # design (one Python package, separated through interfaces, not separate
 # deployables).
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 COPY entrypoint.py /entrypoint.py
 # Never root: steps run non-root with a read-only root filesystem (the
 # kernel's task_pod_hardening); /platform/output and /tmp are writable.
