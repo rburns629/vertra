@@ -1,0 +1,40 @@
+# execution-kernel on the local kind cluster `acyclix-local` (release
+# `kernel`, namespace acyclix-system):
+#   helm upgrade --install kernel helm/charts/execution-kernel -n acyclix-system \
+#     --kube-context kind-acyclix-local -f helm/values/kind/kernel.yaml
+# The images make kind-deploy builds and loads onto the node.
+image:
+  repository: execution-kernel
+  tag: latest
+api:
+  replicaCount: 1
+scheduler:
+  replicaCount: 1
+  # Every task container gets this. kind has no workload identity, so a gcp
+  # sample step there reads a key registered as the team secret
+  # gcp-service-account-key, when the step lists it in secretRefs.
+  taskExtraEnvironment:
+    GOOGLE_APPLICATION_CREDENTIALS: /platform/secrets/gcp-service-account-key/key.json
+  # A running step's stored log refreshes quickly here (60s by default).
+  taskLogs:
+    refreshSeconds: 15
+backup:
+  enabled: false
+# One Postgres for both: the console's database lives on the kernel's
+# instance (the console's own Postgres is off in console.yaml).
+postgres:
+  consoleDatabase:
+    enabled: true
+dispatchPolicy:
+  allowReleaseNamespace: false
+# Task images come from the local registry `make kind-registry` runs.
+imagePolicy:
+  sourceRegistry: localhost:5001
+# No imageSignature on kind: its local images are unsigned, and
+# policy-controller can't reach localhost:5001 from inside the cluster.
+# Nobody but cluster administrators deletes team namespaces: the console
+# leaves a purged team's labelled retired (its teamNamespaces.purge is off).
+# A purger listed here may delete only retired ones.
+purgePolicy:
+  protectedNamespaces: []
+  purgers: []

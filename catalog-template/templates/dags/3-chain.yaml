@@ -1,0 +1,23 @@
+# Step 5: two products, the second using the first one's output.
+# CHANGE: try-anna (four times) to your team.
+name: name-then-hello
+tasks:
+  - id: make-name
+    # CHANGE: <registry>/<your-team>/name-maker:latest. The console pins it to
+    # its digest when you submit.
+    image: localhost:5001/try-anna/name-maker:latest
+    action: make
+    team: try-anna
+    inputs:
+      first: Anna
+      last: Berg
+  - id: say-hello
+    # CHANGE: <registry>/<your-team>/hello:latest. The console pins it to
+    # its digest when you submit.
+    image: localhost:5001/try-anna/hello:latest
+    action: greet
+    team: try-anna
+    # Waits for make-name, then gets its output "name" as its input "name".
+    dependsOn: [make-name]
+    inputs:
+      name: {$fromTask: make-name, $output: name}

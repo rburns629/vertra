@@ -1,0 +1,9 @@
+# Never ship test-only code, or any credential-shaped file a local test run
+# might drop into this directory, inside the image.
+actions/test_*.py
+__pycache__/
+*.pyc
+*.json
+*credentials*
+*service-account*
+.env

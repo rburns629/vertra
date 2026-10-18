@@ -1,0 +1,56 @@
+# azure: real Azure calls
+
+Example products that call real Azure APIs, to copy from when your product
+has to. Running them costs money. **Not yet proven against a real Azure
+subscription:** they build, and their tests pass with the Azure clients
+mocked, but nothing here has called Azure yet.
+
+| Product | What `create` does |
+|---|---|
+| [`resource-group`](products/resource-group/) | Finds a resource group by name, or creates it |
+| [`container-app`](products/container-app/) | Deploys an image as an Azure Container App, creating its Container Apps environment if needed, or returns the existing app's URL. Internal unless `public: true`; a private registry is pulled with a managed identity |
+| [`postgres-flexible`](products/postgres-flexible/) | Finds a PostgreSQL flexible server, or creates it with Microsoft Entra sign-in only and no public access, and makes the given Entra principal its administrator. Several minutes: set `timeoutSeconds` to 1500 or more, and delete it after |
+
+Every action looks before it creates, so a retried step is harmless.
+[dags/azure-hello-world-dag.yaml](dags/azure-hello-world-dag.yaml) chains the
+first two.
+
+## No passwords
+
+`postgres-flexible` turns password sign-in off: only Microsoft Entra
+identities sign in, such as an app's own managed identity, so there's no
+database password to keep or leak.
+
+## Credentials
+
+No keys: the actions use `DefaultAzureCredential`, which AKS Workload
+Identity fills in for the step's Kubernetes ServiceAccount. Give each product
+its own: `serviceAccount: <name>` in its `product.yaml` (the console creates
+it in the `azure` namespace, and the cluster lets only that product's image
+run as it). Then:
+
+1. A user-assigned managed identity per product, with a federated credential
+   for `system:serviceaccount:azure:<name>` and the cluster's OIDC issuer.
+2. The annotation `azure.workload.identity/client-id: <its client id>` on the
+   ServiceAccount (an admin adds it; the console never changes a product's
+   ServiceAccount).
+
+**Not possible yet:** Workload Identity also needs the label
+`azure.workload.identity/use: "true"` on the step's Pod, and the kernel
+doesn't let a deployment label step Pods (`TODO.md`). Until it does, these
+actions find no credentials and fail with `AZURE_AUTH_FAILED`.
+
+Grant each product's identity only what it needs, on the narrowest scope:
+
+| Product | Role |
+|---|---|
+| `resource-group` | A custom role with `Microsoft.Resources/subscriptions/resourceGroups/read` and `/write`, on the subscription |
+| `container-app` | `Contributor` on the resource group (or a custom role over `Microsoft.App/*`), plus `AcrPull` for the app's pull identity on a private registry |
+| `postgres-flexible` | A custom role over `Microsoft.DBforPostgreSQL/flexibleServers/*`, on the resource group |
+
+## Secrets
+
+[secret-stores/secretstore.yaml](secret-stores/secretstore.yaml) syncs this
+team's secrets from Azure Key Vault through External Secrets Operator,
+signing in as `eso-azure`. ESO requests its token itself, so it doesn't need
+the Pod label above.

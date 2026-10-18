@@ -1,0 +1,70 @@
+{{/*
+Where the console may write: only in team namespaces. Its ClusterRole has
+to be cluster-wide (team namespaces aren't known in advance), so on its own
+it would let the console create, change or delete Secrets, ServiceAccounts,
+Roles, RoleBindings and ExternalSecrets in any namespace: kube-system, the
+platform's own. This policy, applied by the Kubernetes API server to every
+such request from the console's ServiceAccount, refuses anything outside a
+namespace labelled as a team's (the label the kernel's dispatch policy uses).
+
+Inside a team namespace, which objects are the console's is its own rule
+(console/src/k8s.ts: it labels what it creates, and replaces an existing
+Secret only when it's labelled or already granted).
+*/}}
+{{- if .Values.writeFence.enabled }}
+{{- $console := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-console.serviceAccountName" .) }}
+{{- $name := printf "%s-write-fence" (include "execution-console.fullname" .) }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["secrets", "serviceaccounts"]
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["roles", "rolebindings"]
+      - apiGroups: ["external-secrets.io"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["externalsecrets", "secretstores"]
+  matchConditions:
+    - name: from-the-console
+      expression: request.userInfo.username == {{ $console | quote }}
+  validations:
+    - expression: >-
+        has(namespaceObject.metadata.labels) &&
+        {{ .Values.writeFence.teamNamespaceLabel | quote }} in namespaceObject.metadata.labels
+      messageExpression: >-
+        "The console may only write in team namespaces (labelled " +
+        {{ .Values.writeFence.teamNamespaceLabel | quote }} + "), not in " + request.namespace + "."
+      reason: Forbidden
+    # It creates product ServiceAccounts and never changes them afterwards
+    # (a cloud identity bound to one is the platform team's); the only
+    # ones it updates are ESO's, from a reviewed SecretStore file.
+    - expression: >-
+        request.resource.resource != "serviceaccounts" || request.operation != "UPDATE" ||
+        object.metadata.name.startsWith("eso-")
+      messageExpression: >-
+        "The console may only update the ServiceAccounts ESO signs in as (eso-*), not " +
+        object.metadata.name + "."
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  validationActions: [Deny]
+{{- end }}

@@ -1,0 +1,131 @@
+{{/*
+Which images a task may run: only those under an allowed source, e.g. the
+registry path catalog CI publishes product images to. Anything else is
+refused by the Kubernetes API server when the scheduler creates the Job,
+which the kernel reports as a non-retryable IMAGE_NOT_ALLOWED carrying the
+message below.
+
+Enforced here, not only in the console, for the same reason as
+dispatch-policy.yaml: a Job that doesn't come through the console's checks
+(or a compromised console) must still be held to the rule.
+
+The allowed sources live in this policy itself, as two CEL literals:
+  source      the registry path images are published to, e.g.
+              "us-central1-docker.pkg.dev/<project>/catalog-products/"
+  additional  more allowed paths, e.g. ["docker.io/library/"]
+The console's Admin page edits exactly those two (its RBAC allows updating
+this one policy by name). This chart seeds them from imagePolicy.* on
+install and, on upgrade, keeps whatever is there (lookup), so an upgrade
+never undoes an admin's edit -- while resetting everything else in the
+policy to what's written here. No sources means no task can run.
+
+Why not a ConfigMap parameter (paramKind): on Kubernetes 1.36, once a
+policy using one was deleted and recreated, the API server stopped seeing
+the ConfigMap's later edits until it restarted -- so removing a source
+would silently not take effect. Edits to the policy itself apply within
+seconds, recreated or not (both proven on kind).
+
+Entries are path prefixes ending in "/", so ".../catalog-products/" allows
+".../catalog-products/app:1" but not ".../catalog-products-evil/app:1".
+Images are read the way the kubelet reads them: "node:20" is
+"docker.io/library/node:20" and "team/app" is "docker.io/team/app", so a
+short name can't slip past an entry. console/src/imagePolicy.ts applies the
+same rules; keep them in step.
+*/}}
+{{- if .Values.imagePolicy.enabled }}
+{{- $scheduler := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-kernel.serviceAccountName" .) }}
+{{- $name := printf "%s-image" (include "execution-kernel.fullname" .) }}
+{{- /* Only plain registry paths: anything else could be CEL, not a list. */}}
+{{- $sourcePattern := `^"[A-Za-z0-9._:/-]*"$` }}
+{{- $additionalPattern := `^\[("[A-Za-z0-9._:/-]+"(,"[A-Za-z0-9._:/-]+")*)?\]$` }}
+{{- $source := "" }}
+{{- with .Values.imagePolicy.sourceRegistry | trim | trimPrefix "https://" | trimPrefix "http://" }}
+{{- $source = ternary . (printf "%s/" .) (hasSuffix "/" .) }}
+{{- end }}
+{{- $additional := list }}
+{{- range .Values.imagePolicy.additionalSources }}
+{{- $entry := . | trim | trimPrefix "https://" | trimPrefix "http://" }}
+{{- if $entry }}{{ $additional = append $additional (ternary $entry (printf "%s/" $entry) (hasSuffix "/" $entry)) }}{{ end }}
+{{- end }}
+{{- $sourceExpr := toJson $source }}
+{{- $additionalExpr := toJson $additional }}
+{{- $existing := lookup "admissionregistration.k8s.io/v1" "ValidatingAdmissionPolicy" "" $name }}
+{{- if $existing }}
+{{- range $existing.spec.variables }}
+{{- if and (eq .name "source") (regexMatch $sourcePattern .expression) }}{{ $sourceExpr = .expression }}{{ end }}
+{{- if and (eq .name "additional") (regexMatch $additionalPattern .expression) }}{{ $additionalExpr = .expression }}{{ end }}
+{{- end }}
+{{- end }}
+{{- if not (regexMatch $sourcePattern $sourceExpr) }}
+{{- fail (printf "imagePolicy.sourceRegistry %q may only contain letters, digits and . _ : / -" .Values.imagePolicy.sourceRegistry) }}
+{{- end }}
+{{- if not (regexMatch $additionalPattern $additionalExpr) }}
+{{- fail "imagePolicy.additionalSources entries may only contain letters, digits and . _ : / -" }}
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["jobs"]
+  matchConditions:
+    - name: from-kernel-scheduler
+      expression: request.userInfo.username == {{ $scheduler | quote }}
+  variables:
+    # The two the console edits. Keep them first and in this order.
+    - name: source
+      expression: {{ $sourceExpr | squote }}
+    - name: additional
+      expression: {{ $additionalExpr | squote }}
+    - name: prefixes
+      expression: >-
+        ([variables.source] + variables.additional).filter(p, p != "")
+          .map(p, p.endsWith("/") ? p : p + "/")
+    - name: images
+      expression: >-
+        object.spec.template.spec.containers.map(c, c.image) +
+        (has(object.spec.template.spec.initContainers) ?
+          object.spec.template.spec.initContainers.map(c, c.image) : [])
+    - name: rejected
+      expression: >-
+        variables.images.filter(i, !variables.prefixes.exists(p,
+          ((i.contains("/") && (i.split("/")[0].contains(".") || i.split("/")[0].contains(":") ||
+            i.split("/")[0] == "localhost")) ? i :
+            (i.contains("/") ? "docker.io/" + i : "docker.io/library/" + i)
+          ).startsWith(p)))
+  validations:
+    - expression: size(variables.rejected) == 0
+      messageExpression: >-
+        "IMAGE_NOT_ALLOWED: " + variables.rejected.join(", ") +
+        " is not from an allowed image source. " +
+        (size(variables.prefixes) == 0 ?
+          "No image source is configured yet, so no task can run; an admin sets it on the console's Admin page." :
+          "Allowed: " + variables.prefixes.join(", ") + ". An admin can allow more on the console's Admin page.")
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  # Team namespaces only, the ones dispatch-policy.yaml lets the scheduler
+  # use, so nothing about this policy can ever affect the rest of the
+  # cluster.
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: {{ .Values.dispatchPolicy.teamNamespaceLabel | quote }}
+          operator: Exists
+  validationActions: [Deny]
+{{- end }}

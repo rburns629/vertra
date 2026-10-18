@@ -1,0 +1,8 @@
+# Tests and anything a local run leaves behind stay out of the image.
+tests/
+actions/test_*.py
+__pycache__/
+*.pyc
+*credentials*
+*service-account*
+.env

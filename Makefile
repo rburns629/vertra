@@ -1,0 +1,484 @@
+.PHONY: quickstart _quickstart-prereqs kind-cluster kind-namespaces \
+	build-products catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
+	up down logs gke-logs test test-db test-db-down gke-deploy-policy-controller \
+	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
+
+# Docker Desktop on macOS doesn't always put its command-line tools on PATH
+# (docker, and the docker-credential-desktop helper `docker push` needs).
+# Appended, so a docker already on PATH still wins.
+DOCKER_DESKTOP_BIN := /Applications/Docker.app/Contents/Resources/bin
+ifneq ($(wildcard $(DOCKER_DESKTOP_BIN)/docker),)
+export PATH := $(PATH):$(DOCKER_DESKTOP_BIN)
+endif
+# Programs make runs directly (no shell) are looked up on make's own PATH,
+# which the export above doesn't change, so recipes name docker by full path.
+DOCKER := $(shell command -v docker 2>/dev/null || echo $(DOCKER_DESKTOP_BIN)/docker)
+
+# Every local target names the kind context explicitly rather than trusting
+# kubectl's current-context: with a GKE context configured alongside it,
+# `make up` would otherwise force-delete "Unknown" pods on whichever
+# cluster kubectl happened to point at.
+KIND_CONTEXT ?= kind-acyclix-local
+# Where the platform itself (kernel + console + their Postgres) is
+# installed. Deliberately not `default` -- that's the admins' own team
+# namespace, and tasks can never be dispatched into this one (see
+# helm/charts/execution-kernel/templates/dispatch-policy.yaml).
+PLATFORM_NAMESPACE ?= acyclix-system
+KUBECTL := kubectl --context $(KIND_CONTEXT)
+# One definition, so `up`'s pgrep and `down`'s pkill always match the exact
+# command line that was started -- port included, so a forward someone
+# started on another port is never mistaken for this one, or killed.
+PORT_FORWARD := $(KUBECTL) -n $(PLATFORM_NAMESPACE) port-forward svc/console-execution-console 18080:8080
+
+# kind's image source: a local registry, so kind runs images the same way
+# GKE does -- from a registry path the image policy allows (the
+# execution-kernel chart's imagePolicy.sourceRegistry, localhost:5001 here)
+# -- instead of `kind load`-ed images with no registry at all, which no
+# allowed source can match. Push with `docker push localhost:5001/<name>`.
+KIND_REGISTRY_NAME ?= kind-registry
+KIND_REGISTRY_PORT ?= 5001
+KIND_REGISTRY := localhost:$(KIND_REGISTRY_PORT)
+KIND_NODE ?= acyclix-local-control-plane
+
+# Idempotent: starts the registry if needed, joins it to kind's network,
+# and points the node's containerd at it. That last part is kind's own
+# documented local-registry setup, applied to the existing node instead of
+# at `kind create cluster` (make kind-cluster has the from-scratch
+# version); containerd is restarted only if its config actually changed,
+# and running Pods survive a containerd restart.
+kind-registry:
+	@if [ "$$($(DOCKER) inspect -f '{{.State.Running}}' $(KIND_REGISTRY_NAME) 2>/dev/null)" != "true" ]; then \
+		$(DOCKER) start $(KIND_REGISTRY_NAME) 2>/dev/null || \
+		$(DOCKER) run -d --restart=always -p "127.0.0.1:$(KIND_REGISTRY_PORT):5000" --name $(KIND_REGISTRY_NAME) registry:2; \
+	fi
+	@$(DOCKER) network connect kind $(KIND_REGISTRY_NAME) 2>/dev/null || true
+	@$(DOCKER) exec $(KIND_NODE) sh -c '\
+		mkdir -p /etc/containerd/certs.d/$(KIND_REGISTRY) && \
+		printf "[host.\"http://$(KIND_REGISTRY_NAME):5000\"]\n" > /etc/containerd/certs.d/$(KIND_REGISTRY)/hosts.toml && \
+		if ! grep -q "config_path" /etc/containerd/config.toml; then \
+			printf "\n[plugins.\"io.containerd.grpc.v1.cri\".registry]\n  config_path = \"/etc/containerd/certs.d\"\n" >> /etc/containerd/config.toml && \
+			systemctl restart containerd && echo "containerd now reads /etc/containerd/certs.d"; \
+		fi'
+	@echo "Local registry ready: push to $(KIND_REGISTRY)/<image>, reference it the same way in DAGs."
+
+# ---------------------------------------------------------------------------
+# `make quickstart`: from nothing to a running Acyclix on a local kind
+# cluster, with the README's example ready to submit. Safe to run again: it
+# creates only what's missing, and on an existing cluster rebuilds the
+# images from this checkout and restarts the platform onto them.
+# A stopgap until the acyclix CLI's installer exists.
+# ---------------------------------------------------------------------------
+# The team the README's example runs in.
+QUICKSTART_TEAM ?= team-a
+CONSOLE_URL := http://localhost:18080
+ADMIN_EMAIL := admin@example.com
+# Set only for local kind clusters, in helm/values/kind/console.yaml.
+ADMIN_PASSWORD := acyclix-local
+
+quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
+	$(DOCKER) build -t execution-kernel:latest kernel/
+	$(DOCKER) build -t execution-console:latest console/
+	kind load docker-image execution-kernel:latest execution-console:latest --name $(KIND_CLUSTER)
+	@$(MAKE) --no-print-directory build-products
+	@for release in kernel console; do \
+		existed=false; \
+		helm status $$release --kube-context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) > /dev/null 2>&1 && existed=true; \
+		echo "Installing $$release..."; \
+		helm upgrade --install $$release helm/charts/execution-$$release $(KIND_HELM_UPGRADE) \
+			-f helm/values/kind/$$release.yaml || exit 1; \
+		if $$existed; then \
+			echo "Restarting $$release onto the image just built (the :latest tag is reused)..."; \
+			case $$release in \
+				kernel) deployments="kernel-execution-kernel-api kernel-execution-kernel-scheduler";; \
+				console) deployments="console-execution-console";; \
+			esac; \
+			for d in $$deployments; do \
+				$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment $$d > /dev/null || exit 1; \
+				$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment $$d --timeout=5m > /dev/null || exit 1; \
+			done; \
+		fi; \
+	done
+	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
+	@$(MAKE) --no-print-directory up
+	@echo "Creating the console team $(QUICKSTART_TEAM)..."
+	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/auth/login -H 'Content-Type: application/json' \
+		-d '{"email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p'); \
+	if [ -z "$$token" ]; then echo "Couldn't sign in to the console to create $(QUICKSTART_TEAM); create it on the Admin page."; exit 1; fi; \
+	status=$$(curl -s -o /dev/null -w '%{http_code}' -X POST $(CONSOLE_URL)/api/teams \
+		-H "Authorization: Bearer $$token" -H 'Content-Type: application/json' -d '{"name":"$(QUICKSTART_TEAM)"}'); \
+	case "$$status" in 201) echo "  created";; 409) echo "  already exists";; \
+		*) echo "  failed (HTTP $$status); create it on the Admin page"; exit 1;; esac
+	@echo ""
+	@echo "Acyclix is running."
+	@echo "  Console:  $(CONSOLE_URL)   (sign in as $(ADMIN_EMAIL) / $(ADMIN_PASSWORD), local only)"
+	@echo "  Try it:   Executions -> Submit new, and paste the example from README.md"
+	@echo "  Watch:    make logs        Stop: make down        Start again: make up"
+
+# Every tool quickstart needs, with how to get it.
+_quickstart-prereqs:
+	@missing=0; \
+	for tool in docker kind kubectl helm curl; do \
+		if ! command -v $$tool > /dev/null 2>&1; then \
+			missing=1; \
+			case $$tool in \
+				docker) echo "Missing: docker. Install Docker Desktop (https://docs.docker.com/get-docker/) and start it.";; \
+				kind|kubectl|helm) echo "Missing: $$tool. Install it with: brew install $$tool  (or see its project's install docs)";; \
+				*) echo "Missing: $$tool.";; \
+			esac; \
+		fi; \
+	done; \
+	[ $$missing -eq 0 ] || exit 1; \
+	$(DOCKER) info > /dev/null 2>&1 || { echo "Docker isn't running. Start Docker Desktop, then run make quickstart again."; exit 1; }
+
+# The kind cluster, created if missing (started if stopped). Its containerd
+# reads per-registry config from certs.d, so it can pull from the local
+# registry kind-registry starts.
+kind-cluster:
+	@STATUS="$$($(DOCKER) inspect $(KIND_NODE) --format '{{.State.Status}}' 2>/dev/null)"; \
+	if [ "$$STATUS" = "running" ]; then \
+		echo "Cluster $(KIND_CLUSTER) is running."; \
+	elif [ -n "$$STATUS" ]; then \
+		echo "Starting cluster $(KIND_CLUSTER)..."; $(DOCKER) start $(KIND_NODE) > /dev/null; \
+	else \
+		echo "Creating cluster $(KIND_CLUSTER)..."; \
+		printf '%s\n' \
+			'kind: Cluster' \
+			'apiVersion: kind.x-k8s.io/v1alpha4' \
+			'containerdConfigPatches:' \
+			'  - |-' \
+			'    [plugins."io.containerd.grpc.v1.cri".registry]' \
+			'      config_path = "/etc/containerd/certs.d"' \
+		| kind create cluster --name $(KIND_CLUSTER) --config=- || exit 1; \
+	fi
+	@until $(KUBECTL) get nodes $(KIND_NODE) 2>/dev/null | grep -q " Ready"; do sleep 2; done
+
+# The platform's namespace, the quickstart team's (labelled so tasks may run
+# there), and execution-kernel, where the kernel's Kubernetes tests run.
+kind-namespaces:
+	@for ns in $(PLATFORM_NAMESPACE) $(QUICKSTART_TEAM) execution-kernel; do \
+		$(KUBECTL) create namespace $$ns --dry-run=client -o yaml | $(KUBECTL) apply -f - > /dev/null; \
+	done
+	@$(KUBECTL) label namespace default $(QUICKSTART_TEAM) acyclix/team=true --overwrite > /dev/null
+	@echo "Namespaces ready: $(PLATFORM_NAMESPACE) (platform), $(QUICKSTART_TEAM) and default (teams), execution-kernel (tests)."
+
+# Fake product images used by the local demo DAGs, pushed to the local
+# registry above. They're referenced by image name from submitted DAGs,
+# not services of the kernel itself.
+build-products: kind-registry
+	$(DOCKER) build -t $(KIND_REGISTRY)/demo-project-product:local examples/project-product
+	$(DOCKER) build -t $(KIND_REGISTRY)/demo-application-product:local examples/application-product
+	$(DOCKER) push $(KIND_REGISTRY)/demo-project-product:local
+	$(DOCKER) push $(KIND_REGISTRY)/demo-application-product:local
+
+# Local mode: publish a catalog repository's products to kind without any Git
+# hosting or CI, with the catalog's own ./catalogctl, the tool its CI runs:
+# every team folder becomes a team with its namespace (the console
+# makes both), then each product is validated, built, tested and scanned,
+# pushed to the local registry and registered with the console. CATALOG is
+# the catalog repository's folder; without one, catalog-template/ is
+# published with SAMPLES (default: local, the five-language team) installed
+# as teams. PRODUCTS limits it to some product folders, relative to the
+# catalog (default: all).
+CATALOG ?=
+SAMPLES ?= local
+PRODUCTS ?=
+catalog-publish: kind-registry
+	@if [ -n "$(CATALOG)" ]; then test -x "$(CATALOG)/catalogctl" || { echo "No catalog at $(CATALOG)."; exit 1; }; fi
+	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/auth/login -H 'Content-Type: application/json' \
+		-d '{"email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])') \
+		|| { echo "Couldn't sign in to $(CONSOLE_URL): is it up (make up)?"; exit 1; }; \
+	export ACYCLIX_REGISTRY=$(KIND_REGISTRY) ACYCLIX_CONSOLE_URL=$(CONSOLE_URL) ACYCLIX_TOKEN="$$token"; \
+	if [ -z "$(CATALOG)" ]; then \
+		export SAMPLES="$(SAMPLES)"; \
+		bash .github/scripts/catalog-template.sh teams apply && \
+		bash .github/scripts/catalog-template.sh publish $(PRODUCTS); \
+	else \
+		cd $(CATALOG) && ./catalogctl teams apply && ./catalogctl publish $(PRODUCTS); \
+	fi
+
+# Rebuild the platform from this checkout and deploy it to kind, with the
+# settings in helm/values/kind/*.yaml (--reset-values: the files are the whole
+# story). The image is loaded straight onto the node; the restart is because
+# the tag is a reused :latest.
+KIND_CLUSTER ?= acyclix-local
+# --force-conflicts: the console edits two of the kernel chart's admission
+# policies (allowed image sources, registered products), which makes it the
+# owner of those fields under Helm 4's server-side apply, so a plain upgrade
+# fails with a conflict. The chart writes back whatever the console last set
+# (it looks the policy up first), so forcing changes ownership, not content.
+KIND_HELM_UPGRADE := --kube-context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) --reset-values --force-conflicts --wait --timeout 10m
+
+kind-deploy-kernel:
+	$(DOCKER) build -t execution-kernel:latest kernel/
+	kind load docker-image execution-kernel:latest --name $(KIND_CLUSTER)
+	helm upgrade kernel helm/charts/execution-kernel $(KIND_HELM_UPGRADE) -f helm/values/kind/kernel.yaml
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment kernel-execution-kernel-scheduler --timeout=5m
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment kernel-execution-kernel-api --timeout=5m
+
+kind-deploy-console:
+	$(DOCKER) build -t execution-console:latest console/
+	kind load docker-image execution-console:latest --name $(KIND_CLUSTER)
+	helm upgrade console helm/charts/execution-console $(KIND_HELM_UPGRADE) -f helm/values/kind/console.yaml
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment console-execution-console
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console --timeout=5m
+	@# A running port-forward stays attached to the replaced pod; stop it so
+	@# the next `make up` connects to the new one.
+	@pkill -f "$(PORT_FORWARD)" 2>/dev/null && echo "Stopped the old port-forward; run make up." || true
+
+# Kernel first: the console calls the kernel, never the other way round.
+kind-deploy: kind-deploy-kernel kind-deploy-console
+
+# External Secrets Operator, which secret syncing needs (the Team page's
+# "Where secrets come from"). The same pinned version on every cluster.
+ESO_CHART_VERSION ?= 2.10.0
+ESO_HELM := helm upgrade --install external-secrets external-secrets/external-secrets \
+	--version $(ESO_CHART_VERSION) -n external-secrets --create-namespace --wait --timeout 10m
+
+kind-deploy-eso:
+	helm repo add external-secrets https://charts.external-secrets.io --force-update > /dev/null
+	$(ESO_HELM) --kube-context $(KIND_CONTEXT) -f helm/values/kind/external-secrets.yaml
+
+# Resumes the existing kind node container -- NOT `kind create cluster`,
+# which is for when the cluster doesn't exist at all (see docs/demo-
+# runbook.md's "If the cluster doesn't exist yet" for that from-scratch
+# path). Also clears out any pods left in "Unknown" state by whatever
+# stopped the node -- their Deployment/Job recreates them fresh once
+# deleted; needed after every real recovery seen so far, not a one-off.
+# Then starts the kubectl port-forward in the background (log:
+# /tmp/acyclix-port-forward.log) so `make up` leaves execution-console
+# actually reachable rather than just printing a reminder -- `make down`
+# kills it by matching this same command line via pkill.
+up:
+	@STATUS="$$($(DOCKER) inspect acyclix-local-control-plane --format '{{.State.Status}}' 2>/dev/null)"; \
+	if [ "$$STATUS" = "running" ]; then \
+		echo "acyclix-local-control-plane is already running."; \
+	elif [ -n "$$STATUS" ]; then \
+		$(DOCKER) start acyclix-local-control-plane; \
+	else \
+		echo "acyclix-local-control-plane doesn't exist: make quickstart creates it" ; \
+		echo "(docs/operations.md)."; \
+		exit 1; \
+	fi
+	@echo "Waiting for the node to be Ready..."
+	@until $(KUBECTL) get nodes acyclix-local-control-plane 2>/dev/null | grep -q " Ready"; do sleep 2; done
+	@echo "Node is Ready. Cleaning up any pods stuck in Unknown state from the restart..."
+	@$(KUBECTL) get pods -A --no-headers 2>/dev/null | awk '$$4 == "Unknown" {print $$1, $$2}' | \
+		while read -r ns name; do \
+			echo "  deleting stuck pod $$ns/$$name"; \
+			$(KUBECTL) delete pod "$$name" -n "$$ns" --force --grace-period=0 > /dev/null; \
+		done
+	@echo "Waiting for execution-console's own pod to be Ready (its replacement, if it was just deleted above)..."
+	@until [ -n "$$($(KUBECTL) -n $(PLATFORM_NAMESPACE) get pods -l app.kubernetes.io/component=app --no-headers 2>/dev/null)" ]; do sleep 1; done
+	@$(KUBECTL) -n $(PLATFORM_NAMESPACE) wait --for=condition=Ready pod -l app.kubernetes.io/component=app --timeout=120s > /dev/null
+	@echo "Starting port-forward in the background (restarting it if it dies while the node finishes settling)..."
+	@i=0; \
+	while ! curl -sf http://localhost:18080/health/ready > /dev/null 2>&1; do \
+		if ! pgrep -f "$(PORT_FORWARD)" > /dev/null 2>&1; then \
+			nohup $(PORT_FORWARD) \
+				> /tmp/acyclix-port-forward.log 2>&1 & \
+		fi; \
+		i=$$((i + 1)); \
+		if [ $$((i % 5)) -eq 0 ]; then \
+			echo "  still unreachable; restarting the port-forward (it may point at a replaced pod)"; \
+			pkill -f "$(PORT_FORWARD)" 2>/dev/null || true; \
+		fi; \
+		if [ "$$i" -gt 60 ]; then \
+			echo "Timed out after 2 minutes waiting for execution-console to become reachable."; \
+			echo "Check /tmp/acyclix-port-forward.log."; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+	@echo "execution-console is reachable at http://localhost:18080"
+
+# Stops the kind cluster's node container -- deliberately `docker stop`,
+# not `kind delete cluster`, which would destroy the cluster's data
+# (loaded images, provisioned namespaces/RBAC/secrets, the demo teams).
+# `make up` brings it back (docs/operations.md, "Troubleshooting").
+# Also kills any leftover `kubectl port-forward` to it, since a forward
+# pointed at a stopped cluster is just confusing noise otherwise.
+down:
+	@if $(DOCKER) ps -a --format '{{.Names}}' | grep -q '^acyclix-local-control-plane$$'; then \
+		$(DOCKER) stop acyclix-local-control-plane; \
+	else \
+		echo "acyclix-local-control-plane doesn't exist -- nothing to stop."; \
+	fi
+	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
+
+# Tails the platform's own processes (kernel-api, kernel-scheduler,
+# execution-console) live, interleaved and color-coded by pod, using
+# stern (https://github.com/stern/stern -- `brew install stern`) rather
+# than plain `kubectl logs`, which only tails one pod at a time. Matches
+# on pod name, not a fixed name, so it survives pod restarts without
+# needing to look up a current pod name first. wait-for-postgres is
+# excluded -- it's just a one-shot init container polling until Postgres
+# is reachable, not something worth watching. Doesn't include a team's
+# own task pods -- those come and go per submission; see docs/demo-
+# runbook.md for the `stern . -n <team>` pattern for that instead.
+#
+# --since 1s: stern otherwise replays each pod's whole log history first.
+logs:
+	@command -v stern > /dev/null 2>&1 || { \
+		echo "stern isn't installed -- brew install stern"; \
+		exit 1; \
+	}
+	stern --context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) "kernel-execution-kernel|console-execution-console" --exclude-container wait-for-postgres --since 1s
+
+# Like `logs`, for the GKE cluster: its context named explicitly, across
+# all namespaces, and including task Pods ("^ek-", the kernel's Job name
+# prefix). Health-check requests, logged every few seconds by every Pod,
+# are filtered out.
+gke-logs:
+	@command -v stern > /dev/null 2>&1 || { \
+		echo "stern isn't installed -- brew install stern"; \
+		exit 1; \
+	}
+	stern --context gke_my-gcp-project_us-central1_acyclix-gke \
+		"kernel-execution-kernel|console-execution-console|^ek-" \
+		--exclude-container wait-for-postgres --all-namespaces --since 1s \
+		| grep -v '"httpPath": "/health\|"url":"/health'
+
+# ---------------------------------------------------------------------------
+# Contributor tests. Separate from everything above: no cluster, and never
+# the databases of an install. The test Postgres is a throwaway container,
+# published on localhost only and on its own port, so it can't collide with
+# a Postgres you already run on 5432. Nothing else calls these targets.
+#
+#   make test           # create/migrate the test databases, run both suites
+#   make test-db        # just the databases (then run pytest / npm test yourself)
+#   make test-db-down   # remove the container and its data
+#
+# Needs the kernel's dev dependencies (`pip install -e ".[dev]"` in kernel/)
+# and `npm ci` in console/ and console/frontend/. Point ALEMBIC/PYTEST at a virtualenv if they
+# aren't on PATH. The Kubernetes tests still need kind and skip without it.
+# ---------------------------------------------------------------------------
+TEST_DB_CONTAINER ?= acyclix-test-db
+TEST_DB_PORT ?= 55432
+TEST_DB_IMAGE ?= postgres:16
+ALEMBIC ?= alembic
+PYTEST ?= pytest
+TEST_DB_HOST := postgres@127.0.0.1:$(TEST_DB_PORT)
+KERNEL_TEST_DB := execution_kernel_test
+CONSOLE_TEST_DB := execution_console_test
+
+# Idempotent: reuses the container if it exists, creates each database only
+# if missing, and migrates both to head every time.
+test-db:
+	@if ! $(DOCKER) container inspect $(TEST_DB_CONTAINER) > /dev/null 2>&1; then \
+		echo "Starting $(TEST_DB_CONTAINER) on 127.0.0.1:$(TEST_DB_PORT)"; \
+		$(DOCKER) run -d --name $(TEST_DB_CONTAINER) \
+			-e POSTGRES_HOST_AUTH_METHOD=trust \
+			-p 127.0.0.1:$(TEST_DB_PORT):5432 $(TEST_DB_IMAGE) > /dev/null; \
+	else \
+		$(DOCKER) start $(TEST_DB_CONTAINER) > /dev/null; \
+	fi
+	@# Over TCP, not the socket: during first-time init the image runs a
+	@# socket-only server that answers pg_isready, then restarts.
+	@for i in $$(seq 1 60); do \
+		$(DOCKER) exec $(TEST_DB_CONTAINER) pg_isready -q -h 127.0.0.1 -U postgres && break; \
+		sleep 1; \
+	done
+	@for db in $(KERNEL_TEST_DB) $(CONSOLE_TEST_DB); do \
+		$(DOCKER) exec $(TEST_DB_CONTAINER) psql -U postgres -tAc \
+			"SELECT 1 FROM pg_database WHERE datname = '$$db'" | grep -q 1 \
+		|| $(DOCKER) exec $(TEST_DB_CONTAINER) createdb -U postgres $$db; \
+	done
+	cd kernel && DATABASE_URL=postgresql+asyncpg://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) $(ALEMBIC) upgrade head
+	cd console && DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(CONSOLE_TEST_DB) \
+		JWT_SECRET=unused KERNEL_API_URL=http://unused npm run --silent db:migrate
+
+test: test-db
+	cd kernel && TEST_DATABASE_URL=postgresql+asyncpg://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) $(PYTEST) -q -rs
+	cd console && TEST_DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(CONSOLE_TEST_DB) npm test
+	cd console/frontend && npm test
+
+test-db-down:
+	-$(DOCKER) rm -f $(TEST_DB_CONTAINER)
+
+# ---------------------------------------------------------------------------
+# Deploying to the real GKE cluster. Everything above is local (kind) or
+# read-only; these targets change a real, billed cluster, so they:
+#   - name the GKE context explicitly (never kubectl's current-context);
+#   - say exactly what they're about to ship, including whether the working
+#     tree has uncommitted changes (Cloud Build ships the working tree, not
+#     a commit);
+#   - refuse to start until you type the cluster's name.
+# Prove the change on kind first (docs/operations.md).
+#
+#   make gke-deploy-console   # console/ -> execution-console
+#   make gke-deploy-kernel    # kernel/ -> kernel-api + kernel-scheduler
+#   make gke-deploy           # both
+#
+# Each one: builds the image with Cloud Build (never a local docker push),
+# runs `helm upgrade` (whose hook applies pending database migrations before
+# the new code starts), then restarts the Deployment, since the image tag is
+# a reused `:latest` that a Helm upgrade alone wouldn't roll.
+# Settings come from helm/values/gke/*.yaml, with --reset-values: what's in the
+# repo is exactly what's deployed, nothing lingers from an earlier --set.
+# ---------------------------------------------------------------------------
+GKE_PROJECT ?= my-gcp-project
+GKE_CLUSTER ?= acyclix-gke
+GKE_CONTEXT ?= gke_$(GKE_PROJECT)_us-central1_$(GKE_CLUSTER)
+GKE_REGISTRY ?= us-central1-docker.pkg.dev/$(GKE_PROJECT)/platform-images
+# Still `default` on GKE until the platform is moved to its own namespace
+# there (it's acyclix-system on kind).
+GKE_NAMESPACE ?= default
+GKE_KUBECTL := kubectl --context $(GKE_CONTEXT) -n $(GKE_NAMESPACE)
+# --force-conflicts: see KIND_HELM_UPGRADE.
+GKE_HELM_UPGRADE := --kube-context $(GKE_CONTEXT) -n $(GKE_NAMESPACE) \
+	--reset-values --force-conflicts --wait --timeout 10m
+
+# Set CONFIRM=<cluster name> to skip the prompt (the combined `gke-deploy`
+# does this after asking once).
+_gke-confirm:
+	@echo ""
+	@echo "About to deploy $(GKE_WHAT) to a REAL cluster:"
+	@echo "  cluster:   $(GKE_CLUSTER)  (context $(GKE_CONTEXT))"
+	@echo "  namespace: $(GKE_NAMESPACE)"
+	@echo "  source:    $$(git rev-parse --short HEAD) + $$(git status --porcelain -- console kernel helm | wc -l | tr -d ' ') uncommitted file(s) in console/, kernel/, helm/"
+	@echo ""
+	@if [ "$(CONFIRM)" = "$(GKE_CLUSTER)" ]; then \
+		echo "Confirmed via CONFIRM=$(CONFIRM)."; \
+	else \
+		printf "Type the cluster name (%s) to continue: " "$(GKE_CLUSTER)"; \
+		read -r answer; \
+		if [ "$$answer" != "$(GKE_CLUSTER)" ]; then echo "Not confirmed -- nothing was deployed."; exit 1; fi; \
+	fi
+
+gke-deploy-console: GKE_WHAT = the console (console/)
+gke-deploy-console: _gke-confirm
+	gcloud builds submit --project $(GKE_PROJECT) --tag $(GKE_REGISTRY)/execution-console:latest console/
+	helm upgrade console helm/charts/execution-console $(GKE_HELM_UPGRADE) -f helm/values/gke/console.yaml
+	$(GKE_KUBECTL) rollout restart deployment console-execution-console
+	$(GKE_KUBECTL) rollout status deployment console-execution-console --timeout=5m
+	@echo "Console deployed. Hard-refresh open browser tabs to load the new UI."
+
+gke-deploy-kernel: GKE_WHAT = the kernel (kernel/)
+gke-deploy-kernel: _gke-confirm
+	gcloud builds submit --project $(GKE_PROJECT) --tag $(GKE_REGISTRY)/execution-kernel:latest kernel/
+	helm upgrade kernel helm/charts/execution-kernel $(GKE_HELM_UPGRADE) -f helm/values/gke/kernel.yaml
+	$(GKE_KUBECTL) rollout restart deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler
+	$(GKE_KUBECTL) rollout status deployment kernel-execution-kernel-api --timeout=5m
+	$(GKE_KUBECTL) rollout status deployment kernel-execution-kernel-scheduler --timeout=5m
+	@echo "Kernel deployed."
+
+# Sigstore's policy-controller, which verifies catalog image signatures for
+# the kernel's imageSignature. Rarely changes; see the values file's notes.
+gke-deploy-policy-controller: GKE_WHAT = policy-controller (cosign-system)
+gke-deploy-policy-controller: _gke-confirm
+	helm upgrade --install policy-controller sigstore/policy-controller --version 0.10.8 \
+		--kube-context $(GKE_CONTEXT) -n cosign-system --create-namespace \
+		-f helm/values/gke/policy-controller.yaml --wait --timeout 10m
+
+gke-deploy-eso: GKE_WHAT = External Secrets Operator (external-secrets)
+gke-deploy-eso: _gke-confirm
+	helm repo add external-secrets https://charts.external-secrets.io --force-update > /dev/null
+	$(ESO_HELM) --kube-context $(GKE_CONTEXT) -f helm/values/gke/external-secrets.yaml
+
+# Both, asking once. Kernel first: the console calls the kernel, never the
+# other way round.
+gke-deploy: GKE_WHAT = the kernel and the console
+gke-deploy: _gke-confirm
+	@$(MAKE) --no-print-directory gke-deploy-kernel CONFIRM=$(GKE_CLUSTER)
+	@$(MAKE) --no-print-directory gke-deploy-console CONFIRM=$(GKE_CLUSTER)

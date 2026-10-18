@@ -1,0 +1,44 @@
+{{/*
+Runs `alembic upgrade head` before kernel-api/kernel-scheduler start
+serving on a fresh install or upgrade. Kubernetes has no native "wait for
+another resource" dependency primitive, so this leans on two things
+instead: the Job's own backoffLimit rides out Postgres still starting on a
+brand-new install, and Helm itself waits for hook Jobs to reach Complete
+before a `pre-upgrade` hook's release is considered finished — the more
+important case, since it stops an upgraded kernel-api from ever running
+against a stale schema.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": post-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: {{ include "execution-kernel.appImage" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+          command: ["alembic", "upgrade", "head"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-kernel.databaseSecretName" . }}
+                  key: {{ include "execution-kernel.databaseSecretKey" . }}

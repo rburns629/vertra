@@ -1,0 +1,41 @@
+# A product shaped like real work: it calls an API, can authenticate with a
+# secret, and tells the platform which failures are worth retrying.
+# Copy to teams/<your-team>/products/http-check/.
+name: http-check
+team: try-anna             # CHANGE: your team
+displayName: HTTP check
+description: >-
+  Calls an HTTPS URL and reports its status code. Optionally sends a bearer
+  token from the http-check-token secret. Reads only; changes nothing.
+owner: anna                    # CHANGE: your team
+runtime: python3.12
+actions:
+  - name: check
+    script: actions/check.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          pattern: "^https://"
+          description: The URL to call. HTTPS only.
+        expectStatus:
+          type: integer
+          description: The status code that counts as healthy. Default 200.
+        useToken:
+          type: boolean
+          description: Send the http-check-token secret as a bearer token.
+    output:
+      type: object
+      required: [status, healthy]
+      properties:
+        status: {type: integer}
+        healthy: {type: boolean}
+    requiredSecrets:
+      - name: http-check-token
+        keys: [value]
+        description: >-
+          Only with useToken: the bearer token for the URL. Never logged
+          or returned.

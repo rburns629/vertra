@@ -1,0 +1,188 @@
+{{/*
+Scheduled pg_dump, then a copy to backup.destination (values.yaml, "backup").
+
+The dump runs as an initContainer into a shared emptyDir, laid out exactly
+as the destination stores it (<release>/<timestamp>.pgdump, plus the
+console's database under its own prefix when this instance hosts it), and
+each file is checked with pg_restore --list. Kubernetes runs initContainers
+to completion first, so the copy container only ever sees finished dumps,
+and it just copies every file to the same path at the destination.
+
+The copy runs as backup.serviceAccountName, a separate identity bound to
+the cloud: not this chart's own ServiceAccount, which dispatches Jobs
+into every team's namespace and has no business near a bucket.
+
+Helm v4.2.3 on GKE failed to create this CronJob through `helm upgrade`
+("spec.schedule: Required value") although the rendered manifest applied
+fine with kubectl; Helm v4.3.1 creates it normally on kind. If GKE still
+refuses it, docs/operations.md ("Backups") has the
+`helm template ... | kubectl apply` workaround, and the restore runbook.
+*/}}
+{{- if and .Values.backup.enabled .Values.postgres.enabled }}
+{{- $backup := .Values.backup }}
+{{- $destination := $backup.destination }}
+{{- if $backup.bucket }}
+{{- fail "backup.bucket has moved to backup.gcs.bucket (with backup.destination: gcs)." }}
+{{- end }}
+{{- if not (has $destination (list "gcs" "s3" "azure" "pvc")) }}
+{{- fail "backup.destination must be one of gcs, s3, azure, pvc." }}
+{{- end }}
+{{- if and (eq $destination "gcs") (not $backup.gcs.bucket) }}
+{{- fail "backup.gcs.bucket is required with backup.destination: gcs." }}
+{{- end }}
+{{- if and (eq $destination "s3") (not $backup.s3.bucket) }}
+{{- fail "backup.s3.bucket is required with backup.destination: s3." }}
+{{- end }}
+{{- if and (eq $destination "pvc") (not $backup.pvc.claimName) }}
+{{- fail "backup.pvc.claimName is required with backup.destination: pvc (create the claim yourself; see values.yaml)." }}
+{{- end }}
+{{- if and (eq $destination "azure") (not (and $backup.azure.storageAccount $backup.azure.container)) }}
+{{- fail "backup.azure.storageAccount and backup.azure.container are required with backup.destination: azure." }}
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-pg-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pg-backup
+spec:
+  schedule: {{ $backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ $backup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $backup.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "execution-kernel.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: pg-backup
+            {{- if eq $destination "azure" }}
+            # AKS's webhook then injects the federated token and client ID.
+            azure.workload.identity/use: "true"
+            {{- end }}
+        spec:
+          restartPolicy: Never
+          {{- if ne $destination "pvc" }}
+          serviceAccountName: {{ $backup.serviceAccountName }}
+          {{- end }}
+          initContainers:
+            - name: pg-dump
+              image: "postgres:16"
+              # Explicit, not left for Autopilot's own resource-defaulting
+              # webhook to fill in -- confirmed directly that its mutation
+              # of this CronJob's doubly-nested pod template
+              # (spec.jobTemplate.spec.template.spec) otherwise breaks
+              # Helm's create-resource call outright (a real, reproduced
+              # failure, not a hypothetical).
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 256Mi
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  TS=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+                  dump() {
+                    mkdir -p "/backup/$2"
+                    pg_dump -Fc -d "$1" -f "/backup/$2/$TS.pgdump"
+                    pg_restore --list "/backup/$2/$TS.pgdump" > /dev/null
+                    echo "dumped $1 to $2/$TS.pgdump"
+                  }
+                  dump "$PGDATABASE" {{ .Release.Name | quote }}
+                  {{- if .Values.postgres.consoleDatabase.enabled }}
+                  # The console's database lives on this instance too.
+                  dump {{ .Values.postgres.consoleDatabase.database | quote }} {{ .Values.postgres.consoleDatabase.backupPrefix | quote }}
+                  {{- end }}
+              env:
+                - name: PGHOST
+                  value: "{{ include "execution-kernel.fullname" . }}-postgres"
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  value: {{ .Values.postgres.auth.username | quote }}
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "execution-kernel.databaseSecretName" . }}
+                      key: postgres-password
+                - name: PGDATABASE
+                  value: {{ .Values.postgres.auth.database | quote }}
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            - name: copy
+              {{- if eq $destination "gcs" }}
+              image: {{ $backup.gcs.image | quote }}
+              {{- else if eq $destination "s3" }}
+              image: {{ $backup.s3.image | quote }}
+              {{- else if eq $destination "azure" }}
+              image: {{ $backup.azure.image | quote }}
+              {{- else }}
+              image: "postgres:16"
+              {{- end }}
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 256Mi
+              workingDir: /backup
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  {{- if eq $destination "azure" }}
+                  az login --service-principal --username "$AZURE_CLIENT_ID" --tenant "$AZURE_TENANT_ID" \
+                    --federated-token "$(cat "$AZURE_FEDERATED_TOKEN_FILE")" --output none
+                  {{- end }}
+                  for f in */*.pgdump; do
+                    {{- if eq $destination "gcs" }}
+                    gsutil cp "$f" "gs://{{ $backup.gcs.bucket }}/$f"
+                    {{- else if eq $destination "s3" }}
+                    aws s3 cp --no-progress "$f" "s3://{{ $backup.s3.bucket }}/$f"{{ if $backup.s3.endpoint }} --endpoint-url {{ $backup.s3.endpoint | quote }}{{ end }}
+                    {{- else if eq $destination "azure" }}
+                    az storage blob upload --auth-mode login --account-name {{ $backup.azure.storageAccount | quote }} \
+                      --container-name {{ $backup.azure.container | quote }} --name "$f" --file "$f" --output none
+                    {{- else }}
+                    mkdir -p "/destination/$(dirname "$f")"
+                    cp "$f" "/destination/$f"
+                    {{- end }}
+                    echo "copied $f"
+                  done
+                  {{- if eq $destination "pvc" }}
+                  find /destination -name '*.pgdump' -mtime +{{ int $backup.pvc.keepDays }} -print -delete
+                  {{- end }}
+              {{- if eq $destination "s3" }}
+              {{- if $backup.s3.region }}
+              env:
+                - name: AWS_REGION
+                  value: {{ $backup.s3.region | quote }}
+              {{- end }}
+              {{- if $backup.s3.credentialsSecret }}
+              envFrom:
+                - secretRef:
+                    name: {{ $backup.s3.credentialsSecret }}
+              {{- end }}
+              {{- end }}
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                {{- if eq $destination "pvc" }}
+                - name: destination
+                  mountPath: /destination
+                {{- end }}
+          volumes:
+            - name: backup
+              emptyDir: {}
+            {{- if eq $destination "pvc" }}
+            - name: destination
+              persistentVolumeClaim:
+                claimName: {{ $backup.pvc.claimName }}
+            {{- end }}
+{{- end }}

@@ -1,0 +1,15 @@
+execution-kernel is installed.
+
+kernel-api: {{ include "execution-kernel.fullname" . }}-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.service.port }}
+kernel-scheduler dispatches each task's Job into that task's own `team`
+namespace (see app/contracts/task.py) — there is no single fixed namespace
+to report here anymore.
+
+Check the migration Job finished before submitting anything:
+
+  kubectl get jobs -n {{ .Release.Namespace }} {{ include "execution-kernel.fullname" . }}-migrate
+
+Port-forward the API to try it locally:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "execution-kernel.fullname" . }}-api {{ .Values.api.service.port }}:{{ .Values.api.service.port }}
+  curl http://localhost:{{ .Values.api.service.port }}/health/ready

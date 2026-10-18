@@ -1,0 +1,60 @@
+# Weekly update pull requests for everything this repository ships: the
+# platform's own dependencies and images, its workflows, and the catalog
+# template's starters (what new catalogs copy). Updates are grouped to keep
+# the number of pull requests down, and a release must be a week old before
+# it's proposed, so a hijacked release has time to be caught. CI checks
+# every one of them like any other change.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /kernel
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      kernel-python: {patterns: ["*"]}
+    ignore:
+      # Kept below 37 until the kernel's typing is checked against it (TODO.md).
+      - dependency-name: kubernetes
+        versions: [">=37"]
+
+  - package-ecosystem: npm
+    directories: [/console, /console/frontend]
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      console-npm: {patterns: ["*"]}
+
+  - package-ecosystem: docker
+    directories:
+      - /kernel
+      - /console
+      - /examples/*
+      - /catalog-template/templates/*
+      - /catalog-template/samples/*/products/*
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      base-images: {patterns: ["*"]}
+
+  - package-ecosystem: github-actions
+    directories: [/, /catalog-template]
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      actions: {patterns: ["*"]}
+
+  # The catalog template's language samples.
+  - package-ecosystem: npm
+    directory: /catalog-template/samples/local/products/reverse
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      sample-npm: {patterns: ["*"]}
+  - package-ecosystem: gomod
+    directory: /catalog-template/samples/local/products/slug
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+  - package-ecosystem: cargo
+    directory: /catalog-template/samples/local/products/rot13
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}

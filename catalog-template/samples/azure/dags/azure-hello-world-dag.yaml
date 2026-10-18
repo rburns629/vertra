@@ -1,0 +1,30 @@
+# Two azure products chained: a resource group, then a Container App in it.
+# Real, billed calls. Paste into the console's Submit page with <registry>
+# and the CHANGE values replaced. `:latest` is pinned to its digest when
+# you submit.
+name: azure-hello-world
+tasks:
+  - id: group
+    image: <registry>/azure/resource-group:latest
+    action: create
+    team: azure
+    inputs:
+      subscriptionId: 00000000-0000-0000-0000-000000000000   # CHANGE
+      name: hello-world
+      location: westeurope                                    # CHANGE
+
+  - id: web
+    image: <registry>/azure/container-app:latest
+    action: create
+    team: azure
+    dependsOn: [group]
+    timeoutSeconds: 1200                  # a new environment takes a few minutes
+    inputs:
+      subscriptionId: 00000000-0000-0000-0000-000000000000   # CHANGE
+      resourceGroup: {$fromTask: group, $output: resourceGroup}
+      location: westeurope                                    # CHANGE
+      environmentName: hello-world-env
+      appName: hello-world
+      image: mcr.microsoft.com/k8se/quickstart:latest
+      port: 80
+      public: true                        # a demo: anyone may reach it

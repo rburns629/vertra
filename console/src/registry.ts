@@ -1,0 +1,269 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Does a task's image still exist, and which exact image (digest) does its
+ * tag name right now? Asked of the registry itself, over the
+ * OCI distribution API every registry speaks (Artifact Registry, ACR, ECR,
+ * GHCR, Docker Hub), so a DAG naming a deleted image (a purged platform's,
+ * say) is refused up front instead of failing at dispatch.
+ *
+ * Three answers, and only "missing" ever blocks anything:
+ *   - "available": the registry returned the manifest;
+ *   - "missing": the registry answered 404 for it;
+ *   - "unverified": anything else -- an image outside the allowed sources,
+ *     a timeout, a 401/403. The kernel still refuses a missing image at
+ *     dispatch (IMAGE_NOT_FOUND), so an unanswered check costs a slower
+ *     error, never a wrong run.
+ *
+ * Image references come from users, so this only ever contacts registries
+ * under an allowed image source (imagePolicy.ts), which admins chose to
+ * trust; anything else is "unverified" without a request being made. A
+ * credential (config.registryCredentials, or a GKE metadata token for
+ * Google's registries) is used when there is one, and only ever sent to the
+ * registry it belongs to; public sources like docker.io/library/ are asked
+ * anonymously.
+ */
+import { config } from "./config.js";
+import { isImageAllowed, normalizeImage } from "./imagePolicy.js";
+
+export type ImageStatus = "available" | "missing" | "unverified";
+
+interface ImageCheck {
+  status: ImageStatus;
+  /** The manifest's digest ("sha256:…"), when the registry answered. */
+  digest?: string;
+}
+
+interface ImageRef {
+  /** The host the registry API is served from. */
+  host: string;
+  repository: string;
+  /** A tag or a digest. */
+  reference: string;
+}
+
+interface Credential {
+  username: string;
+  password: string;
+}
+
+const REQUEST_TIMEOUT_MS = 5000;
+const CACHE_TTL_MS = 60_000;
+const MANIFEST_TYPES = [
+  "application/vnd.oci.image.index.v1+json",
+  "application/vnd.oci.image.manifest.v1+json",
+  "application/vnd.docker.distribution.manifest.list.v2+json",
+  "application/vnd.docker.distribution.manifest.v2+json",
+].join(", ");
+const GOOGLE_REGISTRY = /^([a-z0-9-]+-docker\.pkg\.dev|([a-z]+\.)?gcr\.io)$/;
+const GCP_METADATA_TOKEN_URL =
+  "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+
+/** Null for a reference without a registry host (e.g. `demo-product:local`,
+ * or Docker Hub's `nginx` shorthand): there's nothing to ask. */
+export function parseImageRef(image: string): ImageRef | null {
+  const slash = image.indexOf("/");
+  if (slash < 0) return null;
+  const first = image.slice(0, slash);
+  if (!first.includes(".") && !first.includes(":") && first !== "localhost") return null;
+
+  let rest = image.slice(slash + 1);
+  let reference = "latest";
+  const at = rest.indexOf("@");
+  if (at >= 0) {
+    reference = rest.slice(at + 1);
+    rest = rest.slice(0, at);
+  } else {
+    const colon = rest.lastIndexOf(":");
+    if (colon > rest.lastIndexOf("/")) {
+      reference = rest.slice(colon + 1);
+      rest = rest.slice(0, colon);
+    }
+  }
+  if (!rest || !reference) return null;
+  const host = first === "docker.io" ? "registry-1.docker.io" : first;
+  const repository = host === "registry-1.docker.io" && !rest.includes("/") ? `library/${rest}` : rest;
+  return { host, repository, reference };
+}
+
+let gcpToken: { value: string; expiresAt: number } | null = null;
+
+async function gcpMetadataToken(): Promise<string> {
+  if (gcpToken && gcpToken.expiresAt > Date.now()) return gcpToken.value;
+  // The metadata server is node-local and only speaks plain HTTP.
+  // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request
+  const response = await fetch(GCP_METADATA_TOKEN_URL, {
+    headers: { "Metadata-Flavor": "Google" },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`metadata server returned ${String(response.status)}`);
+  const body = (await response.json()) as { access_token: string; expires_in: number };
+  gcpToken = { value: body.access_token, expiresAt: Date.now() + (body.expires_in - 60) * 1000 };
+  return gcpToken.value;
+}
+
+/** Null means ask anonymously. */
+async function credentialFor(host: string): Promise<Credential | null> {
+  const configured = config.registryCredentials.get(host);
+  if (configured) return configured;
+  if (config.registryGcpMetadataToken && GOOGLE_REGISTRY.test(host)) {
+    return { username: "oauth2accesstoken", password: await gcpMetadataToken() };
+  }
+  return null;
+}
+
+function basic(credential: Credential): string {
+  return `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString("base64")}`;
+}
+
+/** The parameters of a `WWW-Authenticate: Bearer realm="…",service="…"` challenge. */
+function parseBearerChallenge(header: string | null): Record<string, string> | null {
+  if (!header?.toLowerCase().startsWith("bearer ")) return null;
+  const params: Record<string, string> = {};
+  for (const match of header.slice(7).matchAll(/(\w+)="([^"]*)"/g)) {
+    const [, key, value] = match;
+    if (key && value !== undefined) params[key] = value;
+  }
+  return params;
+}
+
+/** A registry token for one repository, per the Docker token-auth flow. */
+async function bearerToken(
+  ref: ImageRef,
+  challenge: Record<string, string>,
+  credential: Credential | null,
+): Promise<string | null> {
+  const realm = challenge["realm"];
+  if (!realm) return null;
+  const realmUrl = new URL(realm);
+  // Only the registry's own token service: its own host, or Docker Hub's
+  // known one. Never a host a registry response merely points at.
+  const trusted =
+    realmUrl.protocol === "https:" &&
+    (realmUrl.host === ref.host || (ref.host === "registry-1.docker.io" && realmUrl.host === "auth.docker.io"));
+  if (!trusted) return null;
+  if (challenge["service"]) realmUrl.searchParams.set("service", challenge["service"]);
+  realmUrl.searchParams.set("scope", `repository:${ref.repository}:pull`);
+  const response = await fetch(realmUrl, {
+    headers: credential ? { authorization: basic(credential) } : {},
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) return null;
+  const body = (await response.json()) as { token?: string; access_token?: string };
+  return body.token ?? body.access_token ?? null;
+}
+
+function checkFrom(response: Response): ImageCheck {
+  if (response.status === 404) return { status: "missing" };
+  if (response.status !== 200) return { status: "unverified" };
+  const digest = response.headers.get("docker-content-digest") ?? undefined;
+  return digest && /^sha256:[a-f0-9]{64}$/.test(digest) ? { status: "available", digest } : { status: "available" };
+}
+
+async function checkUncached(image: string): Promise<ImageCheck> {
+  const ref = parseImageRef(normalizeImage(image));
+  if (!ref) return { status: "unverified" };
+  const credential = await credentialFor(ref.host);
+
+  // A mirror (config.registryMirrors) is only a different address for the
+  // same registry: credentials are still the image host's.
+  const base = config.registryMirrors.get(ref.host) ?? `https://${ref.host}`;
+  const url = `${base}/v2/${ref.repository}/manifests/${encodeURIComponent(ref.reference)}`;
+  const head = (authorization?: string) =>
+    fetch(url, {
+      method: "HEAD",
+      headers: { accept: MANIFEST_TYPES, ...(authorization ? { authorization } : {}) },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+  const first = await head();
+  if (first.status !== 401) return checkFrom(first);
+  const challenge = parseBearerChallenge(first.headers.get("www-authenticate"));
+  if (challenge) {
+    const token = await bearerToken(ref, challenge, credential);
+    return token ? checkFrom(await head(`Bearer ${token}`)) : { status: "unverified" };
+  }
+  return credential ? checkFrom(await head(basic(credential))) : { status: "unverified" };
+}
+
+const cache = new Map<string, ImageCheck & { expiresAt: number }>();
+/** At most this many images remembered: expired ones go first, then the oldest. */
+const CACHE_MAX_ENTRIES = 1000;
+
+function remember(image: string, check: ImageCheck): void {
+  const now = Date.now();
+  if (cache.size >= CACHE_MAX_ENTRIES) {
+    for (const [key, entry] of cache) {
+      if (entry.expiresAt <= now) cache.delete(key);
+    }
+    for (const key of cache.keys()) {
+      if (cache.size < CACHE_MAX_ENTRIES) break;
+      cache.delete(key);
+    }
+  }
+  cache.delete(image); // re-inserted last: the newest
+  cache.set(image, { ...check, expiresAt: now + CACHE_TTL_MS });
+}
+
+/** For tests. */
+export function cachedImageCount(): number {
+  return cache.size;
+}
+
+/** Never throws: a check that can't complete is "unverified", and so is
+ * an image outside `allowedPrefixes` (nothing is requested for it).
+ * Answers are cached for a minute, since the execution detail page polls. */
+export async function checkImage(image: string, allowedPrefixes: string[]): Promise<ImageStatus> {
+  return (await inspectImage(image, allowedPrefixes)).status;
+}
+
+async function inspectImage(image: string, allowedPrefixes: string[]): Promise<ImageCheck> {
+  if (!isImageAllowed(image, allowedPrefixes)) return { status: "unverified" };
+  const cached = cache.get(image);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  let check: ImageCheck;
+  try {
+    check = await checkUncached(image);
+  } catch {
+    check = { status: "unverified" };
+  }
+  remember(image, check);
+  return check;
+}
+
+/** Whether an image reference already names its digest. */
+export function isPinned(image: string): boolean {
+  return /@sha256:[a-f0-9]{64}$/.test(image);
+}
+
+/**
+ * Each tagged image pinned to the digest its tag names right now:
+ * `repo:latest` becomes `repo:latest@sha256:…` (Kubernetes pulls by the
+ * digest; the tag stays for people reading it). So a DAG can keep naming
+ * `:latest`, while the run, any retry, and the image scanned are exactly the
+ * bytes resolved here. Already-pinned images are kept as they are; the ones
+ * the registry couldn't resolve are listed in `unresolved`.
+ */
+export async function pinImages(
+  images: string[],
+  allowedPrefixes: string[],
+): Promise<{ pinned: Map<string, string>; unresolved: string[] }> {
+  const pinned = new Map<string, string>();
+  const unresolved: string[] = [];
+  for (const image of new Set(images)) {
+    if (isPinned(image)) {
+      pinned.set(image, image);
+      continue;
+    }
+    const { digest } = await inspectImage(image, allowedPrefixes);
+    if (digest) pinned.set(image, `${image}@${digest}`);
+    else unresolved.push(image);
+  }
+  return { pinned, unresolved };
+}
+
+/** The images among `images` the registry says don't exist. */
+export async function missingImages(images: string[], allowedPrefixes: string[]): Promise<string[]> {
+  const unique = [...new Set(images)];
+  const statuses = await Promise.all(unique.map((image) => checkImage(image, allowedPrefixes)));
+  return unique.filter((_, i) => statuses[i] === "missing");
+}

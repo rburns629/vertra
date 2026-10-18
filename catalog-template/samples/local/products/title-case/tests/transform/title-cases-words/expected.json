@@ -1,0 +1,7 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "text": "Hello Acyclix World",
+    "language": "Python"
+  }
+}

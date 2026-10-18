@@ -1,0 +1,82 @@
+# A sample: Container App, with real Azure API calls (billed).
+# Not yet proven against a real account; see the azure team's README.md.
+name: container-app
+team: azure
+displayName: Container App
+description: Deploys a container image as an Azure Container App, creating its Container Apps
+  environment if needed, or returns the existing app's URL. Internal to the environment unless
+  public is true; a private registry is pulled with a managed identity.
+owner: azure-team
+runtime: python3.12
+actions:
+- name: create
+  script: actions/create.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - subscriptionId
+    - resourceGroup
+    - environmentName
+    - appName
+    - image
+    - location
+    properties:
+      subscriptionId:
+        type: string
+        description: The Azure subscription id.
+        pattern: ^[0-9a-fA-F-]{36}$
+      resourceGroup:
+        type: string
+        description: Its resource group.
+      environmentName:
+        type: string
+        description: The Container Apps environment, created if it doesn't exist.
+      appName:
+        type: string
+        description: The app's name.
+        pattern: ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
+      image:
+        type: string
+        description: An image reference.
+      location:
+        type: string
+        description: The Azure region, such as westeurope.
+      port:
+        type: integer
+        description: The port the container listens on.
+        default: 8080
+      public:
+        type: boolean
+        description: Whether anyone on the internet may reach it.
+        default: false
+      registryServer:
+        type: string
+        description: A private registry, such as myregistry.azurecr.io.
+      registryIdentity:
+        type: string
+        description: 'The managed identity that pulls from it: a user-assigned identity''s
+          resource id, or system.'
+        default: system
+      environment:
+        type: object
+        description: 'Environment variables for the container: names to string values. Never
+          a secret: these are visible to anyone who can read the execution.'
+        additionalProperties:
+          type: string
+  output:
+    type: object
+    required:
+    - appName
+    - url
+    - id
+    properties:
+      appName:
+        type: string
+        description: The app.
+      url:
+        type: string
+        description: Its HTTPS URL.
+      id:
+        type: string
+        description: Its resource id.

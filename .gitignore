@@ -1,0 +1,39 @@
+# Personal, never shared: scratch files, and anything cloned alongside for
+# convenience, such as a catalog repository (it has its own git history).
+_local/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Node (console/)
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+
+# Test / lint / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment / local config
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+.claude/
+.impeccable/
+_local/

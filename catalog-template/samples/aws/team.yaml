@@ -1,0 +1,10 @@
+# A sample team whose products call real, billed AWS APIs. Copy it into
+# teams/ (or one product into your own team) once its IAM roles exist.
+name: aws
+displayName: AWS samples
+description: >-
+  Real AWS calls: an S3 bucket, an App Runner service, and an RDS for
+  PostgreSQL instance. Every action looks before it creates. Keyless: EKS
+  Pod Identity or IRSA supplies each step's credentials.
+owner: aws-team
+contact: aws-team@example.com

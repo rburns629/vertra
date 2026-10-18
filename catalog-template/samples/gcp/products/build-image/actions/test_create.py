@@ -1,0 +1,222 @@
+"""Tests for gcp/build-image's create action, with the Google Cloud clients
+mocked, so they run without a GCP account. `./catalogctl check` runs them in
+the product's own image with its python3 (unittest, no pytest).
+"""
+
+import importlib.util
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+_MODULE_PATH = Path(__file__).parent / "create.py"
+
+_VALID_INPUTS = {
+    "projectId": "my-project",
+    "sourceArchiveUrl": "gs://my-bucket/source.zip",
+    "imageUri": "us-central1-docker.pkg.dev/my-project/demo/hello-world-app:latest",
+}
+
+
+def _load_create_module():
+    spec = importlib.util.spec_from_file_location("gcp_build_image_create", _MODULE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class CreateActionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = _load_create_module()
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.module.INPUT_PATH = Path(self.tmp_dir.name) / "request.json"
+        self.module.OUTPUT_PATH = Path(self.tmp_dir.name) / "result.json"
+
+    def tearDown(self) -> None:
+        self.tmp_dir.cleanup()
+
+    def _write_request(self, inputs: dict) -> None:
+        self.module.INPUT_PATH.write_text(
+            json.dumps(
+                {
+                    "executionId": "e",
+                    "taskId": "t",
+                    "action": "create",
+                    "attempt": 1,
+                    "inputs": inputs,
+                }
+            )
+        )
+
+    def _result(self) -> dict:
+        return json.loads(self.module.OUTPUT_PATH.read_text())
+
+    def test_missing_inputs_fails_without_calling_gcp(self) -> None:
+        self._write_request({})
+        with patch.object(self.module.cloudbuild_v1, "CloudBuildClient") as build_cls:
+            exit_code = self.module.main()
+
+        build_cls.assert_not_called()
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(self._result()["error"]["code"], "MISSING_INPUT")
+
+    def test_existing_image_skips_build(self) -> None:
+        self._write_request(_VALID_INPUTS)
+        with (
+            patch.object(self.module.artifactregistry_v1, "ArtifactRegistryClient") as ar_cls,
+            patch.object(self.module.cloudbuild_v1, "CloudBuildClient") as build_cls,
+        ):
+            ar_client = ar_cls.return_value
+            ar_client.get_tag.return_value = MagicMock()  # found
+
+            exit_code = self.module.main()
+
+        ar_client.get_tag.assert_called_once_with(
+            name="projects/my-project/locations/us-central1/repositories/demo"
+            "/packages/hello-world-app/tags/latest"
+        )
+        build_cls.assert_not_called()
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            self._result(),
+            {"status": "succeeded", "outputs": {"imageUri": _VALID_INPUTS["imageUri"]}},
+        )
+
+    def test_new_image_triggers_build_and_succeeds(self) -> None:
+        self._write_request(_VALID_INPUTS)
+        with (
+            patch.object(self.module.artifactregistry_v1, "ArtifactRegistryClient") as ar_cls,
+            patch.object(self.module.cloudbuild_v1, "CloudBuildClient") as build_cls,
+        ):
+            ar_client = ar_cls.return_value
+            ar_client.get_tag.side_effect = self.module.NotFound("no such tag")
+
+            build_client = build_cls.return_value
+            build_result = MagicMock()
+            build_result.status = self.module.cloudbuild_v1.Build.Status.SUCCESS
+            build_client.create_build.return_value.result.return_value = build_result
+
+            exit_code = self.module.main()
+
+        build_client.create_build.assert_called_once()
+        call_kwargs = build_client.create_build.call_args.kwargs
+        self.assertEqual(call_kwargs["project_id"], "my-project")
+        submitted_build = call_kwargs["build"]
+        self.assertEqual(submitted_build.source.storage_source.bucket, "my-bucket")
+        self.assertEqual(submitted_build.source.storage_source.object_, "source.zip")
+        self.assertEqual(list(submitted_build.images), [_VALID_INPUTS["imageUri"]])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            self._result(),
+            {"status": "succeeded", "outputs": {"imageUri": _VALID_INPUTS["imageUri"]}},
+        )
+
+    def test_build_failure_status_is_reported(self) -> None:
+        self._write_request(_VALID_INPUTS)
+        with (
+            patch.object(self.module.artifactregistry_v1, "ArtifactRegistryClient") as ar_cls,
+            patch.object(self.module.cloudbuild_v1, "CloudBuildClient") as build_cls,
+        ):
+            ar_client = ar_cls.return_value
+            ar_client.get_tag.side_effect = self.module.NotFound("no such tag")
+
+            build_client = build_cls.return_value
+            build_result = MagicMock()
+            build_result.status = self.module.cloudbuild_v1.Build.Status.FAILURE
+            build_result.status_detail = "build step failed"
+            build_client.create_build.return_value.result.return_value = build_result
+
+            exit_code = self.module.main()
+
+        self.assertEqual(exit_code, 1)
+        result = self._result()
+        self.assertEqual(result["error"]["code"], "BUILD_FAILED")
+        self.assertTrue(result["error"]["retryable"])
+
+    def test_non_artifact_registry_image_always_builds(self) -> None:
+        inputs = dict(_VALID_INPUTS, imageUri="gcr.io/my-project/legacy:v1")
+        self._write_request(inputs)
+        with (
+            patch.object(self.module.artifactregistry_v1, "ArtifactRegistryClient") as ar_cls,
+            patch.object(self.module.cloudbuild_v1, "CloudBuildClient") as build_cls,
+        ):
+            build_client = build_cls.return_value
+            build_result = MagicMock()
+            build_result.status = self.module.cloudbuild_v1.Build.Status.SUCCESS
+            build_client.create_build.return_value.result.return_value = build_result
+
+            exit_code = self.module.main()
+
+        ar_cls.assert_not_called()
+        build_client.create_build.assert_called_once()
+        self.assertEqual(exit_code, 0)
+
+    def test_get_tag_api_error_is_a_retryable_failure(self) -> None:
+        self._write_request(_VALID_INPUTS)
+        with patch.object(self.module.artifactregistry_v1, "ArtifactRegistryClient") as ar_cls:
+            ar_client = ar_cls.return_value
+            ar_client.get_tag.side_effect = self.module.GoogleAPIError("transient")
+            exit_code = self.module.main()
+
+        self.assertEqual(exit_code, 1)
+        result = self._result()
+        self.assertEqual(result["error"]["code"], "GCP_API_ERROR")
+        self.assertTrue(result["error"]["retryable"])
+
+
+class BuildCredentialsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = _load_create_module()
+
+    def test_returns_none_when_target_env_var_unset(self) -> None:
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop(self.module.TARGET_SERVICE_ACCOUNT_ENV_VAR, None)
+            self.assertIsNone(self.module._build_credentials())
+
+    def test_impersonates_target_when_env_var_set(self) -> None:
+        target = "kernel-gcp-test@my-project.iam.gserviceaccount.com"
+        with (
+            patch.dict(os.environ, {self.module.TARGET_SERVICE_ACCOUNT_ENV_VAR: target}),
+            patch.object(self.module.google.auth, "default") as default_mock,
+            patch.object(self.module.impersonated_credentials, "Credentials") as creds_cls,
+        ):
+            source_credentials = MagicMock()
+            default_mock.return_value = (source_credentials, "some-project")
+
+            result = self.module._build_credentials()
+
+        default_mock.assert_called_once()
+        creds_cls.assert_called_once_with(
+            source_credentials=source_credentials,
+            target_principal=target,
+            target_scopes=self.module.IMPERSONATION_SCOPES,
+        )
+        self.assertEqual(result, creds_cls.return_value)
+
+    def test_impersonated_credentials_are_passed_to_gcp_clients(self) -> None:
+        """Proves the wiring end-to-end, not just the helper in isolation:
+        when impersonation is configured, main() must actually pass the
+        resulting credentials to every client it constructs."""
+        target = "kernel-gcp-test@my-project.iam.gserviceaccount.com"
+        with (
+            patch.dict(os.environ, {self.module.TARGET_SERVICE_ACCOUNT_ENV_VAR: target}),
+            patch.object(self.module.google.auth, "default") as default_mock,
+            patch.object(self.module.impersonated_credentials, "Credentials") as creds_cls,
+            patch.object(self.module.artifactregistry_v1, "ArtifactRegistryClient") as ar_cls,
+        ):
+            default_mock.return_value = (MagicMock(), "some-project")
+            ar_cls.return_value.get_tag.return_value = MagicMock()
+
+            self.module.INPUT_PATH = Path(tempfile.mkstemp()[1])
+            self.module.OUTPUT_PATH = Path(tempfile.mkstemp()[1])
+            self.module.INPUT_PATH.write_text(json.dumps({"inputs": _VALID_INPUTS}))
+
+            self.module.main()
+
+        ar_cls.assert_called_once_with(credentials=creds_cls.return_value)
+
+
+if __name__ == "__main__":
+    unittest.main()

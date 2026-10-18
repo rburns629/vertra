@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""title-case's "transform" action: capitalize every word.
+
+Reads /platform/input/request.json, writes /platform/output/result.json:
+{"status": "succeeded", "outputs": {...}} or
+{"status": "failed", "error": {"code", "message", "retryable"}}.
+"""
+
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+INPUT_PATH = Path("/platform/input/request.json")
+OUTPUT_PATH = Path("/platform/output/result.json")
+# result.json is limited to 4 KB, and the output carries the text back.
+MAX_LENGTH = 1000
+
+
+def write_result(result: dict[str, Any]) -> None:
+    OUTPUT_PATH.write_text(json.dumps(result, ensure_ascii=False))
+
+
+def fail(code: str, message: str) -> int:
+    write_result({"status": "failed", "error": {"code": code, "message": message, "retryable": False}})
+    return 1
+
+
+def title_case(text: str) -> str:
+    # Word by word rather than str.title(), which also capitalizes after an
+    # apostrophe ("don't" -> "Don'T"); the spacing between words is kept.
+    return re.sub(r"\S+", lambda word: word[0][:1].upper() + word[0][1:].lower(), text)
+
+
+def main() -> int:
+    inputs = json.loads(INPUT_PATH.read_text()).get("inputs", {})
+    text = inputs.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return fail("MISSING_INPUT", "inputs.text is required: the text to change.")
+    if len(text) > MAX_LENGTH:
+        return fail("TEXT_TOO_LONG", f"inputs.text is {len(text)} characters; the limit is {MAX_LENGTH}.")
+
+    result = title_case(text)
+    print(f"title-cased {len(text)} characters")
+    write_result({"status": "succeeded", "outputs": {"text": result, "language": "Python"}})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

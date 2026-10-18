@@ -1,0 +1,7 @@
+{
+  "status": "failed",
+  "error": {
+    "code": "MISSING_INPUT",
+    "retryable": false
+  }
+}

@@ -1,0 +1,93 @@
+{{/*
+Who may connect to the kernel's Pods (values.yaml, networkPolicy). Each
+policy selects one component, so anything not listed is refused: in
+particular a step's Pod, in a team namespace, reaches neither Postgres nor
+kernel-api. Outbound traffic isn't restricted here.
+
+Enforced only by a CNI that implements NetworkPolicy (kindnet, GKE Dataplane
+V2, Calico, Cilium, ...); elsewhere they're accepted and silently ignored.
+*/}}
+{{- if .Values.networkPolicy.enabled }}
+{{- if .Values.postgres.enabled }}
+# Postgres: this release's own Pods (kernel-api, the scheduler, migrations,
+# backups) and, when it hosts the console's database, the console's.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-postgres
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "execution-kernel.selectorLabels" . | nindent 14 }}
+        {{- if .Values.postgres.consoleDatabase.enabled }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.consoleSelector | nindent 14 }}
+        {{- end }}
+      ports:
+        - port: 5432
+          protocol: TCP
+---
+{{- end }}
+# kernel-api: the console (which is also all it accepts, by token), plus
+# any metrics scrapers listed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.consoleSelector | nindent 14 }}
+        {{- with .Values.networkPolicy.metricsFrom }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      ports:
+        - port: 8000
+          protocol: TCP
+---
+# The scheduler serves nothing but /metrics: only the scrapers listed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  policyTypes: ["Ingress"]
+  {{- with .Values.networkPolicy.metricsFrom }}
+  ingress:
+    - from:
+        {{- toYaml . | nindent 8 }}
+      ports:
+        - port: {{ $.Values.scheduler.metricsPort }}
+          protocol: TCP
+  {{- else }}
+  ingress: []
+  {{- end }}
+{{- end }}

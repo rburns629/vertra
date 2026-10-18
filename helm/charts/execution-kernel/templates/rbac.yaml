@@ -1,0 +1,71 @@
+{{/*
+Only kernel-scheduler gets any Kubernetes API access — kernel-api talks
+only to Postgres. A ClusterRole, not a Role: each task declares its own
+owning `team` (app/contracts/task.py), which becomes its dispatch
+namespace, so the scheduler must be able to create/watch Jobs across every
+team namespace, not just one fixed namespace. See the rbac trade-off note
+in values.yaml for the narrower per-namespace alternative this deliberately
+isn't.
+*/}}
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-scheduler
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: ["batch"]
+    # A subresource, distinct from "jobs" above and not covered by its
+    # grant — KubernetesExecutor.get_status() reads it via
+    # read_namespaced_job_status.
+    resources: ["jobs/status"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-scheduler
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "execution-kernel.fullname" . }}-scheduler
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "execution-kernel.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- if .Values.api.auth.enabled }}
+---
+# kernel-api checks each caller's token with a TokenReview (kernel/app/api/
+# auth.py). system:auth-delegator is Kubernetes' built-in role for exactly
+# that: creating TokenReviews and SubjectAccessReviews, nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-api-token-review
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "execution-kernel.apiServiceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

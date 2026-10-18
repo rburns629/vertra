@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Deleting what's past its retention, hourly: submitted-execution records
+ * (the kernel deletes the executions themselves after the same period),
+ * audit entries, and scan verdicts of images nobody has used in a while
+ * (scanned again if they're used again). 0 keeps a kind forever.
+ */
+import type { FastifyBaseLogger } from "fastify";
+import { and, isNull, lt, ne, sql } from "drizzle-orm";
+import { config } from "./config.js";
+import { db } from "./db/client.js";
+import { auditLog, imageScans, submittedExecutions } from "./db/schema.js";
+
+const daysAgo = (days: number) => sql`now() - make_interval(days => ${days})`;
+
+export async function deleteExpired(): Promise<{ executions: number; audit: number; scans: number }> {
+  const { executionDays, auditDays, scanDays } = config.retention;
+  const executions = executionDays
+    ? (
+        await db
+          .delete(submittedExecutions)
+          .where(lt(submittedExecutions.createdAt, daysAgo(executionDays)))
+          .returning({ id: submittedExecutions.executionId })
+      ).length
+    : 0;
+  const audit = auditDays
+    ? (await db.delete(auditLog).where(lt(auditLog.at, daysAgo(auditDays))).returning({ id: auditLog.id })).length
+    : 0;
+  const scans = scanDays
+    ? (
+        await db
+          .delete(imageScans)
+          .where(
+            and(lt(imageScans.lastUsedAt, daysAgo(scanDays)), isNull(imageScans.jobName), ne(imageScans.status, "pending")),
+          )
+          .returning({ digest: imageScans.digest })
+      ).length
+    : 0;
+  return { executions, audit, scans };
+}
+
+export function startRetention(log: FastifyBaseLogger): void {
+  const run = () =>
+    deleteExpired()
+      .then((deleted) => {
+        if (deleted.executions + deleted.audit + deleted.scans > 0) {
+          log.info({ event: "retention", ...deleted }, "deleted what's past retention");
+        }
+      })
+      .catch((error: unknown) => {
+        log.error({ err: error }, "couldn't delete what's past retention");
+      });
+  void run();
+  setInterval(() => void run(), 3_600_000).unref();
+}

@@ -1,0 +1,101 @@
+{{/*
+The identities allowed to purge a retired platform's namespace, and the
+guard that stops them deleting anything else.
+
+Deleting a namespace can't be scoped by RBAC alone: `delete` on
+`namespaces` covers every namespace in the cluster, `kube-system` included.
+So the ClusterRole below grants exactly that verb, and the admission policy
+narrows it: a purger may only delete a namespace labelled
+`<teamNamespaceLabel>=retired` (set when a platform is retired, see the
+catalog's retire workflow) that isn't a system namespace, `default`, this
+release's own namespace, or in `purgePolicy.protectedNamespaces`.
+
+Enforced by the Kubernetes API server (ValidatingAdmissionPolicy, 1.30+),
+so it holds however the purge is run. Off until purgers are configured.
+*/}}
+{{- if and .Values.purgePolicy.enabled .Values.purgePolicy.purgers }}
+{{- $label := .Values.dispatchPolicy.teamNamespaceLabel }}
+{{- $usernames := list }}
+{{- range .Values.purgePolicy.purgers }}
+{{- if eq .kind "ServiceAccount" }}
+{{- $usernames = append $usernames (printf "system:serviceaccount:%s:%s" .namespace .name) }}
+{{- else }}
+{{- $usernames = append $usernames .name }}
+{{- end }}
+{{- end }}
+{{- $protected := concat (list "default" "kube-system" "kube-public" "kube-node-lease" .Release.Namespace) .Values.purgePolicy.protectedNamespaces | uniq }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-namespace-purger
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+rules:
+  # list/watch are read-only; `kubectl delete --wait` needs them to see the
+  # deletion finish. delete is the one that matters, and the admission
+  # policy below narrows it.
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-namespace-purger
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "execution-kernel.fullname" . }}-namespace-purger
+subjects:
+  {{- range .Values.purgePolicy.purgers }}
+  - kind: {{ .kind }}
+    name: {{ .name | quote }}
+    {{- if eq .kind "ServiceAccount" }}
+    namespace: {{ .namespace | quote }}
+    {{- else }}
+    apiGroup: rbac.authorization.k8s.io
+    {{- end }}
+  {{- end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-purge
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["DELETE"]
+        resources: ["namespaces"]
+  matchConditions:
+    - name: from-a-purger
+      expression: request.userInfo.username in {{ $usernames | toJson }}
+  validations:
+    - expression: >-
+        !(oldObject.metadata.name in {{ $protected | toJson }}) &&
+        !oldObject.metadata.name.startsWith("kube-") &&
+        has(oldObject.metadata.labels) &&
+        {{ $label | quote }} in oldObject.metadata.labels &&
+        oldObject.metadata.labels[{{ $label | quote }}] == "retired"
+      messageExpression: >-
+        "namespace " + oldObject.metadata.name + " can't be purged: only a
+        retired Acyclix team namespace ({{ $label }}=retired) that isn't a
+        protected namespace may be deleted by this identity"
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-purge
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "execution-kernel.fullname" . }}-purge
+  validationActions: [Deny]
+{{- end }}

@@ -1,0 +1,54 @@
+{{- if not .Values.kernelApiUrl }}
+{{- fail "Set kernelApiUrl to execution-kernel's kernel-api Service URL -- execution-console is its only authorized caller (see console/src/routes/executions.ts)." }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "execution-console.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.service.port | quote }}
+  KERNEL_API_URL: {{ .Values.kernelApiUrl | quote }}
+  ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
+  JWT_TTL: {{ .Values.jwtTtl | quote }}
+  ALLOW_SELF_REGISTRATION: {{ .Values.allowSelfRegistration | quote }}
+  # The kernel's image admission policy, whose allowed-source list the
+  # Admin page edits (the execution-kernel chart's image-policy.yaml).
+  IMAGE_POLICY_NAME: {{ .Values.imagePolicy.policyName | quote }}
+  # The kernel's identity admission policy, whose product list the console
+  # keeps current (the execution-kernel chart's identity-policy.yaml).
+  IDENTITY_POLICY_NAME: {{ .Values.identityPolicy.policyName | quote }}
+  POLICY_SYNC_INTERVAL_SECONDS: {{ .Values.policySyncIntervalSeconds | quote }}
+  EXECUTION_RETENTION_DAYS: {{ .Values.retention.executionDays | quote }}
+  AUDIT_RETENTION_DAYS: {{ .Values.retention.auditDays | quote }}
+  SCAN_RETENTION_DAYS: {{ .Values.retention.scanDays | quote }}
+  # Image scanning (values.yaml's scanning).
+  SCANNING_ENABLED: {{ .Values.scanning.enabled | quote }}
+  {{- if .Values.scanning.enabled }}
+  SCANNER_SERVER_URL: {{ printf "http://%s-trivy:4954" (include "execution-console.fullname" .) | quote }}
+  SCANNER_IMAGE: {{ include "execution-console.image" .Values.scanning.image | quote }}
+  SCANNER_SERVICE_ACCOUNT: {{ printf "%s-scanner" (include "execution-console.fullname" .) | quote }}
+  SCANNER_PULL_SECRET: {{ .Values.registryCheck.pullSecretName | quote }}
+  SCAN_WAIT_SECONDS: {{ .Values.scanning.waitSeconds | quote }}
+  SCAN_RESCAN_HOURS: {{ .Values.scanning.rescanHours | quote }}
+  SCAN_POLICY_NAME: {{ .Values.scanning.policyName | quote }}
+  SCAN_PLATFORM: {{ .Values.scanning.platform | quote }}
+  {{- end }}
+  # Team namespaces (values.yaml's teamNamespaces).
+  TEAM_NAMESPACES_MANAGE: {{ .Values.teamNamespaces.manage | quote }}
+  TEAM_NAMESPACES_PURGE: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.purge | quote }}
+  TEAM_NAMESPACE_LABEL: {{ .Values.writeFence.teamNamespaceLabel | quote }}
+  PLATFORM_NAMESPACE: {{ .Release.Namespace | quote }}
+  PROTECTED_NAMESPACES: {{ join "," .Values.teamNamespaces.protected | quote }}
+  TEAM_NAMESPACE_POD_SECURITY: {{ .Values.teamNamespaces.podSecurity | quote }}
+  SECRET_SOURCES_CATALOG_REPO: {{ .Values.secretSources.catalogRepo | quote }}
+  SECRET_SOURCES_CLUSTER_ISSUER: {{ .Values.secretSources.clusterIssuer | quote }}
+  SECRET_SOURCES_GCP_WORKLOAD_IDENTITY_POOL: {{ .Values.secretSources.gcpWorkloadIdentityPool | quote }}
+  SECRET_SOURCES_GKE_CLUSTER_NAME: {{ .Values.secretSources.gkeClusterName | quote }}
+  SECRET_SOURCES_GKE_CLUSTER_LOCATION: {{ .Values.secretSources.gkeClusterLocation | quote }}
+  # Only db/migrate.ts's one-time bootstrap seed reads this -- the running
+  # server never does. Not secret by itself (an email address); the
+  # matching password, if set, lives in the Secret instead.
+  BOOTSTRAP_ADMIN_EMAIL: {{ .Values.bootstrapAdmin.email | quote }}

@@ -1,0 +1,72 @@
+{{/*
+Restricts where kernel-scheduler can dispatch tasks: only into namespaces
+explicitly labelled as team namespaces, never into this release's own.
+
+A task's `team` field *is* the namespace its Job lands in, and the
+scheduler's ClusterRole can create Jobs in any namespace (see rbac.yaml).
+Without this, a task naming `kube-system`, or the namespace this platform
+itself runs in, would be dispatched there under whatever ServiceAccount the
+task named. The console checks team membership, and kernel-api accepts only the
+console, but anything that can create Jobs directly (or a compromised
+console) shouldn't be able to either, so the cluster enforces it too.
+
+Enforced by the Kubernetes API server itself (a ValidatingAdmissionPolicy,
+GA since Kubernetes 1.30), not by kernel code: it holds on any conformant
+cluster, and it holds even for a submission that reached kernel-api
+without going through the console.
+
+Scoped to requests made by this release's scheduler ServiceAccount only, so
+it never affects anything else in the cluster -- including the kernel's own
+integration tests, which create Jobs as the developer's kubeconfig user.
+Covers ConfigMaps as well as Jobs, the two things KubernetesExecutor
+creates (the Job, then its request.json ConfigMap), so the scheduler can't
+create either in a namespace a task doesn't belong in.
+*/}}
+{{- if .Values.dispatchPolicy.enabled }}
+{{- $scheduler := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-kernel.serviceAccountName" .) }}
+{{- $label := .Values.dispatchPolicy.teamNamespaceLabel }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-dispatch
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["jobs"]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["configmaps"]
+  matchConditions:
+    - name: from-kernel-scheduler
+      expression: request.userInfo.username == {{ $scheduler | quote }}
+  validations:
+    - expression: >-
+        {{- if not .Values.dispatchPolicy.allowReleaseNamespace }}
+        namespaceObject.metadata.name != {{ .Release.Namespace | quote }} &&
+        {{- end }}
+        has(namespaceObject.metadata.labels) &&
+        {{ $label | quote }} in namespaceObject.metadata.labels &&
+        namespaceObject.metadata.labels[{{ $label | quote }}] == "true"
+      messageExpression: >-
+        "namespace " + namespaceObject.metadata.name + " is not an Acyclix team
+        namespace (it needs the label {{ $label }}=true), so tasks can't be
+        dispatched into it"
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-dispatch
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "execution-kernel.fullname" . }}-dispatch
+  validationActions: [Deny]
+{{- end }}

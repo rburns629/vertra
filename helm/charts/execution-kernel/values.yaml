@@ -1,0 +1,427 @@
+# -- The kernel image (built from the repo's own Dockerfile). One image,
+# both kernel-api and kernel-scheduler — they differ only in `command:`.
+image:
+  # -- The released images (built, scanned and signed by the release
+  # workflow). Local installs set their own (helm/values/kind/).
+  repository: ghcr.io/rburns629/acyclix/execution-kernel
+  # -- Defaults to the chart's appVersion: the image released with it.
+  tag: ""
+  # -- Pin by digest ("sha256:…") so what runs can't change under a moved tag.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+maxTasksPerExecution: 500
+
+serviceAccount:
+  create: true
+  name: ""
+
+# kernel-scheduler needs a ClusterRole (Jobs/Pods/ConfigMaps) to run the
+# Kubernetes executor: each task declares its own owning `team`
+# (app/contracts/task.py), which becomes the namespace its Job is dispatched
+# into, so the scheduler's own ServiceAccount identity necessarily spans
+# every team namespace, not just its own. kernel-api gets no Kubernetes API
+# access at all, since it only ever talks to Postgres.
+#
+# This is intentionally the coarser of two options, not the only one: the
+# narrower alternative is a Role + RoleBinding provisioned per team
+# namespace (docs/security-model.md), granting the
+# scheduler's ServiceAccount only the namespaces that currently have
+# onboarded teams instead of every namespace by construction. That's real
+# follow-up work, not done here: it means the RBAC surface has to grow
+# every time a team onboards, most naturally as part of whatever "create
+# team" flow console/ ends up owning, not something this chart can provision
+# once at install time.
+rbac:
+  create: true
+
+# -- Only dispatch tasks into namespaces carrying this label with the value
+# "true", and never into the namespace this release is installed in (see
+# templates/dispatch-policy.yaml). The scheduler's ClusterRole above can
+# create Jobs anywhere; this is what narrows "anywhere" to "team namespaces".
+# Label a namespace when its team is onboarded (the catalog's
+# apply-teams.yml does this for catalog platforms), e.g.
+#   kubectl label namespace <team> acyclix/team=true
+# Requires Kubernetes 1.30+ (ValidatingAdmissionPolicy).
+dispatchPolicy:
+  enabled: true
+  teamNamespaceLabel: acyclix/team
+  # -- Transitional escape hatch for an install that still shares its
+  # namespace with a team: the platform installed into `default`, which is
+  # also the admins' own team namespace (admins manage everyone's
+  # integrations and test from there). true lets tasks dispatch into the
+  # release namespace *if* it also carries the team label; every other
+  # rule still applies. It knowingly leaves one gap: tasks in that
+  # namespace run alongside the platform's own ServiceAccounts and
+  # Postgres. Leave false for any install in its own namespace (e.g.
+  # acyclix-system); set true only until such an install is migrated.
+  allowReleaseNamespace: false
+
+# -- Purging a retired platform's namespace (see templates/purge-policy.yaml).
+# Only images under an allowed source may run (templates/image-policy.yaml).
+# sourceRegistry and additionalSources seed the policy on first install.
+# After that the console's Admin page owns the list, and upgrades keep
+# whatever it holds. Empty means nothing can run until an admin sets it.
+# Entries may only contain letters, digits and . _ : / -
+# -- Which ServiceAccount a step may run as and which Secrets it may mount
+# (templates/identity-policy.yaml): "default" with none, unless it's a
+# registered product, which runs as the ServiceAccount its product.yaml
+# declares with only the Secrets it lists. The console keeps the policy's
+# product list current; enforced by the API server for every Job the
+# scheduler creates in a team namespace.
+identityPolicy:
+  enabled: true
+
+imagePolicy:
+  enabled: true
+  # -- e.g. us-central1-docker.pkg.dev/<project>/catalog-products, or
+  # localhost:5001 for the kind demo's local registry.
+  sourceRegistry: ""
+  # -- More allowed paths, e.g. [docker.io/library].
+  additionalSources: []
+
+# Images from the source registry only run if catalog CI signed them
+# (templates/image-signature.yaml). Needs Sigstore's policy-controller
+# installed in the cluster first.
+imageSignature:
+  enabled: false
+  # -- PEM public keys; an image signed by any one of them passes: a key
+  # pair generated for the catalog (`cosign generate-key-pair`, its
+  # cosign.pub here) or a cloud KMS key's (`cosign public-key --key
+  # gcpkms://...`, or awskms://, azurekms://, hashivault://). List two
+  # during a rotation.
+  publicKeys: []
+  # -- Keyless: signed by catalog CI's own OIDC identity, recorded in
+  # Sigstore's public transparency log, no key anywhere. Accepted alongside
+  # any publicKeys. For GitHub Actions: issuer
+  # https://token.actions.githubusercontent.com, and a subject matching the
+  # catalog's publish workflow on main, e.g.
+  # ^https://github\.com/my-org/acyclix-catalog/\.github/workflows/ci\.yml@refs/heads/main$
+  keyless:
+    issuer: ""
+    subjectRegExp: ""
+    # Public Sigstore by default; a private instance's URLs otherwise.
+    fulcioUrl: https://fulcio.sigstore.dev
+    rekorUrl: https://rekor.sigstore.dev
+  # -- Which images need a signature (globs). Empty means everything under
+  # imagePolicy.sourceRegistry.
+  images: []
+
+# -- Finished executions (tasks, outputs, logs, events) are deleted this
+# many days after they finished; 0 keeps them forever. Keep the console's
+# retention.executionDays the same. A deleted execution's requestId can
+# start a new one.
+executionRetentionDays: 90
+
+# -- Images that failed their security scan don't run (templates/
+# scan-policy.yaml): the console keeps the failed digests here (the console
+# chart's scanning). requireDigest: every step's image must be pinned
+# (`…@sha256:…`), as the console does at submission, so the digest checked
+# is the image that runs.
+scanPolicy:
+  enabled: true
+  requireDigest: true
+
+# A platform's lifecycle is carried by the same label dispatchPolicy reads:
+#   acyclix/team=true     active: tasks may be dispatched there
+#   acyclix/team=retired  retired: dispatch blocked; eligible for purge
+# `purgers` get a ClusterRole to delete namespaces, and an admission policy
+# limits them to namespaces labelled `retired` that aren't protected
+# (default, kube-*, this release's namespace, and protectedNamespaces).
+# Keep purgers separate from the identity that retires (which can relabel
+# namespaces), so no single identity can both mark and delete.
+purgePolicy:
+  enabled: true
+  # e.g. [{kind: User, name: "catalog-purge-ci@<project>.iam.gserviceaccount.com"}]
+  #   or [{kind: ServiceAccount, name: acyclix-purger, namespace: acyclix-system}]
+  purgers: []
+  # Anything else that must never be purged, e.g. [external-secrets].
+  protectedNamespaces: []
+
+api:
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  # -- Who may call kernel-api (kernel/app/api/auth.py). The console sends
+  # its ServiceAccount token, projected for `audience`; kernel-api checks
+  # it with a TokenReview and accepts only the ServiceAccounts listed here
+  # (`namespace` defaults to this release's). kernel-api runs as its own
+  # ServiceAccount, bound to the built-in system:auth-delegator role for
+  # those reviews. Turn off only on a throwaway cluster: anything that can
+  # reach kernel-api could then submit work for any team.
+  auth:
+    enabled: true
+    audience: acyclix-kernel-api
+    allowedServiceAccounts:
+      - name: console-execution-console
+  # -- Explicit, because without them GKE Autopilot assigns 500m CPU and
+  # 2Gi to every container and bills for it (measured use: under 25m and
+  # 100Mi). The CPU limit lets it burst (startup, password hashing) where
+  # the cluster allows bursting; elsewhere Autopilot sets limit = request.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi
+
+scheduler:
+  replicaCount: 1
+  # The longest the scheduler waits between passes when nothing happens; a
+  # watched Job or Pod change wakes it sooner, and a pass that made progress
+  # is followed by the next at once.
+  pollIntervalSeconds: 1
+  leaseDurationSeconds: 60
+  # READY tasks claimed per pass, and Kubernetes API calls (Job starts,
+  # status reads) a pass has in flight at once.
+  claimLimit: 50
+  executorConcurrency: 16
+  # The most steps claimed or running at once, across the platform and per
+  # team; 0 means no limit. Steps over a limit wait their turn. Exact with one
+  # scheduler replica; with more, each can overshoot by up to one claimLimit.
+  maxRunningTasks: 0
+  maxRunningTasksPerTeam: 0
+  # A failed task that will be retried (its maxAttempts allows, and the
+  # failure is retryable) waits this many seconds first, doubling after each
+  # failure, at most retryBackoffMaxSeconds. 0 retries at once.
+  retryBackoffSeconds: 5
+  retryBackoffMaxSeconds: 300
+  # Longest one Kubernetes API call may take before it fails (the client's
+  # default is to wait forever).
+  kubernetesRequestTimeoutSeconds: 30
+  # A start that raises (a timeout, a lost response) may still have created
+  # the Job, so the same attempt is retried, adopting it, up to this many
+  # times in a row before the attempt fails and what it left is removed.
+  maxDispatchFailures: 5
+  # Every Job's activeDeadlineSeconds is its task's timeout plus this: a
+  # backstop, so Kubernetes stops a Job the scheduler lost track of. Covers
+  # pulling the image.
+  jobDeadlineGraceSeconds: 600
+  # Step Pods meet Pod Security's `restricted`: non-root (images must name a
+  # numeric non-root USER), a read-only root filesystem with a writable
+  # /tmp, no capabilities, no privilege escalation, no Kubernetes token.
+  # Turn off only for images that can't run that way.
+  taskPodHardening: true
+  # A step's stored output: its last maxLines lines, at most maxBytes,
+  # refreshed every refreshSeconds while it runs and once when it ends.
+  taskLogs:
+    maxLines: 5000
+    maxBytes: 1048576
+    refreshSeconds: 60
+  # The scheduler is restarted when its loop hasn't come round for this
+  # long (a hung pass). Well above a slow pass plus pollIntervalSeconds.
+  livenessSeconds: 120
+  heartbeatFile: /tmp/acyclix-scheduler-heartbeat
+  # A running step whose Job and Pod haven't changed isn't re-read from the
+  # API, except this often, in case a watch event was missed.
+  watchResyncSeconds: 30
+  # Jobs get an eager explicit cleanup once KubernetesExecutor captures a
+  # terminal result; this is the backstop for anything it never gets back
+  # around to (e.g. a scheduler crash) — see app/executors/kubernetes.py.
+  jobTtlSecondsAfterFinished: 3600
+  # How long a task's image may fail to pull for a reason other than "it
+  # doesn't exist" (registry auth, network) before the task fails as a
+  # retryable IMAGE_PULL_FAILED. A missing image fails at once as
+  # IMAGE_NOT_FOUND. Keep it below the default task timeout (300s).
+  imagePullGraceSeconds: 120
+  # kernel-scheduler has no other HTTP server (unlike kernel-api, which
+  # serves /metrics on its normal port) — this is the port it starts one on
+  # just for Prometheus-compatible scraping. See app/scheduler/__main__.py.
+  metricsPort: 9090
+  # -- Arbitrary env vars applied uniformly to every dispatched task
+  # container, regardless of which product image it runs (see
+  # app/config.py's task_extra_environment) — deployment-wide, not
+  # per-task. Typically paired with a task's own `secretRefs`: e.g.
+  # {"GOOGLE_APPLICATION_CREDENTIALS": "/platform/secrets/<name>/key.json"}
+  # to point a product's own ADC discovery at whatever that task mounted.
+  taskExtraEnvironment: {}
+  # -- The Pod size for any part a step doesn't set itself (its own
+  # `resources`, or its product's): cpu, memory, memoryLimit as Kubernetes
+  # quantities, e.g. {cpu: 100m, memory: 256Mi}. Empty: such steps request
+  # nothing and the cluster's defaults apply (on GKE Autopilot, 0.5 vCPU and
+  # 2 GiB per Pod, which is what makes unsized steps expensive there).
+  taskDefaultResources: {}
+  # -- Where step Pods may run, applied to every step, in the Pod spec's own
+  # shape. Mostly for sending steps to cheaper Spot capacity. Spot nodes can
+  # be reclaimed at any moment; a reclaimed step fails as retryable, so give
+  # steps a maxAttempts of 2 or more. Examples (check your node pools' labels):
+  #   GKE (Autopilot or Standard): nodeSelector: {cloud.google.com/gke-spot: "true"}
+  #   EKS with Karpenter:          nodeSelector: {karpenter.sh/capacity-type: spot}
+  #   EKS managed node groups:     nodeSelector: {eks.amazonaws.com/capacityType: SPOT}
+  #   AKS Spot node pools:         nodeSelector: {kubernetes.azure.com/scalesetpriority: spot}
+  #     plus the toleration for the taint AKS puts on them:
+  #     tolerations: [{key: kubernetes.azure.com/scalesetpriority, operator: Equal,
+  #                    value: spot, effect: NoSchedule}]
+  # To prefer Spot but fall back to regular nodes, use a preferred
+  # nodeAffinity on the same label instead of the nodeSelector.
+  # -- The imagePullSecret every step Pod names, for images in private
+  # registries: `acyclix-pull` when the console chart's
+  # registryCheck.copyToTeams is on (it keeps that Secret in every team
+  # namespace). Empty: none.
+  taskImagePullSecret: ""
+  taskPlacement:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+# -- Both workloads' pods carry prometheus.io/* scrape annotations
+# unconditionally: they're inert unless something is actually configured to
+# look for them (the classic annotation-based pod discovery most
+# self-hosted Prometheus/kube-prometheus-stack setups use out of the box),
+# so there's no cost to leaving them on for clusters that don't use them —
+# including GKE, where Managed Prometheus is configured separately via its
+# own PodMonitoring/ClusterPodMonitoring CRDs instead of these annotations.
+
+# -- Bundled Postgres, the default per the brief ("Postgres should ship as
+# part of the default Helm installation"). To use your own instead, set
+# postgres.enabled=false and either externalDatabaseUrl or existingSecret.
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16"
+    # -- Pin by digest ("sha256:…"), as for image.digest.
+    digest: ""
+  auth:
+    username: postgres
+    # -- Empty: generated on install and kept on upgrades (it lives in this
+    # release's Secret). Set it only to choose your own (URL-safe) password.
+    # Installs from before 2026-10-17 kept the old default, "postgres":
+    # rotate it (docs/operations.md, "Databases").
+    password: ""
+    database: execution_kernel
+  # -- Also host the console's database on this instance, under its own role
+  # (templates/console-database.yaml), so the console needs no Postgres of
+  # its own: one Pod and volume instead of two. Then set the console chart's
+  # postgres.enabled=false and existingSecret=<this release's fullname>-console-db
+  # (kernel-execution-kernel-console-db for a release named kernel), and
+  # install this chart first.
+  consoleDatabase:
+    enabled: false
+    database: execution_console
+    username: console
+    # Where its backups go under backup.bucket: the same prefix the console
+    # chart's own backups would use (its release name).
+    backupPrefix: console
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+# -- Only used when postgres.enabled is false: a full SQLAlchemy async URL,
+# e.g. postgresql+asyncpg://user:pass@host:5432/dbname. Prefer
+# existingSecret over this where possible — this value is visible in
+# `helm get values` / `helm history`.
+externalDatabaseUrl: ""
+
+# -- Only used when postgres.enabled is false: the name of a pre-existing
+# Secret (in the release namespace) holding the database URL. Takes
+# precedence over externalDatabaseUrl and never appears in Helm's own
+# release history.
+existingSecret: ""
+existingSecretKey: "database-url"
+
+# -- A scheduled pg_dump of the bundled Postgres (and of the console's
+# database, when postgres.consoleDatabase hosts it), checked with
+# pg_restore --list, then copied to the chosen destination as
+# <release>/<UTC timestamp>.pgdump. Only meaningful with postgres.enabled:
+# an external database has its own backups, so this is skipped otherwise.
+# Cloud destinations sign in with the cluster's workload identity (no
+# stored key), except an S3-compatible service that has none. Restoring:
+# docs/operations.md, "Backups".
+backup:
+  enabled: false
+  schedule: "0 8 * * *"
+  # -- gcs | s3 | azure | pvc
+  destination: gcs
+  # -- For gcs, s3 and azure: a pre-existing ServiceAccount in the release
+  # namespace, bound to a cloud identity allowed to write to the
+  # destination (GKE Workload Identity, EKS Pod Identity or IRSA, AKS
+  # Workload Identity). Not created here: the console chart's backup can
+  # share it. Unused for pvc.
+  serviceAccountName: "acyclix-pg-backup"
+  gcs:
+    # -- Bucket name, no gs://. The identity needs roles/storage.objectCreator
+    # and roles/storage.objectViewer on it (gsutil reads before writing).
+    bucket: ""
+    image: "google/cloud-sdk:586.0.0-slim"
+  s3:
+    # -- Bucket name, no s3://. The identity needs s3:PutObject on it.
+    bucket: ""
+    region: ""
+    # -- Only for an S3-compatible service (MinIO, Cloudflare R2, ...):
+    # its URL, e.g. https://minio.example:9000.
+    endpoint: ""
+    # -- Only where no workload identity exists (S3-compatible services):
+    # a Secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+    credentialsSecret: ""
+    image: "amazon/aws-cli:2.37.0"
+  azure:
+    # -- The identity needs Storage Blob Data Contributor on the container;
+    # the ServiceAccount carries azure.workload.identity/client-id.
+    storageAccount: ""
+    container: ""
+    image: "mcr.microsoft.com/azure-cli:2.89.1"
+  pvc:
+    # -- A PersistentVolumeClaim you create in the release namespace. Not
+    # created by the chart: most storage classes bind a volume only once a
+    # Pod uses it, which here is the first backup, so `helm --wait` would
+    # hang on it. A volume in the same cluster protects against bad data,
+    # not against losing the cluster or its storage: prefer a bucket where
+    # there is one.
+    claimName: ""
+    # -- Dumps older than this are deleted after each backup. (For buckets,
+    # set a lifecycle rule on the bucket instead.)
+    keepDays: 30
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+
+# -- Longest any one database statement may run, for kernel-api and the
+# scheduler (asyncpg's default is to wait forever).
+databaseCommandTimeoutSeconds: 60
+
+# -- NetworkPolicies (templates/networkpolicy.yaml): only this release's Pods
+# (and the console's, when this instance hosts its database) may reach
+# Postgres; only the console may reach kernel-api; only metricsFrom may
+# reach the scheduler. Needs a CNI that enforces NetworkPolicy (kindnet,
+# GKE Dataplane V2, Calico, Cilium, ...); others ignore them silently.
+networkPolicy:
+  enabled: true
+  # -- The console's Pods, in this namespace.
+  consoleSelector:
+    app.kubernetes.io/name: execution-console
+  # -- Extra NetworkPolicy peers allowed to scrape /metrics (kernel-api's
+  # port 8000, the scheduler's metricsPort), e.g.
+  #   - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+  metricsFrom: []
+
+migration:
+  # Generous on purpose: the migration Job isn't gated on Postgres actually
+  # being ready (Kubernetes has no native "wait for another resource"
+  # primitive), so it relies on the Job's own retry-with-backoff to ride
+  # out Postgres still starting on a fresh install.
+  backoffLimit: 10
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi

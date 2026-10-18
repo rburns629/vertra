@@ -1,0 +1,231 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+#
+# Proves the charts' admission policies on a real cluster: dispatch (team
+# namespaces only), image sources, step identity (kernel chart) and the
+# console's write fence (console chart). Every case is a server-side dry run,
+# so nothing is created, made as the identity the policy guards (impersonated).
+#
+# Renders the policies under their own release name, "policytest", so they
+# only ever match that release's (impersonated) identities: an Acyclix
+# install on the same cluster is unaffected. Removes everything it added.
+#
+#   bash helm/tests/admission-policies.sh            # kubectl's current context
+#   KUBE_CONTEXT=kind-acyclix-local bash helm/tests/admission-policies.sh
+#
+# Needs kubectl, helm, python3, and a cluster with ValidatingAdmissionPolicy
+# (Kubernetes 1.30+) where you may impersonate ServiceAccounts.
+set -uo pipefail
+cd "$(dirname "$0")/../.."
+
+CONTEXT_ARGS=()
+[ -n "${KUBE_CONTEXT:-}" ] && CONTEXT_ARGS=(--context "$KUBE_CONTEXT")
+# ${a[@]+...}: an empty array is "unbound" to bash 3.2 (macOS) under set -u.
+k() { kubectl ${CONTEXT_ARGS[@]+"${CONTEXT_ARGS[@]}"} "$@"; }
+
+RELEASE=policytest
+PLATFORM_NS=$RELEASE-system
+TEAM_A=$RELEASE-team-a
+TEAM_B=$RELEASE-team-b
+OTHER_NS=$RELEASE-other
+RETIRED_NS=$RELEASE-retired
+SCHEDULER=system:serviceaccount:$PLATFORM_NS:$RELEASE-execution-kernel
+CONSOLE=system:serviceaccount:$PLATFORM_NS:$RELEASE-execution-console
+SOURCE=registry.example
+PRODUCTS='[{"team":"'$TEAM_A'","repository":"registry.example/db","action":"create","serviceAccount":"db-sa"},{"team":"","repository":"registry.example/platform","action":"run","serviceAccount":"plat-sa"}]'
+TEAM_SECRETS='{"'$TEAM_A'":"api-token,db-key","'$TEAM_B'":"b-key"}'
+FAILURES=0
+
+render() {
+  {
+    helm template "$RELEASE" helm/charts/execution-kernel -n "$PLATFORM_NS" \
+      --set imagePolicy.sourceRegistry=$SOURCE \
+      --show-only templates/dispatch-policy.yaml \
+      --show-only templates/image-policy.yaml \
+      --show-only templates/identity-policy.yaml \
+      --set scanPolicy.requireDigest=false --show-only templates/scan-policy.yaml
+    echo "---"
+    # The console as the purger, as on kind and GKE.
+    helm template "$RELEASE" helm/charts/execution-kernel -n "$PLATFORM_NS" \
+      --set 'purgePolicy.purgers[0].kind=ServiceAccount' \
+      --set "purgePolicy.purgers[0].name=$RELEASE-execution-console" \
+      --set "purgePolicy.purgers[0].namespace=$PLATFORM_NS" \
+      --show-only templates/purge-policy.yaml
+    echo "---"
+    helm template "$RELEASE" helm/charts/execution-console -n "$PLATFORM_NS" \
+      --set kernelApiUrl=http://unused \
+      --show-only templates/write-fence-policy.yaml \
+      --show-only templates/namespace-policy.yaml
+  }
+}
+
+cleanup() {
+  render | k delete -f - --ignore-not-found > /dev/null 2>&1
+  k delete clusterrolebinding,clusterrole $RELEASE-dry-run --ignore-not-found > /dev/null 2>&1
+  k delete namespace "$PLATFORM_NS" "$TEAM_A" "$TEAM_B" "$OTHER_NS" "$RETIRED_NS" --ignore-not-found --wait=false > /dev/null 2>&1
+}
+trap cleanup EXIT
+
+echo "Setting up on $(k config current-context)"
+# A previous run's namespaces may still be terminating; creating them again
+# would fail until they're gone.
+for _ in $(seq 1 90); do
+  k get namespaces --field-selector status.phase=Terminating -o name | grep -q "namespace/$RELEASE-" || break
+  sleep 2
+done
+for ns in "$PLATFORM_NS" "$TEAM_A" "$TEAM_B" "$OTHER_NS" "$RETIRED_NS"; do
+  k create namespace "$ns" --dry-run=client -o yaml | k apply -f - > /dev/null
+done
+k label namespace "$TEAM_A" "$TEAM_B" acyclix/team=true --overwrite > /dev/null
+k label namespace "$RETIRED_NS" acyclix/team=retired --overwrite > /dev/null
+for sa in eso-gcp db-sa; do
+  k -n "$TEAM_A" create serviceaccount "$sa" --dry-run=client -o yaml | k apply -f - > /dev/null
+done
+
+# RBAC comes before admission, so the impersonated identities need leave to
+# create what the cases try to create.
+k apply -f - > /dev/null <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: $RELEASE-dry-run}
+rules:
+  - {apiGroups: [batch], resources: [jobs], verbs: [create]}
+  - {apiGroups: [""], resources: [secrets, configmaps], verbs: [create]}
+  - {apiGroups: [""], resources: [namespaces], verbs: [get, create, update, patch]}
+  - {apiGroups: [""], resources: [serviceaccounts], verbs: [get, update, patch]}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: $RELEASE-dry-run}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: $RELEASE-dry-run}
+subjects:
+  - {kind: ServiceAccount, name: $RELEASE-execution-kernel, namespace: $PLATFORM_NS}
+  - {kind: ServiceAccount, name: $RELEASE-execution-console, namespace: $PLATFORM_NS}
+EOF
+
+render | k apply -f - > /dev/null
+# The console keeps the identity policy's products and team secrets
+# current; here, fixed ones.
+k get validatingadmissionpolicy $RELEASE-execution-kernel-identity -o json \
+  | python3 -c '
+import json, sys
+policy = json.load(sys.stdin)
+literals = {"products": sys.argv[1], "teamSecrets": sys.argv[2]}
+for variable in policy["spec"]["variables"]:
+    if variable["name"] in literals:
+        variable["expression"] = literals[variable["name"]]
+print(json.dumps(policy))' "$PRODUCTS" "$TEAM_SECRETS" \
+  | k replace -f - > /dev/null
+# And the scan policy's failed digests.
+BLOCKED_DIGEST=sha256:$(printf 'b%.0s' $(seq 64))
+k get validatingadmissionpolicy $RELEASE-execution-kernel-scan -o json \
+  | python3 -c '
+import json, sys
+policy = json.load(sys.stdin)
+for variable in policy["spec"]["variables"]:
+    if variable["name"] == "blockedDigests":
+        variable["expression"] = json.dumps([sys.argv[1]])
+print(json.dumps(policy))' "$BLOCKED_DIGEST" \
+  | k replace -f - > /dev/null
+
+job() {  # namespace, image, action, serviceAccount, secret ("" for none), extra container JSON
+  local volumes='{"name":"x","emptyDir":{}}' mounts=""
+  if [ -n "$5" ]; then
+    volumes+=',{"name":"s","secret":{"secretName":"'$5'"}}'
+    mounts=',"volumeMounts":[{"name":"s","mountPath":"/platform/secrets/'$5'"}]'
+  fi
+  k --as="$SCHEDULER" -n "$1" create --dry-run=server -f - 2>&1 <<EOF
+{"apiVersion":"batch/v1","kind":"Job","metadata":{"name":"policy-check"},
+ "spec":{"template":{"spec":{"restartPolicy":"Never","serviceAccountName":"$4",
+   "containers":[{"name":"product","image":"$2","args":["$3"]$mounts${6:-}}],
+   "volumes":[$volumes]}}}}
+EOF
+}
+
+as_console() { k --as="$CONSOLE" "$@" --dry-run=server 2>&1; }
+new_namespace() {  # name, labels as JSON
+  echo '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"'"$1"'","labels":'"$2"'}}' | as_console create -f -
+}
+
+secret() {  # namespace
+  k --as="$CONSOLE" -n "$1" create secret generic policy-check --from-literal=a=b --dry-run=server 2>&1
+}
+
+expect() {  # label, "allowed" | text the refusal must contain, output
+  local allowed=no passed=no
+  echo "$3" | grep -q "(server dry run)" && allowed=yes
+  if [ "$2" = allowed ]; then
+    [ "$allowed" = yes ] && passed=yes
+  elif [ "$allowed" = no ] && echo "$3" | grep -q -- "$2"; then
+    passed=yes
+  fi
+  if [ "$passed" = yes ]; then
+    printf '  ok    %s\n' "$1"
+  else
+    printf '  FAIL  %s\n        expected %s, got: %s\n' "$1" "$2" "$(echo "$3" | tr '\n' ' ' | sed 's/.*denied request: //' | cut -c1-200)"
+    FAILURES=$((FAILURES + 1))
+  fi
+}
+
+# Policies take a few seconds to reach the API server's admission chain.
+for _ in $(seq 1 30); do
+  job "$OTHER_NS" $SOURCE/app:1 run default "" | grep -q "not an Acyclix team namespace" && break
+  sleep 1
+done
+
+echo "Dispatch:"
+expect "a team namespace"                     allowed                        "$(job "$TEAM_A" $SOURCE/app:1 run default "")"
+expect "a namespace without the team label"   "not an Acyclix team namespace" "$(job "$OTHER_NS" $SOURCE/app:1 run default "")"
+expect "the platform's own namespace"         "not an Acyclix team namespace" "$(job "$PLATFORM_NS" $SOURCE/app:1 run default "")"
+
+echo "Image sources:"
+expect "an image from another registry"       IMAGE_NOT_ALLOWED              "$(job "$TEAM_A" busybox:1.36 run default "")"
+
+echo "Step identity:"
+expect "a product, as its SA, with its secret"   allowed               "$(job "$TEAM_A" $SOURCE/db:1 create db-sa db-key)"
+expect "the same, pinned by digest"              allowed               "$(job "$TEAM_A" $SOURCE/db@sha256:$(printf '0%.0s' $(seq 64)) create db-sa db-key)"
+expect "any other secret of its team"            allowed               "$(job "$TEAM_A" $SOURCE/db:1 create db-sa api-token)"
+expect "a Secret its team never registered"      IDENTITY_NOT_ALLOWED  "$(job "$TEAM_A" $SOURCE/db:1 create db-sa eso-auth)"
+expect "a platform product, its team's secret"   allowed               "$(job "$TEAM_B" $SOURCE/platform:2 run plat-sa b-key)"
+expect "a platform product, another team's"      IDENTITY_NOT_ALLOWED  "$(job "$TEAM_B" $SOURCE/platform:2 run plat-sa db-key)"
+expect "the product's image, another action"     IDENTITY_NOT_ALLOWED  "$(job "$TEAM_A" $SOURCE/db:1 delete db-sa "")"
+expect "a team's product in another team"        IDENTITY_NOT_ALLOWED  "$(job "$TEAM_B" $SOURCE/db:1 create db-sa "")"
+expect "a platform product in any team"          allowed               "$(job "$TEAM_B" $SOURCE/platform:2 run plat-sa "")"
+expect "an unregistered image as a product's SA" IDENTITY_NOT_ALLOWED  "$(job "$TEAM_A" $SOURCE/app:1 run db-sa "")"
+expect "default with a secret"                   IDENTITY_NOT_ALLOWED  "$(job "$TEAM_A" $SOURCE/app:1 run default db-key)"
+expect "a secret through env, not a volume"      IDENTITY_NOT_ALLOWED  "$(job "$TEAM_A" $SOURCE/app:1 run default "" ',"env":[{"name":"K","valueFrom":{"secretKeyRef":{"name":"db-key","key":"k"}}}]')"
+
+echo "Image scans:"
+expect "an image whose scan failed"              IMAGE_SCAN_FAILED     "$(job "$TEAM_A" $SOURCE/app:1@$BLOCKED_DIGEST run default "")"
+expect "the same repository, another digest"     allowed               "$(job "$TEAM_A" $SOURCE/app:1@sha256:$(printf 'c%.0s' $(seq 64)) run default "")"
+
+echo "Console write fence:"
+expect "a Secret in a team namespace"            allowed                     "$(secret "$TEAM_A")"
+expect "a Secret in kube-system"                 "may only write in team"    "$(secret kube-system)"
+expect "a Secret in the platform's namespace"    "may only write in team"    "$(secret "$PLATFORM_NS")"
+
+echo "Console namespaces:"
+expect "create one labelled a team's"            allowed                      "$(new_namespace $RELEASE-new '{"acyclix/team":"true"}')"
+expect "create one without the label"            "only create a namespace"    "$(new_namespace $RELEASE-plain '{}')"
+expect "create a kube-* one"                     "protected"                  "$(new_namespace kube-$RELEASE '{"acyclix/team":"true"}')"
+expect "retire a team's"                         allowed                      "$(as_console label namespace "$TEAM_A" acyclix/team=retired --overwrite)"
+expect "label a namespace that isn't a team's"   "isn't a team's"             "$(as_console label namespace "$OTHER_NS" acyclix/team=true)"
+expect "label the platform's own"                "protected"                  "$(as_console label namespace "$PLATFORM_NS" acyclix/team=true)"
+expect "a label value other than true/retired"   "isn't a team's"             "$(as_console label namespace "$TEAM_A" acyclix/team=yes --overwrite)"
+expect "change another label too"                "isn't a team's"             "$(as_console label namespace "$TEAM_A" other=1)"
+expect "change an annotation"                    "isn't a team's"             "$(as_console annotate namespace "$TEAM_A" note=1)"
+
+echo "Console purging:"
+expect "a retired team namespace"                allowed                      "$(as_console delete namespace "$RETIRED_NS")"
+expect "an active team namespace"                "can't be purged"            "$(as_console delete namespace "$TEAM_A")"
+expect "kube-system (Kubernetes itself refuses)" "forbidden"                  "$(as_console delete namespace kube-system)"
+
+echo "Console ServiceAccounts:"
+expect "update ESO's (eso-*)"                    allowed                      "$(as_console -n "$TEAM_A" annotate serviceaccount eso-gcp iam.gke.io/gcp-service-account=x)"
+expect "update a product's"                      "only update the ServiceAccounts ESO" "$(as_console -n "$TEAM_A" annotate serviceaccount db-sa iam.gke.io/gcp-service-account=x)"
+
+if [ "$FAILURES" -gt 0 ]; then
+  echo "$FAILURES case(s) failed"
+  exit 1
+fi
+echo "All cases passed."

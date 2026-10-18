@@ -1,0 +1,95 @@
+# A sample: PostgreSQL flexible server, with real Azure API calls (billed).
+# Not yet proven against a real account; see the azure team's README.md.
+name: postgres-flexible
+team: azure
+displayName: PostgreSQL flexible server
+description: 'Finds an Azure Database for PostgreSQL flexible server by name, or creates it
+  with Microsoft Entra sign-in only (no password) and no public access, and makes the given
+  Entra principal its administrator. A first create takes several minutes: set the step''s
+  timeoutSeconds to 1500 or more.'
+owner: azure-team
+runtime: python3.12
+actions:
+- name: create
+  script: actions/create.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - subscriptionId
+    - resourceGroup
+    - serverName
+    - location
+    - adminObjectId
+    - adminName
+    properties:
+      subscriptionId:
+        type: string
+        description: The Azure subscription id.
+        pattern: ^[0-9a-fA-F-]{36}$
+      resourceGroup:
+        type: string
+        description: Its resource group.
+      serverName:
+        type: string
+        description: The server's name, also its host name.
+        pattern: ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$
+      location:
+        type: string
+        description: The Azure region, such as westeurope.
+      tenantId:
+        type: string
+        description: The Microsoft Entra tenant; defaults to the step's own.
+      adminObjectId:
+        type: string
+        description: The administrator's Entra object id.
+      adminName:
+        type: string
+        description: 'The administrator''s name: a group, user or app.'
+      adminType:
+        type: string
+        description: What the administrator is.
+        enum:
+        - User
+        - Group
+        - ServicePrincipal
+        default: Group
+      version:
+        type: string
+        description: PostgreSQL's major version.
+        default: '16'
+      skuName:
+        type: string
+        description: The compute size.
+        default: Standard_B1ms
+      skuTier:
+        type: string
+        description: The compute tier.
+        default: Burstable
+      storageGb:
+        type: integer
+        description: Storage in GiB.
+        default: 32
+      publicNetworkAccess:
+        type: string
+        description: Enabled or Disabled.
+        enum:
+        - Enabled
+        - Disabled
+        default: Disabled
+  output:
+    type: object
+    required:
+    - serverName
+    - fqdn
+    - id
+    properties:
+      serverName:
+        type: string
+        description: The server.
+      fqdn:
+        type: string
+        description: Its host name.
+      id:
+        type: string
+        description: Its resource id.

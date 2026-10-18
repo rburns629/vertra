@@ -1,0 +1,37 @@
+# One of five language samples (Python, TypeScript, Go, PowerShell, Rust):
+# the same contract, text in and text out, in each language. Chain them with
+# the DAG in its team's README.md (samples/local/README.md).
+name: reverse
+team: local
+displayName: Reverse (TypeScript)
+description: >-
+  Writes the text backwards, keeping emoji and accented letters whole. A
+  TypeScript sample of the product contract.
+owner: local
+runtime: node24
+actions:
+  - name: transform
+    script: src/transform.ts
+    input:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text to change, up to 1,000 characters.
+          maxLength: 1000
+    output:
+      type: object
+      additionalProperties: false
+      required: [text, language]
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The text backwards, such as "dlrow olleh".
+        language:
+          type: string
+          title: Language
+          description: The language this product is written in, TypeScript.

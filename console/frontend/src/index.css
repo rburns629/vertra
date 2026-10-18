@@ -1,0 +1,7 @@
+/* Almost everything used to live here as hand-rolled classes; MUI's
+ * CssBaseline (see main.tsx) now handles resets/typography/colors, and
+ * every page uses MUI components + the theme (see theme.ts) instead of
+ * these classes -- none of them are referenced anywhere anymore. */
+#root {
+  min-height: 100vh;
+}

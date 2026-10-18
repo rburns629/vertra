@@ -1,0 +1,63 @@
+# A sample: RDS for PostgreSQL, with real AWS API calls (billed).
+# Not yet proven against a real account; see the aws team's README.md.
+name: rds-postgres
+team: aws
+displayName: RDS for PostgreSQL
+description: 'Finds an RDS for PostgreSQL instance by id, or creates it (encrypted, not publicly
+  accessible, its master password generated and kept by AWS Secrets Manager) and waits until
+  it''s available. A first create takes several minutes: set the step''s timeoutSeconds to
+  1500 or more.'
+owner: aws-team
+runtime: python3.12
+actions:
+- name: create
+  script: actions/create.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - instanceId
+    - region
+    properties:
+      instanceId:
+        type: string
+        description: 'The instance id: a letter, then letters, digits or single hyphens.'
+      region:
+        type: string
+        description: The AWS region, such as eu-west-1.
+        pattern: ^[a-z]{2}(-[a-z]+)+-[0-9]$
+      instanceClass:
+        type: string
+        description: The instance class.
+        default: db.t4g.micro
+      allocatedStorageGb:
+        type: integer
+        description: Storage in GiB.
+        default: 20
+      engineVersion:
+        type: string
+        description: A PostgreSQL version; the default is RDS's.
+      masterUsername:
+        type: string
+        description: The master user's name.
+        default: acyclix_admin
+  output:
+    type: object
+    required:
+    - instanceId
+    - endpoint
+    - port
+    properties:
+      instanceId:
+        type: string
+        description: The instance.
+      endpoint:
+        type: string
+        description: Its host name.
+      port:
+        type: integer
+        description: Its port.
+      masterUserSecretArn:
+        type: string
+        description: 'The Secrets Manager secret holding the master password: grant an app''s
+          own role access to it, never pass the password on.'

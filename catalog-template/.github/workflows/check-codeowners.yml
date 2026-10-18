@@ -1,0 +1,38 @@
+name: check-codeowners
+
+# Asks GitHub itself whether .github/CODEOWNERS has errors: an owner that
+# doesn't exist or has no write access here, or a line it can't parse.
+# GitHub ignores such an owner silently, so a path whose only owner is
+# unknown needs no review at all; this check is how that's caught.
+# (`./catalogctl validate` checks the layout, offline; this checks the
+# owners, which only GitHub knows.)
+#
+# No paths filter: make it a required status check on main, and a required
+# check that never starts would block every pull request. The weekly run
+# catches owners that disappear later (someone leaves, a team is renamed).
+on:
+  pull_request: {}
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CODEOWNERS with GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # The pull request's own version, or main's on the weekly run.
+          REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          errors=$(gh api "repos/$GITHUB_REPOSITORY/codeowners/errors?ref=$REF" --jq '.errors')
+          if [ "$errors" = "[]" ]; then
+            echo "CODEOWNERS: no errors."
+            exit 0
+          fi
+          echo "$errors" | jq -r '.[] | "::error file=\(.path),line=\(.line)::\(.kind): \(.message | split("\n")[0])"'
+          exit 1

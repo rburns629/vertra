@@ -1,0 +1,7 @@
+# Tests, local builds and anything a local run leaves behind stay out of the image.
+tests/
+node_modules/
+dist/
+*credentials*
+*service-account*
+.env

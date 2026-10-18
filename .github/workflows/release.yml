@@ -1,0 +1,117 @@
+name: release
+
+# On a version tag (v1.2.3, or v1.2.3-rc.1 for a pre-release):
+#
+#   images  builds the kernel and console images, scans them with the same
+#           gate CI uses (.github/scripts/scan-image.sh), then builds them
+#           for linux/amd64 and linux/arm64, pushes them to
+#           ghcr.io/<owner>/<repo>/execution-{kernel,console} as the version
+#           (and as latest, unless it's a pre-release), and signs each by
+#           digest, keyless, with this workflow's own identity.
+#   charts  packages both Helm charts at that version (their appVersion
+#           too, so they run the images just pushed), pushes them to
+#           oci://ghcr.io/<owner>/<repo>/charts, signs them, and creates the
+#           GitHub release with the packaged charts attached.
+#
+# Verify an image: cosign verify ghcr.io/<owner>/<repo>/execution-kernel:<v> \
+#   --certificate-identity-regexp 'https://github.com/<owner>/<repo>/.github/workflows/release.yml@.*' \
+#   --certificate-oidc-issuer https://token.actions.githubusercontent.com
+#
+# The packages are private on first push: make them public on GitHub (the
+# package's settings) once, so `helm install` and image pulls need no login.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # keyless signing
+    strategy:
+      fail-fast: true
+      matrix:
+        component: [kernel, console]
+    env:
+      COMPONENT: ${{ matrix.component }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: bash .github/scripts/install-scanners.sh trivy osv-scanner cosign
+      - name: Build for the scan
+        run: docker build --pull -t "acyclix-release/$COMPONENT:scan" "$COMPONENT/"
+      - name: Scan
+        # The amd64 build; the arm64 one is built from the same Dockerfile
+        # and base image, by digest.
+        run: bash .github/scripts/scan-image.sh "acyclix-release/$COMPONENT:scan" "$COMPONENT"
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Sign in to GHCR
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build and push (amd64, arm64)
+        id: push
+        run: |
+          version="${TAG#v}"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/execution-$COMPONENT"
+          tags=(-t "$image:$version")
+          case "$version" in *-*) ;; *) tags+=(-t "$image:latest") ;; esac
+          docker buildx build --platform linux/amd64,linux/arm64 --pull \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.version=$version" \
+            --label "org.opencontainers.image.licenses=MIT" \
+            "${tags[@]}" --metadata-file "$RUNNER_TEMP/meta.json" --push "$COMPONENT/"
+          digest=$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/meta.json")
+          echo "ref=$image@$digest" >> "$GITHUB_OUTPUT"
+      - name: Sign
+        env:
+          REF: ${{ steps.push.outputs.ref }}
+        run: cosign sign --yes "$REF"
+
+  charts:
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # the GitHub release
+      packages: write
+      id-token: write   # keyless signing
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.3.0
+      - run: bash .github/scripts/install-scanners.sh cosign
+      - name: Sign in to GHCR
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Package, push and sign the charts
+        run: |
+          version="${TAG#v}"
+          registry="ghcr.io/${GITHUB_REPOSITORY,,}/charts"
+          mkdir -p dist
+          for chart in execution-kernel execution-console; do
+            helm package "helm/charts/$chart" --version "$version" --app-version "$version" -d dist
+            helm push "dist/$chart-$version.tgz" "oci://$registry" 2>&1 | tee "$RUNNER_TEMP/push.log"
+            digest=$(grep -o 'sha256:[0-9a-f]\{64\}' "$RUNNER_TEMP/push.log" | tail -1)
+            cosign sign --yes "$registry/$chart@$digest"
+          done
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prerelease=()
+          case "$TAG" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$TAG" dist/*.tgz --verify-tag --generate-notes "${prerelease[@]}"

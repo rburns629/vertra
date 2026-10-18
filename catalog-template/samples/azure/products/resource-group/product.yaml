@@ -1,0 +1,47 @@
+# A sample: Resource group, with real Azure API calls (billed).
+# Not yet proven against a real account; see the azure team's README.md.
+name: resource-group
+team: azure
+displayName: Resource group
+description: Finds a resource group by name, or creates it. Where everything later steps create
+  goes.
+owner: azure-team
+runtime: python3.12
+actions:
+- name: create
+  script: actions/create.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - subscriptionId
+    - name
+    - location
+    properties:
+      subscriptionId:
+        type: string
+        description: The Azure subscription id.
+        pattern: ^[0-9a-fA-F-]{36}$
+      name:
+        type: string
+        description: The resource group's name.
+        pattern: ^[-\w._()]{1,90}$
+      location:
+        type: string
+        description: The Azure region, such as westeurope.
+  output:
+    type: object
+    required:
+    - resourceGroup
+    - location
+    - id
+    properties:
+      resourceGroup:
+        type: string
+        description: The group.
+      location:
+        type: string
+        description: Where it is.
+      id:
+        type: string
+        description: Its resource id.

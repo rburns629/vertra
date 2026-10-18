@@ -1,0 +1,10 @@
+# A sample team that runs anywhere: no cloud, no secrets. Its products are
+# one small product written in five languages, and the starters a new team
+# copies from for the languages it picks.
+name: local
+displayName: Local samples
+description: >-
+  The same small text product in Python, TypeScript, Go, PowerShell and
+  Rust: text in, text out, nothing called. Safe to retire.
+owner: catalog-admins
+contact: catalog-admins@example.com

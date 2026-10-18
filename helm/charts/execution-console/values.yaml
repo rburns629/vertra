@@ -1,0 +1,367 @@
+# -- The execution-console image (built from console/'s own Dockerfile). One
+# process serves both the API and the already-built frontend (see
+# console/src/index.ts) -- there's no separate frontend workload to deploy.
+image:
+  # -- The released images (built, scanned and signed by the release
+  # workflow). Local installs set their own (helm/values/kind/).
+  repository: ghcr.io/rburns629/acyclix/execution-console
+  # -- Defaults to the chart's appVersion: the image released with it.
+  tag: ""
+  # -- Pin by digest ("sha256:…") so what runs can't change under a moved tag.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+  # -- Only meaningful for LoadBalancer/NodePort. With the Kubernetes
+  # default ("Cluster") the node SNATs incoming traffic, so the console sees
+  # every browser as the same node IP, and the login rate limit (keyed on
+  # client IP + email, see console/src/routes/auth.ts) can't tell attackers
+  # apart from everyone else. "Local" keeps the real client IP. Its
+  # trade-off is that only nodes running a console Pod take traffic, which
+  # is fine at replicaCount 1. Left empty, the Kubernetes default applies.
+  externalTrafficPolicy: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  # -- Annotations on the console's ServiceAccount. For
+  # registryCheck.gcpMetadataToken on GKE, the Workload Identity binding:
+  #   iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
+  annotations: {}
+
+# -- The kernel's image admission policy, whose allowed-source list the
+# Admin page edits: "<execution-kernel release name>-execution-kernel-image".
+imagePolicy:
+  policyName: kernel-execution-kernel-image
+
+# -- The kernel's identity admission policy, whose list of registered
+# products the console keeps current so the cluster enforces each product's
+# ServiceAccount and Secrets: "<execution-kernel release name>-execution-kernel-identity".
+# Empty: the console never writes it (then disable it in the kernel chart too,
+# or only "default" with no Secrets can run).
+identityPolicy:
+  policyName: kernel-execution-kernel-identity
+
+# -- How often the identity and scan policies are rewritten from the
+# console's database whatever changed, so a failed write or a hand edit
+# doesn't last (admins see the outcome at GET /api/policy-sync).
+policySyncIntervalSeconds: 300
+
+# -- How long records are kept, in days; 0 keeps them forever. executionDays:
+# who may see an execution (keep it the kernel chart's executionRetentionDays,
+# which deletes the executions themselves); auditDays: the audit log;
+# scanDays: scan verdicts of images not used for that long.
+retention:
+  executionDays: 90
+  auditDays: 365
+  scanDays: 90
+
+# -- Scanning every image before it's registered or run, whoever built it
+# (console/src/scanning.ts): a Trivy server here holds the vulnerability
+# database, and the console runs a short Trivy client Job per image digest
+# against it, in this namespace. A HIGH or CRITICAL vulnerability with a fix,
+# or a secret in the image, fails it: new registrations and runs of it are
+# refused (never steps already running) until it's rescanned clean or an
+# admin accepts it. Images in use are rescanned every rescanHours. The
+# kernel chart's scan policy (scanPolicy) holds the failed digests, so the
+# cluster refuses them too. The server downloads its database from the
+# internet (mirror.gcr.io / ghcr.io) when it starts and every few hours.
+scanning:
+  enabled: true
+  image:
+    repository: aquasec/trivy
+    tag: "0.74.0"
+    digest: sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+  # The kernel chart's scan admission policy.
+  policyName: kernel-execution-kernel-scan
+  # How long a submission waits for an image's first scan before asking the
+  # caller to try again.
+  waitSeconds: 60
+  rescanHours: 24
+  # -- Which image of a multi-platform index to scan, e.g. linux/amd64:
+  # what the cluster's nodes run. Empty: the console's own platform.
+  platform: ""
+  # On the scan Jobs' ServiceAccount, e.g. a cloud identity that may read a
+  # private registry (GKE: iam.gke.io/gcp-service-account). For a pull
+  # Secret, registryCheck.pullSecretName is used.
+  serviceAccountAnnotations: {}
+  server:
+    resources:
+      requests: {cpu: 100m, memory: 512Mi}
+      limits: {memory: 2Gi}
+
+# -- Checking that a DAG's images still exist before submitting, rerunning
+# or retrying it (see console/src/registry.ts). Only the registries configured
+# here are ever contacted; images anywhere else are let through unchecked,
+# and the kernel still fails a missing image at dispatch (IMAGE_NOT_FOUND).
+registryCheck:
+  # -- A Secret of type kubernetes.io/dockerconfigjson in this namespace,
+  # the same format as an imagePullSecret, so any registry works (ACR, ECR,
+  # GHCR, Docker Hub, Artifact Registry). Its credential only needs to read
+  # manifests, unless it's also copied to teams (below).
+  pullSecretName: ""
+  # -- Also copy pullSecretName into every team namespace as `acyclix-pull`,
+  # so steps can run images from private registries; set the kernel chart's
+  # scheduler.taskImagePullSecret to `acyclix-pull` to match. Its credential
+  # then needs to pull images, not just read manifests. Steps can't read it
+  # (it's never a team secret); only the kubelet uses it. Kept in step with
+  # the Secret on every policy resync, so a rotation reaches every team.
+  copyToTeams: false
+  # -- GKE only: mint short-lived Artifact Registry/GCR tokens from the
+  # metadata server instead of storing a key. Needs Workload Identity on the
+  # console's ServiceAccount (serviceAccount.annotations) bound to a GSA
+  # with roles/artifactregistry.reader on the repositories to check.
+  gcpMetadataToken: false
+  # -- Where to reach a registry from inside the cluster when that differs
+  # from its name in image references, as {host: url}. On kind:
+  # {"localhost:5001": "http://kind-registry:5000"}.
+  mirrors: {}
+  # -- Pin every task's image to the digest its tag names at submission
+  # (`required`: refuse one the registry can't resolve), so a DAG may say
+  # `:latest` while what runs, and what's scanned, is an exact image. `off`
+  # sends tags as they are.
+  imagePinning: required
+
+# -- This service is the authenticated front door to kernel-api (see
+# console/src/routes/executions.ts); kernel-api only accepts calls from it
+# and should never be reachable directly from a browser. Point this at the
+# execution-kernel release's own kernel-api Service, e.g.
+# http://<execution-kernel release name>-execution-kernel-api.<namespace>.svc.cluster.local:8000
+kernelApiUrl: ""
+
+# -- How the console proves to kernel-api that it's the console: its
+# ServiceAccount token, projected for `audience`, which must match the
+# kernel chart's api.auth.audience (and the kernel must list this
+# ServiceAccount in api.auth.allowedServiceAccounts).
+kernelApiToken:
+  enabled: true
+  audience: acyclix-kernel-api
+
+# -- Cosmetic only, rendered as a badge in the UI (see console/src/config.ts) --
+# lets a browser tab make it obvious whether it's talking to this
+# deployment or to Compose, when both are reachable on localhost at once
+# (e.g. a `kind load docker-image` demo cluster alongside `docker
+# compose`). "Kubernetes" is deliberately generic rather than
+# "Kubernetes (kind)" -- true for any real cluster this chart installs
+# to, GKE included; override per-install if you want the badge to name
+# the specific cluster.
+environmentLabel: "Kubernetes"
+
+# -- Facts the Team page's "Connect a source" wizard shows a platform owner
+# setting up secret syncing (External Secrets Operator). Display only; an
+# empty value makes the wizard say that option isn't available here.
+secretSources:
+  # -- owner/repo of the catalog, where secret-stores/<team>/ lives.
+  catalogRepo: ""
+  # -- This cluster's service-account token issuer, which Azure and AWS
+  # federate with. On GKE:
+  # https://container.googleapis.com/v1/projects/<project>/locations/<location>/clusters/<cluster>
+  clusterIssuer: ""
+  # -- GKE Workload Identity pool, <project>.svc.id.goog.
+  gcpWorkloadIdentityPool: ""
+  # -- The GKE cluster's name and location, as a gcpsm SecretStore names them.
+  gkeClusterName: ""
+  gkeClusterLocation: ""
+
+# -- Signs session JWTs. Leave empty to have one generated on install and
+# kept stable across upgrades (see templates/secret.yaml's lookup against
+# the existing Secret) -- set explicitly only if you have a specific
+# reason to; there's nothing this needs to be shared with.
+jwtSecret: ""
+
+# -- How long a login session lasts before the user has to sign in again:
+# a number followed by m, h, or d. Validated when the console starts (see
+# console/src/config.ts). A password change or admin reset also ends a user's
+# earlier sessions immediately, whatever this is set to.
+jwtTtl: "8h"
+
+# -- Off: admins create accounts on the Admin page, already in their teams.
+# On lets anyone who can reach the console sign up (no email verification),
+# so only for a console behind a trusted network boundary.
+allowSelfRegistration: false
+
+bootstrapAdmin:
+  email: "admin@example.com"
+  # -- Leave empty to have migrate.ts generate one and print it exactly
+  # once to the migration Job's own logs (see console/src/db/migrate.ts) --
+  # deliberately never a hardcoded default password.
+  password: ""
+
+# console/'s own ServiceAccount needs a ClusterRole, for the same reason
+# execution-kernel-scheduler's does (see that chart's values.yaml): it
+# provisions Secrets and ServiceAccounts across every team's namespace, not
+# one fixed namespace, and reading a Namespace at all (ensureNamespaceExists
+# in console/src/k8s.ts, which deliberately never creates one) is a
+# cluster-scoped resource a plain Role can't grant access to, regardless of
+# scope.
+#
+# It can create and replace Secrets in any team namespace, so treat its
+# token with real care. It can't grant RBAC: it may only delete Roles and
+# RoleBindings (the per-secret ones older consoles created), never create
+# or change them. Writes are fenced to team namespaces (writeFence below).
+rbac:
+  create: true
+
+# -- Team namespaces. With `manage`, the console creates each team's
+# namespace, labelled writeFence.teamNamespaceLabel=true, and relabels it
+# `retired` or back as the team is retired or un-retired. So catalog CI needs
+# no cluster credentials. templates/namespace-policy.yaml limits what it may
+# do to namespaces. `protected`: namespaces no team may ever have, beyond
+# kube-* and this release's own.
+#
+# `purge`: also delete a purged team's namespace (the kernel chart's purge
+# policy must then list this release's ServiceAccount under
+# purgePolicy.purgers). Off: the console could then both retire a namespace
+# and delete it, so a compromised console could delete any team's. A purged
+# team's namespace stays, labelled retired (nothing new runs there), for an
+# operator to delete with their own identity.
+teamNamespaces:
+  manage: true
+  purge: false
+  protected: []
+  # -- Pod Security enforced in the namespaces the console creates (the
+  # kernel's step Pods meet `restricted`). Empty for none.
+  podSecurity: restricted
+
+# -- Fences the console's writes (Secrets, ServiceAccounts, Roles,
+# RoleBindings, ExternalSecrets, SecretStores) to team namespaces: those carrying
+# teamNamespaceLabel, as the kernel chart's dispatch policy uses
+# (templates/write-fence-policy.yaml). Its ClusterRole alone would allow
+# them anywhere.
+writeFence:
+  enabled: true
+  teamNamespaceLabel: acyclix/team
+
+# -- Bundled Postgres, matching execution-kernel's own chart. To use your
+# own instead, set postgres.enabled=false and either externalDatabaseUrl
+# or existingSecret.
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16"
+    # -- Pin by digest ("sha256:…"), as for image.digest.
+    digest: ""
+  auth:
+    username: postgres
+    # -- Empty: generated on install and kept on upgrades (it lives in this
+    # release's Secret). Set it only to choose your own (URL-safe) password.
+    # Installs from before 2026-10-17 kept the old default, "postgres":
+    # rotate it (docs/operations.md, "Databases").
+    password: ""
+    database: execution_console
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+# -- Only used when postgres.enabled is false: a full node-postgres URL,
+# e.g. postgresql://user:pass@host:5432/dbname. Prefer existingSecret over
+# this where possible -- this value is visible in `helm get values`.
+externalDatabaseUrl: ""
+
+# -- Only used when postgres.enabled is false: the name of a pre-existing
+# Secret (in the release namespace) holding the database URL. Takes
+# precedence over externalDatabaseUrl and never appears in Helm's own
+# release history.
+existingSecret: ""
+existingSecretKey: "database-url"
+
+# -- A scheduled pg_dump of this chart's own Postgres (when the kernel's
+# instance hosts the console's database, the kernel chart backs it up), checked with
+# pg_restore --list, then copied to the chosen destination as
+# <release>/<UTC timestamp>.pgdump. Only meaningful with postgres.enabled:
+# an external database has its own backups, so this is skipped otherwise.
+# Cloud destinations sign in with the cluster's workload identity (no
+# stored key), except an S3-compatible service that has none. Restoring:
+# docs/operations.md, "Backups".
+backup:
+  enabled: false
+  schedule: "0 8 * * *"
+  # -- gcs | s3 | azure | pvc
+  destination: gcs
+  # -- For gcs, s3 and azure: a pre-existing ServiceAccount in the release
+  # namespace, bound to a cloud identity allowed to write to the
+  # destination (GKE Workload Identity, EKS Pod Identity or IRSA, AKS
+  # Workload Identity). Not created here: the kernel chart's backup can
+  # share it. Unused for pvc.
+  serviceAccountName: "acyclix-pg-backup"
+  gcs:
+    # -- Bucket name, no gs://. The identity needs roles/storage.objectCreator
+    # and roles/storage.objectViewer on it (gsutil reads before writing).
+    bucket: ""
+    image: "google/cloud-sdk:586.0.0-slim"
+  s3:
+    # -- Bucket name, no s3://. The identity needs s3:PutObject on it.
+    bucket: ""
+    region: ""
+    # -- Only for an S3-compatible service (MinIO, Cloudflare R2, ...):
+    # its URL, e.g. https://minio.example:9000.
+    endpoint: ""
+    # -- Only where no workload identity exists (S3-compatible services):
+    # a Secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+    credentialsSecret: ""
+    image: "amazon/aws-cli:2.37.0"
+  azure:
+    # -- The identity needs Storage Blob Data Contributor on the container;
+    # the ServiceAccount carries azure.workload.identity/client-id.
+    storageAccount: ""
+    container: ""
+    image: "mcr.microsoft.com/azure-cli:2.89.1"
+  pvc:
+    # -- A PersistentVolumeClaim you create in the release namespace. Not
+    # created by the chart: most storage classes bind a volume only once a
+    # Pod uses it, which here is the first backup, so `helm --wait` would
+    # hang on it. A volume in the same cluster protects against bad data,
+    # not against losing the cluster or its storage: prefer a bucket where
+    # there is one.
+    claimName: ""
+    # -- Dumps older than this are deleted after each backup. (For buckets,
+    # set a lifecycle rule on the bucket instead.)
+    keepDays: 30
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+
+# -- A NetworkPolicy (templates/networkpolicy.yaml): when the console runs its
+# own Postgres, only this release's Pods may reach it. Needs a CNI that
+# enforces NetworkPolicy; others ignore it silently.
+networkPolicy:
+  enabled: true
+
+migration:
+  # Generous on purpose, same reasoning as execution-kernel's chart: the
+  # migration Job isn't gated on Postgres actually being ready, so it
+  # relies on the Job's own retry-with-backoff to ride out Postgres still
+  # starting on a fresh install.
+  backoffLimit: 10
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi
+
+# -- Explicit, because without them GKE Autopilot assigns 500m CPU and
+# 2Gi to every container and bills for it (measured use: under 25m and
+# 100Mi). The CPU limit lets it burst (startup, password hashing) where
+# the cluster allows bursting; elsewhere Autopilot sets limit = request.
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi

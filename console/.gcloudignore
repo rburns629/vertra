@@ -1,0 +1,15 @@
+# Only relevant to `gcloud builds submit` from this directory -- it has no
+# effect on `docker build` (which uses .dockerignore, or its own COPY
+# instructions) or on git. Without this, gcloud has no ignore file to fall
+# back to from *this* directory specifically (it doesn't walk up to the
+# repo root's .gitignore), so it uploads everything here as the Cloud
+# Build source tarball -- confirmed directly: node_modules included, the
+# tarball was 400-500+ MiB and the upload alone took several minutes.
+
+.git/
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+*.tsbuildinfo
+npm-debug.log*

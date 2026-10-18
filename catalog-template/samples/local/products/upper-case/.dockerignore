@@ -1,0 +1,5 @@
+# Tests and anything a local run leaves behind stay out of the image.
+tests/
+*credentials*
+*service-account*
+.env

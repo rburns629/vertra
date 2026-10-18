@@ -1,0 +1,32 @@
+# Who must approve a change, per path. The only CODEOWNERS file: GitHub
+# reads the first of .github/, the root and docs/, so a second one would be
+# silently ignored.
+#
+# GitHub applies the LAST line that matches a path, so: the fallback first,
+# then one line per team, then the paths only catalog admins may
+# approve, last, so no team line can override them. Owners must be
+# users or teams with write access to this repository; an unknown one is
+# ignored by GitHub and fails check-codeowners.yml. `./catalogctl validate`
+# checks the layout: every team has an owner, and the admin paths below
+# resolve to the same owners as the fallback.
+#
+# Branch protection on main must require a code owner's review, or none of
+# this is enforced.
+
+# Fallback, and the catalog admins: whoever runs this catalog. CHANGE
+# @your-org/catalog-admins everywhere below to them.
+* @your-org/catalog-admins
+
+# Teams: each team's owners approve its products. Adding a team
+# adds a line here, which (.github/ below) catalog admins approve:
+#   /teams/<team>/ @<org>/<github-team>
+
+# Catalog admins only. What CI runs and publishes with, the starters every
+# team copies, and SecretStores (applying one changes the cluster: a team
+# proposes, admins merge).
+/.github/ @your-org/catalog-admins
+/tools/ @your-org/catalog-admins
+/acyclix.yaml @your-org/catalog-admins
+/catalogctl @your-org/catalog-admins
+/templates/ @your-org/catalog-admins
+/teams/*/secret-stores/ @your-org/catalog-admins

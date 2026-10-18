@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""gcp/project's "create" action: looks up a GCP project by id, creating it
+(and linking billing) only if it doesn't already exist.
+
+
+Run directly by this product's entrypoint.sh, which already guarantees this
+script only ever runs for action="create" -- see product.yaml for this
+action's declared input/output schema.
+
+By default, calls Resource Manager and (when creating a new project) Cloud
+Billing using whatever GOOGLE_APPLICATION_CREDENTIALS/ADC the container
+finds. If GCP_TARGET_SERVICE_ACCOUNT is set, those base credentials are
+never used to call GCP APIs directly -- they're only the *source* identity
+used to impersonate that service account instead (short-lived tokens,
+minted on demand; no static key for the target identity ever exists). The
+source identity must itself hold roles/iam.serviceAccountTokenCreator on
+the target service account, and the target service account needs its own
+IAM grants on whatever it's actually asked to do -- see the gcp team's README.md.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+import google.auth
+import google.auth.credentials
+from google.api_core.exceptions import GoogleAPIError, NotFound
+from google.auth import impersonated_credentials
+from google.cloud import resourcemanager_v3
+from google.cloud.billing_v1 import CloudBillingClient
+from google.cloud.billing_v1.types import ProjectBillingInfo
+
+INPUT_PATH = Path("/platform/input/request.json")
+OUTPUT_PATH = Path("/platform/output/result.json")
+
+TARGET_SERVICE_ACCOUNT_ENV_VAR = "GCP_TARGET_SERVICE_ACCOUNT"
+IMPERSONATION_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+
+
+def _write_result(result: dict[str, Any]) -> None:
+    OUTPUT_PATH.write_text(json.dumps(result))
+
+
+def _failure(code: str, message: str, *, retryable: bool = False) -> int:
+    _write_result(
+        {"status": "failed", "error": {"code": code, "message": message, "retryable": retryable}}
+    )
+    return 1
+
+
+def _build_credentials() -> google.auth.credentials.Credentials | None:
+    """Impersonated credentials for GCP_TARGET_SERVICE_ACCOUNT, or None to
+    leave each client's own ADC discovery in charge, unimpersonated, when
+    that env var isn't set -- None is a valid "use the default" value for
+    every google-cloud client's credentials= argument.
+    """
+    target = os.environ.get(TARGET_SERVICE_ACCOUNT_ENV_VAR)
+    if not target:
+        return None
+    source_credentials, _ = google.auth.default()
+    return impersonated_credentials.Credentials(
+        source_credentials=source_credentials,
+        target_principal=target,
+        target_scopes=IMPERSONATION_SCOPES,
+    )
+
+
+def main() -> int:
+    request = json.loads(INPUT_PATH.read_text())
+    inputs = request.get("inputs", {})
+
+    project_id = inputs.get("projectId")
+    if not project_id:
+        return _failure("MISSING_INPUT", "inputs.projectId is required")
+
+    credentials = _build_credentials()
+    projects = resourcemanager_v3.ProjectsClient(credentials=credentials)
+
+    # Existing-user path: a project with this id already exists, so this
+    # action is a no-op other than reporting it back.
+    try:
+        projects.get_project(name=f"projects/{project_id}")
+        print(f"project '{project_id}' already exists, skipping creation")
+        _write_result({"status": "succeeded", "outputs": {"projectId": project_id}})
+        return 0
+    except NotFound:
+        pass
+    except GoogleAPIError as error:
+        return _failure("GCP_API_ERROR", str(error), retryable=True)
+
+    # New-user path: create the project, then link billing if given --
+    # without it the project exists but can't run billable services like
+    # Cloud Run, which is exactly what gcp/app-hosting needs next.
+    try:
+        operation = projects.create_project(
+            project=resourcemanager_v3.Project(project_id=project_id, display_name=project_id)
+        )
+        operation.result()  # blocks until the long-running create completes
+
+        billing_account_id = inputs.get("billingAccountId")
+        if billing_account_id:
+            CloudBillingClient(credentials=credentials).update_project_billing_info(
+                name=f"projects/{project_id}",
+                project_billing_info=ProjectBillingInfo(
+                    billing_account_name=f"billingAccounts/{billing_account_id}"
+                ),
+            )
+    except GoogleAPIError as error:
+        return _failure("GCP_API_ERROR", str(error), retryable=True)
+
+    print(f"created project '{project_id}'")
+    _write_result({"status": "succeeded", "outputs": {"projectId": project_id}})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

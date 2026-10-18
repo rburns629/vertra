@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Scanning every image before it's registered or run (scanning.ts): reading
+ * Trivy's output, verdicts per digest, what a failed one blocks, and an
+ * admin accepting one. Kubernetes is faked: a scan "Job" finishes with
+ * whatever output the test sets; what the real Job and Trivy server do is
+ * proven on kind.
+ */
+import { randomUUID } from "node:crypto";
+import { inArray, like } from "drizzle-orm";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { hashPassword } from "../src/auth/password.js";
+import { config } from "../src/config.js";
+import { db } from "../src/db/client.js";
+import { createUser, setUserAdmin } from "../src/db/queries.js";
+import { imageScans, products, users } from "../src/db/schema.js";
+import { buildApp } from "../src/index.js";
+import { createScanJob, readScanJob, updateScanPolicy } from "../src/k8s.js";
+import { parseScanOutput, reconcileScans, scanBlocker, scanTarget, verdictOf } from "../src/scanning.js";
+
+/** What each scan Job (by target) prints when it finishes. */
+const outputs = new Map<string, string>();
+const jobs = new Map<string, string>(); // job name -> target
+let policyWritten: string | undefined;
+
+vi.mock("../src/k8s.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/k8s.js")>()),
+  createScanJob: vi.fn((spec: { name: string; target: string }) => {
+    jobs.set(spec.name, spec.target);
+    return Promise.resolve();
+  }),
+  readScanJob: vi.fn((_namespace: string, name: string) => {
+    const output = outputs.get(jobs.get(name) ?? "");
+    return Promise.resolve(output === undefined ? { state: "running" } : { state: "succeeded", output });
+  }),
+  deleteScanJob: vi.fn(() => Promise.resolve()),
+  updateScanPolicy: vi.fn(async (_name: string, build: () => Promise<string>) => {
+    policyWritten = await build();
+    return true;
+  }),
+}));
+
+const prefix = `scan-${randomUUID().slice(0, 6)}`;
+const emails: string[] = [];
+let app: FastifyInstance;
+let admin: string;
+const original = { ...config.scanning };
+
+const CLEAN = "V|HIGH||CVE-2026-0001|libfoo|1.0\nEND\n";
+const VULNERABLE = "V|CRITICAL|1.2.3|CVE-2026-0002|openssl|1.2.0\nV|HIGH||CVE-2026-0003|zlib|1.0\nEND\n";
+const LEAKY = "S|CRITICAL|private-key|Asymmetric Private Key\nEND\n";
+
+/** A fresh pinned image, so scans never collide across tests. */
+function image(): string {
+  const hex = randomUUID().replace(/-/g, "");
+  return `registry.example/${prefix}/app:latest@sha256:${(hex + hex).slice(0, 64)}`;
+}
+
+beforeAll(async () => {
+  Object.assign(config.scanning, { enabled: true, waitSeconds: 0, policyName: "kernel-execution-kernel-scan", image: "trivy", serverUrl: "http://trivy:4954" });
+  app = await buildApp();
+  await app.ready();
+  const email = `${prefix}@example.com`;
+  emails.push(email);
+  const user = await createUser(email, await hashPassword("correct-horse-battery"));
+  await setUserAdmin(user.id, true);
+  admin = app.jwt.sign({ userId: user.id });
+});
+
+afterAll(async () => {
+  Object.assign(config.scanning, original);
+  await db.delete(imageScans).where(like(imageScans.image, `%${prefix}%`));
+  await db.delete(products).where(like(products.name, `${prefix}%`));
+  await db.delete(users).where(inArray(users.email, emails));
+  await app.close();
+});
+
+beforeEach(() => {
+  vi.mocked(createScanJob).mockClear();
+  vi.mocked(readScanJob).mockClear();
+  vi.mocked(updateScanPolicy).mockClear();
+  policyWritten = undefined;
+});
+
+/** Starts the image's scan, lets its Job finish with `output`, and records it. */
+async function scanned(img: string, output: string): Promise<void> {
+  outputs.set(scanTarget(img).target, output);
+  await scanBlocker([img]);
+  await reconcileScans();
+}
+
+describe("reading a scan", () => {
+  it("blocks on a fixable HIGH/CRITICAL or a secret, and only reports the unfixable", () => {
+    const clean = parseScanOutput(CLEAN);
+    expect(clean).toMatchObject({ fixable: 0, unfixable: 1, secrets: 0 });
+    expect(clean && verdictOf(clean)).toBe("passed");
+    const vulnerable = parseScanOutput(VULNERABLE);
+    expect(vulnerable).toMatchObject({ fixable: 1, unfixable: 1 });
+    expect(vulnerable?.findings[0]).toMatchObject({ id: "CVE-2026-0002", fixedIn: "1.2.3" });
+    expect(vulnerable && verdictOf(vulnerable)).toBe("failed");
+    const leaky = parseScanOutput(LEAKY);
+    expect(leaky && verdictOf(leaky)).toBe("failed");
+  });
+
+  it("never reads a cut-off output as clean", () => {
+    expect(parseScanOutput("V|CRITICAL|1.2.3|CVE-1|x|1\n")).toBeNull();
+    expect(parseScanOutput("")).toBeNull();
+  });
+
+  it("scans through a registry's mirror", () => {
+    config.registryMirrors.set("localhost:5001", "http://kind-registry:5000");
+    try {
+      expect(scanTarget(`localhost:5001/team/app:latest@sha256:${"a".repeat(64)}`)).toEqual({
+        target: `kind-registry:5000/team/app:latest@sha256:${"a".repeat(64)}`,
+        insecure: true,
+      });
+    } finally {
+      config.registryMirrors.clear();
+    }
+  });
+});
+
+describe("what a verdict allows", () => {
+  it("asks the caller to wait while a first scan runs, then lets a clean image run", async () => {
+    const img = image();
+    expect((await scanBlocker([img]))?.error).toBe("IMAGE_SCAN_PENDING");
+    expect(createScanJob).toHaveBeenCalledOnce();
+    outputs.set(scanTarget(img).target, CLEAN);
+    await reconcileScans();
+    expect(await scanBlocker([img])).toBeNull();
+    expect(createScanJob).toHaveBeenCalledOnce(); // no second scan while the verdict is fresh
+  });
+
+  it("blocks a failed image, and tells the cluster", async () => {
+    const img = image();
+    await scanned(img, VULNERABLE);
+    const blocker = await scanBlocker([img]);
+    expect(blocker?.error).toBe("IMAGE_SCAN_FAILED");
+    expect(blocker?.images[0]?.findings?.fixable).toBe(1);
+    expect(JSON.parse(policyWritten ?? "[]")).toContain(img.split("@")[1]);
+  });
+
+  it("refuses to register a failed image", async () => {
+    const img = image();
+    await scanned(img, LEAKY);
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/products",
+      headers: { authorization: `Bearer ${admin}` },
+      payload: { name: `${prefix}-leaky`, image: img, action: "run" },
+    });
+    expect(response.statusCode).toBe(422);
+    expect(response.json<{ error: string }>().error).toBe("IMAGE_SCAN_FAILED");
+  });
+
+  it("lets an admin accept a failed image with a reason, and only an admin", async () => {
+    const img = image();
+    const digest = img.split("@")[1] ?? "";
+    await scanned(img, VULNERABLE);
+    const member = (await createUser(`${prefix}-m@example.com`, await hashPassword("correct-horse-battery"))).id;
+    emails.push(`${prefix}-m@example.com`);
+    const accept = (token: string, reason: string) =>
+      app.inject({ method: "POST", url: `/api/image-scans/${digest}/accept`, headers: { authorization: `Bearer ${token}` }, payload: { reason } });
+    expect((await accept(app.jwt.sign({ userId: member }), "No fix applies to how we use it.")).statusCode).toBe(403);
+    expect((await accept(admin, "ok")).statusCode).toBe(400); // a real reason
+    expect((await accept(admin, "Not reachable: the binary never parses untrusted input.")).statusCode).toBe(200);
+    expect(await scanBlocker([img])).toBeNull();
+    expect(JSON.parse(policyWritten ?? "[]")).not.toContain(digest);
+  });
+});

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: execution-kernel
+description: A lightweight, container-native DAG execution kernel.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+# ValidatingAdmissionPolicy (GA in 1.30) holds every guardrail this chart adds.
+kubeVersion: ">=1.30.0-0"

@@ -1,0 +1,52 @@
+{{- $callers := list }}
+{{- range .Values.api.auth.allowedServiceAccounts }}
+{{- $callers = append $callers (printf "system:serviceaccount:%s:%s" (.namespace | default $.Release.Namespace) .name) }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+data:
+  # kernel-api's caller check (values.yaml, api.auth).
+  API_AUTH: {{ ternary "tokenreview" "disabled" .Values.api.auth.enabled | quote }}
+  API_TOKEN_AUDIENCE: {{ .Values.api.auth.audience | quote }}
+  API_ALLOWED_CALLERS: {{ $callers | toJson | quote }}
+  MAX_TASKS_PER_EXECUTION: {{ .Values.maxTasksPerExecution | quote }}
+  SCHEDULER_POLL_INTERVAL_SECONDS: {{ .Values.scheduler.pollIntervalSeconds | quote }}
+  LEASE_DURATION_SECONDS: {{ .Values.scheduler.leaseDurationSeconds | quote }}
+  SCHEDULER_CLAIM_LIMIT: {{ .Values.scheduler.claimLimit | quote }}
+  SCHEDULER_EXECUTOR_CONCURRENCY: {{ .Values.scheduler.executorConcurrency | quote }}
+  {{- if gt (int .Values.scheduler.maxRunningTasks) 0 }}
+  SCHEDULER_MAX_RUNNING_TASKS: {{ .Values.scheduler.maxRunningTasks | quote }}
+  {{- end }}
+  {{- if gt (int .Values.scheduler.maxRunningTasksPerTeam) 0 }}
+  SCHEDULER_MAX_RUNNING_TASKS_PER_TEAM: {{ .Values.scheduler.maxRunningTasksPerTeam | quote }}
+  {{- end }}
+  KUBERNETES_REQUEST_TIMEOUT_SECONDS: {{ .Values.scheduler.kubernetesRequestTimeoutSeconds | quote }}
+  SCHEDULER_MAX_DISPATCH_FAILURES: {{ .Values.scheduler.maxDispatchFailures | quote }}
+  KUBERNETES_JOB_DEADLINE_GRACE_SECONDS: {{ .Values.scheduler.jobDeadlineGraceSeconds | quote }}
+  SCHEDULER_HEARTBEAT_FILE: {{ .Values.scheduler.heartbeatFile | quote }}
+  DATABASE_COMMAND_TIMEOUT_SECONDS: {{ .Values.databaseCommandTimeoutSeconds | quote }}
+  SCHEDULER_RETRY_BACKOFF_SECONDS: {{ .Values.scheduler.retryBackoffSeconds | quote }}
+  SCHEDULER_RETRY_BACKOFF_MAX_SECONDS: {{ .Values.scheduler.retryBackoffMaxSeconds | quote }}
+  KUBERNETES_WATCH_RESYNC_SECONDS: {{ .Values.scheduler.watchResyncSeconds | quote }}
+  KUBERNETES_JOB_TTL_SECONDS: {{ .Values.scheduler.jobTtlSecondsAfterFinished | quote }}
+  IMAGE_PULL_GRACE_SECONDS: {{ .Values.scheduler.imagePullGraceSeconds | quote }}
+  # Only kernel-scheduler acts on this (app/scheduler/__main__.py starts a
+  # dedicated metrics HTTP server on it); kernel-api ignores it and serves
+  # /metrics on its normal port instead.
+  METRICS_PORT: {{ .Values.scheduler.metricsPort | quote }}
+  TASK_EXTRA_ENVIRONMENT: {{ .Values.scheduler.taskExtraEnvironment | toJson | quote }}
+  TASK_DEFAULT_RESOURCES: {{ .Values.scheduler.taskDefaultResources | toJson | quote }}
+  TASK_NODE_SELECTOR: {{ .Values.scheduler.taskPlacement.nodeSelector | toJson | quote }}
+  TASK_TOLERATIONS: {{ .Values.scheduler.taskPlacement.tolerations | toJson | quote }}
+  TASK_AFFINITY: {{ .Values.scheduler.taskPlacement.affinity | toJson | quote }}
+  TASK_IMAGE_PULL_SECRET: {{ .Values.scheduler.taskImagePullSecret | quote }}
+  TASK_POD_HARDENING: {{ .Values.scheduler.taskPodHardening | quote }}
+  TASK_LOG_MAX_LINES: {{ .Values.scheduler.taskLogs.maxLines | quote }}
+  TASK_LOG_MAX_BYTES: {{ .Values.scheduler.taskLogs.maxBytes | int | quote }}
+  TASK_LOG_REFRESH_SECONDS: {{ .Values.scheduler.taskLogs.refreshSeconds | quote }}
+  EXECUTION_RETENTION_DAYS: {{ .Values.executionRetentionDays | quote }}

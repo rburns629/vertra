@@ -1,0 +1,62 @@
+name: cloud-sql
+team: gcp
+displayName: GCP Cloud SQL
+description: >-
+  Looks up a Cloud SQL instance by name within a project, creating it only
+  if it doesn't already exist. Idempotent, same as gcp/_project: re-running
+  against an existing instance name is a no-op that still returns its
+  connection info. A real Cloud SQL instance is genuinely billed
+  infrastructure and takes several minutes to provision on first create --
+  submit this with a generous `timeoutSeconds` (900+) on the task, not the
+  kernel's default.
+owner: gcp-team
+runtime: python3.12
+actions:
+  - name: create
+    script: actions/create.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [projectId, instanceName]
+      properties:
+        projectId:
+          type: string
+          description: >-
+            The already-existing GCP project this instance should live in
+            -- typically gcp/_project's own output, via $fromTask/$output.
+        instanceName:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"
+          description: >-
+            The Cloud SQL instance id to look up or create. If an instance
+            with this name already exists in the project, it is returned
+            unchanged -- this action never modifies an existing instance's
+            settings.
+        databaseVersion:
+          type: string
+          default: POSTGRES_15
+          description: One of Cloud SQL's supported database engine/version strings.
+        tier:
+          type: string
+          default: db-f1-micro
+          description: >-
+            The machine tier -- db-f1-micro is the smallest, cheapest
+            shared-core tier, the sane default for a demo.
+        region:
+          type: string
+          default: us-central1
+    output:
+      type: object
+      required: [instanceConnectionName, ipAddress]
+      properties:
+        instanceConnectionName:
+          type: string
+          description: >-
+            "<project>:<region>:<instanceName>" -- what the Cloud SQL Auth
+            Proxy/connector expects, and exactly what gcp/app-hosting's
+            optional cloudSqlConnectionName input wants. Echoed back either
+            way (existing or newly created), for downstream tasks to
+            reference via $fromTask/$output.
+        ipAddress:
+          type: string
+          description: The instance's assigned (typically public) IP address.

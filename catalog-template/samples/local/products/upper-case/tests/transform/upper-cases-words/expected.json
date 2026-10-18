@@ -1,0 +1,7 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "text": "HELLO WORLD",
+    "language": "PowerShell"
+  }
+}

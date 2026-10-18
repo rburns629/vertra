@@ -1,0 +1,61 @@
+name: apply-teams
+
+# Onboards each team the moment its catalog folder lands on main: the
+# console creates (or keeps) its team and its Kubernetes namespace, labelled
+# so the kernel may run its steps there. A team folder whose team was
+# retired is un-retired. Calls only the console (./catalogctl teams apply),
+# so this workflow holds no cloud or cluster credentials.
+#
+#   vars.ACYCLIX_CONSOLE_URL   the console
+#   secrets.ACYCLIX_TOKEN      a bot token with teams:create and teams:retire
+on:
+  push:
+    branches: [main]
+    paths: ["teams/*/**"]
+  # Every team, whatever changed: for repairing drift.
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      teams: ${{ steps.find.outputs.teams }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0   # to diff against the push's "before"
+      - id: find
+        env:
+          # Empty (a manual run): every team.
+          BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: echo "teams=$(./catalogctl teams changed --base "$BASE")" >> "$GITHUB_OUTPUT"
+
+  onboard:
+    needs: discover
+    # A push that only removed teams leaves nothing to onboard, and an
+    # empty matrix is an error in GitHub Actions.
+    if: needs.discover.outputs.teams != '[]'
+    runs-on: ubuntu-latest
+    # Gives every team its own GitHub Environment, created empty the
+    # first time a job names it: where a team's BOOTSTRAP_CREDENTIAL for
+    # apply-secret-stores.yml goes. A repo admin limits each new one to main
+    # (README, "Onboarding a team").
+    environment: ${{ matrix.team }}
+    strategy:
+      # One team failing shouldn't stop the others.
+      fail-fast: false
+      matrix:
+        team: ${{ fromJson(needs.discover.outputs.teams) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Make the team and its namespace exist
+        env:
+          # Via env, never pasted into the script: a folder name is chosen
+          # by whoever opens the pull request.
+          TEAM: ${{ matrix.team }}
+          ACYCLIX_CONSOLE_URL: ${{ vars.ACYCLIX_CONSOLE_URL }}
+          ACYCLIX_TOKEN: ${{ secrets.ACYCLIX_TOKEN }}
+        run: ./catalogctl teams apply "$TEAM"

@@ -1,0 +1,48 @@
+name: build-image
+team: gcp
+displayName: GCP Build Image (Cloud Build)
+description: >-
+  Builds a container image from a source archive already in GCS via Cloud
+  Build, pushing it to the given image reference -- or skips the build and
+  returns that reference unchanged if it already exists. The source archive
+  must contain a Dockerfile at its root; this product runs a plain `docker
+  build`, it does not use buildpacks or otherwise infer how to build
+  arbitrary source. Getting a user's uploaded code into GCS in the first
+  place is a separate, prior concern -- see the gcp team's README.md.
+owner: gcp-team
+runtime: python3.12
+actions:
+  - name: create
+    script: actions/create.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [projectId, sourceArchiveUrl, imageUri]
+      properties:
+        projectId:
+          type: string
+          description: >-
+            GCP project the build runs in (and is billed to). Typically
+            supplied via $fromTask/$output from a gcp/_project create task.
+        sourceArchiveUrl:
+          type: string
+          pattern: "^gs://.+"
+          description: >-
+            GCS path to a zip/tar.gz of source code, containing a
+            Dockerfile at its root. Already uploaded before this task
+            runs -- see the gcp team's README.md.
+        imageUri:
+          type: string
+          description: >-
+            Fully-qualified target image reference, including tag (e.g. an
+            Artifact Registry path). If this exact reference already
+            exists, the build is skipped and it's returned unchanged.
+    output:
+      type: object
+      required: [imageUri]
+      properties:
+        imageUri:
+          type: string
+          description: >-
+            Echoed back either way -- feed this into gcp/app-hosting's
+            `image` input via $fromTask/$output.

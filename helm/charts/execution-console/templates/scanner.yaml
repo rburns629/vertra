@@ -1,0 +1,139 @@
+{{/*
+Image scanning (values.yaml's scanning, console/src/scanning.ts): the Trivy
+server, which holds the vulnerability database; the ServiceAccount the
+console's scan Jobs run as (no Kubernetes token: a scan needs none); and a
+Role, in this namespace only, letting the console run those Jobs and read
+their output. Only the scan Jobs may reach the server.
+*/}}
+{{- if .Values.scanning.enabled }}
+{{- $name := printf "%s-trivy" (include "execution-console.fullname" .) }}
+{{- /* Not the console's selector labels: the database NetworkPolicies admit
+Pods carrying those, and the scanner needs no database. */}}
+{{- $trivyLabels := dict "app.kubernetes.io/name" (printf "%s-trivy" (include "execution-console.name" .)) "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "trivy-server" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: trivy-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- toYaml $trivyLabels | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- toYaml $trivyLabels | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: trivy
+          image: {{ include "execution-console.image" .Values.scanning.image | quote }}
+          args: ["server", "--listen", "0.0.0.0:4954", "--cache-dir", "/cache"]
+          env:
+            - name: HOME
+              value: /tmp
+          ports:
+            - name: trivy
+              containerPort: 4954
+          readinessProbe:
+            httpGet: {path: /healthz, port: trivy}
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            {{- toYaml .Values.scanning.server.resources | nindent 12 }}
+          volumeMounts:
+            - {name: cache, mountPath: /cache}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: cache, emptyDir: {sizeLimit: 4Gi}}
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- toYaml $trivyLabels | nindent 4 }}
+  ports:
+    - name: trivy
+      port: 4954
+      targetPort: trivy
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml $trivyLabels | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: image-scan
+      ports:
+        - port: 4954
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "execution-console.fullname" . }}-scanner
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+  {{- with .Values.scanning.serviceAccountAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "execution-console.fullname" . }}-scans
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "execution-console.fullname" . }}-scans
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "execution-console.fullname" . }}-scans
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "execution-console.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
