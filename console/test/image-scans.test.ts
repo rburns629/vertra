@@ -8,7 +8,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { inArray, like } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
 import { config } from "../src/config.js";
@@ -16,13 +16,15 @@ import { db } from "../src/db/client.js";
 import { createUser, setUserAdmin } from "../src/db/queries.js";
 import { imageScans, products, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
-import { createScanJob, readScanJob, updateScanPolicy } from "../src/k8s.js";
+import { createScanJob, readScanJob, scaleScanner, updateScanPolicy } from "../src/k8s.js";
 import { parseScanOutput, reconcileScans, scanBlocker, scanTarget, verdictOf } from "../src/scanning.js";
 
 /** What each scan Job (by target) prints when it finishes. */
 const outputs = new Map<string, string>();
 const jobs = new Map<string, string>(); // job name -> target
 let policyWritten: string | undefined;
+/** The Trivy server's Deployment, for the idling tests. */
+const scanner = { replicas: 1, ready: 1 };
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
@@ -35,6 +37,12 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
     return Promise.resolve(output === undefined ? { state: "running" } : { state: "succeeded", output });
   }),
   deleteScanJob: vi.fn(() => Promise.resolve()),
+  readScanner: vi.fn(() => Promise.resolve({ ...scanner })),
+  scaleScanner: vi.fn((_namespace: string, _name: string, replicas: number) => {
+    scanner.replicas = replicas;
+    if (replicas === 0) scanner.ready = 0;
+    return Promise.resolve();
+  }),
   updateScanPolicy: vi.fn(async (_name: string, build: () => Promise<string>) => {
     policyWritten = await build();
     return true;
@@ -167,5 +175,44 @@ describe("what a verdict allows", () => {
     expect((await accept(admin, "Not reachable: the binary never parses untrusted input.")).statusCode).toBe(200);
     expect(await scanBlocker([img])).toBeNull();
     expect(JSON.parse(policyWritten ?? "[]")).not.toContain(digest);
+  });
+});
+
+describe("an idle scanner", () => {
+  beforeEach(() => {
+    config.scanning.scannerDeployment = "console-execution-console-trivy";
+    vi.mocked(scaleScanner).mockClear();
+  });
+  afterEach(() => {
+    config.scanning.scannerDeployment = "";
+    config.scanning.idleMinutes = original.idleMinutes;
+  });
+
+  it("is woken for a first scan, which starts once it's ready", async () => {
+    Object.assign(scanner, { replicas: 0, ready: 0 });
+    const img = image();
+    expect((await scanBlocker([img]))?.error).toBe("IMAGE_SCAN_PENDING");
+    expect(scaleScanner).toHaveBeenCalledWith(expect.any(String), "console-execution-console-trivy", 1);
+    expect(createScanJob).not.toHaveBeenCalled();
+
+    scanner.ready = 1;
+    outputs.set(scanTarget(img).target, CLEAN);
+    await reconcileScans(); // the pending scan is due: started
+    expect(createScanJob).toHaveBeenCalledOnce();
+    await reconcileScans(); // and read
+    expect(await scanBlocker([img])).toBeNull();
+  });
+
+  it("stays up while scans are recent, and idles once none have been", async () => {
+    Object.assign(scanner, { replicas: 1, ready: 1 });
+    await scanned(image(), CLEAN);
+    await reconcileScans();
+    expect(scaleScanner).not.toHaveBeenCalledWith(expect.any(String), expect.any(String), 0);
+
+    config.scanning.idleMinutes = 0.005; // 300 ms
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await reconcileScans();
+    expect(scaleScanner).toHaveBeenCalledWith(expect.any(String), "console-execution-console-trivy", 0);
+    expect(scanner.replicas).toBe(0);
   });
 });

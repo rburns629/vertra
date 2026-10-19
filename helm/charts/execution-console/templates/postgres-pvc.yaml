@@ -6,6 +6,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "execution-console.labels" . | nindent 4 }}
+  {{- if .Values.postgres.persistence.keepOnUninstall }}
+  # Uninstalling the release leaves the data; deleting it is a separate,
+  # explicit step (acyclixctl destroy asks).
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
 spec:
   accessModes:
     - ReadWriteOnce

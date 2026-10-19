@@ -21,7 +21,7 @@ import { config } from "./config.js";
 import { db } from "./db/client.js";
 import { imageScans } from "./db/schema.js";
 import { normalizeImage } from "./imageRef.js";
-import { createScanJob, deleteScanJob, readScanJob, updateScanPolicy } from "./k8s.js";
+import { createScanJob, deleteScanJob, readScanJob, readScanner, scaleScanner, updateScanPolicy } from "./k8s.js";
 
 export type ScanRow = typeof imageScans.$inferSelect;
 
@@ -111,6 +111,45 @@ function blocks(row: ScanRow): boolean {
   return row.status === "failed" && row.acceptedAt === null;
 }
 
+/**
+ * Whether the Trivy server can take a scan now. An idled one (scaled to zero)
+ * is scaled up and isn't ready yet: the scan stays pending, and
+ * reconcileScans starts it once the server is up.
+ */
+async function scannerReady(): Promise<boolean> {
+  const name = config.scanning.scannerDeployment;
+  if (!name) return true;
+  const scanner = await readScanner(config.platformNamespace, name);
+  if (scanner.replicas === 0) await scaleScanner(config.platformNamespace, name, 1);
+  return scanner.replicas > 0 && scanner.ready > 0;
+}
+
+/**
+ * Scales the Trivy server to zero once no scan is running or due (the
+ * caller checks that) and none has been asked for or finished in
+ * idleMinutes. requestScan and the rescans bring it
+ * back.
+ */
+async function idleScanner(): Promise<void> {
+  const name = config.scanning.scannerDeployment;
+  if (!name || config.scanning.idleMinutes <= 0) return;
+  const idle = sql`now() - make_interval(secs => ${config.scanning.idleMinutes * 60})`;
+  const [busy] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(imageScans)
+    .where(
+      or(
+        isNotNull(imageScans.jobName),
+        gt(imageScans.requestedAt, idle),
+        gt(imageScans.scannedAt, idle),
+      ),
+    );
+  if ((busy?.n ?? 0) > 0) return;
+  const scanner = await readScanner(config.platformNamespace, name);
+  if (scanner.replicas === 0) return;
+  await scaleScanner(config.platformNamespace, name, 0);
+}
+
 async function startScan(row: { digest: string; image: string }): Promise<void> {
   const name = `scan-${row.digest.slice(7, 27)}-${Date.now().toString(36)}`;
   const { target, insecure } = scanTarget(row.image);
@@ -151,7 +190,7 @@ export async function requestScan(image: string): Promise<ScanRow | null> {
   const [row] = await db.select().from(imageScans).where(eq(imageScans.digest, digest));
   if (!row) return null;
   const stale = row.scannedAt !== null && now.getTime() - row.scannedAt.getTime() > config.scanning.rescanHours * 3_600_000;
-  if (row.jobName === null && (row.status === "pending" || row.status === "error" || stale)) {
+  if (row.jobName === null && (row.status === "pending" || row.status === "error" || stale) && (await scannerReady())) {
     await startScan(row);
   }
   return row;
@@ -203,14 +242,18 @@ export async function reconcileScans(): Promise<boolean> {
         isNull(imageScans.jobName),
         gt(imageScans.lastUsedAt, sql`now() - interval '30 days'`),
         or(
+          eq(imageScans.status, "pending"),
           eq(imageScans.status, "error"),
           lt(imageScans.scannedAt, sql`now() - make_interval(hours => ${config.scanning.rescanHours})`),
         ),
       ),
     )
     .limit(20);
-  for (const row of due) await startScan(row);
+  if (due.length > 0 && (await scannerReady())) {
+    for (const row of due) await startScan(row);
+  }
   if (changed) await syncScanPolicy();
+  if (due.length === 0) await idleScanner();
   return changed;
 }
 

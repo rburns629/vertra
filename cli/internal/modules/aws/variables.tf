@@ -1,0 +1,118 @@
+# SPDX-License-Identifier: MIT
+
+variable "profile" {
+  description = "The AWS CLI profile to sign in with (empty: the default credential chain)."
+  type        = string
+  default     = ""
+}
+
+variable "region" {
+  description = "Where everything goes, e.g. us-east-1."
+  type        = string
+}
+
+variable "name" {
+  description = "The cluster's name, and the prefix of everything else this creates."
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{1,18}[a-z0-9]$", var.name))
+    error_message = "3 to 20 lowercase letters, digits and dashes, starting with a letter."
+  }
+}
+
+variable "mode" {
+  description = "auto: EKS Auto Mode (nodes follow the Pods, from zero). standard: managed node groups this sizes (a platform group, a steps group from zero) with the Cluster Autoscaler."
+  type        = string
+  default     = "auto"
+  validation {
+    condition     = contains(["auto", "standard"], var.mode)
+    error_message = "auto or standard."
+  }
+}
+
+variable "kubernetes_version" {
+  description = "The cluster's Kubernetes version (acyclixctl matches the Cluster Autoscaler to it)."
+  type        = string
+  default     = "1.36"
+}
+
+variable "step_headroom" {
+  description = "Standard mode: steps that can start without waiting, so the steps group keeps a node."
+  type        = number
+  default     = 0
+}
+
+variable "size" {
+  description = "minimal, resilient, scaled or auto: decides whether steps run on Spot (all but scaled)."
+  type        = string
+  default     = "minimal"
+  validation {
+    condition     = contains(["minimal", "resilient", "scaled", "auto"], var.size)
+    error_message = "minimal, resilient, scaled or auto."
+  }
+}
+
+variable "namespace" {
+  description = "The platform's Kubernetes namespace: its ServiceAccounts get the cloud identities."
+  type        = string
+  default     = "acyclix-system"
+}
+
+variable "task_registry" {
+  description = "The ECR prefix steps' images live under (<prefix>/<team>/<product>); ECR creates each repository on its first push."
+  type        = string
+  default     = "acyclix-products"
+}
+
+variable "platform_registry" {
+  description = "A prefix for the platform images built from source; empty when installing a release (its images come from GHCR)."
+  type        = string
+  default     = ""
+}
+
+variable "backups" {
+  description = "A bucket for the in-cluster database's daily backups."
+  type        = bool
+  default     = true
+}
+
+variable "backup_retention_days" {
+  type    = number
+  default = 30
+}
+
+variable "delete_data" {
+  description = "Let destroy delete the backup bucket even when it holds backups (acyclixctl destroy asks first)."
+  type        = bool
+  default     = false
+}
+
+variable "catalog_repository" {
+  description = "The catalog's GitHub repository (owner/name): its CI may push to the task registry from main, without a key. Empty: none."
+  type        = string
+  default     = ""
+}
+
+variable "github_oidc_provider_arn" {
+  description = "An account has one GitHub OIDC provider: its ARN if it exists already (acyclixctl looks), empty to create it."
+  type        = string
+  default     = ""
+}
+
+variable "console_zone" {
+  description = "A DNS zone for the console's public address (e.g. acyclix.example.com), created in Route 53; you delegate it with its NS records. Empty: no public console."
+  type        = string
+  default     = ""
+}
+
+variable "console_hostname" {
+  description = "The console's public hostname, in console_zone (default console.<zone>)."
+  type        = string
+  default     = ""
+}
+
+variable "catalog_subject_prefix" {
+  description = "The catalog repository's OIDC subject prefix as GitHub sends it: repo:<owner>/<name>, or with immutable subjects repo:<owner>@<id>/<name>@<id> (acyclixctl catalog reads it). Empty: repo:<catalog_repository>."
+  type        = string
+  default     = ""
+}

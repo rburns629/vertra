@@ -1,0 +1,380 @@
+// SPDX-License-Identifier: MIT
+
+// Package tools checks for the command-line tools an install needs, and
+// downloads the single-binary ones (kubectl, helm, kind) on consent:
+// pinned versions, checked against their projects' published checksums,
+// into acyclixctl's own directory. It never uses sudo or changes PATH, and
+// it doesn't download tools that need a real installer (docker, the cloud
+// CLIs): for those it gives the install command.
+package tools
+
+import (
+	"archive/tar"
+	"compress/gzip"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// Dir is where downloaded tools live: ~/.acyclix/bin.
+func Dir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(os.TempDir(), "acyclix-bin")
+	}
+	return filepath.Join(home, ".acyclix", "bin")
+}
+
+// ExtendPath adds the directories acyclixctl's tools may be in to this
+// process's PATH (never your shell's): its own downloads, and gcloud's SDK
+// bin, where `gcloud components install` puts gke-gcloud-auth-plugin
+// (kubectl runs that by name).
+func ExtendPath() {
+	dirs := []string{Dir()}
+	if gcloud, err := exec.LookPath("gcloud"); err == nil {
+		if real, err := filepath.EvalSymlinks(gcloud); err == nil {
+			dirs = append(dirs, filepath.Dir(real))
+		}
+	}
+	path := os.Getenv("PATH")
+	for _, d := range dirs {
+		if !slices.Contains(filepath.SplitList(path), d) {
+			path += string(os.PathListSeparator) + d
+		}
+	}
+	_ = os.Setenv("PATH", path)
+}
+
+// Path returns the executable to run for a tool: acyclixctl's own copy if
+// it downloaded one, else the one on PATH, else the bare name.
+func Path(name string) string {
+	own := filepath.Join(Dir(), name)
+	if info, err := os.Stat(own); err == nil && !info.IsDir() {
+		return own
+	}
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
+	return name
+}
+
+// Requirement is one tool a selection needs.
+type Requirement struct {
+	Tool string
+	Why  string
+	// Check, when set, verifies more than presence (Docker running, Helm 4).
+	Check func(ctx context.Context, path string) error
+}
+
+// For returns the tools a target needs.
+func For(target string, fromSource bool) []Requirement {
+	reqs := []Requirement{
+		{Tool: "kubectl", Why: "talks to the cluster"},
+		{Tool: "helm", Why: "installs Acyclix's charts", Check: helmFour},
+	}
+	switch target {
+	case "kind":
+		reqs = append(reqs,
+			Requirement{Tool: "docker", Why: "runs kind's node and the local registry", Check: dockerRunning},
+			Requirement{Tool: "kind", Why: "creates the local cluster"},
+		)
+	case "gcp":
+		reqs = append(reqs,
+			Requirement{Tool: "tofu", Why: "creates the cloud side (OpenTofu)"},
+			Requirement{Tool: "gcloud", Why: "your Google Cloud sign-in", Check: gcloudSignedIn},
+			Requirement{Tool: "gke-gcloud-auth-plugin", Why: "lets kubectl sign in to GKE"},
+		)
+		if fromSource {
+			reqs = append(reqs, Requirement{Tool: "docker", Why: "builds the platform images from source", Check: dockerRunning})
+		}
+	case "aws":
+		reqs = append(reqs,
+			Requirement{Tool: "tofu", Why: "creates the cloud side (OpenTofu)"},
+			Requirement{Tool: "aws", Why: "your AWS sign-in, and kubectl's sign-in to EKS"},
+		)
+		if fromSource {
+			reqs = append(reqs, Requirement{Tool: "docker", Why: "builds the platform images from source", Check: dockerRunning})
+		}
+	case "existing":
+		if fromSource {
+			reqs = append(reqs, Requirement{Tool: "docker", Why: "builds the platform images from source", Check: dockerRunning})
+		}
+	}
+	return reqs
+}
+
+// ForCatalog returns the tools `acyclixctl catalog` needs on GitHub.
+func ForCatalog() []Requirement {
+	return []Requirement{
+		{Tool: "git", Why: "the catalog's first commit"},
+		{Tool: "gh", Why: "creates the repository, its variables and secrets, as you", Check: ghSignedIn},
+	}
+}
+
+func ghSignedIn(ctx context.Context, path string) error {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	if err := exec.CommandContext(ctx, path, "auth", "status").Run(); err != nil {
+		return errors.New("installed, but not signed in: `gh auth login --scopes repo,workflow`")
+	}
+	return nil
+}
+
+func gcloudSignedIn(ctx context.Context, path string) error {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, path, "auth", "list", "--filter=status:ACTIVE", "--format=value(account)").Output()
+	if err != nil || strings.TrimSpace(string(out)) == "" {
+		return errors.New("installed, but not signed in: `gcloud auth login`, then `gcloud auth application-default login` (OpenTofu uses the second)")
+	}
+	return nil
+}
+
+// Status is one requirement's state.
+type Status struct {
+	Requirement
+	Path    string
+	Version string
+	Problem string
+	// Downloadable: missing, and acyclixctl can fetch it.
+	Downloadable bool
+	// Install is the command to install it, when it can't be downloaded.
+	Install string
+}
+
+// OK reports whether the requirement is met.
+func (s Status) OK() bool { return s.Problem == "" }
+
+// CheckAll returns each requirement's status.
+func CheckAll(ctx context.Context, reqs []Requirement) []Status {
+	out := make([]Status, 0, len(reqs))
+	for _, r := range reqs {
+		s := Status{Requirement: r}
+		path := Path(r.Tool)
+		if path == r.Tool { // not found anywhere
+			s.Problem = "not installed"
+			if _, ok := pins[r.Tool]; ok {
+				s.Downloadable = true
+			} else {
+				s.Install = installHint(r.Tool)
+			}
+			out = append(out, s)
+			continue
+		}
+		s.Path = path
+		s.Version = versionOf(ctx, r.Tool, path)
+		if r.Check != nil {
+			if err := r.Check(ctx, path); err != nil {
+				s.Problem = err.Error()
+				if _, ok := pins[r.Tool]; ok && r.Tool == "helm" {
+					s.Downloadable = true
+				}
+			}
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// Summary is a one-line account of the statuses, for the approval screen.
+func Summary(statuses []Status) string {
+	var parts []string
+	ok := true
+	for _, s := range statuses {
+		v := s.Version
+		if v == "" {
+			v = "?"
+		}
+		parts = append(parts, s.Tool+" "+v)
+		ok = ok && s.OK()
+	}
+	if ok {
+		return strings.Join(parts, ", ") + ": all present"
+	}
+	return strings.Join(parts, ", ") + ": something's missing (acyclixctl check)"
+}
+
+func versionOf(ctx context.Context, tool, path string) string {
+	args := map[string][]string{
+		"kubectl": {"version", "--client", "-o", "yaml"},
+		"helm":    {"version", "--short"},
+		"kind":    {"version"},
+		"docker":  {"version", "--format", "{{.Client.Version}}"},
+		"tofu":    {"version"},
+		"gh":      {"--version"},
+		"git":     {"--version"},
+		"gcloud":  {"version", "--format", "value(\"Google Cloud SDK\")"},
+		"aws":     {"--version"},
+	}[tool]
+	if args == nil {
+		args = []string{"--version"}
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, path, args...).Output()
+	if err != nil {
+		return ""
+	}
+	m := regexp.MustCompile(`v?(\d+\.\d+\.\d+)`).FindStringSubmatch(string(out))
+	if m == nil {
+		return ""
+	}
+	return m[1]
+}
+
+func helmFour(ctx context.Context, path string) error {
+	v := versionOf(ctx, "helm", path)
+	major, _ := strconv.Atoi(strings.SplitN(v, ".", 2)[0])
+	if major != 4 {
+		return fmt.Errorf("Helm %s found; Acyclix's charts need Helm 4", v)
+	}
+	return nil
+}
+
+func dockerRunning(ctx context.Context, path string) error {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	if err := exec.CommandContext(ctx, path, "info", "--format", "{{.ServerVersion}}").Run(); err != nil {
+		return errors.New("installed, but Docker isn't running: start Docker Desktop (or the docker service)")
+	}
+	return nil
+}
+
+func installHint(tool string) string {
+	mac := runtime.GOOS == "darwin"
+	switch tool {
+	case "gcloud":
+		if mac {
+			return "`brew install --cask google-cloud-sdk`, or https://cloud.google.com/sdk/docs/install ; then `gcloud auth login`"
+		}
+		return "https://cloud.google.com/sdk/docs/install (apt, dnf or the archive); then `gcloud auth login`"
+	case "aws":
+		if mac {
+			return "`brew install awscli` (or AWS's installer: https://aws.amazon.com/cli/), then `aws login`"
+		}
+		return "https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html , then `aws login`"
+	case "gh":
+		if mac {
+			return "`brew install gh`, then `gh auth login --scopes repo,workflow`"
+		}
+		return "https://github.com/cli/cli#installation (apt, dnf), then `gh auth login --scopes repo,workflow`"
+	case "git":
+		if mac {
+			return "`xcode-select --install` (or `brew install git`)"
+		}
+		return "your package manager: `apt install git` or `dnf install git`"
+	case "gke-gcloud-auth-plugin":
+		return "`gcloud components install gke-gcloud-auth-plugin` (with apt or dnf: the google-cloud-cli-gke-gcloud-auth-plugin package)"
+	case "docker":
+		if mac {
+			return "install Docker Desktop: https://docs.docker.com/desktop/setup/install/mac-install/ (or `brew install --cask docker`), and start it"
+		}
+		return "install Docker Engine: https://docs.docker.com/engine/install/ , then start it (`sudo systemctl start docker`)"
+	}
+	return "install " + tool
+}
+
+// Download fetches a pinned tool into Dir, verifying its checksum.
+func Download(ctx context.Context, tool string) (string, error) {
+	pin, ok := pins[tool]
+	if !ok {
+		return "", fmt.Errorf("%s can't be downloaded by acyclixctl: %s", tool, installHint(tool))
+	}
+	key := runtime.GOOS + "/" + runtime.GOARCH
+	sum, ok := pin.SHA256[key]
+	if !ok {
+		return "", fmt.Errorf("no %s download for %s", tool, key)
+	}
+	url := strings.NewReplacer("{os}", runtime.GOOS, "{arch}", runtime.GOARCH, "{version}", pin.Version).Replace(pin.URL)
+
+	if err := os.MkdirAll(Dir(), 0o755); err != nil {
+		return "", err
+	}
+	tmp, err := os.CreateTemp(Dir(), tool+"-*.download")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmp.Name())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
+	if err != nil {
+		return "", fmt.Errorf("downloading %s: %w", tool, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("downloading %s from %s: %s", tool, url, resp.Status)
+	}
+	hash := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(tmp, hash), resp.Body); err != nil {
+		return "", fmt.Errorf("downloading %s: %w", tool, err)
+	}
+	tmp.Close()
+	if got := hex.EncodeToString(hash.Sum(nil)); got != sum {
+		return "", fmt.Errorf("%s's checksum doesn't match (%s, expected %s): refusing to use it", tool, got, sum)
+	}
+
+	dest := filepath.Join(Dir(), tool)
+	if pin.TarMember != "" {
+		member := strings.NewReplacer("{os}", runtime.GOOS, "{arch}", runtime.GOARCH).Replace(pin.TarMember)
+		if err := extract(tmp.Name(), member, dest); err != nil {
+			return "", fmt.Errorf("unpacking %s: %w", tool, err)
+		}
+	} else if err := os.Rename(tmp.Name(), dest); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(dest, 0o755); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
+func extract(archive, member, dest string) error {
+	f, err := os.Open(archive)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	tr := tar.NewReader(gz)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			return fmt.Errorf("%s not in the archive", member)
+		}
+		if err != nil {
+			return err
+		}
+		if h.Name != member {
+			continue
+		}
+		out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(out, io.LimitReader(tr, 512<<20)); err != nil {
+			out.Close()
+			return err
+		}
+		return out.Close()
+	}
+}

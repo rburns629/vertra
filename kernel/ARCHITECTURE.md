@@ -39,6 +39,8 @@ app/
 │                  Alembic migrations (persistence/migrations/).
 ├── services/      Orchestration for API-triggered use cases (submit/cancel/retry/read).
 ├── scheduler/     The polling loop: claim → dispatch → poll → finalize.
+├── sleeper/       One look at whether the platform is idle, and scaling it to zero if so
+│                  (a CronJob; reads the database and Kubernetes, never the scheduler).
 ├── executors/     The Executor protocol and its one real implementation, KubernetesExecutor.
 ├── api/           FastAPI routes and dependencies. Talks to services/persistence only.
 ├── observability/ Structured logging, Prometheus metrics, the HTTP request middleware.

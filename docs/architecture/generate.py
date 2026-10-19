@@ -295,6 +295,7 @@ KERNEL_LAYERS = [
     ("persistence", "persistence/  (SQLAlchemy models, queries)", YELLOW),
     ("services", "services/  (what kernel-api does)", BLUE),
     ("scheduler", "scheduler/  (the kernel-scheduler process)", ORANGE),
+    ("sleeper", "sleeper/  (sleeping an idle platform, a CronJob)", ORANGE),
     ("executors", "executors/  (Kubernetes Jobs)", RED),
     ("api", "api/  (FastAPI routes)", BLUE),
     ("app", "app/  (entry point, settings)", GREY),

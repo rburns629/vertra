@@ -7,18 +7,126 @@ design.
 
 ## Installing and operating
 
-- [ ] **An installer CLI, `acyclixctl`**, in `cli/`, in Python like
-  catalogctl. `init <env>` writes an install's settings (outside this
-  repository); `check` is a read-only plan of what's missing; `cloud` sets up
-  the cloud side with the cloud's own CLI (GCP first); `install` deploys both
-  charts; `catalog` creates a catalog repository from `catalog-template/`
-  with `gh` (variables, Environments, branch protection, the federation
-  provider, both console tokens stored without being shown) and the
-  adopter's first team, with starter products for the languages they pick
-  (copied from `samples/local`), optionally `--samples gcp|aws|azure`; then
-  publishes and runs a starter as a smoke test. Idempotent, plan before
-  apply, secrets generated in place. Open: Terraform now or later.
-  `make quickstart` becomes a wrapper over it.
+- [ ] **An installer CLI, `acyclixctl`**, in Go (one static binary per OS,
+  released signed with the platform). Step 1 of `cli/DESIGN.md`'s build
+  order is in `cli/`: kind (local) and existing clusters, `init`, `check`,
+  `apply`, `status`, `sleep`, `wake`, `destroy`, `config`, `tools`. Step 2,
+  the chart features, is in the charts: size presets (`sizes/`), the
+  sleeper, the idle scanner, headroom, PodDisruptionBudgets and the `auto`
+  autoscalers. Step 3, gcp, is in: the OpenTofu module (Autopilot and
+  Standard), live list prices, apply and destroy; still to do there:
+  Cloud SQL, signing and catalog federation (with the catalog step),
+  account prices. Step 4, the catalog on GitHub, is proven (repository,
+  federation, CI publishing, a starter run on Spot). Step 5, aws, is proven
+  on EKS Auto Mode in us-east-2 (2026-10-18): install, ECR pinning and scans
+  through Pod Identity, S3 backups, sleep (nodes gone in about a minute) and
+  wake, destroy. Standard mode is proven too (node groups, the EBS and Pod
+  Identity add-ons, the Cluster Autoscaler: a step scaled the Spot steps
+  group 0 → 1 and back). Since proven (2026-10-19): standard mode's
+  platform group settles at one node once the scanner idles; the public
+  console on Auto Mode (Route 53 zone, ACM certificate, Auto Mode's load
+  balancer, the alias record); the catalog on AWS (a private test
+  repository publishing to ECR through GitHub's OIDC role, keyed to
+  GitHub's immutable subject, and a starter run); the AWS sample (each
+  product as its own ServiceAccount and IAM role by Pod Identity: the
+  bucket → App Runner DAG and an RDS instance, then deleted). That run found
+  two bugs in images pinned as `repo:tag@sha256:…`, now fixed: the identity
+  policy kept the tag on the repository (so a registered product with its
+  own ServiceAccount was refused), and the console's registry check asked
+  for a repository named with its tag (so retries said the image was gone).
+  Just Ship It was left empty afterwards (2026-10-19). Still to do: decide
+  about the two test catalog repositories; the AWS sample's SecretStore. The sizes' figures are first estimates, to be
+  measured.
+  Decided 2026-10-18:
+  - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster
+    mode when the CLI creates one: `auto` (GKE Autopilot, EKS Auto Mode, AKS
+    Automatic), `standard` (a platform node pool, and a steps pool that
+    scales from 0), or `existing`.
+  - **Cloud side in OpenTofu** (open source; Terraform-compatible): one
+    module per cloud for the cluster, network, registry, identities, signing
+    key and backup bucket. `tofu plan` feeds the approval screen; changes and
+    `destroy` come with it. Runs locally under the user's own cloud login;
+    state in `deploy/<env>/` (optional remote backend). kind and existing
+    don't use it. Acyclix itself is installed with the Helm charts.
+  - **Config:** `./deploy/<env>/acyclix.yaml` (gitignored in this repo; safe
+    to commit elsewhere: names only, secrets generated in the cluster), plus
+    a Helm values passthrough for anything the CLI doesn't ask about.
+  - **Size:** `minimal` (the absolute minimum), `resilient` (two copies,
+    survives upgrades), `scaled` (three or more), `auto` (one to three on
+    load): values files shipped with the charts (replicas, step caps,
+    default step size, Spot), so Helm users get them too.
+  - **Database**, for any size: in-cluster Postgres with daily backups to a
+    bucket, or managed (Cloud SQL, RDS, Azure Flexible Server, high
+    availability optional).
+  - **macOS and Linux only.** `destroy` asks about each kind of data unless
+    `--all`.
+  - **Scale down:** a yes/no prompt, changeable later. Yes: the platform
+    sleeps after an idle period and wakes with `acyclixctl wake`. No: asks
+    the always-on copies of the console and API (default from the size) and
+    the warm headroom for steps. `sleep` and `wake` always work. The image
+    scanner idles to zero regardless.
+  - **Requirements first:** per target (kubectl, helm, tofu, docker and kind;
+    gcloud, aws and eksctl, az and kubelogin; git and gh for `catalog`).
+    Single binaries are downloaded on consent, checksum-verified, into
+    `~/.acyclix/bin`; installers (docker, gcloud, aws, az) get the exact
+    install command instead.
+  - **Approval screen** before anything changes: the whole configuration,
+    what will be created and installed, and an estimated monthly cost from
+    each cloud's live pricing API (always, awake, asleep, per step-hour, a
+    likely total), with its limits stated. `--yes`, `--plan-only`; the
+    approved plan is kept in `deploy/<env>/`.
+  - **Then** `catalog` creates the catalog repository from
+    `catalog-template/` with `gh` and the first team with starters for the
+    languages picked, and runs one as a smoke test. `make quickstart`
+    becomes a wrapper over it.
+  - **Repository visibility:** public, private, or internal (offered only
+    for an organization under GitHub Enterprise). `check` reads the
+    owner's plan and policies (repository creation, allowed actions, OIDC)
+    and the approval screen says which settings will be skipped (branch
+    rules, secret scanning and Environment branch limits need a paid plan
+    on a private repository).
+  - **SSO and scopes:** a 403 from an organization's SAML enforcement is
+    detected from GitHub's `X-GitHub-SSO` header; the CLI shows (and opens)
+    the authorization URL, waits, and retries. Missing token scopes (`repo`,
+    `workflow`) go through `gh auth refresh -s`.
+  - **Git hosts behind one layer** (create a repository, variables and
+    secrets, environments, protected branches, code owners, OIDC, SSO), so
+    **GitLab** (gitlab.com and self-managed, public, internal and private,
+    with `glab`) follows GitHub as a second implementation; the catalog
+    template then ships GitLab CI wrappers over catalogctl alongside its
+    GitHub workflows.
+
+- [x] **Guided access in `acyclixctl init`** (done 2026-10-18:
+  `internal/access`, `init_access.go`, `docs/clouds/`; proven read-only
+  against Just Ship It, acyclix-dev and GitHub). Agreed 2026-10-18. Setting up AWS showed most of the effort goes on
+  finding out which account you're in and what it allows. Before planning,
+  per cloud: detect, show, then ask.
+  - **Sign-in:** explain the options briefly, recommend one, and run the
+    interactive command (`aws login` for one person, Identity Center for a
+    team; `gcloud auth login` and `application-default login`; `gh auth
+    login` with its scopes). Refuse root on AWS. With several sign-ins
+    (gcloud accounts, AWS profiles, gh accounts), list them and save the
+    choice.
+  - **Where things go:** GCP projects you can use (which already hold
+    resources; recommend a new one); the AWS account's name, ID and
+    organization role (standalone, member, management); GitHub owners you
+    can create repositories under.
+  - **What it allows:** the regions that answer (pick from those); an
+    organization's guardrails (AWS SCPs: tell a denial from a missing
+    permission and name the policy; GCP org policies such as allowed
+    locations or external IPs); billing linked, budgets (offer to create
+    one), the free-plan state, AWS's spend-limit policies; gcloud and
+    OpenTofu (ADC) signed in as different accounts.
+  - Probes are tested functions that judge the whole response (a shell
+    one-liner misread AWS's errors as success once).
+  - An **Access** block on the approval screen ("rburns (IAM user) in
+    Just Ship It (…0147), member of an organization; region us-east-2,
+    the only one its organization allows; budget $20/month"), recorded in
+    the config and re-checked on later runs.
+  - Guides for what only a browser does (`docs/clouds/aws.md`, `gcp.md`,
+    `github.md`: account, root MFA, Identity Center, budgets), linked from
+    the CLI when it recognises a case: a Builder ID that isn't an account,
+    an Identity Center account instance, an organization a sign-up made.
 - [ ] **Prove the AWS and Azure samples** (`catalog-template/samples/aws`,
   `azure`): they build and their tests pass with the SDKs mocked, but they
   haven't called a real account. On EKS and AKS: bind each product's

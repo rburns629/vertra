@@ -1,0 +1,647 @@
+// SPDX-License-Identifier: MIT
+
+// Package config is an install's settings: deploy/<env>/acyclix.yaml.
+// Names and references only, never a secret, so it's safe to keep in a
+// private repository of your own.
+package config
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
+
+// FileName is the config file inside an environment's directory.
+const FileName = "acyclix.yaml"
+
+// CurrentVersion is the config file format this CLI writes.
+const CurrentVersion = 1
+
+// Targets, sizes and cluster modes: the closed support matrix (cli/DESIGN.md).
+var (
+	Targets      = []string{"kind", "gcp", "aws", "azure", "existing"}
+	Implemented  = []string{"kind", "gcp", "aws", "existing"} // azure comes with its OpenTofu module
+	Sizes        = []string{"minimal", "resilient", "scaled", "auto"}
+	ClusterModes = []string{"auto", "standard", "existing"}
+)
+
+// Config is one install's settings.
+type Config struct {
+	Version int `yaml:"version"`
+	// Acyclix is the release to install, or "source" to build from Source.
+	Acyclix string `yaml:"acyclix"`
+	// Source is a checkout of the Acyclix repository: charts from its
+	// helm/charts, images built from its kernel/ and console/.
+	Source     string     `yaml:"source,omitempty"`
+	Target     string     `yaml:"target"`
+	Cluster    Cluster    `yaml:"cluster"`
+	Kind       Kind       `yaml:"kind,omitempty"`
+	GCP        GCP        `yaml:"gcp,omitempty"`
+	AWS        AWS        `yaml:"aws,omitempty"`
+	Namespace  string     `yaml:"namespace"`
+	TaskImages TaskImages `yaml:"taskImages"`
+	// PlatformImages, when building from source onto a cluster that isn't
+	// kind: the registry the built images are pushed to.
+	PlatformImages PlatformImages `yaml:"platformImages,omitempty"`
+	Size           string         `yaml:"size"`
+	ScaleDown      ScaleDown      `yaml:"scaleDown"`
+	// MinReplicas: always-on copies of the console and kernel-api when
+	// ScaleDown is off.
+	MinReplicas  int      `yaml:"minReplicas"`
+	StepHeadroom int      `yaml:"stepHeadroom"`
+	Database     Database `yaml:"database"`
+	Admin        Admin    `yaml:"admin"`
+	// Console says how the console is reached from outside the cluster.
+	Console Console `yaml:"console,omitempty"`
+	// Catalog is the catalog repository `acyclixctl catalog` creates.
+	Catalog Catalog `yaml:"catalog,omitempty"`
+	// Access records who set this environment up, so a later run signed in
+	// as someone else (another account, profile or project) stops first.
+	Access Access `yaml:"access,omitempty"`
+	// Values is a Helm values file layered last, relative to the config's
+	// directory: anything acyclixctl doesn't ask about.
+	Values string `yaml:"values,omitempty"`
+}
+
+// Cluster says which cluster, and whether acyclixctl creates it.
+type Cluster struct {
+	Create bool   `yaml:"create"`
+	Mode   string `yaml:"mode"`
+	Name   string `yaml:"name,omitempty"`
+	// Context is the kubectl context for an existing cluster.
+	Context string `yaml:"context,omitempty"`
+}
+
+// Kind holds kind (local)'s own settings.
+type Kind struct {
+	RegistryName string `yaml:"registryName,omitempty"`
+	RegistryPort int    `yaml:"registryPort,omitempty"`
+}
+
+// GCP is where a gcp install goes.
+type GCP struct {
+	Project string `yaml:"project,omitempty"`
+	Region  string `yaml:"region,omitempty"`
+}
+
+// AWS is where an aws install goes: the account is the profile's.
+type AWS struct {
+	// Profile is the AWS CLI profile to sign in with (`aws login` or
+	// `aws configure sso`); empty for the default credential chain.
+	Profile string `yaml:"profile,omitempty"`
+	Region  string `yaml:"region,omitempty"`
+}
+
+// TaskImages is where steps' images may come from: the image policy's
+// source registry, e.g. localhost:5001 or us-docker.pkg.dev/p/catalog. On
+// a cloud target it can instead be a repository the module creates
+// (Create, Name), whose path is then known after apply.
+type TaskImages struct {
+	Registry string `yaml:"registry,omitempty"`
+	Create   bool   `yaml:"create,omitempty"`
+	Name     string `yaml:"name,omitempty"`
+}
+
+// PlatformImages is where images built from source are pushed.
+type PlatformImages struct {
+	Registry string `yaml:"registry,omitempty"`
+}
+
+// ScaleDown: sleep when idle, or stay up.
+type ScaleDown struct {
+	Enabled   bool   `yaml:"enabled"`
+	IdleAfter string `yaml:"idleAfter,omitempty"`
+	Schedule  string `yaml:"schedule,omitempty"`
+}
+
+// Database: in-cluster Postgres (with backups) or managed.
+type Database struct {
+	Type             string  `yaml:"type"`
+	HighAvailability bool    `yaml:"highAvailability,omitempty"`
+	Backups          Backups `yaml:"backups"`
+}
+
+// Backups of the in-cluster database.
+type Backups struct {
+	Enabled       bool `yaml:"enabled"`
+	RetentionDays int  `yaml:"retentionDays,omitempty"`
+}
+
+// Console: reached over HTTPS from the internet (what the catalog's CI
+// needs), on Hostname or, if empty, a nip.io name for its address.
+type Console struct {
+	Public   bool   `yaml:"public,omitempty"`
+	Hostname string `yaml:"hostname,omitempty"`
+	// Zone (aws): a DNS zone the module creates in Route 53 for the
+	// console's address (e.g. acyclix.example.com), which you delegate with
+	// its NS records; the hostname defaults to console.<zone>.
+	Zone string `yaml:"zone,omitempty"`
+}
+
+// Catalog is where the catalog repository goes and what it starts with.
+type Catalog struct {
+	Host       string `yaml:"host,omitempty"` // github (gitlab later)
+	Owner      string `yaml:"owner,omitempty"`
+	Repository string `yaml:"repository,omitempty"`
+	Visibility string `yaml:"visibility,omitempty"` // public | private | internal
+	// Team is the first team's name; Languages its starters.
+	Team      string   `yaml:"team,omitempty"`
+	Languages []string `yaml:"languages,omitempty"`
+	// UseExisting: the repository already existed, and you chose it: its
+	// contents stay, and only its variables, secrets and federation are set.
+	UseExisting bool `yaml:"useExisting,omitempty"`
+	// SubjectPrefix is how GitHub names the repository in its OIDC tokens
+	// (repo:<owner>@<id>/<name>@<id> with immutable subjects), read once it
+	// exists; the AWS role trusts exactly it.
+	SubjectPrefix string `yaml:"subjectPrefix,omitempty"`
+}
+
+// Languages are the starters a catalog can begin with: the language, and
+// its product in the template's samples/local.
+var Languages = map[string]string{
+	"python": "title-case", "typescript": "reverse", "go": "slug", "powershell": "upper-case", "rust": "rot13",
+}
+
+// Repo is the catalog's owner/name, or "" without one.
+func (c Catalog) Repo() string {
+	if c.Owner == "" || c.Repository == "" {
+		return ""
+	}
+	return c.Owner + "/" + c.Repository
+}
+
+// Access is who set the environment up: "aws:<principal arn>" or
+// "gcp:<account>", and "github:<login>".
+type Access struct {
+	Cloud  string `yaml:"cloud,omitempty"`
+	GitHub string `yaml:"github,omitempty"`
+}
+
+// Admin is the first admin account.
+type Admin struct {
+	Email string `yaml:"email"`
+}
+
+// Default returns a config with every default filled in for a target.
+func Default(target string) *Config {
+	c := &Config{
+		Version:   CurrentVersion,
+		Acyclix:   "source",
+		Target:    target,
+		Namespace: "acyclix-system",
+		Size:      "minimal",
+		ScaleDown: ScaleDown{Enabled: true, IdleAfter: "2h"},
+		Database:  Database{Type: "in-cluster", Backups: Backups{Enabled: false, RetentionDays: 30}},
+	}
+	switch target {
+	case "kind":
+		c.Cluster = Cluster{Create: true, Mode: "standard", Name: "acyclix"}
+		c.Kind = Kind{RegistryName: "kind-registry", RegistryPort: 5001}
+		c.TaskImages.Registry = "localhost:5001"
+	case "gcp":
+		c.Cluster = Cluster{Create: true, Mode: "auto", Name: "acyclix"}
+		c.TaskImages = TaskImages{Create: true, Name: "acyclix-products"}
+		c.Database.Backups.Enabled = true
+	case "aws":
+		c.Cluster = Cluster{Create: true, Mode: "auto", Name: "acyclix"}
+		c.TaskImages = TaskImages{Create: true, Name: "acyclix-products"}
+		c.Database.Backups.Enabled = true
+	case "existing":
+		c.Cluster = Cluster{Create: false, Mode: "existing"}
+	}
+	return c
+}
+
+// FillDefaults sets anything left empty, so an older or hand-written file
+// behaves like one init wrote.
+func (c *Config) FillDefaults() {
+	d := Default(c.Target)
+	if c.Version == 0 {
+		c.Version = CurrentVersion
+	}
+	if c.Acyclix == "" {
+		c.Acyclix = d.Acyclix
+	}
+	if c.Namespace == "" {
+		c.Namespace = d.Namespace
+	}
+	if c.Size == "" {
+		c.Size = d.Size
+	}
+	if c.Database.Type == "" {
+		c.Database.Type = d.Database.Type
+	}
+	if c.ScaleDown.Enabled && c.ScaleDown.IdleAfter == "" {
+		c.ScaleDown.IdleAfter = d.ScaleDown.IdleAfter
+	}
+	if !c.ScaleDown.Enabled && c.MinReplicas == 0 {
+		c.MinReplicas = 1
+	}
+	if c.Target == "kind" {
+		if c.Cluster.Name == "" {
+			c.Cluster.Name = d.Cluster.Name
+		}
+		if c.Kind.RegistryName == "" {
+			c.Kind.RegistryName = d.Kind.RegistryName
+		}
+		if c.Kind.RegistryPort == 0 {
+			c.Kind.RegistryPort = d.Kind.RegistryPort
+		}
+		if c.TaskImages.Registry == "" {
+			c.TaskImages.Registry = fmt.Sprintf("localhost:%d", c.Kind.RegistryPort)
+		}
+	}
+}
+
+var (
+	dnsLabel   = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`)
+	gcpProject = regexp.MustCompile(`^[a-z][-a-z0-9]{4,28}[a-z0-9]$`)
+	gcpRegion  = regexp.MustCompile(`^[a-z]+-[a-z]+[0-9]$`)
+	gcpName    = regexp.MustCompile(`^[a-z][a-z0-9-]{1,18}[a-z0-9]$`)
+	awsRegion  = regexp.MustCompile(`^[a-z]{2}(-gov)?-[a-z]+-[0-9]$`)
+	ecrPrefix  = regexp.MustCompile(`^[a-z0-9]+([._-][a-z0-9]+)*$`)
+	hostname   = regexp.MustCompile(`^([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`)
+	githubName = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9._-]{0,98})$`)
+	version    = regexp.MustCompile(`^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
+)
+
+// Validate returns every problem with the config, not just the first.
+func (c *Config) Validate() error {
+	var problems []string
+	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
+
+	if c.Version != CurrentVersion {
+		add("version: %d isn't a format this acyclixctl reads (it writes %d)", c.Version, CurrentVersion)
+	}
+	if !contains(Targets, c.Target) {
+		add("target: %q isn't one of %s", c.Target, strings.Join(Targets, ", "))
+	} else if !contains(Implemented, c.Target) {
+		add("target: %s isn't supported by this acyclixctl yet (kind and existing are)", c.Target)
+	}
+	if c.Acyclix != "source" && !version.MatchString(c.Acyclix) {
+		add("acyclix: %q is neither a release version (like 0.1.0) nor \"source\"", c.Acyclix)
+	}
+	if c.Acyclix == "source" {
+		if c.Source == "" {
+			add("source: needed when acyclix is \"source\": the path to an Acyclix checkout")
+		} else if _, err := os.Stat(filepath.Join(c.Source, "helm", "charts", "execution-kernel", "Chart.yaml")); err != nil {
+			add("source: %s isn't an Acyclix checkout (no helm/charts/execution-kernel)", c.Source)
+		}
+	}
+	if !dnsLabel.MatchString(c.Namespace) {
+		add("namespace: %q isn't a valid namespace name", c.Namespace)
+	}
+	if !contains(Sizes, c.Size) {
+		add("size: %q isn't one of %s", c.Size, strings.Join(Sizes, ", "))
+	}
+	if !contains(ClusterModes, c.Cluster.Mode) && !(c.Target == "kind" && c.Cluster.Mode == "standard") {
+		add("cluster.mode: %q isn't one of %s", c.Cluster.Mode, strings.Join(ClusterModes, ", "))
+	}
+	switch c.Target {
+	case "kind":
+		if !dnsLabel.MatchString(c.Cluster.Name) {
+			add("cluster.name: %q isn't a valid kind cluster name", c.Cluster.Name)
+		}
+		// The registry's name is also its hostname on the kind network.
+		if !dnsLabel.MatchString(c.Kind.RegistryName) {
+			add("kind.registryName: %q isn't a valid hostname (lowercase letters, digits and dashes)", c.Kind.RegistryName)
+		}
+		if c.Kind.RegistryPort < 1024 || c.Kind.RegistryPort > 65535 {
+			add("kind.registryPort: %d isn't a usable port", c.Kind.RegistryPort)
+		}
+	case "gcp":
+		if !gcpProject.MatchString(c.GCP.Project) {
+			add("gcp.project: %q isn't a project id (6 to 30 lowercase letters, digits and dashes)", c.GCP.Project)
+		}
+		if !gcpRegion.MatchString(c.GCP.Region) {
+			add("gcp.region: %q isn't a region, like us-central1", c.GCP.Region)
+		}
+		if !gcpName.MatchString(c.Cluster.Name) {
+			add("cluster.name: %q: 3 to 20 lowercase letters, digits and dashes, starting with a letter", c.Cluster.Name)
+		}
+		if c.Cluster.Mode != "auto" && c.Cluster.Mode != "standard" {
+			add("cluster.mode: %q: auto (GKE Autopilot) or standard on gcp", c.Cluster.Mode)
+		}
+		if c.TaskImages.Create && !dnsLabel.MatchString(c.TaskImages.Name) {
+			add("taskImages.name: %q isn't a repository name", c.TaskImages.Name)
+		}
+	case "aws":
+		if !awsRegion.MatchString(c.AWS.Region) {
+			add("aws.region: %q isn't a region, like us-east-1", c.AWS.Region)
+		}
+		if !gcpName.MatchString(c.Cluster.Name) {
+			add("cluster.name: %q: 3 to 20 lowercase letters, digits and dashes, starting with a letter", c.Cluster.Name)
+		}
+		if c.Cluster.Mode != "auto" && c.Cluster.Mode != "standard" {
+			add("cluster.mode: %q: auto (EKS Auto Mode) or standard (node groups) on aws", c.Cluster.Mode)
+		}
+		if c.TaskImages.Create && !ecrPrefix.MatchString(c.TaskImages.Name) {
+			add("taskImages.name: %q isn't an ECR repository prefix", c.TaskImages.Name)
+		}
+	case "existing":
+		if c.Cluster.Context == "" {
+			add("cluster.context: the kubectl context of the existing cluster is needed")
+		}
+		if c.Acyclix == "source" && c.PlatformImages.Registry == "" {
+			add("platformImages.registry: building from source onto an existing cluster needs a registry to push the images to")
+		}
+	}
+	if c.TaskImages.Registry == "" && !c.TaskImages.Create {
+		add("taskImages.registry: where steps' images may come from is needed")
+	}
+	if c.ScaleDown.Enabled {
+		if _, err := time.ParseDuration(c.ScaleDown.IdleAfter); err != nil {
+			add("scaleDown.idleAfter: %q isn't a duration like 2h or 45m", c.ScaleDown.IdleAfter)
+		}
+		if c.ScaleDown.Schedule != "" && len(strings.Fields(c.ScaleDown.Schedule)) != 5 {
+			add("scaleDown.schedule: %q isn't a cron schedule (five fields, like \"0 20 * * 1-5\")", c.ScaleDown.Schedule)
+		}
+	} else if c.MinReplicas < 1 || c.MinReplicas > 10 {
+		add("minReplicas: %d: at least 1 (and at most 10) when scaleDown is off", c.MinReplicas)
+	}
+	if c.StepHeadroom < 0 || c.StepHeadroom > 100 {
+		add("stepHeadroom: %d isn't between 0 and 100", c.StepHeadroom)
+	}
+	switch c.Database.Type {
+	case "in-cluster":
+	case "managed":
+		if c.Target == "kind" || c.Target == "existing" {
+			add("database.type: managed needs a cloud target; kind and existing use the in-cluster database")
+		} else {
+			add("database.type: managed isn't supported by this acyclixctl yet: use in-cluster (backed up to a bucket)")
+		}
+	default:
+		add("database.type: %q isn't in-cluster or managed", c.Database.Type)
+	}
+	if c.Console.Hostname != "" && !hostname.MatchString(c.Console.Hostname) {
+		add("console.hostname: %q isn't a hostname", c.Console.Hostname)
+	}
+	if c.Console.Public && c.Target != "gcp" && c.Target != "aws" {
+		add("console.public: only gcp and aws can expose the console so far")
+	}
+	if c.Console.Public && c.Target == "aws" {
+		if !hostname.MatchString(c.Console.Zone) {
+			add("console.zone: %q: a DNS zone for the console's address, like acyclix.example.com (Route 53 hosts it; you delegate it)", c.Console.Zone)
+		}
+		if c.Cluster.Mode != "auto" {
+			add("console.public: on aws, only with EKS Auto Mode so far (standard mode needs the AWS Load Balancer Controller)")
+		}
+	}
+	if c.Catalog.Repo() != "" {
+		if c.Catalog.Host != "github" {
+			add("catalog.host: %q: github (gitlab comes later)", c.Catalog.Host)
+		}
+		if !githubName.MatchString(c.Catalog.Owner) || !githubName.MatchString(c.Catalog.Repository) {
+			add("catalog: %q isn't a GitHub owner/repository", c.Catalog.Repo())
+		}
+		if !contains([]string{"public", "private", "internal"}, c.Catalog.Visibility) {
+			add("catalog.visibility: %q: public, private or internal", c.Catalog.Visibility)
+		}
+		if !dnsLabel.MatchString(c.Catalog.Team) {
+			add("catalog.team: %q isn't a team name (lowercase letters, digits and dashes)", c.Catalog.Team)
+		}
+		for _, l := range c.Catalog.Languages {
+			if Languages[l] == "" {
+				add("catalog.languages: %q isn't one of python, typescript, go, powershell, rust", l)
+			}
+		}
+		if c.Target == "gcp" && !c.Console.Public {
+			add("catalog: its CI reaches the console over HTTPS: set console.public")
+		}
+	}
+	if !strings.Contains(c.Admin.Email, "@") {
+		add("admin.email: %q isn't an email address", c.Admin.Email)
+	}
+	if len(problems) > 0 {
+		return errors.New("the config has problems:\n  - " + strings.Join(problems, "\n  - "))
+	}
+	return nil
+}
+
+// Load reads and validates dir/acyclix.yaml.
+func Load(dir string) (*Config, error) {
+	data, err := os.ReadFile(filepath.Join(dir, FileName))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("no %s in %s: run `acyclixctl init` first", FileName, dir)
+		}
+		return nil, err
+	}
+	var c Config
+	dec := yaml.NewDecoder(strings.NewReader(string(data)))
+	dec.KnownFields(true)
+	if err := dec.Decode(&c); err != nil {
+		return nil, fmt.Errorf("%s: %w", filepath.Join(dir, FileName), err)
+	}
+	c.FillDefaults()
+	if err := c.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", filepath.Join(dir, FileName), err)
+	}
+	return &c, nil
+}
+
+const header = `# An Acyclix install's settings, written by acyclixctl. Names and references
+# only, never a secret: safe to keep in a private repository of your own.
+# Change a setting with ` + "`acyclixctl config set <key> <value>`" + `, then ` + "`acyclixctl apply`" + `.
+`
+
+// Save writes dir/acyclix.yaml, creating dir.
+func (c *Config) Save(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, FileName), append([]byte(header), data...), 0o644)
+}
+
+// Get returns the value at a dotted key, e.g. scaleDown.enabled.
+func Get(c *Config, key string) (string, error) {
+	node, err := toNode(c)
+	if err != nil {
+		return "", err
+	}
+	found := find(node, strings.Split(key, "."))
+	if found == nil {
+		return "", fmt.Errorf("no setting %q (see `acyclixctl config get` for every key)", key)
+	}
+	if found.Kind == yaml.ScalarNode {
+		return found.Value, nil
+	}
+	out, err := yaml.Marshal(found)
+	return strings.TrimSpace(string(out)), err
+}
+
+// Set changes the value at a dotted key, and returns the changed config
+// (validated). Only existing scalar settings can be set.
+func Set(c *Config, key, value string) (*Config, error) {
+	node, err := toNode(c)
+	if err != nil {
+		return nil, err
+	}
+	found := find(node, strings.Split(key, "."))
+	if found == nil {
+		// An empty optional setting isn't in the marshalled node: add it.
+		if err := addScalar(node, strings.Split(key, "."), value); err != nil {
+			return nil, err
+		}
+	} else if found.Kind != yaml.ScalarNode {
+		return nil, fmt.Errorf("%q is a group of settings; set one of its keys", key)
+	} else {
+		found.Value = value
+		found.Tag = scalarTag(value)
+		found.Style = 0
+	}
+	var out Config
+	if err := node.Decode(&out); err != nil {
+		return nil, fmt.Errorf("%s: %w", key, err)
+	}
+	out.FillDefaults()
+	if err := out.Validate(); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// Keys lists every setting as key: value, sorted.
+func Keys(c *Config) ([]string, error) {
+	node, err := toNode(c)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	var walk func(n *yaml.Node, prefix string)
+	walk = func(n *yaml.Node, prefix string) {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			key := n.Content[i].Value
+			if prefix != "" {
+				key = prefix + "." + key
+			}
+			v := n.Content[i+1]
+			if v.Kind == yaml.MappingNode {
+				walk(v, key)
+			} else {
+				out = append(out, key+": "+v.Value)
+			}
+		}
+	}
+	walk(node, "")
+	sort.Strings(out)
+	return out, nil
+}
+
+func toNode(c *Config) (*yaml.Node, error) {
+	var doc yaml.Node
+	if err := doc.Encode(c); err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+func find(n *yaml.Node, path []string) *yaml.Node {
+	if len(path) == 0 {
+		return n
+	}
+	if n.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if n.Content[i].Value == path[0] {
+			return find(n.Content[i+1], path[1:])
+		}
+	}
+	return nil
+}
+
+func addScalar(n *yaml.Node, path []string, value string) error {
+	known := map[string]bool{
+		"source": true, "values": true, "cluster.name": true, "cluster.context": true,
+		"platformImages.registry": true, "scaleDown.idleAfter": true, "scaleDown.schedule": true,
+		"kind.registryName": true, "kind.registryPort": true,
+		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
+		"gcp.project": true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
+	}
+	if !known[strings.Join(path, ".")] {
+		return fmt.Errorf("no setting %q (see `acyclixctl config get` for every key)", strings.Join(path, "."))
+	}
+	for i, part := range path {
+		var next *yaml.Node
+		for j := 0; j+1 < len(n.Content); j += 2 {
+			if n.Content[j].Value == part {
+				next = n.Content[j+1]
+			}
+		}
+		if next == nil {
+			key := &yaml.Node{Kind: yaml.ScalarNode, Value: part}
+			if i == len(path)-1 {
+				next = &yaml.Node{Kind: yaml.ScalarNode, Value: value, Tag: scalarTag(value)}
+			} else {
+				next = &yaml.Node{Kind: yaml.MappingNode}
+			}
+			n.Content = append(n.Content, key, next)
+		}
+		n = next
+	}
+	return nil
+}
+
+func scalarTag(value string) string {
+	if value == "true" || value == "false" {
+		return "!!bool"
+	}
+	if _, err := strconv.Atoi(value); err == nil {
+		return "!!int"
+	}
+	return "!!str"
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// Dir is the environment's directory: base/<env>, or base itself when it
+// already holds a config.
+func Dir(base, env string) (string, error) {
+	if env != "" {
+		if !dnsLabel.MatchString(env) {
+			return "", fmt.Errorf("%q isn't a valid environment name (lowercase letters, digits and dashes)", env)
+		}
+		return filepath.Join(base, env), nil
+	}
+	if _, err := os.Stat(filepath.Join(base, FileName)); err == nil {
+		return base, nil
+	}
+	entries, err := os.ReadDir(base)
+	if err != nil {
+		return "", fmt.Errorf("no environments in %s: run `acyclixctl init <env>` first", base)
+	}
+	var envs []string
+	for _, e := range entries {
+		if _, err := os.Stat(filepath.Join(base, e.Name(), FileName)); e.IsDir() && err == nil {
+			envs = append(envs, e.Name())
+		}
+	}
+	switch len(envs) {
+	case 0:
+		return "", fmt.Errorf("no environments in %s: run `acyclixctl init <env>` first", base)
+	case 1:
+		return filepath.Join(base, envs[0]), nil
+	default:
+		return "", fmt.Errorf("%s has several environments (%s): name one", base, strings.Join(envs, ", "))
+	}
+}

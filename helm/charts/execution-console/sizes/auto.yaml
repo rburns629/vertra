@@ -1,0 +1,13 @@
+# The `auto` size for the execution-console chart: one to three copies of
+# the console and kernel-api on CPU load (HorizontalPodAutoscalers; needs
+# the cluster's metrics API). At one copy, minimal's availability.
+#
+# Layer it under your own values: helm upgrade --install console <chart> -f
+# execution-console/sizes/auto.yaml -f <yours>.
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+retention:
+  # Keep it the kernel's executionRetentionDays.
+  executionDays: 90

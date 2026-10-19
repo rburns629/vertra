@@ -1,0 +1,9 @@
+# The `minimal` size for the execution-console chart: the absolute minimum:
+# one copy of everything. An upgrade or a node drain interrupts it briefly.
+#
+# Layer it under your own values: helm upgrade --install console <chart> -f
+# execution-console/sizes/minimal.yaml -f <yours>.
+replicaCount: 1
+retention:
+  # Keep it the kernel's executionRetentionDays.
+  executionDays: 30

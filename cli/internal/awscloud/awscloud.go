@@ -1,0 +1,379 @@
+// SPDX-License-Identifier: MIT
+
+// Package awscloud is what an aws install needs from the AWS CLI, run as you
+// (your profile's short-lived credentials): who you are, the cluster's
+// credentials for kubectl, a short-lived ECR sign-in for Docker, the
+// module's inputs, and the cleanup a destroy needs outside OpenTofu's state.
+package awscloud
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/rburns629/acyclix/cli/internal/cluster"
+	"github.com/rburns629/acyclix/cli/internal/config"
+	"github.com/rburns629/acyclix/cli/internal/run"
+)
+
+// args adds the config's profile and region to an aws command.
+func args(c *config.Config, a ...string) []string {
+	if c.AWS.Profile != "" {
+		a = append(a, "--profile", c.AWS.Profile)
+	}
+	return append(a, "--region", c.AWS.Region, "--output", "json")
+}
+
+// Identity is who the profile signs in as.
+type Identity struct {
+	Account string `json:"Account"`
+	Arn     string `json:"Arn"`
+}
+
+// State is what AWS says about you and the cluster.
+type State struct {
+	Identity      Identity
+	ClusterStatus string // ACTIVE, CREATING, ... or "" if it doesn't exist
+	Problems      []string
+}
+
+// Inspect checks the profile signs in, and whether the cluster exists.
+func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
+	var s State
+	out, err := r.Output(ctx, "aws", args(c, "sts", "get-caller-identity")...)
+	if err != nil {
+		hint := "`aws login`"
+		if c.AWS.Profile != "" {
+			hint = "`aws login --profile " + c.AWS.Profile + "`"
+		}
+		s.Problems = append(s.Problems, "can't sign in to AWS ("+err.Error()+"): "+hint+", or `aws sso login`")
+		return s
+	}
+	if err := json.Unmarshal([]byte(out), &s.Identity); err != nil {
+		s.Problems = append(s.Problems, err.Error())
+		return s
+	}
+	// One regional call: an organization's policy may deny the region
+	// (a region restriction), which would otherwise surface halfway
+	// through OpenTofu's plan.
+	if _, err := r.Output(ctx, "aws", args(c, "ec2", "describe-availability-zones", "--query", "AvailabilityZones[0].ZoneName")...); err != nil {
+		if strings.Contains(err.Error(), "service control policy") {
+			s.Problems = append(s.Problems, fmt.Sprintf("your AWS organization's policy (an SCP) denies %s to this account: choose a region it allows (`acyclixctl config set aws.region <region>`), or have the organization's management account allow it", c.AWS.Region))
+		} else {
+			s.Problems = append(s.Problems, fmt.Sprintf("can't use %s: %v", c.AWS.Region, err))
+		}
+		return s
+	}
+	if out, err := r.Output(ctx, "aws", args(c, "eks", "describe-cluster", "--name", c.Cluster.Name, "--query", "cluster.status")...); err == nil {
+		s.ClusterStatus = strings.Trim(strings.TrimSpace(out), `"`)
+	}
+	return s
+}
+
+// Credentials adds the cluster to your kubeconfig (as cluster.Context, which
+// signs in with your profile), and puts your current context back.
+func Credentials(ctx context.Context, r *run.Runner, c *config.Config) error {
+	previous, _ := r.Output(ctx, "kubectl", "config", "current-context")
+	if err := r.Run(ctx, "aws", args(c, "eks", "update-kubeconfig", "--name", c.Cluster.Name, "--alias", cluster.Context(c))...); err != nil {
+		return err
+	}
+	if previous = strings.TrimSpace(previous); previous != "" && previous != cluster.Context(c) {
+		return r.Run(ctx, "kubectl", "config", "use-context", previous)
+	}
+	return nil
+}
+
+// DockerLogin signs Docker in to an ECR registry with a short-lived
+// password (12 hours), passed on stdin.
+func DockerLogin(ctx context.Context, r *run.Runner, c *config.Config, host string) error {
+	password, err := r.Output(ctx, "aws", args(c, "ecr", "get-login-password")...)
+	if err != nil {
+		return err
+	}
+	return r.RunInput(ctx, password, "docker", "login", "--username", "AWS", "--password-stdin", host)
+}
+
+// Registry is the account's ECR registry host.
+func Registry(account string, c *config.Config) string {
+	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", account, c.AWS.Region)
+}
+
+// PlatformPrefix is the ECR prefix for platform images built from source
+// ("" when installing a release).
+func PlatformPrefix(c *config.Config) string {
+	if c.Acyclix != "source" {
+		return ""
+	}
+	return c.Cluster.Name + "-platform"
+}
+
+// GitHubProvider is an existing GitHub OIDC provider's ARN for the module
+// to use, or "" for the module to make (and keep) its own: an account has
+// at most one. ownState says whether this install's state already holds
+// the provider it made; then that one stays the install's, or the next
+// apply would delete it.
+func GitHubProvider(ctx context.Context, r *run.Runner, c *config.Config, ownState bool) (string, error) {
+	if ownState {
+		return "", nil
+	}
+	out, err := r.Output(ctx, "aws", args(c, "iam", "list-open-id-connect-providers")...)
+	if err != nil {
+		return "", err
+	}
+	var list struct {
+		OpenIDConnectProviderList []struct{ Arn string } `json:"OpenIDConnectProviderList"`
+	}
+	if err := json.Unmarshal([]byte(out), &list); err != nil {
+		return "", err
+	}
+	for _, p := range list.OpenIDConnectProviderList {
+		if strings.HasSuffix(p.Arn, "/token.actions.githubusercontent.com") {
+			return p.Arn, nil
+		}
+	}
+	return "", nil
+}
+
+// Vars are the module's inputs, from the config.
+func Vars(c *config.Config, deleteData bool, githubProvider string) map[string]any {
+	return map[string]any{
+		"profile":                  c.AWS.Profile,
+		"region":                   c.AWS.Region,
+		"name":                     c.Cluster.Name,
+		"mode":                     c.Cluster.Mode,
+		"size":                     c.Size,
+		"namespace":                c.Namespace,
+		"task_registry":            c.TaskImages.Name,
+		"platform_registry":        PlatformPrefix(c),
+		"backups":                  c.Database.Backups.Enabled,
+		"backup_retention_days":    c.Database.Backups.RetentionDays,
+		"delete_data":              deleteData,
+		"catalog_repository":       c.Catalog.Repo(),
+		"kubernetes_version":       KubernetesVersion,
+		"console_zone":             consoleZone(c),
+		"console_hostname":         c.Console.Hostname,
+		"step_headroom":            c.StepHeadroom,
+		"github_oidc_provider_arn": githubProvider,
+		"catalog_subject_prefix":   c.Catalog.SubjectPrefix,
+	}
+}
+
+// DeleteTaskRepositories deletes the ECR repositories under the task
+// prefix (ECR made them on push, outside OpenTofu's state), images and all.
+func DeleteTaskRepositories(ctx context.Context, r *run.Runner, c *config.Config) error {
+	out, err := r.Output(ctx, "aws", args(c, "ecr", "describe-repositories", "--query", "repositories[].repositoryName")...)
+	if err != nil {
+		return err
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(out), &names); err != nil {
+		return err
+	}
+	for _, name := range names {
+		if strings.HasPrefix(name, c.TaskImages.Name+"/") {
+			if _, err := r.Output(ctx, "aws", args(c, "ecr", "delete-repository", "--repository-name", name, "--force")...); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// KubernetesVersion is what the module runs, and the Cluster Autoscaler
+// (standard mode) is matched to.
+const KubernetesVersion = "1.36"
+
+// The Cluster Autoscaler for standard mode: its chart and the image for
+// KubernetesVersion, pinned (the chart's own default is an older release).
+const (
+	autoscalerChart = "9.59.0"
+	autoscalerImage = "v1.36.1@sha256:461388d03eb5b55db58941ee7a81d9a619dd15302b01cbab9f5a9946715994b4"
+)
+
+// InstallAutoscaler installs the Cluster Autoscaler (standard mode), which
+// grows and shrinks the node groups, the steps' from zero. It signs in as
+// the module's autoscaler role (EKS Pod Identity, by its ServiceAccount).
+func InstallAutoscaler(ctx context.Context, r *run.Runner, c *config.Config) error {
+	return r.Run(ctx, "helm", "upgrade", "--install", "cluster-autoscaler", "cluster-autoscaler",
+		"--repo", "https://kubernetes.github.io/autoscaler", "--version", autoscalerChart,
+		"--kube-context", cluster.Context(c), "--namespace", "kube-system",
+		"--set", "autoDiscovery.clusterName="+c.Cluster.Name,
+		"--set", "awsRegion="+c.AWS.Region,
+		"--set", "rbac.serviceAccount.name=cluster-autoscaler",
+		"--set", "image.tag="+autoscalerImage,
+		// Steps' nodes go a few minutes after their last step.
+		"--set", "extraArgs.scale-down-unneeded-time=5m",
+		// And not ten minutes after any scale-up (the default) before that.
+		"--set", "extraArgs.scale-down-delay-after-add=5m",
+		"--set", "extraArgs.balance-similar-node-groups=true",
+		"--wait", "--timeout", "5m")
+}
+
+// InCluster is what the cluster needs before the charts. Auto Mode: a
+// default StorageClass (its EBS driver ships none) and a node pool for steps
+// (Spot unless the size is scaled), tainted so only steps land on it, empty
+// when nothing runs. Standard mode: a default StorageClass for the EBS CSI
+// add-on (its steps group comes from the module).
+func InCluster(mode string, spot bool) string {
+	if mode == "standard" {
+		return `apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: acyclix-gp3
+  labels:
+    app.kubernetes.io/managed-by: acyclixctl
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: gp3
+  encrypted: "true"
+`
+	}
+	capacity := `["spot", "on-demand"]`
+	if !spot {
+		capacity = `["on-demand"]`
+	}
+	return `apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: acyclix-gp3
+  labels:
+    app.kubernetes.io/managed-by: acyclixctl
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: gp3
+  encrypted: "true"
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: acyclix-steps
+  labels:
+    app.kubernetes.io/managed-by: acyclixctl
+spec:
+  template:
+    metadata:
+      labels:
+        acyclix.dev/pool: steps
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      taints:
+        - key: acyclix.dev/steps
+          value: "true"
+          effect: NoSchedule
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ` + capacity + `
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+`
+}
+
+func consoleZone(c *config.Config) string {
+	if !c.Console.Public {
+		return ""
+	}
+	return c.Console.Zone
+}
+
+// IngressClass is Auto Mode's load balancer class for the console: an
+// internet-facing Application Load Balancer.
+const IngressClass = `apiVersion: eks.amazonaws.com/v1
+kind: IngressClassParams
+metadata:
+  name: acyclix-alb
+  labels:
+    app.kubernetes.io/managed-by: acyclixctl
+spec:
+  scheme: internet-facing
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: acyclix-alb
+  labels:
+    app.kubernetes.io/managed-by: acyclixctl
+spec:
+  controller: eks.amazonaws.com/alb
+  parameters:
+    apiGroup: eks.amazonaws.com
+    kind: IngressClassParams
+    name: acyclix-alb
+`
+
+// CertificateStatus is an ACM certificate's status (ISSUED,
+// PENDING_VALIDATION, ...).
+func CertificateStatus(ctx context.Context, r *run.Runner, c *config.Config, arn string) string {
+	out, err := r.Output(ctx, "aws", args(c, "acm", "describe-certificate", "--certificate-arn", arn, "--query", "Certificate.Status")...)
+	if err != nil {
+		return ""
+	}
+	return strings.Trim(strings.TrimSpace(out), `"`)
+}
+
+// LoadBalancerZone is a load balancer's DNS name's hosted zone (for an alias).
+func LoadBalancerZone(ctx context.Context, r *run.Runner, c *config.Config, dnsName string) (string, error) {
+	out, err := r.Output(ctx, "aws", args(c, "elbv2", "describe-load-balancers",
+		"--query", "LoadBalancers[?DNSName=='"+dnsName+"'].CanonicalHostedZoneId | [0]")...)
+	if err != nil {
+		return "", err
+	}
+	zone := strings.Trim(strings.TrimSpace(out), `"`)
+	if zone == "" || zone == "null" {
+		return "", fmt.Errorf("no load balancer named %s", dnsName)
+	}
+	return zone, nil
+}
+
+// PointAt makes host an alias of a load balancer in the zone.
+func PointAt(ctx context.Context, r *run.Runner, c *config.Config, zoneID, host, lbName, lbZone string) error {
+	change, _ := json.Marshal(map[string]any{"Changes": []map[string]any{{
+		"Action": "UPSERT",
+		"ResourceRecordSet": map[string]any{
+			"Name": host, "Type": "A",
+			"AliasTarget": map[string]any{"HostedZoneId": lbZone, "DNSName": lbName, "EvaluateTargetHealth": false},
+		},
+	}}})
+	_, err := r.Output(ctx, "aws", args(c, "route53", "change-resource-record-sets", "--hosted-zone-id", zoneID, "--change-batch", string(change))...)
+	return err
+}
+
+// LoadBalancersIn lists the load balancers in a VPC (the console's, made by
+// Auto Mode outside OpenTofu's state).
+func LoadBalancersIn(ctx context.Context, r *run.Runner, c *config.Config, vpcCIDR string) ([]string, error) {
+	vpc, err := r.Output(ctx, "aws", args(c, "ec2", "describe-vpcs", "--filters", "Name=cidr,Values="+vpcCIDR,
+		"Name=tag:acyclix-environment,Values="+c.Cluster.Name, "--query", "Vpcs[0].VpcId")...)
+	if err != nil {
+		return nil, err
+	}
+	vpc = strings.Trim(strings.TrimSpace(vpc), `"`)
+	if vpc == "" || vpc == "null" {
+		return nil, nil
+	}
+	out, err := r.Output(ctx, "aws", args(c, "elbv2", "describe-load-balancers", "--query", "LoadBalancers[?VpcId=='"+vpc+"'].LoadBalancerName")...)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	_ = json.Unmarshal([]byte(out), &names)
+	return names, nil
+}

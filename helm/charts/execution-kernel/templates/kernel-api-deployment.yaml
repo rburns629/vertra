@@ -7,7 +7,9 @@ metadata:
     {{- include "execution-kernel.labels" . | nindent 4 }}
     app.kubernetes.io/component: api
 spec:
+  {{- if not .Values.api.autoscaling.enabled }}
   replicas: {{ .Values.api.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
@@ -26,6 +28,16 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "execution-kernel.apiServiceAccountName" . }}
+      # Copies on different nodes where there's a choice, so one node's
+      # maintenance doesn't take them all.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "execution-kernel.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
       {{- if .Values.postgres.enabled }}
       initContainers:
         - name: wait-for-postgres

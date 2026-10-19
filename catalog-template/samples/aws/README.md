@@ -1,9 +1,10 @@
 # aws: real AWS calls
 
 Example products that call real AWS APIs, to copy from when your product has
-to. Running them costs money. **Not yet proven against a real AWS account:**
-they build, and their tests pass with boto3 mocked, but nothing here has
-called AWS yet.
+to. Running them costs money. Proven on EKS Auto Mode (2026-10-19): each
+product as its own ServiceAccount, bound by EKS Pod Identity to its own IAM
+role with the permissions below, the DAG and the database run for real. The
+SecretStore isn't proven yet.
 
 | Product | What `create` does |
 |---|---|
@@ -44,7 +45,21 @@ Grant each product's role only what it calls:
 |---|---|
 | `s3-bucket` | `s3:ListBucket` (for HeadBucket), `s3:CreateBucket`, `s3:PutBucketPublicAccessBlock` on `arn:aws:s3:::<prefix>*` |
 | `app-runner` | `apprunner:ListServices`, `apprunner:DescribeService`, `apprunner:CreateService`, and `iam:PassRole` on the ECR access role if you use one |
-| `rds-postgres` | `rds:DescribeDBInstances`, `rds:CreateDBInstance`, `rds:AddTagsToResource`, plus `secretsmanager:CreateSecret` and `kms:DescribeKey` for the managed password |
+| `rds-postgres` | `rds:DescribeDBInstances`, `rds:CreateDBInstance`, `rds:AddTagsToResource`, plus `secretsmanager:CreateSecret`, `secretsmanager:TagResource` and `kms:DescribeKey` for the managed password |
+
+The first App Runner service or RDS instance in an account also makes that
+service's service-linked role. Either create it once yourself (`aws iam
+create-service-linked-role --aws-service-name apprunner.amazonaws.com`, and
+`rds.amazonaws.com`) or let the product's role do it:
+`iam:CreateServiceLinkedRole` on
+`arn:aws:iam::<account>:role/aws-service-role/<service>/AWSServiceRoleFor<AppRunner|RDS>`,
+with the condition `iam:AWSServiceName` equal to the service. RDS can refuse
+the create right after making its role; the step fails as retryable and
+the next attempt goes through.
+
+An EKS Pod Identity role trusts `pods.eks.amazonaws.com` for
+`sts:AssumeRole` and `sts:TagSession`; narrow it with the conditions
+`aws:SourceAccount` (your account) and `aws:SourceArn` (the cluster's ARN).
 
 Optionally, set `AWS_TARGET_ROLE_ARN` on the step (the kernel's
 `TASK_EXTRA_ENVIRONMENT`): the actions then use their own credentials only to

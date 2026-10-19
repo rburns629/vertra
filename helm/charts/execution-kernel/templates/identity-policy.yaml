@@ -115,12 +115,17 @@ spec:
           variables.image.split("/")[0].contains(":") || variables.image.split("/")[0] == "localhost")) ?
           variables.image :
           (variables.image.contains("/") ? "docker.io/" + variables.image : "docker.io/library/" + variables.image)
-    - name: repository
+    # The digest, then the tag, come off: the console pins images as
+    # repo:tag@sha256:… (the same steps as console/src/imageRef.ts).
+    - name: unpinnedImage
       expression: >-
         variables.normalizedImage.contains("@") ? variables.normalizedImage.split("@")[0] :
-          (variables.normalizedImage.lastIndexOf(":") > variables.normalizedImage.lastIndexOf("/") ?
-            variables.normalizedImage.substring(0, variables.normalizedImage.lastIndexOf(":")) :
-            variables.normalizedImage)
+          variables.normalizedImage
+    - name: repository
+      expression: >-
+        variables.unpinnedImage.lastIndexOf(":") > variables.unpinnedImage.lastIndexOf("/") ?
+          variables.unpinnedImage.substring(0, variables.unpinnedImage.lastIndexOf(":")) :
+          variables.unpinnedImage
     - name: action
       expression: >-
         has(variables.pod.containers[0].args) && size(variables.pod.containers[0].args) > 0 ?

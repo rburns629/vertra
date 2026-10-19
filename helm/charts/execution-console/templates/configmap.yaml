@@ -14,6 +14,7 @@ data:
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}
   ALLOW_SELF_REGISTRATION: {{ .Values.allowSelfRegistration | quote }}
+  TRUST_PROXY: {{ join "," .Values.trustProxy | quote }}
   # The kernel's image admission policy, whose allowed-source list the
   # Admin page edits (the execution-kernel chart's image-policy.yaml).
   IMAGE_POLICY_NAME: {{ .Values.imagePolicy.policyName | quote }}
@@ -35,6 +36,13 @@ data:
   SCAN_RESCAN_HOURS: {{ .Values.scanning.rescanHours | quote }}
   SCAN_POLICY_NAME: {{ .Values.scanning.policyName | quote }}
   SCAN_PLATFORM: {{ .Values.scanning.platform | quote }}
+  {{- if gt (int .Values.scanning.idleMinutes) 0 }}
+  SCANNER_DEPLOYMENT: {{ printf "%s-trivy" (include "execution-console.fullname" .) | quote }}
+  SCANNER_IDLE_MINUTES: {{ .Values.scanning.idleMinutes | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.activity.enabled }}
+  ACTIVITY_CONFIGMAP: {{ printf "%s-activity" (include "execution-console.fullname" .) | quote }}
   {{- end }}
   # Team namespaces (values.yaml's teamNamespaces).
   TEAM_NAMESPACES_MANAGE: {{ .Values.teamNamespaces.manage | quote }}

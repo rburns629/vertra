@@ -27,6 +27,8 @@ already exist — check them before re-deriving anything:
 - `TODO.md`: the actionable follow-up list (security, access, operations,
   housekeeping). Check it before proposing work; update it when an item is
   done or a new one is found.
+- `cli/DESIGN.md`: the design for `acyclixctl`, the installer CLI (Go,
+  OpenTofu for the cloud side); read it before working on `cli/`.
 - `catalog-template/`: what a new catalog repository starts as. Its docs
   (including `docs/onboarding-with-ai.md`) are for catalog teams, **not**
   instructions for this repo.
@@ -141,7 +143,7 @@ its own directory.
   (catalogctl, its workflows, the starter `templates/`, an empty `teams/`
   for the adopter's first team, and `samples/`: `local`, one no-cloud
   product in five languages that new teams copy starters from, and `gcp`,
-  `aws`, `azure`, billed cloud examples; aws and azure unproven). It's
+  `aws`, `azure`, billed cloud examples; azure unproven). It's
   versioned with the platform because its workflows and schemas must match
   the console's API; `.github/scripts/catalog-template.sh` runs catalogctl
   in it with samples installed as teams (CI checks it that way, and
@@ -250,6 +252,20 @@ change and reset, login rate limiting), execution access (team
 membership, team secrets, product-bound ServiceAccounts, retry and
 cancel), the image policy, products and team lifecycle. A new
 authorization rule gets a test there.
+
+CLI (`cd cli`, Go 1.26+; CI uses the `golang:1.27-alpine` image by digest):
+
+```
+go test ./...                              # unit tests: config, prompts, values, the approval screen
+go vet ./... && gofmt -l .
+go build -o acyclixctl ./cmd/acyclixctl    # then e.g. ./acyclixctl init dev; ./acyclixctl apply dev
+```
+
+`acyclixctl` keeps each environment in `./deploy/<env>/` (gitignored here),
+or wherever `--config`/`ACYCLIX_CONFIG` points. It only runs kubectl,
+helm, docker and kind (each pinned and checksum-verified when it downloads
+them). To try it end to end without touching your own install, give it a
+kind cluster of its own (`--cluster-name`); it shares the `kind-registry`.
 
 ## Things that bite
 

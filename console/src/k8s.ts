@@ -26,6 +26,7 @@ import * as k8s from "@kubernetes/client-node";
 let apis:
   | {
       core: k8s.CoreV1Api;
+      apps: k8s.AppsV1Api;
       batch: k8s.BatchV1Api;
       rbac: k8s.RbacAuthorizationV1Api;
       custom: k8s.CustomObjectsApi;
@@ -35,6 +36,7 @@ let apis:
 
 function getApis(): {
   core: k8s.CoreV1Api;
+  apps: k8s.AppsV1Api;
   batch: k8s.BatchV1Api;
   rbac: k8s.RbacAuthorizationV1Api;
   custom: k8s.CustomObjectsApi;
@@ -56,6 +58,8 @@ function getApis(): {
 
   apis = {
     core: kubeConfig.makeApiClient(k8s.CoreV1Api),
+    // The image scanner's scale (idling it), in the platform's own namespace.
+    apps: kubeConfig.makeApiClient(k8s.AppsV1Api),
     // Image scan Jobs (scanning.ts), in the platform's own namespace.
     batch: kubeConfig.makeApiClient(k8s.BatchV1Api),
     rbac: kubeConfig.makeApiClient(k8s.RbacAuthorizationV1Api),
@@ -1095,5 +1099,40 @@ export async function updateScanPolicy(name: string, build: () => Promise<string
       const conflict = typeof error === "object" && error !== null && "code" in error && error.code === 409;
       if (!conflict || attempt >= 5) throw error;
     }
+  }
+}
+
+/** The image scanner's Deployment: the copies asked for, and how many are ready. */
+export async function readScanner(namespace: string, name: string): Promise<{ replicas: number; ready: number }> {
+  const { apps } = getApis();
+  const deployment = await apps.readNamespacedDeployment({ name, namespace });
+  return { replicas: deployment.spec?.replicas ?? 0, ready: deployment.status?.readyReplicas ?? 0 };
+}
+
+/**
+ * Scales the image scanner's Deployment (only it: the chart's Role names it).
+ * Through the scale subresource, which can change nothing but the count.
+ */
+export async function scaleScanner(namespace: string, name: string, replicas: number): Promise<void> {
+  const { apps } = getApis();
+  const scale = await apps.readNamespacedDeploymentScale({ name, namespace });
+  if (scale.spec?.replicas === replicas) return;
+  scale.spec = { replicas };
+  await apps.replaceNamespacedDeploymentScale({ name, namespace, body: scale });
+}
+
+/**
+ * Records when the console was last used, in the chart's activity ConfigMap
+ * (the only one its Role may update), for the kernel's sleeper. Another
+ * copy's write landing first (a conflict) is as good as this one.
+ */
+export async function recordActivity(namespace: string, name: string, at: Date): Promise<void> {
+  const { core } = getApis();
+  const configMap = await core.readNamespacedConfigMap({ name, namespace });
+  configMap.data = { ...configMap.data, lastActivityAt: at.toISOString() };
+  try {
+    await core.replaceNamespacedConfigMap({ name, namespace, body: configMap });
+  } catch (error) {
+    if (!isConflict(error)) throw error;
   }
 }

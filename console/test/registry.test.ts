@@ -72,6 +72,10 @@ describe("parseImageRef", () => {
     expect(parseImageRef("localhost:5000/img@sha256:abc")).toEqual({
       host: "localhost:5000", repository: "img", reference: "sha256:abc",
     });
+    // How a submission is pinned: the tag stays for people, the digest is asked for.
+    expect(parseImageRef(`${HOST}/p/img:latest@sha256:abc`)).toEqual({
+      host: HOST, repository: "p/img", reference: "sha256:abc",
+    });
     expect(parseImageRef("docker.io/nginx")).toEqual({
       host: "registry-1.docker.io", repository: "library/nginx", reference: "latest",
     });

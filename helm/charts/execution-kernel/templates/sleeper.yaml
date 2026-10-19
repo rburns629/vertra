@@ -1,0 +1,151 @@
+{{/*
+Sleeping when idle (values.yaml's scaleDown, kernel/app/sleeper). The
+sleeper's identity can change only the replica count of the platform's own
+Deployments, by name and through the scale subresource, and the one
+ConfigMap where it keeps the counts to wake to: nothing that changes what
+any Deployment runs. The ConfigMap exists whatever scaleDown says, since
+`acyclixctl sleep` uses it too.
+*/}}
+{{- $fullname := include "execution-kernel.fullname" . }}
+{{- $state := printf "%s-sleep" $fullname }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $state }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+{{- if .Values.scaleDown.enabled }}
+{{- $s := .Values.scaleDown }}
+{{- $console := $s.consoleFullname }}
+{{- $deployments := list (printf "%s-api" $fullname) (printf "%s-scheduler" $fullname) (printf "%s-headroom" $fullname) $console (printf "%s-trivy" $console) }}
+{{- $databases := list (printf "%s-postgres" $fullname) (printf "%s-postgres" $console) }}
+{{- $activity := printf "%s-activity" $console }}
+{{- $name := printf "%s-sleeper" $fullname }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: {{ concat $deployments $databases | toJson }}
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: [{{ $state | quote }}]
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: [{{ $activity | quote }}]
+    verbs: ["get"]
+  # kernel-api's start time (woken or upgraded counts as activity).
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  # Its own CronJob, suspended while asleep (no Pod, on EKS Auto Mode no
+  # node, every few minutes to find nothing to do); waking resumes it.
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    resourceNames: [{{ $name | quote }}]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+{{- range $job := list (dict "suffix" "" "schedule" $s.checkSchedule "args" (list)) (dict "suffix" "-scheduled" "schedule" $s.schedule "args" (list "--now")) }}
+{{- if $job.schedule }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $name }}{{ $job.suffix }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: sleeper
+spec:
+  schedule: {{ $job.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: {{ ternary 22500 300 (gt (len $job.args) 0) }}
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "execution-kernel.selectorLabels" $ | nindent 12 }}
+            app.kubernetes.io/component: sleeper
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ $name }}
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: sleeper
+              image: {{ include "execution-kernel.appImage" $ | quote }}
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              command: ["python", "-m", "app.sleeper"{{ range $job.args }}, {{ . | quote }}{{ end }}]
+              resources:
+                {{- toYaml $s.resources | nindent 16 }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "execution-kernel.databaseSecretName" $ }}
+                      key: {{ include "execution-kernel.databaseSecretKey" $ }}
+                - name: SLEEPER_NAMESPACE
+                  value: {{ $.Release.Namespace | quote }}
+                - name: SLEEPER_IDLE_AFTER_SECONDS
+                  value: {{ mul (int $s.idleAfterMinutes) 60 | quote }}
+                - name: SLEEPER_DEPLOYMENTS
+                  value: {{ $deployments | toJson | quote }}
+                - name: SLEEPER_DATABASE_DEPLOYMENTS
+                  value: {{ $databases | toJson | quote }}
+                - name: SLEEPER_STATE_CONFIGMAP
+                  value: {{ $state | quote }}
+                - name: SLEEPER_CONSOLE_ACTIVITY_CONFIGMAP
+                  value: {{ $activity | quote }}
+                - name: SLEEPER_API_POD_SELECTOR
+                  value: {{ printf "app.kubernetes.io/name=%s,app.kubernetes.io/instance=%s,app.kubernetes.io/component=api" (include "execution-kernel.name" $) $.Release.Name | quote }}
+                - name: SLEEPER_CRONJOB
+                  value: {{ $name | quote }}
+                - name: KUBERNETES_REQUEST_TIMEOUT_SECONDS
+                  value: {{ $.Values.scheduler.kubernetesRequestTimeoutSeconds | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -73,14 +73,24 @@ network policy agent or Calico; on AKS a network policy engine).
    (`imagePolicy.sourceRegistry`), the console's `kernelApiUrl`
    (`http://<kernel release>-execution-kernel-api.<namespace>.svc.cluster.local:8000`),
    and the first admin's email.
-5. **Install**, kernel first:
+5. **Install**, kernel first, with a size preset under your values (see
+   [Sizes, sleeping and headroom](#sizes-sleeping-and-headroom)). Not
+   `--wait` on a first install: each chart migrates its database in a
+   post-install hook, which Helm runs only after `--wait` sees every Pod
+   ready, and the console isn't ready until its tables exist. Helm still
+   waits for the hook; wait for the rollout after it.
 
    ```
-   CHARTS=oci://ghcr.io/rburns629/acyclix/charts; V=<release, e.g. 0.1.0>
-   helm install kernel $CHARTS/execution-kernel --version $V -n acyclix-system -f <values>/kernel.yaml --wait
-   helm install console $CHARTS/execution-console --version $V -n acyclix-system -f <values>/console.yaml --wait
+   CHARTS=oci://ghcr.io/rburns629/acyclix/charts; V=<release, e.g. 0.1.0>; SIZE=minimal
+   helm pull $CHARTS/execution-kernel --version $V --untar; helm pull $CHARTS/execution-console --version $V --untar
+   helm install kernel ./execution-kernel -n acyclix-system -f execution-kernel/sizes/$SIZE.yaml -f <values>/kernel.yaml
+   helm install console ./execution-console -n acyclix-system -f execution-console/sizes/$SIZE.yaml -f <values>/console.yaml
+   kubectl -n acyclix-system rollout status deployment -l 'app.kubernetes.io/instance in (kernel,console)'
    kubectl -n acyclix-system logs job/console-execution-console-migrate   # the first admin's password, shown once
    ```
+
+   Upgrades (`helm upgrade`) can use `--wait`: they migrate before the
+   rollout.
 
 6. **Reach the console** with `kubectl port-forward svc/console-execution-console 18080:8080`,
    or expose it. The charts don't add TLS: put the console behind TLS (an
@@ -114,6 +124,39 @@ For a registry that needs a password instead, put a
 it in `registryCheck.pullSecretName`; with `registryCheck.copyToTeams`, the
 console copies it into every team namespace as `acyclix-pull` and the
 kernel's `scheduler.taskImagePullSecret` names it on step Pods.
+
+### Sizes, sleeping and headroom
+
+Each chart ships four presets in `sizes/` (`minimal`, `resilient`,
+`scaled`, `auto`), layered under your values with `-f`. They set the
+copies of the console and kernel-api (with PodDisruptionBudgets from two
+copies, so drains and upgrades take one at a time), the scheduler's step
+caps and default step size, how long executions are kept and the database
+volume's size; `auto` scales the console and kernel-api from one to three
+copies on CPU load, and needs the cluster's metrics API (metrics-server;
+built into GKE, EKS Auto Mode and AKS Automatic). `acyclixctl` picks one
+from its `size` setting. A preset doesn't say where steps run: Spot is
+`scheduler.taskPlacement`.
+
+- **Sleeping when idle** (kernel chart, `scaleDown`): a CronJob scales both
+  releases' Deployments to zero after `idleAfterMinutes` with no execution
+  unfinished or recently finished, nobody using the console (the console
+  records its last use in its `activity` ConfigMap) and kernel-api not
+  restarted; `schedule` also sleeps it at set times once nothing runs.
+  Volumes stay. Wake it with `acyclixctl wake`, or by scaling each
+  Deployment back to the copies recorded in the
+  `kernel-execution-kernel-sleep` ConfigMap (the database first). While
+  asleep, the console and kernel-api don't answer, so catalog CI fails
+  until it's woken. A `helm upgrade` while asleep wakes it (pass
+  `--force-conflicts`: the sleeper owns the replica counts it set).
+- **The image scanner idles** on its own (console chart,
+  `scanning.idleMinutes`, 15 by default): scaled to zero when no scan has
+  been asked for in that long, and back up for the next, whose first scan
+  then waits about a minute for it.
+- **Warm headroom** (kernel chart, `stepHeadroom.replicas`): placeholder
+  Pods the size of a default step, at a priority every step outranks, so
+  a step takes a placeholder's place instead of waiting for a node. It's
+  reserved around the clock: for always-on installs.
 
 ## Upgrading
 

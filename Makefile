@@ -84,8 +84,15 @@ quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
 		existed=false; \
 		helm status $$release --kube-context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) > /dev/null 2>&1 && existed=true; \
 		echo "Installing $$release..."; \
-		helm upgrade --install $$release helm/charts/execution-$$release $(KIND_HELM_UPGRADE) \
-			-f helm/values/kind/$$release.yaml || exit 1; \
+		if $$existed; then \
+			helm upgrade $$release helm/charts/execution-$$release $(KIND_HELM_UPGRADE) \
+				-f helm/values/kind/$$release.yaml || exit 1; \
+		else \
+			helm upgrade --install $$release helm/charts/execution-$$release $(KIND_HELM_INSTALL) \
+				-f helm/values/kind/$$release.yaml || exit 1; \
+			$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment \
+				--selector app.kubernetes.io/instance=$$release --timeout=10m > /dev/null || exit 1; \
+		fi; \
 		if $$existed; then \
 			echo "Restarting $$release onto the image just built (the :latest tag is reused)..."; \
 			case $$release in \
@@ -207,6 +214,10 @@ KIND_CLUSTER ?= acyclix-local
 # fails with a conflict. The chart writes back whatever the console last set
 # (it looks the policy up first), so forcing changes ownership, not content.
 KIND_HELM_UPGRADE := --kube-context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) --reset-values --force-conflicts --wait --timeout 10m
+# A first install can't --wait: the charts migrate in a post-install hook,
+# which Helm runs only after --wait sees every Pod ready, and the console
+# isn't ready until its tables exist. Helm still waits for the hook Job.
+KIND_HELM_INSTALL := --kube-context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) --reset-values --force-conflicts --timeout 10m
 
 kind-deploy-kernel:
 	$(DOCKER) build -t execution-kernel:latest kernel/

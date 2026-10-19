@@ -13,6 +13,20 @@ image:
 
 replicaCount: 1
 
+# -- Copies on CPU load instead of replicaCount: a HorizontalPodAutoscaler
+# (the `auto` size, sizes/auto.yaml). Needs the cluster's metrics API
+# (metrics-server; built into GKE, EKS Auto Mode and AKS Automatic).
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# -- A PodDisruptionBudget whenever the console can run two or more copies:
+# node drains and upgrades then evict one at a time.
+podDisruptionBudget:
+  enabled: true
+
 service:
   type: ClusterIP
   port: 8080
@@ -24,6 +38,27 @@ service:
   # trade-off is that only nodes running a console Pod take traffic, which
   # is fine at replicaCount 1. Left empty, the Kubernetes default applies.
   externalTrafficPolicy: ""
+  annotations: {}
+
+# -- Reaching the console from outside the cluster through an Ingress, e.g.
+# for the catalog's CI. Behind one, set trustProxy too. The charts add no
+# TLS of their own: give the Ingress a certificate (on GKE, the annotation
+# networking.gke.io/managed-certificates naming a ManagedCertificate), and
+# serve HTTPS only.
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+  # -- A Secret with the certificate, when it isn't managed by the cloud.
+  tlsSecretName: ""
+
+# -- The proxies in front of the console (addresses and CIDR ranges), whose
+# X-Forwarded-For it believes, so the sign-in throttle and rate limits see
+# real clients. Google's external Application Load Balancer: its front ends
+# and its own address, ["35.191.0.0/16", "130.211.0.0/22", "<its IP>"].
+# Empty: the header is ignored.
+trustProxy: []
 
 serviceAccount:
   create: true
@@ -81,6 +116,10 @@ scanning:
   # How long a submission waits for an image's first scan before asking the
   # caller to try again.
   waitSeconds: 60
+  # -- Minutes with no scan asked for or running before the Trivy server is
+  # scaled to zero; the next scan starts it again (its first scan then waits
+  # for it, about a minute, and the database download). 0: always running.
+  idleMinutes: 15
   rescanHours: 24
   # -- Which image of a multi-platform index to scan, e.g. linux/amd64:
   # what the cluster's nodes run. Empty: the console's own platform.
@@ -93,6 +132,13 @@ scanning:
     resources:
       requests: {cpu: 100m, memory: 512Mi}
       limits: {memory: 2Gi}
+
+# -- Recording when the console was last used (any signed-in request, at most
+# once a minute) in a ConfigMap, <release>-execution-console-activity, the
+# only one it may change. The kernel chart's sleeper (scaleDown) reads it,
+# so it doesn't put the platform to sleep under someone using the console.
+activity:
+  enabled: true
 
 # -- Checking that a DAG's images still exist before submitting, rerunning
 # or retrying it (see console/src/registry.ts). Only the registries configured
@@ -116,6 +162,11 @@ registryCheck:
   # console's ServiceAccount (serviceAccount.annotations) bound to a GSA
   # with roles/artifactregistry.reader on the repositories to check.
   gcpMetadataToken: false
+  # -- EKS only: short-lived ECR credentials from the console's own AWS
+  # identity instead of a stored key. Needs an EKS Pod Identity association
+  # for the console's ServiceAccount with a role that may
+  # ecr:GetAuthorizationToken and read the repositories to check.
+  ecrToken: false
   # -- Where to reach a registry from inside the cluster when that differs
   # from its name in image references, as {host: url}. On kind:
   # {"localhost:5001": "http://kind-registry:5000"}.
@@ -257,6 +308,9 @@ postgres:
   persistence:
     enabled: true
     size: 1Gi
+    # -- Keep the volume (the data) when the release is uninstalled; delete
+    # it explicitly when you mean to.
+    keepOnUninstall: true
     storageClassName: ""
   resources:
     requests:

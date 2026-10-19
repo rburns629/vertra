@@ -1,0 +1,10 @@
+# The `resilient` size for the execution-console chart: two copies of the
+# console and kernel-api, so upgrades and node drains don't interrupt them
+# (PodDisruptionBudgets).
+#
+# Layer it under your own values: helm upgrade --install console <chart> -f
+# execution-console/sizes/resilient.yaml -f <yours>.
+replicaCount: 2
+retention:
+  # Keep it the kernel's executionRetentionDays.
+  executionDays: 90

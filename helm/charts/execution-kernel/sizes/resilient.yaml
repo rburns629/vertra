@@ -1,0 +1,24 @@
+# The `resilient` size for the execution-kernel chart: two copies of the
+# console and kernel-api, so upgrades and node drains don't interrupt them
+# (PodDisruptionBudgets).
+#
+# Layer it under your own values: helm upgrade --install kernel <chart> -f
+# execution-kernel/sizes/resilient.yaml -f <yours>.
+# Where steps run (Spot) depends on the cluster: set scheduler.taskPlacement yourself.
+api:
+  replicaCount: 2
+scheduler:
+  replicaCount: 1
+  # Most steps at once, in all and per team; more wait their turn.
+  maxRunningTasks: 50
+  maxRunningTasksPerTeam: 20
+  # The size of a step that doesn't set its own (product.yaml or the DAG).
+  taskDefaultResources:
+    cpu: 500m
+    memory: 1Gi
+executionRetentionDays: 90
+postgres:
+  persistence:
+    # Volumes grow but never shrink: a smaller figure than an existing
+    # volume's is refused by Kubernetes.
+    size: 50Gi

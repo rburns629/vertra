@@ -1,0 +1,47 @@
+{{- /*
+Availability for the `resilient`, `scaled` and `auto` sizes (sizes/):
+a HorizontalPodAutoscaler when autoscaling is on, and a
+PodDisruptionBudget whenever the console can run two or more copies, so
+drains and upgrades evict one copy at a time.
+*/ -}}
+{{- $fullname := include "execution-console.fullname" . }}
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullname }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- $max := ternary .Values.autoscaling.maxReplicas .Values.replicaCount .Values.autoscaling.enabled }}
+{{- if and .Values.podDisruptionBudget.enabled (ge (int $max) 2) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "execution-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+{{- end }}

@@ -15,7 +15,9 @@ spec:
   # silently round-robin roughly half of every request into the Postgres
   # pod's network namespace on a port nothing listens on there. Confirmed
   # the hard way: exactly that happened before this label was added.
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "execution-console.selectorLabels" . | nindent 6 }}
@@ -44,6 +46,16 @@ spec:
       # gets one), there's only one workload here, and it's the one that
       # provisions Secrets/RBAC.
       serviceAccountName: {{ include "execution-console.serviceAccountName" . }}
+      # Copies on different nodes where there's a choice, so one node's
+      # maintenance doesn't take them all.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "execution-console.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: app
       {{- if .Values.postgres.enabled }}
       initContainers:
         - name: wait-for-postgres
@@ -98,6 +110,8 @@ spec:
             {{- end }}
             - name: REGISTRY_GCP_METADATA_TOKEN
               value: {{ .Values.registryCheck.gcpMetadataToken | quote }}
+            - name: REGISTRY_ECR_TOKEN
+              value: {{ .Values.registryCheck.ecrToken | quote }}
             - name: REGISTRY_MIRRORS
               value: {{ $mirrors := list }}{{ range $host, $url := .Values.registryCheck.mirrors }}{{ $mirrors = append $mirrors (printf "%s=%s" $host $url) }}{{ end }}{{ join "," $mirrors | quote }}
             - name: IMAGE_PINNING

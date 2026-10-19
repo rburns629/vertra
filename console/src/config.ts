@@ -126,6 +126,13 @@ export const config = {
   // console could make an account; turn it on only behind a trusted
   // network boundary.
   allowSelfRegistration: parseBoolean("ALLOW_SELF_REGISTRATION"),
+  // The proxies in front of the console, as addresses and CIDR ranges
+  // (comma-separated), so request.ip (the sign-in throttle, rate limits,
+  // logs) is the real client: behind Google's external Application Load
+  // Balancer, its front ends (35.191.0.0/16, 130.211.0.0/22) and its own
+  // address, which it appends after the client's. Empty (the default):
+  // X-Forwarded-For is ignored, since anything could have written it.
+  trustProxy: (process.env["TRUST_PROXY"] ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   // Checking that a DAG's images still exist before running it (see
   // registry.ts). Only registries named here are ever contacted: those in
   // REGISTRY_AUTH_FILE, plus Artifact Registry/GCR when
@@ -135,6 +142,9 @@ export const config = {
   // (IMAGE_NOT_FOUND) is the only guard.
   registryCredentials: loadRegistryCredentials(process.env["REGISTRY_AUTH_FILE"]),
   registryGcpMetadataToken: parseBoolean("REGISTRY_GCP_METADATA_TOKEN"),
+  // EKS: short-lived ECR credentials from the console's own AWS identity
+  // (EKS Pod Identity), for ECR registries, instead of a stored key.
+  registryEcrToken: parseBoolean("REGISTRY_ECR_TOKEN"),
   registryMirrors: parseRegistryMirrors(process.env["REGISTRY_MIRRORS"]),
   // Every task's image is pinned to its digest at submission (routes/
   // executions.ts): "required" refuses a submission whose image the registry
@@ -171,6 +181,9 @@ export const config = {
   teamPullSecretFile: process.env["TEAM_PULL_SECRET_FILE"] ?? "",
   // This release's own namespace (where scan Jobs run).
   platformNamespace: process.env["PLATFORM_NAMESPACE"] ?? "",
+  // The ConfigMap the console records its last use in (activity.ts), for
+  // the kernel's sleeper. Empty (as in tests): not recorded.
+  activityConfigMap: process.env["ACTIVITY_CONFIGMAP"] ?? "",
   // Scanning every image before it's registered or run (scanning.ts): a
   // Trivy client Job per digest, in the platform's namespace, against the
   // chart's Trivy server. Off (as in tests) means no scans and no checks.
@@ -188,6 +201,11 @@ export const config = {
     rescanHours: Number(process.env["SCAN_RESCAN_HOURS"] ?? "24"),
     // The kernel chart's scan admission policy, which holds the failed digests.
     policyName: process.env["SCAN_POLICY_NAME"] ?? "",
+    // The Trivy server's Deployment, which the console scales to zero after
+    // idleMinutes with no scans and back up when one is wanted. Empty: it's
+    // left running.
+    scannerDeployment: process.env["SCANNER_DEPLOYMENT"] ?? "",
+    idleMinutes: Number(process.env["SCANNER_IDLE_MINUTES"] ?? "15"),
     // Which image of a multi-platform index to scan: what the cluster runs.
     // Defaults to the console's own (its nodes'), as Trivy would otherwise
     // pick linux/amd64 whatever the cluster is.

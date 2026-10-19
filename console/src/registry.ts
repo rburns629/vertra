@@ -22,6 +22,7 @@
  * registry it belongs to; public sources like docker.io/library/ are asked
  * anonymously.
  */
+import { ECRClient, GetAuthorizationTokenCommand } from "@aws-sdk/client-ecr";
 import { config } from "./config.js";
 import { isImageAllowed, normalizeImage } from "./imagePolicy.js";
 
@@ -55,6 +56,8 @@ const MANIFEST_TYPES = [
   "application/vnd.docker.distribution.manifest.v2+json",
 ].join(", ");
 const GOOGLE_REGISTRY = /^([a-z0-9-]+-docker\.pkg\.dev|([a-z]+\.)?gcr\.io)$/;
+/** An ECR registry: <account>.dkr.ecr.<region>.amazonaws.com. */
+const ECR_REGISTRY = /^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?$/;
 const GCP_METADATA_TOKEN_URL =
   "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 
@@ -66,18 +69,19 @@ export function parseImageRef(image: string): ImageRef | null {
   const first = image.slice(0, slash);
   if (!first.includes(".") && !first.includes(":") && first !== "localhost") return null;
 
+  // A digest wins over a tag; both come off the repository
+  // (`repo:latest@sha256:…` is how submissions are pinned).
   let rest = image.slice(slash + 1);
   let reference = "latest";
   const at = rest.indexOf("@");
   if (at >= 0) {
     reference = rest.slice(at + 1);
     rest = rest.slice(0, at);
-  } else {
-    const colon = rest.lastIndexOf(":");
-    if (colon > rest.lastIndexOf("/")) {
-      reference = rest.slice(colon + 1);
-      rest = rest.slice(0, colon);
-    }
+  }
+  const colon = rest.lastIndexOf(":");
+  if (colon > rest.lastIndexOf("/")) {
+    if (at < 0) reference = rest.slice(colon + 1);
+    rest = rest.slice(0, colon);
   }
   if (!rest || !reference) return null;
   const host = first === "docker.io" ? "registry-1.docker.io" : first;
@@ -101,12 +105,41 @@ async function gcpMetadataToken(): Promise<string> {
   return gcpToken.value;
 }
 
+const ecrTokens = new Map<string, Credential & { expiresAt: number }>();
+
+/**
+ * ECR's short-lived registry credential (12 hours), from the console's own
+ * AWS identity: the SDK finds EKS Pod Identity's credentials by itself.
+ * Kept until 10 minutes before it expires.
+ */
+async function ecrCredential(account: string, region: string): Promise<Credential> {
+  const key = `${account}/${region}`;
+  const cached = ecrTokens.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  const client = new ECRClient({ region });
+  const result = await client.send(new GetAuthorizationTokenCommand({}), {
+    abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const data = result.authorizationData?.[0];
+  if (!data?.authorizationToken) throw new Error("ECR returned no authorization token");
+  const [username = "", password = ""] = Buffer.from(data.authorizationToken, "base64").toString().split(":");
+  const expiresAt = (data.expiresAt?.getTime() ?? Date.now() + 3_600_000) - 600_000;
+  const credential = { username, password, expiresAt };
+  ecrTokens.set(key, credential);
+  return credential;
+}
+
 /** Null means ask anonymously. */
 async function credentialFor(host: string): Promise<Credential | null> {
   const configured = config.registryCredentials.get(host);
   if (configured) return configured;
   if (config.registryGcpMetadataToken && GOOGLE_REGISTRY.test(host)) {
     return { username: "oauth2accesstoken", password: await gcpMetadataToken() };
+  }
+  const ecr = ECR_REGISTRY.exec(host);
+  if (config.registryEcrToken && ecr) {
+    const { username, password } = await ecrCredential(ecr[1] ?? "", ecr[2] ?? "");
+    return { username, password };
   }
   return null;
 }

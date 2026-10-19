@@ -1,0 +1,5 @@
+{
+ "PriceList": [
+  "{\"product\":{\"productFamily\":\"Compute\",\"attributes\":{\"regionCode\":\"us-east-1\",\"servicecode\":\"AmazonEKS\",\"usagetype\":\"EKS-Auto:c6a.large-management-hours\",\"locationType\":\"AWS Region\",\"instancetype\":\"c6a.large\",\"location\":\"US East (N. Virginia)\",\"servicename\":\"Amazon Elastic Container Service for Kubernetes\",\"eksproducttype\":\"AutoMode\",\"operation\":\"EKSAutoUsage\"},\"sku\":\"PYTMGQJP6DXVDWG9\"},\"serviceCode\":\"AmazonEKS\",\"terms\":{\"OnDemand\":{\"PYTMGQJP6DXVDWG9.JRTCKXETXF\":{\"priceDimensions\":{\"PYTMGQJP6DXVDWG9.JRTCKXETXF.6YS6EN2CT7\":{\"unit\":\"hours\",\"endRange\":\"Inf\",\"description\":\"$0.00918 per hour for EKS Auto Mode management of c6a.large in US East (N. Virginia)\",\"appliesTo\":[],\"rateCode\":\"PYTMGQJP6DXVDWG9.JRTCKXETXF.6YS6EN2CT7\",\"beginRange\":\"0\",\"pricePerUnit\":{\"USD\":\"0.0091800000\"}}},\"sku\":\"PYTMGQJP6DXVDWG9\",\"effectiveDate\":\"2026-09-01T00:00:00Z\",\"offerTermCode\":\"JRTCKXETXF\",\"termAttributes\":{}}}},\"version\":\"20260928194255\",\"publicationDate\":\"2026-09-28T19:42:55Z\"}"
+ ]
+}

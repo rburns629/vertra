@@ -24,6 +24,13 @@ updates:
     groups:
       console-npm: {patterns: ["*"]}
 
+  - package-ecosystem: gomod
+    directory: /cli
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      cli-go: {patterns: ["*"]}
+
   - package-ecosystem: docker
     directories:
       - /kernel

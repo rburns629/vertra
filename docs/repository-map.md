@@ -17,6 +17,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 ├── docs/          maintainer documentation and diagrams
 ├── examples/      demo products (not real catalog products)
 ├── catalog-template/  what a new catalog repository starts as
+├── cli/           acyclixctl, the installer CLI (Go)
 ├── .github/       CI and security workflows
 ├── Makefile       everyday commands: run, deploy, logs
 └── _local/        your own scratch space (gitignored)
@@ -98,6 +99,11 @@ Python 3.12, FastAPI, SQLAlchemy (async), Alembic. One image, two processes: **k
 | `scheduler/service.py` | One tick: claim, start each task, poll running ones, save results, retry or fail, release dependents, finish executions. |
 | `scheduler/retention.py` | Deletes finished executions past their retention (with everything of theirs). |
 | `scheduler/input_resolution.py` | Replaces `$fromTask` references with upstream tasks' saved outputs before a task starts. |
+| **`sleeper/`** | **The sleeper (`python -m app.sleeper`), run by the chart's `scaleDown` CronJob.** |
+| `sleeper/__main__.py` | One look: sleeps the platform if idle (or, with `--now`, once nothing is unfinished). |
+| `sleeper/decision.py` | When to sleep, from the latest activity and the idle period: pure. |
+| `sleeper/activity.py` | What the kernel's data says: an unfinished execution, the last execution event. |
+| `sleeper/platform.py` | The Kubernetes side: replica counts, the console's last use, kernel-api's start, scaling to zero. |
 | **`executors/`** | **Running a task.** |
 | `executors/base.py` | The `Executor` protocol and the types passed through it. |
 | `executors/kubernetes.py` | The one executor: creates the `request.json` ConfigMap and the Job, reads status and the termination message, catches image-pull failures, deletes finished Jobs. |
@@ -118,8 +124,8 @@ Python 3.12, FastAPI, SQLAlchemy (async), Alembic. One image, two processes: **k
 | --- | --- |
 | `conftest.py` | Shared fixtures: the test database (`TEST_DATABASE_URL`; each test rolls back), the API client. Kubernetes tests skip without a cluster, or fail when `KERNEL_TESTS_REQUIRE_KUBERNETES=1` (CI). |
 | `fakes.py` | `FakeExecutor`: an in-memory executor, to test scheduler logic without a cluster. |
-| `unit/` | Pure logic, no I/O: DAG validation, states, retry backoff, input resolution, executor error handling, image-pull detection, request timeouts on every Kubernetes call, when a watched step's status read can be skipped, the scheduler's bounded concurrency, thread pool and shutdown, kernel-api's caller check, event metrics counted on commit, step sizes (`resources`) and placement, and that the database guide matches the models (`test_schema_doc.py`). |
-| `integration/` | Against real Postgres (and, where named, a real kind cluster): claiming and lease hand-over, the API (including refusing Python field names), the execution service, cancel and retry, input resolution, the scheduler and its edge cases (a result seen late, a retry of one of several failures, two schedulers finishing tasks together, a start that raises retrying the same attempt, a running step's log refreshed, retention), the Kubernetes executor, the demo products. `executor_helpers.py` holds shared helpers. |
+| `unit/` | Pure logic, no I/O: DAG validation, states, retry backoff, input resolution, executor error handling, image-pull detection, request timeouts on every Kubernetes call, when a watched step's status read can be skipped, the scheduler's bounded concurrency, thread pool and shutdown, kernel-api's caller check, event metrics counted on commit, step sizes (`resources`) and placement, the sleeper's decision and run, and that the database guide matches the models (`test_schema_doc.py`). |
+| `integration/` | Against real Postgres (and, where named, a real kind cluster): claiming and lease hand-over, the API (including refusing Python field names), the execution service, cancel and retry, input resolution, the scheduler and its edge cases (a result seen late, a retry of one of several failures, two schedulers finishing tasks together, a start that raises retrying the same attempt, a running step's log refreshed, retention), what the sleeper reads, the Kubernetes executor, the demo products. `executor_helpers.py` holds shared helpers. |
 | `end_to_end/test_two_task_chain.py` | The full proof: a two-task DAG through real Postgres, the real scheduler and real Jobs on kind, with a value passed between the tasks. |
 | `fixtures/docker_test_image/` | A test-only product image that crashes, sleeps or misbehaves on demand, to exercise the executor's failure handling. |
 
@@ -150,7 +156,8 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `imagePolicy.ts` | The allowed image sources: the same matching rules as the cluster's image policy, and reading and saving it. |
 | `imageRef.ts` | Reading an image reference the way the kubelet does (`normalizeImage`, `imageRepository`); pure, used by the image policy and repository ownership. |
 | `secretStores.ts` | What a team's SecretStore file may hold, checked before the console applies it (`PUT /teams/:team/secret-store`): the same rules as the catalog's own check. |
-| `scanning.ts` | Scanning every image before it's registered or run: a Trivy client Job per digest, verdicts in `image_scans`, daily rescans, the failed digests written into the kernel's scan policy. |
+| `scanning.ts` | Scanning every image before it's registered or run: a Trivy client Job per digest, verdicts in `image_scans`, daily rescans, the failed digests written into the kernel's scan policy; idling the Trivy server when no scan is wanted. |
+| `activity.ts` | Records when the console was last used (any signed-in request, once a minute at most) for the kernel's sleeper. |
 | `audit.ts` | Who changed what: every changing `/api` request, allowed or refused, recorded in `audit_log` and logged (never a secret value, password or token). |
 | `policySync.ts` | Rewrites the identity and scan policies and the teams' pull Secrets every few minutes, so drift doesn't last; keeps each sync's outcome for admins. |
 | `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`acyclix-pull`), for steps' images in private registries. |
@@ -250,7 +257,10 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `product-ownership.test.ts` | One team per product name and image repository, kept after deletion until an admin releases it. |
 | `team-members.test.ts`, `team-lifecycle.test.ts` | Membership, retiring and purging teams. |
 | `team-namespaces.test.ts` | The console creating, relabelling and deleting team namespaces, and applying SecretStore files: what reaches Kubernetes, and who may. |
-| `image-scans.test.ts` | Reading Trivy's output, verdicts per digest, what a failed scan blocks, an admin accepting one. |
+| `image-scans.test.ts` | Reading Trivy's output, verdicts per digest, what a failed scan blocks, an admin accepting one, idling the scanner and waking it for a scan. |
+| `registry-ecr.test.ts` | ECR's credential from the console's own AWS identity: fetched, sent as ECR's Basic challenge asks, kept for its lifetime. |
+| `client-ip.test.ts` | Who the client is behind a load balancer: only trusted proxies' X-Forwarded-For counts. |
+| `activity.test.ts` | Recording the console's last use: signed-in requests only, once a minute at most. |
 | `audit.test.ts` | What the audit log records (a change, a refusal) and never records (secret values; reads; sign-in and passwords). |
 | `policy-sync.test.ts`, `retention.test.ts` | The policy resync and its reported outcome; what retention deletes and keeps. |
 | `automation-tokens.test.ts` | Automation tokens and their scopes. |
@@ -272,6 +282,10 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | Path | What it's for |
 | --- | --- |
 | `Chart.yaml`, `values.yaml`, `.helmignore` | The chart, its defaults (with resource requests), and what to leave out. |
+| `sizes/{minimal,resilient,scaled,auto}.yaml` | The size presets: copies, step caps and default step size, retention, the database volume. |
+| `templates/autoscaling.yaml` | kernel-api's HorizontalPodAutoscaler (`auto`), and PodDisruptionBudgets for whatever runs two or more copies. |
+| `templates/sleeper.yaml` | Sleeping when idle: the sleeper's CronJobs, its narrow identity (replica counts of named Deployments only), and the ConfigMap of counts to wake to. |
+| `templates/step-headroom.yaml` | Warm headroom: low-priority placeholder Pods the size of a default step, and their PriorityClass. |
 | `templates/kernel-api-deployment.yaml`, `kernel-api-service.yaml` | kernel-api, reachable only inside the cluster. |
 | `templates/kernel-scheduler-deployment.yaml` | kernel-scheduler. |
 | `templates/postgres-*.yaml` | The kernel's Postgres: Deployment, storage, Service. |
@@ -294,12 +308,16 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | Path | What it's for |
 | --- | --- |
 | `Chart.yaml`, `values.yaml`, `.helmignore` | The chart and its defaults. |
+| `sizes/{minimal,resilient,scaled,auto}.yaml` | The size presets: copies and retention. |
+| `templates/autoscaling.yaml` | The console's HorizontalPodAutoscaler (`auto`) and its PodDisruptionBudget from two copies. |
+| `templates/ingress.yaml` | Reaching the console from outside the cluster (HTTPS only), for the catalog's CI; with `trustProxy`, the console believes the load balancer's X-Forwarded-For. |
+| `templates/activity.yaml` | The ConfigMap the console records its last use in (for the kernel's sleeper), and the Role that lets it update that one. |
 | `templates/deployment.yaml`, `service.yaml` | The console, and how it's reached (LoadBalancer on GKE, port-forward on kind). |
 | `templates/postgres-*.yaml`, `migration-job.yaml`, `backup-cronjob.yaml` | Its own Postgres, migrations and backups. |
 | `templates/networkpolicy.yaml` | When it runs its own Postgres, only this release's Pods may reach it. |
 | `templates/write-fence-policy.yaml` | Admission policy: the console may write Secrets, ServiceAccounts, Roles, RoleBindings and ExternalSecrets only in team namespaces. |
 | `templates/namespace-policy.yaml` | Admission policy: the console may only create namespaces labelled a team's and change that one label on a team's namespace, never on kube-* or protected ones. |
-| `templates/scanner.yaml` | The Trivy server image scans run against, the scan Jobs' ServiceAccount (no token) and the Role that lets the console run them in its own namespace. |
+| `templates/scanner.yaml` | The Trivy server image scans run against, the scan Jobs' ServiceAccount (no token) and the Role that lets the console run them in its own namespace and idle the server (its replica count only). |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, generated secrets (kept across upgrades), the console's identity. |
 | `templates/rbac.yaml` | What the console may do in Kubernetes: create ServiceAccounts, write Secrets and ExternalSecrets, delete (never create) Roles and RoleBindings, edit the image and identity policies; read namespaces, SecretStores and Pods. |
 | `templates/_helpers.tpl`, `NOTES.txt` | Shared snippets; post-install message. |
@@ -332,6 +350,12 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 | `repository-map.md` | This page. |
 | `architecture/` | draw.io diagrams (system, UML classes for both projects, a submit-to-finished sequence, state machines), their SVG exports, and `generate.py`, which writes them from the code. Rerun it after changing code. |
 
+### `docs/clouds/`: before `acyclixctl init`
+
+| Path | What it's for |
+| --- | --- |
+| `aws.md`, `gcp.md`, `github.md` | What only each website can do before an install (an account or project, the root user's MFA, a budget, an IAM user, signing in, organization policies), linked from `acyclixctl` when it finds one of them missing. |
+
 ## `examples/`: demo products
 
 Fake products used by the demos and the kernel's integration tests. They deliberately share no code, as real products wouldn't, and aren't held to the production bar. Real products live in each team's own catalog repository, started from `catalog-template/`.
@@ -341,6 +365,41 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `project-product/` | Pretends to create a project and outputs its id. |
 | `application-product/` | Pretends to deploy an application into a project, taking the project id from the step before. |
 | `hello-world-app/` | A tiny web app: the image the Cloud Run demo deploys. |
+
+## `cli/`: the installer
+
+| Path | What it's for |
+| --- | --- |
+| `DESIGN.md` | The design for `acyclixctl`: targets, cluster modes, sizes, scale-down, requirements, the OpenTofu modules, the approval screen and cost estimate, the catalog step, the build order. |
+| `go.mod`, `go.sum` | The Go module (`github.com/rburns629/acyclix/cli`): cobra and yaml.v3 only. |
+| `cmd/acyclixctl/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
+| `cmd/acyclixctl/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/acyclix.yaml`. |
+| `cmd/acyclixctl/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
+| `cmd/acyclixctl/operate.go` | `check`, `status`, `sleep`, `wake`, `console` and `destroy`. |
+| `cmd/acyclixctl/catalog.go` | `catalog`: creates the catalog repository on GitHub with its first team and starters, sets its variables and secrets (tokens minted on the console, never shown), pushes it, waits for its CI and runs a starter. |
+| `cmd/acyclixctl/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
+| `cmd/acyclixctl/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
+| `cmd/acyclixctl/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |
+| `internal/config/` | The config file: defaults, validation, load and save, dotted-key get and set. |
+| `internal/prompt/` | The questions on a terminal; defaults when non-interactive. |
+| `internal/tools/` | Required tools per target, version checks, and pinned, checksum-verified downloads into `~/.acyclix/bin` (`pins.go`). |
+| `internal/run/` | Runs the external commands (kubectl, helm, docker, kind), printing them with `-v`. |
+| `internal/cluster/` | The kind cluster and its local registry: inspect, create, delete; namespaces. |
+| `internal/install/` | The platform images (built from source or released), the generated Helm values, and `helm upgrade`. |
+| `internal/platform/` | The installed platform: deployments, sleep, wake, running steps, console access. |
+| `internal/plan/` | The approval screen and the sizes' platform floors. |
+| `internal/gcp/` | What a gcp install needs from gcloud, as you: the project's checks, the cluster's credentials, a short-lived Docker sign-in, the module's inputs and the registry paths. |
+| `internal/access/` | Guided access: who you're signed in as (AWS, Google, GitHub), where an install would go, and what that allows (regions an organization's policy permits, budgets, OpenTofu's sign-in, a project's existing resources), as the approval screen's Access block and problems with fixes and guides; AWS's errors classified whole. |
+| `cmd/acyclixctl/init_access.go` | The guided access steps in `init`: choosing a sign-in and running it, choosing a project or a region from those that answer, offering a budget, recording who set the environment up. |
+| `internal/awscloud/` | What an aws install needs from the AWS CLI, as you: the sign-in and region checks, the cluster's credentials, a short-lived ECR sign-in, the module's inputs, the account's GitHub OIDC provider, Auto Mode's in-cluster setup, and the ECR repositories a destroy removes. |
+| `internal/modules/aws/` | The aws OpenTofu module (embedded): a VPC in two zones (public subnets, no NAT gateway), an EKS Auto Mode cluster, ECR (a template that creates products' repositories on push, and the platform's), Pod Identity roles for the console and the backups, the backup bucket, and the catalog CI's GitHub OIDC role. |
+| `internal/modules/gcp/` | The gcp OpenTofu module (embedded in the binary): network, a GKE Autopilot or Standard cluster, Artifact Registry repositories, the nodes', console's and backups' identities, the backup bucket; `.terraform.lock.hcl` pins the provider's checksums. |
+| `internal/modules/modules.go` | Embeds the modules and writes one into an environment's `tofu/`. |
+| `internal/catalog/` | Assembles a new catalog's first commit from `catalog-template/`: the first team, the starters for its languages, the owners, where it publishes. |
+| `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
+| `internal/consoleapi/` | The console's API as acyclixctl uses it: signing in as the admin, minting tokens, creating a team, running a DAG. |
+| `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
+| `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in) and AWS's Price List and Spot price history (with your AWS sign-in), each cached a day, and their cost models; `testdata/` holds real price entries. |
 
 ## `catalog-template/`: what a new catalog starts as
 
@@ -358,7 +417,7 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | `samples/local/` | A sample team with no cloud or secrets: one product in Python, TypeScript, Go, PowerShell and Rust. New teams copy starters from it by language; published whole, it proves an install end to end. |
 | `docs/onboarding-with-ai.md` | For catalog teams using an AI assistant to add a team or product. |
 | `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up. |
-| `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Not yet proven against an account. |
+| `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Proven on EKS (its SecretStore not yet). |
 | `samples/azure/` | The same for Azure: a resource group, a Container App, a PostgreSQL flexible server with Entra sign-in only, keyless through AKS Workload Identity. Not yet proven, and needs a step Pod label the kernel can't set yet. |
 
 ## Not in git

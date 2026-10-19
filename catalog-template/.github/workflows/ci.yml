@@ -13,6 +13,7 @@ name: catalog-ci
 #
 # Registry sign-in, by whichever of these is set:
 #   vars.GCP_WORKLOAD_IDENTITY_PROVIDER + vars.PUBLISH_GCP_SERVICE_ACCOUNT
+#   vars.AWS_ROLE_ARN + vars.AWS_REGION     (ECR, through GitHub's OIDC token)
 #   vars.REGISTRY_USERNAME + secrets.REGISTRY_PASSWORD
 
 on:
@@ -83,6 +84,16 @@ jobs:
       - name: Sign Docker in to Artifact Registry
         if: steps.gcp.outcome == 'success'
         run: gcloud auth configure-docker "${ACYCLIX_REGISTRY%%/*}" --quiet
+      - name: Sign in to AWS
+        id: aws
+        if: vars.AWS_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Sign Docker in to ECR
+        if: steps.aws.outcome == 'success'
+        run: aws ecr get-login-password | docker login --username AWS --password-stdin "${ACYCLIX_REGISTRY%%/*}"
       - name: Sign in to the registry with a username and password
         if: vars.REGISTRY_USERNAME != ''
         env:

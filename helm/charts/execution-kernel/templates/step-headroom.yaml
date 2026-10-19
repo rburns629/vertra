@@ -1,0 +1,81 @@
+{{- /*
+Warm headroom for steps (stepHeadroom): placeholder Pods the size of a
+default step, at a priority below every step's, so a step preempts one
+instead of waiting for a node. See values.yaml.
+*/ -}}
+{{- $h := .Values.stepHeadroom }}
+{{- if gt (int $h.replicas) 0 }}
+{{- $size := .Values.scheduler.taskDefaultResources }}
+{{- if not (and $size.cpu $size.memory) }}
+{{- fail "stepHeadroom.replicas needs scheduler.taskDefaultResources.cpu and .memory: the size each placeholder keeps free" }}
+{{- end }}
+{{- $fullname := include "execution-kernel.fullname" . }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ $fullname }}-{{ .Release.Namespace }}-headroom
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+value: {{ $h.priority }}
+# Placeholders never push anything else out; they only make way.
+preemptionPolicy: Never
+globalDefault: false
+description: Acyclix's warm headroom for steps; any step preempts it.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-headroom
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+spec:
+  replicas: {{ $h.replicas }}
+  selector:
+    matchLabels:
+      {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: headroom
+  template:
+    metadata:
+      labels:
+        {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: headroom
+    spec:
+      priorityClassName: {{ $fullname }}-{{ .Release.Namespace }}-headroom
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 0
+      {{- with .Values.scheduler.taskPlacement }}
+      {{- with .nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65535
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pause
+          image: "{{ $h.image.repository }}:{{ $h.image.tag }}{{ with $h.image.digest }}@{{ . }}{{ end }}"
+          resources:
+            requests:
+              cpu: {{ $size.cpu | quote }}
+              memory: {{ $size.memory | quote }}
+            limits:
+              memory: {{ $size.memory | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+{{- end }}

@@ -134,6 +134,28 @@ class Settings(BaseSettings):
     # A deleted execution's requestId can then start a new one.
     execution_retention_days: int = Field(default=90, ge=0)
 
+    # The sleeper (python -m app.sleeper, the chart's scaleDown CronJob):
+    # scales the platform's Deployments to zero once nothing has happened for
+    # sleeper_idle_after_seconds: no execution unfinished, none finished,
+    # nobody using the console (its activity ConfigMap), kernel-api not
+    # restarted (woken or upgraded). The databases go last.
+    sleeper_namespace: str = ""
+    sleeper_idle_after_seconds: int = Field(default=7200, gt=0)
+    sleeper_deployments: list[str] = Field(default_factory=list)
+    sleeper_database_deployments: list[str] = Field(default_factory=list)
+    # Where each Deployment's copies are kept while asleep, for waking.
+    sleeper_state_configmap: str = ""
+    # The console's activity ConfigMap; empty: not consulted.
+    sleeper_console_activity_configmap: str = ""
+    # kernel-api's Pods: the newest one's start counts as activity.
+    sleeper_api_pod_selector: str = ""
+    # The sleeper's own CronJob: suspended while asleep, so it doesn't start a
+    # Pod (on EKS Auto Mode, a node) every few minutes to find nothing to do.
+    # Waking resumes it (acyclixctl wake). Empty: never suspended.
+    sleeper_cronjob: str = ""
+    # A scheduled sleep (--now) waits this long for unfinished executions.
+    sleeper_scheduled_wait_seconds: int = Field(default=6 * 3600, gt=0)
+
     # The scheduler touches this file each time its loop comes round (and
     # while it waits for migrations); its liveness probe restarts it if the
     # file goes stale, i.e. if a pass hangs.

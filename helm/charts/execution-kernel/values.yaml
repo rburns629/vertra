@@ -140,6 +140,14 @@ purgePolicy:
 
 api:
   replicaCount: 1
+  # -- Copies on CPU load instead of replicaCount: a HorizontalPodAutoscaler
+  # (the `auto` size, sizes/auto.yaml). Needs the cluster's metrics API
+  # (metrics-server; built into GKE, EKS Auto Mode and AKS Automatic).
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
   service:
     type: ClusterIP
     port: 8000
@@ -273,6 +281,55 @@ scheduler:
       cpu: "1"
       memory: 512Mi
 
+# -- Sleeping when idle (kernel/app/sleeper): a CronJob checks every few
+# minutes and, after idleAfterMinutes with no execution unfinished or
+# finished, nobody using the console (its activity ConfigMap) and kernel-api
+# not restarted, scales the platform's Deployments (both releases') to zero,
+# the databases last. Volumes stay. `acyclixctl wake` brings it back (or
+# scale them up yourself: the copies to wake to are in the
+# <release>-execution-kernel-sleep ConfigMap). While asleep the console and
+# kernel-api don't answer: catalog CI and automation fail until it's woken.
+scaleDown:
+  enabled: false
+  idleAfterMinutes: 120
+  # How often the sleeper looks.
+  checkSchedule: "*/5 * * * *"
+  # -- Also sleep at these times (a cron schedule, e.g. "0 20 * * 1-5"),
+  # however recently it was used, once unfinished executions are done
+  # (waiting up to 6 hours). Empty: only when idle.
+  schedule: ""
+  # The console release's full name (<release>-execution-console), whose
+  # Deployments sleep too and whose activity ConfigMap counts.
+  consoleFullname: console-execution-console
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# -- Warm room for steps: this many placeholder Pods at the default step
+# size (scheduler.taskDefaultResources, which must be set), on the nodes
+# steps use (scheduler.taskPlacement), at a priority below every step's. A
+# step that would otherwise wait for a node takes a placeholder's place at
+# once (the placeholder is preempted), and the cluster autoscaler, if any,
+# brings up a node for the placeholder again. Costs the reserved capacity
+# around the clock; 0 keeps none.
+stepHeadroom:
+  replicas: 0
+  # The placeholders' priority: below 0, the default every step gets.
+  priority: -10
+  image:
+    repository: registry.k8s.io/pause
+    tag: "3.10.1"
+    digest: sha256:278fb9dbcca9518083ad1e11276933a2e96f23de604a3a08cc3c80002767d24c
+
+# -- A PodDisruptionBudget for kernel-api and the scheduler whenever either
+# can run two or more copies: node drains and upgrades then evict one copy
+# at a time, so the service stays up. At one copy there's nothing to keep.
+podDisruptionBudget:
+  enabled: true
+
 # -- Both workloads' pods carry prometheus.io/* scrape annotations
 # unconditionally: they're inert unless something is actually configured to
 # look for them (the classic annotation-based pod discovery most
@@ -315,6 +372,9 @@ postgres:
   persistence:
     enabled: true
     size: 1Gi
+    # -- Keep the volume (the data) when the release is uninstalled; delete
+    # it explicitly when you mean to.
+    keepOnUninstall: true
     storageClassName: ""
   resources:
     requests:

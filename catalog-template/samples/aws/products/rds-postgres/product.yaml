@@ -1,5 +1,5 @@
 # A sample: RDS for PostgreSQL, with real AWS API calls (billed).
-# Not yet proven against a real account; see the aws team's README.md.
+# Its own IAM role, by EKS Pod Identity: see the aws team's README.md.
 name: rds-postgres
 team: aws
 displayName: RDS for PostgreSQL

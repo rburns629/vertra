@@ -33,6 +33,14 @@ spec:
       # Kubernetes API access — see templates/rbac.yaml. kernel-api never
       # touches the Kubernetes API, only Postgres.
       serviceAccountName: {{ include "execution-kernel.serviceAccountName" . }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "execution-kernel.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: scheduler
       {{- if .Values.postgres.enabled }}
       initContainers:
         - name: wait-for-postgres

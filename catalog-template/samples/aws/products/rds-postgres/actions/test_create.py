@@ -75,6 +75,17 @@ class CreateActionTest(unittest.TestCase):
         self.assertTrue(create["StorageEncrypted"])
         self.assertEqual(result["outputs"]["masterUserSecretArn"], AVAILABLE["MasterUserSecret"]["SecretArn"])
 
+    def test_the_accounts_first_use_is_retried(self) -> None:
+        not_ready = ClientError({"Error": {"Code": "InvalidParameterValue", "Message": (
+            "Missing necessary credentials. Please check http://docs.aws.amazon.com/AmazonRDS/latest/"
+            "UserGuide/UsingWithRDS.IAM.ServiceLinkedRoles.html")}}, "CreateDBInstance")
+        def configure(rds):
+            rds.describe_db_instances.side_effect = NOT_FOUND
+            rds.create_db_instance.side_effect = not_ready
+        exit_code, result, _ = self._run({"instanceId": "orders-db", "region": "eu-west-1"}, configure)
+        self.assertEqual(exit_code, 1)
+        self.assertTrue(result["error"]["retryable"])
+
 
 if __name__ == "__main__":
     unittest.main()

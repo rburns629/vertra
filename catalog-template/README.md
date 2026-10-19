@@ -194,6 +194,7 @@ in the `catalog-publish` Environment (`main` only). Settings are in
 | `ACYCLIX_SIGNING_MODE`, `ACYCLIX_SIGNING_KEY` | variables | `none`, `key` (a key pair or cloud KMS key) or `keyless` |
 | `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` | secrets | a generated signing key |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER`, `PUBLISH_GCP_SERVICE_ACCOUNT` | variables | sign in to Artifact Registry through OIDC |
+| `AWS_ROLE_ARN`, `AWS_REGION` | variables | or to ECR through OIDC (a role that may push under the registry's prefix) |
 | `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` | variable / secret | or a username and password |
 
 An Acyclix admin mints the token on the console's Admin page; it belongs to

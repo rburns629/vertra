@@ -10,9 +10,11 @@ name: ci
 #   console   typecheck, eslint, vitest against a real Postgres, build;
 #             then the frontend's oxlint, vitest and build.
 #   helm      helm lint on both charts; a render of every environment's
-#             settings in helm/values/, and of the charts' optional branches
+#             settings in helm/values/, of every size preset, and of the charts' optional branches
 #             (backup destinations, a shared database, policies off), so a
 #             change that breaks a template fails here, not at helm upgrade.
+#   cli       gofmt, go vet and the unit tests of acyclixctl, and a macOS build.
+#   opentofu  init, validate and fmt of the CLI's OpenTofu modules.
 #   workflows actionlint over .github/workflows and the catalog template's.
 #   catalog-template  the template a new catalog starts from, with every
 #             sample added (.github/scripts/catalog-template.sh):
@@ -160,6 +162,15 @@ jobs:
             --set identityPolicy.enabled=false --set api.auth.enabled=false --set imagePolicy.enabled=false > /dev/null
           helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
             --set writeFence.enabled=false --set kernelApiToken.enabled=false > /dev/null
+      - name: Render every size, with sleeping and headroom on
+        run: |
+          for size in minimal resilient scaled auto; do
+            helm template kernel helm/charts/execution-kernel -f helm/charts/execution-kernel/sizes/$size.yaml \
+              --set scaleDown.enabled=true --set scaleDown.schedule="0 20 * * *" \
+              --set stepHeadroom.replicas=1 > /dev/null
+            helm template console helm/charts/execution-console -f helm/charts/execution-console/sizes/$size.yaml \
+              --set kernelApiUrl=http://x > /dev/null
+          done
 
   kubernetes:
     runs-on: ubuntu-latest
@@ -200,6 +211,42 @@ jobs:
           alembic upgrade head
           pytest -q -rs tests/integration/test_kubernetes_executor.py \
             tests/integration/test_product_examples.py tests/end_to_end
+
+  cli:
+    runs-on: ubuntu-latest
+    # The Go toolchain the CLI is built with, pinned by digest.
+    container: golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d
+    defaults:
+      run:
+        working-directory: cli
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "run gofmt -w on these"; exit 1; }
+      - run: go vet ./...
+      - run: go test ./...
+      - run: GOOS=darwin GOARCH=arm64 go build -o /dev/null ./cmd/acyclixctl
+
+  opentofu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # The version acyclixctl pins (cli/internal/tools/pins.go), checked
+      # against its published checksum.
+      - run: |
+          curl -fsSLo tofu.tar.gz https://github.com/opentofu/opentofu/releases/download/v1.13.1/tofu_1.13.1_linux_amd64.tar.gz
+          echo "378ada19d4bc70c43732004e8159be771b23b9a5afdf059e5f8a2b3fa2c70a69  tofu.tar.gz" | sha256sum -c
+          tar xzf tofu.tar.gz tofu && sudo mv tofu /usr/local/bin/
+      - name: Validate every module (providers checked against each lock file)
+        run: |
+          for module in cli/internal/modules/*/; do
+            echo "::group::$module"
+            tofu -chdir="$module" init -backend=false -input=false -lockfile=readonly
+            tofu -chdir="$module" validate
+            tofu -chdir="$module" fmt -check -diff
+            echo "::endgroup::"
+          done
 
   workflows:
     runs-on: ubuntu-latest

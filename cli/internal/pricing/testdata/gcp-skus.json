@@ -1,0 +1,520 @@
+{
+ "gke": [
+  {
+   "description": "Autopilot Pod mCPU Requests (europe-west1)",
+   "serviceRegions": [
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 49000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Autopilot Pod mCPU Requests (us-central1)",
+   "serviceRegions": [
+    "us-central1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 44500
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Autopilot Balanced Pod mCPU Requests (us-central1)",
+   "serviceRegions": [
+    "us-central1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 64500
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Autopilot Pod Memory Requests (us-central1)",
+   "serviceRegions": [
+    "us-central1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 4922500
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Autopilot Spot Pod mCPU Requests (us-central1)",
+   "serviceRegions": [
+    "us-central1"
+   ],
+   "category": {
+    "usageType": "Preemptible"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 13300
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Autopilot Spot Pod Memory Requests (us-central1)",
+   "serviceRegions": [
+    "us-central1"
+   ],
+   "category": {
+    "usageType": "Preemptible"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 1476700
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Autopilot Kubernetes Clusters",
+   "serviceRegions": [
+    "global"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 100000000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "compute": [
+  {
+   "description": "Regional Balanced PD Capacity",
+   "serviceRegions": [
+    "us-central1",
+    "us-central2",
+    "us-east1",
+    "us-west1",
+    "asia-east1",
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.mo",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 200000000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Spot Preemptible E2 Instance Ram running in EMEA",
+   "serviceRegions": [
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "Preemptible"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 1738000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Spot Preemptible E2 Instance Core running in EMEA",
+   "serviceRegions": [
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "Preemptible"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 12950000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Balanced PD Capacity",
+   "serviceRegions": [
+    "us-central1",
+    "us-central2",
+    "us-east1",
+    "us-west1",
+    "asia-east1",
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.mo",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 100000000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Spot Preemptible E2 Instance Ram running in Americas",
+   "serviceRegions": [
+    "us-central1",
+    "us-east1",
+    "us-west1"
+   ],
+   "category": {
+    "usageType": "Preemptible"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 1754000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "E2 Instance Core running in EMEA",
+   "serviceRegions": [
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 23993370
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "E2 Instance Core running in Americas",
+   "serviceRegions": [
+    "us-central1",
+    "us-east1",
+    "us-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 21811590
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Spot Preemptible E2 Instance Core running in Americas",
+   "serviceRegions": [
+    "us-central1",
+    "us-east1",
+    "us-west1"
+   ],
+   "category": {
+    "usageType": "Preemptible"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 13090000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "E2 Instance Ram running in EMEA",
+   "serviceRegions": [
+    "europe-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 3216090
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "E2 Instance Ram running in Americas",
+   "serviceRegions": [
+    "us-central1",
+    "us-east1",
+    "us-west1"
+   ],
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "GiBy.h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 2923530
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "networking": [
+  {
+   "description": "Cloud Load Balancer Forwarding Rule Additional Global",
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "serviceRegions": [
+    "global"
+   ],
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 10000000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "description": "Cloud Load Balancer Forwarding Rule Minimum Global",
+   "category": {
+    "usageType": "OnDemand"
+   },
+   "serviceRegions": [
+    "global"
+   ],
+   "pricingInfo": [
+    {
+     "pricingExpression": {
+      "usageUnit": "h",
+      "tieredRates": [
+       {
+        "startUsageAmount": 0,
+        "unitPrice": {
+         "currencyCode": "USD",
+         "units": "0",
+         "nanos": 25000000
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

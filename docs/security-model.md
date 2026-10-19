@@ -214,6 +214,14 @@ without going through the console:
 | Console namespaces | The console creating a namespace that isn't labelled a team's, adopting one that isn't a team's, changing anything about a team namespace but its team label, or touching kube-* or the platform's own | console chart, `templates/namespace-policy.yaml` |
 | Console write fence | The console's ServiceAccount creating, changing or deleting Secrets, ServiceAccounts, Roles, RoleBindings or ExternalSecrets outside team namespaces (kube-system, the platform's own) | console chart, `templates/write-fence-policy.yaml` |
 
+Two platform identities only change replica counts, through the scale
+subresource (which can't change what a Deployment runs), on Deployments
+named in their Roles: the kernel's sleeper (`scaleDown`, the platform's
+own Deployments, plus its own `-sleep` ConfigMap and a read of the
+console's `-activity` one) and the console (only the image scanner's, to
+idle it, and its own `-activity` ConfigMap). A stolen token of either can
+stop the platform, not change it.
+
 And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in both charts) let only the platform's own Pods connect to its Postgres, and only the console connect to kernel-api: a step's Pod can reach neither. They need a CNI that enforces NetworkPolicy, and they select Pods by label, so creating Pods in the platform namespace must stay limited to administrators. The bundled databases' passwords are generated on install.
 
 ## What Acyclix stores

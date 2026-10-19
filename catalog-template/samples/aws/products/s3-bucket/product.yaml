@@ -1,5 +1,5 @@
 # A sample: S3 bucket, with real AWS API calls (billed).
-# Not yet proven against a real account; see the aws team's README.md.
+# Its own IAM role, by EKS Pod Identity: see the aws team's README.md.
 name: s3-bucket
 team: aws
 displayName: S3 bucket

@@ -23,6 +23,7 @@ import { registerOpenApi } from "./openapi.js";
 import imagePolicyRoutes from "./routes/imagePolicy.js";
 import imageScansRoutes from "./routes/imageScans.js";
 import auditRoutes from "./routes/audit.js";
+import { registerActivity } from "./activity.js";
 import { registerAudit } from "./audit.js";
 import { reconcileScans } from "./scanning.js";
 import { startPolicySync } from "./policySync.js";
@@ -42,7 +43,11 @@ import { db } from "./db/client.js";
 const FRONTEND_DIST = path.join(import.meta.dirname, "..", "frontend", "dist");
 
 export async function buildApp() {
-  const app = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
+  const app = Fastify({
+    logger: true,
+    // By address only: none listed, and request.ip is the connection's.
+    trustProxy: config.trustProxy.length > 0 ? config.trustProxy.join(",") : false,
+  }).withTypeProvider<TypeBoxTypeProvider>();
 
   // Fastify's default error handler puts any uncaught error's message (and
   // its .headers) in the response. @kubernetes/client-node's errors carry
@@ -88,6 +93,7 @@ export async function buildApp() {
   // below (the decorators need to exist on the parent app either way).
   await app.register(authPlugin);
   registerAudit(app);
+  registerActivity(app);
 
   // Browser security headers on every response. The session token lives in
   // localStorage, so the Content-Security-Policy is what keeps an injected

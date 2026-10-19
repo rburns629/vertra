@@ -52,7 +52,10 @@ def _aws_failure(error: Exception) -> int:
         details = error.response.get("Error", {})
         status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
         code = details.get("Code", "Unknown")
-        retryable = code in RETRYABLE_CODES or status >= 500
+        # RDS's first use in an account makes its service-linked role, and the
+        # create right after can fail before that role is usable: try again.
+        first_use = code == "InvalidParameterValue" and "ServiceLinkedRoles" in details.get("Message", "")
+        retryable = code in RETRYABLE_CODES or status >= 500 or first_use
         return _failure("AWS_API_ERROR", f"{code}: {details.get('Message', '')}", retryable=retryable)
     return _failure("AWS_API_ERROR", str(error), retryable=True)
 

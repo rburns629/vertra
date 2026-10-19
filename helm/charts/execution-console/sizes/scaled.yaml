@@ -1,0 +1,9 @@
+# The `scaled` size for the execution-console chart: three copies of the
+# console and kernel-api and two schedulers, for many teams and steps.
+#
+# Layer it under your own values: helm upgrade --install console <chart> -f
+# execution-console/sizes/scaled.yaml -f <yours>.
+replicaCount: 3
+retention:
+  # Keep it the kernel's executionRetentionDays.
+  executionDays: 90
