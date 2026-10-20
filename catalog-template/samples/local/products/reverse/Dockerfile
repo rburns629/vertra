@@ -1,5 +1,5 @@
 # Build: compile the TypeScript. The compiler stays in this stage.
-FROM node:24-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS build
+FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370 AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -8,7 +8,7 @@ COPY src/ src/
 RUN npx tsc
 
 # Run: Node and the compiled action, nothing else.
-FROM node:24-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5
+FROM node:25-slim@sha256:81db02c4b671288a03915da9534dbd54f96d0e7c24d80ccc54f5b36b2e684370
 # Security fixes released since the base image was published: CI's scan
 # fails on a high or critical vulnerability that has a fix.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
