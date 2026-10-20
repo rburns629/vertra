@@ -1,5 +1,7 @@
 # A sample: Container App, with real Azure API calls (billed).
 # Not yet proven against a real account; see the azure team's README.md.
+apiVersion: acyclix.dev/v2
+kind: Product
 name: container-app
 team: azure
 displayName: Container App

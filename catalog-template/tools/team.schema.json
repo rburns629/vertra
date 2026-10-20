@@ -1,19 +1,46 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Acyclix team (team.yaml)",
+  "title": "Acyclix team (team.yaml), format v2",
   "description": "One team: a team, its folder catalog/<name>/ and its namespace.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "displayName", "description", "owner"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "displayName",
+    "description",
+    "owner"
+  ],
   "properties": {
+    "apiVersion": {
+      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "acyclix.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: Team.",
+      "const": "Team"
+    },
     "name": {
       "description": "The team's folder name, which is also its team and namespace.",
       "type": "string",
       "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
     },
-    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "description": { "type": "string", "maxLength": 4000 },
-    "owner": { "type": "string", "minLength": 1 },
-    "contact": { "type": "string" }
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contact": {
+      "type": "string"
+    }
   }
 }

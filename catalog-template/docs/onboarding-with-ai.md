@@ -17,8 +17,9 @@ creates namespaces and publishes images.
    `.github/CODEOWNERS`. A product is a copy of `templates/hello` (or
    `name-maker`, `http-check`) under `teams/<team>/products/`, with
    a real action script, its `product.yaml`, and contract tests. If the
-   action reads a secret, `requiredSecrets` names it exactly as the script
-   reads it (`/platform/secrets/<name>/<key>`).
+   action reads a secret, its `secretRefs` names it exactly as the script
+   reads it (`/platform/secrets/<name>/<key>`). Every file starts with
+   `apiVersion: acyclix.dev/v2` and its `kind`, as the templates do.
 2. **Proof it works.** Ask for the output of
    `./catalogctl check teams/<team>/products/<product>`, which
    validates, builds, runs the tests and scans the image. "I wrote a test"

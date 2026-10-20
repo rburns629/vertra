@@ -1,5 +1,7 @@
 # A sample: App Runner service, with real AWS API calls (billed).
 # Its own IAM role, by EKS Pod Identity: see the aws team's README.md.
+apiVersion: acyclix.dev/v2
+kind: Product
 name: app-runner
 team: aws
 displayName: App Runner service

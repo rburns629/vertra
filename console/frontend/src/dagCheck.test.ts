@@ -33,6 +33,17 @@ describe("checkDag", () => {
     );
   });
 
+  it("submits a catalog's kind: Dag file without its header, and explains a template", () => {
+    const checked = check({ apiVersion: "acyclix.dev/v2", kind: "Dag", name: "hello", tasks: [task("a")] });
+    expect(checked.status).toBe("valid");
+    if (checked.status === "valid") {
+      expect(checked.payload).not.toHaveProperty("apiVersion");
+      expect(checked.payload).not.toHaveProperty("kind");
+    }
+    expect(messages(check({ apiVersion: "acyclix.dev/v2", kind: "Template", name: "t", steps: [] }))[0]).toContain("template");
+    expect(check({ apiVersion: "acyclix.dev/v1", name: "hello", tasks: [task("a")] }).status).toBe("invalid");
+  });
+
   it("is empty for empty text", () => {
     expect(checkDag("  ", anyone, (value) => dump(value)).status).toBe("empty");
   });

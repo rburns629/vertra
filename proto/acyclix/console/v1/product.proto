@@ -63,11 +63,16 @@ message Product {
   optional string description = 10;
   // The ServiceAccount its tasks run as, in the owning team's namespace.
   optional string service_account = 11;
-  // Documentation: the secrets it reads.
-  repeated string required_secrets = 12;
+  // The team secrets it uses (product.yaml's secretRefs): its bindings.
+  repeated string secret_refs = 12;
   optional TaskResources resources = 13;
   google.protobuf.Timestamp created_at = 14;
   repeated ProductRelease releases = 15;
+  // The other teams that may run it or include it in their templates, or
+  // "*" for every team; empty, only its own team.
+  repeated string share_with = 16;
+  // Why it's deprecated and what to use instead, or empty when it isn't.
+  string deprecated = 17;
 }
 
 message ProductRelease {
@@ -109,16 +114,19 @@ message RegisterProductRequest {
   string action = 3;
   // Unset for a platform product.
   optional string team = 4;
-  // Each field below left unset keeps what's stored, except
-  // required_secrets, which is always replaced: a registration is the whole
-  // product.yaml, and an empty list can't be told from an unset one.
+  // Each field below left unset keeps what's stored, except secret_refs,
+  // share_with and deprecated, which are always replaced: a registration is
+  // the whole product.yaml, and an empty list can't be told from an unset
+  // one.
   google.protobuf.Struct input_schema = 5;
   google.protobuf.Struct output_schema = 6;
   optional string display_name = 7;
   optional string description = 8;
   optional string service_account = 9;
-  repeated string required_secrets = 10;
+  repeated string secret_refs = 10;
   optional TaskResources resources = 11;
+  repeated string share_with = 12;
+  string deprecated = 13;
 }
 
 message RegisterProductResponse {

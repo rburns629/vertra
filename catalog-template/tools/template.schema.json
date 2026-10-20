@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Acyclix template (dags/<name>.yaml, kind: Template), format v2",
+  "description": "A runnable DAG with parameters: what a consumer runs, filling in only the parameters. Steps name actions, not images, so a template keeps working as products release new images, and each step uses its action's own secretRefs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "displayName",
+    "description",
+    "parameters",
+    "steps"
+  ],
+  "properties": {
+    "apiVersion": {
+      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "acyclix.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: Template.",
+      "const": "Template"
+    },
+    "name": {
+      "description": "The file's name, without .yaml.",
+      "$ref": "#/$defs/dnsLabel"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "shareWith": {
+      "description": "The other teams that may run this template, or [\"*\"] for every team. Left out, only its own team.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 200,
+      "items": {
+        "anyOf": [
+          {
+            "const": "*"
+          },
+          {
+            "$ref": "#/$defs/dnsLabel"
+          }
+        ]
+      }
+    },
+    "deprecated": {
+      "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "parameters": {
+      "description": "A JSON Schema (draft 2020-12) for an object: what the person running it fills in. It's also the form the console shows.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "object"
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action"
+      ],
+      "properties": {
+        "id": {
+          "description": "Unique within the template.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "action": {
+          "description": "<product>.<action> of this team, or <team>/<product>.<action> of another team that shares it.",
+          "type": "string",
+          "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?/)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+        },
+        "dependsOn": {
+          "description": "Steps that must succeed first.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/dnsLabel"
+          }
+        },
+        "inputs": {
+          "description": "The action's inputs: a value, {$param: <name>} for a parameter, or {$fromStep: <id>, $output: <name>} for an output of a step in dependsOn.",
+          "type": "object"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

@@ -124,7 +124,7 @@ beforeAll(async () => {
     action: "create",
     teamId,
     serviceAccount: GRANTEE,
-    requiredSecrets: ["product-a-secret", "ungranted-secret"],
+    secretRefs: ["product-a-secret", "ungranted-secret"],
     resources: { cpu: "50m", memory: "64Mi" },
   });
 });

@@ -33,7 +33,9 @@ function product(row: Omit<ProductWithReleases, "teamName" | "releases"> & Parti
     displayName: row.displayName ?? undefined,
     description: row.description ?? undefined,
     serviceAccount: row.serviceAccount ?? undefined,
-    requiredSecrets: row.requiredSecrets,
+    secretRefs: row.secretRefs,
+    shareWith: row.shareWith,
+    deprecated: row.deprecated ?? "",
     resources: row.resources ?? undefined,
     createdAt: timestamp(row.createdAt),
     releases: (row.releases ?? []).map((release) => ({
@@ -66,7 +68,10 @@ export function productService(): ServiceImpl<typeof ProductService> {
         displayName: req.displayName,
         description: req.description,
         serviceAccount: req.serviceAccount,
-        requiredSecrets: req.requiredSecrets,
+        // Always replaced: a registration is the whole product.yaml.
+        secretRefs: req.secretRefs,
+        shareWith: req.shareWith,
+        deprecated: req.deprecated,
         resources: req.resources ? defined({ cpu: req.resources.cpu, memory: req.resources.memory, memoryLimit: req.resources.memoryLimit }) : undefined,
       });
       const { registration } = check({ registration: RegisterProductBody }, { registration: input });

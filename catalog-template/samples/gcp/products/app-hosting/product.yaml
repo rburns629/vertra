@@ -1,3 +1,5 @@
+apiVersion: acyclix.dev/v2
+kind: Product
 name: app-hosting
 team: gcp
 displayName: GCP App Hosting (Cloud Run)

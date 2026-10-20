@@ -106,7 +106,8 @@ its own directory.
   as the ServiceAccount its `product.yaml` declares (or `default`) and may
   mount any Secret its team registered: the same rule as the console's
   `identityRefusal`. Secrets are per team, chosen per step (`secretRefs`);
-  `requiredSecrets` in a product.yaml is documentation. The products and
+  a product.yaml's `actions[].secretRefs` (catalog format v2) are recorded
+  as its bindings, not yet enforced (that comes with consumers). The products and
   each team's secret names live as CEL literals in the policy, which the
   console rewrites whenever products or secrets change and at startup
   (`console/src/productPolicy.ts`). A refusal
@@ -150,7 +151,7 @@ its own directory.
   `ensureNotRetired` (`console/src/core/retired.ts`). Team lookups skip
   purged teams unless they use `findTeamByNameIncludingDeleted`.
 - **`catalog-template/`**: what a new catalog repository starts as
-  (catalogctl, its workflows, the starter `templates/`, an empty `teams/`
+  (the `./catalogctl` wrapper, its workflows, the starter `templates/`, an empty `teams/`
   for the adopter's first team, and `samples/`: `local`, one no-cloud
   product in five languages that new teams copy starters from, and `gcp`,
   `aws`, `azure`, billed cloud examples; azure unproven). It's
@@ -159,7 +160,10 @@ its own directory.
   in it with samples installed as teams (CI checks it that way, and
   `make catalog-publish` publishes it that way). A team's real products live in its own catalog
   repository, created from this, **not here**; adding a product needs no
-  change to this repo.
+  change to this repo. Its files are catalog format v2 (`apiVersion:
+  acyclix.dev/v2` and a `kind`: Team, Product, Template, Dag); the schemas
+  are in `tools/` and embedded in catalogctl (`cli/internal/catalogctl/
+  schemas/`, kept equal by a test): change both together.
 - **`_local/`** (gitignored): personal scratch space, such as a clone of
   your own catalog repository.
 - `examples/`: fake demo products (`project-product`,

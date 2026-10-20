@@ -1,6 +1,8 @@
 # A product shaped like real work: it calls an API, can authenticate with a
 # secret, and tells the platform which failures are worth retrying.
 # Copy to teams/<your-team>/products/http-check/.
+apiVersion: acyclix.dev/v2
+kind: Product
 name: http-check
 team: try-anna             # CHANGE: your team
 displayName: HTTP check
@@ -33,7 +35,7 @@ actions:
       properties:
         status: {type: integer}
         healthy: {type: boolean}
-    requiredSecrets:
+    secretRefs:
       - name: http-check-token
         keys: [value]
         description: >-

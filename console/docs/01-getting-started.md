@@ -185,7 +185,7 @@ Some rules are enforced for you and fail loudly; the rest are yours, and reviewe
 - [ ] Running an action twice is safe: tasks can be retried, so "create" means "create or find the existing one".
 - [ ] Failures return a `code`, a message that says what to do, and `retryable: true` only when trying again could help.
 - [ ] Network calls have a timeout and use HTTPS.
-- [ ] Secrets are read from `/platform/secrets/<name>/<key>`, documented under `requiredSecrets` so DAG authors know what to list, and never printed, logged or returned.
+- [ ] Secrets are read from `/platform/secrets/<name>/<key>`, named under the action's `secretRefs` so DAG authors know what to list, and never printed, logged or returned.
 - [ ] No credentials in the repo or the image, ever; they are added in the console.
 - [ ] Dependencies are pinned to exact versions in the `Dockerfile`.
 

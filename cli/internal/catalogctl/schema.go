@@ -17,12 +17,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// The schemas product.yaml and team.yaml are checked against. They're part
-// of this binary, so a pull request can't loosen a check by editing its
+// The schemas a catalog's files are checked against (format v2). They're
+// part of this binary, so a pull request can't loosen a check by editing its
 // catalog's copy (tools/*.schema.json, there for editors; a test keeps the
 // two the same).
 //
-//go:embed schemas/product.schema.json schemas/team.schema.json
+//go:embed schemas/*.schema.json
 var schemas embed.FS
 
 var printer = message.NewPrinter(language.English)

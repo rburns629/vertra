@@ -2,6 +2,8 @@
 # Copy the whole folder to teams/<your-team>/products/hello/ and CHANGE the
 # lines marked below. Nothing here is code: it describes the product for
 # people and for the console.
+apiVersion: acyclix.dev/v2
+kind: Product
 name: hello                    # the folder name
 team: try-anna             # CHANGE: your team (the parent folder)
 displayName: Hello
@@ -30,7 +32,10 @@ actions:
       properties:
         message: {type: string}
         secretFound: {type: boolean}
-    requiredSecrets:
+    # Who else may run this action or use it in their templates: team
+    # names, or ["*"] for every team. Left out, only your team.
+    # shareWith: [another-team]
+    secretRefs:
       - name: hello-secret
         keys: [value]
         description: >-

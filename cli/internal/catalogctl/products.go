@@ -131,7 +131,8 @@ func (c *Catalog) usableBase(base string) bool {
 	return err == nil
 }
 
-// ChangedProducts are the product folders changed between base and HEAD.
+// ChangedProducts are the product folders changed since base (committed or
+// not).
 // Everything, when there's no usable base (a first push, a force-push, a
 // manual run) rather than silently nothing, and when the tooling itself
 // changed: a new check applies to every product.
@@ -143,11 +144,17 @@ func (c *Catalog) ChangedProducts(base string, products []*Product) []string {
 	if !c.usableBase(base) {
 		return labels
 	}
-	out, err := c.git("diff", "--name-only", base, "HEAD")
+	// Against the working tree, not HEAD, so a laptop's uncommitted edits
+	// count too (in CI the tree is the commit); and new, untracked files.
+	out, err := c.git("diff", "--name-only", base)
 	if err != nil {
 		return labels
 	}
-	names := strings.Split(strings.TrimSpace(out), "\n")
+	untracked, err := c.git("ls-files", "--others", "--exclude-standard")
+	if err != nil {
+		return labels
+	}
+	names := strings.Split(strings.TrimSpace(out+"\n"+untracked), "\n")
 	for _, n := range names {
 		if strings.HasPrefix(n, "tools/") || strings.HasPrefix(n, "acyclix.yaml") || n == "catalogctl" {
 			return labels

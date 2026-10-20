@@ -384,7 +384,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `go.mod`, `go.sum` | The Go module (`github.com/rburns629/acyclix/cli`): cobra and yaml.v3, protobuf and Connect for the console's API, and `make proto`'s two plugins as `tool` dependencies. |
 | `internal/gen/` | Generated from `proto/` by `make proto` (messages and Connect clients); never edited. |
 | `cmd/catalogctl/main.go` | `catalogctl`, the catalog tool every catalog's `./catalogctl` runs: `validate`, `check`, `publish`, `changed`, `teams`, `secret-stores`, `bases`. |
-| `internal/catalogctl/` | What catalogctl does: validating teams, CODEOWNERS and products (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing, signing and registering products; teams and SecretStores through the console. |
+| `internal/catalogctl/` | What catalogctl does: validating teams, CODEOWNERS, products and `dags/` templates and DAGs in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing, signing and registering products; teams and SecretStores through the console. |
 | `cmd/acyclixctl/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
 | `cmd/acyclixctl/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/acyclix.yaml`. |
 | `cmd/acyclixctl/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
@@ -422,12 +422,12 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | --- | --- |
 | `README.md` | The catalog's guide: layout, onboarding a team, `product.yaml`, testing, CI, publishing, SecretStores, retiring. |
 | `acyclix.yaml` | Where products publish (registry, console, signing); local defaults, overridden by CI variables. |
-| `catalogctl`, `tools/` | The wrapper that runs catalogctl (`cli/cmd/catalogctl`) at a pinned, checksum-verified release, or `ACYCLIX_CATALOGCTL`: the one tool behind every workflow and local publishing; and the schemas for `team.yaml` and `product.yaml`, for editors (catalogctl embeds its own). |
+| `catalogctl`, `tools/` | The wrapper that runs catalogctl (`cli/cmd/catalogctl`) at a pinned, checksum-verified release, or `ACYCLIX_CATALOGCTL`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`), for editors (catalogctl embeds its own). |
 | `.github/` | The catalog's workflows (check and publish, teams, SecretStores, retire, purge, CODEOWNERS checks), its scanner installer, and a placeholder `CODEOWNERS`. |
 | `.semgrep/malicious.yml` | Code rules for products: download-and-execute, reverse shells, mining, reading the Pod's token. |
 | `templates/` | Starters to copy: a team, three products, and DAGs that use them. Checked by CI, never published. |
 | `teams/` | Empty but for its README: a new catalog's teams go here. |
-| `samples/local/` | A sample team with no cloud or secrets: one product in Python, TypeScript, Go, PowerShell and Rust. New teams copy starters from it by language; published whole, it proves an install end to end. |
+| `samples/local/` | A sample team with no cloud or secrets: one product in Python, TypeScript, Go, PowerShell and Rust, shared with every team, and a template chaining two of them (`dags/shout-backwards.yaml`). New teams copy starters from it by language; published whole, it proves an install end to end. |
 | `docs/onboarding-with-ai.md` | For catalog teams using an AI assistant to add a team or product. |
 | `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up. |
 | `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Proven on EKS (its SecretStore not yet). |

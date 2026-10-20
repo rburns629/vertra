@@ -409,7 +409,9 @@ export interface Product {
   description: string | null;
   outputSchema: unknown;
   serviceAccount: string | null;
-  requiredSecrets: string[];
+  secretRefs: string[];
+  shareWith: string[];
+  deprecated: string | null;
   resources: ProductResources | null;
   createdAt: Date;
 }
@@ -440,7 +442,9 @@ export interface ProductInput {
   description?: string | undefined;
   outputSchema?: unknown;
   serviceAccount?: string | undefined;
-  requiredSecrets?: string[] | undefined;
+  secretRefs?: string[] | undefined;
+  shareWith?: string[] | undefined;
+  deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
 }
 
@@ -478,7 +482,9 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       description: input.description,
       outputSchema: input.outputSchema,
       serviceAccount: input.serviceAccount,
-      requiredSecrets: input.requiredSecrets,
+      secretRefs: input.secretRefs,
+      shareWith: input.shareWith,
+      deprecated: input.deprecated,
       resources: input.resources,
     }).filter(([, value]) => value !== undefined),
   );

@@ -61,7 +61,7 @@ const registration = (overrides: object = {}) => ({
   outputSchema: { type: "object" },
   displayName: "Greet",
   serviceAccount: "greeter",
-  requiredSecrets: ["api-key"],
+  secretRefs: ["api-key"],
   resources: { cpu: "250m", memory: "256Mi" },
   ...overrides,
 });

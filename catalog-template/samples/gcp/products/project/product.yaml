@@ -1,3 +1,5 @@
+apiVersion: acyclix.dev/v2
+kind: Product
 name: project
 team: gcp
 displayName: GCP Project

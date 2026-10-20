@@ -82,11 +82,11 @@ export declare type Product = Message<"acyclix.console.v1.Product"> & {
   serviceAccount?: string | undefined;
 
   /**
-   * Documentation: the secrets it reads.
+   * The team secrets it uses (product.yaml's secretRefs): its bindings.
    *
-   * @generated from field: repeated string required_secrets = 12;
+   * @generated from field: repeated string secret_refs = 12;
    */
-  requiredSecrets: string[];
+  secretRefs: string[];
 
   /**
    * @generated from field: optional acyclix.console.v1.TaskResources resources = 13;
@@ -102,6 +102,21 @@ export declare type Product = Message<"acyclix.console.v1.Product"> & {
    * @generated from field: repeated acyclix.console.v1.ProductRelease releases = 15;
    */
   releases: ProductRelease[];
+
+  /**
+   * The other teams that may run it or include it in their templates, or
+   * "*" for every team; empty, only its own team.
+   *
+   * @generated from field: repeated string share_with = 16;
+   */
+  shareWith: string[];
+
+  /**
+   * Why it's deprecated and what to use instead, or empty when it isn't.
+   *
+   * @generated from field: string deprecated = 17;
+   */
+  deprecated: string;
 };
 
 /**
@@ -269,9 +284,10 @@ export declare type RegisterProductRequest = Message<"acyclix.console.v1.Registe
   team?: string | undefined;
 
   /**
-   * Each field below left unset keeps what's stored, except
-   * required_secrets, which is always replaced: a registration is the whole
-   * product.yaml, and an empty list can't be told from an unset one.
+   * Each field below left unset keeps what's stored, except secret_refs,
+   * share_with and deprecated, which are always replaced: a registration is
+   * the whole product.yaml, and an empty list can't be told from an unset
+   * one.
    *
    * @generated from field: google.protobuf.Struct input_schema = 5;
    */
@@ -298,14 +314,24 @@ export declare type RegisterProductRequest = Message<"acyclix.console.v1.Registe
   serviceAccount?: string | undefined;
 
   /**
-   * @generated from field: repeated string required_secrets = 10;
+   * @generated from field: repeated string secret_refs = 10;
    */
-  requiredSecrets: string[];
+  secretRefs: string[];
 
   /**
    * @generated from field: optional acyclix.console.v1.TaskResources resources = 11;
    */
   resources?: TaskResources | undefined;
+
+  /**
+   * @generated from field: repeated string share_with = 12;
+   */
+  shareWith: string[];
+
+  /**
+   * @generated from field: string deprecated = 13;
+   */
+  deprecated: string;
 };
 
 /**

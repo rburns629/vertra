@@ -1,3 +1,5 @@
+apiVersion: acyclix.dev/v2
+kind: Product
 name: cloud-sql
 team: gcp
 displayName: GCP Cloud SQL

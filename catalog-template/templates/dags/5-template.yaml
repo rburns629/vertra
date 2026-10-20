@@ -1,0 +1,24 @@
+# Step 6: the same greeting as a template, which is how other people run
+# your products: they fill in its parameters, and its steps name actions
+# (<product>.<action>, or <team>/<product>.<action> for another team's), not
+# images. Copy it into teams/<your-team>/dags/; nothing in it changes with
+# your team or registry.
+apiVersion: acyclix.dev/v2
+kind: Template
+name: 5-template
+displayName: Say hello
+description: Greets whoever you name.
+parameters:
+  type: object
+  additionalProperties: false
+  required: [name]
+  properties:
+    name:
+      type: string
+      title: Name
+      description: Who to greet.
+steps:
+  - id: say-hello
+    action: hello.greet
+    inputs:
+      name: {$param: name}

@@ -150,8 +150,15 @@ export const products = pgTable(
     outputSchema: jsonb("output_schema").notNull().default({}),
     // The ServiceAccount its tasks run as, in the owning team's namespace.
     serviceAccount: text("service_account"),
-    // The Secrets it reads (requiredSecrets' names), for a task's secretRefs.
-    requiredSecrets: text("required_secrets").array().notNull().default(sql`'{}'::text[]`),
+    // The team secrets it uses (product.yaml's actions[].secretRefs): its
+    // bindings. (The column keeps its v1 name.)
+    secretRefs: text("required_secrets").array().notNull().default(sql`'{}'::text[]`),
+    // The other teams that may run it or include it in their templates, or
+    // "*" for every team; empty, only its own team (product.yaml's
+    // actions[].shareWith). Recorded; enforced once consumers run templates.
+    shareWith: text("share_with").array().notNull().default(sql`'{}'::text[]`),
+    // Why it's deprecated and what to use instead; null when it isn't.
+    deprecated: text("deprecated"),
     // The Pod size its tasks get unless a task sets its own: { cpu, memory,
     // memoryLimit } as Kubernetes quantities (the kernel's TaskResources).
     // Null: the deployment's default.

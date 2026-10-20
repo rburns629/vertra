@@ -2350,11 +2350,11 @@
      "comment": "The ServiceAccount its tasks run as, in the owning team's namespace."
     },
     {
-     "name": "requiredSecrets",
+     "name": "secretRefs",
      "type": "string",
      "repeated": true,
      "optional": false,
-     "comment": "Documentation: the secrets it reads."
+     "comment": "The team secrets it uses (product.yaml's secretRefs): its bindings."
     },
     {
      "name": "resources",
@@ -2378,6 +2378,20 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "shareWith",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The other teams that may run it or include it in their templates, or\n\"*\" for every team; empty, only its own team."
+    },
+    {
+     "name": "deprecated",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why it's deprecated and what to use instead, or empty when it isn't."
     }
    ]
   },
@@ -2539,7 +2553,7 @@
      "type": "object",
      "repeated": false,
      "optional": false,
-     "comment": "Each field below left unset keeps what's stored, except\nrequired_secrets, which is always replaced: a registration is the whole\nproduct.yaml, and an empty list can't be told from an unset one."
+     "comment": "Each field below left unset keeps what's stored, except secret_refs,\nshare_with and deprecated, which are always replaced: a registration is\nthe whole product.yaml, and an empty list can't be told from an unset\none."
     },
     {
      "name": "outputSchema",
@@ -2570,7 +2584,7 @@
      "comment": ""
     },
     {
-     "name": "requiredSecrets",
+     "name": "secretRefs",
      "type": "string",
      "repeated": true,
      "optional": false,
@@ -2582,6 +2596,20 @@
      "ref": "acyclix.console.v1.TaskResources",
      "repeated": false,
      "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "shareWith",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "deprecated",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
      "comment": ""
     }
    ]

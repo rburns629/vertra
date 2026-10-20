@@ -17,6 +17,7 @@
 //	catalogctl secret-stores check [TEAM ...]
 //	catalogctl secret-stores apply [TEAM ...]           BOOTSTRAP_CREDENTIAL: a stored credential
 //	catalogctl bases [--update]                         pin every Dockerfile's FROM to its digest
+//	catalogctl migrate                                  rewrite a catalog from before format v2
 package main
 
 import (
@@ -93,7 +94,7 @@ func newRoot() *cobra.Command {
 	for _, name := range []string{"validate", "check", "publish"} {
 		root.AddCommand(productsCmd(name))
 	}
-	root.AddCommand(changedCmd(), teamsCmd(), secretStoresCmd(), basesCmd())
+	root.AddCommand(changedCmd(), teamsCmd(), secretStoresCmd(), basesCmd(), migrateCmd())
 	return root
 }
 
@@ -286,4 +287,27 @@ func basesCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&update, "update", false, "re-pin already pinned bases to what their tag names now")
 	return cmd
+}
+
+func migrateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate",
+		Short: "rewrite a catalog from before format v2 (adds apiVersion and kind; requiredSecrets becomes secretRefs)",
+		Args:  cobra.NoArgs,
+		RunE: func(*cobra.Command, []string) error {
+			c, err := catalog()
+			if err != nil {
+				return err
+			}
+			changed, problems, err := c.Migrate()
+			if err != nil {
+				return err
+			}
+			for _, p := range problems {
+				fmt.Fprintln(os.Stderr, "  "+p)
+			}
+			fmt.Printf("%d file(s) rewritten in format %s. Review the diff, then run ./catalogctl validate.\n", changed, catalogctl.APIVersion)
+			return result(len(problems) == 0, nil)
+		},
+	}
 }

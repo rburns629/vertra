@@ -115,7 +115,7 @@ describe("syncing", () => {
     action: "create",
     team: prefix,
     serviceAccount: "db-product",
-    requiredSecrets: ["db-admin-key"],
+    secretRefs: ["db-admin-key"],
   };
 
   it("adds a product when it's registered, and creates its ServiceAccount", async () => {

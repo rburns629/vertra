@@ -128,11 +128,20 @@ func (p *Product) Registrations(reference string) ([]*consolev1.RegisterProductR
 			Description:    optional(description),
 			ServiceAccount: optional(text(p.Spec, "serviceAccount")),
 		}
-		secrets, _ := action["requiredSecrets"].([]any)
+		secrets, _ := action["secretRefs"].([]any)
 		for _, s := range secrets {
 			if m, ok := s.(map[string]any); ok {
-				req.RequiredSecrets = append(req.RequiredSecrets, text(m, "name"))
+				req.SecretRefs = append(req.SecretRefs, text(m, "name"))
 			}
+		}
+		shareWith, _ := action["shareWith"].([]any)
+		for _, team := range shareWith {
+			req.ShareWith = append(req.ShareWith, fmt.Sprint(team))
+		}
+		// An action's own deprecation, else its product's.
+		req.Deprecated = text(action, "deprecated")
+		if req.Deprecated == "" {
+			req.Deprecated = text(p.Spec, "deprecated")
 		}
 		if r, ok := p.Spec["resources"].(map[string]any); ok && len(r) > 0 {
 			req.Resources = &consolev1.TaskResources{

@@ -74,6 +74,15 @@ func (c *Catalog) errorAt(path, message string) {
 	fmt.Fprintf(c.Stderr, "ERROR: %s%s\n", where, message)
 }
 
+// warnAt reports something worth knowing that doesn't fail the check.
+func (c *Catalog) warnAt(path, message string) {
+	if c.GitHub {
+		fmt.Fprintf(c.Stdout, "::warning file=%s::%s\n", c.rel(path), message)
+		return
+	}
+	fmt.Fprintf(c.Stderr, "WARNING: %s: %s\n", c.rel(path), message)
+}
+
 func (c *Catalog) info(format string, args ...any) {
 	fmt.Fprintf(c.Stdout, format+"\n", args...)
 }

@@ -31,7 +31,7 @@ A copied product's `team:` must be changed to its new team's name.
 ```
 acyclix.yaml                  where products publish: registry, console, signing
 catalogctl                    runs the pinned catalogctl (downloaded into .catalogctl/)
-tools/                        the schemas for team.yaml and product.yaml, for editors
+tools/                        the schemas of every catalog file (format v2), for editors
 templates/                    starters to copy (checked by CI, never published)
 samples/<team>/               example teams: local (five languages); gcp, aws, azure (billed)
 teams/
@@ -46,7 +46,7 @@ teams/
         Dockerfile            installs what the actions need; ends with a non-root USER
         tests/<action>/<case>/   request.json and expected.json
     secret-stores/*.yaml      optional: the team's SecretStores (admins approve)
-    dags/                     optional: example DAGs
+    dags/                     optional: templates others run, and example DAGs
 ```
 
 A team's folder name is its identity everywhere: its console team, its
@@ -86,11 +86,14 @@ says what to ask for and what to check.
 ## `product.yaml`
 
 ```yaml
+apiVersion: acyclix.dev/v2  # the catalog format: every file starts with these two
+kind: Product
 name: project               # the folder's name
 team: gcp               # the team folder's name
 displayName: GCP Project
 description: Looks up a project by id, creating it if it doesn't exist.
 owner: gcp-team
+version: 1                  # optional: raise it for a breaking change (see below)
 runtime: python3.12         # what the Dockerfile installs (for readers)
 serviceAccount: project     # optional: the identity it runs as (otherwise default)
 actions:
@@ -98,20 +101,72 @@ actions:
     script: actions/create.py
     input:  {type: object, required: [projectId], properties: {projectId: {type: string}}}
     output: {type: object, required: [projectId], properties: {projectId: {type: string}}}
-    requiredSecrets:        # optional: which team secrets the action reads
+    secretRefs:             # optional: the team secrets the action uses
       - name: my-api-key
         keys: [value]
+    shareWith: [web, data]  # optional: other teams that may use it, or ["*"]; left out, only yours
+    # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
 `input` and `output` are JSON Schema. Every field is in
 [tools/product.schema.json](tools/product.schema.json); `./catalogctl validate`
 checks against it. There's no image field: the image comes from the folder.
 
-`requiredSecrets` documents; it doesn't restrict. A DAG lists the secrets a
-step mounts in `secretRefs`, and only secrets the team registered can be
-mounted, only into its registered products' steps. A product with a
-`serviceAccount` runs as it in every step (the console creates it in the
-team's namespace); bind a cloud identity to that one, never to `default`.
+An action's `secretRefs` are its bindings, reviewed with the code that
+reads them: the team secrets it uses, each mounted at
+`/platform/secrets/<name>/<key>`. Today a DAG still lists the secrets a step
+mounts (only secrets the team registered can be mounted, only into its
+registered products' steps); once other teams run your templates, each
+step will use its action's own `secretRefs`. `shareWith` says which other
+teams may run the action or put it in their templates, and `deprecated`
+says what to use instead while it keeps working: the console records both
+and shows them. A product with a `serviceAccount` runs as it in every step
+(the console creates it in the team's namespace); bind a cloud identity to
+that one, never to `default`.
+
+### Changing a product other teams use
+
+Other teams' templates rely on a product's contract, so `./catalogctl check
+--changed <base>` (what CI runs on every pull request) compares each changed
+product with the same product at the base, which is what's published, and
+refuses a change that could break them:
+
+- an action removed, or a product removed;
+- an input newly required, no longer accepted, or of a new type, or the
+  input schema newly closed (`additionalProperties: false`);
+- an output removed, of a new type, or no longer always returned;
+- a team no longer in `shareWith`.
+
+If the change is meant, raise the product's `version`: that's the breaking
+change, visible in the diff for its reviewers. To retire an action or a
+product, mark it `deprecated: <what to use instead>` first and publish that
+(templates using it get a warning); a later pull request may then remove
+it. Adding things (an action, an optional input, an output, a team to
+share with) never needs a new version. On a laptop, `--changed origin/main`
+checks your uncommitted edits too.
+
+## Templates and DAGs (`dags/`)
+
+A team's `dags/` folder holds two kinds of file:
+
+- **`kind: Template`**: what other people run, filling in only its
+  parameters. `parameters` is a JSON Schema (it becomes the form they fill
+  in); each step names an action, `<product>.<action>` of your team or
+  `<team>/<product>.<action>` of a team that shares it, never an image, so
+  a template keeps working as products release. Inputs are values,
+  `{$param: <name>}`, or `{$fromStep: <id>, $output: <name>}` from a step
+  in `dependsOn`. `./catalogctl validate` checks every action exists and is
+  shared with your team, and that each step gets the inputs its action
+  needs. See [samples/local/dags/shout-backwards.yaml](samples/local/dags/shout-backwards.yaml).
+- **`kind: Dag`**: a concrete DAG, exactly what the console's Submit page
+  takes (images, teams, inputs): examples and walkthroughs.
+
+The console runs templates once consumers do (the platform's roadmap);
+until then, they're validated and reviewed like everything else here.
+
+A catalog from before format v2 (no `apiVersion` in its files) is
+converted in place by `./catalogctl migrate`, comments and all; review the
+diff, then `./catalogctl validate`.
 
 ### The container contract
 

@@ -25,7 +25,7 @@ func quiet(t *testing.T, root string) (*Catalog, *bytes.Buffer) {
 }
 
 func TestEmbeddedSchemasMatchTheTemplates(t *testing.T) {
-	for _, name := range []string{"product.schema.json", "team.schema.json"} {
+	for _, name := range []string{"product.schema.json", "team.schema.json", "template.schema.json", "dag.schema.json"} {
 		embedded, err := schemas.ReadFile("schemas/" + name)
 		if err != nil {
 			t.Fatal(err)
@@ -153,12 +153,13 @@ func TestSecretStoreProblems(t *testing.T) {
 
 func TestRegistrations(t *testing.T) {
 	p := &Product{Dir: "/catalog/teams/web/products/site", Spec: map[string]any{
-		"displayName": "Site", "description": "A site.", "serviceAccount": "site-sa",
+		"displayName": "Site", "description": "A site.", "serviceAccount": "site-sa", "deprecated": "Use site2.",
 		"resources": map[string]any{"cpu": "100m", "memory": "64Mi"},
 		"actions": []any{
 			map[string]any{"name": "deploy", "input": map[string]any{"type": "object"}, "output": map[string]any{"type": "object"},
-				"requiredSecrets": []any{map[string]any{"name": "creds"}}},
-			map[string]any{"name": "remove", "displayName": "Remove it", "input": map[string]any{"type": "object"}, "output": map[string]any{"type": "object"}},
+				"secretRefs": []any{map[string]any{"name": "creds"}}, "shareWith": []any{"data", "*"}},
+			map[string]any{"name": "remove", "displayName": "Remove it", "input": map[string]any{"type": "object"}, "output": map[string]any{"type": "object"},
+				"deprecated": "Use site2.delete."},
 		},
 	}}
 	regs, err := p.Registrations("registry/web/site@sha256:abc")
@@ -168,11 +169,14 @@ func TestRegistrations(t *testing.T) {
 	deploy, remove := regs[0], regs[1]
 	if deploy.GetName() != "web-site-deploy" || deploy.GetTeam() != "web" || deploy.GetImage() != "registry/web/site@sha256:abc" ||
 		deploy.GetDisplayName() != "Site" || deploy.GetServiceAccount() != "site-sa" ||
-		len(deploy.GetRequiredSecrets()) != 1 || deploy.GetResources().GetCpu() != "100m" || deploy.GetResources().MemoryLimit != nil ||
+		len(deploy.GetSecretRefs()) != 1 || strings.Join(deploy.GetShareWith(), ",") != "data,*" ||
+		deploy.GetDeprecated() != "Use site2." || deploy.GetResources().GetCpu() != "100m" || deploy.GetResources().MemoryLimit != nil ||
 		deploy.GetInputSchema().AsMap()["type"] != "object" {
 		t.Errorf("deploy = %v", deploy)
 	}
-	if remove.GetDisplayName() != "Remove it" || remove.GetDescription() != "A site." {
+	// An action's own deprecation wins over its product's.
+	if remove.GetDisplayName() != "Remove it" || remove.GetDescription() != "A site." || remove.GetDeprecated() != "Use site2.delete." ||
+		len(remove.GetShareWith()) != 0 {
 		t.Errorf("remove = %v", remove)
 	}
 }

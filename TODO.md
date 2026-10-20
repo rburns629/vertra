@@ -196,8 +196,8 @@ Related items elsewhere in this file: default-deny between team
 namespaces and who may read a multi-team execution (Security), Pod labels
 for AKS Workload Identity (Installing), run forms from schemas (Console).
 
-- [ ] **Phase 1: the console's API on Connect** (decided 2026-10-20; in
-  progress). Done: `proto/` with all ten services, `make proto` (buf
+- [x] **Phase 1: the contracts** (decided 2026-10-20; done the same
+  day). Done: `proto/` with all ten services, `make proto` (buf
   1.74.0; protoc-gen-es 2.16.0 from the console's npm, protoc-gen-go and
   protoc-gen-connect-go as tools in `cli/go.mod`), the generated code for
   the console, frontend and CLI, and the `proto` CI job; the API's logic
@@ -218,8 +218,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   their packages removed, every REST test ported to Connect (finding and
   fixing: an unset optional field refused, wiring type names unchecked,
   refusals' extra fields dropped, now `Failure.detail`), and the API
-  reference built from the protos by `make proto`. Next, in order: catalog
-  format v2, then the compatibility check. Load balancers need HTTP/2 end
+  reference built from the protos by `make proto`; catalog format v2
+  (`apiVersion: acyclix.dev/v2` and a `kind` in every file; actions'
+  `secretRefs` bindings, `shareWith` and `deprecated`, recorded by the
+  console; `kind: Template` with parameters and steps naming actions,
+  checked by catalogctl; `catalogctl migrate`, which converted the
+  template); the compatibility check (C2: `catalogctl check --changed`
+  compares each product with its last release on the base and refuses a
+  breaking change unless its `version` is raised, and a removal unless it
+  was deprecated first). Phase 1 is done. Load balancers need HTTP/2 end
   to end only for gRPC callers (the charts' Ingress and the CLI's AWS and
   GCP settings); the browser and both CLIs use Connect over HTTP/1.1.
 - [ ] **Release `catalogctl` binaries, and pin one in the catalog
@@ -269,10 +276,6 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **P1: retry policy and idempotency per action (R3)** in
   `product.yaml`; platform failures (a reclaimed node, a lost Job) retried
   for idempotent actions. Default `maxAttempts` is 1 today.
-- [ ] **P1: compatibility checks (C2).** `catalogctl check` compares
-  schemas with the last release and fails on a removed action, a new
-  required input or a removed or retyped output unless marked breaking;
-  `deprecated: <message>` in `product.yaml`.
 - [ ] **P1: who asked and who acted, per attempt**, and attempts in the API
   (`task_attempts` is stored; the API returns only `attemptCount`).
 - [ ] **P1: samples read identity references from team secrets (S2)**,

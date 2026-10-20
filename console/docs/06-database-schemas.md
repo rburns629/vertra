@@ -308,8 +308,10 @@ What a DAG step can run: one row per image and action.
 | `description` | text | yes | What it does. |
 | `output_schema` | jsonb | no | What the action outputs, as JSON Schema, including which wiring types it provides. |
 | `service_account` | text | yes | The ServiceAccount its tasks run as, in the owning team's namespace. |
-| `required_secrets` | text[] | no | The Secrets it reads, for a task's `secretRefs`. |
+| `required_secrets` | text[] | no | The team secrets it uses: the action's `secretRefs` in `product.yaml`, its bindings. (The column keeps its name from before catalog format v2.) |
 | `resources` | jsonb | yes | The Pod size its tasks get when a task doesn't set its own: `cpu`, `memory`, `memoryLimit` as Kubernetes quantities. Null: the deployment's default. |
+| `share_with` | text[] | no | The other teams that may run it or include it in their templates, or `*` for every team; empty, only its own team. Recorded; enforced once consumers run templates. |
+| `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `created_at` | timestamptz | no | |
 
 Catalog CI registers all of these from the product's `product.yaml` (the catalog's `docs/product-schema.md` describes it). A registration that leaves one out keeps what's stored. Nothing that runs a task reads them: they're for browsing products, building forms and generating DAGs.

@@ -451,7 +451,12 @@ export interface Product {
   description: string | null;
   outputSchema: Record<string, unknown>;
   serviceAccount: string | null;
-  requiredSecrets: string[];
+  /** The team secrets it uses: its bindings in product.yaml. */
+  secretRefs: string[];
+  /** The other teams that may use it, or "*" for every team; empty, only its own. */
+  shareWith: string[];
+  /** Why it's deprecated and what to use instead, or null. */
+  deprecated: string | null;
   createdAt: string;
   /** Every image this product has been registered with, newest first.
    * `image` above is the current one, which the UI marks "latest". */
@@ -480,7 +485,9 @@ export async function listProducts(): Promise<Product[]> {
     description: p.description ?? null,
     outputSchema: p.outputSchema ?? {},
     serviceAccount: p.serviceAccount ?? null,
-    requiredSecrets: p.requiredSecrets,
+    secretRefs: p.secretRefs,
+    shareWith: p.shareWith,
+    deprecated: p.deprecated || null,
     createdAt: iso(p.createdAt) ?? "",
     releases: p.releases.map((r) => ({ image: r.image, registeredAt: iso(r.registeredAt) ?? "" })),
   }));

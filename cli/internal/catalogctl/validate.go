@@ -15,9 +15,34 @@ import (
 )
 
 var (
-	productSchema = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("product.schema.json") })
-	teamSchema    = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("team.schema.json") })
+	productSchema  = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("product.schema.json") })
+	teamSchema     = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("team.schema.json") })
+	templateSchema = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("template.schema.json") })
+	dagSchema      = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("dag.schema.json") })
 )
+
+// APIVersion is the catalog format this catalogctl reads and writes.
+const APIVersion = "acyclix.dev/v2"
+
+// formatProblem is why doc isn't a format-v2 file of one of kinds, or "".
+// A document that isn't an object is left to its schema to describe.
+func formatProblem(doc any, kinds ...string) string {
+	m, ok := doc.(map[string]any)
+	if !ok {
+		return ""
+	}
+	version, present := m["apiVersion"]
+	if !present {
+		return "written in the catalog format from before v2 (it has no apiVersion): ./catalogctl migrate rewrites it"
+	}
+	if version != APIVersion {
+		return fmt.Sprintf("apiVersion %s: this catalogctl reads %s", pyRepr(version), APIVersion)
+	}
+	if !contains(kinds, fmt.Sprint(m["kind"])) {
+		return fmt.Sprintf("kind %s: this file is kind %s", pyRepr(m["kind"]), strings.Join(kinds, " or "))
+	}
+	return ""
+}
 
 // teamEntries are what a team folder may hold, besides team.yaml.
 var teamEntries = []string{"README.md", "dags", "products", "secret-stores", "team.yaml"}
@@ -75,6 +100,9 @@ func (c *Catalog) ValidateTeams() bool {
 			continue
 		}
 		doc, problem := loadYAML(data)
+		if problem == "" {
+			problem = formatProblem(doc, "Team")
+		}
 		var problems []string
 		if problem != "" {
 			problems = []string{problem}
@@ -267,6 +295,9 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 	} else {
 		var problem string
 		doc, problem = loadYAML(data)
+		if problem == "" {
+			problem = formatProblem(doc, "Product")
+		}
 		m, isMap := doc.(map[string]any)
 		switch {
 		case problem != "":
@@ -297,11 +328,11 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 			}
 			names[name] = true
 			secrets := map[string]bool{}
-			list, _ := action["requiredSecrets"].([]any)
+			list, _ := action["secretRefs"].([]any)
 			for _, s := range list {
 				secret, _ := s.(map[string]any)["name"].(string)
 				if secrets[secret] {
-					problems = append(problems, fmt.Sprintf("action %s: a secret is listed twice in requiredSecrets", name))
+					problems = append(problems, fmt.Sprintf("action %s: a secret is listed twice in secretRefs", name))
 				}
 				secrets[secret] = true
 			}

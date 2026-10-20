@@ -1,6 +1,8 @@
 # One of five language samples (Python, TypeScript, Go, PowerShell, Rust):
 # the same contract, text in and text out, in each language. Chain them with
 # the DAG in its team's README.md (samples/local/README.md).
+apiVersion: acyclix.dev/v2
+kind: Product
 name: upper-case
 team: local
 displayName: Upper case (PowerShell)
@@ -11,6 +13,9 @@ owner: local
 runtime: pwsh7.5
 actions:
   - name: transform
+    # Anyone may run it, or use it in their templates: these samples are
+    # for every team to try. Left out, only this team could.
+    shareWith: ["*"]
     script: actions/transform.ps1
     input:
       type: object

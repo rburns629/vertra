@@ -17,6 +17,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { ApiError, listProducts, type Product, type ProductRelease } from "../api";
+import { imageName, imageVersion } from "../imageRef";
 
 /** How many releases one product shows. A long-lived product's full
  * history is mostly noise; the recent ones are what a DAG author wants. */
@@ -25,20 +26,6 @@ const MAX_RELEASES_SHOWN = 50;
 /** Products no team owns are grouped under this heading, after the
  * real platforms. */
 const UNOWNED_GROUP = "Platform-provided";
-
-/** "repo/name:tag" -> "tag"; a digest or a tagless reference comes back whole. */
-function tagOf(image: string): string {
-  const lastSegment = image.slice(image.lastIndexOf("/") + 1);
-  const colon = lastSegment.lastIndexOf(":");
-  return colon === -1 ? image : lastSegment.slice(colon + 1);
-}
-
-/** "registry/path/name:tag" -> "name". */
-function imageNameOf(image: string): string {
-  const lastSegment = image.slice(image.lastIndexOf("/") + 1);
-  const colon = lastSegment.lastIndexOf(":");
-  return colon === -1 ? lastSegment : lastSegment.slice(0, colon);
-}
 
 function matches(product: Product, query: string): boolean {
   return (
@@ -193,7 +180,7 @@ function ProductAccordion({ product }: { product: Product }) {
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", minWidth: 0, pr: 1 }}>
           <Typography sx={{ fontWeight: 600, fontFamily: "fontFamilyMono", fontSize: 14 }}>
-            {imageNameOf(product.image)}
+            {imageName(product.image)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             action: {product.action}
@@ -201,9 +188,14 @@ function ProductAccordion({ product }: { product: Product }) {
           <Typography variant="body2" color="text.secondary">
             {releaseCount} {releaseCount === 1 ? "release" : "releases"}
           </Typography>
+          {product.deprecated && (
+            <Tooltip title={product.deprecated}>
+              <Chip label="deprecated" size="small" color="warning" />
+            </Tooltip>
+          )}
           <Tooltip title={product.image}>
             <Chip
-              label={`latest: ${tagOf(product.image)}`}
+              label={`latest: ${imageVersion(product.image)}`}
               size="small"
               color="success"
               variant="outlined"
@@ -213,8 +205,20 @@ function ProductAccordion({ product }: { product: Product }) {
         </Box>
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0 }}>
+        {product.deprecated && (
+          <Alert severity="warning" sx={{ mb: 1 }}>
+            Deprecated: {product.deprecated}
+          </Alert>
+        )}
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
           Registered as <code>{product.name}</code>
+          {" · "}
+          {product.shareWith.includes("*")
+            ? "shared with every team"
+            : product.shareWith.length > 0
+              ? `shared with ${product.shareWith.join(", ")}`
+              : "its own team only"}
+          {product.secretRefs.length > 0 && <> · uses {product.secretRefs.join(", ")}</>}
         </Typography>
         {shown.map((release) => (
           <ReleaseRow key={release.image} release={release} isLatest={release.image === product.image} />

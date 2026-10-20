@@ -2,6 +2,8 @@
 # Real, billed calls. Paste into the console's Submit page with <registry>
 # and the CHANGE values replaced. `:latest` is pinned to its digest when
 # you submit.
+apiVersion: acyclix.dev/v2
+kind: Dag
 name: azure-hello-world
 tasks:
   - id: group

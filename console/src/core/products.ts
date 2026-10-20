@@ -70,8 +70,16 @@ export const RegisterProductBody = Type.Object({
   description: Type.Optional(Type.String({ maxLength: 4000 })),
   outputSchema: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   serviceAccount: Type.Optional(KubernetesName),
-  requiredSecrets: Type.Optional(Type.Array(KubernetesName, { uniqueItems: true, maxItems: 50 })),
+  secretRefs: Type.Optional(Type.Array(KubernetesName, { uniqueItems: true, maxItems: 50 })),
   resources: Type.Optional(Resources),
+  // A team name, or "*" for every team.
+  shareWith: Type.Optional(
+    Type.Array(Type.Union([Type.Literal("*"), Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" })]), {
+      uniqueItems: true,
+      maxItems: 200,
+    }),
+  ),
+  deprecated: Type.Optional(Type.String({ maxLength: 1000 })),
 });
 
 export type RegisterProductInput = {
@@ -84,8 +92,11 @@ export type RegisterProductInput = {
   description?: string;
   outputSchema?: Record<string, unknown>;
   serviceAccount?: string;
-  requiredSecrets?: string[];
+  secretRefs?: string[];
   resources?: { cpu?: string; memory?: string; memoryLimit?: string };
+  shareWith?: string[];
+  /** Empty: not deprecated. */
+  deprecated?: string;
 };
 
 /**
@@ -201,7 +212,9 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       description: input.description,
       outputSchema: input.outputSchema,
       serviceAccount: input.serviceAccount,
-      requiredSecrets: input.requiredSecrets,
+      secretRefs: input.secretRefs,
+      shareWith: input.shareWith,
+      deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,
     });
     await syncIdentityPolicy();

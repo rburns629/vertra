@@ -34,12 +34,14 @@ func (c *Catalog) Console(ctx context.Context, s Settings) (*consoleapi.Client, 
 		"or ACYCLIX_EMAIL and ACYCLIX_PASSWORD")
 }
 
-// layoutOK checks what every product command checks first: the teams and
-// CODEOWNERS (both, so one failure never hides the other).
+// layoutOK checks what every product command checks first: the teams,
+// CODEOWNERS, and the templates and DAGs (all of them, so one failure never
+// hides another).
 func (c *Catalog) layoutOK() bool {
 	teams := c.ValidateTeams()
 	owners := c.ValidateCodeowners()
-	return teams && owners
+	dags := c.ValidateDags()
+	return teams && owners && dags
 }
 
 // Check validates, builds, tests and scans, and returns the products that
@@ -73,12 +75,20 @@ func (c *Catalog) Products(ctx context.Context, command string, names []string, 
 	}
 	if len(products) == 0 {
 		c.info("No products to check.")
-		return c.layoutOK(), nil
+		ok := c.layoutOK()
+		// A change that only removed products is still checked.
+		if changedSince != nil {
+			ok = c.Compatibility(*changedSince, nil) && ok
+		}
+		return ok, nil
 	}
 	if command == "validate" {
 		ok := c.layoutOK()
 		for _, p := range products {
 			ok = c.ValidateProduct(p) && ok
+		}
+		if changedSince != nil {
+			ok = c.Compatibility(*changedSince, products) && ok
 		}
 		return ok, nil
 	}
@@ -114,6 +124,11 @@ func (c *Catalog) Products(ctx context.Context, command string, names []string, 
 	}
 
 	passed := c.Check(products)
+	// A breaking change fails every product's run, as a layout problem does:
+	// it's the catalog's contract, not one product's build.
+	if changedSince != nil && !c.Compatibility(*changedSince, passed) {
+		passed = nil
+	}
 	if command != "publish" {
 		c.info("\n%d of %d product(s) passed.", len(passed), len(products))
 		return len(passed) == len(products), nil

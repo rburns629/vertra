@@ -1,11 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Acyclix product (product.yaml)",
+  "title": "Acyclix product (product.yaml), format v2",
   "description": "One product: a container image and the actions it runs. Its image path is derived from its folder, catalog/<team>/<name>/, so it has no image field.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "team", "displayName", "description", "owner", "actions"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "team",
+    "displayName",
+    "description",
+    "owner",
+    "actions"
+  ],
   "properties": {
+    "apiVersion": {
+      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "acyclix.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: Product.",
+      "const": "Product"
+    },
     "name": {
       "description": "The product's folder name.",
       "$ref": "#/$defs/dnsLabel"
@@ -14,9 +31,24 @@
       "description": "The team (team) folder this product is in.",
       "$ref": "#/$defs/dnsLabel"
     },
-    "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "description": { "type": "string", "maxLength": 4000 },
-    "owner": { "type": "string", "minLength": 1 },
+    "version": {
+      "description": "Its contract's version, 1 when left out. Raise it for a breaking change (an action, input or output removed or retyped, a new required input, a team no longer shared with): catalogctl check refuses one otherwise, since other teams' templates rely on the contract.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
     "runtime": {
       "description": "Documentation only: what the image runs on, such as python3.12.",
       "type": "string"
@@ -25,11 +57,21 @@
       "description": "Optional. The Kubernetes ServiceAccount the product runs as, for a cloud identity bound to it. Without one, it runs as default.",
       "$ref": "#/$defs/kubernetesName"
     },
-    "resources": { "$ref": "#/$defs/resources" },
+    "resources": {
+      "$ref": "#/$defs/resources"
+    },
     "actions": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/action" }
+      "items": {
+        "$ref": "#/$defs/action"
+      }
+    },
+    "deprecated": {
+      "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
     }
   },
   "$defs": {
@@ -50,45 +92,107 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "cpu": { "$ref": "#/$defs/quantity" },
-        "memory": { "$ref": "#/$defs/quantity" },
-        "memoryLimit": { "$ref": "#/$defs/quantity" }
+        "cpu": {
+          "$ref": "#/$defs/quantity"
+        },
+        "memory": {
+          "$ref": "#/$defs/quantity"
+        },
+        "memoryLimit": {
+          "$ref": "#/$defs/quantity"
+        }
       }
     },
     "jsonSchemaObject": {
       "description": "A JSON Schema (draft 2020-12) for an object.",
       "type": "object",
-      "required": ["type"],
-      "properties": { "type": { "const": "object" } }
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "object"
+        }
+      }
     },
     "action": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "input", "output"],
+      "required": [
+        "name",
+        "input",
+        "output"
+      ],
       "properties": {
-        "name": { "$ref": "#/$defs/dnsLabel" },
-        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "description": { "type": "string", "maxLength": 4000 },
+        "name": {
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4000
+        },
         "script": {
           "description": "Documentation only: where the action's code is.",
           "type": "string"
         },
-        "input": { "$ref": "#/$defs/jsonSchemaObject" },
-        "output": { "$ref": "#/$defs/jsonSchemaObject" },
-        "requiredSecrets": {
-          "description": "The team secrets this action reads, which a step must list in its secretRefs.",
+        "input": {
+          "$ref": "#/$defs/jsonSchemaObject"
+        },
+        "output": {
+          "$ref": "#/$defs/jsonSchemaObject"
+        },
+        "secretRefs": {
+          "description": "The team secrets this action uses, each mounted at /platform/secrets/<name>/: its bindings, reviewed with the code that reads them. A team registers the secrets themselves (the console's Secrets tab); keys and description say what each must hold.",
           "type": "array",
           "maxItems": 50,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name"],
+            "required": [
+              "name"
+            ],
             "properties": {
-              "name": { "$ref": "#/$defs/kubernetesName" },
-              "keys": { "type": "array", "items": { "type": "string" } },
-              "description": { "type": "string" }
+              "name": {
+                "$ref": "#/$defs/kubernetesName"
+              },
+              "keys": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": {
+                "type": "string"
+              }
             }
           }
+        },
+        "shareWith": {
+          "description": "The other teams that may run this action or include it in their templates, or [\"*\"] for every team. Left out, only its own team.",
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 200,
+          "items": {
+            "anyOf": [
+              {
+                "const": "*"
+              },
+              {
+                "$ref": "#/$defs/dnsLabel"
+              }
+            ]
+          }
+        },
+        "deprecated": {
+          "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
         }
       }
     }

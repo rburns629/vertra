@@ -49,7 +49,9 @@ export interface DagCheckContext {
   teamNames: string[] | null;
 }
 
-const TOP_LEVEL_FIELDS = ["name", "requestId", "tasks"];
+const TOP_LEVEL_FIELDS = ["apiVersion", "kind", "name", "requestId", "tasks"];
+/** The catalog format a dags/ file says it's in (apiVersion: …, kind: Dag). */
+const CATALOG_API_VERSION = "acyclix.dev/v2";
 // Still accepted, as the console's API does (see ../../src/routes/executions.ts).
 const OLD_FIELD_NAMES: Record<string, string> = { externalReference: "name", idempotencyKey: "requestId" };
 const TASK_FIELDS = [
@@ -225,6 +227,30 @@ export function checkDag(text: string, context: DagCheckContext, dump: (value: u
     };
   }
 
+  // A catalog's dags/ files carry their format (apiVersion, kind). A Dag
+  // is submitted as it is; a Template names actions and parameters, which
+  // the console can't run from here.
+  if (value["kind"] === "Template") {
+    return {
+      status: "invalid",
+      issues: [
+        {
+          where: "kind",
+          message:
+            "This is a template (kind: Template): its steps name actions, not images, and it needs its parameters filled in. Paste a DAG (kind: Dag) here.",
+        },
+      ],
+    };
+  }
+  const header: DagIssue[] = [];
+  if (value["kind"] !== undefined && value["kind"] !== "Dag") {
+    header.push({ where: "kind", message: `Only a DAG (kind: Dag) can be submitted, not kind ${JSON.stringify(value["kind"])}.` });
+  }
+  if (value["apiVersion"] !== undefined && value["apiVersion"] !== CATALOG_API_VERSION) {
+    header.push({ where: "apiVersion", message: `This console reads ${CATALOG_API_VERSION}.` });
+  }
+  if (header.length > 0) return { status: "invalid", issues: header };
+
   // Whitespace first, with a one-click fix: it's the one mistake that's
   // always safe to correct automatically.
   const { fixed, paths } = stripWhitespace(value);
@@ -374,5 +400,7 @@ export function checkDag(text: string, context: DagCheckContext, dump: (value: u
   }
 
   if (issues.length > 0) return { status: "invalid", issues };
-  return { status: "valid", payload: value, format, taskCount: rawTasks.length, stages };
+  // The catalog file's header isn't part of the DAG the API takes.
+  const { apiVersion: _apiVersion, kind: _kind, ...dag } = value;
+  return { status: "valid", payload: dag, format, taskCount: rawTasks.length, stages };
 }

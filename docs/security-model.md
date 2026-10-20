@@ -120,8 +120,9 @@ change in Acyclix.
    - the step runs as the ServiceAccount its product declares in the catalog,
      or as `default`; only a registered product may mount secrets at all;
    - each secret in `secretRefs` is registered for the step's team.
-     (`requiredSecrets` in product.yaml documents what a product reads; it
-     doesn't restrict.)
+     (An action's `secretRefs` in product.yaml are recorded as its bindings;
+     they don't restrict yet. Once consumers run templates, each step will
+     use its action's own.)
 
    The console reads these fields by their documented names (`serviceAccount`,
    `secretRefs`), and kernel-api accepts only those names, refusing the Python

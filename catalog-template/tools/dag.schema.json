@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Acyclix DAG (kind: Dag), format v2",
+  "description": "A DAG exactly as the console's Submit page and ExecutionService/SubmitExecution take it: concrete images, teams and inputs, no parameters. For examples and walkthroughs; what consumers run is a Template.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "tasks"
+  ],
+  "properties": {
+    "apiVersion": {
+      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "acyclix.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: Dag.",
+      "const": "Dag"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "kubernetesName": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "quantity": {
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$"
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "image",
+        "action",
+        "team"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "team": {
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "serviceAccount": {
+          "$ref": "#/$defs/kubernetesName"
+        },
+        "dependsOn": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/dnsLabel"
+          }
+        },
+        "secretRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kubernetesName"
+          }
+        },
+        "inputs": {
+          "description": "Values, or {$fromTask: <id>, $output: <name>} for an output of a task in dependsOn.",
+          "type": "object"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/$defs/quantity"
+            },
+            "memory": {
+              "$ref": "#/$defs/quantity"
+            },
+            "memoryLimit": {
+              "$ref": "#/$defs/quantity"
+            }
+          }
+        }
+      }
+    }
+  }
+}

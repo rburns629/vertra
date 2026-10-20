@@ -44,12 +44,14 @@ async function newUser(isAdmin: boolean): Promise<string> {
 
 interface Listed {
   name: string;
+  shareWith?: string[];
+  deprecated?: string;
   inputSchema?: Record<string, unknown>;
   displayName?: string;
   description?: string;
   outputSchema?: Record<string, unknown>;
   serviceAccount?: string;
-  requiredSecrets: string[];
+  secretRefs: string[];
   resources?: Record<string, string>;
 }
 
@@ -98,7 +100,7 @@ describe("registering a product's full description", () => {
     description: "A database instance.",
     outputSchema: OUTPUT,
     serviceAccount: "db-product",
-    requiredSecrets: ["db-admin-key"],
+    secretRefs: ["db-admin-key"],
     resources: { cpu: "250m", memory: "512Mi", memoryLimit: "1Gi" },
   };
 
@@ -110,7 +112,7 @@ describe("registering a product's full description", () => {
       description: "A database instance.",
       outputSchema: OUTPUT,
       serviceAccount: "db-product",
-      requiredSecrets: ["db-admin-key"],
+      secretRefs: ["db-admin-key"],
       resources: { cpu: "250m", memory: "512Mi", memoryLimit: "1Gi" },
     });
   });
@@ -137,13 +139,37 @@ describe("registering a product's full description", () => {
     const registered = await register(admin, { name: bare, image: `example.com/${prefix}/bare:1`, action: "create", team: prefix });
     expect(registered.code).toBe("ok");
     const product = await listed(bare);
-    expect(product).toMatchObject({ inputSchema: {}, outputSchema: {}, requiredSecrets: [] });
+    expect(product).toMatchObject({ inputSchema: {}, outputSchema: {}, secretRefs: [] });
     expect(product?.displayName).toBeUndefined();
     expect(product?.serviceAccount).toBeUndefined();
   });
 
+  it("replaces secretRefs, shareWith and deprecated on every registration: it's the whole product.yaml", async () => {
+    const shared = `${prefix}-shared-create`;
+    const base = { name: shared, image: `example.com/${prefix}/shared:1`, action: "create", team: prefix };
+    const first = await register(catalogCi, {
+      ...base,
+      secretRefs: ["db-admin-key"],
+      shareWith: ["web", "*"],
+      deprecated: "Use db.provision instead.",
+    });
+    expect(first.code).toBe("ok");
+    expect(await listed(shared)).toMatchObject({
+      secretRefs: ["db-admin-key"],
+      shareWith: ["web", "*"],
+      deprecated: "Use db.provision instead.",
+    });
+
+    expect((await register(catalogCi, base)).code).toBe("ok");
+    expect(await listed(shared)).toMatchObject({ secretRefs: [], shareWith: [], deprecated: "" });
+  });
+
+  it("refuses a shareWith entry that isn't a team name or *", async () => {
+    expect((await register(catalogCi, { ...full, shareWith: ["Not A Team"] })).code).toBe("invalid_argument");
+  });
+
   it("refuses names Kubernetes wouldn't accept", async () => {
-    for (const bad of [{ serviceAccount: "Bad_Name" }, { requiredSecrets: ["ok", "Not OK"] }]) {
+    for (const bad of [{ serviceAccount: "Bad_Name" }, { secretRefs: ["ok", "Not OK"] }]) {
       expect((await register(catalogCi, { ...full, ...bad })).code).toBe("invalid_argument");
     }
   });

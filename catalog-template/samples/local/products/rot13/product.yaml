@@ -1,6 +1,8 @@
 # One of five language samples (Python, TypeScript, Go, PowerShell, Rust):
 # the same contract, text in and text out, in each language. Chain them with
 # the DAG in its team's README.md (samples/local/README.md).
+apiVersion: acyclix.dev/v2
+kind: Product
 name: rot13
 team: local
 displayName: ROT13 (Rust)
@@ -11,6 +13,9 @@ owner: local
 runtime: rust1.90
 actions:
   - name: transform
+    # Anyone may run it, or use it in their templates: these samples are
+    # for every team to try. Left out, only this team could.
+    shareWith: ["*"]
     script: src/main.rs
     input:
       type: object

@@ -42,13 +42,18 @@ type Product struct {
 	Description  *string          `protobuf:"bytes,10,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	// The ServiceAccount its tasks run as, in the owning team's namespace.
 	ServiceAccount *string `protobuf:"bytes,11,opt,name=service_account,json=serviceAccount,proto3,oneof" json:"service_account,omitempty"`
-	// Documentation: the secrets it reads.
-	RequiredSecrets []string               `protobuf:"bytes,12,rep,name=required_secrets,json=requiredSecrets,proto3" json:"required_secrets,omitempty"`
-	Resources       *TaskResources         `protobuf:"bytes,13,opt,name=resources,proto3,oneof" json:"resources,omitempty"`
-	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Releases        []*ProductRelease      `protobuf:"bytes,15,rep,name=releases,proto3" json:"releases,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The team secrets it uses (product.yaml's secretRefs): its bindings.
+	SecretRefs []string               `protobuf:"bytes,12,rep,name=secret_refs,json=secretRefs,proto3" json:"secret_refs,omitempty"`
+	Resources  *TaskResources         `protobuf:"bytes,13,opt,name=resources,proto3,oneof" json:"resources,omitempty"`
+	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Releases   []*ProductRelease      `protobuf:"bytes,15,rep,name=releases,proto3" json:"releases,omitempty"`
+	// The other teams that may run it or include it in their templates, or
+	// "*" for every team; empty, only its own team.
+	ShareWith []string `protobuf:"bytes,16,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
+	// Why it's deprecated and what to use instead, or empty when it isn't.
+	Deprecated    string `protobuf:"bytes,17,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Product) Reset() {
@@ -158,9 +163,9 @@ func (x *Product) GetServiceAccount() string {
 	return ""
 }
 
-func (x *Product) GetRequiredSecrets() []string {
+func (x *Product) GetSecretRefs() []string {
 	if x != nil {
-		return x.RequiredSecrets
+		return x.SecretRefs
 	}
 	return nil
 }
@@ -184,6 +189,20 @@ func (x *Product) GetReleases() []*ProductRelease {
 		return x.Releases
 	}
 	return nil
+}
+
+func (x *Product) GetShareWith() []string {
+	if x != nil {
+		return x.ShareWith
+	}
+	return nil
+}
+
+func (x *Product) GetDeprecated() string {
+	if x != nil {
+		return x.Deprecated
+	}
+	return ""
 }
 
 type ProductRelease struct {
@@ -483,18 +502,21 @@ type RegisterProductRequest struct {
 	Action string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
 	// Unset for a platform product.
 	Team *string `protobuf:"bytes,4,opt,name=team,proto3,oneof" json:"team,omitempty"`
-	// Each field below left unset keeps what's stored, except
-	// required_secrets, which is always replaced: a registration is the whole
-	// product.yaml, and an empty list can't be told from an unset one.
-	InputSchema     *structpb.Struct `protobuf:"bytes,5,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`
-	OutputSchema    *structpb.Struct `protobuf:"bytes,6,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
-	DisplayName     *string          `protobuf:"bytes,7,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
-	Description     *string          `protobuf:"bytes,8,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	ServiceAccount  *string          `protobuf:"bytes,9,opt,name=service_account,json=serviceAccount,proto3,oneof" json:"service_account,omitempty"`
-	RequiredSecrets []string         `protobuf:"bytes,10,rep,name=required_secrets,json=requiredSecrets,proto3" json:"required_secrets,omitempty"`
-	Resources       *TaskResources   `protobuf:"bytes,11,opt,name=resources,proto3,oneof" json:"resources,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Each field below left unset keeps what's stored, except secret_refs,
+	// share_with and deprecated, which are always replaced: a registration is
+	// the whole product.yaml, and an empty list can't be told from an unset
+	// one.
+	InputSchema    *structpb.Struct `protobuf:"bytes,5,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`
+	OutputSchema   *structpb.Struct `protobuf:"bytes,6,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
+	DisplayName    *string          `protobuf:"bytes,7,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
+	Description    *string          `protobuf:"bytes,8,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	ServiceAccount *string          `protobuf:"bytes,9,opt,name=service_account,json=serviceAccount,proto3,oneof" json:"service_account,omitempty"`
+	SecretRefs     []string         `protobuf:"bytes,10,rep,name=secret_refs,json=secretRefs,proto3" json:"secret_refs,omitempty"`
+	Resources      *TaskResources   `protobuf:"bytes,11,opt,name=resources,proto3,oneof" json:"resources,omitempty"`
+	ShareWith      []string         `protobuf:"bytes,12,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
+	Deprecated     string           `protobuf:"bytes,13,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RegisterProductRequest) Reset() {
@@ -590,9 +612,9 @@ func (x *RegisterProductRequest) GetServiceAccount() string {
 	return ""
 }
 
-func (x *RegisterProductRequest) GetRequiredSecrets() []string {
+func (x *RegisterProductRequest) GetSecretRefs() []string {
 	if x != nil {
-		return x.RequiredSecrets
+		return x.SecretRefs
 	}
 	return nil
 }
@@ -602,6 +624,20 @@ func (x *RegisterProductRequest) GetResources() *TaskResources {
 		return x.Resources
 	}
 	return nil
+}
+
+func (x *RegisterProductRequest) GetShareWith() []string {
+	if x != nil {
+		return x.ShareWith
+	}
+	return nil
+}
+
+func (x *RegisterProductRequest) GetDeprecated() string {
+	if x != nil {
+		return x.Deprecated
+	}
+	return ""
 }
 
 type RegisterProductResponse struct {
@@ -1129,7 +1165,7 @@ var File_acyclix_console_v1_product_proto protoreflect.FileDescriptor
 
 const file_acyclix_console_v1_product_proto_rawDesc = "" +
 	"\n" +
-	" acyclix/console/v1/product.proto\x12\x12acyclix.console.v1\x1a\x1facyclix/console/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdb\x05\n" +
+	" acyclix/console/v1/product.proto\x12\x12acyclix.console.v1\x1a\x1facyclix/console/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x90\x06\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1142,12 +1178,18 @@ const file_acyclix_console_v1_product_proto_rawDesc = "" +
 	"\fdisplay_name\x18\t \x01(\tH\x02R\vdisplayName\x88\x01\x01\x12%\n" +
 	"\vdescription\x18\n" +
 	" \x01(\tH\x03R\vdescription\x88\x01\x01\x12,\n" +
-	"\x0fservice_account\x18\v \x01(\tH\x04R\x0eserviceAccount\x88\x01\x01\x12)\n" +
-	"\x10required_secrets\x18\f \x03(\tR\x0frequiredSecrets\x12D\n" +
+	"\x0fservice_account\x18\v \x01(\tH\x04R\x0eserviceAccount\x88\x01\x01\x12\x1f\n" +
+	"\vsecret_refs\x18\f \x03(\tR\n" +
+	"secretRefs\x12D\n" +
 	"\tresources\x18\r \x01(\v2!.acyclix.console.v1.TaskResourcesH\x05R\tresources\x88\x01\x01\x129\n" +
 	"\n" +
 	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12>\n" +
-	"\breleases\x18\x0f \x03(\v2\".acyclix.console.v1.ProductReleaseR\breleasesB\n" +
+	"\breleases\x18\x0f \x03(\v2\".acyclix.console.v1.ProductReleaseR\breleases\x12\x1d\n" +
+	"\n" +
+	"share_with\x18\x10 \x03(\tR\tshareWith\x12\x1e\n" +
+	"\n" +
+	"deprecated\x18\x11 \x01(\tR\n" +
+	"deprecatedB\n" +
 	"\n" +
 	"\b_team_idB\f\n" +
 	"\n" +
@@ -1182,7 +1224,7 @@ const file_acyclix_console_v1_product_proto_rawDesc = "" +
 	"\x11_default_provider\"\x15\n" +
 	"\x13ListProductsRequest\"O\n" +
 	"\x14ListProductsResponse\x127\n" +
-	"\bproducts\x18\x01 \x03(\v2\x1b.acyclix.console.v1.ProductR\bproducts\"\xa7\x04\n" +
+	"\bproducts\x18\x01 \x03(\v2\x1b.acyclix.console.v1.ProductR\bproducts\"\xdc\x04\n" +
 	"\x16RegisterProductRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1192,10 +1234,16 @@ const file_acyclix_console_v1_product_proto_rawDesc = "" +
 	"\routput_schema\x18\x06 \x01(\v2\x17.google.protobuf.StructR\foutputSchema\x12&\n" +
 	"\fdisplay_name\x18\a \x01(\tH\x01R\vdisplayName\x88\x01\x01\x12%\n" +
 	"\vdescription\x18\b \x01(\tH\x02R\vdescription\x88\x01\x01\x12,\n" +
-	"\x0fservice_account\x18\t \x01(\tH\x03R\x0eserviceAccount\x88\x01\x01\x12)\n" +
-	"\x10required_secrets\x18\n" +
-	" \x03(\tR\x0frequiredSecrets\x12D\n" +
-	"\tresources\x18\v \x01(\v2!.acyclix.console.v1.TaskResourcesH\x04R\tresources\x88\x01\x01B\a\n" +
+	"\x0fservice_account\x18\t \x01(\tH\x03R\x0eserviceAccount\x88\x01\x01\x12\x1f\n" +
+	"\vsecret_refs\x18\n" +
+	" \x03(\tR\n" +
+	"secretRefs\x12D\n" +
+	"\tresources\x18\v \x01(\v2!.acyclix.console.v1.TaskResourcesH\x04R\tresources\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"share_with\x18\f \x03(\tR\tshareWith\x12\x1e\n" +
+	"\n" +
+	"deprecated\x18\r \x01(\tR\n" +
+	"deprecatedB\a\n" +
 	"\x05_teamB\x0f\n" +
 	"\r_display_nameB\x0e\n" +
 	"\f_descriptionB\x12\n" +
