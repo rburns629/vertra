@@ -17,6 +17,7 @@ import {
   type ImagePolicy,
 } from "../src/imagePolicy.js";
 import { buildApp } from "../src/index.js";
+import { caller, failureDetail, type RpcError } from "./rpc.js";
 import { submitExecution } from "../src/kernel/client.js";
 import { ImagePolicyConflictError, writeImagePolicyData } from "../src/k8s.js";
 
@@ -105,14 +106,13 @@ describe("the routes", () => {
     return user.id;
   }
 
-  function as(userId: string, method: "GET" | "PUT" | "POST", url: string, payload?: object) {
-    return app.inject({ method, url, headers: { authorization: `Bearer ${app.jwt.sign({ userId })}` }, payload });
-  }
+  const call = caller(() => app);
+  const as = <T = Record<string, unknown>>(userId: string, procedure: string, body: object = {}) =>
+    call<T>(app.jwt.sign({ userId }), procedure, body);
 
   function submit(image: string) {
-    return as(member, "POST", "/api/executions", {
-      name: "img", requestId: randomUUID(),
-      tasks: [{ id: "t", image, action: "create", team: teamName }],
+    return as<RpcError>(member, "ExecutionService/SubmitExecution", {
+      dag: { name: "img", requestId: randomUUID(), tasks: [{ id: "t", image, action: "create", team: teamName }] },
     });
   }
 
@@ -139,33 +139,32 @@ describe("the routes", () => {
   });
 
   it("refuses a submission from outside the allowed sources and says what's allowed", async () => {
-    const response = await submit("docker.io/evil/app:1");
-    expect(response.statusCode).toBe(422);
-    const body = response.json<{ error: string; message: string; allowedSources: string[] }>();
-    expect(body.error).toBe("IMAGE_NOT_ALLOWED");
-    expect(body.allowedSources).toEqual([`${SOURCE}/`]);
+    const refused = await submit("docker.io/evil/app:1");
+    expect(refused.code).toBe("invalid_argument");
+    expect(refused.failure).toBe("IMAGE_NOT_ALLOWED");
+    expect(failureDetail(refused.body)?.["allowedSources"]).toEqual([`${SOURCE}/`]);
     expect(submitExecution).not.toHaveBeenCalled();
   });
 
   it("refuses everything while no source is configured", async () => {
     stored = { source: "", additional: [], version: "7" };
-    const response = await submit(`${SOURCE}/app:1`);
-    expect(response.statusCode).toBe(422);
-    expect(response.json<{ error: string }>().error).toBe("IMAGE_POLICY_NOT_CONFIGURED");
+    const refused = await submit(`${SOURCE}/app:1`);
+    expect(refused.code).toBe("invalid_argument");
+    expect(refused.failure).toBe("IMAGE_POLICY_NOT_CONFIGURED");
   });
 
   it("lets anyone signed in read the sources, but only admins change them", async () => {
-    const read = await as(member, "GET", "/api/image-policy");
-    expect(read.statusCode).toBe(200);
-    expect(read.json<{ allowed: string[] }>().allowed).toEqual([`${SOURCE}/`]);
+    const read = await as<{ policy: { allowed: string[] } }>(member, "ImageService/GetImagePolicy");
+    expect(read.code).toBe("ok");
+    expect(read.body.policy.allowed).toEqual([`${SOURCE}/`]);
 
     const change = { source: SOURCE, additional: ["docker.io/library"], version: "7" };
-    expect((await as(member, "PUT", "/api/image-policy", change)).statusCode).toBe(403);
+    expect((await as(member, "ImageService/SetImagePolicy", change)).code).toBe("permission_denied");
     expect(writeImagePolicyData).not.toHaveBeenCalled();
 
-    const saved = await as(admin, "PUT", "/api/image-policy", change);
-    expect(saved.statusCode).toBe(200);
-    expect(saved.json<{ allowed: string[] }>().allowed).toEqual([`${SOURCE}/`, "docker.io/library/"]);
+    const saved = await as<{ policy: { allowed: string[] } }>(admin, "ImageService/SetImagePolicy", change);
+    expect(saved.code).toBe("ok");
+    expect(saved.body.policy.allowed).toEqual([`${SOURCE}/`, "docker.io/library/"]);
     expect(writeImagePolicyData).toHaveBeenCalledWith(
       "kernel-execution-kernel-image",
       { source: `${SOURCE}/`, additional: ["docker.io/library/"] },
@@ -174,20 +173,20 @@ describe("the routes", () => {
   });
 
   it("rejects an invalid source, and a save based on a stale version", async () => {
-    const bad = await as(admin, "PUT", "/api/image-policy", { source: "catalog-products", additional: [], version: "7" });
-    expect(bad.statusCode).toBe(400);
-    expect(bad.json<{ message: string }>().message).toContain("registry host");
+    const bad = await as(admin, "ImageService/SetImagePolicy", { source: "catalog-products", additional: [], version: "7" });
+    expect(bad.code).toBe("invalid_argument");
+    expect(bad.message).toContain("registry host");
 
     vi.mocked(writeImagePolicyData).mockRejectedValueOnce(new ImagePolicyConflictError("stale"));
-    const stale = await as(admin, "PUT", "/api/image-policy", { source: SOURCE, additional: [], version: "6" });
-    expect(stale.statusCode).toBe(409);
-    expect(stale.json<{ message: string }>().message).toContain("Reload");
+    const stale = await as(admin, "ImageService/SetImagePolicy", { source: SOURCE, additional: [], version: "6" });
+    expect(stale.code).toBe("failed_precondition");
+    expect(stale.message).toContain("Reload");
   });
 
   it("says so when the cluster's policy itself is missing", async () => {
     stored = null;
-    const response = await as(admin, "PUT", "/api/image-policy", { source: SOURCE, additional: [], version: "7" });
-    expect(response.statusCode).toBe(409);
-    expect(response.json<{ error: string }>().error).toBe("IMAGE_POLICY_MISSING");
+    const saved = await as(admin, "ImageService/SetImagePolicy", { source: SOURCE, additional: [], version: "7" });
+    expect(saved.code).toBe("failed_precondition");
+    expect(saved.failure).toBe("IMAGE_POLICY_MISSING");
   });
 });

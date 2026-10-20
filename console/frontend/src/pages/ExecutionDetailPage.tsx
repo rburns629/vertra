@@ -44,7 +44,7 @@ import {
   type TaskLogs,
   type TaskStatus,
 } from "../api";
-import { TERMINAL_STATES, useExecutionPolling } from "./useExecutionPolling";
+import { TERMINAL_STATES, useExecutionWatch } from "./useExecutionWatch";
 
 const RUN_BLOCKED_LABELS: Record<NonNullable<ExecutionDetail["runBlocked"]>["error"], string> = {
   TEAM_PURGED: "Team purged",
@@ -243,11 +243,10 @@ function MetadataItem({ label, value }: { label: string; value: React.ReactNode 
  */
 function buildDagYaml(payload: SubmittedExecutionPayload, taskId: string | null): string {
   const tasks = taskId ? payload.tasks.filter((task) => task.id === taskId) : payload.tasks;
-  // Shown under the current names, whichever names it was stored under;
-  // without a requestId there's no line for it.
-  const requestId = payload.requestId ?? payload.idempotencyKey;
+  // Without a requestId there's no line for it.
+  const requestId = payload.requestId;
   const ordered = {
-    name: payload.name ?? payload.externalReference,
+    name: payload.name,
     ...(requestId ? { requestId } : {}),
     tasks: tasks.map((task) => {
       const entry: Record<string, unknown> = {
@@ -257,7 +256,7 @@ function buildDagYaml(payload: SubmittedExecutionPayload, taskId: string | null)
       };
       if (task.dependsOn && task.dependsOn.length > 0) entry.dependsOn = task.dependsOn;
       entry.team = task.team;
-      entry.serviceAccount = task.serviceAccount;
+      if (task.serviceAccount !== undefined) entry.serviceAccount = task.serviceAccount;
       if (task.secretRefs && task.secretRefs.length > 0) entry.secretRefs = task.secretRefs;
       if (task.inputs && Object.keys(task.inputs).length > 0) entry.inputs = task.inputs;
       if (task.timeoutSeconds !== undefined) entry.timeoutSeconds = task.timeoutSeconds;
@@ -586,7 +585,7 @@ function ContainerLogsView({
 export function ExecutionDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { execution, events, logs, error, resume } = useExecutionPolling(id);
+  const { execution, events, logs, error, resume } = useExecutionWatch(id);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const theme = useTheme();
   const cardsPerRow = useMediaQuery(theme.breakpoints.up("sm")) ? CARDS_PER_ROW_WIDE : 1;
@@ -618,7 +617,7 @@ export function ExecutionDetailPage() {
     setBusy(taskId);
     try {
       await retryTask(id, taskId);
-      // The execution is live again: poll it, even if polling had stopped.
+      // The execution is live again: watch it, even if watching had stopped.
       resume();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Retry failed.");

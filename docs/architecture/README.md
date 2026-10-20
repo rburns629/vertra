@@ -7,7 +7,7 @@
 | [1 · System](1-system.svg) | What runs where on GKE and in the GCP project around it, the catalog's GitHub workflows, and how one execution flows through them (① to ⑤). |
 | [2 · Kernel classes](2-kernel-classes.svg) | UML of `kernel/app`: every module, class (pydantic, table, enum, dataclass, error) and function, grouped by layer, with the imports between layers. |
 | [3 · Console classes](3-console-classes.svg) | The same for `console/src` and `console/frontend/src`, including every HTTP route each module registers and the Drizzle tables. |
-| [4 · Submit to finished](4-submit-to-finished.svg) | A UML sequence diagram of one execution, call by call, from `POST /api/executions` through claiming, dispatch, polling and finalizing. |
+| [4 · Submit to finished](4-submit-to-finished.svg) | A UML sequence diagram of one execution, call by call, from `ExecutionService/SubmitExecution` through claiming, dispatch, polling and finalizing. |
 | [5 · States](5-states.svg) | The task and execution state machines, with the function that makes each transition. |
 
 The database tables are drawn in the console's guide, [`console/docs/06-database-schemas.md`](../../console/docs/06-database-schemas.md) (Docs → *Where Acyclix keeps its data*).

@@ -4,37 +4,17 @@ import Fastify, { type FastifyError } from "fastify";
 import { pathToFileURL } from "node:url";
 import fastifyStatic from "@fastify/static";
 import helmet from "@fastify/helmet";
-import rateLimit from "@fastify/rate-limit";
-import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import authPlugin from "./auth/plugin.js";
-import authRoutes from "./routes/auth.js";
-import teamsRoutes from "./routes/teams.js";
-import secretsRoutes from "./routes/secrets.js";
-import meRoutes from "./routes/me.js";
-import usersRoutes from "./routes/users.js";
-import botsRoutes from "./routes/bots.js";
-import automationRoutes from "./routes/automation.js";
-import productsRoutes from "./routes/products.js";
-import executionsRoutes from "./routes/executions.js";
-import statsRoutes from "./routes/stats.js";
-import podsRoutes from "./routes/pods.js";
-import docsRoutes from "./routes/docs.js";
-import { registerOpenApi } from "./openapi.js";
-import imagePolicyRoutes from "./routes/imagePolicy.js";
-import imageScansRoutes from "./routes/imageScans.js";
-import auditRoutes from "./routes/audit.js";
 import { registerActivity } from "./activity.js";
-import { registerAudit } from "./audit.js";
 import { reconcileScans } from "./scanning.js";
 import { startPolicySync } from "./policySync.js";
 import { startRetention } from "./retention.js";
-import policySyncRoutes from "./routes/policySync.js";
-import wiringTypesRoutes from "./routes/wiringTypes.js";
 import { sql } from "drizzle-orm";
 import { config } from "./config.js";
 import { claimRegisteredImageRepositories, listAllSecretGrants } from "./db/queries.js";
 import { deleteLegacySecretRole } from "./k8s.js";
 import { db } from "./db/client.js";
+import { registerRpc } from "./rpc/server.js";
 
 // Built by ../frontend's own `npm run build`, copied to ../frontend/dist
 // alongside this service's own compiled dist/ in the Docker image (see
@@ -47,26 +27,19 @@ export async function buildApp() {
     logger: true,
     // By address only: none listed, and request.ip is the connection's.
     trustProxy: config.trustProxy.length > 0 ? config.trustProxy.join(",") : false,
-  }).withTypeProvider<TypeBoxTypeProvider>();
+  });
 
   // Fastify's default error handler puts any uncaught error's message (and
   // its .headers) in the response. @kubernetes/client-node's errors carry
   // the cluster's response body and headers, so those would reach the
-  // caller. Schema-validation failures and errors a route gave a 4xx
-  // statusCode are returned as they are; anything else is logged in full
-  // and answered with a generic message. One place for this, not a
-  // per-route try/catch.
+  // caller. The API's own errors are Connect's (rpc/interceptors.ts masks
+  // them the same way); this is for anything outside it: an error with a
+  // 4xx statusCode is returned as it is, anything else is logged in full
+  // and answered with a generic message.
   app.setErrorHandler((error: FastifyError, request, reply) => {
-    if (error.validation) {
-      reply.code(error.statusCode ?? 400).send({ error: "BAD_REQUEST", message: error.message });
-      return;
-    }
     const statusCode = error.statusCode ?? 500;
     if (statusCode < 500) {
-      // FastifyError types `code` as always set, but a plain Error thrown
-      // with a statusCode has none.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      reply.code(statusCode).send({ error: error.code ?? "ERROR", message: error.message });
+      reply.code(statusCode).send({ error: "BAD_REQUEST", message: error.message });
       return;
     }
     request.log.error(error);
@@ -88,11 +61,9 @@ export async function buildApp() {
     reply.send({ status: "ok" });
   });
 
-  // authPlugin only decorates app.authenticate/request.authUser -- it
-  // registers no routes of its own, so it stays outside the /api prefix
-  // below (the decorators need to exist on the parent app either way).
+  // authPlugin only sets up JWT signing and verifying (request.jwtVerify,
+  // app.jwt) -- it registers no routes of its own.
   await app.register(authPlugin);
-  registerAudit(app);
   registerActivity(app);
 
   // Browser security headers on every response. The session token lives in
@@ -119,57 +90,13 @@ export async function buildApp() {
     },
   });
 
-  // Before any route: it documents each one as it's registered.
-  await registerOpenApi(app);
-
-  // Opt-in per route (global: false) via `config.rateLimit` -- see
-  // routes/auth.ts and routes/me.ts. Registered before the routes because
-  // it attaches itself through an onRoute hook. Rejections go through the
-  // error handler above as an ordinary 429 {error, message}.
-  await app.register(rateLimit, {
-    global: false,
-    errorResponseBuilder: (_request, context) =>
-      Object.assign(new Error(`Too many attempts. Try again in ${context.after}.`), {
-        statusCode: context.statusCode,
-        code: "RATE_LIMITED",
-      }),
-  });
-
-  // Every API route lives under /api, so none can share a URL with a page
-  // of the app: Fastify can't tell a fetch() from a browser navigation, and
-  // a route would win, answering a page reload with JSON (or a 401).
+  // The API: Connect services (rpc/server.ts, from proto/), all under
+  // /api, so none can share a URL with a page of the app: Fastify can't
+  // tell a fetch() from a browser navigation, and an API route would win,
+  // answering a page reload with JSON (or a 401).
   await app.register(
     async (api) => {
-      // Reachable pre-login, same as the health checks above -- see
-      // config.ts's environmentLabel comment.
-      api.get("/environment", () => ({
-        label: config.environmentLabel,
-        // So the login page only offers registration when it's open.
-        selfRegistration: config.allowSelfRegistration,
-      }));
-      // Signed-in only, like the guides that render it.
-      api.get("/openapi.json", { preHandler: app.authenticate }, () => app.swagger());
-      // Signed-in only: deployment facts for the "Connect a source" wizard.
-      api.get("/platform", { preHandler: app.authenticate }, () => ({
-        secretSources: config.secretSources,
-      }));
-      await api.register(authRoutes);
-      await api.register(teamsRoutes);
-      await api.register(secretsRoutes);
-      await api.register(meRoutes);
-      await api.register(usersRoutes);
-      await api.register(botsRoutes);
-      await api.register(automationRoutes);
-      await api.register(productsRoutes);
-      await api.register(executionsRoutes);
-      await api.register(statsRoutes);
-      await api.register(podsRoutes);
-      await api.register(docsRoutes);
-      await api.register(imagePolicyRoutes);
-      await api.register(imageScansRoutes);
-      await api.register(auditRoutes);
-      await api.register(policySyncRoutes);
-      await api.register(wiringTypesRoutes);
+      await registerRpc(app, api);
     },
     { prefix: "/api" },
   );
@@ -181,7 +108,9 @@ export async function buildApp() {
   // an unmatched path is almost certainly a bad API call, not
   // navigation, so that stays a real JSON 404.
   app.setNotFoundHandler((request, reply) => {
-    if (request.method === "GET") {
+    // Under /api is never a page: an old REST path, say, gets a JSON 404,
+    // not the app's HTML with a 200.
+    if (request.method === "GET" && !request.url.startsWith("/api/")) {
       reply.sendFile("index.html", FRONTEND_DIST);
       return;
     }
@@ -198,7 +127,7 @@ async function main(): Promise<void> {
   // The cluster's copies of the console's lists (the identity and scan
   // policies): now, since things may have changed while no console ran, and
   // every few minutes after, so a failed write or a hand edit doesn't last.
-  // A failure is logged and shown to admins (GET /policy-sync), not fatal:
+  // A failure is logged and shown to admins (AdminService.GetPolicySync), not fatal:
   // the console still enforces the rules itself.
   startPolicySync(app.log, config.policySyncIntervalSeconds * 1000);
   startRetention(app.log);

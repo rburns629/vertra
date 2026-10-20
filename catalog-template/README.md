@@ -6,7 +6,8 @@ saying what its actions take, return and need. Open a pull request and CI
 builds, tests and scans it; merge it and the image is pushed and the product
 registered with the Acyclix console.
 
-CI runs one tool, `./catalogctl` ([tools/catalog.py](tools/catalog.py)), and so
+CI runs one tool, `./catalogctl` (the platform's catalogctl, at the release
+pinned in that file, downloaded and checksum-verified on first use), and so
 can you: `./catalogctl check` runs every pull request check on your machine,
 and `./catalogctl publish` publishes from a laptop when there's no CI.
 
@@ -29,8 +30,8 @@ A copied product's `team:` must be changed to its new team's name.
 
 ```
 acyclix.yaml                  where products publish: registry, console, signing
-catalogctl                    runs tools/catalog.py in its own .venv
-tools/                        catalog.py, and the schemas for team.yaml and product.yaml
+catalogctl                    runs the pinned catalogctl (downloaded into .catalogctl/)
+tools/                        the schemas for team.yaml and product.yaml, for editors
 templates/                    starters to copy (checked by CI, never published)
 samples/<team>/               example teams: local (five languages); gcp, aws, azure (billed)
 teams/

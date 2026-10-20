@@ -17,7 +17,12 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 cp -R "$template/." "$work"
-rm -rf "$work/.venv"
+rm -rf "$work/.catalogctl"
+# This checkout's catalogctl, not the template's pinned release.
+if [ -z "${ACYCLIX_CATALOGCTL:-}" ]; then
+  ACYCLIX_CATALOGCTL=$(bash "$root/.github/scripts/build-catalogctl.sh")
+  export ACYCLIX_CATALOGCTL
+fi
 for team in $samples; do
   [ -d "$template/samples/$team" ] || { echo "No sample named $team in catalog-template/samples/." >&2; exit 1; }
   cp -R "$template/samples/$team" "$work/teams/$team"

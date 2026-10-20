@@ -1,0 +1,743 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Executions: the authorized front door to kernel-api (kernel/app/api/
+ * routes/executions.py), which accepts only this console's ServiceAccount
+ * token and knows nothing of users or teams. The logic behind both the REST
+ * routes (routes/executions.ts) and ExecutionService.
+ *
+ * Every operation checks the caller's real team membership (or admin)
+ * before anything reaches kernel-api, using submittedExecutions
+ * (db/schema.ts) as the record of which teams may see which execution,
+ * since kernel-api can't answer that. A refusal is an ApiError; kernel-api's
+ * own refusals propagate as KernelApiError, for each transport to relay.
+ */
+import { randomUUID } from "node:crypto";
+import { Type } from "@sinclair/typebox";
+import type { FastifyBaseLogger } from "fastify";
+import { ApiError } from "../apiError.js";
+import { ensureTeamMember, loadExecution } from "../auth/access.js";
+import type { AuthUser } from "../auth/plugin.js";
+import { config } from "../config.js";
+import {
+  findTeamByName,
+  findTeamByNameIncludingDeleted,
+  findUserById,
+  InvalidCursorError,
+  isSecretRegistered,
+  listProductsUsableBy,
+  listSubmittedExecutionsPage,
+  recordSubmittedExecution,
+  type Product,
+} from "../db/queries.js";
+import {
+  allowedPrefixes,
+  imageRefusal,
+  imageRepository,
+  readImagePolicy,
+  readImagePolicyForDisplay,
+  type ImagePolicy,
+} from "../imagePolicy.js";
+import { ensureServiceAccount, NamespaceNotFoundError } from "../k8s.js";
+import {
+  cancelExecution,
+  getExecution,
+  getExecutionEvents,
+  getExecutionLogs,
+  getExecutionStates,
+  retryTask,
+  submitExecution,
+} from "../kernel/client.js";
+import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
+import { missingImages, pinImages } from "../registry.js";
+import { scanBlocker } from "../scanning.js";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * Structural validation only: just enough to extract every task's `team`
+ * for the authorization checks. kernel-api's own models (app/contracts/
+ * task.py, execution.py) are the authority on the full shape; duplicating
+ * that here would be a second copy of the same contract, bound to drift.
+ * The caller's JSON reaches kernel-api unchanged otherwise.
+ */
+interface TaskAuthInfo {
+  team: string;
+  // Undefined when absent or not a string: kernel-api refuses that task
+  // anyway, but it then can't pass the checks below either.
+  id: string | undefined;
+  image: string | undefined;
+  action: string | undefined;
+  serviceAccount: string | undefined;
+  secretRefs: string[];
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function extractTasksAuthInfo(body: unknown): TaskAuthInfo[] | null {
+  if (!isRecord(body) || !Array.isArray(body["tasks"]) || body["tasks"].length === 0) {
+    return null;
+  }
+  const result: TaskAuthInfo[] = [];
+  for (const task of body["tasks"]) {
+    if (!isRecord(task) || typeof task["team"] !== "string" || task["team"].length === 0) {
+      return null;
+    }
+    let secretRefs: string[] = [];
+    if ("secretRefs" in task) {
+      const raw = task["secretRefs"];
+      if (!Array.isArray(raw) || !raw.every((s): s is string => typeof s === "string" && s.length > 0)) {
+        return null;
+      }
+      secretRefs = raw;
+    }
+    result.push({
+      team: task["team"],
+      id: optionalString(task["id"]),
+      image: optionalString(task["image"]),
+      action: optionalString(task["action"]),
+      serviceAccount: optionalString(task["serviceAccount"]),
+      secretRefs,
+    });
+  }
+  return result;
+}
+
+export interface RunBlocker {
+  error:
+    | "TEAM_PURGED"
+    | "TEAM_RETIRED"
+    | "IMAGE_NOT_FOUND"
+    | "IMAGE_NOT_ALLOWED"
+    | "IMAGE_POLICY_NOT_CONFIGURED"
+    | "IMAGE_NOT_RESOLVED";
+  message: string;
+  missingImages?: string[];
+  disallowedImages?: string[];
+  allowedSources?: string[];
+}
+
+/** A blocker as a refusal: its own code and message, the rest as extra fields. */
+function blocked(statusCode: number, { error, message, ...rest }: { error: string; message: string }): ApiError {
+  return new ApiError(statusCode, error, message, undefined, rest);
+}
+
+/** Every task's image, for tasks that name one (task ids optional). */
+function taskImages(body: unknown, taskId?: string): string[] {
+  if (!isRecord(body) || !Array.isArray(body["tasks"])) return [];
+  return body["tasks"]
+    .filter((task): task is Record<string, unknown> => isRecord(task))
+    .filter((task) => taskId === undefined || task["id"] === taskId)
+    .map((task) => task["image"])
+    .filter((image): image is string => typeof image === "string" && image.length > 0);
+}
+
+/** Why these images can't run: one from outside the allowed sources
+ * (imagePolicy.ts; the cluster enforces the same rule at dispatch), or one
+ * the registry says is gone (registry.ts, which also explains why an
+ * unanswered check allows). */
+async function imageBlocker(images: string[], policy: ImagePolicy): Promise<RunBlocker | null> {
+  const refusal = imageRefusal(images, policy);
+  if (refusal) return refusal;
+  const missing = await missingImages(images, allowedPrefixes(policy));
+  if (missing.length === 0) return null;
+  return {
+    error: "IMAGE_NOT_FOUND",
+    message: `${missing.length === 1 ? "Image" : "Images"} no longer available in the registry: ${missing.join(", ")}.`,
+    missingImages: missing,
+  };
+}
+
+/** For the detail page's up-front notice only; rerun and retry enforce the
+ * real check themselves. If the policy can't be read the page still loads,
+ * without the notice. */
+async function detailImageBlocker(payload: unknown, log: FastifyBaseLogger): Promise<RunBlocker | null> {
+  let policy: ImagePolicy;
+  try {
+    policy = await readImagePolicyForDisplay();
+  } catch (error) {
+    log.warn({ err: error }, "couldn't read the image policy for an execution's rerun notice");
+    return null;
+  }
+  return imageBlocker(taskImages(payload), policy);
+}
+
+interface RunContext {
+  action: "submit" | "rerun" | "retry";
+  teams: string[];
+  executionId?: string;
+  caller: AuthUser | undefined;
+  log: FastifyBaseLogger;
+}
+
+/**
+ * The image check for anything about to run (submit, rerun, retry): refuses
+ * with 422 and logs who tried to run what, and what was allowed, so a
+ * refusal is as clear in the logs as it is in the UI. Reading the policy
+ * failing is a real error and propagates (nothing runs on a guess).
+ */
+async function refuseBlockedImages(images: string[], context: RunContext): Promise<void> {
+  const blocker = await imageBlocker(images, await readImagePolicy());
+  if (!blocker) return;
+  context.log.warn(
+    {
+      event: blocker.error === "IMAGE_NOT_FOUND" ? "image_not_found" : "image_not_allowed",
+      code: blocker.error,
+      action: context.action,
+      executionId: context.executionId,
+      user: context.caller?.id,
+      teams: context.teams,
+      images: blocker.disallowedImages ?? blocker.missingImages,
+      allowedSources: blocker.allowedSources,
+    },
+    blocker.message,
+  );
+  throw blocked(422, blocker);
+}
+
+/**
+ * Why nothing can run for this team any more, or null when it can. A purged
+ * team's namespace and product images are gone, so the kernel would accept
+ * the work and then fail every task. A retired team is read-only. A name
+ * with no console team at all isn't blocked here: admins may still submit
+ * for it, and the kernel's dispatch policy decides whether its namespace
+ * may run anything.
+ */
+async function teamRunBlocker(teamName: string): Promise<RunBlocker | null> {
+  const team = await findTeamByNameIncludingDeleted(teamName);
+  if (team?.deletedAt) {
+    return {
+      error: "TEAM_PURGED",
+      message: `Team "${teamName}" was purged: its namespace and product images no longer exist, so nothing can run for it again.`,
+    };
+  }
+  if (team?.retiredAt) {
+    return {
+      error: "TEAM_RETIRED",
+      message: `Team "${teamName}" is retired, so nothing new can run for it. An admin can un-retire it.`,
+    };
+  }
+  return null;
+}
+
+async function runBlocker(teamNames: string[]): Promise<RunBlocker | null> {
+  for (const team of teamNames) {
+    const blocker = await teamRunBlocker(team);
+    if (blocker) return blocker;
+  }
+  return null;
+}
+
+/**
+ * The submission with every task's image pinned to the digest its tag names
+ * right now (registry.ts's pinImages): a DAG may say `:latest`, and what
+ * runs, what's retried and what's scanned is exactly the image resolved
+ * here. Refuses (422) when the registry can't say which image a tag is.
+ */
+async function pinned(submission: Record<string, unknown>, context: RunContext): Promise<Record<string, unknown>> {
+  const tasks = submission["tasks"];
+  if (config.imagePinning === "off" || !Array.isArray(tasks)) return submission;
+  const policy = await readImagePolicy();
+  const { pinned: byImage, unresolved } = await pinImages(taskImages(submission), allowedPrefixes(policy));
+  if (unresolved.length > 0) {
+    context.log.warn({ event: "image_not_resolved", images: unresolved, user: context.caller?.id }, "couldn't pin images");
+    throw new ApiError(
+      422,
+      "IMAGE_NOT_RESOLVED",
+      `Couldn't ask the registry which image ${unresolved.length === 1 ? "this is" : "these are"}: ` +
+        `${unresolved.join(", ")}. Every step runs a pinned image (its digest), so a tag is resolved at ` +
+        "submission; try again, or name the image by digest.",
+      undefined,
+      { unresolvedImages: unresolved },
+    );
+  }
+  return {
+    ...submission,
+    tasks: tasks.map((task: unknown) => {
+      if (!isRecord(task) || typeof task["image"] !== "string") return task;
+      return { ...task, image: byImage.get(task["image"]) ?? task["image"] };
+    }),
+  };
+}
+
+/**
+ * Every (pinned) image must have passed its security scan, or been accepted
+ * (scanning.ts): 422 for a failed scan, 409 (try again) for one still running.
+ */
+async function refuseUnscanned(images: string[], context: RunContext): Promise<void> {
+  const blocker = await scanBlocker(images);
+  if (!blocker) return;
+  context.log.warn(
+    {
+      event: "image_scan_blocked",
+      code: blocker.error,
+      action: context.action,
+      executionId: context.executionId,
+      user: context.caller?.id,
+      teams: context.teams,
+      images: blocker.images.map((i) => i.image),
+    },
+    blocker.message,
+  );
+  throw blocked(blocker.error === "IMAGE_SCAN_FAILED" ? 422 : 409, blocker);
+}
+
+/**
+ * Records who may see a just-submitted execution. kernel-api created it first
+ * (only then is its id known), so if recording fails a new execution would
+ * run where no one could see or stop it: it's cancelled instead, and the
+ * error goes back to the caller, who can submit again. A replay (its
+ * requestId used before) is left alone: it was recorded the first time.
+ */
+async function recordOrCancel(
+  record: Parameters<typeof recordSubmittedExecution>[0],
+  created: boolean,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  try {
+    await recordSubmittedExecution(record);
+  } catch (error) {
+    if (!created) throw error;
+    log.error({ err: error, executionId: record.executionId }, "couldn't record an execution; cancelling it");
+    await cancelExecution(record.executionId).catch((cancelError: unknown) => {
+      log.error({ err: cancelError, executionId: record.executionId }, "couldn't cancel the unrecorded execution");
+    });
+    throw error;
+  }
+}
+
+// UNREGISTERED_SERVICE_ACCOUNT: the namespace's own ServiceAccount, which no
+// product declares and no cloud identity is bound to: any task may run as
+// it, with no secrets. Shared with the cluster's copy of this rule
+// (productPolicy.ts).
+
+const runsAs = (product: Product) => product.serviceAccount ?? UNREGISTERED_SERVICE_ACCOUNT;
+
+/**
+ * Why this task may not run as the ServiceAccount it names, or mount secrets
+ * at all; null when it may. `matching` are the registered products (usable
+ * in its team) with its image's repository and its action. Which secrets it
+ * may mount is checked after (each must be its team's).
+ *
+ * A ServiceAccount can carry a cloud identity (a product's GCP service
+ * account through Workload Identity, say), so which one a task runs as
+ * follows from what it runs: a product runs as the ServiceAccount its
+ * reviewed product.yaml declares, and only a product may mount its team's
+ * secrets; anything else runs as "default" with none. Running as "default"
+ * with no secrets is always allowed, products too: it grants nothing.
+ */
+function identityRefusal(task: TaskAuthInfo, matching: Product[]): string | null {
+  const label = task.id === undefined ? "A task" : `Task "${task.id}"`;
+  const serviceAccount = task.serviceAccount ?? UNREGISTERED_SERVICE_ACCOUNT;
+  if (serviceAccount === UNREGISTERED_SERVICE_ACCOUNT && task.secretRefs.length === 0) return null;
+  if (matching.length === 0) {
+    return (
+      `${label} runs "${task.image ?? ""}" (action "${task.action ?? ""}"), which isn't a registered ` +
+      `product of team "${task.team}", so it can only run as ServiceAccount ` +
+      `"${UNREGISTERED_SERVICE_ACCOUNT}" and mount no secrets.`
+    );
+  }
+  if (!matching.some((product) => runsAs(product) === serviceAccount)) {
+    const declared = [...new Set(matching.map(runsAs))].map((name) => `"${name}"`).join(" or ");
+    return (
+      `${label} runs product "${matching[0]?.name ?? ""}", which runs as ServiceAccount ` +
+      `${declared} (its product.yaml), not "${serviceAccount}". Leave serviceAccount out to use its own.`
+    );
+  }
+  return null;
+}
+
+/**
+ * Finds the registered products a task runs: its image's repository (any
+ * tag) and its action, among its team's products and the platform's. Caches
+ * each team's lookups for the length of one request.
+ */
+function productLookup() {
+  const teamIds = new Map<string, string | null>();
+  const usableByTeamId = new Map<string | null, Product[]>();
+
+  async function teamId(team: string): Promise<string | null> {
+    if (!teamIds.has(team)) teamIds.set(team, (await findTeamByName(team))?.id ?? null);
+    return teamIds.get(team) ?? null;
+  }
+
+  async function matching(team: string, image: string | undefined, action: string | undefined): Promise<Product[]> {
+    const id = await teamId(team);
+    let usable = usableByTeamId.get(id);
+    if (usable === undefined) {
+      usable = await listProductsUsableBy(id);
+      usableByTeamId.set(id, usable);
+    }
+    if (image === undefined) return [];
+    const repository = imageRepository(image);
+    return usable.filter((product) => product.action === action && imageRepository(product.image) === repository);
+  }
+
+  return { teamId, matching };
+}
+
+/**
+ * The submission with each task that names no `serviceAccount` given the one
+ * it runs as: its product's, when every registered product it could be
+ * declares the same one, otherwise "default". So a DAG needn't know a
+ * product's identity, and the stored payload says what actually ran. Run
+ * before authorization, which then checks what was filled in.
+ */
+async function withProductIdentities(submission: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const tasks = submission["tasks"];
+  if (!Array.isArray(tasks)) return submission;
+  const products = productLookup();
+  const filled: unknown[] = [];
+  for (const task of tasks) {
+    const team = isRecord(task) ? optionalString(task["team"]) : undefined;
+    if (!isRecord(task) || "serviceAccount" in task || team === undefined) {
+      filled.push(task);
+      continue;
+    }
+    const matching = await products.matching(team, optionalString(task["image"]), optionalString(task["action"]));
+    const declared = [...new Set(matching.map(runsAs))];
+    filled.push({ ...task, serviceAccount: declared.length === 1 ? declared[0] : UNREGISTERED_SERVICE_ACCOUNT });
+  }
+  return { ...submission, tasks: filled };
+}
+
+/**
+ * Creates each task's ServiceAccount in its team's namespace if it isn't
+ * there yet (a platform product's, in a team it hasn't run in), after
+ * authorization: only a product's own reaches here. Never modifies one.
+ * Refuses (422) a team with no namespace.
+ */
+async function ensureServiceAccounts(tasksInfo: TaskAuthInfo[]): Promise<void> {
+  const needed = new Set(
+    tasksInfo
+      .filter((task) => task.serviceAccount !== undefined && task.serviceAccount !== UNREGISTERED_SERVICE_ACCOUNT)
+      .map((task) => JSON.stringify([task.team, task.serviceAccount])),
+  );
+  for (const entry of needed) {
+    const [team, serviceAccount] = JSON.parse(entry) as [string, string];
+    try {
+      await ensureServiceAccount(team, serviceAccount);
+    } catch (error) {
+      if (!(error instanceof NamespaceNotFoundError)) throw error;
+      throw new ApiError(422, "UNPROCESSABLE_ENTITY", error.message);
+    }
+  }
+}
+
+/**
+ * The submission with each task that sets no `resources` of its own given its
+ * product's, so the size a product declares travels with its tasks to
+ * kernel-api (which fills anything still unset from its own default). Run
+ * after authorization: the product chosen is the one the task's
+ * ServiceAccount runs as, if there's one with a size.
+ */
+async function withProductResources(submission: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const tasks = submission["tasks"];
+  if (!Array.isArray(tasks)) return submission;
+  const products = productLookup();
+  const sized: unknown[] = [];
+  for (const task of tasks) {
+    const team = isRecord(task) ? optionalString(task["team"]) : undefined;
+    if (!isRecord(task) || "resources" in task || team === undefined) {
+      sized.push(task);
+      continue;
+    }
+    const matching = await products.matching(team, optionalString(task["image"]), optionalString(task["action"]));
+    const serviceAccount = optionalString(task["serviceAccount"]) ?? UNREGISTERED_SERVICE_ACCOUNT;
+    const sizedProducts = matching.filter((product) => product.resources);
+    const product = sizedProducts.find((p) => runsAs(p) === serviceAccount) ?? sizedProducts[0];
+    sized.push(product?.resources ? { ...task, resources: product.resources } : task);
+  }
+  return { ...submission, tasks: sized };
+}
+
+/**
+ * The checks every submission gets: team membership per task, the identity
+ * each task runs as, then secretRefs against each team's current secrets.
+ * Rerun and retry apply them afresh against current membership and grants,
+ * rather than trusting what was true at the first submission (a team can
+ * lose a secret, or a caller leave a team, in between).
+ */
+async function authorizeTasks(tasksInfo: TaskAuthInfo[], caller: AuthUser | undefined): Promise<void> {
+  const uniqueTeams = [...new Set(tasksInfo.map((t) => t.team))];
+  for (const team of uniqueTeams) {
+    ensureTeamMember(caller, team);
+    const blocker = await teamRunBlocker(team);
+    if (blocker) throw blocked(409, blocker);
+  }
+
+  // kernel runs a task as whatever ServiceAccount, and mounts whatever
+  // Secret names, it asks for, with no notion of "team" or "product" to
+  // check them against (KubernetesExecutor._create_job): this is the one
+  // place that's enforced before dispatch, as team membership above (the
+  // cluster's identity policy checks again).
+  const products = productLookup();
+
+  // Which ServiceAccount, and which secrets, follow from the product the
+  // task runs (identityRefusal).
+  for (const task of tasksInfo) {
+    const matching = await products.matching(task.team, task.image, task.action);
+    const refusal = identityRefusal(task, matching);
+    if (refusal) throw new ApiError(403, "FORBIDDEN", refusal);
+  }
+
+  // And each secret must be one its team registered. Any of the team's
+  // products may mount any of them (only products get this far with
+  // secrets); the cluster's identity policy holds the same list.
+  for (const { team, secretRefs } of tasksInfo) {
+    if (secretRefs.length === 0) continue;
+    const teamId = await products.teamId(team);
+    if (!teamId) throw new ApiError(422, "UNPROCESSABLE_ENTITY", `Team "${team}" does not exist.`);
+    for (const secretName of secretRefs) {
+      if (!(await isSecretRegistered(teamId, secretName))) {
+        throw new ApiError(
+          403,
+          "FORBIDDEN",
+          `Secret "${secretName}" is not registered for team "${team}". Add it on the team's Secrets tab.`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * A submission with the current field names: `name` (was externalReference)
+ * and `requestId` (was idempotencyKey). Old names are still accepted, from
+ * older callers and DAGs stored before the rename (rerun); to be dropped
+ * later (TODO.md). With both an old and a new name, nothing is changed, and
+ * kernel-api refuses the ambiguous submission.
+ */
+function withCurrentFieldNames(body: Record<string, unknown>): Record<string, unknown> {
+  const renames: Record<string, string> = { externalReference: "name", idempotencyKey: "requestId" };
+  return Object.fromEntries(
+    Object.entries(body).map(([key, value]) => {
+      const current = renames[key];
+      return current && !(current in body) ? [current, value] : [key, value];
+    }),
+  );
+}
+
+/**
+ * kernel-api's requestIds are one namespace for every team, so two teams
+ * picking the same one ("hello-1") would get each other's executions back.
+ * Prefixing it with the submitting teams keeps each team's requestIds its
+ * own, while a retry from the same team still matches. Absent stays absent:
+ * kernel-api then starts a new execution every time.
+ */
+function scopeRequestId(submission: Record<string, unknown>, teams: string[]): Record<string, unknown> {
+  const requestId = submission["requestId"];
+  if (typeof requestId !== "string" || requestId === "") return submission;
+  return { ...submission, requestId: `${[...teams].sort().join("+")}/${requestId}` };
+}
+
+export const DEFAULT_PAGE_SIZE = 100;
+export const MAX_PAGE_SIZE = 1000;
+
+export const ListQuery = Type.Object({
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: MAX_PAGE_SIZE })),
+  cursor: Type.Optional(Type.String({ maxLength: 120 })),
+  since: Type.Optional(Type.String({ format: "date-time" })),
+  team: Type.Optional(Type.String({ minLength: 1 })),
+  search: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+});
+export const ExecutionId = Type.String({ format: "uuid" });
+
+/**
+ * The executions the caller can see, newest first, a page at a time. Their
+ * state is enrichment from kernel-api for just this page: if kernel-api is
+ * briefly unreachable the list still comes back, without states, rather
+ * than failing over one non-critical field.
+ */
+export async function listExecutions(
+  caller: AuthUser | undefined,
+  query: {
+    limit?: number | undefined;
+    cursor?: string | undefined;
+    since?: string | undefined;
+    team?: string | undefined;
+    search?: string | undefined;
+  },
+  log: FastifyBaseLogger,
+) {
+  const { limit = DEFAULT_PAGE_SIZE, cursor, since, team, search } = query;
+  let page;
+  try {
+    page = await listSubmittedExecutionsPage({
+      visibleTo: caller?.isAdmin ? null : (caller?.teamNames ?? []),
+      limit,
+      cursor,
+      since: since === undefined ? undefined : new Date(since),
+      team,
+      search,
+    });
+  } catch (error) {
+    if (error instanceof InvalidCursorError) throw new ApiError(400, "BAD_REQUEST", error.message);
+    throw error;
+  }
+  let statesByExecutionId = new Map<string, string>();
+  try {
+    const states = await getExecutionStates(page.rows.map((row) => row.executionId));
+    statesByExecutionId = new Map(states.map((s) => [s.executionId, s.state]));
+  } catch (error) {
+    log.warn({ err: error }, "Failed to fetch execution states from kernel-api");
+  }
+  return {
+    executions: page.rows.map((row) => ({ ...row, state: statesByExecutionId.get(row.executionId) ?? null })),
+    nextCursor: page.nextCursor,
+  };
+}
+
+/**
+ * Checks and submits a DAG (any JSON: the checks need only each task's team,
+ * image, action, ServiceAccount and secrets). Returns whether kernel-api
+ * created it, or found the one its requestId already started.
+ */
+export async function submit(caller: AuthUser | undefined, submitted: unknown, log: FastifyBaseLogger) {
+  const body = isRecord(submitted) ? await withProductIdentities(withCurrentFieldNames(submitted)) : submitted;
+  const tasksInfo = extractTasksAuthInfo(body);
+  if (tasksInfo === null) {
+    throw new ApiError(
+      400,
+      "BAD_REQUEST",
+      'Malformed submission: every task must declare a non-empty "team", and ' +
+        '"secretRefs" if present must be an array of non-empty strings.',
+    );
+  }
+  await authorizeTasks(tasksInfo, caller);
+  const teams = [...new Set(tasksInfo.map((t) => t.team))];
+  const context: RunContext = { action: "submit", teams, caller, log };
+  await refuseBlockedImages(taskImages(body), context);
+  await ensureServiceAccounts(tasksInfo);
+
+  const pinnedBody = await pinned(body as Record<string, unknown>, context);
+  await refuseUnscanned(taskImages(pinnedBody), context);
+  const submission = await withProductResources(pinnedBody);
+
+  const result = await submitExecution(scopeRequestId(submission, teams));
+  await recordOrCancel(
+    {
+      executionId: result.executionId,
+      teams,
+      submittedBy: caller?.id ?? "",
+      name: typeof submission["name"] === "string" ? submission["name"] : "",
+      payload: submission,
+    },
+    result.created,
+    log,
+  );
+  return { executionId: result.executionId, state: result.state, created: result.created };
+}
+
+/**
+ * An execution and its tasks, live, enriched with what the console knows and
+ * kernel-api doesn't: its teams, who submitted it, the DAG as submitted
+ * (payload), and why a rerun or retry would be refused right now
+ * (runBlocked, the same check they enforce).
+ */
+export async function executionDetail(caller: AuthUser | undefined, executionId: string, log: FastifyBaseLogger) {
+  const submitted = await loadExecution(executionId, caller, "any");
+  const detail = await getExecution(executionId);
+  // No submitter id: that account has since been deleted (its executions
+  // are kept, see db/schema.ts).
+  const submitter = submitted.submittedBy ? await findUserById(submitted.submittedBy) : undefined;
+  const blocker = (await runBlocker(submitted.teams)) ?? (await detailImageBlocker(submitted.payload, log));
+  return {
+    ...(detail as Record<string, unknown>),
+    teams: submitted.teams,
+    submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),
+    createdAt: submitted.createdAt,
+    payload: submitted.payload,
+    runBlocked: blocker,
+  };
+}
+
+export async function executionEvents(caller: AuthUser | undefined, executionId: string, after: number | undefined) {
+  await loadExecution(executionId, caller, "any");
+  return getExecutionEvents(executionId, after);
+}
+
+export async function executionLogs(caller: AuthUser | undefined, executionId: string) {
+  await loadExecution(executionId, caller, "any");
+  return getExecutionLogs(executionId);
+}
+
+/** Every team, as for submitting it: cancelling stops all of its tasks, other teams' too. */
+export async function cancel(caller: AuthUser | undefined, executionId: string) {
+  await loadExecution(executionId, caller, "every");
+  return cancelExecution(executionId);
+}
+
+/**
+ * Retries a failed task, with the same checks as a rerun, against current
+ * membership and grants, over every task: retrying resumes the whole
+ * execution, and kernel-api then revives the tasks the failure cancelled,
+ * other teams' too, each mounting its secrets again.
+ */
+export async function retry(caller: AuthUser | undefined, executionId: string, taskId: string, log: FastifyBaseLogger) {
+  const submitted = await loadExecution(executionId, caller, "any");
+  const tasksInfo = submitted.payload === null ? null : extractTasksAuthInfo(submitted.payload);
+  if (tasksInfo === null) {
+    throw new ApiError(
+      422,
+      "UNPROCESSABLE_ENTITY",
+      "This execution has no stored submission (it predates them, or it's malformed), " +
+        "so there's nothing to check a retry's access against.",
+    );
+  }
+  await authorizeTasks(tasksInfo, caller);
+  const images = taskImages(submitted.payload, taskId);
+  const context: RunContext = { action: "retry", teams: submitted.teams, executionId, caller, log };
+  await refuseBlockedImages(images, context);
+  await refuseUnscanned(images, context);
+  await ensureServiceAccounts(tasksInfo);
+  return retryTask(executionId, taskId);
+}
+
+/**
+ * Resubmits an execution's exact task graph as a new execution (a fresh id:
+ * kernel-api has no "run this again in place"; attempts and outputs are
+ * append-only history). The same checks as a submission, against current
+ * state, since membership or grants can have changed since.
+ */
+export async function rerun(caller: AuthUser | undefined, executionId: string, log: FastifyBaseLogger) {
+  const submitted = await loadExecution(executionId, caller, "any");
+  if (submitted.payload === null || submitted.payload === undefined) {
+    throw new ApiError(
+      422,
+      "UNPROCESSABLE_ENTITY",
+      "This execution was submitted before rerun support existed, so there's no stored submission to replay.",
+    );
+  }
+  // Stored DAGs from before the rename get the current field names first,
+  // and a task with no serviceAccount the one it runs as now.
+  const replayed = isRecord(submitted.payload)
+    ? await withProductIdentities(withCurrentFieldNames(submitted.payload))
+    : submitted.payload;
+  const tasksInfo = extractTasksAuthInfo(replayed);
+  if (tasksInfo === null) {
+    throw new ApiError(422, "UNPROCESSABLE_ENTITY", "The stored submission for this execution is malformed and can't be replayed.");
+  }
+  await authorizeTasks(tasksInfo, caller);
+  const context: RunContext = { action: "rerun", teams: submitted.teams, executionId, caller, log };
+  await refuseBlockedImages(taskImages(replayed), context);
+  await ensureServiceAccounts(tasksInfo);
+
+  // Every field carries over except requestId: kernel-api treats it as
+  // identifying this specific submission (kernel/app/contracts/execution.py),
+  // so reusing the original would return the same execution. A stored DAG
+  // from before pinning has tags; they're pinned now.
+  const pinnedReplay = await pinned(replayed as Record<string, unknown>, context);
+  await refuseUnscanned(taskImages(pinnedReplay), context);
+  const rerunPayload = await withProductResources({ ...pinnedReplay, requestId: randomUUID() });
+
+  const result = await submitExecution(scopeRequestId(rerunPayload, submitted.teams));
+  await recordOrCancel(
+    { executionId: result.executionId, teams: submitted.teams, submittedBy: caller?.id ?? "", name: submitted.name, payload: rerunPayload },
+    result.created,
+    log,
+  );
+  return { executionId: result.executionId, state: result.state };
+}

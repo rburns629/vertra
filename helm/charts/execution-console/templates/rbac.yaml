@@ -60,7 +60,7 @@ rules:
     resources: ["externalsecrets"]
     verbs: ["get", "list", "create", "update", "delete"]
   # listTaskPods -- read-only visibility into a team's own
-  # running work (routes/pods.ts), no different in kind from `kubectl
+  # running work (core/teams.ts, teamPods), no different in kind from `kubectl
   # get pods -n <team>`. Deliberately no "watch" -- this is a plain,
   # on-demand list, not a live stream held open server-side.
   - apiGroups: [""]

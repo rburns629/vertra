@@ -450,32 +450,21 @@ func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh
 	}
 
 	product := config.Languages[cat.Languages[0]]
-	dag := map[string]any{
-		"name":      "acyclixctl smoke test",
-		"requestId": fmt.Sprintf("acyclixctl-smoke-%d", time.Now().Unix()),
-		"tasks": []map[string]any{{
-			"id": "smoke", "image": fmt.Sprintf("%s/%s/%s:latest", setup.registry, cat.Team, product),
-			"action": "transform", "team": cat.Team,
-			"inputs": map[string]any{"text": "hello from acyclixctl"},
-		}},
-	}
-	id, err := api.Submit(ctx, dag)
+	id, err := api.Submit(ctx, "acyclixctl smoke test", fmt.Sprintf("acyclixctl-smoke-%d", time.Now().Unix()), []consoleapi.Task{{
+		ID: "smoke", Image: fmt.Sprintf("%s/%s/%s:latest", setup.registry, cat.Team, product),
+		Action: "transform", Team: cat.Team,
+		Inputs: map[string]any{"text": "hello from acyclixctl"},
+	}})
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "Running %s/%s (execution %s)...\n", cat.Team, product, id)
-	var execution *consoleapi.Execution
-	if err := waitFor(ctx, 15*time.Minute, 5*time.Second, func() (bool, error) {
-		execution, err = api.Get(ctx, id)
-		if err != nil {
-			return false, err
-		}
-		return execution.State == "SUCCEEDED" || execution.State == "FAILED" || execution.State == "CANCELLED", nil
-	}); err != nil {
+	execution, err := api.Wait(ctx, id, 15*time.Minute)
+	if err != nil {
 		return err
 	}
 	for _, t := range execution.Tasks {
-		fmt.Fprintf(out, "  %s: %s %v %v\n", t.ID, t.State, t.Outputs, t.Failure)
+		fmt.Fprintf(out, "  %s: %s %v %s\n", t.ID, t.State, t.Outputs, t.Failure)
 	}
 	if execution.State != "SUCCEEDED" {
 		return fmt.Errorf("the smoke test %s", strings.ToLower(execution.State))

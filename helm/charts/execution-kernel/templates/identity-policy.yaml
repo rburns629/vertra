@@ -1,6 +1,6 @@
 {{/*
 Which ServiceAccount a step may run as, and which Secrets it may mount: the
-cluster's copy of the console's rule (identityRefusal in console/src/routes/
+cluster's copy of the console's rule (identityRefusal in console/src/core/
 executions.ts), so it holds even for a Job the console never checked.
 
 A step runs as "default" with no Secrets, unless it's a registered product:

@@ -14,6 +14,9 @@ import { db } from "../src/db/client.js";
 import { createUser } from "../src/db/queries.js";
 import { users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
+
+const call = caller(() => app);
 import { recordActivity } from "../src/k8s.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
@@ -42,13 +45,13 @@ afterAll(async () => {
 
 describe("recording the console's activity", () => {
   it("ignores anonymous requests", async () => {
-    await app.inject({ method: "GET", url: "/api/me" });
+    await call(undefined, "AuthService/GetMe");
     expect(recordActivity).not.toHaveBeenCalled();
   });
 
   it("records a signed-in request, then at most once a minute", async () => {
-    const me = () => app.inject({ method: "GET", url: "/api/me", headers: { authorization: `Bearer ${token}` } });
-    expect((await me()).statusCode).toBe(200);
+    const me = () => call(token, "AuthService/GetMe");
+    expect((await me()).code).toBe("ok");
     expect(recordActivity).toHaveBeenCalledOnce();
     expect(recordActivity).toHaveBeenCalledWith("acyclix-system", "console-execution-console-activity", expect.any(Date));
     await me();

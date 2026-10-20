@@ -60,7 +60,7 @@ only by the team's registered products.
 - No RBAC is involved: mounting doesn't consult it, and steps don't read
   Secrets through the API. The console creates no Roles (older versions made
   one per secret; the console removes them at startup).
-- Revoking a secret (Team page, or `DELETE /api/teams/:team/secrets/:name`)
+- Revoking a secret (Team page, or `SecretService/RevokeSecret`)
   removes the registration and the Secret or ExternalSecret the console
   created. Tasks already running keep what they mounted.
 
@@ -115,7 +115,7 @@ change in Acyclix.
    (its namespace) and any `secretRefs`; its `serviceAccount` is optional,
    filled in with its product's own (or `default`).
 2. The console checks, before anything runs
-   (`console/src/routes/executions.ts`):
+   (`console/src/core/executions.ts`):
    - the caller is a member of every team named, or an admin;
    - the step runs as the ServiceAccount its product declares in the catalog,
      or as `default`; only a registered product may mount secrets at all;

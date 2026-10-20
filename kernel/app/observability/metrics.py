@@ -44,6 +44,11 @@ SCHEDULER_TICK_DURATION_SECONDS = Histogram(
     "Duration of one scheduler tick (claim + dispatch + poll).",
 )
 
+SCHEDULER_STATUS_READ_ERRORS_TOTAL = Counter(
+    "kernel_scheduler_status_read_errors_total",
+    "Reads of a running task's status that failed; the task stays running and is read again.",
+)
+
 SCHEDULER_TICK_ERRORS_TOTAL = Counter(
     "kernel_scheduler_tick_errors_total",
     "Scheduler ticks that raised and were skipped rather than crashing the process.",

@@ -1,4 +1,0 @@
-# What tools/catalog.py needs, at exact versions. The ./catalog wrapper
-# installs these into .venv/ on first use.
-PyYAML==6.0.3
-jsonschema==4.26.0

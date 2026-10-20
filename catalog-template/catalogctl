@@ -1,17 +1,59 @@
 #!/usr/bin/env bash
-# Runs tools/catalog.py in its own virtualenv (.venv/), made on first use and
-# remade whenever tools/requirements.txt changes. ./catalogctl --help for usage.
+# Runs catalogctl, the platform's catalog tool, at the release pinned below:
+# downloaded once into .catalogctl/ and checked against its SHA-256 before
+# it ever runs. ACYCLIX_CATALOGCTL runs a catalogctl of your own instead
+# (one built from a platform checkout: .github/scripts/build-catalogctl.sh).
+# ./catalogctl --help for usage.
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")" && pwd)
-venv="$root/.venv"
-requirements="$root/tools/requirements.txt"
-stamp="$venv/.requirements"
+# Set when the platform publishes a release; until then, ACYCLIX_CATALOGCTL.
+version=""
+releases="https://github.com/rburns629/acyclix/releases/download"
 
-if [ ! -x "$venv/bin/python" ] || ! cmp -s "$requirements" "$stamp"; then
-  echo "Setting up $venv (tools/requirements.txt)..." >&2
-  python3 -m venv "$venv"
-  "$venv/bin/pip" install --quiet --disable-pip-version-check -r "$requirements"
-  cp "$requirements" "$stamp"
+root=$(cd "$(dirname "$0")" && pwd)
+export ACYCLIX_CATALOG_ROOT="$root"
+
+if [ -n "${ACYCLIX_CATALOGCTL:-}" ]; then
+  exec "$ACYCLIX_CATALOGCTL" "$@"
 fi
-exec "$venv/bin/python" "$root/tools/catalog.py" "$@"
+
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+case $(uname -m) in
+  x86_64 | amd64) arch=amd64 ;;
+  arm64 | aarch64) arch=arm64 ;;
+  *) echo "catalogctl: no release for $(uname -m)" >&2; exit 1 ;;
+esac
+platform="$os-$arch"
+# Each release's SHA-256, per platform (from its checksums file).
+case $platform in
+  linux-amd64) sha256="" ;;
+  linux-arm64) sha256="" ;;
+  darwin-amd64) sha256="" ;;
+  darwin-arm64) sha256="" ;;
+  *) echo "catalogctl: no release for $platform" >&2; exit 1 ;;
+esac
+if [ -z "$version" ] || [ -z "$sha256" ]; then
+  echo "catalogctl: no release is pinned in ./catalogctl yet; set ACYCLIX_CATALOGCTL to a catalogctl" >&2
+  echo "built from the platform repository (.github/scripts/build-catalogctl.sh)." >&2
+  exit 1
+fi
+
+binary="$root/.catalogctl/$version/catalogctl-$platform"
+if [ ! -x "$binary" ]; then
+  mkdir -p "$(dirname "$binary")"
+  download=$(mktemp "$binary.XXXXXX")
+  trap 'rm -f "$download"' EXIT
+  curl -fsSL --retry 3 -o "$download" "$releases/$version/catalogctl-$platform"
+  if command -v sha256sum > /dev/null; then
+    actual=$(sha256sum "$download" | cut -d' ' -f1)
+  else
+    actual=$(shasum -a 256 "$download" | cut -d' ' -f1)
+  fi
+  if [ "$actual" != "$sha256" ]; then
+    echo "catalogctl: the download's SHA-256 is $actual, not the pinned $sha256: refusing to run it" >&2
+    exit 1
+  fi
+  chmod +x "$download"
+  mv "$download" "$binary"
+fi
+exec "$binary" "$@"

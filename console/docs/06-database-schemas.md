@@ -327,7 +327,7 @@ Every image a product has been registered with, so the Products page can list it
 
 ### image_repositories
 
-Which team owns each image repository: the first team to register a product from it. Only that team's products may use it, so no team can register another team's code as its own product and run it with its own ServiceAccount and Secrets. A row stays when its products are deleted, so the repository can't be taken over afterwards; an admin releases it (`DELETE /api/image-repositories`) once no product uses it. Products registered before this table existed get their rows when the console starts, the oldest product of a repository deciding.
+Which team owns each image repository: the first team to register a product from it. Only that team's products may use it, so no team can register another team's code as its own product and run it with its own ServiceAccount and Secrets. A row stays when its products are deleted, so the repository can't be taken over afterwards; an admin releases it (`ProductService/ReleaseImageRepository`) once no product uses it. Products registered before this table existed get their rows when the console starts, the oldest product of a repository deciding.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -337,17 +337,17 @@ Which team owns each image repository: the first team to register a product from
 
 ### audit_log
 
-Who changed what (`src/audit.ts`): one row per request that tried to change something through `/api`, allowed or refused, recorded once it's answered. Sign-in and password routes aren't recorded. Admins read it at `GET /api/audit`; each entry is also logged (`event: "audit"`).
+Who changed what (`src/audit.ts`): one row per call that tried to change something (any method not marked as only reading), allowed or refused, recorded once it's answered. Sign-in and password changes aren't recorded. Admins read it with `AdminService/ListAuditEntries`; each entry is also logged (`event: "audit"`).
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
 | `id` | bigserial | no | Increasing; pages go by it. |
 | `at` | timestamptz | no | |
 | `actor_id` | uuid | yes | The caller (a user or a bot); null when unauthenticated. |
-| `method` | text | no | POST, PUT, PATCH or DELETE. |
-| `route` | text | no | The route pattern, such as `/api/teams/:teamName/secrets/:secretName`. |
-| `target` | jsonb | no | The route's parameters and the identifying fields of the body (names, teams, images, emails, scopes, reasons); never a secret value, password or token. |
-| `status` | integer | no | The answer's HTTP status: a refusal is recorded too. |
+| `method` | text | no | `RPC` (older rows: POST, PUT, PATCH or DELETE). |
+| `route` | text | no | The method, such as `acyclix.console.v1.SecretService/PutSecret` (older rows: a REST route pattern, such as `/api/teams/:teamName/secrets/:secretName`). |
+| `target` | jsonb | no | The identifying fields of the request (names, teams, images, emails, scopes, reasons); never a secret value, password or token. |
+| `status` | integer | no | The answer's status, as HTTP would say it (200, 403, 409, ...): a refusal is recorded too. |
 | `request_id` | text | yes | The request's id, as in the logs. |
 
 ### image_scans

@@ -33,7 +33,7 @@ service:
   # -- Only meaningful for LoadBalancer/NodePort. With the Kubernetes
   # default ("Cluster") the node SNATs incoming traffic, so the console sees
   # every browser as the same node IP, and the login rate limit (keyed on
-  # client IP + email, see console/src/routes/auth.ts) can't tell attackers
+  # client IP + email, see console/src/rpc/services/auth.ts) can't tell attackers
   # apart from everyone else. "Local" keeps the real client IP. Its
   # trade-off is that only nodes running a console Pod take traffic, which
   # is fine at replicaCount 1. Left empty, the Kubernetes default applies.
@@ -83,7 +83,7 @@ identityPolicy:
 
 # -- How often the identity and scan policies are rewritten from the
 # console's database whatever changed, so a failed write or a hand edit
-# doesn't last (admins see the outcome at GET /api/policy-sync).
+# doesn't last (admins see the outcome on the Admin page: AdminService/GetPolicySync).
 policySyncIntervalSeconds: 300
 
 # -- How long records are kept, in days; 0 keeps them forever. executionDays:
@@ -178,7 +178,7 @@ registryCheck:
   imagePinning: required
 
 # -- This service is the authenticated front door to kernel-api (see
-# console/src/routes/executions.ts); kernel-api only accepts calls from it
+# console/src/core/executions.ts); kernel-api only accepts calls from it
 # and should never be reachable directly from a browser. Point this at the
 # execution-kernel release's own kernel-api Service, e.g.
 # http://<execution-kernel release name>-execution-kernel-api.<namespace>.svc.cluster.local:8000

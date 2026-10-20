@@ -19,6 +19,7 @@ import { KernelApiError, cancelExecution, retryTask, submitExecution } from "../
 import { ensureServiceAccount } from "../src/k8s.js";
 import { missingImages, pinImages } from "../src/registry.js";
 import { config } from "../src/config.js";
+import { caller, failureDetail, type RpcError } from "./rpc.js";
 
 // Creating a product's ServiceAccount in its team's namespace is the one
 // cluster write a submission makes; here it's recorded, not made.
@@ -77,16 +78,15 @@ let otherTeamName: string;
 const userEmails: string[] = [];
 const recordedExecutionIds: string[] = [];
 
+const call = caller(() => app);
+const submitDag = (dag: Record<string, unknown>) =>
+  call<{ executionId: string } & RpcError>(token, "ExecutionService/SubmitExecution", { dag });
+
 function submit(task: Record<string, unknown>) {
-  return app.inject({
-    method: "POST",
-    url: "/api/executions",
-    headers: { authorization: `Bearer ${token}` },
-    payload: {
-      name: "sa-check",
-      requestId: `sa-check-${randomUUID()}`,
-      tasks: [{ id: "t", image: "some-image:latest", action: "create", team: teamName, ...task }],
-    },
+  return submitDag({
+    name: "sa-check",
+    requestId: `sa-check-${randomUUID()}`,
+    tasks: [{ id: "t", image: "some-image:latest", action: "create", team: teamName, ...task }],
   });
 }
 
@@ -146,12 +146,12 @@ afterAll(async () => {
   await db.delete(users).where(inArray(users.email, userEmails));
 });
 
-describe("POST /executions: a product runs as its ServiceAccount, with its team's secrets", () => {
-  const message = (response: { json: <T>() => T }) => response.json<{ message: string }>().message;
+describe("SubmitExecution: a product runs as its ServiceAccount, with its team's secrets", () => {
+  const message = (response: { json: <T>() => T }) => response.message;
 
   it("forwards a product's task that runs as its ServiceAccount with its team's secret", async () => {
     const response = await submit({ serviceAccount: GRANTEE, secretRefs: ["product-a-secret"] });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     expect(submitExecution).toHaveBeenCalledOnce();
     // Its ServiceAccount is made sure of, in its team's namespace.
     expect(ensureServiceAccount).toHaveBeenCalledWith(teamName, GRANTEE);
@@ -159,19 +159,19 @@ describe("POST /executions: a product runs as its ServiceAccount, with its team'
 
   it("lets a product mount any secret its team registered, not only those it lists", async () => {
     const response = await submit({ serviceAccount: GRANTEE, secretRefs: ["team-other-secret"] });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
   });
 
   it("gives a task that names no ServiceAccount its product's", async () => {
     const response = await submit({ secretRefs: ["product-a-secret"] });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     const forwarded = vi.mocked(submitExecution).mock.calls[0]?.[0] as { tasks: Record<string, unknown>[] };
     expect(forwarded.tasks[0]?.["serviceAccount"]).toBe(GRANTEE);
   });
 
   it("gives an unregistered image that names none \"default\", and makes nothing for it", async () => {
     const response = await submit({ image: "unregistered-image:1" });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     const forwarded = vi.mocked(submitExecution).mock.calls[0]?.[0] as { tasks: Record<string, unknown>[] };
     expect(forwarded.tasks[0]?.["serviceAccount"]).toBe("default");
     expect(ensureServiceAccount).not.toHaveBeenCalled();
@@ -179,12 +179,12 @@ describe("POST /executions: a product runs as its ServiceAccount, with its team'
 
   it("matches any release of the product's image", async () => {
     const response = await submit({ image: "docker.io/library/some-image@sha256:abc", serviceAccount: GRANTEE });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
   });
 
   it("rejects a product's task that runs as another ServiceAccount", async () => {
     const response = await submit({ serviceAccount: "product-b-sa", secretRefs: ["product-a-secret"] });
-    expect(response.statusCode).toBe(403);
+    expect(response.code).toBe("permission_denied");
     expect(message(response)).toContain(`runs as ServiceAccount "${GRANTEE}"`);
     expect(submitExecution).not.toHaveBeenCalled();
   });
@@ -193,14 +193,14 @@ describe("POST /executions: a product runs as its ServiceAccount, with its team'
     // A ServiceAccount can carry a cloud identity (a SecretStore's, another
     // product's), whatever is mounted.
     const response = await submit({ serviceAccount: "secret-store-sa" });
-    expect(response.statusCode).toBe(403);
+    expect(response.code).toBe("permission_denied");
     expect(submitExecution).not.toHaveBeenCalled();
   });
 
   it("rejects a secret its team never registered, even one the product lists", async () => {
     for (const secret of ["someone-elses-secret", "ungranted-secret"]) {
       const response = await submit({ serviceAccount: GRANTEE, secretRefs: [secret] });
-      expect(response.statusCode).toBe(403);
+      expect(response.code).toBe("permission_denied");
       expect(message(response)).toContain("is not registered for team");
     }
     expect(submitExecution).not.toHaveBeenCalled();
@@ -208,48 +208,48 @@ describe("POST /executions: a product runs as its ServiceAccount, with its team'
 
   it("rejects another team's secret", async () => {
     const response = await submit({ serviceAccount: GRANTEE, secretRefs: ["other-team-secret"] });
-    expect(response.statusCode).toBe(403);
+    expect(response.code).toBe("permission_denied");
     expect(submitExecution).not.toHaveBeenCalled();
   });
 
   it("rejects an action the product doesn't register, as an unregistered image", async () => {
     const response = await submit({ action: "delete", serviceAccount: GRANTEE });
-    expect(response.statusCode).toBe(403);
+    expect(response.code).toBe("permission_denied");
     expect(message(response)).toContain("isn't a registered product");
   });
 
   it("runs a product as \"default\" with no secrets, before its own ServiceAccount exists", async () => {
     const response = await submit({ serviceAccount: "default" });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
   });
 
   it("runs an unregistered image as \"default\" with no secrets", async () => {
     const response = await submit({ image: "unregistered-image:1", serviceAccount: "default" });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
   });
 
   it("refuses an unregistered image any other ServiceAccount, or a secret", async () => {
     const asGrantee = await submit({ image: "unregistered-image:1", serviceAccount: GRANTEE });
-    expect(asGrantee.statusCode).toBe(403);
+    expect(asGrantee.code).toBe("permission_denied");
     expect(message(asGrantee)).toContain("isn't a registered product");
     const withSecret = await submit({
       image: "unregistered-image:1",
       serviceAccount: "default",
       secretRefs: ["product-a-secret"],
     });
-    expect(withSecret.statusCode).toBe(403);
+    expect(withSecret.code).toBe("permission_denied");
     expect(submitExecution).not.toHaveBeenCalled();
   });
 });
 
-describe("POST /executions: every image is pinned to its digest", () => {
+describe("SubmitExecution: every image is pinned to its digest", () => {
   const forwarded = () => vi.mocked(submitExecution).mock.calls[0]?.[0] as { tasks: { image: string }[] };
 
   it("sends kernel-api the digest a tag names now, keeping the tag", async () => {
     config.imagePinning = "required";
     try {
       const response = await submit({ image: "some-image:latest", serviceAccount: GRANTEE });
-      expect(response.statusCode).toBe(201);
+      expect(response.code).toBe("ok");
       expect(forwarded().tasks[0]?.image).toBe(`some-image:latest@sha256:${"c".repeat(64)}`);
     } finally {
       config.imagePinning = "off";
@@ -261,8 +261,8 @@ describe("POST /executions: every image is pinned to its digest", () => {
     vi.mocked(pinImages).mockResolvedValueOnce({ pinned: new Map(), unresolved: ["some-image:latest"] });
     try {
       const response = await submit({ image: "some-image:latest", serviceAccount: GRANTEE });
-      expect(response.statusCode).toBe(422);
-      expect(response.json<{ error: string }>().error).toBe("IMAGE_NOT_RESOLVED");
+      expect(response.code).toBe("invalid_argument");
+      expect(response.failure).toBe("IMAGE_NOT_RESOLVED");
       expect(submitExecution).not.toHaveBeenCalled();
     } finally {
       config.imagePinning = "off";
@@ -270,27 +270,25 @@ describe("POST /executions: every image is pinned to its digest", () => {
   });
 });
 
-describe("POST /executions: images the registry says are gone", () => {
+describe("SubmitExecution: images the registry says are gone", () => {
   it("refuses the submission up front and forwards nothing", async () => {
     vi.mocked(missingImages).mockResolvedValueOnce(["some-image:latest"]);
     const response = await submit({ serviceAccount: GRANTEE });
-    expect(response.statusCode).toBe(422);
-    const body = response.json<{ error: string; missingImages: string[] }>();
-    expect(body.error).toBe("IMAGE_NOT_FOUND");
-    expect(body.missingImages).toEqual(["some-image:latest"]);
+    expect(response.code).toBe("invalid_argument");
+    expect(response.failure).toBe("IMAGE_NOT_FOUND");
+    expect(failureDetail(response.body)?.["missingImages"]).toEqual(["some-image:latest"]);
     expect(submitExecution).not.toHaveBeenCalled();
   });
 });
 
-describe("POST /executions: name and requestId", () => {
+describe("SubmitExecution: name and requestId", () => {
   const task = () => ({ id: "t", image: "some-image:latest", action: "create", team: teamName, serviceAccount: GRANTEE });
   const forwarded = () => vi.mocked(submitExecution).mock.calls[0]?.[0] as Record<string, unknown>;
-  const post = (payload: Record<string, unknown>) =>
-    app.inject({ method: "POST", url: "/api/executions", headers: { authorization: `Bearer ${token}` }, payload });
+  const post = submitDag;
 
   it("scopes requestId to the submitting team before kernel-api sees it", async () => {
     const response = await post({ name: "scoped", requestId: "hello-1", tasks: [task()] });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     expect(forwarded()["requestId"]).toBe(`${teamName}/hello-1`);
   });
 
@@ -299,21 +297,15 @@ describe("POST /executions: name and requestId", () => {
     expect(forwarded()).not.toHaveProperty("requestId");
   });
 
-  it("accepts the old field names and forwards the new ones", async () => {
-    const response = await post({ externalReference: "legacy", idempotencyKey: "old-1", tasks: [task()] });
-    expect(response.statusCode).toBe(201);
-    expect(forwarded()).toMatchObject({ name: "legacy", requestId: `${teamName}/old-1` });
-    expect(forwarded()).not.toHaveProperty("externalReference");
-    expect(forwarded()).not.toHaveProperty("idempotencyKey");
-    const list = await app.inject({ method: "GET", url: "/api/executions", headers: { authorization: `Bearer ${token}` } });
-    const id = response.json<{ executionId: string }>().executionId;
-    const listed = list.json<{ executions: { executionId: string; name: string }[] }>().executions;
-    expect(listed.find((e) => e.executionId === id)?.name).toBe("legacy");
+  it("lists a submission under its name", async () => {
+    const response = await post({ name: "named", requestId: "named-1", tasks: [task()] });
+    const list = await call<{ executions: { executionId: string; name: string }[] }>(token, "ExecutionService/ListExecutions");
+    expect(list.body.executions.find((e) => e.executionId === response.body.executionId)?.name).toBe("named");
   });
 
   it("reruns a DAG stored under the old names with the new ones and a fresh requestId", async () => {
-    const first = await post({ externalReference: "stored-legacy", idempotencyKey: "old-2", tasks: [task()] });
-    const id = first.json<{ executionId: string }>().executionId;
+    const first = await post({ name: "stored-legacy", requestId: "old-2", tasks: [task()] });
+    const id = first.body.executionId;
     // Simulate a row stored before the rename: payload with the old names.
     await db
       .update(submittedExecutions)
@@ -321,12 +313,8 @@ describe("POST /executions: name and requestId", () => {
       .where(inArray(submittedExecutions.executionId, [id]));
     vi.mocked(submitExecution).mockClear();
 
-    const rerun = await app.inject({
-      method: "POST",
-      url: `/api/executions/${id}/rerun`,
-      headers: { authorization: `Bearer ${token}` },
-    });
-    expect(rerun.statusCode).toBe(201);
+    const rerun = await call(token, "ExecutionService/RerunExecution", { executionId: id });
+    expect(rerun.code).toBe("ok");
     expect(forwarded()["name"]).toBe("stored-legacy");
     expect(forwarded()).not.toHaveProperty("externalReference");
     expect(forwarded()).not.toHaveProperty("idempotencyKey");
@@ -352,22 +340,21 @@ describe("retry and cancel check access again, over every team", () => {
     return executionId;
   }
 
-  const post = (url: string) => app.inject({ method: "POST", url, headers: { authorization: `Bearer ${token}` } });
-  const retry = (id: string, taskId: string) => post(`/api/executions/${id}/tasks/${taskId}/retry`);
-  const cancel = (id: string) => post(`/api/executions/${id}/cancel`);
+  const retry = (executionId: string, taskId: string) => call(token, "ExecutionService/RetryTask", { executionId, taskId });
+  const cancel = (executionId: string) => call(token, "ExecutionService/CancelExecution", { executionId });
 
   it("retries a task whose team and secrets still allow it", async () => {
     const id = await recorded([teamName], { tasks: [task("t", teamName, { secretRefs: ["product-a-secret"] })] });
     const response = await retry(id, "t");
-    expect(response.statusCode).toBe(200);
+    expect(response.code).toBe("ok");
     expect(retryTask).toHaveBeenCalledOnce();
   });
 
   it("refuses a retry that would mount a secret no longer registered", async () => {
     const id = await recorded([teamName], { tasks: [task("t", teamName, { secretRefs: ["ungranted-secret"] })] });
     const response = await retry(id, "t");
-    expect(response.statusCode).toBe(403);
-    expect(response.json<{ message: string }>().message).toContain("is not registered for team");
+    expect(response.code).toBe("permission_denied");
+    expect(response.message).toContain("is not registered for team");
     expect(retryTask).not.toHaveBeenCalled();
   });
 
@@ -377,21 +364,21 @@ describe("retry and cancel check access again, over every team", () => {
       tasks: [task("mine", teamName), task("theirs", otherTeamName, { dependsOn: ["mine"] })],
     });
     const response = await retry(id, "mine");
-    expect(response.statusCode).toBe(403);
+    expect(response.code).toBe("permission_denied");
     expect(retryTask).not.toHaveBeenCalled();
   });
 
   it("refuses a retry it has no stored submission to check against", async () => {
     const id = await recorded([teamName], null);
     const response = await retry(id, "t");
-    expect(response.statusCode).toBe(422);
+    expect(response.code).toBe("invalid_argument");
     expect(retryTask).not.toHaveBeenCalled();
   });
 
   it("cancels an execution of the caller's own team", async () => {
     const id = await recorded([teamName], { tasks: [task("t", teamName)] });
     const response = await cancel(id);
-    expect(response.statusCode).toBe(200);
+    expect(response.code).toBe("ok");
     expect(cancelExecution).toHaveBeenCalledOnce();
   });
 
@@ -400,30 +387,30 @@ describe("retry and cancel check access again, over every team", () => {
       tasks: [task("mine", teamName), task("theirs", otherTeamName)],
     });
     const response = await cancel(id);
-    expect(response.statusCode).toBe(403);
+    expect(response.code).toBe("permission_denied");
     expect(cancelExecution).not.toHaveBeenCalled();
   });
 });
 
-describe("POST /executions: a task's size comes from its product unless it sets its own", () => {
+describe("SubmitExecution: a task's size comes from its product unless it sets its own", () => {
   const forwardedTask = () =>
     (vi.mocked(submitExecution).mock.calls[0]?.[0] as { tasks: Record<string, unknown>[] }).tasks[0];
 
   it("gives a task its product's resources", async () => {
     const response = await submit({ serviceAccount: GRANTEE });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     expect(forwardedTask()?.["resources"]).toEqual({ cpu: "50m", memory: "64Mi" });
   });
 
   it("keeps a task's own resources", async () => {
     const response = await submit({ serviceAccount: GRANTEE, resources: { cpu: "2", memory: "4Gi" } });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     expect(forwardedTask()?.["resources"]).toEqual({ cpu: "2", memory: "4Gi" });
   });
 
   it("leaves an unregistered image's task unsized, for kernel-api's default", async () => {
     const response = await submit({ image: "unregistered-image:1", serviceAccount: "default" });
-    expect(response.statusCode).toBe(201);
+    expect(response.code).toBe("ok");
     expect(forwardedTask()).not.toHaveProperty("resources");
   });
 });
@@ -432,26 +419,27 @@ describe("kernel-api's refusals", () => {
   it("passes on a refusal about the request", async () => {
     vi.mocked(submitExecution).mockRejectedValueOnce(new KernelApiError(422, { detail: [{ msg: "bad" }] }));
     const response = await submit({ image: "unregistered-image:1", serviceAccount: "default" });
-    expect(response.statusCode).toBe(422);
-    expect(response.json()).toEqual({ detail: [{ msg: "bad" }] });
+    expect(response.code).toBe("invalid_argument");
+    expect(response.message).toContain("bad");
   });
 
-  it("turns a refusal of the console's own credentials into a 502, not a 401 that signs the user out", async () => {
+  it("turns a refusal of the console's own credentials into unavailable, not unauthenticated (which signs the user out)", async () => {
     for (const status of [401, 403]) {
       vi.mocked(submitExecution).mockRejectedValueOnce(new KernelApiError(status, { detail: "nope" }));
       const response = await submit({ image: "unregistered-image:1", serviceAccount: "default" });
-      expect(response.statusCode).toBe(502);
-      expect(response.json<{ message: string }>().message).toContain("couldn't authenticate to the execution kernel");
+      expect(response.code).toBe("unavailable");
+      expect(response.message).toContain("couldn't authenticate to the execution kernel");
     }
   });
 });
 
 describe("recording a submission", () => {
-  it("answers 200, not 201, when the requestId returned an existing execution", async () => {
-    vi.mocked(submitExecution).mockResolvedValueOnce({ executionId: randomUUID(), state: "RUNNING", created: false });
+  it("answers with the existing execution when the requestId returned one", async () => {
+    const existing = randomUUID();
+    vi.mocked(submitExecution).mockResolvedValueOnce({ executionId: existing, state: "RUNNING", created: false });
     const response = await submit({ image: "unregistered-image:1", serviceAccount: "default" });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).not.toHaveProperty("created");
+    expect(response.code).toBe("ok");
+    expect(response.body.executionId).toBe(existing);
   });
 
   it("cancels a new execution it couldn't record, so it can't run unseen", async () => {
@@ -460,7 +448,7 @@ describe("recording a submission", () => {
     vi.mocked(cancelExecution).mockClear();
     vi.mocked(recordSubmittedExecution).mockRejectedValueOnce(new Error("database unavailable"));
     const response = await submit({ image: "unregistered-image:1", serviceAccount: "default" });
-    expect(response.statusCode).toBe(500);
+    expect(response.code).toBe("internal");
     expect(cancelExecution).toHaveBeenCalledWith(executionId);
   });
 
@@ -468,7 +456,7 @@ describe("recording a submission", () => {
     vi.mocked(submitExecution).mockResolvedValueOnce({ executionId: randomUUID(), state: "RUNNING", created: false });
     vi.mocked(cancelExecution).mockClear();
     vi.mocked(recordSubmittedExecution).mockRejectedValueOnce(new Error("database unavailable"));
-    expect((await submit({ image: "unregistered-image:1", serviceAccount: "default" })).statusCode).toBe(500);
+    expect((await submit({ image: "unregistered-image:1", serviceAccount: "default" })).code).toBe("internal");
     expect(cancelExecution).not.toHaveBeenCalled();
   });
 });

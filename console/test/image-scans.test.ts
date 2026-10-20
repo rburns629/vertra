@@ -16,6 +16,9 @@ import { db } from "../src/db/client.js";
 import { createUser, setUserAdmin } from "../src/db/queries.js";
 import { imageScans, products, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
+
+const call = caller(() => app);
 import { createScanJob, readScanJob, scaleScanner, updateScanPolicy } from "../src/k8s.js";
 import { parseScanOutput, reconcileScans, scanBlocker, scanTarget, verdictOf } from "../src/scanning.js";
 
@@ -152,14 +155,9 @@ describe("what a verdict allows", () => {
   it("refuses to register a failed image", async () => {
     const img = image();
     await scanned(img, LEAKY);
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/products",
-      headers: { authorization: `Bearer ${admin}` },
-      payload: { name: `${prefix}-leaky`, image: img, action: "run" },
-    });
-    expect(response.statusCode).toBe(422);
-    expect(response.json<{ error: string }>().error).toBe("IMAGE_SCAN_FAILED");
+    const registered = await call(admin, "ProductService/RegisterProduct", { name: `${prefix}-leaky`, image: img, action: "run" });
+    expect(registered.code).toBe("invalid_argument");
+    expect(registered.failure).toBe("IMAGE_SCAN_FAILED");
   });
 
   it("lets an admin accept a failed image with a reason, and only an admin", async () => {
@@ -168,11 +166,10 @@ describe("what a verdict allows", () => {
     await scanned(img, VULNERABLE);
     const member = (await createUser(`${prefix}-m@example.com`, await hashPassword("correct-horse-battery"))).id;
     emails.push(`${prefix}-m@example.com`);
-    const accept = (token: string, reason: string) =>
-      app.inject({ method: "POST", url: `/api/image-scans/${digest}/accept`, headers: { authorization: `Bearer ${token}` }, payload: { reason } });
-    expect((await accept(app.jwt.sign({ userId: member }), "No fix applies to how we use it.")).statusCode).toBe(403);
-    expect((await accept(admin, "ok")).statusCode).toBe(400); // a real reason
-    expect((await accept(admin, "Not reachable: the binary never parses untrusted input.")).statusCode).toBe(200);
+    const accept = (token: string, reason: string) => call(token, "ImageService/AcceptImageScan", { digest, reason });
+    expect((await accept(app.jwt.sign({ userId: member }), "No fix applies to how we use it.")).code).toBe("permission_denied");
+    expect((await accept(admin, "ok")).code).toBe("invalid_argument"); // a real reason
+    expect((await accept(admin, "Not reachable: the binary never parses untrusted input.")).code).toBe("ok");
     expect(await scanBlocker([img])).toBeNull();
     expect(JSON.parse(policyWritten ?? "[]")).not.toContain(digest);
   });

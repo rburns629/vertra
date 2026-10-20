@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * GET /api/executions, a page at a time: every row exactly once across
+ * ListExecutions, a page at a time: every row exactly once across
  * pages (including two submitted in the same instant), only what the caller
  * may see, and the server-side filters.
  */
@@ -13,6 +13,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, createUser } from "../src/db/queries.js";
 import { submittedExecutions, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
 
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/kernel/client.js")>()),
@@ -30,14 +31,28 @@ let token: string;
 const ids: string[] = [];
 
 interface Page {
-  executions: { executionId: string; name: string; state: string | null }[];
-  nextCursor: string | null;
+  executions: { executionId: string; name: string; state: string }[];
+  nextCursor: string;
 }
 
-async function page(query: string): Promise<Page> {
-  const response = await app.inject({ method: "GET", url: `/api/executions?${query}`, headers: { authorization: `Bearer ${token}` } });
-  expect(response.statusCode).toBe(200);
-  return response.json<Page>();
+interface Query {
+  limit?: number;
+  cursor?: string;
+  team?: string;
+  search?: string;
+  since?: string;
+}
+
+const call = caller(() => app);
+
+function list({ limit, cursor, ...rest }: Query) {
+  return call<Page>(token, "ExecutionService/ListExecutions", { page: { limit, cursor }, ...rest });
+}
+
+async function page(query: Query): Promise<Page> {
+  const listed = await list(query);
+  expect(listed.code).toBe("ok");
+  return listed.body;
 }
 
 beforeAll(async () => {
@@ -80,13 +95,13 @@ afterAll(async () => {
   await app.close();
 });
 
-describe("GET /api/executions", () => {
+describe("ListExecutions", () => {
   it("pages through every visible execution exactly once, newest first", async () => {
     const seen: string[] = [];
-    let cursor: string | null = null;
+    let cursor = "";
     let pages = 0;
     do {
-      const result: Page = await page(`limit=2&team=${ours}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+      const result: Page = await page({ limit: 2, team: ours, cursor });
       seen.push(...result.executions.map((e) => e.executionId));
       cursor = result.nextCursor;
       pages += 1;
@@ -99,29 +114,24 @@ describe("GET /api/executions", () => {
   });
 
   it("shows only executions of the caller's teams, with their states", async () => {
-    const result = await page("limit=1000");
+    const result = await page({ limit: 1000 });
     const names = result.executions.map((e) => e.name);
     expect(names).not.toContain(`${prefix}-theirs`);
     expect(result.executions.filter((e) => ids.includes(e.executionId))).toHaveLength(5);
-    expect(result.executions.every((e) => e.state === "SUCCEEDED")).toBe(true);
+    expect(result.executions.every((e) => e.state === "EXECUTION_STATE_SUCCEEDED")).toBe(true);
   });
 
   it("searches names on the server, treating % and _ as plain characters", async () => {
-    expect((await page(`search=${encodeURIComponent("50%_b")}`)).executions.map((e) => e.name)).toEqual(["Nightly 50%_backup"]);
-    expect((await page(`search=${encodeURIComponent("5_%")}`)).executions).toEqual([]);
+    expect((await page({ search: "50%_b" })).executions.map((e) => e.name)).toEqual(["Nightly 50%_backup"]);
+    expect((await page({ search: "5_%" })).executions).toEqual([]);
   });
 
   it("narrows to a time window", async () => {
-    const result = await page(`team=${ours}&since=${encodeURIComponent("2026-01-01T00:00:02.000Z")}`);
+    const result = await page({ team: ours, since: "2026-01-01T00:00:02.000Z" });
     expect(result.executions.map((e) => e.executionId).sort()).toEqual([ids[2], ids[3], ids[4]].sort());
   });
 
   it("refuses a cursor it didn't make", async () => {
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/executions?cursor=not-a-cursor",
-      headers: { authorization: `Bearer ${token}` },
-    });
-    expect(response.statusCode).toBe(400);
+    expect((await list({ cursor: "not-a-cursor" })).code).toBe("invalid_argument");
   });
 });

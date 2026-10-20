@@ -389,9 +389,10 @@ def kernel_packages() -> tuple[list[Package], set[tuple[str, str]]]:
 
 CONSOLE = ROOT / "console"
 CONSOLE_LAYERS = [
-    ("frontend", "frontend/src/  (React SPA; calls /api over HTTP)", PURPLE),
-    ("entry", "src/  (buildApp, config, OpenAPI)", GREY),
-    ("routes", "src/routes/  (every /api route)", BLUE),
+    ("frontend", "frontend/src/  (React SPA; calls the API over Connect)", PURPLE),
+    ("entry", "src/  (buildApp, config)", GREY),
+    ("rpc", "src/rpc/  (Connect services, interceptors)", BLUE),
+    ("core", "src/core/  (what each method does)", ORANGE),
     ("auth", "src/auth/  (sessions, bot tokens, passwords)", GREEN),
     ("integrations", "kernel-api, Kubernetes, registry, image policy", RED),
     ("db", "src/db/  (Drizzle schema and queries)", YELLOW),
@@ -401,8 +402,10 @@ CONSOLE_LAYERS = [
 def console_package(relative: str) -> str | None:
     if relative.startswith("frontend/src/"):
         return "frontend"
-    if relative.startswith("src/routes/"):
-        return "routes"
+    if relative.startswith("src/rpc/"):
+        return "rpc"
+    if relative.startswith("src/core/"):
+        return "core"
     if relative.startswith("src/auth/"):
         return "auth"
     if relative.startswith("src/db/"):
@@ -484,12 +487,13 @@ def drizzle_tables(source: str) -> list[UmlClass]:
 
 def console_packages() -> tuple[list[Package], set[tuple[str, str]]]:
     packages = {name: Package(name, title, color) for name, title, color in CONSOLE_LAYERS}
-    imports: set[tuple[str, str]] = {("frontend", "routes")}  # over HTTP, from frontend/src/api.ts
+    imports: set[tuple[str, str]] = {("frontend", "rpc")}  # over Connect, from frontend/src/api.ts
     frontend = CONSOLE / "frontend" / "src"
     for path in sorted([*(CONSOLE / "src").rglob("*.ts"), *frontend.rglob("*.ts"), *frontend.rglob("*.tsx")]):
         relative = path.relative_to(CONSOLE).as_posix()
         package = console_package(relative)
-        if package is None or relative.endswith(".d.ts"):
+        # gen/: generated from proto/ (`make proto`), not the console's own code.
+        if package is None or relative.endswith(".d.ts") or "/gen/" in relative:
             continue
         source = path.read_text()
         for spec in re.findall(r'from "(\.{1,2}/[^"]+)"', source):
@@ -502,8 +506,9 @@ def console_packages() -> tuple[list[Package], set[tuple[str, str]]]:
         name = relative.removeprefix("src/").removeprefix("frontend/src/")
         operations = ts_functions(source)
         attributes = [f"+ {n}" for n in re.findall(r"^export const (\w+)", source, re.M)]
-        if package == "routes":
-            operations = [f"«route» {r}" for r in ts_routes(source, "/api")] + operations
+        if relative.startswith("src/rpc/services/"):
+            # A service's methods: the object's `async name(` / `async *name(` members.
+            operations = [f"«rpc» {m}" for m in re.findall(r"^ {4}async \*?(\w+)\(", source, re.M)] + operations
         if relative == "src/index.ts":
             operations = [f"«route» {r}" for r in ts_routes(source, "")] + operations
         component = relative.endswith(".tsx") and re.search(r"^export function [A-Z]", source, re.M)
@@ -600,7 +605,7 @@ def system_page() -> Page:
         return (x - left) / width
 
     p.edge(engineer, lb, "① sign in, view, submit")
-    p.edge(pipeline, lb, "① POST /api/executions")
+    p.edge(pipeline, lb, "① SubmitExecution (Connect)")
     p.edge(lb, console, "", EDGE + ends(1, 0.5, 0, 0.5))
     p.edge(console, console_db, "teams, users,\nsecrets, products")
     p.edge(console, kernel_api, "② /v1/executions")
@@ -662,12 +667,12 @@ def sequence_page() -> Page:
     p.vertex(20, 10, 1600, 30, "One execution, function by function", TITLE)
     p.vertex(
         20, 40, 1900, 24,
-        "A one-task DAG submitted through the console, from POST /api/executions to SUCCEEDED. Solid arrows are calls, dashed are returns.",
+        "A one-task DAG submitted through the console, from ExecutionService/SubmitExecution to SUCCEEDED. Solid arrows are calls, dashed are returns.",
         SUBTITLE,
     )
     lifelines = [
         ("Pipeline or browser", GREY),
-        ("console\nroutes/executions.ts", ORANGE),
+        ("console\ncore/executions.ts", ORANGE),
         ("console DB\ndb/queries.ts", YELLOW),
         ("kernel-api\napi/routes/executions.py", BLUE),
         ("services/\nexecution_service.py", BLUE),
@@ -719,15 +724,15 @@ def sequence_page() -> Page:
             f"fillColor=none;dashed=1;strokeColor={color};align=left;verticalAlign=top;spacingLeft=6;fontStyle=1;{FONT}fontSize=11;",
         )
 
-    message(0, 1, "POST /api/executions {name, requestId?, tasks}")
-    message(1, 1, "app.authenticate: session JWT or bot token → authUser {teamNames, isAdmin}")
+    message(0, 1, "POST /api/acyclix.console.v1.ExecutionService/SubmitExecution {dag: {name, requestId?, tasks}}")
+    message(1, 1, "resolveCaller: session JWT or bot token → caller {teamNames, isAdmin, scopes} · requireCaller, audit (interceptors)")
     message(
         1, 1,
-        "withProductIdentities · extractTasksAuthInfo · authorizeTasksOrReply: a member of each task's team?\n"
+        "withProductIdentities · authorizeTasks: a member of each task's team?\n"
         "team not retired? runs as its product's identity (identityRefusal)? each secretRef its team's? (isSecretRegistered)",
     )
-    message(1, 1, "replyIfImagesBlocked: imageRefusal (image policy) · missingImages (registry.ts) → 422 if blocked")
-    message(1, 1, 'withCurrentFieldNames · scopeRequestId → requestId "team-a+team-b/<requestId>"')
+    message(1, 1, "refuseBlockedImages: image policy · registry (registry.ts) · pinned: tag → digest · refuseUnscanned: scan verdicts")
+    message(1, 1, 'withProductResources · scopeRequestId → requestId "team-a+team-b/<requestId>" · ensureServiceAccounts')
     message(1, 3, "kernel/client.ts submitExecution → POST /v1/executions")
     message(3, 4, "create_execution → submit_execution(session, submission)")
     message(4, 5, "get_execution_by_idempotency_key: seen before? return it (200, no new rows)")
@@ -738,8 +743,8 @@ def sequence_page() -> Page:
     )
     message(4, 5, "INSERT executions, execution_tasks, task_dependencies · record_event EXECUTION_CREATED")
     message(3, 1, "201 {executionId, state: PENDING}", reply=True)
-    message(1, 2, "recordSubmittedExecution(executionId, teams, submittedBy, name, payload)")
-    message(1, 0, "201 {executionId, state}", reply=True)
+    message(1, 2, "recordOrCancel: recordSubmittedExecution(executionId, teams, submittedBy, name, payload)")
+    message(1, 0, "{executionId, state: EXECUTION_STATE_PENDING}", reply=True)
 
     y += 10
     loop_start = y
@@ -769,13 +774,15 @@ def sequence_page() -> Page:
     message(7, 8, "read_namespaced_job_status: still running → RUNNING (lease_expires_at extended)")
     fragment("loop  [while the Job runs: one poll per tick]", poll_start - 6, y - 10, 6, 9, "#d79b00")
     y += 16
-    message(7, 8, "_finalize: _find_terminated_container · _read_logs · _build_status (TaskResult) · _delete_job · _delete_config_map")
+    message(7, 8, "_finalize: _find_terminated_container · _read_logs · _build_status (TaskResult)")
     message(7, 6, "ExecutionStatus SUCCEEDED + outputs   (or FAILED + StructuredError)", reply=True)
     message(
         6, 5,
         "TaskOutput · _capture_task_logs → TaskLog · TASK_SUCCEEDED\n"
         "_release_ready_dependents (BLOCKED → READY once every dependency SUCCEEDED) · _finalize_execution_if_succeeded",
     )
+    message(6, 7, "once the tick has committed the result: release_finished → executor.release(handle)")
+    message(7, 8, "_delete_job · _delete_config_map")
     alt_start = y
     y += 30
     message(
@@ -786,10 +793,10 @@ def sequence_page() -> Page:
     fragment("alt  [the task failed instead]", alt_start - 6, y - 10, 5, 6, "#b85450")
     fragment("loop  [kernel-scheduler, every poll interval (1 s)]", loop_start, y + 4, 5, 9, "#555555")
     y += 40
-    message(0, 1, "GET /api/executions/:id (member check: findSubmittedExecution)")
-    message(1, 3, "getExecution → GET /v1/executions/{id} → get_execution_detail")
+    message(0, 1, "WatchExecution {executionId} (loadExecution: a member of any of its teams, re-checked on every read)")
+    message(1, 3, "every 2 s: executionDetail → getExecution → GET /v1/executions/{id} → get_execution_detail")
     message(3, 1, "state, tasks [state, attempts, outputs, failure, dependsOn]", reply=True)
-    message(1, 0, "the execution, as the UI shows it", reply=True)
+    message(1, 0, "the execution, each time it changes, until it finishes (a stream)", reply=True)
     return p
 
 

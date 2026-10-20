@@ -8,6 +8,7 @@ import { db } from "../src/db/client.js";
 import { createTeam, createUser, setUserAdmin } from "../src/db/queries.js";
 import { products, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
 
 const prefix = `rel-${randomUUID().slice(0, 6)}`;
 const emails: string[] = [];
@@ -16,27 +17,20 @@ let admin: string;
 
 interface Listed {
   name: string;
-  teamName: string | null;
+  teamName?: string;
   image: string;
   releases: { image: string; registeredAt: string }[];
 }
 
+const call = caller(() => app);
+
 function register(image: string) {
-  return app.inject({
-    method: "POST",
-    url: "/api/products",
-    headers: { authorization: `Bearer ${admin}` },
-    payload: { name: `${prefix}-product`, image, action: "create", team: prefix },
-  });
+  return call(admin, "ProductService/RegisterProduct", { name: `${prefix}-product`, image, action: "create", team: prefix });
 }
 
 async function listed(): Promise<Listed> {
-  const response = await app.inject({
-    method: "GET",
-    url: "/api/products",
-    headers: { authorization: `Bearer ${admin}` },
-  });
-  const product = response.json<Listed[]>().find((p) => p.name === `${prefix}-product`);
+  const response = await call<{ products: Listed[] }>(admin, "ProductService/ListProducts");
+  const product = response.body.products.find((p) => p.name === `${prefix}-product`);
   if (!product) throw new Error("product not listed");
   return product;
 }
@@ -61,9 +55,9 @@ afterAll(async () => {
 
 describe("product release history", () => {
   it("records each distinct image as a release, newest first", async () => {
-    expect((await register("example/app:aaa")).statusCode).toBe(200);
+    expect((await register("example/app:aaa")).code).toBe("ok");
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect((await register("example/app:bbb")).statusCode).toBe(200);
+    expect((await register("example/app:bbb")).code).toBe("ok");
 
     const product = await listed();
     expect(product.teamName).toBe(prefix);
@@ -73,12 +67,12 @@ describe("product release history", () => {
 
   it("doesn't duplicate or re-date a release when the same image is registered again", async () => {
     const before = await listed();
-    expect((await register("example/app:bbb")).statusCode).toBe(200);
+    expect((await register("example/app:bbb")).code).toBe("ok");
     expect((await listed()).releases).toEqual(before.releases);
   });
 
   it("keeps the history when an older image becomes current again (a rollback)", async () => {
-    expect((await register("example/app:aaa")).statusCode).toBe(200);
+    expect((await register("example/app:aaa")).code).toBe("ok");
     const product = await listed();
     // The current image is what `latest` means, not the newest date.
     expect(product.image).toBe("example/app:aaa");

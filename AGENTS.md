@@ -13,6 +13,9 @@ already exist — check them before re-deriving anything:
   backups, network policies, troubleshooting.
 - `docs/security-model.md`: what's enforced and by which layer, secrets and
   vault sync, what isn't enforced yet.
+- `docs/assessment.md`: the 2026-10-19 architecture assessment and the
+  agreed direction (consumers and templates, identity in two layers, one
+  catalog pulled by many installs), with its roadmap in `TODO.md`.
 - `docs/repository-map.md`: every folder and file, one line each. Update it
   when adding, moving or removing files.
 - `docs/architecture/`: draw.io diagrams (system, UML classes for both
@@ -63,6 +66,13 @@ its own directory.
   origin with no CORS.
   - `console/frontend/`: React 19, MUI, Vite, react-router. It has its own
     `package.json`.
+  - The API is Connect services defined in `proto/` (`make proto`
+    regenerates the console's, frontend's and CLI's code and the API
+    reference), served at `/api/acyclix.console.v1.<Service>/<Method>` by
+    `src/rpc/`. `src/rpc/services/*.ts` only map messages; what a method
+    does lives in `src/core/`, which throws `ApiError` (`src/apiError.ts`)
+    to refuse. A new method: its rpc in `proto/`, `make proto`, its logic in
+    `src/core/`, its mapping in `src/rpc/services/`, and a test.
   - `src/k8s.ts`: every Secret, ServiceAccount and ExternalSecret write.
     These writes are security-sensitive and idempotent (read, then
     create-or-replace; a product's ServiceAccount is create-only). The
@@ -126,18 +136,18 @@ its own directory.
   team creates its namespace (`acyclix/team=true`); a team can be
   *retired* (reversible: read-only in the console, namespace relabelled
   `acyclix/team=retired`) and then *purged* (soft-deleted so its name stays
-  reserved; `DELETE /api/teams/:name`). The namespace stays, labelled
+  reserved; `TeamService/PurgeTeam`). The namespace stays, labelled
   retired, for a cluster administrator to delete: the console may delete it
   only with `teamNamespaces.purge`, off on purpose so the identity that
   retires a namespace can't also delete it. The console also
-  applies a team's reviewed SecretStore file (`PUT
-  /api/teams/:team/secret-store`, checked by `console/src/secretStores.ts`).
+  applies a team's reviewed SecretStore file
+  (`TeamService/ApplySecretStore`, checked by `console/src/secretStores.ts`).
   So the catalog's workflows only call the console (`./catalogctl teams …`,
   `./catalogctl secret-stores …`) and hold no cluster credentials. The
   console chart's `namespace-policy.yaml` limits what it may do to
   namespaces; the kernel chart's `purge-policy.yaml` lets a configured
-  purger delete only retired ones. Write routes call
-  `replyIfRetired` (`console/src/routes/retiredTeam.ts`). Team lookups skip
+  purger delete only retired ones. Writes call
+  `ensureNotRetired` (`console/src/core/retired.ts`). Team lookups skip
   purged teams unless they use `findTeamByNameIncludingDeleted`.
 - **`catalog-template/`**: what a new catalog repository starts as
   (catalogctl, its workflows, the starter `templates/`, an empty `teams/`
@@ -172,15 +182,18 @@ its own directory.
   mount. On the UI side, `teams.name` doubles as the namespace name by
   convention (`console/src/db/schema.ts`). There is deliberately no separate
   column for it.
-- **UI authorization**: a team-scoped route requires the caller to be a
-  member of that team or an admin: `auth/access.ts` (`replyIfNotTeamMember`,
-  `canActForTeam`, and `loadExecutionOrReply` for an execution, "any" of
-  its teams to see it, "every" to cancel it). Use those; never call
-  kernel-api from a new route without that check.
-- **UI error handling**: one global Fastify error handler strips every
-  5xx down to a generic message, because `@kubernetes/client-node` errors
-  carry cluster response bodies and headers. Don't add per-route
-  try/catch fallbacks.
+- **UI authorization**: a team-scoped method requires the caller to be a
+  member of that team or an admin: `auth/access.ts` (`ensureTeamMember`,
+  `canActForTeam`, and `loadExecution` for an execution, "any" of its
+  teams to see it, "every" to cancel it). Use those, in `core/`; never call
+  kernel-api from a new method without that check.
+- **UI error handling**: the `maskErrors` interceptor
+  (`src/rpc/interceptors.ts`) answers anything that isn't an `ApiError`
+  with a generic `internal` error and logs it in full, because
+  `@kubernetes/client-node` errors carry cluster response bodies and
+  headers (a Fastify error handler does the same outside the API). An
+  `ApiError`'s `extra` fields go in its `Failure` detail. Don't add
+  per-method try/catch fallbacks.
 - **Config**: kernel config lives in `app/config.py` (`Settings`,
   pydantic-settings). UI config lives in `src/config.ts` (`requireEnv`
   for `DATABASE_URL`, `JWT_SECRET`, `KERNEL_API_URL`). Add new options
@@ -198,6 +211,7 @@ make logs        # stern tail of kernel-api/scheduler/console on kind
 make build-products   # build the demo product images
 make catalog-publish CATALOG=<dir>   # local mode: publish a catalog folder's products to kind
 make kind-deploy # helm upgrade both releases on kind (runs migrations)
+make proto       # lint proto/ (the console's API) and regenerate its committed code
 ```
 
 The kind values set a fixed admin password for local use only; never

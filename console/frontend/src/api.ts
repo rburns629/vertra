@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /**
- * Typed client for the execution-console API (../src/routes/*.ts). Hand-written
- * to match those TypeBox schemas exactly rather than generated -- there's no
- * OpenAPI spec to generate from, and the surface is small enough that keeping
- * the two in sync by hand is the actually-simpler option here.
+ * The console API for the pages: plain objects over the generated Connect
+ * clients (./gen, from proto/acyclix/console/v1). Pages use these
+ * functions and types, never the messages, so the wire contract can change
+ * without touching them.
  *
  * In dev, requests go through Vite's proxy (vite.config.ts) so they're
  * same-origin as far as the browser is concerned; in production the built
@@ -11,7 +11,29 @@
  * ../../src/index.ts), so they're genuinely same-origin. Either way this
  * client never needs to know the API's origin.
  */
+import { createClient, Code, ConnectError, type Interceptor } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { fromJson, type JsonValue } from "@bufbuild/protobuf";
+import { timestampDate, timestampFromDate, type Timestamp } from "@bufbuild/protobuf/wkt";
+import { AdminService } from "./gen/acyclix/console/v1/admin_pb.js";
+import { AuthService } from "./gen/acyclix/console/v1/auth_pb.js";
+import {
+  DagSchema,
+  ExecutionService,
+  ExecutionState,
+  TaskState,
+  type Dag,
+  type Execution,
+} from "./gen/acyclix/console/v1/execution_pb.js";
+import { GuideService } from "./gen/acyclix/console/v1/guide_pb.js";
+import { ImageService, type ImagePolicy as ImagePolicyMessage } from "./gen/acyclix/console/v1/image_pb.js";
+import { ProductService } from "./gen/acyclix/console/v1/product_pb.js";
+import { SecretService, SecretSource } from "./gen/acyclix/console/v1/secret_pb.js";
+import { TaskPodState, TeamService, type Team as TeamMessage } from "./gen/acyclix/console/v1/team_pb.js";
+import { TokenService } from "./gen/acyclix/console/v1/token_pb.js";
+import { UserService } from "./gen/acyclix/console/v1/user_pb.js";
 
+/** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
   readonly status: number;
 
@@ -21,71 +43,75 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * execution-console's own errors look like {error, message}. Errors
- * relayed straight through from kernel-api (see ../../src/routes/
- * executions.ts's relayKernelError) are FastAPI's shape instead --
- * {detail: string} for a plain HTTPException, or {detail: [{code,
- * message, taskId}, ...]} for a DAG validation failure. Without handling
- * both, a kernel-native error (e.g. "Only a FAILED task can be retried")
- * would silently degrade to a generic "request failed with status 409".
- */
-function extractErrorMessage(body: unknown, path: string, status: number): string {
-  if (body !== null && typeof body === "object") {
-    const record = body as Record<string, unknown>;
-    if (typeof record["message"] === "string") return record["message"];
-    if (typeof record["detail"] === "string") return record["detail"];
-    if (Array.isArray(record["detail"])) {
-      return record["detail"]
-        .map((issue: unknown) =>
-          issue !== null && typeof issue === "object" && "message" in issue
-            ? String((issue as Record<string, unknown>)["message"])
-            : JSON.stringify(issue),
-        )
-        .join("; ");
-    }
-  }
-  return `Request to ${path} failed with status ${status}`;
-}
-
-/** Dispatched on `window` when an authenticated request comes back 401. */
+/** Dispatched on `window` when an authenticated request comes back unauthenticated. */
 export const SESSION_EXPIRED_EVENT = "auth:session-expired";
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+const HTTP_STATUS: Partial<Record<Code, number>> = {
+  [Code.Canceled]: 499,
+  [Code.InvalidArgument]: 400,
+  [Code.DeadlineExceeded]: 504,
+  [Code.NotFound]: 404,
+  [Code.AlreadyExists]: 409,
+  [Code.PermissionDenied]: 403,
+  [Code.ResourceExhausted]: 429,
+  [Code.FailedPrecondition]: 409,
+  [Code.Aborted]: 409,
+  [Code.OutOfRange]: 400,
+  [Code.Unimplemented]: 501,
+  [Code.Unavailable]: 503,
+  [Code.Unauthenticated]: 401,
+};
+
+/**
+ * Sends the session token. An unauthenticated answer to a request that
+ * *carried* one means the session is over (expired, or revoked by a
+ * password change): AuthContext signs the user out instead of every page
+ * showing its own error. Without a token (a failed login) it's just that.
+ */
+const session: Interceptor = (next) => async (req) => {
   const token = localStorage.getItem("token");
-  const headers = new Headers(options.headers);
-  // Only with a body: Fastify's JSON parser refuses an empty body sent with
-  // this header (a bodyless POST, like cancel, retry or rerun).
-  if (options.body !== undefined) headers.set("Content-Type", "application/json");
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  // Every real API route lives under /api (see ../../src/index.ts) --
-  // specifically so this path can never collide with a same-named React
-  // Router page and get served by the wrong handler on a hard refresh.
-  const response = await fetch(`/api${path}`, { ...options, headers });
-
-  if (response.status === 204) {
-    return undefined as T;
+  if (token) req.header.set("Authorization", `Bearer ${token}`);
+  try {
+    return await next(req);
+  } catch (error) {
+    if (token && ConnectError.from(error).code === Code.Unauthenticated) {
+      localStorage.removeItem("token");
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    throw error;
   }
+};
 
-  const body: unknown = await response.json().catch(() => null);
+// Every API route lives under /api (see ../../src/index.ts), so it can never
+// collide with a same-named React Router page on a hard refresh.
+const transport = createConnectTransport({ baseUrl: "/api", interceptors: [session] });
+const auth = createClient(AuthService, transport);
+const admin = createClient(AdminService, transport);
+const executions = createClient(ExecutionService, transport);
+const guides = createClient(GuideService, transport);
+const images = createClient(ImageService, transport);
+const productsApi = createClient(ProductService, transport);
+const secrets = createClient(SecretService, transport);
+const teams = createClient(TeamService, transport);
+const tokens = createClient(TokenService, transport);
+const users = createClient(UserService, transport);
 
-  // A 401 on a request that *carried* a token means the session is over
-  // (expired, or revoked by a password change). Tell AuthContext so it can
-  // sign the user out instead of every page showing its own confusing
-  // "Missing or invalid token" error. A 401 without a token (a failed
-  // login) is just a failed login.
-  if (response.status === 401 && token) {
-    localStorage.removeItem("token");
-    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
-  }
-
-  if (!response.ok) {
-    throw new ApiError(response.status, extractErrorMessage(body, path, response.status));
-  }
-
-  return body as T;
+function apiError(error: unknown): ApiError {
+  const connect = ConnectError.from(error);
+  return new ApiError(HTTP_STATUS[connect.code] ?? 500, connect.rawMessage);
 }
+
+/** Runs a call, turning a Connect error into an ApiError with its message alone. */
+async function call<T>(rpc: () => Promise<T>): Promise<T> {
+  try {
+    return await rpc();
+  } catch (error) {
+    throw apiError(error);
+  }
+}
+
+const iso = (timestamp: Timestamp | undefined): string | null =>
+  timestamp ? timestampDate(timestamp).toISOString() : null;
 
 export interface Environment {
   label: string;
@@ -95,7 +121,7 @@ export interface Environment {
 
 /** Unauthenticated -- see ../../src/index.ts's /environment route. */
 export function getEnvironment(): Promise<Environment> {
-  return request("/environment");
+  return call(() => auth.getEnvironment({}));
 }
 
 export interface Me {
@@ -116,31 +142,36 @@ export interface Team {
   deletedAt: string | null;
 }
 
-export function register(email: string, password: string): Promise<{ id: string; email: string }> {
-  return request("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+export async function register(email: string, password: string): Promise<{ id: string; email: string }> {
+  const created = await call(() => auth.register({ email, password }));
+  return { id: created.userId, email: created.email };
 }
 
 export async function login(email: string, password: string): Promise<string> {
-  const { token } = await request<{ token: string }>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-  return token;
+  return (await call(() => auth.login({ email, password }))).token;
 }
 
-export function getMe(): Promise<Me> {
-  return request("/me");
+export async function getMe(): Promise<Me> {
+  const me = await call(() => auth.getMe({}));
+  return { id: me.userId, email: me.email, teamNames: me.teamNames, isAdmin: me.isAdmin };
 }
 
-export function createTeam(name: string): Promise<Team> {
-  return request("/teams", { method: "POST", body: JSON.stringify({ name }) });
+export async function createTeam(name: string): Promise<Team> {
+  return team((await call(() => teams.createTeam({ name }))).team);
 }
 
-export function addTeamMember(teamName: string, email: string): Promise<void> {
-  return request(`/teams/${encodeURIComponent(teamName)}/members`, {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
+function team(message: TeamMessage | undefined): Team {
+  return {
+    id: message?.id ?? "",
+    name: message?.name ?? "",
+    createdAt: iso(message?.createdAt) ?? "",
+    retiredAt: iso(message?.retiredAt),
+    deletedAt: iso(message?.deletedAt),
+  };
+}
+
+export async function addTeamMember(teamName: string, email: string): Promise<void> {
+  await call(() => teams.addMember({ team: teamName, email }));
 }
 
 export interface TeamMember {
@@ -152,35 +183,34 @@ export interface TeamMember {
   addedAt: string;
 }
 
-export function listTeamMembers(teamName: string): Promise<TeamMember[]> {
-  return request(`/teams/${encodeURIComponent(teamName)}/members`);
+export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
+  const { members } = await call(() => teams.listMembers({ team: teamName }));
+  return members.map((m) => ({ id: m.id, email: m.email, isBot: m.isBot, isAdmin: m.isAdmin, addedAt: iso(m.addedAt) ?? "" }));
 }
 
 /** Refused (409) for a team's last person -- see ../../src/routes/teams.ts. */
-export function removeTeamMember(teamName: string, userId: string): Promise<void> {
-  return request(`/teams/${encodeURIComponent(teamName)}/members/${encodeURIComponent(userId)}`, {
-    method: "DELETE",
-  });
+export async function removeTeamMember(teamName: string, userId: string): Promise<void> {
+  await call(() => teams.removeMember({ team: teamName, userId }));
 }
 
 /** Admin-only -- see ../../src/routes/teams.ts. A non-admin's own teams
  * come from Me.teamNames instead; this is for browsing every team. */
-export function listAllTeams(): Promise<Team[]> {
-  return request("/teams");
+export async function listAllTeams(): Promise<Team[]> {
+  return (await call(() => teams.listTeams({}))).teams.map(team);
 }
 
-export function getTeam(teamName: string): Promise<Team> {
-  return request(`/teams/${encodeURIComponent(teamName)}`);
+export async function getTeam(teamName: string): Promise<Team> {
+  return team((await call(() => teams.getTeam({ name: teamName }))).team);
 }
 
 /** Reversible: the team becomes read-only and its products are
  * unregistered. Admin (or catalog CI) only. */
-export function retireTeam(teamName: string): Promise<void> {
-  return request(`/teams/${encodeURIComponent(teamName)}/retire`, { method: "POST" });
+export async function retireTeam(teamName: string): Promise<void> {
+  await call(() => teams.retireTeam({ name: teamName }));
 }
 
-export function unretireTeam(teamName: string): Promise<void> {
-  return request(`/teams/${encodeURIComponent(teamName)}/unretire`, { method: "POST" });
+export async function unretireTeam(teamName: string): Promise<void> {
+  await call(() => teams.unretireTeam({ name: teamName }));
 }
 
 /** Which images tasks may run: only those under `allowed` (the source
@@ -195,21 +225,31 @@ export interface ImagePolicy {
   version: string;
 }
 
-export function getImagePolicy(): Promise<ImagePolicy> {
-  return request("/image-policy");
+export async function getImagePolicy(): Promise<ImagePolicy> {
+  return imagePolicy((await call(() => images.getImagePolicy({}))).policy);
+}
+
+function imagePolicy(policy: ImagePolicyMessage | undefined): ImagePolicy {
+  return {
+    exists: policy?.exists ?? false,
+    source: policy?.source ?? "",
+    additional: policy?.additional ?? [],
+    allowed: policy?.allowed ?? [],
+    version: policy?.version ?? "",
+  };
 }
 
 /** Admin only. `version` is the one loaded, so a concurrent change is
  * refused (409) instead of overwritten. */
-export function updateImagePolicy(source: string, additional: string[], version: string): Promise<ImagePolicy> {
-  return request("/image-policy", { method: "PUT", body: JSON.stringify({ source, additional, version }) });
+export async function updateImagePolicy(source: string, additional: string[], version: string): Promise<ImagePolicy> {
+  return imagePolicy((await call(() => images.setImagePolicy({ source, additional, version }))).policy);
 }
 
 /** Irreversible, console side only: a retired team with nothing still
  * running. Its namespace and images are the catalog's purge workflow's
  * job. Admin only. */
-export function purgeTeam(teamName: string): Promise<void> {
-  return request(`/teams/${encodeURIComponent(teamName)}`, { method: "DELETE" });
+export async function purgeTeam(teamName: string): Promise<void> {
+  await call(() => teams.purgeTeam({ name: teamName }));
 }
 
 /** A human account and its active teams (Admin page; admin only). */
@@ -220,32 +260,34 @@ export interface UserAccount {
   teamNames: string[];
 }
 
-export function listUsers(): Promise<UserAccount[]> {
-  return request("/users");
+export async function listUsers(): Promise<UserAccount[]> {
+  const { users: accounts } = await call(() => users.listUsers({}));
+  return accounts.map((u) => ({ email: u.email, isAdmin: u.isAdmin, createdAt: iso(u.createdAt) ?? "", teamNames: u.teamNames }));
 }
 
 /** Admin only. The temporary password comes back exactly once; hand it
  * over out of band and have the user change it after signing in. */
-export function createAccount(
+export async function createAccount(
   email: string,
-  teams: string[],
+  teamNames: string[],
   admin: boolean,
 ): Promise<{ email: string; temporaryPassword: string }> {
-  return request("/users", { method: "POST", body: JSON.stringify({ email, teams, admin }) });
+  const created = await call(() => users.createUser({ email, teams: teamNames, admin }));
+  return { email: created.email, temporaryPassword: created.temporaryPassword };
 }
 
 /** Admin only. The account's executions stay in the history. */
-export function deleteAccount(email: string): Promise<void> {
-  return request(`/users/${encodeURIComponent(email)}`, { method: "DELETE" });
+export async function deleteAccount(email: string): Promise<void> {
+  await call(() => users.deleteUser({ email }));
 }
 
 /** Admin-only both ways -- see ../../src/routes/users.ts. */
-export function grantAdmin(email: string): Promise<void> {
-  return request(`/users/${encodeURIComponent(email)}/admin`, { method: "POST" });
+export async function grantAdmin(email: string): Promise<void> {
+  await call(() => users.setAdmin({ email, admin: true }));
 }
 
-export function revokeAdmin(email: string): Promise<void> {
-  return request(`/users/${encodeURIComponent(email)}/admin`, { method: "DELETE" });
+export async function revokeAdmin(email: string): Promise<void> {
+  await call(() => users.setAdmin({ email, admin: false }));
 }
 
 /** Must match NewPassword in ../../src/auth/password.ts. */
@@ -254,18 +296,11 @@ export const PASSWORD_MIN_LENGTH = 12;
 /** Returns a fresh session token -- every earlier session for this account,
  * including the one that made this call, is revoked by the change. */
 export async function changePassword(currentPassword: string, newPassword: string): Promise<string> {
-  const { token } = await request<{ token: string }>("/me/password", {
-    method: "POST",
-    body: JSON.stringify({ currentPassword, newPassword }),
-  });
-  return token;
+  return (await call(() => auth.changePassword({ currentPassword, newPassword }))).token;
 }
 
-export function resetUserPassword(email: string, newPassword: string): Promise<void> {
-  return request(`/users/${encodeURIComponent(email)}/password`, {
-    method: "POST",
-    body: JSON.stringify({ newPassword }),
-  });
+export async function resetUserPassword(email: string, newPassword: string): Promise<void> {
+  await call(() => users.resetPassword({ email, newPassword }));
 }
 
 export interface SecretGrantInput {
@@ -274,8 +309,8 @@ export interface SecretGrantInput {
   data: Record<string, string>;
 }
 
-export function registerSecret(input: SecretGrantInput): Promise<void> {
-  return request("/secrets", { method: "POST", body: JSON.stringify(input) });
+export async function registerSecret(input: SecretGrantInput): Promise<void> {
+  await call(() => secrets.putSecret({ team: input.namespace, secretName: input.secretName, data: input.data }));
 }
 
 /** Syncs from a `SecretStore` already in this namespace (see
@@ -290,8 +325,15 @@ export interface ExternalSecretGrantInput {
   keys: { secretKey: string; remoteKey: string; property?: string }[];
 }
 
-export function registerExternalSecret(input: ExternalSecretGrantInput): Promise<void> {
-  return request("/secrets/external", { method: "POST", body: JSON.stringify(input) });
+export async function registerExternalSecret(input: ExternalSecretGrantInput): Promise<void> {
+  await call(() =>
+    secrets.syncSecret({
+      team: input.namespace,
+      secretName: input.secretName,
+      secretStoreName: input.secretStoreName,
+      keys: input.keys,
+    }),
+  );
 }
 
 /** A team's secret source -- see ../../src/k8s.ts's SecretStoreSummary. */
@@ -311,8 +353,21 @@ export interface SecretStoreSummary {
   sharedWith: string[] | null;
 }
 
-export function listSecretStores(teamName: string): Promise<SecretStoreSummary[]> {
-  return request(`/teams/${encodeURIComponent(teamName)}/secret-stores`);
+export async function listSecretStores(teamName: string): Promise<SecretStoreSummary[]> {
+  const { stores } = await call(() => secrets.listSecretStores({ team: teamName }));
+  return stores.map((store) => ({
+    name: store.name,
+    provider: store.provider,
+    providerLabel: store.providerLabel,
+    location: store.location ?? null,
+    identity: store.identity ?? null,
+    usesStoredCredential: store.usesStoredCredential,
+    ready: store.ready ?? null,
+    message: store.message ?? null,
+    sharedWithCount: store.sharedWithCount,
+    // Only an admin is told which teams; to anyone else the list is empty.
+    sharedWith: store.sharedWith.length > 0 ? store.sharedWith : null,
+  }));
 }
 
 /** Live from the cluster on every call -- see ../../src/k8s.ts. */
@@ -339,16 +394,23 @@ export interface TeamSecret {
   external: ExternalSecretDetails | null;
 }
 
-export function listTeamSecrets(teamName: string): Promise<TeamSecret[]> {
-  return request(`/teams/${encodeURIComponent(teamName)}/secrets`);
+export async function listTeamSecrets(teamName: string): Promise<TeamSecret[]> {
+  const { secrets: rows } = await call(() => secrets.listSecrets({ team: teamName }));
+  return rows.map((secret) => ({
+    id: secret.id,
+    secretName: secret.secretName,
+    keys: secret.keys,
+    source: secret.source === SecretSource.EXTERNAL ? "external" : "literal",
+    managed: secret.managed,
+    updatedAt: iso(secret.updatedAt),
+    external: (secret.external ?? null) as ExternalSecretDetails | null,
+  }));
 }
 
 /** Removes the grant, the ServiceAccount's access, and the Secret the
  * console created. Tasks already running keep what they mounted. */
-export function revokeSecret(teamName: string, secretName: string): Promise<void> {
-  return request(`/teams/${encodeURIComponent(teamName)}/secrets/${encodeURIComponent(secretName)}`, {
-    method: "DELETE",
-  });
+export async function revokeSecret(teamName: string, secretName: string): Promise<void> {
+  await call(() => secrets.revokeSecret({ team: teamName, secretName }));
 }
 
 /** Deployment facts for the "Connect a source" wizard -- see
@@ -364,8 +426,13 @@ export interface PlatformInfo {
   };
 }
 
-export function getPlatform(): Promise<PlatformInfo> {
-  return request("/platform");
+export async function getPlatform(): Promise<PlatformInfo> {
+  const { catalogRepo, clusterIssuer, gcpWorkloadIdentityPool, gkeClusterName, gkeClusterLocation } = await call(() =>
+    secrets.getSecretSources({}),
+  );
+  return {
+    secretSources: { catalogRepo, clusterIssuer, gcpWorkloadIdentityPool, gkeClusterName, gkeClusterLocation },
+  };
 }
 
 export interface Product {
@@ -399,8 +466,24 @@ export interface ProductRelease {
 /** Open to any authenticated user -- discovering what products exist to
  * build a DAG from isn't scoped the way registering one is. Normally
  * populated by catalog CI (see ../../src/routes/products.ts), not by hand. */
-export function listProducts(): Promise<Product[]> {
-  return request("/products");
+export async function listProducts(): Promise<Product[]> {
+  const { products } = await call(() => productsApi.listProducts({}));
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    image: p.image,
+    action: p.action,
+    teamId: p.teamId ?? null,
+    teamName: p.teamName ?? null,
+    inputSchema: p.inputSchema ?? {},
+    displayName: p.displayName ?? null,
+    description: p.description ?? null,
+    outputSchema: p.outputSchema ?? {},
+    serviceAccount: p.serviceAccount ?? null,
+    requiredSecrets: p.requiredSecrets,
+    createdAt: iso(p.createdAt) ?? "",
+    releases: p.releases.map((r) => ({ image: r.image, registeredAt: iso(r.registeredAt) ?? "" })),
+  }));
 }
 
 export interface ApiTokenMeta {
@@ -417,26 +500,34 @@ export interface Bot {
   tokens: ApiTokenMeta[];
 }
 
-export function listBots(teamName: string): Promise<Bot[]> {
-  return request(`/teams/${encodeURIComponent(teamName)}/bots`);
+export async function listBots(teamName: string): Promise<Bot[]> {
+  const { bots } = await call(() => tokens.listBots({ team: teamName }));
+  return bots.map((bot) => ({
+    id: bot.id,
+    email: bot.email,
+    tokens: bot.tokens.map((t) => ({
+      id: t.id,
+      label: t.label,
+      createdAt: iso(t.createdAt) ?? "",
+      lastUsedAt: iso(t.lastUsedAt),
+    })),
+  }));
 }
 
 /** The raw `token` in the response is shown to the caller exactly once --
  * this client never stores or logs it, same as the backend never persists
  * it in plaintext (see ../../src/db/schema.ts's apiTokens). */
-export function createBot(
+export async function createBot(
   teamName: string,
   email: string,
   label: string,
 ): Promise<{ email: string; token: string; tokenId: string }> {
-  return request(`/teams/${encodeURIComponent(teamName)}/bots`, {
-    method: "POST",
-    body: JSON.stringify({ email, label }),
-  });
+  const created = await call(() => tokens.createBotToken({ team: teamName, email, label }));
+  return { email: created.email, token: created.token, tokenId: created.tokenId };
 }
 
-export function revokeToken(tokenId: string): Promise<void> {
-  return request(`/tokens/${encodeURIComponent(tokenId)}`, { method: "DELETE" });
+export async function revokeToken(tokenId: string): Promise<void> {
+  await call(() => tokens.revokeToken({ tokenId }));
 }
 
 /** Must match SCOPES in ../../src/auth/scopes.ts. */
@@ -474,16 +565,24 @@ export interface AutomationToken {
   createdAt: string;
 }
 
-export function listAutomationTokens(): Promise<AutomationToken[]> {
-  return request("/automation-tokens");
+export async function listAutomationTokens(): Promise<AutomationToken[]> {
+  const { tokens: rows } = await call(() => tokens.listAutomationTokens({}));
+  return rows.map((t) => ({
+    id: t.id,
+    label: t.label,
+    scopes: t.scopes,
+    botEmail: t.botEmail,
+    createdAt: iso(t.createdAt) ?? "",
+  }));
 }
 
 /** The raw `token` is only ever returned here, once. */
-export function createAutomationToken(
+export async function createAutomationToken(
   label: string,
   scopes: string[],
 ): Promise<{ tokenId: string; label: string; scopes: string[]; token: string }> {
-  return request("/automation-tokens", { method: "POST", body: JSON.stringify({ label, scopes }) });
+  const created = await call(() => tokens.createAutomationToken({ label, scopes }));
+  return { tokenId: created.tokenId, label: created.label, scopes: created.scopes, token: created.token };
 }
 
 /** console/'s own record of an execution -- who submitted it and which teams'
@@ -519,21 +618,41 @@ export interface ExecutionListQuery {
 }
 
 /** The executions you can see, newest first, a page at a time. */
-export function listExecutions(query: ExecutionListQuery = {}): Promise<ExecutionPage> {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== "") params.set(key, String(value));
-  }
-  const queryString = params.toString();
-  return request(`/executions${queryString ? `?${queryString}` : ""}`);
+export async function listExecutions(query: ExecutionListQuery = {}): Promise<ExecutionPage> {
+  const page = await call(() =>
+    executions.listExecutions({
+      page: { limit: query.limit ?? 0, cursor: query.cursor ?? "" },
+      team: query.team ?? "",
+      search: query.search ?? "",
+      ...(query.since ? { since: timestampFromDate(new Date(query.since)) } : {}),
+    }),
+  );
+  return {
+    executions: page.executions.map((row) => ({
+      executionId: row.executionId,
+      teams: row.teams,
+      submittedBy: row.submittedBy ?? "",
+      name: row.name,
+      createdAt: iso(row.createdAt) ?? "",
+      state: row.state === ExecutionState.UNSPECIFIED ? null : ExecutionState[row.state],
+    })),
+    nextCursor: page.nextCursor || null,
+  };
 }
 
 /** `payload` is deliberately `unknown`, not a typed ExecutionSubmission --
  * see ../../src/routes/executions.ts's own comment: kernel-api's Pydantic
  * models are the one authority on the full shape, and this client (like
  * that route) only needs to pass it through, not re-validate it. */
-export function submitExecution(payload: unknown): Promise<{ executionId: string; state: string }> {
-  return request("/executions", { method: "POST", body: JSON.stringify(payload) });
+export async function submitExecution(payload: unknown): Promise<{ executionId: string; state: string }> {
+  let dag: Dag;
+  try {
+    dag = fromJson(DagSchema, payload as JsonValue);
+  } catch (error) {
+    throw new ApiError(400, error instanceof Error ? error.message : "This isn't a DAG the console accepts.");
+  }
+  const submitted = await call(() => executions.submitExecution({ dag }));
+  return { executionId: submitted.executionId, state: ExecutionState[submitted.state] };
 }
 
 export interface TaskStatus {
@@ -553,16 +672,11 @@ export interface TaskStatus {
   completedAt: string | null;
 }
 
-/** One task exactly as originally submitted (see kernel/app/contracts/
- * task.py's TaskDefinition) -- this is *input*, kept for reference
- * alongside TaskStatus's live *outcome*; the two are joined client-side by
- * `id`/`taskId` since kernel-api's own detail response only carries the
- * outcome half. Every field with a server-side default (dependsOn,
- * inputs, timeoutSeconds, maxAttempts, secretRefs) is typed optional here
- * on purpose -- this is the *raw* JSON body console/ originally stored (see
- * routes/executions.ts's recordSubmittedExecution), not kernel-api's own
- * parsed/defaulted TaskDefinition, so an omitted optional field really is
- * absent, not `[]`/`{}`. Any read of these must fall back explicitly. */
+/** One task as submitted (images pinned) -- this is *input*, kept for
+ * reference alongside TaskStatus's live *outcome*; the two are joined
+ * client-side by `id`/`taskId`. timeoutSeconds, maxAttempts and
+ * serviceAccount are absent when the submission left them to their
+ * defaults. */
 export interface SubmittedTaskPayload {
   id: string;
   image: string;
@@ -572,17 +686,16 @@ export interface SubmittedTaskPayload {
   timeoutSeconds?: number;
   maxAttempts?: number;
   team: string;
-  serviceAccount: string;
+  serviceAccount?: string;
   secretRefs?: string[];
 }
 
-/** As stored at submission. Executions submitted before the rename carry
- * the old names (externalReference, idempotencyKey) instead. */
+/** As stored at submission (the console reads older rows' names,
+ * externalReference and idempotencyKey, as these). */
 export interface SubmittedExecutionPayload {
-  name?: string;
-  requestId?: string;
-  externalReference?: string;
-  idempotencyKey?: string;
+  name: string;
+  /** Empty when the submission had none. */
+  requestId: string;
   tasks: SubmittedTaskPayload[];
 }
 
@@ -612,22 +725,86 @@ export interface ExecutionDetail {
   } | null;
 }
 
-export function getExecution(executionId: string): Promise<ExecutionDetail> {
-  return request(`/executions/${encodeURIComponent(executionId)}`);
+export async function getExecution(executionId: string): Promise<ExecutionDetail> {
+  const { execution } = await call(() => executions.getExecution({ executionId }));
+  if (!execution) throw new ApiError(404, "Execution not found.");
+  return executionDetail(execution);
 }
 
-export function cancelExecution(executionId: string): Promise<{ executionId: string; state: string }> {
-  return request(`/executions/${encodeURIComponent(executionId)}/cancel`, { method: "POST" });
+/**
+ * The execution each time it changes (and every 15s regardless), until it
+ * finishes; then the iteration ends. It also ends, unfinished, when the
+ * server's time limit for one stream is reached, or throws if the
+ * connection drops: either way, watch again. Stops when `signal` aborts.
+ */
+export async function* watchExecution(executionId: string, signal: AbortSignal): AsyncGenerator<ExecutionDetail> {
+  try {
+    for await (const { execution } of executions.watchExecution({ executionId }, { signal })) {
+      if (execution) yield executionDetail(execution);
+    }
+  } catch (error) {
+    throw apiError(error);
+  }
 }
 
-export function retryTask(
-  executionId: string,
-  taskId: string,
-): Promise<{ executionId: string; state: string }> {
-  return request(
-    `/executions/${encodeURIComponent(executionId)}/tasks/${encodeURIComponent(taskId)}/retry`,
-    { method: "POST" },
-  );
+function executionDetail(execution: Execution): ExecutionDetail {
+  const dag = execution.dag;
+  return {
+    executionId: execution.executionId,
+    name: execution.name,
+    state: ExecutionState[execution.state],
+    tasks: execution.tasks.map((task) => ({
+      taskId: task.taskId,
+      state: TaskState[task.state],
+      attemptCount: task.attemptCount,
+      outputs: task.outputs ?? null,
+      failure: task.failure
+        ? { code: task.failure.code, message: task.failure.message, retryable: task.failure.retryable }
+        : null,
+      dependsOn: task.dependsOn,
+      startedAt: iso(task.startedAt),
+      completedAt: iso(task.completedAt),
+    })),
+    teams: execution.teams,
+    submittedBy: execution.submittedBy || null,
+    createdAt: iso(execution.createdAt) ?? "",
+    payload: dag
+      ? {
+          name: dag.name,
+          requestId: dag.requestId,
+          tasks: dag.tasks.map((task) => ({
+            id: task.id,
+            image: task.image,
+            action: task.action,
+            dependsOn: task.dependsOn,
+            inputs: task.inputs ?? {},
+            timeoutSeconds: task.timeoutSeconds,
+            maxAttempts: task.maxAttempts,
+            team: task.team,
+            serviceAccount: task.serviceAccount,
+            secretRefs: task.secretRefs,
+          })),
+        }
+      : null,
+    runBlocked: execution.runBlocked
+      ? {
+          error: execution.runBlocked.code as NonNullable<ExecutionDetail["runBlocked"]>["error"],
+          message: execution.runBlocked.message,
+          missingImages: execution.runBlocked.missingImages,
+          disallowedImages: execution.runBlocked.disallowedImages,
+        }
+      : null,
+  };
+}
+
+export async function cancelExecution(executionId: string): Promise<{ executionId: string; state: string }> {
+  const result = await call(() => executions.cancelExecution({ executionId }));
+  return { executionId: result.executionId, state: ExecutionState[result.state] };
+}
+
+export async function retryTask(executionId: string, taskId: string): Promise<{ executionId: string; state: string }> {
+  const result = await call(() => executions.retryTask({ executionId, taskId }));
+  return { executionId: result.executionId, state: ExecutionState[result.state] };
 }
 
 /** Resubmits the execution's original task graph as a brand-new execution
@@ -635,8 +812,9 @@ export function retryTask(
  * ../../src/routes/executions.ts's own comment on why). Fails with a 422
  * if this execution predates rerun support and has no stored submission to
  * replay. */
-export function rerunExecution(executionId: string): Promise<{ executionId: string; state: string }> {
-  return request(`/executions/${encodeURIComponent(executionId)}/rerun`, { method: "POST" });
+export async function rerunExecution(executionId: string): Promise<{ executionId: string; state: string }> {
+  const result = await call(() => executions.rerunExecution({ executionId }));
+  return { executionId: result.executionId, state: ExecutionState[result.state] };
 }
 
 export interface ExecutionEvent {
@@ -651,12 +829,21 @@ export interface ExecutionEvent {
  * ExecutionEventPage. `after` is an event id, not an offset, so polling
  * with the previous page's nextCursor never re-fetches or skips events
  * even if more were inserted in between polls. */
-export function getExecutionEvents(
+export async function getExecutionEvents(
   executionId: string,
   after?: number,
 ): Promise<{ events: ExecutionEvent[]; nextCursor: number | null }> {
-  const query = after !== undefined ? `?after=${String(after)}` : "";
-  return request(`/executions/${encodeURIComponent(executionId)}/events${query}`);
+  const page = await call(() => executions.listExecutionEvents({ executionId, after: BigInt(after ?? 0) }));
+  return {
+    events: page.events.map((event) => ({
+      id: Number(event.id),
+      eventType: event.eventType,
+      taskId: event.taskId ?? null,
+      payload: event.payload ?? {},
+      createdAt: iso(event.createdAt) ?? "",
+    })),
+    nextCursor: page.nextCursor === 0n ? null : Number(page.nextCursor),
+  };
 }
 
 /** One task's captured container stdout, as actually run -- distinct from
@@ -671,8 +858,9 @@ export interface TaskLogs {
 
 /** Every task's logs in one call -- see kernel/app/contracts/execution.py's
  * ExecutionLogsResponse for why this isn't split per task. */
-export function getExecutionLogs(executionId: string): Promise<{ tasks: TaskLogs[] }> {
-  return request(`/executions/${encodeURIComponent(executionId)}/logs`);
+export async function getExecutionLogs(executionId: string): Promise<{ tasks: TaskLogs[] }> {
+  const { tasks } = await call(() => executions.getExecutionLogs({ executionId }));
+  return { tasks: tasks.map((t) => ({ taskId: t.taskId, lines: t.lines })) };
 }
 
 /** Admin-only -- see ../../src/routes/stats.ts. A non-admin's home view
@@ -685,8 +873,14 @@ export interface PlatformStats {
   executions: number;
 }
 
-export function getStats(): Promise<PlatformStats> {
-  return request("/stats");
+export async function getStats(): Promise<PlatformStats> {
+  const stats = await call(() => admin.getStats({}));
+  return {
+    teams: Number(stats.teams),
+    users: Number(stats.users),
+    products: Number(stats.products),
+    executions: Number(stats.executions),
+  };
 }
 
 /** One task attempt in a team's namespace -- see ../../src/routes/pods.ts.
@@ -706,8 +900,37 @@ export interface TaskPod {
   execution: { name: string; taskNumber: number | null; taskCount: number | null } | null;
 }
 
-export function listTeamPods(teamName: string): Promise<TaskPod[]> {
-  return request(`/teams/${encodeURIComponent(teamName)}/pods`);
+const POD_STATE: Record<TaskPodState, TaskPod["state"]> = {
+  [TaskPodState.UNSPECIFIED]: "starting",
+  [TaskPodState.STARTING]: "starting",
+  [TaskPodState.RUNNING]: "running",
+  [TaskPodState.CANT_START]: "cant-start",
+  [TaskPodState.FINISHED]: "finished",
+  [TaskPodState.FAILED]: "failed",
+};
+
+export async function listTeamPods(teamName: string): Promise<TaskPod[]> {
+  const { pods } = await call(() => teams.listPods({ team: teamName }));
+  return pods.map((pod) => ({
+    podName: pod.podName,
+    executionId: pod.executionId ?? null,
+    taskKey: pod.taskId ?? null,
+    attempt: pod.attempt ?? null,
+    image: pod.image ?? null,
+    serviceAccount: pod.serviceAccount ?? null,
+    state: POD_STATE[pod.state],
+    problem: pod.problem ? { title: pod.problem.title, detail: pod.problem.detail } : null,
+    restarts: pod.restarts,
+    startedAt: iso(pod.startedAt),
+    finishedAt: iso(pod.finishedAt),
+    execution: pod.execution
+      ? {
+          name: pod.execution.name,
+          taskNumber: pod.execution.taskNumber ?? null,
+          taskCount: pod.execution.taskCount ?? null,
+        }
+      : null,
+  }));
 }
 
 /** The in-app Docs page -- see ../../src/routes/docs.ts. Any
@@ -717,52 +940,11 @@ export interface DocSummary {
   title: string;
 }
 
-export function listDocs(): Promise<DocSummary[]> {
-  return request("/docs");
+export async function listDocs(): Promise<DocSummary[]> {
+  return (await call(() => guides.listGuides({}))).guides.map((g) => ({ id: g.id, title: g.title }));
 }
 
-/** The console API's OpenAPI 3 description -- see ../../src/openapi.ts. */
-export interface OpenApiSchema {
-  type?: string | string[];
-  description?: string;
-  format?: string;
-  properties?: Record<string, OpenApiSchema>;
-  required?: string[];
-  items?: OpenApiSchema;
-  anyOf?: OpenApiSchema[];
-  enum?: unknown[];
-  additionalProperties?: boolean | OpenApiSchema;
-}
-
-export interface OpenApiOperation {
-  tags?: string[];
-  summary?: string;
-  description?: string;
-  security?: unknown[];
-  parameters?: { name: string; in: string; required?: boolean; schema?: OpenApiSchema; description?: string }[];
-  requestBody?: { content?: Record<string, { schema?: OpenApiSchema }> };
-  responses?: Record<string, { description?: string; content?: Record<string, { schema?: OpenApiSchema }> }>;
-}
-
-export interface OpenApiSpec {
-  info: { title: string; description?: string };
-  tags?: { name: string; description?: string }[];
-  paths: Record<string, Record<string, OpenApiOperation>>;
-}
-
-export function getOpenApi(): Promise<OpenApiSpec> {
-  return request("/openapi.json");
-}
-
-/** Raw markdown, not JSON -- can't go through request()'s
- * response.json() the same way every other endpoint here does. */
+/** A guide's markdown. */
 export async function getDoc(id: string): Promise<string> {
-  const token = localStorage.getItem("token");
-  const headers = new Headers();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`/api/docs/${encodeURIComponent(id)}`, { headers });
-  if (!response.ok) {
-    throw new ApiError(response.status, `Request to /docs/${id} failed with status ${response.status}`);
-  }
-  return response.text();
+  return (await call(() => guides.getGuide({ id }))).markdown;
 }

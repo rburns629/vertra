@@ -43,7 +43,7 @@ export async function createUser(email: string, passwordHash: string): Promise<U
   return user;
 }
 
-export async function createTeam(name: string): Promise<{ id: string; name: string }> {
+export async function createTeam(name: string): Promise<typeof teams.$inferSelect> {
   const [team] = await db.insert(teams).values({ name }).returning();
   if (!team) throw new Error("Insert returned no row");
   return team;

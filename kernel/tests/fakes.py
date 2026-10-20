@@ -1,8 +1,16 @@
 # SPDX-License-Identifier: MIT
 """Shared test doubles used by both unit and integration tests."""
 
+from datetime import UTC, datetime
+
 from app.contracts.result import StructuredError
-from app.executors.base import ExecutionHandle, ExecutionStatus, ExecutorRunState, ResolvedTask
+from app.executors.base import (
+    ExecutionHandle,
+    ExecutionStatus,
+    ExecutorRunState,
+    LaunchedAttempt,
+    ResolvedTask,
+)
 
 
 class FakeExecutor:
@@ -26,6 +34,12 @@ class FakeExecutor:
         # Every start call, raising or not, and every discard.
         self.start_calls: list[ResolvedTask] = []
         self.discarded: list[ResolvedTask] = []
+        self.released: list[str] = []
+        # Every attempt start() launched, as list_attempts() reports it until
+        # it's released or cancelled. Tests may backdate created_at.
+        self.launched: dict[str, LaunchedAttempt] = {}
+        # Raised by cancel() while set; cleared to let cancels through.
+        self.cancel_error: Exception | None = None
 
     async def start(self, task: ResolvedTask) -> ExecutionHandle:
         self.start_calls.append(task)
@@ -36,7 +50,15 @@ class FakeExecutor:
         handle_id = str(self._next_id)
         self._statuses[handle_id] = ExecutionStatus(state=ExecutorRunState.RUNNING)
         self._logs[handle_id] = [f"started {task.task_key} attempt {task.attempt}"]
-        return {"fakeId": handle_id}
+        handle = {"fakeId": handle_id}
+        self.launched[handle_id] = LaunchedAttempt(
+            handle=handle,
+            execution_id=task.execution_id,
+            task_key=task.task_key,
+            attempt=task.attempt,
+            created_at=datetime.now(UTC),
+        )
+        return handle
 
     async def get_status(self, handle: ExecutionHandle) -> ExecutionStatus:
         if self.status_error is not None:
@@ -44,14 +66,24 @@ class FakeExecutor:
         return self._statuses[handle["fakeId"]]
 
     async def cancel(self, handle: ExecutionHandle) -> None:
+        if self.cancel_error is not None:
+            raise self.cancel_error
         handle_id = handle["fakeId"]
         self.cancelled.append(handle_id)
+        self.launched.pop(handle_id, None)  # cancelling removes the unit, as the real one does
         if self._statuses[handle_id].state is ExecutorRunState.RUNNING:
             error = StructuredError(code="CANCELLED", message="cancelled", retryable=False)
             self._statuses[handle_id] = ExecutionStatus(state=ExecutorRunState.FAILED, error=error)
 
     async def get_logs(self, handle: ExecutionHandle) -> list[str]:
         return self._logs[handle["fakeId"]]
+
+    async def release(self, handle: ExecutionHandle) -> None:
+        self.released.append(handle["fakeId"])
+        self.launched.pop(handle["fakeId"], None)
+
+    async def list_attempts(self) -> list[LaunchedAttempt]:
+        return list(self.launched.values())
 
     async def discard(self, task: ResolvedTask) -> None:
         self.discarded.append(task)

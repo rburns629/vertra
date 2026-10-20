@@ -28,7 +28,11 @@ from functools import partial
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import DEFAULT_EXECUTOR_CONCURRENCY, DEFAULT_MAX_DISPATCH_FAILURES
+from app.config import (
+    DEFAULT_EXECUTOR_CONCURRENCY,
+    DEFAULT_JOB_DEADLINE_GRACE_SECONDS,
+    DEFAULT_MAX_DISPATCH_FAILURES,
+)
 from app.contracts.result import StructuredError
 from app.contracts.task import TaskResources
 from app.domain.errors import DispatchRejectedError, MissingOutputError
@@ -47,6 +51,7 @@ from app.executors.base import (
     ExecutorRunState,
     ResolvedTask,
 )
+from app.observability.metrics import SCHEDULER_STATUS_READ_ERRORS_TOTAL
 from app.persistence.models import (
     Execution,
     ExecutionTask,
@@ -97,6 +102,8 @@ async def run_scheduler_tick(
     retry_backoff: RetryBackoff = DEFAULT_RETRY_BACKOFF,
     max_dispatch_failures: int = DEFAULT_MAX_DISPATCH_FAILURES,
     log_refresh: timedelta | None = None,
+    job_deadline_grace: timedelta = timedelta(seconds=DEFAULT_JOB_DEADLINE_GRACE_SECONDS),
+    finished: list[ExecutionHandle] | None = None,
     now: datetime | None = None,
 ) -> bool:
     """Run one scheduling pass: claim, dispatch, poll. Safe to call repeatedly and concurrently.
@@ -114,6 +121,11 @@ async def run_scheduler_tick(
     one finish), so the caller can run the next pass at once instead of
     waiting out its poll interval: a finished task's dependents are claimable
     on the very next pass.
+
+    ``finished`` collects the handles of tasks that left RUNNING in this
+    pass. The caller releases them (``Executor.release``) only after the
+    transaction commits, so a pass that rolls back can read the same results
+    again.
     """
     current_time = now or datetime.now(UTC)
 
@@ -141,8 +153,9 @@ async def run_scheduler_tick(
         [partial(executor.get_status, _running_handle(task)) for task in running_tasks],
         executor_concurrency,
     )
-    finished = 0
+    finished_count = 0
     for task, status in zip(running_tasks, statuses, strict=True):
+        handle = _running_handle(task)
         if await _poll_task(
             session,
             executor,
@@ -152,10 +165,13 @@ async def run_scheduler_tick(
             lease_duration=lease_duration,
             retry_backoff=retry_backoff,
             log_refresh=log_refresh,
+            job_deadline_grace=job_deadline_grace,
             now=current_time,
         ):
-            finished += 1
-    return bool(claimed_tasks) or finished > 0
+            finished_count += 1
+            if finished is not None:
+                finished.append(handle)
+    return bool(claimed_tasks) or finished_count > 0
 
 
 def _running_handle(task: ExecutionTask) -> ExecutionHandle:
@@ -376,10 +392,17 @@ async def _poll_task(
     lease_duration: timedelta,
     retry_backoff: RetryBackoff,
     log_refresh: timedelta | None = None,
+    job_deadline_grace: timedelta = timedelta(seconds=DEFAULT_JOB_DEADLINE_GRACE_SECONDS),
     now: datetime,
 ) -> bool:
     """Act on a RUNNING task's ``status``, read before this call (alongside every
-    other running task's). Returns whether the task left RUNNING."""
+    other running task's). Returns whether the task left RUNNING.
+
+    A task only leaves RUNNING for a retry once its attempt is known to have
+    stopped: it finished, its Job was stopped, or its Job's own deadline
+    (timeout plus ``job_deadline_grace``) has passed. Otherwise a retry could
+    run beside the attempt still going.
+    """
     attempt = await _get_current_attempt(session, task)
     handle = _running_handle(task)
 
@@ -444,8 +467,24 @@ async def _poll_task(
     if attempt.started_at is not None:
         elapsed_seconds = (now - attempt.started_at).total_seconds()
         if elapsed_seconds > task.timeout_seconds:
-            with contextlib.suppress(Exception):  # best-effort — failing the task regardless
+            try:
                 await executor.cancel(handle)
+            except Exception as error:
+                # Past the Job's own deadline Kubernetes has stopped it,
+                # confirmed or not; before it, the attempt may still be
+                # running, so it stays ours and the cancel is tried again.
+                if elapsed_seconds <= task.timeout_seconds + job_deadline_grace.total_seconds():
+                    logger.warning(
+                        "couldn't stop a task past its timeout; trying again next pass",
+                        extra={
+                            "executionId": str(task.execution_id),
+                            "taskKey": task.task_key,
+                            "attempt": task.attempt_count,
+                            "error": str(error),
+                        },
+                    )
+                    task.lease_expires_at = now + lease_duration
+                    return False
             await _handle_task_failure(
                 session,
                 task,
@@ -463,19 +502,21 @@ async def _poll_task(
             return True
 
     if isinstance(status, Exception):
-        await _handle_task_failure(
-            session,
-            task,
-            retry_backoff=retry_backoff,
-            attempt=attempt,
-            error=StructuredError(
-                code="EXECUTOR_STATUS_FAILED", message=str(status), retryable=True
-            ),
-            now=now,
-            executor=executor,
-            handle=handle,
+        # Not knowing isn't failing: the attempt may well still be running,
+        # and failing it here (to retry) would start a second one beside it.
+        # It stays ours and is read again; its timeout still applies above.
+        SCHEDULER_STATUS_READ_ERRORS_TOTAL.inc()
+        logger.warning(
+            "couldn't read a running task's status; reading it again next pass",
+            extra={
+                "executionId": str(task.execution_id),
+                "taskKey": task.task_key,
+                "attempt": task.attempt_count,
+                "error": str(status),
+            },
         )
-        return True
+        task.lease_expires_at = now + lease_duration
+        return False
 
     task.lease_expires_at = now + lease_duration  # heartbeat: still alive, still ours
     if log_refresh is not None:

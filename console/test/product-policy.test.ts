@@ -15,6 +15,7 @@ import { db } from "../src/db/client.js";
 import { createTeam, createUser, recordSecretGrant, setUserAdmin } from "../src/db/queries.js";
 import { products, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
 import { ensureServiceAccount, updateIdentityPolicy } from "../src/k8s.js";
 import { policyProducts, policyTeamSecrets, syncIdentityPolicy, type PolicyProduct } from "../src/productPolicy.js";
 
@@ -35,8 +36,8 @@ let app: FastifyInstance;
 let admin: string;
 const originalPolicyName = config.identityPolicyName;
 
-const as = (method: "POST" | "DELETE", url: string, payload?: unknown) =>
-  app.inject({ method, url, headers: { authorization: `Bearer ${admin}` }, payload: payload as object });
+const call = caller(() => app);
+const register = (body: object) => call(admin, "ProductService/RegisterProduct", body);
 
 /** This file's products in the last list written, by repository. */
 function ours(): PolicyProduct[] {
@@ -118,7 +119,7 @@ describe("syncing", () => {
   };
 
   it("adds a product when it's registered, and creates its ServiceAccount", async () => {
-    expect((await as("POST", "/api/products", product)).statusCode).toBe(200);
+    expect((await register(product)).code).toBe("ok");
     expect(ours()).toEqual([
       { team: prefix, repository: `example.com/${prefix}/db`, action: "create", serviceAccount: "db-product" },
     ]);
@@ -126,8 +127,8 @@ describe("syncing", () => {
   });
 
   it("updates it when it's registered again with another identity", async () => {
-    const response = await as("POST", "/api/products", { ...product, image: `example.com/${prefix}/db:2`, serviceAccount: "db-v2" });
-    expect(response.statusCode).toBe(200);
+    const registered = await register({ ...product, image: `example.com/${prefix}/db:2`, serviceAccount: "db-v2" });
+    expect(registered.code).toBe("ok");
     expect(ours()).toEqual([expect.objectContaining({ serviceAccount: "db-v2" })]);
   });
 
@@ -139,21 +140,21 @@ describe("syncing", () => {
   });
 
   it("drops it when it's deleted", async () => {
-    expect((await as("DELETE", `/api/products/${product.name}`)).statusCode).toBe(204);
+    expect((await call(admin, "ProductService/DeleteProduct", { name: product.name })).code).toBe("ok");
     expect(updateIdentityPolicy).toHaveBeenCalledOnce();
     expect(ours()).toEqual([]);
   });
 
   it("drops a team's products when the team is retired", async () => {
-    expect((await as("POST", "/api/products", product)).statusCode).toBe(200);
+    expect((await register(product)).code).toBe("ok");
     expect(ours()).toHaveLength(1);
-    expect((await as("POST", `/api/teams/${prefix}/retire`)).statusCode).toBe(200);
+    expect((await call(admin, "TeamService/RetireTeam", { name: prefix })).code).toBe("ok");
     expect(ours()).toEqual([]);
   });
 
   it("fails the change if the cluster can't be updated", async () => {
     vi.mocked(updateIdentityPolicy).mockRejectedValueOnce(new Error("API server unreachable"));
-    const response = await as("POST", "/api/products", { ...product, team: null, name: `${prefix}-platform`, image: `example.com/${prefix}/platform:1` });
-    expect(response.statusCode).toBe(500);
+    const registered = await register({ ...product, team: null, name: `${prefix}-platform`, image: `example.com/${prefix}/platform:1` });
+    expect(registered.code).toBe("internal");
   });
 });

@@ -50,9 +50,11 @@ jobs:
           failed=0
           while IFS= read -r team; do
             [ -z "$team" ] && continue
-            status=$(curl -s -o /dev/null -w "%{http_code}" \
-              -H "Authorization: Bearer $ACYCLIX_TOKEN" \
-              "${ACYCLIX_CONSOLE_URL}/api/teams/$team")
+            # The catalog token (teams:create) sees whether a team exists:
+            # 200 if it does, 404 if not.
+            status=$(jq -nc --arg name "$team" '{name: $name}' | curl -s -o /dev/null -w "%{http_code}" -X POST \
+              -H "Authorization: Bearer $ACYCLIX_TOKEN" -H "Content-Type: application/json" -d @- \
+              "${ACYCLIX_CONSOLE_URL}/api/acyclix.console.v1.TeamService/GetTeam")
             if [ "$status" = "200" ]; then
               echo "::error::Team '$team' is new to this catalog, but a team named '$team' already exists in the Acyclix console. A new team folder must not silently attach to an existing team's namespace -- rename this folder, or get explicit sign-off before merging if reusing that team is actually intentional."
               failed=1

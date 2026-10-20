@@ -10,6 +10,7 @@ import { db } from "../src/db/client.js";
 import { createUser, setUserAdmin } from "../src/db/queries.js";
 import { users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
 import { updateIdentityPolicy } from "../src/k8s.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
@@ -43,21 +44,23 @@ afterAll(async () => {
   await app.close();
 });
 
-const call = (token: string, method: "GET" | "POST") =>
-  app.inject({ method, url: "/api/policy-sync", headers: { authorization: `Bearer ${token}` } });
+type Outcomes = { outcomes: Record<string, { ok: boolean; applies: boolean; error?: string }> };
+const rpc = caller(() => app);
+const read = (token: string) => rpc<Outcomes>(token, "AdminService/GetPolicySync");
+const sync = (token: string) => rpc<Outcomes>(token, "AdminService/SyncPolicies");
 
 describe("policy sync", () => {
   it("rewrites the policies on request and says how it went, for admins only", async () => {
-    expect((await call(member, "GET")).statusCode).toBe(403);
-    const synced = (await call(admin, "POST")).json<Record<string, { ok: boolean; applies: boolean } | null>>();
+    expect((await read(member)).code).toBe("permission_denied");
+    const synced = (await sync(admin)).body.outcomes;
     expect(synced["identityPolicy"]).toMatchObject({ ok: true, applies: true });
     expect(synced["scanPolicy"]).toMatchObject({ ok: true, applies: false }); // scanning off here
   });
 
   it("shows a failure instead of hiding it", async () => {
     vi.mocked(updateIdentityPolicy).mockRejectedValueOnce(new Error("conflict, five times"));
-    const outcome = (await call(admin, "POST")).json<Record<string, { ok: boolean; error?: string }>>();
+    const outcome = (await sync(admin)).body.outcomes;
     expect(outcome["identityPolicy"]).toMatchObject({ ok: false, error: "conflict, five times" });
-    expect((await call(admin, "GET")).json<Record<string, { ok: boolean }>>()["identityPolicy"]?.ok).toBe(false);
+    expect((await read(admin)).body.outcomes["identityPolicy"]?.ok).toBe(false);
   });
 });

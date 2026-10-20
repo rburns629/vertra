@@ -163,10 +163,10 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                   <Typography variant="subtitle2">2. Submit a DAG from it</Typography>
                   <CodeBlock
                     code={[
-                      `curl -X POST ${consoleUrl}/api/executions \\`,
+                      `jq '{dag: .}' dag.json | curl -X POST ${consoleUrl}/api/acyclix.console.v1.ExecutionService/SubmitExecution \\`,
                       '  -H "Authorization: Bearer $ACYCLIX_TOKEN" \\',
                       '  -H "Content-Type: application/json" \\',
-                      "  -d @dag.json",
+                      "  -d @-",
                     ].join("\n")}
                   />
                   <Button

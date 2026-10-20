@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package acyclix.console.v1;
+
+// The guides the console shows (console/docs/). Anyone signed in.
+service GuideService {
+  // Every guide, in reading order: its id and title.
+  rpc ListGuides(ListGuidesRequest) returns (ListGuidesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // One guide, as markdown.
+  rpc GetGuide(GetGuideRequest) returns (GetGuideResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message Guide {
+  // Such as 03-what-is-a-dag.
+  string id = 1;
+  string title = 2;
+}
+
+message ListGuidesRequest {}
+
+message ListGuidesResponse {
+  repeated Guide guides = 1;
+}
+
+message GetGuideRequest {
+  string id = 1;
+}
+
+message GetGuideResponse {
+  string markdown = 1;
+}

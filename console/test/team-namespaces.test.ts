@@ -28,6 +28,7 @@ import {
 } from "../src/k8s.js";
 import { syncPullSecrets } from "../src/pullSecret.js";
 import { checkSecretStoreObjects } from "../src/secretStores.js";
+import { caller, problemMessages, type RpcError } from "./rpc.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
@@ -56,13 +57,13 @@ async function newUser(isAdmin = false): Promise<{ id: string; token: string }> 
   return { id: user.id, token: app.jwt.sign({ userId: user.id }) };
 }
 
-const as = (token: string, method: "GET" | "POST" | "PUT" | "DELETE", url: string, payload?: object) =>
-  app.inject({ method, url, headers: { authorization: `Bearer ${token}` }, payload });
+const call = caller(() => app);
 
 async function mint(scopes: string[]): Promise<string> {
-  const response = await as(admin, "POST", "/api/automation-tokens", { label: prefix, scopes });
-  return response.json<{ token: string }>().token;
+  return (await call<{ token: string }>(admin, "TokenService/CreateAutomationToken", { label: prefix, scopes })).body.token;
 }
+
+const retire = (team: string) => call(admin, "TeamService/RetireTeam", { name: team });
 
 const name = (suffix: string) => `${prefix}-${suffix}`;
 
@@ -90,25 +91,24 @@ beforeEach(() => {
 
 describe("creating a team", () => {
   it("creates its namespace, labelled a team's", async () => {
-    const response = await as(admin, "POST", "/api/teams", { name: name("new") });
-    expect(response.statusCode).toBe(201);
+    expect((await call(admin, "TeamService/CreateTeam", { name: name("new") })).code).toBe("ok");
     expect(setTeamNamespace).toHaveBeenCalledWith(name("new"), "true", expect.objectContaining({ createIfMissing: true, label: "acyclix/team" }));
   });
 
   it("refuses a name that can't be a namespace", async () => {
     for (const bad of ["Team_A", "-a", "a".repeat(64), "has space"]) {
-      expect((await as(admin, "POST", "/api/teams", { name: bad })).statusCode).toBe(400);
+      expect((await call(admin, "TeamService/CreateTeam", { name: bad })).code).toBe("invalid_argument");
     }
     expect(setTeamNamespace).not.toHaveBeenCalled();
   });
 
   it("creates no team when the namespace can't be its", async () => {
     vi.mocked(setTeamNamespace).mockRejectedValueOnce(new ProtectedNamespaceError("protected"));
-    expect((await as(admin, "POST", "/api/teams", { name: name("prot") })).statusCode).toBe(422);
+    expect((await call(admin, "TeamService/CreateTeam", { name: name("prot") })).code).toBe("invalid_argument");
     vi.mocked(setTeamNamespace).mockRejectedValueOnce(new NamespaceNotTeamsError("someone else's"));
-    const taken = await as(admin, "POST", "/api/teams", { name: name("taken") });
-    expect(taken.statusCode).toBe(409);
-    expect(taken.json<{ error: string }>().error).toBe("NAMESPACE_EXISTS");
+    const taken = await call(admin, "TeamService/CreateTeam", { name: name("taken") });
+    expect(taken.code).toBe("failed_precondition");
+    expect(taken.failure).toBe("NAMESPACE_EXISTS");
     const created = await db.select().from(teams).where(inArray(teams.name, [name("prot"), name("taken")]));
     expect(created).toEqual([]);
   });
@@ -116,7 +116,7 @@ describe("creating a team", () => {
   it("leaves namespaces alone when the console doesn't manage them", async () => {
     config.teamNamespaces.manage = false;
     try {
-      expect((await as(admin, "POST", "/api/teams", { name: name("unmanaged") })).statusCode).toBe(201);
+      expect((await call(admin, "TeamService/CreateTeam", { name: name("unmanaged") })).code).toBe("ok");
       expect(setTeamNamespace).not.toHaveBeenCalled();
     } finally {
       config.teamNamespaces.manage = true;
@@ -124,57 +124,60 @@ describe("creating a team", () => {
   });
 });
 
-describe("PUT /teams/:name, what catalog CI calls for every team folder", () => {
+describe("EnsureTeam, what catalog CI calls for every team folder", () => {
   it("creates the team the first time, and is a no-op after", async () => {
     const ci = await mint(["teams:create"]);
-    const first = await as(ci, "PUT", `/api/teams/${name("ensure")}`);
-    expect(first.statusCode).toBe(201);
-    expect(first.json<{ created: boolean }>().created).toBe(true);
-    const again = await as(ci, "PUT", `/api/teams/${name("ensure")}`);
-    expect(again.statusCode).toBe(200);
-    expect(again.json<{ created: boolean }>().created).toBe(false);
+    const first = await call<{ created: boolean }>(ci, "TeamService/EnsureTeam", { name: name("ensure") });
+    expect(first.body.created).toBe(true);
+    const again = await call<{ created: boolean }>(ci, "TeamService/EnsureTeam", { name: name("ensure") });
+    expect(again.code).toBe("ok");
+    expect(again.body.created).toBe(false);
     expect(setTeamNamespace).toHaveBeenCalledTimes(2); // a drifted label is put back every time
   });
 
   it("un-retires a retired team only with teams:retire too", async () => {
     await createTeam(name("back"));
-    await as(admin, "POST", `/api/teams/${name("back")}/retire`);
-    expect((await as(await mint(["teams:create"]), "PUT", `/api/teams/${name("back")}`)).statusCode).toBe(403);
-    const both = await as(await mint(["teams:create", "teams:retire"]), "PUT", `/api/teams/${name("back")}`);
-    expect(both.statusCode).toBe(200);
-    expect(both.json<{ retiredAt: string | null }>().retiredAt).toBeNull();
+    await retire(name("back"));
+    const createOnly = await call(await mint(["teams:create"]), "TeamService/EnsureTeam", { name: name("back") });
+    expect(createOnly.code).toBe("permission_denied");
+    const both = await call<{ team: { retiredAt?: string } }>(await mint(["teams:create", "teams:retire"]), "TeamService/EnsureTeam", {
+      name: name("back"),
+    });
+    expect(both.code).toBe("ok");
+    expect(both.body.team.retiredAt).toBeUndefined();
   });
 
   it("refuses a purged team's name, and anyone without teams:create", async () => {
     await createTeam(name("gone"));
-    await as(admin, "POST", `/api/teams/${name("gone")}/retire`);
-    await as(admin, "DELETE", `/api/teams/${name("gone")}`);
-    expect((await as(admin, "PUT", `/api/teams/${name("gone")}`)).json<{ error: string }>().error).toBe("NAME_RESERVED");
-    expect((await as((await newUser()).token, "PUT", `/api/teams/${name("anyone")}`)).statusCode).toBe(403);
-    expect((await as(await mint(["products:register"]), "PUT", `/api/teams/${name("anyone")}`)).statusCode).toBe(403);
+    await retire(name("gone"));
+    await call(admin, "TeamService/PurgeTeam", { name: name("gone") });
+    expect((await call(admin, "TeamService/EnsureTeam", { name: name("gone") })).failure).toBe("NAME_RESERVED");
+    expect((await call((await newUser()).token, "TeamService/EnsureTeam", { name: name("anyone") })).code).toBe("permission_denied");
+    const registerOnly = await mint(["products:register"]);
+    expect((await call(registerOnly, "TeamService/EnsureTeam", { name: name("anyone") })).code).toBe("permission_denied");
   });
 });
 
 describe("retiring and purging", () => {
   it("relabels the namespace retired, without creating one", async () => {
     await createTeam(name("ret"));
-    expect((await as(admin, "POST", `/api/teams/${name("ret")}/retire`)).statusCode).toBe(200);
+    expect((await retire(name("ret"))).code).toBe("ok");
     expect(setTeamNamespace).toHaveBeenCalledWith(name("ret"), "retired", expect.objectContaining({ createIfMissing: false }));
-    await as(admin, "POST", `/api/teams/${name("ret")}/unretire`);
+    await call(admin, "TeamService/UnretireTeam", { name: name("ret") });
     expect(setTeamNamespace).toHaveBeenLastCalledWith(name("ret"), "true", expect.objectContaining({ createIfMissing: true }));
   });
 
   it("deletes the namespace when purging, and again when asked again", async () => {
     await createTeam(name("purge"));
-    await as(admin, "POST", `/api/teams/${name("purge")}/retire`);
-    const purged = await as(admin, "DELETE", `/api/teams/${name("purge")}`);
-    expect(purged.statusCode).toBe(200);
-    expect(purged.json<{ namespaceDeleted: boolean }>().namespaceDeleted).toBe(true);
+    await retire(name("purge"));
+    const purged = await call<{ namespaceDeleted: boolean }>(admin, "TeamService/PurgeTeam", { name: name("purge") });
+    expect(purged.code).toBe("ok");
+    expect(purged.body.namespaceDeleted).toBe(true);
     expect(deleteTeamNamespace).toHaveBeenCalledWith(name("purge"), expect.any(Array));
     // A namespace deletion that failed the first time can simply be retried.
-    const again = await as(admin, "DELETE", `/api/teams/${name("purge")}`);
-    expect(again.statusCode).toBe(200);
-    expect(again.json<{ alreadyPurged: boolean }>().alreadyPurged).toBe(true);
+    const again = await call<{ alreadyPurged: boolean }>(admin, "TeamService/PurgeTeam", { name: name("purge") });
+    expect(again.code).toBe("ok");
+    expect(again.body.alreadyPurged).toBe(true);
     expect(deleteTeamNamespace).toHaveBeenCalledTimes(2);
   });
 
@@ -182,10 +185,10 @@ describe("retiring and purging", () => {
     config.teamNamespaces.purge = false;
     try {
       await createTeam(name("keep"));
-      await as(admin, "POST", `/api/teams/${name("keep")}/retire`);
-      const purged = await as(admin, "DELETE", `/api/teams/${name("keep")}`);
-      expect(purged.statusCode).toBe(200);
-      expect(purged.json<{ namespaceDeleted: boolean }>().namespaceDeleted).toBe(false);
+      await retire(name("keep"));
+      const purged = await call<{ namespaceDeleted: boolean }>(admin, "TeamService/PurgeTeam", { name: name("keep") });
+      expect(purged.code).toBe("ok");
+      expect(purged.body.namespaceDeleted).toBe(false);
       expect(deleteTeamNamespace).not.toHaveBeenCalled();
     } finally {
       config.teamNamespaces.purge = true;
@@ -225,23 +228,24 @@ describe("applying a team's SecretStore file", () => {
     const member = await newUser();
     const [row] = await db.select().from(teams).where(inArray(teams.name, [team]));
     await addTeamMember(member.id, row?.id ?? "");
-    const body = { documents: [store(team)], credential: "not-a-real-token" };
+    const body = { team, documents: [store(team)], credential: "not-a-real-token" };
+    const apply = (token: string) => call(token, "TeamService/ApplySecretStore", body);
 
-    expect((await as(member.token, "PUT", `/api/teams/${team}/secret-store`, body)).statusCode).toBe(403);
-    expect((await as(await mint(["teams:create"]), "PUT", `/api/teams/${team}/secret-store`, body)).statusCode).toBe(403);
+    expect((await apply(member.token)).code).toBe("permission_denied");
+    expect((await apply(await mint(["teams:create"]))).code).toBe("permission_denied");
     expect(applySecretStoreObjects).not.toHaveBeenCalled();
 
-    expect((await as(await mint(["secret-stores:apply"]), "PUT", `/api/teams/${team}/secret-store`, body)).statusCode).toBe(204);
+    expect((await apply(await mint(["secret-stores:apply"]))).code).toBe("ok");
     expect(applySecretStoreObjects).toHaveBeenCalledWith(team, [expect.objectContaining({ kind: "SecretStore" })], "not-a-real-token");
-    expect((await as(admin, "PUT", `/api/teams/${team}/secret-store`, body)).statusCode).toBe(204);
+    expect((await apply(admin)).code).toBe("ok");
   });
 
   it("applies nothing when the file isn't allowed, and says why", async () => {
     const team = name("bad-store");
     await createTeam(team);
-    const response = await as(admin, "PUT", `/api/teams/${team}/secret-store`, { documents: [store("other")] });
-    expect(response.statusCode).toBe(422);
-    expect(response.json<{ problems: string[] }>().problems[0]).toContain('namespace must be');
+    const refused = await call<RpcError>(admin, "TeamService/ApplySecretStore", { team, documents: [store("other")] });
+    expect(refused.code).toBe("invalid_argument");
+    expect(problemMessages(refused.body)[0]).toContain("namespace must be");
     expect(applySecretStoreObjects).not.toHaveBeenCalled();
   });
 });
@@ -251,8 +255,8 @@ describe("registering a secret", () => {
     const team = name("reserved");
     await createTeam(team);
     for (const secretName of ["eso-auth", "acyclix-pull"]) {
-      const response = await as(admin, "POST", "/api/secrets", { namespace: team, secretName, data: { token: "x" } });
-      expect(response.statusCode).toBe(422);
+      const put = await call(admin, "SecretService/PutSecret", { team, secretName, data: { token: "x" } });
+      expect(put.code).toBe("invalid_argument");
     }
   });
 });
@@ -271,14 +275,14 @@ describe("the registry pull Secret", () => {
   });
 
   it("is copied into a new team's namespace", async () => {
-    expect((await as(admin, "POST", "/api/teams", { name: name("pull") })).statusCode).toBe(201);
+    expect((await call(admin, "TeamService/CreateTeam", { name: name("pull") })).code).toBe("ok");
     expect(writeTeamPullSecret).toHaveBeenCalledWith(name("pull"), PULL);
   });
 
   it("isn't copied when a team is retired", async () => {
-    await as(admin, "POST", "/api/teams", { name: name("pull-retire") });
+    await call(admin, "TeamService/CreateTeam", { name: name("pull-retire") });
     vi.mocked(writeTeamPullSecret).mockClear();
-    await as(admin, "POST", `/api/teams/${name("pull-retire")}/retire`);
+    await retire(name("pull-retire"));
     expect(writeTeamPullSecret).not.toHaveBeenCalled();
   });
 

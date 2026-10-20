@@ -1,6 +1,6 @@
 .PHONY: quickstart _quickstart-prereqs kind-cluster kind-namespaces \
 	build-products catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
-	up down logs gke-logs test test-db test-db-down gke-deploy-policy-controller \
+	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
 
 # Docker Desktop on macOS doesn't always put its command-line tools on PATH
@@ -108,13 +108,13 @@ quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
 	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
 	@$(MAKE) --no-print-directory up
 	@echo "Creating the console team $(QUICKSTART_TEAM)..."
-	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/auth/login -H 'Content-Type: application/json' \
+	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/acyclix.console.v1.AuthService/Login -H 'Content-Type: application/json' \
 		-d '{"email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p'); \
 	if [ -z "$$token" ]; then echo "Couldn't sign in to the console to create $(QUICKSTART_TEAM); create it on the Admin page."; exit 1; fi; \
-	status=$$(curl -s -o /dev/null -w '%{http_code}' -X POST $(CONSOLE_URL)/api/teams \
+	answer=$$(curl -s -X POST $(CONSOLE_URL)/api/acyclix.console.v1.TeamService/EnsureTeam \
 		-H "Authorization: Bearer $$token" -H 'Content-Type: application/json' -d '{"name":"$(QUICKSTART_TEAM)"}'); \
-	case "$$status" in 201) echo "  created";; 409) echo "  already exists";; \
-		*) echo "  failed (HTTP $$status); create it on the Admin page"; exit 1;; esac
+	case "$$answer" in *'"created":true'*) echo "  created";; *'"created":false'*) echo "  already exists";; \
+		*) echo "  failed ($$answer); create it on the Admin page"; exit 1;; esac
 	@echo ""
 	@echo "Acyclix is running."
 	@echo "  Console:  $(CONSOLE_URL)   (sign in as $(ADMIN_EMAIL) / $(ADMIN_PASSWORD), local only)"
@@ -178,7 +178,7 @@ build-products: kind-registry
 	$(DOCKER) push $(KIND_REGISTRY)/demo-application-product:local
 
 # Local mode: publish a catalog repository's products to kind without any Git
-# hosting or CI, with the catalog's own ./catalogctl, the tool its CI runs:
+# hosting or CI, with ./catalogctl (built from this checkout), the tool its CI runs:
 # every team folder becomes a team with its namespace (the console
 # makes both), then each product is validated, built, tested and scanned,
 # pushed to the local registry and registered with the console. CATALOG is
@@ -191,10 +191,10 @@ SAMPLES ?= local
 PRODUCTS ?=
 catalog-publish: kind-registry
 	@if [ -n "$(CATALOG)" ]; then test -x "$(CATALOG)/catalogctl" || { echo "No catalog at $(CATALOG)."; exit 1; }; fi
-	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/auth/login -H 'Content-Type: application/json' \
-		-d '{"email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])') \
-		|| { echo "Couldn't sign in to $(CONSOLE_URL): is it up (make up)?"; exit 1; }; \
-	export ACYCLIX_REGISTRY=$(KIND_REGISTRY) ACYCLIX_CONSOLE_URL=$(CONSOLE_URL) ACYCLIX_TOKEN="$$token"; \
+	@# This checkout's catalogctl, signing in as the local admin itself.
+	@ACYCLIX_CATALOGCTL=$$(bash .github/scripts/build-catalogctl.sh) || exit 1; \
+	export ACYCLIX_CATALOGCTL ACYCLIX_REGISTRY=$(KIND_REGISTRY) ACYCLIX_CONSOLE_URL=$(CONSOLE_URL) \
+		ACYCLIX_EMAIL=$(ADMIN_EMAIL) ACYCLIX_PASSWORD=$(ADMIN_PASSWORD); \
 	if [ -z "$(CATALOG)" ]; then \
 		export SAMPLES="$(SAMPLES)"; \
 		bash .github/scripts/catalog-template.sh teams apply && \
@@ -363,6 +363,34 @@ gke-logs:
 # Needs the kernel's dev dependencies (`pip install -e ".[dev]"` in kernel/)
 # and `npm ci` in console/ and console/frontend/. Point ALEMBIC/PYTEST at a virtualenv if they
 # aren't on PATH. The Kubernetes tests still need kind and skip without it.
+# ---------------------------------------------------------------------------
+# The console's API (proto/): lint, then generate its code, which is
+# committed (CI regenerates and fails on any difference).
+#
+#   make proto
+#
+# TypeScript comes from the console's pinned npm packages (`npm ci` in
+# console/ first); Go from the plugins pinned as tools in cli/go.mod, built
+# and run in the same Go image as CI, with buf at the same version as the
+# npm package.
+# ---------------------------------------------------------------------------
+BUF := console/node_modules/.bin/buf
+BUF_VERSION := 1.74.0
+GO_IMAGE ?= golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d
+
+proto:
+	$(BUF) lint
+	$(BUF) generate --template buf.gen.es.yaml
+	@# The API reference page's data, comments included (console/scripts/api-reference.ts).
+	$(BUF) build -o console/.api-image.binpb
+	cd console && npx tsx scripts/api-reference.ts .api-image.binpb > frontend/src/gen/api-reference.json; \
+		status=$$?; rm -f .api-image.binpb; exit $$status
+	$(DOCKER) run --rm -v "$(CURDIR)":/repo -v acyclix-gocache:/root/.cache -v acyclix-gomod:/go/pkg/mod \
+		-w /repo/cli $(GO_IMAGE) sh -c 'go build -o /tmp/plugins/ \
+			google.golang.org/protobuf/cmd/protoc-gen-go connectrpc.com/connect/cmd/protoc-gen-connect-go \
+		&& cd /repo && PATH=/tmp/plugins:$$PATH go run github.com/bufbuild/buf/cmd/buf@v$(BUF_VERSION) \
+			generate --template buf.gen.go.yaml'
+
 # ---------------------------------------------------------------------------
 TEST_DB_CONTAINER ?= acyclix-test-db
 TEST_DB_PORT ?= 55432

@@ -215,9 +215,13 @@ read concurrently first, then `_poll_task()` acts on each in order)
 → [execution.state == CANCELLED?]
     → executor.cancel(handle) → task.state = CANCELLED → record_event(TASK_CANCELLED) → done
 → [now - attempt.started_at > task.timeout_seconds?]
-    → executor.cancel(handle) → _handle_task_failure(TASK_TIMEOUT, retryable=True)
+    → executor.cancel(handle)
+        [raised, and the Job's own deadline (timeout + grace) not yet passed?]
+            → renew the lease, try again next pass (no retry may run beside it)
+    → _handle_task_failure(TASK_TIMEOUT, retryable=True)
 → the status read above:
-    raised    → _handle_task_failure(EXECUTOR_STATUS_FAILED, retryable=True)
+    raised    → unknown, not failed: renew the lease, read it again next pass
+                (the timeout above still applies)
     RUNNING   → renew the lease (heartbeat) — nothing else changes
     SUCCEEDED → persist TaskOutput
                 → task.state = SUCCEEDED → record_event(TASK_SUCCEEDED)
@@ -269,8 +273,11 @@ depends on it directly):
 - No sidecar is needed because the container's `terminationMessagePath`
   is pointed directly at `/platform/output/result.json`, so Kubernetes
   itself reads that file back out after the container exits. `get_status()`
-  reads it off the Pod's status, then deletes the Job and ConfigMap, and
-  caches the result for 15 minutes in case the tick rolls back.
+  reads it off the Pod's status and caches it for 15 minutes; the Job and
+  ConfigMap stay. `run_scheduler_tick` hands back the handles of tasks that
+  finished (`finished=`), and the loop in `__main__.py` calls `release()` on
+  them only after the pass has committed, so a pass that rolls back can read
+  the same result again. One missed is removed by the Job's TTL.
 
 ### 3. Reading status
 
@@ -474,14 +481,24 @@ The service layer behind every route except the two health checks.
   tasks, outputs, logs and events) whose last event is older than
   `execution_retention_days`, a few hundred at a time.
 
+#### `app/scheduler/orphans.py`
+- `release_orphaned_attempts()` — lists the attempts whose Jobs still exist
+  (`Executor.list_attempts`) and releases those older than `ORPHAN_MIN_AGE`
+  that no task can use: neither a running task's current attempt nor the
+  one a ready task will adopt on its next claim (`still_needed`). Catches a
+  Job started in a pass that rolled back for a task then cancelled, a
+  release that failed, and Jobs whose execution was deleted.
+
 #### `app/scheduler/__main__.py`
 - `run_forever()` — constructs `KubernetesExecutor` directly (the only real
   backend — no dispatch needed for a choice that's no longer a choice) and
   runs the actual infinite poll loop; a failed tick is logged and skipped,
   never crashes the process. SIGTERM or SIGINT ends the loop after the pass
   in progress; it then calls `claiming.release_leases`, so another
-  scheduler adopts this one's tasks on its next pass. Once an hour it also
-  runs the retention sweep.
+  scheduler adopts this one's tasks on its next pass. After each pass
+  commits it releases the finished tasks' Jobs (`release_finished`). Once an
+  hour it also runs the retention sweep, and every five minutes the orphan
+  sweep.
 - `wait_unless_stopping(stopping, waiting)` — every wait in the loop goes
   through this, so a stop signal never waits out a poll interval.
 - `main()` — configures logging, calls `asyncio.run(run_forever())`. Run via
@@ -491,6 +508,8 @@ The service layer behind every route except the two health checks.
 
 #### `app/executors/base.py`
 - `Executor` (Protocol) — `start` / `get_status` / `cancel` / `get_logs` /
+  `release` (removes a finished attempt's Job once its outcome is committed) /
+  `list_attempts` (every attempt whose Job still exists, for the orphan sweep) /
   `discard` (removes a Job a failed start may have left).
   `KubernetesExecutor` and `tests.fakes.FakeExecutor` both satisfy this
   structurally (no inheritance) — the Protocol earns its keep on letting

@@ -11,6 +11,7 @@ production backends. ``ResolvedTask``, ``ExecutionHandle``, and
 ``ExecutionStatus`` are the only things that cross that boundary.
 """
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
@@ -100,6 +101,18 @@ class ExecutionStatus(BaseModel):
         return self
 
 
+class LaunchedAttempt(BaseModel):
+    """An attempt whose execution unit still exists, as an executor lists them."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    handle: ExecutionHandle
+    execution_id: str
+    task_key: str
+    attempt: int = Field(ge=1)
+    created_at: datetime
+
+
 @runtime_checkable
 class Executor(Protocol):
     """Runs one task attempt somewhere — a local container, a Kubernetes Job, or a test double."""
@@ -127,6 +140,25 @@ class Executor(Protocol):
 
     async def get_logs(self, handle: ExecutionHandle) -> list[str]:
         """Return the captured output lines for ``handle``, for diagnostics."""
+        ...
+
+    async def release(self, handle: ExecutionHandle) -> None:
+        """Remove a finished attempt's execution unit once its outcome is committed.
+
+        Called only after the scheduler's transaction recording the outcome
+        has committed. Until then the unit is left in place, so a pass that
+        rolls back (or a scheduler that stops before committing) can read the
+        same result again instead of finding it gone. Idempotent: nothing
+        there must not raise.
+        """
+        ...
+
+    async def list_attempts(self) -> list[LaunchedAttempt]:
+        """Every attempt whose execution unit still exists, wherever it runs.
+
+        For the scheduler's orphan sweep (``app.scheduler.orphans``): units
+        no task can use any more are released.
+        """
         ...
 
     async def discard(self, task: ResolvedTask) -> None:

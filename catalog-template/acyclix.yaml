@@ -1,4 +1,4 @@
-# Where this catalog publishes, read by tools/catalog.py (./catalog), the
+# Where this catalog publishes, read by ./catalogctl, the
 # same in CI and on a laptop. Anything here can be overridden per run with
 # environment variables (shown on each line), which is how CI points the
 # same files at a hosted registry and console.
@@ -8,7 +8,7 @@
 # ACYCLIX_REGISTRY. On kind: the local registry from `make kind-registry`.
 registry: localhost:5001
 
-# The console products are registered with (POST /api/products).
+# The console products are registered with (ProductService/RegisterProduct).
 # ACYCLIX_CONSOLE_URL. The token comes from ACYCLIX_TOKEN: a bot token with
 # products:register, minted on the console's Admin page.
 console: http://localhost:18080

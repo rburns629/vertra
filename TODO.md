@@ -34,8 +34,9 @@ design.
   policy kept the tag on the repository (so a registered product with its
   own ServiceAccount was refused), and the console's registry check asked
   for a repository named with its tag (so retries said the image was gone).
-  Just Ship It was left empty afterwards (2026-10-19). Still to do: decide
-  about the two test catalog repositories; the AWS sample's SecretStore. The sizes' figures are first estimates, to be
+  Just Ship It was left empty afterwards (2026-10-19). The test catalog
+  repositories (rburns629/acyclix-catalog-test, -aws-test) are kept for
+  now. Still to do: the AWS sample's SecretStore. The sizes' figures are first estimates, to be
   measured.
   Decided 2026-10-18:
   - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster
@@ -170,6 +171,154 @@ design.
   and dependents for a whole pass in a few queries): about 6 ms per task
   started and 1.6 ms per task polled today, mostly round trips.
 
+## Agreed direction
+
+From the assessment of 2026-10-19 ([docs/assessment.md](docs/assessment.md);
+IDs refer to its findings). P0 first; none of it needs a new service.
+This comes before Azure and GitLab, which are deferred (the Azure items
+elsewhere in this file wait until then).
+
+Order of work (decided 2026-10-20): **0** R1, R2 and R4 in the Python
+scheduler (done 2026-10-20). **1** The contracts: the console's API on Connect (protos,
+generated clients for the frontend, `acyclixctl` and `catalogctl`), the
+catalog format version 2, `catalogctl` ported to Go in the CLI's module,
+the compatibility check. **Kernel track, alongside 2–5:** the scheduler in
+Go against the same schema, then kernel-api on Connect, then the
+migrations tool; Python removed. **2** Pull-based registration. **3** Roles,
+consumers, templates, exports, targets. **4** Schema checks and forms.
+**5** Default-deny networking, projected tokens, identity references from
+secrets. **6** Kernel features, in Go: retry policy, concurrency keys,
+approvals, attempts, `WatchRun`. **7** The console pages. **8** Invoke, bots
+with keyless sign-in, per-product protos. **9** Preview, what a run
+created, examples. **10** Production: SSO, TLS, audit store, alerts, scale,
+backups, docs; then CLI releases and a public repository.
+Related items elsewhere in this file: default-deny between team
+namespaces and who may read a multi-team execution (Security), Pod labels
+for AKS Workload Identity (Installing), run forms from schemas (Console).
+
+- [ ] **Phase 1: the console's API on Connect** (decided 2026-10-20; in
+  progress). Done: `proto/` with all ten services, `make proto` (buf
+  1.74.0; protoc-gen-es 2.16.0 from the console's npm, protoc-gen-go and
+  protoc-gen-connect-go as tools in `cli/go.mod`), the generated code for
+  the console, frontend and CLI, and the `proto` CI job; the API's logic
+  in `console/src/core/`, every service served over Connect from
+  `console/src/rpc/` with authentication, audit, rate limits and error
+  masking as interceptors, and `WatchExecution` streaming; the frontend's
+  `api.ts` on the generated clients (proven on kind: submit, watch,
+  events, logs, retry, rerun); the execution page on `WatchExecution`
+  instead of polling (proven in a browser on kind; the stream resends
+  every 15s so idle timeouts don't cut it, and GKE's default 30s backend
+  timeout just means a reconnect); `acyclixctl`'s `internal/consoleapi`
+  on the generated Go client (proven on kind: sign-in, `EnsureTeam`,
+  token rotation, submit and watch); `catalogctl` ported to Go
+  (`cli/cmd/catalogctl`; the same verdicts as the Python tool on 37
+  broken and unbroken catalogs, and `make catalog-publish` proven on kind:
+  teams applied, five products built, tested, scanned, pushed and
+  registered over Connect, then run); the REST routes, `openapi.ts` and
+  their packages removed, every REST test ported to Connect (finding and
+  fixing: an unset optional field refused, wiring type names unchecked,
+  refusals' extra fields dropped, now `Failure.detail`), and the API
+  reference built from the protos by `make proto`. Next, in order: catalog
+  format v2, then the compatibility check. Load balancers need HTTP/2 end
+  to end only for gRPC callers (the charts' Ingress and the CLI's AWS and
+  GCP settings); the browser and both CLIs use Connect over HTTP/1.1.
+- [ ] **Release `catalogctl` binaries, and pin one in the catalog
+  template's `./catalogctl`** (version and per-platform SHA-256). Until
+  then the wrapper refuses to run without `ACYCLIX_CATALOGCTL`, so a
+  catalog repository created now (`acyclixctl catalog`) has CI that can't
+  run; this checkout's CI and `make catalog-publish` build it from source.
+  Needs somewhere public to download from (the platform repository's
+  releases once it's public), and a release workflow that builds
+  linux/darwin × amd64/arm64 and writes the checksums.
+- [ ] **`buf breaking` in CI at the first release**, against the released
+  protos: until then contracts change freely (decided 2026-10-19).
+- [ ] **P0: pull-based catalog registration (M1, S1).** One repository has
+  one `ACYCLIX_CONSOLE_URL` and one `ACYCLIX_TOKEN`, and `acyclixctl
+  catalog` overwrites them, so a second install takes registrations from
+  the first; and the token is readable by pull-request workflows where
+  Environments aren't available. Each console reads `main` (read-only
+  deploy key or GitHub App), verifies signatures against the catalog's
+  main-only CI identity, and registers products, templates, teams and
+  SecretStores; CI keeps no console credentials. `acyclixctl catalog` on
+  an existing repository then only connects this console.
+- [ ] **P0: consumers and templates (A1).** A consumer role that may run a
+  team's published templates with parameters only; templates
+  (`teams/<team>/dags/`, with a `parameters` block) fix each step's
+  `secretRefs` and identity. Every product action is also a one-step
+  template. Maintainers keep today's rights. Secret bindings live per
+  action in `product.yaml` (`actions[].secretRefs`), so an exported action
+  keeps its owner's bindings in any DAG; steps use the product's latest
+  release. Everyone signed in is a consumer; consumers may cancel and retry
+  their own runs.
+- [ ] **P0: projected ServiceAccount tokens for federation (I1).** A product
+  declares `tokenAudiences`; the kernel projects a short-lived token for
+  those only (steps get none today, `kubernetes.py:594`); the identity
+  policy allows that volume. Needed wherever the host cloud isn't the
+  target cloud.
+- [ ] **P1: check inputs and outputs against their schemas (C1).** Literal
+  inputs at submit; resolved inputs before each step starts (the console
+  attaches the schema, the kernel checks it and fails with
+  `INPUT_INVALID`); outputs against the output schema.
+- [ ] **P1: exports (X2).** Each team lists which of its actions other
+  teams' templates may include, and for which teams; checked when a
+  template is loaded and at submit.
+- [ ] **P1: allowed targets per team (X1).** Which projects, folders or
+  accounts each consumer team may aim a team's templates at; forms offer
+  only those. Owner identities scoped to the folders they serve, and later
+  steps acting on a project an earlier step outputs.
+- [ ] **P1: retry policy and idempotency per action (R3)** in
+  `product.yaml`; platform failures (a reclaimed node, a lost Job) retried
+  for idempotent actions. Default `maxAttempts` is 1 today.
+- [ ] **P1: compatibility checks (C2).** `catalogctl check` compares
+  schemas with the last release and fails on a removed action, a new
+  required input or a removed or retyped output unless marked breaking;
+  `deprecated: <message>` in `product.yaml`.
+- [ ] **P1: who asked and who acted, per attempt**, and attempts in the API
+  (`task_attempts` is stored; the API returns only `attemptCount`).
+- [ ] **P1: samples read identity references from team secrets (S2)**,
+  not the deployment-wide `GCP_TARGET_SERVICE_ACCOUNT`
+  (`kernel/app/config.py:72-76`), which gives every team the same
+  identity; then drop that setting from the docs.
+- [ ] **P1: registry access across clouds (M2)**: an install on another
+  cloud reading the catalog's one registry, federated where possible, and
+  trusting its signing identity.
+- [ ] **P2: readiness per install.** Each product may ship a `check` action
+  (who am I, may I do this); the console runs it per install on
+  registration and daily, records the principal, and shows what's missing.
+- [ ] **P2: caps per product, and schedules** (a template on a cron, run as
+  a bot).
+- [ ] **P1: roles** (admin, maintainer, consumer), then SSO with groups
+  mapped to them.
+- [ ] **P1: `visibility` on actions** and "not shared with you" with Ask
+  for access, which opens GitHub's prefilled page in the person's browser
+  (the console keeps read-only catalog access). New actions are shared
+  with their own team only.
+- [ ] **P1: approvals.** An owner marks an action, or sharing with a team or
+  into a target, as needing approval; the step waits (a new state in the
+  kernel) until a maintainer approves or declines, audited; withdrawn after
+  3 days.
+- [ ] **P1: failure help from the owner.** Error codes with what they mean
+  and what to do in `product.yaml`; where to ask for help in `team.yaml`;
+  shown on the run page with whether a retry is safe.
+- [ ] **P1: concurrency keys.** A product names inputs that identify what
+  it changes; the scheduler holds a second step with the same key.
+- [ ] **P2: the marketplace pages** (eleven mocked up 2026-10-19): Catalog
+  with readiness and runnable examples, Runs list and run timeline, Compose
+  (type-matched wiring, drafts, Propose as a template from the person's
+  browser), Teams (another team's page; own team with readiness),
+  Schedules, Admin.
+- [ ] **P2: preview.** An optional `plan` action; the form offers Preview
+  and approvers see it.
+- [ ] **P2: what a run created.** A `resources` output convention (type,
+  id, link), shown per run and searchable; cleanup runs products' `delete`
+  actions in reverse.
+- [ ] **P2: notifications** (failure, finish, a product not ready, the
+  catalog not pulled), **copy as API call**, **run again with changes**.
+- [ ] **Scale-down for development installs only**: say so in
+  `acyclixctl init`, and let schedules wake a sleeping install.
+- [ ] **Trace what a retired team's running executions do** (not checked in
+  the assessment).
+
 ## Security
 
 - [ ] **TLS in front of the console** in the charts: an optional Ingress or
@@ -201,20 +350,38 @@ design.
 
 ## Console
 
-- [ ] **Pages for the audit log and image scans** (`/api/audit`,
-  `/api/image-scans`), which have an API only.
+- [ ] **Pages for the audit log and image scans**
+  (`AdminService/ListAuditEntries`, `ImageService/ListImageScans`), which
+  have an API only.
 - [ ] **Usable on a phone:** the sidebar is a permanent drawer
   (`layout/AppLayout.tsx`); collapse it into a menu below `md`.
 - [ ] **Connect a team's `owner` to its console team**: membership is
   managed on the team's page, separately from the catalog's CODEOWNERS.
 - [ ] **Set the catalog repository on the Admin page** instead of the
   `secretSources.catalogRepo` Helm setting, for the secret-setup guides.
+- [ ] **Run forms generated from each action's input schema** (agreed
+  2026-10-19). `product.yaml` already declares an input and output JSON
+  Schema per action, and the console stores them, but no page builds a
+  form from them and no submission is checked against them. Render them
+  with `@rjsf/mui` (react-jsonschema-form, MUI theme): labels from
+  `title`, help from `description`, `default`, `enum` as selects,
+  `pattern`/limits as inline validation, `required`, key/value lists for
+  string maps, repeatable rows for arrays. Template parameters use the
+  same schema shape, so one renderer serves products and templates. A
+  short, validated `x-acyclix` hint vocabulary in `product.schema.json`
+  for what JSON Schema can't say: `patternMessage`, `options: targets`
+  (the owning team's allowed projects or folders for the caller's team),
+  `order`, `group`, `widget: textarea`. Never render a secret field
+  (secrets come from `secretRefs`); hide inputs a template binds itself.
+  The same schema then validates the submission in the console and the
+  resolved inputs before a step starts.
 - [ ] **Show a product's latest tag** where people build DAGs.
-- [ ] **Stop accepting `externalReference` and `idempotencyKey`** (now
-  `name` and `requestId`) once nothing sends them:
-  `kernel/app/contracts/execution.py`, `withCurrentFieldNames` in
-  `console/src/routes/executions.ts`, the frontend's `dagCheck.ts` and
-  `ExecutionDetailPage.tsx`.
+- [ ] **Stop reading `externalReference` and `idempotencyKey`** (now
+  `name` and `requestId`; submissions over Connect can't send them) once
+  no stored execution has them: `kernel/app/contracts/execution.py`,
+  `withCurrentFieldNames` in `console/src/core/executions.ts`,
+  `storedDag` in `console/src/rpc/services/execution.ts`, and the
+  frontend's `dagCheck.ts`.
 
 ## Products and catalog
 
@@ -225,17 +392,18 @@ design.
   stays private.
 - [ ] **Order builder (exploratory):** turn a cart of products into a DAG
   from their schemas. The console stores products' descriptions and wiring
-  types already; next, the generator (`POST /api/orders/preview`), then a
-  page.
+  types already; next, the generator (an `OrderService/PreviewOrder`
+  method), then a page.
 - [ ] **Base images the platform maintains**: copy approved base images into
   a registry on a schedule, scanned and pinned, for products to build from.
-- [ ] **Catalog: send `resources` when registering products** (the console
-  accepts and stores them; `product.yaml` and catalogctl don't send them).
 - [ ] **One provider identity per team** for SecretStores: two teams'
   stores must not sign in as the same cloud identity.
 
 ## Testing and housekeeping
 
+- [ ] **The frontend's two low-severity advisories** (KaTeX, through
+  mermaid): `npm audit` offers only mermaid 12, a major version; take it
+  when the docs page's diagrams are checked against it.
 - [ ] **Run the older kernel tests on the database's clock**, as the newer
   ones do: `now` from this machine against `available_at` from Postgres can
   disagree in a Dockerized Postgres.

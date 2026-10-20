@@ -42,7 +42,13 @@ from app.contracts.result import StructuredError, TaskResult
 from app.contracts.task import TaskResources
 from app.domain.credentials import find_credential, redact_lines, redact_text
 from app.domain.errors import DispatchRejectedError
-from app.executors.base import ExecutionHandle, ExecutionStatus, ExecutorRunState, ResolvedTask
+from app.executors.base import (
+    ExecutionHandle,
+    ExecutionStatus,
+    ExecutorRunState,
+    LaunchedAttempt,
+    ResolvedTask,
+)
 
 REQUEST_MOUNT_PATH = "/platform/input"
 RESULT_MOUNT_PATH = "/platform/output"
@@ -694,12 +700,12 @@ class KubernetesExecutor:
         except ApiException as error:
             if error.status != 404:
                 raise
-            # The scheduler never polls a handle again after cancelling it,
-            # so the Job went away some other way: deleted by hand, or
-            # finalized by a scheduler that then crashed before committing
-            # the result (the task's lease was then taken over). Either way
-            # its result is lost, which a retry, if attempts are left, can
-            # make up for.
+            # The scheduler deletes a Job only after committing its outcome
+            # (release()), and never polls a handle again after that or after
+            # cancelling it, so the Job went away some other way: deleted by
+            # hand, or removed by its TTL while no scheduler was running.
+            # Either way its result is lost, which a retry, if attempts are
+            # left, can make up for.
             record = _TerminalRecord(
                 status=ExecutionStatus(
                     state=ExecutorRunState.FAILED,
@@ -730,8 +736,8 @@ class KubernetesExecutor:
                 "task image can't be pulled",
                 extra={"namespace": namespace, "job": job_name, "code": pull_error.code},
             )
-            await asyncio.to_thread(self._delete_job, namespace, job_name)
-            await asyncio.to_thread(self._delete_config_map, namespace, job_name)
+            # Left in place until the failure is committed (release()): a
+            # Pod still pulling has run nothing.
             record = _TerminalRecord(
                 status=ExecutionStatus(state=ExecutorRunState.FAILED, error=pull_error), logs=[]
             )
@@ -765,7 +771,12 @@ class KubernetesExecutor:
         return None
 
     def _finalize(self, namespace: str, job_name: str) -> _TerminalRecord:
-        """Capture logs and result, then delete the Job and ConfigMap.
+        """Capture logs and result. The Job and ConfigMap stay until release().
+
+        Deleting them here, before the scheduler had committed the result,
+        lost a finished step's outputs whenever that commit failed and the
+        task's lease passed to another scheduler: it found no Job
+        (JOB_NOT_FOUND) and ran the step again.
 
         Runs inside the worker thread ``get_status`` dispatched to, so the
         kubernetes-client calls here don't need their own
@@ -773,13 +784,7 @@ class KubernetesExecutor:
         """
         pod_name, terminated = self._find_terminated_container(namespace, job_name)
         logs = self._read_logs(namespace, pod_name) if pod_name else []
-
-        status = self._build_status(terminated, logs)
-
-        self._delete_job(namespace, job_name)
-        self._delete_config_map(namespace, job_name)
-
-        return _TerminalRecord(status=status, logs=logs)
+        return _TerminalRecord(status=self._build_status(terminated, logs), logs=logs)
 
     def _find_terminated_container(
         self, namespace: str, job_name: str
@@ -922,6 +927,43 @@ class KubernetesExecutor:
         self._quiet_since.pop(job_name, None)
         await asyncio.to_thread(self._delete_job, namespace, job_name)
         await asyncio.to_thread(self._delete_config_map, namespace, job_name)
+
+    async def release(self, handle: ExecutionHandle) -> None:
+        # Its cached result stays: a late read still finds it. Missed (the
+        # scheduler stopped first), the Job's ttlSecondsAfterFinished removes
+        # it, or its activeDeadlineSeconds for one still pulling its image.
+        job_name: str = handle["jobName"]
+        namespace: str = handle["namespace"]
+        self._quiet_since.pop(job_name, None)
+        await asyncio.to_thread(self._delete_job, namespace, job_name)
+        await asyncio.to_thread(self._delete_config_map, namespace, job_name)
+
+    async def list_attempts(self) -> list[LaunchedAttempt]:
+        jobs = await asyncio.to_thread(
+            self._batch_api.list_job_for_all_namespaces,
+            label_selector=_KERNEL_LABEL_SELECTOR,
+            _request_timeout=self._timeout,
+        )
+        attempts: list[LaunchedAttempt] = []
+        for job in jobs.items:
+            metadata = job.metadata
+            labels = metadata.labels or {}
+            annotations = metadata.annotations or {}
+            execution_id = labels.get("acyclix.dev/execution-id")
+            attempt = labels.get("acyclix.dev/attempt")
+            task_key = annotations.get("acyclix.dev/task")
+            if not (execution_id and attempt and attempt.isdigit() and task_key):
+                continue  # not one this kernel made the way it makes them
+            attempts.append(
+                LaunchedAttempt(
+                    handle={"namespace": metadata.namespace, "jobName": metadata.name},
+                    execution_id=execution_id,
+                    task_key=task_key,
+                    attempt=int(attempt),
+                    created_at=metadata.creation_timestamp,
+                )
+            )
+        return attempts
 
     async def discard(self, task: ResolvedTask) -> None:
         job_name = job_name_for(task.execution_id, task.task_key, task.attempt)

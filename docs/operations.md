@@ -312,9 +312,9 @@ console clears it.
   or the console can't reach it: check `registryCheck` and, on kind,
   `make kind-registry`).
 - `409 IMAGE_SCAN_PENDING`: its first scan is still running; submit again
-  in a minute. `422 IMAGE_SCAN_FAILED`: it has a fixable HIGH/CRITICAL
+  in a minute. `IMAGE_SCAN_FAILED`: it has a fixable HIGH/CRITICAL
   vulnerability or a secret in it; rebuild it, or an admin accepts it with a
-  reason (`POST /api/image-scans/:digest/accept`).
+  reason (Admin page, or `ImageService/AcceptImageScan`).
 
 **A task fails with a policy code** (non-retryable, refused by the cluster):
 
@@ -324,7 +324,7 @@ console clears it.
 | `IMAGE_NOT_ALLOWED` | Its image isn't under an allowed source (Admin page) |
 | `IMAGE_NOT_PINNED`, `IMAGE_SCAN_FAILED` | Not pinned by digest; a failed scan |
 | `IMAGE_NOT_SIGNED` | Not signed by the catalog's key (with policy-controller) |
-| `IDENTITY_NOT_ALLOWED` | A ServiceAccount or secret its product isn't allowed. If the console allowed it, the policy may be behind: the Admin's policy sync (`GET /api/policy-sync`) shows the last sync's outcome |
+| `IDENTITY_NOT_ALLOWED` | A ServiceAccount or secret its product isn't allowed. If the console allowed it, the policy may be behind: the Admin's policy sync (`AdminService/GetPolicySync`) shows the last sync's outcome |
 
 **A task never starts, or stays `RUNNING`.** `kubectl get pods -n <team>`
 and `kubectl describe pod` name the real problem. A first pull on a cloud

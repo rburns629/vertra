@@ -1,0 +1,13 @@
+# TypeScript for the console and its frontend (`make proto`), from the
+# console's own pinned @bufbuild/protoc-gen-es. Output is committed.
+version: v2
+clean: true
+plugins:
+  - local: console/node_modules/.bin/protoc-gen-es
+    out: console/src/gen
+    opt: [target=ts, import_extension=js]
+  # JavaScript with type declarations: the frontend's TypeScript allows only
+  # syntax that erases (erasableSyntaxOnly), and enums don't.
+  - local: console/node_modules/.bin/protoc-gen-es
+    out: console/frontend/src/gen
+    opt: [target=js+dts]

@@ -514,9 +514,25 @@ arm64, signed, attached to the GitHub release, and a Homebrew formula.
 5. **aws:** the module, pricing; proven on a real account (with the AWS
    sample).
 6. **azure:** the kernel's step Pod labels (for Workload Identity), the
-   module, pricing; proven (with the Azure sample).
-7. **GitLab** as a second git host.
+   module, pricing; proven (with the Azure sample). *Deferred
+   (2026-10-19).*
+7. **GitLab** as a second git host. *Deferred (2026-10-19).*
 8. **Releases:** signed binaries and the Homebrew formula.
+
+Steps 1–5 are done. On 2026-10-19 Azure and GitLab were set aside to work
+on the platform and its user experience first
+([`docs/assessment.md`](../docs/assessment.md)): pull-based catalog
+registration changes what `acyclixctl catalog` does, so it comes before
+the CLI is called finished.
+
+`catalogctl` moves here too (decided 2026-10-20; ported the same day): a
+second binary from this module (`cmd/catalogctl`, `internal/catalogctl`),
+sharing its console client, which each catalog's `./catalogctl` wrapper
+downloads (pinned, checksum-verified) instead of setting up a Python
+virtualenv. Its commands stay the same. It embeds the schemas it checks
+`product.yaml` and `team.yaml` against, so a catalog's pull request can't
+loosen them. Until a release is pinned in the wrapper, `ACYCLIX_CATALOGCTL`
+names a binary built from a checkout (`.github/scripts/build-catalogctl.sh`).
 
 ## Open questions
 

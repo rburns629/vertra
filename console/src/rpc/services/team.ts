@@ -1,0 +1,167 @@
+// SPDX-License-Identifier: MIT
+/** TeamService (proto/acyclix/console/v1/team.proto): core/teams.ts over Connect. */
+import type { ServiceImpl } from "@connectrpc/connect";
+import { Type } from "@sinclair/typebox";
+import {
+  addMember,
+  allTeams,
+  applySecretStore,
+  ensureTeam,
+  MemberEmail,
+  MemberId,
+  members,
+  newTeam,
+  purgeTeam,
+  removeMember,
+  retireTeam,
+  SecretStoreCredential,
+  SecretStoreDocuments,
+  teamPods,
+  teamRecord,
+  TeamName,
+  unretireTeam,
+} from "../../core/teams.js";
+import { TaskPodState, type TeamService } from "../../gen/acyclix/console/v1/team_pb.js";
+import { timestamp } from "../convert.js";
+import { callerOf, logOf } from "../context.js";
+import { FixedWindowLimit } from "../rateLimit.js";
+import { check } from "../validate.js";
+
+const AnyTeam = Type.String({ minLength: 1 });
+
+// "No such user" tells a member whether an email has an account, which
+// adding by email can't avoid: limited per caller, as the REST route is.
+const addMemberLimit = new FixedWindowLimit(30, 60 * 60 * 1000);
+
+const POD_STATE: Record<string, TaskPodState> = {
+  starting: TaskPodState.STARTING,
+  running: TaskPodState.RUNNING,
+  "cant-start": TaskPodState.CANT_START,
+  finished: TaskPodState.FINISHED,
+  failed: TaskPodState.FAILED,
+};
+
+function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date | null; deletedAt?: Date | null }) {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: timestamp(row.createdAt),
+    retiredAt: timestamp(row.retiredAt),
+    deletedAt: timestamp(row.deletedAt),
+  };
+}
+
+export function teamService(): ServiceImpl<typeof TeamService> {
+  return {
+    async listTeams(_req, ctx) {
+      return { teams: (await allTeams(callerOf(ctx))).map(team) };
+    },
+
+    async getTeam(req, ctx) {
+      const { name } = check({ name: AnyTeam }, req);
+      return { team: team(await teamRecord(callerOf(ctx), name)) };
+    },
+
+    async createTeam(req, ctx) {
+      const { name } = check({ name: TeamName }, req);
+      return { team: team(await newTeam(callerOf(ctx), name, logOf(ctx))) };
+    },
+
+    async ensureTeam(req, ctx) {
+      const { name } = check({ name: TeamName }, req);
+      const ensured = await ensureTeam(callerOf(ctx), name, logOf(ctx));
+      return { team: team(ensured), created: ensured.created };
+    },
+
+    async retireTeam(req, ctx) {
+      const { name } = check({ name: AnyTeam }, req);
+      const retired = await retireTeam(callerOf(ctx), name, logOf(ctx));
+      return { unregisteredProducts: retired.unregisteredProducts };
+    },
+
+    async unretireTeam(req, ctx) {
+      const { name } = check({ name: AnyTeam }, req);
+      await unretireTeam(callerOf(ctx), name, logOf(ctx));
+      return {};
+    },
+
+    async purgeTeam(req, ctx) {
+      const { name } = check({ name: AnyTeam }, req);
+      const purged = await purgeTeam(callerOf(ctx), name, logOf(ctx));
+      return {
+        alreadyPurged: "alreadyPurged" in purged,
+        revokedBotTokens: purged.revokedBotTokens,
+        namespaceDeleted: purged.namespaceDeleted,
+      };
+    },
+
+    async listMembers(req, ctx) {
+      const { team: name } = check({ team: AnyTeam }, req);
+      const rows = await members(callerOf(ctx), name);
+      return {
+        members: rows.map((member) => ({
+          id: member.id,
+          email: member.email,
+          isBot: member.isBot,
+          isAdmin: member.isAdmin,
+          addedAt: timestamp(member.addedAt),
+        })),
+      };
+    },
+
+    async addMember(req, ctx) {
+      const caller = callerOf(ctx);
+      addMemberLimit.take(`members:${caller.id}`, ctx);
+      const { team: name, email } = check({ team: AnyTeam, email: MemberEmail }, req);
+      await addMember(caller, name, email);
+      return {};
+    },
+
+    async removeMember(req, ctx) {
+      const { team: name, userId } = check({ team: AnyTeam, userId: MemberId }, req);
+      await removeMember(callerOf(ctx), name, userId, logOf(ctx));
+      return {};
+    },
+
+    async applySecretStore(req, ctx) {
+      const input = check(
+        { team: AnyTeam, documents: SecretStoreDocuments, credential: Type.Optional(SecretStoreCredential) },
+        { team: req.team, documents: req.documents, credential: req.credential },
+      );
+      await applySecretStore(
+        callerOf(ctx),
+        input.team,
+        { documents: input.documents, credential: input.credential },
+        logOf(ctx),
+      );
+      return {};
+    },
+
+    async listPods(req, ctx) {
+      const { team: name } = check({ team: AnyTeam }, req);
+      const pods = await teamPods(callerOf(ctx), name);
+      return {
+        pods: pods.map((pod) => ({
+          podName: pod.podName,
+          executionId: pod.executionId ?? undefined,
+          taskId: pod.taskKey ?? undefined,
+          attempt: pod.attempt ?? undefined,
+          image: pod.image ?? undefined,
+          serviceAccount: pod.serviceAccount ?? undefined,
+          state: POD_STATE[pod.state] ?? TaskPodState.UNSPECIFIED,
+          problem: pod.problem ?? undefined,
+          restarts: pod.restarts,
+          startedAt: timestamp(pod.startedAt),
+          finishedAt: timestamp(pod.finishedAt),
+          execution: pod.execution
+            ? {
+                name: pod.execution.name,
+                taskNumber: pod.execution.taskNumber ?? undefined,
+                taskCount: pod.execution.taskCount ?? undefined,
+              }
+            : undefined,
+        })),
+      };
+    },
+  };
+}

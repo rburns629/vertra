@@ -33,7 +33,7 @@ type Options struct {
 }
 
 // skipped are never copied: local build and tool state.
-var skipped = map[string]bool{".venv": true, "__pycache__": true, "node_modules": true, "target": true, ".pytest_cache": true}
+var skipped = map[string]bool{".catalogctl": true, ".venv": true, "__pycache__": true, "node_modules": true, "target": true, ".pytest_cache": true}
 
 // Assemble writes the catalog's first commit into dst (which must be empty
 // or missing), and returns the starters' product names.

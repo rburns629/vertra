@@ -44,3 +44,5 @@ htmlcov/
 _local/
 # OpenTofu working files, should a module be initialised in place.
 cli/internal/modules/*/.terraform/
+# Built binaries (.github/scripts/build-catalogctl.sh).
+cli/bin/

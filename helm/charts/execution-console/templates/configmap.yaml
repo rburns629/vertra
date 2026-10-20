@@ -1,5 +1,5 @@
 {{- if not .Values.kernelApiUrl }}
-{{- fail "Set kernelApiUrl to execution-kernel's kernel-api Service URL -- execution-console is its only authorized caller (see console/src/routes/executions.ts)." }}
+{{- fail "Set kernelApiUrl to execution-kernel's kernel-api Service URL -- execution-console is its only authorized caller (see console/src/core/executions.ts)." }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap

@@ -17,6 +17,7 @@ from app.contracts.task import TaskResources
 # in flight at once; the scheduler's own default too (scheduler/service.py).
 DEFAULT_EXECUTOR_CONCURRENCY = 16
 DEFAULT_MAX_DISPATCH_FAILURES = 5
+DEFAULT_JOB_DEADLINE_GRACE_SECONDS = 600
 
 
 class TaskToleration(BaseModel):
@@ -117,7 +118,11 @@ class Settings(BaseSettings):
     # A Job's activeDeadlineSeconds is its task's timeout plus this: a
     # backstop, so Kubernetes stops a Job the scheduler has lost track of
     # (the scheduler enforces the timeout itself). Covers pulling the image.
-    kubernetes_job_deadline_grace_seconds: int = Field(default=600, ge=0)
+    # The scheduler also relies on it: a timed-out task whose Job it can't
+    # stop is failed (and maybe retried) only once this deadline has passed.
+    kubernetes_job_deadline_grace_seconds: int = Field(
+        default=DEFAULT_JOB_DEADLINE_GRACE_SECONDS, ge=0
+    )
     # Step Pods meet Pod Security's `restricted`: non-root (the image must
     # name a numeric non-root USER), a read-only root filesystem with a
     # writable /tmp, no capabilities, no privilege escalation, the runtime's

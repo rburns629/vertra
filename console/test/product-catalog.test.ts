@@ -9,6 +9,7 @@ import { db } from "../src/db/client.js";
 import { createApiToken, createBotUser, createTeam, createUser, setUserAdmin } from "../src/db/queries.js";
 import { products, teams, users, wiringTypes } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
 
 // Registering a team's product creates its ServiceAccount in the team's
 // namespace (test/product-policy.test.ts checks that); not here.
@@ -27,8 +28,11 @@ let admin: string;
 let member: string;
 let catalogCi: string;
 
-const as = (token: string, method: "GET" | "POST" | "PUT", url: string, payload?: unknown) =>
-  app.inject({ method, url, headers: { authorization: `Bearer ${token}` }, payload: payload as object });
+const call = caller(() => app);
+const register = (token: string, body: object) => call(token, "ProductService/RegisterProduct", body);
+const replaceTypes = (token: string, types: object) => call(token, "ProductService/ReplaceWiringTypes", { types });
+const readTypes = async () =>
+  (await call<{ types: { name: string; defaultProvider?: string }[] }>(member, "ProductService/ListWiringTypes")).body.types;
 
 async function newUser(isAdmin: boolean): Promise<string> {
   const email = `${prefix}-${randomUUID().slice(0, 6)}@example.com`;
@@ -40,16 +44,17 @@ async function newUser(isAdmin: boolean): Promise<string> {
 
 interface Listed {
   name: string;
-  inputSchema: Record<string, unknown>;
-  displayName: string | null;
-  description: string | null;
-  outputSchema: Record<string, unknown>;
-  serviceAccount: string | null;
+  inputSchema?: Record<string, unknown>;
+  displayName?: string;
+  description?: string;
+  outputSchema?: Record<string, unknown>;
+  serviceAccount?: string;
   requiredSecrets: string[];
+  resources?: Record<string, string>;
 }
 
 async function listed(name: string): Promise<Listed | undefined> {
-  return (await as(admin, "GET", "/api/products")).json<Listed[]>().find((p) => p.name === name);
+  return (await call<{ products: Listed[] }>(admin, "ProductService/ListProducts")).body.products.find((p) => p.name === name);
 }
 
 const INPUT = { type: "object", additionalProperties: false, properties: { instanceName: { type: "string", title: "Instance name" } } };
@@ -98,8 +103,7 @@ describe("registering a product's full description", () => {
   };
 
   it("stores and lists everything catalog CI sends", async () => {
-    const response = await as(catalogCi, "POST", "/api/products", full);
-    expect(response.statusCode).toBe(200);
+    expect((await register(catalogCi, full)).code).toBe("ok");
     expect(await listed(name)).toMatchObject({
       inputSchema: INPUT,
       displayName: "Database",
@@ -113,53 +117,34 @@ describe("registering a product's full description", () => {
 
   it("refuses a size that isn't a Kubernetes quantity", async () => {
     for (const resources of [{ cpu: "lots" }, { memory: "512 MiB" }, { memoryLimit: "-1" }]) {
-      const response = await as(catalogCi, "POST", "/api/products", { ...full, resources });
-      expect(response.statusCode).toBe(400);
+      expect((await register(catalogCi, { ...full, resources })).code).toBe("invalid_argument");
     }
   });
 
-  it("drops resource kinds it doesn't know, like the rest of the API", async () => {
-    const response = await as(catalogCi, "POST", "/api/products", {
-      ...full,
-      resources: { cpu: "100m", gpu: "1" },
-    });
-    expect(response.statusCode).toBe(200);
+  it("drops resource kinds it doesn't know (as protobuf ignores unknown fields)", async () => {
+    expect((await register(catalogCi, { ...full, resources: { cpu: "100m", gpu: "1" } })).code).toBe("ok");
     expect((await listed(name))?.resources).toEqual({ cpu: "100m" });
   });
 
   it("keeps what's stored when a later registration leaves fields out", async () => {
-    const response = await as(catalogCi, "POST", "/api/products", {
-      name,
-      image: `example.com/${prefix}/db:2`,
-      action: "create",
-      team: prefix,
-    });
-    expect(response.statusCode).toBe(200);
+    const registered = await register(catalogCi, { name, image: `example.com/${prefix}/db:2`, action: "create", team: prefix });
+    expect(registered.code).toBe("ok");
     expect(await listed(name)).toMatchObject({ inputSchema: INPUT, outputSchema: OUTPUT, serviceAccount: "db-product" });
   });
 
   it("gives a product registered without them empty values, not an error", async () => {
     const bare = `${prefix}-bare-create`;
-    const response = await as(admin, "POST", "/api/products", {
-      name: bare,
-      image: `example.com/${prefix}/bare:1`,
-      action: "create",
-      team: prefix,
-    });
-    expect(response.statusCode).toBe(200);
-    expect(await listed(bare)).toMatchObject({
-      inputSchema: {},
-      outputSchema: {},
-      displayName: null,
-      serviceAccount: null,
-      requiredSecrets: [],
-    });
+    const registered = await register(admin, { name: bare, image: `example.com/${prefix}/bare:1`, action: "create", team: prefix });
+    expect(registered.code).toBe("ok");
+    const product = await listed(bare);
+    expect(product).toMatchObject({ inputSchema: {}, outputSchema: {}, requiredSecrets: [] });
+    expect(product?.displayName).toBeUndefined();
+    expect(product?.serviceAccount).toBeUndefined();
   });
 
   it("refuses names Kubernetes wouldn't accept", async () => {
     for (const bad of [{ serviceAccount: "Bad_Name" }, { requiredSecrets: ["ok", "Not OK"] }]) {
-      const response = await as(catalogCi, "POST", "/api/products", { ...full, ...bad });
-      expect(response.statusCode).toBe(400);
+      expect((await register(catalogCi, { ...full, ...bad })).code).toBe("invalid_argument");
     }
   });
 });
@@ -171,21 +156,20 @@ describe("the wiring types", () => {
   };
 
   it("can be replaced by catalog CI and read by anyone signed in", async () => {
-    expect((await as(catalogCi, "PUT", "/api/wiring-types", types)).statusCode).toBe(200);
-    const read = (await as(member, "GET", "/api/wiring-types")).json<{ name: string; defaultProvider: string | null }[]>();
+    expect((await replaceTypes(catalogCi, types)).code).toBe("ok");
+    const read = await readTypes();
     expect(read.map((t) => t.name)).toEqual(["gcp.project", "gcp.region"]);
     expect(read[0]?.defaultProvider).toBe("gcp/project.create");
-    expect(read[1]?.defaultProvider).toBeNull();
+    expect(read[1]?.defaultProvider).toBeUndefined();
   });
 
   it("is replaced as a whole: a type left out is removed", async () => {
-    await as(catalogCi, "PUT", "/api/wiring-types", { "gcp.region": types["gcp.region"] });
-    const read = (await as(member, "GET", "/api/wiring-types")).json<{ name: string }[]>();
-    expect(read.map((t) => t.name)).toEqual(["gcp.region"]);
+    await replaceTypes(catalogCi, { "gcp.region": types["gcp.region"] });
+    expect((await readTypes()).map((t) => t.name)).toEqual(["gcp.region"]);
   });
 
   it("can't be changed by an ordinary user", async () => {
-    expect((await as(member, "PUT", "/api/wiring-types", types)).statusCode).toBe(403);
+    expect((await replaceTypes(member, types)).code).toBe("permission_denied");
   });
 
   it("refuses malformed types, without touching the stored ones", async () => {
@@ -195,9 +179,8 @@ describe("the wiring types", () => {
       { "gcp.project": { ...types["gcp.project"], jsonType: "object" } },
       { "gcp.project": { ...types["gcp.project"], defaultProvider: "not a provider" } },
     ]) {
-      expect((await as(admin, "PUT", "/api/wiring-types", bad)).statusCode).toBe(400);
+      expect((await replaceTypes(admin, bad)).code, JSON.stringify(bad)).toBe("invalid_argument");
     }
-    const read = (await as(member, "GET", "/api/wiring-types")).json<{ name: string }[]>();
-    expect(read.map((t) => t.name)).toEqual(["gcp.region"]);
+    expect((await readTypes()).map((t) => t.name)).toEqual(["gcp.region"]);
   });
 });

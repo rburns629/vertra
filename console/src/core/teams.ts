@@ -1,0 +1,350 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Teams and their lifecycle: the logic behind the REST routes
+ * (routes/teams.ts, routes/pods.ts) and TeamService.
+ *
+ * Creating a team is a platform-level action: only a platform admin, or an
+ * automation token holding teams:create (catalog CI's apply-teams.yml,
+ * auth/scopes.ts). A team is also a Kubernetes namespace tasks are
+ * dispatched into, so it isn't something any registered user may mint.
+ *
+ * The creator is deliberately not made a member. Admins already reach every
+ * team, and making catalog CI a member of every team it created was how one
+ * leaked CI token came to control every platform. A new team starts empty;
+ * an admin adds its first members. Growing it stays self-service within the
+ * team: a member, or an admin, can add another.
+ */
+import { Code } from "@connectrpc/connect";
+import { Type } from "@sinclair/typebox";
+import type { FastifyBaseLogger } from "fastify";
+import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
+import { canActForTeam, ensureTeamMember } from "../auth/access.js";
+import type { AuthUser } from "../auth/plugin.js";
+import { hasScope, SCOPES } from "../auth/scopes.js";
+import { config } from "../config.js";
+import {
+  addTeamMember,
+  createTeam,
+  deleteProductsForTeam,
+  findSubmittedExecutions,
+  findTeamByName,
+  findTeamByNameIncludingDeleted,
+  findUserByEmail,
+  listAllTeams,
+  listMembersForTeam,
+  listSubmittedExecutionsForTeams,
+  purgeTeam as purgeTeamRecords,
+  removeTeamMember,
+  setTeamRetired,
+} from "../db/queries.js";
+import {
+  applySecretStoreObjects,
+  deleteTeamNamespace,
+  listTaskPods,
+  NamespaceNotTeamsError,
+  ProtectedNamespaceError,
+  setTeamNamespace,
+  type TeamNamespaceState,
+} from "../k8s.js";
+import { getExecutionStates } from "../kernel/client.js";
+import { syncIdentityPolicy } from "../productPolicy.js";
+import { copyPullSecret } from "../pullSecret.js";
+import { ensureNotRetired } from "./retired.js";
+import { checkSecretStoreObjects } from "../secretStores.js";
+
+/** A team's name is also its namespace's: a DNS label. */
+export const TeamName = Type.String({ pattern: "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" });
+export const MemberEmail = Type.String({ format: "email" });
+export const MemberId = Type.String({ format: "uuid" });
+export const SecretStoreDocuments = Type.Array(Type.Unknown(), { minItems: 1, maxItems: 20 });
+export const SecretStoreCredential = Type.String({ minLength: 1, maxLength: 16384 });
+
+const nameReserved = (name: string) =>
+  new ApiError(409, "NAME_RESERVED", `"${name}" belonged to a team that was purged, and team names are never reused.`);
+const noSuchTeam = () => new ApiError(404, "NOT_FOUND", "No such team.");
+
+/**
+ * Sets the team's namespace label when the console manages team namespaces
+ * (config.teamNamespaces); refuses a namespace that can't be a team's.
+ */
+async function setTeamNamespaceState(name: string, state: TeamNamespaceState, createIfMissing: boolean): Promise<void> {
+  if (!config.teamNamespaces.manage) return;
+  try {
+    await setTeamNamespace(name, state, { ...config.teamNamespaces, createIfMissing });
+    if (state === "true") await copyPullSecret(name);
+  } catch (error) {
+    if (error instanceof ProtectedNamespaceError) throw new ApiError(422, "UNPROCESSABLE_ENTITY", error.message);
+    if (error instanceof NamespaceNotTeamsError) throw new ApiError(409, "NAMESPACE_EXISTS", error.message);
+    throw error;
+  }
+}
+
+const TERMINAL_EXECUTION_STATES = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
+
+/** Executions touching this team that haven't finished. Asks kernel-api for
+ * live states; if it can't answer, this throws, so a purge fails closed
+ * instead of proceeding on a guess. Every one of the team's executions, not
+ * a page: a purge must see them all. */
+async function unfinishedExecutionIds(teamName: string): Promise<string[]> {
+  const ids = (await listSubmittedExecutionsForTeams([teamName])).map((row) => row.executionId);
+  const states = await getExecutionStates(ids);
+  return states.filter(({ state }) => !TERMINAL_EXECUTION_STATES.has(state)).map(({ executionId }) => executionId);
+}
+
+export async function allTeams(caller: AuthUser | undefined) {
+  forbiddenUnlessAdmin(caller);
+  return listAllTeams();
+}
+
+export async function newTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
+  if (!caller?.isAdmin && !hasScope(caller, SCOPES.TEAMS_CREATE)) {
+    throw new ApiError(403, "FORBIDDEN", "Creating a team requires admin access (or an automation token with teams:create).");
+  }
+  const existing = await findTeamByNameIncludingDeleted(name);
+  // A distinct code, not the plain "already exists" a re-run of
+  // apply-teams.yml treats as success: a purged platform's name can't be
+  // reused (schema.ts's teams.deletedAt), and CI must fail on that.
+  if (existing?.deletedAt) throw nameReserved(name);
+  if (existing) throw new ApiError(409, "CONFLICT", "Team already exists.", Code.AlreadyExists);
+  // The namespace first: a name that can't be a team's namespace never
+  // becomes a team.
+  await setTeamNamespaceState(name, "true", true);
+  const team = await createTeam(name);
+  log.info({ team: team.name, createdBy: caller?.id }, "team created");
+  return team;
+}
+
+/**
+ * Makes sure a team exists and is active, with its namespace: what the
+ * catalog's apply-teams workflow calls for every team folder, any number of
+ * times. Creates the team if it's new (teams:create), un-retires it if it
+ * was retired (teams:retire too: a team folder restored), and puts its
+ * namespace's label back if it drifted. A purged team's name stays refused.
+ */
+export async function ensureTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
+  if (!caller || (!caller.isAdmin && !hasScope(caller, SCOPES.TEAMS_CREATE))) {
+    throw new ApiError(403, "FORBIDDEN", "Requires admin access or teams:create.");
+  }
+  const existing = await findTeamByNameIncludingDeleted(name);
+  if (existing?.deletedAt) throw nameReserved(name);
+  if (existing?.retiredAt && !caller.isAdmin && !hasScope(caller, SCOPES.TEAMS_RETIRE)) {
+    throw new ApiError(403, "FORBIDDEN", `"${name}" is retired; un-retiring it requires teams:retire.`);
+  }
+  await setTeamNamespaceState(name, "true", true);
+  if (!existing) {
+    const team = await createTeam(name);
+    log.info({ team: name, createdBy: caller.id }, "team created");
+    return { ...team, created: true };
+  }
+  if (existing.retiredAt) {
+    await setTeamRetired(existing.id, false);
+    log.info({ team: name, by: caller.id }, "team un-retired");
+  }
+  return { ...existing, retiredAt: null, created: false };
+}
+
+/**
+ * One team's record, for its members, admins, and an automation token that
+ * creates teams (catalog CI). Anyone else gets the same 404 as for a team
+ * that doesn't exist, so team names can't be probed. A purged team is
+ * still returned (deletedAt set): its name is reserved.
+ */
+export async function teamRecord(caller: AuthUser | undefined, name: string) {
+  const allowed = caller !== undefined && (canActForTeam(caller, name) || hasScope(caller, SCOPES.TEAMS_CREATE));
+  const team = allowed ? await findTeamByNameIncludingDeleted(name) : undefined;
+  if (!team) throw noSuchTeam();
+  return team;
+}
+
+async function memberTeam(caller: AuthUser | undefined, name: string) {
+  ensureTeamMember(caller, name);
+  const team = await findTeamByName(name);
+  if (!team) throw noSuchTeam();
+  return team;
+}
+
+/** Adds someone with an account. The REST route and TeamService limit how often. */
+export async function addMember(caller: AuthUser | undefined, teamName: string, email: string): Promise<void> {
+  const team = await memberTeam(caller, teamName);
+  ensureNotRetired(team);
+  const user = await findUserByEmail(email);
+  if (!user) throw new ApiError(404, "NOT_FOUND", "No such user.");
+  await addTeamMember(user.id, team.id);
+}
+
+export async function members(caller: AuthUser | undefined, teamName: string) {
+  return listMembersForTeam((await memberTeam(caller, teamName)).id);
+}
+
+/**
+ * Removes someone: the same rule as adding. A team never loses its last
+ * person this way, since nobody but an admin could then manage it; add the
+ * replacement first. Bots can always be removed.
+ */
+export async function removeMember(
+  caller: AuthUser | undefined,
+  teamName: string,
+  userId: string,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  const team = await memberTeam(caller, teamName);
+  ensureNotRetired(team);
+  const all = await listMembersForTeam(team.id);
+  const target = all.find((m) => m.id === userId);
+  if (!target) throw new ApiError(404, "NOT_FOUND", "Not a member of this team.");
+  const humans = all.filter((m) => !m.isBot);
+  if (!target.isBot && humans.length === 1) {
+    throw new ApiError(409, "LAST_MEMBER", `${target.email} is the only person in "${team.name}". Add someone else first.`);
+  }
+  await removeTeamMember(target.id, team.id);
+  log.info({ team: team.name, removed: target.email, removedBy: caller?.id }, "team member removed");
+}
+
+function requireRetireRight(caller: AuthUser | undefined): void {
+  if (!caller?.isAdmin && !hasScope(caller, SCOPES.TEAMS_RETIRE)) {
+    throw new ApiError(403, "FORBIDDEN", "Requires admin access or teams:retire.");
+  }
+}
+
+/**
+ * Retire: the reversible first step of removing a platform (catalog CI,
+ * when a team's folder is removed). The team becomes read-only and its
+ * products unregistered; members keep its history. Its namespace is
+ * relabelled acyclix/team=retired (when the console manages them), which
+ * stops the kernel dispatching new steps there; anything running finishes.
+ */
+export async function retireTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
+  requireRetireRight(caller);
+  const team = await findTeamByName(name);
+  if (!team) throw noSuchTeam();
+  // The namespace first: once it's labelled retired, the kernel's dispatch
+  // policy starts no new step there.
+  await setTeamNamespaceState(team.name, "retired", false);
+  if (!team.retiredAt) await setTeamRetired(team.id, true);
+  const unregisteredProducts = await deleteProductsForTeam(team.id);
+  await syncIdentityPolicy();
+  log.info({ team: team.name, by: caller?.id, unregisteredProducts }, "team retired");
+  return { name: team.name, retired: true, unregisteredProducts };
+}
+
+/** Undoes a retire (a team's folder restored); its products return on its next catalog CI push. */
+export async function unretireTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
+  requireRetireRight(caller);
+  const team = await findTeamByName(name);
+  if (!team) throw noSuchTeam();
+  await setTeamNamespaceState(team.name, "true", true);
+  if (team.retiredAt) await setTeamRetired(team.id, false);
+  log.info({ team: team.name, by: caller?.id }, "team un-retired");
+  return { name: team.name, retired: false };
+}
+
+/**
+ * Purge: irreversible. Only a retired team, and only once none of its
+ * executions are still running. Removes memberships, secret grants and
+ * products, revokes bots left with no team, and soft-deletes the team so its
+ * name stays reserved; execution history is kept. Then deletes its
+ * namespace when the console manages team namespaces and may purge them
+ * (config.teamNamespaces.purge). Again for a purged team, it only retries
+ * the namespace's deletion.
+ */
+export async function purgeTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
+  if (!caller?.isAdmin && !hasScope(caller, SCOPES.TEAMS_DELETE)) {
+    throw new ApiError(403, "FORBIDDEN", "Requires admin access or teams:delete.");
+  }
+  const team = await findTeamByNameIncludingDeleted(name);
+  if (!team) throw noSuchTeam();
+  // Whether its namespace goes too: otherwise it stays labelled retired,
+  // for an operator to delete.
+  const namespaceDeleted = config.teamNamespaces.manage && config.teamNamespaces.purge;
+  const purgeNamespace = async () => {
+    if (namespaceDeleted) await deleteTeamNamespace(team.name, config.teamNamespaces.protected);
+  };
+  if (team.deletedAt) {
+    await purgeNamespace();
+    return { name: team.name, purged: true, alreadyPurged: true, revokedBotTokens: 0, namespaceDeleted };
+  }
+  if (!team.retiredAt) {
+    throw new ApiError(409, "NOT_RETIRED", `Team "${team.name}" must be retired before it can be purged.`);
+  }
+  const unfinished = await unfinishedExecutionIds(team.name);
+  if (unfinished.length > 0) {
+    throw new ApiError(
+      409,
+      "EXECUTIONS_RUNNING",
+      `Team "${team.name}" still has ${String(unfinished.length)} unfinished execution(s); cancel them or wait before purging.`,
+      undefined,
+      { executionIds: unfinished },
+    );
+  }
+  const { revokedBotTokens } = await purgeTeamRecords(team.id);
+  await syncIdentityPolicy();
+  await purgeNamespace();
+  log.info({ team: team.name, by: caller?.id, revokedBotTokens }, "team purged");
+  return { name: team.name, purged: true, revokedBotTokens, namespaceDeleted };
+}
+
+/**
+ * Applies a team's reviewed SecretStore file (the catalog's
+ * teams/<team>/secret-stores/*.yaml, as JSON): its SecretStores and the
+ * ServiceAccounts ESO signs in as, in the team's namespace, after
+ * secretStores.ts's checks. `credential`, for a provider that needs a stored
+ * one, goes to the Secret eso-auth. Only catalog CI's token
+ * (secret-stores:apply) or an admin: a SecretStore decides which vault
+ * identity a team can read, so it comes through catalog review.
+ */
+export async function applySecretStore(
+  caller: AuthUser | undefined,
+  name: string,
+  input: { documents: unknown[]; credential?: string | undefined },
+  log: FastifyBaseLogger,
+): Promise<void> {
+  if (!caller?.isAdmin && !hasScope(caller, SCOPES.SECRET_STORES_APPLY)) {
+    throw new ApiError(403, "FORBIDDEN", "Requires admin access or secret-stores:apply.");
+  }
+  const team = await findTeamByName(name);
+  if (!team) throw noSuchTeam();
+  ensureNotRetired(team);
+  const checked = checkSecretStoreObjects(team.name, input.documents);
+  if (checked.problems.length > 0) {
+    throw new ApiError(422, "UNPROCESSABLE_ENTITY", "The SecretStore file isn't allowed.", undefined, {
+      problems: checked.problems,
+    });
+  }
+  await applySecretStoreObjects(team.name, checked.objects, input.credential);
+  log.info(
+    { team: team.name, by: caller?.id, objects: checked.objects.map((o) => `${o.kind}/${o.metadata.name}`) },
+    "secret store applied",
+  );
+}
+
+/** A Pod's DAG payload, as far as a label needs: its task ids in order. */
+function taskIds(payload: unknown): string[] {
+  const tasks = (payload as { tasks?: { id?: unknown }[] } | null)?.tasks;
+  return Array.isArray(tasks) ? tasks.map((t) => (typeof t.id === "string" ? t.id : "")) : [];
+}
+
+/**
+ * What's running in a team's namespace, as tasks: each Pod the kernel
+ * dispatched carries its execution id and task key, so the Team page can
+ * say "task 2 of 3 of ..." instead of a pod name. Only this team's
+ * namespace, and an execution is named only if this team is part of it.
+ */
+export async function teamPods(caller: AuthUser | undefined, teamName: string) {
+  ensureTeamMember(caller, teamName);
+  const pods = await listTaskPods(teamName);
+  const ids = [...new Set(pods.map((p) => p.executionId).filter((id): id is string => id !== null))];
+  const executions = new Map(
+    (await findSubmittedExecutions(ids)).filter((e) => e.teams.includes(teamName)).map((e) => [e.executionId, e]),
+  );
+  return pods.map((pod) => {
+    const execution = pod.executionId ? executions.get(pod.executionId) : undefined;
+    const tasks = execution ? taskIds(execution.payload) : [];
+    const position = pod.taskKey ? tasks.indexOf(pod.taskKey) : -1;
+    return {
+      ...pod,
+      execution: execution
+        ? { name: execution.name, taskNumber: position >= 0 ? position + 1 : null, taskCount: tasks.length || null }
+        : null,
+    };
+  });
+}

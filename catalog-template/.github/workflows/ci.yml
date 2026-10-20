@@ -1,6 +1,6 @@
 name: catalog-ci
 
-# A thin wrapper: everything it does is ./catalogctl (tools/catalog.py), the
+# A thin wrapper: everything it does is ./catalogctl (the pinned catalogctl), the
 # same command a laptop runs in local mode. Where to publish is acyclix.yaml,
 # overridden here by this repository's variables and secrets:
 #

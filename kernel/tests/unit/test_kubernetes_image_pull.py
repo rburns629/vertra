@@ -90,7 +90,7 @@ class _StubCoreApi:
         self.deleted_config_maps.append(name)
 
 
-async def test_get_status_fails_the_task_and_cleans_up_when_its_image_is_missing() -> None:
+async def test_get_status_fails_the_task_when_its_image_is_missing() -> None:
     batch, core = _StubBatchApi(), _StubCoreApi("ErrImagePull", GAR_NOT_FOUND)
     executor = KubernetesExecutor(batch_api=batch, core_api=core)
     handle = {"namespace": "demo-3", "jobName": "ek-deploy-1"}
@@ -99,6 +99,9 @@ async def test_get_status_fails_the_task_and_cleans_up_when_its_image_is_missing
 
     assert status.state is ExecutorRunState.FAILED
     assert status.error is not None and status.error.code == "IMAGE_NOT_FOUND"
+    # The Job stays until the failure is committed and the scheduler releases it.
+    assert batch.deleted == [] and core.deleted_config_maps == []
+    await executor.release(handle)
     assert batch.deleted == ["ek-deploy-1"] and core.deleted_config_maps == ["ek-deploy-1"]
     # Cached like any other terminal state: the Job is gone now.
     assert (await executor.get_status(handle)) == status

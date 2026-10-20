@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/** Who changed what (audit.ts): what's recorded, and what never is. */
+/** Who changed what (audit.ts, rpc/interceptors.ts): what's recorded, and what never is. */
 import { randomUUID } from "node:crypto";
 import { eq, inArray, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, createUser, setUserAdmin } from "../src/db/queries.js";
 import { auditLog, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { caller } from "./rpc.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
@@ -29,17 +30,12 @@ async function newUser(isAdmin: boolean) {
   return { id: user.id, token: app.jwt.sign({ userId: user.id }) };
 }
 
-const as = (token: string, method: "GET" | "POST", url: string, payload?: object) =>
-  app.inject({ method, url, headers: { authorization: `Bearer ${token}` }, payload });
+const call = caller(() => app);
+const route = (procedure: string) => `acyclix.console.v1.${procedure}`;
 
-/** The entries recorded for `actorId` once `route` shows up among them: the
- * hook writes after the response has gone out, so a moment after. */
-async function entriesBy(actorId: string, route?: string) {
-  for (let i = 0; ; i++) {
-    const rows = await db.select().from(auditLog).where(eq(auditLog.actorId, actorId));
-    if (!route || rows.some((r) => r.route === route) || i >= 20) return rows;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
+/** The entries recorded for `actorId`. */
+function entriesBy(actorId: string) {
+  return db.select().from(auditLog).where(eq(auditLog.actorId, actorId));
 }
 
 beforeAll(async () => {
@@ -60,37 +56,44 @@ afterAll(async () => {
 
 describe("the audit log", () => {
   it("records a change with who made it and what it named, never the secret's value", async () => {
-    const response = await as(member.token, "POST", "/api/secrets", {
-      namespace: prefix,
+    const put = await call(member.token, "SecretService/PutSecret", {
+      team: prefix,
       secretName: "db-key",
       data: { value: "not-a-real-but-still-secret-value" },
     });
-    expect(response.statusCode).toBe(204);
-    const [entry] = (await entriesBy(member.id, "/api/secrets")).filter((e) => e.route === "/api/secrets");
-    expect(entry).toMatchObject({ method: "POST", status: 204, target: { namespace: prefix, secretName: "db-key" } });
+    expect(put.code).toBe("ok");
+    const [entry] = (await entriesBy(member.id)).filter((e) => e.route === route("SecretService/PutSecret"));
+    expect(entry).toMatchObject({ method: "RPC", status: 200, target: { team: prefix, secretName: "db-key" } });
     expect(JSON.stringify(entry)).not.toContain("not-a-real-but-still-secret-value");
   });
 
   it("records a refused attempt too", async () => {
-    await as(member.token, "POST", "/api/teams", { name: `${prefix}-nope` });
-    const refused = (await entriesBy(member.id, "/api/teams")).find((e) => e.route === "/api/teams");
+    await call(member.token, "TeamService/CreateTeam", { name: `${prefix}-nope` });
+    const refused = (await entriesBy(member.id)).find((e) => e.route === route("TeamService/CreateTeam"));
     expect(refused).toMatchObject({ status: 403, target: { name: `${prefix}-nope` } });
   });
 
   it("doesn't record reads, or sign-in and password changes", async () => {
-    await as(member.token, "GET", "/api/me");
-    await as(member.token, "POST", "/api/me/password", { currentPassword: "correct-horse-battery", newPassword: "another-horse-battery" });
+    await call(member.token, "AuthService/GetMe");
+    await call(member.token, "AuthService/ChangePassword", {
+      currentPassword: "correct-horse-battery",
+      newPassword: "another-horse-battery",
+    });
     const routes = (await entriesBy(member.id)).map((e) => e.route);
-    expect(routes).not.toContain("/api/me");
-    expect(routes).not.toContain("/api/me/password");
+    expect(routes).not.toContain(route("AuthService/GetMe"));
+    expect(routes).not.toContain(route("AuthService/ChangePassword"));
   });
 
   it("is readable by admins only, newest first", async () => {
     // (A fresh user: the test above changed member's password, ending its sessions.)
-    expect((await as((await newUser(false)).token, "GET", "/api/audit")).statusCode).toBe(403);
-    const page = (await as(admin.token, "GET", `/api/audit?actor=${member.id}`)).json<{ entries: { id: number; route: string; actorEmail: string }[] }>();
-    expect(page.entries.length).toBeGreaterThanOrEqual(2);
-    expect(page.entries[0]?.id).toBeGreaterThan(page.entries[1]?.id ?? 0);
-    expect(page.entries[0]?.actorEmail).toContain(prefix);
+    expect((await call((await newUser(false)).token, "AdminService/ListAuditEntries")).code).toBe("permission_denied");
+    const page = await call<{ entries: { id: string; route: string; actorEmail: string }[] }>(
+      admin.token,
+      "AdminService/ListAuditEntries",
+      { actorId: member.id },
+    );
+    expect(page.body.entries.length).toBeGreaterThanOrEqual(2);
+    expect(Number(page.body.entries[0]?.id)).toBeGreaterThan(Number(page.body.entries[1]?.id ?? 0));
+    expect(page.body.entries[0]?.actorEmail).toContain(prefix);
   });
 });

@@ -2,7 +2,8 @@
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**"] },
+  // src/gen: generated from proto/ by `make proto`, never edited.
+  { ignores: ["dist/**", "node_modules/**", "src/gen/**"] },
   ...tseslint.configs.strictTypeChecked,
   {
     languageOptions: {

@@ -18,6 +18,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 ├── examples/      demo products (not real catalog products)
 ├── catalog-template/  what a new catalog repository starts as
 ├── cli/           acyclixctl, the installer CLI (Go)
+├── proto/         the console's API as protobuf (Connect); `make proto` generates its code
 ├── .github/       CI and security workflows
 ├── Makefile       everyday commands: run, deploy, logs
 └── _local/        your own scratch space (gitignored)
@@ -35,20 +36,24 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `AGENTS.md` | Guide for AI coding assistants (and a quick orientation for people): layout, core contracts, commands, things that bite, engineering principles. |
 | `CLAUDE.md` | One line that imports `AGENTS.md`, so Claude Code reads the same guide. |
 | `TODO.md` | The actionable follow-up list: security, access, operations, housekeeping. Check it before starting work. |
-| `Makefile` | Everyday commands: `make quickstart` (a local install from nothing), `make up`/`down`/`logs` for the kind cluster, `make kind-deploy*` and `make gke-deploy*`, building the demo products, and `make test`/`test-db`/`test-db-down` (a throwaway test Postgres, separate from any install). |
+| `Makefile` | Everyday commands: `make quickstart` (a local install from nothing), `make up`/`down`/`logs` for the kind cluster, `make kind-deploy*` and `make gke-deploy*`, building the demo products, and `make test`/`test-db`/`test-db-down` (a throwaway test Postgres, separate from any install), and `make proto` (lint the API's protos and generate their code). |
 | `.gitignore` | Keeps `_local/`, build output and dependencies out of git. |
+| `buf.yaml` | buf's module (`proto/`) and lint rules for the console's API. |
+| `buf.gen.es.yaml`, `buf.gen.go.yaml` | What `make proto` generates: TypeScript for the console (`console/src/gen/`) and frontend (`console/frontend/src/gen/`, JavaScript with type declarations), Go for the CLI (`cli/internal/gen/`), each from plugins pinned in that project. |
+| `proto/acyclix/console/v1/` | The console's API as Connect services (decided 2026-10-20; being written): `common.proto` (failures, problems, paging), `execution.proto` (`ExecutionService`, with `WatchExecution` streamed), `team.proto` (`TeamService`). Not served yet: the console still answers its REST routes. |
 | `.semgrep/malicious.yml` | Semgrep rules for code that has no business in a product (running remote code, hidden payloads, reverse shells, mining). Run by `security.yml`. |
 
 ## `.github/`: CI
 
 | Path | What it's for |
 | --- | --- |
-| `workflows/ci.yml` | Every PR: kernel tests, lint and type checks; console tests, lint and build; Helm lint and render of `helm/values/*`; `actionlint` (this repo's workflows and the catalog template's); the catalog template's checks; building both platform images and scanning them (Trivy, OSV-Scanner). |
+| `workflows/ci.yml` | Every PR: kernel tests, lint and type checks; console tests, lint and build; the API's protos linted and their committed generated code checked against `make proto`; Helm lint and render of `helm/values/*`; `actionlint` (this repo's workflows and the catalog template's); the catalog template's checks; building both platform images and scanning them (Trivy, OSV-Scanner). |
 | `dependabot.yml` | Weekly, grouped update pull requests (a week's cooldown) for the kernel's Python, the console's npm, every Dockerfile, the workflows, and the catalog template's starters. |
 | `workflows/release.yml` | On a version tag: builds both platform images for amd64 and arm64, scans them, pushes them to GHCR, signs them keyless; packages, pushes and signs both charts; creates the GitHub release. |
 | `workflows/security.yml` | Secret scanning (gitleaks) and code scanning (Semgrep, including `.semgrep/`). |
 | `scripts/install-scanners.sh` | Installs pinned, checksum-verified tool binaries (Trivy, OSV-Scanner, gitleaks, actionlint, cosign) for the workflows. |
-| `scripts/catalog-template.sh` | Runs catalogctl in `catalog-template/` with its samples (all, or `SAMPLES=`) installed as teams: CI's `validate` and `check`, and `make catalog-publish`'s `teams apply` and `publish`. |
+| `scripts/catalog-template.sh` | Runs catalogctl (built from this checkout) in `catalog-template/` with its samples (all, or `SAMPLES=`) installed as teams: CI's `validate` and `check`, and `make catalog-publish`'s `teams apply` and `publish`. |
+| `scripts/build-catalogctl.sh` | Builds catalogctl for this machine in the pinned Go image (no Go needed) into `cli/bin/`, and prints its path, for `ACYCLIX_CATALOGCTL`. |
 | `scripts/scan-image.sh` | Scans one built platform image and fails if it must not ship (fixable high or critical vulnerabilities, and more). |
 | `ISSUE_TEMPLATE/bug_report.yml`, `feature_request.yml` | Issue forms for bugs and feature requests. |
 | `ISSUE_TEMPLATE/config.yml` | Turns off blank issues and points security reports to private reporting. |
@@ -98,6 +103,7 @@ Python 3.12, FastAPI, SQLAlchemy (async), Alembic. One image, two processes: **k
 | `scheduler/claiming.py` | Takes READY tasks with `FOR UPDATE SKIP LOCKED` and a lease; recovers tasks whose lease expired; releases a stopping scheduler's leases. |
 | `scheduler/service.py` | One tick: claim, start each task, poll running ones, save results, retry or fail, release dependents, finish executions. |
 | `scheduler/retention.py` | Deletes finished executions past their retention (with everything of theirs). |
+| `scheduler/orphans.py` | Every few minutes, removes attempts' Jobs no task can use any more (a pass that rolled back, a release that failed, a deleted execution). |
 | `scheduler/input_resolution.py` | Replaces `$fromTask` references with upstream tasks' saved outputs before a task starts. |
 | **`sleeper/`** | **The sleeper (`python -m app.sleeper`), run by the chart's `scaleDown` CronJob.** |
 | `sleeper/__main__.py` | One look: sleeps the platform if idle (or, with `--now`, once nothing is unfinished). |
@@ -124,8 +130,8 @@ Python 3.12, FastAPI, SQLAlchemy (async), Alembic. One image, two processes: **k
 | --- | --- |
 | `conftest.py` | Shared fixtures: the test database (`TEST_DATABASE_URL`; each test rolls back), the API client. Kubernetes tests skip without a cluster, or fail when `KERNEL_TESTS_REQUIRE_KUBERNETES=1` (CI). |
 | `fakes.py` | `FakeExecutor`: an in-memory executor, to test scheduler logic without a cluster. |
-| `unit/` | Pure logic, no I/O: DAG validation, states, retry backoff, input resolution, executor error handling, image-pull detection, request timeouts on every Kubernetes call, when a watched step's status read can be skipped, the scheduler's bounded concurrency, thread pool and shutdown, kernel-api's caller check, event metrics counted on commit, step sizes (`resources`) and placement, the sleeper's decision and run, and that the database guide matches the models (`test_schema_doc.py`). |
-| `integration/` | Against real Postgres (and, where named, a real kind cluster): claiming and lease hand-over, the API (including refusing Python field names), the execution service, cancel and retry, input resolution, the scheduler and its edge cases (a result seen late, a retry of one of several failures, two schedulers finishing tasks together, a start that raises retrying the same attempt, a running step's log refreshed, retention), what the sleeper reads, the Kubernetes executor, the demo products. `executor_helpers.py` holds shared helpers. |
+| `unit/` | Pure logic, no I/O: DAG validation, states, retry backoff, input resolution, executor error handling, image-pull detection, a finished Job left until it's released, and attempts listed from their Jobs' labels (`test_kubernetes_release.py`), request timeouts on every Kubernetes call, when a watched step's status read can be skipped, the scheduler's bounded concurrency, thread pool and shutdown, kernel-api's caller check, event metrics counted on commit, step sizes (`resources`) and placement, the sleeper's decision and run, and that the database guide matches the models (`test_schema_doc.py`). |
+| `integration/` | Against real Postgres (and, where named, a real kind cluster): claiming and lease hand-over, the API (including refusing Python field names), the execution service, cancel and retry, input resolution, the scheduler and its edge cases (a result seen late, a retry of one of several failures, two schedulers finishing tasks together, a start that raises retrying the same attempt, an attempt given up on only once it's stopped and finished Jobs released after the commit (`test_scheduler_stopping_before_retry.py`), the sweep of attempts no task needs (`test_orphaned_attempts.py`), a running step's log refreshed, retention), what the sleeper reads, the Kubernetes executor, the demo products. `executor_helpers.py` holds shared helpers. |
 | `end_to_end/test_two_task_chain.py` | The full proof: a two-task DAG through real Postgres, the real scheduler and real Jobs on kind, with a value passed between the tasks. |
 | `fixtures/docker_test_image/` | A test-only product image that crashes, sleeps or misbehaves on demand, to exercise the executor's failure handling. |
 
@@ -144,13 +150,19 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `Dockerfile` | Builds the backend and frontend into one image, with `docs/` copied in. Runs as a non-root user. |
 | `.gcloudignore` | Keeps local files out of the Cloud Build upload. |
 
+### `console/scripts/`
+
+| Path | What it's for |
+| --- | --- |
+| `api-reference.ts` | Turns the protos (a `buf build` image, comments included) into the API reference's data, `frontend/src/gen/api-reference.json`; run by `make proto`. |
+
 ### `console/src/`: the backend
 
 | Path | What it's for |
 | --- | --- |
+| `gen/` | Generated from `proto/` by `make proto`; never edited (and not linted). |
 | `index.ts` | Builds the app: the global error handler (hides server errors' details), auth, rate limits, every route under `/api`, the static frontend. |
 | `config.ts` | Every setting, read and checked once at startup. |
-| `openapi.ts` | Describes every route for the generated API reference (`GET /api/openapi.json`, Docs → API reference). |
 | `k8s.ts` | **Every write to Kubernetes:** product ServiceAccounts (create-only), Secrets, ExternalSecrets, removing the per-secret Roles older versions made, the image policy; also reads namespaces, SecretStores and task Pods. Security-sensitive. |
 | `kernel/client.ts` | Calls kernel-api (with the console's projected ServiceAccount token): submit, read, states, events, logs, cancel, retry. |
 | `imagePolicy.ts` | The allowed image sources: the same matching rules as the cluster's image policy, and reading and saving it. |
@@ -164,6 +176,19 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `retention.ts` | Deletes, hourly, submitted-execution records, audit entries and unused scan verdicts past their retention. |
 | `productPolicy.ts` | Writes the registered products into the cluster's identity policy, after every product change and at startup. |
 | `registry.ts` | Asks a container registry whether an image still exists, before a run. |
+| `apiError.ts` | `ApiError`: a refusal (HTTP status, stable code, message, Connect code, extra fields) thrown by `core/` and turned into a Connect error (its code, a `Failure` detail with any extra fields) by Connect's interceptor. |
+| `guides.ts` | The guides in `console/docs/`: listing and reading them (`GuideService`). |
+| **`core/`** | **What the API does**, one file per area, called by the Connect services: each function takes the caller, checks access, does the work, and throws `ApiError` to refuse. |
+| `core/executions.ts` | Submitting (team, identity, secret, image and scan checks, pinning, ServiceAccounts), listing, reading, events, logs, cancel, retry, rerun. |
+| `core/teams.ts` | Teams and members, their namespaces, retiring, restoring and purging, SecretStore files, running task Pods. |
+| `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
+| `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
+| `core/retired.ts` | The shared "this team is retired, it's read-only" refusal. |
+| **`rpc/`** | **The API**: Connect services from `proto/`, at `/api/acyclix.console.v1.<Service>/<Method>`. |
+| `rpc/server.ts` | Mounts every service on Fastify with `@connectrpc/connect-fastify`, resolving each call's caller from its bearer token. |
+| `rpc/interceptors.ts` | Masking unexpected errors as `internal`, auditing every changing call, requiring a caller outside the public methods. |
+| `rpc/errors.ts`, `rpc/context.ts`, `rpc/validate.ts`, `rpc/rateLimit.ts`, `rpc/convert.ts` | Connect errors with `Failure`/`Problem` details; the caller, log and request in the handler context; checking requests against REST's TypeBox schemas; fixed-window rate limits; timestamps. |
+| `rpc/services/*.ts` | One file per service in `proto/acyclix/console/v1/`, each mapping messages to and from `core/`. `execution.ts` also streams `WatchExecution` (re-reading and re-authorizing every 2 seconds). |
 | **`auth/`** | **Who's calling.** |
 | `auth/plugin.ts` | Checks every request's session or bot token and loads the caller's teams and admin flag. |
 | `auth/access.ts` | The authorization rules: who may act for a team, and see (any of its teams) or cancel (every team) an execution. |
@@ -177,25 +202,6 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `db/client.ts` | The database connection. |
 | `db/migrate.ts` | Applies migrations and creates the first admin; run by the migration Job on deploy. |
 | `db/migrations/` | The schema: `0000_initial_schema.sql` (every table at the first public release), then one SQL file per later change, generated by `npm run db:generate`; `meta/` is drizzle's bookkeeping. |
-| **`routes/`** | **The API**, one file per area. Team-scoped routes require membership or admin. |
-| `routes/auth.ts` | Sign-in and registration. |
-| `routes/me.ts` | The signed-in user, and changing your password. |
-| `routes/users.ts` | Admin: people, admin rights, password resets. |
-| `routes/teams.ts` | Teams and members, and their namespaces; retiring, restoring and purging a team; applying a team's SecretStore file. |
-| `routes/bots.ts` | A team's bots and their tokens. |
-| `routes/automation.ts` | Admin: automation tokens with platform-wide scopes (catalog CI). |
-| `routes/secrets.ts` | Registering a team's secrets (pasted or synced from a cloud store), which any of its registered products may mount; listing a team's secrets and secret stores. |
-| `routes/products.ts` | The product registry: register (catalog CI), list, delete; which team owns each image repository, and releasing one (admin). |
-| `routes/imageScans.ts` | Admin: image scan verdicts; accepting a failed one with a reason; rescanning. |
-| `routes/audit.ts` | Admin: the audit log, newest first. |
-| `routes/policySync.ts` | Admin: whether the cluster's policies are current; resync now. |
-| `routes/wiringTypes.ts` | The catalog's wiring vocabulary, for generating DAGs from products. |
-| `routes/executions.ts` | Submit, list, read, logs, events, cancel, retry, rerun, with every check before kernel-api is called. |
-| `routes/pods.ts` | A team's running task Pods (Team page → Running now). |
-| `routes/imagePolicy.ts` | Admin: read and edit the allowed image sources. |
-| `routes/docs.ts` | Serves the guides in `console/docs/`. |
-| `routes/stats.ts` | Admin: platform-wide counts for the home page. |
-| `routes/retiredTeam.ts` | The shared "this team is retired, it's read-only" refusal. |
 
 ### `console/frontend/`: the web app
 
@@ -203,9 +209,10 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 
 | Path | What it's for |
 | --- | --- |
+| `src/gen/` | Generated from `proto/` by `make proto` (JavaScript with type declarations); never edited. |
 | `index.html`, `src/main.tsx` | The page and the app's entry point. |
 | `src/App.tsx` | The routes; each page loads only when first opened. |
-| `src/api.ts` | Every call to the backend, with its types. |
+| `src/api.ts` | Every call to the backend, with its types: plain objects over the generated Connect clients (`src/gen/`), so pages never see the messages. |
 | `src/theme.ts`, `src/index.css` | MUI theme and base styles. `theme.ts` holds every color and the mono font as named tokens (`sidebar.*`, `code.*`, `fontFamilyMono`), plus the focus ring and reduced-motion rules. |
 | `src/dagCheck.ts` | Checks a pasted DAG live on the Submit page (JSON or YAML) and explains what's wrong. Tested in `dagCheck.test.ts`. |
 | `vitest.config.ts`, `src/**/*.test.ts` | The frontend's tests (`npm test`); a test that renders opts into jsdom. |
@@ -216,7 +223,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/components/` | Shared pieces: tables, page headers, status badges, metric cards, team cards, empty states, confirm dialogs, inline monospace (`Mono`). |
 | `src/pages/HomePage.tsx` | Dashboard: counts, executions over time, status breakdown, recent runs. |
 | `src/pages/ExecutionsListPage.tsx` | Every execution you can see, a page at a time; name and team filtered on the server. |
-| `src/pages/useExecutionPolling.ts` | Polls one execution until it finishes; `resume()` after a retry or cancel. Tested alongside. |
+| `src/pages/useExecutionWatch.ts` | Follows one execution over `WatchExecution` until it finishes, with its events and logs; reopens a stream that ends or drops, backs off when it can't connect; `resume()` after a retry or cancel. Tested alongside. |
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
@@ -224,7 +231,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
 | `src/pages/AdminPage.tsx` | People, admin rights, automation tokens, allowed image sources. |
 | `src/pages/AccountPage.tsx` | Your account and password. |
-| `src/pages/DocsPage.tsx`, `ApiReference.tsx` | The guides from `console/docs/`, and the API reference built from the OpenAPI description. |
+| `src/pages/DocsPage.tsx`, `ApiReference.tsx` | The guides from `console/docs/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos). |
 | `src/pages/LoginPage.tsx`, `RegisterPage.tsx` | Sign-in and registration. |
 | `public/favicon.svg` | The browser tab icon. |
 | `vite.config.ts`, `tsconfig*.json` | Build settings. |
@@ -266,12 +273,14 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `automation-tokens.test.ts` | Automation tokens and their scopes. |
 | `image-policy.test.ts`, `registry.test.ts` | Allowed image sources; the registry check. |
 | `product-releases.test.ts`, `product-catalog.test.ts` | Product registration, releases, full descriptions, wiring types. |
-| `openapi.test.ts` | Every route is documented in the API reference. |
 | `docs.test.ts`, `schemaDoc.test.ts` | The guides load and link correctly; the database guide matches the schema. |
 | `secrets.test.ts` | Registering and revoking secrets: other teams refused, names Kubernetes would refuse, a Secret the console didn't create. |
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |
 | `access.test.ts` | The authorization rules in `auth/access.ts`. |
 | `security-headers.test.ts` | The browser security headers (CSP and others) on pages and errors. |
+| `rpc.ts` | Calling the Connect services as JSON through `app.inject`, and reading their error details. |
+| `rpc-*.test.ts` | Each Connect service (auth, users, tokens, admin, secrets, products, teams, executions): who may call it, its refusals as Connect codes and details, and requests checked against their schemas. |
+| `api-reference.test.ts` | The generated API reference marks exactly the public methods, and documents every service and method. |
 
 ## `helm/`: Kubernetes packaging
 
@@ -347,6 +356,7 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 | `architecture.md` | **Start here.** What Acyclix is, the pieces, how a DAG becomes running containers, the product contract, the data, observability, the design decisions, a glossary. |
 | `operations.md` | Installing (kind, and any cluster with Helm), cloud identities, upgrading, databases (passwords, access, retention), backups and restores, network policies, troubleshooting. |
 | `security-model.md` | For security reviewers: where secrets live, vault sync, who can read a secret, what the cluster enforces, what isn't enforced yet, and what's out of scope. |
+| `assessment.md` | The architecture assessment of 2026-10-19: what exists, findings, comparisons with Temporal and Inngest, identity across clouds, the agreed direction and its roadmap. |
 | `repository-map.md` | This page. |
 | `architecture/` | draw.io diagrams (system, UML classes for both projects, a submit-to-finished sequence, state machines), their SVG exports, and `generate.py`, which writes them from the code. Rerun it after changing code. |
 
@@ -371,7 +381,10 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | Path | What it's for |
 | --- | --- |
 | `DESIGN.md` | The design for `acyclixctl`: targets, cluster modes, sizes, scale-down, requirements, the OpenTofu modules, the approval screen and cost estimate, the catalog step, the build order. |
-| `go.mod`, `go.sum` | The Go module (`github.com/rburns629/acyclix/cli`): cobra and yaml.v3 only. |
+| `go.mod`, `go.sum` | The Go module (`github.com/rburns629/acyclix/cli`): cobra and yaml.v3, protobuf and Connect for the console's API, and `make proto`'s two plugins as `tool` dependencies. |
+| `internal/gen/` | Generated from `proto/` by `make proto` (messages and Connect clients); never edited. |
+| `cmd/catalogctl/main.go` | `catalogctl`, the catalog tool every catalog's `./catalogctl` runs: `validate`, `check`, `publish`, `changed`, `teams`, `secret-stores`, `bases`. |
+| `internal/catalogctl/` | What catalogctl does: validating teams, CODEOWNERS and products (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing, signing and registering products; teams and SecretStores through the console. |
 | `cmd/acyclixctl/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
 | `cmd/acyclixctl/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/acyclix.yaml`. |
 | `cmd/acyclixctl/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
@@ -397,7 +410,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/modules/modules.go` | Embeds the modules and writes one into an environment's `tofu/`. |
 | `internal/catalog/` | Assembles a new catalog's first commit from `catalog-template/`: the first team, the starters for its languages, the owners, where it publishes. |
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
-| `internal/consoleapi/` | The console's API as acyclixctl uses it: signing in as the admin, minting tokens, creating a team, running a DAG. |
+| `internal/consoleapi/` | The console's API as acyclixctl uses it, over the generated Connect clients: signing in as the admin, minting and rotating tokens, ensuring a team, running a DAG and watching it finish. Tested against fake Connect handlers. |
 | `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
 | `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in) and AWS's Price List and Spot price history (with your AWS sign-in), each cached a day, and their cost models; `testdata/` holds real price entries. |
 
@@ -409,7 +422,7 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | --- | --- |
 | `README.md` | The catalog's guide: layout, onboarding a team, `product.yaml`, testing, CI, publishing, SecretStores, retiring. |
 | `acyclix.yaml` | Where products publish (registry, console, signing); local defaults, overridden by CI variables. |
-| `catalogctl`, `tools/` | The one tool behind every workflow and local publishing (`tools/catalog.py`), and the schemas for `team.yaml` and `product.yaml`. |
+| `catalogctl`, `tools/` | The wrapper that runs catalogctl (`cli/cmd/catalogctl`) at a pinned, checksum-verified release, or `ACYCLIX_CATALOGCTL`: the one tool behind every workflow and local publishing; and the schemas for `team.yaml` and `product.yaml`, for editors (catalogctl embeds its own). |
 | `.github/` | The catalog's workflows (check and publish, teams, SecretStores, retire, purge, CODEOWNERS checks), its scanner installer, and a placeholder `CODEOWNERS`. |
 | `.semgrep/malicious.yml` | Code rules for products: download-and-execute, reverse shells, mining, reading the Pod's token. |
 | `templates/` | Starters to copy: a team, three products, and DAGs that use them. Checked by CI, never published. |

@@ -63,7 +63,7 @@ flowchart TB
 ### One namespace per team, with its state in a label
 - **Normally:** namespaces separate applications.
 - **Here:** a team's name is its namespace's name, and the namespace's label holds the team's state: `acyclix/team=true` while active, `acyclix/team=retired` once retired. Retiring a team is one label change, because the admission policies read the label.
-- **Code:** `console/src/routes/teams.ts` and `console/src/k8s.ts` (`setTeamNamespace`: the console creates and relabels it), limited by the console chart's `namespace-policy.yaml`; `console/src/db/schema.ts` (no separate namespace column, on purpose).
+- **Code:** `console/src/core/teams.ts` and `console/src/k8s.ts` (`setTeamNamespace`: the console creates and relabels it), limited by the console chart's `namespace-policy.yaml`; `console/src/db/schema.ts` (no separate namespace column, on purpose).
 
 ### Who may mount a Secret is an admission policy, not RBAC
 - **Normally:** access to a Secret is RBAC: a Role and a RoleBinding.
@@ -98,7 +98,7 @@ flowchart TB
 ### Catalog CI with no cluster credentials
 - **Normally:** a GitOps pipeline holds credentials to apply what it merges.
 - **Here:** the catalog's workflows only call the console with a bot token. The console creates, retires and purges team namespaces and applies a team's reviewed SecretStore file after checking it holds nothing outside that team. Admission policies limit what the console itself may do to namespaces.
-- **Code:** `console/src/routes/teams.ts`, `console/src/secretStores.ts`, the catalog's `tools/catalog.py` (`teams`, `secret-stores`).
+- **Code:** `console/src/core/teams.ts`, `console/src/secretStores.ts`, `catalogctl` (`cli/internal/catalogctl/teams.go`: `teams`, `secret-stores`).
 
 ### Secrets synced from the cloud
 - **Normally:** Secrets are created by hand or by CI.
@@ -140,7 +140,7 @@ flowchart TB
 
 ### Idempotency from a unique index
 - **Here:** `executions.idempotency_key` (the API's `requestId`) is unique. The kernel checks it first and inserts inside a savepoint; if two identical requests race, the loser's insert fails on the index and it returns the winner's execution instead. The console prefixes the `requestId` with the submitting teams, so two teams can never collide.
-- **Code:** `kernel/app/services/execution_service.py` (`submit_execution`), `console/src/routes/executions.ts` (`scopeRequestId`).
+- **Code:** `kernel/app/services/execution_service.py` (`submit_execution`), `console/src/core/executions.ts` (`scopeRequestId`).
 
 ### An append-only event log
 - **Here:** every state change also writes a row to `execution_events`, numbered by an increasing id, so an execution's history is exact and in order even if timestamps tie.
@@ -172,12 +172,12 @@ flowchart TB
 - **Code:** `console/src/registry.ts`.
 
 ### One origin, no CORS
-- **Here:** the same process serves the React app and the API, with every API route under `/api`. The browser only ever talks to one origin, so there's no cross-origin setup to get wrong.
+- **Here:** the same process serves the React app and the API, with every API method under `/api`. The browser only ever talks to one origin, so there's no cross-origin setup to get wrong.
 - **Code:** `console/src/index.ts`.
 
-### An API reference generated from the routes
-- **Here:** the [API reference](api-reference.md) is built from the console's own routes. Its response schemas are documentation only: responses are sent as plain JSON, so a wrong schema can't drop a field. A test fails if a route is added without documentation.
-- **Code:** `console/src/openapi.ts`.
+### An API defined by its protos
+- **Here:** the API is a set of Connect services, defined in protobuf (`proto/acyclix/console/v1`): the console serves them, and its pages, `acyclixctl` and `catalogctl` call them through clients generated from the same files, so a change to the contract shows up as a compile error in every caller, not a surprise at run time. The [API reference](api-reference.md) is generated from them too, comments included; a test fails if a service or method has no description.
+- **Code:** `proto/`, `console/src/rpc/` (serving), `console/src/core/` (what each method does), `console/scripts/api-reference.ts`.
 
 ## The catalog pipeline
 

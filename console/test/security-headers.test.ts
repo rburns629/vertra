@@ -16,7 +16,12 @@ afterAll(async () => {
 });
 
 it("sends a CSP that only runs this origin's scripts and can't be framed", async () => {
-  const response = await app.inject({ method: "GET", url: "/api/environment" });
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/acyclix.console.v1.AuthService/GetEnvironment",
+    headers: { "content-type": "application/json" },
+    payload: "{}",
+  });
   const csp = String(response.headers["content-security-policy"]);
   expect(csp).toContain("script-src 'self'");
   expect(csp).toContain("frame-ancestors 'none'");
@@ -34,4 +39,11 @@ it("sends them on the app's own pages and on errors", async () => {
   const error = await app.inject({ method: "POST", url: "/api/no-such-route" });
   expect(error.statusCode).toBe(404);
   expect(error.headers["content-security-policy"]).toBeDefined();
+});
+
+it("answers an unknown /api path with a JSON 404, never the app's page", async () => {
+  // GET /api/me was a REST route; the API is Connect now.
+  const old = await app.inject({ method: "GET", url: "/api/me" });
+  expect(old.statusCode).toBe(404);
+  expect(old.headers["content-type"]).toContain("application/json");
 });

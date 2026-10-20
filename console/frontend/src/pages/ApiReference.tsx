@@ -7,67 +7,86 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import Markdown from "react-markdown";
 import { Mono } from "../components/Mono";
-import { ApiError, getOpenApi, type OpenApiOperation, type OpenApiSchema, type OpenApiSpec } from "../api";
 
 /** The Docs page's id for this page; no guide may use it. */
 export const API_REFERENCE_ID = "api-reference";
 
-const METHOD_COLOR: Record<string, "success" | "primary" | "warning" | "error" | "default"> = {
-  get: "success",
-  post: "primary",
-  put: "warning",
-  patch: "warning",
-  delete: "error",
-};
-
-
-/** "string", "string or null", "array of object", ... */
-function typeName(schema: OpenApiSchema | undefined): string {
-  if (!schema) return "any";
-  if (schema.anyOf) return schema.anyOf.map(typeName).join(" or ");
-  const type = Array.isArray(schema.type) ? schema.type.join(" or ") : schema.type;
-  if (type === "array") return `list of ${typeName(schema.items)}`;
-  if (schema.enum) return schema.enum.map((v) => JSON.stringify(v)).join(" | ");
-  if (!type) return "any";
-  return schema.format ? `${type} (${schema.format})` : type;
-}
-
-interface FieldRow {
+/** gen/api-reference.json, written by `make proto` from proto/ (console/scripts/api-reference.ts). */
+interface Field {
   name: string;
   type: string;
-  required: boolean;
-  description: string;
+  ref?: string;
+  repeated: boolean;
+  optional: boolean;
+  comment: string;
+}
+interface Method {
+  name: string;
+  comment: string;
+  input: string;
+  output: string;
+  streaming: boolean;
+  idempotency: "read" | "idempotent" | "";
+  public: boolean;
+}
+interface Service {
+  name: string;
+  fullName: string;
+  comment: string;
+  methods: Method[];
+}
+interface Reference {
+  services: Service[];
+  messages: Record<string, { name: string; comment: string; fields: Field[] }>;
+  enums: Record<string, { name: string; comment: string; values: { name: string; comment: string }[] }>;
 }
 
-/** An object schema's fields, one level of nesting shown as parent.child
- * (or parent[].child for a list of objects). */
-function fieldRows(schema: OpenApiSchema | undefined, prefix = "", depth = 0): FieldRow[] {
-  const target = schema?.type === "array" ? schema.items : schema;
-  if (!target?.properties) return [];
-  const rows: FieldRow[] = [];
-  for (const [name, field] of Object.entries(target.properties)) {
-    const path = `${prefix}${name}`;
-    rows.push({
-      name: path,
-      type: typeName(field),
-      required: Boolean(target.required?.includes(name)),
-      description: field.description ?? "",
-    });
-    const nested = field.type === "array" ? field.items : field;
-    if (depth < 1 && nested?.properties) {
-      rows.push(...fieldRows(field, field.type === "array" ? `${path}[].` : `${path}.`, depth + 1));
-    }
+const anchor = (fullName: string) => `type-${fullName.replaceAll(".", "-")}`;
+
+function jumpTo(fullName: string) {
+  document.getElementById(anchor(fullName))?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/** Paragraphs of a proto comment (lines wrapped at ~80 columns, blank lines between paragraphs). */
+function Comment({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <>
+      {text.split(/\n\s*\n/).map((paragraph) => (
+        <Typography key={paragraph} variant="body2" sx={{ mb: 1 }}>
+          {paragraph.replaceAll("\n", " ")}
+        </Typography>
+      ))}
+    </>
+  );
+}
+
+function TypeCell({ field, reference }: { field: Field; reference: Reference }) {
+  const known = field.ref && (reference.messages[field.ref] ?? reference.enums[field.ref]);
+  const name = field.repeated ? `list of ${field.type}` : field.type;
+  return known && field.ref ? (
+    <Link component="button" type="button" onClick={() => jumpTo(field.ref ?? "")} sx={{ fontFamily: "fontFamilyMono", fontSize: 14 }}>
+      {name}
+    </Link>
+  ) : (
+    <Mono>{name}</Mono>
+  );
+}
+
+function Fields({ fullName, reference }: { fullName: string; reference: Reference }) {
+  const message = reference.messages[fullName];
+  if (!message || message.fields.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        No fields: <Mono>{"{}"}</Mono>
+      </Typography>
+    );
   }
-  return rows;
-}
-
-function FieldTable({ rows }: { rows: FieldRow[] }) {
-  if (rows.length === 0) return null;
   return (
     <Box
       component="table"
@@ -86,24 +105,20 @@ function FieldTable({ rows }: { rows: FieldRow[] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={row.name}>
+        {message.fields.map((field) => (
+          <tr key={field.name}>
             <td>
-              <Mono>
-                {row.name}
-              </Mono>
-              {row.required && (
-                <Typography component="span" variant="caption" color="error" sx={{ ml: 0.5 }}>
-                  required
+              <Mono>{field.name}</Mono>
+              {field.optional && (
+                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                  optional
                 </Typography>
               )}
             </td>
             <td>
-              <Mono>
-                {row.type}
-              </Mono>
+              <TypeCell field={field} reference={reference} />
             </td>
-            <td>{row.description}</td>
+            <td>{field.comment.replaceAll("\n", " ")}</td>
           </tr>
         ))}
       </tbody>
@@ -111,109 +126,160 @@ function FieldTable({ rows }: { rows: FieldRow[] }) {
   );
 }
 
-function jsonSchema(content: Record<string, { schema?: OpenApiSchema }> | undefined): OpenApiSchema | undefined {
-  return content?.["application/json"]?.schema ?? Object.values(content ?? {})[0]?.schema;
+/** A request body to start from: each field with a placeholder of its type. */
+function sampleBody(fullName: string, reference: Reference): string {
+  const fields = reference.messages[fullName]?.fields ?? [];
+  const placeholder = (field: Field): unknown => {
+    const value = field.ref
+      ? reference.enums[field.ref]
+        ? (reference.enums[field.ref]?.values[1]?.name ?? "")
+        : {}
+      : field.type.startsWith("integer")
+        ? 0
+        : field.type === "boolean"
+          ? false
+          : field.type.startsWith("map") || field.type === "object"
+            ? {}
+            : "…";
+    return field.repeated ? [value] : value;
+  };
+  return JSON.stringify(Object.fromEntries(fields.map((f) => [f.name, placeholder(f)])));
 }
 
-function OperationView({ method, path, operation }: { method: string; path: string; operation: OpenApiOperation }) {
-  const parameters = operation.parameters ?? [];
-  const body = jsonSchema(operation.requestBody?.content);
-  const responses = Object.entries(operation.responses ?? {});
-  const ok = responses.filter(([status]) => status.startsWith("2"));
-  const errors = responses.filter(([status]) => !status.startsWith("2")).map(([status]) => status);
-
+function MethodView({ service, method, reference }: { service: Service; method: Method; reference: Reference }) {
+  const path = `/api/${service.fullName}/${method.name}`;
+  const kind =
+    method.idempotency === "read"
+      ? { label: "read", color: "success" as const }
+      : method.idempotency === "idempotent"
+        ? { label: "idempotent", color: "warning" as const }
+        : { label: "changes", color: "primary" as const };
+  const curl = [
+    `curl -X POST "$CONSOLE${path}" \\`,
+    `  -H "Content-Type: application/json" \\`,
+    ...(method.public ? [] : [`  -H "Authorization: Bearer $TOKEN" \\`]),
+    `  -d '${sampleBody(method.input, reference)}'`,
+  ].join("\n");
   return (
     <Accordion disableGutters variant="outlined" sx={{ "&:before": { display: "none" } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", minWidth: 0 }}>
-          <Chip
-            label={method.toUpperCase()}
-            size="small"
-            color={METHOD_COLOR[method] ?? "default"}
-            sx={{ fontWeight: 700, minWidth: 64 }}
-          />
-          <Mono sx={{ overflowWrap: "anywhere" }}>
-            {path}
-          </Mono>
-          <Typography variant="body2" color="text.secondary">
-            {operation.summary}
+          <Chip label={kind.label} size="small" color={kind.color} sx={{ fontWeight: 700, minWidth: 88 }} />
+          <Mono sx={{ fontWeight: 600 }}>{method.name}</Mono>
+          {method.streaming && <Chip label="stream" size="small" variant="outlined" />}
+          {method.public && <Chip label="no sign-in" size="small" variant="outlined" />}
+          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
+            {method.comment.split("\n")[0]}
           </Typography>
         </Box>
       </AccordionSummary>
       <AccordionDetails>
         <Stack spacing={2}>
-          {operation.description && (
-            <Box sx={{ "& p": { m: 0, mb: 1 } }}>
-              <Markdown>{operation.description}</Markdown>
-            </Box>
-          )}
-          {parameters.length > 0 && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Parameters
-              </Typography>
-              <FieldTable
-                rows={parameters.map((p) => ({
-                  name: `${p.name} (${p.in})`,
-                  type: typeName(p.schema),
-                  required: Boolean(p.required),
-                  description: p.description ?? p.schema?.description ?? "",
-                }))}
-              />
-            </Box>
-          )}
-          {body && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Request body {body.description ? `· ${body.description}` : ""}
-              </Typography>
-              <FieldTable rows={fieldRows(body)} />
-            </Box>
-          )}
-          {ok.map(([status, response]) => {
-            const schema = jsonSchema(response.content);
-            const rows = fieldRows(schema);
-            return (
-              <Box key={status}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  {status} response
-                  {schema?.type === "array" ? " · a list of:" : ""}
-                  {status === "204" ? " · no content" : ""}
-                </Typography>
-                {rows.length > 0 ? (
-                  <FieldTable rows={rows} />
-                ) : (
-                  schema?.description && <Typography variant="body2">{schema.description}</Typography>
-                )}
-              </Box>
-            );
-          })}
-          {errors.length > 0 && (
+          <Box>
+            <Comment text={method.comment} />
+            <Mono sx={{ overflowWrap: "anywhere" }}>POST {path}</Mono>
+          </Box>
+          {method.streaming ? (
             <Typography variant="body2" color="text.secondary">
-              Errors: {errors.join(", ")}, each as <Mono>{'{"error": "<CODE>", "message": "…"}'}</Mono>.
+              A server stream: call it with a Connect or gRPC client generated from the protos (a stream of JSON
+              messages isn't something curl reads well).
             </Typography>
+          ) : (
+            <Box
+              component="pre"
+              sx={{ m: 0, p: 1.5, bgcolor: "action.hover", borderRadius: 1, overflowX: "auto", fontFamily: "fontFamilyMono", fontSize: 13 }}
+            >
+              {curl}
+            </Box>
           )}
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Request · <Mono>{reference.messages[method.input]?.name ?? method.input}</Mono>
+            </Typography>
+            <Fields fullName={method.input} reference={reference} />
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {method.streaming ? "Each message of the stream" : "Response"} ·{" "}
+              <Mono>{reference.messages[method.output]?.name ?? method.output}</Mono>
+            </Typography>
+            <Fields fullName={method.output} reference={reference} />
+          </Box>
         </Stack>
       </AccordionDetails>
     </Accordion>
   );
 }
 
-/** The console API, from its own OpenAPI description (GET /api/openapi.json). */
+/** The messages and enums fields refer to (requests and responses are shown with their methods). */
+function Types({ reference }: { reference: Reference }) {
+  const shown = new Set(reference.services.flatMap((s) => s.methods.flatMap((m) => [m.input, m.output])));
+  const messages = Object.entries(reference.messages)
+    .filter(([fullName]) => !shown.has(fullName))
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  const enums = Object.entries(reference.enums).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  return (
+    <Box>
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+        Types
+      </Typography>
+      <Stack spacing={2.5}>
+        {messages.map(([fullName, message]) => (
+          <Box key={fullName} id={anchor(fullName)} sx={{ scrollMarginTop: 80 }}>
+            <Mono sx={{ fontWeight: 600 }}>{message.name}</Mono>
+            <Box sx={{ mt: 0.5 }}>
+              <Comment text={message.comment} />
+            </Box>
+            <Fields fullName={fullName} reference={reference} />
+          </Box>
+        ))}
+        {enums.map(([fullName, e]) => (
+          <Box key={fullName} id={anchor(fullName)} sx={{ scrollMarginTop: 80 }}>
+            <Mono sx={{ fontWeight: 600 }}>{e.name}</Mono>{" "}
+            <Typography component="span" variant="caption" color="text.secondary">
+              one of
+            </Typography>
+            <Box sx={{ mt: 0.5 }}>
+              <Comment text={e.comment} />
+            </Box>
+            <Stack component="ul" spacing={0.5} sx={{ m: 0, pl: 3 }}>
+              {e.values.map((v) => (
+                <li key={v.name}>
+                  <Mono>{v.name}</Mono>
+                  {v.comment && (
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      {" "}
+                      — {v.comment.replaceAll("\n", " ")}
+                    </Typography>
+                  )}
+                </li>
+              ))}
+            </Stack>
+          </Box>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+/** The console API, from the protos (proto/acyclix/console/v1) it's built from. */
 export function ApiReference() {
-  const [spec, setSpec] = useState<OpenApiSpec | null>(null);
+  const [reference, setReference] = useState<Reference | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getOpenApi()
-      .then(setSpec)
-      .catch((err: unknown) => {
-        setError(err instanceof ApiError ? err.message : "Couldn't load the API description.");
+    // Its own chunk: only this page needs it.
+    import("../gen/api-reference.json")
+      .then((module) => {
+        setReference(module.default as Reference);
+      })
+      .catch(() => {
+        setError("Couldn't load the API reference.");
       });
   }, []);
 
   if (error) return <Alert severity="error">{error}</Alert>;
-  if (!spec) {
+  if (!reference) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
         <CircularProgress size={24} aria-label="Loading" />
@@ -221,50 +287,42 @@ export function ApiReference() {
     );
   }
 
-  const operations = Object.entries(spec.paths).flatMap(([path, methods]) =>
-    Object.entries(methods).map(([method, operation]) => ({ path, method, operation })),
-  );
-
   return (
     <Stack spacing={3}>
       <Box>
         <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
           API reference
         </Typography>
-        {spec.info.description && (
-          <Box sx={{ "& code": { fontFamily: "fontFamilyMono", fontSize: "0.92em" } }}>
-            <Markdown>{spec.info.description}</Markdown>
-          </Box>
-        )}
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Everything the console does, its pages included, goes through this API. Each method is one URL,{" "}
+          <Mono>POST /api/acyclix.console.v1.&lt;Service&gt;/&lt;Method&gt;</Mono>, taking and returning JSON
+          (the Connect protocol: plain HTTP, so curl works). Sign in with a bearer token: a session from{" "}
+          <Mono>AuthService/Login</Mono>, or a bot's or automation token. A refusal answers{" "}
+          <Mono>{'{"code": "permission_denied", "message": "…", "details": […]}'}</Mono>, with a stable code
+          (such as <Mono>TEAM_RETIRED</Mono>) in its <Mono>Failure</Mono> detail.
+        </Typography>
         <Typography variant="body2" color="text.secondary">
-          Generated from the console's own routes. The raw description is at{" "}
-          <Mono>
-            /api/openapi.json
-          </Mono>{" "}
-          (OpenAPI 3), for tools that read it.
+          Generated from the protos in the platform's repository (<Mono>proto/acyclix/console/v1</Mono>), which
+          are the contract: generate a typed client from them for any language, and call the same methods over
+          gRPC or Connect as well as JSON.
         </Typography>
       </Box>
-      {(spec.tags ?? []).map((tag) => {
-        const inTag = operations.filter((o) => o.operation.tags?.includes(tag.name));
-        if (inTag.length === 0) return null;
-        return (
-          <Box key={tag.name}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {tag.name}
-            </Typography>
-            {tag.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {tag.description}
-              </Typography>
-            )}
-            <Stack spacing={1}>
-              {inTag.map(({ path, method, operation }) => (
-                <OperationView key={`${method} ${path}`} method={method} path={path} operation={operation} />
-              ))}
-            </Stack>
+      {reference.services.map((service) => (
+        <Box key={service.fullName}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {service.name}
+          </Typography>
+          <Box sx={{ color: "text.secondary" }}>
+            <Comment text={service.comment} />
           </Box>
-        );
-      })}
+          <Stack spacing={1}>
+            {service.methods.map((method) => (
+              <MethodView key={method.name} service={service} method={method} reference={reference} />
+            ))}
+          </Stack>
+        </Box>
+      ))}
+      <Types reference={reference} />
     </Stack>
   );
 }

@@ -73,11 +73,11 @@ every other team's.
 
 ## From a DAG to running containers
 
-1. **Submit.** A person or bot sends `POST /api/executions`: a `name`, a
+1. **Submit.** A person or bot calls `ExecutionService/SubmitExecution`: a `name`, a
    `requestId` and the `tasks`. Each task names its product's `image` and
    `action`, its `team`, its `inputs`, what it `dependsOn`, and any
    `secretRefs`.
-2. **Authorize** (the console, `console/src/routes/executions.ts`):
+2. **Authorize** (the console, `console/src/core/executions.ts`):
    - the caller must belong to every team the DAG names (or be an admin),
      checked against the database on every request;
    - each image is pinned to its digest (`:latest` is fine in a DAG) and
@@ -114,8 +114,10 @@ every other team's.
 7. **Release.** When a task succeeds, each dependent whose dependencies have
    all succeeded becomes `READY`, and the next pass claims it. When nothing
    more can run, the execution ends `SUCCEEDED`, `FAILED` or `CANCELLED`.
-8. **Read.** The console proxies `GET /api/executions/:id`, its events and
-   its logs, after the same team check, and the execution page polls them.
+8. **Read.** The console reads the execution, its events and its logs from
+   kernel-api after the same team check. The execution page follows it over
+   `WatchExecution`, a stream the console feeds by re-reading every 2s
+   (re-checking access each time) and sending each change.
 
 ### Guarantees and their limits
 
@@ -132,7 +134,7 @@ every other team's.
   output that isn't there fails the task rather than guessing.
 - **A failure doesn't undo success.** Finished steps keep their outputs; the
   steps waiting on a failed one are cancelled. Retrying a failed step
-  (`POST /api/executions/:id/tasks/:taskId/retry`) resumes the execution.
+  (`ExecutionService/RetryTask`) resumes the execution.
   Cancelling is idempotent.
 
 ## The product contract
@@ -179,8 +181,8 @@ in `docs/architecture/` (`5-states`), with the rest of the diagrams.
 - **Metrics:** Prometheus `/metrics` on kernel-api's port and the
   scheduler's own (9090): request counts and latencies by route template,
   scheduler pass durations and errors, task events.
-- **Audit:** every console request that changes something, with who, what,
-  the target and the outcome (`audit_log`, `GET /api/audit`).
+- **Audit:** every console call that changes something, with who, what,
+  the target and the outcome (`audit_log`, `AdminService/ListAuditEntries`).
 - **State:** the databases themselves; see
   [operations.md](operations.md#databases).
 
@@ -225,6 +227,49 @@ in `docs/architecture/` (`5-states`), with the rest of the diagrams.
   API route.
 - **Kubernetes only.** There's no Docker-only mode: the isolation Acyclix
   promises is Kubernetes', and `kind` makes it local.
+
+## Agreed direction
+
+Decided on 2026-10-19 and not built yet; the reasoning, findings and
+roadmap are in [assessment.md](assessment.md), the work in
+[`TODO.md`](../TODO.md#agreed-direction).
+
+- **Consumers run templates.** Anyone may run a team's published template,
+  supplying only its inputs; the template fixes each step's secrets and
+  identity, and its steps feed each other. Templates may include other
+  teams' steps only where those teams export them. The owning team writes
+  the dependencies; the service may draft them. Maintainers keep choosing
+  secrets per step.
+- **Identity in two layers.** The source is the product's ServiceAccount,
+  bound per install, natively or by OIDC federation, holding only the right
+  to act as specific targets. The target is an identity reference (a service
+  account email, role ARN or managed identity) in a team secret, chosen by
+  the owning team. The cloud's grant between them is the boundary.
+- **One catalog, many installs.** Each console pulls the catalog's `main`,
+  verifies image signatures and registers what it finds; catalog CI builds,
+  tests, scans, signs and pushes, and holds no console credentials. Secret
+  values, identity bindings and targets are per install; the catalog only
+  names them.
+- **Targets allowed per team, readiness per install.** Each team lists
+  which projects, folders or accounts each consumer team may aim its
+  templates at; each product may ship a `check` action the console runs per
+  install. No live account discovery.
+- **Forms from schemas.** The input schemas teams write drive the run form
+  and are checked at submit and again, resolved, before each step starts.
+- **Bindings per action, latest releases.** Each action names the team
+  secrets it uses in `product.yaml`, so it keeps them in any DAG a consumer
+  composes; steps use a product's latest release, guarded by compatibility
+  checks.
+- **Pull requests come from people.** Asking for access or proposing a
+  template opens GitHub in the person's browser; the console only reads the
+  catalog.
+- **Still Postgres and Jobs.** No new services: the additions are tables,
+  fields and console pages. Azure and GitLab wait until this is done.
+- **Languages and APIs** (decided 2026-10-20). The console stays
+  TypeScript, its API moves to Connect (protos, generated clients, gRPC
+  available). The kernel moves to Go, scheduler first, against the same
+  schema. `catalogctl` moves to Go beside `acyclixctl`. Products keep any
+  language and JSON Schema.
 
 ## Glossary
 

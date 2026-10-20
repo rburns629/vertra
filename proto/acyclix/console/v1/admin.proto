@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package acyclix.console.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Running the platform: counts, the audit log, and the cluster policies the
+// console keeps current. Admins only.
+service AdminService {
+  // Platform-wide counts, for the admin home page.
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Every request that tried to change something, allowed or refused,
+  // newest first: who, what, what it named (never a secret value, password
+  // or token) and the outcome.
+  rpc ListAuditEntries(ListAuditEntriesRequest) returns (ListAuditEntriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Whether the cluster's policies are current: the last outcome of
+  // rewriting each from the console's database.
+  rpc GetPolicySync(GetPolicySyncRequest) returns (GetPolicySyncResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Rewrites them now.
+  rpc SyncPolicies(SyncPoliciesRequest) returns (SyncPoliciesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  int64 teams = 1;
+  int64 users = 2;
+  int64 products = 3;
+  int64 executions = 4;
+}
+
+message AuditEntry {
+  int64 id = 1;
+  google.protobuf.Timestamp at = 2;
+  optional string actor_id = 3;
+  optional string actor_email = 4;
+  bool actor_is_bot = 5;
+  // What was called: an HTTP method and route, or an RPC's procedure.
+  string method = 6;
+  string route = 7;
+  // What it named.
+  google.protobuf.Struct target = 8;
+  // The outcome, as an HTTP status.
+  int32 status = 9;
+  optional string request_id = 10;
+}
+
+message ListAuditEntriesRequest {
+  // Older than this entry id; the newest when unset.
+  int64 before = 1;
+  // Only this account's.
+  string actor_id = 2;
+  // 100 when unset, at most 500.
+  int32 limit = 3;
+}
+
+message ListAuditEntriesResponse {
+  repeated AuditEntry entries = 1;
+  // Pass as `before` for the next page; 0 on the last.
+  int64 next_before = 2;
+}
+
+message PolicySyncOutcome {
+  // False: there's nothing to write to (not configured, or not installed).
+  bool applies = 1;
+  bool ok = 2;
+  google.protobuf.Timestamp at = 3;
+  optional string error = 4;
+}
+
+message GetPolicySyncRequest {}
+
+message GetPolicySyncResponse {
+  // By policy (identityPolicy, scanPolicy, ...); a policy missing here
+  // hasn't been synced since the console started.
+  map<string, PolicySyncOutcome> outcomes = 1;
+}
+
+message SyncPoliciesRequest {}
+
+message SyncPoliciesResponse {
+  map<string, PolicySyncOutcome> outcomes = 1;
+}

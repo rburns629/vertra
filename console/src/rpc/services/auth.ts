@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: MIT
+/**
+ * AuthService (proto/acyclix/console/v1/auth.proto): signing in, and who
+ * you are. The same rules as routes/auth.ts and routes/me.ts, which it
+ * replaces: open registration only when allowed, sign-in limited per
+ * client and email and spaced out per account, the same failure (and
+ * timing) whether an email has an account or the password is wrong, and a
+ * password change that signs out every other session.
+ */
+import { Code, type ServiceImpl } from "@connectrpc/connect";
+import { Type } from "@sinclair/typebox";
+import type { FastifyInstance } from "fastify";
+import { loginWaitSeconds, recordLoginFailure, recordLoginSuccess } from "../../auth/loginThrottle.js";
+import { hashPassword, NewPassword, verifyAgainstNothing, verifyPassword } from "../../auth/password.js";
+import { config } from "../../config.js";
+import { createUser, findUserByEmail, findUserById, setUserPassword } from "../../db/queries.js";
+import type { AuthService } from "../../gen/acyclix/console/v1/auth_pb.js";
+import { callerOf, kClientIp, logOf } from "../context.js";
+import { badRequest, forbidden, rpcError, unauthenticated } from "../errors.js";
+import { FixedWindowLimit } from "../rateLimit.js";
+import { check } from "../validate.js";
+
+const Email = Type.String({ format: "email" });
+const AnyPassword = Type.String({ minLength: 1 });
+
+const MINUTE = 60 * 1000;
+// Keyed on client and email together: per client alone would be one
+// global limit behind a load balancer that hides clients; per email alone
+// would let anyone lock a known account out (routes/auth.ts has the rest).
+const loginLimit = new FixedWindowLimit(10, 15 * MINUTE);
+const registerLimit = new FixedWindowLimit(20, 60 * MINUTE);
+const passwordChangeLimit = new FixedWindowLimit(10, 15 * MINUTE);
+
+export function authService(app: FastifyInstance): ServiceImpl<typeof AuthService> {
+  return {
+    getEnvironment() {
+      return { label: config.environmentLabel, selfRegistration: config.allowSelfRegistration };
+    },
+
+    async register(req, ctx) {
+      registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
+      const { email, password } = check({ email: Email, password: NewPassword }, req);
+      if (!config.allowSelfRegistration) {
+        throw forbidden("Accounts are created by an admin. Ask an Acyclix admin for one.", "REGISTRATION_DISABLED");
+      }
+      if (await findUserByEmail(email)) {
+        throw rpcError(Code.AlreadyExists, "CONFLICT", "Email already registered.");
+      }
+      const user = await createUser(email, await hashPassword(password));
+      return { userId: user.id, email: user.email };
+    },
+
+    async login(req, ctx) {
+      const { email, password } = check({ email: Email, password: AnyPassword }, req);
+      loginLimit.take(`login:${ctx.values.get(kClientIp)}:${email.toLowerCase()}`, ctx);
+      // Refused before the password is checked, so this says nothing about it.
+      const wait = loginWaitSeconds(email);
+      if (wait > 0) {
+        ctx.responseHeader.set("Retry-After", String(wait));
+        throw rpcError(
+          Code.ResourceExhausted,
+          "TOO_MANY_ATTEMPTS",
+          `Too many failed sign-ins for this account. Try again in ${String(wait)} seconds.`,
+          true,
+        );
+      }
+      const user = await findUserByEmail(email);
+      // A missing account is still checked against a throwaway hash, so
+      // neither the answer nor its timing says which emails exist.
+      const valid = user?.passwordHash
+        ? await verifyPassword(user.passwordHash, password)
+        : await verifyAgainstNothing(password);
+      if (!user || !valid) {
+        recordLoginFailure(email);
+        throw unauthenticated("Invalid email or password.");
+      }
+      recordLoginSuccess(email);
+      return { token: app.jwt.sign({ userId: user.id }) };
+    },
+
+    async getMe(_req, ctx) {
+      const caller = callerOf(ctx);
+      const user = await findUserById(caller.id);
+      // A deleted account outliving its own still-valid token.
+      if (!user) throw unauthenticated("Account no longer exists.");
+      return { userId: user.id, email: user.email, teamNames: caller.teamNames, isAdmin: user.isAdmin };
+    },
+
+    async changePassword(req, ctx) {
+      const caller = callerOf(ctx);
+      passwordChangeLimit.take(`password-change:${caller.id}`, ctx);
+      const { currentPassword, newPassword } = check(
+        { currentPassword: AnyPassword, newPassword: NewPassword },
+        req,
+      );
+      const user = await findUserById(caller.id);
+      if (!user) throw unauthenticated();
+      // Bots authenticate with API tokens and have no password.
+      if (!user.passwordHash) throw badRequest("This account has no password to change.");
+      // invalid_argument, not unauthenticated: a client treats that as
+      // "your session is gone" and signs the person out.
+      if (!(await verifyPassword(user.passwordHash, currentPassword))) {
+        throw badRequest("Current password is incorrect.", "currentPassword");
+      }
+      if (newPassword === currentPassword) {
+        throw badRequest("New password must be different from the current one.", "newPassword");
+      }
+      await setUserPassword(user.id, await hashPassword(newPassword));
+      logOf(ctx).info({ userId: user.id }, "password changed");
+      return { token: app.jwt.sign({ userId: user.id }) };
+    },
+  };
+}

@@ -2,9 +2,8 @@
 /** The console's authorization rules (auth/access.ts). */
 import { randomUUID } from "node:crypto";
 import { inArray } from "drizzle-orm";
-import type { FastifyReply } from "fastify";
 import { afterAll, describe, expect, it } from "vitest";
-import { canActForTeam, loadExecutionOrReply } from "../src/auth/access.js";
+import { canActForTeam, loadExecution } from "../src/auth/access.js";
 import { db } from "../src/db/client.js";
 import { submittedExecutions } from "../src/db/schema.js";
 
@@ -12,18 +11,14 @@ const member = { teamNames: ["a"], isAdmin: false };
 const admin = { teamNames: [], isAdmin: true };
 const recorded: string[] = [];
 
-function fakeReply(): FastifyReply & { sent?: number } {
-  const reply = {
-    sent: undefined as number | undefined,
-    code(status: number) {
-      reply.sent = status;
-      return reply;
-    },
-    send() {
-      return reply;
-    },
-  };
-  return reply as unknown as FastifyReply & { sent?: number };
+/** The status a refusal carries (ApiError), or 0 for none. */
+async function refusal(check: Promise<unknown>): Promise<number> {
+  try {
+    await check;
+    return 0;
+  } catch (error) {
+    return (error as { statusCode?: number }).statusCode ?? -1;
+  }
 }
 
 async function execution(teams: string[]): Promise<string> {
@@ -46,25 +41,19 @@ describe("canActForTeam", () => {
   });
 });
 
-describe("loadExecutionOrReply", () => {
+describe("loadExecution", () => {
   it("lets a member of one team see a two-team execution, but not manage it", async () => {
     const id = await execution(["a", "b"]);
-    expect(await loadExecutionOrReply(id, member, fakeReply(), "any")).toBeDefined();
-    const reply = fakeReply();
-    expect(await loadExecutionOrReply(id, member, reply, "every")).toBeUndefined();
-    expect(reply.sent).toBe(403);
+    expect(await loadExecution(id, member, "any")).toBeDefined();
+    expect(await refusal(loadExecution(id, member, "every"))).toBe(403);
   });
 
   it("never lets 'every' pass vacuously for an execution with no teams", async () => {
     const id = await execution([]);
-    const reply = fakeReply();
-    expect(await loadExecutionOrReply(id, member, reply, "every")).toBeUndefined();
-    expect(reply.sent).toBe(403);
+    expect(await refusal(loadExecution(id, member, "every"))).toBe(403);
   });
 
   it("404s an execution it has no record of", async () => {
-    const reply = fakeReply();
-    expect(await loadExecutionOrReply(randomUUID(), admin, reply, "any")).toBeUndefined();
-    expect(reply.sent).toBe(404);
+    expect(await refusal(loadExecution(randomUUID(), admin, "any"))).toBe(404);
   });
 });

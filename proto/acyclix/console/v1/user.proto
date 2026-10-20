@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package acyclix.console.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// People's accounts. Admins only.
+service UserService {
+  // Every person's account (bots are listed with their teams instead).
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates an account with its teams; returns a temporary password,
+  // shown once.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  // Its executions stay in the history.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Makes someone an Acyclix admin, or takes it away.
+  rpc SetAdmin(SetAdminRequest) returns (SetAdminResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Sets someone's password and ends their sessions; hand it over out of
+  // band. Not for a bot, which has no password.
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+}
+
+message User {
+  string email = 1;
+  bool is_admin = 2;
+  google.protobuf.Timestamp created_at = 3;
+  repeated string team_names = 4;
+}
+
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  // At most 50.
+  repeated string teams = 2;
+  bool admin = 3;
+}
+
+message CreateUserResponse {
+  string email = 1;
+  string temporary_password = 2;
+  repeated string teams = 3;
+  bool admin = 4;
+}
+
+message DeleteUserRequest {
+  string email = 1;
+}
+
+message DeleteUserResponse {}
+
+message SetAdminRequest {
+  string email = 1;
+  bool admin = 2;
+}
+
+message SetAdminResponse {}
+
+message ResetPasswordRequest {
+  string email = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordResponse {}
