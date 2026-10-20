@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: MIT
+
+package config
+
+import (
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+)
+
+func load(t *testing.T, env map[string]string) (Settings, error) {
+	t.Helper()
+	return Load(func(name string) string { return env[name] })
+}
+
+func TestTheDefaultsAreThePythonKernels(t *testing.T) {
+	s, err := load(t, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.LeaseDuration != time.Minute || s.ClaimLimit != 50 || s.ExecutorConcurrency != 16 || !s.TaskPodHardening ||
+		s.JobDeadlineGrace != 600*time.Second || s.TaskLogMaxLines != 5000 || s.MetricsPort != 9090 || s.MaxRunning != 0 {
+		t.Errorf("defaults = %+v", s)
+	}
+}
+
+func TestTheDriverNameIsDroppedFromThePythonURL(t *testing.T) {
+	s, _ := load(t, map[string]string{"DATABASE_URL": "postgresql+asyncpg://kernel@db/execution_kernel"})
+	if s.DatabaseURL != "postgresql://kernel@db/execution_kernel" {
+		t.Error(s.DatabaseURL)
+	}
+}
+
+// Ported from test_task_placement.py.
+func TestSettingsReadPlacementFromJSON(t *testing.T) {
+	s, err := load(t, map[string]string{
+		"TASK_NODE_SELECTOR": `{"cloud.google.com/gke-spot": "true"}`,
+		"TASK_TOLERATIONS":   `[{"key": "spot", "operator": "Exists", "effect": "NoSchedule", "tolerationSeconds": 30}]`,
+		"TASK_AFFINITY":      "null",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	thirty := int64(30)
+	if !reflect.DeepEqual(s.TaskNodeSelector, map[string]string{"cloud.google.com/gke-spot": "true"}) ||
+		!reflect.DeepEqual(s.TaskTolerations, []Toleration{{Key: "spot", Operator: "Exists", Effect: "NoSchedule", TolerationSeconds: &thirty}}) ||
+		s.TaskAffinity != nil {
+		t.Errorf("placement = %v %v %v", s.TaskNodeSelector, s.TaskTolerations, s.TaskAffinity)
+	}
+}
+
+func TestAMisconfigurationStopsTheSchedulerAtStartup(t *testing.T) {
+	for name, env := range map[string]map[string]string{
+		"misspelt toleration": {"TASK_TOLERATIONS": `[{"key": "spot", "efect": "NoSchedule"}]`},
+		"not JSON":            {"TASK_NODE_SELECTOR": "{"},
+		"bad size":            {"TASK_DEFAULT_RESOURCES": `{"memory": "lots"}`},
+		"unknown size field":  {"TASK_DEFAULT_RESOURCES": `{"ram": "1Gi"}`},
+		"not a number":        {"LEASE_DURATION_SECONDS": "a minute"},
+		"zero":                {"SCHEDULER_CLAIM_LIMIT": "0"},
+		"negative":            {"SCHEDULER_MAX_RUNNING_TASKS": "-1"},
+		"fraction":            {"SCHEDULER_CLAIM_LIMIT": "1.5"},
+		"not a boolean":       {"TASK_POD_HARDENING": "maybe"},
+		"unknown auth":        {"API_AUTH": "none"},
+		"callers not a list":  {"API_ALLOWED_CALLERS": "system:serviceaccount:a:b"},
+	} {
+		_, err := load(t, env)
+		if err == nil {
+			t.Errorf("%s: accepted", name)
+			continue
+		}
+		for key := range env {
+			if !strings.Contains(err.Error(), key) {
+				t.Errorf("%s: %v doesn't name %s", name, err, key)
+			}
+		}
+	}
+}
+
+func TestTheAPIAndSleeperSettings(t *testing.T) {
+	s, err := load(t, map[string]string{
+		"API_ALLOWED_CALLERS":          `["system:serviceaccount:acyclix-system:console"]`,
+		"SLEEPER_DEPLOYMENTS":          `["kernel-api", "console"]`,
+		"SLEEPER_DATABASE_DEPLOYMENTS": `["kernel-postgres"]`,
+		"SLEEPER_IDLE_AFTER_SECONDS":   "600",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.APIAuth != "tokenreview" || s.APITokenAudience != "acyclix-kernel-api" || s.APIPort != 8000 || s.MaxTasksPerExecution != 500 ||
+		!reflect.DeepEqual(s.APIAllowedCallers, []string{"system:serviceaccount:acyclix-system:console"}) ||
+		!reflect.DeepEqual(s.SleeperDeployments, []string{"kernel-api", "console"}) ||
+		!reflect.DeepEqual(s.SleeperDatabases, []string{"kernel-postgres"}) ||
+		s.SleeperIdleAfter != 10*time.Minute || s.SleeperScheduledWait != 6*time.Hour {
+		t.Errorf("settings = %+v", s)
+	}
+}

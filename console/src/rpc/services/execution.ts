@@ -136,36 +136,24 @@ function storedDag(payload: unknown): Dag | undefined {
 
 type Detail = Awaited<ReturnType<typeof executionDetail>>;
 
-/** kernel-api's own fields of a detail (ExecutionDetailResponse), which core passes through untyped. */
-const kernelFields = (detail: Detail) => detail as Record<string, unknown>;
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 
 function execution(detail: Detail) {
-  const kernel = kernelFields(detail);
-  const tasks = Array.isArray(kernel["tasks"]) ? (kernel["tasks"] as Record<string, unknown>[]) : [];
-  const failure = (value: unknown) => {
-    const f = value as { code?: unknown; message?: unknown; retryable?: unknown } | null | undefined;
-    return f
-      ? {
-          code: text(f.code),
-          message: text(f.message),
-          retryable: f.retryable === true,
-        }
-      : undefined;
-  };
+  const failure = (f: JsonObject | null) =>
+    f ? { code: text(f["code"]), message: text(f["message"]), retryable: f["retryable"] === true } : undefined;
   return {
-    executionId: text(kernel["executionId"]),
-    name: text(kernel["name"]),
-    state: executionState(kernel["state"]),
-    tasks: tasks.map((task) => ({
-      taskId: text(task["taskId"]),
-      state: (typeof task["state"] === "string" ? TASK_STATE[task["state"]] : undefined) ?? TaskState.UNSPECIFIED,
-      attemptCount: Number(task["attemptCount"] ?? 0),
-      outputs: (task["outputs"] ?? undefined) as JsonObject | undefined,
-      failure: failure(task["failure"]),
-      dependsOn: (task["dependsOn"] as string[] | undefined) ?? [],
-      startedAt: timestamp(task["startedAt"] as string | null | undefined),
-      completedAt: timestamp(task["completedAt"] as string | null | undefined),
+    executionId: detail.executionId,
+    name: detail.name,
+    state: executionState(detail.state),
+    tasks: detail.tasks.map((task) => ({
+      taskId: task.taskId,
+      state: TASK_STATE[task.state] ?? TaskState.UNSPECIFIED,
+      attemptCount: task.attemptCount,
+      outputs: task.outputs ?? undefined,
+      failure: failure(task.failure),
+      dependsOn: task.dependsOn,
+      startedAt: timestamp(task.startedAt),
+      completedAt: timestamp(task.completedAt),
     })),
     teams: detail.teams,
     submittedBy: detail.submittedBy ?? "",
@@ -257,7 +245,7 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
           sentAt = Date.now();
           yield { execution: execution(detail) };
         }
-        if (FINISHED.has(text(kernelFields(detail)["state"]))) return;
+        if (FINISHED.has(detail.state)) return;
         await wait(WATCH_INTERVAL_MS, ctx.signal);
       }
     },
@@ -265,16 +253,7 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
     async listExecutionEvents(req, ctx) {
       const { executionId } = check({ executionId: ExecutionId }, req);
       const after = unsetIfEmpty(Number(req.after));
-      const page = (await viaKernel(ctx, () => executionEvents(callerOf(ctx), executionId, after))) as {
-        events: {
-          id: number;
-          eventType: string;
-          taskId: string | null;
-          payload: JsonObject;
-          createdAt: string;
-        }[];
-        nextCursor: number | null;
-      };
+      const page = await viaKernel(ctx, () => executionEvents(callerOf(ctx), executionId, after));
       return {
         events: page.events.map((event) => ({
           id: BigInt(event.id),
@@ -289,9 +268,7 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
 
     async getExecutionLogs(req, ctx) {
       const { executionId } = check({ executionId: ExecutionId }, req);
-      const logs = (await viaKernel(ctx, () => executionLogs(callerOf(ctx), executionId))) as {
-        tasks: { taskId: string; lines: string[] }[];
-      };
+      const logs = await viaKernel(ctx, () => executionLogs(callerOf(ctx), executionId));
       return { tasks: logs.tasks };
     },
 

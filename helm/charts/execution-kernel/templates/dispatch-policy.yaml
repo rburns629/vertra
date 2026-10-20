@@ -18,7 +18,7 @@ without going through the console.
 Scoped to requests made by this release's scheduler ServiceAccount only, so
 it never affects anything else in the cluster -- including the kernel's own
 integration tests, which create Jobs as the developer's kubeconfig user.
-Covers ConfigMaps as well as Jobs, the two things KubernetesExecutor
+Covers ConfigMaps as well as Jobs, the two things the scheduler's executor
 creates (the Job, then its request.json ConfigMap), so the scheduler can't
 create either in a namespace a task doesn't belong in.
 */}}

@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: MIT
+
+package scheduler
+
+import (
+	"context"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/acyclix/kernel/internal/executor"
+)
+
+// Ported from the Python kernel's tests/integration/test_concurrent_completion.py: two
+// schedulers finishing tasks of the same execution at the same moment.
+// Without locking, each saw the other's task as still running: a task whose
+// two dependencies finished together was never released, and an execution
+// whose last two tasks finished together never completed. Committed rows
+// across two connections, cleaned up after.
+
+const trials = 5
+
+func runTwoSchedulers(t *testing.T, tasks ...TaskDef) (domain.ExecutionState, map[string]domain.TaskState) {
+	t.Helper()
+	ctx := context.Background()
+	var id string
+	if err := pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		id = submit(t, tx, "concurrent-completion-"+time.Now().Format(time.RFC3339Nano), tasks...)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = testPool.Exec(ctx, `DELETE FROM executions WHERE id = $1`, id) }()
+
+	now := time.Now()
+	execs := map[string]*fakeExec{"s1": fake(), "s2": fake()}
+	committedTick := func(owner string, claimLimit int, at time.Time) error {
+		opts := DefaultOptions(owner)
+		opts.ClaimLimit = claimLimit
+		return pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+			_, err := RunTick(ctx, tx, execs[owner], opts, at, quietLog)
+			return err
+		})
+	}
+	for _, owner := range []string{"s1", "s2"} {
+		if err := committedTick(owner, 1, now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, exec := range execs {
+		exec.Complete(executor.Handle{"fakeId": "1"}, map[string]any{})
+	}
+	var wg sync.WaitGroup
+	errs := make(chan error, 2)
+	for _, owner := range []string{"s1", "s2"} {
+		wg.Go(func() { errs <- committedTick(owner, 0, now.Add(time.Second)) })
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	states := map[string]domain.TaskState{}
+	for key, tk := range tasksByKey(t, testPool, id) {
+		states[key] = tk.State
+	}
+	return executionState(t, testPool, id), states
+}
+
+func TestATaskWhoseDependenciesFinishTogetherIsReleased(t *testing.T) {
+	for range trials {
+		_, states := runTwoSchedulers(t, task("a"), task("b"), task("d", dependsOn("a", "b")))
+		equal(t, "d", states["d"], domain.TaskReady)
+	}
+}
+
+func TestAnExecutionWhoseLastTasksFinishTogetherCompletes(t *testing.T) {
+	for range trials {
+		state, states := runTwoSchedulers(t, task("a"), task("b"))
+		if state != domain.ExecutionSucceeded {
+			t.Errorf("execution = %s, tasks %v", state, states)
+		}
+	}
+}

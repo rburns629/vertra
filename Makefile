@@ -357,15 +357,16 @@ gke-logs:
 # a Postgres you already run on 5432. Nothing else calls these targets.
 #
 #   make test           # create/migrate the test databases, run both suites
-#   make test-db        # just the databases (then run pytest / npm test yourself)
+#   make test-db        # just the databases (then run go test / npm test yourself)
 #   make test-db-down   # remove the container and its data
 #
-# Needs the kernel's dev dependencies (`pip install -e ".[dev]"` in kernel/)
-# and `npm ci` in console/ and console/frontend/. Point ALEMBIC/PYTEST at a virtualenv if they
-# aren't on PATH. The Kubernetes tests still need kind and skip without it.
+# Needs Docker (the kernel's migrations and Go tests run in the pinned Go
+# image) and `npm ci` in console/ and console/frontend/. The kernel's
+# Kubernetes tests need kind and skip without it (and in that image).
 # ---------------------------------------------------------------------------
-# The console's API (proto/): lint, then generate its code, which is
-# committed (CI regenerates and fails on any difference).
+# The APIs (proto/: the console's, and kernel-api's, which only the console
+# calls): lint, then generate their code, which is committed (CI regenerates
+# and fails on any difference).
 #
 #   make proto
 #
@@ -381,22 +382,24 @@ GO_IMAGE ?= golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124e
 proto:
 	$(BUF) lint
 	$(BUF) generate --template buf.gen.es.yaml
-	@# The API reference page's data, comments included (console/scripts/api-reference.ts).
-	$(BUF) build -o console/.api-image.binpb
+	$(BUF) generate --template buf.gen.frontend.yaml
+	@# The API reference page's data, comments included (console/scripts/api-reference.ts):
+	@# the console's API only; kernel-api's is internal.
+	$(BUF) build --path proto/acyclix/console -o console/.api-image.binpb
 	cd console && npx tsx scripts/api-reference.ts .api-image.binpb > frontend/src/gen/api-reference.json; \
 		status=$$?; rm -f .api-image.binpb; exit $$status
 	$(DOCKER) run --rm -v "$(CURDIR)":/repo -v acyclix-gocache:/root/.cache -v acyclix-gomod:/go/pkg/mod \
 		-w /repo/cli $(GO_IMAGE) sh -c 'go build -o /tmp/plugins/ \
 			google.golang.org/protobuf/cmd/protoc-gen-go connectrpc.com/connect/cmd/protoc-gen-connect-go \
 		&& cd /repo && PATH=/tmp/plugins:$$PATH go run github.com/bufbuild/buf/cmd/buf@v$(BUF_VERSION) \
-			generate --template buf.gen.go.yaml'
+			generate --template buf.gen.go.yaml \
+		&& PATH=/tmp/plugins:$$PATH go run github.com/bufbuild/buf/cmd/buf@v$(BUF_VERSION) \
+			generate --template buf.gen.kernel.yaml'
 
 # ---------------------------------------------------------------------------
 TEST_DB_CONTAINER ?= acyclix-test-db
 TEST_DB_PORT ?= 55432
 TEST_DB_IMAGE ?= postgres:16
-ALEMBIC ?= alembic
-PYTEST ?= pytest
 TEST_DB_HOST := postgres@127.0.0.1:$(TEST_DB_PORT)
 KERNEL_TEST_DB := execution_kernel_test
 CONSOLE_TEST_DB := execution_console_test
@@ -423,12 +426,14 @@ test-db:
 			"SELECT 1 FROM pg_database WHERE datname = '$$db'" | grep -q 1 \
 		|| $(DOCKER) exec $(TEST_DB_CONTAINER) createdb -U postgres $$db; \
 	done
-	cd kernel && DATABASE_URL=postgresql+asyncpg://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) $(ALEMBIC) upgrade head
+	$(DOCKER) run --rm --network host -e DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) \
+		-v "$(CURDIR)/kernel":/src -v acyclix-gomod:/go/pkg/mod -w /src $(GO_IMAGE) go run ./cmd/kernel migrate
 	cd console && DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(CONSOLE_TEST_DB) \
 		JWT_SECRET=unused KERNEL_API_URL=http://unused npm run --silent db:migrate
 
 test: test-db
-	cd kernel && TEST_DATABASE_URL=postgresql+asyncpg://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) $(PYTEST) -q -rs
+	$(DOCKER) run --rm --network host -e TEST_DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) \
+		-v "$(CURDIR)/kernel":/src -v acyclix-gomod:/go/pkg/mod -w /src $(GO_IMAGE) go test ./...
 	cd console && TEST_DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(CONSOLE_TEST_DB) npm test
 	cd console/frontend && npm test
 

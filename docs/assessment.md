@@ -94,14 +94,14 @@ are done (decided 2026-10-19).
 
 | Capability | Status | Where |
 | --- | --- | --- |
-| DAG validation: cycles, references, credential-shaped inputs | Built | `kernel/app/domain/dag_validation.py` |
-| Claim, lease, adopt; several schedulers | Built | `kernel/app/scheduler/claiming.py`, `tests/integration/test_concurrent_completion.py` |
-| A Job name per attempt; adopting on conflict | Built | `kernel/app/executors/kubernetes.py:111`, `:655-675` |
-| Retries with backoff, `maxAttempts` (default 1), timeouts | Built | `kernel/app/scheduler/service.py:446`, `:511` |
-| Cancel, idempotent | Built | `kernel/app/services/execution_service.py` |
+| DAG validation: cycles, references, credential-shaped inputs | Built | `kernel/internal/domain/dag.go` |
+| Claim, lease, adopt; several schedulers | Built | `kernel/internal/scheduler/claiming.go`, `concurrent_test.go` |
+| A Job name per attempt; adopting on conflict | Built | `kernel/internal/executor/kubernetes.go` (`JobName`, `createJob`) |
+| Retries with backoff, `maxAttempts` (default 1), timeouts | Built | `kernel/internal/scheduler/tick.go` (`handleFailure`, `poll`) |
+| Cancel, idempotent | Built | `kernel/internal/api/service.go` (`CancelExecution`) |
 | Append-only event history | Built, shown in the console | `execution_events` |
-| History per attempt | Partial: stored in `task_attempts`; the API returns only `attemptCount` | `kernel/app/contracts/execution.py` |
-| Running-step caps, platform-wide and per team | Built | `kernel/app/config.py:61-62` |
+| History per attempt | Partial: stored in `task_attempts`; the API returns only `attemptCount` | `proto/acyclix/kernel/v1/kernel.proto` |
+| Running-step caps, platform-wide and per team | Built | `kernel/internal/config/config.go` (`MaxRunning`, `MaxRunningPerTeam`) |
 | Caps per product, priorities, fairness | Missing | |
 | Inputs checked against `inputSchema` | Missing: structure only | `console/src/core/executions.ts`, `console/frontend/src/dagCheck.ts` |
 | Outputs checked against `outputSchema` | Missing | |
@@ -110,7 +110,7 @@ are done (decided 2026-10-19).
 | Schema compatibility, deprecation | Missing | |
 | A product's ServiceAccount enforced by policy | Built; proven on EKS 2026-10-19 | `helm/charts/execution-kernel/templates/identity-policy.yaml`, `executions.ts:352` |
 | Team secrets chosen per step, enforced twice | Built | `executions.ts:522-546`, identity policy |
-| Identity references read from a team secret | Missing: the samples read one deployment-wide variable instead | `kernel/app/config.py:72-76`, `catalog-template/samples/gcp` |
+| Identity references read from a team secret | Missing: the samples read one deployment-wide variable instead | `TASK_EXTRA_ENVIRONMENT` (`kernel/internal/config`), `catalog-template/samples/gcp` |
 | A consumer role; templates with parameters; exports | Missing: running a team's step requires membership of that team | `executions.ts:494-497` |
 | Triggers: console, API with bot tokens | Built | `console/src/core/tokens.ts` |
 | Schedules, webhooks | Missing | |
@@ -667,7 +667,8 @@ goroutines, static binaries and one language with the CLI; not for speed
 trips). R1 and R2 are fixed in Python first. Then the scheduler is replaced
 against the same schema, proven by the existing scenarios, then kernel-api
 (on Connect), then the migrations tool; the two processes only share rows,
-so each is replaced alone. New kernel features are built in Go.
+so each is replaced alone. New kernel features are built in Go. (Done the
+same day: one binary, `kernel`, with the Python removed.)
 
 **18. `catalogctl` in Go** (decided 2026-10-20), a binary of its own built
 from the CLI's module and sharing its packages, downloaded pinned and

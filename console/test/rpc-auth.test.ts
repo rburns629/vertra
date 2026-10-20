@@ -3,10 +3,10 @@
  * The Connect services' shared machinery, through AuthService and
  * GuideService: called as plain JSON over HTTP, as curl would.
  *
- * - Credentials resolve exactly as for REST routes, either way round.
+ * - Credentials resolve the same either way round.
  * - Protected methods refuse a missing or bad credential.
- * - Input is checked against the REST routes' own rules, every problem at once.
- * - The REST routes' rate limits hold.
+ * - Input is checked against the account rules, every problem at once.
+ * - The rate limits hold.
  * - An internal error's message never reaches the caller.
  * - Changes are audited, sign-in and passwords aren't.
  */
@@ -76,7 +76,7 @@ describe("credentials", () => {
 });
 
 describe("input", () => {
-  it("is checked against the REST routes' rules, every problem at once", async () => {
+  it("is checked against the account rules, every problem at once", async () => {
     const response = await rpc("AuthService", "Login", { email: "not-an-email", password: "" });
     expect(response.statusCode).toBe(400);
     const error = response.json<RpcError>();

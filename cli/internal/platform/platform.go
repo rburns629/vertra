@@ -22,7 +22,7 @@ import (
 )
 
 // The kernel chart's ConfigMap holding each Deployment's replicas while the
-// platform sleeps, under awakeKey: the sleeper (kernel/app/sleeper) and
+// platform sleeps, under awakeKey: the sleeper (kernel/internal/sleeper) and
 // these commands both use it.
 const (
 	stateConfigMap = install.KernelRelease + "-execution-kernel-sleep"

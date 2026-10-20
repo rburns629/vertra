@@ -55,7 +55,7 @@ export function TeamPage() {
   const navigate = useNavigate();
   const isMember = user?.teamNames.includes(teamName) ?? false;
   // Platform admins can manage any team, not just ones they belong to --
-  // see ../../src/routes/teams.ts's matching backend check. The forms
+  // see ../../src/core/teams.ts's matching backend check. The forms
   // below hit the real API either way; this only decides whether to show
   // them, so a non-admin/non-member never sees a 403 they can't act on.
   const canManage = isMember || (user?.isAdmin ?? false);

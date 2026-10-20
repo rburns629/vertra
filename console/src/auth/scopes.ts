@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * Platform-wide permissions an admin can grant to an automation token
- * (routes/automation.ts), in place of team membership.
+ * (core/tokens.ts), in place of team membership.
  *
  * Why this exists: catalog CI used to authenticate as bots that were
  * *members* of teams. That meant one bot joined every team it created
@@ -16,7 +16,7 @@ import { Type } from "@sinclair/typebox";
 export const SCOPES = {
   /** Create a team (POST /teams), without becoming its member. */
   TEAMS_CREATE: "teams:create",
-  /** Register, update, or delete any team's products (routes/products.ts). */
+  /** Register, update, or delete any team's products (core/products.ts). */
   PRODUCTS_REGISTER: "products:register",
   /** Retire or un-retire a team (reversible): catalog CI, when a
    * team's folder is removed or restored. */

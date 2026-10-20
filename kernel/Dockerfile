@@ -1,24 +1,19 @@
-# One image for both kernel-api and kernel-scheduler — docker-compose.yml
-# selects which process to run via `command:`, matching the modular-monolith
-# design (one Python package, separated through interfaces, not separate
-# deployables).
-FROM python:3.12-slim
+# The kernel: one static binary, `kernel`, whose subcommand picks the
+# process (the chart's `command:`): api, scheduler, migrate, sleep.
+# On the builder's own platform, cross-compiling for the target: no emulation.
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
+ARG TARGETOS TARGETARCH
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/kernel ./cmd/kernel
 
-WORKDIR /app
-
-# Security fixes released since the base image was published.
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-
-COPY pyproject.toml README.md ./
-COPY app ./app
-COPY alembic.ini ./
-
-RUN pip install --no-cache-dir .
-
-# Not root. Numeric, so a pod's runAsNonRoot can verify it.
-RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin acyclix
-USER 10001
-
+# No shell, no package manager: CA certificates, /tmp and the binary.
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+COPY --from=build /out/kernel /usr/local/bin/kernel
+# Not root. Numeric, so a Pod's runAsNonRoot can verify it.
+USER 65532
 EXPOSE 8000
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/usr/local/bin/kernel"]

@@ -27,7 +27,7 @@ export function RegisterPage() {
     setSubmitting(true);
     try {
       await register(email, password);
-      // Registering doesn't log you in (see ../../src/routes/auth.ts) --
+      // Registering doesn't log you in (see ../../src/rpc/services/auth.ts) --
       // it deliberately grants no access by itself, so the next real step
       // is a normal login.
       navigate("/login");

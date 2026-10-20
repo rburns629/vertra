@@ -1,0 +1,13 @@
+# TypeScript for the console's frontend (`make proto`): the console's API
+# only. JavaScript with type declarations: the frontend's TypeScript allows
+# only syntax that erases (erasableSyntaxOnly), and enums don't. Output is
+# committed.
+version: v2
+clean: true
+inputs:
+  - directory: proto
+    paths: [proto/acyclix/console]
+plugins:
+  - local: console/node_modules/.bin/protoc-gen-es
+    out: console/frontend/src/gen
+    opt: [target=js+dts]

@@ -1,17 +1,8 @@
 # Only relevant to `gcloud builds submit` from this directory (make
-# gke-deploy-kernel) -- it has no effect on `docker build` (.dockerignore) or
-# on git. Without it gcloud uploads everything here, the local virtualenv
-# included: ~10,700 files to build an image that uses about 30 of them.
-# Keep it in step with .dockerignore.
+# gke-deploy-kernel): it has no effect on `docker build` (.dockerignore) or
+# on git. Keep it in step with .dockerignore.
 
 .git/
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-tests/
-examples/
+bin/
 *.log
 .env

@@ -6,8 +6,9 @@ Run from anywhere: python3 docs/architecture/generate.py
 
 Five pages:
   1. System: what runs where, on GKE and around it, and how a request flows.
-  2. Kernel classes: every module, class and function in kernel/app, read
-     from the source with `ast`, grouped by layer, with the imports between layers.
+  2. Kernel types: every file, type and function in the kernel's Go
+     (kernel/cmd, kernel/internal), read with regular expressions, grouped
+     by package, with the imports between them.
   3. Console classes: the same for console/src and console/frontend/src.
   4. Submit to finished: a sequence diagram of one execution, function by function.
   5. States: the task and execution state machines.
@@ -22,7 +23,6 @@ need draw.io's desktop app, whose CLI exports them; without it only the
 
 from __future__ import annotations
 
-import ast
 import re
 import shutil
 import subprocess
@@ -286,102 +286,91 @@ def draw_packages(page: Page, title: str, subtitle: str, packages: list[Package]
         page.edge(None, None, "", DEPENDENCY, points=[(sx, lane), (tx, lane)], source_point=(sx, top), target_point=(tx, top))
 
 
-# ------------------------------------------------------- kernel (Python)
+# ---------------------------------------------------------- kernel (Go)
 
-KERNEL = ROOT / "kernel" / "app"
+KERNEL = ROOT / "kernel"
+GO_MODULE = "github.com/rburns629/acyclix/kernel/"
 KERNEL_LAYERS = [
-    ("contracts", "contracts/  (API and container shapes, pydantic)", PURPLE),
-    ("domain", "domain/  (rules, no I/O)", GREEN),
-    ("persistence", "persistence/  (SQLAlchemy models, queries)", YELLOW),
-    ("services", "services/  (what kernel-api does)", BLUE),
-    ("scheduler", "scheduler/  (the kernel-scheduler process)", ORANGE),
-    ("sleeper", "sleeper/  (sleeping an idle platform, a CronJob)", ORANGE),
-    ("executors", "executors/  (Kubernetes Jobs)", RED),
-    ("api", "api/  (FastAPI routes)", BLUE),
-    ("app", "app/  (entry point, settings)", GREY),
-    ("observability", "observability/  (logs, metrics)", GREY),
+    ("domain", "internal/domain/  (rules, no I/O)", GREEN),
+    ("config", "internal/config/  (settings, checked at startup)", GREY),
+    ("api", "internal/api/  (kernel-api: KernelService over Connect)", BLUE),
+    ("executor", "internal/executor/  (the Executor interface; Kubernetes Jobs)", RED),
+    ("scheduler", "internal/scheduler/  (kernel-scheduler: the pass and the loop)", ORANGE),
+    ("migrate", "internal/migrate/  (the schema)", YELLOW),
+    ("sleeper", "internal/sleeper/  (sleeping an idle platform, a CronJob)", ORANGE),
+    ("observability", "internal/logging/, internal/metrics/", GREY),
+    ("cmd", "cmd/kernel/  (the binary: a subcommand per process)", BLUE),
 ]
+GO_FUNC = re.compile(r"^func (?:\((\w+) \*?(\w+)(?:\[[^\]]*\])?\) )?(\w+)(\[[^\]]*\])?\(([^)]*)\)\s*(.*?)\s*\{?$")
+GO_TYPE = re.compile(r"^type (\w+)(?:\[[^\]]*\])? (struct|interface|[^{]+?)\s*\{?\s*$")
 
 
-def short_type(node: ast.expr | None) -> str:
-    if node is None:
-        return ""
-    name = ast.unparse(node)
-    name = re.sub(r"\b(?:typing|collections\.abc|datetime)\.", "", name)
-    name = re.sub(r"^Mapped\[(.*)\]$", r"\1", name)
-    return name if len(name) <= 34 else name[:33] + "…"
+def kernel_package(relative: Path) -> str | None:
+    parts = relative.parts
+    if parts[0] == "cmd":
+        return "cmd"
+    # Generated code, and packages only tests use.
+    if parts[0] != "internal" or parts[1] in ("gen", "dbtest", "kindtest"):
+        return None
+    if parts[1] in ("logging", "metrics"):
+        return "observability"
+    return parts[1]
 
 
-def python_signature(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-    args = fn.args
-    names = [a.arg for a in args.posonlyargs + args.args if a.arg not in ("self", "cls")]
-    if args.vararg:
-        names.append("*" + args.vararg.arg)
-    elif args.kwonlyargs:
-        names.append("*")
-    names += [a.arg for a in args.kwonlyargs]
-    if args.kwarg:
-        names.append("**" + args.kwarg.arg)
-    visibility = "-" if fn.name.startswith("_") else "+"
-    prefix = "async " if isinstance(fn, ast.AsyncFunctionDef) else ""
-    returns = short_type(fn.returns)
-    return f"{visibility} {prefix}{fn.name}({', '.join(names)})" + (f": {returns}" if returns and returns != "None" else "")
-
-
-def python_stereotype(cls: ast.ClassDef) -> tuple[str, tuple[str, str]]:
-    bases = {ast.unparse(b) for b in cls.bases}
-    decorators = {ast.unparse(d).split("(")[0] for d in cls.decorator_list}
-    if bases & {"StrEnum", "Enum"}:
-        return "enum", GREEN
-    if "Protocol" in bases:
-        return "Protocol", ORANGE
-    if "BaseModel" in bases:
-        return "pydantic", PURPLE
-    if "Base" in bases:
-        return "table", YELLOW
-    if bases & {"Exception", "KernelError", "DAGValidationError"} or cls.name.endswith("Error"):
-        return "error", RED
-    if "BaseSettings" in bases:
-        return "settings", GREY
-    if "dataclass" in decorators:
-        return "dataclass", WHITE
-    return "class", WHITE
+def go_signature(name: str, params: str, returns: str) -> str:
+    names = [p.strip().split(" ")[0] for p in params.split(",") if p.strip()]
+    visibility = "+" if name[0].isupper() else "-"
+    returns = returns.split(" {")[0].strip()  # a one-line function's body
+    return f"{visibility} {name}({', '.join(names)})" + (f": {returns}" if returns else "")
 
 
 def kernel_packages() -> tuple[list[Package], set[tuple[str, str]]]:
     packages = {name: Package(name, title, color) for name, title, color in KERNEL_LAYERS}
     imports: set[tuple[str, str]] = set()
-    for path in sorted(KERNEL.rglob("*.py")):
+    for path in sorted([*KERNEL.glob("cmd/**/*.go"), *KERNEL.glob("internal/**/*.go")]):
         relative = path.relative_to(KERNEL)
-        package = relative.parts[0] if len(relative.parts) > 1 else "app"
-        tree = ast.parse(path.read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("app."):
-                target = node.module.split(".")[1]
-                target = target if target in packages else "app"
-                if target != package:
-                    imports.add((package, target))
-        functions = [python_signature(n) for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+        package = kernel_package(relative)
+        if package is None or path.name.endswith("_test.go"):
+            continue
+        source = path.read_text()
+        for imported in re.findall(r'"' + re.escape(GO_MODULE) + r'(?:internal/)?([a-z]+)', source):
+            target = kernel_package(Path("internal", imported))
+            if target is not None and target != package:
+                imports.add((package, target))
+        types: dict[str, UmlClass] = {}
+        functions: list[str] = []
+        lines = source.splitlines()
+        for i, line in enumerate(lines):
+            if m := GO_TYPE.match(line):
+                name, kind = m.group(1), m.group(2).strip()
+                stereotype, color = {"struct": ("struct", WHITE), "interface": ("interface", ORANGE)}.get(kind, ("type", GREEN))
+                attributes: list[str] = []
+                if kind in ("struct", "interface"):
+                    for body in lines[i + 1 :]:
+                        if body.startswith("}"):
+                            break
+                        if f := re.match(r"^\t(\w+)(\(.*)?\s*(.*)$", body):
+                            if kind == "interface" and f.group(2):
+                                attributes.append(go_signature(f.group(1), f.group(2)[1 : f.group(2).index(")")], f.group(2)[f.group(2).index(")") + 1 :]))
+                            elif kind == "struct" and not body.lstrip().startswith("//"):
+                                field_type = f.group(3).split("`")[0].strip()
+                                if field_type:
+                                    attributes.append(f"{'+' if f.group(1)[0].isupper() else '-'} {f.group(1)}: {field_type}")
+                else:
+                    attributes.append(f"= {kind}")
+                types[name] = UmlClass(f"{name}  ({path.name})", stereotype, attributes, [], color)
+            elif m := GO_FUNC.match(line):
+                receiver, name, params, returns = m.group(2), m.group(3), m.group(5), m.group(6)
+                signature = go_signature(name, params, returns)
+                if receiver and receiver in types:
+                    types[receiver].operations.append(signature)
+                elif receiver:
+                    functions.append(f"{signature}  (on {receiver})")
+                else:
+                    functions.append(signature)
         if functions:
-            packages[package].classes.append(UmlClass(str(relative), "module", [], functions))
-        for node in tree.body:
-            if not isinstance(node, ast.ClassDef):
-                continue
-            stereotype, color = python_stereotype(node)
-            attributes: list[str] = []
-            operations: list[str] = []
-            for item in node.body:
-                if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
-                    if not item.target.id.startswith("__") and item.target.id != "model_config":
-                        attributes.append(f"{item.target.id}: {short_type(item.annotation)}")
-                elif isinstance(item, ast.Assign) and stereotype == "enum":
-                    attributes += [t.id for t in item.targets if isinstance(t, ast.Name)]
-                elif isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if not item.name.startswith("__") or item.name == "__init__":
-                        operations.append(python_signature(item))
-            if stereotype == "enum":
-                attributes = [", ".join(attributes[i : i + 3]) for i in range(0, len(attributes), 3)]
-            packages[package].classes.append(UmlClass(f"{node.name}  ({relative.name})", stereotype, attributes, operations, color))
+            packages[package].classes.append(UmlClass(str(relative), "file", [], functions))
+        packages[package].classes += types.values()
     return [p for p in packages.values() if p.classes], imports
 
 
@@ -650,7 +639,7 @@ def system_page() -> Page:
             "claims READY tasks from Postgres. ④ For each, it creates a ConfigMap holding request.json, and a Job, through the API server, "
             "whose admission policies can refuse them (DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED). ⑤ The Pod "
             "runs as its product's ServiceAccount with the team Secrets its step lists and writes result.json; the scheduler reads it, stores outputs and logs, "
-            "deletes the Job, and releases the tasks that waited on it. kernel-api and kernel-scheduler never call each other: "
+            "releases the tasks that waited on it, and once that's committed deletes the Job. kernel-api and kernel-scheduler never call each other: "
             "Postgres rows are their only channel.",
             260,
         ),
@@ -674,11 +663,11 @@ def sequence_page() -> Page:
         ("Pipeline or browser", GREY),
         ("console\ncore/executions.ts", ORANGE),
         ("console DB\ndb/queries.ts", YELLOW),
-        ("kernel-api\napi/routes/executions.py", BLUE),
-        ("services/\nexecution_service.py", BLUE),
-        ("kernel DB\npersistence/", YELLOW),
-        ("kernel-scheduler\nscheduler/service.py", ORANGE),
-        ("KubernetesExecutor\nexecutors/kubernetes.py", RED),
+        ("kernel-api\ninternal/api/auth.go", BLUE),
+        ("KernelService\ninternal/api/service.go", BLUE),
+        ("kernel DB\ninternal/migrate/sql/", YELLOW),
+        ("kernel-scheduler (Go)\ninternal/scheduler/tick.go", ORANGE),
+        ("executor.Kubernetes\ninternal/executor", RED),
         ("Kubernetes API\n+ admission", BLUE),
         ("product container", GREEN),
     ]
@@ -733,16 +722,16 @@ def sequence_page() -> Page:
     )
     message(1, 1, "refuseBlockedImages: image policy · registry (registry.ts) · pinned: tag → digest · refuseUnscanned: scan verdicts")
     message(1, 1, 'withProductResources · scopeRequestId → requestId "team-a+team-b/<requestId>" · ensureServiceAccounts')
-    message(1, 3, "kernel/client.ts submitExecution → POST /v1/executions")
-    message(3, 4, "create_execution → submit_execution(session, submission)")
-    message(4, 5, "get_execution_by_idempotency_key: seen before? return it (200, no new rows)")
+    message(1, 3, "kernel/client.ts submitExecution: the JSON as a request (only the names checked) → KernelService/SubmitExecution")
+    message(3, 4, "Callers.Interceptor: the console's token? (TokenReview, cached 60 s) → SubmitExecution")
+    message(4, 5, "SELECT by idempotency_key: seen before? return it (created false, no new rows)")
     message(
         4, 4,
-        "validate_dag: duplicate ids, unknown dependencies, cycles, $fromTask references\n"
-        "_build_execution_graph: each task READY (no dependencies) or BLOCKED",
+        "taskDefs: each field · domain.ValidateDAG: duplicate ids, unknown dependencies, cycles, $fromTask references\n"
+        "each task READY (no dependencies) or BLOCKED",
     )
-    message(4, 5, "INSERT executions, execution_tasks, task_dependencies · record_event EXECUTION_CREATED")
-    message(3, 1, "201 {executionId, state: PENDING}", reply=True)
+    message(4, 5, "a savepoint: INSERT executions, execution_tasks, task_dependencies · recordEvent EXECUTION_CREATED")
+    message(4, 1, "{executionId, state: PENDING, created: true}", reply=True)
     message(1, 2, "recordOrCancel: recordSubmittedExecution(executionId, teams, submittedBy, name, payload)")
     message(1, 0, "{executionId, state: EXECUTION_STATE_PENDING}", reply=True)
 
@@ -751,51 +740,51 @@ def sequence_page() -> Page:
     y += 36
     message(
         6, 5,
-        "run_forever → session_scope → run_scheduler_tick → claim_ready_tasks:\n"
-        "recover_expired_leases; SELECT READY … FOR UPDATE SKIP LOCKED;\n"
-        "→ CLAIMED, lease_owner, attempt_count+1, TaskAttempt, TASK_CLAIMED",
+        "Loop.Run → pgx.BeginFunc → RunTick → claimReadyTasks:\n"
+        "recoverExpiredLeases; SELECT READY … FOR UPDATE SKIP LOCKED;\n"
+        "→ CLAIMED, lease_owner, attempt_count+1, task_attempts row, TASK_CLAIMED",
     )
-    message(6, 5, "_dispatch_task → resolve_task_inputs: $fromTask → upstream task_outputs")
-    message(6, 7, "executor.start(ResolvedTask)")
-    message(7, 8, "_create_config_map ek-…: request.json · _create_job ek-…: args=[action], serviceAccount, secret volumes")
+    message(6, 5, "dispatch → resolveInputs: $fromTask → upstream task_outputs (domain.ResolveInputs)")
+    message(6, 7, "Start(ResolvedTask)")
+    message(7, 8, "createJob ek-…: args=[action], serviceAccount, secret volumes · createConfigMap ek-…: request.json, owned by the Job")
     message(
         8, 8,
         "admission: dispatch-policy · image-policy · identity-policy · image signature (GKE)\n"
-        "refused → DispatchRejectedError → task FAILED, not retried",
+        "refused → DispatchRejected → task FAILED, not retried",
     )
     message(8, 9, "Pod starts, reads /platform/input/request.json")
     message(7, 6, "handle {namespace, jobName}", reply=True)
-    message(6, 5, "task RUNNING · TASK_STARTED · _mark_execution_running_if_needed (execution RUNNING)")
+    message(6, 5, "recordStart: task RUNNING · TASK_STARTED · markExecutionRunning (execution RUNNING)")
     message(9, 9, "does the work; writes /platform/output/result.json (read back as the termination message)")
     poll_start = y
     y += 30
-    message(6, 6, "next tick: _load_running_tasks_owned_by → _poll_task: execution cancelled? past timeout_seconds?")
-    message(6, 7, "executor.get_status(handle)")
-    message(7, 8, "read_namespaced_job_status: still running → RUNNING (lease_expires_at extended)")
-    fragment("loop  [while the Job runs: one poll per tick]", poll_start - 6, y - 10, 6, 9, "#d79b00")
+    message(6, 6, "next pass: its RUNNING tasks → poll: execution cancelled? past timeout_seconds?")
+    message(6, 7, "Status(handle)   (skipped while the watch saw no change)")
+    message(7, 8, "GET the Job: still running → RUNNING (lease_expires_at extended; logs every 60 s)")
+    fragment("loop  [while the Job runs: one poll per pass; a watched change wakes the loop]", poll_start - 6, y - 10, 6, 9, "#d79b00")
     y += 16
-    message(7, 8, "_finalize: _find_terminated_container · _read_logs · _build_status (TaskResult)")
-    message(7, 6, "ExecutionStatus SUCCEEDED + outputs   (or FAILED + StructuredError)", reply=True)
+    message(7, 8, "finalize: terminatedContainer · readLogs (redacted) · buildStatus (domain.ParseTaskResult)")
+    message(7, 6, "Status Succeeded + outputs   (or Failed + StructuredError)", reply=True)
     message(
         6, 5,
-        "TaskOutput · _capture_task_logs → TaskLog · TASK_SUCCEEDED\n"
-        "_release_ready_dependents (BLOCKED → READY once every dependency SUCCEEDED) · _finalize_execution_if_succeeded",
+        "task_outputs · captureLogs → task_logs · TASK_SUCCEEDED\n"
+        "releaseReadyDependents (BLOCKED → READY once every dependency SUCCEEDED) · settleExecution",
     )
-    message(6, 7, "once the tick has committed the result: release_finished → executor.release(handle)")
-    message(7, 8, "_delete_job · _delete_config_map")
+    message(6, 7, "once the pass has committed: ReleaseFinished → Release(handle)")
+    message(7, 8, "deleteJob · deleteConfigMap")
     alt_start = y
     y += 30
     message(
         6, 5,
-        "failed: _handle_task_failure → should_retry? READY again (TASK_FAILED; claimed next tick)\n"
-        "otherwise FAILED → _fail_execution (execution FAILED; its READY/BLOCKED tasks CANCELLED)",
+        "failed: handleFailure → ShouldRetry? READY again after the backoff (claimed by a later pass)\n"
+        "otherwise FAILED → failExecution (execution FAILED; its READY/BLOCKED tasks CANCELLED)",
     )
     fragment("alt  [the task failed instead]", alt_start - 6, y - 10, 5, 6, "#b85450")
-    fragment("loop  [kernel-scheduler, every poll interval (1 s)]", loop_start, y + 4, 5, 9, "#555555")
+    fragment("loop  [kernel-scheduler: a pass at once after progress, else on a watched change or the poll interval (1 s)]", loop_start, y + 4, 5, 9, "#555555")
     y += 40
     message(0, 1, "WatchExecution {executionId} (loadExecution: a member of any of its teams, re-checked on every read)")
-    message(1, 3, "every 2 s: executionDetail → getExecution → GET /v1/executions/{id} → get_execution_detail")
-    message(3, 1, "state, tasks [state, attempts, outputs, failure, dependsOn]", reply=True)
+    message(1, 4, "every 2 s: executionDetail → getExecution → KernelService/GetExecution")
+    message(4, 1, "state, tasks [state, attempts, outputs, failure, dependsOn]", reply=True)
     message(1, 0, "the execution, each time it changes, until it finishes (a stream)", reply=True)
     return p
 
@@ -808,7 +797,7 @@ def states_page() -> Page:
     p.vertex(20, 10, 1200, 30, "Task and execution states", TITLE)
     p.vertex(
         20, 40, 1500, 24,
-        "domain/states.py defines them; scheduler/claiming.py, scheduler/service.py and services/execution_service.py move them.",
+        "kernel/internal/domain/states.go defines them; the scheduler (internal/scheduler/claiming.go, tick.go) and kernel-api (internal/api/service.go) move them.",
         SUBTITLE,
     )
     state_style = "rounded=1;arcSize=40;fontStyle=1;" + FONT
@@ -828,29 +817,29 @@ def states_page() -> Page:
     cancelled = node(500, 180, "CANCELLED", GREY)
     p.edge(start, blocked, "has dependencies", EDGE + ends(0.5, 0, 0, 0.5))
     p.edge(start, ready, "no dependencies", EDGE + ends(0.5, 1, 0, 0.5))
-    p.edge(blocked, ready, "every dependency\nSUCCEEDED\n(_release_ready_dependents)", EDGE + ends(0.3, 1, 0.3, 0))
-    p.edge(ready, claimed, "claim_ready_tasks:\nlease, attempt_count+1", EDGE + ends(1, 0.5, 0, 0.5))
-    p.edge(claimed, running, "_dispatch_task:\nexecutor.start ok", EDGE + ends(1, 0.5, 0, 0.5))
-    p.edge(running, succeeded, "get_status SUCCEEDED", EDGE + ends(1, 0.3, 0, 0.5), points=[(1040, 485), (1040, 325)])
+    p.edge(blocked, ready, "every dependency\nSUCCEEDED\n(releaseReadyDependents)", EDGE + ends(0.3, 1, 0.3, 0))
+    p.edge(ready, claimed, "claimReadyTasks:\nlease, attempt_count+1", EDGE + ends(1, 0.5, 0, 0.5))
+    p.edge(claimed, running, "dispatch:\nStart ok", EDGE + ends(1, 0.5, 0, 0.5))
+    p.edge(running, succeeded, "Status Succeeded", EDGE + ends(1, 0.3, 0, 0.5), points=[(1040, 485), (1040, 325)])
     p.edge(running, failed, "failed, no retry left,\nor not retryable", EDGE + ends(0.7, 1, 0, 0.2), points=[(918, 650)])
     p.edge(
         claimed, failed, "start refused: DISPATCH_REJECTED,\nIMAGE_NOT_ALLOWED, MISSING_UPSTREAM_OUTPUT",
         EDGE + ends(0.7, 1, 0, 0.8), points=[(598, 680)],
     )
     p.edge(
-        running, ready, "failed but retryable (should_retry)",
+        running, ready, "failed but retryable (ShouldRetry; after the backoff)",
         EDGE + ends(0.3, 1, 0.5, 1), points=[(862, 600), (250, 600)],
     )
     p.edge(claimed, ready, "lease expired", EDGE + ends(0.3, 1, 0.75, 1), points=[(542, 560), (285, 560)])
-    p.edge(failed, ready, "retry_task (POST …/tasks/{id}/retry)", EDGE + ends(1, 0.5, 0.15, 1), points=[(1270, 665), (1270, 730), (201, 730)])
+    p.edge(failed, ready, "RetryTask", EDGE + ends(1, 0.5, 0.15, 1), points=[(1270, 665), (1270, 730), (201, 730)])
     p.edge(
-        ready, cancelled, "execution cancelled, or another\ntask failed (_fail_execution)",
+        ready, cancelled, "execution cancelled, or another\ntask failed (failExecution)",
         EDGE + ends(0.75, 0, 0.15, 1), points=[(285, 400), (521, 400)],
     )
     p.edge(blocked, cancelled, "same reasons", EDGE + ends(1, 0.5, 0, 0.5))
     p.edge(running, cancelled, "execution cancelled\n(next poll cancels the Job)", EDGE + ends(0.5, 0, 1, 0.5))
     p.edge(
-        cancelled, blocked, "a retry revives it (_revive_cancelled_siblings)",
+        cancelled, blocked, "a retry revives it (RetryTask)",
         EDGE + ends(0.5, 0, 0.5, 0) + "dashed=1;", points=[(570, 130), (250, 130)],
     )
 
@@ -861,18 +850,18 @@ def states_page() -> Page:
     e_succeeded = node(860, 820, "SUCCEEDED", GREEN)
     e_failed = node(860, 960, "FAILED", RED)
     e_cancelled = node(340, 1010, "CANCELLED", GREY)
-    p.edge(e_start, pending, "submit_execution", EDGE)
-    p.edge(pending, e_running, "first task dispatched\n(_mark_execution_running_if_needed)", EDGE)
-    p.edge(e_running, e_succeeded, "every task SUCCEEDED\n(_finalize_execution_if_succeeded)", EDGE + ends(1, 0.3, 0, 0.5))
-    p.edge(e_running, e_failed, "a task FAILED\n(_fail_execution)", EDGE + ends(1, 0.8, 0, 0.5))
+    p.edge(e_start, pending, "SubmitExecution", EDGE)
+    p.edge(pending, e_running, "first task dispatched\n(markExecutionRunning)", EDGE)
+    p.edge(e_running, e_succeeded, "every task SUCCEEDED\n(settleExecution)", EDGE + ends(1, 0.3, 0, 0.5))
+    p.edge(e_running, e_failed, "a task FAILED\n(failExecution)", EDGE + ends(1, 0.8, 0, 0.5))
     p.edge(
-        e_failed, e_running, "retry_task (EXECUTION_RESUMED)",
+        e_failed, e_running, "RetryTask (EXECUTION_RESUMED)",
         EDGE + ends(0.5, 1, 0.8, 1) + "dashed=1;", points=[(930, 1080), (612, 1080)],
     )
-    p.edge(pending, e_cancelled, "cancel_execution", EDGE + ends(0.5, 1, 0, 0.5))
-    p.edge(e_running, e_cancelled, "cancel_execution", EDGE + ends(0.3, 1, 1, 0.5))
+    p.edge(pending, e_cancelled, "CancelExecution", EDGE + ends(0.5, 1, 0, 0.5))
+    p.edge(e_running, e_cancelled, "CancelExecution", EDGE + ends(0.3, 1, 1, 0.5))
     p.vertex(
-        1050, 890, 230, 80, "SUCCEEDED, FAILED and CANCELLED\nare terminal, except that\nretry_task re-opens a FAILED one.",
+        1050, 890, 230, 80, "SUCCEEDED, FAILED and CANCELLED\nare terminal, except that\nRetryTask re-opens a FAILED one.",
         NOTE + "fontSize=11;",
     )
     return p
@@ -883,11 +872,11 @@ def states_page() -> Page:
 
 def main() -> None:
     kernel, kernel_imports = kernel_packages()
-    kernel_page = Page("2 · Kernel classes")
+    kernel_page = Page("2 · Kernel types")
     draw_packages(
         kernel_page,
-        "Kernel (kernel/app): every module, class and function",
-        "Generated from the source by docs/architecture/generate.py.  + public, - private.",
+        "Kernel (kernel/cmd, kernel/internal; Go): every file, type and function",
+        "Generated from the source by docs/architecture/generate.py.  + exported, - unexported.  An interface lists its methods; a struct its fields.",
         kernel,
         kernel_imports,
     )

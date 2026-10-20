@@ -353,7 +353,7 @@ Apply? [y/N]
 
 New chart features, so Helm users get them too:
 
-- **A sleeper** (kernel chart, `scaleDown.*`; `kernel/app/sleeper`): a
+- **A sleeper** (kernel chart, `scaleDown.*`; `kernel/internal/sleeper`): a
   CronJob in the platform namespace, with a Role that can only change the
   replica counts of the platform's named Deployments (the scale
   subresource), that checks for activity (an unfinished execution, the

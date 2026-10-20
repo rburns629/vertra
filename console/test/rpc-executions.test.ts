@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /**
- * ExecutionService through Connect: a DAG message submitted the way the REST
+ * ExecutionService through Connect: a DAG message submitted the way a JSON
  * body is, who may see, watch, cancel and retry an execution, and
  * kernel-api's refusals as Connect codes. The authorization rules are tested
- * in depth through the REST routes (executions-*.test.ts), which share
+ * in depth in executions-*.test.ts, through the same
  * core/executions.ts.
  */
 import { randomUUID } from "node:crypto";
@@ -114,7 +114,7 @@ afterAll(async () => {
 });
 
 describe("submitting", () => {
-  it("forwards a member's DAG with its image pinned, as the REST body would be", async () => {
+  it("forwards a member's DAG with its image pinned, as its JSON would be", async () => {
     config.imagePinning = "required";
     let response;
     try {

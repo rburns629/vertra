@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: MIT
+
+package scheduler
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/rburns629/acyclix/kernel/internal/executor"
+	"github.com/rburns629/acyclix/kernel/internal/metrics"
+	"github.com/rburns629/acyclix/kernel/internal/migrate"
+)
+
+// Between back-to-back passes, so a run of progress (or a task that keeps
+// failing to start) can't hold the database in a tight loop.
+const pauseAfterProgress = 50 * time.Millisecond
+
+const (
+	retentionInterval   = time.Hour
+	orphanSweepInterval = 5 * time.Minute
+)
+
+// Loop is what Run needs beyond a pass's Options.
+type Loop struct {
+	Pool     *pgxpool.Pool
+	Executor executor.Executor
+	Options  Options
+	// PollInterval is the longest wait between passes when nothing happened.
+	PollInterval time.Duration
+	// RetentionDays deletes finished executions this long after their last
+	// event; 0 keeps them forever.
+	RetentionDays int
+	// HeartbeatFile is touched each time the loop comes round; the liveness
+	// probe restarts the Pod if it goes stale (a hung pass).
+	HeartbeatFile string
+	Log           *slog.Logger
+}
+
+func (l *Loop) heartbeat() {
+	now := time.Now()
+	if err := os.Chtimes(l.HeartbeatFile, now, now); err != nil {
+		if f, err := os.Create(l.HeartbeatFile); err == nil {
+			_ = f.Close()
+		}
+	}
+}
+
+// Run runs passes until ctx ends (SIGTERM): it then finishes the pass in
+// progress, claims nothing more, and releases its leases so another
+// scheduler adopts its tasks at once. A pass that fails is logged and the
+// next starts from whatever is committed.
+func (l *Loop) Run(ctx context.Context) error {
+	l.heartbeat()
+	migrate.Wait(ctx, l.Pool, l.heartbeat, l.Log)
+	if ctx.Err() != nil {
+		return nil
+	}
+	l.Log.Info("scheduler starting", "owner", l.Options.Owner)
+	// The pass in progress runs to its end even once ctx is cancelled.
+	work := context.WithoutCancel(ctx)
+	nextRetention := time.Now()
+	nextOrphanSweep := time.Now().Add(orphanSweepInterval)
+	for ctx.Err() == nil {
+		started := time.Now()
+		outcome, err := l.pass(work)
+		metrics.TickDuration.Observe(time.Since(started).Seconds())
+		if err != nil {
+			metrics.TickErrors.Inc()
+			l.Log.Error("scheduler tick failed; will retry next poll", "error", err.Error())
+		} else {
+			for _, event := range outcome.Events {
+				metrics.Events.WithLabelValues(string(event)).Inc()
+			}
+			// Committed: only now may what finished be removed.
+			ReleaseFinished(work, l.Executor, outcome.Finished, l.Log)
+			l.housekeeping(work, &nextRetention, &nextOrphanSweep)
+		}
+		if outcome.Progressed {
+			// More is likely ready: go again after a pause too short to notice.
+			select {
+			case <-ctx.Done():
+			case <-time.After(pauseAfterProgress):
+			}
+		} else {
+			l.Executor.WaitForChange(ctx, l.PollInterval)
+		}
+		l.heartbeat()
+	}
+	// Not retried: if this fails, the leases expire on their own and are
+	// recovered then, as after a crash.
+	released, err := ReleaseLeases(work, l.Pool, l.Options.Owner, time.Now())
+	if err != nil {
+		return err
+	}
+	l.Log.Info("scheduler stopped; leases released", "owner", l.Options.Owner, "released", released)
+	return nil
+}
+
+// pass runs one tick in its own transaction.
+func (l *Loop) pass(ctx context.Context) (Outcome, error) {
+	var outcome Outcome
+	err := pgx.BeginFunc(ctx, l.Pool, func(tx pgx.Tx) error {
+		var err error
+		outcome, err = RunTick(ctx, tx, l.Executor, l.Options, time.Now(), l.Log)
+		return err
+	})
+	if err != nil {
+		return Outcome{}, err
+	}
+	return outcome, nil
+}
+
+func (l *Loop) housekeeping(ctx context.Context, nextRetention, nextOrphanSweep *time.Time) {
+	if l.RetentionDays > 0 && time.Now().After(*nextRetention) {
+		*nextRetention = time.Now().Add(retentionInterval)
+		var deleted int
+		err := pgx.BeginFunc(ctx, l.Pool, func(tx pgx.Tx) error {
+			var err error
+			deleted, err = DeleteFinishedExecutions(ctx, tx, time.Now().AddDate(0, 0, -l.RetentionDays), 500)
+			return err
+		})
+		if err != nil {
+			l.Log.Error("couldn't delete finished executions past retention", "error", err.Error())
+		} else if deleted > 0 {
+			l.Log.Info("deleted finished executions past retention", "deleted", deleted)
+		}
+	}
+	if time.Now().After(*nextOrphanSweep) {
+		*nextOrphanSweep = time.Now().Add(orphanSweepInterval)
+		if _, err := ReleaseOrphanedAttempts(ctx, l.Pool, l.Executor, time.Now().Add(-OrphanMinAge), l.Log); err != nil {
+			l.Log.Error("couldn't sweep orphaned attempts", "error", err.Error())
+		}
+	}
+}
+
+// ReleaseFinished removes the units of tasks whose outcome a committed pass
+// recorded. One that fails is logged and left (the orphan sweep and the
+// Job's TTL remove it later); the rest are still released.
+func ReleaseFinished(ctx context.Context, exec executor.Executor, finished []executor.Handle, log *slog.Logger) {
+	for _, handle := range finished {
+		if err := exec.Release(ctx, handle); err != nil {
+			log.Warn("couldn't remove a finished task's Job", "handle", handle, "error", err.Error())
+		}
+	}
+}

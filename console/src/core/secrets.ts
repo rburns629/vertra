@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * A team's secrets: the logic behind the REST routes (routes/secrets.ts)
+ * A team's secrets: the logic behind
  * and SecretService.
  *
  * Registering (or rotating) a secret lets any of the team's registered

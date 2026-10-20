@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * The product registry, what a DAG step can reference (db/schema.ts), and
- * the catalog's wiring types: the logic behind the REST routes
- * (routes/products.ts, routes/wiringTypes.ts) and ProductService.
+ * the catalog's wiring types: the logic behind ProductService.
  *
  * Registration is catalog CI's last step after a successful build (an
  * automation token holding products:register, auth/scopes.ts), not a

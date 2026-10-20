@@ -20,7 +20,7 @@ import * as k8s from "@kubernetes/client-node";
 // it) the way it did during development here: constructing this eagerly
 // at import time meant deleting the local kind cluster mid-session made
 // the *entire server* unable to start, for an endpoint that has nothing
-// to do with Kubernetes. Same principle as kernel/app/api/routes/health.py's
+// to do with Kubernetes. Same principle as kernel-api's
 // /health/live never touching the database -- a dependency being down
 // shouldn't take down things that don't need it.
 let apis:

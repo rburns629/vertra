@@ -1,7 +1,10 @@
-# Go for acyclixctl and catalogctl (`make proto`), from the plugins pinned
-# as tools in cli/go.mod. Output is committed.
+# Go for acyclixctl and catalogctl (`make proto`): the console's API, from
+# the plugins pinned as tools in cli/go.mod. Output is committed.
 version: v2
 clean: true
+inputs:
+  - directory: proto
+    paths: [proto/acyclix/console]
 managed:
   enabled: true
   override:

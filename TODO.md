@@ -148,13 +148,6 @@ design.
 - [ ] **Example values for EKS and AKS** next to `helm/values/gke/`, and a
   per-cloud guide to binding identities (console scanning and registry
   checks, ESO, products).
-- [ ] **A lock file for the kernel.** Its `pyproject.toml` has lower bounds
-  only (and `kubernetes<37`), so each image build installs that day's
-  newest; lock it for the image and CI. (Dependabot proposes updates; the
-  console has `package-lock.json`.)
-- [ ] **Upgrade the kernel to `kubernetes` 37.** It ships type information:
-  fix the typing gaps mypy then reports, drop the `kubernetes.*` mypy
-  override, run the Kubernetes tests on kind, lift the cap.
 - [ ] **Per-team ResourceQuota and LimitRange**, created with the team's
   namespace: a hard ceiling the cluster enforces, and a maximum step size.
   (Step sizes, Spot placement and running-step caps exist already.)
@@ -182,9 +175,8 @@ Order of work (decided 2026-10-20): **0** R1, R2 and R4 in the Python
 scheduler (done 2026-10-20). **1** The contracts: the console's API on Connect (protos,
 generated clients for the frontend, `acyclixctl` and `catalogctl`), the
 catalog format version 2, `catalogctl` ported to Go in the CLI's module,
-the compatibility check. **Kernel track, alongside 2–5:** the scheduler in
-Go against the same schema, then kernel-api on Connect, then the
-migrations tool; Python removed. **2** Pull-based registration. **3** Roles,
+the compatibility check. **Kernel track:** the kernel in Go, Python
+removed (done 2026-10-20). **2** Pull-based registration. **3** Roles,
 consumers, templates, exports, targets. **4** Schema checks and forms.
 **5** Default-deny networking, projected tokens, identity references from
 secrets. **6** Kernel features, in Go: retry policy, concurrency keys,
@@ -229,6 +221,46 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   was deprecated first). Phase 1 is done. Load balancers need HTTP/2 end
   to end only for gRPC callers (the charts' Ingress and the CLI's AWS and
   GCP settings); the browser and both CLIs use Connect over HTTP/1.1.
+- [x] **Kernel track: kernel-scheduler in Go** (done 2026-10-20).
+  `kernel/cmd/kernel-scheduler` and `kernel/internal/` (pgx, client-go
+  informers), against the same schema and settings, with the same Job
+  names, handles, logs and metrics, so it adopts the Python scheduler's
+  tasks in flight. Every Python scheduler and executor test ported (the
+  scheduler's scenarios against the real test database; the executor's
+  stubbed tests on client-go's fake; the kind tests as `TestKind*`, in
+  CI's kubernetes job), then the Python scheduler, executor, their tests
+  and settings removed. Proven on kind: two steps in flight under the
+  Python scheduler adopted and finished on attempt 1; a Go-to-Go restart
+  mid-step; chain, retries with backoff then a manual retry, cancel,
+  timeout, a fan-out and join; Jobs released, metrics, liveness. Found
+  and fixed on the way: the watch never marked Pods synced (every status
+  was read from the API until the first Pod event), a 403 with no message
+  gave an empty refusal, and a misspelt toleration was silently dropped
+  (Python refused it). The scheduler's ClusterRole narrowed to the calls
+  it makes (no `jobs/status`, no `get` on Pods or ConfigMaps).
+- [x] **Kernel track: the rest of the kernel in Go, Python removed** (done
+  2026-10-20). One binary, `kernel` (`api`, `scheduler`, `migrate`,
+  `sleep`), on a distroless image (about 50 MB). kernel-api is
+  `KernelService` (`proto/acyclix/kernel/v1`) over Connect, with the same
+  TokenReview caller check; the console calls it through the generated
+  client (`console/src/kernel/client.ts`), which now refuses field names it
+  didn't check, as kernel-api's pydantic models did. The schema is
+  `kernel/internal/migrate/sql/`, recorded in `schema_migrations`, and an
+  install Alembic migrated is taken over (proven identical by `pg_dump`).
+  The sleeper scales through `GetScale`/`UpdateScale` (its Role: `update`
+  on `deployments/scale`, not `patch`). Every Python test ported. Proven
+  on kind, as an upgrade of a running install: the takeover, a run
+  submitted through the Python kernel-api finished and read through the Go
+  one, the console's whole execution path, a rerun of a DAG stored before,
+  retries, cancel, timeout, fan-out, the caller check (no token 401, a
+  step's token 403, the wrong audience 401), and a real scheduled sleep and
+  wake under the sleeper's own Role. Then on GKE Autopilot in acyclix-dev,
+  a fresh install by `acyclixctl` (the scheduler waited for the migration
+  hook): a chain passing an output, retries, cancel, a timeout, a fan-out
+  on Spot, the caller check; then `acyclixctl destroy --all`, leaving
+  nothing but the project's own defaults. That run found client-go
+  printing Autopilot's warning on every Job unstructured; each distinct
+  API warning is now logged once, as JSON.
 - [ ] **Release `catalogctl` binaries, and pin one in the catalog
   template's `./catalogctl`** (version and per-platform SHA-256). Until
   then the wrapper refuses to run without `ACYCLIX_CATALOGCTL`, so a
@@ -280,7 +312,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (`task_attempts` is stored; the API returns only `attemptCount`).
 - [ ] **P1: samples read identity references from team secrets (S2)**,
   not the deployment-wide `GCP_TARGET_SERVICE_ACCOUNT`
-  (`kernel/app/config.py:72-76`), which gives every team the same
+  (`TASK_EXTRA_ENVIRONMENT`, `kernel/internal/config`), which gives every team the same
   identity; then drop that setting from the docs.
 - [ ] **P1: registry access across clouds (M2)**: an install on another
   cloud reading the catalog's one registry, federated where possible, and
@@ -381,8 +413,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **Show a product's latest tag** where people build DAGs.
 - [ ] **Stop reading `externalReference` and `idempotencyKey`** (now
   `name` and `requestId`; submissions over Connect can't send them) once
-  no stored execution has them: `kernel/app/contracts/execution.py`,
-  `withCurrentFieldNames` in `console/src/core/executions.ts`,
+  no stored execution has them: `submissionRequest` in
+  `console/src/kernel/client.ts`, `withCurrentFieldNames` in
+  `console/src/core/executions.ts`,
   `storedDag` in `console/src/rpc/services/execution.ts`, and the
   frontend's `dagCheck.ts`.
 

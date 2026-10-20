@@ -1,22 +1,36 @@
 // SPDX-License-Identifier: MIT
 /**
- * Thin client for kernel-api (kernel/app/api/routes/executions.py). Every
- * call here is made only after routes/executions.ts has already checked
- * the caller is allowed to touch the execution/team in question --
- * kernel-api itself has no concept of users or teams and never will (see
- * docs/architecture.md), so this service is the only
- * place that authorization can happen.
+ * The client for kernel-api: KernelService (proto/acyclix/kernel/v1) over
+ * Connect. Every call here is made only after core/executions.ts has
+ * checked the caller may touch the execution or team in question:
+ * kernel-api has no users or teams and never will (docs/architecture.md),
+ * so this console is the only place that authorization can happen.
  *
- * Payloads are forwarded largely as-is (`unknown` in, `unknown` out) --
- * kernel-api's own Pydantic models are the authority on the full
- * ExecutionSubmission/TaskDefinition shape; duplicating that validation
- * here would just be a second copy to keep in sync forever. This layer
- * only needs to see enough structure to authorize (see routes/executions.ts),
- * not to re-validate everything kernel-api already will.
+ * This module is the boundary between the two: it turns the DAG JSON the
+ * console authorized into a request, field by field under the names it
+ * authorized them by, and kernel-api's answers back into plain JSON for
+ * the console's own API. A refusal is a KernelApiError with the HTTP status
+ * the kernel's REST API used to answer (404, 409, 422; 401 or 403 for the
+ * console's own credentials), for each transport to relay.
  */
 import { readFile } from "node:fs/promises";
 
+import { create, type JsonObject } from "@bufbuild/protobuf";
+import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
+import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-node";
+
 import { config } from "../config.js";
+import {
+  ExecutionState,
+  KernelService,
+  ResourcesSchema,
+  SubmitExecutionRequestSchema,
+  TaskSchema,
+  TaskState,
+  ValidationIssuesSchema,
+  type Task,
+} from "../gen/acyclix/kernel/v1/kernel_pb.js";
 
 export class KernelApiError extends Error {
   readonly status: number;
@@ -29,27 +43,158 @@ export class KernelApiError extends Error {
   }
 }
 
-async function kernelRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const { body } = await kernelResponse(path, options);
-  return body as T;
+/** The console's projected ServiceAccount token, re-read on every call:
+ * the kubelet replaces the file before the token expires. None configured:
+ * kernel-api's check is disabled (development only). */
+const authenticate: Interceptor = (next) => async (req) => {
+  if (config.kernelApiTokenFile) {
+    const token = (await readFile(config.kernelApiTokenFile, "utf8")).trim();
+    req.header.set("Authorization", `Bearer ${token}`);
+  }
+  return next(req);
+};
+
+let kernel: ReturnType<typeof createClient<typeof KernelService>> | undefined;
+let kernelUrl: string | undefined;
+
+function client() {
+  // Rebuilt if the URL changes (tests point it at their own server).
+  if (!kernel || kernelUrl !== config.kernelApiUrl) {
+    kernelUrl = config.kernelApiUrl;
+    kernel = createClient(
+      KernelService,
+      createConnectTransport({ baseUrl: kernelUrl, httpVersion: "1.1", interceptors: [authenticate] }),
+    );
+  }
+  return kernel;
 }
 
-/** kernelRequest, with the status code too. */
-async function kernelResponse(path: string, options: RequestInit = {}): Promise<{ status: number; body: unknown }> {
-  const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
-  if (config.kernelApiTokenFile) {
-    // Re-read every time: the kubelet replaces the file before the token expires.
-    const token = (await readFile(config.kernelApiTokenFile, "utf8")).trim();
-    headers.set("Authorization", `Bearer ${token}`);
+const STATUS: Partial<Record<Code, number>> = {
+  [Code.NotFound]: 404,
+  [Code.FailedPrecondition]: 409,
+  [Code.InvalidArgument]: 422,
+  [Code.Unauthenticated]: 401,
+  [Code.PermissionDenied]: 403,
+};
+
+/** kernel-api's refusals as KernelApiError; anything else (it's down, a
+ * bug) propagates as it is, to be masked. */
+async function call<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    const connectError = ConnectError.from(error);
+    const status = STATUS[connectError.code];
+    if (status === undefined) throw error;
+    const issues = connectError.findDetails(ValidationIssuesSchema).flatMap((details) => details.issues);
+    const detail =
+      issues.length > 0
+        ? issues.map((issue) => ({ code: issue.code, message: issue.message, taskId: issue.taskId || null }))
+        : connectError.rawMessage;
+    throw new KernelApiError(status, { detail });
   }
-  const response = await fetch(`${config.kernelApiUrl}${path}`, { ...options, headers });
-  const body: unknown = response.status === 204 ? undefined : await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new KernelApiError(response.status, body);
-  }
-  return { status: response.status, body };
 }
+
+/** What a DAG's JSON may say: anything else is refused, so the JSON can't
+ * say one thing to the console's checks (which read these names) and
+ * another to the kernel. */
+const SUBMISSION_FIELDS = new Set(["name", "requestId", "tasks", "externalReference", "idempotencyKey"]);
+const TASK_FIELDS = new Set([
+  "id",
+  "image",
+  "action",
+  "team",
+  "serviceAccount",
+  "dependsOn",
+  "secretRefs",
+  "inputs",
+  "timeoutSeconds",
+  "maxAttempts",
+  "resources",
+]);
+const RESOURCE_FIELDS = new Set(["cpu", "memory", "memoryLimit"]);
+
+function refuse(message: string): never {
+  throw new KernelApiError(422, { detail: message });
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function only(value: Record<string, unknown>, allowed: Set<string>, where: string): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) refuse(`${where}: unknown field "${key}"`);
+  }
+}
+
+function text(value: unknown, where: string, fallback = ""): string {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== "string") refuse(`${where} must be a string`);
+  return value;
+}
+
+function texts(value: unknown, where: string): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) refuse(`${where} must be a list of strings`);
+  return value as string[];
+}
+
+function whole(value: unknown, where: string): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "number" || !Number.isInteger(value)) refuse(`${where} must be a whole number`);
+  return value;
+}
+
+function task(value: unknown, index: number): Task {
+  const where = `tasks[${String(index)}]`;
+  if (!isObject(value)) refuse(`${where} must be an object`);
+  only(value, TASK_FIELDS, where);
+  const inputs = value.inputs ?? {};
+  if (!isObject(inputs)) refuse(`${where}.inputs must be an object`);
+  let resources: Task["resources"];
+  if (value.resources !== undefined && value.resources !== null) {
+    if (!isObject(value.resources)) refuse(`${where}.resources must be an object`);
+    only(value.resources, RESOURCE_FIELDS, `${where}.resources`);
+    resources = create(ResourcesSchema, {
+      cpu: text(value.resources.cpu, `${where}.resources.cpu`),
+      memory: text(value.resources.memory, `${where}.resources.memory`),
+      memoryLimit: text(value.resources.memoryLimit, `${where}.resources.memoryLimit`),
+    });
+  }
+  return create(TaskSchema, {
+    id: text(value.id, `${where}.id`),
+    image: text(value.image, `${where}.image`),
+    action: text(value.action, `${where}.action`),
+    team: text(value.team, `${where}.team`),
+    serviceAccount: text(value.serviceAccount, `${where}.serviceAccount`),
+    dependsOn: texts(value.dependsOn, `${where}.dependsOn`),
+    secretRefs: texts(value.secretRefs, `${where}.secretRefs`),
+    inputs: inputs as JsonObject,
+    timeoutSeconds: whole(value.timeoutSeconds, `${where}.timeoutSeconds`),
+    maxAttempts: whole(value.maxAttempts, `${where}.maxAttempts`),
+    resources,
+  });
+}
+
+/** A DAG's JSON as the request. The old names externalReference and
+ * idempotencyKey are still read, so stored DAGs (Rerun) keep working;
+ * they're to be dropped later (TODO.md). */
+export function submissionRequest(payload: unknown) {
+  if (!isObject(payload)) refuse("The submission must be an object.");
+  only(payload, SUBMISSION_FIELDS, "submission");
+  if (payload.name !== undefined && payload.externalReference !== undefined) refuse("Give name or externalReference, not both.");
+  if (payload.requestId !== undefined && payload.idempotencyKey !== undefined) refuse("Give requestId or idempotencyKey, not both.");
+  if (payload.tasks !== undefined && !Array.isArray(payload.tasks)) refuse("tasks must be a list");
+  return create(SubmitExecutionRequestSchema, {
+    name: text(payload.name ?? payload.externalReference, "name"),
+    requestId: text(payload.requestId ?? payload.idempotencyKey, "requestId"),
+    tasks: ((payload.tasks as unknown[] | undefined) ?? []).map(task),
+  });
+}
+
+const iso = (timestamp: Timestamp | undefined) => (timestamp ? timestampDate(timestamp).toISOString() : null);
+const executionState = (state: ExecutionState) => ExecutionState[state];
 
 export interface ExecutionSubmissionResponse {
   executionId: string;
@@ -58,18 +203,52 @@ export interface ExecutionSubmissionResponse {
 
 export interface SubmittedExecutionResult extends ExecutionSubmissionResponse {
   /** False when the requestId was used before: kernel-api returned that
-   * execution (200) instead of starting a new one (201). */
+   * execution instead of starting a new one. */
   created: boolean;
 }
 
 export async function submitExecution(payload: unknown): Promise<SubmittedExecutionResult> {
-  const { status, body } = await kernelResponse("/v1/executions", { method: "POST", body: JSON.stringify(payload) });
-  const { executionId, state } = body as ExecutionSubmissionResponse;
-  return { executionId, state, created: status === 201 };
+  const request = submissionRequest(payload);
+  const response = await call(() => client().submitExecution(request));
+  return { executionId: response.executionId, state: executionState(response.state), created: response.created };
 }
 
-export function getExecution(executionId: string): Promise<unknown> {
-  return kernelRequest(`/v1/executions/${encodeURIComponent(executionId)}`);
+export interface KernelTaskStatus {
+  taskId: string;
+  state: string;
+  attemptCount: number;
+  outputs: JsonObject | null;
+  failure: JsonObject | null;
+  dependsOn: string[];
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface KernelExecution {
+  executionId: string;
+  name: string;
+  state: string;
+  tasks: KernelTaskStatus[];
+}
+
+export async function getExecution(executionId: string): Promise<KernelExecution> {
+  const { execution } = await call(() => client().getExecution({ executionId }));
+  if (!execution) throw new KernelApiError(404, { detail: "Execution not found." });
+  return {
+    executionId: execution.executionId,
+    name: execution.name,
+    state: executionState(execution.state),
+    tasks: execution.tasks.map((task) => ({
+      taskId: task.taskId,
+      state: TaskState[task.state],
+      attemptCount: task.attemptCount,
+      outputs: task.outputs ?? null,
+      failure: task.failure ?? null,
+      dependsOn: task.dependsOn,
+      startedAt: iso(task.startedAt),
+      completedAt: iso(task.completedAt),
+    })),
+  };
 }
 
 export interface ExecutionStateEntry {
@@ -77,7 +256,7 @@ export interface ExecutionStateEntry {
   state: string;
 }
 
-/** Per call to kernel-api, which takes at most 1000 (MAX_STATES_PER_REQUEST). */
+/** Per call to kernel-api, which takes at most 1000. */
 const STATES_BATCH = 500;
 
 /** Many executions' states for a list view, in batches; nothing to ask
@@ -85,39 +264,53 @@ const STATES_BATCH = 500;
 export async function getExecutionStates(executionIds: string[]): Promise<ExecutionStateEntry[]> {
   const states: ExecutionStateEntry[] = [];
   for (let i = 0; i < executionIds.length; i += STATES_BATCH) {
-    const page = await kernelRequest<{ states: ExecutionStateEntry[] }>("/v1/executions/states", {
-      method: "POST",
-      body: JSON.stringify({ ids: executionIds.slice(i, i + STATES_BATCH) }),
-    });
-    states.push(...page.states);
+    const page = await call(() => client().getExecutionStates({ executionIds: executionIds.slice(i, i + STATES_BATCH) }));
+    states.push(...page.states.map((entry) => ({ executionId: entry.executionId, state: executionState(entry.state) })));
   }
   return states;
 }
 
-export function getExecutionEvents(executionId: string, after?: number): Promise<unknown> {
-  const query = after !== undefined ? `?after=${String(after)}` : "";
-  return kernelRequest(`/v1/executions/${encodeURIComponent(executionId)}/events${query}`);
+export interface KernelEvent {
+  id: number;
+  eventType: string;
+  taskId: string | null;
+  payload: JsonObject;
+  createdAt: string | null;
 }
 
-/** Every task's captured container output for this execution, in one call
- * -- see kernel/app/contracts/execution.py's ExecutionLogsResponse for why
- * this isn't split into one call per task. */
-export function getExecutionLogs(executionId: string): Promise<unknown> {
-  return kernelRequest(`/v1/executions/${encodeURIComponent(executionId)}/logs`);
-}
-
-export function cancelExecution(executionId: string): Promise<ExecutionSubmissionResponse> {
-  return kernelRequest(`/v1/executions/${encodeURIComponent(executionId)}/cancel`, {
-    method: "POST",
-  });
-}
-
-export function retryTask(
+/** A page of an execution's events; nextCursor (an event id, for after)
+ * when there may be more. */
+export async function getExecutionEvents(
   executionId: string,
-  taskId: string,
-): Promise<ExecutionSubmissionResponse> {
-  return kernelRequest(
-    `/v1/executions/${encodeURIComponent(executionId)}/tasks/${encodeURIComponent(taskId)}/retry`,
-    { method: "POST" },
+  after?: number,
+): Promise<{ events: KernelEvent[]; nextCursor: number | null }> {
+  const page = await call(() =>
+    client().listExecutionEvents({ executionId, after: after === undefined ? undefined : BigInt(after) }),
   );
+  return {
+    events: page.events.map((event) => ({
+      id: Number(event.id),
+      eventType: event.eventType,
+      taskId: event.taskId || null,
+      payload: event.payload ?? {},
+      createdAt: iso(event.createdAt),
+    })),
+    nextCursor: page.nextCursor === undefined ? null : Number(page.nextCursor),
+  };
+}
+
+/** Every task's captured container output for this execution, in one call. */
+export async function getExecutionLogs(executionId: string): Promise<{ tasks: { taskId: string; lines: string[] }[] }> {
+  const logs = await call(() => client().getExecutionLogs({ executionId }));
+  return { tasks: logs.tasks.map((task) => ({ taskId: task.taskId, lines: task.lines })) };
+}
+
+export async function cancelExecution(executionId: string): Promise<ExecutionSubmissionResponse> {
+  const response = await call(() => client().cancelExecution({ executionId }));
+  return { executionId: response.executionId, state: executionState(response.state) };
+}
+
+export async function retryTask(executionId: string, taskId: string): Promise<ExecutionSubmissionResponse> {
+  const response = await call(() => client().retryTask({ executionId, taskId }));
+  return { executionId: response.executionId, state: executionState(response.state) };
 }

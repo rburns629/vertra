@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * TokenService: the rules of the REST bot and automation-token routes
+ * TokenService: the rules for bots and automation tokens
  * (shared through core/tokens.ts), through Connect: team membership gates a
  * team's bots, admins alone handle automation tokens, a retired team gets
  * no new token, and a raw token is shown once and never audited.

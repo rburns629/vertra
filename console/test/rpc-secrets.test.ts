@@ -3,8 +3,8 @@
  * SecretService through Connect: a team's members alone touch its secrets,
  * reserved names are refused, a value is written to the cluster but never
  * audited or returned, and an unset optional field reaches the cluster as
- * absent. The rules are tested in depth through the REST routes
- * (secrets.test.ts), which share core/secrets.ts.
+ * absent. The rules are tested in depth
+ * (secrets.test.ts), through the same core/secrets.ts.
  */
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, like } from "drizzle-orm";
@@ -95,7 +95,7 @@ describe("SecretService", () => {
     }
   });
 
-  it("checks names and values the REST way, every problem at once", async () => {
+  it("checks names and values, every problem at once", async () => {
     const response = await rpc("SecretService", "PutSecret", { team: team.name, secretName: "Not_Valid", data: {} }, { token });
     expect(response.json<RpcError>().code).toBe("invalid_argument");
   });

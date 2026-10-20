@@ -6,17 +6,6 @@
 # every one of them like any other change.
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: /kernel
-    schedule: {interval: weekly}
-    cooldown: {default-days: 7}
-    groups:
-      kernel-python: {patterns: ["*"]}
-    ignore:
-      # Kept below 37 until the kernel's typing is checked against it (TODO.md).
-      - dependency-name: kubernetes
-        versions: [">=37"]
-
   - package-ecosystem: npm
     directories: [/console, /console/frontend]
     schedule: {interval: weekly}
@@ -30,6 +19,13 @@ updates:
     cooldown: {default-days: 7}
     groups:
       cli-go: {patterns: ["*"]}
+
+  - package-ecosystem: gomod
+    directory: /kernel
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      kernel-go: {patterns: ["*"]}
 
   - package-ecosystem: docker
     directories:

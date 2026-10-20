@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * Bots and their API tokens: the logic behind the REST routes
- * (routes/bots.ts, routes/automation.ts) and TokenService
+ * Bots and their API tokens: the logic behind TokenService
  * (rpc/services/token.ts).
  *
  * A team's bot (db/schema.ts's users.isBot) acts as a member of that team:

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /**
- * Executions: the authorized front door to kernel-api (kernel/app/api/
- * routes/executions.py), which accepts only this console's ServiceAccount
- * token and knows nothing of users or teams. The logic behind both the REST
- * routes (routes/executions.ts) and ExecutionService.
+ * Executions: the authorized front door to kernel-api (KernelService,
+ * through kernel/client.ts), which accepts only this console's
+ * ServiceAccount token and knows nothing of users or teams. The logic
+ * behind ExecutionService.
  *
  * Every operation checks the caller's real team membership (or admin)
  * before anything reaches kernel-api, using submittedExecutions
@@ -57,10 +57,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Structural validation only: just enough to extract every task's `team`
- * for the authorization checks. kernel-api's own models (app/contracts/
- * task.py, execution.py) are the authority on the full shape; duplicating
- * that here would be a second copy of the same contract, bound to drift.
- * The caller's JSON reaches kernel-api unchanged otherwise.
+ * for the authorization checks. kernel-api is the authority on the rest
+ * (its DAG checks); kernel/client.ts turns the JSON into its request under
+ * exactly the names checked here, refusing any other.
  */
 interface TaskAuthInfo {
   team: string;
@@ -471,7 +470,7 @@ async function authorizeTasks(tasksInfo: TaskAuthInfo[], caller: AuthUser | unde
 
   // kernel runs a task as whatever ServiceAccount, and mounts whatever
   // Secret names, it asks for, with no notion of "team" or "product" to
-  // check them against (KubernetesExecutor._create_job): this is the one
+  // check them against (kernel/internal/executor/kubernetes.go): this is the one
   // place that's enforced before dispatch, as team membership above (the
   // cluster's identity policy checks again).
   const products = productLookup();
@@ -645,7 +644,7 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
   const submitter = submitted.submittedBy ? await findUserById(submitted.submittedBy) : undefined;
   const blocker = (await runBlocker(submitted.teams)) ?? (await detailImageBlocker(submitted.payload, log));
   return {
-    ...(detail as Record<string, unknown>),
+    ...detail,
     teams: submitted.teams,
     submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),
     createdAt: submitted.createdAt,
@@ -726,7 +725,7 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
   await ensureServiceAccounts(tasksInfo);
 
   // Every field carries over except requestId: kernel-api treats it as
-  // identifying this specific submission (kernel/app/contracts/execution.py),
+  // identifying this specific submission (proto/acyclix/kernel/v1),
   // so reusing the original would return the same execution. A stored DAG
   // from before pinning has tags; they're pinned now.
   const pinnedReplay = await pinned(replayed as Record<string, unknown>, context);

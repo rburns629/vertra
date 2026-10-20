@@ -49,7 +49,7 @@ export async function buildApp() {
   // Liveness never touches the database (a slow/down database shouldn't
   // get the process killed by an orchestrator's liveness probe); readiness
   // does, since a process that can't reach Postgres genuinely isn't ready
-  // to serve traffic -- same split as kernel/app/api/routes/health.py.
+  // to serve traffic -- same split as kernel-api's (kernel/internal/api/server.go).
   app.get("/health/live", () => ({ status: "ok" }));
   app.get("/health/ready", async (_request, reply) => {
     try {

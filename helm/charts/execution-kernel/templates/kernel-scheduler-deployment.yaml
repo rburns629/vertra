@@ -48,29 +48,13 @@ spec:
           # See kernel-api-deployment.yaml's identical comment -- an
           # unset imagePullPolicy defaults to Always for a "latest" tag.
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python3", "-c"]
-          args:
-            - |
-              import os, socket, time
-              host = os.environ["POSTGRES_HOST"]
-              port = int(os.environ["POSTGRES_PORT"])
-              while True:
-                  try:
-                      socket.create_connection((host, port), timeout=2).close()
-                      break
-                  except OSError:
-                      time.sleep(2)
-          env:
-            - name: POSTGRES_HOST
-              value: {{ include "execution-kernel.fullname" . }}-postgres
-            - name: POSTGRES_PORT
-              value: "5432"
+          command: ["/usr/local/bin/kernel", "wait-for-postgres", "{{ include "execution-kernel.fullname" . }}-postgres:5432"]
       {{- end }}
       containers:
         - name: scheduler
           image: {{ include "execution-kernel.appImage" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python", "-m", "app.scheduler"]
+          command: ["/usr/local/bin/kernel", "scheduler"]
           ports:
             - name: metrics
               containerPort: {{ .Values.scheduler.metricsPort }}
@@ -83,18 +67,16 @@ spec:
                 secretKeyRef:
                   name: {{ include "execution-kernel.databaseSecretName" . }}
                   key: {{ include "execution-kernel.databaseSecretKey" . }}
-          # The scheduler touches its heartbeat file each time its loop comes
-          # round (app/scheduler/__main__.py). A pass that hangs stops it, and
-          # this restarts the Pod; the new one adopts the tasks it held.
+          # The scheduler touches its heartbeat file (SCHEDULER_HEARTBEAT_FILE)
+          # each time its loop comes round (kernel/internal/scheduler/run.go).
+          # A pass that hangs stops it, and this restarts the Pod; the new one
+          # adopts the tasks it held.
           livenessProbe:
             exec:
               command:
-                - python3
-                - -c
-                - |
-                  import os, sys, time
-                  age = time.time() - os.path.getmtime({{ .Values.scheduler.heartbeatFile | quote }})
-                  sys.exit(0 if age < {{ int .Values.scheduler.livenessSeconds }} else 1)
+                - /usr/local/bin/kernel
+                - check-heartbeat
+                - {{ int .Values.scheduler.livenessSeconds | quote }}
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 10

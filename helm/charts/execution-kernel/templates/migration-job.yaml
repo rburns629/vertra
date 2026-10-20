@@ -1,6 +1,7 @@
 {{/*
-Runs `alembic upgrade head` before kernel-api/kernel-scheduler start
-serving on a fresh install or upgrade. Kubernetes has no native "wait for
+Runs `kernel migrate` (kernel/internal/migrate: the SQL files it doesn't
+have yet; an install Alembic migrated is taken over) before
+kernel-api/kernel-scheduler start serving on a fresh install or upgrade. Kubernetes has no native "wait for
 another resource" dependency primitive, so this leans on two things
 instead: the Job's own backoffLimit rides out Postgres still starting on a
 brand-new install, and Helm itself waits for hook Jobs to reach Complete
@@ -35,7 +36,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.migration.resources | nindent 12 }}
-          command: ["alembic", "upgrade", "head"]
+          command: ["/usr/local/bin/kernel", "migrate"]
           env:
             - name: DATABASE_URL
               valueFrom:

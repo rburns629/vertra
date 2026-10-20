@@ -2,7 +2,7 @@ execution-kernel is installed.
 
 kernel-api: {{ include "execution-kernel.fullname" . }}-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.service.port }}
 kernel-scheduler dispatches each task's Job into that task's own `team`
-namespace (see app/contracts/task.py) — there is no single fixed namespace
+namespace — there is no single fixed namespace
 to report here anymore.
 
 Check the migration Job finished before submitting anything:

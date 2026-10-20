@@ -55,7 +55,7 @@ export function invalidArgument(problems: ProblemInit[]): ConnectError {
 export const badRequest = (message: string, field = "", stableCode = "BAD_REQUEST"): ConnectError =>
   invalidArgument([{ field, code: stableCode, message }]);
 
-/** The HTTP status a REST route would have answered: what the audit log records. */
+/** The HTTP status a call's outcome corresponds to: what the audit log records. */
 export function httpStatusFor(code: Code | undefined): number {
   switch (code) {
     case undefined:

@@ -11,7 +11,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 
 ```
 .
-├── kernel/        the execution engine (Python)
+├── kernel/        the execution engine (Go): kernel-api, kernel-scheduler
 ├── console/       the web console and its API (TypeScript)
 ├── helm/          Helm charts for both, and each cluster's settings
 ├── docs/          maintainer documentation and diagrams
@@ -38,17 +38,18 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `TODO.md` | The actionable follow-up list: security, access, operations, housekeeping. Check it before starting work. |
 | `Makefile` | Everyday commands: `make quickstart` (a local install from nothing), `make up`/`down`/`logs` for the kind cluster, `make kind-deploy*` and `make gke-deploy*`, building the demo products, and `make test`/`test-db`/`test-db-down` (a throwaway test Postgres, separate from any install), and `make proto` (lint the API's protos and generate their code). |
 | `.gitignore` | Keeps `_local/`, build output and dependencies out of git. |
-| `buf.yaml` | buf's module (`proto/`) and lint rules for the console's API. |
-| `buf.gen.es.yaml`, `buf.gen.go.yaml` | What `make proto` generates: TypeScript for the console (`console/src/gen/`) and frontend (`console/frontend/src/gen/`, JavaScript with type declarations), Go for the CLI (`cli/internal/gen/`), each from plugins pinned in that project. |
-| `proto/acyclix/console/v1/` | The console's API as Connect services (decided 2026-10-20; being written): `common.proto` (failures, problems, paging), `execution.proto` (`ExecutionService`, with `WatchExecution` streamed), `team.proto` (`TeamService`). Not served yet: the console still answers its REST routes. |
+| `buf.yaml` | buf's module (`proto/`) and lint rules for the APIs. |
+| `buf.gen.es.yaml`, `buf.gen.frontend.yaml`, `buf.gen.go.yaml`, `buf.gen.kernel.yaml` | What `make proto` generates: TypeScript for the console (`console/src/gen/`: its API and kernel-api's, which it calls) and for the frontend (`console/frontend/src/gen/`, the console's API only, JavaScript with type declarations), Go for the CLI (`cli/internal/gen/`, the console's API) and for the kernel (`kernel/internal/gen/`, its own), each from plugins pinned in that project. |
+| `proto/acyclix/console/v1/` | The console's API as Connect services: one file per service (`execution.proto`'s `ExecutionService` streams `WatchExecution`), and `common.proto` (failures, problems, paging). The API reference page is built from these. |
+| `proto/acyclix/kernel/v1/kernel.proto` | kernel-api's `KernelService`, internal: only the console calls it. |
 | `.semgrep/malicious.yml` | Semgrep rules for code that has no business in a product (running remote code, hidden payloads, reverse shells, mining). Run by `security.yml`. |
 
 ## `.github/`: CI
 
 | Path | What it's for |
 | --- | --- |
-| `workflows/ci.yml` | Every PR: kernel tests, lint and type checks; console tests, lint and build; the API's protos linted and their committed generated code checked against `make proto`; Helm lint and render of `helm/values/*`; `actionlint` (this repo's workflows and the catalog template's); the catalog template's checks; building both platform images and scanning them (Trivy, OSV-Scanner). |
-| `dependabot.yml` | Weekly, grouped update pull requests (a week's cooldown) for the kernel's Python, the console's npm, every Dockerfile, the workflows, and the catalog template's starters. |
+| `workflows/ci.yml` | Every PR: the kernel's `gofmt`, `go vet`, migrations and tests (`-race`), with its kind tests in the kubernetes job; console tests, lint and build; the API's protos linted and their committed generated code checked against `make proto`; Helm lint and render of `helm/values/*`; `actionlint` (this repo's workflows and the catalog template's); the catalog template's checks; building both platform images and scanning them (Trivy, OSV-Scanner). |
+| `dependabot.yml` | Weekly, grouped update pull requests (a week's cooldown) for the kernel's and the CLI's Go, the console's npm, every Dockerfile, the workflows, and the catalog template's starters. |
 | `workflows/release.yml` | On a version tag: builds both platform images for amd64 and arm64, scans them, pushes them to GHCR, signs them keyless; packages, pushes and signs both charts; creates the GitHub release. |
 | `workflows/security.yml` | Secret scanning (gitleaks) and code scanning (Semgrep, including `.semgrep/`). |
 | `scripts/install-scanners.sh` | Installs pinned, checksum-verified tool binaries (Trivy, OSV-Scanner, gitleaks, actionlint, cosign) for the workflows. |
@@ -61,79 +62,48 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 
 ## `kernel/`: the execution engine
 
-Python 3.12, FastAPI, SQLAlchemy (async), Alembic. One image, two processes: **kernel-api** and **kernel-scheduler**, which never call each other and meet only in Postgres. Layers import in one direction only: `contracts → domain → persistence → services | scheduler → executors → api → main` ([`ARCHITECTURE.md`](../kernel/ARCHITECTURE.md)).
-
-### Project files
+Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never call each other and meet only in Postgres: **kernel-api** (`kernel api`), **kernel-scheduler** (`kernel scheduler`), the migration hook (`kernel migrate`) and the sleeper (`kernel sleep`). Python until 2026-10-20 (decision 17 in `docs/assessment.md`). The package rules and a call-by-call trace are in [`ARCHITECTURE.md`](../kernel/ARCHITECTURE.md).
 
 | Path | What it's for |
 | --- | --- |
 | `README.md` | What the kernel is and how to run and test it. |
-| `ARCHITECTURE.md` | The layer rules, and a call-by-call trace of submit → claim → dispatch → poll → finish. |
-| `pyproject.toml` | Dependencies, and the settings for ruff, mypy and pytest. |
-| `Dockerfile` | The kernel image (used for both processes and the migration Job). Runs as a non-root user. |
-| `.dockerignore`, `.gcloudignore` | Keep tests, caches and local files out of the image and the Cloud Build upload. |
-| `alembic.ini` | Database migration settings; the migrations themselves are in `app/persistence/migrations/`. |
-
-### `kernel/app/`: the code
-
-| Path | What it's for |
-| --- | --- |
-| `main.py` | Builds the kernel-api FastAPI app: routes, middleware, startup and shutdown. |
-| `config.py` | Every setting, as one validated `Settings` object (pydantic-settings), read from the environment. |
-| **`contracts/`** | **The shapes that cross a boundary**, as pydantic models. |
-| `contracts/execution.py` | The DAG submission (`name`, `requestId`, `tasks`) and kernel-api's responses. |
-| `contracts/task.py` | One task's definition; the `{"$fromTask", "$output"}` reference; the `request.json` a product reads. |
-| `contracts/result.py` | `result.json`, what a product writes: status, outputs, or a structured error. |
-| **`domain/`** | **The rules, with no I/O.** |
-| `domain/credentials.py` | Recognizes credential shapes (private keys, cloud keys, tokens): redacts them from logs, refuses them in inputs and outputs. |
-| `domain/dag_validation.py` | Checks a DAG before it's stored: duplicate ids, unknown dependencies, cycles, `$fromTask` references, credentials in inputs; topological order. |
-| `domain/states.py` | Task and execution states, and the retry rule. |
-| `domain/events.py` | The event types recorded for an execution. |
-| `domain/errors.py` | Typed errors: validation failures, dispatch refusals, missing upstream outputs. |
-| **`persistence/`** | **Postgres.** |
-| `persistence/models.py` | The kernel's tables (executions, tasks, dependencies, attempts, outputs, logs, events). |
-| `persistence/database.py` | Engine, sessions, and the transaction helper. |
-| `persistence/repositories.py` | Shared queries: find by id or `requestId`, record an event, page through events. |
-| `persistence/migrations/` | Alembic's setup (`env.py`, `script.py.mako`) and `versions/`: `0001_initial_schema.py` (every table at the first public release), then one file per later change, applied in order by the migration Job on deploy. |
-| `persistence/schema.py` | Whether the database is at this code's migration, and waiting until it is: what keeps a fresh install's scheduler from failing before the migration hook runs. |
-| **`services/`** | **What kernel-api does.** |
-| `services/execution_service.py` | Submit (idempotent by `requestId`), read an execution, its logs and events, cancel, retry a task. |
-| **`scheduler/`** | **The kernel-scheduler process.** |
-| `scheduler/__main__.py` | `python -m app.scheduler`: the loop that runs one tick per poll interval until SIGTERM, then releases its leases. |
-| `scheduler/claiming.py` | Takes READY tasks with `FOR UPDATE SKIP LOCKED` and a lease; recovers tasks whose lease expired; releases a stopping scheduler's leases. |
-| `scheduler/service.py` | One tick: claim, start each task, poll running ones, save results, retry or fail, release dependents, finish executions. |
-| `scheduler/retention.py` | Deletes finished executions past their retention (with everything of theirs). |
-| `scheduler/orphans.py` | Every few minutes, removes attempts' Jobs no task can use any more (a pass that rolled back, a release that failed, a deleted execution). |
-| `scheduler/input_resolution.py` | Replaces `$fromTask` references with upstream tasks' saved outputs before a task starts. |
-| **`sleeper/`** | **The sleeper (`python -m app.sleeper`), run by the chart's `scaleDown` CronJob.** |
-| `sleeper/__main__.py` | One look: sleeps the platform if idle (or, with `--now`, once nothing is unfinished). |
-| `sleeper/decision.py` | When to sleep, from the latest activity and the idle period: pure. |
-| `sleeper/activity.py` | What the kernel's data says: an unfinished execution, the last execution event. |
-| `sleeper/platform.py` | The Kubernetes side: replica counts, the console's last use, kernel-api's start, scaling to zero. |
-| **`executors/`** | **Running a task.** |
-| `executors/base.py` | The `Executor` protocol and the types passed through it. |
-| `executors/kubernetes.py` | The one executor: creates the `request.json` ConfigMap and the Job, reads status and the termination message, catches image-pull failures, deletes finished Jobs. |
-| **`api/`** | **kernel-api's HTTP routes.** |
-| `api/routes/executions.py` | `/v1/executions`: submit, read, states, logs, events, cancel, retry. |
-| `api/routes/health.py` | Liveness and readiness. |
-| `api/routes/metrics.py` | Prometheus metrics. |
-| `api/auth.py` | Accepts only the console on `/v1`: checks its ServiceAccount token with a TokenReview. |
-| `api/dependencies.py` | Per-request database session. |
-| **`observability/`** | **Logs and metrics.** |
-| `observability/logging.py` | Structured JSON logs. |
-| `observability/metrics.py` | The Prometheus counters and histograms. |
-| `observability/http_middleware.py` | Logs and measures every request. |
-
-### `kernel/tests/`
-
-| Path | What it's for |
-| --- | --- |
-| `conftest.py` | Shared fixtures: the test database (`TEST_DATABASE_URL`; each test rolls back), the API client. Kubernetes tests skip without a cluster, or fail when `KERNEL_TESTS_REQUIRE_KUBERNETES=1` (CI). |
-| `fakes.py` | `FakeExecutor`: an in-memory executor, to test scheduler logic without a cluster. |
-| `unit/` | Pure logic, no I/O: DAG validation, states, retry backoff, input resolution, executor error handling, image-pull detection, a finished Job left until it's released, and attempts listed from their Jobs' labels (`test_kubernetes_release.py`), request timeouts on every Kubernetes call, when a watched step's status read can be skipped, the scheduler's bounded concurrency, thread pool and shutdown, kernel-api's caller check, event metrics counted on commit, step sizes (`resources`) and placement, the sleeper's decision and run, and that the database guide matches the models (`test_schema_doc.py`). |
-| `integration/` | Against real Postgres (and, where named, a real kind cluster): claiming and lease hand-over, the API (including refusing Python field names), the execution service, cancel and retry, input resolution, the scheduler and its edge cases (a result seen late, a retry of one of several failures, two schedulers finishing tasks together, a start that raises retrying the same attempt, an attempt given up on only once it's stopped and finished Jobs released after the commit (`test_scheduler_stopping_before_retry.py`), the sweep of attempts no task needs (`test_orphaned_attempts.py`), a running step's log refreshed, retention), what the sleeper reads, the Kubernetes executor, the demo products. `executor_helpers.py` holds shared helpers. |
-| `end_to_end/test_two_task_chain.py` | The full proof: a two-task DAG through real Postgres, the real scheduler and real Jobs on kind, with a value passed between the tasks. |
-| `fixtures/docker_test_image/` | A test-only product image that crashes, sleeps or misbehaves on demand, to exercise the executor's failure handling. |
+| `ARCHITECTURE.md` | The package rules, and a call-by-call trace of submit → claim → dispatch → poll → finish. |
+| `go.mod`, `go.sum` | The kernel's Go module (`github.com/rburns629/acyclix/kernel`). |
+| `Dockerfile` | The image: a Go stage builds the binary; it runs on distroless (no shell) as a non-root user. |
+| `.dockerignore`, `.gcloudignore` | Keep test binaries and local files out of the image and the Cloud Build upload. |
+| `cmd/kernel/main.go` | The binary: `api`, `scheduler`, `migrate`, `sleep [--now]`, and for the chart `wait-for-postgres` (init containers) and `check-heartbeat` (the scheduler's liveness probe). |
+| `internal/config/config.go` | Every setting, for every process, read from the environment (the chart's ConfigMap) and checked at startup. |
+| **`internal/domain/`** | **The rules, with no I/O.** |
+| `internal/domain/states.go` | Task and execution states, the retry rule and its backoff. |
+| `internal/domain/dag.go` | Checks a DAG before it's stored: duplicate ids, unknown or repeated dependencies, cycles, `$fromTask` references, credentials in inputs; topological order. |
+| `internal/domain/result.go` | `result.json`, what a product writes, parsed strictly; the structured error. |
+| `internal/domain/task.go` | Step sizes; `{"$fromTask", "$output"}` references and resolving them; the `request.json` a product reads. |
+| `internal/domain/credentials.go` | Recognizes credential shapes: redacts them from logs and error messages, fails outputs that hold one, refuses inputs that do. |
+| `internal/domain/events.go` | The event types recorded for an execution. |
+| **`internal/api/`** | **kernel-api.** |
+| `internal/api/service.go` | `KernelService`: submit (idempotent by `requestId`), read an execution, its states, events and logs, cancel, retry a task. |
+| `internal/api/auth.go` | Accepts only the console: checks its ServiceAccount token with a TokenReview. |
+| `internal/api/server.go` | The HTTP server: the service, health, metrics, and every request logged and measured. |
+| **`internal/executor/`** | **Running a task.** |
+| `internal/executor/executor.go` | The `Executor` interface and the types passed through it. |
+| `internal/executor/kubernetes.go` | The one executor: creates the Job and its `request.json` ConfigMap (adopting an attempt's Job, reporting a policy's refusal), reads status and the termination message, catches image-pull failures, removes a finished Job once released. |
+| `internal/executor/watch.go` | Informers on the kernel's Jobs and Pods: wake the loop on a change, and skip re-reading a step that hasn't changed. |
+| `internal/executor/executortest/` | `Fake`: an in-memory executor, to test the scheduler without a cluster. |
+| **`internal/scheduler/`** | **The scheduling pass and the loop.** |
+| `internal/scheduler/tick.go` | One pass: claim, start each task, poll running ones, save results, retry or fail, release dependents, finish executions. |
+| `internal/scheduler/claiming.go` | Takes READY tasks with `FOR UPDATE SKIP LOCKED` and a lease, within the running caps; recovers tasks whose lease expired; releases a stopping scheduler's leases. |
+| `internal/scheduler/rows.go` | The task and attempt rows, events, and compare-and-set execution transitions. |
+| `internal/scheduler/run.go` | The loop: a pass per transaction, finished Jobs released after the commit, housekeeping, the heartbeat, leases released on stop. |
+| `internal/scheduler/retention.go` | Deletes finished executions past their retention (with everything of theirs). |
+| `internal/scheduler/orphans.go` | Every few minutes, removes attempts' Jobs no task can use any more (a pass that rolled back, a release that failed, a deleted execution). |
+| **`internal/migrate/`** | **The schema.** |
+| `internal/migrate/sql/` | One SQL file per change, applied in order, each once: `0001_initial_schema.sql` (every table at the first public release), then one file per later change. A released file never changes. |
+| `internal/migrate/migrate.go` | Applies them under an advisory lock, recorded in `schema_migrations`; takes over an install Alembic migrated; what kernel-api and the scheduler wait for. |
+| `internal/sleeper/sleeper.go` | The sleeper: one look, and if the platform is idle, the counts to wake to recorded and every Deployment scaled to zero (the databases last). |
+| `internal/logging/`, `internal/metrics/` | JSON logs; the Prometheus metrics. |
+| `internal/gen/` | `KernelService`'s generated Go (`make proto`). |
+| `internal/dbtest/`, `internal/kindtest/` | For tests: the test database and throwaway ones; the current kind cluster and test images (`kindtest/fixture/`: a test-only product that crashes, sleeps or fails on demand). |
+| `*_test.go` | Beside each package: against the real, migrated test database (`TEST_DATABASE_URL`), client-go's fake clientset, or (`TestKind*`) a real kind cluster, skipping without one or failing when `KERNEL_TESTS_REQUIRE_KUBERNETES=1` (CI). |
 
 ## `console/`: the console and its API
 
@@ -164,7 +134,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `index.ts` | Builds the app: the global error handler (hides server errors' details), auth, rate limits, every route under `/api`, the static frontend. |
 | `config.ts` | Every setting, read and checked once at startup. |
 | `k8s.ts` | **Every write to Kubernetes:** product ServiceAccounts (create-only), Secrets, ExternalSecrets, removing the per-secret Roles older versions made, the image policy; also reads namespaces, SecretStores and task Pods. Security-sensitive. |
-| `kernel/client.ts` | Calls kernel-api (with the console's projected ServiceAccount token): submit, read, states, events, logs, cancel, retry. |
+| `kernel/client.ts` | Calls kernel-api's `KernelService` over Connect (with the console's projected ServiceAccount token): submit, read, states, events, logs, cancel, retry. Turns a DAG's JSON into the request strictly, under the names the console checked, and kernel-api's refusals into the statuses the console relays. |
 | `imagePolicy.ts` | The allowed image sources: the same matching rules as the cluster's image policy, and reading and saving it. |
 | `imageRef.ts` | Reading an image reference the way the kubelet does (`normalizeImage`, `imageRepository`); pure, used by the image policy and repository ownership. |
 | `secretStores.ts` | What a team's SecretStore file may hold, checked before the console applies it (`PUT /teams/:team/secret-store`): the same rules as the catalog's own check. |
@@ -259,7 +229,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | --- | --- |
 | `auth.test.ts`, `accounts.test.ts` | Sign-in, sessions, password changes and resets, login throttling. |
 | `executions-auth.test.ts` | Who may submit what: teams, identities, team secrets, images, `requestId`. |
-| `kernel-client.test.ts` | The kernel-api client sends the projected token, re-read on every call. |
+| `kernel-client.test.ts` | The kernel-api client against a KernelService of its own: the projected token, re-read on every call; the answers and refusals it maps; refusing field names the console didn't check. |
 | `product-policy.test.ts` | The identity policy's products and team secrets: their entries, and that every change rewrites them. |
 | `product-ownership.test.ts` | One team per product name and image repository, kept after deletion until an admin releases it. |
 | `team-members.test.ts`, `team-lifecycle.test.ts` | Membership, retiring and purging teams. |

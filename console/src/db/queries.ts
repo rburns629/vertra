@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-/** Thin, explicit query wrappers — no logic beyond the query itself, same
- * separation as kernel/app/persistence/repositories.py. */
+/** Thin, explicit query wrappers — no logic beyond the query itself. */
 import { and, arrayContains, arrayOverlaps, count, desc, eq, gte, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { imageRepository } from "../imageRef.js";
 import { db } from "./client.js";
@@ -90,7 +89,7 @@ export async function findTeamById(id: string): Promise<Team | undefined> {
   return team;
 }
 
-/** Admin-only in practice (see routes/teams.ts's `GET /teams`) -- a regular
+/** Admin-only in practice (see core/teams.ts's listTeams) -- a regular
  * member only ever learns team names through their own membership. */
 export function listAllTeams(): Promise<Team[]> {
   return db.select().from(teams).where(isNull(teams.deletedAt));
@@ -180,7 +179,7 @@ export interface UserSummary {
   teamNames: string[];
 }
 
-/** Every human account (bots are listed per team, see routes/bots.ts) with
+/** Every human account (bots are listed per team, see core/tokens.ts) with
  * the active teams it belongs to, for the Admin page. */
 export async function listHumanUsersWithTeams(): Promise<UserSummary[]> {
   const rows = await db
@@ -215,7 +214,7 @@ export async function deleteUser(userId: string): Promise<void> {
   await db.delete(users).where(eq(users.id, userId));
 }
 
-/** Used to refuse revoking the last admin (routes/users.ts) -- an empty
+/** Used to refuse revoking the last admin (core/users.ts) -- an empty
  * platform-admin set would mean nobody could ever grant it back. */
 export async function countAdmins(): Promise<number> {
   const [row] = await db
@@ -238,7 +237,7 @@ export async function teamNamesForUser(userId: string): Promise<string[]> {
 }
 
 /** Idempotent: reuses the bot user if one with this email already exists
- * (routes/bots.ts still checks it's actually a bot, not a human who
+ * (core/tokens.ts still checks it's actually a bot, not a human who
  * happens to share the email, before treating it as one). */
 export async function createBotUser(email: string): Promise<User> {
   const [inserted] = await db
@@ -448,7 +447,7 @@ export interface ProductInput {
   resources?: ProductResources | undefined;
 }
 
-/** Registration and re-registration are the same call (see routes/products.ts
+/** Registration and re-registration are the same call (see core/products.ts
  * -- CI runs this on every merge, not just the product's first ever build),
  * keyed on name. */
 /**
@@ -710,7 +709,7 @@ export interface SubmittedExecution {
 }
 
 /** Called right after kernel-api confirms the execution exists (see
- * routes/executions.ts) -- this is the only record of which teams are
+ * core/executions.ts) -- this is the only record of which teams are
  * allowed to see it, since kernel-api itself has no concept of teams.
  * `onConflictDoNothing` on purpose, not a plain insert -- kernel-api's own
  * requestId handling means this can run more than once for the same
@@ -752,7 +751,7 @@ export async function findSubmittedExecutions(executionIds: string[]): Promise<S
 
 export type SubmittedExecutionSummary = Omit<SubmittedExecution, "payload">;
 
-// Every list caller (routes/executions.ts's `GET /executions`) only ever
+// Every list caller (core/executions.ts's list) only ever
 // renders summary fields -- `payload` is a full stored task graph, fetched
 // only where it's actually needed (findSubmittedExecution, for the detail
 // page and for /rerun), so a list of many executions doesn't ship every
@@ -850,7 +849,7 @@ export function listSubmittedExecutionsForTeams(
     .orderBy(desc(submittedExecutions.createdAt));
 }
 
-/** Platform-wide counts for the admin home view (routes/stats.ts) --
+/** Platform-wide counts for the admin home view (core/admin.ts) --
  * server-side aggregates, not "fetch the full list and take .length,"
  * since a non-admin never has a reason to pull every row in these tables
  * just to render a number. */
@@ -888,7 +887,7 @@ export interface SecretGrantRecord {
 
 /** Called right after k8s.ts's upsertSecretGrant/upsertExternalSecretGrant
  * actually provisions the Secret or ExternalSecret (see
- * routes/secrets.ts) -- records what was granted, never the values.
+ * core/secrets.ts) -- records what was granted, never the values.
  * Upsert on (teamId, secretName): re-registering the same secret
  * (rotation, or switching source) updates this row instead of creating a
  * second one, matching upsertSecretGrant's own create-or-replace
@@ -930,7 +929,7 @@ export async function listSecretGrantsForTeam(teamId: string): Promise<SecretGra
 }
 
 /** Whether a team registered this secret: what a task's secretRefs may
- * name (routes/executions.ts). The kernel mounts whatever Secret name it's
+ * name (core/executions.ts). The kernel mounts whatever Secret name it's
  * given, with no notion of teams, so this is where that's decided. */
 export async function isSecretRegistered(teamId: string, secretName: string): Promise<boolean> {
   const [row] = await db

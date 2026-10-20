@@ -3,10 +3,7 @@
  * A refusal from the console's own logic (src/core/), the same for both
  * ways of calling it:
  *
- * - REST routes let it propagate: the global error handler (index.ts)
- *   answers any error with a status below 500 as {error: code, message},
- *   exactly what the routes used to send themselves.
- * - Connect services let it propagate too: rpc/interceptors.ts turns it
+ * - Connect services let it propagate: rpc/interceptors.ts turns it
  *   into a ConnectError with the matching code and the stable `code` as a
  *   Failure detail.
  *
@@ -17,14 +14,14 @@ import { Code } from "@connectrpc/connect";
 
 export class ApiError extends Error {
   constructor(
-    /** The HTTP status a REST route answers with (4xx). */
+    /** The HTTP status it corresponds to (4xx): what the audit log records. */
     readonly statusCode: number,
     /** A stable code: FORBIDDEN, TEAM_RETIRED, LAST_MEMBER, ... */
     readonly code: string,
     message: string,
     /** The Connect code, when the status's usual one doesn't fit. */
     readonly connectCode: Code = connectCodeFor(statusCode),
-    /** More fields for a REST error body (a failed scan's findings, say). */
+    /** More fields, carried in the Failure detail (a failed scan's findings, say). */
     readonly extra: Record<string, unknown> = {},
   ) {
     super(message);

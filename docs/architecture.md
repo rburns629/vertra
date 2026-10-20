@@ -51,12 +51,11 @@ every other team's.
   kernel-api. It also owns team namespaces, writes teams' Secrets (it can't
   read them), pins and scans images, and keeps the kernel's admission
   policies' lists current.
-- **kernel** (`kernel/`, Python, FastAPI, SQLAlchemy): one image, two
-  processes that never call each other and coordinate only through Postgres
-  rows.
-  - **kernel-api** validates a DAG and stores it. It knows nothing about
-    users or teams and accepts only the console (by its ServiceAccount
-    token, checked with a TokenReview).
+- **kernel** (`kernel/`, Go): one binary and image, two processes that
+  never call each other and coordinate only through Postgres rows.
+  - **kernel-api** validates a DAG and stores it (`KernelService`, over
+    Connect). It knows nothing about users or teams and accepts only the
+    console (by its ServiceAccount token, checked with a TokenReview).
   - **kernel-scheduler** claims ready steps, starts them as Jobs, watches
     them, records their results, and releases the steps that depended on
     them.
@@ -92,12 +91,12 @@ every other team's.
    One transaction stores the execution, its tasks (`READY` without
    dependencies, `BLOCKED` with) and its edges. A repeated `requestId`
    returns the existing execution instead of a second one.
-4. **Claim** (kernel-scheduler, `app/scheduler/`): each pass recovers
+4. **Claim** (kernel-scheduler, `kernel/internal/scheduler/`): each pass recovers
    expired leases, claims up to 50 `READY` tasks with
    `FOR UPDATE SKIP LOCKED` and a 60-second lease, and starts their Jobs
    concurrently. Running-step caps (platform-wide and per team) are applied
    here.
-5. **Dispatch** (`KubernetesExecutor`): replace each
+5. **Dispatch** (`kernel/internal/executor`): replace each
    `{"$fromTask": …, "$output": …}` input with the upstream task's stored
    output, then create the Job (its name prefixed `ek-`) in the team's
    namespace: the request as a ConfigMap at `/platform/input/request.json`,
@@ -161,13 +160,14 @@ publishing.
 
 | Database | Tables | Reference |
 | --- | --- | --- |
-| Kernel (`execution_kernel`) | `executions`, `execution_tasks` (state, lease, attempt count, inputs as submitted and resolved, the Job's handle), `task_dependencies` (the DAG's edges), `task_attempts`, `task_outputs`, `task_logs`, `execution_events` (append-only, the activity feed) | `kernel/app/persistence/models.py` |
+| Kernel (`execution_kernel`) | `executions`, `execution_tasks` (state, lease, attempt count, inputs as submitted and resolved, the Job's handle), `task_dependencies` (the DAG's edges), `task_attempts`, `task_outputs`, `task_logs`, `execution_events` (append-only, the activity feed) | [`console/docs/06-database-schemas.md`](../console/docs/06-database-schemas.md); `kernel/internal/migrate/sql/` |
 | Console (`execution_console`) | users, teams, memberships, API tokens (hashed), registered secrets (names, never values), products and their releases, image repositories, image scans, submitted executions (which teams may see each), the audit log | [`console/docs/06-database-schemas.md`](../console/docs/06-database-schemas.md) |
 
-Tests in both projects keep the schema document in step with the models.
-Each project's migrations (Alembic in `kernel/app/persistence/migrations/`,
-Drizzle in `console/src/db/migrations/`) start from one baseline and run as
-a Helm hook on every install and upgrade, before the new code starts.
+Tests in both projects keep the schema document in step with the tables.
+Each project's migrations (SQL files in `kernel/internal/migrate/sql/`, run
+by `kernel migrate`; Drizzle in `console/src/db/migrations/`) start from one
+baseline and run as a Helm hook on every install and upgrade, before the
+new code starts.
 
 Execution states, task states and the transitions between them are drawn
 in `docs/architecture/` (`5-states`), with the rest of the diagrams.
@@ -267,8 +267,8 @@ roadmap are in [assessment.md](assessment.md), the work in
   fields and console pages. Azure and GitLab wait until this is done.
 - **Languages and APIs** (decided 2026-10-20). The console stays
   TypeScript, its API moves to Connect (protos, generated clients, gRPC
-  available). The kernel moves to Go, scheduler first, against the same
-  schema. `catalogctl` moves to Go beside `acyclixctl`. Products keep any
+  available). The kernel moves to Go, against the same schema: the
+  scheduler has (2026-10-20); kernel-api and the migrations are next. `catalogctl` moves to Go beside `acyclixctl`. Products keep any
   language and JSON Schema.
 
 ## Glossary

@@ -146,7 +146,7 @@ const MARKDOWN_COMPONENTS: Components = {
 };
 
 /**
- * Renders the guides in console/docs/, served by ../../src/routes/docs.ts
+ * Renders the guides in console/docs/, served by ../../src/rpc/services/guide.ts
  * from the console's image. The first one in the list opens by default.
  */
 export function DocsPage() {

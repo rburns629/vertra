@@ -9,9 +9,10 @@ The kernel does not decide *which* tasks are required; that's the job of
 whatever submits the DAG. It only runs the resolved DAG it's given,
 reliably.
 
-Two processes, one image (`app/main.py` for `kernel-api`,
-`python -m app.scheduler` for `kernel-scheduler`), coordinating only
-through Postgres rows. Where to read more:
+One Go binary, `kernel`, run as separate processes that coordinate only
+through Postgres rows: `kernel api` (kernel-api, which the console calls)
+and `kernel scheduler` (kernel-scheduler, which runs the steps), plus
+`kernel migrate` and `kernel sleep`. Where to read more:
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the layer rules and a call-by-call
   trace of submit → claim → dispatch → poll → finalize.
@@ -42,24 +43,19 @@ authentication of its own; the console is its front door.
 
 ## Testing
 
-```bash
-pip install -e ".[dev]"
-pytest                   # everything
-pytest tests/unit        # pure logic, no I/O
-ruff check .
-mypy .
-```
-
-Integration and end-to-end tests need a real, migrated Postgres at
-`postgresql+asyncpg://localhost/execution_kernel_test`:
+The tests need a real, migrated Postgres. From the repo root, `make test`
+starts one in a container on `127.0.0.1:55432`, migrates it and runs
+everything (the kernel's tests in the pinned Go image). By hand, with Go
+1.26+:
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://localhost/execution_kernel_test alembic upgrade head
+DATABASE_URL=postgresql://localhost/execution_kernel_test go run ./cmd/kernel migrate
+TEST_DATABASE_URL=postgresql://localhost/execution_kernel_test go test ./...
+go vet ./... && gofmt -l .
 ```
 
-The Kubernetes tests (`tests/integration/test_kubernetes_executor.py`,
-`test_product_examples.py`, `tests/end_to_end/test_two_task_chain.py`)
-need a reachable kind cluster in the current kubectl context, and are
-skipped, not failed, without one. They build fixture images with Docker
-and `kind load` them into that cluster, since kind's nodes have their own
-image store.
+The Kubernetes tests (`TestKind*` in `internal/executor` and
+`internal/scheduler`) need a kind cluster in the current kubectl context
+with an `execution-kernel` namespace, and are skipped, not failed, without
+one. They build their images with Docker and push them to the local
+registry (`make kind-registry`) when it's running, else `kind load` them.

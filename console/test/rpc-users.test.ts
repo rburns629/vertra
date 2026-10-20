@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * UserService: the same rules as the REST account routes (accounts.test.ts
+ * UserService: the account rules (accounts.test.ts
  * covers them in depth, through the shared core/users.ts); here, what the
  * Connect path adds: the admin check, refusals as Connect codes with their
  * stable codes, and changes audited without their secrets.
@@ -76,7 +76,7 @@ describe("UserService", () => {
     expect(list.json<{ users: { email: string }[] }>().users.map((u) => u.email)).not.toContain(email);
   });
 
-  it("checks input the REST routes' way", async () => {
+  it("checks input, every problem at once", async () => {
     const admin = await makeUser({ admin: true });
     const token = await signIn(admin.email);
     const response = await rpc("UserService", "ResetPassword", { email: "nope", newPassword: "short" }, { token });

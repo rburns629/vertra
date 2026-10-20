@@ -4,7 +4,7 @@
  * products:register token) register its products, platform products are
  * admins', a name or repository another team owns is refused, and the
  * wiring types are replaced only by whoever may register products. The
- * rules are tested in depth through the REST routes, which share
+ * rules are tested in depth elsewhere, through the same
  * core/products.ts.
  */
 import { randomUUID } from "node:crypto";
@@ -115,7 +115,7 @@ describe("ProductService", () => {
     expect(failureCode(response.json<RpcError>())).toBe("CONFLICT");
   });
 
-  it("checks a registration the REST way", async () => {
+  it("checks a registration", async () => {
     const response = await rpc(
       "ProductService",
       "RegisterProduct",

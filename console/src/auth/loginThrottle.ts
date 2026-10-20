@@ -3,7 +3,7 @@
  * Slows password guessing against one account, from any number of IPs,
  * without locking its owner out.
  *
- * The per-IP limit on /auth/login (routes/auth.ts) stops one source; an
+ * The per-IP limit on /auth/login (rpc/services/auth.ts) stops one source; an
  * attacker with many IPs gets 10 guesses per IP per window. This counts an
  * account's failed sign-ins across all sources instead, and past a free
  * allowance spaces attempts out: after FREE_FAILURES failures within the

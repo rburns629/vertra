@@ -58,7 +58,7 @@ that Secret is referenced directly instead of one this chart creates.
 {{- define "execution-kernel.databaseUrl" -}}
 {{- $root := .root -}}
 {{- if $root.Values.postgres.enabled -}}
-postgresql+asyncpg://{{ $root.Values.postgres.auth.username }}:{{ .password }}@{{ include "execution-kernel.fullname" $root }}-postgres:5432/{{ $root.Values.postgres.auth.database }}
+postgresql://{{ $root.Values.postgres.auth.username }}:{{ .password }}@{{ include "execution-kernel.fullname" $root }}-postgres:5432/{{ $root.Values.postgres.auth.database }}
 {{- else -}}
 {{- $root.Values.externalDatabaseUrl -}}
 {{- end -}}

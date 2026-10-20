@@ -1,5 +1,5 @@
 {{/*
-Sleeping when idle (values.yaml's scaleDown, kernel/app/sleeper). The
+Sleeping when idle (values.yaml's scaleDown, kernel/internal/sleeper). The
 sleeper's identity can change only the replica count of the platform's own
 Deployments, by name and through the scale subresource, and the one
 ConfigMap where it keeps the counts to wake to: nothing that changes what
@@ -42,7 +42,7 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments/scale"]
     resourceNames: {{ concat $deployments $databases | toJson }}
-    verbs: ["get", "patch"]
+    verbs: ["get", "update"]
   - apiGroups: [""]
     resources: ["configmaps"]
     resourceNames: [{{ $state | quote }}]
@@ -114,7 +114,7 @@ spec:
             - name: sleeper
               image: {{ include "execution-kernel.appImage" $ | quote }}
               imagePullPolicy: {{ $.Values.image.pullPolicy }}
-              command: ["python", "-m", "app.sleeper"{{ range $job.args }}, {{ . | quote }}{{ end }}]
+              command: ["/usr/local/bin/kernel", "sleep"{{ range $job.args }}, {{ . | quote }}{{ end }}]
               resources:
                 {{- toYaml $s.resources | nindent 16 }}
               securityContext:

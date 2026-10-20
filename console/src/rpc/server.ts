@@ -5,12 +5,10 @@
  * answering the Connect protocol (JSON or binary, so plain curl works),
  * gRPC-Web, and gRPC where the server speaks HTTP/2.
  *
- * Before each call a hook resolves the bearer credential exactly as REST
- * routes do (auth/plugin.ts's resolveCaller); interceptors.ts then refuses
+ * Before each call a hook resolves the bearer credential
+ * (auth/plugin.ts's resolveCaller); interceptors.ts then refuses
  * protected methods without one, records changes, and keeps internal
  * errors' details from callers.
- *
- * Served beside the REST routes while clients move over (TODO.md, Phase 1).
  */
 import { createContextValues } from "@connectrpc/connect";
 import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";

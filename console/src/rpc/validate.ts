@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
- * Checking a request message's fields against the same TypeBox schemas the
- * REST routes declare (NewPassword, SecretName, ...), so both paths accept
- * exactly the same input. Fastify validated REST bodies itself; Connect
- * hands a handler its decoded message, which the handler checks here.
+ * Checking a request message's fields against TypeBox schemas (NewPassword,
+ * SecretName, ...): Connect hands a handler its decoded message, which the
+ * handler checks here, every problem at once.
  */
 import { FormatRegistry, OptionalKind, type Static, type TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";

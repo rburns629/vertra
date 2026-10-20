@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * AuthService (proto/acyclix/console/v1/auth.proto): signing in, and who
- * you are. The same rules as routes/auth.ts and routes/me.ts, which it
+ * you are. The same rules as rpc/services/auth.ts and rpc/services/auth.ts, which it
  * replaces: open registration only when allowed, sign-in limited per
  * client and email and spaced out per account, the same failure (and
  * timing) whether an email has an account or the password is wrong, and a
@@ -26,7 +26,7 @@ const AnyPassword = Type.String({ minLength: 1 });
 const MINUTE = 60 * 1000;
 // Keyed on client and email together: per client alone would be one
 // global limit behind a load balancer that hides clients; per email alone
-// would let anyone lock a known account out (routes/auth.ts has the rest).
+// would let anyone lock a known account out (rpc/services/auth.ts has the rest).
 const loginLimit = new FixedWindowLimit(10, 15 * MINUTE);
 const registerLimit = new FixedWindowLimit(20, 60 * MINUTE);
 const passwordChangeLimit = new FixedWindowLimit(10, 15 * MINUTE);

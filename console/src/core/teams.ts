@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * Teams and their lifecycle: the logic behind the REST routes
- * (routes/teams.ts, routes/pods.ts) and TeamService.
+ * Teams and their lifecycle: the logic behind TeamService.
  *
  * Creating a team is a platform-level action: only a platform admin, or an
  * automation token holding teams:create (catalog CI's apply-teams.yml,
@@ -163,7 +162,7 @@ async function memberTeam(caller: AuthUser | undefined, name: string) {
   return team;
 }
 
-/** Adds someone with an account. The REST route and TeamService limit how often. */
+/** Adds someone with an account. TeamService limits how often. */
 export async function addMember(caller: AuthUser | undefined, teamName: string, email: string): Promise<void> {
   const team = await memberTeam(caller, teamName);
   ensureNotRetired(team);

@@ -2,7 +2,7 @@
 /**
  * Keeps the cluster's copy of who may run as what current. The console
  * decides which ServiceAccount and Secrets a task may use (identityRefusal
- * in routes/executions.ts); helm/charts/execution-kernel/templates/
+ * in core/executions.ts); helm/charts/execution-kernel/templates/
  * identity-policy.yaml makes the Kubernetes API server enforce the same rule
  * on every Job the scheduler creates, from two literals held in the policy
  * itself. This writes them, from the database, whenever products or secrets

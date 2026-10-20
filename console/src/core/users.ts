@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
- * People's accounts, for admins: the logic behind both the REST routes
- * (routes/users.ts) and UserService (rpc/services/user.ts). Admin-only both
+ * People's accounts, for admins: the logic behind UserService
+ * (rpc/services/user.ts). Admin-only both
  * ways, deliberately with no self-service path (unlike team membership),
  * since admin is a platform-wide capability, not something scoped to what
  * the granter already owns.

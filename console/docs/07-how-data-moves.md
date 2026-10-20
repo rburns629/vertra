@@ -91,7 +91,7 @@ say-hello doesn't contain a name. It contains a **reference**: "make-name's outp
 
 ### 2. kernel-api stores it, and nothing runs yet
 
-**Who:** kernel-api. **Where:** `execution_service.submit_execution`.
+**Who:** kernel-api. **Where:** `SubmitExecution` (`kernel/internal/api/service.go`).
 
 kernel-api checks the DAG and saves one row per task in `execution_tasks`. make-name has no dependencies, so it's `READY`. say-hello depends on make-name, so it's `BLOCKED`, with the reference still in its `original_inputs`. kernel-api's job is done: it never starts anything.
 
@@ -102,7 +102,7 @@ kernel-api checks the DAG and saves one row per task in `execution_tasks`. make-
 
 ### 3. kernel-scheduler hands make-name its input as a file
 
-**Who:** kernel-scheduler, about a second later. **Where:** `claiming.claim_ready_tasks`, then `KubernetesExecutor.start`.
+**Who:** kernel-scheduler, about a second later. **Where:** `claimReadyTasks` (`kernel/internal/scheduler/claiming.go`), then the executor's `Start` (`kernel/internal/executor/kubernetes.go`).
 
 The scheduler finds make-name `READY`, claims it, and asks the Kubernetes API server for two objects in the team's namespace, `team-a`:
 
@@ -181,7 +181,7 @@ From here on, nobody needs the container: it has exited, and its files go when t
 
 ### 7. kernel-scheduler reads the record and saves the result
 
-**Who:** kernel-scheduler, on its next tick. **Where:** `_poll_task` → `KubernetesExecutor.get_status` → `_finalize`, `_build_status`.
+**Who:** kernel-scheduler, on its next tick. **Where:** `poll` (`kernel/internal/scheduler/tick.go`) → the executor's `Status` → `finalize`, `buildStatus`.
 
 The scheduler asks the API server for the Pod record, the same way `kubectl get pod -o yaml` does. It never reaches into the container. It then:
 

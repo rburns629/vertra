@@ -7,11 +7,12 @@
  *
  * Mirrors the real rules rather than inventing its own, so green means
  * accepted:
- *   - the kernel's submission contract (kernel/app/contracts/execution.py,
- *     task.py: required fields, unknown fields refused, number ranges) and
- *     its DAG checks (kernel/app/domain/dag_validation.py: duplicate ids,
+ *   - the kernel's submission contract (proto/acyclix/kernel/v1 and
+ *     kernel/internal/api/service.go: required fields, number ranges; the
+ *     console's client refuses unknown fields) and its DAG checks
+ *     (kernel/internal/domain/dag.go: duplicate ids,
  *     self/unknown dependencies, $fromTask references, cycles);
- *   - the console's own (team membership in ../../src/routes/executions.ts,
+ *   - the console's own (team membership in ../../src/core/executions.ts,
  *     allowed image sources in ../../src/imagePolicy.ts).
  * The server still decides; if these drift, the worst case is a refusal
  * with the server's message after Submit, not a wrong run.
@@ -52,7 +53,7 @@ export interface DagCheckContext {
 const TOP_LEVEL_FIELDS = ["apiVersion", "kind", "name", "requestId", "tasks"];
 /** The catalog format a dags/ file says it's in (apiVersion: …, kind: Dag). */
 const CATALOG_API_VERSION = "acyclix.dev/v2";
-// Still accepted, as the console's API does (see ../../src/routes/executions.ts).
+// Still accepted, as the console's API does (see ../../src/core/executions.ts).
 const OLD_FIELD_NAMES: Record<string, string> = { externalReference: "name", idempotencyKey: "requestId" };
 const TASK_FIELDS = [
   "id",

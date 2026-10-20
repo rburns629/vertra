@@ -58,9 +58,7 @@ database-url
 {{/*
 Built from postgres.auth.* when the bundled Postgres is enabled;
 externalDatabaseUrl otherwise. Not used at all when existingSecret is set.
-A plain "postgresql://" URL, not "postgresql+asyncpg://" like execution-
-kernel's -- this service connects via node-postgres/drizzle-orm, not
-SQLAlchemy, so it needs no driver suffix.
+A plain "postgresql://" URL, as execution-kernel's.
 */}}
 {{- define "execution-console.databaseUrl" -}}
 {{- $root := .root -}}

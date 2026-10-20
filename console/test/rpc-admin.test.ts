@@ -3,7 +3,7 @@
  * AdminService and ImageService through Connect: admins only (but the
  * allowed image sources, which anyone signed in may read), a stale image
  * policy refused, and Connect calls showing up in the audit log they read.
- * The rules themselves are tested through the REST routes, which share
+ * The rules themselves are tested in depth elsewhere, through the same
  * core/admin.ts and core/images.ts.
  */
 import type { FastifyInstance } from "fastify";

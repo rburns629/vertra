@@ -1,0 +1,278 @@
+// SPDX-License-Identifier: MIT
+
+package scheduler
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/acyclix/kernel/internal/executor"
+)
+
+// Ported from the Python kernel's tests/integration/test_claiming.py.
+
+func newPass(db DB, owner string, lease time.Duration, now time.Time, set ...func(*Options)) *pass {
+	opts := DefaultOptions(owner)
+	opts.LeaseDuration = lease
+	opts.ClaimLimit = 10
+	for _, f := range set {
+		f(&opts)
+	}
+	return &pass{ctx: context.Background(), db: db, opts: opts, now: now, log: quietLog}
+}
+
+func claim(t *testing.T, db DB, owner string, lease time.Duration, now time.Time, set ...func(*Options)) []*Task {
+	t.Helper()
+	claimed, err := newPass(db, owner, lease, now, set...).claimReadyTasks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return claimed
+}
+
+func limit(n int) func(*Options) { return func(o *Options) { o.ClaimLimit = n } }
+
+func numbered(n int, teams ...string) []TaskDef {
+	var tasks []TaskDef
+	for i := range n {
+		d := task(fmt.Sprintf("task-%d", i), func(d *TaskDef) { d.Image = "x:local" })
+		if len(teams) > 0 {
+			d.Team = teams[i]
+		}
+		tasks = append(tasks, d)
+	}
+	return tasks
+}
+
+func TestClaimsReadyTaskAndSetsLeaseAndAttempt(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-claim-basic", numbered(1)...)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	claimed := claim(t, tx, "scheduler-1", 60*time.Second, now)
+	if len(claimed) != 1 {
+		t.Fatalf("claimed %d", len(claimed))
+	}
+	c := claimed[0]
+	equal(t, "state", c.State, domain.TaskClaimed)
+	equal(t, "owner", *c.LeaseOwner, "scheduler-1")
+	equal(t, "lease", c.LeaseExpiresAt.Equal(now.Add(60*time.Second)), true)
+	equal(t, "attempts", c.AttemptCount, 1)
+	equal(t, "execution", c.ExecutionID, id)
+	attempts := attemptsOf(t, tx, c.ID)
+	if len(attempts) != 1 || attempts[0].Number != 1 {
+		t.Errorf("attempts = %+v", attempts)
+	}
+}
+
+func TestBlockedTasksAreNeverClaimed(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-claim-blocked", task("create-project"), task("deploy-application", dependsOn("create-project")))
+	claimed := claim(t, tx, "scheduler-1", time.Minute, time.Now())
+	if len(claimed) != 1 || claimed[0].TaskKey != "create-project" {
+		t.Errorf("claimed = %v", claimed)
+	}
+}
+
+func TestAlreadyClaimedTaskIsNotReclaimed(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-claim-twice", numbered(1)...)
+	now := time.Now()
+	equal(t, "first", len(claim(t, tx, "scheduler-1", time.Minute, now)), 1)
+	equal(t, "second", len(claim(t, tx, "scheduler-2", time.Minute, now)), 0)
+}
+
+func TestRespectsLimit(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-claim-limit", numbered(3)...)
+	equal(t, "claimed", len(claim(t, tx, "scheduler-1", time.Minute, time.Now(), limit(2))), 2)
+}
+
+func TestTaskNotYetAvailableIsNotClaimed(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-claim-future", numbered(1)...)
+	if _, err := tx.Exec(context.Background(), `UPDATE execution_tasks SET available_at = $2 WHERE execution_id = $1`, id, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "claimed", len(claim(t, tx, "scheduler-1", time.Minute, time.Now())), 0)
+}
+
+func TestExpiredClaimedTaskIsResetToReady(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-recover-basic", numbered(1)...)
+	at := time.Now()
+	claim(t, tx, "scheduler-1", 30*time.Second, at)
+	n, err := newPass(tx, "scheduler-2", 30*time.Second, at.Add(31*time.Second)).recoverExpiredLeases()
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "recovered", n, 1)
+}
+
+func TestRecoveredTaskIsReclaimableAndGetsANewAttempt(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-recover-reclaim", numbered(1)...)
+	at := time.Now()
+	equal(t, "first attempt", claim(t, tx, "scheduler-1", 30*time.Second, at)[0].AttemptCount, 1)
+	second := claim(t, tx, "scheduler-2", 30*time.Second, at.Add(31*time.Second))
+	if len(second) != 1 {
+		t.Fatalf("second = %v", second)
+	}
+	equal(t, "owner", *second[0].LeaseOwner, "scheduler-2")
+	equal(t, "attempts", second[0].AttemptCount, 2)
+	equal(t, "same task", tasksByKey(t, tx, id)["task-0"].ID, second[0].ID)
+}
+
+func TestUnexpiredClaimedTaskIsLeftAlone(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-recover-unexpired", numbered(1)...)
+	at := time.Now()
+	claim(t, tx, "scheduler-1", 300*time.Second, at)
+	n, err := newPass(tx, "scheduler-2", 30*time.Second, at.Add(30*time.Second)).recoverExpiredLeases()
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "recovered", n, 0)
+}
+
+func runningWithHandle(t *testing.T, db DB, tk *Task, handle executor.Handle) {
+	t.Helper()
+	tk.State = domain.TaskRunning
+	tk.ExecutorHandle = handle
+	if err := saveTask(context.Background(), db, tk); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A rollout gives the scheduler a new name, so the old Pod's leases expire.
+// Its RUNNING tasks already have Jobs; the new owner keeps polling those
+// rather than starting each task a second time.
+func TestExpiredRunningTaskIsAdoptedNotRestarted(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-recover-adopt", numbered(1)...)
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	tk := claim(t, tx, "scheduler-1", 30*time.Second, at)[0]
+	handle := executor.Handle{"namespace": "test-team", "jobName": "ek-task-0-abc"}
+	runningWithHandle(t, tx, tk, handle)
+	later := at.Add(31 * time.Second)
+	equal(t, "reclaimed", len(claim(t, tx, "scheduler-2", 30*time.Second, later)), 0)
+	adopted := tasksByKey(t, tx, id)["task-0"]
+	equal(t, "state", adopted.State, domain.TaskRunning)
+	equal(t, "owner", *adopted.LeaseOwner, "scheduler-2")
+	equal(t, "lease", adopted.LeaseExpiresAt.Equal(later.Add(30*time.Second)), true)
+	equal(t, "handle", adopted.ExecutorHandle, handle)
+	equal(t, "attempts", adopted.AttemptCount, 1)
+}
+
+// A scheduler shutting down releases its leases, so the next one adopts its
+// RUNNING tasks on its next pass, long before the lease would expire.
+func TestReleasedRunningTaskIsAdoptedAtOnce(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-release-adopt", numbered(1)...)
+	at := time.Now()
+	tk := claim(t, tx, "scheduler-1", time.Minute, at)[0]
+	handle := executor.Handle{"namespace": "test-team", "jobName": "ek-task-0-abc"}
+	runningWithHandle(t, tx, tk, handle)
+	stop := at.Add(5 * time.Second)
+	released, err := ReleaseLeases(context.Background(), tx, "scheduler-1", stop)
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "released", released, 1)
+	equal(t, "reclaimed", len(claim(t, tx, "scheduler-2", time.Minute, stop.Add(time.Second))), 0)
+	adopted := tasksByKey(t, tx, id)["task-0"]
+	equal(t, "state", adopted.State, domain.TaskRunning)
+	equal(t, "owner", *adopted.LeaseOwner, "scheduler-2")
+	equal(t, "handle", adopted.ExecutorHandle, handle)
+	equal(t, "attempts", adopted.AttemptCount, 1)
+}
+
+func TestOnlyTheStoppingOwnersLeasesAreReleased(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-release-own", numbered(2)...)
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	claim(t, tx, "scheduler-1", time.Minute, at, limit(1))
+	claim(t, tx, "scheduler-2", time.Minute, at, limit(1))
+	released, err := ReleaseLeases(context.Background(), tx, "scheduler-1", at.Add(5*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "released", released, 1)
+	for _, tk := range tasksByKey(t, tx, id) {
+		want := at.Add(time.Minute)
+		if *tk.LeaseOwner == "scheduler-1" {
+			want = at.Add(5 * time.Second)
+		}
+		if !tk.LeaseExpiresAt.Equal(want) {
+			t.Errorf("%s's lease = %v, want %v", *tk.LeaseOwner, tk.LeaseExpiresAt, want)
+		}
+	}
+}
+
+// SKIP LOCKED under real concurrency: exactly one of two racing claimers
+// gets the single available task. Committed rows, on two connections.
+func TestTwoSchedulersRacingNeverDoubleClaim(t *testing.T) {
+	ctx := context.Background()
+	var id string
+	if err := pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		id = submit(t, tx, "idem-claim-race-go", numbered(1)...)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = testPool.Exec(ctx, `DELETE FROM executions WHERE id = $1`, id) })
+
+	counts := make([]int, 2)
+	var wg sync.WaitGroup
+	for i, owner := range []string{"scheduler-a", "scheduler-b"} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+				claimed, err := newPass(tx, owner, time.Minute, time.Now()).claimReadyTasks()
+				counts[i] = len(claimed)
+				return err
+			})
+		}()
+	}
+	wg.Wait()
+	sort.Ints(counts)
+	equal(t, "claims", counts, []int{0, 1})
+}
+
+func TestThePlatformCapLimitsWhatIsClaimedOrRunning(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-cap-all", numbered(5, "a", "a", "a", "a", "a")...)
+	capped := func(o *Options) { o.MaxRunning = 2 }
+	equal(t, "first", len(claim(t, tx, "scheduler-1", time.Minute, time.Now(), capped)), 2)
+	equal(t, "second", len(claim(t, tx, "scheduler-1", time.Minute, time.Now(), capped)), 0)
+}
+
+func teamsOf(tasks []*Task) []string {
+	var teams []string
+	for _, tk := range tasks {
+		teams = append(teams, tk.Team)
+	}
+	sort.Strings(teams)
+	return teams
+}
+
+func TestThePerTeamCapLimitsEachTeam(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-cap-team", numbered(6, "a", "a", "a", "b", "b", "b")...)
+	claimed := claim(t, tx, "scheduler-1", time.Minute, time.Now(), func(o *Options) { o.MaxRunningPerTeam = 1 })
+	equal(t, "teams", teamsOf(claimed), []string{"a", "b"})
+}
+
+func TestATeamAtItsCapDoesntStarveTheOthers(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-cap-starve", numbered(6, "a", "a", "a", "a", "a", "b")...)
+	claimed := claim(t, tx, "scheduler-1", time.Minute, time.Now(), limit(2), func(o *Options) { o.MaxRunningPerTeam = 1 })
+	equal(t, "teams", teamsOf(claimed), []string{"a", "b"})
+}

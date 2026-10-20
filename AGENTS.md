@@ -45,19 +45,32 @@ Two independent projects share one repo so they can be deployed together.
 They share no environment or code. Build and test each one from inside
 its own directory.
 
-- **`kernel/`** (Python 3.12, FastAPI, SQLAlchemy async, asyncpg, Alembic).
-  One image, two processes that never talk to each other directly and
-  coordinate only through Postgres rows:
-  - `kernel-api` (`app/main.py`): accepts/reads/cancels/retries executions.
-    It accepts only the console, by its ServiceAccount token (`app/api/auth.py`,
-    TokenReview), and must only be reachable in-cluster.
-  - `kernel-scheduler` (`python -m app.scheduler`): polls forever,
-    claims READY tasks with `FOR UPDATE SKIP LOCKED` + leases, dispatches
-    via `KubernetesExecutor`, polls status, releases dependents. A failed
-    tick is logged and retried from durable state on the next one.
-  - Layering only points one way: `contracts → domain → persistence →
-    services | scheduler → executors → api → main`. `domain/` has no I/O.
-    `services/` and `scheduler/` never import each other.
+- **`kernel/`** (Go 1.26+, pgx, client-go, Connect): one binary,
+  `kernel`, run as processes that never talk to each other directly and
+  coordinate only through Postgres rows (`cmd/kernel`; the subcommand
+  picks the process):
+  - `kernel api` (kernel-api, `internal/api`): KernelService
+    (`proto/acyclix/kernel/v1`) over Connect, which accepts, reads,
+    cancels and retries executions. It accepts only the console, by its
+    ServiceAccount token (`internal/api/auth.go`, TokenReview), and must
+    only be reachable in-cluster. It has no users or teams.
+  - `kernel scheduler` (kernel-scheduler, `internal/scheduler`): polls
+    forever, claims READY tasks with `FOR UPDATE SKIP LOCKED` + leases,
+    dispatches via the Kubernetes executor, polls status (informers wake
+    it), releases dependents. A failed pass is logged and retried from
+    durable state on the next one.
+  - `kernel migrate` (`internal/migrate`) owns the schema: `sql/NNNN_*.sql`,
+    applied in order by the chart's hook Job; a released file never
+    changes. kernel-api and the scheduler wait until the database is at
+    the newest. `kernel sleep` (`internal/sleeper`) scales an idle
+    platform to zero.
+  - Layering points one way: `domain → executor → scheduler`, `domain →
+    api`, all `→ cmd`; `domain` has no I/O, `scheduler` knows only the
+    `Executor` interface, and `api` and `scheduler` never import each
+    other.
+  - The kernel was Python until 2026-10-20 (decision 17,
+    `docs/assessment.md`); `kernel migrate` takes over an install Alembic
+    migrated.
 - **`console/`** (execution-console: TypeScript, Fastify 5, Drizzle/pg,
   `@kubernetes/client-node`). It is the authenticated front door to
   kernel-api: teams/users/bots, per-team secret registration, execution
@@ -179,8 +192,8 @@ its own directory.
 - **Input references**: a task input of exactly
   `{"$fromTask": "<id>", "$output": "<name>"}` is replaced with the
   upstream task's output at dispatch time
-  (`app/contracts/task.py:try_parse_input_reference`,
-  `app/scheduler/input_resolution.py`).
+  (`kernel/internal/domain/task.go:ResolveInputs`; kernel-api refuses a
+  reference to anything but a direct dependency, `domain/dag.go`).
 - **Team = namespace**: a task's `team` is its dispatch namespace, and its
   `serviceAccount` is the Pod's identity. `secretRefs` name the Secrets to
   mount. On the UI side, `teams.name` doubles as the namespace name by
@@ -198,8 +211,9 @@ its own directory.
   headers (a Fastify error handler does the same outside the API). An
   `ApiError`'s `extra` fields go in its `Failure` detail. Don't add
   per-method try/catch fallbacks.
-- **Config**: kernel config lives in `app/config.py` (`Settings`,
-  pydantic-settings). UI config lives in `src/config.ts` (`requireEnv`
+- **Config**: the kernel's lives in `kernel/internal/config` (one
+  `Settings` for every process, read from the chart's ConfigMap and
+  checked at startup). UI config lives in `src/config.ts` (`requireEnv`
   for `DATABASE_URL`, `JWT_SECRET`, `KERNEL_API_URL`). Add new options
   there, not via scattered env reads.
 
@@ -225,17 +239,21 @@ CI (`.github/workflows/ci.yml`, `security.yml`) runs every check below on
 each PR, plus `helm lint`/render of `helm/values/*`, actionlint, a Trivy/OSV scan
 of both platform images, Semgrep and gitleaks.
 
-Kernel (`cd kernel`):
+Kernel (`cd kernel`, Go 1.26+; CI uses the same pinned
+`golang:1.27-alpine` image as the CLI, and `make test` runs it there):
 
 ```
-pip install -e ".[dev]"
-pytest                                   # all tests
-pytest tests/unit                        # pure logic, no I/O
-pytest tests/integration/test_claiming.py::test_name   # single test
-ruff check .                             # line length 100
-mypy .                                   # strict
-alembic revision --autogenerate -m "..." # after editing persistence/models.py
+go run ./cmd/kernel migrate              # the test database (DATABASE_URL), before the tests
+go test ./...                            # all tests (TEST_DATABASE_URL)
+go test ./internal/api -run TestName     # single test
+go vet ./... && gofmt -l .
+go build -o /tmp/kernel ./cmd/kernel     # then e.g. /tmp/kernel api
 ```
+
+A schema change is a new `internal/migrate/sql/NNNN_name.sql`; the
+console's database guide (`console/docs/06-database-schemas.md`) documents
+it, and a test checks it does. kernel-api's API is
+`proto/acyclix/kernel/v1/kernel.proto`: `make proto` after changing it.
 
 - Integration and end-to-end tests use **real Postgres**: `make test` (repo
   root) starts a throwaway container on `127.0.0.1:55432`, migrates both test
@@ -243,16 +261,20 @@ alembic revision --autogenerate -m "..." # after editing persistence/models.py
   Both suites read `TEST_DATABASE_URL`, defaulting to
   `localhost/execution_{kernel,console}_test` (what CI uses). A missing
   database fails rather than skips. Never point the tests at an install's
-  databases. Each kernel test runs in a rolled-back transaction.
-- Kubernetes tests **skip** (they don't fail) when there's no Docker
-  daemon, no reachable cluster, no `kind` CLI, or when the current kubectl
-  context isn't a kind cluster. They build fixture images with Docker and
-  `kind load docker-image` them into the current context's cluster. They
-  run in a namespace called `execution-kernel`, which must exist
-  (`kubectl create namespace execution-kernel`); without it they skip as
-  "not reachable".
-- `tests/fakes.py:FakeExecutor` is the in-memory executor for scheduler
-  logic tests.
+  databases. Each kernel test runs in a rolled-back transaction, or (for
+  kernel-api's, which commit) in a database of its own.
+- The kernel's Kubernetes tests (`TestKind*`, `internal/kindtest`)
+  **skip** (they don't fail) when the current kubectl context isn't a kind
+  cluster or it has no `execution-kernel` namespace
+  (`kubectl create namespace execution-kernel`), unless
+  `KERNEL_TESTS_REQUIRE_KUBERNETES=1` (CI). They build fixture images with
+  Docker and push them to the local registry when `kind-registry` is
+  running (Docker Desktop's kind nodes ignore `kind load`ed images), else
+  `kind load` them. Run them from your machine, not the Go container,
+  which has no cluster: build the test binary there (`go test -c`) and
+  run it from its package directory.
+- `internal/executor/executortest.Fake` is the in-memory executor for
+  scheduler logic tests.
 
 UI (`cd console`, and separately `cd console/frontend`):
 
@@ -317,18 +339,18 @@ real kernel/UI code).
 
 - The test for an abstraction is whether it corresponds to real
   complexity, not how many times something has been typed out. `Executor`
-  is a `Protocol` with exactly one production implementer
-  (`KubernetesExecutor`, since `DockerExecutor` was removed when the
+  is an interface with exactly one production implementer (the
+  Kubernetes one, since the Docker executor was removed when the
   platform went Kubernetes-only). It still earns its keep because it
-  makes the code testable: `run_scheduler_tick` holds all the claiming,
-  retry and DAG-progression logic, and it's tested against `FakeExecutor`
-  without needing a real cluster. That's a concrete, present need. What's
-  *not* earned is abstraction built for a need that's speculative
-  or merely imagined — a plugin system for a second implementation that
-  isn't planned, a second production backend "just in case." The
-  scheduler constructs `KubernetesExecutor` directly in
-  `app/scheduler/__main__.py`, with no factory and no selection logic,
-  because there's nothing to select between.
+  makes the code testable: `scheduler.RunTick` holds all the claiming,
+  retry and DAG-progression logic, and it's tested against
+  `executortest.Fake` without needing a real cluster. That's a concrete,
+  present need. What's *not* earned is abstraction built for a need
+  that's speculative or merely imagined — a plugin system for a second
+  implementation that isn't planned, a second production backend "just
+  in case." `cmd/kernel` constructs `executor.Kubernetes`
+  directly, with no factory and no selection logic, because there's
+  nothing to select between.
 - Duplication across genuinely independent artifacts is often correct,
   not a smell. Every `gcp/*` product's `entrypoint.sh` is copied verbatim
   on purpose — a platform team can change one product's language without
@@ -339,11 +361,11 @@ real kernel/UI code).
   deliberately share nothing, since real vendors' containers wouldn't).
   Duplication *within* one owner's own code, doing the same thing for no
   reason, is still worth removing.
-- Python's structural typing (`Protocol`) is the idiomatic interface
-  mechanism here, not class hierarchies built for polymorphism nobody
-  needs yet (`Executor` is a `Protocol`; `DockerExecutor`/
-  `KubernetesExecutor` don't share a base class).
-- `dict[str, Any]` is sometimes the *correct* type, not a lapse — task
+- Structural interfaces (Go's interfaces; the console's TypeScript types)
+  are the idiomatic mechanism here, not class hierarchies built for polymorphism
+  nobody needs yet (`executor.Kubernetes` and `executortest.Fake` share
+  nothing but the `Executor` interface they each satisfy).
+- `map[string]any` (a JSON object) is sometimes the *correct* type, not a lapse — task
   `inputs` are structurally opaque to the kernel by design (it must not
   need to understand any given product's semantics). Don't force a
   narrower type onto data that's supposed to stay opaque at that layer.
@@ -363,7 +385,7 @@ real kernel/UI code).
 - Never in `outputs` that flow back through an API response or get
   persisted — a product container's `result.json` must never echo back
   the credential material it used, since `outputs` is exactly what an
-  ordinary caller of `GET /v1/executions/{id}` can read.
+  ordinary caller of `ExecutionService/GetExecution` can read.
 
 **Prefer no standing credential over a well-guarded one, and a narrow one
 over a broad one.**
@@ -400,7 +422,7 @@ over a broad one.**
   re-validate what an internal function's own type signature and the
   caller's contract already guarantee.
 - Never build a shell command, SQL query, or file path by concatenating
-  untrusted input. `KubernetesExecutor` builds Jobs only through the
+  untrusted input. The Kubernetes executor builds Jobs only through the
   Kubernetes client's structured objects: the image name, the action
   passed as list-form `args`, and task inputs delivered as a
   `request.json` ConfigMap rather than being interpolated into a
@@ -428,9 +450,9 @@ over a broad one.**
   "this secret is isolated" or "this now authenticates," it needs a
   real Kubernetes cluster or real cloud call behind it at least once,
   not just a passing mock.
-- **Typed, validated configuration**, not ad hoc `os.environ.get()`
-  scattered through the code — one `Settings` object (pydantic-settings),
-  validated at startup, so a misconfiguration fails immediately and
+- **Typed, validated configuration**, not ad hoc environment reads
+  scattered through the code — one settings object (`internal/config.
+  Settings`, the console's `src/config.ts`), validated at startup, so a misconfiguration fails immediately and
   legibly instead of surfacing as a confusing runtime error three calls
   later.
 - **Structured logs and metrics on real code paths**, not print
@@ -441,7 +463,8 @@ over a broad one.**
   double-create a resource or double-charge an external system. This is
   a requirement on product code specifically, not something the kernel
   can enforce for you.
-- **Typed, explicit domain errors** (`KernelError` and its subclasses,
-  `StructuredError`) over bare strings or generic exceptions — an error
+- **Typed, explicit domain errors** (`domain.StructuredError`,
+  `executor.DispatchRejected`, `domain.MissingOutputError`,
+  `domain.DAGValidationError`; the console's `ApiError`) over bare strings or generic exceptions — an error
   should carry enough structure for a caller to make a real decision
   (retryable or not, what actually failed), not just a message to log.

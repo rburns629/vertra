@@ -9,7 +9,7 @@
  * holds the vulnerability database. The rule is catalog CI's: a HIGH or
  * CRITICAL vulnerability that has a fix, or a secret baked into the image,
  * fails it; unfixable ones are reported, not blocking. A failed digest
- * blocks new registrations and runs (routes/products.ts, routes/
+ * blocks new registrations and runs (core/products.ts, routes/
  * executions.ts), never steps already running, until a rescan finds it
  * clean or an admin accepts it with a reason. Images in use are rescanned
  * daily, since new vulnerabilities are published against old images. The

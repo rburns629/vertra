@@ -17,8 +17,8 @@ serviceAccount:
   name: ""
 
 # kernel-scheduler needs a ClusterRole (Jobs/Pods/ConfigMaps) to run the
-# Kubernetes executor: each task declares its own owning `team`
-# (app/contracts/task.py), which becomes the namespace its Job is dispatched
+# Kubernetes executor: each task declares its own owning `team`, which
+# becomes the namespace its Job is dispatched
 # into, so the scheduler's own ServiceAccount identity necessarily spans
 # every team namespace, not just its own. kernel-api gets no Kubernetes API
 # access at all, since it only ever talks to Postgres.
@@ -151,7 +151,7 @@ api:
   service:
     type: ClusterIP
     port: 8000
-  # -- Who may call kernel-api (kernel/app/api/auth.py). The console sends
+  # -- Who may call kernel-api (kernel/internal/api/auth.go). The console sends
   # its ServiceAccount token, projected for `audience`; kernel-api checks
   # it with a TokenReview and accepts only the ServiceAccounts listed here
   # (`namespace` defaults to this release's). kernel-api runs as its own
@@ -225,9 +225,9 @@ scheduler:
   # A running step whose Job and Pod haven't changed isn't re-read from the
   # API, except this often, in case a watch event was missed.
   watchResyncSeconds: 30
-  # Jobs get an eager explicit cleanup once KubernetesExecutor captures a
-  # terminal result; this is the backstop for anything it never gets back
-  # around to (e.g. a scheduler crash) — see app/executors/kubernetes.py.
+  # A finished Job is removed once the scheduler has committed its result
+  # (and every few minutes, any no task needs); this is the backstop for
+  # one it never gets back to (kernel/internal/executor/kubernetes.go).
   jobTtlSecondsAfterFinished: 3600
   # How long a task's image may fail to pull for a reason other than "it
   # doesn't exist" (registry auth, network) before the task fails as a
@@ -236,11 +236,11 @@ scheduler:
   imagePullGraceSeconds: 120
   # kernel-scheduler has no other HTTP server (unlike kernel-api, which
   # serves /metrics on its normal port) — this is the port it starts one on
-  # just for Prometheus-compatible scraping. See app/scheduler/__main__.py.
+  # just for Prometheus-compatible scraping. See kernel/cmd/kernel-scheduler.
   metricsPort: 9090
   # -- Arbitrary env vars applied uniformly to every dispatched task
-  # container, regardless of which product image it runs (see
-  # app/config.py's task_extra_environment) — deployment-wide, not
+  # container, regardless of which product image it runs (TASK_EXTRA_ENVIRONMENT,
+  # kernel/internal/config) — deployment-wide, not
   # per-task. Typically paired with a task's own `secretRefs`: e.g.
   # {"GOOGLE_APPLICATION_CREDENTIALS": "/platform/secrets/<name>/key.json"}
   # to point a product's own ADC discovery at whatever that task mounted.
@@ -281,7 +281,7 @@ scheduler:
       cpu: "1"
       memory: 512Mi
 
-# -- Sleeping when idle (kernel/app/sleeper): a CronJob checks every few
+# -- Sleeping when idle (kernel/internal/sleeper): a CronJob checks every few
 # minutes and, after idleAfterMinutes with no execution unfinished or
 # finished, nobody using the console (its activity ConfigMap) and kernel-api
 # not restarted, scales the platform's Deployments (both releases') to zero,
@@ -384,8 +384,9 @@ postgres:
       cpu: "1"
       memory: 512Mi
 
-# -- Only used when postgres.enabled is false: a full SQLAlchemy async URL,
-# e.g. postgresql+asyncpg://user:pass@host:5432/dbname. Prefer
+# -- Only used when postgres.enabled is false: a Postgres URL, e.g.
+# postgresql://user:pass@host:5432/dbname (the Python kernel's
+# postgresql+asyncpg:// is accepted too). Prefer
 # existingSecret over this where possible — this value is visible in
 # `helm get values` / `helm history`.
 externalDatabaseUrl: ""
@@ -454,7 +455,7 @@ backup:
 
 
 # -- Longest any one database statement may run, for kernel-api and the
-# scheduler (asyncpg's default is to wait forever).
+# scheduler (Postgres's default is to wait forever).
 databaseCommandTimeoutSeconds: 60
 
 # -- NetworkPolicies (templates/networkpolicy.yaml): only this release's Pods

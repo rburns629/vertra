@@ -3,7 +3,7 @@
  * TeamService through Connect: who may create, see, grow and shrink a team,
  * its lifecycle (retire, purge, a purged name reserved), and a refused
  * SecretStore file's problems as Problem details. The rules are tested in
- * depth through the REST routes (team-*.test.ts), which share core/teams.ts.
+ * depth in team-*.test.ts, through the same core/teams.ts.
  */
 import { randomUUID } from "node:crypto";
 import { fromBinary } from "@bufbuild/protobuf";
@@ -64,7 +64,7 @@ describe("creating teams", () => {
     expect(second.json<{ created: boolean }>().created).toBe(false);
   });
 
-  it("checks a team's name the REST way", async () => {
+  it("checks a team's name", async () => {
     const response = await rpc("TeamService", "CreateTeam", { name: "Not A Namespace" }, { token: admin });
     expect(response.json<RpcError>().code).toBe("invalid_argument");
   });

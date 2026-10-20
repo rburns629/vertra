@@ -1,16 +1,16 @@
 # Architecture & Code Reference
 
-A map of this repository: what every file is for, what its key functions do,
-and — most importantly — the actual order operations happen in when the
-kernel runs. Written as a reference to come back to, not a one-time read.
+A map of the kernel: what every package is for, what its key functions do,
+and the actual order operations happen in when it runs. Written as a
+reference to come back to, not a one-time read.
 
 ## Table of contents
 
 1. [What this is, in one paragraph](#what-this-is-in-one-paragraph)
 2. [Repository layout](#repository-layout)
-3. [How the layers depend on each other](#how-the-layers-depend-on-each-other)
+3. [How the packages depend on each other](#how-the-packages-depend-on-each-other)
 4. [End-to-end order of operations](#end-to-end-order-of-operations) — the core of this doc
-5. [File-by-file reference](#file-by-file-reference)
+5. [Package-by-package reference](#package-by-package-reference)
 6. [Tests](#tests)
 7. [Deployment files](#deployment-files)
 
@@ -19,108 +19,94 @@ kernel runs. Written as a reference to come back to, not a one-time read.
 ## What this is, in one paragraph
 
 The kernel accepts an already-resolved DAG of containerized tasks (an
-upstream planner decided *what* to run; the kernel only runs it), persists
-it to Postgres, and two **separate OS processes** — `kernel-api` (FastAPI,
-`app/main.py`) and `kernel-scheduler` (`app/scheduler/__main__.py`) — do the
-rest without ever talking to each other directly. The API only reads and
-writes rows. The scheduler polls those same rows in a loop, claims work,
-dispatches it as a Kubernetes Job (behind the `Executor` interface), and
-writes the outcome back. Postgres is the only thing both
-processes have in common — that's deliberate, not an oversight (see
-`app/persistence/database.py`'s docstring).
+upstream planner decided *what* to run; the kernel only runs it), stores
+it in Postgres, and runs it. It's one Go binary, `kernel`, run as separate
+processes that never talk to each other directly: `kernel api`
+(kernel-api: KernelService over Connect, for the console) only reads and
+writes rows; `kernel scheduler` (kernel-scheduler) polls those same rows,
+claims work, dispatches it as a Kubernetes Job (behind the `Executor`
+interface), and writes the outcome back. `kernel migrate` owns the schema;
+`kernel sleep` scales an idle platform to zero. Postgres is the only
+thing they have in common: that's deliberate, not an oversight. The kernel
+was Python until 2026-10-20 (decision 17 in `docs/assessment.md`).
 
 ## Repository layout
 
 ```
-app/
-├── contracts/     Pydantic models — the wire/storage shapes. No logic.
-├── domain/        Pure business logic: states, DAG validation, credential shapes, errors, events. No I/O.
-├── persistence/   SQLAlchemy models, the async engine, query repositories, and the
-│                  Alembic migrations (persistence/migrations/).
-├── services/      Orchestration for API-triggered use cases (submit/cancel/retry/read).
-├── scheduler/     The polling loop: claim → dispatch → poll → finalize.
-├── sleeper/       One look at whether the platform is idle, and scaling it to zero if so
-│                  (a CronJob; reads the database and Kubernetes, never the scheduler).
-├── executors/     The Executor protocol and its one real implementation, KubernetesExecutor.
-├── api/           FastAPI routes and dependencies. Talks to services/persistence only.
-├── observability/ Structured logging, Prometheus metrics, the HTTP request middleware.
-├── config.py      Settings, sourced from environment variables.
-└── main.py        The kernel-api process entry point.
+cmd/kernel/        The binary: a subcommand per process (api, scheduler, migrate,
+                   sleep), plus wait-for-postgres and check-heartbeat for the chart.
+internal/          Its packages (one Go module: go.mod here).
+├── domain/        States, retry backoff, the result.json contract, input references,
+│                  DAG validation, credential shapes. No I/O.
+├── config/        Settings from the environment (the chart's ConfigMap), checked at startup.
+├── api/           kernel-api: KernelService over Connect, the caller check, health, metrics.
+├── executor/      The Executor interface and its one real implementation, Kubernetes.
+│   └── executortest/  Fake: an in-memory Executor for the scheduler's tests.
+├── scheduler/     The pass (claim → dispatch → poll → settle), the loop around it,
+│                  retention, the orphan sweep.
+├── migrate/       The schema: sql/NNNN_name.sql, applied in order, each once.
+├── sleeper/       Putting an idle platform to sleep (a CronJob).
+├── logging/       JSON logs.
+├── metrics/       Prometheus metrics.
+├── gen/           KernelService's generated code (`make proto`, from proto/acyclix/kernel/v1).
+├── dbtest/        For tests: the test database, and throwaway ones.
+└── kindtest/      For tests: a real (kind) cluster and test images (fixture/: one of them).
 
-tests/
-├── unit/          Pure logic, no I/O.
-├── integration/   Real Postgres, real (kind) Kubernetes — never mocks.
-├── end_to_end/    The full two-task chain, proven through the real stack.
-├── fixtures/      A minimal Docker image used only to exercise executor mechanics.
-├── conftest.py    Shared fixtures: db_session, docker_client, k8s_apis, api_client, image builds.
-└── fakes.py       FakeExecutor — an in-memory Executor double used across unit + integration tests.
-
-Dockerfile, Makefile                       Image build; see ../Makefile (project root) and
-                                            ../helm/charts/execution-kernel for how this actually deploys —
-                                            that chart lives at the project root, alongside
-                                            ../helm/charts/execution-console, not inside kernel/.
-alembic.ini, pyproject.toml                Tooling config.
+Dockerfile         The image: the binary on a distroless static base. See ../Makefile
+                   and ../helm/charts/execution-kernel for how it deploys.
 ```
 
-## How the layers depend on each other
+## How the packages depend on each other
 
-Dependencies only point one direction — nothing in an earlier layer ever
-imports from a later one:
+Dependencies only point one direction:
 
 ```
-contracts  →  domain  →  persistence  →  services / scheduler  →  executors  →  api  →  main
+domain  →  executor  →  scheduler  ─┐
+domain  →  api  ────────────────────┼→  cmd/kernel
+migrate, sleeper, config, logging, metrics ─┘
 ```
 
-- **contracts** depend on nothing but `domain`'s enums (for typed response
-  fields like `state: ExecutionState`).
-- **domain** depends on nothing — no SQLAlchemy, no FastAPI, no I/O of any
-  kind. This is why `app/domain/dag_validation.py` and
-  `app/domain/states.py` are unit-tested with zero database or Docker
-  involvement.
-- **persistence** depends on `domain` (enums stored in columns) and
-  `contracts` are *not* imported here — the ORM models are independent of
-  the wire format.
-- **services** and **scheduler** are peers: both sit above persistence and
-  depend on `domain` + `contracts` + `executors` (scheduler only).
-  `services` never imports `scheduler` or vice versa — the API layer talks
-  to `services`, the scheduler process talks to `scheduler`, and both only
-  actually communicate through the database rows they share.
-- **executors** depends only on `contracts` (for `ProductRequest`) and
-  `domain` — nothing about Postgres.
-- **api** is the thinnest layer: it depends on `services` + `persistence`
-  (for the two read-only repository calls) + `contracts`, and contains no
-  business logic of its own.
+- **domain** depends on nothing: no database, no Kubernetes. Everything in
+  it is unit-tested alone.
+- **executor** depends on `domain` (the result contract, credential
+  shapes) and client-go, never on the database.
+- **scheduler** depends on `domain`, `executor` (the interface) and pgx. It
+  never constructs an executor; `cmd/kernel` does, and its tests pass
+  `executortest.Fake`.
+- **api** depends on `domain`, its generated code and pgx; never on
+  `scheduler` or `executor`. kernel-api and the scheduler meet only in
+  the database.
 
 ## End-to-end order of operations
 
-This is a literal trace of function calls for the canonical
-`create-project → deploy-application` example, in the order they actually
-happen. Read this section when you need to know "what calls what."
+A literal trace of function calls for the canonical
+`create-project → deploy-application` example, in the order they happen.
+Read this section when you need to know "what calls what."
 
 ### 1. Submitting an execution
 
+The console has already checked the caller's teams, identities, secrets
+and images, and turned the DAG's JSON into a request
+(`console/src/kernel/client.ts`, strictly, under the names it checked).
+
 ```
-POST /v1/executions
-  → app/api/auth.py : require_caller()                        [the console's token, TokenReview; else 401/403]
-  → app/api/routes/executions.py : create_execution()
-      → app/api/dependencies.py : get_db_session()            [one DB session, one transaction]
-      → app/services/execution_service.py : submit_execution()
-          → app/persistence/repositories.py : get_execution_by_idempotency_key()
-              [found?] → return existing (created=False) — nothing else runs
-          → app/domain/dag_validation.py : validate_dag()
-              → topological_sort(), _validate_dependencies(), _validate_input_references()
-              [invalid?] → raises DAGValidationError → route returns 422 with every issue found
-          → _build_execution_graph() → _build_task()
-              → app/domain/states.py : initial_task_state()   [READY if no deps, else BLOCKED]
-              → constructs Execution / ExecutionTask / TaskDependency (persistence/models.py)
-          → session.begin_nested()                            [a savepoint, not the whole tx]
-              → session.add(execution) → flush()               [task ids now exist]
-              → session.add_all(dependencies)
-              → app/persistence/repositories.py : record_event(EXECUTION_CREATED)
-              → flush()
-          [lost a race on the idempotency key?] → catch IntegrityError, re-query, return existing
-      ← ExecutionSubmissionResult(execution_id, state=PENDING, created=True)
-  ← 201 (or 200 if it was a replay), body = ExecutionSubmissionResponse
+KernelService/SubmitExecution
+  → internal/api/auth.go : Callers.Interceptor()      [the console's token, TokenReview;
+                                                        else unauthenticated / permission_denied]
+  → internal/api/service.go : SubmitExecution()
+      → taskDefs()                                     [each field: required ones set, timeout > 0,
+                                                        attempts ≥ 1, sizes are quantities; defaults]
+      → inTx: one transaction
+          → SELECT ... WHERE idempotency_key = request_id
+              [found?] → that execution (created false) — nothing else runs
+          → domain.ValidateDAG()
+              [invalid?] → invalid_argument with ValidationIssues details, every issue
+          → a savepoint: insert()
+              → INSERT executions (PENDING), execution_tasks (READY if no
+                dependencies, else BLOCKED), task_dependencies
+              [lost a race on request_id?] → roll back the savepoint, return that one
+          → recordEvent(EXECUTION_CREATED)
+      ← {execution_id, state: PENDING, created: true}; the event counted once committed
 ```
 
 Nothing has *run* yet — only rows exist: one `executions` row (`PENDING`),
@@ -129,495 +115,371 @@ one `execution_tasks` row per task (`READY` or `BLOCKED`), edges in
 
 ### 2. The scheduler loop
 
-`kernel-scheduler` is a separate process (`python -m app.scheduler`)
-polling the same database on a timer — nothing here is triggered by the API
-request above; it happens whenever the next poll tick lands.
+`kernel-scheduler` (`kernel scheduler`) is a separate process polling the
+same database: nothing here is triggered by the API request above; it
+happens on its next pass.
 
 ```
-app/scheduler/__main__.py : main() → run_forever()
-  → app/config.py : get_settings()
-  → loop.set_default_executor(thread_pool_for(...)) [threads for scheduler_executor_concurrency + 4
-                                                     Kubernetes calls; Python's own default is
-                                                     "node CPUs + 4"]
-  → KubernetesExecutor(...)                        [constructed directly — the only real backend]
-  → executor.start_watching()                       [watches the kernel's Jobs and Pods, all namespaces]
-  loop forever:
-    → session_scope()                               [one transaction per tick]
-    → app/scheduler/service.py : run_scheduler_tick()  → progressed?
-    [progressed?] → next tick at once (after 50 ms)
-    [otherwise]   → executor.wait_for_change(scheduler_poll_interval_seconds)
-                    [a watched Job or Pod change wakes it early]
-    [tick raised?] → log it, keep looping — next tick retries from durable state
+cmd/kernel/main.go : main() → runScheduler()      [`kernel scheduler`]
+  → internal/config : FromEnv()                   [typed and checked: a bad setting stops it here]
+  → /metrics on METRICS_PORT
+  → pgxpool (statement_timeout = DATABASE_COMMAND_TIMEOUT_SECONDS)
+  → executor.NewKubernetes(...)                   [constructed directly: the only real backend]
+  → (*Kubernetes).Watch(ctx)                      [informers on the kernel's Jobs and Pods, all namespaces]
+  → internal/scheduler : (*Loop).Run(ctx)
+      → migrate.Wait()                            [until schema_migrations is at migrate.Latest()]
+      loop until SIGTERM/SIGINT:
+        → (*Loop).pass() : pgx.BeginFunc → RunTick()   [one transaction per pass]
+        [committed?] → count its events (metrics)
+                     → ReleaseFinished(outcome.Finished)  [only now: see below]
+                     → housekeeping: DeleteFinishedExecutions hourly,
+                                     ReleaseOrphanedAttempts every 5 minutes
+        [failed?]    → log it, count it; the next pass starts again from the rows
+        [progressed?] → next pass after 50 ms
+        [otherwise]   → executor.WaitForChange(SCHEDULER_POLL_INTERVAL_SECONDS)
+                        [a watched Job or Pod change wakes it early]
+        → touch the heartbeat file                [the liveness probe: kernel check-heartbeat]
+      → ReleaseLeases(owner)                      [another scheduler adopts these tasks at once]
 ```
 
-`run_scheduler_tick()` is three phases, every tick. Only the executor calls
-overlap (up to `scheduler_executor_concurrency` at once): the database
-session can't be shared between concurrent tasks, so every row read and write
-stays in order.
+`RunTick()` (`internal/scheduler/tick.go`) is three phases, every pass.
+Only the executor calls overlap (up to `SCHEDULER_EXECUTOR_CONCURRENCY` at
+once, `gather`): every row read and write is in order, in the one
+transaction.
 
-**Phase A — Claim** (`app/scheduler/claiming.py : claim_ready_tasks()`)
+**Phase A — Claim** (`claiming.go : claimReadyTasks()`)
 ```
-→ recover_expired_leases()
+→ recoverExpiredLeases()
     [any CLAIMED/RUNNING task whose lease_expires_at has passed]
-    RUNNING → keep state and executor_handle, lease_owner = this host
+    RUNNING → keep state and executor_handle, lease_owner = this scheduler
               (adopted: polled from now on, its Job not started twice)
-    CLAIMED → reset to READY, clear lease_owner/lease_expires_at/executor_handle
-    (a scheduler that crashed or was replaced doesn't strand its work forever)
-→ SELECT ... FOR UPDATE SKIP LOCKED
+    CLAIMED → back to READY, lease and handle cleared
+→ [SCHEDULER_MAX_RUNNING_TASKS(_PER_TEAM)?] runningPerTeam() caps how many
+→ SELECT ... FOR UPDATE OF t SKIP LOCKED
     WHERE state = READY AND available_at <= now
       AND execution.state IN (PENDING, RUNNING)     [a dead execution gets no more claims]
 → for each claimed task:
-    state = CLAIMED, lease_owner = this host, lease_expires_at = now + lease_duration
-    attempt_count += 1 → INSERT TaskAttempt
-    record_event(TASK_CLAIMED)
+    state = CLAIMED, lease_owner = this scheduler, lease_expires_at = now + lease
+    attempt_count += 1 → INSERT task_attempts
+    recordEvent(TASK_CLAIMED)
 ```
 
-**Phase B — Dispatch** (`app/scheduler/service.py : _dispatch_tasks()`: resolve each in order,
-start them all concurrently, then record each start in order)
+**Phase B — Dispatch** (`dispatch()`: resolve each in order, start them all
+concurrently, then `recordStart()` each in order)
 ```
-→ app/scheduler/input_resolution.py : resolve_task_inputs()
-    → query task_outputs JOIN task_dependencies for this task's direct dependencies
-    → resolve_inputs()                               [pure — no I/O]
-        → walks original_inputs recursively
-        → app/contracts/task.py : try_parse_input_reference()
-            [is this a {"$fromTask":..., "$output":...} marker?]
-        → replaces every marker with the real value from the upstream task's outputs
-    [referenced output never produced?] → raises MissingOutputError (non-retryable)
-→ build ResolvedTask (app/executors/base.py)
-→ executor.start(resolved_task)                      [KubernetesExecutor]
-    ← ExecutionHandle (opaque dict — {namespace, jobName})
-    refused by the cluster (DispatchRejectedError)
-        → executor.discard(resolved_task) → _handle_task_failure(code, retryable=False)
-    raised anything else (a timeout, a lost response: the Job may exist anyway)
+→ resolveInputs()
+    → SELECT task_outputs JOIN task_dependencies for this task's direct dependencies
+    → domain.ResolveInputs()                       [pure]
+        → walks original_inputs recursively; domain.ParseInputReference()
+          recognizes exactly {"$fromTask": ..., "$output": ...}
+        → replaces every marker with the upstream task's output
+    [referenced output never produced?] → MissingOutputError → MISSING_UPSTREAM_OUTPUT, not retried
+→ executor.ResolvedTask → exec.Start()             [Kubernetes]
+    ← Handle {namespace, jobName}
+    refused by the cluster (DispatchRejected: a policy's code, or DISPATCH_REJECTED)
+        → exec.Discard() → handleFailure(code, retryable=false)
+    any other error (a timeout, a lost response: the Job may exist anyway)
         → dispatch_failures += 1
-        [below scheduler_max_dispatch_failures?]
-            → return_unstarted_attempt()  [delete this TaskAttempt, attempt_count -= 1,
-                                           state = READY: the next claim reuses the same
-                                           attempt number, so the same Job name, and
-                                           start() adopts that Job]
-            → available_at = now + RetryBackoff.delay(dispatch_failures)
-            → record_event(TASK_DISPATCH_RETRY)
-        [at the limit] → executor.discard(resolved_task)
-                       → _handle_task_failure(EXECUTOR_START_FAILED, retryable=True)
-→ dispatch_failures = 0
-→ persist resolved_inputs + executor_handle, state = RUNNING
-→ TaskAttempt.started_at = now
-→ _mark_execution_running_if_needed()                 [PENDING → RUNNING on the first dispatch]
-→ record_event(TASK_STARTED)
+        [below SCHEDULER_MAX_DISPATCH_FAILURES?]
+            → returnUnstartedAttempt()   [delete this attempt row, attempt_count -= 1,
+                                          READY: the next claim reuses the attempt number,
+                                          so the Job name, and Start() adopts that Job]
+            → available_at = now + RetryBackoff.Delay(dispatch_failures)
+            → recordEvent(TASK_DISPATCH_RETRY)
+        [at the limit] → exec.Discard() → handleFailure(EXECUTOR_START_FAILED, retryable=true)
+→ dispatch_failures = 0; resolved_inputs and executor_handle saved; RUNNING
+→ the attempt's started_at = now
+→ markExecutionRunning()                           [PENDING → RUNNING on the first dispatch]
+→ recordEvent(TASK_STARTED)
 ```
 
-**Phase C — Poll** (every RUNNING task this scheduler instance owns: all their statuses are
-read concurrently first, then `_poll_task()` acts on each in order)
+**Phase C — Poll** (every RUNNING task this scheduler holds: all statuses
+read concurrently first, then `poll()` acts on each in order)
 ```
-→ executor.get_status(handle)                         [read before _poll_task, alongside the rest;
-                                                       skipped (RUNNING) for a Job whose watch saw no
-                                                       change since a read within the resync interval]
-→ [execution.state == CANCELLED?]
-    → executor.cancel(handle) → task.state = CANCELLED → record_event(TASK_CANCELLED) → done
-→ [now - attempt.started_at > task.timeout_seconds?]
-    → executor.cancel(handle)
-        [raised, and the Job's own deadline (timeout + grace) not yet passed?]
+→ exec.Status(handle)                              [skipped (RUNNING) for a Job whose watch saw
+                                                    no change since a read within the resync interval]
+→ [execution CANCELLED?]
+    → exec.Cancel() → CANCELLED → recordEvent(TASK_CANCELLED) → done
+→ [now - started_at > timeout_seconds, and the status isn't a finish?]
+    → exec.Cancel()
+        [failed, and the Job's own deadline (timeout + grace) not yet passed?]
             → renew the lease, try again next pass (no retry may run beside it)
-    → _handle_task_failure(TASK_TIMEOUT, retryable=True)
+    → handleFailure(TASK_TIMEOUT, retryable=true)
 → the status read above:
-    raised    → unknown, not failed: renew the lease, read it again next pass
-                (the timeout above still applies)
-    RUNNING   → renew the lease (heartbeat) — nothing else changes
-    SUCCEEDED → persist TaskOutput
-                → task.state = SUCCEEDED → record_event(TASK_SUCCEEDED)
-                → _release_ready_dependents()
+    errored   → unknown, not failed: renew the lease, read it again next pass
+                (kernel_scheduler_status_read_errors_total; the timeout above still applies)
+    Running   → renew the lease; captureLogs() every TASK_LOG_REFRESH_SECONDS
+    Succeeded → task_outputs row, the logs → SUCCEEDED → recordEvent(TASK_SUCCEEDED)
+                → releaseReadyDependents()
                     [lock each dependent (FOR NO KEY UPDATE), then:
-                     any BLOCKED task whose every dependency is now SUCCEEDED] → state = READY
-                → _settle_execution()
+                     a BLOCKED task whose every dependency SUCCEEDED → READY]
+                → settleExecution()
                     [lock the execution (FOR NO KEY UPDATE), then:
-                     every task SUCCEEDED?] → execution.state = SUCCEEDED
-                                             → record_event(EXECUTION_SUCCEEDED)
-                     [a task FAILED and none left that can run?] → _fail_execution()
+                     every task SUCCEEDED?] → SUCCEEDED → recordEvent(EXECUTION_SUCCEEDED)
+                     [a task FAILED and none left that can run?] → failExecution()
                     The locks are what make concurrent schedulers safe here: two
                     passes finishing two dependencies (or an execution's last two
                     tasks) at once are serialized, so the second sees the first's
                     commit. NO KEY UPDATE, not UPDATE: rows referencing these
                     (events, outputs) take FOR KEY SHARE, which UPDATE would
                     conflict with. Lock order everywhere: tasks, then execution.
-    FAILED    → _handle_task_failure(status.error)
+    Failed    → handleFailure(status.Error)
+→ every task that finished goes into Outcome.Finished
 ```
 
-`_handle_task_failure()`:
+`handleFailure()`:
 ```
-→ record the failure on the current TaskAttempt
-→ app/domain/states.py : should_retry(attempt_count, max_attempts, retryable)
-    True  → task.state = READY, clear lease/handle,
-            available_at = now + RetryBackoff.delay(attempt)   [5s, doubling, capped]
-            (a later tick's Phase A claims it then — same code path as any other READY task)
-    False → task.state = FAILED, record_event(TASK_FAILED)
-            → _fail_execution()
-                → execution.state = FAILED → record_event(EXECUTION_FAILED)
-                → every READY/BLOCKED sibling → state = CANCELLED (they will never run now)
+→ the failure recorded on the current attempt
+→ domain.ShouldRetry(attempt_count, max_attempts, retryable)
+    true  → READY, lease and handle cleared,
+            available_at = now + RetryBackoff.Delay(attempt)   [5 s, doubling, at most 300 s]
+            (a later pass claims it: the same path as any READY task)
+    false → FAILED, recordEvent(TASK_FAILED)
+            → failExecution()
+                → execution FAILED (compare-and-set) → recordEvent(EXECUTION_FAILED)
+                → every READY/BLOCKED sibling → CANCELLED (they will never run now)
 ```
 
-Inside the executor (`app/executors/kubernetes.py`, the one implementation
-of the `Executor` protocol in `app/executors/base.py`; nothing above
-depends on it directly):
+Inside the executor (`internal/executor/kubernetes.go`, the one
+implementation of `Executor`; the scheduler only knows the interface):
 
-- `start()` creates a Job whose Pod has an `emptyDir` at
-  `/platform/output`, then a ConfigMap holding `request.json` (mounted
-  read-only at `/platform/input`) that names the Job as its owner, so
-  Kubernetes deletes it along with any Job the scheduler never finalizes.
-  The names are derived from (execution, task, attempt): a Job already
-  there under its name is this same attempt's, from a tick that rolled
-  back or a start that raised after making it, and is adopted rather than
-  started twice (its ConfigMap created if missing). Every Job carries
-  `activeDeadlineSeconds` (the task's timeout plus a grace period), so
-  Kubernetes stops one the scheduler has lost track of. `discard()` deletes
-  an attempt's Job and ConfigMap by name, when the scheduler gives up on it.
-- No sidecar is needed because the container's `terminationMessagePath`
-  is pointed directly at `/platform/output/result.json`, so Kubernetes
-  itself reads that file back out after the container exits. `get_status()`
-  reads it off the Pod's status and caches it for 15 minutes; the Job and
-  ConfigMap stay. `run_scheduler_tick` hands back the handles of tasks that
-  finished (`finished=`), and the loop in `__main__.py` calls `release()` on
-  them only after the pass has committed, so a pass that rolls back can read
-  the same result again. One missed is removed by the Job's TTL.
+- `Start()` creates a Job whose Pod has an `emptyDir` at `/platform/output`,
+  then a ConfigMap holding `request.json` (mounted read-only at
+  `/platform/input`) that names the Job as its owner, so Kubernetes deletes
+  it with any Job the scheduler never releases. Names come from
+  (execution, task, attempt) (`JobName`, the same as the Python kernel's
+  was): a Job already there under its name is this same attempt's, from a
+  pass that rolled back or a start that erred after making it, and is
+  adopted rather than started twice. Every Job has `activeDeadlineSeconds`
+  (the task's timeout plus a grace period), so Kubernetes stops one the
+  scheduler has lost track of. A 403 (or Sigstore's 400) is a
+  `DispatchRejected` with the policy's own code. `Discard()` deletes an
+  attempt's Job and ConfigMap by name.
+- No sidecar: the container's `terminationMessagePath` is
+  `/platform/output/result.json`, so Kubernetes reads that file back after
+  the container exits. `Status()` parses it (`domain.ParseTaskResult`),
+  redacts credentials from logs and error messages, fails outputs holding
+  one (`OUTPUT_CONTAINS_CREDENTIAL`), and caches the result for 15 minutes;
+  the Job and ConfigMap stay. A missing image fails at once
+  (`IMAGE_NOT_FOUND`); other pull errors get `IMAGE_PULL_GRACE_SECONDS`.
+- The pass hands back what finished (`Outcome.Finished`), and the loop
+  calls `Release()` on it only after the pass committed, so a pass that
+  rolls back can read the same result again. One missed is removed by the
+  orphan sweep or the Job's TTL.
 
 ### 3. Reading status
 
 ```
-GET /v1/executions/{id}
-  → app/api/routes/executions.py : read_execution()
-      → app/services/execution_service.py : get_execution_detail()
-          [fetches the SAME rows the scheduler is concurrently writing — always live, never cached]
-
-GET /v1/executions/{id}/events
-  → read_execution_events() → app/persistence/repositories.py : get_execution_events()
-      [plain ordered SELECT on execution_events]
+KernelService/GetExecution → internal/api/service.go : GetExecution()
+    [the same rows the scheduler is writing: always live, never cached]
+    tasks with their outputs, failure, dependencies, and the current attempt's timing
+KernelService/ListExecutionEvents → ListExecutionEvents()
+    [after an event id, a page at a time; next_cursor when the page was full]
+KernelService/GetExecutionLogs, GetExecutionStates → the same rows, in one query each
 ```
 
 ### 4. Cancelling
 
 ```
-POST /v1/executions/{id}/cancel
-  → cancel_execution_route() → app/services/execution_service.py : cancel_execution()
-      [already CANCELLED?] → no-op, still 200 (idempotent)
-      [already SUCCEEDED/FAILED?] → 409, refused
-      → UPDATE every READY/BLOCKED task → CANCELLED (never dispatched, nothing to stop)
-      → UPDATE execution → CANCELLED, only if still PENDING/RUNNING
-          (conditional UPDATEs: one the scheduler is dispatching right now is
-           re-checked after its commit and left RUNNING, not overwritten)
-      → record_event(EXECUTION_CANCELLED)
-      [RUNNING/CLAIMED tasks are left alone here —
-       the API process has no live executor to call .cancel() on;
-       the next scheduler poll tick (Phase C above) does the real work]
+KernelService/CancelExecution → internal/api/service.go : CancelExecution()
+    [already CANCELLED?] → fine, idempotent
+    [already SUCCEEDED/FAILED?] → failed_precondition
+    → in a savepoint, conditionally:
+        UPDATE every READY/BLOCKED task → CANCELLED (never dispatched, nothing to stop)
+        UPDATE the execution → CANCELLED, only if still PENDING/RUNNING
+        [it finished meanwhile?] → roll back the savepoint, answer as above
+    → recordEvent(EXECUTION_CANCELLED), recordEvent(TASK_CANCELLED) for each
+    [RUNNING/CLAIMED tasks are left alone here: kernel-api has no executor;
+     the scheduler's next pass (Phase C above) stops them, and a task it was
+     dispatching meanwhile is left RUNNING for it, not overwritten]
 ```
 
 ### 5. Retrying a failed task
 
 ```
-POST /v1/executions/{id}/tasks/{task_id}/retry
-  → retry_task_route() → app/services/execution_service.py : retry_task()
-      [task isn't FAILED?] → 409, refused
-      → task.state = READY, clear lease/handle/failure → record_event(TASK_RETRIED)
-          (grants one more attempt regardless of maxAttempts — that cap only gates the
-           *automatic* should_retry() decision above, never claiming itself)
-      [execution was FAILED, which it always is if a task is FAILED] →
-          execution.state = RUNNING → record_event(EXECUTION_RESUMED)
-      → _revive_cancelled_siblings()
-          [any task cancelled by the original failure] → READY (deps already met) or BLOCKED
-          (without this, the execution could never reach all-SUCCEEDED again)
-      [next tick's Phase A claims the revived task normally]
+KernelService/RetryTask → internal/api/service.go : RetryTask()
+    → UPDATE the task → READY, lease/handle/failure cleared, WHERE it's still FAILED
+        [no row?] → not_found, or failed_precondition if it exists but isn't FAILED
+        (one more attempt whatever max_attempts: that only gates the
+         scheduler's automatic ShouldRetry)
+    → recordEvent(TASK_RETRIED)
+    → the execution → RUNNING if FAILED (compare-and-set) → recordEvent(EXECUTION_RESUMED)
+    → every CANCELLED sibling → READY (its dependencies all SUCCEEDED) or BLOCKED
+        (without this, the execution could never reach all-SUCCEEDED again)
+    [the scheduler's next pass claims the revived task normally]
 ```
 
 ---
 
-## File-by-file reference
+## Package-by-package reference
 
-### `app/contracts/` — wire and storage shapes
+#### `cmd/kernel/main.go`
+- `main()` — the subcommand: `api`, `scheduler`, `migrate`, `sleep
+  [--now]`; `wait-for-postgres HOST:PORT` (the chart's init containers)
+  and `check-heartbeat SECONDS` (the scheduler's liveness probe).
+- `runAPI`, `runScheduler`, `runMigrate`, `runSleep` — each builds what it
+  needs from the settings, constructing `executor.Kubernetes` directly:
+  there's nothing to choose between. SIGTERM ends each cleanly (kernel-api
+  drains its requests; the scheduler finishes its pass and releases its
+  leases).
 
-Pydantic models only. No logic beyond field-level validation. These are
-what cross a real boundary: an HTTP body, a JSONB column, a file written
-into a container.
+#### `internal/config/config.go`
+- `Settings` — every process's settings, documented field by field; the
+  names are the ones the chart's ConfigMap sets.
+- `Load(getenv)` — parses and checks them all, reporting every problem at
+  once; JSON settings refuse unknown fields (a misspelt toleration stops
+  it rather than being dropped).
 
-#### `app/contracts/task.py`
-- `InputReference` — the parsed form of `{"$fromTask": "...", "$output": "..."}`.
-- `try_parse_input_reference(value)` — the *only* place that recognizes that
-  marker shape inside arbitrary JSON; used by both DAG validation and input
-  resolution so the shape check isn't duplicated.
-- `TaskDefinition` — one task as submitted (`id`, `image`, `action`,
-  `dependsOn`, `inputs`, `timeoutSeconds`, `maxAttempts`).
-- `ProductRequest` — the exact JSON written to `/platform/input/request.json`
-  inside a product container.
+#### `internal/domain/`
+- `states.go` — `TaskState`, `ExecutionState`, `ShouldRetry`, and
+  `RetryBackoff.Delay` (5 s after the first failure, doubling, capped).
+- `result.go` — `StructuredError`, and `ParseTaskResult`: the
+  `result.json` contract, strictly (no unknown fields; a failed result has
+  an error, a succeeded one doesn't).
+- `task.go` — `TaskResources` (`Over`, `Check`), `ParseInputReference`,
+  `ResolveInputs` and `MissingOutputError`, `ProductRequest`.
+- `dag.go` — `TaskDef` and `ValidateDAG`, the whole submission-time gate:
+  duplicate ids, self, unknown or repeated dependencies, cycles,
+  upstream-only input references, credential-shaped inputs. Collects every
+  issue before refusing, so one round trip reports everything wrong;
+  checks that need a well-formed graph are skipped once it isn't one.
+  `TopologicalSort` (submission order breaks ties).
+- `credentials.go` — `RedactText`, `RedactLines` (a PEM key spanning lines
+  becomes one marker), `FindCredential` (a step's outputs holding one fail
+  it; a DAG's inputs holding one are refused).
+- `events.go` — every `execution_events.event_type`.
 
-#### `app/contracts/execution.py`
-- `ExecutionSubmission` — the body of `POST /v1/executions`.
-- `ExecutionSubmissionResponse` — `{executionId, state}`, returned by
-  submit/cancel/retry.
-- `TaskStatusResponse`, `ExecutionDetailResponse` — the body of
-  `GET /v1/executions/{id}`.
-- `ExecutionEventResponse` — one row of `GET /v1/executions/{id}/events`.
+#### `internal/executor/`
+- `executor.go` — `Executor`: `Start` / `Status` / `Cancel` / `Logs` /
+  `Release` (removes a finished attempt's Job once its outcome is
+  committed) / `ListAttempts` (every attempt whose Job still exists, for the
+  orphan sweep) / `Discard` (removes what a failed start may have left) /
+  `WaitForChange`. `ResolvedTask`, `Handle` (opaque outside the executor;
+  `{namespace, jobName}`), `Status`, `DispatchRejected`. An interface with
+  one production implementation, earning its keep by letting the
+  scheduler's logic be tested against `executortest.Fake` without a cluster.
+- `kubernetes.go` — `Kubernetes`: see the bullets in the trace above.
+  `JobName`, `ImagePullFailure` (a pure function of the kubelet's waiting
+  state). Every API call has `KUBERNETES_REQUEST_TIMEOUT_SECONDS`.
+- `watch.go` — `Watch`: shared informers on the kernel's Jobs and Pods.
+  While both are healthy, a running Job's status isn't re-read until it
+  changes or `KUBERNETES_WATCH_RESYNC_SECONDS` passes; a change wakes a
+  waiting loop.
+- `executortest/fake.go` — `Fake`, driven explicitly (`Complete`, `Fail`).
 
-#### `app/contracts/result.py`
-- `StructuredError` — `{code, message, retryable}`, used everywhere a
-  failure needs to be machine-readable (product containers, executors,
-  the scheduler).
-- `TaskResult` — the contents of `/platform/output/result.json`; a
-  validator enforces `status=succeeded ⇒ no error` and vice versa.
-
-### `app/domain/` — pure business logic
-
-No I/O anywhere in this package. Everything here is unit-tested without a
-database or a container in sight.
-
-#### `app/domain/states.py`
-- `TaskState`, `ExecutionState` — the state enums.
-- `initial_task_state(depends_on)` — `READY` if no dependencies, else `BLOCKED`.
-- `should_retry(attempt_count, max_attempts, retryable)` — the automatic
-  retry decision: both conditions must hold.
-
-#### `app/domain/dag_validation.py`
-- `validate_dag(tasks, max_tasks)` — the whole submission-time gate:
-  duplicate ids, self/unknown dependencies, cycles, upstream-only input
-  references, and inputs that look like credentials. Collects *every* issue before raising (not fail-fast), so one
-  round trip reports everything wrong.
-- `topological_sort(tasks)` — deterministic (submission order breaks ties),
-  raises with the cycle's members if the graph isn't acyclic.
-- `_find_duplicate_ids`, `_validate_dependencies`, `_validate_input_references`,
-  `_find_input_references` — the individual checks `validate_dag` composes.
-
-#### `app/domain/credentials.py`
-- `redact_lines(lines)`, `redact_text(text)` — replace recognizable
-  credentials (PEM private keys, cloud keys, GitHub/Slack/Stripe tokens,
-  bearer tokens, JWTs) with `[redacted <kind>]`; applied by
-  `KubernetesExecutor` to every log line and error message it reads.
-- `find_credential(value)` — the kind of the first credential anywhere in a
-  JSON value, or None: a step's outputs holding one fail it
-  (`OUTPUT_CONTAINS_CREDENTIAL`), and a submission's inputs holding one are
-  refused (`INPUT_CONTAINS_CREDENTIAL`).
-
-#### `app/domain/errors.py`
-- `KernelError` — base class for every domain exception.
-- `ValidationIssueCode`, `ValidationIssue` — the vocabulary `validate_dag`
-  reports issues with.
-- `DAGValidationError` — carries the full `list[ValidationIssue]`.
-- `MissingOutputError` — raised by input resolution when a reference points
-  at an output that was never produced.
-
-#### `app/domain/events.py`
-- `EventType` — every `execution_events.event_type` value that exists
-  (`EXECUTION_CREATED` … `TASK_RETRIED`). One place to grep instead of
-  string literals scattered through scheduler code.
-
-### `app/persistence/` — SQLAlchemy models, engine, repositories
-
-#### `app/persistence/database.py`
-- `Base` — the declarative base every model inherits.
-- `create_engine(database_url)`, `create_session_factory(engine)` — built
-  once per process (API and scheduler each build their own).
-- `session_scope(session_factory)` — the standard transaction wrapper:
-  commits on success, rolls back on exception. `app/api/dependencies.py`
-  and `app/scheduler/__main__.py` are the two callers.
-
-#### `app/persistence/models.py`
-The seven tables, one class each: `Execution`, `ExecutionTask`,
-`TaskDependency`, `TaskAttempt`, `TaskOutput`, `TaskLog`, `ExecutionEvent`. State
-columns use `native_enum=False` (plain `VARCHAR` + CHECK constraint, via the
-`_enum_column()` helper) so adding a new state later is an ordinary
-migration, not `ALTER TYPE`. `TimestampMixin` supplies `created_at`/
-`updated_at` to the two tables that need them.
-
-#### `app/persistence/repositories.py`
-Thin query wrappers — no branching logic lives here (that belongs in
-`services`/`scheduler`).
-- `get_execution_by_idempotency_key`, `get_execution_by_id`,
-  `get_execution_events` — plain SELECTs.
-- `record_event(session, execution_id, event_type, ...)` — the *single*
-  place anything writes to `execution_events`. Every lifecycle transition
-  funnels through this one function.
-
-### `app/services/execution_service.py` — API-triggered orchestration
-
-The service layer behind every route except the two health checks.
-- `submit_execution()` + `ExecutionSubmissionResult` — see the submission
-  trace above. `_build_execution_graph()` / `_build_task()` are its private
-  helpers.
-- `get_execution_detail()` + `ExecutionDetail`/`TaskDetail` — assembles
-  what `GET /v1/executions/{id}` needs.
-- `cancel_execution()` + `CancelOutcome` — see the cancel trace above.
-- `retry_task()` + `RetryOutcome`, `_revive_cancelled_siblings()` — see the
-  retry trace above.
-
-### `app/scheduler/` — the polling loop
-
-#### `app/scheduler/claiming.py`
-- `claim_ready_tasks()` — the `SELECT ... FOR UPDATE SKIP LOCKED` claim,
-  safe for multiple scheduler instances to call concurrently.
-- `recover_expired_leases()` — resets abandoned `CLAIMED`/`RUNNING` tasks
-  back to `READY`. Called automatically at the start of every claim.
-- `return_unstarted_attempt()` — when starting a Job raised, puts the task
-  back to `READY` with the same attempt number, so the next pass retries
-  (and adopts a Job the failed call may have created) instead of spending
-  an attempt.
-- `release_leases()` — on shutdown, hands this scheduler's tasks back at once.
-
-#### `app/scheduler/input_resolution.py`
-- `resolve_inputs(inputs, outputs_by_task_key)` — pure, no I/O: the
-  recursive marker-replacement algorithm.
-- `resolve_task_inputs(session, task)` — the database-aware wrapper:
-  fetches a task's direct dependencies' persisted outputs, then calls
-  `resolve_inputs`.
-
-#### `app/scheduler/service.py`
-- `run_scheduler_tick()` — the single entry point; see the three-phase
-  trace above.
-- `_dispatch_task`, `_poll_task`, `_handle_task_failure` — the three phases'
-  per-task logic.
-- `_release_ready_dependents`, `_mark_execution_running_if_needed`,
-  `_settle_execution`, `_fail_execution` — the state-machine side effects
-  those phases trigger. The first and third lock the row they decide about
-  (see the trace above); `tests/integration/test_concurrent_completion.py`
-  races two schedulers through both.
-- `_get_current_attempt`, `_load_running_tasks_owned_by` — small query helpers.
-
-#### `app/scheduler/retention.py`
-- `delete_finished_executions()` — deletes finished executions (with their
-  tasks, outputs, logs and events) whose last event is older than
-  `execution_retention_days`, a few hundred at a time.
-
-#### `app/scheduler/orphans.py`
-- `release_orphaned_attempts()` — lists the attempts whose Jobs still exist
-  (`Executor.list_attempts`) and releases those older than `ORPHAN_MIN_AGE`
-  that no task can use: neither a running task's current attempt nor the
-  one a ready task will adopt on its next claim (`still_needed`). Catches a
+#### `internal/scheduler/`
+- `tick.go` — `RunTick` and its phases: see the trace above. `Options`
+  (`DefaultOptions`), `Outcome`.
+- `claiming.go` — `claimReadyTasks`, `recoverExpiredLeases`,
+  `returnUnstartedAttempt`, `ReleaseLeases`.
+- `rows.go` — the task and attempt rows, `recordEvent` (the one place a
+  pass writes `execution_events`; counted only once the pass commits), and
+  `transitionExecution`, a compare-and-set: an execution's state only
+  changes from the states the caller expects.
+- `run.go` — `Loop.Run`, `ReleaseFinished`.
+- `orphans.go` — `ReleaseOrphanedAttempts`: releases attempts older than
+  `OrphanMinAge` that no task can use, neither a running task's current
+  attempt nor the one a ready task will adopt (`stillNeeded`). Catches a
   Job started in a pass that rolled back for a task then cancelled, a
   release that failed, and Jobs whose execution was deleted.
+- `retention.go` — `DeleteFinishedExecutions`: finished executions past
+  `EXECUTION_RETENTION_DAYS`, a few hundred at a time.
 
-#### `app/scheduler/__main__.py`
-- `run_forever()` — constructs `KubernetesExecutor` directly (the only real
-  backend — no dispatch needed for a choice that's no longer a choice) and
-  runs the actual infinite poll loop; a failed tick is logged and skipped,
-  never crashes the process. SIGTERM or SIGINT ends the loop after the pass
-  in progress; it then calls `claiming.release_leases`, so another
-  scheduler adopts this one's tasks on its next pass. After each pass
-  commits it releases the finished tasks' Jobs (`release_finished`). Once an
-  hour it also runs the retention sweep, and every five minutes the orphan
-  sweep.
-- `wait_unless_stopping(stopping, waiting)` — every wait in the loop goes
-  through this, so a stop signal never waits out a poll interval.
-- `main()` — configures logging, calls `asyncio.run(run_forever())`. Run via
-  `python -m app.scheduler`.
+#### `internal/api/`
+- `service.go` — `Service`, KernelService: see the traces above. Every
+  state change is conditional (`WHERE state IN ...`), never a value read
+  and written back, because the scheduler changes the same rows; events
+  are counted once their transaction commits.
+- `auth.go` — `Callers`: the caller check, as an interceptor on every
+  method. The bearer token must pass a TokenReview for
+  `API_TOKEN_AUDIENCE` and belong to one of `API_ALLOWED_CALLERS` (the
+  console): unauthenticated without a valid token, permission_denied for
+  anyone else, and a failing review fails the request. Successful reviews
+  are remembered for 60 s, in a bounded cache.
+- `server.go` — `Handler`: KernelService, `/health/live` (never the
+  database), `/health/ready` (the database answers and is at
+  `migrate.Latest()`), `/metrics`; every request logged and measured by
+  route, never by its literal path.
 
-### `app/executors/` — one interface, one real backend
+#### `internal/migrate/`
+- `sql/NNNN_name.sql` — the schema, one file per change, embedded in the
+  binary. A released file never changes.
+- `Run` — under an advisory lock (two migrators wait for each other),
+  applies the files the database doesn't have, each in its own
+  transaction, recorded in `schema_migrations`. An install Alembic
+  migrated (`alembic_version`) is taken over at the same version first.
+- `Current`, `Latest`, `Wait` — what kernel-api's readiness and the
+  scheduler's start check.
 
-#### `app/executors/base.py`
-- `Executor` (Protocol) — `start` / `get_status` / `cancel` / `get_logs` /
-  `release` (removes a finished attempt's Job once its outcome is committed) /
-  `list_attempts` (every attempt whose Job still exists, for the orphan sweep) /
-  `discard` (removes a Job a failed start may have left).
-  `KubernetesExecutor` and `tests.fakes.FakeExecutor` both satisfy this
-  structurally (no inheritance) — the Protocol earns its keep on letting
-  the scheduler's own logic be tested against the fake without a real
-  cluster, not on having multiple production backends.
-- `ResolvedTask` — what `start()` needs; `.to_product_request()` converts
-  it to the `ProductRequest` a container actually receives.
-- `ExecutionHandle` — `dict[str, Any]`, opaque outside the executor that
-  produced it.
-- `ExecutorRunState`, `ExecutionStatus` — the result of `get_status()`; a
-  validator enforces the state/outputs/error combinations make sense.
+#### `internal/sleeper/`
+- `Run` — one look: asleep already (stop looking: suspend the CronJob),
+  or idle long enough (no unfinished execution; the last event, the
+  console's last use and kernel-api's start all older than
+  `SLEEPER_IDLE_AFTER_SECONDS`), then record the counts to wake to and
+  scale to zero, the databases last. `--now` waits for unfinished
+  executions instead of for idleness.
+- `Platform` — the Kubernetes side, only through the scale subresource and
+  the one state ConfigMap (what the chart's Role allows).
+- `ShouldSleep`, `LastActivity` — the decision, pure.
 
-#### `app/executors/kubernetes.py`
-- `KubernetesExecutor` — see the Kubernetes bullet in the scheduler trace
-  above.
-- `job_name_for(execution_id, task_key, attempt)` — hashes the identifying
-  triple into a short, DNS-1123-safe Job/ConfigMap name (a raw UUID-based
-  name routinely exceeds Kubernetes' 63-character limit).
-- `_load_kube_config()` — in-cluster config when running as a Pod, local
-  kubeconfig otherwise.
-- Private helpers: `_create_config_map`, `_create_job`,
-  `_finalize`, `_build_status`, `_find_terminated_container`, `_read_logs`,
-  `_delete_job`, `_delete_config_map`.
+#### `internal/logging/`, `internal/metrics/`
+- JSON logs with `timestamp`, `severity`, `logger`, `message`, `service`;
+  `kernel_events_total`, `kernel_http_requests_total`,
+  `kernel_http_request_duration_seconds`,
+  `kernel_scheduler_tick_duration_seconds`,
+  `kernel_scheduler_status_read_errors_total`,
+  `kernel_scheduler_tick_errors_total`. Each process serves its own.
 
-### `app/api/` — the HTTP surface
-
-#### `app/api/auth.py`
-- `require_caller(request)` — a dependency on the whole `/v1/executions`
-  router: the bearer token must pass a TokenReview for `api_token_audience`
-  and belong to one of `api_allowed_callers` (the console). 401 without a
-  valid token, 403 for anyone else. Successful reviews are cached for 60s
-  in a bounded cache; a failing review fails the request.
-- `CallerAuthenticator` — the check itself, with the review injectable
-  (`tests/unit/test_api_auth.py` uses a fake). `authenticator_for(settings)`
-  returns None when `api_auth` is `disabled` (local development only).
-
-#### `app/api/dependencies.py`
-- `get_db_session(request)` — one session per request via `session_scope`,
-  reading the session factory FastAPI's `lifespan` stored on `app.state`.
-
-#### `app/api/routes/executions.py`
-- `create_execution` — `POST /v1/executions`.
-- `read_execution` — `GET /v1/executions/{id}`.
-- `read_execution_events` — `GET /v1/executions/{id}/events`.
-- `cancel_execution_route` — `POST /v1/executions/{id}/cancel`.
-- `retry_task_route` — `POST /v1/executions/{id}/tasks/{task_id}/retry`.
-- `_issues_detail` — converts `DAGValidationError.issues` into the 422
-  response body.
-
-#### `app/api/routes/health.py`
-- `live` — `GET /health/live`, never touches the database.
-- `ready` — `GET /health/ready`, runs `SELECT 1`.
-
-### `app/main.py` and `app/config.py`
-- `app/main.py` — `lifespan()` builds the engine/session factory once at
-  startup; `create_app()` wires up the two routers. `app` is the ASGI
-  entry point (`uvicorn app.main:app`).
-- `app/config.py` — `Settings` (env-var driven: `DATABASE_URL`,
-  `LEASE_DURATION_SECONDS`, the step Pod settings, etc.), `get_settings()`.
-
----
 
 ## Tests
 
-- **`tests/unit/`** — no I/O: the domain (`test_dag_validation.py`,
-  `test_states.py`, `test_credentials.py`, ...), and `KubernetesExecutor`
-  against stub APIs (`test_kubernetes_*.py`: errors, image pulls, request
-  timeouts, the watch, credentials in results).
-- **`tests/integration/`** — real Postgres always; a real (`kind`)
-  Kubernetes cluster where the file name says so. Roughly one file per
-  module under `app/`: persistence, the execution service, claiming, the
-  scheduler (`test_scheduler_service.py`, `test_scheduler_edge_cases.py`,
-  `test_concurrent_completion.py`, `test_dispatch_retries.py`, with
-  `FakeExecutor`), logs and retention, the API, and the real executor
-  (`test_kubernetes_executor.py`, `test_product_examples.py`).
-- **`tests/end_to_end/test_two_task_chain.py`** — the full stack on kind:
-  the real fake product containers and the real scheduler loop. The
-  actual proof the chaining mechanism works.
-- **`tests/conftest.py`** — every shared fixture: `db_session` (rolled back
-  after each test), `docker_client`/`k8s_apis` (skip cleanly if
-  unreachable), the various `*_image` fixtures (build/load once per
-  session), `api_client` (a real ASGI app with its DB dependency overridden
-  to `db_session`).
-- **`tests/fakes.py`** — `FakeExecutor`, an in-memory `Executor` used to
-  test scheduler logic without any real container runtime.
-- **`tests/integration/executor_helpers.py`** — `wait_for_terminal()`,
-  shared by both real-executor test files.
-- **`tests/fixtures/docker_test_image/`** — a minimal image whose behavior
-  is driven by the requested action (`greet`/`crash`/`sleep`/fail-on-input),
-  used to exercise executor mechanics independent of the real products.
+`go test ./...` here; `make test` migrates the test database and runs
+them in the pinned Go image. Everything that touches Postgres uses a real,
+migrated database (`TEST_DATABASE_URL`, `internal/dbtest`); a missing one
+fails rather than skips.
+
+- **`internal/domain`, `internal/config`** — no I/O: DAG validation,
+  credentials, backoff, input resolution, the result contract, settings.
+- **`internal/api`** — kernel-api over HTTP through the generated client,
+  on a database of its own (these commit): submitting (idempotency, a
+  race on one request_id, every validation), reading, cancelling,
+  retrying, health, and the caller check on every method; `Callers` with
+  a fake TokenReview (refusals, the cache and its bound, a failing
+  review).
+- **`internal/executor`** — the Kubernetes executor against client-go's
+  fake clientset, with reactors for the API's refusals: creating,
+  adopting and refusing, Pod hardening, image pulls, release, the result
+  cache, credentials in results, listing, the watch's read-skipping,
+  placement; `JobName` against values the Python kernel computed.
+- **`internal/scheduler`** — the scenarios the Python scheduler was proven
+  by, with `executortest.Fake`: dispatch, chaining, retries and backoff,
+  dispatch retries, cancellation (including a cancel racing a dispatch on
+  two connections), timeouts, two schedulers finishing at once, claiming
+  and caps, leases, orphans, logs, retention, and the loop stopping.
+- **`internal/migrate`** — every file once, concurrent migrators, taking
+  over an Alembic install, waiting for the schema, the schema's own
+  guarantees, and that `console/docs/06-database-schemas.md` documents
+  every table and column.
+- **`internal/sleeper`** — the decision, a run against a fake cluster, and
+  what it reads from the database.
+- **`TestKind*`** — against a real kind cluster (`internal/kindtest`, which
+  builds `internal/kindtest/fixture` and the `examples/` products and gets
+  them to the cluster): the executor's mechanics, and whole executions
+  through real passes. They skip without a kind context with an
+  `execution-kernel` namespace; CI's kubernetes job requires them.
 
 ## Deployment files
 
-- **`Dockerfile`** — one image for both `kernel-api` and `kernel-scheduler`;
-  Helm's `command:` selects which.
-- **`../helm/charts/execution-kernel/`** — the Kubernetes deployment (project
-  root, not inside `kernel/` — deploys alongside `../helm/charts/execution-console`
-  as one release). `values.yaml`
-  documents every option inline; `templates/` has one file per resource
-  (`kernel-api-deployment.yaml`, `kernel-scheduler-deployment.yaml`,
-  `postgres-deployment.yaml` + `-pvc`/`-service`, `rbac.yaml`,
-  `secret.yaml`, `configmap.yaml`, `migration-job.yaml`,
-  `serviceaccount.yaml`, `_helpers.tpl` for shared template logic).
-- **`app/persistence/migrations/`** — `env.py` (the Alembic environment,
-  async-aware, reads `DATABASE_URL` from `app.config`) and `versions/`
-  (`0001_initial_schema`, creating every table, then one per later change).
-  `alembic.ini` at the kernel's root points there.
-- **`examples/project-product/`**, **`examples/application-product/`** —
-  the two real fake product containers; each is a standalone
-  `entrypoint.py` + `Dockerfile` with no code shared between them
-  (real product vendors wouldn't share a library either).
+- **`Dockerfile`** — a Go stage builds `/usr/local/bin/kernel` (static);
+  the image is that on distroless (no shell), as user 65532. Helm's
+  `command:` picks the subcommand.
+- **`../helm/charts/execution-kernel/`** — the Kubernetes deployment (at
+  the project root, beside `../helm/charts/execution-console`).
+  `values.yaml` documents every option inline; `templates/` has one file
+  per resource: kernel-api, kernel-scheduler, the migration hook Job
+  (`kernel migrate`), the sleeper's CronJobs (`kernel sleep`).
+- **`../proto/acyclix/kernel/v1/kernel.proto`** — KernelService; `make
+  proto` writes `internal/gen` and the console's client.
+- **`../examples/project-product/`**, **`../examples/application-product/`**
+  — the two fake product containers the kind tests run; each standalone,
+  sharing no code.

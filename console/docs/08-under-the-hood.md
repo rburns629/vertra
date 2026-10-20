@@ -21,7 +21,7 @@ flowchart TB
 - **Normally:** a Job runs batch work and Kubernetes retries failed Pods for you (`backoffLimit`).
 - **Here:** each attempt is its own Job, named `ek-<task>-<fingerprint>`, where the fingerprint is a hash of the execution, task and attempt (Kubernetes names are limited to 63 characters), with `backoffLimit: 0` and `restartPolicy: Never`.
 - **Why:** the kernel decides whether to retry, from the product's own `retryable` flag. Every attempt is recorded in `task_attempts` with its own Job, so nothing retries without the kernel knowing.
-- **Code:** `kernel/app/executors/kubernetes.py` (`job_name_for`, `_create_job`).
+- **Code:** `kernel/internal/executor/kubernetes.go` (`JobName`, `jobFor`).
 
 ### A ConfigMap as a one-off input file
 - **Normally:** a ConfigMap holds an application's settings.
@@ -136,17 +136,17 @@ flowchart TB
 - **Normally:** you'd add RabbitMQ, SQS or Redis.
 - **Here:** `execution_tasks` is the queue. Each tick, the scheduler selects READY tasks `FOR UPDATE SKIP LOCKED`, so two schedulers never claim the same task, and takes a **lease** (`lease_owner`, `lease_expires_at`, 60 s by default) that it renews while the task runs. If a scheduler dies, its leases expire and another scheduler picks the tasks up.
 - **Consequence:** a task can run twice, for example if its scheduler died after starting the Job. Products must be safe to run again.
-- **Code:** `kernel/app/scheduler/claiming.py`.
+- **Code:** `kernel/internal/scheduler/claiming.go`.
 
 ### Idempotency from a unique index
 - **Here:** `executions.idempotency_key` (the API's `requestId`) is unique. The kernel checks it first and inserts inside a savepoint; if two identical requests race, the loser's insert fails on the index and it returns the winner's execution instead. The console prefixes the `requestId` with the submitting teams, so two teams can never collide.
-- **Code:** `kernel/app/services/execution_service.py` (`submit_execution`), `console/src/core/executions.ts` (`scopeRequestId`).
+- **Code:** `kernel/internal/api/service.go` (`SubmitExecution`), `console/src/core/executions.ts` (`scopeRequestId`).
 
 ### An append-only event log
 - **Here:** every state change also writes a row to `execution_events`, numbered by an increasing id, so an execution's history is exact and in order even if timestamps tie.
 
 ### Copies of what Kubernetes throws away
-- **Here:** outputs (`task_outputs`) and logs (`task_logs`) are copied out of the Pod before its Job is deleted. Between deleting the Job and committing those rows, the executor keeps the result in memory, so a failed commit can be retried on the next tick.
+- **Here:** outputs (`task_outputs`) and logs (`task_logs`) are copied out of the Pod, and its Job is deleted only once those rows are committed. The executor also keeps the result in memory for a while, so a pass whose commit failed reads it again on the next one.
 
 ## The console
 

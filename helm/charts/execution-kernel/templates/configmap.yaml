@@ -35,7 +35,7 @@ data:
   KUBERNETES_WATCH_RESYNC_SECONDS: {{ .Values.scheduler.watchResyncSeconds | quote }}
   KUBERNETES_JOB_TTL_SECONDS: {{ .Values.scheduler.jobTtlSecondsAfterFinished | quote }}
   IMAGE_PULL_GRACE_SECONDS: {{ .Values.scheduler.imagePullGraceSeconds | quote }}
-  # Only kernel-scheduler acts on this (app/scheduler/__main__.py starts a
+  # Only kernel-scheduler acts on this (kernel/cmd/kernel-scheduler starts a
   # dedicated metrics HTTP server on it); kernel-api ignores it and serves
   # /metrics on its normal port instead.
   METRICS_PORT: {{ .Values.scheduler.metricsPort | quote }}

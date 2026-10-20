@@ -125,9 +125,10 @@ change in Acyclix.
      use its action's own.)
 
    The console reads these fields by their documented names (`serviceAccount`,
-   `secretRefs`), and kernel-api accepts only those names, refusing the Python
-   ones (`service_account`, `secret_refs`): otherwise a submission could show
-   the console one identity and give the kernel another.
+   `secretRefs`), and builds kernel-api's request from exactly those names,
+   refusing any other (`service_account`, `secret_refs`;
+   `console/src/kernel/client.ts`): otherwise a submission could show the
+   console one identity and give the kernel another.
 
    Retries and reruns are checked again against current memberships and
    secrets.
@@ -146,8 +147,8 @@ policy, below), so it holds even for a Job the console never checked.
 
 kernel-api knows nothing about users or teams; it acts on whatever the
 console asks, because the console has already authorized it. So it checks
-one thing on every `/v1` request: that the caller is the console
-(`kernel/app/api/auth.py`).
+one thing on every call: that the caller is the console
+(`kernel/internal/api/auth.go`).
 
 - The console's Pod gets its ServiceAccount token projected for the
   audience `acyclix-kernel-api` (rotated by the kubelet, valid an hour), so
@@ -240,7 +241,7 @@ requirements on product code:
 
 - **Never print or return a secret.** Logs and `result.json` outputs are stored
   and shown to everyone who can see the execution. The kernel catches the
-  common mistakes (`kernel/app/domain/credentials.py`): it redacts
+  common mistakes (`kernel/internal/domain/credentials.go`): it redacts
   well-known credential shapes from logs and error messages (PEM private
   keys, AWS/Google/Azure keys, GitHub, Slack and Stripe tokens, bearer
   tokens, JWTs), fails a step whose outputs contain one

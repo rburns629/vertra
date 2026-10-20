@@ -30,7 +30,7 @@ import { check } from "../validate.js";
 const AnyTeam = Type.String({ minLength: 1 });
 
 // "No such user" tells a member whether an email has an account, which
-// adding by email can't avoid: limited per caller, as the REST route is.
+// adding by email can't avoid: limited per caller.
 const addMemberLimit = new FixedWindowLimit(30, 60 * 60 * 1000);
 
 const POD_STATE: Record<string, TaskPodState> = {

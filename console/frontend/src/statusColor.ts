@@ -2,8 +2,8 @@
 import type { ChipProps } from "@mui/material/Chip";
 import type { Theme } from "@mui/material/styles";
 
-/** Maps kernel's real ExecutionState/TaskState strings (see kernel/app/
- * domain/states.py) to a Chip color -- one place, so a status reads the
+/** Maps kernel's real ExecutionState/TaskState strings (see kernel/
+ * internal/domain/states.go) to a Chip color -- one place, so a status reads the
  * same way everywhere it appears (list, detail, home's recent-activity,
  * home's charts). */
 export function statusColor(state: string): ChipProps["color"] {

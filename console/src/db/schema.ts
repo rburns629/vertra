@@ -282,7 +282,7 @@ export const productReleases = pgTable(
 
 /**
  * A team's registered secrets: what POST /secrets has provisioned into
- * Kubernetes (see routes/secrets.ts and k8s.ts) -- never the secret
+ * Kubernetes (see core/secrets.ts and k8s.ts) -- never the secret
  * *values* themselves, only which team, which Secret name, and which keys
  * it holds. Any of the team's registered products may mount any of them,
  * when a task lists it in secretRefs; nothing else may mount them, and no
@@ -328,7 +328,7 @@ export const secretGrants = pgTable(
  * kernel-api has no concept of users or teams at all (see docs/multi-
  * tenant-secrets-design.md -- it stays deliberately blind to both), so it
  * can't answer "who's allowed to see this execution." This is that answer,
- * recorded here at submission time (see routes/executions.ts): every team
+ * recorded here at submission time (see core/executions.ts): every team
  * named by any task in the submission, so a later read/cancel/retry can
  * check the caller shares at least one of them (or is admin) before this
  * service forwards the request on to kernel-api at all.
@@ -343,7 +343,7 @@ export const submittedExecutions = pgTable("submitted_executions", {
   submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
   name: text("external_reference").notNull(),
   // The exact body forwarded to kernel-api's `POST /v1/executions` (see
-  // routes/executions.ts) -- kept so a later rerun can resubmit the same
+  // core/executions.ts) -- kept so a later rerun can resubmit the same
   // task graph under a fresh requestId without the caller having to
   // hold onto or re-supply it themselves. Nullable because rows recorded
   // before this column existed have nothing to backfill it with; a rerun

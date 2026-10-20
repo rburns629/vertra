@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * Where task images may come from (imagePolicy.ts) and their scan verdicts
- * (scanning.ts): the logic behind the REST routes (routes/imagePolicy.ts,
- * routes/imageScans.ts) and ImageService.
+ * (scanning.ts): the logic behind ImageService.
  *
  * The allowed sources are readable by anyone signed in, so the submit page
  * can say what's allowed, and editable by admins only: it's the list the

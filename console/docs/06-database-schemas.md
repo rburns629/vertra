@@ -145,7 +145,7 @@ A task's outputs (from its `result.json`), which downstream `$fromTask` inputs r
 
 ### task_logs
 
-What the task's container printed. Kept here because the kernel deletes a task's Job and Pod as soon as it finishes. One row per task, overwritten by each attempt.
+What the task's container printed, refreshed while it runs. Kept here because the kernel deletes a task's Job and Pod once its result is committed. One row per task, overwritten by each attempt.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -166,7 +166,7 @@ An append-only log of everything that happened to an execution, in order. It's w
 | `payload` | jsonb | no | Details for that event, such as a failure. |
 | `created_at` | timestamptz | no | |
 
-`alembic_version` also exists: it records which migration the database is at.
+`schema_migrations` also exists: which of `kernel/internal/migrate/sql/` the database has (`kernel migrate`).
 
 ## The console database (`execution_console`)
 

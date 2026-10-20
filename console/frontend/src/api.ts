@@ -188,12 +188,12 @@ export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
   return members.map((m) => ({ id: m.id, email: m.email, isBot: m.isBot, isAdmin: m.isAdmin, addedAt: iso(m.addedAt) ?? "" }));
 }
 
-/** Refused (409) for a team's last person -- see ../../src/routes/teams.ts. */
+/** Refused (409) for a team's last person -- see ../../src/core/teams.ts. */
 export async function removeTeamMember(teamName: string, userId: string): Promise<void> {
   await call(() => teams.removeMember({ team: teamName, userId }));
 }
 
-/** Admin-only -- see ../../src/routes/teams.ts. A non-admin's own teams
+/** Admin-only -- see ../../src/core/teams.ts. A non-admin's own teams
  * come from Me.teamNames instead; this is for browsing every team. */
 export async function listAllTeams(): Promise<Team[]> {
   return (await call(() => teams.listTeams({}))).teams.map(team);
@@ -281,7 +281,7 @@ export async function deleteAccount(email: string): Promise<void> {
   await call(() => users.deleteUser({ email }));
 }
 
-/** Admin-only both ways -- see ../../src/routes/users.ts. */
+/** Admin-only both ways -- see ../../src/core/users.ts. */
 export async function grantAdmin(email: string): Promise<void> {
   await call(() => users.setAdmin({ email, admin: true }));
 }
@@ -470,7 +470,7 @@ export interface ProductRelease {
 
 /** Open to any authenticated user -- discovering what products exist to
  * build a DAG from isn't scoped the way registering one is. Normally
- * populated by catalog CI (see ../../src/routes/products.ts), not by hand. */
+ * populated by catalog CI (see ../../src/core/products.ts), not by hand. */
 export async function listProducts(): Promise<Product[]> {
   const { products } = await call(() => productsApi.listProducts({}));
   return products.map((p) => ({
@@ -647,10 +647,9 @@ export async function listExecutions(query: ExecutionListQuery = {}): Promise<Ex
   };
 }
 
-/** `payload` is deliberately `unknown`, not a typed ExecutionSubmission --
- * see ../../src/routes/executions.ts's own comment: kernel-api's Pydantic
- * models are the one authority on the full shape, and this client (like
- * that route) only needs to pass it through, not re-validate it. */
+/** `payload` is deliberately `unknown`, not a typed submission: the server
+ * is the one authority on the full shape, and this client only needs to
+ * pass it through, not re-validate it. */
 export async function submitExecution(payload: unknown): Promise<{ executionId: string; state: string }> {
   let dag: Dag;
   try {
@@ -668,9 +667,8 @@ export interface TaskStatus {
   attemptCount: number;
   outputs: Record<string, unknown> | null;
   failure: { code: string; message: string; retryable: boolean } | null;
-  /** The real DAG edges, from kernel's own persisted `task_dependencies`
-   * table (see kernel/app/services/execution_service.py) -- not derived
-   * or re-inferred client-side. */
+  /** The real DAG edges, from the kernel's own `task_dependencies` table --
+   * not derived or re-inferred client-side. */
   dependsOn: string[];
   /** The current attempt's real timing, from `task_attempts` --
    * `completedAt` is null while a task is still running or hasn't
@@ -706,7 +704,7 @@ export interface SubmittedExecutionPayload {
   tasks: SubmittedTaskPayload[];
 }
 
-/** Proxied live from kernel-api (see ../../src/routes/executions.ts) --
+/** Proxied live from kernel-api (see ../../src/core/executions.ts) --
  * state/tasks are real-time, not a cached copy of ExecutionSummary.
  * teams/submittedBy/createdAt are merged in by console/ from its own
  * submitted-executions index -- kernel-api itself has no concept of
@@ -816,7 +814,7 @@ export async function retryTask(executionId: string, taskId: string): Promise<{ 
 
 /** Resubmits the execution's original task graph as a brand-new execution
  * (a new executionId, not a reset of this one -- see
- * ../../src/routes/executions.ts's own comment on why). Fails with a 422
+ * ../../src/core/executions.ts's own comment on why). Fails with a 422
  * if this execution predates rerun support and has no stored submission to
  * replay. */
 export async function rerunExecution(executionId: string): Promise<{ executionId: string; state: string }> {
@@ -832,8 +830,7 @@ export interface ExecutionEvent {
   createdAt: string;
 }
 
-/** Cursor-paginated -- see kernel/app/contracts/execution.py's
- * ExecutionEventPage. `after` is an event id, not an offset, so polling
+/** Cursor-paginated (ListExecutionEvents): `after` is an event id, not an offset, so polling
  * with the previous page's nextCursor never re-fetches or skips events
  * even if more were inserted in between polls. */
 export async function getExecutionEvents(
@@ -857,20 +854,19 @@ export async function getExecutionEvents(
  * ExecutionEvent, which only records scheduler-level transitions
  * (TASK_STARTED, TASK_SUCCEEDED, ...) and never what the container itself
  * printed. `lines` is `[]` for a task that hasn't completed an attempt yet,
- * not an error -- see kernel/app/contracts/execution.py's TaskLogsResponse. */
+ * not an error. */
 export interface TaskLogs {
   taskId: string;
   lines: string[];
 }
 
-/** Every task's logs in one call -- see kernel/app/contracts/execution.py's
- * ExecutionLogsResponse for why this isn't split per task. */
+/** Every task's logs in one call, not one call per task. */
 export async function getExecutionLogs(executionId: string): Promise<{ tasks: TaskLogs[] }> {
   const { tasks } = await call(() => executions.getExecutionLogs({ executionId }));
   return { tasks: tasks.map((t) => ({ taskId: t.taskId, lines: t.lines })) };
 }
 
-/** Admin-only -- see ../../src/routes/stats.ts. A non-admin's home view
+/** Admin-only -- see ../../src/core/admin.ts. A non-admin's home view
  * derives its own numbers from data it fetches anyway (Me.teamNames,
  * its own already-scoped executions list). */
 export interface PlatformStats {
@@ -890,7 +886,7 @@ export async function getStats(): Promise<PlatformStats> {
   };
 }
 
-/** One task attempt in a team's namespace -- see ../../src/routes/pods.ts.
+/** One task attempt in a team's namespace -- see ../../src/core/teams.ts.
  * Read-only, no secret data, never another team's. */
 export interface TaskPod {
   podName: string;
@@ -940,7 +936,7 @@ export async function listTeamPods(teamName: string): Promise<TaskPod[]> {
   }));
 }
 
-/** The in-app Docs page -- see ../../src/routes/docs.ts. Any
+/** The in-app Docs page -- see ../../src/rpc/services/guide.ts. Any
  * authenticated user, no team scoping. */
 export interface DocSummary {
   id: string;

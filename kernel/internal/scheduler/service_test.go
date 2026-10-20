@@ -1,0 +1,252 @@
+// SPDX-License-Identifier: MIT
+
+package scheduler
+
+import (
+	"context"
+	"errors"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/acyclix/kernel/internal/executor"
+	"github.com/rburns629/acyclix/kernel/internal/executor/executortest"
+)
+
+// Ported from the Python kernel's tests/integration/test_scheduler_service.py.
+
+func twoTasks(outputKey string, attempts int) []TaskDef {
+	return []TaskDef{
+		task("create-project", inputs(map[string]any{"projectName": "demo-project"}), maxAttempts(attempts)),
+		task("deploy-application", dependsOn("create-project"), maxAttempts(attempts),
+			inputs(map[string]any{"projectId": map[string]any{"$fromTask": "create-project", "$output": outputKey}}),
+			func(d *TaskDef) { d.Image = "demo-application-product:local" }),
+	}
+}
+
+func TestFullTwoTaskChainSucceedsWithOrderedEvents(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-success", twoTasks("projectId", 1)...)
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	t0 := time.Now()
+
+	k.tick(t0)
+	tasks := tasksByKey(t, tx, id)
+	equal(t, "create-project", tasks["create-project"].State, domain.TaskRunning)
+	equal(t, "deploy-application", tasks["deploy-application"].State, domain.TaskBlocked)
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionRunning)
+
+	exec.Complete(tasks["create-project"].ExecutorHandle, map[string]any{"projectId": "demo-project-123"})
+	k.tick(t0.Add(time.Second))
+	tasks = tasksByKey(t, tx, id)
+	equal(t, "create-project", tasks["create-project"].State, domain.TaskSucceeded)
+	equal(t, "deploy-application", tasks["deploy-application"].State, domain.TaskReady)
+
+	k.tick(t0.Add(2 * time.Second))
+	tasks = tasksByKey(t, tx, id)
+	equal(t, "deploy-application", tasks["deploy-application"].State, domain.TaskRunning)
+	equal(t, "resolved inputs", tasks["deploy-application"].ResolvedInputs, map[string]any{"projectId": "demo-project-123"})
+
+	exec.Complete(tasks["deploy-application"].ExecutorHandle, map[string]any{"applicationUrl": "https://demo.example"})
+	k.tick(t0.Add(3 * time.Second))
+	tasks = tasksByKey(t, tx, id)
+	equal(t, "deploy-application", tasks["deploy-application"].State, domain.TaskSucceeded)
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionSucceeded)
+
+	equal(t, "create-project outputs", outputsOf(t, tx, tasks["create-project"].ID), map[string]any{"projectId": "demo-project-123"})
+	equal(t, "deploy outputs", outputsOf(t, tx, tasks["deploy-application"].ID), map[string]any{"applicationUrl": "https://demo.example"})
+	lines, _ := logsOf(t, tx, tasks["create-project"].ID)
+	equal(t, "create-project log", lines, []string{"started create-project attempt 1"})
+	lines, _ = logsOf(t, tx, tasks["deploy-application"].ID)
+	equal(t, "deploy log", lines, []string{"started deploy-application attempt 1"})
+
+	equal(t, "events", eventTypes(t, tx, id), []string{"EXECUTION_CREATED", "TASK_CLAIMED", "EXECUTION_STARTED", "TASK_STARTED",
+		"TASK_SUCCEEDED", "TASK_CLAIMED", "TASK_STARTED", "TASK_SUCCEEDED", "EXECUTION_SUCCEEDED"})
+	var keys []any
+	for _, e := range events(t, tx, id) {
+		if e.TaskKey == nil {
+			keys = append(keys, nil)
+		} else {
+			keys = append(keys, *e.TaskKey)
+		}
+	}
+	equal(t, "event task keys", keys, []any{nil, "create-project", nil, "create-project", "create-project",
+		"deploy-application", "deploy-application", "deploy-application", nil})
+}
+
+func TestLeaseIsRenewedWhileTaskIsStillRunning(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-renew", task("create-project"))
+	k := newTicker(t, tx, fake())
+	t0 := time.Now()
+	k.tick(t0)
+	first := *tasksByKey(t, tx, id)["create-project"].LeaseExpiresAt
+	k.tick(t0.Add(30 * time.Second))
+	now := tasksByKey(t, tx, id)["create-project"]
+	equal(t, "state", now.State, domain.TaskRunning)
+	if !now.LeaseExpiresAt.After(first) {
+		t.Errorf("lease %v not renewed past %v", now.LeaseExpiresAt, first)
+	}
+}
+
+func TestTerminalTaskFailureFailsExecutionAndCancelsSiblings(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-fail", twoTasks("projectId", 1)...)
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	t0 := time.Now()
+	k.tick(t0)
+	tasks := tasksByKey(t, tx, id)
+	exec.Fail(tasks["create-project"].ExecutorHandle, domain.StructuredError{Code: "PRODUCT_EXECUTION_FAILED", Message: "boom"})
+	k.tick(t0.Add(time.Second))
+
+	tasks = tasksByKey(t, tx, id)
+	equal(t, "create-project", tasks["create-project"].State, domain.TaskFailed)
+	equal(t, "failure code", tasks["create-project"].Failure["code"], "PRODUCT_EXECUTION_FAILED")
+	equal(t, "deploy-application", tasks["deploy-application"].State, domain.TaskCancelled)
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
+	lines, _ := logsOf(t, tx, tasks["create-project"].ID)
+	equal(t, "log", lines, []string{"started create-project attempt 1"})
+	equal(t, "events", eventTypes(t, tx, id), []string{"EXECUTION_CREATED", "TASK_CLAIMED", "EXECUTION_STARTED", "TASK_STARTED", "TASK_FAILED", "EXECUTION_FAILED"})
+}
+
+func TestRetryableFailureRetriesAndEventuallySucceeds(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-retry", task("create-project", maxAttempts(2)))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	t0 := time.Now()
+	k.tick(t0)
+	equal(t, "attempts", tasksByKey(t, tx, id)["create-project"].AttemptCount, 1)
+	exec.Fail(tasksByKey(t, tx, id)["create-project"].ExecutorHandle, domain.StructuredError{Code: "TRANSIENT", Message: "try again", Retryable: true})
+	k.tick(t0.Add(time.Second))
+	equal(t, "state", tasksByKey(t, tx, id)["create-project"].State, domain.TaskReady)
+
+	// Not straight away: the first retry waits the backoff's base, 5s.
+	k.tick(t0.Add(5 * time.Second))
+	equal(t, "state", tasksByKey(t, tx, id)["create-project"].State, domain.TaskReady)
+	equal(t, "attempts", tasksByKey(t, tx, id)["create-project"].AttemptCount, 1)
+
+	k.tick(t0.Add(7 * time.Second))
+	equal(t, "state", tasksByKey(t, tx, id)["create-project"].State, domain.TaskRunning)
+	equal(t, "attempts", tasksByKey(t, tx, id)["create-project"].AttemptCount, 2)
+	exec.Complete(tasksByKey(t, tx, id)["create-project"].ExecutorHandle, map[string]any{"projectId": "demo-project-123"})
+	k.tick(t0.Add(8 * time.Second))
+	equal(t, "state", tasksByKey(t, tx, id)["create-project"].State, domain.TaskSucceeded)
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionSucceeded)
+}
+
+func TestMissingDeclaredOutputFailsTheDownstreamTask(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-missing-output", twoTasks("doesNotExist", 1)...)
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	t0 := time.Now()
+	k.tick(t0)
+	exec.Complete(tasksByKey(t, tx, id)["create-project"].ExecutorHandle, map[string]any{"projectId": "demo-project-123"})
+	k.tick(t0.Add(time.Second))
+	equal(t, "deploy", tasksByKey(t, tx, id)["deploy-application"].State, domain.TaskReady)
+	k.tick(t0.Add(2 * time.Second))
+	deploy := tasksByKey(t, tx, id)["deploy-application"]
+	equal(t, "deploy", deploy.State, domain.TaskFailed)
+	equal(t, "code", deploy.Failure["code"], "MISSING_UPSTREAM_OUTPUT")
+	equal(t, "retryable", deploy.Failure["retryable"], false)
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
+}
+
+func TestDispatchRejectedByClusterPolicyFailsWithoutRetrying(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-dispatch-rejected", task("create-project", maxAttempts(3)))
+	exec := fake()
+	exec.StartError = &executor.DispatchRejected{Code: "DISPATCH_REJECTED", Message: "namespace test-team is not an Acyclix team namespace"}
+	newTicker(t, tx, exec).tick(time.Now())
+	tk := tasksByKey(t, tx, id)["create-project"]
+	equal(t, "state", tk.State, domain.TaskFailed)
+	equal(t, "attempts", tk.AttemptCount, 1)
+	equal(t, "failure", tk.Failure, map[string]any{"code": "DISPATCH_REJECTED", "message": "namespace test-team is not an Acyclix team namespace", "retryable": false})
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
+}
+
+func TestTaskExceedingTimeoutIsCancelledAndFailed(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-timeout", task("create-project", timeout(30)))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	k.opts.LeaseDuration = 300 * time.Second
+	t0 := time.Now()
+	k.tick(t0)
+	handle := tasksByKey(t, tx, id)["create-project"].ExecutorHandle
+	k.tick(t0.Add(31 * time.Second))
+	if len(exec.Cancelled) != 1 || exec.Cancelled[0] != handle["fakeId"] {
+		t.Errorf("cancelled = %v", exec.Cancelled)
+	}
+	tk := tasksByKey(t, tx, id)["create-project"]
+	equal(t, "state", tk.State, domain.TaskFailed)
+	equal(t, "code", tk.Failure["code"], "TASK_TIMEOUT")
+}
+
+func TestATickReportsWhetherItMovedAnything(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-progress", task("create-project"))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	now := time.Now()
+	equal(t, "claimed and started", k.tick(now).Progressed, true)
+	equal(t, "still running", k.tick(now).Progressed, false)
+	exec.Complete(executor.Handle{"fakeId": "1"}, map[string]any{"projectId": "p-1"})
+	equal(t, "finished", k.tick(now).Progressed, true)
+}
+
+// slowExecutor takes a moment over every status read, recording the most at once.
+type slowExecutor struct {
+	*executortest.Fake
+	inFlight, most atomic.Int32
+}
+
+func (s *slowExecutor) Status(ctx context.Context, handle executor.Handle) (executor.Status, error) {
+	n := s.inFlight.Add(1)
+	for {
+		m := s.most.Load()
+		if n <= m || s.most.CompareAndSwap(m, n) {
+			break
+		}
+	}
+	time.Sleep(20 * time.Millisecond)
+	s.inFlight.Add(-1)
+	return s.Fake.Status(ctx, handle)
+}
+
+func TestRunningTasksAreStartedAndReadConcurrently(t *testing.T) {
+	tx := txFor(t)
+	var tasks []TaskDef
+	for i := range 6 {
+		tasks = append(tasks, task("task-"+string(rune('0'+i))))
+	}
+	submit(t, tx, "idem-concurrent", tasks...)
+	exec := &slowExecutor{Fake: fake()}
+	k := newTicker(t, tx, exec)
+	k.opts.ExecutorConcurrency = 4
+	k.tick(time.Now())
+	equal(t, "most in flight", exec.most.Load(), 4)
+}
+
+func TestATasksSizeReachesTheExecutor(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-resources",
+		task("sized", func(d *TaskDef) { d.Resources = &domain.TaskResources{CPU: "50m", Memory: "64Mi"} }),
+		task("unsized"))
+	exec := fake()
+	newTicker(t, tx, exec).tick(time.Now())
+	byKey := map[string]executor.ResolvedTask{}
+	for _, s := range exec.Started {
+		byKey[s.TaskKey] = s
+	}
+	equal(t, "sized", byKey["sized"].Resources, &domain.TaskResources{CPU: "50m", Memory: "64Mi"})
+	if byKey["unsized"].Resources != nil {
+		t.Errorf("unsized = %v", byKey["unsized"].Resources)
+	}
+}
+
+var _ = errors.New

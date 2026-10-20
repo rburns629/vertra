@@ -2,8 +2,8 @@
 /**
  * Fixed-window limits for the Connect methods that check a password or are
  * otherwise worth bounding (sign-in, registration, password change, adding
- * members): the same windows, limits and keys as the REST routes'
- * @fastify/rate-limit settings, which Connect's routes can't carry.
+ * members): fixed windows and keys per caller or address, since Connect's
+ * routes can't carry @fastify/rate-limit settings.
  *
  * In memory, per replica, like those: fine at one replica; more need a
  * shared store for the limit to mean anything.

@@ -2,8 +2,7 @@
 /**
  * Running the platform, for admins: platform-wide counts, who changed what
  * (audit.ts), and whether the cluster's copies of the console's lists are
- * current (policySync.ts). Behind both the REST routes (routes/stats.ts,
- * routes/audit.ts, routes/policySync.ts) and AdminService.
+ * current (policySync.ts). The logic behind AdminService.
  */
 import { and, desc, eq, lt, type SQL } from "drizzle-orm";
 import { Type } from "@sinclair/typebox";

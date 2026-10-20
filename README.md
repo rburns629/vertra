@@ -130,8 +130,8 @@ console/   the authenticated front door: sign-in, teams, bots, secrets,
            React). The only way in for people and pipelines.
 kernel/    the DAG engine: kernel-api accepts runs, kernel-scheduler claims
            ready steps, starts each as a Kubernetes Job, collects its result
-           and releases the steps that depend on it. Python (FastAPI,
-           SQLAlchemy). Deliberately blind to what any step does.
+           and releases the steps that depend on it. Go (Connect,
+           client-go). Deliberately blind to what any step does.
 helm/      the two Helm charts (execution-kernel, execution-console) and the
            admission policies that guard the cluster, plus per-environment
            settings.

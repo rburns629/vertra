@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 /**
  * One validated config object, read once at startup — same principle as
- * kernel/app/config.py's Settings: fail immediately and legibly on a
+ * the kernel's Settings (kernel/internal/config): fail immediately and legibly on a
  * missing/invalid value, not three calls deep into a request.
  */
 function requireEnv(name: string): string {
@@ -105,12 +105,12 @@ export const config = {
   bootstrapAdminPassword: process.env["BOOTSTRAP_ADMIN_PASSWORD"],
   // kernel-api knows nothing of users or teams: this service is its only
   // accepted caller (kernelApiTokenFile below) and authorizes every request
-  // first (routes/executions.ts). Reachable only from inside the cluster.
+  // first (core/executions.ts). Reachable only from inside the cluster.
   kernelApiUrl: requireEnv("KERNEL_API_URL"),
   // This Pod's ServiceAccount token, projected for kernel-api's audience
   // (the chart mounts it), sent on every kernel-api call: kernel-api checks
-  // it with a TokenReview and accepts only this console (kernel/app/api/
-  // auth.py). Read on each call, since the kubelet rotates it. Unset only
+  // it with a TokenReview and accepts only this console
+  // (kernel/internal/api/auth.go). Read on each call, since the kubelet rotates it. Unset only
   // when kernel-api runs with its check disabled, in local development.
   kernelApiTokenFile: process.env["KERNEL_API_TOKEN_FILE"],
   // Purely cosmetic -- rendered as a badge in the UI so it's visually
@@ -211,7 +211,7 @@ export const config = {
     // pick linux/amd64 whatever the cluster is.
     platform: process.env["SCAN_PLATFORM"] || `linux/${process.arch === "x64" ? "amd64" : process.arch}`,
   },
-  // Team namespaces (k8s.ts's team namespace functions, routes/teams.ts):
+  // Team namespaces (k8s.ts's team namespace functions, core/teams.ts):
   // the console creates a team's namespace with the team label, relabels it
   // when the team is retired or un-retired, and (with purge) deletes it when
   // the team is purged, so catalog CI needs no cluster credentials. The
