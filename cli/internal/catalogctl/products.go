@@ -39,7 +39,7 @@ func (p *Product) Label() string { return p.label }
 
 // LocalImage is what it's built as, before it passes.
 func (p *Product) LocalImage() string {
-	return fmt.Sprintf("acyclix-catalog/%s/%s:ci", p.Team(), p.Name())
+	return fmt.Sprintf("vertra-catalog/%s/%s:ci", p.Team(), p.Name())
 }
 
 // Repository is where it's pushed: <registry>/<team>/<product>, from its
@@ -156,7 +156,7 @@ func (c *Catalog) ChangedProducts(base string, products []*Product) []string {
 	}
 	names := strings.Split(strings.TrimSpace(out+"\n"+untracked), "\n")
 	for _, n := range names {
-		if strings.HasPrefix(n, "tools/") || strings.HasPrefix(n, "acyclix.yaml") || n == "catalogctl" {
+		if strings.HasPrefix(n, "tools/") || strings.HasPrefix(n, "vertra.yaml") || n == "catalogctl" {
 			return labels
 		}
 	}
@@ -172,10 +172,10 @@ func (c *Catalog) ChangedProducts(base string, products []*Product) []string {
 	return changed
 }
 
-// root finds the catalog a command runs in: ACYCLIX_CATALOG_ROOT (set by
+// root finds the catalog a command runs in: VERTRA_CATALOG_ROOT (set by
 // the ./catalogctl wrapper), else the working directory.
 func Root() (string, error) {
-	root := os.Getenv("ACYCLIX_CATALOG_ROOT")
+	root := os.Getenv("VERTRA_CATALOG_ROOT")
 	if root == "" {
 		var err error
 		if root, err = os.Getwd(); err != nil {

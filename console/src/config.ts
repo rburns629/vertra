@@ -211,10 +211,30 @@ export const config = {
     // pick linux/amd64 whatever the cluster is.
     platform: process.env["SCAN_PLATFORM"] || `linux/${process.arch === "x64" ? "amd64" : process.arch}`,
   },
+  // The catalog this console registers from (catalogSync.ts): its release,
+  // <registry>/catalog-release:latest, read through the same registry
+  // sign-in as image checks (registryCredentials, the GKE metadata token,
+  // ECR) and mirrors. Empty (as in tests): no catalog; products, teams and
+  // SecretStores are only what admins make by hand.
+  catalog: {
+    release: process.env["CATALOG_RELEASE"] ?? "",
+    pollSeconds: Number(process.env["CATALOG_POLL_SECONDS"] ?? "300"),
+    // Who may sign a release: the same as the kernel chart's imageSignature
+    // (PEM public keys, a JSON list; and/or a keyless identity). None: the
+    // release isn't verified, its trust being the registry's main-only
+    // write access.
+    signature: {
+      publicKeys: JSON.parse(process.env["CATALOG_SIGNATURE_PUBLIC_KEYS"] || "[]") as string[],
+      keylessIssuer: process.env["CATALOG_SIGNATURE_KEYLESS_ISSUER"] ?? "",
+      keylessSubjectRegExp: process.env["CATALOG_SIGNATURE_KEYLESS_SUBJECT_REGEXP"] ?? "",
+    },
+    // cosign, pinned, which a verification Job runs.
+    verifierImage: process.env["CATALOG_VERIFIER_IMAGE"] ?? "",
+  },
   // Team namespaces (k8s.ts's team namespace functions, core/teams.ts):
   // the console creates a team's namespace with the team label, relabels it
   // when the team is retired or un-retired, and (with purge) deletes it when
-  // the team is purged, so catalog CI needs no cluster credentials. The
+  // the team is purged, so the catalog needs no cluster credentials. The
   // chart turns it on; unset (as in tests) the console leaves namespaces
   // to someone else.
   teamNamespaces: {
@@ -222,7 +242,7 @@ export const config = {
     purge: process.env["TEAM_NAMESPACES_PURGE"] === "true",
     // The kernel's dispatch policy runs steps only in namespaces with this
     // label set to "true"; "retired" stops it.
-    label: process.env["TEAM_NAMESPACE_LABEL"] ?? "acyclix/team",
+    label: process.env["TEAM_NAMESPACE_LABEL"] ?? "vertra/team",
     // Pod Security level enforced in the namespaces it creates (the kernel's
     // step Pods meet `restricted`); empty for none.
     podSecurity: process.env["TEAM_NAMESPACE_POD_SECURITY"] ?? "",

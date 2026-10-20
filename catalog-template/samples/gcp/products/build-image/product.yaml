@@ -1,4 +1,4 @@
-apiVersion: acyclix.dev/v2
+apiVersion: vertra.dev/v2
 kind: Product
 name: build-image
 team: gcp

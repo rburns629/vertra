@@ -4,7 +4,7 @@
 image:
   # -- The released images (built, scanned and signed by the release
   # workflow). Local installs set their own (helm/values/kind/).
-  repository: ghcr.io/rburns629/acyclix/execution-console
+  repository: ghcr.io/rburns629/vertra/execution-console
   # -- Defaults to the chart's appVersion: the image released with it.
   tag: ""
   # -- Pin by digest ("sha256:…") so what runs can't change under a moved tag.
@@ -133,6 +133,35 @@ scanning:
       requests: {cpu: 100m, memory: 512Mi}
       limits: {memory: 2Gi}
 
+# -- The catalog this console registers from (console/src/catalogSync.ts):
+# its release, which catalog CI pushes from main beside the images
+# (`catalogctl release`, <registry>/catalog-release:latest). The console reads
+# it every pollSeconds (and on the Admin page's Sync now), verifies its
+# signature when `signature` trusts one, and applies it: teams, products and
+# SecretStores, with the release's rights only (never purging). It reads the
+# registry as registryCheck says (its pull Secret, cloud token and mirrors).
+# Empty: no catalog; teams and products are an admin's to make.
+catalog:
+  release: ""
+  pollSeconds: 300
+  # -- Who may sign a release: any of these cosign public keys (PEM), and/or
+  # a keyless identity (both issuer and subjectRegExp). Usually the same as
+  # the kernel chart's imageSignature. Empty: releases aren't verified, and
+  # the registry's write access (main only) is the whole trust. Verifying
+  # runs a short cosign Job as the scan Jobs do (scanning.enabled, their
+  # ServiceAccount and registryCheck.pullSecretName), which must reach the
+  # registry by the name in `release` (not kind's localhost:5001).
+  signature:
+    publicKeys: []
+    keyless:
+      issuer: ""
+      subjectRegExp: ""
+  verifier:
+    image:
+      repository: ghcr.io/sigstore/cosign/cosign
+      tag: "v2.5.3"
+      digest: sha256:f1946d0f30fc8e3777b02f2201e02efdba9fe38f4918162f937052fac98e083f
+
 # -- Recording when the console was last used (any signed-in request, at most
 # once a minute) in a ConfigMap, <release>-execution-console-activity, the
 # only one it may change. The kernel chart's sleeper (scaleDown) reads it,
@@ -150,9 +179,9 @@ registryCheck:
   # GHCR, Docker Hub, Artifact Registry). Its credential only needs to read
   # manifests, unless it's also copied to teams (below).
   pullSecretName: ""
-  # -- Also copy pullSecretName into every team namespace as `acyclix-pull`,
+  # -- Also copy pullSecretName into every team namespace as `vertra-pull`,
   # so steps can run images from private registries; set the kernel chart's
-  # scheduler.taskImagePullSecret to `acyclix-pull` to match. Its credential
+  # scheduler.taskImagePullSecret to `vertra-pull` to match. Its credential
   # then needs to pull images, not just read manifests. Steps can't read it
   # (it's never a team secret); only the kubelet uses it. Kept in step with
   # the Secret on every policy resync, so a rotation reaches every team.
@@ -190,7 +219,7 @@ kernelApiUrl: ""
 # ServiceAccount in api.auth.allowedServiceAccounts).
 kernelApiToken:
   enabled: true
-  audience: acyclix-kernel-api
+  audience: vertra-kernel-api
 
 # -- Cosmetic only, rendered as a badge in the UI (see console/src/config.ts) --
 # lets a browser tab make it obvious whether it's talking to this
@@ -285,7 +314,7 @@ teamNamespaces:
 # them anywhere.
 writeFence:
   enabled: true
-  teamNamespaceLabel: acyclix/team
+  teamNamespaceLabel: vertra/team
 
 # -- Bundled Postgres, matching execution-kernel's own chart. To use your
 # own instead, set postgres.enabled=false and either externalDatabaseUrl
@@ -350,7 +379,7 @@ backup:
   # destination (GKE Workload Identity, EKS Pod Identity or IRSA, AKS
   # Workload Identity). Not created here: the kernel chart's backup can
   # share it. Unused for pvc.
-  serviceAccountName: "acyclix-pg-backup"
+  serviceAccountName: "vertra-pg-backup"
   gcs:
     # -- Bucket name, no gs://. The identity needs roles/storage.objectCreator
     # and roles/storage.objectViewer on it (gsutil reads before writing).

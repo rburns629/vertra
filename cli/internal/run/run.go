@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Package run runs the external tools acyclixctl drives (kubectl, helm,
+// Package run runs the external tools vertra drives (kubectl, helm,
 // kind, docker, the cloud CLIs): always as an argument list, never through
 // a shell, so no value can become part of a command line.
 package run
@@ -16,7 +16,7 @@ import (
 )
 
 // Runner runs commands. Tool names are resolved through Resolve, so a tool
-// downloaded into acyclixctl's own directory is used without being on PATH.
+// downloaded into vertra's own directory is used without being on PATH.
 type Runner struct {
 	// Verbose echoes each command before running it.
 	Verbose bool

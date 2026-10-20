@@ -1,6 +1,10 @@
 {{- if not .Values.kernelApiUrl }}
 {{- fail "Set kernelApiUrl to execution-kernel's kernel-api Service URL -- execution-console is its only authorized caller (see console/src/core/executions.ts)." }}
 {{- end }}
+{{- $sig := .Values.catalog.signature }}
+{{- if and (or $sig.publicKeys $sig.keyless.issuer) (not .Values.scanning.enabled) }}
+{{- fail "catalog.signature needs scanning.enabled: a release is verified by a Job run as the scan Jobs are." }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -44,6 +48,13 @@ data:
   {{- if .Values.activity.enabled }}
   ACTIVITY_CONFIGMAP: {{ printf "%s-activity" (include "execution-console.fullname" .) | quote }}
   {{- end }}
+  # The catalog release (values.yaml's catalog).
+  CATALOG_RELEASE: {{ .Values.catalog.release | quote }}
+  CATALOG_POLL_SECONDS: {{ .Values.catalog.pollSeconds | quote }}
+  CATALOG_SIGNATURE_PUBLIC_KEYS: {{ .Values.catalog.signature.publicKeys | toJson | quote }}
+  CATALOG_SIGNATURE_KEYLESS_ISSUER: {{ .Values.catalog.signature.keyless.issuer | quote }}
+  CATALOG_SIGNATURE_KEYLESS_SUBJECT_REGEXP: {{ .Values.catalog.signature.keyless.subjectRegExp | quote }}
+  CATALOG_VERIFIER_IMAGE: {{ include "execution-console.image" .Values.catalog.verifier.image | quote }}
   # Team namespaces (values.yaml's teamNamespaces).
   TEAM_NAMESPACES_MANAGE: {{ .Values.teamNamespaces.manage | quote }}
   TEAM_NAMESPACES_PURGE: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.purge | quote }}

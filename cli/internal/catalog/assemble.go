@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rburns629/acyclix/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/config"
 )
 
 // Options are what goes into the first commit.
@@ -26,10 +26,9 @@ type Options struct {
 	// changes, e.g. "@octocat" or "@my-org/catalog-admins".
 	Owners    string
 	Languages []string
-	// Registry and Console go into acyclix.yaml, for running catalogctl
-	// from a laptop (CI takes them from the repository's variables).
+	// Registry goes into vertra.yaml, for running catalogctl from a
+	// laptop (CI takes it from the repository's variables).
 	Registry string
-	Console  string
 }
 
 // skipped are never copied: local build and tool state.
@@ -61,7 +60,7 @@ func Assemble(o Options, dst string) ([]string, error) {
 		"owner":       owner,
 		"contact":     owner,
 	})
-	team = setFolded(team, "description", "The first team, created with the catalog by acyclixctl.")
+	team = setFolded(team, "description", "The first team, created with the catalog by vertra.")
 	team = stripHeader(team)
 	if err := os.WriteFile(filepath.Join(teamDir, "team.yaml"), []byte(team), 0o644); err != nil {
 		return nil, err
@@ -105,12 +104,12 @@ func Assemble(o Options, dst string) ([]string, error) {
 	}
 
 	// Where it publishes, for catalogctl from a laptop.
-	settings := filepath.Join(dst, "acyclix.yaml")
+	settings := filepath.Join(dst, "vertra.yaml")
 	data, err = os.ReadFile(settings)
 	if err != nil {
 		return nil, err
 	}
-	text = setField(string(data), map[string]string{"registry": o.Registry, "console": o.Console})
+	text = setField(string(data), map[string]string{"registry": o.Registry})
 	return products, os.WriteFile(settings, []byte(text), 0o644)
 }
 

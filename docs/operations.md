@@ -1,10 +1,10 @@
 # Operations
 
-Installing, upgrading and running Acyclix: on your machine with `kind`, and
+Installing, upgrading and running Vertra: on your machine with `kind`, and
 on a cloud cluster. For how it works, see [architecture.md](architecture.md);
 for what it enforces, [security-model.md](security-model.md).
 
-An installer CLI (`acyclixctl`, see [TODO.md](../TODO.md)) will do the cloud
+An installer CLI (`vertra`, see [TODO.md](../TODO.md)) will do the cloud
 setup, the install and the catalog repository in one place. Until then,
 `make` targets do it on `kind`, and the Helm charts directly anywhere else.
 Either way, the charts are complete on their own: `helm install` creates both
@@ -18,11 +18,11 @@ Needs Docker (running), `kind`, `kubectl`, `helm` and `curl`.
 make quickstart    # from nothing (or any state) to a running install; safe to re-run
 ```
 
-It creates the `kind` cluster `acyclix-local` and a local registry
+It creates the `kind` cluster `vertra-local` and a local registry
 (`localhost:5001`, where task images live), builds both platform images,
-installs both charts into `acyclix-system` with `helm/values/kind/*.yaml`,
+installs both charts into `vertra-system` with `helm/values/kind/*.yaml`,
 creates the team `team-a`, and port-forwards the console to
-http://localhost:18080. Sign in as `admin@example.com` / `acyclix-local`:
+http://localhost:18080. Sign in as `admin@example.com` / `vertra-local`:
 that password is set only in the kind values, for a cluster nobody else can
 reach. Never use it anywhere else.
 
@@ -50,13 +50,13 @@ network policy agent or Calico; on AKS a network policy engine).
 
 1. **Images and charts.** Each release publishes both images (amd64 and
    arm64, scanned, signed keyless by the release workflow) and both charts
-   to `ghcr.io/rburns629/acyclix`, and the charts default to the images
+   to `ghcr.io/rburns629/vertra`, and the charts default to the images
    released with them: install from
-   `oci://ghcr.io/rburns629/acyclix/charts/execution-kernel` and
+   `oci://ghcr.io/rburns629/vertra/charts/execution-kernel` and
    `…/execution-console` with `--version <release>`. To run your own build
    instead, push `kernel/` and `console/` to your registry and set
    `image.repository` and `image.tag` (or `image.digest`).
-2. **The platform namespace**, e.g. `acyclix-system`. It's never a team's:
+2. **The platform namespace**, e.g. `vertra-system`. It's never a team's:
    the kernel's dispatch policy refuses to run steps in it. Keep who may
    create Pods there to administrators (NetworkPolicies trust its labels).
 3. **Optional components**, before the charts that use them:
@@ -81,12 +81,12 @@ network policy agent or Calico; on AKS a network policy engine).
    waits for the hook; wait for the rollout after it.
 
    ```
-   CHARTS=oci://ghcr.io/rburns629/acyclix/charts; V=<release, e.g. 0.1.0>; SIZE=minimal
+   CHARTS=oci://ghcr.io/rburns629/vertra/charts; V=<release, e.g. 0.1.0>; SIZE=minimal
    helm pull $CHARTS/execution-kernel --version $V --untar; helm pull $CHARTS/execution-console --version $V --untar
-   helm install kernel ./execution-kernel -n acyclix-system -f execution-kernel/sizes/$SIZE.yaml -f <values>/kernel.yaml
-   helm install console ./execution-console -n acyclix-system -f execution-console/sizes/$SIZE.yaml -f <values>/console.yaml
-   kubectl -n acyclix-system rollout status deployment -l 'app.kubernetes.io/instance in (kernel,console)'
-   kubectl -n acyclix-system logs job/console-execution-console-migrate   # the first admin's password, shown once
+   helm install kernel ./execution-kernel -n vertra-system -f execution-kernel/sizes/$SIZE.yaml -f <values>/kernel.yaml
+   helm install console ./execution-console -n vertra-system -f execution-console/sizes/$SIZE.yaml -f <values>/console.yaml
+   kubectl -n vertra-system rollout status deployment -l 'app.kubernetes.io/instance in (kernel,console)'
+   kubectl -n vertra-system logs job/console-execution-console-migrate   # the first admin's password, shown once
    ```
 
    Upgrades (`helm upgrade`) can use `--wait`: they migrate before the
@@ -115,14 +115,14 @@ what it needs:
 | --- | --- | --- |
 | The console's | Read manifests in the registries it checks and pins (`registryCheck`) | `serviceAccount.annotations` |
 | The image scanner's | Pull from those registries | `scanning.serviceAccountAnnotations` |
-| `acyclix-pg-backup` | Write to the backup bucket | You create it ([Backups](#backups)) |
+| `vertra-pg-backup` | Write to the backup bucket | You create it ([Backups](#backups)) |
 | A team's `eso-<cloud>` | Read that team's secrets in its vault | The team's SecretStore file |
 | A product's own | Whatever that product does | The product's `serviceAccount`; an admin adds the binding |
 
 For a registry that needs a password instead, put a
 `kubernetes.io/dockerconfigjson` Secret in the platform namespace and name
 it in `registryCheck.pullSecretName`; with `registryCheck.copyToTeams`, the
-console copies it into every team namespace as `acyclix-pull` and the
+console copies it into every team namespace as `vertra-pull` and the
 kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
 ### Sizes, sleeping and headroom
@@ -134,7 +134,7 @@ copies, so drains and upgrades take one at a time), the scheduler's step
 caps and default step size, how long executions are kept and the database
 volume's size; `auto` scales the console and kernel-api from one to three
 copies on CPU load, and needs the cluster's metrics API (metrics-server;
-built into GKE, EKS Auto Mode and AKS Automatic). `acyclixctl` picks one
+built into GKE, EKS Auto Mode and AKS Automatic). `vertra` picks one
 from its `size` setting. A preset doesn't say where steps run: Spot is
 `scheduler.taskPlacement`.
 
@@ -143,7 +143,7 @@ from its `size` setting. A preset doesn't say where steps run: Spot is
   unfinished or recently finished, nobody using the console (the console
   records its last use in its `activity` ConfigMap) and kernel-api not
   restarted; `schedule` also sleeps it at set times once nothing runs.
-  Volumes stay. Wake it with `acyclixctl wake`, or by scaling each
+  Volumes stay. Wake it with `vertra wake`, or by scaling each
   Deployment back to the copies recorded in the
   `kernel-execution-kernel-sleep` ConfigMap (the database first). While
   asleep, the console and kernel-api don't answer, so catalog CI fails
@@ -193,7 +193,7 @@ release's Secret (`<release>-execution-kernel-db` for the kernel,
 upgrade. To rotate one:
 
 ```
-NS=acyclix-system; PG=deploy/kernel-execution-kernel-postgres; SECRET=kernel-execution-kernel-db
+NS=vertra-system; PG=deploy/kernel-execution-kernel-postgres; SECRET=kernel-execution-kernel-db
 NEW=$(openssl rand -hex 24)
 # 1. The role, sent on stdin so it never shows in a process list.
 printf "ALTER ROLE postgres PASSWORD '%s';\n" "$NEW" | kubectl -n $NS exec -i $PG -- psql -q -U postgres -v ON_ERROR_STOP=1
@@ -212,7 +212,7 @@ local connections are trusted there.
 NetworkPolicies admit only the platform's own Pods. To look at one:
 
 ```
-kubectl -n acyclix-system exec -it deploy/kernel-execution-kernel-postgres -- psql -U postgres -d execution_kernel
+kubectl -n vertra-system exec -it deploy/kernel-execution-kernel-postgres -- psql -U postgres -d execution_kernel
 # or execution_console (in the console's Postgres, or the kernel's when it holds both)
 ```
 
@@ -242,7 +242,7 @@ to `backup.destination`:
 | `pvc` | `cp`, deleting dumps older than `pvc.keepDays` | Nothing | On kind |
 
 For the cloud destinations, the copy runs as `backup.serviceAccountName`
-(default `acyclix-pg-backup`). Create it in the platform namespace and bind
+(default `vertra-pg-backup`). Create it in the platform namespace and bind
 it to an identity that may write to the bucket and nothing else: on GCS,
 `roles/storage.objectCreator` and `roles/storage.objectViewer` on the bucket
 (`gsutil` lists before writing); on S3, `s3:PutObject`; on Azure, Storage Blob
@@ -320,7 +320,7 @@ console clears it.
 
 | Code | Meaning |
 | --- | --- |
-| `DISPATCH_REJECTED` | Its namespace isn't labelled `acyclix/team=true` |
+| `DISPATCH_REJECTED` | Its namespace isn't labelled `vertra/team=true` |
 | `IMAGE_NOT_ALLOWED` | Its image isn't under an allowed source (Admin page) |
 | `IMAGE_NOT_PINNED`, `IMAGE_SCAN_FAILED` | Not pinned by digest; a failed scan |
 | `IMAGE_NOT_SIGNED` | Not signed by the catalog's key (with policy-controller) |
@@ -350,7 +350,7 @@ step's `if:` (move it to `env:` and test that).
 
 **On kind:**
 - Docker Desktop restarted and the node stopped (`docker ps -a` shows
-  `acyclix-local-control-plane` as `Exited`): `make up`. If `docker start`
+  `vertra-local-control-plane` as `Exited`): `make up`. If `docker start`
   itself fails, restart Docker Desktop.
 - The console stopped answering after a redeploy: its port-forward was on
   the old Pod; `make up`.
@@ -360,9 +360,9 @@ step's `if:` (move it to `env:` and test that).
 - Forgotten local admin password:
 
   ```
-  HASH=$(kubectl -n acyclix-system exec deploy/console-execution-console -- \
-    node -e "require('./dist/auth/password.js').hashPassword('acyclix-local').then(console.log)")
-  kubectl -n acyclix-system exec deploy/kernel-execution-kernel-postgres -- \
+  HASH=$(kubectl -n vertra-system exec deploy/console-execution-console -- \
+    node -e "require('./dist/auth/password.js').hashPassword('vertra-local').then(console.log)")
+  kubectl -n vertra-system exec deploy/kernel-execution-kernel-postgres -- \
     psql -U postgres -d execution_console -c "UPDATE users SET password_hash = '$HASH' WHERE email = 'admin@example.com';"
   ```
 

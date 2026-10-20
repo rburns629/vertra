@@ -1,6 +1,6 @@
 # execution-console on GKE (release `console`, namespace default):
 #   helm upgrade --install console helm/charts/execution-console -n default \
-#     --kube-context gke_my-gcp-project_us-central1_acyclix-gke \
+#     --kube-context gke_my-gcp-project_us-central1_vertra-gke \
 #     -f helm/values/gke/console.yaml
 # No bootstrapAdmin.password here on purpose: a fresh install generates one
 # and prints it once to the migration Job's log.
@@ -25,18 +25,30 @@ registryCheck:
   gcpMetadataToken: true
 serviceAccount:
   annotations:
-    iam.gke.io/gcp-service-account: acyclix-console-registry@my-gcp-project.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: vertra-console-registry@my-gcp-project.iam.gserviceaccount.com
 # Scan Jobs pull the images they scan as the same read-only registry
 # identity (its Workload Identity binding must also name the scanner
 # ServiceAccount, console-execution-console-scanner).
 scanning:
   serviceAccountAnnotations:
-    iam.gke.io/gcp-service-account: acyclix-console-registry@my-gcp-project.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: vertra-console-registry@my-gcp-project.iam.gserviceaccount.com
+# The catalog's release, which this console reads and applies (catalog CI
+# pushes it from main). Signed with the same key as the images (the kernel
+# values' imageSignature), so it's verified the same way.
+catalog:
+  release: us-central1-docker.pkg.dev/my-gcp-project/catalog-products/catalog-release:latest
+  signature:
+    publicKeys:
+      - |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaDo0mkZuGxOGub0gDZwZoWQnqL0t
+        WwmAwv/QbAbjM8xn8prY+E+0b9cf4WaxdVdqaqC+G87jHxa4XNvgcCweKg==
+        -----END PUBLIC KEY-----
 # The "Connect a source" wizard: where the PR goes, and what GCP, Azure and
 # AWS must trust for this cluster's ServiceAccounts.
 secretSources:
-  catalogRepo: my-org/acyclix-catalog
-  clusterIssuer: https://container.googleapis.com/v1/projects/my-gcp-project/locations/us-central1/clusters/acyclix-gke
+  catalogRepo: my-org/vertra-catalog
+  clusterIssuer: https://container.googleapis.com/v1/projects/my-gcp-project/locations/us-central1/clusters/vertra-gke
   gcpWorkloadIdentityPool: my-gcp-project.svc.id.goog
-  gkeClusterName: acyclix-gke
+  gkeClusterName: vertra-gke
   gkeClusterLocation: us-central1

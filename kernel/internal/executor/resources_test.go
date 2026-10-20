@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/domain"
 )
 
 // Ported from the Python kernel's tests/unit/test_task_resources.py: a task's Pod size,

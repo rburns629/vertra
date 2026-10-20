@@ -54,7 +54,7 @@ describe("UserService", () => {
     const [entry] = await db
       .select()
       .from(auditLog)
-      .where(and(eq(auditLog.actorId, admin.id), eq(auditLog.route, "acyclix.console.v1.UserService/CreateUser")))
+      .where(and(eq(auditLog.actorId, admin.id), eq(auditLog.route, "vertra.console.v1.UserService/CreateUser")))
       .orderBy(desc(auditLog.id))
       .limit(1);
     expect(entry).toMatchObject({ method: "RPC", status: 200, target: { email } });
@@ -93,7 +93,7 @@ describe("UserService", () => {
       const [entry] = await db
         .select()
         .from(auditLog)
-        .where(and(eq(auditLog.actorId, admin.id), eq(auditLog.route, "acyclix.console.v1.UserService/SetAdmin")))
+        .where(and(eq(auditLog.actorId, admin.id), eq(auditLog.route, "vertra.console.v1.UserService/SetAdmin")))
         .orderBy(desc(auditLog.id))
         .limit(1);
       expect(entry?.status).toBe(409);

@@ -1,0 +1,270 @@
+// SPDX-License-Identifier: MIT
+
+package catalogctl
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/static"
+	"github.com/google/go-containerregistry/pkg/v1/types"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	catalogv1 "github.com/rburns629/vertra/cli/internal/gen/vertra/catalog/v1"
+)
+
+// A catalog release is everything main says, as of one commit, for every
+// install to read (proto/vertra/catalog/v1/release.proto): consoles pull
+// it, so CI needs no console credential and one catalog serves any number
+// of installs.
+const (
+	// ReleaseMediaType is the artifact's one layer: the release as JSON.
+	ReleaseMediaType = "application/vnd.vertra.catalog.release.v1+json"
+	// ReleaseConfigMediaType marks the artifact as a release, not an image.
+	ReleaseConfigMediaType = "application/vnd.vertra.catalog.release.config.v1+json"
+	// ReleaseRepositoryName is the release's repository, under the registry
+	// beside the teams' (<registry>/<team>/<product>): no team may take it.
+	ReleaseRepositoryName = "catalog-release"
+)
+
+// ReleaseRepository is where releases go: <registry>/catalog-release.
+func (s Settings) ReleaseRepository() string { return s.Registry + "/" + ReleaseRepositoryName }
+
+// ReleaseActions are a product's actions as a release carries them, one per
+// action, named <team>-<product>-<action>, with everything in product.yaml
+// the console uses, and its image pinned to reference.
+func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, error) {
+	var out []*catalogv1.ProductAction
+	for _, action := range p.Actions() {
+		actionName := text(action, "name")
+		input, err := structOf(action["input"])
+		if err != nil {
+			return nil, fmt.Errorf("action %s's input schema: %w", actionName, err)
+		}
+		output, err := structOf(action["output"])
+		if err != nil {
+			return nil, fmt.Errorf("action %s's output schema: %w", actionName, err)
+		}
+		a := &catalogv1.ProductAction{
+			Name:           fmt.Sprintf("%s-%s-%s", p.Team(), p.Name(), actionName),
+			Image:          reference,
+			Action:         actionName,
+			Team:           p.Team(),
+			InputSchema:    input,
+			OutputSchema:   output,
+			DisplayName:    or(text(action, "displayName"), text(p.Spec, "displayName")),
+			Description:    or(text(action, "description"), text(p.Spec, "description")),
+			ServiceAccount: text(p.Spec, "serviceAccount"),
+			// An action's own deprecation, else its product's.
+			Deprecated: or(text(action, "deprecated"), text(p.Spec, "deprecated")),
+		}
+		secrets, _ := action["secretRefs"].([]any)
+		for _, s := range secrets {
+			if m, ok := s.(map[string]any); ok {
+				a.SecretRefs = append(a.SecretRefs, text(m, "name"))
+			}
+		}
+		shareWith, _ := action["shareWith"].([]any)
+		for _, team := range shareWith {
+			a.ShareWith = append(a.ShareWith, fmt.Sprint(team))
+		}
+		if r, ok := p.Spec["resources"].(map[string]any); ok && len(r) > 0 {
+			a.Resources = &catalogv1.Resources{Cpu: text(r, "cpu"), Memory: text(r, "memory"), MemoryLimit: text(r, "memoryLimit")}
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+func or(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
+
+// structOf is a JSON object (a schema from YAML) as a Struct; nil for none.
+func structOf(value any) (*structpb.Struct, error) {
+	if value == nil {
+		return nil, nil
+	}
+	m, ok := value.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("not an object")
+	}
+	return structpb.NewStruct(m)
+}
+
+// BuildRelease is the catalog as of this commit: every team, with its
+// checked SecretStore documents, and every product's actions, each image
+// pinned to what <registry>/<team>/<product>:latest names now (what this
+// run or an earlier one published). A product that doesn't validate, or was
+// never published, fails it: left out, every install would unregister it.
+func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, repository string) (*catalogv1.Release, error) {
+	release := &catalogv1.Release{Commit: commit, Repository: repository, CreatedAt: timestamppb.Now()}
+	var problems []string
+	for _, team := range c.TeamNames() {
+		if team == ReleaseRepositoryName {
+			problems = append(problems, fmt.Sprintf("teams/%s: %s is the release's own repository; rename the team", team, team))
+			continue
+		}
+		t := &catalogv1.Team{Name: team}
+		if len(c.secretStoreFiles(team)) > 0 {
+			documents, found := c.secretStoreDocuments(team)
+			if len(found) == 0 {
+				found = SecretStoreProblems(team, documents)
+			}
+			if len(found) > 0 {
+				problems = append(problems, found...)
+				continue
+			}
+			for _, d := range documents {
+				m, ok := d.(map[string]any)
+				if !ok {
+					continue
+				}
+				doc, err := structpb.NewStruct(m)
+				if err != nil {
+					return nil, fmt.Errorf("teams/%s/secret-stores: %w", team, err)
+				}
+				t.SecretStoreDocuments = append(t.SecretStoreDocuments, doc)
+			}
+		}
+		release.Teams = append(release.Teams, t)
+	}
+	for _, p := range c.AllProducts() {
+		if p.IsTemplate() {
+			continue
+		}
+		// Reads product.yaml, and says what's wrong with it if anything is.
+		if !c.ValidateProduct(p) {
+			problems = append(problems, fmt.Sprintf("%s: product.yaml isn't valid (above)", p.Label()))
+			continue
+		}
+		repository := p.Repository(s)
+		digest, err := latestDigest(ctx, repository)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: no published image (%s:latest): publish it first", p.Label(), repository))
+			continue
+		}
+		actions, err := p.ReleaseActions(repository + "@" + digest)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %v", p.Label(), err))
+			continue
+		}
+		release.Products = append(release.Products, actions...)
+	}
+	if len(problems) > 0 {
+		return nil, fmt.Errorf("the release can't be made:\n  %s", strings.Join(problems, "\n  "))
+	}
+	sort.Slice(release.Products, func(i, j int) bool { return release.Products[i].Name < release.Products[j].Name })
+	return release, nil
+}
+
+// latestDigest is the digest <repository>:latest names now (an index's,
+// for a multi-platform image). Registry sign-in is Docker's, as for pushing.
+func latestDigest(ctx context.Context, repository string) (string, error) {
+	ref, err := name.NewTag(repository + ":latest")
+	if err != nil {
+		return "", err
+	}
+	desc, err := remote.Head(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	if err != nil {
+		return "", err
+	}
+	return desc.Digest.String(), nil
+}
+
+// pushRelease pushes a release as an OCI artifact, tagged with its commit
+// and latest, and returns its digest reference. Registry sign-in is
+// Docker's (docker login, or a credential helper such as gcloud's).
+func pushRelease(ctx context.Context, s Settings, release *catalogv1.Release, tag string) (string, error) {
+	data, err := protojson.MarshalOptions{Indent: "  "}.Marshal(release)
+	if err != nil {
+		return "", err
+	}
+	artifact := mutate.MediaType(empty.Image, types.OCIManifestSchema1)
+	artifact = mutate.ConfigMediaType(artifact, ReleaseConfigMediaType)
+	artifact, err = mutate.Append(artifact, mutate.Addendum{
+		Layer:       static.NewLayer(data, ReleaseMediaType),
+		Annotations: map[string]string{"org.opencontainers.image.title": "release.json"},
+	})
+	if err != nil {
+		return "", err
+	}
+	annotations := map[string]string{"org.opencontainers.image.revision": release.GetCommit()}
+	if release.GetRepository() != "" {
+		annotations["org.opencontainers.image.source"] = "https://" + release.GetRepository()
+	}
+	artifact = mutate.Annotations(artifact, annotations).(v1.Image)
+	digest, err := artifact.Digest()
+	if err != nil {
+		return "", err
+	}
+	options := []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain)}
+	for _, t := range []string{tag, "latest"} {
+		ref, err := name.NewTag(s.ReleaseRepository() + ":" + t)
+		if err != nil {
+			return "", err
+		}
+		if err := remote.Write(ref, artifact, options...); err != nil {
+			return "", fmt.Errorf("pushing %s: %w", ref, err)
+		}
+	}
+	return s.ReleaseRepository() + "@" + digest.String(), nil
+}
+
+// Release builds the catalog's release, pushes it and signs it (as the
+// images are signed). Products are published first (publish): the release
+// only names what's already there.
+func (c *Catalog) Release(ctx context.Context) (bool, error) {
+	s, err := c.Settings()
+	if err != nil {
+		return false, err
+	}
+	if problems := s.Problems(); len(problems) > 0 {
+		for _, p := range problems {
+			c.errorAt(c.path("vertra.yaml"), p)
+		}
+		return false, nil
+	}
+	commit := c.Getenv("GITHUB_SHA")
+	if commit == "" {
+		commit, _ = c.git("rev-parse", "HEAD")
+		commit = strings.TrimSpace(commit)
+	}
+	if commit == "" {
+		// Not a git checkout (local mode's assembled catalog): its tag.
+		commit = c.versionTag()
+	}
+	repository := ""
+	if r := c.Getenv("GITHUB_REPOSITORY"); r != "" {
+		repository = strings.TrimPrefix(or(c.Getenv("GITHUB_SERVER_URL"), "https://github.com"), "https://") + "/" + r
+	}
+	release, err := c.BuildRelease(ctx, s, commit, repository)
+	if err != nil {
+		c.errorAt(c.path("vertra.yaml"), err.Error())
+		return false, nil
+	}
+	reference, err := pushRelease(ctx, s, release, c.versionTag())
+	if err == nil {
+		err = c.sign(reference, s)
+	}
+	if err != nil {
+		c.errorAt(c.path("vertra.yaml"), "releasing failed: "+err.Error())
+		return false, nil
+	}
+	c.info("Released %d team(s) and %d product action(s) as %s", len(release.GetTeams()), len(release.GetProducts()), reference)
+	c.summary(fmt.Sprintf("- Released the catalog as `%s` (%d teams, %d actions)", reference, len(release.GetTeams()), len(release.GetProducts())))
+	return true, nil
+}

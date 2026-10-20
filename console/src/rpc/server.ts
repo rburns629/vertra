@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
- * The console's Connect services (proto/acyclix/console/v1/), under /api
- * like every other route: /api/acyclix.console.v1.<Service>/<Method>,
+ * The console's Connect services (proto/vertra/console/v1/), under /api
+ * like every other route: /api/vertra.console.v1.<Service>/<Method>,
  * answering the Connect protocol (JSON or binary, so plain curl works),
  * gRPC-Web, and gRPC where the server speaks HTTP/2.
  *
@@ -14,16 +14,16 @@ import { createContextValues } from "@connectrpc/connect";
 import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
 import type { FastifyInstance } from "fastify";
 import { resolveCaller } from "../auth/plugin.js";
-import { AdminService } from "../gen/acyclix/console/v1/admin_pb.js";
-import { AuthService } from "../gen/acyclix/console/v1/auth_pb.js";
-import { ExecutionService } from "../gen/acyclix/console/v1/execution_pb.js";
-import { ImageService } from "../gen/acyclix/console/v1/image_pb.js";
-import { ProductService } from "../gen/acyclix/console/v1/product_pb.js";
-import { SecretService } from "../gen/acyclix/console/v1/secret_pb.js";
-import { TeamService } from "../gen/acyclix/console/v1/team_pb.js";
-import { GuideService } from "../gen/acyclix/console/v1/guide_pb.js";
-import { TokenService } from "../gen/acyclix/console/v1/token_pb.js";
-import { UserService } from "../gen/acyclix/console/v1/user_pb.js";
+import { AdminService } from "../gen/vertra/console/v1/admin_pb.js";
+import { AuthService } from "../gen/vertra/console/v1/auth_pb.js";
+import { ExecutionService } from "../gen/vertra/console/v1/execution_pb.js";
+import { ImageService } from "../gen/vertra/console/v1/image_pb.js";
+import { ProductService } from "../gen/vertra/console/v1/product_pb.js";
+import { SecretService } from "../gen/vertra/console/v1/secret_pb.js";
+import { TeamService } from "../gen/vertra/console/v1/team_pb.js";
+import { GuideService } from "../gen/vertra/console/v1/guide_pb.js";
+import { TokenService } from "../gen/vertra/console/v1/token_pb.js";
+import { UserService } from "../gen/vertra/console/v1/user_pb.js";
 import { kAuthError, kAuthProblem, kCaller, kClientIp, kLog, kRequestId } from "./context.js";
 import { audit, maskErrors, requireCaller } from "./interceptors.js";
 import { adminService } from "./services/admin.js";

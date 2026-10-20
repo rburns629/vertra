@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Acyclix product (product.yaml), format v2",
+  "title": "Vertra product (product.yaml), format v2",
   "description": "One product: a container image and the actions it runs. Its image path is derived from its folder, catalog/<team>/<name>/, so it has no image field.",
   "type": "object",
   "additionalProperties": false,
@@ -16,8 +16,8 @@
   ],
   "properties": {
     "apiVersion": {
-      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
-      "const": "acyclix.dev/v2"
+      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "vertra.dev/v2"
     },
     "kind": {
       "description": "What the file is: Product.",

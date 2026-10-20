@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Writes docs/architecture/acyclix.drawio, and an SVG of each page.
+"""Writes docs/architecture/vertra.drawio, and an SVG of each page.
 
 Run from anywhere: python3 docs/architecture/generate.py
 
@@ -33,7 +33,7 @@ from xml.sax.saxutils import quoteattr
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-DRAWIO_FILE = HERE / "acyclix.drawio"
+DRAWIO_FILE = HERE / "vertra.drawio"
 DRAWIO_CLI = [
     "/Applications/draw.io.app/Contents/MacOS/draw.io",
     shutil.which("drawio") or "",
@@ -289,7 +289,7 @@ def draw_packages(page: Page, title: str, subtitle: str, packages: list[Package]
 # ---------------------------------------------------------- kernel (Go)
 
 KERNEL = ROOT / "kernel"
-GO_MODULE = "github.com/rburns629/acyclix/kernel/"
+GO_MODULE = "github.com/rburns629/vertra/kernel/"
 KERNEL_LAYERS = [
     ("domain", "internal/domain/  (rules, no I/O)", GREEN),
     ("config", "internal/config/  (settings, checked at startup)", GREY),
@@ -514,43 +514,41 @@ def console_packages() -> tuple[list[Package], set[tuple[str, str]]]:
 
 def system_page() -> Page:
     p = Page("1 · System")
-    p.vertex(20, 10, 1200, 30, "Acyclix on GKE: what runs where", TITLE)
+    p.vertex(20, 10, 1200, 30, "Vertra on GKE: what runs where", TITLE)
     p.vertex(
         20, 40, 1500, 24,
-        "As deployed on acyclix-gke. On kind the same pieces run in acyclix-system, without GCP, image signing or ESO's cloud stores.",
+        "As deployed on vertra-gke. On kind the same pieces run in vertra-system, without GCP, image signing or ESO's cloud stores.",
         SUBTITLE,
     )
     actor = "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;" + FONT
     engineer = p.vertex(50, 170, 30, 60, "Platform engineer\n(browser)", actor)
     pipeline = p.vertex(50, 370, 30, 60, "Team pipeline\n(bot token)", actor)
 
-    p.vertex(20, 560, 290, 560, "GitHub · acyclix-catalog", frame(GREY, dashed=False))
+    p.vertex(20, 560, 290, 560, "GitHub · vertra-catalog", frame(GREY, dashed=False))
     workflows = {}
     for i, (name, what) in enumerate(
         [
-            ("ci.yml", "build → scan → push → sign\neach product; register products"),
-            ("apply-teams.yml", "each platform's namespace,\nlabel, team and members"),
-            ("apply-secret-stores.yml", "a team's SecretStore\nand eso-* ServiceAccount"),
-            ("retire-teams.yml", "team folder removed\n→ team retired"),
-            ("purge-team.yml", "delete a retired team's\nnamespace, images, team"),
+            ("ci.yml", "build → scan → push → sign each\nproduct; then the catalog release"),
+            ("check-secret-stores.yml", "a team's SecretStore files,\nchecked on pull requests"),
+            ("delete-team-images.yml", "a removed team's images\n(by hand, reviewed)"),
             ("security.yml", "scheduled scans of\npublished images"),
         ]
     ):
         workflows[name] = p.titled(35, 600 + i * 84, 260, 70, name, what, GREY)
 
     p.vertex(340, 80, 1600, 1050, "GCP project · my-gcp-project", frame(BLUE, dashed=False))
-    p.vertex(360, 120, 1150, 990, "GKE Autopilot · acyclix-gke (us-central1)", frame(BLUE))
+    p.vertex(360, 120, 1150, 990, "GKE Autopilot · vertra-gke (us-central1)", frame(BLUE))
     lb = p.titled(380, 230, 150, 80, "Service console", "LoadBalancer, public IP\nplain HTTP :80", BLUE)
 
-    p.vertex(560, 160, 500, 500, "namespace default  (the platform; acyclix-system on kind)", frame(ORANGE))
+    p.vertex(560, 160, 500, 500, "namespace default  (the platform; vertra-system on kind)", frame(ORANGE))
     console = p.titled(590, 210, 200, 90, "execution-console", "Fastify /api + React SPA\nconsole/", ORANGE)
     console_db = p.vertex(610, 360, 160, 90, "Postgres\nexecution_console", database(YELLOW))
-    kernel_api = p.titled(830, 210, 200, 90, "kernel-api", "FastAPI, ClusterIP only\nno authentication", ORANGE)
+    kernel_api = p.titled(830, 210, 200, 90, "kernel-api", "Go, Connect, ClusterIP only\naccepts only the console's token", ORANGE)
     kernel_db = p.vertex(850, 360, 160, 90, "Postgres\nexecution_kernel", database(YELLOW))
     scheduler = p.titled(830, 500, 200, 90, "kernel-scheduler", "claim → dispatch → poll\nevery second", ORANGE)
     p.titled(590, 500, 200, 90, "pg-backup CronJobs", "daily pg_dump of both\ndatabases → Cloud Storage", GREY)
 
-    p.vertex(1090, 160, 400, 500, "namespace <team>  (label acyclix/team=true)", frame(GREEN))
+    p.vertex(1090, 160, 400, 500, "namespace <team>  (label vertra/team=true)", frame(GREEN))
     config_map = p.titled(1110, 200, 170, 80, "ConfigMap ek-…", "request.json\n→ /platform/input", GREEN)
     service_account = p.titled(1300, 200, 170, 80, "ServiceAccount", "one per product", GREEN)
     job = p.titled(
@@ -564,7 +562,7 @@ def system_page() -> Page:
     api_server = p.titled(380, 700, 1110, 60, "Kubernetes API server", "every write below passes the admission policies", BLUE)
     for i, (name, what) in enumerate(
         [
-            ("dispatch-policy", "scheduler may create Jobs only\nin acyclix/team=true namespaces"),
+            ("dispatch-policy", "scheduler may create Jobs only\nin vertra/team=true namespaces"),
             ("image-policy", "task images only from allowed\nsources (the Admin page edits it)"),
             ("identity-policy", "a step runs as its product's\nServiceAccount, or default"),
             ("image-signature", "GKE: catalog images must be\nsigned (ClusterImagePolicy)"),
@@ -580,7 +578,7 @@ def system_page() -> Page:
     policy_controller = p.titled(1180, 920, 280, 80, "Sigstore policy-controller", "namespace cosign-system", PURPLE)
 
     cloud_build = p.titled(1600, 160, 320, 70, "Cloud Build", "make gke-deploy builds platform images", BLUE)
-    registry = p.titled(1600, 290, 320, 110, "Artifact Registry", "catalog-products: signed product images\nplatform-images: console, kernel", BLUE)
+    registry = p.titled(1600, 290, 320, 110, "Artifact Registry", "catalog-products: signed product images\nand catalog-release\nplatform-images: console, kernel", BLUE)
     kms = p.titled(1600, 450, 320, 70, "Cloud KMS", "the cosign signing key", BLUE)
     secret_manager = p.titled(1600, 560, 320, 70, "Secret Manager", "teams' secrets, synced by ESO", BLUE)
     p.titled(1600, 670, 320, 70, "Cloud Storage", "Postgres backups", BLUE)
@@ -607,11 +605,11 @@ def system_page() -> Page:
     p.edge(secret, job, "mounted", EDGE + ends(0.5, 0, x_on(1195, 1110, 360), 1))
     p.edge(eso_objects, secret, "defines", EDGE + ends(0, 0.5, 1, 0.5) + "dashed=1;")
     p.edge(
-        console, api_server, "Secrets, ServiceAccounts,\nExternalSecrets, image and\nidentity policies (k8s.ts)",
+        console, api_server, "namespaces, Secrets,\nServiceAccounts, ExternalSecrets,\nSecretStores, policies (k8s.ts)",
         EDGE + ends(0, 0.5, x_on(545, 380, 1110), 0), points=[(545, 255)], label_offset=(-50, 0),
     )
     p.edge(
-        console, registry, "image exists? (registry.ts)", EDGE + ends(0.5, 0, 0, 0.27),
+        console, registry, "image exists? catalog release\n(registry.ts, catalogSync.ts)", EDGE + ends(0.5, 0, 0, 0.27),
         points=[(690, 145), (1580, 145), (1580, 320)],
     )
     p.edge(job, registry, "pull image", EDGE + ends(1, (365 - 320) / 110, 0, (365 - 290) / 110))
@@ -620,9 +618,6 @@ def system_page() -> Page:
         workflows["ci.yml"], registry, "push + sign (KMS)", EDGE + ends(0.5, 0, 1, 0.5),
         points=[(165, 60), (1960, 60), (1960, 345)],
     )
-    p.edge(workflows["ci.yml"], lb, "register products\n(automation token)", EDGE + ends(1, 0.3, 0.5, 1))
-    p.edge(workflows["apply-teams.yml"], api_server, "namespace + label", EDGE + ends(1, 0.5, 0, 0.3))
-    p.edge(workflows["purge-team.yml"], api_server, "delete namespace", EDGE + ends(1, 0.5, 0, 0.8), points=[(330, 970), (330, 748)])
     p.edge(eso, api_server, "writes Secrets", EDGE + ends(x_on(1025, 870, 280), 0, x_on(1025, 380, 1110), 1), label_offset=(0, 55))
     p.edge(api_server, policy_controller, "signature webhook", EDGE + ends(x_on(1260, 380, 1110), 1, x_on(1260, 1180, 280), 0), label_offset=(0, 55))
     p.edge(policy_controller, kms, "verify signature", EDGE + ends(1, 0.5, 0, 0.5), points=[(1560, 960), (1560, 485)])
@@ -713,7 +708,7 @@ def sequence_page() -> Page:
             f"fillColor=none;dashed=1;strokeColor={color};align=left;verticalAlign=top;spacingLeft=6;fontStyle=1;{FONT}fontSize=11;",
         )
 
-    message(0, 1, "POST /api/acyclix.console.v1.ExecutionService/SubmitExecution {dag: {name, requestId?, tasks}}")
+    message(0, 1, "POST /api/vertra.console.v1.ExecutionService/SubmitExecution {dag: {name, requestId?, tasks}}")
     message(1, 1, "resolveCaller: session JWT or bot token → caller {teamNames, isAdmin, scopes} · requireCaller, audit (interceptors)")
     message(
         1, 1,

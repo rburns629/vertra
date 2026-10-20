@@ -1,7 +1,7 @@
 {
   "name": "local-reverse",
   "private": true,
-  "description": "reverse: a TypeScript sample of the Acyclix product contract.",
+  "description": "reverse: a TypeScript sample of the Vertra product contract.",
   "scripts": {
     "build": "tsc"
   },

@@ -34,7 +34,7 @@ func errorsOf(t *testing.T, check func(*Catalog) bool, c *Catalog) string {
 	return out.String()
 }
 
-const productV2 = `apiVersion: acyclix.dev/v2
+const productV2 = `apiVersion: vertra.dev/v2
 kind: Product
 name: %s
 team: %s
@@ -66,14 +66,14 @@ func productFile(name, team, shareWith string) string {
 func TestFormatVersionIsRequired(t *testing.T) {
 	c := catalogWith(t, map[string]string{
 		"teams/a/team.yaml": "name: a\ndisplayName: A\ndescription: A\nowner: a\n",
-		"teams/b/team.yaml": "apiVersion: acyclix.dev/v2\nkind: Product\nname: b\ndisplayName: B\ndescription: B\nowner: b\n",
-		"teams/c/team.yaml": "apiVersion: acyclix.dev/v1\nkind: Team\nname: c\ndisplayName: C\ndescription: C\nowner: c\n",
+		"teams/b/team.yaml": "apiVersion: vertra.dev/v2\nkind: Product\nname: b\ndisplayName: B\ndescription: B\nowner: b\n",
+		"teams/c/team.yaml": "apiVersion: vertra.dev/v1\nkind: Team\nname: c\ndisplayName: C\ndescription: C\nowner: c\n",
 	})
 	out := errorsOf(t, (*Catalog).ValidateTeams, c)
 	for _, want := range []string{
 		"teams/a/team.yaml: written in the catalog format from before v2 (it has no apiVersion): ./catalogctl migrate rewrites it",
 		"teams/b/team.yaml: kind 'Product': this file is kind Team",
-		"teams/c/team.yaml: apiVersion 'acyclix.dev/v1': this catalogctl reads acyclix.dev/v2",
+		"teams/c/team.yaml: apiVersion 'vertra.dev/v1': this catalogctl reads vertra.dev/v2",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("no %q in:\n%s", want, out)
@@ -81,7 +81,7 @@ func TestFormatVersionIsRequired(t *testing.T) {
 	}
 }
 
-const goodTemplate = `apiVersion: acyclix.dev/v2
+const goodTemplate = `apiVersion: vertra.dev/v2
 kind: Template
 name: chain
 displayName: Chain
@@ -138,7 +138,7 @@ func TestTemplateChecks(t *testing.T) {
 }
 
 func TestDagChecks(t *testing.T) {
-	dag := `apiVersion: acyclix.dev/v2
+	dag := `apiVersion: vertra.dev/v2
 kind: Dag
 name: d
 tasks:
@@ -156,7 +156,7 @@ tasks:
 }
 
 func TestMigrate(t *testing.T) {
-	v1Product := strings.Replace(strings.Replace(productFile("mine", "a", "[]"), "apiVersion: acyclix.dev/v2\nkind: Product\n", "", 1),
+	v1Product := strings.Replace(strings.Replace(productFile("mine", "a", "[]"), "apiVersion: vertra.dev/v2\nkind: Product\n", "", 1),
 		"    shareWith: []\n", "    requiredSecrets:\n      - name: token\n", 1)
 	c := catalogWith(t, map[string]string{
 		"teams/a/team.yaml":                  "# The A team.\nname: a\ndisplayName: A\ndescription: A\nowner: a\n",
@@ -178,13 +178,13 @@ func TestMigrate(t *testing.T) {
 		}
 		return string(data)
 	}
-	if got := read("teams/a/team.yaml"); !strings.HasPrefix(got, "# The A team.\napiVersion: acyclix.dev/v2\nkind: Team\nname: a\n") {
+	if got := read("teams/a/team.yaml"); !strings.HasPrefix(got, "# The A team.\napiVersion: vertra.dev/v2\nkind: Team\nname: a\n") {
 		t.Errorf("team.yaml:\n%s", got)
 	}
 	if got := read("teams/a/products/mine/product.yaml"); !strings.Contains(got, "    secretRefs:\n      - name: token") || strings.Contains(got, "requiredSecrets") {
 		t.Errorf("product.yaml:\n%s", got)
 	}
-	if got := read("teams/a/dags/try.yaml"); !strings.HasPrefix(got, "apiVersion: acyclix.dev/v2\nkind: Dag\n") {
+	if got := read("teams/a/dags/try.yaml"); !strings.HasPrefix(got, "apiVersion: vertra.dev/v2\nkind: Dag\n") {
 		t.Errorf("dags/try.yaml:\n%s", got)
 	}
 	// What it wrote is valid v2, and a second run changes nothing.
@@ -192,6 +192,44 @@ func TestMigrate(t *testing.T) {
 		return c.ValidateTeams() && c.ValidateDags() && c.ValidateProduct(c.AllProducts()[0])
 	}, c); out != "" {
 		t.Errorf("the migrated catalog doesn't validate:\n%s", out)
+	}
+	if again, _, _ := c.Migrate(); again != 0 {
+		t.Errorf("a second migrate changed %d file(s)", again)
+	}
+}
+
+// A catalog from before the platform was renamed Vertra: its apiVersion and
+// settings file are rewritten, and both are refused, pointing at migrate,
+// until they are.
+func TestMigrateFromBeforeTheRename(t *testing.T) {
+	old := strings.Replace(productFile("mine", "a", "[]"), "apiVersion: "+APIVersion, "apiVersion: "+FormerAPIVersion, 1)
+	c := catalogWith(t, map[string]string{
+		"teams/a/products/mine/product.yaml":                    "# Mine.\n" + old,
+		"teams/a/products/mine/Dockerfile":                      "FROM alpine:3@sha256:" + strings.Repeat("a", 64) + "\n",
+		"teams/a/products/mine/tests/run/says-hi/request.json":  `{"inputs": {"text": "hi"}}`,
+		"teams/a/products/mine/tests/run/says-hi/expected.json": `{"status": "succeeded"}`,
+		FormerSettingsFile:                                      "registry: registry.example/catalog\n",
+	})
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(c.AllProducts()[0]) }, c); !strings.Contains(out, "./catalogctl migrate rewrites it to "+APIVersion) {
+		t.Errorf("the old apiVersion: %s", out)
+	}
+	if _, err := c.Settings(); err == nil || !strings.Contains(err.Error(), "./catalogctl migrate renames it") {
+		t.Errorf("the old settings file: %v", err)
+	}
+
+	changed, problems, err := c.Migrate()
+	if err != nil || len(problems) != 0 || changed != 2 {
+		t.Fatalf("changed=%d problems=%v err=%v", changed, problems, err)
+	}
+	data, _ := os.ReadFile(filepath.Join(c.Root, "teams/a/products/mine/product.yaml"))
+	if !strings.HasPrefix(string(data), "# Mine.\napiVersion: "+APIVersion+"\nkind: Product\n") {
+		t.Errorf("product.yaml:\n%s", data)
+	}
+	if s, err := c.Settings(); err != nil || s.Registry != "registry.example/catalog" {
+		t.Errorf("settings = %+v, %v", s, err)
+	}
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(c.AllProducts()[0]) }, c); out != "" {
+		t.Errorf("the migrated product doesn't validate:\n%s", out)
 	}
 	if again, _, _ := c.Migrate(); again != 0 {
 		t.Errorf("a second migrate changed %d file(s)", again)

@@ -123,7 +123,7 @@ def main() -> int:
                     env=[EnvironmentVar(name=k, value=v) for k, v in environment.items()] or None,
                     resources=ContainerResources(cpu=0.5, memory="1Gi"),
                 )]),
-                tags={"managed-by": "acyclix"},
+                tags={"managed-by": "vertra"},
             ),
         ).result()
     except (HttpResponseError, ServiceRequestError) as error:

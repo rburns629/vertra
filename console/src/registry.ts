@@ -22,6 +22,8 @@
  * registry it belongs to; public sources like docker.io/library/ are asked
  * anonymously.
  */
+import { createHash } from "node:crypto";
+
 import { ECRClient, GetAuthorizationTokenCommand } from "@aws-sdk/client-ecr";
 import { config } from "./config.js";
 import { isImageAllowed, normalizeImage } from "./imagePolicy.js";
@@ -299,4 +301,77 @@ export async function missingImages(images: string[], allowedPrefixes: string[])
   const unique = [...new Set(images)];
   const statuses = await Promise.all(unique.map((image) => checkImage(image, allowedPrefixes)));
   return unique.filter((_, i) => statuses[i] === "missing");
+}
+
+/** The most a catalog release's JSON may be: far more than any catalog. */
+const MAX_RELEASE_BYTES = 10 * 1024 * 1024;
+const RELEASE_TIMEOUT_MS = 30_000;
+export const RELEASE_MEDIA_TYPE = "application/vnd.vertra.catalog.release.v1+json";
+const RELEASE_CONFIG_MEDIA_TYPE = "application/vnd.vertra.catalog.release.config.v1+json";
+
+/** A GET of `path` under the reference's repository, signing in as the
+ * manifest checks do (the registry's own token service only). */
+async function registryGet(ref: ImageRef, path: string, accept: string): Promise<Response> {
+  const credential = await credentialFor(ref.host);
+  const base = config.registryMirrors.get(ref.host) ?? `https://${ref.host}`;
+  const url = `${base}/v2/${ref.repository}/${path}`;
+  const get = (authorization?: string) =>
+    fetch(url, {
+      headers: { accept, ...(authorization ? { authorization } : {}) },
+      signal: AbortSignal.timeout(RELEASE_TIMEOUT_MS),
+    });
+  const first = await get();
+  if (first.status !== 401) return first;
+  const challenge = parseBearerChallenge(first.headers.get("www-authenticate"));
+  if (challenge) {
+    const token = await bearerToken(ref, challenge, credential);
+    if (token) return get(`Bearer ${token}`);
+    return first;
+  }
+  return credential ? get(basic(credential)) : first;
+}
+
+function sha256(data: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(data).digest("hex")}`;
+}
+
+async function body(response: Response, what: string): Promise<Uint8Array> {
+  if (!response.ok) throw new Error(`${what}: the registry answered ${String(response.status)}`);
+  const length = Number(response.headers.get("content-length") ?? "0");
+  if (length > MAX_RELEASE_BYTES) throw new Error(`${what}: larger than ${String(MAX_RELEASE_BYTES)} bytes`);
+  const data = new Uint8Array(await response.arrayBuffer());
+  if (data.byteLength > MAX_RELEASE_BYTES) throw new Error(`${what}: larger than ${String(MAX_RELEASE_BYTES)} bytes`);
+  return data;
+}
+
+/**
+ * A catalog release (catalog CI's `catalogctl release`): its manifest's
+ * digest, and its one layer, the release as JSON. `reference` is the
+ * console's own setting (config.catalog.release), never a caller's. Every
+ * byte read is checked against the digest that names it, so the JSON is
+ * exactly what the manifest, and its signature, cover.
+ */
+export async function fetchRelease(reference: string): Promise<{ digest: string; json: string }> {
+  const ref = parseImageRef(reference);
+  if (!ref) throw new Error(`catalog release ${reference}: not a registry reference`);
+  const manifestBytes = await body(
+    await registryGet(ref, `manifests/${encodeURIComponent(ref.reference)}`, "application/vnd.oci.image.manifest.v1+json"),
+    "the release's manifest",
+  );
+  const digest = sha256(manifestBytes);
+  if (ref.reference.startsWith("sha256:") && ref.reference !== digest) {
+    throw new Error(`the release's manifest isn't ${ref.reference}`);
+  }
+  const manifest = JSON.parse(new TextDecoder().decode(manifestBytes)) as {
+    config?: { mediaType?: string };
+    layers?: { mediaType?: string; digest?: string }[];
+  };
+  if (manifest.config?.mediaType !== RELEASE_CONFIG_MEDIA_TYPE) {
+    throw new Error(`${reference} isn't a catalog release (its config is ${manifest.config?.mediaType ?? "missing"})`);
+  }
+  const layer = manifest.layers?.find((l) => l.mediaType === RELEASE_MEDIA_TYPE);
+  if (!layer?.digest || !/^sha256:[a-f0-9]{64}$/.test(layer.digest)) throw new Error(`${reference} has no release layer`);
+  const blob = await body(await registryGet(ref, `blobs/${layer.digest}`, RELEASE_MEDIA_TYPE), "the release");
+  if (sha256(blob) !== layer.digest) throw new Error("the release's content doesn't match its digest");
+  return { digest, json: new TextDecoder().decode(blob) };
 }

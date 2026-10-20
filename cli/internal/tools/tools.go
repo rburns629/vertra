@@ -3,7 +3,7 @@
 // Package tools checks for the command-line tools an install needs, and
 // downloads the single-binary ones (kubectl, helm, kind) on consent:
 // pinned versions, checked against their projects' published checksums,
-// into acyclixctl's own directory. It never uses sudo or changes PATH, and
+// into vertra's own directory. It never uses sudo or changes PATH, and
 // it doesn't download tools that need a real installer (docker, the cloud
 // CLIs): for those it gives the install command.
 package tools
@@ -29,16 +29,16 @@ import (
 	"time"
 )
 
-// Dir is where downloaded tools live: ~/.acyclix/bin.
+// Dir is where downloaded tools live: ~/.vertra/bin.
 func Dir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(os.TempDir(), "acyclix-bin")
+		return filepath.Join(os.TempDir(), "vertra-bin")
 	}
-	return filepath.Join(home, ".acyclix", "bin")
+	return filepath.Join(home, ".vertra", "bin")
 }
 
-// ExtendPath adds the directories acyclixctl's tools may be in to this
+// ExtendPath adds the directories vertra's tools may be in to this
 // process's PATH (never your shell's): its own downloads, and gcloud's SDK
 // bin, where `gcloud components install` puts gke-gcloud-auth-plugin
 // (kubectl runs that by name).
@@ -58,7 +58,7 @@ func ExtendPath() {
 	_ = os.Setenv("PATH", path)
 }
 
-// Path returns the executable to run for a tool: acyclixctl's own copy if
+// Path returns the executable to run for a tool: vertra's own copy if
 // it downloaded one, else the one on PATH, else the bare name.
 func Path(name string) string {
 	own := filepath.Join(Dir(), name)
@@ -83,7 +83,7 @@ type Requirement struct {
 func For(target string, fromSource bool) []Requirement {
 	reqs := []Requirement{
 		{Tool: "kubectl", Why: "talks to the cluster"},
-		{Tool: "helm", Why: "installs Acyclix's charts", Check: helmFour},
+		{Tool: "helm", Why: "installs Vertra's charts", Check: helmFour},
 	}
 	switch target {
 	case "kind":
@@ -116,7 +116,7 @@ func For(target string, fromSource bool) []Requirement {
 	return reqs
 }
 
-// ForCatalog returns the tools `acyclixctl catalog` needs on GitHub.
+// ForCatalog returns the tools `vertra catalog` needs on GitHub.
 func ForCatalog() []Requirement {
 	return []Requirement{
 		{Tool: "git", Why: "the catalog's first commit"},
@@ -149,7 +149,7 @@ type Status struct {
 	Path    string
 	Version string
 	Problem string
-	// Downloadable: missing, and acyclixctl can fetch it.
+	// Downloadable: missing, and vertra can fetch it.
 	Downloadable bool
 	// Install is the command to install it, when it can't be downloaded.
 	Install string
@@ -204,7 +204,7 @@ func Summary(statuses []Status) string {
 	if ok {
 		return strings.Join(parts, ", ") + ": all present"
 	}
-	return strings.Join(parts, ", ") + ": something's missing (acyclixctl check)"
+	return strings.Join(parts, ", ") + ": something's missing (vertra check)"
 }
 
 func versionOf(ctx context.Context, tool, path string) string {
@@ -239,7 +239,7 @@ func helmFour(ctx context.Context, path string) error {
 	v := versionOf(ctx, "helm", path)
 	major, _ := strconv.Atoi(strings.SplitN(v, ".", 2)[0])
 	if major != 4 {
-		return fmt.Errorf("Helm %s found; Acyclix's charts need Helm 4", v)
+		return fmt.Errorf("Helm %s found; Vertra's charts need Helm 4", v)
 	}
 	return nil
 }
@@ -291,7 +291,7 @@ func installHint(tool string) string {
 func Download(ctx context.Context, tool string) (string, error) {
 	pin, ok := pins[tool]
 	if !ok {
-		return "", fmt.Errorf("%s can't be downloaded by acyclixctl: %s", tool, installHint(tool))
+		return "", fmt.Errorf("%s can't be downloaded by vertra: %s", tool, installHint(tool))
 	}
 	key := runtime.GOOS + "/" + runtime.GOARCH
 	sum, ok := pin.SHA256[key]

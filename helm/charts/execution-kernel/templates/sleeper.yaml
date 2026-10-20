@@ -4,7 +4,7 @@ sleeper's identity can change only the replica count of the platform's own
 Deployments, by name and through the scale subresource, and the one
 ConfigMap where it keeps the counts to wake to: nothing that changes what
 any Deployment runs. The ConfigMap exists whatever scaleDown says, since
-`acyclixctl sleep` uses it too.
+`vertra sleep` uses it too.
 */}}
 {{- $fullname := include "execution-kernel.fullname" . }}
 {{- $state := printf "%s-sleep" $fullname }}

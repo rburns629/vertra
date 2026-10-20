@@ -26,7 +26,7 @@
 # proposes, admins merge).
 /.github/ @your-org/catalog-admins
 /tools/ @your-org/catalog-admins
-/acyclix.yaml @your-org/catalog-admins
+/vertra.yaml @your-org/catalog-admins
 /catalogctl @your-org/catalog-admins
 /templates/ @your-org/catalog-admins
 /teams/*/secret-stores/ @your-org/catalog-admins

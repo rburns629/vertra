@@ -55,7 +55,7 @@ spec:
         {{ $label | quote }} in namespaceObject.metadata.labels &&
         namespaceObject.metadata.labels[{{ $label | quote }}] == "true"
       messageExpression: >-
-        "namespace " + namespaceObject.metadata.name + " is not an Acyclix team
+        "namespace " + namespaceObject.metadata.name + " is not an Vertra team
         namespace (it needs the label {{ $label }}=true), so tasks can't be
         dispatched into it"
       reason: Forbidden

@@ -3,13 +3,14 @@
  * Teams and their lifecycle: the logic behind TeamService.
  *
  * Creating a team is a platform-level action: only a platform admin, or an
- * automation token holding teams:create (catalog CI's apply-teams.yml,
- * auth/scopes.ts). A team is also a Kubernetes namespace tasks are
+ * automation token holding teams:create (auth/scopes.ts), or the
+ * catalog's release (catalogSync.ts). A team is also a Kubernetes namespace tasks are
  * dispatched into, so it isn't something any registered user may mint.
  *
  * The creator is deliberately not made a member. Admins already reach every
  * team, and making catalog CI a member of every team it created was how one
- * leaked CI token came to control every platform. A new team starts empty;
+ * leaked CI token came to control every platform, back when CI called the
+ * console. A new team starts empty;
  * an admin adds its first members. Growing it stays self-service within the
  * team: a member, or an admin, can add another.
  */
@@ -100,9 +101,9 @@ export async function newTeam(caller: AuthUser | undefined, name: string, log: F
     throw new ApiError(403, "FORBIDDEN", "Creating a team requires admin access (or an automation token with teams:create).");
   }
   const existing = await findTeamByNameIncludingDeleted(name);
-  // A distinct code, not the plain "already exists" a re-run of
-  // apply-teams.yml treats as success: a purged platform's name can't be
-  // reused (schema.ts's teams.deletedAt), and CI must fail on that.
+  // A distinct code, not the plain "already exists" a caller may treat as
+  // success: a purged platform's name can't be reused (schema.ts's
+  // teams.deletedAt), and that must fail.
   if (existing?.deletedAt) throw nameReserved(name);
   if (existing) throw new ApiError(409, "CONFLICT", "Team already exists.", Code.AlreadyExists);
   // The namespace first: a name that can't be a team's namespace never
@@ -114,9 +115,8 @@ export async function newTeam(caller: AuthUser | undefined, name: string, log: F
 }
 
 /**
- * Makes sure a team exists and is active, with its namespace: what the
- * catalog's apply-teams workflow calls for every team folder, any number of
- * times. Creates the team if it's new (teams:create), un-retires it if it
+ * Makes sure a team exists and is active, with its namespace: what a
+ * catalog release does for every team folder, any number of times. Creates the team if it's new (teams:create), un-retires it if it
  * was retired (teams:retire too: a team folder restored), and puts its
  * namespace's label back if it drifted. A purged team's name stays refused.
  */
@@ -144,7 +144,7 @@ export async function ensureTeam(caller: AuthUser | undefined, name: string, log
 
 /**
  * One team's record, for its members, admins, and an automation token that
- * creates teams (catalog CI). Anyone else gets the same 404 as for a team
+ * creates teams. Anyone else gets the same 404 as for a team
  * that doesn't exist, so team names can't be probed. A purged team is
  * still returned (deletedAt set): its name is reserved.
  */
@@ -206,10 +206,10 @@ function requireRetireRight(caller: AuthUser | undefined): void {
 }
 
 /**
- * Retire: the reversible first step of removing a platform (catalog CI,
- * when a team's folder is removed). The team becomes read-only and its
+ * Retire: the reversible first step of removing a platform (an admin,
+ * or the catalog release that no longer has the team's folder). The team becomes read-only and its
  * products unregistered; members keep its history. Its namespace is
- * relabelled acyclix/team=retired (when the console manages them), which
+ * relabelled vertra/team=retired (when the console manages them), which
  * stops the kernel dispatching new steps there; anything running finishes.
  */
 export async function retireTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
@@ -226,7 +226,7 @@ export async function retireTeam(caller: AuthUser | undefined, name: string, log
   return { name: team.name, retired: true, unregisteredProducts };
 }
 
-/** Undoes a retire (a team's folder restored); its products return on its next catalog CI push. */
+/** Undoes a retire (a team's folder restored); its products return with the catalog's next release. */
 export async function unretireTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
   requireRetireRight(caller);
   const team = await findTeamByName(name);
@@ -287,7 +287,7 @@ export async function purgeTeam(caller: AuthUser | undefined, name: string, log:
  * teams/<team>/secret-stores/*.yaml, as JSON): its SecretStores and the
  * ServiceAccounts ESO signs in as, in the team's namespace, after
  * secretStores.ts's checks. `credential`, for a provider that needs a stored
- * one, goes to the Secret eso-auth. Only catalog CI's token
+ * one, goes to the Secret eso-auth. Only the catalog's release
  * (secret-stores:apply) or an admin: a SecretStore decides which vault
  * identity a team can read, so it comes through catalog review.
  */
@@ -314,6 +314,23 @@ export async function applySecretStore(
     { team: team.name, by: caller?.id, objects: checked.objects.map((o) => `${o.kind}/${o.metadata.name}`) },
     "secret store applied",
   );
+}
+
+/**
+ * Sets the stored credential the team's SecretStores may use: the Secret
+ * eso-auth, which no step can mount. Each install's own (a release carries
+ * the stores, never a credential): a member of the team, or an admin.
+ */
+export async function setSecretStoreCredential(
+  caller: AuthUser | undefined,
+  name: string,
+  credential: string,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  const team = await memberTeam(caller, name);
+  ensureNotRetired(team);
+  await applySecretStoreObjects(team.name, [], credential);
+  log.info({ team: team.name, by: caller?.id }, "secret store credential set");
 }
 
 /** A Pod's DAG payload, as far as a label needs: its task ids in order. */

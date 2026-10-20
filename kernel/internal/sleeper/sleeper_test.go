@@ -21,7 +21,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/rburns629/acyclix/kernel/internal/config"
+	"github.com/rburns629/vertra/kernel/internal/config"
 )
 
 // Ported from the Python kernel's tests/unit/test_sleeper.py; KernelActivity is tested
@@ -61,7 +61,7 @@ func TestShouldSleep(t *testing.T) {
 }
 
 var settings = config.Settings{
-	SleeperNamespace: "acyclix-system", SleeperDeployments: []string{"api", "console", "trivy"},
+	SleeperNamespace: "vertra-system", SleeperDeployments: []string{"api", "console", "trivy"},
 	SleeperDatabases: []string{"postgres"}, SleeperStateConfigMap: "kernel-sleep",
 	SleeperConsoleActivityConfigMap: "console-activity", SleeperAPIPodSelector: "component=api",
 	SleeperIdleAfter: twoHours, SleeperCronJob: "kernel-sleeper", SleeperScheduledWait: time.Hour,
@@ -79,12 +79,12 @@ type platform struct {
 // used at console (nil: never), and kernel-api started six hours ago.
 func newPlatform(replicas map[string]int32, console *time.Time) *platform {
 	objects := []runtime.Object{
-		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "acyclix-system", Labels: map[string]string{"component": "api"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "api-1", Namespace: "vertra-system", Labels: map[string]string{"component": "api"}},
 			Status: corev1.PodStatus{StartTime: &metav1.Time{Time: time.Now().Add(-3 * twoHours)}}},
-		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "kernel-sleep", Namespace: "acyclix-system"}},
+		&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "kernel-sleep", Namespace: "vertra-system"}},
 	}
 	if console != nil {
-		objects = append(objects, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "console-activity", Namespace: "acyclix-system"},
+		objects = append(objects, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "console-activity", Namespace: "vertra-system"},
 			Data: map[string]string{"lastActivityAt": console.UTC().Format("2006-01-02T15:04:05.000Z07:00")}})
 	}
 	client := fake.NewClientset(objects...)
@@ -116,7 +116,7 @@ func newPlatform(replicas map[string]int32, console *time.Time) *platform {
 		p.patched = body.Data
 		return true, &corev1.ConfigMap{}, nil
 	})
-	p.Platform = &Platform{Client: client, Namespace: "acyclix-system", Timeout: 5 * time.Second}
+	p.Platform = &Platform{Client: client, Namespace: "vertra-system", Timeout: 5 * time.Second}
 	return p
 }
 
@@ -163,9 +163,9 @@ func TestStaysUpWhileAnExecutionIsUnfinished(t *testing.T) {
 // kernel-api starting (woken, upgraded) counts as activity.
 func TestARecentKernelAPIStartKeepsItUp(t *testing.T) {
 	p := newPlatform(map[string]int32{"api": 1, "postgres": 1}, nil)
-	pod, _ := p.client.CoreV1().Pods("acyclix-system").Get(context.Background(), "api-1", metav1.GetOptions{})
+	pod, _ := p.client.CoreV1().Pods("vertra-system").Get(context.Background(), "api-1", metav1.GetOptions{})
 	pod.Status.StartTime = &metav1.Time{Time: time.Now().Add(-time.Minute)}
-	_, _ = p.client.CoreV1().Pods("acyclix-system").UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
+	_, _ = p.client.CoreV1().Pods("vertra-system").UpdateStatus(context.Background(), pod, metav1.UpdateOptions{})
 	run(t, p, false, at(-3*twoHours), false)
 	if p.scaled != nil {
 		t.Errorf("scaled %v", p.scaled)

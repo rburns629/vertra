@@ -22,7 +22,11 @@ var (
 )
 
 // APIVersion is the catalog format this catalogctl reads and writes.
-const APIVersion = "acyclix.dev/v2"
+const APIVersion = "vertra.dev/v2"
+
+// FormerAPIVersion is format v2 under the platform's name until 2026-10-20,
+// Acyclix: ./catalogctl migrate rewrites it to APIVersion.
+const FormerAPIVersion = "acyclix.dev/v2"
 
 // formatProblem is why doc isn't a format-v2 file of one of kinds, or "".
 // A document that isn't an object is left to its schema to describe.
@@ -34,6 +38,9 @@ func formatProblem(doc any, kinds ...string) string {
 	version, present := m["apiVersion"]
 	if !present {
 		return "written in the catalog format from before v2 (it has no apiVersion): ./catalogctl migrate rewrites it"
+	}
+	if version == FormerAPIVersion {
+		return fmt.Sprintf("apiVersion %s: the platform was renamed Vertra on 2026-10-20: ./catalogctl migrate rewrites it to %s", FormerAPIVersion, APIVersion)
 	}
 	if version != APIVersion {
 		return fmt.Sprintf("apiVersion %s: this catalogctl reads %s", pyRepr(version), APIVersion)
@@ -145,7 +152,7 @@ func (c *Catalog) ValidateTeams() bool {
 // adminPaths are what only the catalog admins (the fallback's owners) may
 // approve: what CI runs and publishes with, the starters, and SecretStores.
 var adminPaths = []string{".github/CODEOWNERS", ".github/workflows/ci.yml", "tools/product.schema.json",
-	"acyclix.yaml", "catalogctl", "templates/hello/product.yaml", "teams/x/secret-stores/secretstore.yaml"}
+	"vertra.yaml", "catalogctl", "templates/hello/product.yaml", "teams/x/secret-stores/secretstore.yaml"}
 
 var (
 	// A team's own line: /teams/<team>/.

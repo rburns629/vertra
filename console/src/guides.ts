@@ -6,7 +6,7 @@ import { Type } from "@sinclair/typebox";
 // console/docs/*.md, copied into the image (see the Dockerfile): the guides
 // for platform teams, shipped with the code they describe, so a deploy can
 // never leave them stale. Only user-facing guides go there; the docs for
-// people running Acyclix stay in the repo's docs/ and never reach the
+// people running Vertra stay in the repo's docs/ and never reach the
 // console. Listed by file name, hence the numeric prefixes.
 const DOCS_DIR = process.env["DOCS_DIR"] ?? "/app/docs";
 

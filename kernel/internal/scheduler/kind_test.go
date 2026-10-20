@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
-	"github.com/rburns629/acyclix/kernel/internal/executor"
-	"github.com/rburns629/acyclix/kernel/internal/kindtest"
-	"github.com/rburns629/acyclix/kernel/internal/logging"
+	"github.com/rburns629/vertra/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/kindtest"
+	"github.com/rburns629/vertra/kernel/internal/logging"
 )
 
 // Ported from the Python kernel's tests/end_to_end/test_two_task_chain.py: real passes,

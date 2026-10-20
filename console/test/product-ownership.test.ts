@@ -55,7 +55,7 @@ beforeAll(async () => {
   admin = await newUser(true);
   memberA = await newUser(false, a.id);
   memberB = await newUser(false, b.id);
-  const botEmail = `${prefix}-ci@bots.acyclix.local`;
+  const botEmail = `${prefix}-ci@bots.vertra.local`;
   emails.push(botEmail);
   const bot = await createBotUser(botEmail);
   const token = generateApiToken();

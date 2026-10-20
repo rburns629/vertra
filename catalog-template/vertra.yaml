@@ -1,0 +1,23 @@
+# Where this catalog publishes, read by ./catalogctl, the
+# same in CI and on a laptop. Anything here can be overridden per run with
+# environment variables (shown on each line), which is how CI points the
+# same files at a hosted registry.
+
+# Images are pushed to <registry>/<team>/<product>, the path derived
+# from the product's folder: teams/<team>/products/<product>/, and the
+# catalog's release (`./catalogctl release`) to <registry>/catalog-release,
+# where each install's console reads it.
+# VERTRA_REGISTRY. On kind: the local registry from `make kind-registry`.
+registry: localhost:5001
+
+signing:
+  # VERTRA_SIGNING_MODE:
+  #   none     not signed (local installs, which don't verify signatures)
+  #   key      a cosign key: a generated key pair or a cloud KMS key
+  #   keyless  CI's OIDC identity, recorded in the public transparency log
+  mode: none
+  # VERTRA_SIGNING_KEY, for mode "key": a cosign key reference, such as
+  # env://COSIGN_PRIVATE_KEY (a generated key, its password in
+  # COSIGN_PASSWORD), gcpkms://..., awskms://..., azurekms://... or
+  # hashivault://...
+  key: ""

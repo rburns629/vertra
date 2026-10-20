@@ -1,6 +1,6 @@
-# acyclixctl: design
+# vertra: design
 
-The installer CLI for Acyclix: from nothing to a running install on your
+The installer CLI for Vertra: from nothing to a running install on your
 machine or a cloud, and a catalog repository ready to publish to. This is
 the design to build it from; decisions are recorded in [TODO.md](../TODO.md)
 and here, and anything still open is listed at the end.
@@ -19,7 +19,7 @@ and here, and anything still open is listed at the end.
   and hand-run installs keep working; the CLI installs with those same
   charts.
 
-Not goals: managing a cluster's day-to-day operation beyond Acyclix's own
+Not goals: managing a cluster's day-to-day operation beyond Vertra's own
 releases, multi-cluster installs, or a hosted service.
 
 ## Concepts
@@ -37,21 +37,21 @@ releases, multi-cluster installs, or a hosted service.
 ## Commands
 
 ```
-acyclixctl init <env>        ask the questions, write deploy/<env>/acyclix.yaml
-acyclixctl check [<env>]     read-only: tools, sign-ins, policies, what exists, what's missing
-acyclixctl apply [<env>]     plan, show the approval screen, then create or change and install
-acyclixctl catalog [<env>]   create the catalog repository and the first team, smoke-test it
-acyclixctl status [<env>]    what's running, awake or asleep, versions, last plan
-acyclixctl sleep|wake [<env>]
-acyclixctl console [<env>]   reach the console on localhost (a port-forward with the CLI's own tools)
-acyclixctl config get|set <key> [<value>]   change a setting; apply makes it so
-acyclixctl destroy [<env>]   remove what the CLI created, after its own approval screen;
+vertra init <env>        ask the questions, write deploy/<env>/vertra.yaml
+vertra check [<env>]     read-only: tools, sign-ins, policies, what exists, what's missing
+vertra apply [<env>]     plan, show the approval screen, then create or change and install
+vertra catalog [<env>]   create the catalog repository and the first team, smoke-test it
+vertra status [<env>]    what's running, awake or asleep, versions, last plan
+vertra sleep|wake [<env>]
+vertra console [<env>]   reach the console on localhost (a port-forward with the CLI's own tools)
+vertra config get|set <key> [<value>]   change a setting; apply makes it so
+vertra destroy [<env>]   remove what the CLI created, after its own approval screen;
                              asks about each kind of data unless --all
-acyclixctl tools             list required tools and versions; download the missing ones
-acyclixctl version
+vertra tools             list required tools and versions; download the missing ones
+vertra version
 ```
 
-Common flags: `--config <dir>` (or `ACYCLIX_CONFIG`; default
+Common flags: `--config <dir>` (or `VERTRA_CONFIG`; default
 `./deploy/<env>`), `--yes` (approve without the prompt), `--plan-only`
 (print the approval screen and stop), `--non-interactive` (every answer from
 flags or the config file; fail on a missing one, never prompt). An
@@ -66,7 +66,7 @@ known, before any further question (see [Requirements](#requirements-and-tools))
 2. **Where:**
    - gcp: project, region. aws: account (from the signed-in profile),
      region. azure: subscription, region, resource group.
-   - existing: kubectl context, namespace (default `acyclix-system`).
+   - existing: kubectl context, namespace (default `vertra-system`).
 3. **Cluster:** create one or use an existing one (cloud targets); if
    creating, **cluster mode** `auto` or `standard`, and its name.
 4. **Size:** minimal, resilient, scaled or auto, each shown with its
@@ -97,21 +97,21 @@ Every answer has a flag, and `init` writes them all to the config file.
 
 ## The config file
 
-`deploy/<env>/acyclix.yaml`: names and references only, never a secret, so
+`deploy/<env>/vertra.yaml`: names and references only, never a secret, so
 it's safe to commit to a private repository of your own. `deploy/` is
 gitignored in this repository.
 
 ```yaml
 version: 1
-acyclix: 0.1.0               # the release installed; apply upgrades to a newer one when changed
+vertra: 0.1.0               # the release installed; apply upgrades to a newer one when changed
 target: gcp
 gcp: {project: my-project, region: us-central1}
 cluster:
   create: true
   mode: auto                 # auto | standard | existing
-  name: acyclix
+  name: vertra
   context: ""                # existing only
-namespace: acyclix-system
+namespace: vertra-system
 size: minimal              # minimal | resilient | scaled | auto
 scaleDown:
   enabled: true
@@ -119,7 +119,7 @@ scaleDown:
   schedule: ""               # advanced: "awake Mon-Fri 08:00-19:00 Europe/Amsterdam"
 minReplicas: 1               # console and kernel-api, when scaleDown is off
 stepHeadroom: 0
-registry: {create: true, name: acyclix-products}
+registry: {create: true, name: vertra-products}
 signing: kms                 # none | kms | keyless
 database:
   type: in-cluster           # in-cluster | managed
@@ -129,7 +129,7 @@ admin: {email: you@example.com}
 catalog:
   host: github
   owner: my-org
-  repository: acyclix-catalog
+  repository: vertra-catalog
   visibility: private        # public | private | internal
   team: platform
   languages: [python, go]
@@ -162,7 +162,7 @@ top of the approval screen.
 
 **Missing tools.** Single static binaries (`kubectl`, `helm`, `tofu`, `kind`,
 `gh`, `glab`, `kubelogin`) are downloaded with your consent into
-`~/.acyclix/bin`, at versions pinned in the CLI and checked against each
+`~/.vertra/bin`, at versions pinned in the CLI and checked against each
 project's published checksum. The CLI uses its own copies; it never uses
 `sudo` or changes your `PATH`. Tools that need an installer or a background
 service (`docker`, `gcloud`, `aws`, `az`) aren't downloaded: the CLI prints
@@ -192,7 +192,7 @@ From lowest to highest precedence:
 
 1. The charts' defaults.
 2. **The size preset**, each chart's `sizes/<size>.yaml`, packaged with the
-   charts so Helm users can use them directly (for a release, acyclixctl
+   charts so Helm users can use them directly (for a release, vertra
    pulls the charts into `deploy/<env>/charts/<version>/` and installs from
    there).
 3. **Generated values:** the target's (image source, registry, identities'
@@ -286,19 +286,19 @@ Providers and the OpenTofu version are pinned.
 ## The approval screen and cost
 
 ```
-Acyclix 0.1.0 → gcp / my-project / us-central1, new cluster acyclix (auto: GKE Autopilot)
+Vertra 0.1.0 → gcp / my-project / us-central1, new cluster vertra (auto: GKE Autopilot)
 
 Tools        kubectl 1.33, helm 4.3, tofu 1.10, gcloud 540: all present
 Size         minimal: platform 0.55 vCPU, 1.75 GiB awake; in-cluster Postgres, 10 GiB
-Scale down   yes: sleeps after 2h idle; `acyclixctl wake` to resume
+Scale down   yes: sleeps after 2h idle; `vertra wake` to resume
 Steps        at most 10 at once (5 per team), 0.25 vCPU / 512 MiB each, Spot
 Images       scanned; signed with a Cloud KMS key
 Backups      daily to a new bucket, kept 30 days
-Catalog      github.com/my-org/acyclix-catalog (private), team platform, Python and Go starters
+Catalog      github.com/my-org/vertra-catalog (private), team platform, Python and Go starters
 Skipped      branch rules and secret scanning (a private repository on GitHub's free plan)
 
 Will create  cluster, network, 2 registries, KMS key, backup bucket, 4 identities, catalog federation
-Will install execution-kernel 0.1.0, execution-console 0.1.0 into acyclix-system
+Will install execution-kernel 0.1.0, execution-console 0.1.0 into vertra-system
 
 Estimated monthly cost (list prices, us-central1, fetched now)
   Always        control plane (free tier), disks and storage ~$…
@@ -341,7 +341,7 @@ Apply? [y/N]
 - **The model follows the cluster mode:** per Pod request on Autopilot; per
   node (the nodes the requests need, including the platform pool's floor)
   for EKS Auto Mode, AKS Automatic and standard; the control plane and
-  storage always. kind (local) is $0. existing shows Acyclix's share of
+  storage always. kind (local) is $0. existing shows Vertra's share of
   requests only.
 - **If prices can't be fetched,** the screen shows resource totals and says
   the cost is unavailable; it never guesses.
@@ -361,13 +361,13 @@ New chart features, so Helm users get them too:
   scales the platform to zero after `idleAfter` with none, the databases
   last. It never sleeps while an execution is unfinished, and a scheduled
   sleep (`scaleDown.schedule`) waits for them. The counts to wake to go in
-  the kernel chart's `-sleep` ConfigMap, which `acyclixctl sleep` and
+  the kernel chart's `-sleep` ConfigMap, which `vertra sleep` and
   `wake` use too. Postgres keeps its volume.
 - **The console's last use** (console chart, `activity`): any signed-in
   request, at most once a minute, written to an `-activity` ConfigMap, the
   only one the console may update. Reads count, not only the audited
   changes.
-- **`acyclixctl sleep|wake`** scale the platform down or up (wake waits until
+- **`vertra sleep|wake`** scale the platform down or up (wake waits until
   it's ready), whatever the setting. Waking is always explicit: a sleeping
   console can't wake itself.
 - **The image scanner idles to zero** on its own (console chart,
@@ -390,13 +390,14 @@ New chart features, so Helm users get them too:
    `templates/team/`, and the chosen language starters copied from
    `samples/local/products/` with their `team:` rewritten; plus any billed
    samples. Push `main`.
-3. Mint the catalog's automation token and the purge token through the
-   console's API (over a port-forward the CLI opens) and store them as
-   repository secrets without ever displaying them; set the variables
-   (registry, console URL, signing); create the `catalog-publish` and `purge`
+3. Set the variables (registry, its sign-in, signing): no console
+   credential, since each console pulls the catalog's release; remove and
+   revoke the console URL and tokens an earlier version stored; create the
+   `catalog-publish` and `purge`
    Environments and the branch rules where the plan allows.
-4. Wait for the first publish; submit a DAG using a starter; report the
-   result.
+4. Wait for the first publish and release; have the console apply it
+   (`AdminService/SyncCatalog`, over a port-forward); submit a DAG using a
+   starter; report the result.
 
 As built (2026-10-18), for gcp: `init` asks the catalog's owner,
 repository, visibility, first team and starter languages, and whether the
@@ -405,8 +406,8 @@ console is public; `apply` then reserves the console's global address
 name by default, and `trustProxy` for Google's front ends) and the
 federation (a Workload Identity pool whose provider accepts only the
 repository's `main`, and a publish identity that may write the task
-registry). `acyclixctl catalog` creates the console team first (so the first
-publish has it), sets the variables and `ACYCLIX_TOKEN` before the push, and
+registry). `vertra catalog` sets the variables before the push (the
+console makes the team when it applies the first release), and
 creates the Environments only where the plan has them (a public
 repository, or a paid plan; GitHub doesn't always report the plan, and an
 unknown one counts as free). A public console's load balancer is priced
@@ -415,24 +416,20 @@ removes its certificate and waits for GKE to remove it before the cluster.
 
 **How the console is reached** is asked on every cloud (decided
 2026-10-18), private by default: *private* (nothing outside the cluster;
-`acyclixctl console` port-forwards; products are published from your
-machine with `./catalogctl publish`, and `catalog` isn't offered) or
-*public* (HTTPS from the internet, which the catalog's CI needs: a load
-balancer, about $18 a month, and a sign-in page on the internet; on gcp a
-nip.io name or your hostname, on aws a Route 53 zone you delegate, with
-Auto Mode). Later: catalog CI through a runner inside the cluster, so CI
-works without a public console.
+`vertra console` port-forwards) or
+*public* (HTTPS from the internet: a load balancer, about $18 a month,
+and a sign-in page on the internet; on gcp a nip.io name or your hostname,
+on aws a Route 53 zone you delegate, with Auto Mode). A catalog works
+either way since 2026-10-20: its CI only pushes to the registry, and the
+console pulls the release.
 
 **An existing repository** is never written to by surprise: if the name
 `init` is given exists, you choose to use it (`catalog.useExisting`: its
-contents stay, and `catalog` sets its variables, secrets and federation for
-this install) or another name; `catalog` refuses an existing, non-empty
+contents stay, and `catalog` sets its variables and federation for this
+install) or another name; `catalog` refuses an existing, non-empty
 repository the config didn't choose. A repository created for you is
 checked to have come out with the visibility asked for (GitHub's
-`/user/repos` reads `private`, not `visibility`), and `catalog` waits for
-the console's certificate before the push, since CI calls the console at
-once. Rerunning `catalog` mints a fresh token and revokes the one it
-replaces, after storing the new one.
+`/user/repos` reads `private`, not `visibility`).
 
 **SSO.** A 403 carrying GitHub's `X-GitHub-SSO` header means the token isn't
 authorized for that organization: the CLI shows and opens the URL in it,
@@ -475,7 +472,7 @@ confirmation unless `--yes` is also given.
 cli/
   DESIGN.md
   go.mod
-  cmd/acyclixctl/          main: commands and flags
+  cmd/vertra/          main: commands and flags
   internal/
     config/                the config file: load, validate, defaults, migrate
     prompt/                interactive questions; non-interactive answers
@@ -522,7 +519,7 @@ arm64, signed, attached to the GitHub release, and a Homebrew formula.
 Steps 1–5 are done. On 2026-10-19 Azure and GitLab were set aside to work
 on the platform and its user experience first
 ([`docs/assessment.md`](../docs/assessment.md)): pull-based catalog
-registration changes what `acyclixctl catalog` does, so it comes before
+registration changes what `vertra catalog` does, so it comes before
 the CLI is called finished.
 
 `catalogctl` moves here too (decided 2026-10-20; ported the same day): a
@@ -531,7 +528,7 @@ sharing its console client, which each catalog's `./catalogctl` wrapper
 downloads (pinned, checksum-verified) instead of setting up a Python
 virtualenv. Its commands stay the same. It embeds the schemas it checks
 `product.yaml` and `team.yaml` against, so a catalog's pull request can't
-loosen them. Until a release is pinned in the wrapper, `ACYCLIX_CATALOGCTL`
+loosen them. Until a release is pinned in the wrapper, `VERTRA_CATALOGCTL`
 names a binary built from a checkout (`.github/scripts/build-catalogctl.sh`).
 
 ## Open questions
@@ -543,8 +540,8 @@ names a binary built from a checkout (`.github/scripts/build-catalogctl.sh`).
   screen above).
 - **aws, as built (2026-10-18):** EKS Auto Mode only (standard node groups
   need the Cluster Autoscaler; next). Nodes sit in public subnets with no
-  NAT gateway (about $32 a month saved); steps run on an `acyclix-steps`
-  node pool acyclixctl adds (Spot, falling back to on-demand), the
+  NAT gateway (about $32 a month saved); steps run on an `vertra-steps`
+  node pool vertra adds (Spot, falling back to on-demand), the
   platform on Auto Mode's own; a default gp3 StorageClass is added since
   Auto Mode ships none. ECR creates each product's repository on its
   first push (a repository creation template), so `destroy` deletes them

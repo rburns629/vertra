@@ -1,6 +1,6 @@
 # Security policy
 
-Acyclix runs other people's code and holds other people's secrets, so security
+Vertra runs other people's code and holds other people's secrets, so security
 reports are taken seriously and handled privately.
 
 ## Reporting a vulnerability
@@ -21,7 +21,7 @@ What to expect:
 
 ## Supported versions
 
-Acyclix is in 0.x. Only the latest release receives security fixes.
+Vertra is in 0.x. Only the latest release receives security fixes.
 
 ## Scope
 

@@ -27,7 +27,7 @@ async function makeUser(options: { admin?: boolean } = {}): Promise<{ id: string
 function rpc(procedure: string, body: object, token?: string, ip = "10.0.0.1") {
   return app.inject({
     method: "POST",
-    url: `/api/acyclix.console.v1.${procedure}`,
+    url: `/api/vertra.console.v1.${procedure}`,
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     payload: JSON.stringify(body),
     remoteAddress: ip,

@@ -3,10 +3,10 @@
  * The product registry, what a DAG step can reference (db/schema.ts), and
  * the catalog's wiring types: the logic behind ProductService.
  *
- * Registration is catalog CI's last step after a successful build (an
- * automation token holding products:register, auth/scopes.ts), not a
- * person clicking a button: the real approval happened when the pull
- * request merged, through CODEOWNERS. Reading isn't scoped like writing:
+ * Registration is the catalog release's doing (catalogSync.ts, with the
+ * rights of products:register, auth/scopes.ts), not a person clicking a
+ * button: the real approval happened when the pull request merged, through
+ * CODEOWNERS. Reading isn't scoped like writing:
  * discovering what exists is a different concern from vouching for it.
  */
 import { Type } from "@sinclair/typebox";
@@ -179,7 +179,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
   }
 
   // Its image is scanned from registration on (scanning.ts): pinned already
-  // (catalog CI registers by digest), or resolved here. A digest whose scan
+  // (a catalog release registers by digest), or resolved here. A digest whose scan
   // failed isn't registered; one still being scanned is, and submissions
   // wait for its verdict.
   if (config.scanning.enabled) {
@@ -273,7 +273,7 @@ export function wiringTypes() {
   return listWiringTypes();
 }
 
-/** Replaces every wiring type: an admin, or whoever may register products (catalog CI). */
+/** Replaces every wiring type: an admin, or whoever may register products. */
 export async function setWiringTypes(
   caller: AuthUser | undefined,
   body: Record<string, { jsonType: "string" | "integer" | "number" | "boolean"; description: string; shared: boolean; defaultProvider?: string }>,

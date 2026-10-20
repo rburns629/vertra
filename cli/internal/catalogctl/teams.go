@@ -3,142 +3,21 @@
 package catalogctl
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/rburns629/acyclix/cli/internal/consoleapi"
 )
 
-// A team folder is a team: the console gives it a namespace when it's
-// applied, relabels it when it's retired, and deletes it when it's purged.
-
-// TeamsChanged are the team folders touched since base that still exist;
-// every one when there's no usable base (a manual run, a first push).
-func (c *Catalog) TeamsChanged(base string) []string {
-	if !c.usableBase(base) {
-		return c.TeamNames()
-	}
-	out, err := c.git("diff", "--name-only", base, "HEAD", "--", "teams/")
-	if err != nil {
-		return c.TeamNames()
-	}
-	touched := map[string]bool{}
-	for _, n := range strings.Split(strings.TrimSpace(out), "\n") {
-		if strings.Count(n, "/") >= 2 {
-			touched[strings.Split(n, "/")[1]] = true
-		}
-	}
-	teams := []string{}
-	for t := range touched {
-		if isDir(c.path("teams", t)) {
-			teams = append(teams, t)
-		}
-	}
-	sort.Strings(teams)
-	return teams
-}
-
-// TeamsRemoved are the team folders that existed at base and are gone now.
-// None without a usable base: never guess at retiring something.
-func (c *Catalog) TeamsRemoved(base string) []string {
-	if !c.usableBase(base) {
-		return nil
-	}
-	out, err := c.git("ls-tree", "-d", "--name-only", base, "teams/")
-	if err != nil {
-		return nil
-	}
-	var removed []string
-	for _, p := range strings.Fields(out) { // "teams/<team>"
-		if !isDir(c.path(filepath.FromSlash(p))) {
-			removed = append(removed, strings.SplitN(p, "/", 2)[1])
-		}
-	}
-	sort.Strings(removed)
-	return removed
-}
-
-// TeamsApply makes each team exist and be active, with its namespace.
-func (c *Catalog) TeamsApply(ctx context.Context, names []string, console *consoleapi.Client) bool {
-	ok := true
-	for _, name := range names {
-		folder := c.path("teams", name)
-		if !exists(filepath.Join(folder, "team.yaml")) {
-			c.errorAt(folder, fmt.Sprintf("teams/%s/ has no team.yaml, so it isn't a team yet", name))
-			ok = false
-			continue
-		}
-		created, err := console.EnsureTeam(ctx, name)
-		if err != nil {
-			c.errorAt(folder, fmt.Sprintf("team %s: %v", name, err))
-			ok = false
-			continue
-		}
-		state := "active"
-		if created {
-			state = "created"
-		}
-		c.info("  %s: %s, with its namespace", name, state)
-	}
-	return ok
-}
-
-// TeamsRetire retires teams whose folders are gone (reversible).
-func (c *Catalog) TeamsRetire(ctx context.Context, names []string, console *consoleapi.Client) bool {
-	ok := true
-	for _, name := range names {
-		if isDir(c.path("teams", name)) {
-			c.errorAt("", fmt.Sprintf("teams/%s/ still exists: a team is retired by removing its folder", name))
-			ok = false
-			continue
-		}
-		found, unregistered, err := console.RetireTeam(ctx, name)
-		switch {
-		case err != nil:
-			c.errorAt("", fmt.Sprintf("retiring %s: %v", name, err))
-			ok = false
-		case !found:
-			c.info("  %s: no such team, nothing to retire", name)
-		default:
-			c.info("  %s: retired (%d product(s) unregistered)", name, unregistered)
-		}
-	}
-	return ok
-}
-
-// TeamsPurge purges a retired team whose folder is gone (irreversible).
-func (c *Catalog) TeamsPurge(ctx context.Context, name string, console *consoleapi.Client) bool {
-	if isDir(c.path("teams", name)) {
-		c.errorAt("", fmt.Sprintf("teams/%s/ still exists: remove it in a reviewed pull request first, which retires it", name))
-		return false
-	}
-	found, namespaceDeleted, err := console.PurgeTeam(ctx, name)
-	switch {
-	case err != nil:
-		c.errorAt("", fmt.Sprintf("purging %s: %v", name, err))
-		return false
-	case !found:
-		c.info("  %s: no such team", name)
-	case namespaceDeleted:
-		c.info("  %s: purged, with its namespace", name)
-		c.summary(fmt.Sprintf("- Purged `%s`: its team and namespace.", name))
-	default:
-		// The console doesn't delete namespaces unless it's allowed to (its
-		// teamNamespaces.purge); the namespace stays, labelled retired.
-		c.info("  %s: purged; its namespace stays, labelled retired, for an operator to delete", name)
-		c.summary(fmt.Sprintf("- Purged `%s`'s team. Its namespace stays, labelled retired (nothing new runs there); "+
-			"a cluster administrator deletes it: `kubectl delete namespace %s`.", name, name))
-	}
-	return true
-}
+// A team folder is a team: each install's console makes its namespace when
+// a release names it, and retires it when a release no longer does
+// (release.go).
 
 // What a team's secret-stores/*.yaml may hold (together, one team's
-// SecretStores). The console applies it and enforces the same rules; this
-// check tells the author on their pull request.
+// SecretStores). Each install's console applies it from a release and
+// enforces the same rules; this check tells the author on their pull
+// request, and a release refuses a file that fails it.
 var (
 	esoServiceAccounts = []string{"eso-aws", "eso-azure", "eso-gcp"}
 	secretStoreAPIs    = []string{"external-secrets.io/v1", "external-secrets.io/v1beta1"}
@@ -304,38 +183,4 @@ func (c *Catalog) SecretStoresCheck(teams []string) bool {
 		ok = ok && len(problems) == 0
 	}
 	return ok
-}
-
-// SecretStoresApply checks, then has the console apply, each team's
-// SecretStores; credential (BOOTSTRAP_CREDENTIAL) is one team's stored
-// credential, so it's applied one team at a time.
-func (c *Catalog) SecretStoresApply(ctx context.Context, teams []string, credential string, console *consoleapi.Client) (bool, error) {
-	if credential != "" && len(teams) != 1 {
-		return false, fmt.Errorf("BOOTSTRAP_CREDENTIAL is one team's: apply one team at a time with it set")
-	}
-	if !c.SecretStoresCheck(teams) {
-		return false, nil
-	}
-	ok := true
-	for _, team := range teams {
-		documents, _ := c.secretStoreDocuments(team)
-		err := console.ApplySecretStore(ctx, team, documents, credential)
-		if err == nil {
-			with := ""
-			if credential != "" {
-				with = " (with its stored credential)"
-			}
-			c.info("  %s: applied%s", team, with)
-			continue
-		}
-		ok = false
-		problems := []string{err.Error()}
-		if r, isRefusal := err.(*consoleapi.Refusal); isRefusal && len(r.Problems) > 0 {
-			problems = r.Problems
-		}
-		for _, p := range problems {
-			c.errorAt(c.secretStoreFolder(team), team+": "+p)
-		}
-	}
-	return ok, nil
 }

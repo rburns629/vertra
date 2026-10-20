@@ -88,7 +88,7 @@ func CheckGCP(ctx context.Context, exec Exec, tokenEmail TokenEmail, project, re
 	networks := countLines(exec(ctx, "gcloud", "compute", "networks", "list", "--project", project, "--format=value(name)", "--filter=name!=default"))
 	switch {
 	case clusters+networks > 0:
-		g.line("Project", fmt.Sprintf("%s already holds %d cluster(s) and %d network(s) besides the default: Acyclix only touches what it names after its cluster, but a project of its own is safer", project, clusters, networks))
+		g.line("Project", fmt.Sprintf("%s already holds %d cluster(s) and %d network(s) besides the default: Vertra only touches what it names after its cluster, but a project of its own is safer", project, clusters, networks))
 	default:
 		g.line("Project", project+" (nothing else in it)")
 	}
@@ -96,7 +96,7 @@ func CheckGCP(ctx context.Context, exec Exec, tokenEmail TokenEmail, project, re
 	// The organization's rules that would stop an install.
 	if locations := orgPolicyValues(ctx, exec, project, "constraints/gcp.resourceLocations"); len(locations) > 0 && region != "" && !locationAllowed(locations, region) {
 		g.problem(fmt.Sprintf("your organization's policy allows only %s, not %s", strings.Join(locations, ", "), region),
-			"choose a region it allows (`acyclixctl config set gcp.region <region>`)", "gcp.md#organization-policies")
+			"choose a region it allows (`vertra config set gcp.region <region>`)", "gcp.md#organization-policies")
 	}
 	if denied := orgPolicyDeniesAll(ctx, exec, project, "constraints/compute.vmExternalIpAccess"); denied {
 		g.line("Policy", "your organization denies VMs external IP addresses: GKE's nodes need private nodes and Cloud NAT there, which the module doesn't make yet")

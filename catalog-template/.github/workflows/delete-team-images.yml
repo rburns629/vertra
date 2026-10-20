@@ -1,0 +1,97 @@
+name: delete-team-images
+
+# Deletes a removed team's images from the catalog's registry
+# (<registry>/<team>/*, every tag). Run by hand from the Actions tab, after
+# the team's folder has left main and every install has retired the team
+# (each console does when it reads the release without it). Irreversible.
+#
+# Removing the team itself is each install's: a release only retires it, and
+# purging is an admin's action in that install's console. This touches only
+# the registry, so it holds no console or cluster credential.
+#
+# Guard rails: the `purge` Environment must have required reviewers and be
+# limited to main; it holds the registry identity that may delete
+# (vars.PURGE_GCP_SERVICE_ACCOUNT). Idempotent: a failed run can be re-run.
+on:
+  workflow_dispatch:
+    inputs:
+      team:
+        description: "Team whose images to delete (its folder already removed from main)"
+        required: true
+        type: string
+      confirm:
+        description: "Type the team name again to confirm. This can't be undone."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    environment: purge
+    permissions:
+      contents: read
+      id-token: write   # registry sign-in through OIDC, where configured
+    env:
+      # Via env, never pasted into a script: typed input must not be able to
+      # run as shell.
+      TEAM: ${{ inputs.team }}
+      VERTRA_REGISTRY: ${{ vars.VERTRA_REGISTRY }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check the request
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$TEAM" != "$CONFIRM" ]; then
+            echo "::error::The confirmation doesn't match the team name."; exit 1
+          fi
+          if ! printf '%s' "$TEAM" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'; then
+            echo "::error::'$TEAM' isn't a valid team name."; exit 1
+          fi
+          # Its products are still in the release while its folder is here.
+          if [ -d "teams/$TEAM" ]; then
+            echo "::error::teams/$TEAM/ is still on main: remove the folder first."; exit 1
+          fi
+
+      # Registry-specific, so only where this catalog says how. Artifact
+      # Registry, signed in the way ci.yml publishes.
+      - id: gcp
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.VERTRA_REGISTRY != ''
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PURGE_GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        if: steps.gcp.outcome == 'success'
+      - name: Delete the team's images (Artifact Registry)
+        if: steps.gcp.outcome == 'success'
+        # Every image under <registry>/<team>/, all tags. A failed list
+        # is never read as "nothing left".
+        run: |
+          prefix="$VERTRA_REGISTRY/$TEAM"
+          if ! images=$(gcloud artifacts docker images list "$prefix" --format='value(package)' | sort -u); then
+            echo "::error::Couldn't list the images under $prefix."; exit 1
+          fi
+          for image in $images; do
+            gcloud artifacts docker images delete "$image" --delete-tags --quiet
+            echo "Deleted $image (all tags)."
+          done
+          echo "${images:-No images under $prefix.}"
+
+      - name: Summary
+        if: always()
+        env:
+          IMAGES_DELETED: ${{ steps.gcp.outcome == 'success' }}
+        run: |
+          {
+            if [ "$IMAGES_DELETED" != "true" ]; then
+              echo "Images under \`$VERTRA_REGISTRY/$TEAM/\` weren't deleted here (no registry sign-in configured for it): delete them in your registry."
+            fi
+            if grep -q "^/teams/$TEAM/" .github/CODEOWNERS 2>/dev/null; then
+              echo "- Remove the \`/teams/$TEAM/\` line from .github/CODEOWNERS."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

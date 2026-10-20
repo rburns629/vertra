@@ -1,6 +1,6 @@
-# Where Acyclix keeps its data
+# Where Vertra keeps its data
 
-Acyclix has two PostgreSQL databases, one per service, and neither service ever reads the other's:
+Vertra has two PostgreSQL databases, one per service, and neither service ever reads the other's:
 
 - **The kernel's** (`execution_kernel`) holds the work itself: every execution, its tasks, their attempts, outputs, logs and events. The kernel knows nothing about people or teams beyond the namespace each task runs in.
 - **The console's** (`execution_console`) holds who may do what: teams, users, bots and their tokens, registered products, which secrets each team has, and which teams can see which execution.
@@ -252,6 +252,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `created_at` | timestamptz | no | |
 | `retired_at` | timestamptz | yes | Set when the team is retired: read-only, products unregistered. Clearing it brings the team back. |
 | `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
+| `from_catalog` | boolean | no | Made by a catalog release: retired when a release no longer names it. A team an admin made isn't touched. |
 
 ### users
 
@@ -260,7 +261,7 @@ People and bots alike.
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
 | `id` | uuid | no | |
-| `email` | text | no, unique | A bot's is made up, such as `team-a-release-pipeline@bots.acyclix.local`. |
+| `email` | text | no, unique | A bot's is made up, such as `team-a-release-pipeline@bots.vertra.local`. |
 | `password_hash` | text | yes | An argon2 hash. Empty for bots, which use tokens. |
 | `is_admin` | boolean | no | A platform admin: may act on every team and use the Admin page. |
 | `is_bot` | boolean | no | A machine identity, which signs in only with an API token. |
@@ -312,6 +313,7 @@ What a DAG step can run: one row per image and action.
 | `resources` | jsonb | yes | The Pod size its tasks get when a task doesn't set its own: `cpu`, `memory`, `memoryLimit` as Kubernetes quantities. Null: the deployment's default. |
 | `share_with` | text[] | no | The other teams that may run it or include it in their templates, or `*` for every team; empty, only its own team. Recorded; enforced once consumers run templates. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
+| `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |
 | `created_at` | timestamptz | no | |
 
 Catalog CI registers all of these from the product's `product.yaml` (the catalog's `docs/product-schema.md` describes it). A registration that leaves one out keeps what's stored. Nothing that runs a task reads them: they're for browsing products, building forms and generating DAGs.
@@ -347,7 +349,7 @@ Who changed what (`src/audit.ts`): one row per call that tried to change somethi
 | `at` | timestamptz | no | |
 | `actor_id` | uuid | yes | The caller (a user or a bot); null when unauthenticated. |
 | `method` | text | no | `RPC` (older rows: POST, PUT, PATCH or DELETE). |
-| `route` | text | no | The method, such as `acyclix.console.v1.SecretService/PutSecret` (older rows: a REST route pattern, such as `/api/teams/:teamName/secrets/:secretName`). |
+| `route` | text | no | The method, such as `vertra.console.v1.SecretService/PutSecret` (older rows: a REST route pattern, such as `/api/teams/:teamName/secrets/:secretName`). |
 | `target` | jsonb | no | The identifying fields of the request (names, teams, images, emails, scopes, reasons); never a secret value, password or token. |
 | `status` | integer | no | The answer's status, as HTTP would say it (200, 403, 409, ...): a refusal is recorded too. |
 | `request_id` | text | yes | The request's id, as in the logs. |
@@ -383,7 +385,7 @@ Which secrets each team has registered, never their values. The values live only
 
 ### wiring_types
 
-The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a product's input uses to say what it needs (`x-acyclix-needs`) and an output what it provides (`x-acyclix-provides`), such as `gcp.project`. A generated DAG connects a needing input to a providing output through these. Catalog CI replaces the whole set on every change.
+The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a product's input uses to say what it needs (`x-vertra-needs`) and an output what it provides (`x-vertra-provides`), such as `gcp.project`. A generated DAG connects a needing input to a providing output through these. An admin replaces the whole set (`ProductService/SetWiringTypes`).
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -393,6 +395,21 @@ The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a produ
 | `shared` | boolean | no | When nothing in an order provides it, asked once for the whole order instead of once per product. |
 | `default_provider` | text | yes | `<team>/<product>.<action>` added to an order automatically when a required input needs this type and nothing provides it. |
 | `updated_at` | timestamptz | no | |
+
+### catalog_sync
+
+The catalog release this console last applied (its teams, products and SecretStores), and how its last look went. One row. The console reads the release from the registry every few minutes and on **Sync now** (Admin page), verifies its signature where the install trusts one, and applies a new one.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | no | Always 1. |
+| `digest` | text | yes | The release applied: its artifact's digest. |
+| `commit` | text | yes | The catalog commit it describes. |
+| `repository` | text | yes | The catalog repository, for people. |
+| `applied_at` | timestamptz | yes | When it was applied. |
+| `problems` | jsonb | no | What applying it couldn't do, one item each (`item`, `message`); the rest was applied. |
+| `checked_at` | timestamptz | yes | The last look. |
+| `error` | text | yes | Why the last look failed (reading or verifying the release); nothing was applied then. |
 
 ### submitted_executions
 

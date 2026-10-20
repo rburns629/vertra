@@ -4,39 +4,10 @@ package catalogctl
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/rburns629/acyclix/cli/internal/consoleapi"
 )
 
-// Console signs in to the console the settings name: with ACYCLIX_TOKEN (a
-// bot or automation token), or in local mode as a person
-// (ACYCLIX_EMAIL and ACYCLIX_PASSWORD) instead of minting a token.
-func (c *Catalog) Console(ctx context.Context, s Settings) (*consoleapi.Client, error) {
-	if s.Console == "" {
-		return nil, errors.New("no console: set console in acyclix.yaml or ACYCLIX_CONSOLE_URL")
-	}
-	console := consoleapi.New(s.Console)
-	if token := c.Getenv("ACYCLIX_TOKEN"); token != "" {
-		console.UseToken(token)
-		return console, nil
-	}
-	email, password := c.Getenv("ACYCLIX_EMAIL"), c.Getenv("ACYCLIX_PASSWORD")
-	if email != "" && password != "" {
-		if err := console.SignIn(ctx, email, password); err != nil {
-			return nil, err
-		}
-		return console, nil
-	}
-	return nil, errors.New("no console credentials: set ACYCLIX_TOKEN (a bot token with products:register), " +
-		"or ACYCLIX_EMAIL and ACYCLIX_PASSWORD")
-}
-
-// layoutOK checks what every product command checks first: the teams,
-// CODEOWNERS, and the templates and DAGs (all of them, so one failure never
-// hides another).
 func (c *Catalog) layoutOK() bool {
 	teams := c.ValidateTeams()
 	owners := c.ValidateCodeowners()
@@ -94,14 +65,13 @@ func (c *Catalog) Products(ctx context.Context, command string, names []string, 
 	}
 
 	var settings Settings
-	var console *consoleapi.Client
 	if command == "publish" {
 		if settings, err = c.Settings(); err != nil {
 			return false, err
 		}
 		if problems := settings.Problems(); len(problems) > 0 {
 			for _, p := range problems {
-				c.errorAt(c.path("acyclix.yaml"), p)
+				c.errorAt(c.path("vertra.yaml"), p)
 			}
 			return false, nil
 		}
@@ -118,9 +88,6 @@ func (c *Catalog) Products(ctx context.Context, command string, names []string, 
 			return false, fmt.Errorf("templates are checked, never published: %s", strings.Join(templates, ", "))
 		}
 		products = publishable
-		if console, err = c.Console(ctx, settings); err != nil {
-			return false, err
-		}
 	}
 
 	passed := c.Check(products)
@@ -135,21 +102,10 @@ func (c *Catalog) Products(ctx context.Context, command string, names []string, 
 	}
 	published := 0
 	for _, p := range passed {
-		if c.Publish(ctx, p, settings, console) {
+		if c.Publish(p, settings) {
 			published++
 		}
 	}
 	c.info("\nPublished %d of %d product(s).", published, len(products))
 	return published == len(products), nil
-}
-
-// TeamsConsole is the console for the team and SecretStore commands, which
-// only call it: it creates, retires and purges namespaces and applies
-// SecretStores, so neither CI nor a laptop needs cluster credentials.
-func (c *Catalog) TeamsConsole(ctx context.Context) (*consoleapi.Client, error) {
-	settings, err := c.Settings()
-	if err != nil {
-		return nil, err
-	}
-	return c.Console(ctx, settings)
 }

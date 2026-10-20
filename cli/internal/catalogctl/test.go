@@ -94,7 +94,7 @@ func (c *Catalog) runContractCase(p *Product, tc contractCase, action map[string
 		}
 	}
 
-	work, cleanup, err := tempDir("acyclix-test-")
+	work, cleanup, err := tempDir("vertra-test-")
 	if err != nil {
 		return []string{err.Error()}
 	}

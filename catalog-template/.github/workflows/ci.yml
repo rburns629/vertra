@@ -1,14 +1,17 @@
 name: catalog-ci
 
 # A thin wrapper: everything it does is ./catalogctl (the pinned catalogctl), the
-# same command a laptop runs in local mode. Where to publish is acyclix.yaml,
-# overridden here by this repository's variables and secrets:
+# same command a laptop runs in local mode. On main it publishes the changed
+# products, then the catalog's release (<registry>/catalog-release): every
+# team, product and SecretStore as of this commit, which each install's
+# console reads, verifies and applies by itself. So this holds no console or
+# cluster credential, and one catalog serves any number of installs. Where to
+# publish is vertra.yaml, overridden here by this repository's variables and
+# secrets:
 #
-#   vars.ACYCLIX_REGISTRY       where images go: <registry>/<team>/<product>
-#   vars.ACYCLIX_CONSOLE_URL    the console products are registered with
-#   secrets.ACYCLIX_TOKEN       a console bot token with products:register
-#   vars.ACYCLIX_SIGNING_MODE   none | key | keyless
-#   vars.ACYCLIX_SIGNING_KEY    for key: env://COSIGN_PRIVATE_KEY, gcpkms://..., awskms://...
+#   vars.VERTRA_REGISTRY       where images and releases go: <registry>/<team>/<product>
+#   vars.VERTRA_SIGNING_MODE   none | key | keyless
+#   vars.VERTRA_SIGNING_KEY    for key: env://COSIGN_PRIVATE_KEY, gcpkms://..., awskms://...
 #   secrets.COSIGN_PRIVATE_KEY, secrets.COSIGN_PASSWORD   for a generated key
 #
 # Registry sign-in, by whichever of these is set:
@@ -18,10 +21,10 @@ name: catalog-ci
 
 on:
   pull_request:
-    paths: ["teams/**", "templates/**", "tools/**", "acyclix.yaml", "catalogctl", ".github/CODEOWNERS"]
+    paths: ["teams/**", "templates/**", "tools/**", "vertra.yaml", "catalogctl", ".github/CODEOWNERS"]
   push:
     branches: [main]
-    paths: ["teams/**", "tools/**", "acyclix.yaml", "catalogctl"]
+    paths: ["teams/**", "tools/**", "vertra.yaml", "catalogctl"]
   # Checks every product again: base images get new fixes, and the
   # vulnerability database new findings, without anything here changing.
   schedule:
@@ -34,7 +37,7 @@ permissions:
 
 jobs:
   # Pull requests and the weekly run: validate, build, test and scan. Never
-  # pushes or registers anything, so it needs no credentials.
+  # pushes anything, so it needs no credentials.
   check:
     if: github.event_name == 'pull_request' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
@@ -50,21 +53,24 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: ./catalogctl check --changed "$BASE"
 
-  # main: the same checks, then push, sign and register each product that
-  # passed. Runs in the catalog-publish Environment, which only main may
+  # main: the same checks, then push and sign each product that passed, then
+  # the release. Runs in the catalog-publish Environment, which only main may
   # use, so a workflow edited in a pull request never gets its credentials.
+  # One run at a time, in order: a release names the images as of its commit.
   publish:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment: catalog-publish
+    concurrency:
+      group: catalog-publish
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write   # cloud sign-in through OIDC, and keyless signing
     env:
-      ACYCLIX_REGISTRY: ${{ vars.ACYCLIX_REGISTRY }}
-      ACYCLIX_CONSOLE_URL: ${{ vars.ACYCLIX_CONSOLE_URL }}
-      ACYCLIX_SIGNING_MODE: ${{ vars.ACYCLIX_SIGNING_MODE }}
-      ACYCLIX_SIGNING_KEY: ${{ vars.ACYCLIX_SIGNING_KEY }}
+      VERTRA_REGISTRY: ${{ vars.VERTRA_REGISTRY }}
+      VERTRA_SIGNING_MODE: ${{ vars.VERTRA_SIGNING_MODE }}
+      VERTRA_SIGNING_KEY: ${{ vars.VERTRA_SIGNING_KEY }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -83,7 +89,7 @@ jobs:
         if: steps.gcp.outcome == 'success'
       - name: Sign Docker in to Artifact Registry
         if: steps.gcp.outcome == 'success'
-        run: gcloud auth configure-docker "${ACYCLIX_REGISTRY%%/*}" --quiet
+        run: gcloud auth configure-docker "${VERTRA_REGISTRY%%/*}" --quiet
       - name: Sign in to AWS
         id: aws
         if: vars.AWS_ROLE_ARN != ''
@@ -93,19 +99,20 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
       - name: Sign Docker in to ECR
         if: steps.aws.outcome == 'success'
-        run: aws ecr get-login-password | docker login --username AWS --password-stdin "${ACYCLIX_REGISTRY%%/*}"
+        run: aws ecr get-login-password | docker login --username AWS --password-stdin "${VERTRA_REGISTRY%%/*}"
       - name: Sign in to the registry with a username and password
         if: vars.REGISTRY_USERNAME != ''
         env:
           REGISTRY_USERNAME: ${{ vars.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-        run: echo "$REGISTRY_PASSWORD" | docker login "${ACYCLIX_REGISTRY%%/*}" -u "$REGISTRY_USERNAME" --password-stdin
+        run: echo "$REGISTRY_PASSWORD" | docker login "${VERTRA_REGISTRY%%/*}" -u "$REGISTRY_USERNAME" --password-stdin
 
-      - name: Check, push, sign and register the changed products
+      - name: Check, push and sign the changed products, then release the catalog
         env:
           # Empty (a manual run) publishes everything.
           BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
-          ACYCLIX_TOKEN: ${{ secrets.ACYCLIX_TOKEN }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-        run: ./catalogctl publish --changed "$BASE"
+        run: |
+          ./catalogctl publish --changed "$BASE"
+          ./catalogctl release

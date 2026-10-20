@@ -3,17 +3,18 @@
 package install
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/rburns629/acyclix/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/config"
 )
 
 func kindConfig() *config.Config {
 	c := config.Default("kind")
-	c.Source = "/src/acyclix"
+	c.Source = "/src/vertra"
 	c.Admin.Email = "admin@example.com"
 	return c
 }
@@ -21,13 +22,13 @@ func kindConfig() *config.Config {
 func TestChartsFromSourceOrRelease(t *testing.T) {
 	c := kindConfig()
 	k, _ := Charts(c, "/deploy/dev")
-	if k.Dir != "/src/acyclix/helm/charts/execution-kernel" || k.Remote != "" {
+	if k.Dir != "/src/vertra/helm/charts/execution-kernel" || k.Remote != "" {
 		t.Errorf("source: %+v", k)
 	}
-	if SizeValues(k, "minimal") != "/src/acyclix/helm/charts/execution-kernel/sizes/minimal.yaml" {
+	if SizeValues(k, "minimal") != "/src/vertra/helm/charts/execution-kernel/sizes/minimal.yaml" {
 		t.Errorf("size: %s", SizeValues(k, "minimal"))
 	}
-	c.Acyclix = "0.2.0"
+	c.Vertra = "0.2.0"
 	_, cons := Charts(c, "/deploy/dev")
 	if cons.Dir != "/deploy/dev/charts/0.2.0/execution-console" || cons.Remote != ReleaseCharts+"/execution-console" || cons.Version != "0.2.0" {
 		t.Errorf("release: %+v", cons)
@@ -48,7 +49,7 @@ func TestImagesFor(t *testing.T) {
 		t.Errorf("existing: %+v", img)
 	}
 
-	c.Acyclix = "0.2.0"
+	c.Vertra = "0.2.0"
 	if img := ImagesFor(c, now); img.Build || img.Kernel != "" {
 		t.Errorf("release: %+v", img)
 	}
@@ -111,7 +112,7 @@ func TestValues(t *testing.T) {
 	}
 
 	v := ConsoleValues(c, "dev", img, nil)
-	if v["kernelApiUrl"] != "http://kernel-execution-kernel-api.acyclix-system.svc.cluster.local:8000" {
+	if v["kernelApiUrl"] != "http://kernel-execution-kernel-api.vertra-system.svc.cluster.local:8000" {
 		t.Errorf("kernelApiUrl: %v", v["kernelApiUrl"])
 	}
 	if v["environmentLabel"] != "dev" || v["existingSecret"] != "kernel-execution-kernel-console-db" {
@@ -125,9 +126,23 @@ func TestValues(t *testing.T) {
 		t.Error("a password must never be written to values")
 	}
 
-	c.Acyclix = "0.2.0"
+	c.Vertra = "0.2.0"
 	if _, ok := ConsoleValues(c, "dev", ImagesFor(c, time.Now()), nil)["image"]; ok {
 		t.Error("a release should use the chart's own image")
+	}
+}
+
+func TestConsoleReadsTheCatalogsRelease(t *testing.T) {
+	c := kindConfig()
+	cloud := &Cloud{Provider: "gcp", TaskRegistry: "us-central1-docker.pkg.dev/p/vertra-products"}
+	if _, ok := ConsoleValues(c, "dev", Images{}, cloud)["catalog"]; ok {
+		t.Error("no catalog repository, no release to read")
+	}
+	c.Catalog.Owner, c.Catalog.Repository = "octocat", "vertra-catalog"
+	got := ConsoleValues(c, "dev", Images{}, cloud)["catalog"]
+	want := map[string]any{"release": "us-central1-docker.pkg.dev/p/vertra-products/catalog-release:latest"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("catalog: %v, want %v", got, want)
 	}
 }
 
@@ -138,7 +153,7 @@ func TestWriteValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(path)
-	if !strings.HasPrefix(string(data), "# Written by acyclixctl") || !strings.Contains(string(data), "replicaCount: 2") {
+	if !strings.HasPrefix(string(data), "# Written by vertra") || !strings.Contains(string(data), "replicaCount: 2") {
 		t.Errorf("got:\n%s", data)
 	}
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Acyclix template (dags/<name>.yaml, kind: Template), format v2",
+  "title": "Vertra template (dags/<name>.yaml, kind: Template), format v2",
   "description": "A runnable DAG with parameters: what a consumer runs, filling in only the parameters. Steps name actions, not images, so a template keeps working as products release new images, and each step uses its action's own secretRefs.",
   "type": "object",
   "additionalProperties": false,
@@ -15,8 +15,8 @@
   ],
   "properties": {
     "apiVersion": {
-      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
-      "const": "acyclix.dev/v2"
+      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "vertra.dev/v2"
     },
     "kind": {
       "description": "What the file is: Template.",

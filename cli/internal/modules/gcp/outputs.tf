@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# What acyclixctl turns into Helm values and kubectl access.
+# What vertra turns into Helm values and kubectl access.
 
 output "cluster" {
   value = {
@@ -35,8 +35,8 @@ output "backup" {
 # Standard mode: where steps run (the chart's scheduler.taskPlacement).
 output "step_placement" {
   value = local.standard ? {
-    nodeSelector = { "acyclix.dev/pool" = "steps" }
-    tolerations  = [{ key = "acyclix.dev/steps", operator = "Equal", value = "true", effect = "NoSchedule" }]
+    nodeSelector = { "vertra.dev/pool" = "steps" }
+    tolerations  = [{ key = "vertra.dev/steps", operator = "Equal", value = "true", effect = "NoSchedule" }]
     } : {
     # Autopilot: Spot Pods, except at `scaled` (on-demand).
     nodeSelector = local.pools.spot ? { "cloud.google.com/gke-spot" = "true" } : {}

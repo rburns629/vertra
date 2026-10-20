@@ -1,7 +1,7 @@
 # A product shaped like real work: it calls an API, can authenticate with a
 # secret, and tells the platform which failures are worth retrying.
 # Copy to teams/<your-team>/products/http-check/.
-apiVersion: acyclix.dev/v2
+apiVersion: vertra.dev/v2
 kind: Product
 name: http-check
 team: try-anna             # CHANGE: your team

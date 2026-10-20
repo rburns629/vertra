@@ -42,7 +42,7 @@ variable "size" {
 variable "namespace" {
   description = "The platform's Kubernetes namespace: its ServiceAccounts get the cloud identities."
   type        = string
-  default     = "acyclix-system"
+  default     = "vertra-system"
 }
 
 variable "step_headroom" {
@@ -54,7 +54,7 @@ variable "step_headroom" {
 variable "task_registry" {
   description = "The Artifact Registry repository steps' images come from: created unless it already exists (create_task_registry = false)."
   type        = string
-  default     = "acyclix-products"
+  default     = "vertra-products"
 }
 
 variable "create_task_registry" {
@@ -80,7 +80,7 @@ variable "backup_retention_days" {
 }
 
 variable "delete_data" {
-  description = "Let destroy delete the backup bucket even when it holds backups (acyclixctl destroy asks first)."
+  description = "Let destroy delete the backup bucket even when it holds backups (vertra destroy asks first)."
   type        = bool
   default     = false
 }

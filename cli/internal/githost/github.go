@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/rburns629/acyclix/cli/internal/run"
+	"github.com/rburns629/vertra/cli/internal/run"
 )
 
 // GitHub talks to github.com through gh.
@@ -194,7 +194,7 @@ func (g *GitHub) Push(ctx context.Context, dir, repo string) error {
 	for _, step := range [][]string{
 		{"init", "--quiet", "--initial-branch=main"},
 		{"add", "--all"},
-		{"commit", "--quiet", "-m", "A new catalog, from acyclixctl"},
+		{"commit", "--quiet", "-m", "A new catalog, from vertra"},
 		{"push", "--quiet", url, "main"},
 	} {
 		if err := git(step...); err != nil {
@@ -217,6 +217,20 @@ func (g *GitHub) SetSecret(ctx context.Context, repo, env, name, value string) e
 		args = append(args, "--env", env)
 	}
 	return g.r.RunInput(ctx, value, "gh", args...)
+}
+
+// DeleteSecret deletes a repository secret, or an Environment's with env;
+// one that isn't there is fine.
+func (g *GitHub) DeleteSecret(ctx context.Context, repo, env, name string) error {
+	path := "/repos/" + repo + "/actions/secrets/" + name
+	if env != "" {
+		path = "/repos/" + repo + "/environments/" + env + "/secrets/" + name
+	}
+	_, err := g.api(ctx, "DELETE", path, "")
+	if err != nil && (strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "Not Found")) {
+		return nil
+	}
+	return err
 }
 
 // CreateEnvironment creates an Environment limited to the main branch,

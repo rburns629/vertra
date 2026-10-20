@@ -63,7 +63,7 @@ describe("AdminService", () => {
     await rpc("UserService", "SetAdmin", { email: admin.email, admin: true }, { token });
     const page = await rpc("AdminService", "ListAuditEntries", { actorId: admin.id, limit: 5 }, { token });
     const entries = page.json<{ entries: { route: string; method: string; status: number }[] }>().entries;
-    expect(entries[0]).toMatchObject({ route: "acyclix.console.v1.UserService/SetAdmin", method: "RPC", status: 200 });
+    expect(entries[0]).toMatchObject({ route: "vertra.console.v1.UserService/SetAdmin", method: "RPC", status: 200 });
   });
 
   it("checks the audit query", async () => {

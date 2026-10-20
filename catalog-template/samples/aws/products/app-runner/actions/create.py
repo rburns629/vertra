@@ -62,7 +62,7 @@ def _session(region: str) -> boto3.session.Session:
     if not target:
         return session
     credentials = session.client("sts").assume_role(
-        RoleArn=target, RoleSessionName="acyclix-step"
+        RoleArn=target, RoleSessionName="vertra-step"
     )["Credentials"]
     return boto3.session.Session(
         aws_access_key_id=credentials["AccessKeyId"],

@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rburns629/acyclix/cli/internal/cluster"
-	"github.com/rburns629/acyclix/cli/internal/config"
-	"github.com/rburns629/acyclix/cli/internal/run"
+	"github.com/rburns629/vertra/cli/internal/cluster"
+	"github.com/rburns629/vertra/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/run"
 )
 
 // State is what gcloud says about the project and the cluster.
@@ -104,7 +104,7 @@ func TaskRegistry(c *config.Config) string {
 // PlatformRepository is the repository the module creates for platform
 // images built from source ("" when installing a release).
 func PlatformRepository(c *config.Config) string {
-	if c.Acyclix != "source" {
+	if c.Vertra != "source" {
 		return ""
 	}
 	return c.Cluster.Name + "-platform"
@@ -112,7 +112,7 @@ func PlatformRepository(c *config.Config) string {
 
 // PlatformRegistry is that repository's path.
 func PlatformRegistry(c *config.Config) string {
-	if c.Acyclix != "source" {
+	if c.Vertra != "source" {
 		return ""
 	}
 	return fmt.Sprintf("%s-docker.pkg.dev/%s/%s", c.GCP.Region, c.GCP.Project, PlatformRepository(c))

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * AuthService (proto/acyclix/console/v1/auth.proto): signing in, and who
+ * AuthService (proto/vertra/console/v1/auth.proto): signing in, and who
  * you are. The same rules as rpc/services/auth.ts and rpc/services/auth.ts, which it
  * replaces: open registration only when allowed, sign-in limited per
  * client and email and spaced out per account, the same failure (and
@@ -14,7 +14,7 @@ import { loginWaitSeconds, recordLoginFailure, recordLoginSuccess } from "../../
 import { hashPassword, NewPassword, verifyAgainstNothing, verifyPassword } from "../../auth/password.js";
 import { config } from "../../config.js";
 import { createUser, findUserByEmail, findUserById, setUserPassword } from "../../db/queries.js";
-import type { AuthService } from "../../gen/acyclix/console/v1/auth_pb.js";
+import type { AuthService } from "../../gen/vertra/console/v1/auth_pb.js";
 import { callerOf, kClientIp, logOf } from "../context.js";
 import { badRequest, forbidden, rpcError, unauthenticated } from "../errors.js";
 import { FixedWindowLimit } from "../rateLimit.js";
@@ -41,7 +41,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
       const { email, password } = check({ email: Email, password: NewPassword }, req);
       if (!config.allowSelfRegistration) {
-        throw forbidden("Accounts are created by an admin. Ask an Acyclix admin for one.", "REGISTRATION_DISABLED");
+        throw forbidden("Accounts are created by an admin. Ask an Vertra admin for one.", "REGISTRATION_DISABLED");
       }
       if (await findUserByEmail(email)) {
         throw rpcError(Code.AlreadyExists, "CONFLICT", "Email already registered.");

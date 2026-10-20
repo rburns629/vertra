@@ -49,6 +49,10 @@ export const teams = pgTable("teams", {
   // team reusing it would otherwise inherit visibility of the old one's
   // executions. Only set on a team that was retired first.
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  // Made by a catalog release (catalogSync.ts): retired when a release no
+  // longer names it. A team an admin made isn't touched by releases, unless
+  // one names it, which makes it the catalog's.
+  fromCatalog: boolean("from_catalog").notNull().default(false),
 });
 
 export const users = pgTable("users", {
@@ -163,6 +167,9 @@ export const products = pgTable(
     // memoryLimit } as Kubernetes quantities (the kernel's TaskResources).
     // Null: the deployment's default.
     resources: jsonb("resources").$type<ProductResources>(),
+    // Registered from a catalog release (catalogSync.ts): unregistered when
+    // a release no longer has it. One an admin registered by hand isn't.
+    fromCatalog: boolean("from_catalog").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.image, table.action)],
@@ -238,8 +245,8 @@ export const auditLog = pgTable(
 
 /**
  * The catalog's wiring vocabulary (its schema/types.yaml): the names a
- * product's input uses to say what it needs (x-acyclix-needs) and an
- * output what it provides (x-acyclix-provides). A DAG generator connects
+ * product's input uses to say what it needs (x-vertra-needs) and an
+ * output what it provides (x-vertra-provides). A DAG generator connects
  * a needing input to a providing output through these. Catalog CI
  * replaces the whole set on every push to main (PUT /wiring-types).
  */
@@ -371,3 +378,24 @@ export const teamMemberships = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.teamId] })],
 );
+
+/**
+ * The catalog release this console last applied, and how its last look went
+ * (catalogSync.ts): one row, id 1. The release is read from the registry
+ * (config.catalog.release), verified, and applied; the same digest isn't
+ * applied twice.
+ */
+export const catalogSync = pgTable("catalog_sync", {
+  id: integer("id").primaryKey().default(1),
+  // The release artifact's manifest digest, its commit and repository.
+  digest: text("digest"),
+  commit: text("commit"),
+  repository: text("repository"),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),
+  // What applying it couldn't do, item by item: [{ item, message }].
+  problems: jsonb("problems").$type<{ item: string; message: string; adoptableTeam?: string }[]>().notNull().default([]),
+  // The last look: when, and why it failed, if it did (fetching or
+  // verifying; nothing was applied then).
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+  error: text("error"),
+});

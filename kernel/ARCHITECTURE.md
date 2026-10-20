@@ -48,7 +48,7 @@ internal/          Its packages (one Go module: go.mod here).
 ├── sleeper/       Putting an idle platform to sleep (a CronJob).
 ├── logging/       JSON logs.
 ├── metrics/       Prometheus metrics.
-├── gen/           KernelService's generated code (`make proto`, from proto/acyclix/kernel/v1).
+├── gen/           KernelService's generated code (`make proto`, from proto/vertra/kernel/v1).
 ├── dbtest/        For tests: the test database, and throwaway ones.
 └── kindtest/      For tests: a real (kind) cluster and test images (fixture/: one of them).
 
@@ -478,7 +478,7 @@ fails rather than skips.
   `values.yaml` documents every option inline; `templates/` has one file
   per resource: kernel-api, kernel-scheduler, the migration hook Job
   (`kernel migrate`), the sleeper's CronJobs (`kernel sleep`).
-- **`../proto/acyclix/kernel/v1/kernel.proto`** — KernelService; `make
+- **`../proto/vertra/kernel/v1/kernel.proto`** — KernelService; `make
   proto` writes `internal/gen` and the console's client.
 - **`../examples/project-product/`**, **`../examples/application-product/`**
   — the two fake product containers the kind tests run; each standalone,

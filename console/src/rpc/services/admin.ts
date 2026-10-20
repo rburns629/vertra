@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-/** AdminService (proto/acyclix/console/v1/admin.proto): core/admin.ts over Connect. */
+/** AdminService (proto/vertra/console/v1/admin.proto): core/admin.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
 import type { JsonObject } from "@bufbuild/protobuf";
-import { AuditQuery, auditEntries, platformStats, policySync, syncPoliciesNow } from "../../core/admin.js";
-import type { AdminService } from "../../gen/acyclix/console/v1/admin_pb.js";
+import type { CatalogStatus } from "../../catalogSync.js";
+import { AuditQuery, adoptCatalogTeam, auditEntries, catalogState, platformStats, policySync, syncCatalogNow, syncPoliciesNow } from "../../core/admin.js";
+import type { AdminService } from "../../gen/vertra/console/v1/admin_pb.js";
 import type { SyncOutcome } from "../../policySync.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
 import { callerOf, logOf } from "../context.js";
@@ -18,6 +19,19 @@ function outcomes(byPolicy: Record<string, SyncOutcome | null>) {
         { applies: outcome.applies, ok: outcome.ok, at: timestamp(outcome.at), error: outcome.error },
       ]),
   );
+}
+
+function catalog(status: CatalogStatus) {
+  return {
+    release: status.release,
+    digest: status.digest ?? "",
+    commit: status.commit ?? "",
+    repository: status.repository ?? "",
+    appliedAt: status.appliedAt ? timestamp(status.appliedAt) : undefined,
+    problems: status.problems.map((p) => ({ item: p.item, message: p.message, adoptableTeam: p.adoptableTeam ?? "" })),
+    checkedAt: status.checkedAt ? timestamp(status.checkedAt) : undefined,
+    error: status.error ?? "",
+  };
 }
 
 export function adminService(): ServiceImpl<typeof AdminService> {
@@ -67,6 +81,18 @@ export function adminService(): ServiceImpl<typeof AdminService> {
 
     async syncPolicies(_req, ctx) {
       return { outcomes: outcomes(await syncPoliciesNow(callerOf(ctx), logOf(ctx))) };
+    },
+
+    async getCatalogStatus(_req, ctx) {
+      return { status: catalog(await catalogState(callerOf(ctx))) };
+    },
+
+    async syncCatalog(_req, ctx) {
+      return { status: catalog(await syncCatalogNow(callerOf(ctx), logOf(ctx))) };
+    },
+
+    async adoptCatalogTeam(req, ctx) {
+      return { status: catalog(await adoptCatalogTeam(callerOf(ctx), req.name, logOf(ctx))) };
     },
   };
 }

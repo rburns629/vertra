@@ -234,7 +234,7 @@ function MetadataItem({ label, value }: { label: string; value: React.ReactNode 
  * `taskId: null` falls back to every task (defensive only -- the drawer
  * that calls this never opens without a selection). Fields a task
  * omitted (dependsOn, secretRefs, inputs, timeoutSeconds, maxAttempts all
- * have server-side defaults -- see proto/acyclix/kernel/v1) are left
+ * have server-side defaults -- see proto/vertra/kernel/v1) are left
  * out here too, rather than padding the task with its default values --
  * matches what someone would actually have typed, not what kernel-api
  * resolved it to. Re-orders the task's keys into a fixed, readable order

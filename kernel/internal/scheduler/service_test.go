@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
-	"github.com/rburns629/acyclix/kernel/internal/executor"
-	"github.com/rburns629/acyclix/kernel/internal/executor/executortest"
+	"github.com/rburns629/vertra/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/executor/executortest"
 )
 
 // Ported from the Python kernel's tests/integration/test_scheduler_service.py.
@@ -160,12 +160,12 @@ func TestDispatchRejectedByClusterPolicyFailsWithoutRetrying(t *testing.T) {
 	tx := txFor(t)
 	id := submit(t, tx, "idem-sched-dispatch-rejected", task("create-project", maxAttempts(3)))
 	exec := fake()
-	exec.StartError = &executor.DispatchRejected{Code: "DISPATCH_REJECTED", Message: "namespace test-team is not an Acyclix team namespace"}
+	exec.StartError = &executor.DispatchRejected{Code: "DISPATCH_REJECTED", Message: "namespace test-team is not an Vertra team namespace"}
 	newTicker(t, tx, exec).tick(time.Now())
 	tk := tasksByKey(t, tx, id)["create-project"]
 	equal(t, "state", tk.State, domain.TaskFailed)
 	equal(t, "attempts", tk.AttemptCount, 1)
-	equal(t, "failure", tk.Failure, map[string]any{"code": "DISPATCH_REJECTED", "message": "namespace test-team is not an Acyclix team namespace", "retryable": false})
+	equal(t, "failure", tk.Failure, map[string]any{"code": "DISPATCH_REJECTED", "message": "namespace test-team is not an Vertra team namespace", "retryable": false})
 	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
 }
 

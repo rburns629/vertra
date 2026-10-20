@@ -1,0 +1,241 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.console.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Teams: the unit of tenancy. A team is a console team, a Kubernetes
+// namespace and a catalog folder, all one name. Its lifecycle: created,
+// retired (reversible, read-only), purged (its name stays reserved).
+service TeamService {
+  // Every team. Admins only.
+  rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A team's record and lifecycle. Anyone who may not see it gets
+  // not_found, as for a team that doesn't exist. A purged team is still
+  // returned, with deleted_at: its name stays reserved.
+  rpc GetTeam(GetTeamRequest) returns (GetTeamResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates a team and its namespace. Admins, or a token with teams:create.
+  rpc CreateTeam(CreateTeamRequest) returns (CreateTeamResponse);
+  // Makes sure a team exists and is active, with its namespace: creates
+  // it, or un-retires it, any number of times. A purged team's name is
+  // refused (already_exists, NAME_RESERVED).
+  rpc EnsureTeam(EnsureTeamRequest) returns (EnsureTeamResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Read-only from now on, its products unlisted. Reversible.
+  rpc RetireTeam(RetireTeamRequest) returns (RetireTeamResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Undoes a retire (its catalog folder restored): writable again, its
+  // products registered again on the catalog's next CI run.
+  rpc UnretireTeam(UnretireTeamRequest) returns (UnretireTeamResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Irreversible: a retired team, with no unfinished executions, is
+  // soft-deleted so its name stays reserved. Its namespace is deleted only
+  // where the console may purge namespaces (off by default).
+  rpc PurgeTeam(PurgeTeamRequest) returns (PurgeTeamResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // The team's members, bots included.
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Adds someone with an account. At most 30 an hour per caller.
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+  // Never the team's last person (failed_precondition, LAST_MEMBER).
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Applies the team's reviewed SecretStore file: only SecretStores in its
+  // namespace, credentials only from eso-auth, and ESO's own
+  // ServiceAccounts; anything else is refused with every problem listed.
+  rpc ApplySecretStore(ApplySecretStoreRequest) returns (ApplySecretStoreResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Sets the stored credential the team's SecretStores may use (a vault
+  // provider's token): the Secret eso-auth, which no step can mount. This
+  // install's own: the catalog carries the stores, never their credential.
+  // A member of the team, or an admin.
+  rpc SetSecretStoreCredential(SetSecretStoreCredentialRequest) returns (SetSecretStoreCredentialResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // What's running in the team's namespace.
+  rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message Team {
+  string id = 1;
+  // Also the team's Kubernetes namespace.
+  string name = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp retired_at = 4;
+  google.protobuf.Timestamp deleted_at = 5;
+}
+
+message Member {
+  string id = 1;
+  string email = 2;
+  bool is_bot = 3;
+  // An Vertra admin, not just this team's member.
+  bool is_admin = 4;
+  google.protobuf.Timestamp added_at = 5;
+}
+
+message ListTeamsRequest {}
+
+message ListTeamsResponse {
+  repeated Team teams = 1;
+}
+
+message GetTeamRequest {
+  string name = 1;
+}
+
+message GetTeamResponse {
+  Team team = 1;
+}
+
+message CreateTeamRequest {
+  string name = 1;
+}
+
+message CreateTeamResponse {
+  Team team = 1;
+}
+
+message EnsureTeamRequest {
+  string name = 1;
+}
+
+message EnsureTeamResponse {
+  Team team = 1;
+  // Whether this call created it.
+  bool created = 2;
+}
+
+message RetireTeamRequest {
+  string name = 1;
+}
+
+message RetireTeamResponse {
+  // How many of its products were unregistered (they return on its next
+  // catalog CI push once it's restored).
+  int32 unregistered_products = 1;
+}
+
+message UnretireTeamRequest {
+  string name = 1;
+}
+
+message UnretireTeamResponse {}
+
+message PurgeTeamRequest {
+  string name = 1;
+}
+
+message PurgeTeamResponse {
+  // Already purged before this call (which then retried the namespace's
+  // deletion, if the console may delete it).
+  bool already_purged = 1;
+  int32 revoked_bot_tokens = 2;
+  // False when the namespace stays, labelled retired, for an operator.
+  bool namespace_deleted = 3;
+}
+
+message ListMembersRequest {
+  string team = 1;
+}
+
+message ListMembersResponse {
+  repeated Member members = 1;
+}
+
+message AddMemberRequest {
+  string team = 1;
+  string email = 2;
+}
+
+message AddMemberResponse {}
+
+message RemoveMemberRequest {
+  string team = 1;
+  string user_id = 2;
+}
+
+message RemoveMemberResponse {}
+
+message ApplySecretStoreRequest {
+  string team = 1;
+  // The file's objects, 1 to 20.
+  repeated google.protobuf.Struct documents = 2;
+  // For a provider that needs a stored credential: written to the
+  // Secret eso-auth, which no step can mount.
+  optional string credential = 3;
+}
+
+message ApplySecretStoreResponse {}
+
+message SetSecretStoreCredentialRequest {
+  string team = 1;
+  string credential = 2;
+}
+
+message SetSecretStoreCredentialResponse {}
+
+message ListPodsRequest {
+  string team = 1;
+}
+
+message ListPodsResponse {
+  repeated TaskPod pods = 1;
+}
+
+// A Pod in the team's namespace, as a task: which execution, task and
+// attempt it runs, and how it's doing.
+message TaskPod {
+  string pod_name = 1;
+  optional string execution_id = 2;
+  optional string task_id = 3;
+  optional int32 attempt = 4;
+  optional string image = 5;
+  optional string service_account = 6;
+  TaskPodState state = 7;
+  // Why it can't start or failed, in plain words, with Kubernetes' detail.
+  optional PodProblem problem = 8;
+  int32 restarts = 9;
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp finished_at = 11;
+  // Set when the execution is one this team is part of.
+  optional PodExecution execution = 12;
+}
+
+enum TaskPodState {
+  TASK_POD_STATE_UNSPECIFIED = 0;
+  TASK_POD_STATE_STARTING = 1;
+  TASK_POD_STATE_RUNNING = 2;
+  TASK_POD_STATE_CANT_START = 3;
+  TASK_POD_STATE_FINISHED = 4;
+  TASK_POD_STATE_FAILED = 5;
+}
+
+message PodProblem {
+  string title = 1;
+  string detail = 2;
+}
+
+message PodExecution {
+  string name = 1;
+  // Its task's position in the DAG, from 1, when known.
+  optional int32 task_number = 2;
+  optional int32 task_count = 3;
+}

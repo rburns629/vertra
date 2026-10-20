@@ -1,0 +1,157 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.console.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Running the platform: counts, the audit log, the cluster policies the
+// console keeps current, and the catalog it registers from. Admins only.
+service AdminService {
+  // Platform-wide counts, for the admin home page.
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Every request that tried to change something, allowed or refused,
+  // newest first: who, what, what it named (never a secret value, password
+  // or token) and the outcome.
+  rpc ListAuditEntries(ListAuditEntriesRequest) returns (ListAuditEntriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Whether the cluster's policies are current: the last outcome of
+  // rewriting each from the console's database.
+  rpc GetPolicySync(GetPolicySyncRequest) returns (GetPolicySyncResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Rewrites them now.
+  rpc SyncPolicies(SyncPoliciesRequest) returns (SyncPoliciesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // The catalog release this console last applied (teams, products and
+  // SecretStores), what it couldn't apply, and how its last look went.
+  rpc GetCatalogStatus(GetCatalogStatusRequest) returns (GetCatalogStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Reads the catalog's release now, and applies it, even if it's the one
+  // already applied. The console also looks every few minutes by itself.
+  rpc SyncCatalog(SyncCatalogRequest) returns (SyncCatalogResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Lets the catalog's release manage a team it didn't make (one made by
+  // hand, or before this console read releases), then syncs. Until then a
+  // release that names such a team leaves it, its products and its
+  // SecretStores alone: a new catalog folder never takes over an existing
+  // team's namespace and secrets unless an admin says so.
+  rpc AdoptCatalogTeam(AdoptCatalogTeamRequest) returns (AdoptCatalogTeamResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+message GetCatalogStatusRequest {}
+
+message GetCatalogStatusResponse {
+  CatalogStatus status = 1;
+}
+
+message SyncCatalogRequest {}
+
+message SyncCatalogResponse {
+  CatalogStatus status = 1;
+}
+
+message AdoptCatalogTeamRequest {
+  string name = 1;
+}
+
+message AdoptCatalogTeamResponse {
+  CatalogStatus status = 1;
+}
+
+message CatalogStatus {
+  // Where the release is read from; empty when no catalog is configured.
+  string release = 1;
+  // The release last applied: its digest, its catalog commit, its
+  // repository, when.
+  string digest = 2;
+  string commit = 3;
+  string repository = 4;
+  google.protobuf.Timestamp applied_at = 5;
+  // What applying it couldn't do, one item at a time.
+  repeated CatalogProblem problems = 6;
+  // The last look, and why it failed (nothing was applied then).
+  google.protobuf.Timestamp checked_at = 7;
+  string error = 8;
+}
+
+message CatalogProblem {
+  // "product web-site-deploy", "team web", ...
+  string item = 1;
+  string message = 2;
+  // Set when the problem is a team the catalog didn't make: its name, for
+  // AdoptCatalogTeam.
+  string adoptable_team = 3;
+}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  int64 teams = 1;
+  int64 users = 2;
+  int64 products = 3;
+  int64 executions = 4;
+}
+
+message AuditEntry {
+  int64 id = 1;
+  google.protobuf.Timestamp at = 2;
+  optional string actor_id = 3;
+  optional string actor_email = 4;
+  bool actor_is_bot = 5;
+  // What was called: an HTTP method and route, or an RPC's procedure.
+  string method = 6;
+  string route = 7;
+  // What it named.
+  google.protobuf.Struct target = 8;
+  // The outcome, as an HTTP status.
+  int32 status = 9;
+  optional string request_id = 10;
+}
+
+message ListAuditEntriesRequest {
+  // Older than this entry id; the newest when unset.
+  int64 before = 1;
+  // Only this account's.
+  string actor_id = 2;
+  // 100 when unset, at most 500.
+  int32 limit = 3;
+}
+
+message ListAuditEntriesResponse {
+  repeated AuditEntry entries = 1;
+  // Pass as `before` for the next page; 0 on the last.
+  int64 next_before = 2;
+}
+
+message PolicySyncOutcome {
+  // False: there's nothing to write to (not configured, or not installed).
+  bool applies = 1;
+  bool ok = 2;
+  google.protobuf.Timestamp at = 3;
+  optional string error = 4;
+}
+
+message GetPolicySyncRequest {}
+
+message GetPolicySyncResponse {
+  // By policy (identityPolicy, scanPolicy, ...); a policy missing here
+  // hasn't been synced since the console started.
+  map<string, PolicySyncOutcome> outcomes = 1;
+}
+
+message SyncPoliciesRequest {}
+
+message SyncPoliciesResponse {
+  map<string, PolicySyncOutcome> outcomes = 1;
+}

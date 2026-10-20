@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# The cloud side of an Acyclix install on Google Cloud. acyclixctl runs it
+# The cloud side of an Vertra install on Google Cloud. vertra runs it
 # (embedded in the binary, so a CLI version always runs the module it was
 # tested with); it also works on its own with OpenTofu or Terraform.
 
@@ -21,6 +21,6 @@ provider "google" {
   project = var.project
   region  = var.region
   default_labels = {
-    "acyclix-environment" = var.name
+    "vertra-environment" = var.name
   }
 }

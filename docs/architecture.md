@@ -1,23 +1,26 @@
 # Architecture
 
-What Acyclix is, how its pieces fit together, how a DAG becomes running
+What Vertra is, how its pieces fit together, how a DAG becomes running
 containers, and why it's built the way it is. For running it, see
 [operations.md](operations.md); for its security model,
 [security-model.md](security-model.md); for every file, the
 [repository map](repository-map.md); for the kernel's code, call by call,
 [`kernel/ARCHITECTURE.md`](../kernel/ARCHITECTURE.md).
 
-## What Acyclix is
+The platform was called Acyclix until 2026-10-20; older notes, tags and
+installs may still use that name (`catalogctl migrate` converts a catalog).
 
-Acyclix runs DAGs of containerized steps on Kubernetes. A team submits a
+## What Vertra is
+
+Vertra runs DAGs of containerized steps on Kubernetes. A team submits a
 DAG; each step is one action of a **product**, a container image published
-from a reviewed **catalog** repository. Acyclix runs each step as a
+from a reviewed **catalog** repository. Vertra runs each step as a
 Kubernetes Job in the team's own namespace, passes each step's outputs to
 the steps that depend on it, and keeps each team's credentials to that
 team's reviewed products.
 
 A step can be anything packaged as a container: a hello-world script, a
-database migration, creating cloud infrastructure. Acyclix doesn't decide
+database migration, creating cloud infrastructure. Vertra doesn't decide
 *which* steps a request needs: whatever submits the DAG does. It runs the
 DAG it's given, reliably, and keeps one team's work and secrets away from
 every other team's.
@@ -27,18 +30,19 @@ every other team's.
 ```
   catalog repository (one per organization; started from catalog-template/)
     teams/<team>/products/<product>/    product.yaml, Dockerfile, actions, tests
-    CI (./catalogctl): build, test, scan, sign, push, register
+    CI (./catalogctl): build, test, scan, sign, push; then release
             │                                 │
-            │ images                          │ registrations, teams, SecretStores
-            ▼                                 ▼
+            │ images                          │ <registry>/catalog-release (signed):
+            │                                 │ teams, products, SecretStores
+            ▼                                 ▼ (each console pulls it)
   ┌──────────────────────── Kubernetes cluster ────────────────────────┐
-  │  platform namespace (acyclix-system)                                │
+  │  platform namespace (vertra-system)                                │
   │    console ──────────► kernel-api        kernel-scheduler           │
   │    (UI + /api)         (accepts DAGs)    (claims, dispatches, polls)│
   │       │                     │                  │                    │
   │    console Postgres     kernel Postgres ◄──────┘                    │
   │                                                                     │
-  │  team namespaces (one per team, labelled acyclix/team=true)         │
+  │  team namespaces (one per team, labelled vertra/team=true)         │
   │    one Job per step attempt: the product image, its inputs as a     │
   │    ConfigMap, the secrets it lists mounted as files                 │
   └─────────────────────────────────────────────────────────────────────┘
@@ -225,7 +229,7 @@ in `docs/architecture/` (`5-states`), with the rest of the diagrams.
 - **Every API route under `/api`.** The console serves its API and the web
   app from one origin; a prefix keeps a page reload from ever hitting an
   API route.
-- **Kubernetes only.** There's no Docker-only mode: the isolation Acyclix
+- **Kubernetes only.** There's no Docker-only mode: the isolation Vertra
   promises is Kubernetes', and `kind` makes it local.
 
 ## Agreed direction
@@ -245,9 +249,12 @@ roadmap are in [assessment.md](assessment.md), the work in
   to act as specific targets. The target is an identity reference (a service
   account email, role ARN or managed identity) in a team secret, chosen by
   the owning team. The cloud's grant between them is the boundary.
-- **One catalog, many installs.** Each console pulls the catalog's `main`,
-  verifies image signatures and registers what it finds; catalog CI builds,
-  tests, scans, signs and pushes, and holds no console credentials. Secret
+- **One catalog, many installs** (built 2026-10-20). Each console pulls
+  the catalog's release (`<registry>/catalog-release`, an OCI artifact CI
+  pushes from `main` and signs like its images), verifies it, and applies
+  it (`console/src/catalogSync.ts`); catalog CI builds, tests, scans, signs
+  and pushes, and holds no console credentials. A release never purges, and
+  never takes over a team the catalog didn't make unless an admin adopts it. Secret
   values, identity bindings and targets are per install; the catalog only
   names them.
 - **Targets allowed per team, readiness per install.** Each team lists
@@ -267,8 +274,8 @@ roadmap are in [assessment.md](assessment.md), the work in
   fields and console pages. Azure and GitLab wait until this is done.
 - **Languages and APIs** (decided 2026-10-20). The console stays
   TypeScript, its API moves to Connect (protos, generated clients, gRPC
-  available). The kernel moves to Go, against the same schema: the
-  scheduler has (2026-10-20); kernel-api and the migrations are next. `catalogctl` moves to Go beside `acyclixctl`. Products keep any
+  available). The kernel is Go, against the same schema (2026-10-20),
+  and `catalogctl` is Go beside `vertra`. Products keep any
   language and JSON Schema.
 
 ## Glossary

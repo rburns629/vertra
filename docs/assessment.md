@@ -1,6 +1,6 @@
 # Architecture assessment (2026-10-19)
 
-An assessment of Acyclix against what it's meant to become: a Git-governed
+An assessment of Vertra against what it's meant to become: a Git-governed
 marketplace where platform teams publish automation products and anyone in
 an organization runs them, reliably and with each team's identities kept to
 that team. It compares the kernel with Temporal and Inngest, borrowing their
@@ -84,7 +84,7 @@ are done (decided 2026-10-19).
 - **The owning team writes the dependency map** (`dependsOn`) in its
   templates; the service may draft one, never decide it.
 - **One catalog, many installs.** The same catalog repository may feed
-  several Acyclix installs (GKE, EKS, AKS, kind). Each install allows the
+  several Vertra installs (GKE, EKS, AKS, kind). Each install allows the
   registries it pulls from and binds the catalog's identities to its own
   cloud accounts.
 - **Products stay plain containers.** Any language, no SDK: inputs in,
@@ -100,7 +100,7 @@ are done (decided 2026-10-19).
 | Retries with backoff, `maxAttempts` (default 1), timeouts | Built | `kernel/internal/scheduler/tick.go` (`handleFailure`, `poll`) |
 | Cancel, idempotent | Built | `kernel/internal/api/service.go` (`CancelExecution`) |
 | Append-only event history | Built, shown in the console | `execution_events` |
-| History per attempt | Partial: stored in `task_attempts`; the API returns only `attemptCount` | `proto/acyclix/kernel/v1/kernel.proto` |
+| History per attempt | Partial: stored in `task_attempts`; the API returns only `attemptCount` | `proto/vertra/kernel/v1/kernel.proto` |
 | Running-step caps, platform-wide and per team | Built | `kernel/internal/config/config.go` (`MaxRunning`, `MaxRunningPerTeam`) |
 | Caps per product, priorities, fairness | Missing | |
 | Inputs checked against `inputSchema` | Missing: structure only | `console/src/core/executions.ts`, `console/frontend/src/dagCheck.ts` |
@@ -116,7 +116,7 @@ are done (decided 2026-10-19).
 | Schedules, webhooks | Missing | |
 | Re-running a stored DAG | Built | execution page |
 | Order builder (cart → DAG) | Exploratory: wiring types stored | `wiringTypes` table |
-| Several installs per catalog | Missing: one console URL, one token, one registry per repository | `cli/cmd/acyclixctl/catalog.go:261-263`, the catalog's workflows |
+| Several installs per catalog | Missing: one console URL, one token, one registry per repository | `cli/cmd/vertra/catalog.go:261-263`, the catalog's workflows |
 | GCP products | Proven | |
 | AWS products | Proven 2026-10-19 (not their SecretStore) | |
 | Azure products | Unproven, and blocked: AKS Workload Identity needs a Pod label the kernel can't set | |
@@ -186,7 +186,7 @@ token is a repository secret, readable by a workflow anyone with push
 access can change on a branch. With it: register an existing image under
 another ServiceAccount, apply a SecretStore, retire teams. Cloud publishing
 is safe (its trust is pinned to `main`). **Resolved by M1**: with pull-based
-registration, CI holds no console credentials at all.
+registration, CI holds no console credentials at all (done 2026-10-20).
 
 **S2. The samples use one deployment-wide target identity.** Medium. The
 GCP samples impersonate `GCP_TARGET_SERVICE_ACCOUNT` from the kernel's
@@ -217,18 +217,21 @@ references fixed in the owning team's template.
 
 **M1. One catalog repository serves one install.** Architectural
 limitation; high. The catalog's workflows push to one
-`ACYCLIX_CONSOLE_URL` with one `ACYCLIX_TOKEN`, and `acyclixctl catalog`
+`VERTRA_CONSOLE_URL` with one `VERTRA_TOKEN`, and `vertra catalog`
 overwrites both (`catalog.go:261-263`), so a second install pointed at the
 same repository silently takes registrations away from the first. **Do:**
 pull-based registration: each console reads `main` (a read-only deploy key
 or GitHub App), verifies each image's signature against the catalog's
 main-only CI identity, and registers products, templates, teams and
 SecretStores itself. CI builds, tests, scans, signs and pushes. Adding an
-install changes nothing in the repository.
+install changes nothing in the repository. **Done 2026-10-20**, with one
+change: consoles read a signed release artifact CI pushes beside the
+images, not `main` itself, so an install needs registry access only (see
+`TODO.md`).
 
 **M2. One registry per catalog.** Medium. CI publishes to one registry;
 other installs pull from it through their allowed sources. An install on
-another cloud needs read access to it (federated, or the `acyclix-pull`
+another cloud needs read access to it (federated, or the `vertra-pull`
 copy) and must trust the catalog's signing identity.
 
 **M3. Per install: values and bindings; in the catalog: names.** A design
@@ -289,7 +292,7 @@ identity references in team secrets, bound by the owning team.
 
 ## 5. Compared with Temporal
 
-| Temporal | Acyclix | Verdict |
+| Temporal | Vertra | Verdict |
 | --- | --- | --- |
 | Durable state, crash recovery | Postgres rows, one transaction per pass, leases adopted | Have it |
 | Activity fencing | Row locks, `lease_owner`, a Job name per attempt | Have it, once R1 and R2 are fixed |
@@ -308,7 +311,7 @@ that look before they create can, and every sample does.
 
 ## 6. Compared with Inngest
 
-| Inngest | Acyclix | Verdict |
+| Inngest | Vertra | Verdict |
 | --- | --- | --- |
 | Run timeline, step status, logs, retry | Execution page: graph, events, logs, durations, retry, re-run | Have most; add attempts |
 | Failure classification | `{code, message, retryable}` everywhere | Have it |
@@ -411,13 +414,13 @@ tokens (I1). **W**: needs Pod labels (I2).
 | kind | No public issuer: publish its discovery document and keys, then **K**; or a static credential synced from a vault | the same, or IAM Roles Anywhere | the same |
 
 Every **F** path is the product exchanging tokens with its cloud's own SDK:
-no broker in Acyclix. Static credentials are a documented fallback for local
+no broker in Vertra. Static credentials are a documented fallback for local
 use, never the default. Only the **P** cells are proven; treat the rest as
 supported once each has been run for real.
 
 ## 11. Keeping cloud permissions from creeping
 
-Acyclix enforces, or will:
+Vertra enforces, or will:
 
 - an image runs only as the ServiceAccount its reviewed `product.yaml`
   declares (built);
@@ -431,7 +434,7 @@ Acyclix enforces, or will:
 
 Cloud IAM and the organization keep: what each identity may do, trust
 scopes, Token Creator, PassRole and role-assignment rights, SCPs and
-organization policies. Acyclix doesn't provision IAM.
+organization policies. Vertra doesn't provision IAM.
 
 Drift: each product may ship a `check` action (who am I, may I do X); the
 console runs it per install on registration and daily and records which
@@ -516,7 +519,7 @@ team's page, preview and approval, and a failed step explained.
 | Run state | Kernel database | — | Never edited by hand: every change is an action that records an event |
 | Run actions: cancel, retry a step, re-run | Console | The requester for their own runs; maintainers for their team's steps | Retry says whether it's safe, from the action's idempotency |
 | Retries | Policy in `product.yaml`; manual in the console | Owners set the policy | |
-| What a run created | A `resources` output convention (type, id, link) | — | Acyclix records references; it doesn't track infrastructure state. Cleanup runs products' `delete` actions in reverse |
+| What a run created | A `resources` output convention (type, id, link) | — | Vertra records references; it doesn't track infrastructure state. Cleanup runs products' `delete` actions in reverse |
 | Users, teams, roles | Console; teams also in Git | Admins, maintainers | Roles: admin, maintainer, consumer; SSO groups map to them. Everyone signed in is a consumer |
 | Step logs | Kernel database | The owning team | Consumers see status, errors and outputs |
 | Platform logs, metrics, alerts | stdout, `/metrics` | Operators | |
@@ -554,10 +557,10 @@ metadata product teams write; the UI says plainly when a product has none.
 ### Sleep
 
 A sleeping install can't answer, so scale-down is offered for single-person
-and development installs, with that warning in `acyclixctl init`. Schedules
+and development installs, with that warning in `vertra init`. Schedules
 wake the platform (a CronJob can); there's no always-on page.
 
-Onboarding stays short per role: an installer runs `acyclixctl` and, for an
+Onboarding stays short per role: an installer runs `vertra` and, for an
 existing catalog, connects to it; a platform team adds its folder, its
 secrets and its products, guided by readiness; a consumer signs in, picks a
 template, fills a form.
@@ -622,7 +625,7 @@ Rejected: discovering accounts and projects live.
 service or language.
 
 **8. Forms from schemas.** The input schemas teams write drive the form,
-submit-time and run-time validation and wiring, with a few `x-acyclix`
+submit-time and run-time validation and wiring, with a few `x-vertra`
 hints; no custom forms per product.
 
 **9. Bindings in `product.yaml`.** Each action names the team secrets it
@@ -651,7 +654,7 @@ compatibility shims while nobody depends on them.
 done (decided 2026-10-19).
 
 **16. The console's API on Connect** (decided 2026-10-20). Protos written by
-maintainers; clients generated for the frontend, `acyclixctl` and
+maintainers; clients generated for the frontend, `vertra` and
 `catalogctl`; JSON over HTTP for `curl`, and gRPC for callers that want it,
 from the same endpoints. Resources and actions alike are RPCs; health,
 metrics, static files and outside webhooks stay plain HTTP. Chosen for its

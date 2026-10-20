@@ -2,14 +2,14 @@
  "services": [
   {
    "name": "AdminService",
-   "fullName": "acyclix.console.v1.AdminService",
-   "comment": "Running the platform: counts, the audit log, and the cluster policies the\nconsole keeps current. Admins only.",
+   "fullName": "vertra.console.v1.AdminService",
+   "comment": "Running the platform: counts, the audit log, the cluster policies the\nconsole keeps current, and the catalog it registers from. Admins only.",
    "methods": [
     {
      "name": "GetStats",
      "comment": "Platform-wide counts, for the admin home page.",
-     "input": "acyclix.console.v1.GetStatsRequest",
-     "output": "acyclix.console.v1.GetStatsResponse",
+     "input": "vertra.console.v1.GetStatsRequest",
+     "output": "vertra.console.v1.GetStatsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -17,8 +17,8 @@
     {
      "name": "ListAuditEntries",
      "comment": "Every request that tried to change something, allowed or refused,\nnewest first: who, what, what it named (never a secret value, password\nor token) and the outcome.",
-     "input": "acyclix.console.v1.ListAuditEntriesRequest",
-     "output": "acyclix.console.v1.ListAuditEntriesResponse",
+     "input": "vertra.console.v1.ListAuditEntriesRequest",
+     "output": "vertra.console.v1.ListAuditEntriesResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -26,8 +26,8 @@
     {
      "name": "GetPolicySync",
      "comment": "Whether the cluster's policies are current: the last outcome of\nrewriting each from the console's database.",
-     "input": "acyclix.console.v1.GetPolicySyncRequest",
-     "output": "acyclix.console.v1.GetPolicySyncResponse",
+     "input": "vertra.console.v1.GetPolicySyncRequest",
+     "output": "vertra.console.v1.GetPolicySyncResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -35,8 +35,35 @@
     {
      "name": "SyncPolicies",
      "comment": "Rewrites them now.",
-     "input": "acyclix.console.v1.SyncPoliciesRequest",
-     "output": "acyclix.console.v1.SyncPoliciesResponse",
+     "input": "vertra.console.v1.SyncPoliciesRequest",
+     "output": "vertra.console.v1.SyncPoliciesResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
+    },
+    {
+     "name": "GetCatalogStatus",
+     "comment": "The catalog release this console last applied (teams, products and\nSecretStores), what it couldn't apply, and how its last look went.",
+     "input": "vertra.console.v1.GetCatalogStatusRequest",
+     "output": "vertra.console.v1.GetCatalogStatusResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SyncCatalog",
+     "comment": "Reads the catalog's release now, and applies it, even if it's the one\nalready applied. The console also looks every few minutes by itself.",
+     "input": "vertra.console.v1.SyncCatalogRequest",
+     "output": "vertra.console.v1.SyncCatalogResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
+    },
+    {
+     "name": "AdoptCatalogTeam",
+     "comment": "Lets the catalog's release manage a team it didn't make (one made by\nhand, or before this console read releases), then syncs. Until then a\nrelease that names such a team leaves it, its products and its\nSecretStores alone: a new catalog folder never takes over an existing\nteam's namespace and secrets unless an admin says so.",
+     "input": "vertra.console.v1.AdoptCatalogTeamRequest",
+     "output": "vertra.console.v1.AdoptCatalogTeamResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -45,14 +72,14 @@
   },
   {
    "name": "AuthService",
-   "fullName": "acyclix.console.v1.AuthService",
+   "fullName": "vertra.console.v1.AuthService",
    "comment": "Signing in, and who you are. Bots don't sign in: they send their API\ntoken as the bearer token directly.",
    "methods": [
     {
      "name": "GetEnvironment",
      "comment": "Which deployment this is. Anyone, signed in or not.",
-     "input": "acyclix.console.v1.GetEnvironmentRequest",
-     "output": "acyclix.console.v1.GetEnvironmentResponse",
+     "input": "vertra.console.v1.GetEnvironmentRequest",
+     "output": "vertra.console.v1.GetEnvironmentResponse",
      "streaming": false,
      "idempotency": "read",
      "public": true
@@ -60,8 +87,8 @@
     {
      "name": "Register",
      "comment": "Creates your own account, when open registration is on (off by\ndefault: admins create accounts with UserService.CreateUser).",
-     "input": "acyclix.console.v1.RegisterRequest",
-     "output": "acyclix.console.v1.RegisterResponse",
+     "input": "vertra.console.v1.RegisterRequest",
+     "output": "vertra.console.v1.RegisterResponse",
      "streaming": false,
      "idempotency": "",
      "public": true
@@ -69,8 +96,8 @@
     {
      "name": "Login",
      "comment": "Returns a session token. Rate limited per client and per email, and\nspaced out after repeated failures on one account (resource_exhausted,\nwith a Retry-After).",
-     "input": "acyclix.console.v1.LoginRequest",
-     "output": "acyclix.console.v1.LoginResponse",
+     "input": "vertra.console.v1.LoginRequest",
+     "output": "vertra.console.v1.LoginResponse",
      "streaming": false,
      "idempotency": "",
      "public": true
@@ -78,8 +105,8 @@
     {
      "name": "GetMe",
      "comment": "Who you are, and your teams.",
-     "input": "acyclix.console.v1.GetMeRequest",
-     "output": "acyclix.console.v1.GetMeResponse",
+     "input": "vertra.console.v1.GetMeRequest",
+     "output": "vertra.console.v1.GetMeResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -87,8 +114,8 @@
     {
      "name": "ChangePassword",
      "comment": "Changes your password (people only), signing out your other sessions;\nreturns a fresh token for this one.",
-     "input": "acyclix.console.v1.ChangePasswordRequest",
-     "output": "acyclix.console.v1.ChangePasswordResponse",
+     "input": "vertra.console.v1.ChangePasswordRequest",
+     "output": "vertra.console.v1.ChangePasswordResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -97,14 +124,14 @@
   },
   {
    "name": "ExecutionService",
-   "fullName": "acyclix.console.v1.ExecutionService",
+   "fullName": "vertra.console.v1.ExecutionService",
    "comment": "Executions: DAGs submitted to run, their tasks, events and logs.\nEverything here is checked against the caller's teams first: an\nexecution is visible to a member of any team it names, and changed only\nby a member of every one.",
    "methods": [
     {
      "name": "ListExecutions",
      "comment": "Executions the caller can see, newest first.",
-     "input": "acyclix.console.v1.ListExecutionsRequest",
-     "output": "acyclix.console.v1.ListExecutionsResponse",
+     "input": "vertra.console.v1.ListExecutionsRequest",
+     "output": "vertra.console.v1.ListExecutionsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -112,8 +139,8 @@
     {
      "name": "SubmitExecution",
      "comment": "Submits a DAG. Each task is checked before anything runs: its team is\nthe caller's, it runs as its product's ServiceAccount (or \"default\",\nwith no secrets, when it isn't a registered product), each secret is\nregistered for its team, and its image comes from an allowed source,\nresolves to a digest and passed its scan. Problems come back together,\nas invalid_argument with Problem details.",
-     "input": "acyclix.console.v1.SubmitExecutionRequest",
-     "output": "acyclix.console.v1.SubmitExecutionResponse",
+     "input": "vertra.console.v1.SubmitExecutionRequest",
+     "output": "vertra.console.v1.SubmitExecutionResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -121,8 +148,8 @@
     {
      "name": "GetExecution",
      "comment": "An execution and its tasks, as they are now.",
-     "input": "acyclix.console.v1.GetExecutionRequest",
-     "output": "acyclix.console.v1.GetExecutionResponse",
+     "input": "vertra.console.v1.GetExecutionRequest",
+     "output": "vertra.console.v1.GetExecutionResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -130,8 +157,8 @@
     {
      "name": "WatchExecution",
      "comment": "The execution as it is now, then again each time it changes, until it\nfinishes or the caller stops listening.",
-     "input": "acyclix.console.v1.WatchExecutionRequest",
-     "output": "acyclix.console.v1.WatchExecutionResponse",
+     "input": "vertra.console.v1.WatchExecutionRequest",
+     "output": "vertra.console.v1.WatchExecutionResponse",
      "streaming": true,
      "idempotency": "read",
      "public": false
@@ -139,8 +166,8 @@
     {
      "name": "ListExecutionEvents",
      "comment": "The execution's event log, oldest first, a page at a time.",
-     "input": "acyclix.console.v1.ListExecutionEventsRequest",
-     "output": "acyclix.console.v1.ListExecutionEventsResponse",
+     "input": "vertra.console.v1.ListExecutionEventsRequest",
+     "output": "vertra.console.v1.ListExecutionEventsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -148,8 +175,8 @@
     {
      "name": "GetExecutionLogs",
      "comment": "What each task printed, credential shapes redacted.",
-     "input": "acyclix.console.v1.GetExecutionLogsRequest",
-     "output": "acyclix.console.v1.GetExecutionLogsResponse",
+     "input": "vertra.console.v1.GetExecutionLogsRequest",
+     "output": "vertra.console.v1.GetExecutionLogsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -157,8 +184,8 @@
     {
      "name": "CancelExecution",
      "comment": "Cancels an execution. Cancelling one already cancelled changes nothing.",
-     "input": "acyclix.console.v1.CancelExecutionRequest",
-     "output": "acyclix.console.v1.CancelExecutionResponse",
+     "input": "vertra.console.v1.CancelExecutionRequest",
+     "output": "vertra.console.v1.CancelExecutionResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -166,8 +193,8 @@
     {
      "name": "RetryTask",
      "comment": "Gives a failed task one more attempt, resuming its execution.",
-     "input": "acyclix.console.v1.RetryTaskRequest",
-     "output": "acyclix.console.v1.RetryTaskResponse",
+     "input": "vertra.console.v1.RetryTaskRequest",
+     "output": "vertra.console.v1.RetryTaskResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -175,8 +202,8 @@
     {
      "name": "RerunExecution",
      "comment": "Runs the same DAG again as a new execution, checked again against the\ncaller's current teams and secrets.",
-     "input": "acyclix.console.v1.RerunExecutionRequest",
-     "output": "acyclix.console.v1.RerunExecutionResponse",
+     "input": "vertra.console.v1.RerunExecutionRequest",
+     "output": "vertra.console.v1.RerunExecutionResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -185,14 +212,14 @@
   },
   {
    "name": "GuideService",
-   "fullName": "acyclix.console.v1.GuideService",
+   "fullName": "vertra.console.v1.GuideService",
    "comment": "The guides the console shows (console/docs/). Anyone signed in.",
    "methods": [
     {
      "name": "ListGuides",
      "comment": "Every guide, in reading order: its id and title.",
-     "input": "acyclix.console.v1.ListGuidesRequest",
-     "output": "acyclix.console.v1.ListGuidesResponse",
+     "input": "vertra.console.v1.ListGuidesRequest",
+     "output": "vertra.console.v1.ListGuidesResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -200,8 +227,8 @@
     {
      "name": "GetGuide",
      "comment": "One guide, as markdown.",
-     "input": "acyclix.console.v1.GetGuideRequest",
-     "output": "acyclix.console.v1.GetGuideResponse",
+     "input": "vertra.console.v1.GetGuideRequest",
+     "output": "vertra.console.v1.GetGuideResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -210,14 +237,14 @@
   },
   {
    "name": "ImageService",
-   "fullName": "acyclix.console.v1.ImageService",
+   "fullName": "vertra.console.v1.ImageService",
    "comment": "Where task images may come from, and their security scans. The cluster\nenforces both: the image policy refuses images from elsewhere, the scan\npolicy unpinned images and digests whose scan failed.",
    "methods": [
     {
      "name": "GetImagePolicy",
      "comment": "The allowed image sources. Anyone signed in.",
-     "input": "acyclix.console.v1.GetImagePolicyRequest",
-     "output": "acyclix.console.v1.GetImagePolicyResponse",
+     "input": "vertra.console.v1.GetImagePolicyRequest",
+     "output": "vertra.console.v1.GetImagePolicyResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -225,8 +252,8 @@
     {
      "name": "SetImagePolicy",
      "comment": "Changes them. Send back the version read; a stale one is refused\n(aborted). Admins only.",
-     "input": "acyclix.console.v1.SetImagePolicyRequest",
-     "output": "acyclix.console.v1.SetImagePolicyResponse",
+     "input": "vertra.console.v1.SetImagePolicyRequest",
+     "output": "vertra.console.v1.SetImagePolicyResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -234,8 +261,8 @@
     {
      "name": "ListImageScans",
      "comment": "One verdict per digest. Admins only.",
-     "input": "acyclix.console.v1.ListImageScansRequest",
-     "output": "acyclix.console.v1.ListImageScansResponse",
+     "input": "vertra.console.v1.ListImageScansRequest",
+     "output": "vertra.console.v1.ListImageScansResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -243,8 +270,8 @@
     {
      "name": "AcceptImageScan",
      "comment": "Accepts a failed scan, with a reason: the image may be registered and\nrun again until a rescan finds something new. Admins only.",
-     "input": "acyclix.console.v1.AcceptImageScanRequest",
-     "output": "acyclix.console.v1.AcceptImageScanResponse",
+     "input": "vertra.console.v1.AcceptImageScanRequest",
+     "output": "vertra.console.v1.AcceptImageScanResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -252,8 +279,8 @@
     {
      "name": "RescanImage",
      "comment": "Scans an image again now. Admins only.",
-     "input": "acyclix.console.v1.RescanImageRequest",
-     "output": "acyclix.console.v1.RescanImageResponse",
+     "input": "vertra.console.v1.RescanImageRequest",
+     "output": "vertra.console.v1.RescanImageResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -262,14 +289,14 @@
   },
   {
    "name": "ProductService",
-   "fullName": "acyclix.console.v1.ProductService",
+   "fullName": "vertra.console.v1.ProductService",
    "comment": "Products: reviewed images and their actions, registered from the catalog.\nA product name and an image repository belong to the first team that\nregisters them, the repository even after its products are deleted.",
    "methods": [
     {
      "name": "ListProducts",
      "comment": "Products the caller can run.",
-     "input": "acyclix.console.v1.ListProductsRequest",
-     "output": "acyclix.console.v1.ListProductsResponse",
+     "input": "vertra.console.v1.ListProductsRequest",
+     "output": "vertra.console.v1.ListProductsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -277,8 +304,8 @@
     {
      "name": "RegisterProduct",
      "comment": "Registers or updates a product: a member of its team, an admin, or a\ntoken with products:register. With no team it's a platform product:\nadmins only. Refused (already_exists) when another team owns its name\nor its image repository.",
-     "input": "acyclix.console.v1.RegisterProductRequest",
-     "output": "acyclix.console.v1.RegisterProductResponse",
+     "input": "vertra.console.v1.RegisterProductRequest",
+     "output": "vertra.console.v1.RegisterProductResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -286,8 +313,8 @@
     {
      "name": "DeleteProduct",
      "comment": "Unregisters a product. Its name and image repository stay its team's.",
-     "input": "acyclix.console.v1.DeleteProductRequest",
-     "output": "acyclix.console.v1.DeleteProductResponse",
+     "input": "vertra.console.v1.DeleteProductRequest",
+     "output": "vertra.console.v1.DeleteProductResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -295,8 +322,8 @@
     {
      "name": "ListImageRepositories",
      "comment": "Which team owns each image repository. Admins only.",
-     "input": "acyclix.console.v1.ListImageRepositoriesRequest",
-     "output": "acyclix.console.v1.ListImageRepositoriesResponse",
+     "input": "vertra.console.v1.ListImageRepositoriesRequest",
+     "output": "vertra.console.v1.ListImageRepositoriesResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -304,8 +331,8 @@
     {
      "name": "ReleaseImageRepository",
      "comment": "Lets any team register a repository next. Refused while a registered\nproduct uses it. Admins only.",
-     "input": "acyclix.console.v1.ReleaseImageRepositoryRequest",
-     "output": "acyclix.console.v1.ReleaseImageRepositoryResponse",
+     "input": "vertra.console.v1.ReleaseImageRepositoryRequest",
+     "output": "vertra.console.v1.ReleaseImageRepositoryResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -313,8 +340,8 @@
     {
      "name": "ListWiringTypes",
      "comment": "The catalog's wiring types: what inputs can need and outputs provide.",
-     "input": "acyclix.console.v1.ListWiringTypesRequest",
-     "output": "acyclix.console.v1.ListWiringTypesResponse",
+     "input": "vertra.console.v1.ListWiringTypesRequest",
+     "output": "vertra.console.v1.ListWiringTypesResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -322,8 +349,8 @@
     {
      "name": "ReplaceWiringTypes",
      "comment": "Replaces every wiring type with the catalog's schema/types.yaml. An\nadmin, or a token with products:register.",
-     "input": "acyclix.console.v1.ReplaceWiringTypesRequest",
-     "output": "acyclix.console.v1.ReplaceWiringTypesResponse",
+     "input": "vertra.console.v1.ReplaceWiringTypesRequest",
+     "output": "vertra.console.v1.ReplaceWiringTypesResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -332,14 +359,14 @@
   },
   {
    "name": "SecretService",
-   "fullName": "acyclix.console.v1.SecretService",
+   "fullName": "vertra.console.v1.SecretService",
    "comment": "A team's secrets: registered by name, their values written straight into\nthe team's namespace (pasted) or synced from its vault (External Secrets\nOperator). Values are never stored by the console or returned by it.\nAny of the team's registered products may mount any of them, when a task\nlists it in secret_refs.",
    "methods": [
     {
      "name": "ListSecrets",
      "comment": "A team's secrets: names and key names, never values.",
-     "input": "acyclix.console.v1.ListSecretsRequest",
-     "output": "acyclix.console.v1.ListSecretsResponse",
+     "input": "vertra.console.v1.ListSecretsRequest",
+     "output": "vertra.console.v1.ListSecretsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -347,8 +374,8 @@
     {
      "name": "ListSecretStores",
      "comment": "Where a team's secrets can come from: its SecretStores.",
-     "input": "acyclix.console.v1.ListSecretStoresRequest",
-     "output": "acyclix.console.v1.ListSecretStoresResponse",
+     "input": "vertra.console.v1.ListSecretStoresRequest",
+     "output": "vertra.console.v1.ListSecretStoresResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -356,8 +383,8 @@
     {
      "name": "PutSecret",
      "comment": "Adds or replaces a pasted secret.",
-     "input": "acyclix.console.v1.PutSecretRequest",
-     "output": "acyclix.console.v1.PutSecretResponse",
+     "input": "vertra.console.v1.PutSecretRequest",
+     "output": "vertra.console.v1.PutSecretResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -365,8 +392,8 @@
     {
      "name": "SyncSecret",
      "comment": "Syncs a secret from one of the team's SecretStores: only the reference\ngoes through the console; the value goes from the vault to the namespace.",
-     "input": "acyclix.console.v1.SyncSecretRequest",
-     "output": "acyclix.console.v1.SyncSecretResponse",
+     "input": "vertra.console.v1.SyncSecretRequest",
+     "output": "vertra.console.v1.SyncSecretResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -374,8 +401,8 @@
     {
      "name": "RevokeSecret",
      "comment": "Removes the registration and what the console created. Tasks already\nrunning keep what they mounted.",
-     "input": "acyclix.console.v1.RevokeSecretRequest",
-     "output": "acyclix.console.v1.RevokeSecretResponse",
+     "input": "vertra.console.v1.RevokeSecretRequest",
+     "output": "vertra.console.v1.RevokeSecretResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -383,8 +410,8 @@
     {
      "name": "GetSecretSources",
      "comment": "What the \"connect a source\" guide needs to know about this install.",
-     "input": "acyclix.console.v1.GetSecretSourcesRequest",
-     "output": "acyclix.console.v1.GetSecretSourcesResponse",
+     "input": "vertra.console.v1.GetSecretSourcesRequest",
+     "output": "vertra.console.v1.GetSecretSourcesResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -393,14 +420,14 @@
   },
   {
    "name": "TeamService",
-   "fullName": "acyclix.console.v1.TeamService",
+   "fullName": "vertra.console.v1.TeamService",
    "comment": "Teams: the unit of tenancy. A team is a console team, a Kubernetes\nnamespace and a catalog folder, all one name. Its lifecycle: created,\nretired (reversible, read-only), purged (its name stays reserved).",
    "methods": [
     {
      "name": "ListTeams",
      "comment": "Every team. Admins only.",
-     "input": "acyclix.console.v1.ListTeamsRequest",
-     "output": "acyclix.console.v1.ListTeamsResponse",
+     "input": "vertra.console.v1.ListTeamsRequest",
+     "output": "vertra.console.v1.ListTeamsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -408,8 +435,8 @@
     {
      "name": "GetTeam",
      "comment": "A team's record and lifecycle. Anyone who may not see it gets\nnot_found, as for a team that doesn't exist. A purged team is still\nreturned, with deleted_at: its name stays reserved.",
-     "input": "acyclix.console.v1.GetTeamRequest",
-     "output": "acyclix.console.v1.GetTeamResponse",
+     "input": "vertra.console.v1.GetTeamRequest",
+     "output": "vertra.console.v1.GetTeamResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -417,8 +444,8 @@
     {
      "name": "CreateTeam",
      "comment": "Creates a team and its namespace. Admins, or a token with teams:create.",
-     "input": "acyclix.console.v1.CreateTeamRequest",
-     "output": "acyclix.console.v1.CreateTeamResponse",
+     "input": "vertra.console.v1.CreateTeamRequest",
+     "output": "vertra.console.v1.CreateTeamResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -426,8 +453,8 @@
     {
      "name": "EnsureTeam",
      "comment": "Makes sure a team exists and is active, with its namespace: creates\nit, or un-retires it, any number of times. A purged team's name is\nrefused (already_exists, NAME_RESERVED).",
-     "input": "acyclix.console.v1.EnsureTeamRequest",
-     "output": "acyclix.console.v1.EnsureTeamResponse",
+     "input": "vertra.console.v1.EnsureTeamRequest",
+     "output": "vertra.console.v1.EnsureTeamResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -435,8 +462,8 @@
     {
      "name": "RetireTeam",
      "comment": "Read-only from now on, its products unlisted. Reversible.",
-     "input": "acyclix.console.v1.RetireTeamRequest",
-     "output": "acyclix.console.v1.RetireTeamResponse",
+     "input": "vertra.console.v1.RetireTeamRequest",
+     "output": "vertra.console.v1.RetireTeamResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -444,8 +471,8 @@
     {
      "name": "UnretireTeam",
      "comment": "Undoes a retire (its catalog folder restored): writable again, its\nproducts registered again on the catalog's next CI run.",
-     "input": "acyclix.console.v1.UnretireTeamRequest",
-     "output": "acyclix.console.v1.UnretireTeamResponse",
+     "input": "vertra.console.v1.UnretireTeamRequest",
+     "output": "vertra.console.v1.UnretireTeamResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -453,8 +480,8 @@
     {
      "name": "PurgeTeam",
      "comment": "Irreversible: a retired team, with no unfinished executions, is\nsoft-deleted so its name stays reserved. Its namespace is deleted only\nwhere the console may purge namespaces (off by default).",
-     "input": "acyclix.console.v1.PurgeTeamRequest",
-     "output": "acyclix.console.v1.PurgeTeamResponse",
+     "input": "vertra.console.v1.PurgeTeamRequest",
+     "output": "vertra.console.v1.PurgeTeamResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -462,8 +489,8 @@
     {
      "name": "ListMembers",
      "comment": "The team's members, bots included.",
-     "input": "acyclix.console.v1.ListMembersRequest",
-     "output": "acyclix.console.v1.ListMembersResponse",
+     "input": "vertra.console.v1.ListMembersRequest",
+     "output": "vertra.console.v1.ListMembersResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -471,8 +498,8 @@
     {
      "name": "AddMember",
      "comment": "Adds someone with an account. At most 30 an hour per caller.",
-     "input": "acyclix.console.v1.AddMemberRequest",
-     "output": "acyclix.console.v1.AddMemberResponse",
+     "input": "vertra.console.v1.AddMemberRequest",
+     "output": "vertra.console.v1.AddMemberResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -480,8 +507,8 @@
     {
      "name": "RemoveMember",
      "comment": "Never the team's last person (failed_precondition, LAST_MEMBER).",
-     "input": "acyclix.console.v1.RemoveMemberRequest",
-     "output": "acyclix.console.v1.RemoveMemberResponse",
+     "input": "vertra.console.v1.RemoveMemberRequest",
+     "output": "vertra.console.v1.RemoveMemberResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -489,8 +516,17 @@
     {
      "name": "ApplySecretStore",
      "comment": "Applies the team's reviewed SecretStore file: only SecretStores in its\nnamespace, credentials only from eso-auth, and ESO's own\nServiceAccounts; anything else is refused with every problem listed.",
-     "input": "acyclix.console.v1.ApplySecretStoreRequest",
-     "output": "acyclix.console.v1.ApplySecretStoreResponse",
+     "input": "vertra.console.v1.ApplySecretStoreRequest",
+     "output": "vertra.console.v1.ApplySecretStoreResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
+    },
+    {
+     "name": "SetSecretStoreCredential",
+     "comment": "Sets the stored credential the team's SecretStores may use (a vault\nprovider's token): the Secret eso-auth, which no step can mount. This\ninstall's own: the catalog carries the stores, never their credential.\nA member of the team, or an admin.",
+     "input": "vertra.console.v1.SetSecretStoreCredentialRequest",
+     "output": "vertra.console.v1.SetSecretStoreCredentialResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -498,8 +534,8 @@
     {
      "name": "ListPods",
      "comment": "What's running in the team's namespace.",
-     "input": "acyclix.console.v1.ListPodsRequest",
-     "output": "acyclix.console.v1.ListPodsResponse",
+     "input": "vertra.console.v1.ListPodsRequest",
+     "output": "vertra.console.v1.ListPodsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -508,14 +544,14 @@
   },
   {
    "name": "TokenService",
-   "fullName": "acyclix.console.v1.TokenService",
+   "fullName": "vertra.console.v1.TokenService",
    "comment": "Bots and their API tokens. A team's bot acts as a member of that team;\nan automation token belongs to no team and can do exactly what its scopes\nsay. A token is shown once, when it's made, and only its hash is kept.",
    "methods": [
     {
      "name": "ListBots",
      "comment": "A team's bots and their tokens (never the tokens themselves).",
-     "input": "acyclix.console.v1.ListBotsRequest",
-     "output": "acyclix.console.v1.ListBotsResponse",
+     "input": "vertra.console.v1.ListBotsRequest",
+     "output": "vertra.console.v1.ListBotsResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -523,8 +559,8 @@
     {
      "name": "CreateBotToken",
      "comment": "Creates a bot, or a new token for an existing one.",
-     "input": "acyclix.console.v1.CreateBotTokenRequest",
-     "output": "acyclix.console.v1.CreateBotTokenResponse",
+     "input": "vertra.console.v1.CreateBotTokenRequest",
+     "output": "vertra.console.v1.CreateBotTokenResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -532,8 +568,8 @@
     {
      "name": "RevokeToken",
      "comment": "Revokes any token: a team's bot's (by a member) or any (by an admin).",
-     "input": "acyclix.console.v1.RevokeTokenRequest",
-     "output": "acyclix.console.v1.RevokeTokenResponse",
+     "input": "vertra.console.v1.RevokeTokenRequest",
+     "output": "vertra.console.v1.RevokeTokenResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -541,8 +577,8 @@
     {
      "name": "ListAutomationTokens",
      "comment": "Automation tokens. Admins only.",
-     "input": "acyclix.console.v1.ListAutomationTokensRequest",
-     "output": "acyclix.console.v1.ListAutomationTokensResponse",
+     "input": "vertra.console.v1.ListAutomationTokensRequest",
+     "output": "vertra.console.v1.ListAutomationTokensResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -550,8 +586,8 @@
     {
      "name": "CreateAutomationToken",
      "comment": "For platform automation such as the catalog's CI. Admins only.",
-     "input": "acyclix.console.v1.CreateAutomationTokenRequest",
-     "output": "acyclix.console.v1.CreateAutomationTokenResponse",
+     "input": "vertra.console.v1.CreateAutomationTokenRequest",
+     "output": "vertra.console.v1.CreateAutomationTokenResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -560,14 +596,14 @@
   },
   {
    "name": "UserService",
-   "fullName": "acyclix.console.v1.UserService",
+   "fullName": "vertra.console.v1.UserService",
    "comment": "People's accounts. Admins only.",
    "methods": [
     {
      "name": "ListUsers",
      "comment": "Every person's account (bots are listed with their teams instead).",
-     "input": "acyclix.console.v1.ListUsersRequest",
-     "output": "acyclix.console.v1.ListUsersResponse",
+     "input": "vertra.console.v1.ListUsersRequest",
+     "output": "vertra.console.v1.ListUsersResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -575,8 +611,8 @@
     {
      "name": "CreateUser",
      "comment": "Creates an account with its teams; returns a temporary password,\nshown once.",
-     "input": "acyclix.console.v1.CreateUserRequest",
-     "output": "acyclix.console.v1.CreateUserResponse",
+     "input": "vertra.console.v1.CreateUserRequest",
+     "output": "vertra.console.v1.CreateUserResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -584,17 +620,17 @@
     {
      "name": "DeleteUser",
      "comment": "Its executions stay in the history.",
-     "input": "acyclix.console.v1.DeleteUserRequest",
-     "output": "acyclix.console.v1.DeleteUserResponse",
+     "input": "vertra.console.v1.DeleteUserRequest",
+     "output": "vertra.console.v1.DeleteUserResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
     },
     {
      "name": "SetAdmin",
-     "comment": "Makes someone an Acyclix admin, or takes it away.",
-     "input": "acyclix.console.v1.SetAdminRequest",
-     "output": "acyclix.console.v1.SetAdminResponse",
+     "comment": "Makes someone an Vertra admin, or takes it away.",
+     "input": "vertra.console.v1.SetAdminRequest",
+     "output": "vertra.console.v1.SetAdminResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -602,8 +638,8 @@
     {
      "name": "ResetPassword",
      "comment": "Sets someone's password and ends their sessions; hand it over out of\nband. Not for a bot, which has no password.",
-     "input": "acyclix.console.v1.ResetPasswordRequest",
-     "output": "acyclix.console.v1.ResetPasswordResponse",
+     "input": "vertra.console.v1.ResetPasswordRequest",
+     "output": "vertra.console.v1.ResetPasswordResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -612,12 +648,167 @@
   }
  ],
  "messages": {
-  "acyclix.console.v1.GetStatsRequest": {
+  "vertra.console.v1.GetCatalogStatusRequest": {
+   "name": "GetCatalogStatusRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetCatalogStatusResponse": {
+   "name": "GetCatalogStatusResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "status",
+     "type": "CatalogStatus",
+     "ref": "vertra.console.v1.CatalogStatus",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SyncCatalogRequest": {
+   "name": "SyncCatalogRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.SyncCatalogResponse": {
+   "name": "SyncCatalogResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "status",
+     "type": "CatalogStatus",
+     "ref": "vertra.console.v1.CatalogStatus",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AdoptCatalogTeamRequest": {
+   "name": "AdoptCatalogTeamRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AdoptCatalogTeamResponse": {
+   "name": "AdoptCatalogTeamResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "status",
+     "type": "CatalogStatus",
+     "ref": "vertra.console.v1.CatalogStatus",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.CatalogStatus": {
+   "name": "CatalogStatus",
+   "comment": "",
+   "fields": [
+    {
+     "name": "release",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Where the release is read from; empty when no catalog is configured."
+    },
+    {
+     "name": "digest",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The release last applied: its digest, its catalog commit, its\nrepository, when."
+    },
+    {
+     "name": "commit",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "repository",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "appliedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "problems",
+     "type": "CatalogProblem",
+     "ref": "vertra.console.v1.CatalogProblem",
+     "repeated": true,
+     "optional": false,
+     "comment": "What applying it couldn't do, one item at a time."
+    },
+    {
+     "name": "checkedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The last look, and why it failed (nothing was applied then)."
+    },
+    {
+     "name": "error",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.CatalogProblem": {
+   "name": "CatalogProblem",
+   "comment": "",
+   "fields": [
+    {
+     "name": "item",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"product web-site-deploy\", \"team web\", ..."
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "adoptableTeam",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Set when the problem is a team the catalog didn't make: its name, for\nAdoptCatalogTeam."
+    }
+   ]
+  },
+  "vertra.console.v1.GetStatsRequest": {
    "name": "GetStatsRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetStatsResponse": {
+  "vertra.console.v1.GetStatsResponse": {
    "name": "GetStatsResponse",
    "comment": "",
    "fields": [
@@ -651,7 +842,7 @@
     }
    ]
   },
-  "acyclix.console.v1.AuditEntry": {
+  "vertra.console.v1.AuditEntry": {
    "name": "AuditEntry",
    "comment": "",
    "fields": [
@@ -727,7 +918,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ListAuditEntriesRequest": {
+  "vertra.console.v1.ListAuditEntriesRequest": {
    "name": "ListAuditEntriesRequest",
    "comment": "",
    "fields": [
@@ -754,14 +945,14 @@
     }
    ]
   },
-  "acyclix.console.v1.ListAuditEntriesResponse": {
+  "vertra.console.v1.ListAuditEntriesResponse": {
    "name": "ListAuditEntriesResponse",
    "comment": "",
    "fields": [
     {
      "name": "entries",
      "type": "AuditEntry",
-     "ref": "acyclix.console.v1.AuditEntry",
+     "ref": "vertra.console.v1.AuditEntry",
      "repeated": true,
      "optional": false,
      "comment": ""
@@ -775,7 +966,7 @@
     }
    ]
   },
-  "acyclix.console.v1.PolicySyncOutcome": {
+  "vertra.console.v1.PolicySyncOutcome": {
    "name": "PolicySyncOutcome",
    "comment": "",
    "fields": [
@@ -809,50 +1000,50 @@
     }
    ]
   },
-  "acyclix.console.v1.GetPolicySyncRequest": {
+  "vertra.console.v1.GetPolicySyncRequest": {
    "name": "GetPolicySyncRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetPolicySyncResponse": {
+  "vertra.console.v1.GetPolicySyncResponse": {
    "name": "GetPolicySyncResponse",
    "comment": "",
    "fields": [
     {
      "name": "outcomes",
      "type": "map of string to PolicySyncOutcome",
-     "ref": "acyclix.console.v1.PolicySyncOutcome",
+     "ref": "vertra.console.v1.PolicySyncOutcome",
      "repeated": false,
      "optional": false,
      "comment": "By policy (identityPolicy, scanPolicy, ...); a policy missing here\nhasn't been synced since the console started."
     }
    ]
   },
-  "acyclix.console.v1.SyncPoliciesRequest": {
+  "vertra.console.v1.SyncPoliciesRequest": {
    "name": "SyncPoliciesRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.SyncPoliciesResponse": {
+  "vertra.console.v1.SyncPoliciesResponse": {
    "name": "SyncPoliciesResponse",
    "comment": "",
    "fields": [
     {
      "name": "outcomes",
      "type": "map of string to PolicySyncOutcome",
-     "ref": "acyclix.console.v1.PolicySyncOutcome",
+     "ref": "vertra.console.v1.PolicySyncOutcome",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.GetEnvironmentRequest": {
+  "vertra.console.v1.GetEnvironmentRequest": {
    "name": "GetEnvironmentRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetEnvironmentResponse": {
+  "vertra.console.v1.GetEnvironmentResponse": {
    "name": "GetEnvironmentResponse",
    "comment": "",
    "fields": [
@@ -872,7 +1063,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RegisterRequest": {
+  "vertra.console.v1.RegisterRequest": {
    "name": "RegisterRequest",
    "comment": "",
    "fields": [
@@ -892,7 +1083,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RegisterResponse": {
+  "vertra.console.v1.RegisterResponse": {
    "name": "RegisterResponse",
    "comment": "",
    "fields": [
@@ -912,7 +1103,7 @@
     }
    ]
   },
-  "acyclix.console.v1.LoginRequest": {
+  "vertra.console.v1.LoginRequest": {
    "name": "LoginRequest",
    "comment": "",
    "fields": [
@@ -932,7 +1123,7 @@
     }
    ]
   },
-  "acyclix.console.v1.LoginResponse": {
+  "vertra.console.v1.LoginResponse": {
    "name": "LoginResponse",
    "comment": "",
    "fields": [
@@ -945,12 +1136,12 @@
     }
    ]
   },
-  "acyclix.console.v1.GetMeRequest": {
+  "vertra.console.v1.GetMeRequest": {
    "name": "GetMeRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetMeResponse": {
+  "vertra.console.v1.GetMeResponse": {
    "name": "GetMeResponse",
    "comment": "",
    "fields": [
@@ -984,7 +1175,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ChangePasswordRequest": {
+  "vertra.console.v1.ChangePasswordRequest": {
    "name": "ChangePasswordRequest",
    "comment": "",
    "fields": [
@@ -1004,7 +1195,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ChangePasswordResponse": {
+  "vertra.console.v1.ChangePasswordResponse": {
    "name": "ChangePasswordResponse",
    "comment": "",
    "fields": [
@@ -1017,7 +1208,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Failure": {
+  "vertra.console.v1.Failure": {
    "name": "Failure",
    "comment": "Why something went wrong, in a form a caller can act on: a stable code,\na message for a person, and whether trying again may work. A task's\nfailure, a product's error, and the details of an error response all\ntake this shape.",
    "fields": [
@@ -1051,7 +1242,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Problem": {
+  "vertra.console.v1.Problem": {
    "name": "Problem",
    "comment": "Every problem found with a request, attached to an invalid_argument\nerror so a caller can fix them all at once. `field` says where, as a\npath such as \"tasks[2].inputs.region\".",
    "fields": [
@@ -1078,7 +1269,7 @@
     }
    ]
   },
-  "acyclix.console.v1.PageRequest": {
+  "vertra.console.v1.PageRequest": {
    "name": "PageRequest",
    "comment": "One page of a list, and how to ask for the next.",
    "fields": [
@@ -1098,7 +1289,7 @@
     }
    ]
   },
-  "acyclix.console.v1.TaskResources": {
+  "vertra.console.v1.TaskResources": {
    "name": "TaskResources",
    "comment": "CPU and memory for a task's Pod, as Kubernetes quantities (\"250m\",\n\"512Mi\"). A product's are its tasks' defaults; a task's own win.",
    "fields": [
@@ -1125,7 +1316,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Dag": {
+  "vertra.console.v1.Dag": {
    "name": "Dag",
    "comment": "A DAG, as submitted.",
    "fields": [
@@ -1146,14 +1337,14 @@
     {
      "name": "tasks",
      "type": "TaskDefinition",
-     "ref": "acyclix.console.v1.TaskDefinition",
+     "ref": "vertra.console.v1.TaskDefinition",
      "repeated": true,
      "optional": false,
      "comment": "At least one."
     }
    ]
   },
-  "acyclix.console.v1.TaskDefinition": {
+  "vertra.console.v1.TaskDefinition": {
    "name": "TaskDefinition",
    "comment": "One task of a DAG: one action of one product.",
    "fields": [
@@ -1230,14 +1421,14 @@
     {
      "name": "resources",
      "type": "TaskResources",
-     "ref": "acyclix.console.v1.TaskResources",
+     "ref": "vertra.console.v1.TaskResources",
      "repeated": false,
      "optional": true,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.ExecutionSummary": {
+  "vertra.console.v1.ExecutionSummary": {
    "name": "ExecutionSummary",
    "comment": "",
    "fields": [
@@ -1279,14 +1470,14 @@
     {
      "name": "state",
      "type": "ExecutionState",
-     "ref": "acyclix.console.v1.ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": "Unspecified if the kernel couldn't be asked."
     }
    ]
   },
-  "acyclix.console.v1.Execution": {
+  "vertra.console.v1.Execution": {
    "name": "Execution",
    "comment": "",
    "fields": [
@@ -1307,7 +1498,7 @@
     {
      "name": "state",
      "type": "ExecutionState",
-     "ref": "acyclix.console.v1.ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -1315,7 +1506,7 @@
     {
      "name": "tasks",
      "type": "TaskStatus",
-     "ref": "acyclix.console.v1.TaskStatus",
+     "ref": "vertra.console.v1.TaskStatus",
      "repeated": true,
      "optional": false,
      "comment": ""
@@ -1344,7 +1535,7 @@
     {
      "name": "dag",
      "type": "Dag",
-     "ref": "acyclix.console.v1.Dag",
+     "ref": "vertra.console.v1.Dag",
      "repeated": false,
      "optional": false,
      "comment": "The DAG as submitted, images pinned."
@@ -1352,14 +1543,14 @@
     {
      "name": "runBlocked",
      "type": "RunBlocked",
-     "ref": "acyclix.console.v1.RunBlocked",
+     "ref": "vertra.console.v1.RunBlocked",
      "repeated": false,
      "optional": true,
      "comment": "Why retrying or rerunning would be refused now, if it would."
     }
    ]
   },
-  "acyclix.console.v1.RunBlocked": {
+  "vertra.console.v1.RunBlocked": {
    "name": "RunBlocked",
    "comment": "Why retrying or rerunning an execution would be refused now.",
    "fields": [
@@ -1400,7 +1591,7 @@
     }
    ]
   },
-  "acyclix.console.v1.TaskStatus": {
+  "vertra.console.v1.TaskStatus": {
    "name": "TaskStatus",
    "comment": "",
    "fields": [
@@ -1414,7 +1605,7 @@
     {
      "name": "state",
      "type": "TaskState",
-     "ref": "acyclix.console.v1.TaskState",
+     "ref": "vertra.console.v1.TaskState",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -1436,7 +1627,7 @@
     {
      "name": "failure",
      "type": "Failure",
-     "ref": "acyclix.console.v1.Failure",
+     "ref": "vertra.console.v1.Failure",
      "repeated": false,
      "optional": true,
      "comment": ""
@@ -1464,14 +1655,14 @@
     }
    ]
   },
-  "acyclix.console.v1.ListExecutionsRequest": {
+  "vertra.console.v1.ListExecutionsRequest": {
    "name": "ListExecutionsRequest",
    "comment": "",
    "fields": [
     {
      "name": "page",
      "type": "PageRequest",
-     "ref": "acyclix.console.v1.PageRequest",
+     "ref": "vertra.console.v1.PageRequest",
      "repeated": false,
      "optional": false,
      "comment": "100 when unset, at most 1000."
@@ -1499,14 +1690,14 @@
     }
    ]
   },
-  "acyclix.console.v1.ListExecutionsResponse": {
+  "vertra.console.v1.ListExecutionsResponse": {
    "name": "ListExecutionsResponse",
    "comment": "",
    "fields": [
     {
      "name": "executions",
      "type": "ExecutionSummary",
-     "ref": "acyclix.console.v1.ExecutionSummary",
+     "ref": "vertra.console.v1.ExecutionSummary",
      "repeated": true,
      "optional": false,
      "comment": ""
@@ -1520,21 +1711,21 @@
     }
    ]
   },
-  "acyclix.console.v1.SubmitExecutionRequest": {
+  "vertra.console.v1.SubmitExecutionRequest": {
    "name": "SubmitExecutionRequest",
    "comment": "",
    "fields": [
     {
      "name": "dag",
      "type": "Dag",
-     "ref": "acyclix.console.v1.Dag",
+     "ref": "vertra.console.v1.Dag",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.SubmitExecutionResponse": {
+  "vertra.console.v1.SubmitExecutionResponse": {
    "name": "SubmitExecutionResponse",
    "comment": "",
    "fields": [
@@ -1548,14 +1739,14 @@
     {
      "name": "state",
      "type": "ExecutionState",
-     "ref": "acyclix.console.v1.ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": "PENDING right after a submission."
     }
    ]
   },
-  "acyclix.console.v1.GetExecutionRequest": {
+  "vertra.console.v1.GetExecutionRequest": {
    "name": "GetExecutionRequest",
    "comment": "",
    "fields": [
@@ -1568,21 +1759,21 @@
     }
    ]
   },
-  "acyclix.console.v1.GetExecutionResponse": {
+  "vertra.console.v1.GetExecutionResponse": {
    "name": "GetExecutionResponse",
    "comment": "",
    "fields": [
     {
      "name": "execution",
      "type": "Execution",
-     "ref": "acyclix.console.v1.Execution",
+     "ref": "vertra.console.v1.Execution",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.WatchExecutionRequest": {
+  "vertra.console.v1.WatchExecutionRequest": {
    "name": "WatchExecutionRequest",
    "comment": "",
    "fields": [
@@ -1595,21 +1786,21 @@
     }
    ]
   },
-  "acyclix.console.v1.WatchExecutionResponse": {
+  "vertra.console.v1.WatchExecutionResponse": {
    "name": "WatchExecutionResponse",
    "comment": "",
    "fields": [
     {
      "name": "execution",
      "type": "Execution",
-     "ref": "acyclix.console.v1.Execution",
+     "ref": "vertra.console.v1.Execution",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.ExecutionEvent": {
+  "vertra.console.v1.ExecutionEvent": {
    "name": "ExecutionEvent",
    "comment": "",
    "fields": [
@@ -1650,7 +1841,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ListExecutionEventsRequest": {
+  "vertra.console.v1.ListExecutionEventsRequest": {
    "name": "ListExecutionEventsRequest",
    "comment": "",
    "fields": [
@@ -1670,14 +1861,14 @@
     }
    ]
   },
-  "acyclix.console.v1.ListExecutionEventsResponse": {
+  "vertra.console.v1.ListExecutionEventsResponse": {
    "name": "ListExecutionEventsResponse",
    "comment": "",
    "fields": [
     {
      "name": "events",
      "type": "ExecutionEvent",
-     "ref": "acyclix.console.v1.ExecutionEvent",
+     "ref": "vertra.console.v1.ExecutionEvent",
      "repeated": true,
      "optional": false,
      "comment": ""
@@ -1691,7 +1882,7 @@
     }
    ]
   },
-  "acyclix.console.v1.GetExecutionLogsRequest": {
+  "vertra.console.v1.GetExecutionLogsRequest": {
    "name": "GetExecutionLogsRequest",
    "comment": "",
    "fields": [
@@ -1704,7 +1895,7 @@
     }
    ]
   },
-  "acyclix.console.v1.TaskLogs": {
+  "vertra.console.v1.TaskLogs": {
    "name": "TaskLogs",
    "comment": "",
    "fields": [
@@ -1724,21 +1915,21 @@
     }
    ]
   },
-  "acyclix.console.v1.GetExecutionLogsResponse": {
+  "vertra.console.v1.GetExecutionLogsResponse": {
    "name": "GetExecutionLogsResponse",
    "comment": "",
    "fields": [
     {
      "name": "tasks",
      "type": "TaskLogs",
-     "ref": "acyclix.console.v1.TaskLogs",
+     "ref": "vertra.console.v1.TaskLogs",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.CancelExecutionRequest": {
+  "vertra.console.v1.CancelExecutionRequest": {
    "name": "CancelExecutionRequest",
    "comment": "",
    "fields": [
@@ -1751,7 +1942,7 @@
     }
    ]
   },
-  "acyclix.console.v1.CancelExecutionResponse": {
+  "vertra.console.v1.CancelExecutionResponse": {
    "name": "CancelExecutionResponse",
    "comment": "",
    "fields": [
@@ -1765,14 +1956,14 @@
     {
      "name": "state",
      "type": "ExecutionState",
-     "ref": "acyclix.console.v1.ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.RetryTaskRequest": {
+  "vertra.console.v1.RetryTaskRequest": {
    "name": "RetryTaskRequest",
    "comment": "",
    "fields": [
@@ -1792,7 +1983,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RetryTaskResponse": {
+  "vertra.console.v1.RetryTaskResponse": {
    "name": "RetryTaskResponse",
    "comment": "",
    "fields": [
@@ -1806,14 +1997,14 @@
     {
      "name": "state",
      "type": "ExecutionState",
-     "ref": "acyclix.console.v1.ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.RerunExecutionRequest": {
+  "vertra.console.v1.RerunExecutionRequest": {
    "name": "RerunExecutionRequest",
    "comment": "",
    "fields": [
@@ -1826,7 +2017,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RerunExecutionResponse": {
+  "vertra.console.v1.RerunExecutionResponse": {
    "name": "RerunExecutionResponse",
    "comment": "",
    "fields": [
@@ -1840,14 +2031,14 @@
     {
      "name": "state",
      "type": "ExecutionState",
-     "ref": "acyclix.console.v1.ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.Guide": {
+  "vertra.console.v1.Guide": {
    "name": "Guide",
    "comment": "",
    "fields": [
@@ -1867,26 +2058,26 @@
     }
    ]
   },
-  "acyclix.console.v1.ListGuidesRequest": {
+  "vertra.console.v1.ListGuidesRequest": {
    "name": "ListGuidesRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListGuidesResponse": {
+  "vertra.console.v1.ListGuidesResponse": {
    "name": "ListGuidesResponse",
    "comment": "",
    "fields": [
     {
      "name": "guides",
      "type": "Guide",
-     "ref": "acyclix.console.v1.Guide",
+     "ref": "vertra.console.v1.Guide",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.GetGuideRequest": {
+  "vertra.console.v1.GetGuideRequest": {
    "name": "GetGuideRequest",
    "comment": "",
    "fields": [
@@ -1899,7 +2090,7 @@
     }
    ]
   },
-  "acyclix.console.v1.GetGuideResponse": {
+  "vertra.console.v1.GetGuideResponse": {
    "name": "GetGuideResponse",
    "comment": "",
    "fields": [
@@ -1912,7 +2103,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ImagePolicy": {
+  "vertra.console.v1.ImagePolicy": {
    "name": "ImagePolicy",
    "comment": "",
    "fields": [
@@ -1953,7 +2144,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ImageScan": {
+  "vertra.console.v1.ImageScan": {
    "name": "ImageScan",
    "comment": "",
    "fields": [
@@ -1974,7 +2165,7 @@
     {
      "name": "status",
      "type": "ScanStatus",
-     "ref": "acyclix.console.v1.ScanStatus",
+     "ref": "vertra.console.v1.ScanStatus",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -1982,7 +2173,7 @@
     {
      "name": "findings",
      "type": "ScanFindings",
-     "ref": "acyclix.console.v1.ScanFindings",
+     "ref": "vertra.console.v1.ScanFindings",
      "repeated": false,
      "optional": true,
      "comment": ""
@@ -2031,7 +2222,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ScanFindings": {
+  "vertra.console.v1.ScanFindings": {
    "name": "ScanFindings",
    "comment": "",
    "fields": [
@@ -2059,7 +2250,7 @@
     {
      "name": "findings",
      "type": "Finding",
-     "ref": "acyclix.console.v1.Finding",
+     "ref": "vertra.console.v1.Finding",
      "repeated": true,
      "optional": false,
      "comment": "At most 25."
@@ -2073,7 +2264,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Finding": {
+  "vertra.console.v1.Finding": {
    "name": "Finding",
    "comment": "",
    "fields": [
@@ -2128,26 +2319,26 @@
     }
    ]
   },
-  "acyclix.console.v1.GetImagePolicyRequest": {
+  "vertra.console.v1.GetImagePolicyRequest": {
    "name": "GetImagePolicyRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetImagePolicyResponse": {
+  "vertra.console.v1.GetImagePolicyResponse": {
    "name": "GetImagePolicyResponse",
    "comment": "",
    "fields": [
     {
      "name": "policy",
      "type": "ImagePolicy",
-     "ref": "acyclix.console.v1.ImagePolicy",
+     "ref": "vertra.console.v1.ImagePolicy",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.SetImagePolicyRequest": {
+  "vertra.console.v1.SetImagePolicyRequest": {
    "name": "SetImagePolicyRequest",
    "comment": "",
    "fields": [
@@ -2174,40 +2365,40 @@
     }
    ]
   },
-  "acyclix.console.v1.SetImagePolicyResponse": {
+  "vertra.console.v1.SetImagePolicyResponse": {
    "name": "SetImagePolicyResponse",
    "comment": "",
    "fields": [
     {
      "name": "policy",
      "type": "ImagePolicy",
-     "ref": "acyclix.console.v1.ImagePolicy",
+     "ref": "vertra.console.v1.ImagePolicy",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.ListImageScansRequest": {
+  "vertra.console.v1.ListImageScansRequest": {
    "name": "ListImageScansRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListImageScansResponse": {
+  "vertra.console.v1.ListImageScansResponse": {
    "name": "ListImageScansResponse",
    "comment": "",
    "fields": [
     {
      "name": "scans",
      "type": "ImageScan",
-     "ref": "acyclix.console.v1.ImageScan",
+     "ref": "vertra.console.v1.ImageScan",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.AcceptImageScanRequest": {
+  "vertra.console.v1.AcceptImageScanRequest": {
    "name": "AcceptImageScanRequest",
    "comment": "",
    "fields": [
@@ -2227,21 +2418,21 @@
     }
    ]
   },
-  "acyclix.console.v1.AcceptImageScanResponse": {
+  "vertra.console.v1.AcceptImageScanResponse": {
    "name": "AcceptImageScanResponse",
    "comment": "",
    "fields": [
     {
      "name": "scan",
      "type": "ImageScan",
-     "ref": "acyclix.console.v1.ImageScan",
+     "ref": "vertra.console.v1.ImageScan",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.RescanImageRequest": {
+  "vertra.console.v1.RescanImageRequest": {
    "name": "RescanImageRequest",
    "comment": "",
    "fields": [
@@ -2254,21 +2445,21 @@
     }
    ]
   },
-  "acyclix.console.v1.RescanImageResponse": {
+  "vertra.console.v1.RescanImageResponse": {
    "name": "RescanImageResponse",
    "comment": "",
    "fields": [
     {
      "name": "scan",
      "type": "ImageScan",
-     "ref": "acyclix.console.v1.ImageScan",
+     "ref": "vertra.console.v1.ImageScan",
      "repeated": false,
      "optional": true,
      "comment": "Unset when scanning is off."
     }
    ]
   },
-  "acyclix.console.v1.Product": {
+  "vertra.console.v1.Product": {
    "name": "Product",
    "comment": "",
    "fields": [
@@ -2359,7 +2550,7 @@
     {
      "name": "resources",
      "type": "TaskResources",
-     "ref": "acyclix.console.v1.TaskResources",
+     "ref": "vertra.console.v1.TaskResources",
      "repeated": false,
      "optional": true,
      "comment": ""
@@ -2374,7 +2565,7 @@
     {
      "name": "releases",
      "type": "ProductRelease",
-     "ref": "acyclix.console.v1.ProductRelease",
+     "ref": "vertra.console.v1.ProductRelease",
      "repeated": true,
      "optional": false,
      "comment": ""
@@ -2395,7 +2586,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ProductRelease": {
+  "vertra.console.v1.ProductRelease": {
    "name": "ProductRelease",
    "comment": "",
    "fields": [
@@ -2415,7 +2606,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ImageRepository": {
+  "vertra.console.v1.ImageRepository": {
    "name": "ImageRepository",
    "comment": "",
    "fields": [
@@ -2449,7 +2640,7 @@
     }
    ]
   },
-  "acyclix.console.v1.WiringType": {
+  "vertra.console.v1.WiringType": {
    "name": "WiringType",
    "comment": "",
    "fields": [
@@ -2497,26 +2688,26 @@
     }
    ]
   },
-  "acyclix.console.v1.ListProductsRequest": {
+  "vertra.console.v1.ListProductsRequest": {
    "name": "ListProductsRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListProductsResponse": {
+  "vertra.console.v1.ListProductsResponse": {
    "name": "ListProductsResponse",
    "comment": "",
    "fields": [
     {
      "name": "products",
      "type": "Product",
-     "ref": "acyclix.console.v1.Product",
+     "ref": "vertra.console.v1.Product",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.RegisterProductRequest": {
+  "vertra.console.v1.RegisterProductRequest": {
    "name": "RegisterProductRequest",
    "comment": "",
    "fields": [
@@ -2593,7 +2784,7 @@
     {
      "name": "resources",
      "type": "TaskResources",
-     "ref": "acyclix.console.v1.TaskResources",
+     "ref": "vertra.console.v1.TaskResources",
      "repeated": false,
      "optional": true,
      "comment": ""
@@ -2614,21 +2805,21 @@
     }
    ]
   },
-  "acyclix.console.v1.RegisterProductResponse": {
+  "vertra.console.v1.RegisterProductResponse": {
    "name": "RegisterProductResponse",
    "comment": "",
    "fields": [
     {
      "name": "product",
      "type": "Product",
-     "ref": "acyclix.console.v1.Product",
+     "ref": "vertra.console.v1.Product",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.DeleteProductRequest": {
+  "vertra.console.v1.DeleteProductRequest": {
    "name": "DeleteProductRequest",
    "comment": "",
    "fields": [
@@ -2641,31 +2832,31 @@
     }
    ]
   },
-  "acyclix.console.v1.DeleteProductResponse": {
+  "vertra.console.v1.DeleteProductResponse": {
    "name": "DeleteProductResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListImageRepositoriesRequest": {
+  "vertra.console.v1.ListImageRepositoriesRequest": {
    "name": "ListImageRepositoriesRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListImageRepositoriesResponse": {
+  "vertra.console.v1.ListImageRepositoriesResponse": {
    "name": "ListImageRepositoriesResponse",
    "comment": "",
    "fields": [
     {
      "name": "repositories",
      "type": "ImageRepository",
-     "ref": "acyclix.console.v1.ImageRepository",
+     "ref": "vertra.console.v1.ImageRepository",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.ReleaseImageRepositoryRequest": {
+  "vertra.console.v1.ReleaseImageRepositoryRequest": {
    "name": "ReleaseImageRepositoryRequest",
    "comment": "",
    "fields": [
@@ -2678,45 +2869,45 @@
     }
    ]
   },
-  "acyclix.console.v1.ReleaseImageRepositoryResponse": {
+  "vertra.console.v1.ReleaseImageRepositoryResponse": {
    "name": "ReleaseImageRepositoryResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListWiringTypesRequest": {
+  "vertra.console.v1.ListWiringTypesRequest": {
    "name": "ListWiringTypesRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListWiringTypesResponse": {
+  "vertra.console.v1.ListWiringTypesResponse": {
    "name": "ListWiringTypesResponse",
    "comment": "",
    "fields": [
     {
      "name": "types",
      "type": "WiringType",
-     "ref": "acyclix.console.v1.WiringType",
+     "ref": "vertra.console.v1.WiringType",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.ReplaceWiringTypesRequest": {
+  "vertra.console.v1.ReplaceWiringTypesRequest": {
    "name": "ReplaceWiringTypesRequest",
    "comment": "",
    "fields": [
     {
      "name": "types",
      "type": "map of string to WiringTypeSpec",
-     "ref": "acyclix.console.v1.WiringTypeSpec",
+     "ref": "vertra.console.v1.WiringTypeSpec",
      "repeated": false,
      "optional": false,
      "comment": "Name to type; 1 to 500 of them. Names look like gcp.project."
     }
    ]
   },
-  "acyclix.console.v1.WiringTypeSpec": {
+  "vertra.console.v1.WiringTypeSpec": {
    "name": "WiringTypeSpec",
    "comment": "",
    "fields": [
@@ -2750,21 +2941,21 @@
     }
    ]
   },
-  "acyclix.console.v1.ReplaceWiringTypesResponse": {
+  "vertra.console.v1.ReplaceWiringTypesResponse": {
    "name": "ReplaceWiringTypesResponse",
    "comment": "",
    "fields": [
     {
      "name": "types",
      "type": "WiringType",
-     "ref": "acyclix.console.v1.WiringType",
+     "ref": "vertra.console.v1.WiringType",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.TeamSecret": {
+  "vertra.console.v1.TeamSecret": {
    "name": "TeamSecret",
    "comment": "",
    "fields": [
@@ -2792,7 +2983,7 @@
     {
      "name": "source",
      "type": "SecretSource",
-     "ref": "acyclix.console.v1.SecretSource",
+     "ref": "vertra.console.v1.SecretSource",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -2820,7 +3011,7 @@
     }
    ]
   },
-  "acyclix.console.v1.SecretStore": {
+  "vertra.console.v1.SecretStore": {
    "name": "SecretStore",
    "comment": "",
    "fields": [
@@ -2896,7 +3087,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ListSecretsRequest": {
+  "vertra.console.v1.ListSecretsRequest": {
    "name": "ListSecretsRequest",
    "comment": "",
    "fields": [
@@ -2909,21 +3100,21 @@
     }
    ]
   },
-  "acyclix.console.v1.ListSecretsResponse": {
+  "vertra.console.v1.ListSecretsResponse": {
    "name": "ListSecretsResponse",
    "comment": "",
    "fields": [
     {
      "name": "secrets",
      "type": "TeamSecret",
-     "ref": "acyclix.console.v1.TeamSecret",
+     "ref": "vertra.console.v1.TeamSecret",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.ListSecretStoresRequest": {
+  "vertra.console.v1.ListSecretStoresRequest": {
    "name": "ListSecretStoresRequest",
    "comment": "",
    "fields": [
@@ -2936,21 +3127,21 @@
     }
    ]
   },
-  "acyclix.console.v1.ListSecretStoresResponse": {
+  "vertra.console.v1.ListSecretStoresResponse": {
    "name": "ListSecretStoresResponse",
    "comment": "",
    "fields": [
     {
      "name": "stores",
      "type": "SecretStore",
-     "ref": "acyclix.console.v1.SecretStore",
+     "ref": "vertra.console.v1.SecretStore",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.PutSecretRequest": {
+  "vertra.console.v1.PutSecretRequest": {
    "name": "PutSecretRequest",
    "comment": "",
    "fields": [
@@ -2977,12 +3168,12 @@
     }
    ]
   },
-  "acyclix.console.v1.PutSecretResponse": {
+  "vertra.console.v1.PutSecretResponse": {
    "name": "PutSecretResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.SyncSecretRequest": {
+  "vertra.console.v1.SyncSecretRequest": {
    "name": "SyncSecretRequest",
    "comment": "",
    "fields": [
@@ -3010,14 +3201,14 @@
     {
      "name": "keys",
      "type": "SyncedKey",
-     "ref": "acyclix.console.v1.SyncedKey",
+     "ref": "vertra.console.v1.SyncedKey",
      "repeated": true,
      "optional": false,
      "comment": "At least one."
     }
    ]
   },
-  "acyclix.console.v1.SyncedKey": {
+  "vertra.console.v1.SyncedKey": {
    "name": "SyncedKey",
    "comment": "One key of the Secret, and where it comes from in the vault.",
    "fields": [
@@ -3044,12 +3235,12 @@
     }
    ]
   },
-  "acyclix.console.v1.SyncSecretResponse": {
+  "vertra.console.v1.SyncSecretResponse": {
    "name": "SyncSecretResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.RevokeSecretRequest": {
+  "vertra.console.v1.RevokeSecretRequest": {
    "name": "RevokeSecretRequest",
    "comment": "",
    "fields": [
@@ -3069,17 +3260,17 @@
     }
    ]
   },
-  "acyclix.console.v1.RevokeSecretResponse": {
+  "vertra.console.v1.RevokeSecretResponse": {
    "name": "RevokeSecretResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetSecretSourcesRequest": {
+  "vertra.console.v1.GetSecretSourcesRequest": {
    "name": "GetSecretSourcesRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.GetSecretSourcesResponse": {
+  "vertra.console.v1.GetSecretSourcesResponse": {
    "name": "GetSecretSourcesResponse",
    "comment": "",
    "fields": [
@@ -3120,7 +3311,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Team": {
+  "vertra.console.v1.Team": {
    "name": "Team",
    "comment": "",
    "fields": [
@@ -3161,7 +3352,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Member": {
+  "vertra.console.v1.Member": {
    "name": "Member",
    "comment": "",
    "fields": [
@@ -3191,7 +3382,7 @@
      "type": "boolean",
      "repeated": false,
      "optional": false,
-     "comment": "An Acyclix admin, not just this team's member."
+     "comment": "An Vertra admin, not just this team's member."
     },
     {
      "name": "addedAt",
@@ -3202,26 +3393,26 @@
     }
    ]
   },
-  "acyclix.console.v1.ListTeamsRequest": {
+  "vertra.console.v1.ListTeamsRequest": {
    "name": "ListTeamsRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListTeamsResponse": {
+  "vertra.console.v1.ListTeamsResponse": {
    "name": "ListTeamsResponse",
    "comment": "",
    "fields": [
     {
      "name": "teams",
      "type": "Team",
-     "ref": "acyclix.console.v1.Team",
+     "ref": "vertra.console.v1.Team",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.GetTeamRequest": {
+  "vertra.console.v1.GetTeamRequest": {
    "name": "GetTeamRequest",
    "comment": "",
    "fields": [
@@ -3234,21 +3425,21 @@
     }
    ]
   },
-  "acyclix.console.v1.GetTeamResponse": {
+  "vertra.console.v1.GetTeamResponse": {
    "name": "GetTeamResponse",
    "comment": "",
    "fields": [
     {
      "name": "team",
      "type": "Team",
-     "ref": "acyclix.console.v1.Team",
+     "ref": "vertra.console.v1.Team",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.CreateTeamRequest": {
+  "vertra.console.v1.CreateTeamRequest": {
    "name": "CreateTeamRequest",
    "comment": "",
    "fields": [
@@ -3261,21 +3452,21 @@
     }
    ]
   },
-  "acyclix.console.v1.CreateTeamResponse": {
+  "vertra.console.v1.CreateTeamResponse": {
    "name": "CreateTeamResponse",
    "comment": "",
    "fields": [
     {
      "name": "team",
      "type": "Team",
-     "ref": "acyclix.console.v1.Team",
+     "ref": "vertra.console.v1.Team",
      "repeated": false,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.EnsureTeamRequest": {
+  "vertra.console.v1.EnsureTeamRequest": {
    "name": "EnsureTeamRequest",
    "comment": "",
    "fields": [
@@ -3288,14 +3479,14 @@
     }
    ]
   },
-  "acyclix.console.v1.EnsureTeamResponse": {
+  "vertra.console.v1.EnsureTeamResponse": {
    "name": "EnsureTeamResponse",
    "comment": "",
    "fields": [
     {
      "name": "team",
      "type": "Team",
-     "ref": "acyclix.console.v1.Team",
+     "ref": "vertra.console.v1.Team",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -3309,7 +3500,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RetireTeamRequest": {
+  "vertra.console.v1.RetireTeamRequest": {
    "name": "RetireTeamRequest",
    "comment": "",
    "fields": [
@@ -3322,7 +3513,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RetireTeamResponse": {
+  "vertra.console.v1.RetireTeamResponse": {
    "name": "RetireTeamResponse",
    "comment": "",
    "fields": [
@@ -3335,7 +3526,7 @@
     }
    ]
   },
-  "acyclix.console.v1.UnretireTeamRequest": {
+  "vertra.console.v1.UnretireTeamRequest": {
    "name": "UnretireTeamRequest",
    "comment": "",
    "fields": [
@@ -3348,12 +3539,12 @@
     }
    ]
   },
-  "acyclix.console.v1.UnretireTeamResponse": {
+  "vertra.console.v1.UnretireTeamResponse": {
    "name": "UnretireTeamResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.PurgeTeamRequest": {
+  "vertra.console.v1.PurgeTeamRequest": {
    "name": "PurgeTeamRequest",
    "comment": "",
    "fields": [
@@ -3366,7 +3557,7 @@
     }
    ]
   },
-  "acyclix.console.v1.PurgeTeamResponse": {
+  "vertra.console.v1.PurgeTeamResponse": {
    "name": "PurgeTeamResponse",
    "comment": "",
    "fields": [
@@ -3393,7 +3584,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ListMembersRequest": {
+  "vertra.console.v1.ListMembersRequest": {
    "name": "ListMembersRequest",
    "comment": "",
    "fields": [
@@ -3406,21 +3597,21 @@
     }
    ]
   },
-  "acyclix.console.v1.ListMembersResponse": {
+  "vertra.console.v1.ListMembersResponse": {
    "name": "ListMembersResponse",
    "comment": "",
    "fields": [
     {
      "name": "members",
      "type": "Member",
-     "ref": "acyclix.console.v1.Member",
+     "ref": "vertra.console.v1.Member",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.AddMemberRequest": {
+  "vertra.console.v1.AddMemberRequest": {
    "name": "AddMemberRequest",
    "comment": "",
    "fields": [
@@ -3440,12 +3631,12 @@
     }
    ]
   },
-  "acyclix.console.v1.AddMemberResponse": {
+  "vertra.console.v1.AddMemberResponse": {
    "name": "AddMemberResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.RemoveMemberRequest": {
+  "vertra.console.v1.RemoveMemberRequest": {
    "name": "RemoveMemberRequest",
    "comment": "",
    "fields": [
@@ -3465,12 +3656,12 @@
     }
    ]
   },
-  "acyclix.console.v1.RemoveMemberResponse": {
+  "vertra.console.v1.RemoveMemberResponse": {
    "name": "RemoveMemberResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ApplySecretStoreRequest": {
+  "vertra.console.v1.ApplySecretStoreRequest": {
    "name": "ApplySecretStoreRequest",
    "comment": "",
    "fields": [
@@ -3497,12 +3688,37 @@
     }
    ]
   },
-  "acyclix.console.v1.ApplySecretStoreResponse": {
+  "vertra.console.v1.ApplySecretStoreResponse": {
    "name": "ApplySecretStoreResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListPodsRequest": {
+  "vertra.console.v1.SetSecretStoreCredentialRequest": {
+   "name": "SetSecretStoreCredentialRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "credential",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetSecretStoreCredentialResponse": {
+   "name": "SetSecretStoreCredentialResponse",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListPodsRequest": {
    "name": "ListPodsRequest",
    "comment": "",
    "fields": [
@@ -3515,21 +3731,21 @@
     }
    ]
   },
-  "acyclix.console.v1.ListPodsResponse": {
+  "vertra.console.v1.ListPodsResponse": {
    "name": "ListPodsResponse",
    "comment": "",
    "fields": [
     {
      "name": "pods",
      "type": "TaskPod",
-     "ref": "acyclix.console.v1.TaskPod",
+     "ref": "vertra.console.v1.TaskPod",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.TaskPod": {
+  "vertra.console.v1.TaskPod": {
    "name": "TaskPod",
    "comment": "A Pod in the team's namespace, as a task: which execution, task and\nattempt it runs, and how it's doing.",
    "fields": [
@@ -3578,7 +3794,7 @@
     {
      "name": "state",
      "type": "TaskPodState",
-     "ref": "acyclix.console.v1.TaskPodState",
+     "ref": "vertra.console.v1.TaskPodState",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -3586,7 +3802,7 @@
     {
      "name": "problem",
      "type": "PodProblem",
-     "ref": "acyclix.console.v1.PodProblem",
+     "ref": "vertra.console.v1.PodProblem",
      "repeated": false,
      "optional": true,
      "comment": "Why it can't start or failed, in plain words, with Kubernetes' detail."
@@ -3615,14 +3831,14 @@
     {
      "name": "execution",
      "type": "PodExecution",
-     "ref": "acyclix.console.v1.PodExecution",
+     "ref": "vertra.console.v1.PodExecution",
      "repeated": false,
      "optional": true,
      "comment": "Set when the execution is one this team is part of."
     }
    ]
   },
-  "acyclix.console.v1.PodProblem": {
+  "vertra.console.v1.PodProblem": {
    "name": "PodProblem",
    "comment": "",
    "fields": [
@@ -3642,7 +3858,7 @@
     }
    ]
   },
-  "acyclix.console.v1.PodExecution": {
+  "vertra.console.v1.PodExecution": {
    "name": "PodExecution",
    "comment": "",
    "fields": [
@@ -3669,7 +3885,7 @@
     }
    ]
   },
-  "acyclix.console.v1.TokenInfo": {
+  "vertra.console.v1.TokenInfo": {
    "name": "TokenInfo",
    "comment": "",
    "fields": [
@@ -3703,7 +3919,7 @@
     }
    ]
   },
-  "acyclix.console.v1.Bot": {
+  "vertra.console.v1.Bot": {
    "name": "Bot",
    "comment": "",
    "fields": [
@@ -3724,14 +3940,14 @@
     {
      "name": "tokens",
      "type": "TokenInfo",
-     "ref": "acyclix.console.v1.TokenInfo",
+     "ref": "vertra.console.v1.TokenInfo",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.AutomationToken": {
+  "vertra.console.v1.AutomationToken": {
    "name": "AutomationToken",
    "comment": "",
    "fields": [
@@ -3779,7 +3995,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ListBotsRequest": {
+  "vertra.console.v1.ListBotsRequest": {
    "name": "ListBotsRequest",
    "comment": "",
    "fields": [
@@ -3792,21 +4008,21 @@
     }
    ]
   },
-  "acyclix.console.v1.ListBotsResponse": {
+  "vertra.console.v1.ListBotsResponse": {
    "name": "ListBotsResponse",
    "comment": "",
    "fields": [
     {
      "name": "bots",
      "type": "Bot",
-     "ref": "acyclix.console.v1.Bot",
+     "ref": "vertra.console.v1.Bot",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.CreateBotTokenRequest": {
+  "vertra.console.v1.CreateBotTokenRequest": {
    "name": "CreateBotTokenRequest",
    "comment": "",
    "fields": [
@@ -3833,7 +4049,7 @@
     }
    ]
   },
-  "acyclix.console.v1.CreateBotTokenResponse": {
+  "vertra.console.v1.CreateBotTokenResponse": {
    "name": "CreateBotTokenResponse",
    "comment": "",
    "fields": [
@@ -3860,7 +4076,7 @@
     }
    ]
   },
-  "acyclix.console.v1.RevokeTokenRequest": {
+  "vertra.console.v1.RevokeTokenRequest": {
    "name": "RevokeTokenRequest",
    "comment": "",
    "fields": [
@@ -3873,31 +4089,31 @@
     }
    ]
   },
-  "acyclix.console.v1.RevokeTokenResponse": {
+  "vertra.console.v1.RevokeTokenResponse": {
    "name": "RevokeTokenResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListAutomationTokensRequest": {
+  "vertra.console.v1.ListAutomationTokensRequest": {
    "name": "ListAutomationTokensRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListAutomationTokensResponse": {
+  "vertra.console.v1.ListAutomationTokensResponse": {
    "name": "ListAutomationTokensResponse",
    "comment": "",
    "fields": [
     {
      "name": "tokens",
      "type": "AutomationToken",
-     "ref": "acyclix.console.v1.AutomationToken",
+     "ref": "vertra.console.v1.AutomationToken",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.CreateAutomationTokenRequest": {
+  "vertra.console.v1.CreateAutomationTokenRequest": {
    "name": "CreateAutomationTokenRequest",
    "comment": "",
    "fields": [
@@ -3917,7 +4133,7 @@
     }
    ]
   },
-  "acyclix.console.v1.CreateAutomationTokenResponse": {
+  "vertra.console.v1.CreateAutomationTokenResponse": {
    "name": "CreateAutomationTokenResponse",
    "comment": "",
    "fields": [
@@ -3951,7 +4167,7 @@
     }
    ]
   },
-  "acyclix.console.v1.User": {
+  "vertra.console.v1.User": {
    "name": "User",
    "comment": "",
    "fields": [
@@ -3985,26 +4201,26 @@
     }
    ]
   },
-  "acyclix.console.v1.ListUsersRequest": {
+  "vertra.console.v1.ListUsersRequest": {
    "name": "ListUsersRequest",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ListUsersResponse": {
+  "vertra.console.v1.ListUsersResponse": {
    "name": "ListUsersResponse",
    "comment": "",
    "fields": [
     {
      "name": "users",
      "type": "User",
-     "ref": "acyclix.console.v1.User",
+     "ref": "vertra.console.v1.User",
      "repeated": true,
      "optional": false,
      "comment": ""
     }
    ]
   },
-  "acyclix.console.v1.CreateUserRequest": {
+  "vertra.console.v1.CreateUserRequest": {
    "name": "CreateUserRequest",
    "comment": "",
    "fields": [
@@ -4031,7 +4247,7 @@
     }
    ]
   },
-  "acyclix.console.v1.CreateUserResponse": {
+  "vertra.console.v1.CreateUserResponse": {
    "name": "CreateUserResponse",
    "comment": "",
    "fields": [
@@ -4065,7 +4281,7 @@
     }
    ]
   },
-  "acyclix.console.v1.DeleteUserRequest": {
+  "vertra.console.v1.DeleteUserRequest": {
    "name": "DeleteUserRequest",
    "comment": "",
    "fields": [
@@ -4078,12 +4294,12 @@
     }
    ]
   },
-  "acyclix.console.v1.DeleteUserResponse": {
+  "vertra.console.v1.DeleteUserResponse": {
    "name": "DeleteUserResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.SetAdminRequest": {
+  "vertra.console.v1.SetAdminRequest": {
    "name": "SetAdminRequest",
    "comment": "",
    "fields": [
@@ -4103,12 +4319,12 @@
     }
    ]
   },
-  "acyclix.console.v1.SetAdminResponse": {
+  "vertra.console.v1.SetAdminResponse": {
    "name": "SetAdminResponse",
    "comment": "",
    "fields": []
   },
-  "acyclix.console.v1.ResetPasswordRequest": {
+  "vertra.console.v1.ResetPasswordRequest": {
    "name": "ResetPasswordRequest",
    "comment": "",
    "fields": [
@@ -4128,14 +4344,14 @@
     }
    ]
   },
-  "acyclix.console.v1.ResetPasswordResponse": {
+  "vertra.console.v1.ResetPasswordResponse": {
    "name": "ResetPasswordResponse",
    "comment": "",
    "fields": []
   }
  },
  "enums": {
-  "acyclix.console.v1.ExecutionState": {
+  "vertra.console.v1.ExecutionState": {
    "name": "ExecutionState",
    "comment": "",
    "values": [
@@ -4165,7 +4381,7 @@
     }
    ]
   },
-  "acyclix.console.v1.TaskState": {
+  "vertra.console.v1.TaskState": {
    "name": "TaskState",
    "comment": "",
    "values": [
@@ -4203,7 +4419,7 @@
     }
    ]
   },
-  "acyclix.console.v1.ScanStatus": {
+  "vertra.console.v1.ScanStatus": {
    "name": "ScanStatus",
    "comment": "",
    "values": [
@@ -4229,7 +4445,7 @@
     }
    ]
   },
-  "acyclix.console.v1.SecretSource": {
+  "vertra.console.v1.SecretSource": {
    "name": "SecretSource",
    "comment": "",
    "values": [
@@ -4247,7 +4463,7 @@
     }
    ]
   },
-  "acyclix.console.v1.TaskPodState": {
+  "vertra.console.v1.TaskPodState": {
    "name": "TaskPodState",
    "comment": "",
    "values": [

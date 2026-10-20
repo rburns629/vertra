@@ -2,7 +2,7 @@
 
 For a team adding itself, or a new product, to this catalog with the help
 of Claude or another assistant. The procedure itself is this catalog's
-[README](../README.md) and the Acyclix console's "Try Acyclix end to end"
+[README](../README.md) and the Vertra console's "Try Vertra end to end"
 guide; this covers how to use an assistant for it, and what to check.
 
 **In short:** describe what you want; the assistant writes the files, runs
@@ -19,7 +19,7 @@ creates namespaces and publishes images.
    a real action script, its `product.yaml`, and contract tests. If the
    action reads a secret, its `secretRefs` names it exactly as the script
    reads it (`/platform/secrets/<name>/<key>`). Every file starts with
-   `apiVersion: acyclix.dev/v2` and its `kind`, as the templates do.
+   `apiVersion: vertra.dev/v2` and its `kind`, as the templates do.
 2. **Proof it works.** Ask for the output of
    `./catalogctl check teams/<team>/products/<product>`, which
    validates, builds, runs the tests and scans the image. "I wrote a test"
@@ -28,13 +28,14 @@ creates namespaces and publishes images.
    colleague's: what the action calls, what it outputs, what it logs.
 
 Once merged, CI publishes the product (pushes its image as the commit's tag
-and `:latest`, and registers it with the console), and a new team folder
-gets its console team and namespace. A name that's already a team's fails the
-pull request.
+and `:latest`) and the catalog's release, which each Vertra install reads
+within a few minutes: it registers the product, and a new team folder gets
+its console team and namespace. A name already taken by a team the catalog
+didn't make waits for that install's admin to adopt it.
 
 ## What isn't automatic
 
-- **The team's first member**: an Acyclix admin adds them.
+- **The team's first member**: an Vertra admin adds them.
 - **Cloud identity.** A product that calls a cloud API declares a
   `serviceAccount` in `product.yaml`; someone binds that ServiceAccount to
   a cloud identity (GKE Workload Identity, AKS Workload Identity, EKS Pod

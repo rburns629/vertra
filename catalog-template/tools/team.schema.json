@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Acyclix team (team.yaml), format v2",
+  "title": "Vertra team (team.yaml), format v2",
   "description": "One team: a team, its folder catalog/<name>/ and its namespace.",
   "type": "object",
   "additionalProperties": false,
@@ -14,8 +14,8 @@
   ],
   "properties": {
     "apiVersion": {
-      "description": "The catalog format: acyclix.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
-      "const": "acyclix.dev/v2"
+      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "const": "vertra.dev/v2"
     },
     "kind": {
       "description": "What the file is: Team.",

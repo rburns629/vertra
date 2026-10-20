@@ -17,9 +17,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
-	"github.com/rburns629/acyclix/kernel/internal/executor"
-	"github.com/rburns629/acyclix/kernel/internal/metrics"
+	"github.com/rburns629/vertra/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/metrics"
 )
 
 // Options configure a pass.

@@ -140,7 +140,7 @@ export function MembersTab({
               </Box>
               <Box>
                 {m.isAdmin ? (
-                  <Chip label="Acyclix admin" size="small" color="warning" variant="outlined" />
+                  <Chip label="Vertra admin" size="small" color="warning" variant="outlined" />
                 ) : (
                   <Chip label="Member" size="small" variant="outlined" />
                 )}
@@ -235,7 +235,7 @@ function AddPerson({ teamName, onAdded }: { teamName: string; onAdded: () => voi
               onChange={(event) => {
                 setEmail(event.target.value);
               }}
-              helperText="They need a console account first. No account yet? Ask an Acyclix admin to create one; it can join this team straight away."
+              helperText="They need a console account first. No account yet? Ask an Vertra admin to create one; it can join this team straight away."
             />
             <Button type="submit" variant="contained" disabled={submitting} sx={{ alignSelf: "flex-start" }}>
               {submitting ? "Adding…" : `Add to ${teamName}`}

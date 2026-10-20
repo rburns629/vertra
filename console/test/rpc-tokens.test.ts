@@ -58,7 +58,7 @@ describe("a team's bots", () => {
     const [entry] = await db
       .select()
       .from(auditLog)
-      .where(and(eq(auditLog.actorId, member.id), eq(auditLog.route, "acyclix.console.v1.TokenService/CreateBotToken")))
+      .where(and(eq(auditLog.actorId, member.id), eq(auditLog.route, "vertra.console.v1.TokenService/CreateBotToken")))
       .orderBy(desc(auditLog.id))
       .limit(1);
     expect(entry?.target).toMatchObject({ team: team.name, email, label: "ci" });

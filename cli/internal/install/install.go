@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-// Package install installs Acyclix's two Helm releases: the charts from a
+// Package install installs Vertra's two Helm releases: the charts from a
 // source checkout or a release, their images built from source (and loaded
 // onto kind, or pushed to a registry) or the released ones, and the values
-// acyclixctl generates from the config, with the user's own values last.
+// vertra generates from the config, with the user's own values last.
 package install
 
 import (
@@ -17,10 +17,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/rburns629/acyclix/cli/internal/cluster"
-	"github.com/rburns629/acyclix/cli/internal/config"
-	"github.com/rburns629/acyclix/cli/internal/gcp"
-	"github.com/rburns629/acyclix/cli/internal/run"
+	"github.com/rburns629/vertra/cli/internal/cluster"
+	"github.com/rburns629/vertra/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/gcp"
+	"github.com/rburns629/vertra/cli/internal/run"
 )
 
 // Cloud is what a cloud target's OpenTofu module made, for the values.
@@ -68,7 +68,7 @@ func ConsoleHostname(c *config.Config, ip string) string {
 }
 
 // certificateName is the console's Google-managed certificate.
-const certificateName = "acyclix-console"
+const certificateName = "vertra-console"
 
 // EnsureCertificate creates (or updates) the Google-managed certificate for
 // the console's hostname. Google issues it once the name resolves to the
@@ -80,7 +80,7 @@ metadata:
   name: %s
   namespace: %s
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
 spec:
   domains: [%q]
 `, certificateName, c.Namespace, host)
@@ -98,7 +98,7 @@ func CertificateStatus(ctx context.Context, r *run.Runner, c *config.Config) str
 // BackupServiceAccountName is the Kubernetes ServiceAccount the database
 // backups run as (the kernel chart's backup.serviceAccountName), bound to
 // the module's backup identity.
-const BackupServiceAccountName = "acyclix-pg-backup"
+const BackupServiceAccountName = "vertra-pg-backup"
 
 // Release names: fixed, so the console finds kernel-api's Service and the
 // database Secret by name.
@@ -106,7 +106,7 @@ const (
 	KernelRelease  = "kernel"
 	ConsoleRelease = "console"
 	// ReleaseCharts is where released charts are published.
-	ReleaseCharts = "oci://ghcr.io/rburns629/acyclix/charts"
+	ReleaseCharts = "oci://ghcr.io/rburns629/vertra/charts"
 )
 
 // Chart is a chart's local directory (Dir), from a source checkout or, for
@@ -122,13 +122,13 @@ type Chart struct {
 // Charts returns the kernel and console charts for a config; dir is the
 // environment's directory.
 func Charts(c *config.Config, dir string) (kernel, console Chart) {
-	if c.Acyclix == "source" {
+	if c.Vertra == "source" {
 		return Chart{Dir: filepath.Join(c.Source, "helm", "charts", "execution-kernel")},
 			Chart{Dir: filepath.Join(c.Source, "helm", "charts", "execution-console")}
 	}
-	pulled := filepath.Join(dir, "charts", c.Acyclix)
-	return Chart{Dir: filepath.Join(pulled, "execution-kernel"), Remote: ReleaseCharts + "/execution-kernel", Version: c.Acyclix},
-		Chart{Dir: filepath.Join(pulled, "execution-console"), Remote: ReleaseCharts + "/execution-console", Version: c.Acyclix}
+	pulled := filepath.Join(dir, "charts", c.Vertra)
+	return Chart{Dir: filepath.Join(pulled, "execution-kernel"), Remote: ReleaseCharts + "/execution-kernel", Version: c.Vertra},
+		Chart{Dir: filepath.Join(pulled, "execution-console"), Remote: ReleaseCharts + "/execution-console", Version: c.Vertra}
 }
 
 // Pull fetches a released chart into its Dir, once per version.
@@ -162,7 +162,7 @@ type Images struct {
 // ImagesFor decides the platform images; a source build gets a fresh tag,
 // so each apply rolls the Pods onto what it just built.
 func ImagesFor(c *config.Config, now time.Time) Images {
-	if c.Acyclix != "source" {
+	if c.Vertra != "source" {
 		return Images{}
 	}
 	tag := "src-" + now.UTC().Format("20060102-150405")
@@ -234,7 +234,7 @@ func IdleMinutes(c *config.Config) int {
 	return max(1, int(d.Minutes()))
 }
 
-// KernelValues are the values acyclixctl generates for the kernel chart.
+// KernelValues are the values vertra generates for the kernel chart.
 // volume, when set, is the database volume's current size: kept, since a
 // volume can't shrink and kind's can't grow.
 func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map[string]any {
@@ -284,7 +284,7 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 	return v
 }
 
-// ConsoleValues are the values acyclixctl generates for the console chart.
+// ConsoleValues are the values vertra generates for the console chart.
 func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[string]any {
 	v := map[string]any{
 		"kernelApiUrl":     fmt.Sprintf("http://%s-execution-kernel-api.%s.svc.cluster.local:8000", KernelRelease, c.Namespace),
@@ -315,7 +315,7 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 			v["ingress"] = map[string]any{
 				"enabled":   true,
 				"host":      cloud.ConsoleHost,
-				"className": "acyclix-alb",
+				"className": "vertra-alb",
 				"annotations": map[string]any{
 					"alb.ingress.kubernetes.io/certificate-arn":  cloud.ConsoleCertificate,
 					"alb.ingress.kubernetes.io/listen-ports":     `[{"HTTPS":443}]`,
@@ -356,6 +356,11 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 			v["trustProxy"] = append(append([]string{}, googleFrontEnds...), cloud.ConsoleIP)
 		}
 	}
+	if cloud != nil && c.Catalog.Repo() != "" {
+		// The catalog's release, which its CI pushes beside the images and
+		// the console reads (unsigned: vertra's catalogs sign nothing yet).
+		v["catalog"] = map[string]any{"release": cloud.TaskRegistry + "/catalog-release:latest"}
+	}
 	if img.Console != "" {
 		v["image"] = map[string]any{"repository": img.Console, "tag": img.Tag}
 	}
@@ -376,7 +381,7 @@ metadata:
   name: %s
   namespace: %s
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
 %sautomountServiceAccountToken: false
 `, BackupServiceAccountName, c.Namespace, annotations)
 	return r.RunInput(ctx, manifest, "kubectl", "--context", cluster.Context(c), "apply", "-f", "-")
@@ -418,7 +423,7 @@ func WriteValues(dir, name string, values map[string]any) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
-	header := "# Written by acyclixctl apply from acyclix.yaml; changes here are overwritten.\n"
+	header := "# Written by vertra apply from vertra.yaml; changes here are overwritten.\n"
 	return path, os.WriteFile(path, append([]byte(header), data...), 0o644)
 }
 
@@ -435,12 +440,12 @@ func Upgrade(ctx context.Context, r *run.Runner, c *config.Config, dir, release 
 		"upgrade", "--install", release, chart.Dir,
 		"--kube-context", cluster.Context(c), "--namespace", c.Namespace,
 		"--reset-values", "--timeout", "10m",
-		// Lowest first: the size preset, what acyclixctl generates, yours.
+		// Lowest first: the size preset, what vertra generates, yours.
 		"-f", SizeValues(chart, c.Size),
 		"-f", generated,
 		// Others own fields Helm sets under server-side apply: the console
 		// edits the kernel's image and identity policies, and sleep, wake and
-		// the scanner's idling set replica counts. acyclixctl's values win.
+		// the scanner's idling set replica counts. vertra's values win.
 		"--force-conflicts",
 	}
 	if !fresh {

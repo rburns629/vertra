@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: MIT
 
 // catalogctl validates, builds, tests, scans and publishes a catalog's
-// products, and manages its teams and SecretStores through the console. A
+// products, and releases the catalog for each install's console to pull. A
 // catalog runs it through its ./catalogctl wrapper, which downloads this
-// binary (pinned, checksum-verified); see cli/DESIGN.md.
+// binary (pinned, checksum-verified); see cli/DESIGN.md. It never calls a
+// console: each console reads the release and applies it.
 //
 //	catalogctl validate [PRODUCT ...]   product.yaml and team.yaml, tests present
 //	catalogctl check    [PRODUCT ...]   validate, build, test and scan: what a PR runs
-//	catalogctl publish  [PRODUCT ...]   check, then push, sign and register
+//	catalogctl publish  [PRODUCT ...]   check, then push and sign
+//	catalogctl release                  push and sign the catalog's release: every team,
+//	                                    SecretStore and product, as of this commit
 //	catalogctl changed  --base REF      the products changed since REF, as JSON
 //
-//	catalogctl teams apply [TEAM ...] [--changed REF]   make each team exist and be active
-//	catalogctl teams retire [TEAM ...] [--removed-since REF]
-//	catalogctl teams purge TEAM                         irreversible; the folder must be gone
-//	catalogctl teams changed --base REF                 teams changed since REF, as JSON
 //	catalogctl secret-stores check [TEAM ...]
-//	catalogctl secret-stores apply [TEAM ...]           BOOTSTRAP_CREDENTIAL: a stored credential
-//	catalogctl bases [--update]                         pin every Dockerfile's FROM to its digest
-//	catalogctl migrate                                  rewrite a catalog from before format v2
+//	catalogctl bases [--update]         pin every Dockerfile's FROM to its digest
+//	catalogctl migrate                  rewrite a catalog from before format v2 or the rename
 package main
 
 import (
@@ -31,7 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rburns629/acyclix/cli/internal/catalogctl"
+	"github.com/rburns629/vertra/cli/internal/catalogctl"
 )
 
 // Version is set at build time (-ldflags "-X main.Version=…").
@@ -94,7 +92,7 @@ func newRoot() *cobra.Command {
 	for _, name := range []string{"validate", "check", "publish"} {
 		root.AddCommand(productsCmd(name))
 	}
-	root.AddCommand(changedCmd(), teamsCmd(), secretStoresCmd(), basesCmd(), migrateCmd())
+	root.AddCommand(changedCmd(), secretStoresCmd(), releaseCmd(), basesCmd(), migrateCmd())
 	return root
 }
 
@@ -143,106 +141,8 @@ func changedCmd() *cobra.Command {
 	return cmd
 }
 
-func teamsCmd() *cobra.Command {
-	teams := &cobra.Command{Use: "teams", Short: "make teams exist, retire and purge them, through the console"}
-
-	var changed string
-	apply := &cobra.Command{
-		Use:   "apply [TEAM ...]",
-		Short: "make each team exist and be active, with its namespace",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := catalog()
-			if err != nil {
-				return err
-			}
-			names := args
-			if len(names) == 0 {
-				names = c.TeamsChanged(changed)
-			}
-			if len(names) == 0 {
-				fmt.Println("No teams to apply.")
-				return nil
-			}
-			console, err := c.TeamsConsole(cmd.Context())
-			if err != nil {
-				return err
-			}
-			return result(c.TeamsApply(cmd.Context(), names, console), nil)
-		},
-	}
-	apply.Flags().StringVar(&changed, "changed", "", "the teams changed since `REF` (default: all)")
-
-	var removedSince string
-	retire := &cobra.Command{
-		Use:   "retire [TEAM ...]",
-		Short: "retire teams whose folders are gone (reversible)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := catalog()
-			if err != nil {
-				return err
-			}
-			names := args
-			if len(names) == 0 {
-				names = c.TeamsRemoved(removedSince)
-			}
-			if len(names) == 0 {
-				fmt.Println("No teams to retire.")
-				return nil
-			}
-			console, err := c.TeamsConsole(cmd.Context())
-			if err != nil {
-				return err
-			}
-			return result(c.TeamsRetire(cmd.Context(), names, console), nil)
-		},
-	}
-	retire.Flags().StringVar(&removedSince, "removed-since", "", "the teams whose folder was removed since `REF`")
-
-	purge := &cobra.Command{
-		Use:   "purge TEAM",
-		Short: "purge a retired team for good (irreversible; its folder must be gone)",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := catalog()
-			if err != nil {
-				return err
-			}
-			console, err := c.TeamsConsole(cmd.Context())
-			if err != nil {
-				return err
-			}
-			return result(c.TeamsPurge(cmd.Context(), args[0], console), nil)
-		},
-	}
-
-	var base string
-	changedTeams := &cobra.Command{
-		Use:   "changed --base REF",
-		Short: "the teams changed since REF, as JSON",
-		Args:  cobra.NoArgs,
-		RunE: func(*cobra.Command, []string) error {
-			c, err := catalog()
-			if err != nil {
-				return err
-			}
-			return printJSON(c.TeamsChanged(base))
-		},
-	}
-	changedTeams.Flags().StringVar(&base, "base", "", "the `REF` to compare with")
-	_ = changedTeams.MarkFlagRequired("base")
-
-	teams.AddCommand(apply, retire, purge, changedTeams)
-	return teams
-}
-
 func secretStoresCmd() *cobra.Command {
-	stores := &cobra.Command{Use: "secret-stores", Short: "check and apply teams' SecretStore files"}
-	selected := func(c *catalogctl.Catalog, args []string) []string {
-		if len(args) > 0 {
-			return args
-		}
-		return c.SecretStoreTeams()
-	}
+	stores := &cobra.Command{Use: "secret-stores", Short: "check teams' SecretStore files (a release carries them to each install)"}
 	stores.AddCommand(&cobra.Command{
 		Use:   "check [TEAM ...]",
 		Short: "check teams' SecretStore files",
@@ -251,24 +151,29 @@ func secretStoresCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return result(c.SecretStoresCheck(selected(c, args)), nil)
+			teams := args
+			if len(teams) == 0 {
+				teams = c.SecretStoreTeams()
+			}
+			return result(c.SecretStoresCheck(teams), nil)
 		},
-	}, &cobra.Command{
-		Use:   "apply [TEAM ...]",
-		Short: "check, then have the console apply, teams' SecretStores (BOOTSTRAP_CREDENTIAL: a stored credential)",
-		RunE: func(cmd *cobra.Command, args []string) error {
+	})
+	return stores
+}
+
+func releaseCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "release",
+		Short: "push and sign the catalog's release (every team and product, as of this commit) for each install to pull",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			c, err := catalog()
 			if err != nil {
 				return err
 			}
-			console, err := c.TeamsConsole(cmd.Context())
-			if err != nil {
-				return err
-			}
-			return result(c.SecretStoresApply(cmd.Context(), selected(c, args), os.Getenv("BOOTSTRAP_CREDENTIAL"), console))
+			return result(c.Release(cmd.Context()))
 		},
-	})
-	return stores
+	}
 }
 
 func basesCmd() *cobra.Command {
@@ -292,7 +197,7 @@ func basesCmd() *cobra.Command {
 func migrateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "migrate",
-		Short: "rewrite a catalog from before format v2 (adds apiVersion and kind; requiredSecrets becomes secretRefs)",
+		Short: "rewrite an older catalog: from before format v2 (adds apiVersion and kind; requiredSecrets becomes secretRefs), or from before the rename to Vertra",
 		Args:  cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
 			c, err := catalog()

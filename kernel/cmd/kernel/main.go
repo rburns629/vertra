@@ -34,14 +34,14 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/rburns629/acyclix/kernel/internal/api"
-	"github.com/rburns629/acyclix/kernel/internal/config"
-	"github.com/rburns629/acyclix/kernel/internal/executor"
-	"github.com/rburns629/acyclix/kernel/internal/logging"
-	"github.com/rburns629/acyclix/kernel/internal/metrics"
-	"github.com/rburns629/acyclix/kernel/internal/migrate"
-	"github.com/rburns629/acyclix/kernel/internal/scheduler"
-	"github.com/rburns629/acyclix/kernel/internal/sleeper"
+	"github.com/rburns629/vertra/kernel/internal/api"
+	"github.com/rburns629/vertra/kernel/internal/config"
+	"github.com/rburns629/vertra/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/logging"
+	"github.com/rburns629/vertra/kernel/internal/metrics"
+	"github.com/rburns629/vertra/kernel/internal/migrate"
+	"github.com/rburns629/vertra/kernel/internal/scheduler"
+	"github.com/rburns629/vertra/kernel/internal/sleeper"
 )
 
 const usage = `usage: kernel api | scheduler | migrate | sleep [--now] | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`

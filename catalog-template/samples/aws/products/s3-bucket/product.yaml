@@ -1,6 +1,6 @@
 # A sample: S3 bucket, with real AWS API calls (billed).
 # Its own IAM role, by EKS Pod Identity: see the aws team's README.md.
-apiVersion: acyclix.dev/v2
+apiVersion: vertra.dev/v2
 kind: Product
 name: s3-bucket
 team: aws

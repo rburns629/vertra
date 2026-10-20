@@ -7,11 +7,11 @@
 # so nothing is created, made as the identity the policy guards (impersonated).
 #
 # Renders the policies under their own release name, "policytest", so they
-# only ever match that release's (impersonated) identities: an Acyclix
+# only ever match that release's (impersonated) identities: an Vertra
 # install on the same cluster is unaffected. Removes everything it added.
 #
 #   bash helm/tests/admission-policies.sh            # kubectl's current context
-#   KUBE_CONTEXT=kind-acyclix-local bash helm/tests/admission-policies.sh
+#   KUBE_CONTEXT=kind-vertra-local bash helm/tests/admission-policies.sh
 #
 # Needs kubectl, helm, python3, and a cluster with ValidatingAdmissionPolicy
 # (Kubernetes 1.30+) where you may impersonate ServiceAccounts.
@@ -76,8 +76,8 @@ done
 for ns in "$PLATFORM_NS" "$TEAM_A" "$TEAM_B" "$OTHER_NS" "$RETIRED_NS"; do
   k create namespace "$ns" --dry-run=client -o yaml | k apply -f - > /dev/null
 done
-k label namespace "$TEAM_A" "$TEAM_B" acyclix/team=true --overwrite > /dev/null
-k label namespace "$RETIRED_NS" acyclix/team=retired --overwrite > /dev/null
+k label namespace "$TEAM_A" "$TEAM_B" vertra/team=true --overwrite > /dev/null
+k label namespace "$RETIRED_NS" vertra/team=retired --overwrite > /dev/null
 for sa in eso-gcp db-sa; do
   k -n "$TEAM_A" create serviceaccount "$sa" --dry-run=client -o yaml | k apply -f - > /dev/null
 done
@@ -169,14 +169,14 @@ expect() {  # label, "allowed" | text the refusal must contain, output
 
 # Policies take a few seconds to reach the API server's admission chain.
 for _ in $(seq 1 30); do
-  job "$OTHER_NS" $SOURCE/app:1 run default "" | grep -q "not an Acyclix team namespace" && break
+  job "$OTHER_NS" $SOURCE/app:1 run default "" | grep -q "not an Vertra team namespace" && break
   sleep 1
 done
 
 echo "Dispatch:"
 expect "a team namespace"                     allowed                        "$(job "$TEAM_A" $SOURCE/app:1 run default "")"
-expect "a namespace without the team label"   "not an Acyclix team namespace" "$(job "$OTHER_NS" $SOURCE/app:1 run default "")"
-expect "the platform's own namespace"         "not an Acyclix team namespace" "$(job "$PLATFORM_NS" $SOURCE/app:1 run default "")"
+expect "a namespace without the team label"   "not an Vertra team namespace" "$(job "$OTHER_NS" $SOURCE/app:1 run default "")"
+expect "the platform's own namespace"         "not an Vertra team namespace" "$(job "$PLATFORM_NS" $SOURCE/app:1 run default "")"
 
 echo "Image sources:"
 expect "an image from another registry"       IMAGE_NOT_ALLOWED              "$(job "$TEAM_A" busybox:1.36 run default "")"
@@ -206,13 +206,13 @@ expect "a Secret in kube-system"                 "may only write in team"    "$(
 expect "a Secret in the platform's namespace"    "may only write in team"    "$(secret "$PLATFORM_NS")"
 
 echo "Console namespaces:"
-expect "create one labelled a team's"            allowed                      "$(new_namespace $RELEASE-new '{"acyclix/team":"true"}')"
+expect "create one labelled a team's"            allowed                      "$(new_namespace $RELEASE-new '{"vertra/team":"true"}')"
 expect "create one without the label"            "only create a namespace"    "$(new_namespace $RELEASE-plain '{}')"
-expect "create a kube-* one"                     "protected"                  "$(new_namespace kube-$RELEASE '{"acyclix/team":"true"}')"
-expect "retire a team's"                         allowed                      "$(as_console label namespace "$TEAM_A" acyclix/team=retired --overwrite)"
-expect "label a namespace that isn't a team's"   "isn't a team's"             "$(as_console label namespace "$OTHER_NS" acyclix/team=true)"
-expect "label the platform's own"                "protected"                  "$(as_console label namespace "$PLATFORM_NS" acyclix/team=true)"
-expect "a label value other than true/retired"   "isn't a team's"             "$(as_console label namespace "$TEAM_A" acyclix/team=yes --overwrite)"
+expect "create a kube-* one"                     "protected"                  "$(new_namespace kube-$RELEASE '{"vertra/team":"true"}')"
+expect "retire a team's"                         allowed                      "$(as_console label namespace "$TEAM_A" vertra/team=retired --overwrite)"
+expect "label a namespace that isn't a team's"   "isn't a team's"             "$(as_console label namespace "$OTHER_NS" vertra/team=true)"
+expect "label the platform's own"                "protected"                  "$(as_console label namespace "$PLATFORM_NS" vertra/team=true)"
+expect "a label value other than true/retired"   "isn't a team's"             "$(as_console label namespace "$TEAM_A" vertra/team=yes --overwrite)"
 expect "change another label too"                "isn't a team's"             "$(as_console label namespace "$TEAM_A" other=1)"
 expect "change an annotation"                    "isn't a team's"             "$(as_console annotate namespace "$TEAM_A" note=1)"
 

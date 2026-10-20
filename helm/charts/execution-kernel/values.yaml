@@ -3,7 +3,7 @@
 image:
   # -- The released images (built, scanned and signed by the release
   # workflow). Local installs set their own (helm/values/kind/).
-  repository: ghcr.io/rburns629/acyclix/execution-kernel
+  repository: ghcr.io/rburns629/vertra/execution-kernel
   # -- Defaults to the chart's appVersion: the image released with it.
   tag: ""
   # -- Pin by digest ("sha256:…") so what runs can't change under a moved tag.
@@ -39,13 +39,13 @@ rbac:
 # "true", and never into the namespace this release is installed in (see
 # templates/dispatch-policy.yaml). The scheduler's ClusterRole above can
 # create Jobs anywhere; this is what narrows "anywhere" to "team namespaces".
-# Label a namespace when its team is onboarded (the catalog's
-# apply-teams.yml does this for catalog platforms), e.g.
-#   kubectl label namespace <team> acyclix/team=true
+# Label a namespace when its team is onboarded (the console does this for
+# every team it creates, catalog teams included), e.g.
+#   kubectl label namespace <team> vertra/team=true
 # Requires Kubernetes 1.30+ (ValidatingAdmissionPolicy).
 dispatchPolicy:
   enabled: true
-  teamNamespaceLabel: acyclix/team
+  teamNamespaceLabel: vertra/team
   # -- Transitional escape hatch for an install that still shares its
   # namespace with a team: the platform installed into `default`, which is
   # also the admins' own team namespace (admins manage everyone's
@@ -54,7 +54,7 @@ dispatchPolicy:
   # rule still applies. It knowingly leaves one gap: tasks in that
   # namespace run alongside the platform's own ServiceAccounts and
   # Postgres. Leave false for any install in its own namespace (e.g.
-  # acyclix-system); set true only until such an install is migrated.
+  # vertra-system); set true only until such an install is migrated.
   allowReleaseNamespace: false
 
 # -- Purging a retired platform's namespace (see templates/purge-policy.yaml).
@@ -96,7 +96,7 @@ imageSignature:
   # any publicKeys. For GitHub Actions: issuer
   # https://token.actions.githubusercontent.com, and a subject matching the
   # catalog's publish workflow on main, e.g.
-  # ^https://github\.com/my-org/acyclix-catalog/\.github/workflows/ci\.yml@refs/heads/main$
+  # ^https://github\.com/my-org/vertra-catalog/\.github/workflows/ci\.yml@refs/heads/main$
   keyless:
     issuer: ""
     subjectRegExp: ""
@@ -123,8 +123,8 @@ scanPolicy:
   requireDigest: true
 
 # A platform's lifecycle is carried by the same label dispatchPolicy reads:
-#   acyclix/team=true     active: tasks may be dispatched there
-#   acyclix/team=retired  retired: dispatch blocked; eligible for purge
+#   vertra/team=true     active: tasks may be dispatched there
+#   vertra/team=retired  retired: dispatch blocked; eligible for purge
 # `purgers` get a ClusterRole to delete namespaces, and an admission policy
 # limits them to namespaces labelled `retired` that aren't protected
 # (default, kube-*, this release's namespace, and protectedNamespaces).
@@ -133,7 +133,7 @@ scanPolicy:
 purgePolicy:
   enabled: true
   # e.g. [{kind: User, name: "catalog-purge-ci@<project>.iam.gserviceaccount.com"}]
-  #   or [{kind: ServiceAccount, name: acyclix-purger, namespace: acyclix-system}]
+  #   or [{kind: ServiceAccount, name: vertra-purger, namespace: vertra-system}]
   purgers: []
   # Anything else that must never be purged, e.g. [external-secrets].
   protectedNamespaces: []
@@ -160,7 +160,7 @@ api:
   # reach kernel-api could then submit work for any team.
   auth:
     enabled: true
-    audience: acyclix-kernel-api
+    audience: vertra-kernel-api
     allowedServiceAccounts:
       - name: console-execution-console
   # -- Explicit, because without them GKE Autopilot assigns 500m CPU and
@@ -221,7 +221,7 @@ scheduler:
   # The scheduler is restarted when its loop hasn't come round for this
   # long (a hung pass). Well above a slow pass plus pollIntervalSeconds.
   livenessSeconds: 120
-  heartbeatFile: /tmp/acyclix-scheduler-heartbeat
+  heartbeatFile: /tmp/vertra-scheduler-heartbeat
   # A running step whose Job and Pod haven't changed isn't re-read from the
   # API, except this often, in case a watch event was missed.
   watchResyncSeconds: 30
@@ -265,7 +265,7 @@ scheduler:
   # To prefer Spot but fall back to regular nodes, use a preferred
   # nodeAffinity on the same label instead of the nodeSelector.
   # -- The imagePullSecret every step Pod names, for images in private
-  # registries: `acyclix-pull` when the console chart's
+  # registries: `vertra-pull` when the console chart's
   # registryCheck.copyToTeams is on (it keeps that Secret in every team
   # namespace). Empty: none.
   taskImagePullSecret: ""
@@ -285,7 +285,7 @@ scheduler:
 # minutes and, after idleAfterMinutes with no execution unfinished or
 # finished, nobody using the console (its activity ConfigMap) and kernel-api
 # not restarted, scales the platform's Deployments (both releases') to zero,
-# the databases last. Volumes stay. `acyclixctl wake` brings it back (or
+# the databases last. Volumes stay. `vertra wake` brings it back (or
 # scale them up yourself: the copies to wake to are in the
 # <release>-execution-kernel-sleep ConfigMap). While asleep the console and
 # kernel-api don't answer: catalog CI and automation fail until it's woken.
@@ -416,7 +416,7 @@ backup:
   # destination (GKE Workload Identity, EKS Pod Identity or IRSA, AKS
   # Workload Identity). Not created here: the console chart's backup can
   # share it. Unused for pvc.
-  serviceAccountName: "acyclix-pg-backup"
+  serviceAccountName: "vertra-pg-backup"
   gcs:
     # -- Bucket name, no gs://. The identity needs roles/storage.objectCreator
     # and roles/storage.objectViewer on it (gsutil reads before writing).

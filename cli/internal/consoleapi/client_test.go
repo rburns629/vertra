@@ -14,11 +14,11 @@ import (
 
 	"connectrpc.com/connect"
 
-	consolev1 "github.com/rburns629/acyclix/cli/internal/gen/acyclix/console/v1"
-	"github.com/rburns629/acyclix/cli/internal/gen/acyclix/console/v1/consolev1connect"
+	consolev1 "github.com/rburns629/vertra/cli/internal/gen/vertra/console/v1"
+	"github.com/rburns629/vertra/cli/internal/gen/vertra/console/v1/consolev1connect"
 )
 
-// fakeConsole answers the calls acyclixctl makes, recording what it was sent.
+// fakeConsole answers the calls vertra makes, recording what it was sent.
 type fakeConsole struct {
 	consolev1connect.UnimplementedAuthServiceHandler
 	consolev1connect.UnimplementedTokenServiceHandler

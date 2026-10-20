@@ -1,6 +1,6 @@
-# Getting AWS ready for Acyclix
+# Getting AWS ready for Vertra
 
-What only the AWS website can do, before `acyclixctl init`. `init` checks
+What only the AWS website can do, before `vertra init`. `init` checks
 the rest itself (who you're signed in as, which regions answer, budgets) and
 links back here when something needs fixing.
 
@@ -13,13 +13,13 @@ phone check are part of it), and that has a 12-digit account ID.
 - **Not an AWS account:** an *AWS Builder ID* ("Sign in with Google", used for
   Amazon Q, Kiro, re:Post or Skill Builder). It has no account ID and can't
   create anything.
-- **A dedicated account is safest:** Acyclix creates a cluster, a network,
+- **A dedicated account is safest:** Vertra creates a cluster, a network,
   roles and buckets; an account of its own (or a member account of your
   organization) keeps that apart from anything else.
 - **Already in an organization?** Some sign-up flows put a new account in an
   AWS Organization with guardrails (service control policies). That's fine:
   `init` shows which regions the policies allow. An account's *management*
-  account is better left for billing and organization settings; put Acyclix
+  account is better left for billing and organization settings; put Vertra
   in a member account.
 
 ## Protect the root user
@@ -36,14 +36,14 @@ always. Use it only for account settings.
 
 Billing and Cost Management → **Budgets** → **Create budget** → **Monthly
 cost budget** (or *Zero spend*), with your email. `init` offers to create one
-in the account Acyclix uses if it has none.
+in the account Vertra uses if it has none.
 
 ## An IAM user
 
 For one person, an IAM user with console access is the simplest way to sign
 the CLI in, with no keys on disk (`aws login`):
 
-1. As root (or an administrator) in the account Acyclix will use: **IAM** →
+1. As root (or an administrator) in the account Vertra will use: **IAM** →
    **Users** → **Create user**, e.g. `rburns`.
 2. Tick **Provide user access to the AWS Management Console** → *I want to
    create an IAM user* → set a password.
@@ -60,11 +60,11 @@ sign in with `aws configure sso`.
 ## Sign in
 
 ```
-aws login --profile acyclix          # an IAM user: opens your browser
-aws configure sso --profile acyclix  # Identity Center
+aws login --profile vertra          # an IAM user: opens your browser
+aws configure sso --profile vertra  # Identity Center
 ```
 
-`acyclixctl init` offers to run the first for you. It refuses root.
+`vertra init` offers to run the first for you. It refuses root.
 
 ## Regions
 
@@ -73,4 +73,4 @@ offers those that do. If your organization's policy allows only some (a
 region restriction), pick one of them, or have the organization's
 management account allow another (AWS Organizations → Policies → Service
 control policies). us-east-2 costs the same as us-east-1 for everything
-Acyclix uses.
+Vertra uses.

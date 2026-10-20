@@ -1,7 +1,7 @@
-# execution-kernel on GKE `acyclix-gke` (release `kernel`, namespace
-# default; a new install uses its own, acyclix-system):
+# execution-kernel on GKE `vertra-gke` (release `kernel`, namespace
+# default; a new install uses its own, vertra-system):
 #   helm upgrade --install kernel helm/charts/execution-kernel -n default \
-#     --kube-context gke_my-gcp-project_us-central1_acyclix-gke \
+#     --kube-context gke_my-gcp-project_us-central1_vertra-gke \
 #     -f helm/values/gke/kernel.yaml
 image:
   repository: us-central1-docker.pkg.dev/my-gcp-project/platform-images/execution-kernel
@@ -10,7 +10,7 @@ image:
 backup:
   enabled: false
 # Only because this install runs the platform in `default`, which is also
-# an admins' team namespace. A new install in acyclix-system drops this.
+# an admins' team namespace. A new install in vertra-system drops this.
 dispatchPolicy:
   allowReleaseNamespace: true
 # Where catalog CI publishes product images. The image policy seeds from

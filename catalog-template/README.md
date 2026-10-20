@@ -1,10 +1,12 @@
 # Catalog
 
-Where teams declare what they offer to Acyclix. Each team has a
+Where teams declare what they offer to Vertra. Each team has a
 folder; each of its products is a container image plus a `product.yaml`
 saying what its actions take, return and need. Open a pull request and CI
-builds, tests and scans it; merge it and the image is pushed and the product
-registered with the Acyclix console.
+builds, tests and scans it; merge it and the image is pushed, and the
+catalog's release names it. Each Vertra install's console reads that release
+and registers what it says: CI never calls a console, and one catalog can serve
+any number of installs.
 
 CI runs one tool, `./catalogctl` (the platform's catalogctl, at the release
 pinned in that file, downloaded and checksum-verified on first use), and so
@@ -29,7 +31,7 @@ A copied product's `team:` must be changed to its new team's name.
 ## Layout
 
 ```
-acyclix.yaml                  where products publish: registry, console, signing
+vertra.yaml                  where products publish: registry, signing
 catalogctl                    runs the pinned catalogctl (downloaded into .catalogctl/)
 tools/                        the schemas of every catalog file (format v2), for editors
 templates/                    starters to copy (checked by CI, never published)
@@ -63,10 +65,11 @@ merging the team's folder. So: team, access, secrets, then code.
    [templates/team](templates/team/team.yaml)) and its line in
    [.github/CODEOWNERS](.github/CODEOWNERS), with the other teams':
    `/teams/<team>/ @<org>/<github-team>`. Catalog admins approve it. On
-   merge, `apply-teams.yml` has the console create the team and its
-   namespace. A name that's already a team's, or ever was, fails the pull
-   request (`check-new-team-names.yml`).
-2. **Get access.** An Acyclix admin creates your console account and adds
+   merge, the next release names the team, and each install's console
+   creates it and its namespace. A name that ever was a purged team's is
+   refused there, and so is one already taken by a team the catalog didn't
+   make, until that install's admin adopts it (Admin page → Catalog).
+2. **Get access.** An Vertra admin creates your console account and adds
    you to the team; after that, members add each other.
 3. **Register secrets**, in the console (Team page → Secrets): paste a value,
    or sync from a vault once your team has a SecretStore (below). Note each
@@ -86,7 +89,7 @@ says what to ask for and what to check.
 ## `product.yaml`
 
 ```yaml
-apiVersion: acyclix.dev/v2  # the catalog format: every file starts with these two
+apiVersion: vertra.dev/v2  # the catalog format: every file starts with these two
 kind: Product
 name: project               # the folder's name
 team: gcp               # the team folder's name
@@ -217,7 +220,7 @@ An accepted finding gets its exception where it applies, with the reason, so
 the pull request's review decides: a vulnerability ID in the product's
 `.trivyignore`, or `# nosemgrep: <rule>` on the line. Every product is
 rechecked each Monday, since new vulnerabilities are published against old
-images; the Acyclix console also rescans images in use daily and refuses ones
+images; the Vertra console also rescans images in use daily and refuses ones
 that fail.
 
 ## Who approves what
@@ -225,7 +228,7 @@ that fail.
 [.github/CODEOWNERS](.github/CODEOWNERS), with branch protection on `main`
 requiring a code owner's review: the catalog admins own everything by
 default, each team's owners own `/teams/<team>/`, and the admins
-own, last so nothing overrides them, `.github/`, `tools/`, `acyclix.yaml`,
+own, last so nothing overrides them, `.github/`, `tools/`, `vertra.yaml`,
 `catalogctl`, `templates/` and every `/teams/*/secret-stores/`. A
 team ships its own products, but can't change how CI builds and
 publishes, take another team's folder, add a team, or change what
@@ -236,30 +239,34 @@ vault its namespace can read. `./catalogctl validate` checks this layout, and
 
 `./catalogctl publish` checks each product, then pushes its image tagged with
 the commit (or the time, from a laptop) and `:latest`, signs it if the
-catalog signs, and registers each action with the console as
-`<team>-<product>-<action>`, pinned by digest. In CI, pull requests run
-`check` on the changed products and a merge to `main` runs `publish` on them,
-in the `catalog-publish` Environment (`main` only). Settings are in
-[acyclix.yaml](acyclix.yaml), each overridable by an environment variable:
+catalog signs. `./catalogctl release` then pushes the catalog's release to
+`<registry>/catalog-release` (tagged with the commit and `latest`) and signs it
+the same way: every team, its SecretStore files, and every action as
+`<team>-<product>-<action>`, its image pinned by digest. It's complete, not a
+change: an install unregisters what a release no longer has, and retires a
+team whose folder is gone. Each console reads it every few minutes (an admin
+can press **Sync now**), verifies its signature, and applies it.
+
+In CI, pull requests run `check` on the changed products, and a merge to
+`main` runs `publish` on them and then `release`, one run at a time, in the
+`catalog-publish` Environment (`main` only). Settings are in
+[vertra.yaml](vertra.yaml), each overridable by an environment variable:
 
 | Name | Kind | What |
 |---|---|---|
-| `ACYCLIX_REGISTRY` | variable | where images go, such as `us-docker.pkg.dev/my-project/catalog` |
-| `ACYCLIX_CONSOLE_URL` | variable | the console |
-| `ACYCLIX_TOKEN` | secret | the console automation token: `products:register`, `teams:create`, `teams:retire`, `secret-stores:apply` |
-| `ACYCLIX_SIGNING_MODE`, `ACYCLIX_SIGNING_KEY` | variables | `none`, `key` (a key pair or cloud KMS key) or `keyless` |
+| `VERTRA_REGISTRY` | variable | where images and releases go, such as `us-docker.pkg.dev/my-project/catalog` |
+| `VERTRA_SIGNING_MODE`, `VERTRA_SIGNING_KEY` | variables | `none`, `key` (a key pair or cloud KMS key) or `keyless` |
 | `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` | secrets | a generated signing key |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER`, `PUBLISH_GCP_SERVICE_ACCOUNT` | variables | sign in to Artifact Registry through OIDC |
 | `AWS_ROLE_ARN`, `AWS_REGION` | variables | or to ECR through OIDC (a role that may push under the registry's prefix) |
 | `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` | variable / secret | or a username and password |
 
-An Acyclix admin mints the token on the console's Admin page; it belongs to
-no team and can't read secrets or submit work. If it may have leaked, revoke
-it there and set a new one.
+CI needs only the registry: no console token, no cluster credential. Each
+install points its console at the release (the console chart's
+`catalog.release`) and trusts the same signing key or identity as its images.
 
-From a laptop: `./catalogctl teams apply` (makes each team exist), then
-`./catalogctl publish [teams/<team>/products/<product> ...]`, signed
-in with `ACYCLIX_TOKEN` or `ACYCLIX_EMAIL`/`ACYCLIX_PASSWORD`.
+From a laptop: `./catalogctl publish [teams/<team>/products/<product> ...]`,
+then `./catalogctl release`, signed in to the registry with `docker login`.
 
 ## A team's SecretStore
 
@@ -273,36 +280,24 @@ source), with the provider-side commands.
 The files may hold only SecretStores in the team's namespace, the
 ServiceAccounts ESO signs in as (`eso-gcp`, `eso-azure`, `eso-aws`), and, for
 a provider that can't federate, a reference to the Secret `eso-auth`.
-`check-secret-stores.yml` checks that on the pull request and the console
-again before applying. On merge, `apply-secret-stores.yml` sends them to the
-console. A stored credential (a 1Password token, say) is the
-`BOOTSTRAP_CREDENTIAL` secret in the team's own GitHub Environment,
-written to `eso-auth`, which no step can mount. GCP Secret Manager is proven;
+`check-secret-stores.yml` checks that on the pull request, `release` again,
+and each console again before applying them from the release. A stored
+credential (a 1Password token, say) is never in the catalog: a team member
+sets it in each install (Team page → Secrets → Stored credential), and the
+console writes it to `eso-auth`, which no step can mount. GCP Secret Manager is proven;
 other providers are designed but not yet proven.
 
-## Retiring and purging a team
+## Removing a team
 
 - **Retire** (automatic, reversible): merge a pull request that deletes
-  `teams/<team>/`. `retire-teams.yml` has the console retire the team
-  (read-only, products unregistered) and relabel its namespace so nothing new
-  runs there. Restoring the folder brings it back.
-- **Purge** (by hand, permanent): run `purge-team` from the Actions tab,
-  typing the name twice. The console deletes the team's memberships, secrets,
-  products and bots; history is kept, and the name can never be reused. It
-  refuses while anything is still running. The workflow can also delete the
-  team's images. Its summary lists what's left for an admin (the
-  namespace, if the console doesn't delete namespaces, and the team's
-  GitHub Environment).
-
-Purging needs a `purge` Environment with required reviewers, restricted to
-`main`, holding `ACYCLIX_PURGE_TOKEN` (a token with only `teams:delete`).
-
-Each team's jobs run in a GitHub Environment named after it. A new one
-is open to every branch until an admin restricts it to `main`:
-
-```bash
-R=<owner>/<repo>; env=<team>
-echo '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' \
-  | gh api -X PUT repos/$R/environments/$env --input - \
-  && gh api -X POST repos/$R/environments/$env/deployment-branch-policies -f name=main -f type=branch
-```
+  `teams/<team>/`. Each install retires the team when it reads the next
+  release (read-only, products unregistered) and relabels its namespace so
+  nothing new runs there. Restoring the folder brings it back.
+- **Purge** (permanent): each install's admin, in its console (Team page →
+  Purge), once nothing is running. History is kept, the name can never be
+  reused, and the namespace stays, labelled retired, for a cluster
+  administrator to delete. A release never purges.
+- **Images**: run `delete-team-images` from the Actions tab, typing the name
+  twice, once every install has retired the team. It needs a `purge`
+  Environment with required reviewers, restricted to `main`, holding the
+  registry identity that may delete (`PURGE_GCP_SERVICE_ACCOUNT`).

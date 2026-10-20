@@ -1,13 +1,13 @@
 # Codebase guide
 
-Acyclix runs pre-resolved DAGs of containerized "product" steps as
+Vertra runs pre-resolved DAGs of containerized "product" steps as
 Kubernetes Jobs, passing each step's outputs to the steps that depend on
 them, with each team's credentials kept to its own namespace and its own
 reviewed products. A step can be anything packaged as a container, from a
 hello-world script to creating cloud infrastructure. Long-form docs
 already exist — check them before re-deriving anything:
 
-- `docs/architecture.md`: what Acyclix is, the pieces, the request flow,
+- `docs/architecture.md`: what Vertra is, the pieces, the request flow,
   the data, and the design decisions. Start here.
 - `docs/operations.md`: installing (kind and Helm), upgrading, databases,
   backups, network policies, troubleshooting.
@@ -30,7 +30,7 @@ already exist — check them before re-deriving anything:
 - `TODO.md`: the actionable follow-up list (security, access, operations,
   housekeeping). Check it before proposing work; update it when an item is
   done or a new one is found.
-- `cli/DESIGN.md`: the design for `acyclixctl`, the installer CLI (Go,
+- `cli/DESIGN.md`: the design for `vertra`, the installer CLI (Go,
   OpenTofu for the cloud side); read it before working on `cli/`.
 - `catalog-template/`: what a new catalog repository starts as. Its docs
   (including `docs/onboarding-with-ai.md`) are for catalog teams, **not**
@@ -50,7 +50,7 @@ its own directory.
   coordinate only through Postgres rows (`cmd/kernel`; the subcommand
   picks the process):
   - `kernel api` (kernel-api, `internal/api`): KernelService
-    (`proto/acyclix/kernel/v1`) over Connect, which accepts, reads,
+    (`proto/vertra/kernel/v1`) over Connect, which accepts, reads,
     cancels and retries executions. It accepts only the console, by its
     ServiceAccount token (`internal/api/auth.go`, TokenReview), and must
     only be reachable in-cluster. It has no users or teams.
@@ -81,7 +81,7 @@ its own directory.
     `package.json`.
   - The API is Connect services defined in `proto/` (`make proto`
     regenerates the console's, frontend's and CLI's code and the API
-    reference), served at `/api/acyclix.console.v1.<Service>/<Method>` by
+    reference), served at `/api/vertra.console.v1.<Service>/<Method>` by
     `src/rpc/`. `src/rpc/services/*.ts` only map messages; what a method
     does lives in `src/core/`, which throws `ApiError` (`src/apiError.ts`)
     to refuse. A new method: its rpc in `proto/`, `make proto`, its logic in
@@ -97,10 +97,10 @@ its own directory.
   each cluster's settings for them and for the third-party charts (ESO,
   policy-controller). The Helm release names are
   `kernel` and `console`, installed into the platform's own namespace
-  `acyclix-system`, never a team namespace.
+  `vertra-system`, never a team namespace.
 - **Task namespaces are allowlisted by an admission policy**
   (`helm/charts/execution-kernel/templates/dispatch-policy.yaml`). The scheduler
-  can only create Jobs in namespaces labelled `acyclix/team=true`, and
+  can only create Jobs in namespaces labelled `vertra/team=true`, and
   never in its own. A rejection surfaces as a non-retryable
   `DISPATCH_REJECTED` task failure. New team namespaces need the label.
 - **Task images are allowlisted too** (`helm/charts/execution-kernel/templates/image-policy.yaml`).
@@ -147,34 +147,45 @@ its own directory.
   platform's own namespace, and it isn't installed on kind (it can't reach
   `localhost:5001`).
 - **Team lifecycle, namespaces included, is the console's**: creating a
-  team creates its namespace (`acyclix/team=true`); a team can be
+  team creates its namespace (`vertra/team=true`); a team can be
   *retired* (reversible: read-only in the console, namespace relabelled
-  `acyclix/team=retired`) and then *purged* (soft-deleted so its name stays
+  `vertra/team=retired`) and then *purged* (soft-deleted so its name stays
   reserved; `TeamService/PurgeTeam`). The namespace stays, labelled
   retired, for a cluster administrator to delete: the console may delete it
   only with `teamNamespaces.purge`, off on purpose so the identity that
   retires a namespace can't also delete it. The console also
   applies a team's reviewed SecretStore file
-  (`TeamService/ApplySecretStore`, checked by `console/src/secretStores.ts`).
-  So the catalog's workflows only call the console (`./catalogctl teams …`,
-  `./catalogctl secret-stores …`) and hold no cluster credentials. The
+  (`TeamService/ApplySecretStore`, checked by `console/src/secretStores.ts`). The
   console chart's `namespace-policy.yaml` limits what it may do to
   namespaces; the kernel chart's `purge-policy.yaml` lets a configured
   purger delete only retired ones. Writes call
   `ensureNotRetired` (`console/src/core/retired.ts`). Team lookups skip
   purged teams unless they use `findTeamByNameIncludingDeleted`.
+- **The console pulls the catalog** (`console/src/catalogSync.ts`): catalog
+  CI publishes images, then `./catalogctl release` pushes the whole catalog
+  as a signed OCI artifact, `<registry>/catalog-release`
+  (`proto/vertra/catalog/v1/release.proto`). Each console polls it
+  (`catalog.release` in the console chart), verifies it with a cosign Job
+  when `catalog.signature` trusts a signer, and applies it with the old
+  catalog token's rights: teams ensured, products registered, SecretStores
+  applied, what a release drops unregistered or retired, never purged. A
+  team the catalog didn't make (`teams.from_catalog`) is left alone until
+  an admin adopts it (`AdminService/AdoptCatalogTeam`). So the catalog
+  holds no console or cluster credential, and serves any number of
+  installs. A store's stored credential is set per install
+  (`TeamService/SetSecretStoreCredential`).
 - **`catalog-template/`**: what a new catalog repository starts as
   (the `./catalogctl` wrapper, its workflows, the starter `templates/`, an empty `teams/`
   for the adopter's first team, and `samples/`: `local`, one no-cloud
   product in five languages that new teams copy starters from, and `gcp`,
   `aws`, `azure`, billed cloud examples; azure unproven). It's
-  versioned with the platform because its workflows and schemas must match
-  the console's API; `.github/scripts/catalog-template.sh` runs catalogctl
+  versioned with the platform because its release format and schemas must
+  match the console's; `.github/scripts/catalog-template.sh` runs catalogctl
   in it with samples installed as teams (CI checks it that way, and
   `make catalog-publish` publishes it that way). A team's real products live in its own catalog
   repository, created from this, **not here**; adding a product needs no
   change to this repo. Its files are catalog format v2 (`apiVersion:
-  acyclix.dev/v2` and a `kind`: Team, Product, Template, Dag); the schemas
+  vertra.dev/v2` and a `kind`: Team, Product, Template, Dag); the schemas
   are in `tools/` and embedded in catalogctl (`cli/internal/catalogctl/
   schemas/`, kept equal by a test): change both together.
 - **`_local/`** (gitignored): personal scratch space, such as a clone of
@@ -253,7 +264,7 @@ go build -o /tmp/kernel ./cmd/kernel     # then e.g. /tmp/kernel api
 A schema change is a new `internal/migrate/sql/NNNN_name.sql`; the
 console's database guide (`console/docs/06-database-schemas.md`) documents
 it, and a test checks it does. kernel-api's API is
-`proto/acyclix/kernel/v1/kernel.proto`: `make proto` after changing it.
+`proto/vertra/kernel/v1/kernel.proto`: `make proto` after changing it.
 
 - Integration and end-to-end tests use **real Postgres**: `make test` (repo
   root) starts a throwaway container on `127.0.0.1:55432`, migrates both test
@@ -298,11 +309,11 @@ CLI (`cd cli`, Go 1.26+; CI uses the `golang:1.27-alpine` image by digest):
 ```
 go test ./...                              # unit tests: config, prompts, values, the approval screen
 go vet ./... && gofmt -l .
-go build -o acyclixctl ./cmd/acyclixctl    # then e.g. ./acyclixctl init dev; ./acyclixctl apply dev
+go build -o vertra ./cmd/vertra    # then e.g. ./vertra init dev; ./vertra apply dev
 ```
 
-`acyclixctl` keeps each environment in `./deploy/<env>/` (gitignored here),
-or wherever `--config`/`ACYCLIX_CONFIG` points. It only runs kubectl,
+`vertra` keeps each environment in `./deploy/<env>/` (gitignored here),
+or wherever `--config`/`VERTRA_CONFIG` points. It only runs kubectl,
 helm, docker and kind (each pinned and checksum-verified when it downloads
 them). To try it end to end without touching your own install, give it a
 kind cluster of its own (`--cluster-name`); it shares the `kind-registry`.

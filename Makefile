@@ -18,12 +18,12 @@ DOCKER := $(shell command -v docker 2>/dev/null || echo $(DOCKER_DESKTOP_BIN)/do
 # kubectl's current-context: with a GKE context configured alongside it,
 # `make up` would otherwise force-delete "Unknown" pods on whichever
 # cluster kubectl happened to point at.
-KIND_CONTEXT ?= kind-acyclix-local
+KIND_CONTEXT ?= kind-vertra-local
 # Where the platform itself (kernel + console + their Postgres) is
 # installed. Deliberately not `default` -- that's the admins' own team
 # namespace, and tasks can never be dispatched into this one (see
 # helm/charts/execution-kernel/templates/dispatch-policy.yaml).
-PLATFORM_NAMESPACE ?= acyclix-system
+PLATFORM_NAMESPACE ?= vertra-system
 KUBECTL := kubectl --context $(KIND_CONTEXT)
 # One definition, so `up`'s pgrep and `down`'s pkill always match the exact
 # command line that was started -- port included, so a forward someone
@@ -38,7 +38,7 @@ PORT_FORWARD := $(KUBECTL) -n $(PLATFORM_NAMESPACE) port-forward svc/console-exe
 KIND_REGISTRY_NAME ?= kind-registry
 KIND_REGISTRY_PORT ?= 5001
 KIND_REGISTRY := localhost:$(KIND_REGISTRY_PORT)
-KIND_NODE ?= acyclix-local-control-plane
+KIND_NODE ?= vertra-local-control-plane
 
 # Idempotent: starts the registry if needed, joins it to kind's network,
 # and points the node's containerd at it. That last part is kind's own
@@ -62,18 +62,18 @@ kind-registry:
 	@echo "Local registry ready: push to $(KIND_REGISTRY)/<image>, reference it the same way in DAGs."
 
 # ---------------------------------------------------------------------------
-# `make quickstart`: from nothing to a running Acyclix on a local kind
+# `make quickstart`: from nothing to a running Vertra on a local kind
 # cluster, with the README's example ready to submit. Safe to run again: it
 # creates only what's missing, and on an existing cluster rebuilds the
 # images from this checkout and restarts the platform onto them.
-# A stopgap until the acyclix CLI's installer exists.
+# A stopgap until the vertra CLI's installer exists.
 # ---------------------------------------------------------------------------
 # The team the README's example runs in.
 QUICKSTART_TEAM ?= team-a
 CONSOLE_URL := http://localhost:18080
 ADMIN_EMAIL := admin@example.com
 # Set only for local kind clusters, in helm/values/kind/console.yaml.
-ADMIN_PASSWORD := acyclix-local
+ADMIN_PASSWORD := vertra-local
 
 quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
 	$(DOCKER) build -t execution-kernel:latest kernel/
@@ -108,15 +108,15 @@ quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
 	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
 	@$(MAKE) --no-print-directory up
 	@echo "Creating the console team $(QUICKSTART_TEAM)..."
-	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/acyclix.console.v1.AuthService/Login -H 'Content-Type: application/json' \
+	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/vertra.console.v1.AuthService/Login -H 'Content-Type: application/json' \
 		-d '{"email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p'); \
 	if [ -z "$$token" ]; then echo "Couldn't sign in to the console to create $(QUICKSTART_TEAM); create it on the Admin page."; exit 1; fi; \
-	answer=$$(curl -s -X POST $(CONSOLE_URL)/api/acyclix.console.v1.TeamService/EnsureTeam \
+	answer=$$(curl -s -X POST $(CONSOLE_URL)/api/vertra.console.v1.TeamService/EnsureTeam \
 		-H "Authorization: Bearer $$token" -H 'Content-Type: application/json' -d '{"name":"$(QUICKSTART_TEAM)"}'); \
 	case "$$answer" in *'"created":true'*) echo "  created";; *'"created":false'*) echo "  already exists";; \
 		*) echo "  failed ($$answer); create it on the Admin page"; exit 1;; esac
 	@echo ""
-	@echo "Acyclix is running."
+	@echo "Vertra is running."
 	@echo "  Console:  $(CONSOLE_URL)   (sign in as $(ADMIN_EMAIL) / $(ADMIN_PASSWORD), local only)"
 	@echo "  Try it:   Executions -> Submit new, and paste the example from README.md"
 	@echo "  Watch:    make logs        Stop: make down        Start again: make up"
@@ -165,7 +165,7 @@ kind-namespaces:
 	@for ns in $(PLATFORM_NAMESPACE) $(QUICKSTART_TEAM) execution-kernel; do \
 		$(KUBECTL) create namespace $$ns --dry-run=client -o yaml | $(KUBECTL) apply -f - > /dev/null; \
 	done
-	@$(KUBECTL) label namespace default $(QUICKSTART_TEAM) acyclix/team=true --overwrite > /dev/null
+	@$(KUBECTL) label namespace default $(QUICKSTART_TEAM) vertra/team=true --overwrite > /dev/null
 	@echo "Namespaces ready: $(PLATFORM_NAMESPACE) (platform), $(QUICKSTART_TEAM) and default (teams), execution-kernel (tests)."
 
 # Fake product images used by the local demo DAGs, pushed to the local
@@ -179,9 +179,10 @@ build-products: kind-registry
 
 # Local mode: publish a catalog repository's products to kind without any Git
 # hosting or CI, with ./catalogctl (built from this checkout), the tool its CI runs:
-# every team folder becomes a team with its namespace (the console
-# makes both), then each product is validated, built, tested and scanned,
-# pushed to the local registry and registered with the console. CATALOG is
+# each product is validated, built, tested and scanned and pushed to the
+# local registry, then the catalog's release is, and the console is asked to
+# apply it now rather than at its next look (every team folder becomes a team
+# with its namespace, each product is registered). CATALOG is
 # the catalog repository's folder; without one, catalog-template/ is
 # published with SAMPLES (default: local, the five-language team) installed
 # as teams. PRODUCTS limits it to some product folders, relative to the
@@ -191,23 +192,26 @@ SAMPLES ?= local
 PRODUCTS ?=
 catalog-publish: kind-registry
 	@if [ -n "$(CATALOG)" ]; then test -x "$(CATALOG)/catalogctl" || { echo "No catalog at $(CATALOG)."; exit 1; }; fi
-	@# This checkout's catalogctl, signing in as the local admin itself.
-	@ACYCLIX_CATALOGCTL=$$(bash .github/scripts/build-catalogctl.sh) || exit 1; \
-	export ACYCLIX_CATALOGCTL ACYCLIX_REGISTRY=$(KIND_REGISTRY) ACYCLIX_CONSOLE_URL=$(CONSOLE_URL) \
-		ACYCLIX_EMAIL=$(ADMIN_EMAIL) ACYCLIX_PASSWORD=$(ADMIN_PASSWORD); \
+	@# This checkout's catalogctl.
+	@VERTRA_CATALOGCTL=$$(bash .github/scripts/build-catalogctl.sh) || exit 1; \
+	export VERTRA_CATALOGCTL VERTRA_REGISTRY=$(KIND_REGISTRY); \
 	if [ -z "$(CATALOG)" ]; then \
-		export SAMPLES="$(SAMPLES)"; \
-		bash .github/scripts/catalog-template.sh teams apply && \
-		bash .github/scripts/catalog-template.sh publish $(PRODUCTS); \
+		SAMPLES="$(SAMPLES)" bash .github/scripts/catalog-template.sh publish $(PRODUCTS) -- release; \
 	else \
-		cd $(CATALOG) && ./catalogctl teams apply && ./catalogctl publish $(PRODUCTS); \
-	fi
+		(cd $(CATALOG) && ./catalogctl publish $(PRODUCTS) && ./catalogctl release); \
+	fi || exit 1; \
+	token=$$(jq -nc --arg email "$(ADMIN_EMAIL)" --arg password "$(ADMIN_PASSWORD)" '{email: $$email, password: $$password}' \
+		| curl -sf -X POST -H 'Content-Type: application/json' -d @- $(CONSOLE_URL)/api/vertra.console.v1.AuthService/Login | jq -r '.token // empty'); \
+	[ -n "$$token" ] || { echo "Released; couldn't sign in to $(CONSOLE_URL) to sync now (make up?): the console applies it within a minute."; exit 0; }; \
+	curl -sf -X POST -H "Authorization: Bearer $$token" -H 'Content-Type: application/json' -d '{}' \
+		$(CONSOLE_URL)/api/vertra.console.v1.AdminService/SyncCatalog \
+		| jq -r '.status | "Applied \(.commit // "-"): \((.problems // []) | length) problem(s)", ((.problems // [])[] | "  \(.item): \(.message)"), (.error // empty)'
 
 # Rebuild the platform from this checkout and deploy it to kind, with the
 # settings in helm/values/kind/*.yaml (--reset-values: the files are the whole
 # story). The image is loaded straight onto the node; the restart is because
 # the tag is a reused :latest.
-KIND_CLUSTER ?= acyclix-local
+KIND_CLUSTER ?= vertra-local
 # --force-conflicts: the console edits two of the kernel chart's admission
 # policies (allowed image sources, registered products), which makes it the
 # owner of those fields under Helm 4's server-side apply, so a plain upgrade
@@ -257,22 +261,22 @@ kind-deploy-eso:
 # stopped the node -- their Deployment/Job recreates them fresh once
 # deleted; needed after every real recovery seen so far, not a one-off.
 # Then starts the kubectl port-forward in the background (log:
-# /tmp/acyclix-port-forward.log) so `make up` leaves execution-console
+# /tmp/vertra-port-forward.log) so `make up` leaves execution-console
 # actually reachable rather than just printing a reminder -- `make down`
 # kills it by matching this same command line via pkill.
 up:
-	@STATUS="$$($(DOCKER) inspect acyclix-local-control-plane --format '{{.State.Status}}' 2>/dev/null)"; \
+	@STATUS="$$($(DOCKER) inspect vertra-local-control-plane --format '{{.State.Status}}' 2>/dev/null)"; \
 	if [ "$$STATUS" = "running" ]; then \
-		echo "acyclix-local-control-plane is already running."; \
+		echo "vertra-local-control-plane is already running."; \
 	elif [ -n "$$STATUS" ]; then \
-		$(DOCKER) start acyclix-local-control-plane; \
+		$(DOCKER) start vertra-local-control-plane; \
 	else \
-		echo "acyclix-local-control-plane doesn't exist: make quickstart creates it" ; \
+		echo "vertra-local-control-plane doesn't exist: make quickstart creates it" ; \
 		echo "(docs/operations.md)."; \
 		exit 1; \
 	fi
 	@echo "Waiting for the node to be Ready..."
-	@until $(KUBECTL) get nodes acyclix-local-control-plane 2>/dev/null | grep -q " Ready"; do sleep 2; done
+	@until $(KUBECTL) get nodes vertra-local-control-plane 2>/dev/null | grep -q " Ready"; do sleep 2; done
 	@echo "Node is Ready. Cleaning up any pods stuck in Unknown state from the restart..."
 	@$(KUBECTL) get pods -A --no-headers 2>/dev/null | awk '$$4 == "Unknown" {print $$1, $$2}' | \
 		while read -r ns name; do \
@@ -287,7 +291,7 @@ up:
 	while ! curl -sf http://localhost:18080/health/ready > /dev/null 2>&1; do \
 		if ! pgrep -f "$(PORT_FORWARD)" > /dev/null 2>&1; then \
 			nohup $(PORT_FORWARD) \
-				> /tmp/acyclix-port-forward.log 2>&1 & \
+				> /tmp/vertra-port-forward.log 2>&1 & \
 		fi; \
 		i=$$((i + 1)); \
 		if [ $$((i % 5)) -eq 0 ]; then \
@@ -296,7 +300,7 @@ up:
 		fi; \
 		if [ "$$i" -gt 60 ]; then \
 			echo "Timed out after 2 minutes waiting for execution-console to become reachable."; \
-			echo "Check /tmp/acyclix-port-forward.log."; \
+			echo "Check /tmp/vertra-port-forward.log."; \
 			exit 1; \
 		fi; \
 		sleep 2; \
@@ -310,10 +314,10 @@ up:
 # Also kills any leftover `kubectl port-forward` to it, since a forward
 # pointed at a stopped cluster is just confusing noise otherwise.
 down:
-	@if $(DOCKER) ps -a --format '{{.Names}}' | grep -q '^acyclix-local-control-plane$$'; then \
-		$(DOCKER) stop acyclix-local-control-plane; \
+	@if $(DOCKER) ps -a --format '{{.Names}}' | grep -q '^vertra-local-control-plane$$'; then \
+		$(DOCKER) stop vertra-local-control-plane; \
 	else \
-		echo "acyclix-local-control-plane doesn't exist -- nothing to stop."; \
+		echo "vertra-local-control-plane doesn't exist -- nothing to stop."; \
 	fi
 	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
 
@@ -345,7 +349,7 @@ gke-logs:
 		echo "stern isn't installed -- brew install stern"; \
 		exit 1; \
 	}
-	stern --context gke_my-gcp-project_us-central1_acyclix-gke \
+	stern --context gke_my-gcp-project_us-central1_vertra-gke \
 		"kernel-execution-kernel|console-execution-console|^ek-" \
 		--exclude-container wait-for-postgres --all-namespaces --since 1s \
 		| grep -v '"httpPath": "/health\|"url":"/health'
@@ -385,10 +389,10 @@ proto:
 	$(BUF) generate --template buf.gen.frontend.yaml
 	@# The API reference page's data, comments included (console/scripts/api-reference.ts):
 	@# the console's API only; kernel-api's is internal.
-	$(BUF) build --path proto/acyclix/console -o console/.api-image.binpb
+	$(BUF) build --path proto/vertra/console -o console/.api-image.binpb
 	cd console && npx tsx scripts/api-reference.ts .api-image.binpb > frontend/src/gen/api-reference.json; \
 		status=$$?; rm -f .api-image.binpb; exit $$status
-	$(DOCKER) run --rm -v "$(CURDIR)":/repo -v acyclix-gocache:/root/.cache -v acyclix-gomod:/go/pkg/mod \
+	$(DOCKER) run --rm -v "$(CURDIR)":/repo -v vertra-gocache:/root/.cache -v vertra-gomod:/go/pkg/mod \
 		-w /repo/cli $(GO_IMAGE) sh -c 'go build -o /tmp/plugins/ \
 			google.golang.org/protobuf/cmd/protoc-gen-go connectrpc.com/connect/cmd/protoc-gen-connect-go \
 		&& cd /repo && PATH=/tmp/plugins:$$PATH go run github.com/bufbuild/buf/cmd/buf@v$(BUF_VERSION) \
@@ -397,7 +401,7 @@ proto:
 			generate --template buf.gen.kernel.yaml'
 
 # ---------------------------------------------------------------------------
-TEST_DB_CONTAINER ?= acyclix-test-db
+TEST_DB_CONTAINER ?= vertra-test-db
 TEST_DB_PORT ?= 55432
 TEST_DB_IMAGE ?= postgres:16
 TEST_DB_HOST := postgres@127.0.0.1:$(TEST_DB_PORT)
@@ -427,13 +431,13 @@ test-db:
 		|| $(DOCKER) exec $(TEST_DB_CONTAINER) createdb -U postgres $$db; \
 	done
 	$(DOCKER) run --rm --network host -e DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) \
-		-v "$(CURDIR)/kernel":/src -v acyclix-gomod:/go/pkg/mod -w /src $(GO_IMAGE) go run ./cmd/kernel migrate
+		-v "$(CURDIR)/kernel":/src -v vertra-gomod:/go/pkg/mod -w /src $(GO_IMAGE) go run ./cmd/kernel migrate
 	cd console && DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(CONSOLE_TEST_DB) \
 		JWT_SECRET=unused KERNEL_API_URL=http://unused npm run --silent db:migrate
 
 test: test-db
 	$(DOCKER) run --rm --network host -e TEST_DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(KERNEL_TEST_DB) \
-		-v "$(CURDIR)/kernel":/src -v acyclix-gomod:/go/pkg/mod -w /src $(GO_IMAGE) go test ./...
+		-v "$(CURDIR)":/src -v vertra-gomod:/go/pkg/mod -w /src/kernel $(GO_IMAGE) go test ./...
 	cd console && TEST_DATABASE_URL=postgresql://$(TEST_DB_HOST)/$(CONSOLE_TEST_DB) npm test
 	cd console/frontend && npm test
 
@@ -462,11 +466,11 @@ test-db-down:
 # repo is exactly what's deployed, nothing lingers from an earlier --set.
 # ---------------------------------------------------------------------------
 GKE_PROJECT ?= my-gcp-project
-GKE_CLUSTER ?= acyclix-gke
+GKE_CLUSTER ?= vertra-gke
 GKE_CONTEXT ?= gke_$(GKE_PROJECT)_us-central1_$(GKE_CLUSTER)
 GKE_REGISTRY ?= us-central1-docker.pkg.dev/$(GKE_PROJECT)/platform-images
 # Still `default` on GKE until the platform is moved to its own namespace
-# there (it's acyclix-system on kind).
+# there (it's vertra-system on kind).
 GKE_NAMESPACE ?= default
 GKE_KUBECTL := kubectl --context $(GKE_CONTEXT) -n $(GKE_NAMESPACE)
 # --force-conflicts: see KIND_HELM_UPGRADE.

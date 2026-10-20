@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/domain"
 )
 
 // One task attempt runs as a single-Pod Job. Its request goes in as a
@@ -333,8 +333,8 @@ func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error
 	}
 	// So the console can show a Pod as "task X of execution Y": the task
 	// key is caller-chosen (maybe not a valid label), so an annotation.
-	labels := map[string]string{"app": "execution-kernel", "acyclix.dev/execution-id": task.ExecutionID, "acyclix.dev/attempt": strconv.Itoa(task.Attempt)}
-	annotations := map[string]string{"acyclix.dev/task": task.TaskKey}
+	labels := map[string]string{"app": "execution-kernel", "vertra.dev/execution-id": task.ExecutionID, "vertra.dev/attempt": strconv.Itoa(task.Attempt)}
+	annotations := map[string]string{"vertra.dev/task": task.TaskKey}
 	backoff := int32(0) // one attempt per Job: the scheduler owns retries
 	ttl := int32(k.opts.JobTTL.Seconds())
 	// A backstop: a Job the scheduler lost track of mustn't run forever.
@@ -578,7 +578,7 @@ func (k *Kubernetes) logLines(raw []byte) []string {
 	}
 	lines = domain.RedactLines(splitLines(lines))
 	if len(lines) >= k.opts.LogMaxLines || len(raw) >= k.opts.LogMaxBytes {
-		lines = append([]string{fmt.Sprintf("[acyclix: earlier output not kept; the last %d lines, at most %d bytes, are]", k.opts.LogMaxLines, k.opts.LogMaxBytes)}, lines...)
+		lines = append([]string{fmt.Sprintf("[vertra: earlier output not kept; the last %d lines, at most %d bytes, are]", k.opts.LogMaxLines, k.opts.LogMaxBytes)}, lines...)
 	}
 	return lines
 }
@@ -696,9 +696,9 @@ func (k *Kubernetes) ListAttempts(ctx context.Context) ([]LaunchedAttempt, error
 	}
 	var attempts []LaunchedAttempt
 	for _, job := range jobs.Items {
-		executionID := job.Labels["acyclix.dev/execution-id"]
-		attempt, err := strconv.Atoi(job.Labels["acyclix.dev/attempt"])
-		taskKey := job.Annotations["acyclix.dev/task"]
+		executionID := job.Labels["vertra.dev/execution-id"]
+		attempt, err := strconv.Atoi(job.Labels["vertra.dev/attempt"])
+		taskKey := job.Annotations["vertra.dev/task"]
 		if executionID == "" || err != nil || attempt < 1 || taskKey == "" {
 			continue
 		}

@@ -102,10 +102,10 @@ spec:
                   key: jwt-secret
             {{- if .Values.registryCheck.pullSecretName }}
             - name: REGISTRY_AUTH_FILE
-              value: /etc/acyclix/registry/config.json
+              value: /etc/vertra/registry/config.json
             {{- if .Values.registryCheck.copyToTeams }}
             - name: TEAM_PULL_SECRET_FILE
-              value: /etc/acyclix/registry/config.json
+              value: /etc/vertra/registry/config.json
             {{- end }}
             {{- end }}
             - name: REGISTRY_GCP_METADATA_TOKEN
@@ -118,7 +118,7 @@ spec:
               value: {{ .Values.registryCheck.imagePinning | quote }}
             {{- if .Values.kernelApiToken.enabled }}
             - name: KERNEL_API_TOKEN_FILE
-              value: /var/run/secrets/acyclix/kernel-api/token
+              value: /var/run/secrets/vertra/kernel-api/token
             {{- end }}
           readinessProbe:
             httpGet:
@@ -137,12 +137,12 @@ spec:
           volumeMounts:
             {{- if .Values.kernelApiToken.enabled }}
             - name: kernel-api-token
-              mountPath: /var/run/secrets/acyclix/kernel-api
+              mountPath: /var/run/secrets/vertra/kernel-api
               readOnly: true
             {{- end }}
             {{- if .Values.registryCheck.pullSecretName }}
             - name: registry-auth
-              mountPath: /etc/acyclix/registry
+              mountPath: /etc/vertra/registry
               readOnly: true
             {{- end }}
       volumes:

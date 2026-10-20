@@ -81,7 +81,7 @@ func report(r Report) string {
 }
 
 func TestCheckAWSFindsTheRegionsAnOrganizationAllows(t *testing.T) {
-	a := CheckAWS(context.Background(), fakeAWS("arn:aws:iam::111111111111:user/rburns"), "acyclix", "us-east-1")
+	a := CheckAWS(context.Background(), fakeAWS("arn:aws:iam::111111111111:user/rburns"), "vertra", "us-east-1")
 	if strings.Join(a.Allowed, ",") != "us-east-2" || a.Denied["us-east-1"] == "" {
 		t.Fatalf("allowed %v, denied %v", a.Allowed, a.Denied)
 	}
@@ -102,7 +102,7 @@ func TestCheckAWSFindsTheRegionsAnOrganizationAllows(t *testing.T) {
 }
 
 func TestCheckAWSInAnAllowedRegion(t *testing.T) {
-	a := CheckAWS(context.Background(), fakeAWS("arn:aws:iam::111111111111:user/rburns"), "acyclix", "us-east-2")
+	a := CheckAWS(context.Background(), fakeAWS("arn:aws:iam::111111111111:user/rburns"), "vertra", "us-east-2")
 	out := report(a.Report)
 	if len(a.Problems) != 0 || !strings.Contains(out, "Region: us-east-2 (your organization allows only us-east-2)") ||
 		!strings.Contains(out, "Spot: your organization's policy denies reading Spot prices") {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/** ExecutionService (proto/acyclix/console/v1/execution.proto): core/executions.ts over Connect. */
+/** ExecutionService (proto/vertra/console/v1/execution.proto): core/executions.ts over Connect. */
 import { Code, type HandlerContext, type ServiceImpl } from "@connectrpc/connect";
 import { fromJson, type JsonObject, type JsonValue } from "@bufbuild/protobuf";
 import { Type } from "@sinclair/typebox";
@@ -21,7 +21,7 @@ import {
   TaskState,
   type Dag,
   type ExecutionService,
-} from "../../gen/acyclix/console/v1/execution_pb.js";
+} from "../../gen/vertra/console/v1/execution_pb.js";
 import { KernelApiError } from "../../kernel/client.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
 import { callerOf, logOf } from "../context.js";

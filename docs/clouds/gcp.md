@@ -1,12 +1,12 @@
-# Getting Google Cloud ready for Acyclix
+# Getting Google Cloud ready for Vertra
 
-What only the Google Cloud website can do, before `acyclixctl init`. `init`
+What only the Google Cloud website can do, before `vertra init`. `init`
 checks the rest (which account is signed in, OpenTofu's sign-in, the
 project and its organization's policies) and links back here.
 
 ## A project, with billing
 
-Acyclix creates a cluster, a network, identities, registries and a bucket in
+Vertra creates a cluster, a network, identities, registries and a bucket in
 one project. A **project of its own** is safest:
 
 1. <https://console.cloud.google.com/projectcreate> → a name such as
@@ -31,7 +31,7 @@ uses the *active* one (`gcloud config set account <email>` to change);
 account.
 
 GKE also needs gcloud's `gke-gcloud-auth-plugin`
-(`gcloud components install gke-gcloud-auth-plugin`); acyclixctl finds it
+(`gcloud components install gke-gcloud-auth-plugin`); vertra finds it
 in gcloud's own folder even when it isn't on your PATH.
 
 ## Organization policies

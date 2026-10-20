@@ -94,7 +94,7 @@ export function AppLayout() {
               flexShrink: 0,
             }}
           />
-          <Typography sx={{ fontWeight: 600, color: "sidebar.textStrong", fontSize: 15 }}>Acyclix Console</Typography>
+          <Typography sx={{ fontWeight: 600, color: "sidebar.textStrong", fontSize: 15 }}>Vertra Console</Typography>
         </Toolbar>
 
         <List component="nav" aria-label="Main" sx={{ px: 1.25, pt: 1, flexGrow: 1 }}>
@@ -201,7 +201,7 @@ export function AppLayout() {
                 >
                   <MenuIcon />
                 </IconButton>
-                <Typography sx={{ fontWeight: 600, fontSize: 15 }}>Acyclix Console</Typography>
+                <Typography sx={{ fontWeight: 600, fontSize: 15 }}>Vertra Console</Typography>
               </>
             )}
             <Box sx={{ flexGrow: 1 }} />

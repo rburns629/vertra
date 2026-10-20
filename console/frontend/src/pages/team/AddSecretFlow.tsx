@@ -142,7 +142,7 @@ export function AddSecretFlow({
                   Where does the value come from?
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Syncing keeps the value in your own store: change it there and Acyclix picks up the change on its next
+                  Syncing keeps the value in your own store: change it there and Vertra picks up the change on its next
                   refresh.
                 </Typography>
               </Box>

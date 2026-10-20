@@ -69,7 +69,7 @@ export function TeamsPage() {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Catalog platforms get their team automatically. For any other team, its Kubernetes
-              namespace must also exist and carry the label <code>acyclix/team=true</code> before
+              namespace must also exist and carry the label <code>vertra/team=true</code> before
               its tasks can run.
             </Typography>
             <Box

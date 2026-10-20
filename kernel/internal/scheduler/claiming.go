@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/domain"
 )
 
 // Claiming uses SELECT ... FOR UPDATE SKIP LOCKED, so several schedulers

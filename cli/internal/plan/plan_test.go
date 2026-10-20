@@ -24,9 +24,9 @@ func TestWrap(t *testing.T) {
 
 func TestRenderAlignsAndWraps(t *testing.T) {
 	p := &Plan{
-		Title:    "Acyclix source → kind (local) [dev]",
+		Title:    "Vertra source → kind (local) [dev]",
 		Settings: []Line{{Label: "Size", Text: "minimal"}, {Label: "Task images", Text: strings.Repeat("word ", 40)}},
-		Changes:  []Line{{Label: "Will create", Text: "kind cluster acyclix"}},
+		Changes:  []Line{{Label: "Will create", Text: "kind cluster vertra"}},
 		Cost:     []Line{{Label: "Estimated cost", Text: "$0"}},
 		Notes:    []string{"a note"},
 	}
@@ -42,7 +42,7 @@ func TestRenderAlignsAndWraps(t *testing.T) {
 		"Size         minimal\n",
 		"Task images  word",
 		"\n             word", // continuation lines line up with the text
-		"Will create  kind cluster acyclix",
+		"Will create  kind cluster vertra",
 		"Estimated cost  $0",
 		"Note  a note",
 	} {

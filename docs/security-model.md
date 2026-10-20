@@ -1,11 +1,11 @@
 # Security model
 
-How Acyclix keeps each team's secrets to that team's reviewed products: what's
+How Vertra keeps each team's secrets to that team's reviewed products: what's
 enforced today, by which layer, what isn't enforced yet, and what's out of
-scope. Written for security reviewers evaluating Acyclix, and kept honest:
+scope. Written for security reviewers evaluating Vertra, and kept honest:
 where something is a plan rather than a fact, it says so.
 
-Last reviewed 2026-10-18, for 0.x. Acyclix is not production-ready yet; the
+Last reviewed 2026-10-18, for 0.x. Vertra is not production-ready yet; the
 gaps in [Not yet enforced](#not-yet-enforced) are why.
 
 ## At a glance
@@ -13,7 +13,7 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Question | Answer |
 | --- | --- |
 | Where do secret values live? | In Kubernetes Secrets, in the owning team's namespace. Synced secrets keep their source of truth in the team's own store (GCP Secret Manager and others, through External Secrets Operator). |
-| Does Acyclix's database store secret values? | No. The console stores which secrets each team registered, and the names of their keys, never values. The kernel never sees them. |
+| Does Vertra's database store secret values? | No. The console stores which secrets each team registered, and the names of their keys, never values. The kernel never sees them. |
 | Who can read a secret? | Steps of its team's registered products that list it in `secretRefs`, and cluster administrators. Not the console: it writes Secrets but has no right to read them. See [Who can read a secret](#who-can-read-a-secret). |
 | Can one team's step reach another team's secret? | No. A step runs in its own team's namespace, and a Pod can only mount Secrets from its own namespace. |
 | Can one product reach another product's secret in the same team? | By design, yes: a team's secrets are the team's, and the team chooses per step which ones it gets (`secretRefs`). What a team can't do is give one to an image that isn't its registered product (it runs with no secrets), or mount a Secret it never registered. The console checks this at submit time, and an admission policy makes the cluster enforce it on every step's Job. A product's own cloud identity (its declared ServiceAccount) is still its own: another product can't run as it. |
@@ -21,14 +21,14 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Can anything but the console submit work? | No. kernel-api accepts only the console's ServiceAccount token, issued for kernel-api alone and checked with a TokenReview. See [How kernel-api knows its caller](#how-kernel-api-knows-its-caller). |
 | Is anything enforced if the console is bypassed? | Yes: which namespaces steps may run in, which image sources they may use, image signatures (with Sigstore's policy-controller installed) and who may delete a team namespace. These are admission policies the Kubernetes API server applies. |
 | Are secrets encrypted at rest? | That depends on the cluster. Enabling encryption of Secrets at rest in etcd, ideally with a KMS provider, is the cluster operator's responsibility and a prerequisite for production. |
-| What reaches logs and outputs? | Whatever a step prints or returns. Acyclix stores step outputs and logs; a product must never print or return a secret. |
+| What reaches logs and outputs? | Whatever a step prints or returns. Vertra stores step outputs and logs; a product must never print or return a secret. |
 
 ## Who is trusted
 
 | Actor | Trusted to | Limited by |
 | --- | --- | --- |
-| Cluster administrators | Everything; they can read any Secret | Outside Acyclix's control |
-| Acyclix admins (console) | Manage teams, people, bots, allowed image sources; act in any team | Console authorization; every admin action is logged |
+| Cluster administrators | Everything; they can read any Secret | Outside Vertra's control |
+| Vertra admins (console) | Manage teams, people, bots, allowed image sources; act in any team | Console authorization; every admin action is logged |
 | Catalog reviewers | Decide which product images exist, and which ServiceAccount and secrets each product declares | The catalog repository's review rules (CODEOWNERS, protected branches) |
 | Team members | Run their team's products, register their team's secrets and choose which step gets which, manage their team's bots | Console authorization: team membership, per-product identity, registered team secrets |
 | Product images | Do their one job with the inputs and secrets they're given | Their namespace, ServiceAccount and mounted secrets; admission policies |
@@ -47,14 +47,15 @@ A secret enters in one of two ways, and ends up the same way:
    which is only a reference; External Secrets Operator reads the value with the
    team's SecretStore identity and writes the Kubernetes Secret. The console
    never holds the value. SecretStores themselves arrive through a reviewed
-   catalog pull request, never from the console.
+   catalog pull request (in the catalog's release, which the console pulls
+   and verifies), never from the console's own UI.
 
 Either way, the console **registers** it for the team (`secret_grants`): the
 secret's name and its key names. Only registered secrets can be mounted, and
 only by the team's registered products.
 
 - The console labels what it creates (`app.kubernetes.io/managed-by:
-  acyclix-console`) and won't replace, or register, a Secret it didn't
+  vertra-console`) and won't replace, or register, a Secret it didn't
   create, such as a SecretStore's own credentials: that's refused with a 409.
   So a SecretStore's credentials can never be mounted by a step.
 - No RBAC is involved: mounting doesn't consult it, and steps don't read
@@ -67,7 +68,7 @@ only by the team's registered products.
 ### What a secret can hold
 
 A secret is a set of named keys, each mounted as a file at
-`/platform/secrets/<secret>/<key>`; Acyclix doesn't interpret the values.
+`/platform/secrets/<secret>/<key>`; Vertra doesn't interpret the values.
 Typical shapes: one opaque value under `value` (an API key, a webhook
 signing secret); a credential in several keys of one secret (`clientId` and
 `clientSecret`, `username` and `password`, `tls.crt` and `tls.key`); or a
@@ -96,10 +97,11 @@ So a team can sync as many secrets as it likes without ever widening what
 its store can reach. Both are namespaced (never a ClusterSecretStore): an
 ExternalSecret can't use another namespace's store, even applied by hand. A
 store's own credential (for a vault that can't federate, such as a
-1Password service account token) comes from the team's own GitHub
-Environment, is written to `eso-auth`, and can never be registered or
-mounted by a step. A synced secret rotates on the vault's side, with no
-change in Acyclix.
+1Password service account token) is set per install by a team member or
+admin (Team page → Secrets → Stored credential, `TeamService/
+SetSecretStoreCredential`), never carried by the catalog; it's written to
+`eso-auth`, and can never be registered or mounted by a step. A synced secret rotates on the vault's side, with no
+change in Vertra.
 
 | Vault | Sign-in | Stored credential | Proven |
 | --- | --- | --- | --- |
@@ -151,7 +153,7 @@ one thing on every call: that the caller is the console
 (`kernel/internal/api/auth.go`).
 
 - The console's Pod gets its ServiceAccount token projected for the
-  audience `acyclix-kernel-api` (rotated by the kubelet, valid an hour), so
+  audience `vertra-kernel-api` (rotated by the kubelet, valid an hour), so
   the token is useless against the Kubernetes API or anything else.
 - kernel-api asks the API server whose token it is (a TokenReview, for that
   audience) and accepts only the ServiceAccounts in
@@ -188,7 +190,7 @@ violations).
   remains the most privileged component and should be treated that way.
 - **Nobody, for the registry pull Secret.** With the console chart's
   `registryCheck.copyToTeams` on, the console copies the platform's
-  registry credential into every team namespace as `acyclix-pull`, and the
+  registry credential into every team namespace as `vertra-pull`, and the
   kernel names it as every step Pod's `imagePullSecret`
   (`scheduler.taskImagePullSecret`). Only the kubelet uses it: the name is
   reserved, so it can never be registered as a team secret and mounted.
@@ -196,7 +198,7 @@ violations).
   each policy resync, so a rotation reaches every team within one
   interval. Turning the option off leaves the copies; delete them by hand.
 - **Cluster administrators**, and anyone else the cluster's own RBAC lets read
-  Secrets in a team namespace. Acyclix doesn't grant people Kubernetes
+  Secrets in a team namespace. Vertra doesn't grant people Kubernetes
   access, but doesn't prevent a cluster operator from doing so.
 
 ## Guardrails the cluster enforces
@@ -207,7 +209,7 @@ without going through the console:
 
 | Guardrail | What it refuses | Where |
 | --- | --- | --- |
-| Dispatch namespaces | Jobs in any namespace not labelled `acyclix/team=true`, and in the platform's own namespace (`DISPATCH_REJECTED`) | `helm/charts/execution-kernel/templates/dispatch-policy.yaml` |
+| Dispatch namespaces | Jobs in any namespace not labelled `vertra/team=true`, and in the platform's own namespace (`DISPATCH_REJECTED`) | `helm/charts/execution-kernel/templates/dispatch-policy.yaml` |
 | Image sources | Images outside the allowed registries (`IMAGE_NOT_ALLOWED`) | `templates/image-policy.yaml` |
 | Image signatures | Unsigned images, where policy-controller is installed (`IMAGE_NOT_SIGNED`) | `templates/image-signature.yaml` |
 | Image scans | An image not pinned by digest (`IMAGE_NOT_PINNED`), or one whose digest failed its security scan unless an admin accepted it (`IMAGE_SCAN_FAILED`). The console scans every image before it's registered or run, and daily while in use | `templates/scan-policy.yaml` |
@@ -226,7 +228,7 @@ stop the platform, not change it.
 
 And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in both charts) let only the platform's own Pods connect to its Postgres, and only the console connect to kernel-api: a step's Pod can reach neither. They need a CNI that enforces NetworkPolicy, and they select Pods by label, so creating Pods in the platform namespace must stay limited to administrators. The bundled databases' passwords are generated on install.
 
-## What Acyclix stores
+## What Vertra stores
 
 | Where | What | Notes |
 | --- | --- | --- |
@@ -236,7 +238,7 @@ And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in bot
 
 ## Rules for product authors
 
-Products are written by catalog contributors, not by Acyclix, so these are
+Products are written by catalog contributors, not by Vertra, so these are
 requirements on product code:
 
 - **Never print or return a secret.** Logs and `result.json` outputs are stored
@@ -257,7 +259,7 @@ requirements on product code:
 ## Not yet enforced
 
 Known gaps in 0.x, all tracked in [`TODO.md`](../TODO.md). They're the reason
-Acyclix isn't production-ready yet.
+Vertra isn't production-ready yet.
 
 | Gap | Impact | Plan |
 | --- | --- | --- |

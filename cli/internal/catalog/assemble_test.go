@@ -25,7 +25,7 @@ func TestAssemble(t *testing.T) {
 	dst := filepath.Join(t.TempDir(), "catalog")
 	products, err := Assemble(Options{
 		Template: template, Team: "platform", Owners: "@octocat", Languages: []string{"python", "go"},
-		Registry: "us-central1-docker.pkg.dev/p/acyclix-products", Console: "https://console.example.com",
+		Registry: "us-central1-docker.pkg.dev/p/vertra-products",
 	}, dst)
 	if err != nil {
 		t.Fatal(err)
@@ -56,10 +56,9 @@ func TestAssemble(t *testing.T) {
 	if strings.Contains(owners, "@your-org") || !strings.Contains(owners, "\n/teams/platform/ @octocat\n") || !strings.Contains(owners, "* @octocat") {
 		t.Errorf("CODEOWNERS:\n%s", owners)
 	}
-	settings := read(t, filepath.Join(dst, "acyclix.yaml"))
-	if !strings.Contains(settings, "registry: us-central1-docker.pkg.dev/p/acyclix-products\n") ||
-		!strings.Contains(settings, "console: https://console.example.com\n") {
-		t.Errorf("acyclix.yaml:\n%s", settings)
+	settings := read(t, filepath.Join(dst, "vertra.yaml"))
+	if !strings.Contains(settings, "registry: us-central1-docker.pkg.dev/p/vertra-products\n") || strings.Contains(settings, "\nconsole:") {
+		t.Errorf("vertra.yaml:\n%s", settings)
 	}
 	if info, err := os.Stat(filepath.Join(dst, "catalogctl")); err != nil || info.Mode().Perm()&0o100 == 0 {
 		t.Error("catalogctl should stay executable")

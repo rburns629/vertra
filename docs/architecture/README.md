@@ -1,6 +1,6 @@
 # Architecture diagrams
 
-[`acyclix.drawio`](acyclix.drawio) opens in draw.io (desktop, diagrams.net, or the VS Code extension). It has five pages, each also exported as an SVG here:
+[`vertra.drawio`](vertra.drawio) opens in draw.io (desktop, diagrams.net, or the VS Code extension). It has five pages, each also exported as an SVG here:
 
 | Page | What it shows |
 | --- | --- |
@@ -10,7 +10,7 @@
 | [4 · Submit to finished](4-submit-to-finished.svg) | A UML sequence diagram of one execution, call by call, from `ExecutionService/SubmitExecution` through kernel-api, claiming, dispatch, polling and finalizing. |
 | [5 · States](5-states.svg) | The task and execution state machines, with the function that makes each transition. |
 
-The database tables are drawn in the console's guide, [`console/docs/06-database-schemas.md`](../../console/docs/06-database-schemas.md) (Docs → *Where Acyclix keeps its data*).
+The database tables are drawn in the console's guide, [`console/docs/06-database-schemas.md`](../../console/docs/06-database-schemas.md) (Docs → *Where Vertra keeps its data*).
 
 ## Keeping them current
 
@@ -20,4 +20,4 @@ All five pages are written by [`generate.py`](generate.py). Pages 2 and 3 are re
 $ python3 docs/architecture/generate.py
 ```
 
-It rewrites `acyclix.drawio` and, when draw.io's desktop app is installed, the SVGs. A rerun overwrites the file, so change a layout in `generate.py` rather than by dragging boxes in draw.io. Pages 1, 4 and 5 are laid out by hand in the script: update them when the deployment, the call path or the state rules change.
+It rewrites `vertra.drawio` and, when draw.io's desktop app is installed, the SVGs. A rerun overwrites the file, so change a layout in `generate.py` rather than by dragging boxes in draw.io. Pages 1, 4 and 5 are laid out by hand in the script: update them when the deployment, the call path or the state rules change.

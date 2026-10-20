@@ -1,0 +1,300 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Pull-based catalog registration (src/catalogSync.ts): a release read from
+ * the registry is applied as catalog CI's old token would have, an item that
+ * fails doesn't stop the rest, a release applied isn't applied again, what a
+ * later release drops is unregistered or retired (never purged), a release
+ * no trusted signer signed is refused whole, a team the catalog didn't make
+ * is left alone until an admin adopts it, and only admins see or start a
+ * sync. The registry read and the cluster writes are stubbed; the rest is
+ * the real console on the real test database.
+ */
+import { randomUUID } from "node:crypto";
+import { create, toJsonString, type MessageInitShape } from "@bufbuild/protobuf";
+import { eq, inArray, like } from "drizzle-orm";
+import type { FastifyInstance } from "fastify";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { syncCatalog } from "../src/catalogSync.js";
+import { config } from "../src/config.js";
+import { db } from "../src/db/client.js";
+import { createTeam } from "../src/db/queries.js";
+import { auditLog, catalogSync, products, teams } from "../src/db/schema.js";
+import { ReleaseSchema, type Release } from "../src/gen/vertra/catalog/v1/release_pb.js";
+import { buildApp } from "../src/index.js";
+import { applySecretStoreObjects, createVerifyJob, readScanJob } from "../src/k8s.js";
+import { fetchRelease } from "../src/registry.js";
+import { caller, rpcClient } from "./rpc.js";
+
+vi.mock("../src/registry.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/registry.js")>()),
+  fetchRelease: vi.fn(),
+}));
+vi.mock("../src/k8s.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/k8s.js")>()),
+  applySecretStoreObjects: vi.fn(() => Promise.resolve()),
+  createVerifyJob: vi.fn(() => Promise.resolve()),
+  readScanJob: vi.fn(() => Promise.resolve({ state: "succeeded", output: "" })),
+  deleteScanJob: vi.fn(() => Promise.resolve()),
+}));
+
+const prefix = `cat-${randomUUID().slice(0, 6)}`;
+const teamA = `${prefix}-a`;
+const teamB = `${prefix}-b`;
+const handMade = `${prefix}-hand`;
+const registry = "registry.example/catalog";
+const digestOf = (n: number) => `sha256:${String(n).padStart(64, "0")}`;
+const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as Parameters<typeof syncCatalog>[0];
+
+function product(team: string, name: string, action = "run") {
+  return {
+    name: `${team}-${name}-${action}`,
+    image: `${registry}/${team}/${name}@${digestOf(1)}`,
+    action,
+    team,
+    secretRefs: [],
+    shareWith: [],
+  };
+}
+
+function release(fields: MessageInitShape<typeof ReleaseSchema>): Release {
+  return create(ReleaseSchema, { commit: "c1", repository: "github.com/my-org/vertra-catalog", ...fields });
+}
+
+/** The registry answers with this release, under this digest. */
+function publish(r: Release, digest: string) {
+  vi.mocked(fetchRelease).mockResolvedValue({ digest, json: toJsonString(ReleaseSchema, r) });
+}
+
+const store = { apiVersion: "external-secrets.io/v1", kind: "SecretStore", metadata: { name: "vault" }, spec: {} };
+
+let app: FastifyInstance;
+const users = rpcClient(() => app);
+const call = caller(() => app);
+
+beforeAll(async () => {
+  app = await buildApp();
+  config.catalog.release = `${registry}/catalog-release:latest`;
+  config.catalog.verifierImage = "cosign@sha256:x";
+  await createTeam(handMade);
+});
+
+beforeEach(() => {
+  config.catalog.signature = { publicKeys: [], keylessIssuer: "", keylessSubjectRegExp: "" };
+  vi.mocked(applySecretStoreObjects).mockClear();
+  vi.mocked(createVerifyJob).mockClear();
+});
+
+afterAll(async () => {
+  config.catalog.release = "";
+  await db.delete(products).where(like(products.name, `${prefix}%`));
+  await db.delete(teams).where(like(teams.name, `${prefix}%`));
+  await db.delete(catalogSync).where(eq(catalogSync.id, 1));
+  await users.cleanUp();
+  await app.close();
+});
+
+const catalogTeams = () => db.select().from(teams).where(like(teams.name, `${prefix}%`));
+const catalogProducts = () => db.select().from(products).where(like(products.name, `${prefix}%`));
+const status = async () => (await db.select().from(catalogSync).where(eq(catalogSync.id, 1)))[0];
+
+describe("applying a release", () => {
+  it("makes its teams, registers its products and applies its SecretStores, as the catalog's", async () => {
+    publish(
+      release({
+        teams: [{ name: teamA, secretStoreDocuments: [store] }, { name: teamB, secretStoreDocuments: [] }],
+        products: [product(teamA, "site"), product(teamA, "site", "remove"), product(teamB, "db")],
+      }),
+      digestOf(10),
+    );
+    expect(await syncCatalog(log)).toBe(true);
+
+    const byName = new Map((await catalogTeams()).map((t) => [t.name, t]));
+    expect(byName.get(teamA)?.fromCatalog).toBe(true);
+    expect(byName.get(teamB)?.fromCatalog).toBe(true);
+    expect(byName.get(handMade)?.fromCatalog).toBe(false);
+    const registered = await catalogProducts();
+    expect(registered.map((p) => p.name).sort()).toEqual(
+      [`${teamA}-site-remove`, `${teamA}-site-run`, `${teamB}-db-run`].sort(),
+    );
+    expect(registered.every((p) => p.fromCatalog && p.image.endsWith(digestOf(1)))).toBe(true);
+    // The stores, never a credential: each install sets its own.
+    expect(applySecretStoreObjects).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(applySecretStoreObjects).mock.calls[0]?.[0]).toBe(teamA);
+    expect(vi.mocked(applySecretStoreObjects).mock.calls[0]?.[2]).toBeUndefined();
+
+    const row = await status();
+    expect(row).toMatchObject({ digest: digestOf(10), commit: "c1", problems: [], error: null });
+    const [entry] = await db.select().from(auditLog).where(eq(auditLog.requestId, digestOf(10)));
+    expect(entry).toMatchObject({ method: "CATALOG", route: "catalog-sync", status: 200 });
+  });
+
+  it("doesn't apply the same release twice", async () => {
+    const before = (await status())?.appliedAt;
+    expect(await syncCatalog(log)).toBe(true);
+    expect(applySecretStoreObjects).not.toHaveBeenCalled();
+    const row = await status();
+    expect(row?.appliedAt).toEqual(before);
+    expect(row?.checkedAt?.getTime()).toBeGreaterThan(before?.getTime() ?? 0);
+  });
+
+  it("records what failed and applies the rest", async () => {
+    publish(
+      release({
+        commit: "c2",
+        teams: [{ name: teamA }, { name: teamB }],
+        products: [
+          product(teamA, "site"),
+          product(teamA, "site", "remove"),
+          product(teamB, "db"),
+          // A team no release made and that doesn't exist.
+          product(`${prefix}-ghost`, "x"),
+        ],
+      }),
+      digestOf(11),
+    );
+    await syncCatalog(log);
+    const row = await status();
+    expect(row?.commit).toBe("c2");
+    expect(row?.problems).toEqual([{ item: `product ${prefix}-ghost-x-run`, message: expect.stringContaining("No such team") as string }]);
+    expect((await catalogProducts()).length).toBe(3);
+  });
+
+  it("unregisters what a later release drops, and retires a team it drops, never one an admin made", async () => {
+    const [handTeam] = await db.select().from(teams).where(eq(teams.name, handMade));
+    await db.insert(products).values({ name: `${prefix}-hand-made`, image: `${registry}/${handMade}/x@${digestOf(2)}`, action: "run", teamId: handTeam?.id });
+    publish(
+      release({
+        commit: "c3",
+        teams: [{ name: teamA }],
+        products: [product(teamA, "site")],
+      }),
+      digestOf(12),
+    );
+    await syncCatalog(log);
+
+    expect((await catalogProducts()).map((p) => p.name).sort()).toEqual([`${prefix}-hand-made`, `${teamA}-site-run`].sort());
+    const byName = new Map((await catalogTeams()).map((t) => [t.name, t]));
+    expect(byName.get(teamB)?.retiredAt).not.toBeNull();
+    expect(byName.get(teamB)?.deletedAt).toBeNull(); // retired, never purged
+    expect(byName.get(handMade)?.retiredAt).toBeNull();
+    expect(byName.get(teamA)?.retiredAt).toBeNull();
+  });
+
+  it("brings a retired team back when a release names it again", async () => {
+    publish(
+      release({
+        commit: "c4",
+        teams: [{ name: teamA }, { name: teamB }],
+        products: [product(teamA, "site"), product(teamB, "db")],
+      }),
+      digestOf(13),
+    );
+    await syncCatalog(log);
+    const [b] = await db.select().from(teams).where(eq(teams.name, teamB));
+    expect(b?.retiredAt).toBeNull();
+    expect((await catalogProducts()).some((p) => p.name === `${teamB}-db-run`)).toBe(true);
+  });
+
+  it("records a release it can't read, and changes nothing", async () => {
+    vi.mocked(fetchRelease).mockRejectedValueOnce(new Error("the registry answered 403"));
+    const before = await catalogProducts();
+    await syncCatalog(log);
+    expect((await status())?.error).toContain("403");
+    expect((await status())?.commit).toBe("c4");
+    expect((await catalogProducts()).length).toBe(before.length);
+  });
+});
+
+describe("a signed catalog", () => {
+  it("is applied only when a trusted signer signed the release", async () => {
+    config.catalog.signature = { publicKeys: ["-----BEGIN PUBLIC KEY-----\nx\n-----END PUBLIC KEY-----"], keylessIssuer: "", keylessSubjectRegExp: "" };
+    vi.mocked(readScanJob).mockResolvedValueOnce({ state: "failed", output: "no matching signatures" });
+    publish(release({ commit: "unsigned", teams: [] }), digestOf(20));
+    await syncCatalog(log);
+    expect(createVerifyJob).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(createVerifyJob).mock.calls[0]?.[0];
+    expect(args?.args.at(-1)).toBe(`${registry}/catalog-release@${digestOf(20)}`); // verified by digest
+    expect(args?.publicKey).toContain("BEGIN PUBLIC KEY");
+    expect((await status())?.error).toContain("no trusted signer");
+    expect((await status())?.commit).toBe("c4"); // nothing applied
+    expect((await catalogTeams()).find((t) => t.name === teamA)?.retiredAt).toBeNull();
+
+    publish(release({ commit: "signed", teams: [{ name: teamA }] }), digestOf(21));
+    await syncCatalog(log);
+    expect((await status())?.commit).toBe("signed");
+  });
+});
+
+describe("the API", () => {
+  it("shows the status and syncs now, for admins only", async () => {
+    const admin = await users.makeUser({ admin: true });
+    const someone = await users.makeUser();
+    const adminToken = await users.signIn(admin.email);
+    const someoneToken = await users.signIn(someone.email);
+    publish(release({ commit: "via-api", teams: [{ name: teamA }] }), digestOf(30));
+
+    expect((await call(someoneToken, "AdminService/GetCatalogStatus")).code).toBe("permission_denied");
+    expect((await call(someoneToken, "AdminService/SyncCatalog")).code).toBe("permission_denied");
+    const synced = await call<{ status: { commit: string; release: string } }>(adminToken, "AdminService/SyncCatalog");
+    expect(synced.code).toBe("ok");
+    expect(synced.body.status).toMatchObject({ commit: "via-api", release: `${registry}/catalog-release:latest` });
+    const shown = await call<{ status: { digest: string } }>(adminToken, "AdminService/GetCatalogStatus");
+    expect(shown.body.status.digest).toBe(digestOf(30));
+  });
+
+  it("lets a team's members set its SecretStores' credential, which is never audited", async () => {
+    const member = await users.makeUser();
+    const outsider = await users.makeUser();
+    const [a] = await db.select().from(teams).where(eq(teams.name, teamA));
+    const { addTeamMember } = await import("../src/db/queries.js");
+    await addTeamMember(member.id, a!.id);
+    const memberToken = await users.signIn(member.email);
+    const outsiderToken = await users.signIn(outsider.email);
+
+    const refused = await call(outsiderToken, "TeamService/SetSecretStoreCredential", { team: teamA, credential: "op-token-x" });
+    expect(refused.code).toBe("permission_denied");
+    vi.mocked(applySecretStoreObjects).mockClear();
+    const set = await call(memberToken, "TeamService/SetSecretStoreCredential", { team: teamA, credential: "op-token-secret" });
+    expect(set.code).toBe("ok");
+    expect(applySecretStoreObjects).toHaveBeenCalledWith(teamA, [], "op-token-secret");
+    const entries = await db.select().from(auditLog).where(inArray(auditLog.route, ["vertra.console.v1.TeamService/SetSecretStoreCredential"]));
+    expect(JSON.stringify(entries)).not.toContain("op-token-secret");
+  });
+});
+
+describe("a team the catalog didn't make", () => {
+  it("is left alone, its products and stores too, until an admin adopts it", async () => {
+    const taken = `${prefix}-taken`;
+    await createTeam(taken);
+    const admin = await users.makeUser({ admin: true });
+    const someone = await users.makeUser();
+    const adminToken = await users.signIn(admin.email);
+    const someoneToken = await users.signIn(someone.email);
+    publish(
+      release({
+        commit: "takeover",
+        teams: [{ name: teamA }, { name: taken, secretStoreDocuments: [store] }],
+        products: [product(teamA, "site"), product(taken, "svc")],
+      }),
+      digestOf(40),
+    );
+    vi.mocked(applySecretStoreObjects).mockClear();
+    expect(await syncCatalog(log)).toBe(true);
+
+    const names = () => catalogProducts().then((ps) => ps.map((p) => p.name));
+    expect(await names()).not.toContain(`${taken}-svc-run`);
+    expect(applySecretStoreObjects).not.toHaveBeenCalled();
+    const [team] = await db.select().from(teams).where(eq(teams.name, taken));
+    expect(team?.fromCatalog).toBe(false);
+    expect((await status())?.problems).toEqual([expect.objectContaining({ item: `team ${taken}`, adoptableTeam: taken })]);
+
+    expect((await call(someoneToken, "AdminService/AdoptCatalogTeam", { name: taken })).code).toBe("permission_denied");
+    expect((await call(adminToken, "AdminService/AdoptCatalogTeam", { name: `${prefix}-nobody` })).code).toBe("not_found");
+    const adopted = await call<{ status: { problems?: unknown[] } }>(adminToken, "AdminService/AdoptCatalogTeam", { name: taken });
+    expect(adopted.code).toBe("ok");
+    expect(adopted.body.status.problems ?? []).toEqual([]);
+    expect(await names()).toContain(`${taken}-svc-run`);
+    expect(vi.mocked(applySecretStoreObjects).mock.calls.map((c) => c[0])).toEqual([taken]);
+  });
+});

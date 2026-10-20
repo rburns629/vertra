@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam } from "../src/db/queries.js";
 import { teams } from "../src/db/schema.js";
-import { ProblemSchema } from "../src/gen/acyclix/console/v1/common_pb.js";
+import { ProblemSchema } from "../src/gen/vertra/console/v1/common_pb.js";
 import { buildApp } from "../src/index.js";
 import { failureCode, rpcClient, type RpcError } from "./rpc.js";
 
@@ -137,7 +137,7 @@ describe("SecretStore files", () => {
     const error = response.json<RpcError>();
     expect(error.code).toBe("invalid_argument");
     const problems = (error.details ?? [])
-      .filter((d) => d.type === "acyclix.console.v1.Problem")
+      .filter((d) => d.type === "vertra.console.v1.Problem")
       .map((d) => fromBinary(ProblemSchema, Buffer.from(d.value, "base64")).message);
     expect(problems.length).toBeGreaterThan(0);
   });

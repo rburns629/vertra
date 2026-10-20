@@ -96,9 +96,9 @@ let it go unsaid.
 
 - **GitHub Actions** — a job's `needs:` list is the exact same
   dependency-edge idea, just expressed in YAML instead of JSON; `ci.yml`
-  and `apply-teams.yml` in `acyclix-catalog` are themselves
-  real, live examples of this same DAG concept, one level up from the
-  DAGs *they* help provision.
+  in `vertra-catalog` is itself
+  a real, live example of this same DAG concept, one level up from the
+  DAGs it helps provision.
 - **Apache Airflow** — probably the tool the term "DAG" is most
   associated with by name; Airflow's DAGs are long-lived, scheduled,
   Python-defined pipelines, closer to a cron-with-dependencies tool than
@@ -119,7 +119,7 @@ a ready-to-run five-task chain to watch it live.
 
 ## Where to go deeper
 
-- `docs/architecture.md` in the Acyclix repository — the end-to-end
+- `docs/architecture.md` in the Vertra repository — the end-to-end
   request flow, including how the scheduler claims, starts and releases
   tasks, and the definitions (`Task`, `Execution`, their states).
 - `01-getting-started.md` — the whole path from a new team to a

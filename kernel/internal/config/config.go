@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/domain"
 )
 
 // Toleration is one Pod toleration, as the Pod spec spells it.
@@ -63,7 +63,7 @@ type Settings struct {
 	SleeperAPIPodSelector string
 	// The sleeper's own CronJob: suspended while asleep, so it doesn't start
 	// a Pod (on EKS Auto Mode, a node) every few minutes to find nothing to
-	// do. Waking resumes it (acyclixctl wake). Empty: never suspended.
+	// do. Waking resumes it (vertra wake). Empty: never suspended.
 	SleeperCronJob string
 	// A scheduled sleep (--now) waits this long for unfinished executions.
 	SleeperScheduledWait time.Duration
@@ -234,7 +234,7 @@ func Load(getenv func(string) string) (Settings, error) {
 		DatabaseURL:                     r.str("DATABASE_URL", "postgresql://localhost/execution_kernel"),
 		DatabaseCommandTimeout:          r.seconds("DATABASE_COMMAND_TIMEOUT_SECONDS", 60, true),
 		APIAuth:                         r.str("API_AUTH", "tokenreview"),
-		APITokenAudience:                r.str("API_TOKEN_AUDIENCE", "acyclix-kernel-api"),
+		APITokenAudience:                r.str("API_TOKEN_AUDIENCE", "vertra-kernel-api"),
 		APIPort:                         r.integer("API_PORT", 8000, true),
 		MaxTasksPerExecution:            r.integer("MAX_TASKS_PER_EXECUTION", 500, true),
 		SleeperNamespace:                r.str("SLEEPER_NAMESPACE", ""),
@@ -266,7 +266,7 @@ func Load(getenv func(string) string) (Settings, error) {
 		TaskLogMaxBytes:        r.integer("TASK_LOG_MAX_BYTES", 1_048_576, true),
 		TaskLogRefresh:         r.seconds("TASK_LOG_REFRESH_SECONDS", 60, true),
 		ExecutionRetentionDays: r.integer("EXECUTION_RETENTION_DAYS", 90, false),
-		HeartbeatFile:          r.str("SCHEDULER_HEARTBEAT_FILE", "/tmp/acyclix-scheduler-heartbeat"),
+		HeartbeatFile:          r.str("SCHEDULER_HEARTBEAT_FILE", "/tmp/vertra-scheduler-heartbeat"),
 		MetricsPort:            r.integer("METRICS_PORT", 9090, true),
 	}
 	if s.APIAuth != "tokenreview" && s.APIAuth != "disabled" {

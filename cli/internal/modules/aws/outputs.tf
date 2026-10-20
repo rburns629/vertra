@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# What acyclixctl turns into Helm values and kubectl access.
+# What vertra turns into Helm values and kubectl access.
 
 output "cluster" {
   value = {
@@ -30,12 +30,12 @@ output "backup" {
   } : null
 }
 
-# Where steps run: the node pool acyclixctl adds to Auto Mode
-# (acyclix-steps), or standard mode's steps group; the same label and taint.
+# Where steps run: the node pool vertra adds to Auto Mode
+# (vertra-steps), or standard mode's steps group; the same label and taint.
 output "step_placement" {
   value = {
-    nodeSelector = { "acyclix.dev/pool" = "steps" }
-    tolerations  = [{ key = "acyclix.dev/steps", operator = "Equal", value = "true", effect = "NoSchedule" }]
+    nodeSelector = { "vertra.dev/pool" = "steps" }
+    tolerations  = [{ key = "vertra.dev/steps", operator = "Equal", value = "true", effect = "NoSchedule" }]
   }
 }
 

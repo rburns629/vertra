@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# The cloud side of an Acyclix install on AWS. acyclixctl runs it (embedded
+# The cloud side of an Vertra install on AWS. vertra runs it (embedded
 # in the binary); it also works on its own with OpenTofu or Terraform.
 
 terraform {
@@ -17,7 +17,7 @@ provider "aws" {
   profile = var.profile != "" ? var.profile : null
   default_tags {
     tags = {
-      "acyclix-environment" = var.name
+      "vertra-environment" = var.name
     }
   }
 }

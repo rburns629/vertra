@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/rburns629/acyclix/kernel/internal/executor"
-	"github.com/rburns629/acyclix/kernel/internal/metrics"
-	"github.com/rburns629/acyclix/kernel/internal/migrate"
+	"github.com/rburns629/vertra/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/metrics"
+	"github.com/rburns629/vertra/kernel/internal/migrate"
 )
 
 // Between back-to-back passes, so a run of progress (or a task that keeps

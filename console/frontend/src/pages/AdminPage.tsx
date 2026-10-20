@@ -19,11 +19,13 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Autocomplete from "@mui/material/Autocomplete";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
 import {
+  adoptCatalogTeam,
   ApiError,
   AUTOMATION_SCOPES,
   createAccount,
   createAutomationToken,
   deleteAccount,
+  getCatalogStatus,
   getImagePolicy,
   grantAdmin,
   listAllTeams,
@@ -33,8 +35,10 @@ import {
   resetUserPassword,
   revokeAdmin,
   revokeToken,
+  syncCatalog,
   updateImagePolicy,
   type AutomationToken,
+  type CatalogStatus,
   type ImagePolicy,
   type Team,
   type UserAccount,
@@ -45,6 +49,7 @@ export function AdminPage() {
     <Box>
       <PageHeader title="Admin" subtitle="Platform-wide administration." />
       <Stack spacing={3}>
+        <CatalogCard />
         <ImageSourcesCard />
         <AccountsCard />
         <AllTeamsCard />
@@ -53,6 +58,133 @@ export function AdminPage() {
         <AutomationTokensCard />
       </Stack>
     </Box>
+  );
+}
+
+/**
+ * The catalog this console registers from: its release in the registry,
+ * which catalog CI pushes from main and this console reads every few
+ * minutes, verifies and applies (teams, products, SecretStores). Sync now
+ * reads and applies it at once.
+ */
+function CatalogCard() {
+  const [status, setStatus] = useState<CatalogStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [adopting, setAdopting] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCatalogStatus()
+      .then(setStatus)
+      .catch((err: unknown) => {
+        setError(err instanceof ApiError ? err.message : "Failed to load the catalog's status.");
+      });
+  }, []);
+
+  async function sync(): Promise<void> {
+    setError(null);
+    setSyncing(true);
+    try {
+      setStatus(await syncCatalog());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function adopt(name: string): Promise<void> {
+    setError(null);
+    setSyncing(true);
+    try {
+      setStatus(await adoptCatalogTeam(name));
+      setAdopting(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const when = (at: string | null) => (at ? new Date(at).toLocaleString() : "never");
+
+  return (
+    <Card variant="outlined">
+      <CardContent>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+          Catalog
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Teams, products and SecretStores come from the catalog repository: its CI publishes a
+          release from main, and this console reads it every few minutes, verifies it and applies
+          it. Products, teams or stores a release no longer has are unregistered or retired here.
+        </Typography>
+        {status && !status.release && (
+          <Alert severity="info">
+            No catalog is configured (the console chart's <code>catalog.release</code>). Teams and
+            products are only what admins make here.
+          </Alert>
+        )}
+        {status?.release && (
+          <Stack spacing={1}>
+            <Typography variant="body2">
+              <strong>Release:</strong> <code>{status.release}</code>
+            </Typography>
+            <Typography variant="body2">
+              <strong>Applied:</strong>{" "}
+              {status.commit ? (
+                <>
+                  commit <code>{/^[0-9a-f]{40}$/.test(status.commit) ? status.commit.slice(0, 12) : status.commit}</code>
+                  {status.repository && <> of {status.repository}</>}, {when(status.appliedAt)}
+                </>
+              ) : (
+                "nothing yet"
+              )}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Last looked {when(status.checkedAt)}.
+            </Typography>
+            {status.error && <Alert severity="error">{status.error}</Alert>}
+            {status.problems.length > 0 && (
+              <Alert severity="warning">
+                The last release was applied except:
+                <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+                  {status.problems.map((p) => (
+                    <li key={p.item}>
+                      <strong>{p.item}</strong>: {p.message}
+                      {p.adoptableTeam && (
+                        <Button size="small" sx={{ ml: 1 }} disabled={syncing} onClick={() => { setAdopting(p.adoptableTeam); }}>
+                          Adopt
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+            <Box>
+              <Button variant="outlined" disabled={syncing} onClick={() => void sync()}>
+                {syncing ? "Syncing…" : "Sync now"}
+              </Button>
+            </Box>
+          </Stack>
+        )}
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
+      </CardContent>
+      <ConfirmDialog
+        open={adopting !== null}
+        title={`Let the catalog manage ${adopting ?? ""}?`}
+        description="The catalog's folder of that name becomes this team: its releases will register products into it, apply its SecretStores, and retire it if the folder goes. Its members, secrets and history stay. Do this only if the folder is meant to be this team."
+        confirmLabel="Adopt"
+        busy={syncing}
+        onConfirm={() => { if (adopting) void adopt(adopting); }}
+        onCancel={() => { setAdopting(null); }}
+      />
+    </Card>
   );
 }
 
@@ -378,7 +510,7 @@ function AccountsCard() {
                 }}
               />
             }
-            label="Acyclix admin (manages every team, accounts and image sources)"
+            label="Vertra admin (manages every team, accounts and image sources)"
           />
           <Box>
             <Button variant="contained" disabled={busy || !email.trim()} onClick={() => void create()}>
@@ -545,7 +677,7 @@ function AdminGrantCard() {
   );
 }
 
-/** Platform-wide tokens for automation (catalog CI, mainly): each holds
+/** Platform-wide tokens for automation: each holds
  * specific permissions instead of team membership, so it can't read
  * secrets, submit tasks, or mint other tokens. Team-scoped bots still live
  * on each team's page. */
@@ -634,20 +766,18 @@ function AutomationTokensCard() {
           Automation tokens
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          For catalog CI and other platform automation. A token can do only what's ticked below.
-          It belongs to no team, so it can't read secrets, submit tasks, or create other tokens.
-          The catalog repo needs one token with the three pre-ticked permissions, stored as
-          its <code>ACYCLIX_BOT_TOKEN</code> secret, and a separate token with only{" "}
-          <code>teams:delete</code> for its purge workflow (<code>ACYCLIX_PURGE_TOKEN</code>, in
-          the protected <code>purge</code> Environment).
+          For platform automation of your own. A token can do only what's ticked below. It
+          belongs to no team, so it can't read secrets, submit tasks, or create other tokens.
+          The catalog needs none: this console reads the catalog's release itself (Catalog,
+          above).
         </Typography>
 
         {justIssued && (
           <Alert severity="success" sx={{ mb: 2 }}>
             Token for "{justIssued.label}": <code style={{ wordBreak: "break-all" }}>{justIssued.token}</code>
             <br />
-            Copy it now; it won't be shown again. Store it with <code>gh secret set</code> in
-            the catalog repo (see the note above for which secret).
+            Copy it now; it won't be shown again. Store it as a secret wherever the automation
+            runs.
           </Alert>
         )}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -660,7 +790,7 @@ function AutomationTokensCard() {
           <TextField
             size="small"
             label="Label"
-            placeholder="e.g. acyclix-catalog CI"
+            placeholder="e.g. nightly report job"
             value={label}
             onChange={(event) => { setLabel(event.target.value); }}
           />

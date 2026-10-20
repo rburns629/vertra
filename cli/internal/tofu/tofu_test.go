@@ -5,7 +5,7 @@ package tofu
 import (
 	"testing"
 
-	"github.com/rburns629/acyclix/cli/internal/modules"
+	"github.com/rburns629/vertra/cli/internal/modules"
 )
 
 // A trimmed `tofu show -json` of a first gcp plan.

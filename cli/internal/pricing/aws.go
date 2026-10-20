@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rburns629/acyclix/cli/internal/run"
+	"github.com/rburns629/vertra/cli/internal/run"
 )
 
 // AWS's prices: the Price List Query API (only served from us-east-1,

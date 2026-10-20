@@ -1,0 +1,232 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.kernel.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// kernel-api: runs DAGs that were already resolved and authorized. It is
+// internal: its one caller is the console, which checks every request
+// against the caller's teams, identities, secrets and images first, and
+// it's reachable only inside the cluster. kernel-api checks only that the
+// caller is the console (a ServiceAccount token, by TokenReview). It has
+// no users or teams, and never will.
+//
+// What it stores, kernel-scheduler runs: the two share nothing but the
+// database.
+service KernelService {
+  // Validates a DAG (ids, dependencies, cycles, $fromTask references,
+  // credential-shaped inputs) and stores it to run. A request_id seen
+  // before returns that execution (created false) instead of a new one.
+  // An invalid DAG is invalid_argument with ValidationIssues details,
+  // every problem at once.
+  rpc SubmitExecution(SubmitExecutionRequest) returns (SubmitExecutionResponse);
+  // An execution and its tasks, as they are now.
+  rpc GetExecution(GetExecutionRequest) returns (GetExecutionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Many executions' states at once, for list views. Ids that don't exist
+  // are left out, not refused.
+  rpc GetExecutionStates(GetExecutionStatesRequest) returns (GetExecutionStatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // An execution's events, oldest first, a page at a time.
+  rpc ListExecutionEvents(ListExecutionEventsRequest) returns (ListExecutionEventsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Every task's captured output, in one call.
+  rpc GetExecutionLogs(GetExecutionLogsRequest) returns (GetExecutionLogsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Cancels an execution: its unstarted tasks at once, its running ones at
+  // the scheduler's next pass. Cancelling a cancelled execution is fine;
+  // a finished one is failed_precondition.
+  rpc CancelExecution(CancelExecutionRequest) returns (CancelExecutionResponse);
+  // One more attempt for a FAILED task (failed_precondition otherwise),
+  // whatever its max_attempts: the execution resumes, and the tasks its
+  // failure cancelled come back.
+  rpc RetryTask(RetryTaskRequest) returns (RetryTaskResponse);
+}
+
+enum ExecutionState {
+  EXECUTION_STATE_UNSPECIFIED = 0;
+  EXECUTION_STATE_PENDING = 1;
+  EXECUTION_STATE_RUNNING = 2;
+  EXECUTION_STATE_SUCCEEDED = 3;
+  EXECUTION_STATE_FAILED = 4;
+  EXECUTION_STATE_CANCELLED = 5;
+}
+
+enum TaskState {
+  TASK_STATE_UNSPECIFIED = 0;
+  TASK_STATE_BLOCKED = 1;
+  TASK_STATE_READY = 2;
+  TASK_STATE_CLAIMED = 3;
+  TASK_STATE_RUNNING = 4;
+  TASK_STATE_SUCCEEDED = 5;
+  TASK_STATE_FAILED = 6;
+  TASK_STATE_CANCELLED = 7;
+}
+
+// One step of a DAG.
+message Task {
+  // Unique in its DAG; how other tasks name it.
+  string id = 1;
+  string image = 2;
+  // Passed to the container as its args.
+  string action = 3;
+  // The namespace it runs in.
+  string team = 4;
+  // The ServiceAccount its Pod runs as.
+  string service_account = 5;
+  repeated string depends_on = 6;
+  // Secrets mounted at /platform/secrets/<name>/.
+  repeated string secret_refs = 7;
+  // Its request.json inputs. A value of exactly {"$fromTask": id,
+  // "$output": name} is replaced by that dependency's output when it runs.
+  google.protobuf.Struct inputs = 8;
+  // Default 300.
+  optional int32 timeout_seconds = 9;
+  // Default 1.
+  optional int32 max_attempts = 10;
+  // Unset: the deployment's default size.
+  Resources resources = 11;
+}
+
+// A Pod's size, as Kubernetes quantities ("250m", "512Mi").
+message Resources {
+  string cpu = 1;
+  string memory = 2;
+  // Unset: memory.
+  string memory_limit = 3;
+}
+
+message SubmitExecutionRequest {
+  // A label for people; may repeat.
+  string name = 1;
+  // Makes a resubmission safe. Unset: every submission is a new execution.
+  string request_id = 2;
+  repeated Task tasks = 3;
+}
+
+message SubmitExecutionResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+  // False when request_id was used before: this is that execution.
+  bool created = 3;
+}
+
+// The details of an invalid_argument SubmitExecution.
+message ValidationIssues {
+  repeated ValidationIssue issues = 1;
+}
+
+message ValidationIssue {
+  // EMPTY_DAG, DUPLICATE_TASK_ID, UNKNOWN_DEPENDENCY, CYCLE_DETECTED, ...
+  string code = 1;
+  string message = 2;
+  // The task it's about, if any.
+  string task_id = 3;
+}
+
+message GetExecutionRequest {
+  string execution_id = 1;
+}
+
+message GetExecutionResponse {
+  Execution execution = 1;
+}
+
+message Execution {
+  string execution_id = 1;
+  string name = 2;
+  ExecutionState state = 3;
+  repeated TaskStatus tasks = 4;
+}
+
+message TaskStatus {
+  string task_id = 1;
+  TaskState state = 2;
+  int32 attempt_count = 3;
+  // Once it succeeded.
+  google.protobuf.Struct outputs = 4;
+  // Once it failed: {code, message, retryable}.
+  google.protobuf.Struct failure = 5;
+  repeated string depends_on = 6;
+  // The current attempt's.
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+
+message GetExecutionStatesRequest {
+  // At most 1000.
+  repeated string execution_ids = 1;
+}
+
+message GetExecutionStatesResponse {
+  repeated ExecutionStateEntry states = 1;
+}
+
+message ExecutionStateEntry {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}
+
+message ListExecutionEventsRequest {
+  string execution_id = 1;
+  // Events after this id; unset, from the first.
+  optional int64 after = 2;
+  // 1 to 1000; unset or 0, 100.
+  int32 limit = 3;
+}
+
+message ListExecutionEventsResponse {
+  repeated ExecutionEvent events = 1;
+  // Set when the page was full: pass it as after for the next one.
+  optional int64 next_cursor = 2;
+}
+
+message ExecutionEvent {
+  int64 id = 1;
+  // EXECUTION_CREATED, TASK_CLAIMED, ...
+  string event_type = 2;
+  // The task's id in its DAG, for a task's event.
+  string task_id = 3;
+  google.protobuf.Struct payload = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message GetExecutionLogsRequest {
+  string execution_id = 1;
+}
+
+message GetExecutionLogsResponse {
+  repeated TaskLogs tasks = 1;
+}
+
+message TaskLogs {
+  string task_id = 1;
+  // [] until it has printed something.
+  repeated string lines = 2;
+}
+
+message CancelExecutionRequest {
+  string execution_id = 1;
+}
+
+message CancelExecutionResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}
+
+message RetryTaskRequest {
+  string execution_id = 1;
+  string task_id = 2;
+}
+
+message RetryTaskResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}

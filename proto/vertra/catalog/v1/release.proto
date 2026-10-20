@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.catalog.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// A catalog release: everything a catalog's main branch says, as of one
+// commit, for every install that uses the catalog. Catalog CI writes it
+// (`catalogctl release`), only from main, as an OCI artifact beside the
+// images, <registry>/catalog-release, tagged with the commit and "latest",
+// and signs it as it signs the images. Each console reads it, verifies it,
+// and applies it: so CI holds no console credential, and one catalog serves
+// any number of installs.
+//
+// A release is complete, not a change: whatever it doesn't name, the
+// catalog no longer has. Its JSON form (proto3 JSON) is the artifact's one
+// layer, media type application/vnd.vertra.catalog.release.v1+json.
+message Release {
+  // The catalog commit it describes.
+  string commit = 1;
+  // The repository, for people: "github.com/my-org/vertra-catalog".
+  string repository = 2;
+  google.protobuf.Timestamp created_at = 3;
+  repeated Team teams = 4;
+  // Every product action of every team, with its image pinned to a digest.
+  repeated ProductAction products = 5;
+}
+
+message Team {
+  // Its folder's name, teams/<name>/: the team and its namespace.
+  string name = 1;
+  // Its SecretStore files' documents (teams/<name>/secret-stores/*.yaml), as
+  // catalogctl checked them; none when it has no file. The stored
+  // credential such a store may use is never here: each install sets its
+  // own in the console.
+  repeated google.protobuf.Struct secret_store_documents = 2;
+}
+
+// One action of a product.yaml, as the console registers it.
+message ProductAction {
+  // <team>-<product>-<action>.
+  string name = 1;
+  // <registry>/<team>/<product>@sha256:...: what CI built, tested, scanned,
+  // pushed and signed.
+  string image = 2;
+  string action = 3;
+  string team = 4;
+  google.protobuf.Struct input_schema = 5;
+  google.protobuf.Struct output_schema = 6;
+  string display_name = 7;
+  string description = 8;
+  // Empty: "default".
+  string service_account = 9;
+  repeated string secret_refs = 10;
+  Resources resources = 11;
+  repeated string share_with = 12;
+  // Why it's deprecated and what to use instead; empty when it isn't.
+  string deprecated = 13;
+}
+
+// The Pod size its tasks get, as Kubernetes quantities.
+message Resources {
+  string cpu = 1;
+  string memory = 2;
+  string memory_limit = 3;
+}

@@ -14,7 +14,7 @@ function botEmail(teamName: string, purpose: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
-  return `${teamName}-${slug || "bot"}@bots.acyclix.local`;
+  return `${teamName}-${slug || "bot"}@bots.vertra.local`;
 }
 
 export function AutomationTab({ teamName, readOnly }: { teamName: string; readOnly: boolean }) {
@@ -159,12 +159,12 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                   </Alert>
                   <CodeBlock code={issued.token} copyLabel="Copy token" />
                   <Typography variant="subtitle2">1. Store it in your pipeline</Typography>
-                  <CodeBlock code={"gh secret set ACYCLIX_TOKEN \\\n  --repo <your-org>/<your-repo>"} />
+                  <CodeBlock code={"gh secret set VERTRA_TOKEN \\\n  --repo <your-org>/<your-repo>"} />
                   <Typography variant="subtitle2">2. Submit a DAG from it</Typography>
                   <CodeBlock
                     code={[
-                      `jq '{dag: .}' dag.json | curl -X POST ${consoleUrl}/api/acyclix.console.v1.ExecutionService/SubmitExecution \\`,
-                      '  -H "Authorization: Bearer $ACYCLIX_TOKEN" \\',
+                      `jq '{dag: .}' dag.json | curl -X POST ${consoleUrl}/api/vertra.console.v1.ExecutionService/SubmitExecution \\`,
+                      '  -H "Authorization: Bearer $VERTRA_TOKEN" \\',
                       '  -H "Content-Type: application/json" \\',
                       "  -d @-",
                     ].join("\n")}

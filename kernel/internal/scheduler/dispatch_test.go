@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
-	"github.com/rburns629/acyclix/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/executor"
 )
 
 // Ported from the Python kernel's tests/integration/test_dispatch_retries.py and

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * The console API for the pages: plain objects over the generated Connect
- * clients (./gen, from proto/acyclix/console/v1). Pages use these
+ * clients (./gen, from proto/vertra/console/v1). Pages use these
  * functions and types, never the messages, so the wire contract can change
  * without touching them.
  *
@@ -15,8 +15,8 @@ import { createClient, Code, ConnectError, type Interceptor } from "@connectrpc/
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromDate, type Timestamp } from "@bufbuild/protobuf/wkt";
-import { AdminService } from "./gen/acyclix/console/v1/admin_pb.js";
-import { AuthService } from "./gen/acyclix/console/v1/auth_pb.js";
+import { AdminService } from "./gen/vertra/console/v1/admin_pb.js";
+import { AuthService } from "./gen/vertra/console/v1/auth_pb.js";
 import {
   DagSchema,
   ExecutionService,
@@ -24,14 +24,14 @@ import {
   TaskState,
   type Dag,
   type Execution,
-} from "./gen/acyclix/console/v1/execution_pb.js";
-import { GuideService } from "./gen/acyclix/console/v1/guide_pb.js";
-import { ImageService, type ImagePolicy as ImagePolicyMessage } from "./gen/acyclix/console/v1/image_pb.js";
-import { ProductService } from "./gen/acyclix/console/v1/product_pb.js";
-import { SecretService, SecretSource } from "./gen/acyclix/console/v1/secret_pb.js";
-import { TaskPodState, TeamService, type Team as TeamMessage } from "./gen/acyclix/console/v1/team_pb.js";
-import { TokenService } from "./gen/acyclix/console/v1/token_pb.js";
-import { UserService } from "./gen/acyclix/console/v1/user_pb.js";
+} from "./gen/vertra/console/v1/execution_pb.js";
+import { GuideService } from "./gen/vertra/console/v1/guide_pb.js";
+import { ImageService, type ImagePolicy as ImagePolicyMessage } from "./gen/vertra/console/v1/image_pb.js";
+import { ProductService } from "./gen/vertra/console/v1/product_pb.js";
+import { SecretService, SecretSource } from "./gen/vertra/console/v1/secret_pb.js";
+import { TaskPodState, TeamService, type Team as TeamMessage } from "./gen/vertra/console/v1/team_pb.js";
+import { TokenService } from "./gen/vertra/console/v1/token_pb.js";
+import { UserService } from "./gen/vertra/console/v1/user_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
@@ -178,7 +178,7 @@ export interface TeamMember {
   id: string;
   email: string;
   isBot: boolean;
-  /** An Acyclix admin (platform-wide), not just this team's member. */
+  /** An Vertra admin (platform-wide), not just this team's member. */
   isAdmin: boolean;
   addedAt: string;
 }
@@ -204,7 +204,7 @@ export async function getTeam(teamName: string): Promise<Team> {
 }
 
 /** Reversible: the team becomes read-only and its products are
- * unregistered. Admin (or catalog CI) only. */
+ * unregistered. Admin only (a catalog release retires the teams it drops). */
 export async function retireTeam(teamName: string): Promise<void> {
   await call(() => teams.retireTeam({ name: teamName }));
 }
@@ -246,8 +246,8 @@ export async function updateImagePolicy(source: string, additional: string[], ve
 }
 
 /** Irreversible, console side only: a retired team with nothing still
- * running. Its namespace and images are the catalog's purge workflow's
- * job. Admin only. */
+ * running. Its namespace stays, labelled retired, for a cluster
+ * administrator to delete. Admin only. */
 export async function purgeTeam(teamName: string): Promise<void> {
   await call(() => teams.purgeTeam({ name: teamName }));
 }
@@ -445,8 +445,8 @@ export interface Product {
    * platform-provided product that no team owns. */
   teamName: string | null;
   inputSchema: Record<string, unknown>;
-  /** The rest of its product.yaml, as catalog CI registers it (null or
-   * empty until it does): see the catalog's docs/product-schema.md. */
+  /** The rest of its product.yaml, as its catalog's release registers it
+   * (null or empty when it doesn't say): see the catalog's docs/product-schema.md. */
   displayName: string | null;
   description: string | null;
   outputSchema: Record<string, unknown>;
@@ -470,7 +470,7 @@ export interface ProductRelease {
 
 /** Open to any authenticated user -- discovering what products exist to
  * build a DAG from isn't scoped the way registering one is. Normally
- * populated by catalog CI (see ../../src/core/products.ts), not by hand. */
+ * populated by the catalog's release (see ../../src/catalogSync.ts), not by hand. */
 export async function listProducts(): Promise<Product[]> {
   const { products } = await call(() => productsApi.listProducts({}));
   return products.map((p) => ({
@@ -537,31 +537,19 @@ export async function revokeToken(tokenId: string): Promise<void> {
   await call(() => tokens.revokeToken({ tokenId }));
 }
 
-/** Must match SCOPES in ../../src/auth/scopes.ts. */
+/** Must match SCOPES in ../../src/auth/scopes.ts. Catalog CI needs none of
+ * these: each console pulls the catalog's release itself. They're for
+ * automation of your own. */
 export const AUTOMATION_SCOPES = [
-  { scope: "teams:create", description: "Create teams and their namespaces (catalog CI onboarding a new platform)", defaultOn: true },
+  { scope: "teams:create", description: "Create teams and their namespaces", defaultOn: false },
+  { scope: "products:register", description: "Register and update any team's products", defaultOn: false },
+  { scope: "teams:retire", description: "Retire or un-retire a team (reversible)", defaultOn: false },
   {
-    scope: "products:register",
-    description: "Register and update any team's products (catalog CI after a build)",
-    defaultOn: true,
-  },
-  {
-    scope: "teams:retire",
-    description: "Retire or un-retire a team, reversible (catalog CI when a team's folder is removed or restored)",
-    defaultOn: true,
-  },
-  {
-    // Off by default on purpose: this belongs on its own token, held only
-    // by the catalog's reviewer-gated purge workflow.
     scope: "teams:delete",
-    description: "Purge a retired team for good, namespace included. Give this to a separate token used only by the purge workflow",
+    description: "Purge a retired team for good, namespace included. Give this to a token of its own",
     defaultOn: false,
   },
-  {
-    scope: "secret-stores:apply",
-    description: "Apply a team's reviewed SecretStore file (catalog CI after a secret-stores pull request merges)",
-    defaultOn: true,
-  },
+  { scope: "secret-stores:apply", description: "Apply a team's reviewed SecretStore file", defaultOn: false },
 ] as const;
 
 export interface AutomationToken {
@@ -884,6 +872,68 @@ export async function getStats(): Promise<PlatformStats> {
     products: Number(stats.products),
     executions: Number(stats.executions),
   };
+}
+
+/** The catalog this console registers from -- see ../../src/catalogSync.ts.
+ * Admin-only. */
+export interface CatalogStatus {
+  /** Where the release is read from; "" when no catalog is configured. */
+  release: string;
+  digest: string;
+  commit: string;
+  repository: string;
+  appliedAt: string | null;
+  /** adoptableTeam: a team the catalog didn't make, which an admin may
+   * adopt (adoptCatalogTeam); "" for any other problem. */
+  problems: { item: string; message: string; adoptableTeam: string }[];
+  checkedAt: string | null;
+  error: string;
+}
+
+function catalogStatus(status: {
+  release: string;
+  digest: string;
+  commit: string;
+  repository: string;
+  appliedAt?: Timestamp;
+  problems: { item: string; message: string; adoptableTeam: string }[];
+  checkedAt?: Timestamp;
+  error: string;
+} | undefined): CatalogStatus {
+  return {
+    release: status?.release ?? "",
+    digest: status?.digest ?? "",
+    commit: status?.commit ?? "",
+    repository: status?.repository ?? "",
+    appliedAt: iso(status?.appliedAt),
+    problems: (status?.problems ?? []).map((p) => ({ item: p.item, message: p.message, adoptableTeam: p.adoptableTeam })),
+    checkedAt: iso(status?.checkedAt),
+    error: status?.error ?? "",
+  };
+}
+
+export async function getCatalogStatus(): Promise<CatalogStatus> {
+  const { status } = await call(() => admin.getCatalogStatus({}));
+  return catalogStatus(status);
+}
+
+/** Reads and applies the catalog's release now. */
+export async function syncCatalog(): Promise<CatalogStatus> {
+  const { status } = await call(() => admin.syncCatalog({}));
+  return catalogStatus(status);
+}
+
+/** Lets the catalog's release manage an existing team it didn't make (its
+ * namespace, secrets and products), then syncs. */
+export async function adoptCatalogTeam(name: string): Promise<CatalogStatus> {
+  const { status } = await call(() => admin.adoptCatalogTeam({ name }));
+  return catalogStatus(status);
+}
+
+/** The stored credential (a vault provider's token) the team's
+ * SecretStores may use: this install's own, never the catalog's. */
+export async function setSecretStoreCredential(team: string, credential: string): Promise<void> {
+  await call(() => teams.setSecretStoreCredential({ team, credential }));
 }
 
 /** One task attempt in a team's namespace -- see ../../src/core/teams.ts.

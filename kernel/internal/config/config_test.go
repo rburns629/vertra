@@ -79,7 +79,7 @@ func TestAMisconfigurationStopsTheSchedulerAtStartup(t *testing.T) {
 
 func TestTheAPIAndSleeperSettings(t *testing.T) {
 	s, err := load(t, map[string]string{
-		"API_ALLOWED_CALLERS":          `["system:serviceaccount:acyclix-system:console"]`,
+		"API_ALLOWED_CALLERS":          `["system:serviceaccount:vertra-system:console"]`,
 		"SLEEPER_DEPLOYMENTS":          `["kernel-api", "console"]`,
 		"SLEEPER_DATABASE_DEPLOYMENTS": `["kernel-postgres"]`,
 		"SLEEPER_IDLE_AFTER_SECONDS":   "600",
@@ -87,8 +87,8 @@ func TestTheAPIAndSleeperSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.APIAuth != "tokenreview" || s.APITokenAudience != "acyclix-kernel-api" || s.APIPort != 8000 || s.MaxTasksPerExecution != 500 ||
-		!reflect.DeepEqual(s.APIAllowedCallers, []string{"system:serviceaccount:acyclix-system:console"}) ||
+	if s.APIAuth != "tokenreview" || s.APITokenAudience != "vertra-kernel-api" || s.APIPort != 8000 || s.MaxTasksPerExecution != 500 ||
+		!reflect.DeepEqual(s.APIAllowedCallers, []string{"system:serviceaccount:vertra-system:console"}) ||
 		!reflect.DeepEqual(s.SleeperDeployments, []string{"kernel-api", "console"}) ||
 		!reflect.DeepEqual(s.SleeperDatabases, []string{"kernel-postgres"}) ||
 		s.SleeperIdleAfter != 10*time.Minute || s.SleeperScheduledWait != 6*time.Hour {

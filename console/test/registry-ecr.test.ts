@@ -20,7 +20,7 @@ vi.mock("@aws-sdk/client-ecr", () => ({
 }));
 
 const HOST = "123456789012.dkr.ecr.us-east-1.amazonaws.com";
-const ALLOWED = [`${HOST}/acyclix-products/`];
+const ALLOWED = [`${HOST}/vertra-products/`];
 const BASIC = `Basic ${Buffer.from("AWS:ecr-password").toString("base64")}`;
 let authorizations: (string | undefined)[];
 
@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 function image(): string {
-  return `${HOST}/acyclix-products/platform/p-${randomUUID().slice(0, 8)}:latest`;
+  return `${HOST}/vertra-products/platform/p-${randomUUID().slice(0, 8)}:latest`;
 }
 
 describe("ECR's credential", () => {

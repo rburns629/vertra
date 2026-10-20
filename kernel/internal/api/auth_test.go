@@ -14,7 +14,7 @@ import (
 
 // Ported from the Python kernel's tests/unit/test_api_auth.py.
 
-const console = "system:serviceaccount:acyclix-system:execution-console"
+const console = "system:serviceaccount:vertra-system:execution-console"
 
 type reviews struct {
 	asked int
@@ -24,7 +24,7 @@ type reviews struct {
 
 func (r *reviews) review(_ context.Context, token, audience string) (string, error) {
 	r.asked++
-	if audience != "acyclix-kernel-api" {
+	if audience != "vertra-kernel-api" {
 		return "", nil
 	}
 	return r.users[token], r.err
@@ -32,7 +32,7 @@ func (r *reviews) review(_ context.Context, token, audience string) (string, err
 
 func callers(r *reviews, allowed ...string) (*Callers, *time.Time) {
 	now := time.Now()
-	c := &Callers{Review: r.review, Audience: "acyclix-kernel-api", Allowed: allowed, Log: quiet}
+	c := &Callers{Review: r.review, Audience: "vertra-kernel-api", Allowed: allowed, Log: quiet}
 	c.now = func() time.Time { return now }
 	return c, &now
 }

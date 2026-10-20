@@ -2,7 +2,7 @@
 
 // Package sleeper puts an idle platform to sleep: scales its Deployments to
 // zero, so a quiet install costs only its databases' volumes. Waking is
-// explicit (`acyclixctl wake`): a sleeping console can't wake itself. The
+// explicit (`vertra wake`): a sleeping console can't wake itself. The
 // chart runs `kernel sleep` as a CronJob: one look, then exit; `kernel
 // sleep --now` is a scheduled sleep, which waits for unfinished executions
 // first. A failure exits non-zero; the next run starts afresh.
@@ -21,11 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/rburns629/acyclix/kernel/internal/config"
+	"github.com/rburns629/vertra/kernel/internal/config"
 )
 
 // AwakeReplicasKey is the state ConfigMap's key holding {deployment:
-// replicas} while asleep; acyclixctl wake reads the same key.
+// replicas} while asleep; vertra wake reads the same key.
 const AwakeReplicasKey = "awakeReplicas"
 
 // LastActivity is the latest of the moments known (nil when none is).
@@ -208,7 +208,7 @@ func Run(ctx context.Context, s config.Settings, platform *Platform, activity Ac
 		}
 	}
 	if len(awake) == 0 {
-		// Asleep some other way (acyclixctl sleep, by hand): stop looking.
+		// Asleep some other way (vertra sleep, by hand): stop looking.
 		if err := platform.Suspend(ctx, s.SleeperCronJob); err != nil {
 			return err
 		}

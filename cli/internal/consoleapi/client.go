@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-// Package consoleapi is the little of the console's API acyclixctl needs:
-// signing in as the admin, minting the catalog's tokens, creating a team,
-// and running a DAG. It calls the console's Connect services (generated
+// Package consoleapi is the little of the console's API vertra needs:
+// signing in as the admin, revoking the tokens catalogs once held, having
+// the console apply its catalog's release now, and running a DAG. It calls the console's Connect services (generated
 // from proto/ into internal/gen). Tokens and passwords pass through memory
 // only.
 package consoleapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,8 +18,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	consolev1 "github.com/rburns629/acyclix/cli/internal/gen/acyclix/console/v1"
-	"github.com/rburns629/acyclix/cli/internal/gen/acyclix/console/v1/consolev1connect"
+	consolev1 "github.com/rburns629/vertra/cli/internal/gen/vertra/console/v1"
+	"github.com/rburns629/vertra/cli/internal/gen/vertra/console/v1/consolev1connect"
 )
 
 // callTimeout bounds each call but a watch, which lasts as long as its run.
@@ -31,8 +30,7 @@ type Client struct {
 	URL        string
 	token      string
 	auth       consolev1connect.AuthServiceClient
-	teams      consolev1connect.TeamServiceClient
-	products   consolev1connect.ProductServiceClient
+	admin      consolev1connect.AdminServiceClient
 	tokens     consolev1connect.TokenServiceClient
 	executions consolev1connect.ExecutionServiceClient
 }
@@ -45,8 +43,7 @@ func New(url string) *Client {
 	base := strings.TrimSuffix(url, "/") + "/api"
 	opts := []connect.ClientOption{connect.WithInterceptors(c.session())}
 	c.auth = consolev1connect.NewAuthServiceClient(httpClient, base, opts...)
-	c.teams = consolev1connect.NewTeamServiceClient(httpClient, base, opts...)
-	c.products = consolev1connect.NewProductServiceClient(httpClient, base, opts...)
+	c.admin = consolev1connect.NewAdminServiceClient(httpClient, base, opts...)
 	c.tokens = consolev1connect.NewTokenServiceClient(httpClient, base, opts...)
 	c.executions = consolev1connect.NewExecutionServiceClient(httpClient, base, opts...)
 	return c
@@ -156,9 +153,6 @@ func idempotent(ctx context.Context, call func(context.Context) error) error {
 	return nil
 }
 
-// UseToken signs in with a token (a bot's or an automation token).
-func (c *Client) UseToken(token string) { c.token = token }
-
 // SignIn signs in with an email and password.
 func (c *Client) SignIn(ctx context.Context, email, password string) error {
 	return idempotent(ctx, func(ctx context.Context) error {
@@ -168,20 +162,6 @@ func (c *Client) SignIn(ctx context.Context, email, password string) error {
 		}
 		return err
 	})
-}
-
-// MintToken creates an automation token with scopes (admins only) and
-// returns its id and the token: shown nowhere, it's for the caller to store.
-func (c *Client) MintToken(ctx context.Context, label string, scopes []string) (id, token string, err error) {
-	ctx, cancel := context.WithTimeout(ctx, callTimeout)
-	defer cancel()
-	resp, err := c.tokens.CreateAutomationToken(ctx, connect.NewRequest(&consolev1.CreateAutomationTokenRequest{
-		Label: label, Scopes: scopes,
-	}))
-	if err != nil {
-		return "", "", refused(err)
-	}
-	return resp.Msg.GetTokenId(), resp.Msg.GetToken(), nil
 }
 
 // RevokeOthers revokes every live automation token labelled label except
@@ -205,103 +185,35 @@ func (c *Client) RevokeOthers(ctx context.Context, label, keep string) (int, err
 	return n, nil
 }
 
-// CreateTeam creates a team (and its namespace); one that exists is fine.
-func (c *Client) CreateTeam(ctx context.Context, name string) error {
-	_, err := c.EnsureTeam(ctx, name)
-	return err
+// Catalog is the catalog release a console last applied.
+type Catalog struct {
+	// Release is where it reads releases from; empty: no catalog configured.
+	Release, Commit string
+	// Problems are what it couldn't apply, as "item: message".
+	Problems []string
+	// Error is why its last look failed, if it did.
+	Error string
 }
 
-// EnsureTeam makes a team exist and be active, with its namespace, and says
-// whether it created it.
-func (c *Client) EnsureTeam(ctx context.Context, name string) (created bool, err error) {
-	err = idempotent(ctx, func(ctx context.Context) error {
-		resp, err := c.teams.EnsureTeam(ctx, connect.NewRequest(&consolev1.EnsureTeamRequest{Name: name}))
+// SyncCatalog has the console read and apply its catalog's release now
+// (admins only), and returns what it applied.
+func (c *Client) SyncCatalog(ctx context.Context) (*Catalog, error) {
+	var status *consolev1.CatalogStatus
+	err := idempotent(ctx, func(ctx context.Context) error {
+		resp, err := c.admin.SyncCatalog(ctx, connect.NewRequest(&consolev1.SyncCatalogRequest{}))
 		if err == nil {
-			created = resp.Msg.GetCreated()
+			status = resp.Msg.GetStatus()
 		}
 		return err
 	})
-	return created, err
-}
-
-// RetireTeam retires a team (reversible) and says how many of its products
-// were unregistered; found is false when there's no such team, which isn't
-// an error.
-func (c *Client) RetireTeam(ctx context.Context, name string) (found bool, unregistered int, err error) {
-	err = idempotent(ctx, func(ctx context.Context) error {
-		resp, err := c.teams.RetireTeam(ctx, connect.NewRequest(&consolev1.RetireTeamRequest{Name: name}))
-		if err == nil {
-			unregistered = int(resp.Msg.GetUnregisteredProducts())
-		}
-		return err
-	})
-	found, err = notFoundIsFine(err)
-	return found, unregistered, err
-}
-
-// PurgeTeam purges a retired team (irreversible), and says whether its
-// namespace went too; found is false when there's no such team.
-func (c *Client) PurgeTeam(ctx context.Context, name string) (found, namespaceDeleted bool, err error) {
-	err = idempotent(ctx, func(ctx context.Context) error {
-		resp, err := c.teams.PurgeTeam(ctx, connect.NewRequest(&consolev1.PurgeTeamRequest{Name: name}))
-		if err == nil {
-			namespaceDeleted = resp.Msg.GetNamespaceDeleted()
-		}
-		return err
-	})
-	found, err = notFoundIsFine(err)
-	return found, namespaceDeleted, err
-}
-
-func notFoundIsFine(err error) (bool, error) {
-	var r *Refusal
-	if errors.As(err, &r) && r.Code == connect.CodeNotFound {
-		return false, nil
-	}
-	return err == nil, err
-}
-
-// ApplySecretStore has the console check and apply a team's SecretStore
-// documents, with credential (a stored credential) when there is one. A
-// refusal lists each problem.
-func (c *Client) ApplySecretStore(ctx context.Context, team string, documents []any, credential string) error {
-	req := &consolev1.ApplySecretStoreRequest{Team: team}
-	for i, doc := range documents {
-		m, ok := doc.(map[string]any)
-		if !ok {
-			return fmt.Errorf("document %d isn't an object", i+1)
-		}
-		s, err := StructOf(m)
-		if err != nil {
-			return fmt.Errorf("document %d: %w", i+1, err)
-		}
-		req.Documents = append(req.Documents, s)
-	}
-	if credential != "" {
-		req.Credential = &credential
-	}
-	return idempotent(ctx, func(ctx context.Context) error {
-		_, err := c.teams.ApplySecretStore(ctx, connect.NewRequest(req))
-		return err
-	})
-}
-
-// RegisterProduct registers (or updates) one product action.
-func (c *Client) RegisterProduct(ctx context.Context, req *consolev1.RegisterProductRequest) error {
-	return idempotent(ctx, func(ctx context.Context) error {
-		_, err := c.products.RegisterProduct(ctx, connect.NewRequest(req))
-		return err
-	})
-}
-
-// StructOf is a JSON-shaped object as a protobuf Struct.
-func StructOf(v any) (*structpb.Struct, error) {
-	data, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
-	s := &structpb.Struct{}
-	return s, s.UnmarshalJSON(data)
+	out := &Catalog{Release: status.GetRelease(), Commit: status.GetCommit(), Error: status.GetError()}
+	for _, p := range status.GetProblems() {
+		out.Problems = append(out.Problems, p.GetItem()+": "+p.GetMessage())
+	}
+	return out, nil
 }
 
 // Task is one step of a DAG to submit.

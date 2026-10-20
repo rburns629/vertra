@@ -2,25 +2,25 @@
 
 Everything the console does, a pipeline can do over HTTP: submit a DAG, wait for it, read its outputs and logs. A team's bot signs in with an API token; every method is listed in the [API reference](api-reference.md).
 
-Each method is one URL, `POST /api/acyclix.console.v1.<Service>/<Method>`, taking a JSON body and returning JSON: the Connect protocol, which is plain HTTP, so `curl` and `jq` are all you need. The same methods can be called over gRPC, or with a typed client generated from the protos in the platform's repository (`proto/acyclix/console/v1`).
+Each method is one URL, `POST /api/vertra.console.v1.<Service>/<Method>`, taking a JSON body and returning JSON: the Connect protocol, which is plain HTTP, so `curl` and `jq` are all you need. The same methods can be called over gRPC, or with a typed client generated from the protos in the platform's repository (`proto/vertra/console/v1`).
 
-In the examples, the console is `https://acyclix.example.com` and the team is `team-a`. Lines starting with `$` are what you type; the lines under them are what you get back.
+In the examples, the console is `https://vertra.example.com` and the team is `team-a`. Lines starting with `$` are what you type; the lines under them are what you get back.
 
 ## 1. Get a token
 
 In the console, open your team → **Automation → Add a bot**, say what will use it, and copy the token: it's shown only once. The bot acts as a member of your team, and of nothing else. Store the token as a secret in your pipeline, for example:
 
 ```console
-$ gh secret set ACYCLIX_TOKEN --repo <your-org>/<your-repo>
+$ gh secret set VERTRA_TOKEN --repo <your-org>/<your-repo>
 ```
 
 Every call sends it as a bearer token. A small helper keeps the examples short:
 
 ```console
-$ export ACYCLIX=https://acyclix.example.com
-$ call() { curl -s -X POST "$ACYCLIX/api/acyclix.console.v1.$1" -H "Authorization: Bearer $ACYCLIX_TOKEN" -H "Content-Type: application/json" -d "${2:-{\}}"; }
+$ export VERTRA=https://vertra.example.com
+$ call() { curl -s -X POST "$VERTRA/api/vertra.console.v1.$1" -H "Authorization: Bearer $VERTRA_TOKEN" -H "Content-Type: application/json" -d "${2:-{\}}"; }
 $ call AuthService/GetMe
-{"userId":"3f0c…","email":"team-a-release-pipeline@bots.acyclix.local","teamNames":["team-a"],"isAdmin":false}
+{"userId":"3f0c…","email":"team-a-release-pipeline@bots.vertra.local","teamNames":["team-a"],"isAdmin":false}
 ```
 
 ## 2. Submit a DAG

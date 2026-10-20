@@ -1,15 +1,16 @@
-# Go for acyclixctl and catalogctl (`make proto`): the console's API, from
-# the plugins pinned as tools in cli/go.mod. Output is committed.
+# Go for vertra and catalogctl (`make proto`): the console's API and the
+# catalog release format, from the plugins pinned as tools in cli/go.mod.
+# Output is committed.
 version: v2
 clean: true
 inputs:
   - directory: proto
-    paths: [proto/acyclix/console]
+    paths: [proto/vertra/console, proto/vertra/catalog]
 managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/rburns629/acyclix/cli/internal/gen
+      value: github.com/rburns629/vertra/cli/internal/gen
 plugins:
   - local: protoc-gen-go
     out: cli/internal/gen

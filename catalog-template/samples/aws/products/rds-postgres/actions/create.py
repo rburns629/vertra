@@ -66,7 +66,7 @@ def _session(region: str) -> boto3.session.Session:
     if not target:
         return session
     credentials = session.client("sts").assume_role(
-        RoleArn=target, RoleSessionName="acyclix-step"
+        RoleArn=target, RoleSessionName="vertra-step"
     )["Credentials"]
     return boto3.session.Session(
         aws_access_key_id=credentials["AccessKeyId"],
@@ -118,13 +118,13 @@ def main() -> int:
                 "Engine": "postgres",
                 "DBInstanceClass": inputs.get("instanceClass", "db.t4g.micro"),
                 "AllocatedStorage": int(inputs.get("allocatedStorageGb", 20)),
-                "MasterUsername": inputs.get("masterUsername", "acyclix_admin"),
+                "MasterUsername": inputs.get("masterUsername", "vertra_admin"),
                 "ManageMasterUserPassword": True,
                 "StorageEncrypted": True,
                 "PubliclyAccessible": False,
                 "BackupRetentionPeriod": 7,
                 "CopyTagsToSnapshot": True,
-                "Tags": [{"Key": "managed-by", "Value": "acyclix"}],
+                "Tags": [{"Key": "managed-by", "Value": "vertra"}],
             }
             if inputs.get("engineVersion"):
                 create["EngineVersion"] = inputs["engineVersion"]

@@ -1,7 +1,7 @@
 # Descriptive metadata about the gcp team itself -- see the top-level
 # README.md's own team.yaml section for the full convention and why
 # this deliberately lists no products.
-apiVersion: acyclix.dev/v2
+apiVersion: vertra.dev/v2
 kind: Team
 name: gcp
 displayName: GCP

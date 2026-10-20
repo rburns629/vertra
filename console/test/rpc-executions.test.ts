@@ -191,7 +191,7 @@ describe("watching", () => {
     try {
       const response = await app.inject({
         method: "POST",
-        url: "/api/acyclix.console.v1.ExecutionService/WatchExecution",
+        url: "/api/vertra.console.v1.ExecutionService/WatchExecution",
         headers: { "content-type": "application/connect+json", authorization: `Bearer ${token}` },
         payload: envelope({ executionId }),
       });
@@ -210,7 +210,7 @@ describe("watching", () => {
     const executionId = await recorded([teamName]);
     const response = await app.inject({
       method: "POST",
-      url: "/api/acyclix.console.v1.ExecutionService/WatchExecution",
+      url: "/api/vertra.console.v1.ExecutionService/WatchExecution",
       headers: { "content-type": "application/connect+json", authorization: `Bearer ${token}` },
       payload: envelope({ executionId }),
     });
@@ -225,7 +225,7 @@ describe("watching", () => {
     const executionId = await recorded([teamName]);
     const response = await app.inject({
       method: "POST",
-      url: "/api/acyclix.console.v1.ExecutionService/WatchExecution",
+      url: "/api/vertra.console.v1.ExecutionService/WatchExecution",
       headers: { "content-type": "application/connect+json", authorization: `Bearer ${outsider}` },
       payload: envelope({ executionId }),
     });

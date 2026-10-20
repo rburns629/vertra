@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Package config is an install's settings: deploy/<env>/acyclix.yaml.
+// Package config is an install's settings: deploy/<env>/vertra.yaml.
 // Names and references only, never a secret, so it's safe to keep in a
 // private repository of your own.
 package config
@@ -20,7 +20,7 @@ import (
 )
 
 // FileName is the config file inside an environment's directory.
-const FileName = "acyclix.yaml"
+const FileName = "vertra.yaml"
 
 // CurrentVersion is the config file format this CLI writes.
 const CurrentVersion = 1
@@ -36,9 +36,9 @@ var (
 // Config is one install's settings.
 type Config struct {
 	Version int `yaml:"version"`
-	// Acyclix is the release to install, or "source" to build from Source.
-	Acyclix string `yaml:"acyclix"`
-	// Source is a checkout of the Acyclix repository: charts from its
+	// Vertra is the release to install, or "source" to build from Source.
+	Vertra string `yaml:"vertra"`
+	// Source is a checkout of the Vertra repository: charts from its
 	// helm/charts, images built from its kernel/ and console/.
 	Source     string     `yaml:"source,omitempty"`
 	Target     string     `yaml:"target"`
@@ -61,17 +61,17 @@ type Config struct {
 	Admin        Admin    `yaml:"admin"`
 	// Console says how the console is reached from outside the cluster.
 	Console Console `yaml:"console,omitempty"`
-	// Catalog is the catalog repository `acyclixctl catalog` creates.
+	// Catalog is the catalog repository `vertra catalog` creates.
 	Catalog Catalog `yaml:"catalog,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
 	// Values is a Helm values file layered last, relative to the config's
-	// directory: anything acyclixctl doesn't ask about.
+	// directory: anything vertra doesn't ask about.
 	Values string `yaml:"values,omitempty"`
 }
 
-// Cluster says which cluster, and whether acyclixctl creates it.
+// Cluster says which cluster, and whether vertra creates it.
 type Cluster struct {
 	Create bool   `yaml:"create"`
 	Mode   string `yaml:"mode"`
@@ -141,7 +141,7 @@ type Console struct {
 	Public   bool   `yaml:"public,omitempty"`
 	Hostname string `yaml:"hostname,omitempty"`
 	// Zone (aws): a DNS zone the module creates in Route 53 for the
-	// console's address (e.g. acyclix.example.com), which you delegate with
+	// console's address (e.g. vertra.example.com), which you delegate with
 	// its NS records; the hostname defaults to console.<zone>.
 	Zone string `yaml:"zone,omitempty"`
 }
@@ -194,25 +194,25 @@ type Admin struct {
 func Default(target string) *Config {
 	c := &Config{
 		Version:   CurrentVersion,
-		Acyclix:   "source",
+		Vertra:    "source",
 		Target:    target,
-		Namespace: "acyclix-system",
+		Namespace: "vertra-system",
 		Size:      "minimal",
 		ScaleDown: ScaleDown{Enabled: true, IdleAfter: "2h"},
 		Database:  Database{Type: "in-cluster", Backups: Backups{Enabled: false, RetentionDays: 30}},
 	}
 	switch target {
 	case "kind":
-		c.Cluster = Cluster{Create: true, Mode: "standard", Name: "acyclix"}
+		c.Cluster = Cluster{Create: true, Mode: "standard", Name: "vertra"}
 		c.Kind = Kind{RegistryName: "kind-registry", RegistryPort: 5001}
 		c.TaskImages.Registry = "localhost:5001"
 	case "gcp":
-		c.Cluster = Cluster{Create: true, Mode: "auto", Name: "acyclix"}
-		c.TaskImages = TaskImages{Create: true, Name: "acyclix-products"}
+		c.Cluster = Cluster{Create: true, Mode: "auto", Name: "vertra"}
+		c.TaskImages = TaskImages{Create: true, Name: "vertra-products"}
 		c.Database.Backups.Enabled = true
 	case "aws":
-		c.Cluster = Cluster{Create: true, Mode: "auto", Name: "acyclix"}
-		c.TaskImages = TaskImages{Create: true, Name: "acyclix-products"}
+		c.Cluster = Cluster{Create: true, Mode: "auto", Name: "vertra"}
+		c.TaskImages = TaskImages{Create: true, Name: "vertra-products"}
 		c.Database.Backups.Enabled = true
 	case "existing":
 		c.Cluster = Cluster{Create: false, Mode: "existing"}
@@ -227,8 +227,8 @@ func (c *Config) FillDefaults() {
 	if c.Version == 0 {
 		c.Version = CurrentVersion
 	}
-	if c.Acyclix == "" {
-		c.Acyclix = d.Acyclix
+	if c.Vertra == "" {
+		c.Vertra = d.Vertra
 	}
 	if c.Namespace == "" {
 		c.Namespace = d.Namespace
@@ -279,21 +279,21 @@ func (c *Config) Validate() error {
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
 
 	if c.Version != CurrentVersion {
-		add("version: %d isn't a format this acyclixctl reads (it writes %d)", c.Version, CurrentVersion)
+		add("version: %d isn't a format this vertra reads (it writes %d)", c.Version, CurrentVersion)
 	}
 	if !contains(Targets, c.Target) {
 		add("target: %q isn't one of %s", c.Target, strings.Join(Targets, ", "))
 	} else if !contains(Implemented, c.Target) {
-		add("target: %s isn't supported by this acyclixctl yet (kind and existing are)", c.Target)
+		add("target: %s isn't supported by this vertra yet (kind and existing are)", c.Target)
 	}
-	if c.Acyclix != "source" && !version.MatchString(c.Acyclix) {
-		add("acyclix: %q is neither a release version (like 0.1.0) nor \"source\"", c.Acyclix)
+	if c.Vertra != "source" && !version.MatchString(c.Vertra) {
+		add("vertra: %q is neither a release version (like 0.1.0) nor \"source\"", c.Vertra)
 	}
-	if c.Acyclix == "source" {
+	if c.Vertra == "source" {
 		if c.Source == "" {
-			add("source: needed when acyclix is \"source\": the path to an Acyclix checkout")
+			add("source: needed when vertra is \"source\": the path to an Vertra checkout")
 		} else if _, err := os.Stat(filepath.Join(c.Source, "helm", "charts", "execution-kernel", "Chart.yaml")); err != nil {
-			add("source: %s isn't an Acyclix checkout (no helm/charts/execution-kernel)", c.Source)
+			add("source: %s isn't an Vertra checkout (no helm/charts/execution-kernel)", c.Source)
 		}
 	}
 	if !dnsLabel.MatchString(c.Namespace) {
@@ -350,7 +350,7 @@ func (c *Config) Validate() error {
 		if c.Cluster.Context == "" {
 			add("cluster.context: the kubectl context of the existing cluster is needed")
 		}
-		if c.Acyclix == "source" && c.PlatformImages.Registry == "" {
+		if c.Vertra == "source" && c.PlatformImages.Registry == "" {
 			add("platformImages.registry: building from source onto an existing cluster needs a registry to push the images to")
 		}
 	}
@@ -376,7 +376,7 @@ func (c *Config) Validate() error {
 		if c.Target == "kind" || c.Target == "existing" {
 			add("database.type: managed needs a cloud target; kind and existing use the in-cluster database")
 		} else {
-			add("database.type: managed isn't supported by this acyclixctl yet: use in-cluster (backed up to a bucket)")
+			add("database.type: managed isn't supported by this vertra yet: use in-cluster (backed up to a bucket)")
 		}
 	default:
 		add("database.type: %q isn't in-cluster or managed", c.Database.Type)
@@ -389,7 +389,7 @@ func (c *Config) Validate() error {
 	}
 	if c.Console.Public && c.Target == "aws" {
 		if !hostname.MatchString(c.Console.Zone) {
-			add("console.zone: %q: a DNS zone for the console's address, like acyclix.example.com (Route 53 hosts it; you delegate it)", c.Console.Zone)
+			add("console.zone: %q: a DNS zone for the console's address, like vertra.example.com (Route 53 hosts it; you delegate it)", c.Console.Zone)
 		}
 		if c.Cluster.Mode != "auto" {
 			add("console.public: on aws, only with EKS Auto Mode so far (standard mode needs the AWS Load Balancer Controller)")
@@ -413,8 +413,8 @@ func (c *Config) Validate() error {
 				add("catalog.languages: %q isn't one of python, typescript, go, powershell, rust", l)
 			}
 		}
-		if c.Target == "gcp" && !c.Console.Public {
-			add("catalog: its CI reaches the console over HTTPS: set console.public")
+		if c.Target != "gcp" && c.Target != "aws" {
+			add("catalog: only gcp and aws installs give its CI a registry to publish to so far")
 		}
 	}
 	if !strings.Contains(c.Admin.Email, "@") {
@@ -426,12 +426,12 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Load reads and validates dir/acyclix.yaml.
+// Load reads and validates dir/vertra.yaml.
 func Load(dir string) (*Config, error) {
 	data, err := os.ReadFile(filepath.Join(dir, FileName))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("no %s in %s: run `acyclixctl init` first", FileName, dir)
+			return nil, fmt.Errorf("no %s in %s: run `vertra init` first", FileName, dir)
 		}
 		return nil, err
 	}
@@ -448,12 +448,12 @@ func Load(dir string) (*Config, error) {
 	return &c, nil
 }
 
-const header = `# An Acyclix install's settings, written by acyclixctl. Names and references
+const header = `# An Vertra install's settings, written by vertra. Names and references
 # only, never a secret: safe to keep in a private repository of your own.
-# Change a setting with ` + "`acyclixctl config set <key> <value>`" + `, then ` + "`acyclixctl apply`" + `.
+# Change a setting with ` + "`vertra config set <key> <value>`" + `, then ` + "`vertra apply`" + `.
 `
 
-// Save writes dir/acyclix.yaml, creating dir.
+// Save writes dir/vertra.yaml, creating dir.
 func (c *Config) Save(dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -473,7 +473,7 @@ func Get(c *Config, key string) (string, error) {
 	}
 	found := find(node, strings.Split(key, "."))
 	if found == nil {
-		return "", fmt.Errorf("no setting %q (see `acyclixctl config get` for every key)", key)
+		return "", fmt.Errorf("no setting %q (see `vertra config get` for every key)", key)
 	}
 	if found.Kind == yaml.ScalarNode {
 		return found.Value, nil
@@ -572,7 +572,7 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"gcp.project": true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
 	}
 	if !known[strings.Join(path, ".")] {
-		return fmt.Errorf("no setting %q (see `acyclixctl config get` for every key)", strings.Join(path, "."))
+		return fmt.Errorf("no setting %q (see `vertra config get` for every key)", strings.Join(path, "."))
 	}
 	for i, part := range path {
 		var next *yaml.Node
@@ -628,7 +628,7 @@ func Dir(base, env string) (string, error) {
 	}
 	entries, err := os.ReadDir(base)
 	if err != nil {
-		return "", fmt.Errorf("no environments in %s: run `acyclixctl init <env>` first", base)
+		return "", fmt.Errorf("no environments in %s: run `vertra init <env>` first", base)
 	}
 	var envs []string
 	for _, e := range entries {
@@ -638,7 +638,7 @@ func Dir(base, env string) (string, error) {
 	}
 	switch len(envs) {
 	case 0:
-		return "", fmt.Errorf("no environments in %s: run `acyclixctl init <env>` first", base)
+		return "", fmt.Errorf("no environments in %s: run `vertra init <env>` first", base)
 	case 1:
 		return filepath.Join(base, envs[0]), nil
 	default:

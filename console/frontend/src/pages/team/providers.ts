@@ -3,7 +3,7 @@ import type { PlatformInfo } from "../../api";
 
 /**
  * What the "Connect a source" wizard knows about each secret provider:
- * what to ask the platform owner, who Acyclix will sign in as, the
+ * what to ask the platform owner, who Vertra will sign in as, the
  * commands to run on the provider's side, and the SecretStore (plus the
  * ServiceAccount ESO signs in as) that goes into the catalog repo for
  * review. Everything here is display: the catalog PR's review is what
@@ -70,14 +70,14 @@ export const PROVIDERS: ProviderGuide[] = [
     id: "gcpsm",
     title: "GCP Secret Manager",
     description: "Secrets in a Google Cloud project your team owns.",
-    credential: "nothing: Acyclix signs in with Workload Identity.",
+    credential: "nothing: Vertra signs in with Workload Identity.",
     tested: true,
     unavailable: (facts) =>
       facts.gcpWorkloadIdentityPool && facts.gkeClusterName && facts.gkeClusterLocation
         ? null
         : "Needs a GKE cluster with Workload Identity; this one isn't.",
     fields: [
-      { key: "project", label: "GCP project holding your secrets", hint: "Your own project is fine; it doesn't have to be Acyclix's." },
+      { key: "project", label: "GCP project holding your secrets", hint: "Your own project is fine; it doesn't have to be Vertra's." },
       { key: "firstSecret", label: "A first secret to allow", hint: "Grant more later the same way, one secret at a time." },
     ],
     defaults: () => ({ project: "", firstSecret: "" }),
@@ -87,12 +87,12 @@ export const PROVIDERS: ProviderGuide[] = [
       ["Workload Identity member", `serviceAccount:${facts.gcpWorkloadIdentityPool}[${team}/${esoAccount("gcp")}]`],
     ],
     commandsIntro:
-      "Creates a GCP identity only this team uses, lets it read the secret you named, and lets Acyclix sign in as it. Safe to re-run.",
+      "Creates a GCP identity only this team uses, lets it read the secret you named, and lets Vertra sign in as it. Safe to re-run.",
     commands: (team, facts, values) => {
       const project = values["project"] || "<YOUR_PROJECT>";
       const sa = gcpServiceAccount(team, values);
       return [
-        `gcloud iam service-accounts create acyclix-eso-${team} \\`,
+        `gcloud iam service-accounts create vertra-eso-${team} \\`,
         `  --project=${project}`,
         "",
         `gcloud secrets add-iam-policy-binding ${values["firstSecret"] || "<SECRET_NAME>"} \\`,
@@ -153,10 +153,10 @@ export const PROVIDERS: ProviderGuide[] = [
       ["Audience", "api://AzureADTokenExchange"],
     ],
     commandsIntro:
-      "Creates a managed identity, lets it read the vault's secrets, and tells Azure to trust Acyclix's cluster for it.",
+      "Creates a managed identity, lets it read the vault's secrets, and tells Azure to trust Vertra's cluster for it.",
     commands: (team, facts, values) => {
       const group = values["resourceGroup"] || "<RESOURCE_GROUP>";
-      const identity = `acyclix-eso-${team}`;
+      const identity = `vertra-eso-${team}`;
       return [
         `az identity create -g ${group} -n ${identity} --query clientId -o tsv`,
         "",
@@ -168,7 +168,7 @@ export const PROVIDERS: ProviderGuide[] = [
         "",
         "az identity federated-credential create \\",
         `  -g ${group} --identity-name ${identity} \\`,
-        `  --name acyclix-${team} \\`,
+        `  --name vertra-${team} \\`,
         `  --issuer ${facts.clusterIssuer} \\`,
         `  --subject system:serviceaccount:${team}:${esoAccount("azure")} \\`,
         "  --audiences api://AzureADTokenExchange",
@@ -217,7 +217,7 @@ export const PROVIDERS: ProviderGuide[] = [
       ["Subject", `system:serviceaccount:${team}:${esoAccount("aws")}`],
     ],
     commandsIntro:
-      "Registers Acyclix's cluster as an identity provider (once per AWS account), then a role only this team can use, limited to secrets whose names start with the team's name and a slash.",
+      "Registers Vertra's cluster as an identity provider (once per AWS account), then a role only this team can use, limited to secrets whose names start with the team's name and a slash.",
     commands: (team, facts, values) => {
       const account = values["account"] || "<ACCOUNT_ID>";
       const region = values["region"] || "<REGION>";
@@ -257,13 +257,13 @@ export const PROVIDERS: ProviderGuide[] = [
         "cat > trust.json <<'EOF'",
         JSON.stringify(trust, null, 2),
         "EOF",
-        `aws iam create-role --role-name acyclix-eso-${team} \\`,
+        `aws iam create-role --role-name vertra-eso-${team} \\`,
         "  --assume-role-policy-document file://trust.json",
         "",
         "cat > read-secrets.json <<'EOF'",
         JSON.stringify(policy, null, 2),
         "EOF",
-        `aws iam put-role-policy --role-name acyclix-eso-${team} \\`,
+        `aws iam put-role-policy --role-name vertra-eso-${team} \\`,
         `  --policy-name read-${team}-secrets \\`,
         "  --policy-document file://read-secrets.json",
       ].join("\n");
@@ -295,29 +295,27 @@ export const PROVIDERS: ProviderGuide[] = [
     id: "onepasswordSDK",
     title: "1Password",
     description: "Items in a 1Password vault your team owns.",
-    credential: "a 1Password service account token, kept in the catalog's GitHub settings for this team.",
+    credential: "a 1Password service account token, set on this team's Secrets tab (each install keeps its own).",
     tested: false,
     unavailable: (facts) => (facts.catalogRepo ? null : "Needs the catalog repo configured for this console."),
     fields: [{ key: "vault", label: "Vault name", hint: "Give the 1Password service account access to this vault only." }],
-    defaults: (team) => ({ vault: `acyclix-${team}` }),
+    defaults: (team) => ({ vault: `vertra-${team}` }),
     signsInAs: (team) => [
-      ["Token stored as", `GitHub Environment "${team}", secret BOOTSTRAP_CREDENTIAL`],
+      ["Token stored as", "Secrets tab → Stored credential, in this install only"],
       ["Becomes Kubernetes Secret", `${team}/eso-auth (key: token)`],
     ],
     commandsIntro:
-      "1Password can't trust a cluster directly, so it needs one stored token. Only reviewed code on the catalog's main branch can read it.",
-    commands: (team, facts, values) =>
+      "1Password can't trust a cluster directly, so it needs one stored token. It never goes in git: each install keeps its own, and no step can mount it.",
+    commands: (_team, _facts, values) =>
       [
         "# 1. In 1Password: Developer > Service Accounts > New service account.",
         `#    Read-only access to the vault "${values["vault"] || "<VAULT>"}" and nothing else.`,
         "",
-        "# 2. Store its token for this team (paste it when asked):",
-        "gh secret set BOOTSTRAP_CREDENTIAL \\",
-        `  --repo ${facts.catalogRepo} \\`,
-        `  --env ${team}`,
+        "# 2. Paste its token under Stored credential on this team's Secrets",
+        "#    tab, in each install that uses this catalog.",
         "",
-        "# To rotate: create a new token, run step 2 again, then revoke",
-        "# the old one in 1Password.",
+        "# To rotate: create a new token, save it there, then revoke the old",
+        "# one in 1Password.",
       ].join("\n"),
     manifest: (team, _facts, values) =>
       [
@@ -342,11 +340,11 @@ export const PROVIDERS: ProviderGuide[] = [
 ];
 
 function gcpServiceAccount(team: string, values: Values): string {
-  return `acyclix-eso-${team}@${values["project"] || "<YOUR_PROJECT>"}.iam.gserviceaccount.com`;
+  return `vertra-eso-${team}@${values["project"] || "<YOUR_PROJECT>"}.iam.gserviceaccount.com`;
 }
 
 function awsRole(team: string, values: Values): string {
-  return `arn:aws:iam::${values["account"] || "<ACCOUNT_ID>"}:role/acyclix-eso-${team}`;
+  return `arn:aws:iam::${values["account"] || "<ACCOUNT_ID>"}:role/vertra-eso-${team}`;
 }
 
 export function providerGuide(id: string): ProviderGuide | undefined {

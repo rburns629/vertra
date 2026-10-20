@@ -84,7 +84,7 @@ const ESO_VERSION = "v1";
  * label existed), and finds its own RoleBindings by it.
  */
 const MANAGED_BY_LABEL = "app.kubernetes.io/managed-by";
-const MANAGED_BY = "acyclix-console";
+const MANAGED_BY = "vertra-console";
 const MANAGED_LABELS = { [MANAGED_BY_LABEL]: MANAGED_BY };
 
 function isManaged(metadata: k8s.V1ObjectMeta | undefined): boolean {
@@ -464,7 +464,7 @@ export async function deleteTeamNamespace(name: string, protectedNamespaces: str
  * (pullSecret.ts) and named by every step Pod (the kernel's
  * task_image_pull_secret). Never registered as a team secret, so never
  * mountable: only the kubelet uses it. */
-export const TEAM_PULL_SECRET = "acyclix-pull";
+export const TEAM_PULL_SECRET = "vertra-pull";
 
 /** Writes the pull Secret into a team namespace, replacing the copy there.
  * Returns false when the namespace doesn't exist (yet). */
@@ -809,11 +809,11 @@ export async function listTaskPods(namespace: string): Promise<TaskPodSummary[]>
   return result.items.map((pod) => {
     const labels = pod.metadata?.labels ?? {};
     const container = pod.status?.containerStatuses?.[0];
-    const attempt = labels["acyclix.dev/attempt"];
+    const attempt = labels["vertra.dev/attempt"];
     return {
       podName: pod.metadata?.name ?? "unknown",
-      executionId: labels["acyclix.dev/execution-id"] ?? null,
-      taskKey: pod.metadata?.annotations?.["acyclix.dev/task"] ?? null,
+      executionId: labels["vertra.dev/execution-id"] ?? null,
+      taskKey: pod.metadata?.annotations?.["vertra.dev/task"] ?? null,
       attempt: attempt ? Number(attempt) : null,
       image: pod.spec?.containers[0]?.image ?? null,
       serviceAccount: pod.spec?.serviceAccountName ?? null,
@@ -1029,14 +1029,80 @@ export async function createScanJob(spec: ScanJobSpec): Promise<void> {
   }
 }
 
+export interface VerifyJobSpec {
+  namespace: string;
+  name: string;
+  /** cosign's image, pinned. */
+  image: string;
+  /** The scanning identity, which reads the registry. */
+  serviceAccount: string;
+  pullSecretName: string;
+  /** cosign verify's own arguments: the trust, then the reference. */
+  args: string[];
+  /** A public key, for args' `--key env://COSIGN_PUBLIC_KEY`. */
+  publicKey?: string;
+}
+
+/**
+ * Starts a Job running `cosign verify` on a catalog release, as the
+ * scanning identity (it reads the same registry), hardened as the scan Job
+ * is. Its exit says whether the signature is good.
+ */
+export async function createVerifyJob(spec: VerifyJobSpec): Promise<void> {
+  const { batch } = getApis();
+  const labels = { ...MANAGED_LABELS, "app.kubernetes.io/component": "catalog-verify" };
+  const body: k8s.V1Job = {
+    metadata: { name: spec.name, namespace: spec.namespace, labels },
+    spec: {
+      backoffLimit: 0,
+      activeDeadlineSeconds: 300,
+      ttlSecondsAfterFinished: 3600,
+      template: {
+        metadata: { labels },
+        spec: {
+          restartPolicy: "Never",
+          serviceAccountName: spec.serviceAccount,
+          automountServiceAccountToken: false,
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, seccompProfile: { type: "RuntimeDefault" } },
+          containers: [
+            {
+              name: "cosign",
+              image: spec.image,
+              args: ["verify", ...spec.args],
+              env: [
+                { name: "HOME", value: "/tmp" },
+                ...(spec.publicKey ? [{ name: "COSIGN_PUBLIC_KEY", value: spec.publicKey }] : []),
+                ...(spec.pullSecretName ? [{ name: "DOCKER_CONFIG", value: "/etc/docker-config" }] : []),
+              ],
+              securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } },
+              resources: { requests: { cpu: "50m", memory: "64Mi" }, limits: { memory: "256Mi" } },
+              volumeMounts: [
+                { name: "tmp", mountPath: "/tmp" },
+                ...(spec.pullSecretName ? [{ name: "docker-config", mountPath: "/etc/docker-config", readOnly: true }] : []),
+              ],
+            },
+          ],
+          volumes: [
+            { name: "tmp", emptyDir: { sizeLimit: "64Mi" } },
+            ...(spec.pullSecretName
+              ? [{ name: "docker-config", secret: { secretName: spec.pullSecretName, items: [{ key: ".dockerconfigjson", path: "config.json" }] } }]
+              : []),
+          ],
+        },
+      },
+    },
+  };
+  await batch.createNamespacedJob({ namespace: spec.namespace, body });
+}
+
 export type ScanJobState =
   | { state: "running" }
   | { state: "missing" }
   | { state: "succeeded"; output: string }
   | { state: "failed"; output: string };
 
-/** Where a scan Job is, with its Pod's output once it has finished. */
-export async function readScanJob(namespace: string, name: string): Promise<ScanJobState> {
+/** Where a scan (or verification) Job is, with its Pod's output once it has finished. */
+export async function readScanJob(namespace: string, name: string, container = "trivy"): Promise<ScanJobState> {
   const { batch, core } = getApis();
   let job: k8s.V1Job;
   try {
@@ -1055,7 +1121,7 @@ export async function readScanJob(namespace: string, name: string): Promise<Scan
   let output = "";
   if (pod?.metadata?.name) {
     try {
-      output = await core.readNamespacedPodLog({ name: pod.metadata.name, namespace, container: "trivy" });
+      output = await core.readNamespacedPodLog({ name: pod.metadata.name, namespace, container });
     } catch (error) {
       if (!isNotFound(error)) throw error;
     }

@@ -7,7 +7,7 @@ design.
 
 ## Installing and operating
 
-- [ ] **An installer CLI, `acyclixctl`**, in Go (one static binary per OS,
+- [ ] **An installer CLI, `vertra`**, in Go (one static binary per OS,
   released signed with the platform). Step 1 of `cli/DESIGN.md`'s build
   order is in `cli/`: kind (local) and existing clusters, `init`, `check`,
   `apply`, `status`, `sleep`, `wake`, `destroy`, `config`, `tools`. Step 2,
@@ -35,7 +35,7 @@ design.
   own ServiceAccount was refused), and the console's registry check asked
   for a repository named with its tag (so retries said the image was gone).
   Just Ship It was left empty afterwards (2026-10-19). The test catalog
-  repositories (rburns629/acyclix-catalog-test, -aws-test) are kept for
+  repositories (rburns629/vertra-catalog-test, -aws-test) are kept for
   now. Still to do: the AWS sample's SecretStore. The sizes' figures are first estimates, to be
   measured.
   Decided 2026-10-18:
@@ -48,8 +48,8 @@ design.
     key and backup bucket. `tofu plan` feeds the approval screen; changes and
     `destroy` come with it. Runs locally under the user's own cloud login;
     state in `deploy/<env>/` (optional remote backend). kind and existing
-    don't use it. Acyclix itself is installed with the Helm charts.
-  - **Config:** `./deploy/<env>/acyclix.yaml` (gitignored in this repo; safe
+    don't use it. Vertra itself is installed with the Helm charts.
+  - **Config:** `./deploy/<env>/vertra.yaml` (gitignored in this repo; safe
     to commit elsewhere: names only, secrets generated in the cluster), plus
     a Helm values passthrough for anything the CLI doesn't ask about.
   - **Size:** `minimal` (the absolute minimum), `resilient` (two copies,
@@ -62,14 +62,14 @@ design.
   - **macOS and Linux only.** `destroy` asks about each kind of data unless
     `--all`.
   - **Scale down:** a yes/no prompt, changeable later. Yes: the platform
-    sleeps after an idle period and wakes with `acyclixctl wake`. No: asks
+    sleeps after an idle period and wakes with `vertra wake`. No: asks
     the always-on copies of the console and API (default from the size) and
     the warm headroom for steps. `sleep` and `wake` always work. The image
     scanner idles to zero regardless.
   - **Requirements first:** per target (kubectl, helm, tofu, docker and kind;
     gcloud, aws and eksctl, az and kubelogin; git and gh for `catalog`).
     Single binaries are downloaded on consent, checksum-verified, into
-    `~/.acyclix/bin`; installers (docker, gcloud, aws, az) get the exact
+    `~/.vertra/bin`; installers (docker, gcloud, aws, az) get the exact
     install command instead.
   - **Approval screen** before anything changes: the whole configuration,
     what will be created and installed, and an estimated monthly cost from
@@ -97,7 +97,7 @@ design.
     template then ships GitLab CI wrappers over catalogctl alongside its
     GitHub workflows.
 
-- [x] **Guided access in `acyclixctl init`** (done 2026-10-18:
+- [x] **Guided access in `vertra init`** (done 2026-10-18:
   `internal/access`, `init_access.go`, `docs/clouds/`; proven read-only
   against Just Ship It, acyclix-dev and GitHub). Agreed 2026-10-18. Setting up AWS showed most of the effort goes on
   finding out which account you're in and what it allows. Before planning,
@@ -173,7 +173,7 @@ elsewhere in this file wait until then).
 
 Order of work (decided 2026-10-20): **0** R1, R2 and R4 in the Python
 scheduler (done 2026-10-20). **1** The contracts: the console's API on Connect (protos,
-generated clients for the frontend, `acyclixctl` and `catalogctl`), the
+generated clients for the frontend, `vertra` and `catalogctl`), the
 catalog format version 2, `catalogctl` ported to Go in the CLI's module,
 the compatibility check. **Kernel track:** the kernel in Go, Python
 removed (done 2026-10-20). **2** Pull-based registration. **3** Roles,
@@ -200,7 +200,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   events, logs, retry, rerun); the execution page on `WatchExecution`
   instead of polling (proven in a browser on kind; the stream resends
   every 15s so idle timeouts don't cut it, and GKE's default 30s backend
-  timeout just means a reconnect); `acyclixctl`'s `internal/consoleapi`
+  timeout just means a reconnect); `vertra`'s `internal/consoleapi`
   on the generated Go client (proven on kind: sign-in, `EnsureTeam`,
   token rotation, submit and watch); `catalogctl` ported to Go
   (`cli/cmd/catalogctl`; the same verdicts as the Python tool on 37
@@ -211,7 +211,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   fixing: an unset optional field refused, wiring type names unchecked,
   refusals' extra fields dropped, now `Failure.detail`), and the API
   reference built from the protos by `make proto`; catalog format v2
-  (`apiVersion: acyclix.dev/v2` and a `kind` in every file; actions'
+  (`apiVersion: vertra.dev/v2` and a `kind` in every file; actions'
   `secretRefs` bindings, `shareWith` and `deprecated`, recorded by the
   console; `kind: Template` with parameters and steps naming actions,
   checked by catalogctl; `catalogctl migrate`, which converted the
@@ -221,6 +221,17 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   was deprecated first). Phase 1 is done. Load balancers need HTTP/2 end
   to end only for gRPC callers (the charts' Ingress and the CLI's AWS and
   GCP settings); the browser and both CLIs use Connect over HTTP/1.1.
+- [x] **Renamed Acyclix to Vertra** (done 2026-10-20). Everything that
+  carries the name: the CLI (`acyclixctl` is now `vertra`), Go modules
+  (`github.com/rburns629/vertra/...`), protos and their routes
+  (`/api/vertra.console.v1.*`), the catalog format (`vertra.dev/v2`, its
+  settings file `vertra.yaml`), labels (`vertra/team`), the platform
+  namespace (`vertra-system`), environment variables (`VERTRA_*`) and the
+  kind cluster (`vertra-local`). `catalogctl migrate` converts a catalog
+  from before; `vertra catalog` removes a repository's `ACYCLIX_*`
+  variables. Not renamed: the GCP project `acyclix-dev`, a real resource.
+  An install from before keeps its old labels and namespace: reinstall it
+  (none outside kind existed).
 - [x] **Kernel track: kernel-scheduler in Go** (done 2026-10-20).
   `kernel/cmd/kernel-scheduler` and `kernel/internal/` (pgx, client-go
   informers), against the same schema and settings, with the same Job
@@ -241,7 +252,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [x] **Kernel track: the rest of the kernel in Go, Python removed** (done
   2026-10-20). One binary, `kernel` (`api`, `scheduler`, `migrate`,
   `sleep`), on a distroless image (about 50 MB). kernel-api is
-  `KernelService` (`proto/acyclix/kernel/v1`) over Connect, with the same
+  `KernelService` (`proto/vertra/kernel/v1`) over Connect, with the same
   TokenReview caller check; the console calls it through the generated
   client (`console/src/kernel/client.ts`), which now refuses field names it
   didn't check, as kernel-api's pydantic models did. The schema is
@@ -255,31 +266,41 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   retries, cancel, timeout, fan-out, the caller check (no token 401, a
   step's token 403, the wrong audience 401), and a real scheduled sleep and
   wake under the sleeper's own Role. Then on GKE Autopilot in acyclix-dev,
-  a fresh install by `acyclixctl` (the scheduler waited for the migration
+  a fresh install by `vertra` (the scheduler waited for the migration
   hook): a chain passing an output, retries, cancel, a timeout, a fan-out
-  on Spot, the caller check; then `acyclixctl destroy --all`, leaving
+  on Spot, the caller check; then `vertra destroy --all`, leaving
   nothing but the project's own defaults. That run found client-go
   printing Autopilot's warning on every Job unstructured; each distinct
   API warning is now logged once, as JSON.
 - [ ] **Release `catalogctl` binaries, and pin one in the catalog
   template's `./catalogctl`** (version and per-platform SHA-256). Until
-  then the wrapper refuses to run without `ACYCLIX_CATALOGCTL`, so a
-  catalog repository created now (`acyclixctl catalog`) has CI that can't
+  then the wrapper refuses to run without `VERTRA_CATALOGCTL`, so a
+  catalog repository created now (`vertra catalog`) has CI that can't
   run; this checkout's CI and `make catalog-publish` build it from source.
   Needs somewhere public to download from (the platform repository's
   releases once it's public), and a release workflow that builds
   linux/darwin × amd64/arm64 and writes the checksums.
 - [ ] **`buf breaking` in CI at the first release**, against the released
   protos: until then contracts change freely (decided 2026-10-19).
-- [ ] **P0: pull-based catalog registration (M1, S1).** One repository has
-  one `ACYCLIX_CONSOLE_URL` and one `ACYCLIX_TOKEN`, and `acyclixctl
-  catalog` overwrites them, so a second install takes registrations from
-  the first; and the token is readable by pull-request workflows where
-  Environments aren't available. Each console reads `main` (read-only
-  deploy key or GitHub App), verifies signatures against the catalog's
-  main-only CI identity, and registers products, templates, teams and
-  SecretStores; CI keeps no console credentials. `acyclixctl catalog` on
-  an existing repository then only connects this console.
+- [x] **P0: pull-based catalog registration (M1, S1)** (done 2026-10-20).
+  Catalog CI publishes, then `./catalogctl release` pushes the whole
+  catalog (teams, their SecretStore files, every product action pinned by
+  digest; `proto/vertra/catalog/v1/release.proto`) as a signed OCI
+  artifact, `<registry>/catalog-release`. Each console polls it
+  (`catalog.pollSeconds`, and Sync now on the Admin page), verifies it with
+  a cosign Job against `catalog.signature`, and applies it
+  (`console/src/catalogSync.ts`) with the old token's rights only:
+  dropped products are unregistered, dropped teams retired, never purged.
+  A team the catalog didn't make is left alone until an admin adopts it
+  (`AdminService/AdoptCatalogTeam`), replacing `check-new-team-names`. A
+  SecretStore's stored credential is set per install
+  (`TeamService/SetSecretStoreCredential`). The push workflows, catalogctl's
+  `teams` commands and every console token in the catalog are gone;
+  `delete-team-images` keeps the registry clean-up; `vertra catalog`
+  sets only registry variables (and removes and revokes the old ones) and
+  the install sets the console's `catalog.release`, so a catalog no
+  longer needs a public console. Templates aren't in the release yet
+  (they come with consumers, A1).
 - [ ] **P0: consumers and templates (A1).** A consumer role that may run a
   team's published templates with parameters only; templates
   (`teams/<team>/dags/`, with a `parameters` block) fix each step's
@@ -350,7 +371,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **P2: notifications** (failure, finish, a product not ready, the
   catalog not pulled), **copy as API call**, **run again with changes**.
 - [ ] **Scale-down for development installs only**: say so in
-  `acyclixctl init`, and let schedules wake a sleeping install.
+  `vertra init`, and let schedules wake a sleeping install.
 - [ ] **Trace what a retired team's running executions do** (not checked in
   the assessment).
 
@@ -403,7 +424,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `pattern`/limits as inline validation, `required`, key/value lists for
   string maps, repeatable rows for arrays. Template parameters use the
   same schema shape, so one renderer serves products and templates. A
-  short, validated `x-acyclix` hint vocabulary in `product.schema.json`
+  short, validated `x-vertra` hint vocabulary in `product.schema.json`
   for what JSON Schema can't say: `patternMessage`, `options: targets`
   (the owning team's allowed projects or folders for the caller's team),
   `order`, `group`, `widget: textarea`. Never render a secret field

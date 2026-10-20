@@ -33,7 +33,7 @@ var quietLog = slog.New(slog.NewTextHandler(io.Discard, nil))
 func stepTask() ResolvedTask {
 	return ResolvedTask{ExecutionID: "00000000-0000-0000-0000-000000000001", TaskKey: "env",
 		Image: "test-environment-product:local", Action: "create", Attempt: 1, TimeoutSeconds: 60,
-		Team: "acyclix-system", ServiceAccount: "default"}
+		Team: "vertra-system", ServiceAccount: "default"}
 }
 
 func options() KubernetesOptions {
@@ -100,7 +100,7 @@ func status(code int32, reason metav1.StatusReason, message string) error {
 }
 
 const policyMessage = `jobs.batch "ek-env-1" is forbidden: ValidatingAdmissionPolicy ` +
-	`'kernel-execution-kernel-dispatch' denied request: namespace acyclix-system is not an Acyclix team namespace`
+	`'kernel-execution-kernel-dispatch' denied request: namespace vertra-system is not an Vertra team namespace`
 
 func check(t *testing.T, what string, got, want any) {
 	t.Helper()
@@ -149,8 +149,8 @@ func TestTheConfigMapIsOwnedByItsJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check(t, "handle", handle, Handle{"namespace": "acyclix-system", "jobName": JobName(stepTask().ExecutionID, "env", 1)})
-	cm, err := c.CoreV1().ConfigMaps("acyclix-system").Get(context.Background(), handle["jobName"].(string), metav1.GetOptions{})
+	check(t, "handle", handle, Handle{"namespace": "vertra-system", "jobName": JobName(stepTask().ExecutionID, "env", 1)})
+	cm, err := c.CoreV1().ConfigMaps("vertra-system").Get(context.Background(), handle["jobName"].(string), metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestSecretsAreMountedEachUnderItsName(t *testing.T) {
 
 func TestStepPodsNameThePullSecretWhenOneIsSet(t *testing.T) {
 	var names [][]string
-	for _, secret := range []string{"acyclix-pull", ""} {
+	for _, secret := range []string{"vertra-pull", ""} {
 		opts := options()
 		opts.ImagePullSecret = secret
 		c := newCluster(opts)
@@ -291,7 +291,7 @@ func TestStepPodsNameThePullSecretWhenOneIsSet(t *testing.T) {
 		}
 		names = append(names, refs)
 	}
-	check(t, "pull secrets", names, [][]string{{"acyclix-pull"}, nil})
+	check(t, "pull secrets", names, [][]string{{"vertra-pull"}, nil})
 }
 
 func TestDiscardRemovesTheAttemptsJobAndConfigMap(t *testing.T) {
@@ -439,7 +439,7 @@ func TestAStepsLogIsCappedAndSaysSo(t *testing.T) {
 	opts.LogMaxLines, opts.LogMaxBytes = 3, 10_000
 	k := newCluster(opts).k
 	lines := k.logLines([]byte("a\nb\nc\n"))
-	check(t, "note", strings.HasPrefix(lines[0], "[acyclix: earlier output not kept"), true)
+	check(t, "note", strings.HasPrefix(lines[0], "[vertra: earlier output not kept"), true)
 	check(t, "lines", lines[1:], []string{"a", "b", "c"})
 	check(t, "short", k.logLines([]byte("short\n")), []string{"short"})
 	check(t, "empty", k.logLines(nil), []string{})
@@ -563,7 +563,7 @@ func TestListAttemptsReadsEachJobsIdentityFromItsLabels(t *testing.T) {
 		return &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "demo-3", Labels: labels, Annotations: annotations, CreationTimestamp: created}}
 	}
 	c := newCluster(options(),
-		job("ek-greet-1", map[string]string{"acyclix.dev/execution-id": "e-1", "acyclix.dev/attempt": "2"}, map[string]string{"acyclix.dev/task": "greet"}),
+		job("ek-greet-1", map[string]string{"vertra.dev/execution-id": "e-1", "vertra.dev/attempt": "2"}, map[string]string{"vertra.dev/task": "greet"}),
 		job("ek-hand-made", map[string]string{}, nil), // not made the way the kernel makes Jobs
 		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: "someone-elses", Namespace: "demo-3"}})
 	attempts, err := c.k.ListAttempts(context.Background())

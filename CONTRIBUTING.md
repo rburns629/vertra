@@ -1,4 +1,4 @@
-# Contributing to Acyclix
+# Contributing to Vertra
 
 Thanks for helping. This page covers setting up, testing, and what a pull
 request needs. For security issues, see [`SECURITY.md`](SECURITY.md) instead.
@@ -43,8 +43,8 @@ make test-db-down     # removes it
 ```
 
 Integration tests use a real Postgres, not mocks. `make test-db` runs it as a
-throwaway container (`acyclix-test-db`) on `127.0.0.1:55432`, apart from any
-Postgres you already run and from any Acyclix install. To run a suite by hand
+throwaway container (`vertra-test-db`) on `127.0.0.1:55432`, apart from any
+Postgres you already run and from any Vertra install. To run a suite by hand
 against it, set `TEST_DATABASE_URL`:
 
 ```

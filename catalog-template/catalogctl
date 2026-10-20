@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # Runs catalogctl, the platform's catalog tool, at the release pinned below:
 # downloaded once into .catalogctl/ and checked against its SHA-256 before
-# it ever runs. ACYCLIX_CATALOGCTL runs a catalogctl of your own instead
+# it ever runs. VERTRA_CATALOGCTL runs a catalogctl of your own instead
 # (one built from a platform checkout: .github/scripts/build-catalogctl.sh).
 # ./catalogctl --help for usage.
 set -euo pipefail
 
-# Set when the platform publishes a release; until then, ACYCLIX_CATALOGCTL.
+# Set when the platform publishes a release; until then, VERTRA_CATALOGCTL.
 version=""
-releases="https://github.com/rburns629/acyclix/releases/download"
+releases="https://github.com/rburns629/vertra/releases/download"
 
 root=$(cd "$(dirname "$0")" && pwd)
-export ACYCLIX_CATALOG_ROOT="$root"
+export VERTRA_CATALOG_ROOT="$root"
 
-if [ -n "${ACYCLIX_CATALOGCTL:-}" ]; then
-  exec "$ACYCLIX_CATALOGCTL" "$@"
+if [ -n "${VERTRA_CATALOGCTL:-}" ]; then
+  exec "$VERTRA_CATALOGCTL" "$@"
 fi
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -33,7 +33,7 @@ case $platform in
   *) echo "catalogctl: no release for $platform" >&2; exit 1 ;;
 esac
 if [ -z "$version" ] || [ -z "$sha256" ]; then
-  echo "catalogctl: no release is pinned in ./catalogctl yet; set ACYCLIX_CATALOGCTL to a catalogctl" >&2
+  echo "catalogctl: no release is pinned in ./catalogctl yet; set VERTRA_CATALOGCTL to a catalogctl" >&2
   echo "built from the platform repository (.github/scripts/build-catalogctl.sh)." >&2
   exit 1
 fi

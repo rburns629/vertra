@@ -34,8 +34,8 @@ actually runs. Once copied into `teams/<team>/`, from the repository root:
 
 Each step takes the previous step's `text`. They need no secrets and no
 ServiceAccount of their own, so this runs as soon as the team is published
-(copy this folder to `teams/local/`, then `./catalogctl teams apply local`
-and `./catalogctl publish teams/local/products/*`, or merge it for CI). `:latest` is
+(copy this folder to `teams/local/`, then `./catalogctl publish teams/local/products/*`
+and `./catalogctl release`, or merge it for CI). `:latest` is
 fine: the console pins each image to its digest when you submit. The
 registry here is a local install's:
 

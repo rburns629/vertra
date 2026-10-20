@@ -1,8 +1,8 @@
 # execution-console on the local kind cluster (release `console`,
-# namespace acyclix-system):
-#   helm upgrade --install console helm/charts/execution-console -n acyclix-system \
-#     --kube-context kind-acyclix-local -f helm/values/kind/console.yaml
-kernelApiUrl: http://kernel-execution-kernel-api.acyclix-system.svc.cluster.local:8000
+# namespace vertra-system):
+#   helm upgrade --install console helm/charts/execution-console -n vertra-system \
+#     --kube-context kind-vertra-local -f helm/values/kind/console.yaml
+kernelApiUrl: http://kernel-execution-kernel-api.vertra-system.svc.cluster.local:8000
 environmentLabel: Kubernetes
 replicaCount: 1
 image:
@@ -22,9 +22,14 @@ existingSecretKey: database-url
 registryCheck:
   mirrors:
     localhost:5001: http://kind-registry:5000
+# The catalog's release, from `make catalog-publish` (local mode). Unsigned
+# on kind: a verification Job couldn't reach localhost:5001 anyway.
+catalog:
+  release: localhost:5001/catalog-release:latest
+  pollSeconds: 60
 bootstrapAdmin:
-  password: acyclix-local
+  password: vertra-local
 # The "Connect a source" wizard. kind's tokens aren't trusted by any cloud,
 # so only stored-credential sources (1Password) are offered here.
 secretSources:
-  catalogRepo: my-org/acyclix-catalog
+  catalogRepo: my-org/vertra-catalog

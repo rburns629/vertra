@@ -1,11 +1,11 @@
-# Try Acyclix end to end
+# Try Vertra end to end
 
-In about an hour you take a trial team from nothing to a product that runs on Acyclix, reads a secret, and passes its output to a second product. Every step copies a sample from the catalog's `templates/` folder: they run anywhere, call no cloud, and cost nothing.
+In about an hour you take a trial team from nothing to a product that runs on Vertra, reads a secret, and passes its output to a second product. Every step copies a sample from the catalog's `templates/` folder: they run anywhere, call no cloud, and cost nothing.
 
 You need:
 
-- **An Acyclix console account.** An Acyclix admin creates it; there is no sign-up page.
-- **Access to the catalog repo** (`my-org/acyclix-catalog`), to open pull requests.
+- **An Vertra console account.** An Vertra admin creates it; there is no sign-up page.
+- **Access to the catalog repo** (`my-org/vertra-catalog`), to open pull requests.
 - **Docker on your laptop** (optional). It lets you run a product's test before you push, instead of waiting for CI.
 - **A team name.** Lowercase letters, digits and dashes, not used by anyone before; a removed team's name stays reserved. For a trial, use `try-<your-name>`, for example `team-a`.
 
@@ -17,7 +17,7 @@ A team offers products; a DAG runs some of their actions in order; a team's secr
 
 | Word | What it is | Where it lives |
 | --- | --- | --- |
-| **Team** | You and your colleagues, as Acyclix sees you: one folder in the catalog, one team in the console, one namespace on the cluster, all with the same name | `teams/team-a/` |
+| **Team** | You and your colleagues, as Vertra sees you: one folder in the catalog, one team in the console, one namespace on the cluster, all with the same name | `teams/team-a/` |
 | **Product** | A container image that does one kind of job, plus a `product.yaml` describing it | `teams/team-a/products/hello/` |
 | **Action** | One thing a product can do, as a script named after it | `actions/greet.py` |
 | **DAG** | A list of tasks to run, where a task can wait for another and use its output ([more](03-what-is-a-dag.md)) | Pasted into the console's Submit page |
@@ -33,7 +33,7 @@ One pull request creates your team. Merging it sets up your namespace and your t
 3. Add your team's line to `.github/CODEOWNERS`, with the other teams' lines: `/teams/team-a/ @<your-org>/<your-team>`. From then on, your team approves changes to your products.
 4. Open a pull request. A catalog admin approves it, since it changes `.github/`. The `check-new-team-names` check fails if the name is taken or was used before; pick another.
 5. Merge once it's approved.
-6. Ask an Acyclix admin to add you to the `team-a` team. A new team starts empty, so its first member comes from an admin; after that, any member adds teammates on the Members tab.
+6. Ask an Vertra admin to add you to the `team-a` team. A new team starts empty, so its first member comes from an admin; after that, any member adds teammates on the Members tab.
 
 **You're done when** the console's Teams page lists `team-a` and you can open it.
 
@@ -119,20 +119,20 @@ A task that uses another's output must list it in `dependsOn`; the DAG is refuse
 
 ## Step 6: Sync secrets from your own vault (optional)
 
-If your secrets already live in a vault, connect it once and add them from there; a change in the vault reaches Acyclix within an hour. You keep the vault in your own cloud account.
+If your secrets already live in a vault, connect it once and add them from there; a change in the vault reaches Vertra within an hour. You keep the vault in your own cloud account.
 
 1. On your team's **Secrets** tab, choose **Connect a source** and pick your provider.
-2. Fill in its few details. The page then shows the commands to run in your own account, already filled in, and who Acyclix will sign in as.
+2. Fill in its few details. The page then shows the commands to run in your own account, already filled in, and who Vertra will sign in as.
 3. Run them, then open the pull request the page prepares: one file, `teams/team-a/secret-stores/secretstore.yaml`. A catalog admin approves it.
-4. After merge, the source appears under **Where secrets come from**, showing whether Acyclix could sign in.
+4. After merge, the source appears under **Where secrets come from**, showing whether Vertra could sign in.
 5. From then on, **Add a secret** offers **Sync from …**: give the secret's name in the vault instead of pasting a value.
 
-| Provider | What Acyclix stores | Status |
+| Provider | What Vertra stores | Status |
 | --- | --- | --- |
 | GCP Secret Manager | Nothing: it signs in with Workload Identity | Tested ([step by step](02-sync-secrets-gcp.md)) |
 | Azure Key Vault | Nothing: Azure trusts the cluster's identity | Guide only, not yet tested |
 | AWS Secrets Manager | Nothing: AWS trusts the cluster's identity | Guide only, not yet tested |
-| 1Password | One read-only service-account token, in the catalog's GitHub settings for your team | Guide only, not yet tested |
+| 1Password | One read-only service-account token, set on your team's **Secrets** tab (**Stored credential**) in each install | Guide only, not yet tested |
 
 The file may only hold your team's secret source and the identity it signs in as; anything else fails its pull request check.
 
@@ -207,19 +207,19 @@ Every error names its cause; this table maps the common ones to the fix.
 | Pull request check `check-new-team-names` fails | The team name is taken, or belonged to a removed team | Pick another name |
 | CI: `no tests` | The product has no `tests/<action>/<case>/` folders | Add one; copy the sample's |
 | CI: a `HIGH`/`CRITICAL` vulnerability, a secret, or a malicious package | The image failed its security scan | The run's summary lists each; usually keep the `apt-get upgrade` line and pin a fixed version |
-| You can't open your team | You're not a member yet | Ask an Acyclix admin (first member) or a teammate |
+| You can't open your team | You're not a member yet | Ask an Vertra admin (first member) or a teammate |
 
 A task's own logs are on its execution's page; the team's **Running now** tab shows a task that can't start and why.
 
 ## Help, and what isn't ready yet
 
-Ask the Acyclix team; for an account, or the first member of a new team, ask an Acyclix admin.
+Ask the Vertra team; for an account, or the first member of a new team, ask an Vertra admin.
 
 Known gaps today:
 
 - **Azure, AWS and 1Password syncing** have guides in the console but haven't been tested end to end. Expect rough edges and tell us what you hit.
-- **No "sync now".** A secret changed in your vault reaches Acyclix within an hour.
+- **No "sync now".** A secret changed in your vault reaches Vertra within an hour.
 - **One namespace per team.** Separate environments by secret name for now, for example `db-password-prod`.
 - **The console is served over plain HTTP** while HTTPS is set up. Don't reuse a password you use elsewhere.
 
-**Cleaning up a trial team:** a pull request that deletes `teams/team-a/` retires it (its tasks stop and the team becomes read-only); an Acyclix admin can then remove it for good. Its name stays reserved.
+**Cleaning up a trial team:** a pull request that deletes `teams/team-a/` retires it (its tasks stop and the team becomes read-only); an Vertra admin can then remove it for good. Its name stays reserved.

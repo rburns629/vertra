@@ -17,7 +17,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 ├── docs/          maintainer documentation and diagrams
 ├── examples/      demo products (not real catalog products)
 ├── catalog-template/  what a new catalog repository starts as
-├── cli/           acyclixctl, the installer CLI (Go)
+├── cli/           vertra, the installer CLI (Go)
 ├── proto/         the console's API as protobuf (Connect); `make proto` generates its code
 ├── .github/       CI and security workflows
 ├── Makefile       everyday commands: run, deploy, logs
@@ -28,7 +28,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 
 | Path | What it's for |
 | --- | --- |
-| `README.md` | What Acyclix is, a first example DAG, trying it locally on kind, and how the parts fit together. |
+| `README.md` | What Vertra is, a first example DAG, trying it locally on kind, and how the parts fit together. |
 | `LICENSE` | The MIT license. |
 | `SECURITY.md` | How to report a vulnerability privately, response times, supported versions, scope. |
 | `CONTRIBUTING.md` | Setting up, testing, what a pull request needs, DCO sign-off. |
@@ -39,9 +39,10 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `Makefile` | Everyday commands: `make quickstart` (a local install from nothing), `make up`/`down`/`logs` for the kind cluster, `make kind-deploy*` and `make gke-deploy*`, building the demo products, and `make test`/`test-db`/`test-db-down` (a throwaway test Postgres, separate from any install), and `make proto` (lint the API's protos and generate their code). |
 | `.gitignore` | Keeps `_local/`, build output and dependencies out of git. |
 | `buf.yaml` | buf's module (`proto/`) and lint rules for the APIs. |
-| `buf.gen.es.yaml`, `buf.gen.frontend.yaml`, `buf.gen.go.yaml`, `buf.gen.kernel.yaml` | What `make proto` generates: TypeScript for the console (`console/src/gen/`: its API and kernel-api's, which it calls) and for the frontend (`console/frontend/src/gen/`, the console's API only, JavaScript with type declarations), Go for the CLI (`cli/internal/gen/`, the console's API) and for the kernel (`kernel/internal/gen/`, its own), each from plugins pinned in that project. |
-| `proto/acyclix/console/v1/` | The console's API as Connect services: one file per service (`execution.proto`'s `ExecutionService` streams `WatchExecution`), and `common.proto` (failures, problems, paging). The API reference page is built from these. |
-| `proto/acyclix/kernel/v1/kernel.proto` | kernel-api's `KernelService`, internal: only the console calls it. |
+| `buf.gen.es.yaml`, `buf.gen.frontend.yaml`, `buf.gen.go.yaml`, `buf.gen.kernel.yaml` | What `make proto` generates: TypeScript for the console (`console/src/gen/`: its API and kernel-api's, which it calls) and for the frontend (`console/frontend/src/gen/`, the console's API only, JavaScript with type declarations), Go for the CLI (`cli/internal/gen/`, the console's API and the catalog release) and for the kernel (`kernel/internal/gen/`, its own), each from plugins pinned in that project. |
+| `proto/vertra/console/v1/` | The console's API as Connect services: one file per service (`execution.proto`'s `ExecutionService` streams `WatchExecution`), and `common.proto` (failures, problems, paging). The API reference page is built from these. |
+| `proto/vertra/catalog/v1/release.proto` | A catalog release: every team (with its SecretStore files) and product action of a catalog's `main`, which `catalogctl release` pushes as an OCI artifact and each console pulls. |
+| `proto/vertra/kernel/v1/kernel.proto` | kernel-api's `KernelService`, internal: only the console calls it. |
 | `.semgrep/malicious.yml` | Semgrep rules for code that has no business in a product (running remote code, hidden payloads, reverse shells, mining). Run by `security.yml`. |
 
 ## `.github/`: CI
@@ -53,8 +54,8 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `workflows/release.yml` | On a version tag: builds both platform images for amd64 and arm64, scans them, pushes them to GHCR, signs them keyless; packages, pushes and signs both charts; creates the GitHub release. |
 | `workflows/security.yml` | Secret scanning (gitleaks) and code scanning (Semgrep, including `.semgrep/`). |
 | `scripts/install-scanners.sh` | Installs pinned, checksum-verified tool binaries (Trivy, OSV-Scanner, gitleaks, actionlint, cosign) for the workflows. |
-| `scripts/catalog-template.sh` | Runs catalogctl (built from this checkout) in `catalog-template/` with its samples (all, or `SAMPLES=`) installed as teams: CI's `validate` and `check`, and `make catalog-publish`'s `teams apply` and `publish`. |
-| `scripts/build-catalogctl.sh` | Builds catalogctl for this machine in the pinned Go image (no Go needed) into `cli/bin/`, and prints its path, for `ACYCLIX_CATALOGCTL`. |
+| `scripts/catalog-template.sh` | Runs catalogctl (built from this checkout) in `catalog-template/` with its samples (all, or `SAMPLES=`) installed as teams: CI's `validate` and `check`, and `make catalog-publish`'s `publish -- release` (commands separated by `--` run in the same assembled catalog). |
+| `scripts/build-catalogctl.sh` | Builds catalogctl for this machine in the pinned Go image (no Go needed) into `cli/bin/`, and prints its path, for `VERTRA_CATALOGCTL`. |
 | `scripts/scan-image.sh` | Scans one built platform image and fails if it must not ship (fixable high or critical vulnerabilities, and more). |
 | `ISSUE_TEMPLATE/bug_report.yml`, `feature_request.yml` | Issue forms for bugs and feature requests. |
 | `ISSUE_TEMPLATE/config.yml` | Turns off blank issues and points security reports to private reporting. |
@@ -68,7 +69,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | --- | --- |
 | `README.md` | What the kernel is and how to run and test it. |
 | `ARCHITECTURE.md` | The package rules, and a call-by-call trace of submit → claim → dispatch → poll → finish. |
-| `go.mod`, `go.sum` | The kernel's Go module (`github.com/rburns629/acyclix/kernel`). |
+| `go.mod`, `go.sum` | The kernel's Go module (`github.com/rburns629/vertra/kernel`). |
 | `Dockerfile` | The image: a Go stage builds the binary; it runs on distroless (no shell) as a non-root user. |
 | `.dockerignore`, `.gcloudignore` | Keep test binaries and local files out of the image and the Cloud Build upload. |
 | `cmd/kernel/main.go` | The binary: `api`, `scheduler`, `migrate`, `sleep [--now]`, and for the chart `wait-for-postgres` (init containers) and `check-heartbeat` (the scheduler's liveness probe). |
@@ -141,11 +142,12 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `scanning.ts` | Scanning every image before it's registered or run: a Trivy client Job per digest, verdicts in `image_scans`, daily rescans, the failed digests written into the kernel's scan policy; idling the Trivy server when no scan is wanted. |
 | `activity.ts` | Records when the console was last used (any signed-in request, once a minute at most) for the kernel's sleeper. |
 | `audit.ts` | Who changed what: every changing `/api` request, allowed or refused, recorded in `audit_log` and logged (never a secret value, password or token). |
+| `catalogSync.ts` | Pulls the catalog's release every few minutes (and on Sync now), verifies its signature with a cosign Job, and applies it: teams, products, SecretStores; unregisters and retires what it drops; leaves teams it didn't make alone until an admin adopts them. |
 | `policySync.ts` | Rewrites the identity and scan policies and the teams' pull Secrets every few minutes, so drift doesn't last; keeps each sync's outcome for admins. |
-| `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`acyclix-pull`), for steps' images in private registries. |
+| `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`vertra-pull`), for steps' images in private registries. |
 | `retention.ts` | Deletes, hourly, submitted-execution records, audit entries and unused scan verdicts past their retention. |
 | `productPolicy.ts` | Writes the registered products into the cluster's identity policy, after every product change and at startup. |
-| `registry.ts` | Asks a container registry whether an image still exists, before a run. |
+| `registry.ts` | Asks a container registry whether an image still exists, before a run, pins tags to digests, and fetches the catalog's release (digest-checked). |
 | `apiError.ts` | `ApiError`: a refusal (HTTP status, stable code, message, Connect code, extra fields) thrown by `core/` and turned into a Connect error (its code, a `Failure` detail with any extra fields) by Connect's interceptor. |
 | `guides.ts` | The guides in `console/docs/`: listing and reading them (`GuideService`). |
 | **`core/`** | **What the API does**, one file per area, called by the Connect services: each function takes the caller, checks access, does the work, and throws `ApiError` to refuse. |
@@ -154,11 +156,11 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/retired.ts` | The shared "this team is retired, it's read-only" refusal. |
-| **`rpc/`** | **The API**: Connect services from `proto/`, at `/api/acyclix.console.v1.<Service>/<Method>`. |
+| **`rpc/`** | **The API**: Connect services from `proto/`, at `/api/vertra.console.v1.<Service>/<Method>`. |
 | `rpc/server.ts` | Mounts every service on Fastify with `@connectrpc/connect-fastify`, resolving each call's caller from its bearer token. |
 | `rpc/interceptors.ts` | Masking unexpected errors as `internal`, auditing every changing call, requiring a caller outside the public methods. |
 | `rpc/errors.ts`, `rpc/context.ts`, `rpc/validate.ts`, `rpc/rateLimit.ts`, `rpc/convert.ts` | Connect errors with `Failure`/`Problem` details; the caller, log and request in the handler context; checking requests against REST's TypeBox schemas; fixed-window rate limits; timestamps. |
-| `rpc/services/*.ts` | One file per service in `proto/acyclix/console/v1/`, each mapping messages to and from `core/`. `execution.ts` also streams `WatchExecution` (re-reading and re-authorizing every 2 seconds). |
+| `rpc/services/*.ts` | One file per service in `proto/vertra/console/v1/`, each mapping messages to and from `core/`. `execution.ts` also streams `WatchExecution` (re-reading and re-authorizing every 2 seconds). |
 | **`auth/`** | **Who's calling.** |
 | `auth/plugin.ts` | Checks every request's session or bot token and loads the caller's teams and admin flag. |
 | `auth/access.ts` | The authorization rules: who may act for a team, and see (any of its teams) or cancel (every team) an execution. |
@@ -171,7 +173,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `db/queries.ts` | Every database query the routes use. |
 | `db/client.ts` | The database connection. |
 | `db/migrate.ts` | Applies migrations and creates the first admin; run by the migration Job on deploy. |
-| `db/migrations/` | The schema: `0000_initial_schema.sql` (every table at the first public release), then one SQL file per later change, generated by `npm run db:generate`; `meta/` is drizzle's bookkeeping. |
+| `db/migrations/` | The schema: `0000_initial_schema.sql` (every table at the first public release), then one SQL file per later change, generated by `npm run db:generate` (`0002_catalog_sync.sql`: the catalog release applied, and which teams and products it made); `meta/` is drizzle's bookkeeping. |
 
 ### `console/frontend/`: the web app
 
@@ -198,8 +200,8 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
-| `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
-| `src/pages/AdminPage.tsx` | People, admin rights, automation tokens, allowed image sources. |
+| `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
+| `src/pages/AdminPage.tsx` | People, admin rights, the catalog release applied (Sync now, adopting a team), automation tokens, allowed image sources. |
 | `src/pages/AccountPage.tsx` | Your account and password. |
 | `src/pages/DocsPage.tsx`, `ApiReference.tsx` | The guides from `console/docs/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos). |
 | `src/pages/LoginPage.tsx`, `RegisterPage.tsx` | Sign-in and registration. |
@@ -212,7 +214,7 @@ Shown on the console's Docs page, in file order. They ship inside the console im
 
 | File | Guide |
 | --- | --- |
-| `01-getting-started.md` | Try Acyclix end to end: a platform, a product, a DAG. |
+| `01-getting-started.md` | Try Vertra end to end: a platform, a product, a DAG. |
 | `02-sync-secrets-gcp.md` | Syncing secrets from GCP Secret Manager. |
 | `03-what-is-a-dag.md` | DAGs, `dependsOn` and `$fromTask`. |
 | `04-secrets-explained.md` | How secrets stay locked to one product. |
@@ -232,6 +234,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `kernel-client.test.ts` | The kernel-api client against a KernelService of its own: the projected token, re-read on every call; the answers and refusals it maps; refusing field names the console didn't check. |
 | `product-policy.test.ts` | The identity policy's products and team secrets: their entries, and that every change rewrites them. |
 | `product-ownership.test.ts` | One team per product name and image repository, kept after deletion until an admin releases it. |
+| `catalog-sync.test.ts` | Applying a catalog release: what it makes, what it drops, a failed item, a bad signature, teams it didn't make, the API; the stored credential. |
 | `team-members.test.ts`, `team-lifecycle.test.ts` | Membership, retiring and purging teams. |
 | `team-namespaces.test.ts` | The console creating, relabelling and deleting team namespaces, and applying SecretStore files: what reaches Kubernetes, and who may. |
 | `image-scans.test.ts` | Reading Trivy's output, verdicts per digest, what a failed scan blocks, an admin accepting one, idling the scanner and waking it for a scan. |
@@ -272,7 +275,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/backup-cronjob.yaml` | Scheduled database backup (both databases when they share the instance) to GCS, S3, Azure Blob or a volume. |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, the database password, the kernel's identity. |
 | `templates/rbac.yaml` | What the scheduler may do: create and delete Jobs and ConfigMaps, read Pods and their logs. |
-| `templates/dispatch-policy.yaml` | Admission policy: the scheduler may only create Jobs in namespaces labelled `acyclix/team=true`. |
+| `templates/dispatch-policy.yaml` | Admission policy: the scheduler may only create Jobs in namespaces labelled `vertra/team=true`. |
 | `templates/image-policy.yaml` | Admission policy: task images only from allowed sources (the console edits the list). |
 | `templates/image-signature.yaml` | On GKE: catalog images must be signed (Sigstore's ClusterImagePolicy). |
 | `templates/purge-policy.yaml` | Admission policy: only the purge identity may delete a team's namespace. |
@@ -323,18 +326,18 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 
 | Path | What it's for |
 | --- | --- |
-| `architecture.md` | **Start here.** What Acyclix is, the pieces, how a DAG becomes running containers, the product contract, the data, observability, the design decisions, a glossary. |
+| `architecture.md` | **Start here.** What Vertra is, the pieces, how a DAG becomes running containers, the product contract, the data, observability, the design decisions, a glossary. |
 | `operations.md` | Installing (kind, and any cluster with Helm), cloud identities, upgrading, databases (passwords, access, retention), backups and restores, network policies, troubleshooting. |
 | `security-model.md` | For security reviewers: where secrets live, vault sync, who can read a secret, what the cluster enforces, what isn't enforced yet, and what's out of scope. |
 | `assessment.md` | The architecture assessment of 2026-10-19: what exists, findings, comparisons with Temporal and Inngest, identity across clouds, the agreed direction and its roadmap. |
 | `repository-map.md` | This page. |
 | `architecture/` | draw.io diagrams (system, UML classes for both projects, a submit-to-finished sequence, state machines), their SVG exports, and `generate.py`, which writes them from the code. Rerun it after changing code. |
 
-### `docs/clouds/`: before `acyclixctl init`
+### `docs/clouds/`: before `vertra init`
 
 | Path | What it's for |
 | --- | --- |
-| `aws.md`, `gcp.md`, `github.md` | What only each website can do before an install (an account or project, the root user's MFA, a budget, an IAM user, signing in, organization policies), linked from `acyclixctl` when it finds one of them missing. |
+| `aws.md`, `gcp.md`, `github.md` | What only each website can do before an install (an account or project, the root user's MFA, a budget, an IAM user, signing in, organization policies), linked from `vertra` when it finds one of them missing. |
 
 ## `examples/`: demo products
 
@@ -350,22 +353,22 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 
 | Path | What it's for |
 | --- | --- |
-| `DESIGN.md` | The design for `acyclixctl`: targets, cluster modes, sizes, scale-down, requirements, the OpenTofu modules, the approval screen and cost estimate, the catalog step, the build order. |
-| `go.mod`, `go.sum` | The Go module (`github.com/rburns629/acyclix/cli`): cobra and yaml.v3, protobuf and Connect for the console's API, and `make proto`'s two plugins as `tool` dependencies. |
+| `DESIGN.md` | The design for `vertra`: targets, cluster modes, sizes, scale-down, requirements, the OpenTofu modules, the approval screen and cost estimate, the catalog step, the build order. |
+| `go.mod`, `go.sum` | The Go module (`github.com/rburns629/vertra/cli`): cobra and yaml.v3, protobuf and Connect for the console's API, and `make proto`'s two plugins as `tool` dependencies. |
 | `internal/gen/` | Generated from `proto/` by `make proto` (messages and Connect clients); never edited. |
-| `cmd/catalogctl/main.go` | `catalogctl`, the catalog tool every catalog's `./catalogctl` runs: `validate`, `check`, `publish`, `changed`, `teams`, `secret-stores`, `bases`. |
-| `internal/catalogctl/` | What catalogctl does: validating teams, CODEOWNERS, products and `dags/` templates and DAGs in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing, signing and registering products; teams and SecretStores through the console. |
-| `cmd/acyclixctl/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
-| `cmd/acyclixctl/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/acyclix.yaml`. |
-| `cmd/acyclixctl/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
-| `cmd/acyclixctl/operate.go` | `check`, `status`, `sleep`, `wake`, `console` and `destroy`. |
-| `cmd/acyclixctl/catalog.go` | `catalog`: creates the catalog repository on GitHub with its first team and starters, sets its variables and secrets (tokens minted on the console, never shown), pushes it, waits for its CI and runs a starter. |
-| `cmd/acyclixctl/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
-| `cmd/acyclixctl/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
-| `cmd/acyclixctl/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |
+| `cmd/catalogctl/main.go` | `catalogctl`, the catalog tool every catalog's `./catalogctl` runs: `validate`, `check`, `publish`, `release`, `changed`, `secret-stores check`, `bases`, `migrate`. |
+| `internal/catalogctl/` | What catalogctl does: validating teams, CODEOWNERS, products and `dags/` templates and DAGs in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing and signing products; building, pushing and signing the catalog's release (`release.go`). It never calls a console. |
+| `cmd/vertra/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
+| `cmd/vertra/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/vertra.yaml`. |
+| `cmd/vertra/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
+| `cmd/vertra/operate.go` | `check`, `status`, `sleep`, `wake`, `console` and `destroy`. |
+| `cmd/vertra/catalog.go` | `catalog`: creates the catalog repository on GitHub with its first team and starters, sets its variables and secrets (tokens minted on the console, never shown), pushes it, waits for its CI and runs a starter. |
+| `cmd/vertra/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
+| `cmd/vertra/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
+| `cmd/vertra/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |
 | `internal/config/` | The config file: defaults, validation, load and save, dotted-key get and set. |
 | `internal/prompt/` | The questions on a terminal; defaults when non-interactive. |
-| `internal/tools/` | Required tools per target, version checks, and pinned, checksum-verified downloads into `~/.acyclix/bin` (`pins.go`). |
+| `internal/tools/` | Required tools per target, version checks, and pinned, checksum-verified downloads into `~/.vertra/bin` (`pins.go`). |
 | `internal/run/` | Runs the external commands (kubectl, helm, docker, kind), printing them with `-v`. |
 | `internal/cluster/` | The kind cluster and its local registry: inspect, create, delete; namespaces. |
 | `internal/install/` | The platform images (built from source or released), the generated Helm values, and `helm upgrade`. |
@@ -373,14 +376,14 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/plan/` | The approval screen and the sizes' platform floors. |
 | `internal/gcp/` | What a gcp install needs from gcloud, as you: the project's checks, the cluster's credentials, a short-lived Docker sign-in, the module's inputs and the registry paths. |
 | `internal/access/` | Guided access: who you're signed in as (AWS, Google, GitHub), where an install would go, and what that allows (regions an organization's policy permits, budgets, OpenTofu's sign-in, a project's existing resources), as the approval screen's Access block and problems with fixes and guides; AWS's errors classified whole. |
-| `cmd/acyclixctl/init_access.go` | The guided access steps in `init`: choosing a sign-in and running it, choosing a project or a region from those that answer, offering a budget, recording who set the environment up. |
+| `cmd/vertra/init_access.go` | The guided access steps in `init`: choosing a sign-in and running it, choosing a project or a region from those that answer, offering a budget, recording who set the environment up. |
 | `internal/awscloud/` | What an aws install needs from the AWS CLI, as you: the sign-in and region checks, the cluster's credentials, a short-lived ECR sign-in, the module's inputs, the account's GitHub OIDC provider, Auto Mode's in-cluster setup, and the ECR repositories a destroy removes. |
 | `internal/modules/aws/` | The aws OpenTofu module (embedded): a VPC in two zones (public subnets, no NAT gateway), an EKS Auto Mode cluster, ECR (a template that creates products' repositories on push, and the platform's), Pod Identity roles for the console and the backups, the backup bucket, and the catalog CI's GitHub OIDC role. |
 | `internal/modules/gcp/` | The gcp OpenTofu module (embedded in the binary): network, a GKE Autopilot or Standard cluster, Artifact Registry repositories, the nodes', console's and backups' identities, the backup bucket; `.terraform.lock.hcl` pins the provider's checksums. |
 | `internal/modules/modules.go` | Embeds the modules and writes one into an environment's `tofu/`. |
 | `internal/catalog/` | Assembles a new catalog's first commit from `catalog-template/`: the first team, the starters for its languages, the owners, where it publishes. |
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
-| `internal/consoleapi/` | The console's API as acyclixctl uses it, over the generated Connect clients: signing in as the admin, minting and rotating tokens, ensuring a team, running a DAG and watching it finish. Tested against fake Connect handlers. |
+| `internal/consoleapi/` | The console's API as vertra uses it, over the generated Connect clients: signing in as the admin, revoking the tokens catalogs once held, syncing the catalog, running a DAG and watching it finish. Tested against fake Connect handlers. |
 | `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
 | `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in) and AWS's Price List and Spot price history (with your AWS sign-in), each cached a day, and their cost models; `testdata/` holds real price entries. |
 
@@ -391,9 +394,9 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | Path | What it's for |
 | --- | --- |
 | `README.md` | The catalog's guide: layout, onboarding a team, `product.yaml`, testing, CI, publishing, SecretStores, retiring. |
-| `acyclix.yaml` | Where products publish (registry, console, signing); local defaults, overridden by CI variables. |
-| `catalogctl`, `tools/` | The wrapper that runs catalogctl (`cli/cmd/catalogctl`) at a pinned, checksum-verified release, or `ACYCLIX_CATALOGCTL`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`), for editors (catalogctl embeds its own). |
-| `.github/` | The catalog's workflows (check and publish, teams, SecretStores, retire, purge, CODEOWNERS checks), its scanner installer, and a placeholder `CODEOWNERS`. |
+| `vertra.yaml` | Where products publish (registry, console, signing); local defaults, overridden by CI variables. |
+| `catalogctl`, `tools/` | The wrapper that runs catalogctl (`cli/cmd/catalogctl`) at a pinned, checksum-verified release, or `VERTRA_CATALOGCTL`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`), for editors (catalogctl embeds its own). |
+| `.github/` | The catalog's workflows (check, then publish and release; SecretStore and CODEOWNERS checks; deleting a removed team's images), its scanner installer, and a placeholder `CODEOWNERS`. |
 | `.semgrep/malicious.yml` | Code rules for products: download-and-execute, reverse shells, mining, reading the Pod's token. |
 | `templates/` | Starters to copy: a team, three products, and DAGs that use them. Checked by CI, never published. |
 | `teams/` | Empty but for its README: a new catalog's teams go here. |

@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: MIT
 /**
  * Running the platform, for admins: platform-wide counts, who changed what
- * (audit.ts), and whether the cluster's copies of the console's lists are
- * current (policySync.ts). The logic behind AdminService.
+ * (audit.ts), whether the cluster's copies of the console's lists are
+ * current (policySync.ts), and the catalog release applied
+ * (catalogSync.ts). The logic behind AdminService.
  */
 import { and, desc, eq, lt, type SQL } from "drizzle-orm";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
-import { forbiddenUnlessAdmin } from "../apiError.js";
+import { Code } from "@connectrpc/connect";
+import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { db } from "../db/client.js";
 import { countProducts, countSubmittedExecutions, countTeams, countUsers } from "../db/queries.js";
 import { auditLog, users } from "../db/schema.js";
+import { adoptTeam, catalogStatus, syncCatalog } from "../catalogSync.js";
 import { policySyncOutcomes, syncPolicies } from "../policySync.js";
 
 const REQUIRES_ADMIN = "Requires admin access.";
@@ -80,4 +83,27 @@ export async function syncPoliciesNow(caller: AuthUser | undefined, log: Fastify
   forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
   await syncPolicies(log);
   return policySyncOutcomes();
+}
+
+/** The catalog release last applied, and how the last look went. */
+export async function catalogState(caller: AuthUser | undefined) {
+  forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
+  return catalogStatus();
+}
+
+/** Reads and applies the catalog's release now, even the one applied already. */
+export async function syncCatalogNow(caller: AuthUser | undefined, log: FastifyBaseLogger) {
+  forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
+  if (!(await syncCatalog(log, true))) {
+    throw new ApiError(409, "BUSY", "Another console is applying the catalog right now; try again shortly.", Code.Aborted);
+  }
+  return catalogStatus();
+}
+
+/** Lets the catalog's release manage an existing team, then syncs. */
+export async function adoptCatalogTeam(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger) {
+  forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
+  if (!(await adoptTeam(name))) throw new ApiError(404, "NOT_FOUND", "No such team.", Code.NotFound);
+  log.info({ event: "catalog_team_adopted", team: name, by: caller?.id }, "team adopted by the catalog");
+  return syncCatalogNow(caller, log);
 }

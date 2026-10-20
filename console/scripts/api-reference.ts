@@ -23,9 +23,9 @@ import {
 /** Methods anyone may call, signed in or not: rpc/interceptors.ts's PUBLIC
  * (test/api-reference.test.ts keeps the two the same). */
 export const PUBLIC_METHODS = [
-  "acyclix.console.v1.AuthService/GetEnvironment",
-  "acyclix.console.v1.AuthService/Register",
-  "acyclix.console.v1.AuthService/Login",
+  "vertra.console.v1.AuthService/GetEnvironment",
+  "vertra.console.v1.AuthService/Register",
+  "vertra.console.v1.AuthService/Login",
 ];
 
 interface Field {
@@ -64,7 +64,7 @@ const WELL_KNOWN: Record<string, string> = {
 const [imagePath] = process.argv.slice(2);
 if (!imagePath) throw new Error("usage: api-reference.ts IMAGE");
 const image = fromBinary(FileDescriptorSetSchema, readFileSync(imagePath));
-const files = image.file.filter((f) => f.package.startsWith("acyclix."));
+const files = image.file.filter((f) => f.package.startsWith("vertra."));
 
 /** Every message's DescriptorProto by full name (".pkg.Name"), maps included. */
 const allMessages = new Map<string, DescriptorProto>();

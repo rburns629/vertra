@@ -3,16 +3,12 @@
 package catalogctl
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/rburns629/acyclix/cli/internal/consoleapi"
-	consolev1 "github.com/rburns629/acyclix/cli/internal/gen/acyclix/console/v1"
 )
 
 // versionTag is what CI tags with (the commit) or a laptop (the time; no
@@ -87,89 +83,12 @@ func text(m map[string]any, key string) string {
 	return s
 }
 
-func optional(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-// Registrations are a product's registrations, one per action, named
-// <team>-<product>-<action>, carrying everything in product.yaml the
-// console uses.
-func (p *Product) Registrations(reference string) ([]*consolev1.RegisterProductRequest, error) {
-	var out []*consolev1.RegisterProductRequest
-	for _, action := range p.Actions() {
-		name := text(action, "name")
-		input, err := consoleapi.StructOf(action["input"])
-		if err != nil {
-			return nil, fmt.Errorf("action %s's input schema: %w", name, err)
-		}
-		output, err := consoleapi.StructOf(action["output"])
-		if err != nil {
-			return nil, fmt.Errorf("action %s's output schema: %w", name, err)
-		}
-		displayName, description := text(action, "displayName"), text(action, "description")
-		if displayName == "" {
-			displayName = text(p.Spec, "displayName")
-		}
-		if description == "" {
-			description = text(p.Spec, "description")
-		}
-		team := p.Team()
-		req := &consolev1.RegisterProductRequest{
-			Name:           fmt.Sprintf("%s-%s-%s", p.Team(), p.Name(), name),
-			Image:          reference,
-			Action:         name,
-			Team:           &team,
-			InputSchema:    input,
-			OutputSchema:   output,
-			DisplayName:    optional(displayName),
-			Description:    optional(description),
-			ServiceAccount: optional(text(p.Spec, "serviceAccount")),
-		}
-		secrets, _ := action["secretRefs"].([]any)
-		for _, s := range secrets {
-			if m, ok := s.(map[string]any); ok {
-				req.SecretRefs = append(req.SecretRefs, text(m, "name"))
-			}
-		}
-		shareWith, _ := action["shareWith"].([]any)
-		for _, team := range shareWith {
-			req.ShareWith = append(req.ShareWith, fmt.Sprint(team))
-		}
-		// An action's own deprecation, else its product's.
-		req.Deprecated = text(action, "deprecated")
-		if req.Deprecated == "" {
-			req.Deprecated = text(p.Spec, "deprecated")
-		}
-		if r, ok := p.Spec["resources"].(map[string]any); ok && len(r) > 0 {
-			req.Resources = &consolev1.TaskResources{
-				Cpu: optional(text(r, "cpu")), Memory: optional(text(r, "memory")), MemoryLimit: optional(text(r, "memoryLimit")),
-			}
-		}
-		out = append(out, req)
-	}
-	return out, nil
-}
-
-// Publish pushes, signs and registers a checked product.
-func (c *Catalog) Publish(ctx context.Context, p *Product, s Settings, console *consoleapi.Client) bool {
+// Publish pushes and signs a checked product. Nothing is registered: the
+// catalog's release (release.go) names it, and each console pulls that.
+func (c *Catalog) Publish(p *Product, s Settings) bool {
 	reference, err := c.push(p, s)
 	if err == nil {
 		err = c.sign(reference, s)
-	}
-	var registrations []*consolev1.RegisterProductRequest
-	if err == nil {
-		registrations, err = p.Registrations(reference)
-	}
-	for _, r := range registrations {
-		if err != nil {
-			break
-		}
-		if err = console.RegisterProduct(ctx, r); err == nil {
-			c.info("  registered %s", r.GetName())
-		}
 	}
 	if err != nil {
 		c.errorAt(p.Dir, "publishing failed: "+err.Error())

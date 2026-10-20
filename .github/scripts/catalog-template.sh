@@ -7,7 +7,10 @@
 #   catalog-template.sh validate               every sample, checked
 #   catalog-template.sh check                  every product built, tested, scanned
 #   SAMPLES=local catalog-template.sh publish  just the local sample, published
-#                                              (to ACYCLIX_REGISTRY/CONSOLE_URL)
+#                                              (to VERTRA_REGISTRY)
+#   ... publish -- release                     then the catalog's release, in
+#                                              the same catalog (commands are
+#                                              separated by --)
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -19,9 +22,9 @@ trap 'rm -rf "$work"' EXIT
 cp -R "$template/." "$work"
 rm -rf "$work/.catalogctl"
 # This checkout's catalogctl, not the template's pinned release.
-if [ -z "${ACYCLIX_CATALOGCTL:-}" ]; then
-  ACYCLIX_CATALOGCTL=$(bash "$root/.github/scripts/build-catalogctl.sh")
-  export ACYCLIX_CATALOGCTL
+if [ -z "${VERTRA_CATALOGCTL:-}" ]; then
+  VERTRA_CATALOGCTL=$(bash "$root/.github/scripts/build-catalogctl.sh")
+  export VERTRA_CATALOGCTL
 fi
 for team in $samples; do
   [ -d "$template/samples/$team" ] || { echo "No sample named $team in catalog-template/samples/." >&2; exit 1; }
@@ -34,5 +37,14 @@ for team in $samples; do
 done
 
 cd "$work"
-./catalogctl "${@:-validate}"
-echo "catalog-template: ${*:-validate} passed (samples: $samples)"
+[ $# -gt 0 ] || set -- validate
+command=()
+for arg in "$@" --; do
+  if [ "$arg" = "--" ]; then
+    [ ${#command[@]} -eq 0 ] || ./catalogctl "${command[@]}"
+    command=()
+  else
+    command+=("$arg")
+  fi
+done
+echo "catalog-template: $* passed (samples: $samples)"

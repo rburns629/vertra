@@ -17,10 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/rburns629/acyclix/kernel/internal/dbtest"
-	kernelv1 "github.com/rburns629/acyclix/kernel/internal/gen/acyclix/kernel/v1"
-	"github.com/rburns629/acyclix/kernel/internal/gen/acyclix/kernel/v1/kernelv1connect"
-	"github.com/rburns629/acyclix/kernel/internal/migrate"
+	"github.com/rburns629/vertra/kernel/internal/dbtest"
+	kernelv1 "github.com/rburns629/vertra/kernel/internal/gen/vertra/kernel/v1"
+	"github.com/rburns629/vertra/kernel/internal/gen/vertra/kernel/v1/kernelv1connect"
+	"github.com/rburns629/vertra/kernel/internal/migrate"
 )
 
 // Ported from the Python kernel's tests/integration/test_api_{executions,cancel_retry}.py
@@ -509,9 +509,9 @@ func TestHealth(t *testing.T) {
 }
 
 func TestEveryMethodNeedsAnAllowedCaller(t *testing.T) {
-	callers := &Callers{Audience: "acyclix-kernel-api", Allowed: []string{"system:serviceaccount:acyclix-system:console"}, Log: quiet,
+	callers := &Callers{Audience: "vertra-kernel-api", Allowed: []string{"system:serviceaccount:vertra-system:console"}, Log: quiet,
 		Review: func(_ context.Context, token, _ string) (string, error) {
-			return map[string]string{"console-token": "system:serviceaccount:acyclix-system:console",
+			return map[string]string{"console-token": "system:serviceaccount:vertra-system:console",
 				"step-token": "system:serviceaccount:team-a:default"}[token], nil
 		}}
 	_, c := server(t, testPool, callers)

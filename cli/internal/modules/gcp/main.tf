@@ -59,7 +59,7 @@ resource "google_compute_subnetwork" "this" {
 
 resource "google_service_account" "nodes" {
   account_id   = "${var.name}-nodes"
-  display_name = "Acyclix ${var.name}: GKE nodes"
+  display_name = "Vertra ${var.name}: GKE nodes"
   depends_on   = [google_project_service.apis]
 }
 
@@ -92,7 +92,7 @@ resource "google_container_cluster" "this" {
   release_channel {
     channel = "REGULAR"
   }
-  # acyclixctl destroy asks before deleting anything.
+  # vertra destroy asks before deleting anything.
   deletion_protection = false
 
   enable_autopilot = local.standard ? null : true
@@ -162,10 +162,10 @@ resource "google_container_node_pool" "steps" {
     oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
     disk_size_gb    = 50
     labels = {
-      "acyclix.dev/pool" = "steps"
+      "vertra.dev/pool" = "steps"
     }
     taint {
-      key    = "acyclix.dev/steps"
+      key    = "vertra.dev/steps"
       value  = "true"
       effect = "NO_SCHEDULE"
     }
@@ -182,7 +182,7 @@ resource "google_artifact_registry_repository" "tasks" {
   repository_id = var.task_registry
   location      = var.region
   format        = "DOCKER"
-  description   = "Acyclix ${var.name}: the catalog's product images."
+  description   = "Vertra ${var.name}: the catalog's product images."
   depends_on    = [google_project_service.apis]
 }
 
@@ -191,7 +191,7 @@ resource "google_artifact_registry_repository" "platform" {
   repository_id = var.platform_registry
   location      = var.region
   format        = "DOCKER"
-  description   = "Acyclix ${var.name}: the platform's images, built from source."
+  description   = "Vertra ${var.name}: the platform's images, built from source."
   depends_on    = [google_project_service.apis]
 }
 
@@ -210,7 +210,7 @@ resource "google_artifact_registry_repository_iam_member" "nodes_pull" {
 
 resource "google_service_account" "console" {
   account_id   = "${var.name}-console"
-  display_name = "Acyclix ${var.name}: console (reads the task registry)"
+  display_name = "Vertra ${var.name}: console (reads the task registry)"
   depends_on   = [google_project_service.apis]
 }
 
@@ -256,7 +256,7 @@ resource "google_storage_bucket" "backups" {
 resource "google_service_account" "backup" {
   count        = var.backups ? 1 : 0
   account_id   = "${var.name}-backup"
-  display_name = "Acyclix ${var.name}: database backups (one bucket)"
+  display_name = "Vertra ${var.name}: database backups (one bucket)"
   depends_on   = [google_project_service.apis]
 }
 
@@ -271,7 +271,7 @@ resource "google_service_account_iam_member" "backup_workload_identity" {
   count              = var.backups ? 1 : 0
   service_account_id = google_service_account.backup[0].name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "${local.ksa}/acyclix-pg-backup]"
+  member             = "${local.ksa}/vertra-pg-backup]"
   depends_on         = [google_container_cluster.this]
 }
 
@@ -294,7 +294,7 @@ resource "random_id" "pool" {
 resource "google_iam_workload_identity_pool" "github" {
   count                     = var.catalog_repository != "" ? 1 : 0
   workload_identity_pool_id = "${var.name}-gh-${random_id.pool[0].hex}"
-  display_name              = "Acyclix ${var.name}: catalog CI"
+  display_name              = "Vertra ${var.name}: catalog CI"
   depends_on                = [google_project_service.apis]
 }
 
@@ -319,7 +319,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
 resource "google_service_account" "publish" {
   count        = var.catalog_repository != "" ? 1 : 0
   account_id   = "${var.name}-publish"
-  display_name = "Acyclix ${var.name}: catalog CI (pushes to the task registry)"
+  display_name = "Vertra ${var.name}: catalog CI (pushes to the task registry)"
   depends_on   = [google_project_service.apis]
 }
 

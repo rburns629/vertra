@@ -133,7 +133,7 @@ func buildAndLoad(tag string) (string, error) {
 		return "", err
 	}
 	if out, _ := exec.Command("docker", "container", "inspect", "-f", "{{.State.Running}}", "kind-registry").Output(); strings.TrimSpace(string(out)) == "true" {
-		ref := localRegistry + "/acyclix-test/" + tag
+		ref := localRegistry + "/vertra-test/" + tag
 		if err := run("docker", "tag", tag, ref); err != nil {
 			return "", err
 		}

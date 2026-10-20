@@ -9,14 +9,19 @@ import (
 	"strings"
 )
 
-var topLevelAPIVersion = regexp.MustCompile(`(?m)^apiVersion:`)
+var (
+	topLevelAPIVersion = regexp.MustCompile(`(?m)^apiVersion:`)
+	formerAPIVersion   = regexp.MustCompile(`(?m)^apiVersion:[ \t]*["']?` + regexp.QuoteMeta(FormerAPIVersion) + `["']?[ \t]*$`)
+)
 
 // Migrate rewrites a catalog written in the format from before v2: each
 // team.yaml, product.yaml and dags/ file gets its apiVersion and kind, and
-// an action's requiredSecrets becomes its secretRefs. It edits the text, so
-// comments and layout stay as they were; a file already in v2 is left
-// alone. Teams, the starters and the samples are all rewritten. It returns
-// how many files changed, and what it couldn't do.
+// an action's requiredSecrets becomes its secretRefs. A catalog from before
+// the platform was renamed Vertra (2026-10-20) gets the new apiVersion, and
+// its acyclix.yaml becomes vertra.yaml. It edits the text, so comments and
+// layout stay as they were; a file already current is left alone. Teams,
+// the starters and the samples are all rewritten. It returns how many files
+// changed, and what it couldn't do.
 func (c *Catalog) Migrate() (int, []string, error) {
 	type target struct {
 		patterns []string
@@ -35,6 +40,16 @@ func (c *Catalog) Migrate() (int, []string, error) {
 	}
 	changed := 0
 	var problems []string
+	if _, err := os.Stat(c.path(FormerSettingsFile)); err == nil {
+		if _, err := os.Stat(c.path("vertra.yaml")); err == nil {
+			problems = append(problems, FormerSettingsFile+": vertra.yaml exists too; merge them by hand")
+		} else if err := os.Rename(c.path(FormerSettingsFile), c.path("vertra.yaml")); err != nil {
+			return changed, problems, err
+		} else {
+			c.info("  %s: renamed vertra.yaml", FormerSettingsFile)
+			changed++
+		}
+	}
 	for _, t := range targets {
 		for _, pattern := range t.patterns {
 			for _, path := range c.glob(pattern) {
@@ -43,6 +58,15 @@ func (c *Catalog) Migrate() (int, []string, error) {
 					return changed, problems, err
 				}
 				text := string(data)
+				if formerAPIVersion.MatchString(text) {
+					text = formerAPIVersion.ReplaceAllString(text, "apiVersion: "+APIVersion)
+					if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+						return changed, problems, err
+					}
+					c.info("  %s: apiVersion %s", c.rel(path), APIVersion)
+					changed++
+					continue
+				}
 				if topLevelAPIVersion.MatchString(text) {
 					continue
 				}

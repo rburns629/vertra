@@ -101,7 +101,7 @@ export function LoginPage() {
                     No account? <Link component={RouterLink} to="/register">Register</Link>
                   </>
                 ) : (
-                  "No account? Ask an Acyclix admin to create one for you."
+                  "No account? Ask an Vertra admin to create one for you."
                 )}
               </Typography>
             </Stack>

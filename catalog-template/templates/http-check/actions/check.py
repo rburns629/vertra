@@ -39,7 +39,7 @@ def main() -> int:
         return fail("INVALID_INPUT", "inputs.url must be an https:// URL.", retryable=False)
     expect = inputs.get("expectStatus", 200)
 
-    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "acyclix-http-check"})
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "vertra-http-check"})
     if inputs.get("useToken"):
         if not TOKEN_PATH.is_file():
             return fail(

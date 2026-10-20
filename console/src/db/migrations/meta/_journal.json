@@ -15,6 +15,13 @@
       "when": 1792516022531,
       "tag": "0001_product_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792529141704,
+      "tag": "0002_catalog_sync",
+      "breakpoints": true
     }
   ]
 }

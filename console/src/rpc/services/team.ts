@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/** TeamService (proto/acyclix/console/v1/team.proto): core/teams.ts over Connect. */
+/** TeamService (proto/vertra/console/v1/team.proto): core/teams.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import {
@@ -16,12 +16,13 @@ import {
   retireTeam,
   SecretStoreCredential,
   SecretStoreDocuments,
+  setSecretStoreCredential,
   teamPods,
   teamRecord,
   TeamName,
   unretireTeam,
 } from "../../core/teams.js";
-import { TaskPodState, type TeamService } from "../../gen/acyclix/console/v1/team_pb.js";
+import { TaskPodState, type TeamService } from "../../gen/vertra/console/v1/team_pb.js";
 import { timestamp } from "../convert.js";
 import { callerOf, logOf } from "../context.js";
 import { FixedWindowLimit } from "../rateLimit.js";
@@ -134,6 +135,12 @@ export function teamService(): ServiceImpl<typeof TeamService> {
         { documents: input.documents, credential: input.credential },
         logOf(ctx),
       );
+      return {};
+    },
+
+    async setSecretStoreCredential(req, ctx) {
+      const input = check({ team: AnyTeam, credential: SecretStoreCredential }, { team: req.team, credential: req.credential });
+      await setSecretStoreCredential(callerOf(ctx), input.team, input.credential, logOf(ctx));
       return {};
     },
 

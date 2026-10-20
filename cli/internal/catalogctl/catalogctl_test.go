@@ -151,7 +151,7 @@ func TestSecretStoreProblems(t *testing.T) {
 	}
 }
 
-func TestRegistrations(t *testing.T) {
+func TestReleaseActions(t *testing.T) {
 	p := &Product{Dir: "/catalog/teams/web/products/site", Spec: map[string]any{
 		"displayName": "Site", "description": "A site.", "serviceAccount": "site-sa", "deprecated": "Use site2.",
 		"resources": map[string]any{"cpu": "100m", "memory": "64Mi"},
@@ -162,7 +162,7 @@ func TestRegistrations(t *testing.T) {
 				"deprecated": "Use site2.delete."},
 		},
 	}}
-	regs, err := p.Registrations("registry/web/site@sha256:abc")
+	regs, err := p.ReleaseActions("registry/web/site@sha256:abc")
 	if err != nil || len(regs) != 2 {
 		t.Fatal(regs, err)
 	}
@@ -170,7 +170,7 @@ func TestRegistrations(t *testing.T) {
 	if deploy.GetName() != "web-site-deploy" || deploy.GetTeam() != "web" || deploy.GetImage() != "registry/web/site@sha256:abc" ||
 		deploy.GetDisplayName() != "Site" || deploy.GetServiceAccount() != "site-sa" ||
 		len(deploy.GetSecretRefs()) != 1 || strings.Join(deploy.GetShareWith(), ",") != "data,*" ||
-		deploy.GetDeprecated() != "Use site2." || deploy.GetResources().GetCpu() != "100m" || deploy.GetResources().MemoryLimit != nil ||
+		deploy.GetDeprecated() != "Use site2." || deploy.GetResources().GetCpu() != "100m" || deploy.GetResources().GetMemoryLimit() != "" ||
 		deploy.GetInputSchema().AsMap()["type"] != "object" {
 		t.Errorf("deploy = %v", deploy)
 	}
@@ -182,12 +182,12 @@ func TestRegistrations(t *testing.T) {
 }
 
 func TestSettingsProblems(t *testing.T) {
-	ok := Settings{Registry: "registry.example/team", Console: "https://console", SigningMode: "none"}
+	ok := Settings{Registry: "registry.example/team", SigningMode: "none"}
 	if p := ok.Problems(); len(p) != 0 {
 		t.Fatal(p)
 	}
 	bad := Settings{Registry: "https://registry/", SigningMode: "key"}
-	if p := bad.Problems(); len(p) != 3 {
+	if p := bad.Problems(); len(p) != 2 {
 		t.Fatal(p)
 	}
 }

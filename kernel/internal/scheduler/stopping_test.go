@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rburns629/acyclix/kernel/internal/domain"
-	"github.com/rburns629/acyclix/kernel/internal/executor"
-	"github.com/rburns629/acyclix/kernel/internal/executor/executortest"
+	"github.com/rburns629/vertra/kernel/internal/domain"
+	"github.com/rburns629/vertra/kernel/internal/executor"
+	"github.com/rburns629/vertra/kernel/internal/executor/executortest"
 )
 
 // Ported from the Python kernel's tests/integration/test_scheduler_stopping_before_retry.py:

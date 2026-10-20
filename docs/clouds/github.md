@@ -1,6 +1,6 @@
 # Getting GitHub ready for the catalog
 
-`acyclixctl catalog` creates the catalog repository with `gh`, as you.
+`vertra catalog` creates the catalog repository with `gh`, as you.
 
 ## Sign in
 
@@ -14,7 +14,7 @@ which creates the catalog and switches to it (`gh auth switch`).
 ## An organization's single sign-on
 
 If the owner is an organization that enforces SAML single sign-on, GitHub
-refuses a token until you authorize it for that organization. acyclixctl
+refuses a token until you authorize it for that organization. vertra
 shows the authorization link GitHub sends; open it, authorize, and run the
 command again.
 

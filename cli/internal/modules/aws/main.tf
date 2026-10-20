@@ -216,10 +216,10 @@ resource "aws_eks_node_group" "steps" {
   capacity_type   = local.spot ? "SPOT" : "ON_DEMAND"
   disk_size       = 20
   labels = {
-    "acyclix.dev/pool" = "steps"
+    "vertra.dev/pool" = "steps"
   }
   taint {
-    key    = "acyclix.dev/steps"
+    key    = "vertra.dev/steps"
     value  = "true"
     effect = "NO_SCHEDULE"
   }
@@ -271,7 +271,7 @@ resource "aws_eks_addon" "ebs" {
   depends_on = [aws_eks_node_group.platform, aws_eks_addon.cni]
 }
 
-# The Cluster Autoscaler (acyclixctl installs it): resize this cluster's
+# The Cluster Autoscaler (vertra installs it): resize this cluster's
 # groups only, by their tags.
 resource "aws_iam_role" "autoscaler" {
   count              = local.standard ? 1 : 0
@@ -323,7 +323,7 @@ resource "aws_eks_pod_identity_association" "autoscaler" {
 resource "aws_ecr_repository_creation_template" "tasks" {
   prefix               = var.task_registry
   applied_for          = ["CREATE_ON_PUSH"]
-  description          = "Acyclix ${var.name}: the catalog's product images"
+  description          = "Vertra ${var.name}: the catalog's product images"
   image_tag_mutability = "MUTABLE"
   encryption_configuration {
     encryption_type = "AES256"
@@ -440,7 +440,7 @@ resource "aws_eks_pod_identity_association" "backup" {
   count           = var.backups ? 1 : 0
   cluster_name    = aws_eks_cluster.this.name
   namespace       = var.namespace
-  service_account = "acyclix-pg-backup"
+  service_account = "vertra-pg-backup"
   role_arn        = aws_iam_role.backup[0].arn
 }
 
@@ -525,8 +525,8 @@ locals {
 resource "aws_route53_zone" "console" {
   count   = var.console_zone != "" ? 1 : 0
   name    = var.console_zone
-  comment = "Acyclix ${var.name}: the console's public address"
-  # Records acyclixctl adds (the load balancer's alias) go first on destroy.
+  comment = "Vertra ${var.name}: the console's public address"
+  # Records vertra adds (the load balancer's alias) go first on destroy.
   force_destroy = true
 }
 
@@ -540,7 +540,7 @@ resource "aws_acm_certificate" "console" {
 }
 
 # ACM's validation record. ACM issues the certificate once the zone is
-# delegated to Route 53 (acyclixctl waits for it; OpenTofu doesn't).
+# delegated to Route 53 (vertra waits for it; OpenTofu doesn't).
 resource "aws_route53_record" "console_validation" {
   for_each = var.console_zone != "" ? {
     for o in aws_acm_certificate.console[0].domain_validation_options : o.domain_name => o

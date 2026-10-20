@@ -12,7 +12,8 @@ import { Mono } from "../../components/Mono";
  * through a reviewed catalog PR, not a button here. This wizard does
  * everything up to that point: says what the provider must trust, gives
  * the commands to run on the provider's side, and writes the file for the
- * PR. The catalog's apply-secret-stores workflow applies it after merge.
+ * PR. Once merged, each install's console applies it from the catalog's next
+ * release.
  */
 export function ConnectSource({
   teamName,
@@ -119,7 +120,7 @@ export function ConnectSource({
                 ))}
                 <Box sx={{ bgcolor: "action.hover", borderRadius: 2, p: 2 }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    How Acyclix signs in
+                    How Vertra signs in
                   </Typography>
                   <Facts rows={guide.signsInAs(teamName, facts, values).map(([k, v]) => [k, <Mono key={k}>{v}</Mono>])} />
                 </Box>
@@ -137,7 +138,7 @@ export function ConnectSource({
                 </Typography>
                 {!guide.tested && (
                   <Alert severity="info" sx={{ py: 0 }}>
-                    Not yet tested on this platform. If a step doesn't work as written, tell the Acyclix team.
+                    Not yet tested on this platform. If a step doesn't work as written, tell the Vertra team.
                   </Alert>
                 )}
                 <CodeBlock code={guide.commands(teamName, facts, values)} />
@@ -208,7 +209,7 @@ export function ConnectSource({
                   <li>
                     <Typography variant="body2">
                       The catalog applies it to the cluster, and it shows up under "Where secrets come from" with whether
-                      Acyclix could sign in.
+                      Vertra could sign in.
                     </Typography>
                   </li>
                 </Box>

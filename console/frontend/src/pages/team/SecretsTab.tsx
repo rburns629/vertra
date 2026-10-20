@@ -12,6 +12,7 @@ import {
 } from "../../api";
 import { AddSecretFlow, type AddSecretPrefill } from "./AddSecretFlow";
 import { ConnectSource } from "./ConnectSource";
+import { StoredCredential } from "./StoredCredential";
 import { gcpAccessFix } from "./providers";
 import {CodeBlock, Facts, SectionHeader, TabIntro, errorMessage, relativeTime, shortDuration } from "./shared";
 import { Mono } from "../../components/Mono";
@@ -162,6 +163,7 @@ export function SecretsTab({ teamName, readOnly }: { teamName: string; readOnly:
           </ButtonBase>
         )}
       </Box>
+      {!readOnly && <StoredCredential teamName={teamName} />}
 
       <SectionHeader
         title="Secrets"
@@ -473,7 +475,7 @@ function SecretDetail({
               {fix && (
                 <>
                   <Typography variant="body2" sx={{ mb: 1 }}>
-                    Someone who owns that secret can let Acyclix read it:
+                    Someone who owns that secret can let Vertra read it:
                   </Typography>
                   <CodeBlock code={fix} />
                 </>

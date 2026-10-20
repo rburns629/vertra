@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// checkout makes a directory that passes for an Acyclix checkout.
+// checkout makes a directory that passes for an Vertra checkout.
 func checkout(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -36,7 +36,7 @@ func TestDefaultsAreValid(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := Default("existing")
-	c.Acyclix = "0.1.0"
+	c.Vertra = "0.1.0"
 	c.Cluster.Context = "my-cluster"
 	c.TaskImages.Registry = "us-docker.pkg.dev/p/catalog"
 	c.Admin.Email = "admin@example.com"
@@ -48,7 +48,7 @@ func TestDefaultsAreValid(t *testing.T) {
 func TestValidateReportsEveryProblem(t *testing.T) {
 	c := validKind(t)
 	c.Target = "azure"
-	c.Acyclix = "latest"
+	c.Vertra = "latest"
 	c.Size = "huge"
 	c.Namespace = "Not_A_Namespace"
 	c.Admin.Email = "nobody"
@@ -56,7 +56,7 @@ func TestValidateReportsEveryProblem(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected problems")
 	}
-	for _, want := range []string{"target: azure isn't supported", `acyclix: "latest"`, `size: "huge"`, "namespace:", "admin.email:"} {
+	for _, want := range []string{"target: azure isn't supported", `vertra: "latest"`, `size: "huge"`, "namespace:", "admin.email:"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("missing %q in:\n%v", want, err)
 		}
@@ -86,7 +86,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(filepath.Join(dir, FileName))
-	if !strings.HasPrefix(string(data), "# An Acyclix install's settings") {
+	if !strings.HasPrefix(string(data), "# An Vertra install's settings") {
 		t.Errorf("no header:\n%s", data)
 	}
 	got, err := Load(dir)
@@ -203,7 +203,7 @@ func TestAWS(t *testing.T) {
 	c := Default("aws")
 	c.Source = checkout(t)
 	c.Admin.Email = "admin@example.com"
-	c.AWS = AWS{Profile: "acyclix", Region: "us-east-1"}
+	c.AWS = AWS{Profile: "vertra", Region: "us-east-1"}
 	if err := c.Validate(); err != nil {
 		t.Fatal(err)
 	}

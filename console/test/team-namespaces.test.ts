@@ -92,7 +92,7 @@ beforeEach(() => {
 describe("creating a team", () => {
   it("creates its namespace, labelled a team's", async () => {
     expect((await call(admin, "TeamService/CreateTeam", { name: name("new") })).code).toBe("ok");
-    expect(setTeamNamespace).toHaveBeenCalledWith(name("new"), "true", expect.objectContaining({ createIfMissing: true, label: "acyclix/team" }));
+    expect(setTeamNamespace).toHaveBeenCalledWith(name("new"), "true", expect.objectContaining({ createIfMissing: true, label: "vertra/team" }));
   });
 
   it("refuses a name that can't be a namespace", async () => {
@@ -254,7 +254,7 @@ describe("registering a secret", () => {
   it("refuses the name of a SecretStore's own credential, and of the pull Secret", async () => {
     const team = name("reserved");
     await createTeam(team);
-    for (const secretName of ["eso-auth", "acyclix-pull"]) {
+    for (const secretName of ["eso-auth", "vertra-pull"]) {
       const put = await call(admin, "SecretService/PutSecret", { team, secretName, data: { token: "x" } });
       expect(put.code).toBe("invalid_argument");
     }

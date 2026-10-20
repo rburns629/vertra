@@ -176,7 +176,7 @@ export function TeamPage() {
       <ConfirmDialog
         open={confirmingPurge}
         title={`Purge ${teamName}?`}
-        description="This can't be undone. Members, secret grants and bot tokens are removed, and the name stays reserved; execution history is kept. It only covers the console: a catalog platform's namespace and images are deleted by the catalog's purge-team workflow, which you can run before or after this."
+        description="This can't be undone. Members, secret grants and bot tokens are removed, and the name stays reserved; execution history is kept. It only covers the console: the team's namespace stays, labelled retired, for a cluster administrator to delete, and its images stay in the registry."
         confirmLabel="Purge team"
         confirmText={teamName}
         destructive

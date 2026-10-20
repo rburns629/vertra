@@ -5,8 +5,8 @@ package pricing
 import (
 	"fmt"
 
-	"github.com/rburns629/acyclix/cli/internal/config"
-	"github.com/rburns629/acyclix/cli/internal/plan"
+	"github.com/rburns629/vertra/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/plan"
 )
 
 // hoursPerMonth is the clouds' billing month.

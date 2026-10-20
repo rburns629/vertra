@@ -19,7 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/rburns629/acyclix/kernel/internal/dbtest"
+	"github.com/rburns629/vertra/kernel/internal/dbtest"
 )
 
 var testPool *pgxpool.Pool

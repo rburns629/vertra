@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rburns629/acyclix/cli/internal/cluster"
-	"github.com/rburns629/acyclix/cli/internal/config"
-	"github.com/rburns629/acyclix/cli/internal/run"
+	"github.com/rburns629/vertra/cli/internal/cluster"
+	"github.com/rburns629/vertra/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/run"
 )
 
 // args adds the config's profile and region to an aws command.
@@ -59,7 +59,7 @@ func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 	// through OpenTofu's plan.
 	if _, err := r.Output(ctx, "aws", args(c, "ec2", "describe-availability-zones", "--query", "AvailabilityZones[0].ZoneName")...); err != nil {
 		if strings.Contains(err.Error(), "service control policy") {
-			s.Problems = append(s.Problems, fmt.Sprintf("your AWS organization's policy (an SCP) denies %s to this account: choose a region it allows (`acyclixctl config set aws.region <region>`), or have the organization's management account allow it", c.AWS.Region))
+			s.Problems = append(s.Problems, fmt.Sprintf("your AWS organization's policy (an SCP) denies %s to this account: choose a region it allows (`vertra config set aws.region <region>`), or have the organization's management account allow it", c.AWS.Region))
 		} else {
 			s.Problems = append(s.Problems, fmt.Sprintf("can't use %s: %v", c.AWS.Region, err))
 		}
@@ -102,7 +102,7 @@ func Registry(account string, c *config.Config) string {
 // PlatformPrefix is the ECR prefix for platform images built from source
 // ("" when installing a release).
 func PlatformPrefix(c *config.Config) string {
-	if c.Acyclix != "source" {
+	if c.Vertra != "source" {
 		return ""
 	}
 	return c.Cluster.Name + "-platform"
@@ -220,9 +220,9 @@ func InCluster(mode string, spot bool) string {
 		return `apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: acyclix-gp3
+  name: vertra-gp3
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: ebs.csi.aws.com
@@ -240,9 +240,9 @@ parameters:
 	return `apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: acyclix-gp3
+  name: vertra-gp3
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: ebs.csi.eks.amazonaws.com
@@ -255,21 +255,21 @@ parameters:
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
-  name: acyclix-steps
+  name: vertra-steps
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
 spec:
   template:
     metadata:
       labels:
-        acyclix.dev/pool: steps
+        vertra.dev/pool: steps
     spec:
       nodeClassRef:
         group: eks.amazonaws.com
         kind: NodeClass
         name: default
       taints:
-        - key: acyclix.dev/steps
+        - key: vertra.dev/steps
           value: "true"
           effect: NoSchedule
       requirements:
@@ -300,24 +300,24 @@ func consoleZone(c *config.Config) string {
 const IngressClass = `apiVersion: eks.amazonaws.com/v1
 kind: IngressClassParams
 metadata:
-  name: acyclix-alb
+  name: vertra-alb
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
 spec:
   scheme: internet-facing
 ---
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: acyclix-alb
+  name: vertra-alb
   labels:
-    app.kubernetes.io/managed-by: acyclixctl
+    app.kubernetes.io/managed-by: vertra
 spec:
   controller: eks.amazonaws.com/alb
   parameters:
     apiGroup: eks.amazonaws.com
     kind: IngressClassParams
-    name: acyclix-alb
+    name: vertra-alb
 `
 
 // CertificateStatus is an ACM certificate's status (ISSUED,
@@ -361,7 +361,7 @@ func PointAt(ctx context.Context, r *run.Runner, c *config.Config, zoneID, host,
 // Auto Mode outside OpenTofu's state).
 func LoadBalancersIn(ctx context.Context, r *run.Runner, c *config.Config, vpcCIDR string) ([]string, error) {
 	vpc, err := r.Output(ctx, "aws", args(c, "ec2", "describe-vpcs", "--filters", "Name=cidr,Values="+vpcCIDR,
-		"Name=tag:acyclix-environment,Values="+c.Cluster.Name, "--query", "Vpcs[0].VpcId")...)
+		"Name=tag:vertra-environment,Values="+c.Cluster.Name, "--query", "Vpcs[0].VpcId")...)
 	if err != nil {
 		return nil, err
 	}

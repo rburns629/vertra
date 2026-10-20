@@ -5,7 +5,7 @@
 // console. It's the one implementation behind both ways of publishing: the
 // catalog's CI workflows call it, and so does a laptop in local mode
 // (./catalogctl publish, or make catalog-publish in the platform
-// repository). Settings come from acyclix.yaml at the catalog's root,
+// repository). Settings come from vertra.yaml at the catalog's root,
 // overridable by environment variables.
 package catalogctl
 
