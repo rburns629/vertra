@@ -19,7 +19,7 @@ export const file_vertra_catalog_v1_release: GenFile = /*@__PURE__*/
 /**
  * A catalog release: everything a catalog's main branch says, as of one
  * commit, for every install that uses the catalog. Catalog CI writes it
- * (`catalogctl release`), only from main, as an OCI artifact beside the
+ * (`vertra catalog release`), only from main, as an OCI artifact beside the
  * images, <registry>/catalog-release, tagged with the commit and "latest",
  * and signs it as it signs the images. Each console reads it, verifies it,
  * and applies it: so CI holds no console credential, and one catalog serves
@@ -65,7 +65,7 @@ export type Release = Message<"vertra.catalog.v1.Release"> & {
 
   /**
    * Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
-   * catalogctl checked them: what consumers run, with parameters only.
+   * vertra catalog checked them: what consumers run, with parameters only.
    *
    * @generated from field: repeated vertra.catalog.v1.Template templates = 6;
    */
@@ -92,7 +92,7 @@ export type Team = Message<"vertra.catalog.v1.Team"> & {
 
   /**
    * Its SecretStore files' documents (teams/<name>/secret-stores/*.yaml), as
-   * catalogctl checked them; none when it has no file. The stored
+   * vertra catalog checked them; none when it has no file. The stored
    * credential such a store may use is never here: each install sets its
    * own in the console.
    *
@@ -283,7 +283,7 @@ export type TemplateStep = Message<"vertra.catalog.v1.TemplateStep"> & {
   id: string;
 
   /**
-   * <team>/<product>.<action>, always with its team (catalogctl fills in the
+   * <team>/<product>.<action>, always with its team (vertra catalog fills in the
    * template's own for an action of its team).
    *
    * @generated from field: string action = 2;

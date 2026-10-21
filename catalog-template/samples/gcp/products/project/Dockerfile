@@ -7,7 +7,10 @@ FROM python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0
 # The base image's OS packages lag behind Debian's security fixes; catalog
 # CI's image scan fails on any high or critical CVE that has a fix.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir google-cloud-resource-manager google-cloud-billing
+# pip isn't needed once the image is built, and the copies of other packages
+# it bundles (urllib3, msgpack, setuptools' pkg_resources) fail the scan.
+RUN pip install --no-cache-dir google-cloud-resource-manager google-cloud-billing \
+    && pip uninstall --yes pip
 
 WORKDIR /app
 COPY entrypoint.sh /app/entrypoint.sh

@@ -10,8 +10,15 @@ updates:
     directories: [/console, /console/frontend]
     schedule: {interval: weekly}
     cooldown: {default-days: 7}
+    # Minor and patch updates together; each major in a pull request of its
+    # own, since one breaking change would otherwise hold back the rest.
     groups:
-      console-npm: {patterns: ["*"]}
+      console-npm: {patterns: ["*"], update-types: [minor, patch]}
+    ignore:
+      # typescript-eslint's peer range stops below TypeScript 7, so npm ci
+      # refuses the pair; lift this once typescript-eslint supports it.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gomod
     directory: /cli

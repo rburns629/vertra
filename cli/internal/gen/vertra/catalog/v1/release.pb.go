@@ -27,7 +27,7 @@ const (
 
 // A catalog release: everything a catalog's main branch says, as of one
 // commit, for every install that uses the catalog. Catalog CI writes it
-// (`catalogctl release`), only from main, as an OCI artifact beside the
+// (`vertra catalog release`), only from main, as an OCI artifact beside the
 // images, <registry>/catalog-release, tagged with the commit and "latest",
 // and signs it as it signs the images. Each console reads it, verifies it,
 // and applies it: so CI holds no console credential, and one catalog serves
@@ -47,7 +47,7 @@ type Release struct {
 	// Every product action of every team, with its image pinned to a digest.
 	Products []*ProductAction `protobuf:"bytes,5,rep,name=products,proto3" json:"products,omitempty"`
 	// Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
-	// catalogctl checked them: what consumers run, with parameters only.
+	// vertra catalog checked them: what consumers run, with parameters only.
 	Templates     []*Template `protobuf:"bytes,6,rep,name=templates,proto3" json:"templates,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -130,7 +130,7 @@ type Team struct {
 	// Its folder's name, teams/<name>/: the team and its namespace.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Its SecretStore files' documents (teams/<name>/secret-stores/*.yaml), as
-	// catalogctl checked them; none when it has no file. The stored
+	// vertra catalog checked them; none when it has no file. The stored
 	// credential such a store may use is never here: each install sets its
 	// own in the console.
 	SecretStoreDocuments []*structpb.Struct `protobuf:"bytes,2,rep,name=secret_store_documents,json=secretStoreDocuments,proto3" json:"secret_store_documents,omitempty"`
@@ -452,7 +452,7 @@ type TemplateStep struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique within the template.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// <team>/<product>.<action>, always with its team (catalogctl fills in the
+	// <team>/<product>.<action>, always with its team (vertra catalog fills in the
 	// template's own for an action of its team).
 	Action    string   `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
 	DependsOn []string `protobuf:"bytes,3,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
