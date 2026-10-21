@@ -19,7 +19,7 @@
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.4.0",
     "js-yaml": "^5.4.3",
-    "mermaid": "^11.17.2",
+    "mermaid": "^12.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
