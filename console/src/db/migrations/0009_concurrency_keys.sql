@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "concurrency_key" text[] DEFAULT '{}'::text[] NOT NULL;

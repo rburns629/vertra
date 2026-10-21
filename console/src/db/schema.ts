@@ -190,6 +190,9 @@ export const products = pgTable(
     // How many times a step of it may run in all (product.yaml's
     // maxAttempts): the attempts its steps get, never more (R3).
     maxAttempts: integer("max_attempts").notNull().default(1),
+    // The inputs naming what a step of it changes (product.yaml's
+    // concurrencyKey): the kernel runs one step per set of values at a time.
+    concurrencyKey: text("concurrency_key").array().notNull().default(sql`'{}'::text[]`),
     // Why it's deprecated and what to use instead; null when it isn't.
     deprecated: text("deprecated"),
     // The Pod size its tasks get unless a task sets its own: { cpu, memory,

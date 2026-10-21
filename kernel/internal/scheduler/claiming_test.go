@@ -276,3 +276,79 @@ func TestATeamAtItsCapDoesntStarveTheOthers(t *testing.T) {
 	claimed := claim(t, tx, "scheduler-1", time.Minute, time.Now(), limit(2), func(o *Options) { o.MaxRunningPerTeam = 1 })
 	equal(t, "teams", teamsOf(claimed), []string{"a", "b"})
 }
+
+// keyed is a task that changes project p, keyed on it under scope.
+func keyed(id, scope, p string) TaskDef {
+	return task(id, inputs(map[string]any{"projectId": p}), concurrency(scope, "projectId"))
+}
+
+func TestASecondTaskWithTheSameKeyWaitsUntilTheFirstIsDone(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-key-1", keyed("first", "acme-project", "web-1"))
+	submit(t, tx, "idem-key-2", keyed("second", "acme-project", "web-1"))
+	now := time.Now()
+	first := claim(t, tx, "scheduler-1", time.Minute, now)
+	equal(t, "first pass", len(first), 1)
+	equal(t, "its key", *first[0].ConcurrencyKey, `["acme-project","web-1"]`)
+	equal(t, "while it's claimed", len(claim(t, tx, "scheduler-1", time.Minute, now)), 0)
+
+	if _, err := tx.Exec(context.Background(), `UPDATE execution_tasks SET state = 'RUNNING' WHERE id = $1::uuid`, first[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "while it runs", len(claim(t, tx, "scheduler-1", time.Minute, now)), 0)
+	if _, err := tx.Exec(context.Background(), `UPDATE execution_tasks SET state = 'SUCCEEDED' WHERE id = $1::uuid`, first[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	second := claim(t, tx, "scheduler-1", time.Minute, now)
+	equal(t, "after it's done", len(second), 1)
+	equal(t, "the other one", second[0].TaskKey, "second")
+}
+
+func TestTasksWithDifferentKeysOrNoneRunTogether(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-keys-apart", keyed("a", "acme-project", "web-1"), keyed("b", "acme-project", "web-2"),
+		keyed("c", "acme-database", "web-1"), task("d"))
+	equal(t, "claimed", len(claim(t, tx, "scheduler-1", time.Minute, time.Now())), 4)
+}
+
+func TestTwoTasksWithTheSameKeyInOnePassClaimOne(t *testing.T) {
+	tx := txFor(t)
+	submit(t, tx, "idem-key-pass", keyed("a", "acme-project", "web-9"), keyed("b", "acme-project", "web-9"))
+	equal(t, "claimed", len(claim(t, tx, "scheduler-1", time.Minute, time.Now())), 1)
+}
+
+func TestTwoSchedulersNeverClaimTwoTasksWithTheSameKey(t *testing.T) {
+	ctx := context.Background()
+	var ids []string
+	if err := pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+		ids = append(ids, submit(t, tx, "idem-key-race-1", keyed("a", "race-scope", "p-1")))
+		ids = append(ids, submit(t, tx, "idem-key-race-2", keyed("b", "race-scope", "p-1")))
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = testPool.Exec(ctx, `DELETE FROM executions WHERE id = ANY($1::uuid[])`, ids) })
+
+	// Each scheduler holds its pass open until both have claimed, so neither
+	// sees the other's committed row: only the key's lock can keep them apart.
+	counts := make([]int, 2)
+	var claimedBoth sync.WaitGroup
+	claimedBoth.Add(2)
+	var wg sync.WaitGroup
+	for i, owner := range []string{"scheduler-a", "scheduler-b"} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = pgx.BeginFunc(ctx, testPool, func(tx pgx.Tx) error {
+				claimed, err := newPass(tx, owner, time.Minute, time.Now()).claimReadyTasks()
+				counts[i] = len(claimed)
+				claimedBoth.Done()
+				claimedBoth.Wait()
+				return err
+			})
+		}()
+	}
+	wg.Wait()
+	sort.Ints(counts)
+	equal(t, "claims", counts, []int{0, 1})
+}

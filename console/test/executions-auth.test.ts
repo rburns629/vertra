@@ -553,7 +553,17 @@ describe("SubmitExecution: a product's own retry policy (R3)", () => {
       teamId,
       idempotent: true,
       maxAttempts: 3,
+      concurrencyKey: ["projectId"],
     });
+  });
+
+  it("sends its product's concurrency key, and drops one a submitter wrote themselves", async () => {
+    const run = (image: string, extra: Record<string, unknown> = {}) =>
+      submit({ image, action: "ensure", serviceAccount: "default", inputs: { projectId: "web-1" }, ...extra });
+    expect((await run("retry-image:latest")).code).toBe("ok");
+    expect(sent()).toMatchObject({ concurrencyKey: { scope: `${teamName}-retrying`, inputs: ["projectId"] } });
+    expect((await run("unregistered-image:1", { concurrencyKey: { scope: "mine", inputs: ["projectId"] } })).code).toBe("ok");
+    expect(sent()).not.toHaveProperty("concurrencyKey");
   });
 
   it("gives an idempotent product's step its attempts, fewer when asked, never more", async () => {

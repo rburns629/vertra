@@ -448,8 +448,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **P1: failure help from the owner.** Error codes with what they mean
   and what to do in `product.yaml`; where to ask for help in `team.yaml`;
   shown on the run page with whether a retry is safe.
-- [ ] **P1: concurrency keys.** A product names inputs that identify what
-  it changes; the scheduler holds a second step with the same key.
+- [x] **P1: concurrency keys** (done 2026-10-21): product.yaml's
+  `concurrencyKey` (input names, checked to exist by vertra catalog
+  validate), carried by releases; the console sends the kernel the
+  product and those inputs for each step (submitters can't set one). The
+  scheduler works the key out from the resolved inputs when it claims a
+  step, and holds it READY while one with the same key is claimed or
+  running; a transaction-scoped advisory lock per key keeps two schedulers
+  apart (kernel migration 0004). Proven on kind: two runs on the same value
+  ran one after the other, a third on another value alongside. Left:
+  showing "waiting for <key>" on the run page.
 - [ ] **P2: the marketplace pages** (eleven mocked up 2026-10-19): Catalog
   with readiness and runnable examples, Runs list and run timeline, Compose
   (type-matched wiring, drafts, Propose as a template from the person's

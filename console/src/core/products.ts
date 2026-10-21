@@ -87,6 +87,8 @@ export const RegisterProductBody = Type.Object({
   // How many times a step of it may run; more than 1 only when idempotent.
   idempotent: Type.Optional(Type.Boolean()),
   maxAttempts: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })),
+  // The inputs naming what a step changes: one step per set of values at a time.
+  concurrencyKey: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 8, uniqueItems: true })),
   deprecated: Type.Optional(Type.String({ maxLength: 1000 })),
 });
 
@@ -112,6 +114,8 @@ export type RegisterProductInput = {
   idempotent?: boolean;
   /** How many times a step of it may run in all (1: no retries). */
   maxAttempts?: number;
+  /** The inputs naming what a step changes; one step per set of values at a time. */
+  concurrencyKey?: string[];
   /** Empty: not deprecated. */
   deprecated?: string;
 };
@@ -249,6 +253,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       sourcePath: input.sourcePath,
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
+      concurrencyKey: input.concurrencyKey,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,
     });

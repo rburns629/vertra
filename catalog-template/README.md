@@ -113,6 +113,7 @@ actions:
     # visibility: hidden    # optional: only your team sees it at all (then no shareWith)
     idempotent: true          # optional: running it again with the same inputs does no harm
     maxAttempts: 3            # optional: attempts in all (default 1); more than 1 needs idempotent
+    concurrencyKey: [projectId]   # optional: one step per projectId at a time
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
@@ -139,7 +140,10 @@ a lost Job, a timeout), or with an error your code marks `retryable`, runs
 again after a growing pause, up to `maxAttempts` in all. A template or DAG
 may ask for fewer attempts, never more, and an action that isn't idempotent
 gets exactly one: write it to find what it would create first (as every
-sample does) before you declare it. A product with a `serviceAccount` runs as it in every step
+sample does) before you declare it. `concurrencyKey` names the inputs that
+say what a step changes: while one step with the same values is starting
+or running, another waits its turn, so two runs never change the same
+project at once (a value an earlier step produced counts too). A product with a `serviceAccount` runs as it in every step
 (the console creates it in the team's namespace); bind a cloud identity to
 that one, never to `default`. To sign in to a cloud other than the one
 running the cluster (OIDC federation), list its audiences in

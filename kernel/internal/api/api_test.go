@@ -279,6 +279,12 @@ func TestMalformedSubmissionsAreRefused(t *testing.T) {
 		"an output schema that refers outside itself": func(r *kernelv1.SubmitExecutionRequest) {
 			r.Tasks[0].OutputSchema, _ = structpb.NewStruct(map[string]any{"$ref": "https://example.com/s.json"})
 		},
+		"a concurrency key with no inputs": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].ConcurrencyKey = &kernelv1.ConcurrencyKey{Scope: "acme-project"}
+		},
+		"a concurrency key with no scope": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].ConcurrencyKey = &kernelv1.ConcurrencyKey{Inputs: []string{"projectId"}}
+		},
 	} {
 		req := single(unique("malformed"))
 		change(req)

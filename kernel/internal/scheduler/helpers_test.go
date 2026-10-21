@@ -49,6 +49,9 @@ type TaskDef struct {
 	Resources      *domain.TaskResources
 	InputSchema    map[string]any
 	OutputSchema   map[string]any
+	// One task per key at a time: its scope and the inputs naming what it changes.
+	ConcurrencyScope  string
+	ConcurrencyInputs []string
 }
 
 func task(id string, fields ...func(*TaskDef)) TaskDef {
@@ -64,6 +67,9 @@ func inputs(m map[string]any) func(*TaskDef) { return func(d *TaskDef) { d.Input
 func maxAttempts(n int) func(*TaskDef)       { return func(d *TaskDef) { d.MaxAttempts = n } }
 func timeout(seconds int) func(*TaskDef)     { return func(d *TaskDef) { d.TimeoutSeconds = seconds } }
 func team(name string) func(*TaskDef)        { return func(d *TaskDef) { d.Team = name } }
+func concurrency(scope string, inputs ...string) func(*TaskDef) {
+	return func(d *TaskDef) { d.ConcurrencyScope, d.ConcurrencyInputs = scope, inputs }
+}
 func schemas(in, out map[string]any) func(*TaskDef) {
 	return func(d *TaskDef) { d.InputSchema, d.OutputSchema = in, out }
 }
@@ -114,12 +120,13 @@ func submit(t *testing.T, db DB, key string, tasks ...TaskDef) string {
 		var id string
 		if err := db.QueryRow(ctx, `INSERT INTO execution_tasks (id, execution_id, task_key, image, action, team,
 			service_account, secret_refs, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count, available_at,
-			input_schema, output_schema)
+			input_schema, output_schema, concurrency_scope, concurrency_inputs)
 			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb, $11, $12, 0, now() - interval '1 second',
-			$13::jsonb, $14::jsonb)
+			$13::jsonb, $14::jsonb, NULLIF($15, ''), $16)
 			RETURNING id::text`,
 			executionID, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, resources, string(state),
-			jsonValue(d.Inputs), d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema).Scan(&id); err != nil {
+			jsonValue(d.Inputs), d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema,
+			d.ConcurrencyScope, append([]string{}, d.ConcurrencyInputs...)).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
 		ids[d.ID] = id

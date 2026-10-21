@@ -4,6 +4,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rburns629/vertra/kernel/internal/domain"
@@ -144,14 +145,26 @@ func (p *pass) claimReadyTasks() ([]*Task, error) {
 	}
 
 	var claimed []*Task
+	keys := map[string]bool{}
 	for _, t := range ready {
 		if len(claimed) == limit {
 			break
 		}
+		if p.opts.MaxRunningPerTeam > 0 && perTeam[t.Team] >= p.opts.MaxRunningPerTeam {
+			continue
+		}
+		key, held, err := p.concurrencyHold(t, keys)
+		if err != nil {
+			return nil, err
+		}
+		if held {
+			continue // stays READY; the next pass looks again
+		}
+		if key != "" {
+			keys[key] = true
+			t.ConcurrencyKey = &key
+		}
 		if p.opts.MaxRunningPerTeam > 0 {
-			if perTeam[t.Team] >= p.opts.MaxRunningPerTeam {
-				continue
-			}
 			perTeam[t.Team]++
 		}
 		claimed = append(claimed, t)
@@ -183,4 +196,41 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// concurrencyHold is the task's concurrency key, and whether it must wait:
+// another task with the same key is claimed or running, or was claimed
+// earlier in this pass, or another scheduler is claiming one right now
+// (the key's transaction-scoped advisory lock, held until this pass
+// commits, after which the claimed row says so). A task with no scope, or
+// whose inputs can't be resolved yet (its dispatch then fails it as
+// usual), has no key and never waits.
+func (p *pass) concurrencyHold(t *Task, claimedNow map[string]bool) (string, bool, error) {
+	if t.ConcurrencyScope == nil || *t.ConcurrencyScope == "" || len(t.ConcurrencyInputs) == 0 {
+		return "", false, nil
+	}
+	inputs, err := p.resolveInputs(t)
+	var missing *domain.MissingOutputError
+	if errors.As(err, &missing) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	key := domain.ConcurrencyKey(*t.ConcurrencyScope, t.ConcurrencyInputs, inputs)
+	if claimedNow[key] {
+		return key, true, nil
+	}
+	var locked, busy bool
+	if err := p.db.QueryRow(p.ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0))`, key).Scan(&locked); err != nil {
+		return "", false, err
+	}
+	if !locked {
+		return key, true, nil
+	}
+	if err := p.db.QueryRow(p.ctx, `SELECT EXISTS (SELECT 1 FROM execution_tasks
+		WHERE concurrency_key = $1 AND state IN ('CLAIMED', 'RUNNING') AND id <> $2::uuid)`, key, t.ID).Scan(&busy); err != nil {
+		return "", false, err
+	}
+	return key, busy, nil
 }

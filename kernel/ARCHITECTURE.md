@@ -158,8 +158,13 @@ transaction.
 → SELECT ... FOR UPDATE OF t SKIP LOCKED
     WHERE state = READY AND available_at <= now
       AND execution.state IN (PENDING, RUNNING)     [a dead execution gets no more claims]
+→ concurrencyHold() for a task with a concurrency scope: its key from its
+    resolved inputs; it stays READY while a task with that key is CLAIMED
+    or RUNNING, was claimed earlier in this pass, or another scheduler holds
+    the key's pg_try_advisory_xact_lock (until its pass commits)
 → for each claimed task:
-    state = CLAIMED, lease_owner = this scheduler, lease_expires_at = now + lease
+    state = CLAIMED, lease_owner = this scheduler, lease_expires_at = now + lease,
+      concurrency_key = its key (if it has one)
     attempt_count += 1 → INSERT task_attempts
     recordEvent(TASK_CLAIMED)
 ```

@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/kernel/v1/kernel.proto.
  */
 export const file_vertra_kernel_v1_kernel: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEva2VybmVsL3YxL2tlcm5lbC5wcm90bxIQdmVydHJhLmtlcm5lbC52MSKwAwoEVGFzaxIKCgJpZBgBIAEoCRINCgVpbWFnZRgCIAEoCRIOCgZhY3Rpb24YAyABKAkSDAoEdGVhbRgEIAEoCRIXCg9zZXJ2aWNlX2FjY291bnQYBSABKAkSEgoKZGVwZW5kc19vbhgGIAMoCRITCgtzZWNyZXRfcmVmcxgHIAMoCRInCgZpbnB1dHMYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgJIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgKIAEoBUgBiAEBEi4KCXJlc291cmNlcxgLIAEoCzIbLnZlcnRyYS5rZXJuZWwudjEuUmVzb3VyY2VzEhcKD3Rva2VuX2F1ZGllbmNlcxgMIAMoCRItCgxpbnB1dF9zY2hlbWEYDSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KDW91dHB1dF9zY2hlbWEYDiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0QhIKEF90aW1lb3V0X3NlY29uZHNCDwoNX21heF9hdHRlbXB0cyI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAkiYQoWU3VibWl0RXhlY3V0aW9uUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCnJlcXVlc3RfaWQYAiABKAkSJQoFdGFza3MYAyADKAsyFi52ZXJ0cmEua2VybmVsLnYxLlRhc2sicQoXU3VibWl0RXhlY3V0aW9uUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEi8KBXN0YXRlGAIgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZRIPCgdjcmVhdGVkGAMgASgIIkUKEFZhbGlkYXRpb25Jc3N1ZXMSMQoGaXNzdWVzGAEgAygLMiEudmVydHJhLmtlcm5lbC52MS5WYWxpZGF0aW9uSXNzdWUiQQoPVmFsaWRhdGlvbklzc3VlEgwKBGNvZGUYASABKAkSDwoHbWVzc2FnZRgCIAEoCRIPCgd0YXNrX2lkGAMgASgJIisKE0dldEV4ZWN1dGlvblJlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJIkYKFEdldEV4ZWN1dGlvblJlc3BvbnNlEi4KCWV4ZWN1dGlvbhgBIAEoCzIbLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uIo0BCglFeGVjdXRpb24SFAoMZXhlY3V0aW9uX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLwoFc3RhdGUYAyABKA4yIC52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvblN0YXRlEisKBXRhc2tzGAQgAygLMhwudmVydHJhLmtlcm5lbC52MS5UYXNrU3RhdHVzIqoCCgpUYXNrU3RhdHVzEg8KB3Rhc2tfaWQYASABKAkSKgoFc3RhdGUYAiABKA4yGy52ZXJ0cmEua2VybmVsLnYxLlRhc2tTdGF0ZRIVCg1hdHRlbXB0X2NvdW50GAMgASgFEigKB291dHB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EigKB2ZhaWx1cmUYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhIKCmRlcGVuZHNfb24YBiADKAkSLgoKc3RhcnRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMY29tcGxldGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIyChlHZXRFeGVjdXRpb25TdGF0ZXNSZXF1ZXN0EhUKDWV4ZWN1dGlvbl9pZHMYASADKAkiUwoaR2V0RXhlY3V0aW9uU3RhdGVzUmVzcG9uc2USNQoGc3RhdGVzGAEgAygLMiUudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZUVudHJ5IlwKE0V4ZWN1dGlvblN0YXRlRW50cnkSFAoMZXhlY3V0aW9uX2lkGAEgASgJEi8KBXN0YXRlGAIgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZSJfChpMaXN0RXhlY3V0aW9uRXZlbnRzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSEgoFYWZ0ZXIYAiABKANIAIgBARINCgVsaW1pdBgDIAEoBUIICgZfYWZ0ZXIieQobTGlzdEV4ZWN1dGlvbkV2ZW50c1Jlc3BvbnNlEjAKBmV2ZW50cxgBIAMoCzIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uRXZlbnQSGAoLbmV4dF9jdXJzb3IYAiABKANIAIgBAUIOCgxfbmV4dF9jdXJzb3IimwEKDkV4ZWN1dGlvbkV2ZW50EgoKAmlkGAEgASgDEhIKCmV2ZW50X3R5cGUYAiABKAkSDwoHdGFza19pZBgDIAEoCRIoCgdwYXlsb2FkGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIvChdHZXRFeGVjdXRpb25Mb2dzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkiRQoYR2V0RXhlY3V0aW9uTG9nc1Jlc3BvbnNlEikKBXRhc2tzGAEgAygLMhoudmVydHJhLmtlcm5lbC52MS5UYXNrTG9ncyIqCghUYXNrTG9ncxIPCgd0YXNrX2lkGAEgASgJEg0KBWxpbmVzGAIgAygJIi4KFkNhbmNlbEV4ZWN1dGlvblJlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJImAKF0NhbmNlbEV4ZWN1dGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUiOQoQUmV0cnlUYXNrUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSDwoHdGFza19pZBgCIAEoCSJaChFSZXRyeVRhc2tSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSLwoFc3RhdGUYAiABKA4yIC52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvblN0YXRlKsUBCg5FeGVjdXRpb25TdGF0ZRIfChtFWEVDVVRJT05fU1RBVEVfVU5TUEVDSUZJRUQQABIbChdFWEVDVVRJT05fU1RBVEVfUEVORElORxABEhsKF0VYRUNVVElPTl9TVEFURV9SVU5OSU5HEAISHQoZRVhFQ1VUSU9OX1NUQVRFX1NVQ0NFRURFRBADEhoKFkVYRUNVVElPTl9TVEFURV9GQUlMRUQQBBIdChlFWEVDVVRJT05fU1RBVEVfQ0FOQ0VMTEVEEAUq0AEKCVRhc2tTdGF0ZRIaChZUQVNLX1NUQVRFX1VOU1BFQ0lGSUVEEAASFgoSVEFTS19TVEFURV9CTE9DS0VEEAESFAoQVEFTS19TVEFURV9SRUFEWRACEhYKElRBU0tfU1RBVEVfQ0xBSU1FRBADEhYKElRBU0tfU1RBVEVfUlVOTklORxAEEhgKFFRBU0tfU1RBVEVfU1VDQ0VFREVEEAUSFQoRVEFTS19TVEFURV9GQUlMRUQQBhIYChRUQVNLX1NUQVRFX0NBTkNFTExFRBAHMvgFCg1LZXJuZWxTZXJ2aWNlEmYKD1N1Ym1pdEV4ZWN1dGlvbhIoLnZlcnRyYS5rZXJuZWwudjEuU3VibWl0RXhlY3V0aW9uUmVxdWVzdBopLnZlcnRyYS5rZXJuZWwudjEuU3VibWl0RXhlY3V0aW9uUmVzcG9uc2USYgoMR2V0RXhlY3V0aW9uEiUudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25SZXF1ZXN0GiYudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25SZXNwb25zZSIDkAIBEnQKEkdldEV4ZWN1dGlvblN0YXRlcxIrLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uU3RhdGVzUmVxdWVzdBosLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uU3RhdGVzUmVzcG9uc2UiA5ACARJ3ChNMaXN0RXhlY3V0aW9uRXZlbnRzEiwudmVydHJhLmtlcm5lbC52MS5MaXN0RXhlY3V0aW9uRXZlbnRzUmVxdWVzdBotLnZlcnRyYS5rZXJuZWwudjEuTGlzdEV4ZWN1dGlvbkV2ZW50c1Jlc3BvbnNlIgOQAgESbgoQR2V0RXhlY3V0aW9uTG9ncxIpLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uTG9nc1JlcXVlc3QaKi52ZXJ0cmEua2VybmVsLnYxLkdldEV4ZWN1dGlvbkxvZ3NSZXNwb25zZSIDkAIBEmYKD0NhbmNlbEV4ZWN1dGlvbhIoLnZlcnRyYS5rZXJuZWwudjEuQ2FuY2VsRXhlY3V0aW9uUmVxdWVzdBopLnZlcnRyYS5rZXJuZWwudjEuQ2FuY2VsRXhlY3V0aW9uUmVzcG9uc2USVAoJUmV0cnlUYXNrEiIudmVydHJhLmtlcm5lbC52MS5SZXRyeVRhc2tSZXF1ZXN0GiMudmVydHJhLmtlcm5lbC52MS5SZXRyeVRhc2tSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch12ZXJ0cmEva2VybmVsL3YxL2tlcm5lbC5wcm90bxIQdmVydHJhLmtlcm5lbC52MSLrAwoEVGFzaxIKCgJpZBgBIAEoCRINCgVpbWFnZRgCIAEoCRIOCgZhY3Rpb24YAyABKAkSDAoEdGVhbRgEIAEoCRIXCg9zZXJ2aWNlX2FjY291bnQYBSABKAkSEgoKZGVwZW5kc19vbhgGIAMoCRITCgtzZWNyZXRfcmVmcxgHIAMoCRInCgZpbnB1dHMYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgJIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgKIAEoBUgBiAEBEi4KCXJlc291cmNlcxgLIAEoCzIbLnZlcnRyYS5rZXJuZWwudjEuUmVzb3VyY2VzEhcKD3Rva2VuX2F1ZGllbmNlcxgMIAMoCRItCgxpbnB1dF9zY2hlbWEYDSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KDW91dHB1dF9zY2hlbWEYDiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EjkKD2NvbmN1cnJlbmN5X2tleRgPIAEoCzIgLnZlcnRyYS5rZXJuZWwudjEuQ29uY3VycmVuY3lLZXlCEgoQX3RpbWVvdXRfc2Vjb25kc0IPCg1fbWF4X2F0dGVtcHRzIi8KDkNvbmN1cnJlbmN5S2V5Eg0KBXNjb3BlGAEgASgJEg4KBmlucHV0cxgCIAMoCSI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAkiYQoWU3VibWl0RXhlY3V0aW9uUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCnJlcXVlc3RfaWQYAiABKAkSJQoFdGFza3MYAyADKAsyFi52ZXJ0cmEua2VybmVsLnYxLlRhc2sicQoXU3VibWl0RXhlY3V0aW9uUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEi8KBXN0YXRlGAIgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZRIPCgdjcmVhdGVkGAMgASgIIkUKEFZhbGlkYXRpb25Jc3N1ZXMSMQoGaXNzdWVzGAEgAygLMiEudmVydHJhLmtlcm5lbC52MS5WYWxpZGF0aW9uSXNzdWUiQQoPVmFsaWRhdGlvbklzc3VlEgwKBGNvZGUYASABKAkSDwoHbWVzc2FnZRgCIAEoCRIPCgd0YXNrX2lkGAMgASgJIisKE0dldEV4ZWN1dGlvblJlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJIkYKFEdldEV4ZWN1dGlvblJlc3BvbnNlEi4KCWV4ZWN1dGlvbhgBIAEoCzIbLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uIo0BCglFeGVjdXRpb24SFAoMZXhlY3V0aW9uX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLwoFc3RhdGUYAyABKA4yIC52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvblN0YXRlEisKBXRhc2tzGAQgAygLMhwudmVydHJhLmtlcm5lbC52MS5UYXNrU3RhdHVzIqoCCgpUYXNrU3RhdHVzEg8KB3Rhc2tfaWQYASABKAkSKgoFc3RhdGUYAiABKA4yGy52ZXJ0cmEua2VybmVsLnYxLlRhc2tTdGF0ZRIVCg1hdHRlbXB0X2NvdW50GAMgASgFEigKB291dHB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EigKB2ZhaWx1cmUYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhIKCmRlcGVuZHNfb24YBiADKAkSLgoKc3RhcnRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMY29tcGxldGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIyChlHZXRFeGVjdXRpb25TdGF0ZXNSZXF1ZXN0EhUKDWV4ZWN1dGlvbl9pZHMYASADKAkiUwoaR2V0RXhlY3V0aW9uU3RhdGVzUmVzcG9uc2USNQoGc3RhdGVzGAEgAygLMiUudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZUVudHJ5IlwKE0V4ZWN1dGlvblN0YXRlRW50cnkSFAoMZXhlY3V0aW9uX2lkGAEgASgJEi8KBXN0YXRlGAIgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZSJfChpMaXN0RXhlY3V0aW9uRXZlbnRzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSEgoFYWZ0ZXIYAiABKANIAIgBARINCgVsaW1pdBgDIAEoBUIICgZfYWZ0ZXIieQobTGlzdEV4ZWN1dGlvbkV2ZW50c1Jlc3BvbnNlEjAKBmV2ZW50cxgBIAMoCzIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uRXZlbnQSGAoLbmV4dF9jdXJzb3IYAiABKANIAIgBAUIOCgxfbmV4dF9jdXJzb3IimwEKDkV4ZWN1dGlvbkV2ZW50EgoKAmlkGAEgASgDEhIKCmV2ZW50X3R5cGUYAiABKAkSDwoHdGFza19pZBgDIAEoCRIoCgdwYXlsb2FkGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIvChdHZXRFeGVjdXRpb25Mb2dzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkiRQoYR2V0RXhlY3V0aW9uTG9nc1Jlc3BvbnNlEikKBXRhc2tzGAEgAygLMhoudmVydHJhLmtlcm5lbC52MS5UYXNrTG9ncyIqCghUYXNrTG9ncxIPCgd0YXNrX2lkGAEgASgJEg0KBWxpbmVzGAIgAygJIi4KFkNhbmNlbEV4ZWN1dGlvblJlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJImAKF0NhbmNlbEV4ZWN1dGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUiOQoQUmV0cnlUYXNrUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSDwoHdGFza19pZBgCIAEoCSJaChFSZXRyeVRhc2tSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSLwoFc3RhdGUYAiABKA4yIC52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvblN0YXRlKsUBCg5FeGVjdXRpb25TdGF0ZRIfChtFWEVDVVRJT05fU1RBVEVfVU5TUEVDSUZJRUQQABIbChdFWEVDVVRJT05fU1RBVEVfUEVORElORxABEhsKF0VYRUNVVElPTl9TVEFURV9SVU5OSU5HEAISHQoZRVhFQ1VUSU9OX1NUQVRFX1NVQ0NFRURFRBADEhoKFkVYRUNVVElPTl9TVEFURV9GQUlMRUQQBBIdChlFWEVDVVRJT05fU1RBVEVfQ0FOQ0VMTEVEEAUq0AEKCVRhc2tTdGF0ZRIaChZUQVNLX1NUQVRFX1VOU1BFQ0lGSUVEEAASFgoSVEFTS19TVEFURV9CTE9DS0VEEAESFAoQVEFTS19TVEFURV9SRUFEWRACEhYKElRBU0tfU1RBVEVfQ0xBSU1FRBADEhYKElRBU0tfU1RBVEVfUlVOTklORxAEEhgKFFRBU0tfU1RBVEVfU1VDQ0VFREVEEAUSFQoRVEFTS19TVEFURV9GQUlMRUQQBhIYChRUQVNLX1NUQVRFX0NBTkNFTExFRBAHMvgFCg1LZXJuZWxTZXJ2aWNlEmYKD1N1Ym1pdEV4ZWN1dGlvbhIoLnZlcnRyYS5rZXJuZWwudjEuU3VibWl0RXhlY3V0aW9uUmVxdWVzdBopLnZlcnRyYS5rZXJuZWwudjEuU3VibWl0RXhlY3V0aW9uUmVzcG9uc2USYgoMR2V0RXhlY3V0aW9uEiUudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25SZXF1ZXN0GiYudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25SZXNwb25zZSIDkAIBEnQKEkdldEV4ZWN1dGlvblN0YXRlcxIrLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uU3RhdGVzUmVxdWVzdBosLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uU3RhdGVzUmVzcG9uc2UiA5ACARJ3ChNMaXN0RXhlY3V0aW9uRXZlbnRzEiwudmVydHJhLmtlcm5lbC52MS5MaXN0RXhlY3V0aW9uRXZlbnRzUmVxdWVzdBotLnZlcnRyYS5rZXJuZWwudjEuTGlzdEV4ZWN1dGlvbkV2ZW50c1Jlc3BvbnNlIgOQAgESbgoQR2V0RXhlY3V0aW9uTG9ncxIpLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uTG9nc1JlcXVlc3QaKi52ZXJ0cmEua2VybmVsLnYxLkdldEV4ZWN1dGlvbkxvZ3NSZXNwb25zZSIDkAIBEmYKD0NhbmNlbEV4ZWN1dGlvbhIoLnZlcnRyYS5rZXJuZWwudjEuQ2FuY2VsRXhlY3V0aW9uUmVxdWVzdBopLnZlcnRyYS5rZXJuZWwudjEuQ2FuY2VsRXhlY3V0aW9uUmVzcG9uc2USVAoJUmV0cnlUYXNrEiIudmVydHJhLmtlcm5lbC52MS5SZXRyeVRhc2tSZXF1ZXN0GiMudmVydHJhLmtlcm5lbC52MS5SZXRyeVRhc2tSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * One step of a DAG.
@@ -121,6 +121,15 @@ export type Task = Message<"vertra.kernel.v1.Task"> & {
    * @generated from field: google.protobuf.Struct output_schema = 14;
    */
   outputSchema?: JsonObject | undefined;
+
+  /**
+   * Holds this step while another with the same key is claimed or running
+   * (product.yaml's concurrencyKey): the key is the scope (the product)
+   * and these inputs' values, resolved, as the step is about to start.
+   *
+   * @generated from field: vertra.kernel.v1.ConcurrencyKey concurrency_key = 15;
+   */
+  concurrencyKey?: ConcurrencyKey | undefined;
 };
 
 /**
@@ -129,6 +138,32 @@ export type Task = Message<"vertra.kernel.v1.Task"> & {
  */
 export const TaskSchema: GenMessage<Task> = /*@__PURE__*/
   messageDesc(file_vertra_kernel_v1_kernel, 0);
+
+/**
+ * @generated from message vertra.kernel.v1.ConcurrencyKey
+ */
+export type ConcurrencyKey = Message<"vertra.kernel.v1.ConcurrencyKey"> & {
+  /**
+   * Whose key it is: the product, so two products never share one.
+   *
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+
+  /**
+   * The inputs that name what the step changes; 1 to 8.
+   *
+   * @generated from field: repeated string inputs = 2;
+   */
+  inputs: string[];
+};
+
+/**
+ * Describes the message vertra.kernel.v1.ConcurrencyKey.
+ * Use `create(ConcurrencyKeySchema)` to create a new message.
+ */
+export const ConcurrencyKeySchema: GenMessage<ConcurrencyKey> = /*@__PURE__*/
+  messageDesc(file_vertra_kernel_v1_kernel, 1);
 
 /**
  * A Pod's size, as Kubernetes quantities ("250m", "512Mi").
@@ -159,7 +194,7 @@ export type Resources = Message<"vertra.kernel.v1.Resources"> & {
  * Use `create(ResourcesSchema)` to create a new message.
  */
 export const ResourcesSchema: GenMessage<Resources> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 1);
+  messageDesc(file_vertra_kernel_v1_kernel, 2);
 
 /**
  * @generated from message vertra.kernel.v1.SubmitExecutionRequest
@@ -190,7 +225,7 @@ export type SubmitExecutionRequest = Message<"vertra.kernel.v1.SubmitExecutionRe
  * Use `create(SubmitExecutionRequestSchema)` to create a new message.
  */
 export const SubmitExecutionRequestSchema: GenMessage<SubmitExecutionRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 2);
+  messageDesc(file_vertra_kernel_v1_kernel, 3);
 
 /**
  * @generated from message vertra.kernel.v1.SubmitExecutionResponse
@@ -219,7 +254,7 @@ export type SubmitExecutionResponse = Message<"vertra.kernel.v1.SubmitExecutionR
  * Use `create(SubmitExecutionResponseSchema)` to create a new message.
  */
 export const SubmitExecutionResponseSchema: GenMessage<SubmitExecutionResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 3);
+  messageDesc(file_vertra_kernel_v1_kernel, 4);
 
 /**
  * The details of an invalid_argument SubmitExecution.
@@ -238,7 +273,7 @@ export type ValidationIssues = Message<"vertra.kernel.v1.ValidationIssues"> & {
  * Use `create(ValidationIssuesSchema)` to create a new message.
  */
 export const ValidationIssuesSchema: GenMessage<ValidationIssues> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 4);
+  messageDesc(file_vertra_kernel_v1_kernel, 5);
 
 /**
  * @generated from message vertra.kernel.v1.ValidationIssue
@@ -269,7 +304,7 @@ export type ValidationIssue = Message<"vertra.kernel.v1.ValidationIssue"> & {
  * Use `create(ValidationIssueSchema)` to create a new message.
  */
 export const ValidationIssueSchema: GenMessage<ValidationIssue> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 5);
+  messageDesc(file_vertra_kernel_v1_kernel, 6);
 
 /**
  * @generated from message vertra.kernel.v1.GetExecutionRequest
@@ -286,7 +321,7 @@ export type GetExecutionRequest = Message<"vertra.kernel.v1.GetExecutionRequest"
  * Use `create(GetExecutionRequestSchema)` to create a new message.
  */
 export const GetExecutionRequestSchema: GenMessage<GetExecutionRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 6);
+  messageDesc(file_vertra_kernel_v1_kernel, 7);
 
 /**
  * @generated from message vertra.kernel.v1.GetExecutionResponse
@@ -303,7 +338,7 @@ export type GetExecutionResponse = Message<"vertra.kernel.v1.GetExecutionRespons
  * Use `create(GetExecutionResponseSchema)` to create a new message.
  */
 export const GetExecutionResponseSchema: GenMessage<GetExecutionResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 7);
+  messageDesc(file_vertra_kernel_v1_kernel, 8);
 
 /**
  * @generated from message vertra.kernel.v1.Execution
@@ -335,7 +370,7 @@ export type Execution = Message<"vertra.kernel.v1.Execution"> & {
  * Use `create(ExecutionSchema)` to create a new message.
  */
 export const ExecutionSchema: GenMessage<Execution> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 8);
+  messageDesc(file_vertra_kernel_v1_kernel, 9);
 
 /**
  * @generated from message vertra.kernel.v1.TaskStatus
@@ -393,7 +428,7 @@ export type TaskStatus = Message<"vertra.kernel.v1.TaskStatus"> & {
  * Use `create(TaskStatusSchema)` to create a new message.
  */
 export const TaskStatusSchema: GenMessage<TaskStatus> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 9);
+  messageDesc(file_vertra_kernel_v1_kernel, 10);
 
 /**
  * @generated from message vertra.kernel.v1.GetExecutionStatesRequest
@@ -412,7 +447,7 @@ export type GetExecutionStatesRequest = Message<"vertra.kernel.v1.GetExecutionSt
  * Use `create(GetExecutionStatesRequestSchema)` to create a new message.
  */
 export const GetExecutionStatesRequestSchema: GenMessage<GetExecutionStatesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 10);
+  messageDesc(file_vertra_kernel_v1_kernel, 11);
 
 /**
  * @generated from message vertra.kernel.v1.GetExecutionStatesResponse
@@ -429,7 +464,7 @@ export type GetExecutionStatesResponse = Message<"vertra.kernel.v1.GetExecutionS
  * Use `create(GetExecutionStatesResponseSchema)` to create a new message.
  */
 export const GetExecutionStatesResponseSchema: GenMessage<GetExecutionStatesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 11);
+  messageDesc(file_vertra_kernel_v1_kernel, 12);
 
 /**
  * @generated from message vertra.kernel.v1.ExecutionStateEntry
@@ -451,7 +486,7 @@ export type ExecutionStateEntry = Message<"vertra.kernel.v1.ExecutionStateEntry"
  * Use `create(ExecutionStateEntrySchema)` to create a new message.
  */
 export const ExecutionStateEntrySchema: GenMessage<ExecutionStateEntry> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 12);
+  messageDesc(file_vertra_kernel_v1_kernel, 13);
 
 /**
  * @generated from message vertra.kernel.v1.ListExecutionEventsRequest
@@ -482,7 +517,7 @@ export type ListExecutionEventsRequest = Message<"vertra.kernel.v1.ListExecution
  * Use `create(ListExecutionEventsRequestSchema)` to create a new message.
  */
 export const ListExecutionEventsRequestSchema: GenMessage<ListExecutionEventsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 13);
+  messageDesc(file_vertra_kernel_v1_kernel, 14);
 
 /**
  * @generated from message vertra.kernel.v1.ListExecutionEventsResponse
@@ -506,7 +541,7 @@ export type ListExecutionEventsResponse = Message<"vertra.kernel.v1.ListExecutio
  * Use `create(ListExecutionEventsResponseSchema)` to create a new message.
  */
 export const ListExecutionEventsResponseSchema: GenMessage<ListExecutionEventsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 14);
+  messageDesc(file_vertra_kernel_v1_kernel, 15);
 
 /**
  * @generated from message vertra.kernel.v1.ExecutionEvent
@@ -547,7 +582,7 @@ export type ExecutionEvent = Message<"vertra.kernel.v1.ExecutionEvent"> & {
  * Use `create(ExecutionEventSchema)` to create a new message.
  */
 export const ExecutionEventSchema: GenMessage<ExecutionEvent> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 15);
+  messageDesc(file_vertra_kernel_v1_kernel, 16);
 
 /**
  * @generated from message vertra.kernel.v1.GetExecutionLogsRequest
@@ -564,7 +599,7 @@ export type GetExecutionLogsRequest = Message<"vertra.kernel.v1.GetExecutionLogs
  * Use `create(GetExecutionLogsRequestSchema)` to create a new message.
  */
 export const GetExecutionLogsRequestSchema: GenMessage<GetExecutionLogsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 16);
+  messageDesc(file_vertra_kernel_v1_kernel, 17);
 
 /**
  * @generated from message vertra.kernel.v1.GetExecutionLogsResponse
@@ -581,7 +616,7 @@ export type GetExecutionLogsResponse = Message<"vertra.kernel.v1.GetExecutionLog
  * Use `create(GetExecutionLogsResponseSchema)` to create a new message.
  */
 export const GetExecutionLogsResponseSchema: GenMessage<GetExecutionLogsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 17);
+  messageDesc(file_vertra_kernel_v1_kernel, 18);
 
 /**
  * @generated from message vertra.kernel.v1.TaskLogs
@@ -605,7 +640,7 @@ export type TaskLogs = Message<"vertra.kernel.v1.TaskLogs"> & {
  * Use `create(TaskLogsSchema)` to create a new message.
  */
 export const TaskLogsSchema: GenMessage<TaskLogs> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 18);
+  messageDesc(file_vertra_kernel_v1_kernel, 19);
 
 /**
  * @generated from message vertra.kernel.v1.CancelExecutionRequest
@@ -622,7 +657,7 @@ export type CancelExecutionRequest = Message<"vertra.kernel.v1.CancelExecutionRe
  * Use `create(CancelExecutionRequestSchema)` to create a new message.
  */
 export const CancelExecutionRequestSchema: GenMessage<CancelExecutionRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 19);
+  messageDesc(file_vertra_kernel_v1_kernel, 20);
 
 /**
  * @generated from message vertra.kernel.v1.CancelExecutionResponse
@@ -644,7 +679,7 @@ export type CancelExecutionResponse = Message<"vertra.kernel.v1.CancelExecutionR
  * Use `create(CancelExecutionResponseSchema)` to create a new message.
  */
 export const CancelExecutionResponseSchema: GenMessage<CancelExecutionResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 20);
+  messageDesc(file_vertra_kernel_v1_kernel, 21);
 
 /**
  * @generated from message vertra.kernel.v1.RetryTaskRequest
@@ -666,7 +701,7 @@ export type RetryTaskRequest = Message<"vertra.kernel.v1.RetryTaskRequest"> & {
  * Use `create(RetryTaskRequestSchema)` to create a new message.
  */
 export const RetryTaskRequestSchema: GenMessage<RetryTaskRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 21);
+  messageDesc(file_vertra_kernel_v1_kernel, 22);
 
 /**
  * @generated from message vertra.kernel.v1.RetryTaskResponse
@@ -688,7 +723,7 @@ export type RetryTaskResponse = Message<"vertra.kernel.v1.RetryTaskResponse"> & 
  * Use `create(RetryTaskResponseSchema)` to create a new message.
  */
 export const RetryTaskResponseSchema: GenMessage<RetryTaskResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_kernel_v1_kernel, 22);
+  messageDesc(file_vertra_kernel_v1_kernel, 23);
 
 /**
  * @generated from enum vertra.kernel.v1.ExecutionState

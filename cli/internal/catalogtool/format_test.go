@@ -331,3 +331,25 @@ func TestRetries(t *testing.T) {
 		}
 	}
 }
+
+// A concurrency key names inputs the action takes, and a release carries it.
+func TestConcurrencyKeys(t *testing.T) {
+	check := func(extra string) (string, *Product) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    shareWith: []\n"+extra, 1)
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p
+	}
+	out, p := check("    concurrencyKey: [text]\n")
+	if out != "" {
+		t.Fatalf("a key naming an input was refused:\n%s", out)
+	}
+	actions, err := p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || strings.Join(actions[0].GetConcurrencyKey(), ",") != "text" {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	if out, _ := check("    concurrencyKey: [colour]\n"); !strings.Contains(out, "concurrencyKey names 'colour'") {
+		t.Errorf("a key naming no input was accepted:\n%s", out)
+	}
+}

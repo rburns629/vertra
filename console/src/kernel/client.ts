@@ -24,6 +24,7 @@ import { config } from "../config.js";
 import {
   ExecutionState,
   KernelService,
+  ConcurrencyKeySchema,
   ResourcesSchema,
   SubmitExecutionRequestSchema,
   TaskSchema,
@@ -110,6 +111,7 @@ const TASK_FIELDS = new Set([
   "tokenAudiences",
   "inputSchema",
   "outputSchema",
+  "concurrencyKey",
   "inputs",
   "timeoutSeconds",
   "maxAttempts",
@@ -176,6 +178,12 @@ function task(value: unknown, index: number): Task {
     tokenAudiences: texts(value.tokenAudiences, `${where}.tokenAudiences`),
     inputSchema: isObject(value.inputSchema) ? (value.inputSchema as JsonObject) : undefined,
     outputSchema: isObject(value.outputSchema) ? (value.outputSchema as JsonObject) : undefined,
+    concurrencyKey: isObject(value.concurrencyKey)
+      ? create(ConcurrencyKeySchema, {
+          scope: text(value.concurrencyKey.scope, `${where}.concurrencyKey.scope`),
+          inputs: texts(value.concurrencyKey.inputs, `${where}.concurrencyKey.inputs`),
+        })
+      : undefined,
     inputs: inputs as JsonObject,
     timeoutSeconds: whole(value.timeoutSeconds, `${where}.timeoutSeconds`),
     maxAttempts: whole(value.maxAttempts, `${where}.maxAttempts`),

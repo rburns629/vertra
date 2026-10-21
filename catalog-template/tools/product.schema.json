@@ -222,6 +222,17 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 10
+        },
+        "concurrencyKey": {
+          "description": "The inputs that name what a step of this action changes (a project, a database). While one step with the same values is starting or running, another waits its turn instead of changing the same thing at once. Values an earlier step produced count too.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "allOf": [

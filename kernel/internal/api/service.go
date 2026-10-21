@@ -136,6 +136,15 @@ func taskDefs(tasks []*kernelv1.Task) ([]domain.TaskDef, []domain.ValidationIssu
 		if t.GetInputSchema() != nil {
 			def.InputSchema = t.GetInputSchema().AsMap()
 		}
+		if key := t.GetConcurrencyKey(); key != nil {
+			def.ConcurrencyScope, def.ConcurrencyInputs = key.GetScope(), key.GetInputs()
+		}
+		if def.ConcurrencyInputs == nil {
+			def.ConcurrencyInputs = []string{}
+		}
+		if problem := domain.ConcurrencyKeyProblem(def.ConcurrencyScope, def.ConcurrencyInputs); problem != "" {
+			bad("concurrency_key", problem)
+		}
 		if t.GetOutputSchema() != nil {
 			def.OutputSchema = t.GetOutputSchema().AsMap()
 		}
@@ -279,10 +288,11 @@ func (s *Service) insert(ctx context.Context, db pgx.Tx, id, name, requestID str
 		}
 		if _, err := db.Exec(ctx, `INSERT INTO execution_tasks (id, execution_id, task_key, image, action, team, service_account,
 			secret_refs, token_audiences, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count,
-			input_schema, output_schema)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16)`,
+			input_schema, output_schema, concurrency_scope, concurrency_inputs)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16, $17, $18)`,
 			ids[d.ID], id, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, d.TokenAudiences, resources,
-			string(d.InitialState()), inputs, d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema); err != nil {
+			string(d.InitialState()), inputs, d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema,
+			nullable(d.ConcurrencyScope), d.ConcurrencyInputs); err != nil {
 			return err
 		}
 	}
@@ -652,4 +662,12 @@ func (s *Service) RetryTask(ctx context.Context, req *connect.Request[kernelv1.R
 		return nil, err
 	}
 	return connect.NewResponse(&kernelv1.RetryTaskResponse{ExecutionId: id, State: executionState(st)}), nil
+}
+
+// nullable is NULL for an empty string.
+func nullable(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

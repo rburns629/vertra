@@ -3,6 +3,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
@@ -30,6 +31,11 @@ type TaskDef struct {
 	// not checked.
 	InputSchema  map[string]any
 	OutputSchema map[string]any
+	// ConcurrencyScope and ConcurrencyInputs hold the task while another
+	// with the same key (ConcurrencyKey) is claimed or running; no scope:
+	// never held.
+	ConcurrencyScope  string
+	ConcurrencyInputs []string
 }
 
 // MaxTokenAudiences is how many a task may ask for.
@@ -287,4 +293,38 @@ func InputReferences(value any) []InputReference {
 		}
 	}
 	return found
+}
+
+// MaxConcurrencyInputs is how many inputs a concurrency key may name.
+const MaxConcurrencyInputs = 8
+
+// ConcurrencyKeyProblem is why a task's concurrency key can't be used, or "".
+func ConcurrencyKeyProblem(scope string, inputs []string) string {
+	switch {
+	case scope == "" && len(inputs) == 0:
+		return ""
+	case scope == "" || len(scope) > 256:
+		return "needs a scope of at most 256 characters"
+	case len(inputs) == 0 || len(inputs) > MaxConcurrencyInputs:
+		return fmt.Sprintf("needs 1 to %d inputs", MaxConcurrencyInputs)
+	}
+	return ""
+}
+
+// ConcurrencyKey is the key two tasks share when they'd change the same
+// thing: the scope and the named inputs' resolved values, in order. A
+// missing input counts as null.
+func ConcurrencyKey(scope string, names []string, inputs map[string]any) string {
+	values := make([]any, 0, len(names)+1)
+	values = append(values, scope)
+	for _, name := range names {
+		values = append(values, inputs[name])
+	}
+	key, err := json.Marshal(values)
+	if err != nil {
+		// Inputs came from JSON, so they always encode; fall back to a key
+		// that still keeps tasks of this scope apart from each other's.
+		return fmt.Sprintf("%q", scope)
+	}
+	return string(key)
 }

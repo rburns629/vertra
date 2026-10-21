@@ -105,6 +105,17 @@ message Task {
   // Unset: not checked. Neither may refer outside itself.
   google.protobuf.Struct input_schema = 13;
   google.protobuf.Struct output_schema = 14;
+  // Holds this step while another with the same key is claimed or running
+  // (product.yaml's concurrencyKey): the key is the scope (the product)
+  // and these inputs' values, resolved, as the step is about to start.
+  ConcurrencyKey concurrency_key = 15;
+}
+
+message ConcurrencyKey {
+  // Whose key it is: the product, so two products never share one.
+  string scope = 1;
+  // The inputs that name what the step changes; 1 to 8.
+  repeated string inputs = 2;
 }
 
 // A Pod's size, as Kubernetes quantities ("250m", "512Mi").

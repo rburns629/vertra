@@ -332,9 +332,12 @@ type ProductAction struct {
 	// idempotent), which maxAttempts above 1 needs.
 	Idempotent bool `protobuf:"varint,17,opt,name=idempotent,proto3" json:"idempotent,omitempty"`
 	// How many times a step of it may run in all; 0 is the default, 1.
-	MaxAttempts   int32 `protobuf:"varint,18,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaxAttempts int32 `protobuf:"varint,18,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
+	// The inputs naming what a step of it changes: one step per set of
+	// values at a time (product.yaml's concurrencyKey). Empty: never held.
+	ConcurrencyKey []string `protobuf:"bytes,19,rep,name=concurrency_key,json=concurrencyKey,proto3" json:"concurrency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ProductAction) Reset() {
@@ -491,6 +494,13 @@ func (x *ProductAction) GetMaxAttempts() int32 {
 		return x.MaxAttempts
 	}
 	return 0
+}
+
+func (x *ProductAction) GetConcurrencyKey() []string {
+	if x != nil {
+		return x.ConcurrencyKey
+	}
+	return nil
 }
 
 // A template: a DAG of actions with parameters, which a consumer runs by
@@ -796,7 +806,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\atargets\x18\x02 \x03(\v2\x1a.vertra.catalog.v1.TargetsR\atargets\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\x81\x05\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xaa\x05\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -822,7 +832,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\n" +
 	"idempotent\x18\x11 \x01(\bR\n" +
 	"idempotent\x12!\n" +
-	"\fmax_attempts\x18\x12 \x01(\x05R\vmaxAttempts\"\xd2\x02\n" +
+	"\fmax_attempts\x18\x12 \x01(\x05R\vmaxAttempts\x12'\n" +
+	"\x0fconcurrency_key\x18\x13 \x03(\tR\x0econcurrencyKey\"\xd2\x02\n" +
 	"\bTemplate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +

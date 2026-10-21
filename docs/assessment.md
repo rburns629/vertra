@@ -327,7 +327,7 @@ that look before they create can, and every sample does.
 | --- | --- | --- |
 | Run timeline, step status, logs, retry | Execution page: graph, events, logs, durations, retry, re-run | Have most; add attempts |
 | Failure classification | `{code, message, retryable}` everywhere | Have it |
-| Concurrency keys | Platform-wide and per-team caps | Add per product: one column, one condition in the claim |
+| Concurrency keys | Platform-wide and per-team caps; per product (done 2026-10-21) | Held in the claim by a key from resolved inputs, with an advisory lock per key |
 | Priorities, fairness | First in, first out | Later: claim round-robin by team |
 | Throttling, debounce | | Later; product caps cover cloud API quotas |
 | Durable steps | Each DAG step is a checkpoint; outputs kept when a later step fails | Have it; no SDK checkpoints |

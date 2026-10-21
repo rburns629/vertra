@@ -440,6 +440,7 @@ export interface Product {
   sourcePath: string | null;
   idempotent: boolean;
   maxAttempts: number;
+  concurrencyKey: string[];
   deprecated: string | null;
   resources: ProductResources | null;
   createdAt: Date;
@@ -478,6 +479,7 @@ export interface ProductInput {
   sourcePath?: string | undefined;
   idempotent?: boolean | undefined;
   maxAttempts?: number | undefined;
+  concurrencyKey?: string[] | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
 }
@@ -523,6 +525,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       sourcePath: input.sourcePath,
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
+      concurrencyKey: input.concurrencyKey,
       deprecated: input.deprecated,
       resources: input.resources,
     }).filter(([, value]) => value !== undefined),

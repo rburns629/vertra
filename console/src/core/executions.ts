@@ -456,7 +456,7 @@ async function withProductResources(submission: Record<string, unknown>): Promis
 }
 
 /** The fields a task gets from its product, never from whoever submits it. */
-const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema"] as const;
+const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey"] as const;
 
 const isReference = (value: unknown) =>
   isRecord(value) && Object.keys(value).length === 2 && "$fromTask" in value && "$output" in value;
@@ -524,6 +524,9 @@ async function withProductContract(submission: Record<string, unknown>): Promise
       ...(product.tokenAudiences.length > 0 ? { tokenAudiences: product.tokenAudiences } : {}),
       ...(nonEmpty(product.inputSchema) ? { inputSchema: product.inputSchema } : {}),
       ...(nonEmpty(product.outputSchema) ? { outputSchema: product.outputSchema } : {}),
+      // One step per set of these inputs' values at a time, the product's
+      // own (the kernel works the key out once the inputs are resolved).
+      ...(product.concurrencyKey.length > 0 ? { concurrencyKey: { scope: product.name, inputs: product.concurrencyKey } } : {}),
     });
   }
   if (problems.length > 0) {

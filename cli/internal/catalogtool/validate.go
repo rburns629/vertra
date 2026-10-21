@@ -348,6 +348,15 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 					problems = append(problems, fmt.Sprintf("action %s: %s isn't a valid JSON Schema: %s", name, side, why))
 				}
 			}
+			// A concurrency key names inputs the action takes: a misspelt
+			// one would make every step's key the same, or never the same.
+			inputProps, _ := action["input"].(map[string]any)
+			props, _ := inputProps["properties"].(map[string]any)
+			for _, key := range stringList(action["concurrencyKey"]) {
+				if _, ok := props[key]; !ok {
+					problems = append(problems, fmt.Sprintf("action %s: concurrencyKey names %s, which its input doesn't have", name, quote(key)))
+				}
+			}
 		}
 		problems = append(problems, c.testLayoutProblems(p, names)...)
 	}

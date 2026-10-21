@@ -91,6 +91,9 @@ message ProductAction {
   bool idempotent = 17;
   // How many times a step of it may run in all; 0 is the default, 1.
   int32 max_attempts = 18;
+  // The inputs naming what a step of it changes: one step per set of
+  // values at a time (product.yaml's concurrencyKey). Empty: never held.
+  repeated string concurrency_key = 19;
 }
 
 // A template: a DAG of actions with parameters, which a consumer runs by

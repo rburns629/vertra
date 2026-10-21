@@ -112,3 +112,21 @@ func TestACredentialIssueNamesItsTask(t_ *testing.T) {
 		t_.Fatalf("err = %v", err)
 	}
 }
+
+func TestConcurrencyKeysNameTheScopeAndTheValuesInOrder(t *testing.T) {
+	inputs := map[string]any{"projectId": "web-1", "region": "us", "size": 2}
+	if got := ConcurrencyKey("acme-sql", []string{"projectId", "region"}, inputs); got != `["acme-sql","web-1","us"]` {
+		t.Errorf("key = %s", got)
+	}
+	if got := ConcurrencyKey("acme-sql", []string{"missing"}, inputs); got != `["acme-sql",null]` {
+		t.Errorf("missing input = %s", got)
+	}
+	for scope, names := range map[string][]string{"": {"a"}, "x": nil, "y": {"1", "2", "3", "4", "5", "6", "7", "8", "9"}} {
+		if ConcurrencyKeyProblem(scope, names) == "" {
+			t.Errorf("%q %v accepted", scope, names)
+		}
+	}
+	if ConcurrencyKeyProblem("", nil) != "" || ConcurrencyKeyProblem("x", []string{"a"}) != "" {
+		t.Error("a valid key was refused")
+	}
+}

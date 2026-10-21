@@ -97,6 +97,9 @@ One row per task in a DAG, and the scheduler's work queue: it claims rows from h
 | `token_audiences` | text[] | no | Audiences its Pod gets a projected ServiceAccount token for, at `/platform/tokens/<audience>`: its product's `tokenAudiences`, set by the console. |
 | `input_schema` | jsonb | yes | Its product's input schema, as the console attached it: its resolved inputs are checked against it before it starts, failing with `INPUT_INVALID`. Empty: not checked. |
 | `output_schema` | jsonb | yes | Its product's output schema: its outputs are checked against it when it finishes, failing with `OUTPUT_INVALID`. Empty: not checked. |
+| `concurrency_scope` | text | yes | Whose concurrency key it has (its product); null: it never waits for another task. |
+| `concurrency_inputs` | text[] | no | The inputs naming what it changes (product.yaml's `concurrencyKey`). |
+| `concurrency_key` | text | yes | Its key, worked out from its resolved inputs when it's claimed: while a task with this key is claimed or running, another with it waits, READY. |
 | `resources` | jsonb | yes | The task's own Pod size: `cpu`, `memory` and `memoryLimit`, as Kubernetes quantities. Null, or a part left out, means the deployment's default (`TASK_DEFAULT_RESOURCES`). |
 | `state` | varchar | no | `BLOCKED` (waiting on dependencies), `READY`, `CLAIMED` (a scheduler took it), `RUNNING` (its Job exists), then `SUCCEEDED`, `FAILED` or `CANCELLED`. |
 | `original_inputs` | jsonb | no | The inputs as submitted, `$fromTask` references included. |
@@ -324,6 +327,7 @@ What a DAG step can run: one row per image and action.
 | `source_path` | text | yes | Its product.yaml in the catalog repository, for "Ask for access" links; null when it wasn't registered from a release. |
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
+| `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |
 | `created_at` | timestamptz | no | |

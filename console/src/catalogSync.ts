@@ -213,6 +213,7 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         ...(p.path ? { sourcePath: p.path } : {}),
         idempotent: p.idempotent,
         maxAttempts: p.maxAttempts > 0 ? p.maxAttempts : 1,
+        concurrencyKey: p.concurrencyKey,
         deprecated: p.deprecated,
         ...(p.resources
           ? {

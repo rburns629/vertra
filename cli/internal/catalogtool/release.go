@@ -70,10 +70,11 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			Description:    or(text(action, "description"), text(p.Spec, "description")),
 			ServiceAccount: text(p.Spec, "serviceAccount"),
 			// An action's own deprecation, else its product's.
-			Deprecated: or(text(action, "deprecated"), text(p.Spec, "deprecated")),
-			Hidden:     text(action, "visibility") == "hidden",
-			Path:       p.Label() + "/product.yaml",
-			Idempotent: action["idempotent"] == true,
+			Deprecated:     or(text(action, "deprecated"), text(p.Spec, "deprecated")),
+			Hidden:         text(action, "visibility") == "hidden",
+			Path:           p.Label() + "/product.yaml",
+			Idempotent:     action["idempotent"] == true,
+			ConcurrencyKey: stringList(action["concurrencyKey"]),
 		}
 		if n, ok := whole(action["maxAttempts"]); ok {
 			a.MaxAttempts = n
