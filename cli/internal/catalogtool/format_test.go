@@ -299,3 +299,35 @@ func TestAllowedTargets(t *testing.T) {
 		}
 	}
 }
+
+// An action may be retried only when it says running it again is safe, and
+// a release carries both.
+func TestRetries(t *testing.T) {
+	withRun := func(extra string) string {
+		return strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    shareWith: []\n"+extra, 1)
+	}
+	check := func(productYAML string) (string, *Product, *Catalog) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = productYAML
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p, c
+	}
+	out, p, _ := check(withRun("    idempotent: true\n    maxAttempts: 3\n"))
+	if out != "" {
+		t.Fatalf("an idempotent action with retries was refused:\n%s", out)
+	}
+	actions, err := p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || !actions[0].GetIdempotent() || actions[0].GetMaxAttempts() != 3 {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	for name, extra := range map[string]string{
+		"retries without idempotent":  "    maxAttempts: 3\n",
+		"retries said not to be safe": "    idempotent: false\n    maxAttempts: 2\n",
+		"too many":                    "    idempotent: true\n    maxAttempts: 11\n",
+	} {
+		if out, _, _ := check(withRun(extra)); !strings.Contains(out, "product.yaml") {
+			t.Errorf("%s was accepted:\n%s", name, out)
+		}
+	}
+}

@@ -73,6 +73,10 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			Deprecated: or(text(action, "deprecated"), text(p.Spec, "deprecated")),
 			Hidden:     text(action, "visibility") == "hidden",
 			Path:       p.Label() + "/product.yaml",
+			Idempotent: action["idempotent"] == true,
+		}
+		if n, ok := whole(action["maxAttempts"]); ok {
+			a.MaxAttempts = n
 		}
 		secrets, _ := action["secretRefs"].([]any)
 		for _, s := range secrets {

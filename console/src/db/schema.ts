@@ -184,6 +184,12 @@ export const products = pgTable(
     // (teams/<team>/products/<product>/product.yaml); null when registered
     // otherwise.
     sourcePath: text("source_path"),
+    // Running it again with the same inputs does no harm (product.yaml's
+    // idempotent); only then may a step of it get more than one attempt.
+    idempotent: boolean("idempotent").notNull().default(false),
+    // How many times a step of it may run in all (product.yaml's
+    // maxAttempts): the attempts its steps get, never more (R3).
+    maxAttempts: integer("max_attempts").notNull().default(1),
     // Why it's deprecated and what to use instead; null when it isn't.
     deprecated: text("deprecated"),
     // The Pod size its tasks get unless a task sets its own: { cpu, memory,

@@ -399,9 +399,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   on retry if a team narrows its rules; GCP folder membership isn't looked
   up (patterns on IDs, by decision); scoping owner identities to folders is
   each team's cloud setup.
-- [ ] **P1: retry policy and idempotency per action (R3)** in
-  `product.yaml`; platform failures (a reclaimed node, a lost Job) retried
-  for idempotent actions. Default `maxAttempts` is 1 today.
+- [x] **P1: retry policy and idempotency per action (R3)** (done
+  2026-10-21): product.yaml's `idempotent` and `maxAttempts` (1–10; more
+  than 1 needs idempotent), carried by releases. A registered product's
+  step gets its product's attempts, fewer if its template or DAG asks,
+  never more, and one if it isn't idempotent; the kernel already retries
+  retryable failures (platform ones, or a product's `retryable` error)
+  with a growing backoff. Every sample's create or transform action is
+  idempotent. Proven on kind. Left: the run page saying whether a manual
+  retry is safe, from the same flag.
 - [ ] **P1: who asked and who acted, per attempt**, and attempts in the API
   (`task_attempts` is stored; the API returns only `attemptCount`).
 - [ ] **P1: samples read identity references from team secrets (S2)**,

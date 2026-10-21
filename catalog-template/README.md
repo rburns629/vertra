@@ -111,6 +111,8 @@ actions:
         keys: [value]
     shareWith: [web, data]  # optional: other teams that may use it, or ["*"]; left out, only yours
     # visibility: hidden    # optional: only your team sees it at all (then no shareWith)
+    idempotent: true          # optional: running it again with the same inputs does no harm
+    maxAttempts: 3            # optional: attempts in all (default 1); more than 1 needs idempotent
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
@@ -131,7 +133,13 @@ registered products' steps); once other teams run your templates, each
 step will use its action's own `secretRefs`. `shareWith` says which other
 teams may run the action or put it in their templates, and `deprecated`
 says what to use instead while it keeps working: the console records both
-and shows them. A product with a `serviceAccount` runs as it in every step
+and shows them. `idempotent` and `maxAttempts` are your retry policy: a step
+of an idempotent action that fails on the platform's side (a reclaimed node,
+a lost Job, a timeout), or with an error your code marks `retryable`, runs
+again after a growing pause, up to `maxAttempts` in all. A template or DAG
+may ask for fewer attempts, never more, and an action that isn't idempotent
+gets exactly one: write it to find what it would create first (as every
+sample does) before you declare it. A product with a `serviceAccount` runs as it in every step
 (the console creates it in the team's namespace); bind a cloud identity to
 that one, never to `default`. To sign in to a cloud other than the one
 running the cluster (OIDC federation), list its audiences in

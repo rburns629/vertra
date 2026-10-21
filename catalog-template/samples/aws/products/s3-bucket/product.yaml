@@ -11,6 +11,11 @@ owner: aws-team
 runtime: python3.12
 actions:
 - name: create
+  # Finds what it would create before creating it, so a step that
+  # failed on the platform's side (a reclaimed node, a timeout) is
+  # retried, up to three attempts in all.
+  idempotent: true
+  maxAttempts: 3
   script: actions/create.py
   input:
     type: object

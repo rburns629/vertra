@@ -13,6 +13,8 @@ owner: local
 runtime: python3.12
 actions:
   - name: transform
+    idempotent: true   # the same text in, the same text out
+    maxAttempts: 2
     # Anyone may run it, or use it in their templates: these samples are
     # for every team to try. Left out, only this team could.
     shareWith: ["*"]

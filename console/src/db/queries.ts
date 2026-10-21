@@ -438,6 +438,8 @@ export interface Product {
   shareWith: string[];
   hidden: boolean;
   sourcePath: string | null;
+  idempotent: boolean;
+  maxAttempts: number;
   deprecated: string | null;
   resources: ProductResources | null;
   createdAt: Date;
@@ -474,6 +476,8 @@ export interface ProductInput {
   shareWith?: string[] | undefined;
   hidden?: boolean | undefined;
   sourcePath?: string | undefined;
+  idempotent?: boolean | undefined;
+  maxAttempts?: number | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
 }
@@ -517,6 +521,8 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       shareWith: input.shareWith,
       hidden: input.hidden,
       sourcePath: input.sourcePath,
+      idempotent: input.idempotent,
+      maxAttempts: input.maxAttempts,
       deprecated: input.deprecated,
       resources: input.resources,
     }).filter(([, value]) => value !== undefined),

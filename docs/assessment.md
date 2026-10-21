@@ -169,7 +169,9 @@ medium. `maxAttempts` defaults to 1, so a reclaimed Spot node or a lost Job
 fails the step outright. Right for a product that isn't idempotent; wrong
 for one that is, and the platform can't tell which. **Do:** let each action
 declare its retry policy and whether it's idempotent in `product.yaml`, and
-retry platform failures automatically for idempotent ones.
+retry platform failures automatically for idempotent ones. **Done
+2026-10-21:** `idempotent` and `maxAttempts`, which cap each step's
+attempts; an action that isn't idempotent gets one.
 
 **R4. A Job can outlive its cancelled execution.** Reliability weakness;
 low. *Fixed 2026-10-20: every five minutes the scheduler releases attempts'

@@ -542,6 +542,42 @@ describe("recording a submission", () => {
   });
 });
 
+describe("SubmitExecution: a product's own retry policy (R3)", () => {
+  const sent = () => (vi.mocked(submitExecution).mock.calls.at(-1)?.[0] as { tasks: Record<string, unknown>[] }).tasks[0];
+
+  beforeAll(async () => {
+    await upsertProduct({
+      name: `${teamName}-retrying`,
+      image: "retry-image:1",
+      action: "ensure",
+      teamId,
+      idempotent: true,
+      maxAttempts: 3,
+    });
+  });
+
+  it("gives an idempotent product's step its attempts, fewer when asked, never more", async () => {
+    const run = (maxAttempts?: number) =>
+      submit({ image: "retry-image:latest", action: "ensure", serviceAccount: "default", ...(maxAttempts ? { maxAttempts } : {}) });
+    expect((await run()).code).toBe("ok");
+    expect(sent()).toMatchObject({ maxAttempts: 3 });
+    expect((await run(2)).code).toBe("ok");
+    expect(sent()).toMatchObject({ maxAttempts: 2 });
+    expect((await run(9)).code).toBe("ok");
+    expect(sent()).toMatchObject({ maxAttempts: 3 });
+  });
+
+  it("gives a product that isn't idempotent one attempt, whatever is asked", async () => {
+    expect((await submit({ serviceAccount: GRANTEE, maxAttempts: 4 })).code).toBe("ok");
+    expect(sent()).toMatchObject({ maxAttempts: 1 });
+  });
+
+  it("leaves an unregistered image's attempts as asked", async () => {
+    expect((await submit({ image: "unregistered-image:1", serviceAccount: "default", maxAttempts: 2 })).code).toBe("ok");
+    expect(sent()).toMatchObject({ maxAttempts: 2 });
+  });
+});
+
 describe("a member who isn't a maintainer", () => {
   let memberToken: string;
   let memberId: string;

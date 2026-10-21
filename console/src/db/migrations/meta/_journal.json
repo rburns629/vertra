@@ -57,6 +57,13 @@
       "when": 1792611445995,
       "tag": "0007_allowed_targets",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792613119520,
+      "tag": "0008_retries",
+      "breakpoints": true
     }
   ]
 }

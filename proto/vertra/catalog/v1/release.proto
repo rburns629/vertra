@@ -86,6 +86,11 @@ message ProductAction {
   // Its product.yaml in the catalog repository, for people:
   // "teams/<team>/products/<product>/product.yaml".
   string path = 16;
+  // Running it again with the same inputs does no harm (product.yaml's
+  // idempotent), which maxAttempts above 1 needs.
+  bool idempotent = 17;
+  // How many times a step of it may run in all; 0 is the default, 1.
+  int32 max_attempts = 18;
 }
 
 // A template: a DAG of actions with parameters, which a consumer runs by

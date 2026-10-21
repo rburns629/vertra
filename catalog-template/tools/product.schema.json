@@ -212,25 +212,61 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 1000
+        },
+        "idempotent": {
+          "description": "Running it again with the same inputs does no harm: it finds what an earlier attempt made instead of making it twice. Required for maxAttempts above 1, so a step that failed on the platform's side (a reclaimed node, a lost Job, a timeout) is retried only when that's safe.",
+          "type": "boolean"
+        },
+        "maxAttempts": {
+          "description": "How many times a step of this action may run in all before it fails: 1 (the default) means no retries. More than 1 needs idempotent: true. A template or DAG may ask for fewer, never more.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
         }
       },
-      "if": {
-        "properties": {
-          "visibility": {
-            "const": "hidden"
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "visibility": {
+                "const": "hidden"
+              }
+            },
+            "required": [
+              "visibility"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "shareWith"
+              ]
+            }
           }
         },
-        "required": [
-          "visibility"
-        ]
-      },
-      "then": {
-        "not": {
-          "required": [
-            "shareWith"
-          ]
+        {
+          "if": {
+            "properties": {
+              "maxAttempts": {
+                "minimum": 2
+              }
+            },
+            "required": [
+              "maxAttempts"
+            ]
+          },
+          "then": {
+            "properties": {
+              "idempotent": {
+                "const": true
+              }
+            },
+            "required": [
+              "idempotent"
+            ]
+          }
         }
-      }
+      ]
     }
   }
 }

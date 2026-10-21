@@ -322,6 +322,8 @@ What a DAG step can run: one row per image and action.
 | `share_with` | text[] | no | The other teams that may run it or include it in their templates, or `*` for every team; empty, only its own team. Teams it isn't shared with still see it, and can ask for access. |
 | `hidden` | boolean | no | `visibility: hidden` in product.yaml: only its own team (and admins) see it; it then has no `share_with`. |
 | `source_path` | text | yes | Its product.yaml in the catalog repository, for "Ask for access" links; null when it wasn't registered from a release. |
+| `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
+| `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |
 | `created_at` | timestamptz | no | |

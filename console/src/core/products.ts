@@ -84,6 +84,9 @@ export const RegisterProductBody = Type.Object({
   // Only its own team sees it; it can't then be shared.
   hidden: Type.Optional(Type.Boolean()),
   sourcePath: Type.Optional(Type.String({ maxLength: 1024 })),
+  // How many times a step of it may run; more than 1 only when idempotent.
+  idempotent: Type.Optional(Type.Boolean()),
+  maxAttempts: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })),
   deprecated: Type.Optional(Type.String({ maxLength: 1000 })),
 });
 
@@ -105,6 +108,10 @@ export type RegisterProductInput = {
   hidden?: boolean;
   /** Its product.yaml in the catalog repository. */
   sourcePath?: string;
+  /** Running it again does no harm; needed for maxAttempts above 1. */
+  idempotent?: boolean;
+  /** How many times a step of it may run in all (1: no retries). */
+  maxAttempts?: number;
   /** Empty: not deprecated. */
   deprecated?: string;
 };
@@ -172,6 +179,9 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
   if (input.hidden && (input.shareWith ?? []).length > 0) {
     throw new ApiError(422, "UNPROCESSABLE_ENTITY", `${input.name}: a hidden action can't be shared (shareWith).`);
   }
+  if ((input.maxAttempts ?? 1) > 1 && !input.idempotent) {
+    throw new ApiError(422, "UNPROCESSABLE_ENTITY", `${input.name}: only an idempotent action may have more than one attempt.`);
+  }
 
   let teamId: string | null = null;
   if (teamName === null) {
@@ -237,6 +247,8 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       shareWith: input.shareWith,
       hidden: input.hidden,
       sourcePath: input.sourcePath,
+      idempotent: input.idempotent,
+      maxAttempts: input.maxAttempts,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,
     });

@@ -211,6 +211,8 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         shareWith: p.shareWith,
         hidden: p.hidden,
         ...(p.path ? { sourcePath: p.path } : {}),
+        idempotent: p.idempotent,
+        maxAttempts: p.maxAttempts > 0 ? p.maxAttempts : 1,
         deprecated: p.deprecated,
         ...(p.resources
           ? {

@@ -476,6 +476,18 @@ const nonEmpty = (schema: unknown) => isRecord(schema) && Object.keys(schema).le
  * checked against the input schema: all the problems refused together, as
  * INPUT_INVALID. Run after authorization, as withProductResources is.
  */
+/**
+ * The attempts a step of a registered product gets (R3): what its owner
+ * allows, or fewer when the template or DAG asks for fewer; exactly one for
+ * an action that isn't idempotent, since running it again could do its work
+ * twice. A failure is retried only when it's marked retryable: a reclaimed
+ * node, a lost Job, a timeout, or the product saying so.
+ */
+function attemptsFor(product: { idempotent: boolean; maxAttempts: number }, requested: unknown): number {
+  const allowed = product.idempotent ? Math.max(1, product.maxAttempts) : 1;
+  return typeof requested === "number" && Number.isInteger(requested) && requested >= 1 ? Math.min(requested, allowed) : allowed;
+}
+
 async function withProductContract(submission: Record<string, unknown>): Promise<Record<string, unknown>> {
   const tasks = submission["tasks"];
   if (!Array.isArray(tasks)) return submission;
@@ -508,6 +520,7 @@ async function withProductContract(submission: Record<string, unknown>): Promise
     }
     out.push({
       ...rest,
+      maxAttempts: attemptsFor(product, task["maxAttempts"]),
       ...(product.tokenAudiences.length > 0 ? { tokenAudiences: product.tokenAudiences } : {}),
       ...(nonEmpty(product.inputSchema) ? { inputSchema: product.inputSchema } : {}),
       ...(nonEmpty(product.outputSchema) ? { outputSchema: product.outputSchema } : {}),
