@@ -169,6 +169,25 @@ message TaskStatus {
   google.protobuf.Timestamp completed_at = 8;
   // Every attempt, first to last: who asked for it and what acted in it.
   repeated Attempt attempts = 9;
+  // Once it failed: what that means and what to do, whether retrying is
+  // safe, and whom to ask.
+  optional FailureHelp help = 10;
+}
+
+message FailureHelp {
+  // Empty when nobody explained the code.
+  string means = 1;
+  string what_to_do = 2;
+  // The owning team's words (product.yaml's errors), not the platform's.
+  bool from_owner = 3;
+  // "safe" (its product is idempotent), "unsafe", or "unknown" (not a
+  // registered product).
+  string retry = 4;
+  // The team whose step it is, and where to ask it (team.yaml).
+  string team = 5;
+  string contact = 6;
+  string chat = 7;
+  string url = 8;
 }
 
 message Attempt {

@@ -42,6 +42,10 @@ message Team {
   repeated google.protobuf.Struct secret_store_documents = 2;
   // team.yaml's allowedTargets: where other teams may aim its products.
   repeated TargetRule allowed_targets = 3;
+  // team.yaml's contact and help: where people ask when its steps fail.
+  string contact = 4;
+  string help_chat = 5;
+  string help_url = 6;
 }
 
 // One rule of a team's allowedTargets: the teams it covers ("*" for every
@@ -94,6 +98,15 @@ message ProductAction {
   // The inputs naming what a step of it changes: one step per set of
   // values at a time (product.yaml's concurrencyKey). Empty: never held.
   repeated string concurrency_key = 19;
+  // product.yaml's errors: what each error code its actions report means,
+  // and what to do.
+  map<string, ErrorHelp> errors = 20;
+}
+
+message ErrorHelp {
+  string means = 1;
+  // What to do; may be empty.
+  string do = 2;
 }
 
 // A template: a DAG of actions with parameters, which a consumer runs by

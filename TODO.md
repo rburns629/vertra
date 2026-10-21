@@ -450,9 +450,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   into a target, as needing approval; the step waits (a new state in the
   kernel) until a maintainer approves or declines, audited; withdrawn after
   3 days.
-- [ ] **P1: failure help from the owner.** Error codes with what they mean
-  and what to do in `product.yaml`; where to ask for help in `team.yaml`;
-  shown on the run page with whether a retry is safe.
+- [x] **P1: failure help from the owner** (done 2026-10-21): product.yaml's
+  `errors` (CODE: means, do) and team.yaml's `help` (chat, url) beside
+  `contact`, carried by releases (console migration 0010). A failed step's
+  `help` says what its code means (the owner's words first, the platform's
+  for its own codes: `console/src/failureHelp.ts`), whether a retry is safe
+  (the product's `idempotent`), and whom to ask; shown under the step on
+  the run page. Proven on kind with a timed-out step.
 - [x] **P1: concurrency keys** (done 2026-10-21): product.yaml's
   `concurrencyKey` (input names, checked to exist by vertra catalog
   validate), carried by releases; the console sends the kernel the

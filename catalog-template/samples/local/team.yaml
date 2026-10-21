@@ -10,3 +10,7 @@ description: >-
   Rust: text in, text out, nothing called. Safe to retire.
 owner: catalog-admins
 contact: catalog-admins@example.com
+# Where people running these products ask when a step fails.
+help:
+  chat: "#local-samples"
+  url: https://example.com/runbooks

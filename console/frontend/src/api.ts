@@ -710,6 +710,20 @@ export interface TaskStatus {
   completedAt: string | null;
   /** Every attempt, first to last: who asked for it and what acted in it. */
   attempts: TaskAttempt[];
+  /** Once it failed: what that means, what to do, whether retrying is safe, whom to ask. */
+  help: FailureHelp | null;
+}
+
+export interface FailureHelp {
+  means: string;
+  whatToDo: string;
+  /** The owning team's words, not the platform's. */
+  fromOwner: boolean;
+  retry: "safe" | "unsafe" | "unknown" | string;
+  team: string;
+  contact: string;
+  chat: string;
+  url: string;
 }
 
 export interface TaskAttempt {
@@ -835,6 +849,18 @@ function executionDetail(execution: Execution): ExecutionDetail {
         actedAs: attempt.actedAs,
         image: attempt.image,
       })),
+      help: task.help
+        ? {
+            means: task.help.means,
+            whatToDo: task.help.whatToDo,
+            fromOwner: task.help.fromOwner,
+            retry: task.help.retry,
+            team: task.help.team,
+            contact: task.help.contact,
+            chat: task.help.chat,
+            url: task.help.url,
+          }
+        : null,
     })),
     teams: execution.teams,
     submittedBy: execution.submittedBy || null,

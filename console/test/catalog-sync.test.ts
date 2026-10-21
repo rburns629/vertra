@@ -309,6 +309,27 @@ describe("a team the catalog didn't make", () => {
   });
 });
 
+describe("failure help in a release", () => {
+  it("stores a product's error help and its team's contact and help", async () => {
+    publish(
+      release({
+        commit: "help",
+        teams: [{ name: teamA, contact: "a@acme.com", helpChat: "#a-help", helpUrl: "https://runbooks.acme.com/a" }],
+        products: [{ ...product(teamA, "site"), errors: { QUOTA_EXCEEDED: { means: "No quota left.", do: "Ask for more." } } }],
+      }),
+      digestOf(60),
+    );
+    await syncCatalog(log);
+    const [team] = await db
+      .select({ contact: teams.contact, helpChat: teams.helpChat, helpUrl: teams.helpUrl })
+      .from(teams)
+      .where(eq(teams.name, teamA));
+    expect(team).toEqual({ contact: "a@acme.com", helpChat: "#a-help", helpUrl: "https://runbooks.acme.com/a" });
+    const [site] = await db.select({ errorHelp: products.errorHelp }).from(products).where(eq(products.name, `${teamA}-site-run`));
+    expect(site?.errorHelp).toEqual({ QUOTA_EXCEEDED: { means: "No quota left.", do: "Ask for more." } });
+  });
+});
+
 describe("a release's templates", () => {
   it("are stored as the release has them, and removed when a release drops them", async () => {
     const stored = () =>

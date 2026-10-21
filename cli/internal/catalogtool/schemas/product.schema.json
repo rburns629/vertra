@@ -79,6 +79,35 @@
         "$ref": "#/$defs/action"
       }
     },
+    "errors": {
+      "description": "What the error codes your actions report mean, and what to do about each: shown on the run page when a step fails with one, beside whether retrying is safe (idempotent) and where to ask your team (team.yaml's help).",
+      "type": "object",
+      "maxProperties": 100,
+      "propertyNames": {
+        "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "means"
+        ],
+        "properties": {
+          "means": {
+            "description": "What happened, for the person whose run failed.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "do": {
+            "description": "What they can do about it.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      }
+    },
     "deprecated": {
       "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
       "type": "string",

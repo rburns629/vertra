@@ -11,6 +11,15 @@ description: >-
   the original back. A Rust sample of the product contract.
 owner: local
 runtime: rust1.90
+# What the error codes its actions report mean: shown on the run page when a
+# step fails with one, with whether a retry is safe and where to ask.
+errors:
+  TEXT_TOO_LONG:
+    means: The text is longer than the 1,000 characters this takes.
+    do: Shorten it, or split it across runs.
+  MISSING_INPUT:
+    means: It wasn't given the text to change.
+    do: Fill in Text and run it again.
 actions:
   - name: transform
     idempotent: true   # the same text in, the same text out

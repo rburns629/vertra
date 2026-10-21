@@ -361,6 +361,14 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
    * @generated from field: repeated vertra.console.v1.Attempt attempts = 9;
    */
   attempts: Attempt[];
+
+  /**
+   * Once it failed: what that means and what to do, whether retrying is
+   * safe, and whom to ask.
+   *
+   * @generated from field: optional vertra.console.v1.FailureHelp help = 10;
+   */
+  help?: FailureHelp | undefined;
 };
 
 /**
@@ -368,6 +376,66 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
  * Use `create(TaskStatusSchema)` to create a new message.
  */
 export declare const TaskStatusSchema: GenMessage<TaskStatus>;
+
+/**
+ * @generated from message vertra.console.v1.FailureHelp
+ */
+export declare type FailureHelp = Message<"vertra.console.v1.FailureHelp"> & {
+  /**
+   * Empty when nobody explained the code.
+   *
+   * @generated from field: string means = 1;
+   */
+  means: string;
+
+  /**
+   * @generated from field: string what_to_do = 2;
+   */
+  whatToDo: string;
+
+  /**
+   * The owning team's words (product.yaml's errors), not the platform's.
+   *
+   * @generated from field: bool from_owner = 3;
+   */
+  fromOwner: boolean;
+
+  /**
+   * "safe" (its product is idempotent), "unsafe", or "unknown" (not a
+   * registered product).
+   *
+   * @generated from field: string retry = 4;
+   */
+  retry: string;
+
+  /**
+   * The team whose step it is, and where to ask it (team.yaml).
+   *
+   * @generated from field: string team = 5;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string contact = 6;
+   */
+  contact: string;
+
+  /**
+   * @generated from field: string chat = 7;
+   */
+  chat: string;
+
+  /**
+   * @generated from field: string url = 8;
+   */
+  url: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.FailureHelp.
+ * Use `create(FailureHelpSchema)` to create a new message.
+ */
+export declare const FailureHelpSchema: GenMessage<FailureHelp>;
 
 /**
  * @generated from message vertra.console.v1.Attempt

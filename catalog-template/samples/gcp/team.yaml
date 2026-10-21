@@ -13,6 +13,10 @@ description: >-
   cloud account at all.
 owner: gcp-team
 contact: gcp-team@example.com
+# Where people running these products ask when a step fails.
+help:
+  chat: "#gcp-team-help"
+  url: https://example.com/runbooks
 # Where other teams may aim these products. Each projectId input is a
 # gcp.project target (x-vertra-needs in product.yaml): when another team
 # runs one, the project must match a rule for that team, or the run is

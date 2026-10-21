@@ -268,6 +268,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
 | `from_catalog` | boolean | no | Made by a catalog release: retired when a release no longer names it. A team an admin made isn't touched. |
 | `allowed_targets` | jsonb | no | team.yaml's `allowedTargets` from the release: `[{ teams, targets: { "gcp.project": [values or patterns], ... } }]`, where other teams may aim this team's products. Empty: nowhere. |
+| `contact`, `help_chat`, `help_url` | text | yes | team.yaml's `contact` and `help` (`chat`, `url`), from the release: whom to ask when one of its steps fails. |
 
 ### users
 
@@ -334,6 +335,7 @@ What a DAG step can run: one row per image and action.
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
+| `error_help` | jsonb | no | product.yaml's `errors`: `{ CODE: { means, do } }`, shown when a step fails with that code. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |
 | `created_at` | timestamptz | no | |

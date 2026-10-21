@@ -16,6 +16,7 @@ import {
   wiringTypes,
   templates,
   catalogSync,
+  type ErrorHelp,
   type ProductResources,
   type TargetRule,
   type TeamRole,
@@ -61,6 +62,10 @@ export interface Team {
   deletedAt: Date | null;
   /** Where other teams may aim its products (targets.ts). */
   allowedTargets: TargetRule[];
+  /** Where people ask when its steps fail (failureHelp.ts). */
+  contact: string | null;
+  helpChat: string | null;
+  helpUrl: string | null;
 }
 
 /** A live team: purged (deleted) teams are invisible to every route. A
@@ -441,6 +446,7 @@ export interface Product {
   idempotent: boolean;
   maxAttempts: number;
   concurrencyKey: string[];
+  errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
   resources: ProductResources | null;
   createdAt: Date;
@@ -480,6 +486,7 @@ export interface ProductInput {
   idempotent?: boolean | undefined;
   maxAttempts?: number | undefined;
   concurrencyKey?: string[] | undefined;
+  errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
 }
@@ -526,6 +533,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
+      errorHelp: input.errorHelp,
       deprecated: input.deprecated,
       resources: input.resources,
     }).filter(([, value]) => value !== undefined),

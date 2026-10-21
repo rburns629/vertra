@@ -353,3 +353,30 @@ func TestConcurrencyKeys(t *testing.T) {
 		t.Errorf("a key naming no input was accepted:\n%s", out)
 	}
 }
+
+// A product explains its error codes; a release carries the explanations.
+func TestErrorHelp(t *testing.T) {
+	check := func(errorsYAML string) (string, *Product) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = strings.Replace(productFile("mine", "a", "[]"), "owner: x\n", "owner: x\n"+errorsYAML, 1)
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p
+	}
+	out, p := check("errors:\n  QUOTA_EXCEEDED:\n    means: No quota left.\n    do: Ask for more, then retry.\n")
+	if out != "" {
+		t.Fatalf("errors were refused:\n%s", out)
+	}
+	actions, err := p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || actions[0].GetErrors()["QUOTA_EXCEEDED"].GetDo() != "Ask for more, then retry." {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	for name, bad := range map[string]string{
+		"a code that isn't SHOUTED": "errors:\n  quota:\n    means: x\n",
+		"no meaning":                "errors:\n  QUOTA_EXCEEDED:\n    do: x\n",
+	} {
+		if out, _ := check(bad); !strings.Contains(out, "product.yaml") {
+			t.Errorf("%s was accepted:\n%s", name, out)
+		}
+	}
+}

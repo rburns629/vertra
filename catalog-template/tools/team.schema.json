@@ -42,6 +42,26 @@
     "contact": {
       "type": "string"
     },
+    "help": {
+      "description": "Where people running your products ask for help, shown when one of your steps fails.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "chat": {
+          "description": "A chat channel, e.g. #gcp-platform-help.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "url": {
+          "description": "Your runbooks or support page.",
+          "type": "string",
+          "pattern": "^https://",
+          "maxLength": 500
+        }
+      }
+    },
     "allowedTargets": {
       "description": "Where other teams may aim this team's products: for each rule, the teams it covers (or \"*\" for every team) and the values each kind of target may take. An action input typed (x-vertra-needs) gcp.project, gcp.folder, aws.account or azure.subscription is a target; when another team runs the action, each target it supplies must match a rule for that team, or the run is refused. Left out, other teams may not supply targets at all. Your own team's runs aren't limited.",
       "type": "array",

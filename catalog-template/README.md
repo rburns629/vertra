@@ -39,7 +39,7 @@ templates/                    starters to copy (checked by CI, never published)
 samples/<team>/               example teams: local (five languages); gcp, aws, azure (billed)
 teams/
   <team>/                    one team = one console team = one Kubernetes namespace
-    team.yaml                 who the team is: name, description, owner, contact; allowedTargets
+    team.yaml                 who the team is: name, description, owner, contact, help; allowedTargets
     README.md                 optional
     products/
       <product>/              its image is <registry>/<team>/<product>
@@ -143,7 +143,23 @@ gets exactly one: write it to find what it would create first (as every
 sample does) before you declare it. `concurrencyKey` names the inputs that
 say what a step changes: while one step with the same values is starting
 or running, another waits its turn, so two runs never change the same
-project at once (a value an earlier step produced counts too). A product with a `serviceAccount` runs as it in every step
+project at once (a value an earlier step produced counts too).
+
+When a step of yours fails, the run page explains it in your words, if you
+give them. product.yaml's top-level `errors` says what each code your
+actions report means and what to do:
+
+```yaml
+errors:
+  QUOTA_EXCEEDED:
+    means: The project has no Cloud SQL quota left.
+    do: Ask your GCP admin for more, then retry.
+```
+
+and team.yaml's `help` says where to ask (`chat`, `url`), next to your
+`contact`. The page also says whether retrying is safe, from `idempotent`.
+Codes you don't explain that the platform reports (a timeout, a failed
+scan) get the platform's own explanation. A product with a `serviceAccount` runs as it in every step
 (the console creates it in the team's namespace); bind a cloud identity to
 that one, never to `default`. To sign in to a cloud other than the one
 running the cluster (OIDC federation), list its audiences in

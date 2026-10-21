@@ -188,7 +188,16 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         teams: rule.teams,
         targets: Object.fromEntries(rule.targets.map((t) => [t.type, t.values])),
       }));
-      await db.update(teams).set({ fromCatalog: true, allowedTargets }).where(eq(teams.name, team.name));
+      await db
+        .update(teams)
+        .set({
+          fromCatalog: true,
+          allowedTargets,
+          contact: team.contact || null,
+          helpChat: team.helpChat || null,
+          helpUrl: team.helpUrl || null,
+        })
+        .where(eq(teams.name, team.name));
     });
   }
   const released = new Set<string>();
@@ -214,6 +223,9 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         idempotent: p.idempotent,
         maxAttempts: p.maxAttempts > 0 ? p.maxAttempts : 1,
         concurrencyKey: p.concurrencyKey,
+        errorHelp: Object.fromEntries(
+          Object.entries(p.errors).map(([code, help]) => [code, { means: help.means, ...(help.do ? { do: help.do } : {}) }]),
+        ),
         deprecated: p.deprecated,
         ...(p.resources
           ? {

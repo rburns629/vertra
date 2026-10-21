@@ -1731,6 +1731,76 @@
      "repeated": true,
      "optional": false,
      "comment": "Every attempt, first to last: who asked for it and what acted in it."
+    },
+    {
+     "name": "help",
+     "type": "FailureHelp",
+     "ref": "vertra.console.v1.FailureHelp",
+     "repeated": false,
+     "optional": true,
+     "comment": "Once it failed: what that means and what to do, whether retrying is\nsafe, and whom to ask."
+    }
+   ]
+  },
+  "vertra.console.v1.FailureHelp": {
+   "name": "FailureHelp",
+   "comment": "",
+   "fields": [
+    {
+     "name": "means",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty when nobody explained the code."
+    },
+    {
+     "name": "whatToDo",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "fromOwner",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "The owning team's words (product.yaml's errors), not the platform's."
+    },
+    {
+     "name": "retry",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"safe\" (its product is idempotent), \"unsafe\", or \"unknown\" (not a\nregistered product)."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team whose step it is, and where to ask it (team.yaml)."
+    },
+    {
+     "name": "contact",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "chat",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

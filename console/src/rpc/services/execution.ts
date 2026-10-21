@@ -164,6 +164,18 @@ function execution(detail: Detail) {
         actedAs: a.actedAs,
         image: a.image,
       })),
+      help: task.help
+        ? {
+            means: task.help.means,
+            whatToDo: task.help.do,
+            fromOwner: task.help.fromOwner,
+            retry: task.help.retry,
+            team: task.help.team,
+            contact: task.help.contact,
+            chat: task.help.chat,
+            url: task.help.url,
+          }
+        : undefined,
     })),
     teams: detail.teams,
     submittedBy: detail.submittedBy ?? "",

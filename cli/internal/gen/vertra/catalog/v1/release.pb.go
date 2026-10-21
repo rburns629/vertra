@@ -136,8 +136,12 @@ type Team struct {
 	SecretStoreDocuments []*structpb.Struct `protobuf:"bytes,2,rep,name=secret_store_documents,json=secretStoreDocuments,proto3" json:"secret_store_documents,omitempty"`
 	// team.yaml's allowedTargets: where other teams may aim its products.
 	AllowedTargets []*TargetRule `protobuf:"bytes,3,rep,name=allowed_targets,json=allowedTargets,proto3" json:"allowed_targets,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// team.yaml's contact and help: where people ask when its steps fail.
+	Contact       string `protobuf:"bytes,4,opt,name=contact,proto3" json:"contact,omitempty"`
+	HelpChat      string `protobuf:"bytes,5,opt,name=help_chat,json=helpChat,proto3" json:"help_chat,omitempty"`
+	HelpUrl       string `protobuf:"bytes,6,opt,name=help_url,json=helpUrl,proto3" json:"help_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Team) Reset() {
@@ -189,6 +193,27 @@ func (x *Team) GetAllowedTargets() []*TargetRule {
 		return x.AllowedTargets
 	}
 	return nil
+}
+
+func (x *Team) GetContact() string {
+	if x != nil {
+		return x.Contact
+	}
+	return ""
+}
+
+func (x *Team) GetHelpChat() string {
+	if x != nil {
+		return x.HelpChat
+	}
+	return ""
+}
+
+func (x *Team) GetHelpUrl() string {
+	if x != nil {
+		return x.HelpUrl
+	}
+	return ""
 }
 
 // One rule of a team's allowedTargets: the teams it covers ("*" for every
@@ -336,8 +361,11 @@ type ProductAction struct {
 	// The inputs naming what a step of it changes: one step per set of
 	// values at a time (product.yaml's concurrencyKey). Empty: never held.
 	ConcurrencyKey []string `protobuf:"bytes,19,rep,name=concurrency_key,json=concurrencyKey,proto3" json:"concurrency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// product.yaml's errors: what each error code its actions report means,
+	// and what to do.
+	Errors        map[string]*ErrorHelp `protobuf:"bytes,20,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProductAction) Reset() {
@@ -503,6 +531,66 @@ func (x *ProductAction) GetConcurrencyKey() []string {
 	return nil
 }
 
+func (x *ProductAction) GetErrors() map[string]*ErrorHelp {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
+type ErrorHelp struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Means string                 `protobuf:"bytes,1,opt,name=means,proto3" json:"means,omitempty"`
+	// What to do; may be empty.
+	Do            string `protobuf:"bytes,2,opt,name=do,proto3" json:"do,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ErrorHelp) Reset() {
+	*x = ErrorHelp{}
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ErrorHelp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ErrorHelp) ProtoMessage() {}
+
+func (x *ErrorHelp) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ErrorHelp.ProtoReflect.Descriptor instead.
+func (*ErrorHelp) Descriptor() ([]byte, []int) {
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ErrorHelp) GetMeans() string {
+	if x != nil {
+		return x.Means
+	}
+	return ""
+}
+
+func (x *ErrorHelp) GetDo() string {
+	if x != nil {
+		return x.Do
+	}
+	return ""
+}
+
 // A template: a DAG of actions with parameters, which a consumer runs by
 // filling in only the parameters. Each step runs its action's product, as
 // that product's ServiceAccount, with that action's own secrets, in that
@@ -533,7 +621,7 @@ type Template struct {
 
 func (x *Template) Reset() {
 	*x = Template{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +633,7 @@ func (x *Template) String() string {
 func (*Template) ProtoMessage() {}
 
 func (x *Template) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +646,7 @@ func (x *Template) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Template.ProtoReflect.Descriptor instead.
 func (*Template) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{5}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Template) GetName() string {
@@ -650,7 +738,7 @@ type TemplateStep struct {
 
 func (x *TemplateStep) Reset() {
 	*x = TemplateStep{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -662,7 +750,7 @@ func (x *TemplateStep) String() string {
 func (*TemplateStep) ProtoMessage() {}
 
 func (x *TemplateStep) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -675,7 +763,7 @@ func (x *TemplateStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TemplateStep.ProtoReflect.Descriptor instead.
 func (*TemplateStep) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{6}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TemplateStep) GetId() string {
@@ -732,7 +820,7 @@ type Resources struct {
 
 func (x *Resources) Reset() {
 	*x = Resources{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -744,7 +832,7 @@ func (x *Resources) String() string {
 func (*Resources) ProtoMessage() {}
 
 func (x *Resources) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -757,7 +845,7 @@ func (x *Resources) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resources.ProtoReflect.Descriptor instead.
 func (*Resources) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{7}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Resources) GetCpu() string {
@@ -795,18 +883,21 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12-\n" +
 	"\x05teams\x18\x04 \x03(\v2\x17.vertra.catalog.v1.TeamR\x05teams\x12<\n" +
 	"\bproducts\x18\x05 \x03(\v2 .vertra.catalog.v1.ProductActionR\bproducts\x129\n" +
-	"\ttemplates\x18\x06 \x03(\v2\x1b.vertra.catalog.v1.TemplateR\ttemplates\"\xb1\x01\n" +
+	"\ttemplates\x18\x06 \x03(\v2\x1b.vertra.catalog.v1.TemplateR\ttemplates\"\x83\x02\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12M\n" +
 	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\x12F\n" +
-	"\x0fallowed_targets\x18\x03 \x03(\v2\x1d.vertra.catalog.v1.TargetRuleR\x0eallowedTargets\"X\n" +
+	"\x0fallowed_targets\x18\x03 \x03(\v2\x1d.vertra.catalog.v1.TargetRuleR\x0eallowedTargets\x12\x18\n" +
+	"\acontact\x18\x04 \x01(\tR\acontact\x12\x1b\n" +
+	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
+	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\"X\n" +
 	"\n" +
 	"TargetRule\x12\x14\n" +
 	"\x05teams\x18\x01 \x03(\tR\x05teams\x124\n" +
 	"\atargets\x18\x02 \x03(\v2\x1a.vertra.catalog.v1.TargetsR\atargets\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xaa\x05\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xc9\x06\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -833,7 +924,14 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"idempotent\x18\x11 \x01(\bR\n" +
 	"idempotent\x12!\n" +
 	"\fmax_attempts\x18\x12 \x01(\x05R\vmaxAttempts\x12'\n" +
-	"\x0fconcurrency_key\x18\x13 \x03(\tR\x0econcurrencyKey\"\xd2\x02\n" +
+	"\x0fconcurrency_key\x18\x13 \x03(\tR\x0econcurrencyKey\x12D\n" +
+	"\x06errors\x18\x14 \x03(\v2,.vertra.catalog.v1.ProductAction.ErrorsEntryR\x06errors\x1aW\n" +
+	"\vErrorsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.vertra.catalog.v1.ErrorHelpR\x05value:\x028\x01\"1\n" +
+	"\tErrorHelp\x12\x14\n" +
+	"\x05means\x18\x01 \x01(\tR\x05means\x12\x0e\n" +
+	"\x02do\x18\x02 \x01(\tR\x02do\"\xd2\x02\n" +
 	"\bTemplate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
@@ -879,38 +977,42 @@ func file_vertra_catalog_v1_release_proto_rawDescGZIP() []byte {
 	return file_vertra_catalog_v1_release_proto_rawDescData
 }
 
-var file_vertra_catalog_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_vertra_catalog_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_vertra_catalog_v1_release_proto_goTypes = []any{
 	(*Release)(nil),               // 0: vertra.catalog.v1.Release
 	(*Team)(nil),                  // 1: vertra.catalog.v1.Team
 	(*TargetRule)(nil),            // 2: vertra.catalog.v1.TargetRule
 	(*Targets)(nil),               // 3: vertra.catalog.v1.Targets
 	(*ProductAction)(nil),         // 4: vertra.catalog.v1.ProductAction
-	(*Template)(nil),              // 5: vertra.catalog.v1.Template
-	(*TemplateStep)(nil),          // 6: vertra.catalog.v1.TemplateStep
-	(*Resources)(nil),             // 7: vertra.catalog.v1.Resources
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),       // 9: google.protobuf.Struct
+	(*ErrorHelp)(nil),             // 5: vertra.catalog.v1.ErrorHelp
+	(*Template)(nil),              // 6: vertra.catalog.v1.Template
+	(*TemplateStep)(nil),          // 7: vertra.catalog.v1.TemplateStep
+	(*Resources)(nil),             // 8: vertra.catalog.v1.Resources
+	nil,                           // 9: vertra.catalog.v1.ProductAction.ErrorsEntry
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),       // 11: google.protobuf.Struct
 }
 var file_vertra_catalog_v1_release_proto_depIdxs = []int32{
-	8,  // 0: vertra.catalog.v1.Release.created_at:type_name -> google.protobuf.Timestamp
+	10, // 0: vertra.catalog.v1.Release.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 1: vertra.catalog.v1.Release.teams:type_name -> vertra.catalog.v1.Team
 	4,  // 2: vertra.catalog.v1.Release.products:type_name -> vertra.catalog.v1.ProductAction
-	5,  // 3: vertra.catalog.v1.Release.templates:type_name -> vertra.catalog.v1.Template
-	9,  // 4: vertra.catalog.v1.Team.secret_store_documents:type_name -> google.protobuf.Struct
+	6,  // 3: vertra.catalog.v1.Release.templates:type_name -> vertra.catalog.v1.Template
+	11, // 4: vertra.catalog.v1.Team.secret_store_documents:type_name -> google.protobuf.Struct
 	2,  // 5: vertra.catalog.v1.Team.allowed_targets:type_name -> vertra.catalog.v1.TargetRule
 	3,  // 6: vertra.catalog.v1.TargetRule.targets:type_name -> vertra.catalog.v1.Targets
-	9,  // 7: vertra.catalog.v1.ProductAction.input_schema:type_name -> google.protobuf.Struct
-	9,  // 8: vertra.catalog.v1.ProductAction.output_schema:type_name -> google.protobuf.Struct
-	7,  // 9: vertra.catalog.v1.ProductAction.resources:type_name -> vertra.catalog.v1.Resources
-	9,  // 10: vertra.catalog.v1.Template.parameters:type_name -> google.protobuf.Struct
-	6,  // 11: vertra.catalog.v1.Template.steps:type_name -> vertra.catalog.v1.TemplateStep
-	9,  // 12: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	11, // 7: vertra.catalog.v1.ProductAction.input_schema:type_name -> google.protobuf.Struct
+	11, // 8: vertra.catalog.v1.ProductAction.output_schema:type_name -> google.protobuf.Struct
+	8,  // 9: vertra.catalog.v1.ProductAction.resources:type_name -> vertra.catalog.v1.Resources
+	9,  // 10: vertra.catalog.v1.ProductAction.errors:type_name -> vertra.catalog.v1.ProductAction.ErrorsEntry
+	11, // 11: vertra.catalog.v1.Template.parameters:type_name -> google.protobuf.Struct
+	7,  // 12: vertra.catalog.v1.Template.steps:type_name -> vertra.catalog.v1.TemplateStep
+	11, // 13: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
+	5,  // 14: vertra.catalog.v1.ProductAction.ErrorsEntry.value:type_name -> vertra.catalog.v1.ErrorHelp
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_vertra_catalog_v1_release_proto_init() }
@@ -918,14 +1020,14 @@ func file_vertra_catalog_v1_release_proto_init() {
 	if File_vertra_catalog_v1_release_proto != nil {
 		return
 	}
-	file_vertra_catalog_v1_release_proto_msgTypes[6].OneofWrappers = []any{}
+	file_vertra_catalog_v1_release_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_catalog_v1_release_proto_rawDesc), len(file_vertra_catalog_v1_release_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

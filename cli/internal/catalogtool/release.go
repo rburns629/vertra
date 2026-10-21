@@ -76,6 +76,13 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			Idempotent:     action["idempotent"] == true,
 			ConcurrencyKey: stringList(action["concurrencyKey"]),
 		}
+		if errs, ok := p.Spec["errors"].(map[string]any); ok && len(errs) > 0 {
+			a.Errors = map[string]*catalogv1.ErrorHelp{}
+			for code, raw := range errs {
+				help, _ := raw.(map[string]any)
+				a.Errors[code] = &catalogv1.ErrorHelp{Means: text(help, "means"), Do: text(help, "do")}
+			}
+		}
 		if n, ok := whole(action["maxAttempts"]); ok {
 			a.MaxAttempts = n
 		}
@@ -138,12 +145,14 @@ func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, reposito
 			continue
 		}
 		t := &catalogv1.Team{Name: team}
-		rules, err := targetRules(filepath.Join(dirs[team], "team.yaml"))
+		spec, err := teamSpec(filepath.Join(dirs[team], "team.yaml"))
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("teams/%s/team.yaml: %v", team, err))
 			continue
 		}
-		t.AllowedTargets = rules
+		t.AllowedTargets = targetRulesOf(spec)
+		help, _ := spec["help"].(map[string]any)
+		t.Contact, t.HelpChat, t.HelpUrl = text(spec, "contact"), text(help, "chat"), text(help, "url")
 		if len(c.secretStoreFiles(team)) > 0 {
 			documents, found := c.secretStoreDocuments(team)
 			if len(found) == 0 {
@@ -377,11 +386,11 @@ func (c *Catalog) Release(ctx context.Context) (bool, error) {
 // action input names with x-vertra-needs to be checked against them.
 var TargetTypes = []string{"gcp.project", "gcp.folder", "aws.account", "azure.subscription"}
 
-// targetRules are a team.yaml's allowedTargets, as a release carries them.
-func targetRules(path string) ([]*catalogv1.TargetRule, error) {
+// teamSpec is a team.yaml; nil when there's none (validation asks for it).
+func teamSpec(path string) (map[string]any, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil // validation asks for it; a release names no rules then
+		return nil, nil
 	}
 	if err != nil {
 		return nil, err
@@ -391,6 +400,19 @@ func targetRules(path string) ([]*catalogv1.TargetRule, error) {
 		return nil, errors.New(problem)
 	}
 	spec, _ := doc.(map[string]any)
+	return spec, nil
+}
+
+// targetRules are a team.yaml's allowedTargets, as a release carries them.
+func targetRules(path string) ([]*catalogv1.TargetRule, error) {
+	spec, err := teamSpec(path)
+	if err != nil {
+		return nil, err
+	}
+	return targetRulesOf(spec), nil
+}
+
+func targetRulesOf(spec map[string]any) []*catalogv1.TargetRule {
 	raw, _ := spec["allowedTargets"].([]any)
 	var rules []*catalogv1.TargetRule
 	for _, r := range raw {
@@ -403,5 +425,5 @@ func targetRules(path string) ([]*catalogv1.TargetRule, error) {
 		}
 		rules = append(rules, rule)
 	}
-	return rules, nil
+	return rules
 }

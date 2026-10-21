@@ -89,6 +89,13 @@ export const RegisterProductBody = Type.Object({
   maxAttempts: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })),
   // The inputs naming what a step changes: one step per set of values at a time.
   concurrencyKey: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 8, uniqueItems: true })),
+  // What its error codes mean, and what to do about each.
+  errorHelp: Type.Optional(
+    Type.Record(
+      Type.String({ pattern: "^[A-Z][A-Z0-9_]{1,63}$" }),
+      Type.Object({ means: Type.String({ minLength: 1, maxLength: 500 }), do: Type.Optional(Type.String({ maxLength: 500 })) }),
+    ),
+  ),
   deprecated: Type.Optional(Type.String({ maxLength: 1000 })),
 });
 
@@ -116,6 +123,8 @@ export type RegisterProductInput = {
   maxAttempts?: number;
   /** The inputs naming what a step changes; one step per set of values at a time. */
   concurrencyKey?: string[];
+  /** What its error codes mean, and what to do about each. */
+  errorHelp?: Record<string, { means: string; do?: string }>;
   /** Empty: not deprecated. */
   deprecated?: string;
 };
@@ -254,6 +263,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
+      errorHelp: input.errorHelp,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,
     });

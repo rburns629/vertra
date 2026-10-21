@@ -42,6 +42,7 @@ import {
   type ExecutionEvent,
   type SubmittedExecutionPayload,
   type TaskLogs,
+  type FailureHelp,
   type TaskAttempt,
   type TaskStatus,
 } from "../api";
@@ -188,6 +189,8 @@ function TaskNodeCard({
           {!task.failure.retryable && " (not retryable)"}
         </Alert>
       )}
+
+      {task.help && <Help help={task.help} />}
 
       {task.attempts.length > 0 && <Attempts attempts={task.attempts} />}
 
@@ -976,6 +979,43 @@ function Attempts({ attempts }: { attempts: TaskAttempt[] }) {
           </Box>
         ))}
       </Box>
+    </Box>
+  );
+}
+
+const RETRY: Record<string, string> = {
+  safe: "Safe to retry: its product finds what an earlier attempt made instead of making it twice.",
+  unsafe: "Retry with care: its product doesn't say it's safe to run twice. Check what the failed attempt made first.",
+};
+
+/** What a failure means, what to do, whether retrying is safe, and whom to ask. */
+function Help({ help }: { help: FailureHelp }) {
+  const ask = [help.chat, help.contact].filter(Boolean).join(" · ");
+  return (
+    <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.5, fontSize: 12, lineHeight: 1.45 }}>
+      {help.means && (
+        <span>
+          {help.means}
+          {help.whatToDo && ` ${help.whatToDo}`}
+          <Box component="span" sx={{ color: "text.secondary" }}>
+            {help.fromOwner ? ` (from ${help.team})` : " (from Vertra)"}
+          </Box>
+        </span>
+      )}
+      {RETRY[help.retry] && <Box component="span" sx={{ color: help.retry === "safe" ? "success.main" : "warning.dark" }}>{RETRY[help.retry]}</Box>}
+      {(ask || help.url) && (
+        <Box component="span" sx={{ color: "text.secondary" }}>
+          Ask {help.team}: {ask}
+          {help.url && (
+            <>
+              {ask ? " · " : ""}
+              <Link href={help.url} target="_blank" rel="noopener noreferrer">
+                runbooks
+              </Link>
+            </>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }

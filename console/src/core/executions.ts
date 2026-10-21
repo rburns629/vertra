@@ -16,6 +16,7 @@ import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError } from "../apiError.js";
 import { ensureTeamMaintainer, loadExecution } from "../auth/access.js";
+import { failureHelp, type FailureHelp } from "../failureHelp.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import {
@@ -553,6 +554,34 @@ function recordable(submission: Record<string, unknown>): Record<string, unknown
   };
 }
 
+/**
+ * Help for each failed task: what its error means and what to do, from its
+ * product's owner when they said, whether a retry is safe, and whom to ask
+ * (failureHelp.ts). Its product is found from the task as submitted.
+ */
+async function failuresExplained(
+  tasks: { taskId: string; failure: Record<string, unknown> | null }[],
+  payload: unknown,
+): Promise<Map<string, FailureHelp>> {
+  const out = new Map<string, FailureHelp>();
+  const submitted = new Map<string, Record<string, unknown>>();
+  const list = isRecord(payload) && Array.isArray(payload["tasks"]) ? payload["tasks"] : [];
+  for (const task of list) if (isRecord(task) && typeof task["id"] === "string") submitted.set(task["id"], task);
+  const products = productLookup();
+  for (const t of tasks) {
+    const code = typeof t.failure?.["code"] === "string" ? t.failure["code"] : undefined;
+    if (!code) continue;
+    const task = submitted.get(t.taskId);
+    const teamName = optionalString(task?.["team"]);
+    const matching = teamName ? await products.matching(teamName, optionalString(task?.["image"]), optionalString(task?.["action"])) : [];
+    const serviceAccount = optionalString(task?.["serviceAccount"]) ?? UNREGISTERED_SERVICE_ACCOUNT;
+    const product = matching.find((p) => runsAs(p) === serviceAccount);
+    const team = teamName ? await findTeamByName(teamName) : undefined;
+    out.set(t.taskId, failureHelp(code, product, team));
+  }
+  return out;
+}
+
 /** Who asked, as the kernel records it on attempts. */
 function requester(caller: AuthUser | undefined): string {
   return caller?.id ? `user:${caller.id}` : "";
@@ -789,11 +818,13 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
   for (const id of new Set(detail.tasks.flatMap((t) => t.attempts.map((a) => a.requestedBy)).filter((r) => r.startsWith("user:")))) {
     emails.set(id, (await findUserById(id.slice("user:".length)))?.email ?? "(deleted account)");
   }
+  const helped = await failuresExplained(detail.tasks, submitted.payload);
   return {
     ...detail,
     tasks: detail.tasks.map((t) => ({
       ...t,
       attempts: t.attempts.map((a) => ({ ...a, requestedBy: emails.get(a.requestedBy) ?? "" })),
+      help: helped.get(t.taskId) ?? null,
     })),
     teams: submitted.teams,
     submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),

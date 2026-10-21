@@ -57,6 +57,11 @@ export const teams = pgTable("teams", {
   // team.yaml's allowedTargets, from the catalog's release: where other
   // teams may aim this team's products (targets.ts). Empty: nowhere.
   allowedTargets: jsonb("allowed_targets").$type<TargetRule[]>().notNull().default([]),
+  // team.yaml's contact and help, from the release: where people ask when
+  // one of its steps fails (failureHelp.ts). Null: not said.
+  contact: text("contact"),
+  helpChat: text("help_chat"),
+  helpUrl: text("help_url"),
 });
 
 /** One rule of a team's allowedTargets: the teams it covers ("*" for every
@@ -193,6 +198,9 @@ export const products = pgTable(
     // The inputs naming what a step of it changes (product.yaml's
     // concurrencyKey): the kernel runs one step per set of values at a time.
     concurrencyKey: text("concurrency_key").array().notNull().default(sql`'{}'::text[]`),
+    // product.yaml's errors: what each error code its actions report means
+    // and what to do, shown when a step fails with one (failureHelp.ts).
+    errorHelp: jsonb("error_help").$type<Record<string, ErrorHelp>>().notNull().default({}),
     // Why it's deprecated and what to use instead; null when it isn't.
     deprecated: text("deprecated"),
     // The Pod size its tasks get unless a task sets its own: { cpu, memory,
@@ -428,6 +436,12 @@ export const teamMemberships = pgTable(
 );
 
 export type TeamRole = "maintainer" | "member";
+
+/** What an error code means, and what to do about it (product.yaml's errors). */
+export interface ErrorHelp {
+  means: string;
+  do?: string;
+}
 
 /**
  * Templates (catalog format v2's dags/*.yaml of kind Template): what a
