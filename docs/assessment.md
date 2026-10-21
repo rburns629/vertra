@@ -121,7 +121,7 @@ are done (decided 2026-10-19).
 | AWS products | Proven 2026-10-19 (not their SecretStore) | |
 | Azure products | Unproven, and blocked: AKS Workload Identity needs a Pod label the kernel can't set | |
 | A ServiceAccount token in step Pods | Missing: `automountServiceAccountToken: false`, no projected token | `kubernetes.py:594` |
-| Default-deny between team namespaces | Missing (documented) | [security-model.md](security-model.md#not-yet-enforced) |
+| Default-deny between team namespaces | Done 2026-10-21: `vertra-default-deny` in every team namespace | [security-model.md](security-model.md#guardrails-the-cluster-enforces) |
 | SSO sign-in | Missing (documented) | same |
 | GitLab | Planned | `cli/DESIGN.md` |
 
@@ -197,7 +197,8 @@ drop the deployment-wide setting.
 
 **S3. Steps can reach other teams' Pods.** High for production; documented.
 **Do:** a default-deny ingress NetworkPolicy in every team namespace,
-created with it.
+created with it. **Done 2026-10-21** (the console's `teamNetwork.ts`,
+fenced to that one policy and shape; proven on kind).
 
 **S4. Reads in a multi-team execution.** Medium; documented. Any member of
 one team in a shared execution sees every step's outputs and logs. **Do:**
@@ -284,7 +285,9 @@ short-lived token for those only; the identity policy allows that volume
 and nothing more. **Done 2026-10-20** (`TODO.md`).
 
 **I2. AKS Workload Identity needs a Pod label the kernel can't set.**
-Blocker for Azure; in TODO already.
+Blocker for Azure. **Done 2026-10-21:** `scheduler.taskPodLabels` (the
+kernel's `TASK_POD_LABELS`), on step Pods only, never the kernel's own
+labels; proven on kind. Proving Azure itself waits with Azure.
 
 **D1. Documentation behind the model.** Low. The samples and
 [security-model.md](security-model.md) describe a deployment-wide target

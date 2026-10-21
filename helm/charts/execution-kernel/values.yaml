@@ -269,6 +269,11 @@ scheduler:
   # registryCheck.copyToTeams is on (it keeps that Secret in every team
   # namespace). Empty: none.
   taskImagePullSecret: ""
+  # -- Labels added to every step Pod (not its Job), for webhooks that act on
+  # a label. AKS Workload Identity only gives a Pod its credentials when it's
+  # labelled {azure.workload.identity/use: "true"}. The kernel's own labels
+  # (app, vertra.dev/*) can't be set here; the scheduler refuses to start.
+  taskPodLabels: {}
   taskPlacement:
     nodeSelector: {}
     tolerations: []

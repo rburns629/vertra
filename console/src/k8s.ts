@@ -31,6 +31,7 @@ let apis:
       rbac: k8s.RbacAuthorizationV1Api;
       custom: k8s.CustomObjectsApi;
       admission: k8s.AdmissionregistrationV1Api;
+      networking: k8s.NetworkingV1Api;
     }
   | undefined;
 
@@ -41,6 +42,7 @@ function getApis(): {
   rbac: k8s.RbacAuthorizationV1Api;
   custom: k8s.CustomObjectsApi;
   admission: k8s.AdmissionregistrationV1Api;
+  networking: k8s.NetworkingV1Api;
 } {
   if (apis) return apis;
 
@@ -70,6 +72,8 @@ function getApis(): {
     custom: kubeConfig.makeApiClient(k8s.CustomObjectsApi),
     // The kernel's image and identity policies (their lists, by name).
     admission: kubeConfig.makeApiClient(k8s.AdmissionregistrationV1Api),
+    // Each team namespace's default-deny NetworkPolicy (teamNetwork.ts).
+    networking: kubeConfig.makeApiClient(k8s.NetworkingV1Api),
   };
   return apis;
 }
@@ -482,6 +486,37 @@ export async function writeTeamPullSecret(namespace: string, dockerConfigJson: s
     if (isNotFound(error)) return false;
     throw error;
   }
+}
+
+/** The NetworkPolicy every team namespace holds (teamNetwork.ts). The
+ * console's write fence accepts no other name, and only this shape. */
+export const TEAM_NETWORK_POLICY = "vertra-default-deny";
+
+/**
+ * Writes a team namespace's default-deny NetworkPolicy, replacing the copy
+ * there: every Pod in it accepts connections only from Pods in the same
+ * namespace, so another team's steps can't reach it. Outgoing traffic is
+ * left alone (steps call their clouds); the platform's own Pods refuse
+ * steps with policies of their own. Returns false when the namespace
+ * doesn't exist (yet).
+ */
+export async function writeTeamNetworkPolicy(namespace: string): Promise<boolean> {
+  const { networking } = getApis();
+  const body: k8s.V1NetworkPolicy = {
+    metadata: { name: TEAM_NETWORK_POLICY, namespace, labels: MANAGED_LABELS },
+    // The client's model calls `from` `_from`, and sends it as `from`.
+    spec: { podSelector: {}, policyTypes: ["Ingress"], ingress: [{ _from: [{ podSelector: {} }] }] },
+  };
+  try {
+    await networking.createNamespacedNetworkPolicy({ namespace, body });
+    return true;
+  } catch (error) {
+    if (isNotFound(error)) return false;
+    if (!isConflict(error)) throw error;
+  }
+  // A reserved name: always the console's to write.
+  await networking.replaceNamespacedNetworkPolicy({ name: TEAM_NETWORK_POLICY, namespace, body });
+  return true;
 }
 
 /** The one Secret a team's SecretStore may take a stored credential from

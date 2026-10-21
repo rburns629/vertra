@@ -44,6 +44,7 @@ data:
   TASK_NODE_SELECTOR: {{ .Values.scheduler.taskPlacement.nodeSelector | toJson | quote }}
   TASK_TOLERATIONS: {{ .Values.scheduler.taskPlacement.tolerations | toJson | quote }}
   TASK_AFFINITY: {{ .Values.scheduler.taskPlacement.affinity | toJson | quote }}
+  TASK_POD_LABELS: {{ .Values.scheduler.taskPodLabels | toJson | quote }}
   TASK_IMAGE_PULL_SECRET: {{ .Values.scheduler.taskImagePullSecret | quote }}
   TASK_POD_HARDENING: {{ .Values.scheduler.taskPodHardening | quote }}
   TASK_LOG_MAX_LINES: {{ .Values.scheduler.taskLogs.maxLines | quote }}

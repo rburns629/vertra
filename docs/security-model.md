@@ -270,7 +270,7 @@ console's `-activity` one) and the console (only the image scanner's, to
 idle it, and its own `-activity` ConfigMap). A stolen token of either can
 stop the platform, not change it.
 
-And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in both charts) let only the platform's own Pods connect to its Postgres, and only the console connect to kernel-api: a step's Pod can reach neither. They need a CNI that enforces NetworkPolicy, and they select Pods by label, so creating Pods in the platform namespace must stay limited to administrators. The bundled databases' passwords are generated on install.
+And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in both charts) let only the platform's own Pods connect to its Postgres, and only the console connect to kernel-api: a step's Pod can reach neither. Every team namespace also holds `vertra-default-deny`, which the console writes with the namespace and rewrites on every policy resync (`console/src/teamNetwork.ts`): its Pods accept connections only from Pods in the same namespace, so one team's steps can't reach another team's Pods or Services. The console's write fence accepts no other NetworkPolicy from it, and only that shape, and its RBAC can't delete one, so a compromised console can't open a team namespace up. Outgoing traffic isn't restricted: steps call their clouds. They need a CNI that enforces NetworkPolicy, and they select Pods by label, so creating Pods in the platform namespace must stay limited to administrators. The bundled databases' passwords are generated on install.
 
 ## What Vertra stores
 
@@ -307,7 +307,6 @@ Vertra isn't production-ready yet.
 
 | Gap | Impact | Plan |
 | --- | --- | --- |
-| Steps can reach other Pods in the cluster | A step can connect to other teams' Pods and Services (not to the platform's databases or kernel-api) | A default-deny ingress policy in every team namespace |
 | The console can still create and replace Secrets in any team namespace | A compromised console could plant or overwrite a team's secret values (it can't read them) | Bind its Secret rights per team namespace as teams are created |
 | No TLS in the chart | The console must be put behind TLS by the operator | An optional Ingress or Gateway with certificates |
 | Password sign-in only | No single sign-on or central account control | OIDC sign-in with groups mapped to teams |

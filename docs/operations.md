@@ -136,7 +136,9 @@ volume's size; `auto` scales the console and kernel-api from one to three
 copies on CPU load, and needs the cluster's metrics API (metrics-server;
 built into GKE, EKS Auto Mode and AKS Automatic). `vertra` picks one
 from its `size` setting. A preset doesn't say where steps run: Spot is
-`scheduler.taskPlacement`.
+`scheduler.taskPlacement`. Labels every step Pod needs, such as AKS
+Workload Identity's `azure.workload.identity/use: "true"`, go in
+`scheduler.taskPodLabels`.
 
 - **Sleeping when idle** (kernel chart, `scaleDown`): a CronJob scales both
   releases' Deployments to zero after `idleAfterMinutes` with no execution
@@ -290,8 +292,15 @@ Both charts ship NetworkPolicies (`networkPolicy.enabled`, on by default):
 | Scheduler | `networkPolicy.metricsFrom` only |
 | Console Postgres | The console release's Pods |
 
-So a step can reach neither database nor kernel-api. Outbound traffic, and
-traffic between team namespaces, isn't restricted yet.
+So a step can reach neither database nor kernel-api.
+
+Each team namespace gets one too, `vertra-default-deny`, written by the
+console with the namespace and rewritten on every policy resync (console
+chart, `teamNamespaces.defaultDenyIngress`, on by default; only when the
+console manages team namespaces). Its Pods accept connections only from
+Pods in the same namespace, so teams can't reach each other. A namespace
+the console doesn't manage needs the same policy from whoever made it.
+Outbound traffic isn't restricted.
 
 ## Troubleshooting
 

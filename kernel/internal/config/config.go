@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	"github.com/rburns629/vertra/kernel/internal/domain"
 )
 
@@ -111,6 +113,10 @@ type Settings struct {
 	TaskNodeSelector map[string]string
 	TaskTolerations  []Toleration
 	TaskAffinity     map[string]any
+	// Labels added to every step Pod, for webhooks that act on a label
+	// (AKS Workload Identity's azure.workload.identity/use). Never the
+	// kernel's own: app and vertra.dev/* are refused.
+	TaskPodLabels map[string]string
 	// The imagePullSecret every step Pod names, for private registries: the
 	// console copies the platform's pull Secret into each team namespace
 	// under this name. Empty: none.
@@ -279,6 +285,12 @@ func Load(getenv func(string) string) (Settings, error) {
 	r.jsonValue("TASK_NODE_SELECTOR", &s.TaskNodeSelector)
 	r.jsonValue("TASK_TOLERATIONS", &s.TaskTolerations)
 	r.jsonValue("TASK_AFFINITY", &s.TaskAffinity)
+	r.jsonValue("TASK_POD_LABELS", &s.TaskPodLabels)
+	for key, value := range s.TaskPodLabels {
+		if problem := podLabelProblem(key, value); problem != "" {
+			r.problems = append(r.problems, "TASK_POD_LABELS: "+problem)
+		}
+	}
 	var resources domain.TaskResources
 	r.jsonValue("TASK_DEFAULT_RESOURCES", &resources)
 	if err := resources.Check(); err != nil {
@@ -293,6 +305,22 @@ func Load(getenv func(string) string) (Settings, error) {
 		return Settings{}, errors.New("invalid settings:\n  " + strings.Join(r.problems, "\n  "))
 	}
 	return s, nil
+}
+
+// podLabelProblem is why a TASK_POD_LABELS entry can't be used: not a
+// valid label, or one of the kernel's own, which the executor and console
+// read back and a setting mustn't be able to forge.
+func podLabelProblem(key, value string) string {
+	if errs := validation.IsQualifiedName(key); len(errs) > 0 {
+		return fmt.Sprintf("%q isn't a label key: %s", key, strings.Join(errs, "; "))
+	}
+	if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
+		return fmt.Sprintf("%q's value %q isn't a label value: %s", key, value, strings.Join(errs, "; "))
+	}
+	if key == "app" || strings.HasPrefix(key, "vertra.dev/") {
+		return fmt.Sprintf("%q is the kernel's own label", key)
+	}
+	return ""
 }
 
 // FromEnv is Load(os.Getenv).

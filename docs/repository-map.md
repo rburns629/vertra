@@ -149,6 +149,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `tokenAudiences.ts` | Which audiences a product's steps may get a projected token for: refuses the Kubernetes API's (from the console's own token) and kernel-api's, and names each token's file. |
 | `policySync.ts` | Rewrites the identity and scan policies and the teams' pull Secrets every few minutes, so drift doesn't last; keeps each sync's outcome for admins. |
 | `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`vertra-pull`), for steps' images in private registries. |
+| `teamNetwork.ts` | Keeps the default-deny NetworkPolicy (`vertra-default-deny`) in every team namespace, so teams' steps can't reach each other. |
 | `retention.ts` | Deletes, hourly, submitted-execution records, audit entries and unused scan verdicts past their retention. |
 | `productPolicy.ts` | Writes the registered products into the cluster's identity policy, after every product change and at startup. |
 | `registry.ts` | Asks a container registry whether an image still exists, before a run, pins tags to digests, and fetches the catalog's release (digest-checked). |

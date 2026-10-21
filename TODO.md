@@ -158,12 +158,12 @@ design.
   haven't called a real account. On EKS and AKS: bind each product's
   ServiceAccount, run each DAG, check the resources and the password-free
   databases, delete them; and their SecretStores through ESO.
-- [ ] **Let a deployment label step Pods** (a kernel setting like
-  `task_node_selector`, never overriding the kernel's own labels). AKS
-  Workload Identity only gives credentials to Pods labelled
-  `azure.workload.identity/use: "true"`, so the Azure sample can't sign in
-  until this exists. Check the identity policy still allows the volume the
-  webhook adds.
+- [x] **Let a deployment label step Pods** (I2, done 2026-10-21):
+  `scheduler.taskPodLabels` (`TASK_POD_LABELS`), on the step Pod only; the
+  scheduler refuses to start with `app` or a `vertra.dev/*` key. Proven on
+  kind (a step's Pod carried them). The identity policy checks Jobs, not
+  Pods, so the volume AKS's webhook adds to the Pod isn't checked by it.
+  Left: the Azure sample signing in, when Azure is proven.
 - [ ] **Prove backups on each cloud.** `backup.destination` takes `gcs`,
   `s3`, `azure` or `pvc`; `pvc` and S3-compatible storage are proven on
   kind, GCS, S3 on AWS (Pod Identity or IRSA) and Azure Blob aren't. On each:
@@ -445,9 +445,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   are the only sign-in today.
 - [ ] **Force a password change on first sign-in** for admin-created
   accounts.
-- [ ] **Limit what steps can reach inside the cluster:** a default-deny
-  ingress policy in each team namespace, created with it. Steps can't reach
-  the platform's databases or kernel-api, but can reach other teams' Pods.
+- [x] **Limit what steps can reach inside the cluster** (S3, done
+  2026-10-21): the console writes `vertra-default-deny` into every team
+  namespace (`teamNetwork.ts`; with the namespace, and on every policy
+  resync), letting in connections only from the same namespace. Its write
+  fence accepts only that policy in that shape, and it can't delete one.
+  Proven on kind: another team's Pod and the platform's were refused, the
+  same team's connected, and without the policy the other team got
+  through; the fence refused opening it, a second policy, one in the
+  platform namespace, and deleting it. Next, when the gateway comes: let it
+  reach API products' backends in team namespaces.
 - [ ] **Make the charts require non-root** on the kernel and console Pods
   (`runAsNonRoot`, no privilege escalation, dropped capabilities, read-only
   root filesystem). The images run as non-root; nothing stops a regression.

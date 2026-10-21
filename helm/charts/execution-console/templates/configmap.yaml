@@ -62,6 +62,7 @@ data:
   PLATFORM_NAMESPACE: {{ .Release.Namespace | quote }}
   PROTECTED_NAMESPACES: {{ join "," .Values.teamNamespaces.protected | quote }}
   TEAM_NAMESPACE_POD_SECURITY: {{ .Values.teamNamespaces.podSecurity | quote }}
+  TEAM_NAMESPACE_DEFAULT_DENY_INGRESS: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress | quote }}
   SECRET_SOURCES_CATALOG_REPO: {{ .Values.secretSources.catalogRepo | quote }}
   SECRET_SOURCES_CLUSTER_ISSUER: {{ .Values.secretSources.clusterIssuer | quote }}
   SECRET_SOURCES_GCP_WORKLOAD_IDENTITY_POOL: {{ .Values.secretSources.gcpWorkloadIdentityPool | quote }}

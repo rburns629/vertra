@@ -50,6 +50,16 @@ func TestSettingsReadPlacementFromJSON(t *testing.T) {
 	}
 }
 
+func TestSettingsReadStepPodLabels(t *testing.T) {
+	s, err := load(t, map[string]string{"TASK_POD_LABELS": `{"azure.workload.identity/use": "true"}`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(s.TaskPodLabels, map[string]string{"azure.workload.identity/use": "true"}) {
+		t.Errorf("labels = %v", s.TaskPodLabels)
+	}
+}
+
 func TestAMisconfigurationStopsTheSchedulerAtStartup(t *testing.T) {
 	for name, env := range map[string]map[string]string{
 		"misspelt toleration": {"TASK_TOLERATIONS": `[{"key": "spot", "efect": "NoSchedule"}]`},
@@ -63,6 +73,10 @@ func TestAMisconfigurationStopsTheSchedulerAtStartup(t *testing.T) {
 		"not a boolean":       {"TASK_POD_HARDENING": "maybe"},
 		"unknown auth":        {"API_AUTH": "none"},
 		"callers not a list":  {"API_ALLOWED_CALLERS": "system:serviceaccount:a:b"},
+		"kernel's label":      {"TASK_POD_LABELS": `{"vertra.dev/execution-id": "x"}`},
+		"app label":           {"TASK_POD_LABELS": `{"app": "other"}`},
+		"bad label key":       {"TASK_POD_LABELS": `{"has space": "true"}`},
+		"bad label value":     {"TASK_POD_LABELS": `{"team": "not/valid"}`},
 	} {
 		_, err := load(t, env)
 		if err == nil {

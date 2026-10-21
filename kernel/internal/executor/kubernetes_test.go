@@ -329,6 +329,18 @@ func TestStepPodsNameThePullSecretWhenOneIsSet(t *testing.T) {
 	check(t, "pull secrets", names, [][]string{{"vertra-pull"}, nil})
 }
 
+func TestDeploymentPodLabelsGoOnTheStepPodAlone(t *testing.T) {
+	opts := options()
+	opts.PodLabels = map[string]string{"azure.workload.identity/use": "true"}
+	c := newCluster(opts)
+	_, _ = c.k.Start(context.Background(), stepTask())
+	job := c.job(t)
+	check(t, "on the Pod", job.Spec.Template.Labels["azure.workload.identity/use"], "true")
+	check(t, "the kernel's still there", job.Spec.Template.Labels["app"], "execution-kernel")
+	_, onJob := job.Labels["azure.workload.identity/use"]
+	check(t, "on the Job", onJob, false)
+}
+
 func TestDiscardRemovesTheAttemptsJobAndConfigMap(t *testing.T) {
 	c := newCluster(options())
 	if err := c.k.Discard(context.Background(), stepTask()); err != nil {

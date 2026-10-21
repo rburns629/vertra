@@ -246,6 +246,9 @@ export const config = {
     // Pod Security level enforced in the namespaces it creates (the kernel's
     // step Pods meet `restricted`); empty for none.
     podSecurity: process.env["TEAM_NAMESPACE_POD_SECURITY"] ?? "",
+    // A NetworkPolicy in each one refusing connections from outside it
+    // (teamNetwork.ts).
+    defaultDenyIngress: process.env["TEAM_NAMESPACE_DEFAULT_DENY_INGRESS"] === "true",
     // Never a team's, whatever a team is called: the platform's own, and
     // any the operator lists. (kube-* always.)
     protected: [

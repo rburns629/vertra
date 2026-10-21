@@ -59,6 +59,13 @@ rules:
   - apiGroups: ["external-secrets.io"]
     resources: ["externalsecrets"]
     verbs: ["get", "list", "create", "update", "delete"]
+  # Each team namespace's default-deny NetworkPolicy (teamNetwork.ts); the
+  # write fence accepts only that one, in that shape. Never delete.
+  {{- if and .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress }}
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["create", "update"]
+  {{- end }}
   # listTaskPods -- read-only visibility into a team's own
   # running work (core/teams.ts, teamPods), no different in kind from `kubectl
   # get pods -n <team>`. Deliberately no "watch" -- this is a plain,

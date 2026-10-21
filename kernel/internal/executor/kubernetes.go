@@ -62,6 +62,7 @@ type KubernetesOptions struct {
 	NodeSelector     map[string]string
 	Tolerations      []corev1.Toleration
 	Affinity         *corev1.Affinity
+	PodLabels        map[string]string
 	PodHardening     bool
 	ImagePullSecret  string
 	LogMaxLines      int
@@ -352,6 +353,14 @@ func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error
 	// So the console can show a Pod as "task X of execution Y": the task
 	// key is caller-chosen (maybe not a valid label), so an annotation.
 	labels := map[string]string{"app": "execution-kernel", "vertra.dev/execution-id": task.ExecutionID, "vertra.dev/attempt": strconv.Itoa(task.Attempt)}
+	// The deployment's own labels go on the Pod alone, under the kernel's.
+	podLabels := make(map[string]string, len(labels)+len(k.opts.PodLabels))
+	for key, value := range k.opts.PodLabels {
+		podLabels[key] = value
+	}
+	for key, value := range labels {
+		podLabels[key] = value
+	}
 	annotations := map[string]string{"vertra.dev/task": task.TaskKey}
 	backoff := int32(0) // one attempt per Job: the scheduler owns retries
 	ttl := int32(k.opts.JobTTL.Seconds())
@@ -362,7 +371,7 @@ func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error
 		Spec: batchv1.JobSpec{
 			BackoffLimit: &backoff, TTLSecondsAfterFinished: &ttl, ActiveDeadlineSeconds: &deadline,
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: labels, Annotations: annotations},
+				ObjectMeta: metav1.ObjectMeta{Labels: podLabels, Annotations: annotations},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
 					Containers: []corev1.Container{{

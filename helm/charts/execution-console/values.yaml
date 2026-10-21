@@ -308,6 +308,12 @@ teamNamespaces:
   # -- Pod Security enforced in the namespaces the console creates (the
   # kernel's step Pods meet `restricted`). Empty for none.
   podSecurity: restricted
+  # -- A NetworkPolicy (vertra-default-deny) in every team namespace: its
+  # Pods accept connections only from Pods in the same namespace, so one
+  # team's steps can't reach another's. Written with each namespace and
+  # rewritten on every policy resync; the write fence accepts no other
+  # policy from the console. Needs a CNI that enforces NetworkPolicy.
+  defaultDenyIngress: true
 
 # -- Fences the console's writes (Secrets, ServiceAccounts, Roles,
 # RoleBindings, ExternalSecrets, SecretStores) to team namespaces: those carrying

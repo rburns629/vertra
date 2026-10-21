@@ -49,6 +49,7 @@ import {
 import { getExecutionStates } from "../kernel/client.js";
 import { syncIdentityPolicy } from "../productPolicy.js";
 import { copyPullSecret } from "../pullSecret.js";
+import { ensureTeamNetworkPolicy } from "../teamNetwork.js";
 import { ensureNotRetired } from "./retired.js";
 import { checkSecretStoreObjects } from "../secretStores.js";
 
@@ -71,7 +72,10 @@ async function setTeamNamespaceState(name: string, state: TeamNamespaceState, cr
   if (!config.teamNamespaces.manage) return;
   try {
     await setTeamNamespace(name, state, { ...config.teamNamespaces, createIfMissing });
-    if (state === "true") await copyPullSecret(name);
+    if (state === "true") {
+      await ensureTeamNetworkPolicy(name);
+      await copyPullSecret(name);
+    }
   } catch (error) {
     if (error instanceof ProtectedNamespaceError) throw new ApiError(422, "UNPROCESSABLE_ENTITY", error.message);
     if (error instanceof NamespaceNotTeamsError) throw new ApiError(409, "NAMESPACE_EXISTS", error.message);

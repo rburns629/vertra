@@ -267,7 +267,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		JobTTL: s.JobTTL, ImagePullGrace: s.ImagePullGrace, JobDeadlineGrace: s.JobDeadlineGrace,
 		RequestTimeout: s.KubernetesTimeout, WatchResync: s.WatchResync,
 		ExtraEnvironment: s.TaskExtraEnvironment, DefaultResources: s.TaskDefaultResources,
-		NodeSelector: s.TaskNodeSelector, Tolerations: tolerations, Affinity: affinity,
+		NodeSelector: s.TaskNodeSelector, Tolerations: tolerations, Affinity: affinity, PodLabels: s.TaskPodLabels,
 		PodHardening: s.TaskPodHardening, ImagePullSecret: s.TaskImagePullSecret,
 		LogMaxLines: s.TaskLogMaxLines, LogMaxBytes: s.TaskLogMaxBytes,
 	}, logging.New("kernel-scheduler", "app.executors.kubernetes"))

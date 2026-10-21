@@ -24,9 +24,11 @@ import {
   NamespaceNotTeamsError,
   ProtectedNamespaceError,
   setTeamNamespace,
+  writeTeamNetworkPolicy,
   writeTeamPullSecret,
 } from "../src/k8s.js";
 import { syncPullSecrets } from "../src/pullSecret.js";
+import { syncTeamNetworkPolicies } from "../src/teamNetwork.js";
 import { checkSecretStoreObjects } from "../src/secretStores.js";
 import { caller, problemMessages, type RpcError } from "./rpc.js";
 
@@ -36,6 +38,7 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
   deleteTeamNamespace: vi.fn(() => Promise.resolve()),
   applySecretStoreObjects: vi.fn(() => Promise.resolve()),
   writeTeamPullSecret: vi.fn(() => Promise.resolve(true)),
+  writeTeamNetworkPolicy: vi.fn(() => Promise.resolve(true)),
 }));
 // Purging asks kernel-api about unfinished executions; these teams have none.
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
@@ -87,6 +90,7 @@ beforeEach(() => {
   vi.mocked(deleteTeamNamespace).mockClear();
   vi.mocked(applySecretStoreObjects).mockClear();
   vi.mocked(writeTeamPullSecret).mockClear();
+  vi.mocked(writeTeamNetworkPolicy).mockClear();
 });
 
 describe("creating a team", () => {
@@ -298,5 +302,43 @@ describe("the registry pull Secret", () => {
     config.teamPullSecretFile = ""; // the last test: afterAll leaves it so
     expect(await syncPullSecrets()).toBe(false);
     expect(writeTeamPullSecret).not.toHaveBeenCalled();
+  });
+});
+
+describe("the default-deny network policy", () => {
+  beforeAll(() => {
+    config.teamNamespaces.defaultDenyIngress = true;
+  });
+
+  it("is written into a new team's namespace", async () => {
+    expect((await call(admin, "TeamService/CreateTeam", { name: name("net") })).code).toBe("ok");
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net"));
+  });
+
+  it("isn't written when a team is retired, and is again when it comes back", async () => {
+    await call(admin, "TeamService/CreateTeam", { name: name("net-retire") });
+    vi.mocked(writeTeamNetworkPolicy).mockClear();
+    await retire(name("net-retire"));
+    expect(writeTeamNetworkPolicy).not.toHaveBeenCalled();
+    await call(admin, "TeamService/UnretireTeam", { name: name("net-retire") });
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-retire"));
+  });
+
+  it("is written into every team on a resync, and a failure is reported", async () => {
+    await createTeam(name("net-sync"));
+    expect(await syncTeamNetworkPolicies()).toBe(true);
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"));
+    vi.mocked(writeTeamNetworkPolicy).mockImplementationOnce(() => Promise.reject(new Error("boom")));
+    await expect(syncTeamNetworkPolicies()).rejects.toThrow("Couldn't write the network policy");
+  });
+
+  it("isn't written when turned off, or when the console doesn't manage namespaces", async () => {
+    config.teamNamespaces.defaultDenyIngress = false;
+    expect(await syncTeamNetworkPolicies()).toBe(false);
+    config.teamNamespaces.defaultDenyIngress = true;
+    config.teamNamespaces.manage = false;
+    expect(await syncTeamNetworkPolicies()).toBe(false);
+    config.teamNamespaces.manage = true;
+    expect(writeTeamNetworkPolicy).not.toHaveBeenCalled();
   });
 });

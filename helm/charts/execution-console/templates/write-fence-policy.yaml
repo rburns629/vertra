@@ -36,6 +36,10 @@ spec:
         apiVersions: ["*"]
         operations: ["CREATE", "UPDATE", "DELETE"]
         resources: ["externalsecrets", "secretstores"]
+      - apiGroups: ["networking.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["networkpolicies"]
   matchConditions:
     - name: from-the-console
       expression: request.userInfo.username == {{ $console | quote }}
@@ -56,6 +60,24 @@ spec:
       messageExpression: >-
         "The console may only update the ServiceAccounts ESO signs in as (eso-*), not " +
         object.metadata.name + "."
+      reason: Forbidden
+    # Its only NetworkPolicy is each team's default deny (teamNetwork.ts),
+    # never deleted, and only ever refusing more: every Pod selected, and
+    # connections let in from this namespace's own Pods alone. So the
+    # console can't open a team namespace to anything outside it.
+    - expression: >-
+        request.resource.resource != "networkpolicies" || (
+          request.operation != "DELETE" &&
+          object.metadata.name == "vertra-default-deny" &&
+          (!has(object.spec.podSelector.matchLabels) || size(object.spec.podSelector.matchLabels) == 0) &&
+          !has(object.spec.podSelector.matchExpressions) &&
+          object.spec.policyTypes.exists(t, t == "Ingress") &&
+          (!has(object.spec.ingress) || object.spec.ingress.all(rule,
+            has(rule.from) && size(rule.from) > 0 && rule.from.all(peer,
+              has(peer.podSelector) && !has(peer.namespaceSelector) && !has(peer.ipBlock)))))
+      message: >-
+        The console's only NetworkPolicy is a team namespace's vertra-default-deny, selecting every
+        Pod and letting in nothing from outside the namespace; it never deletes one.
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1

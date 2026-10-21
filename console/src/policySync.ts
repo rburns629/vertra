@@ -13,6 +13,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { syncIdentityPolicy } from "./productPolicy.js";
 import { syncPullSecrets } from "./pullSecret.js";
 import { syncScanPolicy } from "./scanning.js";
+import { syncTeamNetworkPolicies } from "./teamNetwork.js";
 
 export interface SyncOutcome {
   /** False: there's nothing to write to (not configured, or not installed). */
@@ -27,6 +28,7 @@ const SYNCS: Record<string, () => Promise<boolean>> = {
   identityPolicy: syncIdentityPolicy,
   scanPolicy: syncScanPolicy,
   pullSecrets: syncPullSecrets,
+  teamNetworkPolicies: syncTeamNetworkPolicies,
 };
 
 export function policySyncOutcomes(): Record<string, SyncOutcome | null> {
