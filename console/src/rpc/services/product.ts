@@ -54,8 +54,7 @@ function defined<T extends object>(value: T): T {
 export function productService(): ServiceImpl<typeof ProductService> {
   return {
     async listProducts(_req, ctx) {
-      callerOf(ctx);
-      return { products: (await products()).map(product) };
+      return { products: (await products(callerOf(ctx))).map(product) };
     },
 
     async registerProduct(req, ctx) {

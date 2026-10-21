@@ -172,8 +172,20 @@ type Runnable struct {
 	// is set, a run names one of them; otherwise naming one is optional.
 	OnBehalfOf         []string `protobuf:"bytes,9,rep,name=on_behalf_of,json=onBehalfOf,proto3" json:"on_behalf_of,omitempty"`
 	OnBehalfOfRequired bool     `protobuf:"varint,10,opt,name=on_behalf_of_required,json=onBehalfOfRequired,proto3" json:"on_behalf_of_required,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Whether the caller may run it. One that isn't shared with any of their
+	// teams is still listed (unless hidden), with how to ask for it.
+	Shared bool `protobuf:"varint,11,opt,name=shared,proto3" json:"shared,omitempty"`
+	// The other teams it's shared with, or "*" for every team.
+	ShareWith []string `protobuf:"bytes,12,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
+	// Where it's defined in the catalog repository, for people; empty when
+	// that isn't known.
+	SourceUrl string `protobuf:"bytes,13,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
+	// When it isn't shared with the caller: GitHub's new-issue page on the
+	// catalog repository, filled in with what to change, which the person
+	// opens in their own browser. Empty when it can't be built.
+	AskForAccessUrl string `protobuf:"bytes,14,opt,name=ask_for_access_url,json=askForAccessUrl,proto3" json:"ask_for_access_url,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Runnable) Reset() {
@@ -274,6 +286,34 @@ func (x *Runnable) GetOnBehalfOfRequired() bool {
 		return x.OnBehalfOfRequired
 	}
 	return false
+}
+
+func (x *Runnable) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
+}
+
+func (x *Runnable) GetShareWith() []string {
+	if x != nil {
+		return x.ShareWith
+	}
+	return nil
+}
+
+func (x *Runnable) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
+}
+
+func (x *Runnable) GetAskForAccessUrl() string {
+	if x != nil {
+		return x.AskForAccessUrl
+	}
+	return ""
 }
 
 type RunTemplateRequest struct {
@@ -537,7 +577,7 @@ const file_vertra_console_v1_template_proto_rawDesc = "" +
 	" vertra/console/v1/template.proto\x12\x11vertra.console.v1\x1a!vertra/console/v1/execution.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x16\n" +
 	"\x14ListTemplatesRequest\"R\n" +
 	"\x15ListTemplatesResponse\x129\n" +
-	"\trunnables\x18\x01 \x03(\v2\x1b.vertra.console.v1.RunnableR\trunnables\"\xb7\x03\n" +
+	"\trunnables\x18\x01 \x03(\v2\x1b.vertra.console.v1.RunnableR\trunnables\"\xba\x04\n" +
 	"\bRunnable\x124\n" +
 	"\x04kind\x18\x01 \x01(\x0e2 .vertra.console.v1.Runnable.KindR\x04kind\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x12\n" +
@@ -554,7 +594,13 @@ const file_vertra_console_v1_template_proto_rawDesc = "" +
 	"\fon_behalf_of\x18\t \x03(\tR\n" +
 	"onBehalfOf\x121\n" +
 	"\x15on_behalf_of_required\x18\n" +
-	" \x01(\bR\x12onBehalfOfRequired\"@\n" +
+	" \x01(\bR\x12onBehalfOfRequired\x12\x16\n" +
+	"\x06shared\x18\v \x01(\bR\x06shared\x12\x1d\n" +
+	"\n" +
+	"share_with\x18\f \x03(\tR\tshareWith\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\r \x01(\tR\tsourceUrl\x12+\n" +
+	"\x12ask_for_access_url\x18\x0e \x01(\tR\x0faskForAccessUrl\"@\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rKIND_TEMPLATE\x10\x01\x12\x0f\n" +

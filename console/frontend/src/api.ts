@@ -1073,6 +1073,14 @@ export interface Runnable {
   /** The caller's teams it may run on behalf of; one is needed when required. */
   onBehalfOf: string[];
   onBehalfOfRequired: boolean;
+  /** Whether you may run it. Ones that aren't shared with you are listed too, unless hidden. */
+  shared: boolean;
+  /** The other teams it's shared with, or "*" for every team. */
+  shareWith: string[];
+  /** Its file in the catalog repository, when known. */
+  sourceUrl: string | null;
+  /** Not shared with you: GitHub's new-issue page asking its team for it. */
+  askForAccessUrl: string | null;
 }
 
 export async function listRunnables(): Promise<Runnable[]> {
@@ -1088,6 +1096,10 @@ export async function listRunnables(): Promise<Runnable[]> {
     deprecated: r.deprecated || null,
     onBehalfOf: r.onBehalfOf,
     onBehalfOfRequired: r.onBehalfOfRequired,
+    shared: r.shared,
+    shareWith: r.shareWith,
+    sourceUrl: r.sourceUrl || null,
+    askForAccessUrl: r.askForAccessUrl || null,
   }));
 }
 

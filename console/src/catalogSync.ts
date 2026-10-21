@@ -205,6 +205,8 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         secretRefs: p.secretRefs,
         tokenAudiences: p.tokenAudiences,
         shareWith: p.shareWith,
+        hidden: p.hidden,
+        ...(p.path ? { sourcePath: p.path } : {}),
         deprecated: p.deprecated,
         ...(p.resources
           ? {
@@ -247,6 +249,8 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
           ...(step.maxAttempts !== undefined ? { maxAttempts: step.maxAttempts } : {}),
         })),
         shareWith: t.shareWith,
+        hidden: t.hidden,
+        sourcePath: t.path || null,
         deprecated: t.deprecated || null,
       });
     });

@@ -165,6 +165,14 @@ export const products = pgTable(
     // "*" for every team; empty, only its own team (product.yaml's
     // actions[].shareWith). Recorded; enforced once consumers run templates.
     shareWith: text("share_with").array().notNull().default(sql`'{}'::text[]`),
+    // product.yaml's visibility: hidden: only its own team sees it (it then
+    // has no shareWith). Otherwise every team sees it, and those it isn't
+    // shared with can ask for access.
+    hidden: boolean("hidden").notNull().default(false),
+    // Its product.yaml in the catalog repository, for "Ask for access"
+    // (teams/<team>/products/<product>/product.yaml); null when registered
+    // otherwise.
+    sourcePath: text("source_path"),
     // Why it's deprecated and what to use instead; null when it isn't.
     deprecated: text("deprecated"),
     // The Pod size its tasks get unless a task sets its own: { cpu, memory,
@@ -427,6 +435,10 @@ export const templates = pgTable(
     // The other teams that may run it, or "*" for every team; empty, only
     // its own.
     shareWith: text("share_with").array().notNull().default(sql`'{}'::text[]`),
+    // As for products: only its own team sees a hidden one.
+    hidden: boolean("hidden").notNull().default(false),
+    // Its file in the catalog repository (teams/<team>/dags/<name>.yaml).
+    sourcePath: text("source_path"),
     deprecated: text("deprecated"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

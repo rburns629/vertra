@@ -558,7 +558,7 @@ export declare const ReplaceWiringTypesResponseSchema: GenMessage<ReplaceWiringT
  */
 export declare const ProductService: GenService<{
   /**
-   * Products the caller can run.
+   * Every product the caller may see: all but other teams' hidden ones.
    *
    * @generated from rpc vertra.console.v1.ProductService.ListProducts
    */

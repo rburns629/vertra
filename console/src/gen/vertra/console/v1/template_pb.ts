@@ -15,7 +15,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/template.proto.
  */
 export const file_vertra_console_v1_template: GenFile = /*@__PURE__*/
-  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS90ZW1wbGF0ZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiFgoUTGlzdFRlbXBsYXRlc1JlcXVlc3QiRwoVTGlzdFRlbXBsYXRlc1Jlc3BvbnNlEi4KCXJ1bm5hYmxlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJ1bm5hYmxlIsoCCghSdW5uYWJsZRIuCgRraW5kGAEgASgOMiAudmVydHJhLmNvbnNvbGUudjEuUnVubmFibGUuS2luZBIMCgR0ZWFtGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMZGlzcGxheV9uYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEisKCnBhcmFtZXRlcnMYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg8KB2FjdGlvbnMYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIUCgxvbl9iZWhhbGZfb2YYCSADKAkSHQoVb25fYmVoYWxmX29mX3JlcXVpcmVkGAogASgIIkAKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEhEKDUtJTkRfVEVNUExBVEUQARIPCgtLSU5EX0FDVElPThACIrEBChJSdW5UZW1wbGF0ZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgEIAEoCUgAiAEBEhcKCnJlcXVlc3RfaWQYBSABKAlIAYgBAUIPCg1fb25fYmVoYWxmX29mQg0KC19yZXF1ZXN0X2lkIl0KE1J1blRlbXBsYXRlUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEjAKBXN0YXRlGAIgASgOMiEudmVydHJhLmNvbnNvbGUudjEuRXhlY3V0aW9uU3RhdGUioAEKEFJ1bkFjdGlvblJlcXVlc3QSDwoHcHJvZHVjdBgBIAEoCRInCgZpbnB1dHMYAiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgDIAEoCUgAiAEBEhcKCnJlcXVlc3RfaWQYBCABKAlIAYgBAUIPCg1fb25fYmVoYWxmX29mQg0KC19yZXF1ZXN0X2lkIlsKEVJ1bkFjdGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIwCgVzdGF0ZRgCIAEoDjIhLnZlcnRyYS5jb25zb2xlLnYxLkV4ZWN1dGlvblN0YXRlMrACCg9UZW1wbGF0ZVNlcnZpY2USZwoNTGlzdFRlbXBsYXRlcxInLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RUZW1wbGF0ZXNSZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuTGlzdFRlbXBsYXRlc1Jlc3BvbnNlIgOQAgESXAoLUnVuVGVtcGxhdGUSJS52ZXJ0cmEuY29uc29sZS52MS5SdW5UZW1wbGF0ZVJlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5SdW5UZW1wbGF0ZVJlc3BvbnNlElYKCVJ1bkFjdGlvbhIjLnZlcnRyYS5jb25zb2xlLnYxLlJ1bkFjdGlvblJlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5SdW5BY3Rpb25SZXNwb25zZWIGcHJvdG8z", [file_vertra_console_v1_execution, file_google_protobuf_struct]);
+  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS90ZW1wbGF0ZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiFgoUTGlzdFRlbXBsYXRlc1JlcXVlc3QiRwoVTGlzdFRlbXBsYXRlc1Jlc3BvbnNlEi4KCXJ1bm5hYmxlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJ1bm5hYmxlIp4DCghSdW5uYWJsZRIuCgRraW5kGAEgASgOMiAudmVydHJhLmNvbnNvbGUudjEuUnVubmFibGUuS2luZBIMCgR0ZWFtGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMZGlzcGxheV9uYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEisKCnBhcmFtZXRlcnMYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg8KB2FjdGlvbnMYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIUCgxvbl9iZWhhbGZfb2YYCSADKAkSHQoVb25fYmVoYWxmX29mX3JlcXVpcmVkGAogASgIEg4KBnNoYXJlZBgLIAEoCBISCgpzaGFyZV93aXRoGAwgAygJEhIKCnNvdXJjZV91cmwYDSABKAkSGgoSYXNrX2Zvcl9hY2Nlc3NfdXJsGA4gASgJIkAKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEhEKDUtJTkRfVEVNUExBVEUQARIPCgtLSU5EX0FDVElPThACIrEBChJSdW5UZW1wbGF0ZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgEIAEoCUgAiAEBEhcKCnJlcXVlc3RfaWQYBSABKAlIAYgBAUIPCg1fb25fYmVoYWxmX29mQg0KC19yZXF1ZXN0X2lkIl0KE1J1blRlbXBsYXRlUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEjAKBXN0YXRlGAIgASgOMiEudmVydHJhLmNvbnNvbGUudjEuRXhlY3V0aW9uU3RhdGUioAEKEFJ1bkFjdGlvblJlcXVlc3QSDwoHcHJvZHVjdBgBIAEoCRInCgZpbnB1dHMYAiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgDIAEoCUgAiAEBEhcKCnJlcXVlc3RfaWQYBCABKAlIAYgBAUIPCg1fb25fYmVoYWxmX29mQg0KC19yZXF1ZXN0X2lkIlsKEVJ1bkFjdGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIwCgVzdGF0ZRgCIAEoDjIhLnZlcnRyYS5jb25zb2xlLnYxLkV4ZWN1dGlvblN0YXRlMrACCg9UZW1wbGF0ZVNlcnZpY2USZwoNTGlzdFRlbXBsYXRlcxInLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RUZW1wbGF0ZXNSZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuTGlzdFRlbXBsYXRlc1Jlc3BvbnNlIgOQAgESXAoLUnVuVGVtcGxhdGUSJS52ZXJ0cmEuY29uc29sZS52MS5SdW5UZW1wbGF0ZVJlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5SdW5UZW1wbGF0ZVJlc3BvbnNlElYKCVJ1bkFjdGlvbhIjLnZlcnRyYS5jb25zb2xlLnYxLlJ1bkFjdGlvblJlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5SdW5BY3Rpb25SZXNwb25zZWIGcHJvdG8z", [file_vertra_console_v1_execution, file_google_protobuf_struct]);
 
 /**
  * @generated from message vertra.console.v1.ListTemplatesRequest
@@ -113,6 +113,38 @@ export type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: bool on_behalf_of_required = 10;
    */
   onBehalfOfRequired: boolean;
+
+  /**
+   * Whether the caller may run it. One that isn't shared with any of their
+   * teams is still listed (unless hidden), with how to ask for it.
+   *
+   * @generated from field: bool shared = 11;
+   */
+  shared: boolean;
+
+  /**
+   * The other teams it's shared with, or "*" for every team.
+   *
+   * @generated from field: repeated string share_with = 12;
+   */
+  shareWith: string[];
+
+  /**
+   * Where it's defined in the catalog repository, for people; empty when
+   * that isn't known.
+   *
+   * @generated from field: string source_url = 13;
+   */
+  sourceUrl: string;
+
+  /**
+   * When it isn't shared with the caller: GitHub's new-issue page on the
+   * catalog repository, filled in with what to change, which the person
+   * opens in their own browser. Empty when it can't be built.
+   *
+   * @generated from field: string ask_for_access_url = 14;
+   */
+  askForAccessUrl: string;
 };
 
 /**
@@ -288,7 +320,9 @@ export const RunActionResponseSchema: GenMessage<RunActionResponse> = /*@__PURE_
  */
 export const TemplateService: GenService<{
   /**
-   * The templates and shared actions the caller may run.
+   * Every template and action the caller may see: those shared with them,
+   * and the rest (shared = false, with ask_for_access_url) except hidden
+   * ones, which only their own team sees.
    *
    * @generated from rpc vertra.console.v1.TemplateService.ListTemplates
    */

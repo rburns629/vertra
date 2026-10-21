@@ -35,6 +35,7 @@ import {
   listRunnableTemplates,
   type Product,
   type SubmittedExecution,
+  catalogRepository,
 } from "../db/queries.js";
 import type { TemplateStep } from "../db/schema.js";
 import { errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
@@ -212,6 +213,57 @@ export interface Runnable {
   deprecated: string | null;
   onBehalfOf: string[];
   onBehalfOfRequired: boolean;
+  /** Whether the caller may run it; listed either way, unless hidden. */
+  shared: boolean;
+  shareWith: string[];
+  /** Its file in the catalog repository, when known. */
+  sourceUrl: string | null;
+  /** Not shared: GitHub's new-issue page, filled in with what to change. */
+  askForAccessUrl: string | null;
+}
+
+/** https://github.com/<owner>/<repo> for a release's repository, or null for
+ * anything that isn't on GitHub (only GitHub's pages are built today). */
+function githubBase(repository: string | null): string | null {
+  const match = /^github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(repository ?? "");
+  return match ? `https://github.com/${match[1] ?? ""}/${match[2] ?? ""}` : null;
+}
+
+/** Links for one template or action: where it's defined, and, when it isn't
+ * shared with the caller, an issue asking its team to share it with theirs.
+ * The person opens it in their own browser: the console only reads the
+ * catalog (catalog releases come only from main). */
+function catalogLinks(
+  base: string | null,
+  path: string | null,
+  what: string,
+  ref: string,
+  caller: AuthUser,
+  shared: boolean,
+): { sourceUrl: string | null; askForAccessUrl: string | null } {
+  if (!base || !path) return { sourceUrl: null, askForAccessUrl: null };
+  const sourceUrl = `${base}/blob/main/${path}`;
+  if (shared) return { sourceUrl, askForAccessUrl: null };
+  const asking = caller.teamNames.length > 0 ? caller.teamNames : ["<your team>"];
+  const title = `Share ${ref} with ${asking.join(", ")}`;
+  const body = [
+    `Team ${asking.map((team) => `\`${team}\``).join(", ")} would like to use ${what} \`${ref}\`.`,
+    "",
+    `To share it, add the team to its \`shareWith\` in [\`${path}\`](${sourceUrl}), for example:`,
+    "",
+    "```yaml",
+    `shareWith: [${asking.join(", ")}]`,
+    "```",
+    "",
+    "Asked from the Vertra console.",
+  ].join("\n");
+  const query = new URLSearchParams({ title, body });
+  return { sourceUrl, askForAccessUrl: `${base}/issues/new?${query.toString()}` };
+}
+
+/** Whether the caller sees something hidden: only its own team (and admins). */
+function sees(caller: AuthUser, ownerTeam: string, hidden: boolean): boolean {
+  return !hidden || caller.isAdmin || caller.teamNames.includes(ownerTeam);
 }
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
@@ -219,13 +271,15 @@ function signedIn(caller: AuthUser | undefined): AuthUser {
   return caller;
 }
 
-/** The templates, and actions as one-step templates, the caller may run. */
+/** The templates, and actions as one-step templates, the caller may see:
+ * those they may run, and those they may ask for (all but hidden ones). */
 export async function runnables(caller: AuthUser | undefined): Promise<Runnable[]> {
   const who = signedIn(caller);
+  const base = githubBase(await catalogRepository());
   const out: Runnable[] = [];
   for (const t of await listRunnableTemplates()) {
+    if (!sees(who, t.teamName, t.hidden)) continue;
     const a = access(who, t.teamName, t.shareWith);
-    if (!a.allowed) continue;
     out.push({
       kind: "template",
       team: t.teamName,
@@ -237,11 +291,14 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       deprecated: t.deprecated,
       onBehalfOf: a.onBehalfOf,
       onBehalfOfRequired: a.required,
+      shared: a.allowed,
+      shareWith: t.shareWith,
+      ...catalogLinks(base, t.sourcePath, "the template", `${t.teamName}/${t.name}`, who, a.allowed),
     });
   }
   for (const p of await listRunnableProducts()) {
+    if (!sees(who, p.teamName, p.hidden)) continue;
     const a = access(who, p.teamName, p.shareWith);
-    if (!a.allowed) continue;
     out.push({
       kind: "action",
       team: p.teamName,
@@ -253,6 +310,9 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       deprecated: p.deprecated,
       onBehalfOf: a.onBehalfOf,
       onBehalfOfRequired: a.required,
+      shared: a.allowed,
+      shareWith: p.shareWith,
+      ...catalogLinks(base, p.sourcePath, "the action", actionRef(p), who, a.allowed),
     });
   }
   return out;

@@ -48,7 +48,9 @@ const (
 
 // TemplateServiceClient is a client for the vertra.console.v1.TemplateService service.
 type TemplateServiceClient interface {
-	// The templates and shared actions the caller may run.
+	// Every template and action the caller may see: those shared with them,
+	// and the rest (shared = false, with ask_for_access_url) except hidden
+	// ones, which only their own team sees.
 	ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error)
 	// Runs a template with these parameters. They're checked against its
 	// parameter schema first; problems come back together, as
@@ -115,7 +117,9 @@ func (c *templateServiceClient) RunAction(ctx context.Context, req *connect.Requ
 
 // TemplateServiceHandler is an implementation of the vertra.console.v1.TemplateService service.
 type TemplateServiceHandler interface {
-	// The templates and shared actions the caller may run.
+	// Every template and action the caller may see: those shared with them,
+	// and the rest (shared = false, with ask_for_access_url) except hidden
+	// ones, which only their own team sees.
 	ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error)
 	// Runs a template with these parameters. They're checked against its
 	// parameter schema first; problems come back together, as

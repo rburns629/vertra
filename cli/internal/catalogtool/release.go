@@ -69,6 +69,8 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			ServiceAccount: text(p.Spec, "serviceAccount"),
 			// An action's own deprecation, else its product's.
 			Deprecated: or(text(action, "deprecated"), text(p.Spec, "deprecated")),
+			Hidden:     text(action, "visibility") == "hidden",
+			Path:       p.Label() + "/product.yaml",
 		}
 		secrets, _ := action["secretRefs"].([]any)
 		for _, s := range secrets {
@@ -211,7 +213,7 @@ func (c *Catalog) releaseTemplates() ([]*catalogv1.Template, error) {
 		t := &catalogv1.Template{
 			Name: text(spec, "name"), Team: team, DisplayName: text(spec, "displayName"),
 			Description: text(spec, "description"), Parameters: parameters, ShareWith: stringList(spec["shareWith"]),
-			Deprecated: text(spec, "deprecated"),
+			Deprecated: text(spec, "deprecated"), Hidden: text(spec, "visibility") == "hidden", Path: c.rel(path),
 		}
 		steps, _ := spec["steps"].([]any)
 		for _, raw := range steps {

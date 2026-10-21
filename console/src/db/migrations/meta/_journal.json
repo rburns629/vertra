@@ -43,6 +43,13 @@
       "when": 1792608810956,
       "tag": "0005_team_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792610071494,
+      "tag": "0006_visibility",
+      "breakpoints": true
     }
   ]
 }

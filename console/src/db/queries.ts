@@ -15,6 +15,7 @@ import {
   secretGrants,
   wiringTypes,
   templates,
+  catalogSync,
   type ProductResources,
   type TeamRole,
   type TemplateStep,
@@ -432,6 +433,8 @@ export interface Product {
   secretRefs: string[];
   tokenAudiences: string[];
   shareWith: string[];
+  hidden: boolean;
+  sourcePath: string | null;
   deprecated: string | null;
   resources: ProductResources | null;
   createdAt: Date;
@@ -466,6 +469,8 @@ export interface ProductInput {
   secretRefs?: string[] | undefined;
   tokenAudiences?: string[] | undefined;
   shareWith?: string[] | undefined;
+  hidden?: boolean | undefined;
+  sourcePath?: string | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
 }
@@ -507,6 +512,8 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       secretRefs: input.secretRefs,
       tokenAudiences: input.tokenAudiences,
       shareWith: input.shareWith,
+      hidden: input.hidden,
+      sourcePath: input.sourcePath,
       deprecated: input.deprecated,
       resources: input.resources,
     }).filter(([, value]) => value !== undefined),
@@ -1008,6 +1015,8 @@ export interface TemplateRow {
   parameters: unknown;
   steps: TemplateStep[];
   shareWith: string[];
+  hidden: boolean;
+  sourcePath: string | null;
   deprecated: string | null;
 }
 
@@ -1021,6 +1030,8 @@ const templateColumns = {
   parameters: templates.parameters,
   steps: templates.steps,
   shareWith: templates.shareWith,
+  hidden: templates.hidden,
+  sourcePath: templates.sourcePath,
   deprecated: templates.deprecated,
 };
 
@@ -1043,8 +1054,11 @@ export async function findRunnableTemplate(teamName: string, name: string): Prom
   return row;
 }
 
-/** Stores a template as a catalog release has it, keyed on its team and name. */
-export async function upsertTemplate(input: Omit<TemplateRow, "id" | "teamName">): Promise<void> {
+/** Stores a template as a catalog release has it, keyed on its team and name.
+ * Left out, it's listed and its file isn't known. */
+export async function upsertTemplate(
+  input: Omit<TemplateRow, "id" | "teamName" | "hidden" | "sourcePath"> & Partial<Pick<TemplateRow, "hidden" | "sourcePath">>,
+): Promise<void> {
   const { teamId, name, ...rest } = input;
   await db
     .insert(templates)
@@ -1083,4 +1097,11 @@ export async function listRunnableProducts(): Promise<(Product & { teamName: str
     .where(and(isNull(teams.retiredAt), isNull(teams.deletedAt)))
     .orderBy(products.name);
   return rows.map((row) => ({ ...row.product, teamName: row.teamName }));
+}
+
+/** The catalog repository the last applied release came from
+ * ("github.com/<owner>/<repo>"), or null before any release. */
+export async function catalogRepository(): Promise<string | null> {
+  const [row] = await db.select({ repository: catalogSync.repository }).from(catalogSync).limit(1);
+  return row?.repository ?? null;
 }

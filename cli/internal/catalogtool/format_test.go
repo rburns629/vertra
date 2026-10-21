@@ -235,3 +235,39 @@ func TestMigrateFromBeforeTheRename(t *testing.T) {
 		t.Errorf("a second migrate changed %d file(s)", again)
 	}
 }
+
+// visibility: hidden keeps an action or a template to its own team, so it
+// can't be shared too; a release says which are hidden.
+func TestVisibility(t *testing.T) {
+	// A complete product of team a whose product.yaml is this.
+	withFile := func(productYAML string) *Catalog {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = productYAML
+		return catalogWith(t, files)
+	}
+	validate := func(c *Catalog) bool { return c.ValidateProduct(c.AllProducts()[0]) }
+	hidden := strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    visibility: hidden\n", 1)
+	c := withFile(hidden)
+	p := c.AllProducts()[0]
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c); out != "" {
+		t.Fatalf("a hidden action was refused:\n%s", out)
+	}
+	actions, err := p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || len(actions) != 1 || !actions[0].GetHidden() {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+
+	both := strings.Replace(productFile("mine", "a", "[b]"), "    shareWith: [b]\n", "    shareWith: [b]\n    visibility: hidden\n", 1)
+	if out := errorsOf(t, validate, withFile(both)); !strings.Contains(out, "product.yaml") {
+		t.Errorf("a hidden action that's also shared was accepted:\n%s", out)
+	}
+	odd := strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    visibility: secret\n", 1)
+	if out := errorsOf(t, validate, withFile(odd)); !strings.Contains(out, "product.yaml") {
+		t.Errorf("an unknown visibility was accepted:\n%s", out)
+	}
+
+	tpl := strings.Replace(goodTemplate, "parameters:", "visibility: hidden\nshareWith: [b]\nparameters:", 1)
+	if out := errorsOf(t, (*Catalog).ValidateDags, templateCatalog(t, tpl)); out == "" {
+		t.Error("a hidden template that's also shared was accepted")
+	}
+}

@@ -107,6 +107,38 @@ export declare type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: bool on_behalf_of_required = 10;
    */
   onBehalfOfRequired: boolean;
+
+  /**
+   * Whether the caller may run it. One that isn't shared with any of their
+   * teams is still listed (unless hidden), with how to ask for it.
+   *
+   * @generated from field: bool shared = 11;
+   */
+  shared: boolean;
+
+  /**
+   * The other teams it's shared with, or "*" for every team.
+   *
+   * @generated from field: repeated string share_with = 12;
+   */
+  shareWith: string[];
+
+  /**
+   * Where it's defined in the catalog repository, for people; empty when
+   * that isn't known.
+   *
+   * @generated from field: string source_url = 13;
+   */
+  sourceUrl: string;
+
+  /**
+   * When it isn't shared with the caller: GitHub's new-issue page on the
+   * catalog repository, filled in with what to change, which the person
+   * opens in their own browser. Empty when it can't be built.
+   *
+   * @generated from field: string ask_for_access_url = 14;
+   */
+  askForAccessUrl: string;
 };
 
 /**
@@ -276,7 +308,9 @@ export declare const RunActionResponseSchema: GenMessage<RunActionResponse>;
  */
 export declare const TemplateService: GenService<{
   /**
-   * The templates and shared actions the caller may run.
+   * Every template and action the caller may see: those shared with them,
+   * and the rest (shared = false, with ask_for_access_url) except hidden
+   * ones, which only their own team sees.
    *
    * @generated from rpc vertra.console.v1.TemplateService.ListTemplates
    */

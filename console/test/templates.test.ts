@@ -14,7 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSecretGrant, upsertProduct, upsertTemplate } from "../src/db/queries.js";
-import { products, submittedExecutions, teams } from "../src/db/schema.js";
+import { catalogSync, products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { cancelExecution, getExecution, submitExecution } from "../src/kernel/client.js";
 import { caller, problemFields, rpcClient, type RpcError } from "./rpc.js";
@@ -61,6 +61,7 @@ let otherOutsiderToken: string;
 let consumerToken: string;
 let ownMemberToken: string;
 let dbMemberToken: string;
+let privMemberToken: string;
 
 const parameters = {
   type: "object",
@@ -94,7 +95,21 @@ beforeAll(async () => {
     serviceAccount: "store",
     shareWith: [own],
   });
-  await upsertProduct({ name: `${priv}-secret-get`, image: `registry.example/${priv}/secret:1`, action: "get", teamId: privTeam.id });
+  await upsertProduct({
+    name: `${priv}-secret-get`,
+    image: `registry.example/${priv}/secret:1`,
+    action: "get",
+    teamId: privTeam.id,
+    sourcePath: `teams/${priv}/products/secret/product.yaml`,
+  });
+  // Only its own team sees this one.
+  await upsertProduct({
+    name: `${priv}-internal-run`,
+    image: `registry.example/${priv}/internal:1`,
+    action: "run",
+    teamId: privTeam.id,
+    hidden: true,
+  });
   const hello = { id: "one", action: `${own}/hello.run`, inputs: { text: { $param: "text" }, fixed: 1 } };
   await upsertTemplate({
     teamId: ownTeam.id,
@@ -107,6 +122,7 @@ beforeAll(async () => {
     deprecated: null,
   });
   await upsertTemplate({ teamId: ownTeam.id, name: "for-cons", displayName: "For cons", description: "", parameters, steps: [hello], shareWith: [cons], deprecated: null });
+  await upsertTemplate({ teamId: ownTeam.id, name: "own-only", displayName: "Own only", description: "", parameters, steps: [hello], shareWith: [], deprecated: null, hidden: true });
   await upsertTemplate({
     teamId: ownTeam.id,
     name: "bad-share",
@@ -123,11 +139,13 @@ beforeAll(async () => {
   const consumer = await users.makeUser();
   const ownMember = await users.makeUser();
   const dbMember = await users.makeUser();
+  const privMember = await users.makeUser();
+  await addTeamMember(privMember.id, privTeam.id, "member");
   await addTeamMember(consumer.id, consTeam.id);
   await addTeamMember(ownMember.id, ownTeam.id);
   await addTeamMember(dbMember.id, dbTeam.id);
-  [outsiderToken, otherOutsiderToken, consumerToken, ownMemberToken, dbMemberToken] = await Promise.all(
-    [outsider, otherOutsider, consumer, ownMember, dbMember].map((u) => users.signIn(u.email)),
+  [outsiderToken, otherOutsiderToken, consumerToken, ownMemberToken, dbMemberToken, privMemberToken] = await Promise.all(
+    [outsider, otherOutsider, consumer, ownMember, dbMember, privMember].map((u) => users.signIn(u.email)),
   );
 });
 
@@ -146,23 +164,83 @@ afterAll(async () => {
   await app.close();
 });
 
-type Runnables = { runnables?: { kind: string; team: string; name: string; onBehalfOf?: string[]; onBehalfOfRequired?: boolean }[] };
+type Runnables = {
+  runnables?: {
+    kind: string;
+    team: string;
+    name: string;
+    onBehalfOf?: string[];
+    onBehalfOfRequired?: boolean;
+    shared?: boolean;
+    sourceUrl?: string;
+    askForAccessUrl?: string;
+  }[];
+};
 const listed = async (token: string) =>
   ((await call<Runnables>(token, "TemplateService/ListTemplates")).body.runnables ?? []).filter((r) => r.team.startsWith(prefix));
 
 describe("what a consumer may run", () => {
   it("lists templates shared with everyone, or with one of their teams, and actions shared with them", async () => {
     const outsider = await listed(outsiderToken);
-    expect(outsider.map((r) => `${r.kind}:${r.name}`).sort()).toEqual(["KIND_TEMPLATE:bad-share", "KIND_TEMPLATE:chain"]);
+    expect(outsider.filter((r) => r.shared).map((r) => `${r.kind}:${r.name}`).sort()).toEqual(["KIND_TEMPLATE:bad-share", "KIND_TEMPLATE:chain"]);
 
     const consumer = await listed(consumerToken);
     expect(consumer.find((r) => r.name === "for-cons")).toMatchObject({ onBehalfOf: [cons], onBehalfOfRequired: true });
 
     // A member of the owning team sees its actions too; the other team's only where shared.
     const member = await listed(ownMemberToken);
-    expect(member.filter((r) => r.kind === "KIND_ACTION").map((r) => r.name).sort()).toEqual(
+    expect(member.filter((r) => r.kind === "KIND_ACTION" && r.shared).map((r) => r.name).sort()).toEqual(
       [`${db_}-store-put`, `${own}-hello-run`].sort(),
     );
+  });
+});
+
+describe("what isn't shared with someone", () => {
+  const original = { repository: null as string | null };
+
+  beforeAll(async () => {
+    const [row] = await db.select({ repository: catalogSync.repository }).from(catalogSync).where(eq(catalogSync.id, 1));
+    original.repository = row?.repository ?? null;
+    await db
+      .insert(catalogSync)
+      .values({ id: 1, repository: "github.com/acme/vertra-catalog" })
+      .onConflictDoUpdate({ target: catalogSync.id, set: { repository: "github.com/acme/vertra-catalog" } });
+  });
+
+  afterAll(async () => {
+    await db.update(catalogSync).set({ repository: original.repository }).where(eq(catalogSync.id, 1));
+  });
+
+  it("is listed, not runnable, with where it's defined and an issue asking for it", async () => {
+    const consumer = await listed(consumerToken);
+    const theirs = consumer.find((r) => r.name === `${priv}-secret-get`);
+    expect(theirs).toMatchObject({ shared: false, sourceUrl: `https://github.com/acme/vertra-catalog/blob/main/teams/${priv}/products/secret/product.yaml` });
+    const ask = new URL(theirs?.askForAccessUrl ?? "");
+    expect(`${ask.origin}${ask.pathname}`).toBe("https://github.com/acme/vertra-catalog/issues/new");
+    expect(ask.searchParams.get("title")).toBe(`Share ${priv}/secret.get with ${cons}`);
+    expect(ask.searchParams.get("body")).toContain(`shareWith: [${cons}]`);
+    // Running it is still refused.
+    const run = await call(consumerToken, "TemplateService/RunAction", { product: `${priv}-secret-get`, inputs: {} });
+    expect(run.code).toBe("not_found");
+  });
+
+  it("has no link to ask with when its file or the catalog isn't known, nor when it's shared", async () => {
+    const consumer = await listed(consumerToken);
+    expect(consumer.find((r) => r.name === `${own}-hello-run`)).toMatchObject({ shared: false, askForAccessUrl: "" });
+    expect(consumer.find((r) => r.name === "for-cons")).toMatchObject({ shared: true, askForAccessUrl: "" });
+  });
+
+  it("isn't even listed when hidden, except to its own team", async () => {
+    const names = (rs: { name: string }[]) => rs.map((r) => r.name);
+    expect(names(await listed(consumerToken))).not.toContain(`${priv}-internal-run`);
+    expect(names(await listed(consumerToken))).not.toContain("own-only");
+    expect(names(await listed(privMemberToken))).toContain(`${priv}-internal-run`);
+    expect(names(await listed(ownMemberToken))).toContain("own-only");
+
+    const productNames = async (token: string) =>
+      ((await call<{ products?: { name: string }[] }>(token, "ProductService/ListProducts")).body.products ?? []).map((p) => p.name);
+    expect(await productNames(consumerToken)).not.toContain(`${priv}-internal-run`);
+    expect(await productNames(privMemberToken)).toContain(`${priv}-internal-run`);
   });
 });
 

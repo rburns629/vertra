@@ -414,10 +414,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Members tab (`TeamService/SetMemberRole`); never without a maintainer
   (`LAST_MAINTAINER`). Bots, and people an admin creates in a team, are
   maintainers. Left: SSO groups mapped to roles (with SSO sign-in).
-- [ ] **P1: `visibility` on actions** and "not shared with you" with Ask
-  for access, which opens GitHub's prefilled page in the person's browser
-  (the console keeps read-only catalog access). New actions are shared
-  with their own team only.
+- [x] **P1: `visibility` on actions** (done 2026-10-21): `visibility:
+  hidden` on an action (product.yaml) or a template keeps it to its own
+  team (and admins), and can't be combined with `shareWith`; everything
+  else is listed to everyone, the Run page showing what isn't shared with
+  you under "Not shared with you" with **Ask for access**: GitHub's
+  new-issue page on the catalog repository, filled in with the change to
+  `shareWith` and a link to the file, opened in the person's browser (the
+  console only reads the catalog). Releases carry each file's path
+  (`ProductAction.path`, `Template.path`) and `hidden`. Left: links for
+  catalogs not on GitHub (GitLab, with GitLab).
 - [ ] **P1: approvals.** An owner marks an action, or sharing with a team or
   into a target, as needing approval; the step waits (a new state in the
   kernel) until a maintainer approves or declines, audited; withdrawn after

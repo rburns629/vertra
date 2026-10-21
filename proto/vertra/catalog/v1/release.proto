@@ -65,6 +65,11 @@ message ProductAction {
   // Audiences its tasks get a projected ServiceAccount token for
   // (product.yaml's tokenAudiences, the product's).
   repeated string token_audiences = 14;
+  // visibility: hidden: only its own team sees it (it has no share_with).
+  bool hidden = 15;
+  // Its product.yaml in the catalog repository, for people:
+  // "teams/<team>/products/<product>/product.yaml".
+  string path = 16;
 }
 
 // A template: a DAG of actions with parameters, which a consumer runs by
@@ -86,6 +91,10 @@ message Template {
   repeated string share_with = 7;
   // Why it's deprecated and what to use instead; empty when it isn't.
   string deprecated = 8;
+  // visibility: hidden: only its own team sees it (it has no share_with).
+  bool hidden = 9;
+  // Its file in the catalog repository: "teams/<team>/dags/<name>.yaml".
+  string path = 10;
 }
 
 message TemplateStep {

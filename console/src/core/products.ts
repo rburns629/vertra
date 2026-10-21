@@ -81,6 +81,9 @@ export const RegisterProductBody = Type.Object({
       maxItems: 200,
     }),
   ),
+  // Only its own team sees it; it can't then be shared.
+  hidden: Type.Optional(Type.Boolean()),
+  sourcePath: Type.Optional(Type.String({ maxLength: 1024 })),
   deprecated: Type.Optional(Type.String({ maxLength: 1000 })),
 });
 
@@ -98,6 +101,10 @@ export type RegisterProductInput = {
   tokenAudiences?: string[];
   resources?: { cpu?: string; memory?: string; memoryLimit?: string };
   shareWith?: string[];
+  /** Only its own team sees it (it then has no shareWith). */
+  hidden?: boolean;
+  /** Its product.yaml in the catalog repository. */
+  sourcePath?: string;
   /** Empty: not deprecated. */
   deprecated?: string;
 };
@@ -148,9 +155,12 @@ async function ownershipMessage(error: ProductOwnershipError, name: string): Pro
     : `This image's repository belongs to ${owner}: only its products may use it. An admin can release a repository no product uses.`;
 }
 
-/** Every product (anyone signed in). */
-export function products() {
-  return listProducts();
+/** Every product anyone signed in may see: all but hidden ones, which only
+ * their own team (and admins) see. */
+export async function products(caller: AuthUser | undefined) {
+  const all = await listProducts();
+  if (caller?.isAdmin) return all;
+  return all.filter((p) => !p.hidden || (p.teamName !== null && (caller?.teamNames ?? []).includes(p.teamName)));
 }
 
 export async function registerProduct(caller: AuthUser | undefined, input: RegisterProductInput) {
@@ -158,6 +168,9 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
   const audienceProblems = tokenAudienceProblems(input.tokenAudiences ?? []);
   if (audienceProblems.length > 0) {
     throw new ApiError(422, "UNPROCESSABLE_ENTITY", `${input.name}: ${audienceProblems.join("; ")}.`);
+  }
+  if (input.hidden && (input.shareWith ?? []).length > 0) {
+    throw new ApiError(422, "UNPROCESSABLE_ENTITY", `${input.name}: a hidden action can't be shared (shareWith).`);
   }
 
   let teamId: string | null = null;
@@ -222,6 +235,8 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       secretRefs: input.secretRefs,
       tokenAudiences: input.tokenAudiences,
       shareWith: input.shareWith,
+      hidden: input.hidden,
+      sourcePath: input.sourcePath,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,
     });

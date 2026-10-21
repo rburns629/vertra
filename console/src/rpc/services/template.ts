@@ -27,6 +27,10 @@ export function templateService(): ServiceImpl<typeof TemplateService> {
           deprecated: r.deprecated ?? "",
           onBehalfOf: r.onBehalfOf,
           onBehalfOfRequired: r.onBehalfOfRequired,
+          shared: r.shared,
+          shareWith: r.shareWith,
+          sourceUrl: r.sourceUrl ?? "",
+          askForAccessUrl: r.askForAccessUrl ?? "",
         })),
       };
     },

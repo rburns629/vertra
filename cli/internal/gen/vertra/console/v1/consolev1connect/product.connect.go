@@ -60,7 +60,7 @@ const (
 
 // ProductServiceClient is a client for the vertra.console.v1.ProductService service.
 type ProductServiceClient interface {
-	// Products the caller can run.
+	// Every product the caller may see: all but other teams' hidden ones.
 	ListProducts(context.Context, *connect.Request[v1.ListProductsRequest]) (*connect.Response[v1.ListProductsResponse], error)
 	// Registers or updates a product: a member of its team, an admin, or a
 	// token with products:register. With no team it's a platform product:
@@ -192,7 +192,7 @@ func (c *productServiceClient) ReplaceWiringTypes(ctx context.Context, req *conn
 
 // ProductServiceHandler is an implementation of the vertra.console.v1.ProductService service.
 type ProductServiceHandler interface {
-	// Products the caller can run.
+	// Every product the caller may see: all but other teams' hidden ones.
 	ListProducts(context.Context, *connect.Request[v1.ListProductsRequest]) (*connect.Response[v1.ListProductsResponse], error)
 	// Registers or updates a product: a member of its team, an admin, or a
 	// token with products:register. With no team it's a platform product:

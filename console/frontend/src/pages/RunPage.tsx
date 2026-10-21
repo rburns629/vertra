@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
+import Link from "@mui/material/Link";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -30,8 +31,11 @@ function matches(r: Runnable, query: string): boolean {
  * What you can run: every team's templates shared with you, and every
  * action shared with you on its own. Running one asks only for its
  * parameters (a form from its schema); its steps' images, identities and
- * secrets are its products' (../../../src/core/templates.ts). The Submit
- * page stays for a team's members writing DAGs of their own.
+ * secrets are its products' (../../../src/core/templates.ts). What isn't
+ * shared with you is listed after them, with Ask for access: GitHub's
+ * new-issue page on the catalog, filled in, opened in your own browser
+ * (the console only reads the catalog). Hidden ones never reach this page.
+ * The Submit page stays for a team's maintainers writing DAGs of their own.
  *
  * ?template=<team>/<name> or ?action=<product> opens one straight away (the
  * Products page links here that way).
@@ -59,7 +63,8 @@ export function RunPage() {
     const wanted = template ? `template:${template}` : action ? `action:${action}` : null;
     if (!wanted) return;
     const found = runnables.find((r) => linkKey(r) === wanted);
-    if (found) setOpen(found);
+    if (found?.shared) setOpen(found);
+    else if (found) setError(`"${found.displayName}" isn't shared with you: ask its team for access below.`);
     else setError(`Nothing called "${template ?? action ?? ""}" is shared with you.`);
   }, [runnables, params]);
 
@@ -70,14 +75,15 @@ export function RunPage() {
 
   const query = search.trim().toLowerCase();
   const shown = useMemo(() => (runnables && query ? runnables.filter((r) => matches(r, query)) : runnables), [runnables, query]);
-  const templates = shown?.filter((r) => r.kind === "template") ?? [];
-  const actions = shown?.filter((r) => r.kind === "action") ?? [];
+  const templates = shown?.filter((r) => r.shared && r.kind === "template") ?? [];
+  const actions = shown?.filter((r) => r.shared && r.kind === "action") ?? [];
+  const notShared = shown?.filter((r) => !r.shared) ?? [];
 
   return (
     <Box>
       <PageHeader
         title="Run"
-        subtitle="Templates and actions teams share with you. Fill in what each asks for; its steps run as the owning team's products, with their own identities and secrets. You can follow, cancel and rerun your runs from Executions."
+        subtitle="Templates and actions teams share with you. Fill in what each asks for; its steps run as the owning team's products, with their own identities and secrets. You can follow, cancel and rerun your runs from Executions. What isn't shared with you yet is at the end: ask its team for it."
       />
 
       {error && (
@@ -119,6 +125,7 @@ export function RunPage() {
 
       {templates.length > 0 && <Section title="Templates" items={templates} onRun={setOpen} />}
       {actions.length > 0 && <Section title="Actions" items={actions} onRun={setOpen} />}
+      {notShared.length > 0 && <Section title="Not shared with you" items={notShared} onRun={setOpen} />}
 
       {open && <RunDialog runnable={open} onClose={close} />}
     </Box>
@@ -142,8 +149,15 @@ function Section({ title, items, onRun }: { title: string; items: Runnable[]; on
                     from {r.team}
                   </Typography>
                   {r.deprecated && <Chip size="small" color="warning" label="Deprecated" title={r.deprecated} />}
-                  {r.onBehalfOfRequired && (
+                  {r.shared && r.onBehalfOfRequired && (
                     <Chip size="small" variant="outlined" label={`For ${r.onBehalfOf.join(" or ")}`} title="Shared with these teams of yours: a run is for one of them." />
+                  )}
+                  {!r.shared && (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={r.shareWith.length > 0 ? `Shared with ${r.shareWith.join(", ")}` : `Only ${r.team}`}
+                    />
                   )}
                 </Box>
                 {r.description && (
@@ -154,18 +168,44 @@ function Section({ title, items, onRun }: { title: string; items: Runnable[]; on
                 <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.75, overflowWrap: "anywhere" }}>
                   {r.kind === "template" ? `${String(r.actions.length)} step${r.actions.length === 1 ? "" : "s"}: ` : ""}
                   <Mono>{r.actions.join(" → ")}</Mono>
+                  {r.sourceUrl && (
+                    <>
+                      {" · "}
+                      <Link href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
+                        Its definition
+                      </Link>
+                    </>
+                  )}
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => {
-                  onRun(r);
-                }}
-                sx={{ flexShrink: 0 }}
-              >
-                Run
-              </Button>
+              {r.shared ? (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    onRun(r);
+                  }}
+                  sx={{ flexShrink: 0 }}
+                >
+                  Run
+                </Button>
+              ) : r.askForAccessUrl ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  href={r.askForAccessUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Opens an issue on the catalog repository asking ${r.team} to share it with your team.`}
+                  sx={{ flexShrink: 0 }}
+                >
+                  Ask for access
+                </Button>
+              ) : (
+                <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, maxWidth: 180 }}>
+                  Ask {r.team} to share it with your team.
+                </Typography>
+              )}
             </CardContent>
           </Card>
         ))}

@@ -121,7 +121,8 @@ steps:
 	got := release.GetProducts()[0]
 	if got.GetName() != "a-mine-run" || got.GetImage() != s.Registry+"/a/mine@"+digest.String() || got.GetTeam() != "a" ||
 		got.GetAction() != "run" || len(got.GetShareWith()) != 1 || got.GetInputSchema().GetFields()["required"] == nil ||
-		strings.Join(got.GetTokenAudiences(), ",") != "sts.amazonaws.com" {
+		strings.Join(got.GetTokenAudiences(), ",") != "sts.amazonaws.com" ||
+		got.GetPath() != "teams/a/products/mine/product.yaml" || got.GetHidden() {
 		t.Errorf("action = %v", got)
 	}
 	if len(release.GetTemplates()) != 1 {
@@ -131,7 +132,8 @@ steps:
 	step := tpl.GetSteps()[0]
 	if tpl.GetTeam() != "a" || tpl.GetName() != "hello" || strings.Join(tpl.GetShareWith(), ",") != "*" ||
 		tpl.GetParameters().GetFields()["required"] == nil || step.GetAction() != "a/mine.run" || step.GetTimeoutSeconds() != 60 ||
-		step.GetInputs().GetFields()["text"].GetStructValue().GetFields()["$param"].GetStringValue() != "text" {
+		step.GetInputs().GetFields()["text"].GetStructValue().GetFields()["$param"].GetStringValue() != "text" ||
+		tpl.GetPath() != "teams/a/dags/hello.yaml" || tpl.GetHidden() {
 		t.Errorf("template = %v", tpl)
 	}
 

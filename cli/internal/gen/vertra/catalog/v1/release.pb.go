@@ -206,8 +206,13 @@ type ProductAction struct {
 	// Audiences its tasks get a projected ServiceAccount token for
 	// (product.yaml's tokenAudiences, the product's).
 	TokenAudiences []string `protobuf:"bytes,14,rep,name=token_audiences,json=tokenAudiences,proto3" json:"token_audiences,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// visibility: hidden: only its own team sees it (it has no share_with).
+	Hidden bool `protobuf:"varint,15,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	// Its product.yaml in the catalog repository, for people:
+	// "teams/<team>/products/<product>/product.yaml".
+	Path          string `protobuf:"bytes,16,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProductAction) Reset() {
@@ -338,6 +343,20 @@ func (x *ProductAction) GetTokenAudiences() []string {
 	return nil
 }
 
+func (x *ProductAction) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
+}
+
+func (x *ProductAction) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
 // A template: a DAG of actions with parameters, which a consumer runs by
 // filling in only the parameters. Each step runs its action's product, as
 // that product's ServiceAccount, with that action's own secrets, in that
@@ -357,7 +376,11 @@ type Template struct {
 	// own.
 	ShareWith []string `protobuf:"bytes,7,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
 	// Why it's deprecated and what to use instead; empty when it isn't.
-	Deprecated    string `protobuf:"bytes,8,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	Deprecated string `protobuf:"bytes,8,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	// visibility: hidden: only its own team sees it (it has no share_with).
+	Hidden bool `protobuf:"varint,9,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	// Its file in the catalog repository: "teams/<team>/dags/<name>.yaml".
+	Path          string `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -444,6 +467,20 @@ func (x *Template) GetShareWith() []string {
 func (x *Template) GetDeprecated() string {
 	if x != nil {
 		return x.Deprecated
+	}
+	return ""
+}
+
+func (x *Template) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
+}
+
+func (x *Template) GetPath() string {
+	if x != nil {
+		return x.Path
 	}
 	return ""
 }
@@ -615,7 +652,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\ttemplates\x18\x06 \x03(\v2\x1b.vertra.catalog.v1.TemplateR\ttemplates\"i\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12M\n" +
-	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\"\x92\x04\n" +
+	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\"\xbe\x04\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -635,7 +672,9 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\n" +
 	"deprecated\x18\r \x01(\tR\n" +
 	"deprecated\x12'\n" +
-	"\x0ftoken_audiences\x18\x0e \x03(\tR\x0etokenAudiences\"\xa6\x02\n" +
+	"\x0ftoken_audiences\x18\x0e \x03(\tR\x0etokenAudiences\x12\x16\n" +
+	"\x06hidden\x18\x0f \x01(\bR\x06hidden\x12\x12\n" +
+	"\x04path\x18\x10 \x01(\tR\x04path\"\xd2\x02\n" +
 	"\bTemplate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
@@ -649,7 +688,10 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"share_with\x18\a \x03(\tR\tshareWith\x12\x1e\n" +
 	"\n" +
 	"deprecated\x18\b \x01(\tR\n" +
-	"deprecated\"\x81\x02\n" +
+	"deprecated\x12\x16\n" +
+	"\x06hidden\x18\t \x01(\bR\x06hidden\x12\x12\n" +
+	"\x04path\x18\n" +
+	" \x01(\tR\x04path\"\x81\x02\n" +
 	"\fTemplateStep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1d\n" +

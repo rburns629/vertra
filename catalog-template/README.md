@@ -110,6 +110,7 @@ actions:
       - name: my-api-key
         keys: [value]
     shareWith: [web, data]  # optional: other teams that may use it, or ["*"]; left out, only yours
+    # visibility: hidden    # optional: only your team sees it at all (then no shareWith)
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
@@ -185,6 +186,13 @@ ServiceAccount, with its action's own `secretRefs`, in its team's
 namespace, whoever runs it; the person running it can see, cancel, retry
 and rerun that run, as can your team. Every action is also runnable on its
 own, by whoever its `shareWith` covers.
+
+Every other team sees your actions and templates in the console, even ones
+not shared with them: those are marked "not shared with you", with **Ask
+for access**, which opens a new issue on this repository in the person's
+browser saying what to add to `shareWith` and where. Mark one
+`visibility: hidden` (an action in product.yaml, or a template) and only
+your team sees it; it can't be shared then.
 
 A catalog from before format v2 (no `apiVersion` in its files) is
 converted in place by `./vertra catalog migrate`, comments and all; review the

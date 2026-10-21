@@ -12,7 +12,7 @@ import "google/protobuf/timestamp.proto";
 // A product name and an image repository belong to the first team that
 // registers them, the repository even after its products are deleted.
 service ProductService {
-  // Products the caller can run.
+  // Every product the caller may see: all but other teams' hidden ones.
   rpc ListProducts(ListProductsRequest) returns (ListProductsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

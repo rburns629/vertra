@@ -62,7 +62,12 @@
       "type": "array",
       "maxItems": 8,
       "uniqueItems": true,
-      "items": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\s,]+$"}
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256,
+        "pattern": "^[^\\s,]+$"
+      }
     },
     "resources": {
       "$ref": "#/$defs/resources"
@@ -195,11 +200,35 @@
             ]
           }
         },
+        "visibility": {
+          "description": "listed (the default): every team sees this action in the console, and those it isn't shared with can ask for access. hidden: only its own team sees it, so it can't have shareWith.",
+          "enum": [
+            "listed",
+            "hidden"
+          ]
+        },
         "deprecated": {
           "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
           "type": "string",
           "minLength": 1,
           "maxLength": 1000
+        }
+      },
+      "if": {
+        "properties": {
+          "visibility": {
+            "const": "hidden"
+          }
+        },
+        "required": [
+          "visibility"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "shareWith"
+          ]
         }
       }
     }

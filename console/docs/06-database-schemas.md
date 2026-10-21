@@ -318,7 +318,9 @@ What a DAG step can run: one row per image and action.
 | `required_secrets` | text[] | no | The team secrets it uses: the action's `secretRefs` in `product.yaml`, its bindings. (The column keeps its name from before catalog format v2.) |
 | `token_audiences` | text[] | no | Audiences its tasks get a projected ServiceAccount token for, to sign in to another cloud: `tokenAudiences` in `product.yaml`. |
 | `resources` | jsonb | yes | The Pod size its tasks get when a task doesn't set its own: `cpu`, `memory`, `memoryLimit` as Kubernetes quantities. Null: the deployment's default. |
-| `share_with` | text[] | no | The other teams that may run it or include it in their templates, or `*` for every team; empty, only its own team. Recorded; enforced once consumers run templates. |
+| `share_with` | text[] | no | The other teams that may run it or include it in their templates, or `*` for every team; empty, only its own team. Teams it isn't shared with still see it, and can ask for access. |
+| `hidden` | boolean | no | `visibility: hidden` in product.yaml: only its own team (and admins) see it; it then has no `share_with`. |
+| `source_path` | text | yes | Its product.yaml in the catalog repository, for "Ask for access" links; null when it wasn't registered from a release. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |
 | `created_at` | timestamptz | no | |
@@ -432,6 +434,8 @@ What a consumer runs, filling in only parameters: each team's `dags/*.yaml` of k
 | `parameters` | jsonb | no | A JSON Schema for an object: what the person running it fills in, checked before it runs. |
 | `steps` | jsonb | no | Its steps: each one's `id`, `action` (`<team>/<product>.<action>`), and optionally `dependsOn`, `inputs` (values, `{"$param": ...}`, `{"$fromStep": ..., "$output": ...}`), `timeoutSeconds`, `maxAttempts`. |
 | `share_with` | text[] | no | The other teams that may run it, or `*` for every team; empty, only its own. |
+| `hidden` | boolean | no | Only its own team (and admins) see it; it then has no `share_with`. |
+| `source_path` | text | yes | Its file in the catalog repository (`teams/<team>/dags/<name>.yaml`). |
 | `deprecated` | text | yes | What to use instead; it still runs. |
 | `updated_at` | timestamptz | no | |
 

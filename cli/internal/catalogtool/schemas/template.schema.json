@@ -51,6 +51,13 @@
         ]
       }
     },
+    "visibility": {
+      "description": "listed (the default): every team sees this template in the console, and those it isn't shared with can ask for access. hidden: only its own team sees it, so it can't have shareWith.",
+      "enum": [
+        "listed",
+        "hidden"
+      ]
+    },
     "deprecated": {
       "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
       "type": "string",
@@ -121,6 +128,23 @@
           "minimum": 1
         }
       }
+    }
+  },
+  "if": {
+    "properties": {
+      "visibility": {
+        "const": "hidden"
+      }
+    },
+    "required": [
+      "visibility"
+    ]
+  },
+  "then": {
+    "not": {
+      "required": [
+        "shareWith"
+      ]
     }
   }
 }

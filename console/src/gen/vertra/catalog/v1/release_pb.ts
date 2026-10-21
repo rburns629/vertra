@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/catalog/v1/release.proto.
  */
 export const file_vertra_catalog_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSLpAQoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlIk0KBFRlYW0SDAoEbmFtZRgBIAEoCRI3ChZzZWNyZXRfc3RvcmVfZG9jdW1lbnRzGAIgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCL0AgoNUHJvZHVjdEFjdGlvbhIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIMCgR0ZWFtGAQgASgJEi0KDGlucHV0X3NjaGVtYRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNb3V0cHV0X3NjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMZGlzcGxheV9uYW1lGAcgASgJEhMKC2Rlc2NyaXB0aW9uGAggASgJEhcKD3NlcnZpY2VfYWNjb3VudBgJIAEoCRITCgtzZWNyZXRfcmVmcxgKIAMoCRIvCglyZXNvdXJjZXMYCyABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5SZXNvdXJjZXMSEgoKc2hhcmVfd2l0aBgMIAMoCRISCgpkZXByZWNhdGVkGA0gASgJEhcKD3Rva2VuX2F1ZGllbmNlcxgOIAMoCSLWAQoIVGVtcGxhdGUSDAoEbmFtZRgBIAEoCRIMCgR0ZWFtGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIrCgpwYXJhbWV0ZXJzGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgVzdGVwcxgGIAMoCzIfLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlU3RlcBISCgpzaGFyZV93aXRoGAcgAygJEhIKCmRlcHJlY2F0ZWQYCCABKAkixQEKDFRlbXBsYXRlU3RlcBIKCgJpZBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEgoKZGVwZW5kc19vbhgDIAMoCRInCgZpbnB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgFIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgGIAEoBUgBiAEBQhIKEF90aW1lb3V0X3NlY29uZHNCDwoNX21heF9hdHRlbXB0cyI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAliBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSLpAQoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlIk0KBFRlYW0SDAoEbmFtZRgBIAEoCRI3ChZzZWNyZXRfc3RvcmVfZG9jdW1lbnRzGAIgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCKSAwoNUHJvZHVjdEFjdGlvbhIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIMCgR0ZWFtGAQgASgJEi0KDGlucHV0X3NjaGVtYRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNb3V0cHV0X3NjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMZGlzcGxheV9uYW1lGAcgASgJEhMKC2Rlc2NyaXB0aW9uGAggASgJEhcKD3NlcnZpY2VfYWNjb3VudBgJIAEoCRITCgtzZWNyZXRfcmVmcxgKIAMoCRIvCglyZXNvdXJjZXMYCyABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5SZXNvdXJjZXMSEgoKc2hhcmVfd2l0aBgMIAMoCRISCgpkZXByZWNhdGVkGA0gASgJEhcKD3Rva2VuX2F1ZGllbmNlcxgOIAMoCRIOCgZoaWRkZW4YDyABKAgSDAoEcGF0aBgQIAEoCSL0AQoIVGVtcGxhdGUSDAoEbmFtZRgBIAEoCRIMCgR0ZWFtGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIrCgpwYXJhbWV0ZXJzGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgVzdGVwcxgGIAMoCzIfLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlU3RlcBISCgpzaGFyZV93aXRoGAcgAygJEhIKCmRlcHJlY2F0ZWQYCCABKAkSDgoGaGlkZGVuGAkgASgIEgwKBHBhdGgYCiABKAkixQEKDFRlbXBsYXRlU3RlcBIKCgJpZBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEgoKZGVwZW5kc19vbhgDIAMoCRInCgZpbnB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgFIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgGIAEoBUgBiAEBQhIKEF90aW1lb3V0X3NlY29uZHNCDwoNX21heF9hdHRlbXB0cyI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAliBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * A catalog release: everything a catalog's main branch says, as of one
@@ -195,6 +195,21 @@ export type ProductAction = Message<"vertra.catalog.v1.ProductAction"> & {
    * @generated from field: repeated string token_audiences = 14;
    */
   tokenAudiences: string[];
+
+  /**
+   * visibility: hidden: only its own team sees it (it has no share_with).
+   *
+   * @generated from field: bool hidden = 15;
+   */
+  hidden: boolean;
+
+  /**
+   * Its product.yaml in the catalog repository, for people:
+   * "teams/<team>/products/<product>/product.yaml".
+   *
+   * @generated from field: string path = 16;
+   */
+  path: string;
 };
 
 /**
@@ -262,6 +277,20 @@ export type Template = Message<"vertra.catalog.v1.Template"> & {
    * @generated from field: string deprecated = 8;
    */
   deprecated: string;
+
+  /**
+   * visibility: hidden: only its own team sees it (it has no share_with).
+   *
+   * @generated from field: bool hidden = 9;
+   */
+  hidden: boolean;
+
+  /**
+   * Its file in the catalog repository: "teams/<team>/dags/<name>.yaml".
+   *
+   * @generated from field: string path = 10;
+   */
+  path: string;
 };
 
 /**
