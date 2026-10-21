@@ -1,0 +1,2 @@
+ALTER TABLE "team_memberships" ADD COLUMN "role" text DEFAULT 'maintainer' NOT NULL;--> statement-breakpoint
+ALTER TABLE "team_memberships" ADD CONSTRAINT "team_memberships_role" CHECK ("team_memberships"."role" in ('maintainer', 'member'));

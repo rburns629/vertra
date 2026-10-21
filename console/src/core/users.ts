@@ -65,7 +65,9 @@ export async function createAccount(
 
   const temporaryPassword = randomBytes(18).toString("base64url");
   const user = await createUser(email, await hashPassword(temporaryPassword));
-  for (const teamId of teamIds) await addTeamMember(user.id, teamId);
+  // A maintainer: often a new team's first person, who must be able to
+  // manage it. Its maintainers can make them a member afterwards.
+  for (const teamId of teamIds) await addTeamMember(user.id, teamId, "maintainer");
   if (input.admin) await setUserAdmin(user.id, true);
   log?.warn(
     { event: "account_created", userId: user.id, by: caller?.id, teams: input.teams, admin: input.admin },

@@ -204,6 +204,7 @@ erDiagram
   team_memberships {
     uuid user_id PK,FK
     uuid team_id PK,FK
+    text role
   }
   api_tokens {
     uuid id PK
@@ -274,12 +275,13 @@ People and bots alike.
 
 ### team_memberships
 
-Who is in which team. Membership is what lets someone see a team's executions, submit tasks for it, and manage its secrets and bots.
+Who is in which team, and as what. Any member sees the team's executions, logs and Pods, and runs its actions; a maintainer also manages its members, secrets and bots and submits raw DAGs for it.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
 | `user_id` | uuid | no | |
 | `team_id` | uuid | no | |
+| `role` | text | no | `maintainer` or `member`. Memberships from before roles are maintainers. |
 | `created_at` | timestamptz | no | |
 
 ### api_tokens

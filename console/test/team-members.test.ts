@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: MIT
 import { randomUUID } from "node:crypto";
 import { inArray, like } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, createUser, setTeamRetired, setUserAdmin } from "../src/db/queries.js";
 import { teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
-import { caller } from "./rpc.js";
+import { caller, failureCode, type RpcError } from "./rpc.js";
+
+// Listing a team's secrets also lists its ExternalSecrets in the cluster.
+vi.mock("../src/k8s.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/k8s.js")>()),
+  listExternalSecrets: vi.fn(() => Promise.resolve([])),
+}));
 
 const prefix = `mem-${randomUUID().slice(0, 6)}`;
 const emails: string[] = [];
@@ -26,7 +32,7 @@ async function newUser(options: { admin?: boolean } = {}): Promise<{ id: string;
 const call = caller(() => app);
 const remove = (token: string, team: string, userId: string) => call(token, "TeamService/RemoveMember", { team, userId });
 const listMembers = (token: string, team: string) =>
-  call<{ members: { id: string; isBot: boolean }[] }>(token, "TeamService/ListMembers", { team });
+  call<{ members: { id: string; isBot: boolean; role: string }[] }>(token, "TeamService/ListMembers", { team });
 
 /** A team with two human members. */
 async function teamOfTwo() {
@@ -63,14 +69,14 @@ describe("removing a team member", () => {
     expect(await memberIds(t.name)).toContain(t.second.id);
   });
 
-  it("lets a member remove another member, who then loses access", async () => {
+  it("lets a maintainer remove another member, who then loses access", async () => {
     const t = await teamOfTwo();
     expect((await remove(t.first.token, t.name, t.second.id)).code).toBe("ok");
     expect(await memberIds(t.name)).not.toContain(t.second.id);
     expect((await listMembers(t.second.token, t.name)).code).toBe("permission_denied");
   });
 
-  it("never removes the last person, but a bot can always go", async () => {
+  it("never removes the last maintainer, but a bot can always go", async () => {
     const t = await teamOfTwo();
     await remove(t.first.token, t.name, t.second.id);
     const bot = await call(t.first.token, "TokenService/CreateBotToken", {
@@ -83,7 +89,7 @@ describe("removing a team member", () => {
 
     const last = await remove(admin, t.name, t.first.id);
     expect(last.code).toBe("failed_precondition");
-    expect(last.failure).toBe("LAST_MEMBER");
+    expect(last.failure).toBe("LAST_MAINTAINER");
 
     const botId = (await listMembers(admin, t.name)).body.members.find((m) => m.isBot)?.id;
     expect((await remove(t.first.token, t.name, botId ?? "")).code).toBe("ok");
@@ -155,5 +161,83 @@ describe("adding a team member", () => {
     // Someone else's limit is their own.
     const other = await call(t.second.token, "TeamService/AddMember", { team: t.name, email: `${prefix}-nobody@example.com` });
     expect(other.code).toBe("not_found");
+  });
+});
+
+describe("roles: maintainers and members", () => {
+  /** A team with a maintainer and a member, as the API adds them. */
+  async function teamWithAMember() {
+    const name = `${prefix}-${randomUUID().slice(0, 6)}`;
+    const team = await createTeam(name);
+    const maintainer = await newUser();
+    await addTeamMember(maintainer.id, team.id, "maintainer");
+    const memberEmail = `${prefix}-${randomUUID()}@example.com`;
+    emails.push(memberEmail);
+    const user = await createUser(memberEmail, await hashPassword("correct-horse-battery"));
+    expect((await call(maintainer.token, "TeamService/AddMember", { team: name, email: memberEmail })).code).toBe("ok");
+    const member = { id: user.id, token: app.jwt.sign({ userId: user.id }) };
+    return { name, maintainer, member };
+  }
+  const roleOf = async (team: string, id: string) =>
+    (await listMembers(admin, team)).body.members.find((m) => m.id === id)?.role;
+
+  it("adds someone as a member unless a maintainer is asked for", async () => {
+    const t = await teamWithAMember();
+    expect(await roleOf(t.name, t.member.id)).toBe("TEAM_ROLE_MEMBER");
+    expect(await roleOf(t.name, t.maintainer.id)).toBe("TEAM_ROLE_MAINTAINER");
+  });
+
+  it("lets a member see the team's people and secrets, and manage none of it", async () => {
+    const t = await teamWithAMember();
+    const newcomer = await newUser();
+    const newcomerEmail = emails[emails.length - 1];
+    expect((await listMembers(t.member.token, t.name)).code).toBe("ok");
+    expect((await call(t.member.token, "SecretService/ListSecrets", { team: t.name })).code).toBe("ok");
+    for (const [method, body] of [
+      ["TeamService/AddMember", { team: t.name, email: newcomerEmail }],
+      ["TeamService/RemoveMember", { team: t.name, userId: t.maintainer.id }],
+      ["TeamService/SetMemberRole", { team: t.name, userId: t.member.id, role: "TEAM_ROLE_MAINTAINER" }],
+      ["SecretService/PutSecret", { team: t.name, secretName: "db", data: { password: "x" } }],
+      ["TokenService/CreateBotToken", { team: t.name, email: `${t.name}-bot@bot.internal`, label: "ci" }],
+      ["TokenService/ListBots", { team: t.name }],
+    ] as const) {
+      const response = await call(t.member.token, method, body);
+      expect(response.code, method).toBe("permission_denied");
+    }
+    expect(await memberIds(t.name)).not.toContain(newcomer.id);
+  });
+
+  it("lets a maintainer make a member a maintainer, who can then manage the team", async () => {
+    const t = await teamWithAMember();
+    const set = await call(t.maintainer.token, "TeamService/SetMemberRole", {
+      team: t.name,
+      userId: t.member.id,
+      role: "TEAM_ROLE_MAINTAINER",
+    });
+    expect(set.code).toBe("ok");
+    expect(await roleOf(t.name, t.member.id)).toBe("TEAM_ROLE_MAINTAINER");
+    expect((await remove(t.member.token, t.name, t.maintainer.id)).code).toBe("ok");
+  });
+
+  it("never leaves a team without a maintainer, and needs a role", async () => {
+    const t = await teamWithAMember();
+    const demote = await call<RpcError>(t.maintainer.token, "TeamService/SetMemberRole", {
+      team: t.name,
+      userId: t.maintainer.id,
+      role: "TEAM_ROLE_MEMBER",
+    });
+    expect(demote.code).toBe("failed_precondition");
+    expect(failureCode(demote.body)).toBe("LAST_MAINTAINER");
+    const unspecified = await call(t.maintainer.token, "TeamService/SetMemberRole", { team: t.name, userId: t.member.id });
+    expect(unspecified.code).toBe("invalid_argument");
+  });
+
+  it("tells someone which of their teams they maintain", async () => {
+    const t = await teamWithAMember();
+    const me = (token: string) => call<{ teamNames: string[]; maintainerOf?: string[] }>(token, "AuthService/GetMe", {});
+    expect((await me(t.maintainer.token)).body.maintainerOf).toContain(t.name);
+    const member = (await me(t.member.token)).body;
+    expect(member.teamNames).toContain(t.name);
+    expect(member.maintainerOf ?? []).not.toContain(t.name);
   });
 });

@@ -334,8 +334,8 @@ export function checkDag(text: string, context: DagCheckContext, dump: (value: u
     if (typeof team === "string" && team && context.teamNames && !context.teamNames.includes(team)) {
       issues.push({
         where: `${label}.team`,
-        message: `You're not a member of team "${team}".${
-          context.teamNames.length > 0 ? ` Your teams: ${context.teamNames.join(", ")}.` : ""
+        message: `You don't maintain team "${team}", so you can't submit a DAG for it.${
+          context.teamNames.length > 0 ? ` You maintain: ${context.teamNames.join(", ")}.` : ""
         }`,
       });
     }

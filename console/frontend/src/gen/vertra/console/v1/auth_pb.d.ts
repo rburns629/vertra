@@ -163,6 +163,13 @@ export declare type GetMeResponse = Message<"vertra.console.v1.GetMeResponse"> &
    * @generated from field: bool is_admin = 4;
    */
   isAdmin: boolean;
+
+  /**
+   * The teams in team_names this person maintains.
+   *
+   * @generated from field: repeated string maintainer_of = 5;
+   */
+  maintainerOf: string[];
 };
 
 /**

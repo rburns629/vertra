@@ -11,7 +11,7 @@
  */
 import { Type } from "@sinclair/typebox";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
-import { canActForTeam } from "../auth/access.js";
+import { canMaintainTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
 import { config } from "../config.js";
@@ -164,8 +164,8 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
   if (teamName === null) {
     forbiddenUnlessAdmin(caller, "Registering a platform product (no team) requires admin access.");
   } else {
-    if (!canActForTeam(caller, teamName) && !hasScope(caller, SCOPES.PRODUCTS_REGISTER)) {
-      throw new ApiError(403, "FORBIDDEN", `Not a member of team "${teamName}", and not a platform admin.`);
+    if (!canMaintainTeam(caller, teamName) && !hasScope(caller, SCOPES.PRODUCTS_REGISTER)) {
+      throw new ApiError(403, "FORBIDDEN", `Not a maintainer of team "${teamName}", and not a platform admin.`);
     }
     const team = await findTeamByName(teamName);
     if (!team) throw new ApiError(404, "NOT_FOUND", `No such team: "${teamName}".`);
@@ -249,12 +249,12 @@ export async function deleteProduct(caller: AuthUser | undefined, name: string):
     forbiddenUnlessAdmin(caller, "Deleting a platform product (no team) requires admin access.");
   } else {
     const team = await findTeamById(product.teamId);
-    const canAct = team ? canActForTeam(caller, team.name) : (caller?.isAdmin ?? false);
+    const canAct = team ? canMaintainTeam(caller, team.name) : (caller?.isAdmin ?? false);
     if (!canAct && !hasScope(caller, SCOPES.PRODUCTS_REGISTER)) {
       throw new ApiError(
         403,
         "FORBIDDEN",
-        "Not a member of the team that owns this product, and not a platform admin.",
+        "Not a maintainer of the team that owns this product, and not a platform admin.",
       );
     }
   }

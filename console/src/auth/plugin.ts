@@ -3,7 +3,7 @@ import fp from "fastify-plugin";
 import fastifyJwt from "@fastify/jwt";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { config } from "../config.js";
-import { findApiTokenPrincipal, findUserById, teamNamesForUser, touchApiToken } from "../db/queries.js";
+import { findApiTokenPrincipal, findUserById, teamRolesForUser, touchApiToken } from "../db/queries.js";
 import { API_TOKEN_PREFIX, hashApiToken } from "./apiToken.js";
 
 /** How stale an API token's "last used" time may get before a request
@@ -26,7 +26,9 @@ declare module "fastify" {
      * into the JWT itself), so a membership or role change takes effect
      * immediately rather than only once a stale token expires. `scopes`
      * is non-empty only for an automation API token (auth/scopes.ts). */
-    authUser?: { id: string; teamNames: string[]; isAdmin: boolean; scopes: string[] };
+    // teamNames: every team the caller is in; maintainerOf: the ones it
+    // maintains (auth/access.ts).
+    authUser?: { id: string; teamNames: string[]; maintainerOf: string[]; isAdmin: boolean; scopes: string[] };
   }
 }
 
@@ -83,8 +85,10 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
     // unrecognized, or revoked.
     return { problem: "Invalid, expired, or revoked credential." };
   }
-  const teamNames = await teamNamesForUser(user.id);
-  return { authUser: { id: user.id, teamNames, isAdmin: user.isAdmin, scopes } };
+  const roles = await teamRolesForUser(user.id);
+  const teamNames = roles.map((row) => row.name);
+  const maintainerOf = roles.filter((row) => row.role === "maintainer").map((row) => row.name);
+  return { authUser: { id: user.id, teamNames, maintainerOf, isAdmin: user.isAdmin, scopes } };
 }
 
 const authPlugin: FastifyPluginAsync = async (app) => {

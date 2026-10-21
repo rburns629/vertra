@@ -24,6 +24,7 @@ import {
   index,
   bigserial,
   integer,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -386,10 +387,19 @@ export const teamMemberships = pgTable(
     teamId: uuid("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    // A maintainer manages the team (members, secrets, bots, raw DAGs); a
+    // member sees all of its work and runs its actions (auth/access.ts).
+    // Memberships from before roles were maintainers, and stay so.
+    role: text("role").$type<TeamRole>().notNull().default("maintainer"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.teamId] })],
+  (table) => [
+    primaryKey({ columns: [table.userId, table.teamId] }),
+    check("team_memberships_role", sql`${table.role} in ('maintainer', 'member')`),
+  ],
 );
+
+export type TeamRole = "maintainer" | "member";
 
 /**
  * Templates (catalog format v2's dags/*.yaml of kind Template): what a

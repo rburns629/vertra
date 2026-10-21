@@ -497,7 +497,7 @@
     },
     {
      "name": "AddMember",
-     "comment": "Adds someone with an account. At most 30 an hour per caller.",
+     "comment": "Adds someone with an account, as a member unless role says otherwise.\nA maintainer's (or an admin's). At most 30 an hour per caller.",
      "input": "vertra.console.v1.AddMemberRequest",
      "output": "vertra.console.v1.AddMemberResponse",
      "streaming": false,
@@ -506,9 +506,18 @@
     },
     {
      "name": "RemoveMember",
-     "comment": "Never the team's last person (failed_precondition, LAST_MEMBER).",
+     "comment": "A maintainer's. Never the team's last maintainer (failed_precondition,\nLAST_MAINTAINER).",
      "input": "vertra.console.v1.RemoveMemberRequest",
      "output": "vertra.console.v1.RemoveMemberResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
+    },
+    {
+     "name": "SetMemberRole",
+     "comment": "Makes someone a maintainer or a member: a maintainer's. Never leaves\nthe team without a maintainer (failed_precondition, LAST_MAINTAINER).",
+     "input": "vertra.console.v1.SetMemberRoleRequest",
+     "output": "vertra.console.v1.SetMemberRoleResponse",
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
@@ -1206,6 +1215,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "maintainerOf",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The teams in team_names this person maintains."
     }
    ]
   },
@@ -3459,6 +3475,14 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "role",
+     "type": "TeamRole",
+     "ref": "vertra.console.v1.TeamRole",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -3697,6 +3721,14 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "role",
+     "type": "TeamRole",
+     "ref": "vertra.console.v1.TeamRole",
+     "repeated": false,
+     "optional": false,
+     "comment": "Unspecified: a member."
     }
    ]
   },
@@ -3727,6 +3759,39 @@
   },
   "vertra.console.v1.RemoveMemberResponse": {
    "name": "RemoveMemberResponse",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.SetMemberRoleRequest": {
+   "name": "SetMemberRoleRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "userId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "role",
+     "type": "TeamRole",
+     "ref": "vertra.console.v1.TeamRole",
+     "repeated": false,
+     "optional": false,
+     "comment": "Maintainer or member."
+    }
+   ]
+  },
+  "vertra.console.v1.SetMemberRoleResponse": {
+   "name": "SetMemberRoleResponse",
    "comment": "",
    "fields": []
   },
@@ -4742,6 +4807,24 @@
     {
      "name": "SECRET_SOURCE_EXTERNAL",
      "comment": "Synced from a vault."
+    }
+   ]
+  },
+  "vertra.console.v1.TeamRole": {
+   "name": "TeamRole",
+   "comment": "What someone may do in a team. Any member sees the team's executions,\nlogs and Pods, and runs its actions; a maintainer also manages its\nmembers and roles, secrets and bots, and submits raw DAGs for it.",
+   "values": [
+    {
+     "name": "TEAM_ROLE_UNSPECIFIED",
+     "comment": ""
+    },
+    {
+     "name": "TEAM_ROLE_MAINTAINER",
+     "comment": ""
+    },
+    {
+     "name": "TEAM_ROLE_MEMBER",
+     "comment": ""
     }
    ]
   },

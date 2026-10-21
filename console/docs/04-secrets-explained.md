@@ -25,7 +25,9 @@ back.
 The simple, common path: open the console's Secrets tab (or call
 `POST /secrets` directly), and paste in a name and a value. That's it —
 no approval, no PR, no waiting. The only requirement is that you're a
-member of the team you're registering it for (or a platform admin).
+maintainer of the team you're registering it for (or a platform admin).
+A member who isn't a maintainer sees the team's secrets' names, but can't
+add or change them.
 
 ## Step 2 — where it actually goes (not hand-waved)
 

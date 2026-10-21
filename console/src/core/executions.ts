@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError } from "../apiError.js";
-import { ensureTeamMember, loadExecution } from "../auth/access.js";
+import { ensureTeamMaintainer, loadExecution } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import {
@@ -538,8 +538,8 @@ function recordable(submission: Record<string, unknown>): Record<string, unknown
 }
 
 /**
- * The checks every submission gets: team membership per task (except for a
- * template's run, authorized as a whole by core/templates.ts), the identity
+ * The checks every submission gets: a maintainer of each task's team (except
+ * for a template's run, authorized as a whole by core/templates.ts), the identity
  * each task runs as, then secretRefs against each team's current secrets.
  * Rerun and retry apply them afresh against current membership and grants,
  * rather than trusting what was true at the first submission (a team can
@@ -548,13 +548,13 @@ function recordable(submission: Record<string, unknown>): Record<string, unknown
 async function authorizeTasks(
   tasksInfo: TaskAuthInfo[],
   caller: AuthUser | undefined,
-  { members = true }: { members?: boolean } = {},
+  { maintainers = true }: { maintainers?: boolean } = {},
 ): Promise<void> {
   const uniqueTeams = [...new Set(tasksInfo.map((t) => t.team))];
   for (const team of uniqueTeams) {
     // A template's run is authorized as a whole instead (core/templates.ts):
     // its steps run in their products' teams, which the consumer isn't in.
-    if (members) ensureTeamMember(caller, team);
+    if (maintainers) ensureTeamMaintainer(caller, team);
     const blocker = await teamRunBlocker(team);
     if (blocker) throw blocked(409, blocker);
   }
@@ -721,7 +721,7 @@ export async function submitChecked(
         '"secretRefs" if present must be an array of non-empty strings.',
     );
   }
-  await authorizeTasks(tasksInfo, caller, { members: run === undefined });
+  await authorizeTasks(tasksInfo, caller, { maintainers: run === undefined });
   const teams = [...new Set(tasksInfo.map((t) => t.team))];
   const context: RunContext = { action: "submit", teams, caller, log };
   await refuseBlockedImages(taskImages(body), context);
@@ -811,7 +811,7 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
   // A consumer retries their own run of a template without being in its
   // teams; anyone else as for any execution.
   const ownTemplateRun = submitted.template !== null && caller?.id !== undefined && submitted.submittedBy === caller.id;
-  await authorizeTasks(tasksInfo, caller, { members: !ownTemplateRun });
+  await authorizeTasks(tasksInfo, caller, { maintainers: !ownTemplateRun });
   const images = taskImages(submitted.payload, taskId);
   const context: RunContext = { action: "retry", teams: submitted.teams, executionId, caller, log };
   await refuseBlockedImages(images, context);

@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
-import { canActForTeam, ensureTeamMember } from "../auth/access.js";
+import { canMaintainTeam, ensureTeamMaintainer } from "../auth/access.js";
 import { generateApiToken, hashApiToken } from "../auth/apiToken.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { ScopeSchema } from "../auth/scopes.js";
@@ -38,8 +38,8 @@ export const AutomationLabel = Type.String({ minLength: 1, maxLength: 100 });
 export const AutomationScopes = Type.Array(ScopeSchema, { minItems: 1, uniqueItems: true });
 export const TokenId = Type.String({ format: "uuid" });
 
-async function teamForMember(caller: AuthUser | undefined, teamName: string) {
-  ensureTeamMember(caller, teamName);
+async function teamForMaintainer(caller: AuthUser | undefined, teamName: string) {
+  ensureTeamMaintainer(caller, teamName);
   const team = await findTeamByName(teamName);
   if (!team) throw new ApiError(404, "NOT_FOUND", "No such team.");
   return team;
@@ -51,34 +51,35 @@ export async function createBotToken(
   teamName: string,
   input: { email: string; label: string },
 ) {
-  const team = await teamForMember(caller, teamName);
+  const team = await teamForMaintainer(caller, teamName);
   ensureNotRetired(team);
   const bot = await createBotUser(input.email);
   if (!bot.isBot) {
     throw new ApiError(409, "CONFLICT", `"${input.email}" already belongs to a non-bot account.`, Code.AlreadyExists);
   }
-  await addTeamMember(bot.id, team.id);
+  // A maintainer: a team's pipeline submits its raw DAGs and retries them.
+  await addTeamMember(bot.id, team.id, "maintainer");
   const rawToken = generateApiToken();
   const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken));
   return { email: bot.email, token: rawToken, tokenId: tokenMeta.id };
 }
 
 export async function listBots(caller: AuthUser | undefined, teamName: string) {
-  const team = await teamForMember(caller, teamName);
+  const team = await teamForMaintainer(caller, teamName);
   return listBotsForTeam(team.id);
 }
 
-/** A member of a team the token's bot belongs to may revoke it; an admin, any. */
+/** A maintainer of a team the token's bot belongs to may revoke it; an admin, any. */
 export async function revokeToken(caller: AuthUser | undefined, tokenId: string): Promise<void> {
   const token = await findApiTokenById(tokenId);
   if (!token) throw new ApiError(404, "NOT_FOUND", "No such token.");
   const ownerTeams = await teamNamesForUser(token.userId);
   // An admin may revoke any token, a bot in no team included.
-  if (!caller?.isAdmin && !ownerTeams.some((name) => canActForTeam(caller, name))) {
+  if (!caller?.isAdmin && !ownerTeams.some((name) => canMaintainTeam(caller, name))) {
     throw new ApiError(
       403,
       "FORBIDDEN",
-      "Not a member of any team this token's bot belongs to, and not a platform admin.",
+      "Not a maintainer of any team this token's bot belongs to, and not a platform admin.",
     );
   }
   await revokeApiToken(token.id);

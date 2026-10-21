@@ -81,6 +81,11 @@ export declare type Member = Message<"vertra.console.v1.Member"> & {
    * @generated from field: google.protobuf.Timestamp added_at = 5;
    */
   addedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: vertra.console.v1.TeamRole role = 6;
+   */
+  role: TeamRole;
 };
 
 /**
@@ -375,6 +380,13 @@ export declare type AddMemberRequest = Message<"vertra.console.v1.AddMemberReque
    * @generated from field: string email = 2;
    */
   email: string;
+
+  /**
+   * Unspecified: a member.
+   *
+   * @generated from field: vertra.console.v1.TeamRole role = 3;
+   */
+  role: TeamRole;
 };
 
 /**
@@ -427,6 +439,46 @@ export declare type RemoveMemberResponse = Message<"vertra.console.v1.RemoveMemb
  * Use `create(RemoveMemberResponseSchema)` to create a new message.
  */
 export declare const RemoveMemberResponseSchema: GenMessage<RemoveMemberResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetMemberRoleRequest
+ */
+export declare type SetMemberRoleRequest = Message<"vertra.console.v1.SetMemberRoleRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+
+  /**
+   * Maintainer or member.
+   *
+   * @generated from field: vertra.console.v1.TeamRole role = 3;
+   */
+  role: TeamRole;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetMemberRoleRequest.
+ * Use `create(SetMemberRoleRequestSchema)` to create a new message.
+ */
+export declare const SetMemberRoleRequestSchema: GenMessage<SetMemberRoleRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetMemberRoleResponse
+ */
+export declare type SetMemberRoleResponse = Message<"vertra.console.v1.SetMemberRoleResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SetMemberRoleResponse.
+ * Use `create(SetMemberRoleResponseSchema)` to create a new message.
+ */
+export declare const SetMemberRoleResponseSchema: GenMessage<SetMemberRoleResponse>;
 
 /**
  * @generated from message vertra.console.v1.ApplySecretStoreRequest
@@ -664,6 +716,35 @@ export declare type PodExecution = Message<"vertra.console.v1.PodExecution"> & {
 export declare const PodExecutionSchema: GenMessage<PodExecution>;
 
 /**
+ * What someone may do in a team. Any member sees the team's executions,
+ * logs and Pods, and runs its actions; a maintainer also manages its
+ * members and roles, secrets and bots, and submits raw DAGs for it.
+ *
+ * @generated from enum vertra.console.v1.TeamRole
+ */
+export enum TeamRole {
+  /**
+   * @generated from enum value: TEAM_ROLE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_ROLE_MAINTAINER = 1;
+   */
+  MAINTAINER = 1,
+
+  /**
+   * @generated from enum value: TEAM_ROLE_MEMBER = 2;
+   */
+  MEMBER = 2,
+}
+
+/**
+ * Describes the enum vertra.console.v1.TeamRole.
+ */
+export declare const TeamRoleSchema: GenEnum<TeamRole>;
+
+/**
  * @generated from enum vertra.console.v1.TaskPodState
  */
 export enum TaskPodState {
@@ -799,7 +880,8 @@ export declare const TeamService: GenService<{
     output: typeof ListMembersResponseSchema;
   },
   /**
-   * Adds someone with an account. At most 30 an hour per caller.
+   * Adds someone with an account, as a member unless role says otherwise.
+   * A maintainer's (or an admin's). At most 30 an hour per caller.
    *
    * @generated from rpc vertra.console.v1.TeamService.AddMember
    */
@@ -809,7 +891,8 @@ export declare const TeamService: GenService<{
     output: typeof AddMemberResponseSchema;
   },
   /**
-   * Never the team's last person (failed_precondition, LAST_MEMBER).
+   * A maintainer's. Never the team's last maintainer (failed_precondition,
+   * LAST_MAINTAINER).
    *
    * @generated from rpc vertra.console.v1.TeamService.RemoveMember
    */
@@ -817,6 +900,17 @@ export declare const TeamService: GenService<{
     methodKind: "unary";
     input: typeof RemoveMemberRequestSchema;
     output: typeof RemoveMemberResponseSchema;
+  },
+  /**
+   * Makes someone a maintainer or a member: a maintainer's. Never leaves
+   * the team without a maintainer (failed_precondition, LAST_MAINTAINER).
+   *
+   * @generated from rpc vertra.console.v1.TeamService.SetMemberRole
+   */
+  setMemberRole: {
+    methodKind: "unary";
+    input: typeof SetMemberRoleRequestSchema;
+    output: typeof SetMemberRoleResponseSchema;
   },
   /**
    * Applies the team's reviewed SecretStore file: only SecretStores in its

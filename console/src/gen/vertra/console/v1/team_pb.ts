@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/team.proto.
  */
 export const file_vertra_console_v1_team: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS90ZWFtLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSKwAQoEVGVhbRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldGlyZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmRlbGV0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wInMKBk1lbWJlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIOCgZpc19ib3QYAyABKAgSEAoIaXNfYWRtaW4YBCABKAgSLAoIYWRkZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIhIKEExpc3RUZWFtc1JlcXVlc3QiOwoRTGlzdFRlYW1zUmVzcG9uc2USJgoFdGVhbXMYASADKAsyFy52ZXJ0cmEuY29uc29sZS52MS5UZWFtIh4KDkdldFRlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkiOAoPR2V0VGVhbVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy52ZXJ0cmEuY29uc29sZS52MS5UZWFtIiEKEUNyZWF0ZVRlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkiOwoSQ3JlYXRlVGVhbVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy52ZXJ0cmEuY29uc29sZS52MS5UZWFtIiEKEUVuc3VyZVRlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkiTAoSRW5zdXJlVGVhbVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy52ZXJ0cmEuY29uc29sZS52MS5UZWFtEg8KB2NyZWF0ZWQYAiABKAgiIQoRUmV0aXJlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCSIzChJSZXRpcmVUZWFtUmVzcG9uc2USHQoVdW5yZWdpc3RlcmVkX3Byb2R1Y3RzGAEgASgFIiMKE1VucmV0aXJlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCSIWChRVbnJldGlyZVRlYW1SZXNwb25zZSIgChBQdXJnZVRlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkiYgoRUHVyZ2VUZWFtUmVzcG9uc2USFgoOYWxyZWFkeV9wdXJnZWQYASABKAgSGgoScmV2b2tlZF9ib3RfdG9rZW5zGAIgASgFEhkKEW5hbWVzcGFjZV9kZWxldGVkGAMgASgIIiIKEkxpc3RNZW1iZXJzUmVxdWVzdBIMCgR0ZWFtGAEgASgJIkEKE0xpc3RNZW1iZXJzUmVzcG9uc2USKgoHbWVtYmVycxgBIAMoCzIZLnZlcnRyYS5jb25zb2xlLnYxLk1lbWJlciIvChBBZGRNZW1iZXJSZXF1ZXN0EgwKBHRlYW0YASABKAkSDQoFZW1haWwYAiABKAkiEwoRQWRkTWVtYmVyUmVzcG9uc2UiNAoTUmVtb3ZlTWVtYmVyUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiFgoUUmVtb3ZlTWVtYmVyUmVzcG9uc2UiewoXQXBwbHlTZWNyZXRTdG9yZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIqCglkb2N1bWVudHMYAiADKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhcKCmNyZWRlbnRpYWwYAyABKAlIAIgBAUINCgtfY3JlZGVudGlhbCIaChhBcHBseVNlY3JldFN0b3JlUmVzcG9uc2UiQwofU2V0U2VjcmV0U3RvcmVDcmVkZW50aWFsUmVxdWVzdBIMCgR0ZWFtGAEgASgJEhIKCmNyZWRlbnRpYWwYAiABKAkiIgogU2V0U2VjcmV0U3RvcmVDcmVkZW50aWFsUmVzcG9uc2UiHwoPTGlzdFBvZHNSZXF1ZXN0EgwKBHRlYW0YASABKAkiPAoQTGlzdFBvZHNSZXNwb25zZRIoCgRwb2RzGAEgAygLMhoudmVydHJhLmNvbnNvbGUudjEuVGFza1BvZCKGBAoHVGFza1BvZBIQCghwb2RfbmFtZRgBIAEoCRIZCgxleGVjdXRpb25faWQYAiABKAlIAIgBARIUCgd0YXNrX2lkGAMgASgJSAGIAQESFAoHYXR0ZW1wdBgEIAEoBUgCiAEBEhIKBWltYWdlGAUgASgJSAOIAQESHAoPc2VydmljZV9hY2NvdW50GAYgASgJSASIAQESLgoFc3RhdGUYByABKA4yHy52ZXJ0cmEuY29uc29sZS52MS5UYXNrUG9kU3RhdGUSMwoHcHJvYmxlbRgIIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLlBvZFByb2JsZW1IBYgBARIQCghyZXN0YXJ0cxgJIAEoBRIuCgpzdGFydGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtmaW5pc2hlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNwoJZXhlY3V0aW9uGAwgASgLMh8udmVydHJhLmNvbnNvbGUudjEuUG9kRXhlY3V0aW9uSAaIAQFCDwoNX2V4ZWN1dGlvbl9pZEIKCghfdGFza19pZEIKCghfYXR0ZW1wdEIICgZfaW1hZ2VCEgoQX3NlcnZpY2VfYWNjb3VudEIKCghfcHJvYmxlbUIMCgpfZXhlY3V0aW9uIisKClBvZFByb2JsZW0SDQoFdGl0bGUYASABKAkSDgoGZGV0YWlsGAIgASgJIm4KDFBvZEV4ZWN1dGlvbhIMCgRuYW1lGAEgASgJEhgKC3Rhc2tfbnVtYmVyGAIgASgFSACIAQESFwoKdGFza19jb3VudBgDIAEoBUgBiAEBQg4KDF90YXNrX251bWJlckINCgtfdGFza19jb3VudCq+AQoMVGFza1BvZFN0YXRlEh4KGlRBU0tfUE9EX1NUQVRFX1VOU1BFQ0lGSUVEEAASGwoXVEFTS19QT0RfU1RBVEVfU1RBUlRJTkcQARIaChZUQVNLX1BPRF9TVEFURV9SVU5OSU5HEAISHQoZVEFTS19QT0RfU1RBVEVfQ0FOVF9TVEFSVBADEhsKF1RBU0tfUE9EX1NUQVRFX0ZJTklTSEVEEAQSGQoVVEFTS19QT0RfU1RBVEVfRkFJTEVEEAUylwoKC1RlYW1TZXJ2aWNlElsKCUxpc3RUZWFtcxIjLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RUZWFtc1JlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5MaXN0VGVhbXNSZXNwb25zZSIDkAIBElUKB0dldFRlYW0SIS52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtUmVxdWVzdBoiLnZlcnRyYS5jb25zb2xlLnYxLkdldFRlYW1SZXNwb25zZSIDkAIBElkKCkNyZWF0ZVRlYW0SJC52ZXJ0cmEuY29uc29sZS52MS5DcmVhdGVUZWFtUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkNyZWF0ZVRlYW1SZXNwb25zZRJeCgpFbnN1cmVUZWFtEiQudmVydHJhLmNvbnNvbGUudjEuRW5zdXJlVGVhbVJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5FbnN1cmVUZWFtUmVzcG9uc2UiA5ACAhJeCgpSZXRpcmVUZWFtEiQudmVydHJhLmNvbnNvbGUudjEuUmV0aXJlVGVhbVJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5SZXRpcmVUZWFtUmVzcG9uc2UiA5ACAhJkCgxVbnJldGlyZVRlYW0SJi52ZXJ0cmEuY29uc29sZS52MS5VbnJldGlyZVRlYW1SZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuVW5yZXRpcmVUZWFtUmVzcG9uc2UiA5ACAhJbCglQdXJnZVRlYW0SIy52ZXJ0cmEuY29uc29sZS52MS5QdXJnZVRlYW1SZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuUHVyZ2VUZWFtUmVzcG9uc2UiA5ACAhJhCgtMaXN0TWVtYmVycxIlLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RNZW1iZXJzUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RNZW1iZXJzUmVzcG9uc2UiA5ACARJWCglBZGRNZW1iZXISIy52ZXJ0cmEuY29uc29sZS52MS5BZGRNZW1iZXJSZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuQWRkTWVtYmVyUmVzcG9uc2USZAoMUmVtb3ZlTWVtYmVyEiYudmVydHJhLmNvbnNvbGUudjEuUmVtb3ZlTWVtYmVyUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlJlbW92ZU1lbWJlclJlc3BvbnNlIgOQAgIScAoQQXBwbHlTZWNyZXRTdG9yZRIqLnZlcnRyYS5jb25zb2xlLnYxLkFwcGx5U2VjcmV0U3RvcmVSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuQXBwbHlTZWNyZXRTdG9yZVJlc3BvbnNlIgOQAgISiAEKGFNldFNlY3JldFN0b3JlQ3JlZGVudGlhbBIyLnZlcnRyYS5jb25zb2xlLnYxLlNldFNlY3JldFN0b3JlQ3JlZGVudGlhbFJlcXVlc3QaMy52ZXJ0cmEuY29uc29sZS52MS5TZXRTZWNyZXRTdG9yZUNyZWRlbnRpYWxSZXNwb25zZSIDkAICElgKCExpc3RQb2RzEiIudmVydHJhLmNvbnNvbGUudjEuTGlzdFBvZHNSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuTGlzdFBvZHNSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS90ZWFtLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSKwAQoEVGVhbRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldGlyZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmRlbGV0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIp4BCgZNZW1iZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDgoGaXNfYm90GAMgASgIEhAKCGlzX2FkbWluGAQgASgIEiwKCGFkZGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIpCgRyb2xlGAYgASgOMhsudmVydHJhLmNvbnNvbGUudjEuVGVhbVJvbGUiEgoQTGlzdFRlYW1zUmVxdWVzdCI7ChFMaXN0VGVhbXNSZXNwb25zZRImCgV0ZWFtcxgBIAMoCzIXLnZlcnRyYS5jb25zb2xlLnYxLlRlYW0iHgoOR2V0VGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCSI4Cg9HZXRUZWFtUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLnZlcnRyYS5jb25zb2xlLnYxLlRlYW0iIQoRQ3JlYXRlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCSI7ChJDcmVhdGVUZWFtUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLnZlcnRyYS5jb25zb2xlLnYxLlRlYW0iIQoRRW5zdXJlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCSJMChJFbnN1cmVUZWFtUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLnZlcnRyYS5jb25zb2xlLnYxLlRlYW0SDwoHY3JlYXRlZBgCIAEoCCIhChFSZXRpcmVUZWFtUmVxdWVzdBIMCgRuYW1lGAEgASgJIjMKElJldGlyZVRlYW1SZXNwb25zZRIdChV1bnJlZ2lzdGVyZWRfcHJvZHVjdHMYASABKAUiIwoTVW5yZXRpcmVUZWFtUmVxdWVzdBIMCgRuYW1lGAEgASgJIhYKFFVucmV0aXJlVGVhbVJlc3BvbnNlIiAKEFB1cmdlVGVhbVJlcXVlc3QSDAoEbmFtZRgBIAEoCSJiChFQdXJnZVRlYW1SZXNwb25zZRIWCg5hbHJlYWR5X3B1cmdlZBgBIAEoCBIaChJyZXZva2VkX2JvdF90b2tlbnMYAiABKAUSGQoRbmFtZXNwYWNlX2RlbGV0ZWQYAyABKAgiIgoSTGlzdE1lbWJlcnNSZXF1ZXN0EgwKBHRlYW0YASABKAkiQQoTTGlzdE1lbWJlcnNSZXNwb25zZRIqCgdtZW1iZXJzGAEgAygLMhkudmVydHJhLmNvbnNvbGUudjEuTWVtYmVyIloKEEFkZE1lbWJlclJlcXVlc3QSDAoEdGVhbRgBIAEoCRINCgVlbWFpbBgCIAEoCRIpCgRyb2xlGAMgASgOMhsudmVydHJhLmNvbnNvbGUudjEuVGVhbVJvbGUiEwoRQWRkTWVtYmVyUmVzcG9uc2UiNAoTUmVtb3ZlTWVtYmVyUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiFgoUUmVtb3ZlTWVtYmVyUmVzcG9uc2UiYAoUU2V0TWVtYmVyUm9sZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEikKBHJvbGUYAyABKA4yGy52ZXJ0cmEuY29uc29sZS52MS5UZWFtUm9sZSIXChVTZXRNZW1iZXJSb2xlUmVzcG9uc2UiewoXQXBwbHlTZWNyZXRTdG9yZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIqCglkb2N1bWVudHMYAiADKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhcKCmNyZWRlbnRpYWwYAyABKAlIAIgBAUINCgtfY3JlZGVudGlhbCIaChhBcHBseVNlY3JldFN0b3JlUmVzcG9uc2UiQwofU2V0U2VjcmV0U3RvcmVDcmVkZW50aWFsUmVxdWVzdBIMCgR0ZWFtGAEgASgJEhIKCmNyZWRlbnRpYWwYAiABKAkiIgogU2V0U2VjcmV0U3RvcmVDcmVkZW50aWFsUmVzcG9uc2UiHwoPTGlzdFBvZHNSZXF1ZXN0EgwKBHRlYW0YASABKAkiPAoQTGlzdFBvZHNSZXNwb25zZRIoCgRwb2RzGAEgAygLMhoudmVydHJhLmNvbnNvbGUudjEuVGFza1BvZCKGBAoHVGFza1BvZBIQCghwb2RfbmFtZRgBIAEoCRIZCgxleGVjdXRpb25faWQYAiABKAlIAIgBARIUCgd0YXNrX2lkGAMgASgJSAGIAQESFAoHYXR0ZW1wdBgEIAEoBUgCiAEBEhIKBWltYWdlGAUgASgJSAOIAQESHAoPc2VydmljZV9hY2NvdW50GAYgASgJSASIAQESLgoFc3RhdGUYByABKA4yHy52ZXJ0cmEuY29uc29sZS52MS5UYXNrUG9kU3RhdGUSMwoHcHJvYmxlbRgIIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLlBvZFByb2JsZW1IBYgBARIQCghyZXN0YXJ0cxgJIAEoBRIuCgpzdGFydGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtmaW5pc2hlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNwoJZXhlY3V0aW9uGAwgASgLMh8udmVydHJhLmNvbnNvbGUudjEuUG9kRXhlY3V0aW9uSAaIAQFCDwoNX2V4ZWN1dGlvbl9pZEIKCghfdGFza19pZEIKCghfYXR0ZW1wdEIICgZfaW1hZ2VCEgoQX3NlcnZpY2VfYWNjb3VudEIKCghfcHJvYmxlbUIMCgpfZXhlY3V0aW9uIisKClBvZFByb2JsZW0SDQoFdGl0bGUYASABKAkSDgoGZGV0YWlsGAIgASgJIm4KDFBvZEV4ZWN1dGlvbhIMCgRuYW1lGAEgASgJEhgKC3Rhc2tfbnVtYmVyGAIgASgFSACIAQESFwoKdGFza19jb3VudBgDIAEoBUgBiAEBQg4KDF90YXNrX251bWJlckINCgtfdGFza19jb3VudCpVCghUZWFtUm9sZRIZChVURUFNX1JPTEVfVU5TUEVDSUZJRUQQABIYChRURUFNX1JPTEVfTUFJTlRBSU5FUhABEhQKEFRFQU1fUk9MRV9NRU1CRVIQAiq+AQoMVGFza1BvZFN0YXRlEh4KGlRBU0tfUE9EX1NUQVRFX1VOU1BFQ0lGSUVEEAASGwoXVEFTS19QT0RfU1RBVEVfU1RBUlRJTkcQARIaChZUQVNLX1BPRF9TVEFURV9SVU5OSU5HEAISHQoZVEFTS19QT0RfU1RBVEVfQ0FOVF9TVEFSVBADEhsKF1RBU0tfUE9EX1NUQVRFX0ZJTklTSEVEEAQSGQoVVEFTS19QT0RfU1RBVEVfRkFJTEVEEAUygAsKC1RlYW1TZXJ2aWNlElsKCUxpc3RUZWFtcxIjLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RUZWFtc1JlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5MaXN0VGVhbXNSZXNwb25zZSIDkAIBElUKB0dldFRlYW0SIS52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtUmVxdWVzdBoiLnZlcnRyYS5jb25zb2xlLnYxLkdldFRlYW1SZXNwb25zZSIDkAIBElkKCkNyZWF0ZVRlYW0SJC52ZXJ0cmEuY29uc29sZS52MS5DcmVhdGVUZWFtUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkNyZWF0ZVRlYW1SZXNwb25zZRJeCgpFbnN1cmVUZWFtEiQudmVydHJhLmNvbnNvbGUudjEuRW5zdXJlVGVhbVJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5FbnN1cmVUZWFtUmVzcG9uc2UiA5ACAhJeCgpSZXRpcmVUZWFtEiQudmVydHJhLmNvbnNvbGUudjEuUmV0aXJlVGVhbVJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5SZXRpcmVUZWFtUmVzcG9uc2UiA5ACAhJkCgxVbnJldGlyZVRlYW0SJi52ZXJ0cmEuY29uc29sZS52MS5VbnJldGlyZVRlYW1SZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuVW5yZXRpcmVUZWFtUmVzcG9uc2UiA5ACAhJbCglQdXJnZVRlYW0SIy52ZXJ0cmEuY29uc29sZS52MS5QdXJnZVRlYW1SZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuUHVyZ2VUZWFtUmVzcG9uc2UiA5ACAhJhCgtMaXN0TWVtYmVycxIlLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RNZW1iZXJzUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RNZW1iZXJzUmVzcG9uc2UiA5ACARJWCglBZGRNZW1iZXISIy52ZXJ0cmEuY29uc29sZS52MS5BZGRNZW1iZXJSZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuQWRkTWVtYmVyUmVzcG9uc2USZAoMUmVtb3ZlTWVtYmVyEiYudmVydHJhLmNvbnNvbGUudjEuUmVtb3ZlTWVtYmVyUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlJlbW92ZU1lbWJlclJlc3BvbnNlIgOQAgISZwoNU2V0TWVtYmVyUm9sZRInLnZlcnRyYS5jb25zb2xlLnYxLlNldE1lbWJlclJvbGVSZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuU2V0TWVtYmVyUm9sZVJlc3BvbnNlIgOQAgIScAoQQXBwbHlTZWNyZXRTdG9yZRIqLnZlcnRyYS5jb25zb2xlLnYxLkFwcGx5U2VjcmV0U3RvcmVSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuQXBwbHlTZWNyZXRTdG9yZVJlc3BvbnNlIgOQAgISiAEKGFNldFNlY3JldFN0b3JlQ3JlZGVudGlhbBIyLnZlcnRyYS5jb25zb2xlLnYxLlNldFNlY3JldFN0b3JlQ3JlZGVudGlhbFJlcXVlc3QaMy52ZXJ0cmEuY29uc29sZS52MS5TZXRTZWNyZXRTdG9yZUNyZWRlbnRpYWxSZXNwb25zZSIDkAICElgKCExpc3RQb2RzEiIudmVydHJhLmNvbnNvbGUudjEuTGlzdFBvZHNSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuTGlzdFBvZHNSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.Team
@@ -85,6 +85,11 @@ export type Member = Message<"vertra.console.v1.Member"> & {
    * @generated from field: google.protobuf.Timestamp added_at = 5;
    */
   addedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: vertra.console.v1.TeamRole role = 6;
+   */
+  role: TeamRole;
 };
 
 /**
@@ -396,6 +401,13 @@ export type AddMemberRequest = Message<"vertra.console.v1.AddMemberRequest"> & {
    * @generated from field: string email = 2;
    */
   email: string;
+
+  /**
+   * Unspecified: a member.
+   *
+   * @generated from field: vertra.console.v1.TeamRole role = 3;
+   */
+  role: TeamRole;
 };
 
 /**
@@ -454,6 +466,48 @@ export const RemoveMemberResponseSchema: GenMessage<RemoveMemberResponse> = /*@_
   messageDesc(file_vertra_console_v1_team, 21);
 
 /**
+ * @generated from message vertra.console.v1.SetMemberRoleRequest
+ */
+export type SetMemberRoleRequest = Message<"vertra.console.v1.SetMemberRoleRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+
+  /**
+   * Maintainer or member.
+   *
+   * @generated from field: vertra.console.v1.TeamRole role = 3;
+   */
+  role: TeamRole;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetMemberRoleRequest.
+ * Use `create(SetMemberRoleRequestSchema)` to create a new message.
+ */
+export const SetMemberRoleRequestSchema: GenMessage<SetMemberRoleRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_team, 22);
+
+/**
+ * @generated from message vertra.console.v1.SetMemberRoleResponse
+ */
+export type SetMemberRoleResponse = Message<"vertra.console.v1.SetMemberRoleResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SetMemberRoleResponse.
+ * Use `create(SetMemberRoleResponseSchema)` to create a new message.
+ */
+export const SetMemberRoleResponseSchema: GenMessage<SetMemberRoleResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_team, 23);
+
+/**
  * @generated from message vertra.console.v1.ApplySecretStoreRequest
  */
 export type ApplySecretStoreRequest = Message<"vertra.console.v1.ApplySecretStoreRequest"> & {
@@ -483,7 +537,7 @@ export type ApplySecretStoreRequest = Message<"vertra.console.v1.ApplySecretStor
  * Use `create(ApplySecretStoreRequestSchema)` to create a new message.
  */
 export const ApplySecretStoreRequestSchema: GenMessage<ApplySecretStoreRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 22);
+  messageDesc(file_vertra_console_v1_team, 24);
 
 /**
  * @generated from message vertra.console.v1.ApplySecretStoreResponse
@@ -496,7 +550,7 @@ export type ApplySecretStoreResponse = Message<"vertra.console.v1.ApplySecretSto
  * Use `create(ApplySecretStoreResponseSchema)` to create a new message.
  */
 export const ApplySecretStoreResponseSchema: GenMessage<ApplySecretStoreResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 23);
+  messageDesc(file_vertra_console_v1_team, 25);
 
 /**
  * @generated from message vertra.console.v1.SetSecretStoreCredentialRequest
@@ -518,7 +572,7 @@ export type SetSecretStoreCredentialRequest = Message<"vertra.console.v1.SetSecr
  * Use `create(SetSecretStoreCredentialRequestSchema)` to create a new message.
  */
 export const SetSecretStoreCredentialRequestSchema: GenMessage<SetSecretStoreCredentialRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 24);
+  messageDesc(file_vertra_console_v1_team, 26);
 
 /**
  * @generated from message vertra.console.v1.SetSecretStoreCredentialResponse
@@ -531,7 +585,7 @@ export type SetSecretStoreCredentialResponse = Message<"vertra.console.v1.SetSec
  * Use `create(SetSecretStoreCredentialResponseSchema)` to create a new message.
  */
 export const SetSecretStoreCredentialResponseSchema: GenMessage<SetSecretStoreCredentialResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 25);
+  messageDesc(file_vertra_console_v1_team, 27);
 
 /**
  * @generated from message vertra.console.v1.ListPodsRequest
@@ -548,7 +602,7 @@ export type ListPodsRequest = Message<"vertra.console.v1.ListPodsRequest"> & {
  * Use `create(ListPodsRequestSchema)` to create a new message.
  */
 export const ListPodsRequestSchema: GenMessage<ListPodsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 26);
+  messageDesc(file_vertra_console_v1_team, 28);
 
 /**
  * @generated from message vertra.console.v1.ListPodsResponse
@@ -565,7 +619,7 @@ export type ListPodsResponse = Message<"vertra.console.v1.ListPodsResponse"> & {
  * Use `create(ListPodsResponseSchema)` to create a new message.
  */
 export const ListPodsResponseSchema: GenMessage<ListPodsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 27);
+  messageDesc(file_vertra_console_v1_team, 29);
 
 /**
  * A Pod in the team's namespace, as a task: which execution, task and
@@ -644,7 +698,7 @@ export type TaskPod = Message<"vertra.console.v1.TaskPod"> & {
  * Use `create(TaskPodSchema)` to create a new message.
  */
 export const TaskPodSchema: GenMessage<TaskPod> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 28);
+  messageDesc(file_vertra_console_v1_team, 30);
 
 /**
  * @generated from message vertra.console.v1.PodProblem
@@ -666,7 +720,7 @@ export type PodProblem = Message<"vertra.console.v1.PodProblem"> & {
  * Use `create(PodProblemSchema)` to create a new message.
  */
 export const PodProblemSchema: GenMessage<PodProblem> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 29);
+  messageDesc(file_vertra_console_v1_team, 31);
 
 /**
  * @generated from message vertra.console.v1.PodExecution
@@ -695,7 +749,37 @@ export type PodExecution = Message<"vertra.console.v1.PodExecution"> & {
  * Use `create(PodExecutionSchema)` to create a new message.
  */
 export const PodExecutionSchema: GenMessage<PodExecution> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_team, 30);
+  messageDesc(file_vertra_console_v1_team, 32);
+
+/**
+ * What someone may do in a team. Any member sees the team's executions,
+ * logs and Pods, and runs its actions; a maintainer also manages its
+ * members and roles, secrets and bots, and submits raw DAGs for it.
+ *
+ * @generated from enum vertra.console.v1.TeamRole
+ */
+export enum TeamRole {
+  /**
+   * @generated from enum value: TEAM_ROLE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TEAM_ROLE_MAINTAINER = 1;
+   */
+  MAINTAINER = 1,
+
+  /**
+   * @generated from enum value: TEAM_ROLE_MEMBER = 2;
+   */
+  MEMBER = 2,
+}
+
+/**
+ * Describes the enum vertra.console.v1.TeamRole.
+ */
+export const TeamRoleSchema: GenEnum<TeamRole> = /*@__PURE__*/
+  enumDesc(file_vertra_console_v1_team, 0);
 
 /**
  * @generated from enum vertra.console.v1.TaskPodState
@@ -736,7 +820,7 @@ export enum TaskPodState {
  * Describes the enum vertra.console.v1.TaskPodState.
  */
 export const TaskPodStateSchema: GenEnum<TaskPodState> = /*@__PURE__*/
-  enumDesc(file_vertra_console_v1_team, 0);
+  enumDesc(file_vertra_console_v1_team, 1);
 
 /**
  * Teams: the unit of tenancy. A team is a console team, a Kubernetes
@@ -834,7 +918,8 @@ export const TeamService: GenService<{
     output: typeof ListMembersResponseSchema;
   },
   /**
-   * Adds someone with an account. At most 30 an hour per caller.
+   * Adds someone with an account, as a member unless role says otherwise.
+   * A maintainer's (or an admin's). At most 30 an hour per caller.
    *
    * @generated from rpc vertra.console.v1.TeamService.AddMember
    */
@@ -844,7 +929,8 @@ export const TeamService: GenService<{
     output: typeof AddMemberResponseSchema;
   },
   /**
-   * Never the team's last person (failed_precondition, LAST_MEMBER).
+   * A maintainer's. Never the team's last maintainer (failed_precondition,
+   * LAST_MAINTAINER).
    *
    * @generated from rpc vertra.console.v1.TeamService.RemoveMember
    */
@@ -852,6 +938,17 @@ export const TeamService: GenService<{
     methodKind: "unary";
     input: typeof RemoveMemberRequestSchema;
     output: typeof RemoveMemberResponseSchema;
+  },
+  /**
+   * Makes someone a maintainer or a member: a maintainer's. Never leaves
+   * the team without a maintainer (failed_precondition, LAST_MAINTAINER).
+   *
+   * @generated from rpc vertra.console.v1.TeamService.SetMemberRole
+   */
+  setMemberRole: {
+    methodKind: "unary";
+    input: typeof SetMemberRoleRequestSchema;
+    output: typeof SetMemberRoleResponseSchema;
   },
   /**
    * Applies the team's reviewed SecretStore file: only SecretStores in its

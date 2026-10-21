@@ -29,7 +29,7 @@ import { GuideService } from "./gen/vertra/console/v1/guide_pb.js";
 import { ImageService, type ImagePolicy as ImagePolicyMessage } from "./gen/vertra/console/v1/image_pb.js";
 import { ProductService } from "./gen/vertra/console/v1/product_pb.js";
 import { SecretService, SecretSource } from "./gen/vertra/console/v1/secret_pb.js";
-import { TaskPodState, TeamService, type Team as TeamMessage } from "./gen/vertra/console/v1/team_pb.js";
+import { TaskPodState, TeamRole, TeamService, type Team as TeamMessage } from "./gen/vertra/console/v1/team_pb.js";
 import { TokenService } from "./gen/vertra/console/v1/token_pb.js";
 import { UserService } from "./gen/vertra/console/v1/user_pb.js";
 import { FailureSchema, ProblemSchema } from "./gen/vertra/console/v1/common_pb.js";
@@ -148,6 +148,8 @@ export interface Me {
   id: string;
   email: string;
   teamNames: string[];
+  /** The teams in teamNames this person maintains (manages). */
+  maintainerOf: string[];
   isAdmin: boolean;
 }
 
@@ -173,7 +175,7 @@ export async function login(email: string, password: string): Promise<string> {
 
 export async function getMe(): Promise<Me> {
   const me = await call(() => auth.getMe({}));
-  return { id: me.userId, email: me.email, teamNames: me.teamNames, isAdmin: me.isAdmin };
+  return { id: me.userId, email: me.email, teamNames: me.teamNames, maintainerOf: me.maintainerOf, isAdmin: me.isAdmin };
 }
 
 export async function createTeam(name: string): Promise<Team> {
@@ -190,8 +192,14 @@ function team(message: TeamMessage | undefined): Team {
   };
 }
 
-export async function addTeamMember(teamName: string, email: string): Promise<void> {
-  await call(() => teams.addMember({ team: teamName, email }));
+/** A maintainer manages the team (people, secrets, bots, raw DAGs); a
+ * member sees its work and runs its actions. See ../../src/auth/access.ts. */
+export type Role = "maintainer" | "member";
+
+const toTeamRole = { maintainer: TeamRole.MAINTAINER, member: TeamRole.MEMBER } as const;
+
+export async function addTeamMember(teamName: string, email: string, role: Role = "member"): Promise<void> {
+  await call(() => teams.addMember({ team: teamName, email, role: toTeamRole[role] }));
 }
 
 export interface TeamMember {
@@ -200,17 +208,30 @@ export interface TeamMember {
   isBot: boolean;
   /** A Vertra admin (platform-wide), not just this team's member. */
   isAdmin: boolean;
+  role: Role;
   addedAt: string;
 }
 
 export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
   const { members } = await call(() => teams.listMembers({ team: teamName }));
-  return members.map((m) => ({ id: m.id, email: m.email, isBot: m.isBot, isAdmin: m.isAdmin, addedAt: iso(m.addedAt) ?? "" }));
+  return members.map((m) => ({
+    id: m.id,
+    email: m.email,
+    isBot: m.isBot,
+    isAdmin: m.isAdmin,
+    role: m.role === TeamRole.MAINTAINER ? "maintainer" : "member",
+    addedAt: iso(m.addedAt) ?? "",
+  }));
 }
 
-/** Refused (409) for a team's last person -- see ../../src/core/teams.ts. */
+/** Refused (409) for a team's last maintainer -- see ../../src/core/teams.ts. */
 export async function removeTeamMember(teamName: string, userId: string): Promise<void> {
   await call(() => teams.removeMember({ team: teamName, userId }));
+}
+
+/** Refused (409) when it would leave the team with no maintainer. */
+export async function setTeamMemberRole(teamName: string, userId: string, role: Role): Promise<void> {
+  await call(() => teams.setMemberRole({ team: teamName, userId, role: toTeamRole[role] }));
 }
 
 /** Admin-only -- see ../../src/core/teams.ts. A non-admin's own teams

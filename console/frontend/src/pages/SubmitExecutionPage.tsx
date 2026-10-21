@@ -52,8 +52,9 @@ export function SubmitExecutionPage() {
 
   // Checked on every edit, but deferred so typing in a long DAG never lags.
   const deferredText = useDeferredValue(text);
-  const teamNames = useMemo(() => (user?.isAdmin ? null : (user?.teamNames ?? [])), [user]);
-  const exampleTeam = user?.teamNames[0] ?? "your-team";
+  // A raw DAG is a maintainer's (../../src/core/executions.ts).
+  const teamNames = useMemo(() => (user?.isAdmin ? null : (user?.maintainerOf ?? [])), [user]);
+  const exampleTeam = user?.maintainerOf[0] ?? user?.teamNames[0] ?? "your-team";
   const exampleSource = allowedSources?.[0];
   // Shown below the editor; generated once per team/source, not per render.
   const example = useMemo(() => exampleFor(exampleTeam, exampleSource), [exampleTeam, exampleSource]);

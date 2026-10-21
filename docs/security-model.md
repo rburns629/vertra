@@ -30,7 +30,8 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Cluster administrators | Everything; they can read any Secret | Outside Vertra's control |
 | Vertra admins (console) | Manage teams, people, bots, allowed image sources; act in any team | Console authorization; every admin action is logged |
 | Catalog reviewers | Decide which product images exist, and which ServiceAccount and secrets each product declares | The catalog repository's review rules (CODEOWNERS, protected branches) |
-| Team members | Run their team's products, register their team's secrets and choose which step gets which, manage their team's bots | Console authorization: team membership, per-product identity, registered team secrets |
+| Team maintainers | Manage their team: its people and their roles, register its secrets and choose which step gets which, its bots, raw DAGs, cancelling its runs | Console authorization (`auth/access.ts`): the maintainer role, per-product identity, registered team secrets |
+| Team members | See their team's runs, logs, Pods and secrets' names; run its actions and what's shared with it | The member role: nothing they can change |
 | Product images | Do their one job with the inputs and secrets they're given | Their namespace, ServiceAccount and mounted secrets; admission policies |
 | Pipelines (bots) | What their token's scopes allow | Scoped, hashed API tokens |
 
@@ -118,7 +119,7 @@ change in Vertra.
    filled in with its product's own (or `default`).
 2. The console checks, before anything runs
    (`console/src/core/executions.ts`):
-   - the caller is a member of every team named, or an admin;
+   - the caller maintains every team named, or is an admin;
    - the step runs as the ServiceAccount its product declares in the catalog,
      or as `default`; only a registered product may mount secrets at all;
    - each secret in `secretRefs` is registered for the step's team.

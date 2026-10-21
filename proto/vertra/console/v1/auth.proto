@@ -62,6 +62,8 @@ message GetMeResponse {
   string email = 2;
   repeated string team_names = 3;
   bool is_admin = 4;
+  // The teams in team_names this person maintains.
+  repeated string maintainer_of = 5;
 }
 
 message ChangePasswordRequest {

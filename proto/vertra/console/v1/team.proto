@@ -48,10 +48,17 @@ service TeamService {
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Adds someone with an account. At most 30 an hour per caller.
+  // Adds someone with an account, as a member unless role says otherwise.
+  // A maintainer's (or an admin's). At most 30 an hour per caller.
   rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
-  // Never the team's last person (failed_precondition, LAST_MEMBER).
+  // A maintainer's. Never the team's last maintainer (failed_precondition,
+  // LAST_MAINTAINER).
   rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+  // Makes someone a maintainer or a member: a maintainer's. Never leaves
+  // the team without a maintainer (failed_precondition, LAST_MAINTAINER).
+  rpc SetMemberRole(SetMemberRoleRequest) returns (SetMemberRoleResponse) {
     option idempotency_level = IDEMPOTENT;
   }
   // Applies the team's reviewed SecretStore file: only SecretStores in its
@@ -82,6 +89,15 @@ message Team {
   google.protobuf.Timestamp deleted_at = 5;
 }
 
+// What someone may do in a team. Any member sees the team's executions,
+// logs and Pods, and runs its actions; a maintainer also manages its
+// members and roles, secrets and bots, and submits raw DAGs for it.
+enum TeamRole {
+  TEAM_ROLE_UNSPECIFIED = 0;
+  TEAM_ROLE_MAINTAINER = 1;
+  TEAM_ROLE_MEMBER = 2;
+}
+
 message Member {
   string id = 1;
   string email = 2;
@@ -89,6 +105,7 @@ message Member {
   // A Vertra admin, not just this team's member.
   bool is_admin = 4;
   google.protobuf.Timestamp added_at = 5;
+  TeamRole role = 6;
 }
 
 message ListTeamsRequest {}
@@ -163,6 +180,8 @@ message ListMembersResponse {
 message AddMemberRequest {
   string team = 1;
   string email = 2;
+  // Unspecified: a member.
+  TeamRole role = 3;
 }
 
 message AddMemberResponse {}
@@ -173,6 +192,15 @@ message RemoveMemberRequest {
 }
 
 message RemoveMemberResponse {}
+
+message SetMemberRoleRequest {
+  string team = 1;
+  string user_id = 2;
+  // Maintainer or member.
+  TeamRole role = 3;
+}
+
+message SetMemberRoleResponse {}
 
 message ApplySecretStoreRequest {
   string team = 1;

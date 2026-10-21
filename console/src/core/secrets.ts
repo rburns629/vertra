@@ -15,7 +15,7 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError } from "../apiError.js";
-import { ensureTeamMember } from "../auth/access.js";
+import { ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import {
@@ -72,7 +72,7 @@ function refuseReservedName(secretName: string): void {
 
 /** The member's team, not retired: a retired team gets nothing new. */
 async function writableTeam(caller: AuthUser | undefined, teamName: string, secretName: string) {
-  ensureTeamMember(caller, teamName);
+  ensureTeamMaintainer(caller, teamName);
   refuseReservedName(secretName);
   const team = await findTeamByName(teamName);
   if (!team) throw new ApiError(404, "NOT_FOUND", `No team named "${teamName}".`);
@@ -174,7 +174,7 @@ export async function revokeSecret(
   secretName: string,
   log: FastifyBaseLogger,
 ): Promise<void> {
-  ensureTeamMember(caller, teamName);
+  ensureTeamMaintainer(caller, teamName);
   const team = await findTeamByName(teamName);
   if (!team) throw new ApiError(404, "NOT_FOUND", "No such team.");
   ensureNotRetired(team);

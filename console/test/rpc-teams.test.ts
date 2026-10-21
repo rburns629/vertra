@@ -85,7 +85,7 @@ describe("a team's members", () => {
     expect((await rpc("TeamService", "GetTeam", { name: team.name }, { token: outsider })).statusCode).toBe(404);
   });
 
-  it("add people, and never remove the last one", async () => {
+  it("add people, and never remove the last maintainer", async () => {
     const team = await createTeam(`${prefix}-grow`);
     const member = await makeUser();
     await addTeamMember(member.id, team.id);
@@ -97,7 +97,7 @@ describe("a team's members", () => {
 
     const last = await rpc("TeamService", "RemoveMember", { team: team.name, userId: member.id }, { token });
     expect(last.json<RpcError>().code).toBe("failed_precondition");
-    expect(failureCode(last.json<RpcError>())).toBe("LAST_MEMBER");
+    expect(failureCode(last.json<RpcError>())).toBe("LAST_MAINTAINER");
   });
 });
 

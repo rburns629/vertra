@@ -54,11 +54,13 @@ export function TeamPage() {
   const { user, refresh } = useAuth();
   const navigate = useNavigate();
   const isMember = user?.teamNames.includes(teamName) ?? false;
-  // Platform admins can manage any team, not just ones they belong to --
-  // see ../../src/core/teams.ts's matching backend check. The forms
-  // below hit the real API either way; this only decides whether to show
-  // them, so a non-admin/non-member never sees a 403 they can't act on.
-  const canManage = isMember || (user?.isAdmin ?? false);
+  // Platform admins can see and manage any team, not just ones they belong
+  // to -- see ../../src/auth/access.ts's matching backend checks. Any
+  // member sees the tabs; only a maintainer gets their forms. The API
+  // refuses either way; this only decides what to show, so nobody sees a
+  // 403 they can't act on.
+  const canSee = isMember || (user?.isAdmin ?? false);
+  const canMaintain = (user?.maintainerOf.includes(teamName) ?? false) || (user?.isAdmin ?? false);
   const [tab, setTab] = useState<TabId>("secrets");
   const [team, setTeam] = useState<Team | null>(null);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export function TeamPage() {
   const [confirmingPurge, setConfirmingPurge] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const retired = Boolean(team?.retiredAt);
-  const counts = useTabCounts(teamName, tab, canManage);
+  const counts = useTabCounts(teamName, tab, canSee);
 
   useEffect(() => {
     setTeam(null);
@@ -119,6 +121,7 @@ export function TeamPage() {
         </Typography>
         {retired && <Chip label="Retired" size="small" color="warning" />}
         {!isMember && user?.isAdmin && <Chip label="viewing as admin" size="small" />}
+        {isMember && !canMaintain && <Chip label="Member: view only" size="small" variant="outlined" />}
         {user?.isAdmin && team && (
           <Button
             size="small"
@@ -187,10 +190,9 @@ export function TeamPage() {
         }}
       />
 
-      {!canManage ? (
+      {!canSee ? (
         <Alert severity="info">
-          You're not a member of "{teamName}" -- only current members (or an admin) can add
-          people or register secrets for it.
+          You're not a member of "{teamName}". Its maintainers (or an admin) can add you.
         </Alert>
       ) : (
         <>
@@ -210,7 +212,10 @@ export function TeamPage() {
                 ["automation", "Automation"],
                 ["running", "Running now"],
               ] as [TabId, string][]
-            ).map(([id, label]) => (
+            )
+              // Bots are a maintainer's to see and manage.
+              .filter(([id]) => id !== "automation" || canMaintain)
+              .map(([id, label]) => (
               <Tab
                 key={id}
                 value={id}
@@ -228,15 +233,19 @@ export function TeamPage() {
           {tab === "members" && (
             <MembersTab
               teamName={teamName}
-              readOnly={retired}
+              readOnly={retired || !canMaintain}
               currentUserId={user?.id}
-              onShowAutomation={() => {
-                setTab("automation");
-              }}
+              onShowAutomation={
+                canMaintain
+                  ? () => {
+                      setTab("automation");
+                    }
+                  : undefined
+              }
             />
           )}
-          {tab === "secrets" && <SecretsTab teamName={teamName} readOnly={retired} />}
-          {tab === "automation" && <AutomationTab teamName={teamName} readOnly={retired} />}
+          {tab === "secrets" && <SecretsTab teamName={teamName} readOnly={retired || !canMaintain} />}
+          {tab === "automation" && canMaintain && <AutomationTab teamName={teamName} readOnly={retired} />}
           {tab === "running" && <RunningTab teamName={teamName} />}
         </>
       )}

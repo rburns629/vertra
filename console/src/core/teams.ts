@@ -18,7 +18,7 @@ import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
-import { canActForTeam, ensureTeamMember } from "../auth/access.js";
+import { canActForTeam, ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
 import { config } from "../config.js";
@@ -35,8 +35,11 @@ import {
   listSubmittedExecutionsForTeams,
   purgeTeam as purgeTeamRecords,
   removeTeamMember,
+  setTeamMemberRole,
   setTeamRetired,
+  type TeamMember,
 } from "../db/queries.js";
+import type { TeamRole } from "../db/schema.js";
 import {
   applySecretStoreObjects,
   deleteTeamNamespace,
@@ -166,23 +169,50 @@ async function memberTeam(caller: AuthUser | undefined, name: string) {
   return team;
 }
 
-/** Adds someone with an account. TeamService limits how often. */
-export async function addMember(caller: AuthUser | undefined, teamName: string, email: string): Promise<void> {
-  const team = await memberTeam(caller, teamName);
+async function maintainedTeam(caller: AuthUser | undefined, name: string) {
+  ensureTeamMaintainer(caller, name);
+  const team = await findTeamByName(name);
+  if (!team) throw noSuchTeam();
+  return team;
+}
+
+/** Adds someone with an account, as a member unless a maintainer is asked
+ * for. A maintainer's job; TeamService limits how often. */
+export async function addMember(
+  caller: AuthUser | undefined,
+  teamName: string,
+  email: string,
+  role: TeamRole = "member",
+): Promise<void> {
+  const team = await maintainedTeam(caller, teamName);
   ensureNotRetired(team);
   const user = await findUserByEmail(email);
   if (!user) throw new ApiError(404, "NOT_FOUND", "No such user.");
-  await addTeamMember(user.id, team.id);
+  await addTeamMember(user.id, team.id, role);
 }
 
+/** Everyone in the team, with their roles: any member may see them. */
 export async function members(caller: AuthUser | undefined, teamName: string) {
   return listMembersForTeam((await memberTeam(caller, teamName)).id);
 }
 
+/** Refused when it would leave the team with no person who maintains it:
+ * nobody but an admin could then manage it. Bots don't count. */
+function ensureAMaintainerStays(team: { name: string }, all: TeamMember[], leaving: TeamMember): void {
+  if (leaving.isBot || leaving.role !== "maintainer") return;
+  const others = all.filter((m) => !m.isBot && m.role === "maintainer" && m.id !== leaving.id);
+  if (others.length === 0) {
+    throw new ApiError(
+      409,
+      "LAST_MAINTAINER",
+      `${leaving.email} is the only person who maintains "${team.name}". Make someone else a maintainer first.`,
+    );
+  }
+}
+
 /**
- * Removes someone: the same rule as adding. A team never loses its last
- * person this way, since nobody but an admin could then manage it; add the
- * replacement first. Bots can always be removed.
+ * Removes someone: a maintainer's job. A team never loses its last
+ * maintainer this way; make another first. Bots can always be removed.
  */
 export async function removeMember(
   caller: AuthUser | undefined,
@@ -190,17 +220,34 @@ export async function removeMember(
   userId: string,
   log: FastifyBaseLogger,
 ): Promise<void> {
-  const team = await memberTeam(caller, teamName);
+  const team = await maintainedTeam(caller, teamName);
   ensureNotRetired(team);
   const all = await listMembersForTeam(team.id);
   const target = all.find((m) => m.id === userId);
   if (!target) throw new ApiError(404, "NOT_FOUND", "Not a member of this team.");
-  const humans = all.filter((m) => !m.isBot);
-  if (!target.isBot && humans.length === 1) {
-    throw new ApiError(409, "LAST_MEMBER", `${target.email} is the only person in "${team.name}". Add someone else first.`);
-  }
+  ensureAMaintainerStays(team, all, target);
   await removeTeamMember(target.id, team.id);
   log.info({ team: team.name, removed: target.email, removedBy: caller?.id }, "team member removed");
+}
+
+/** Makes someone a maintainer or a member: a maintainer's job, never
+ * leaving the team without a maintainer. */
+export async function setMemberRole(
+  caller: AuthUser | undefined,
+  teamName: string,
+  userId: string,
+  role: TeamRole,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  const team = await maintainedTeam(caller, teamName);
+  ensureNotRetired(team);
+  const all = await listMembersForTeam(team.id);
+  const target = all.find((m) => m.id === userId);
+  if (!target) throw new ApiError(404, "NOT_FOUND", "Not a member of this team.");
+  if (target.role === role) return;
+  if (role === "member") ensureAMaintainerStays(team, all, target);
+  await setTeamMemberRole(target.id, team.id, role);
+  log.info({ team: team.name, member: target.email, role, by: caller?.id }, "team member's role changed");
 }
 
 function requireRetireRight(caller: AuthUser | undefined): void {
@@ -331,7 +378,7 @@ export async function setSecretStoreCredential(
   credential: string,
   log: FastifyBaseLogger,
 ): Promise<void> {
-  const team = await memberTeam(caller, name);
+  const team = await maintainedTeam(caller, name);
   ensureNotRetired(team);
   await applySecretStoreObjects(team.name, [], credential);
   log.info({ team: team.name, by: caller?.id }, "secret store credential set");

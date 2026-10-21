@@ -57,6 +57,9 @@ const (
 	// TeamServiceRemoveMemberProcedure is the fully-qualified name of the TeamService's RemoveMember
 	// RPC.
 	TeamServiceRemoveMemberProcedure = "/vertra.console.v1.TeamService/RemoveMember"
+	// TeamServiceSetMemberRoleProcedure is the fully-qualified name of the TeamService's SetMemberRole
+	// RPC.
+	TeamServiceSetMemberRoleProcedure = "/vertra.console.v1.TeamService/SetMemberRole"
 	// TeamServiceApplySecretStoreProcedure is the fully-qualified name of the TeamService's
 	// ApplySecretStore RPC.
 	TeamServiceApplySecretStoreProcedure = "/vertra.console.v1.TeamService/ApplySecretStore"
@@ -92,10 +95,15 @@ type TeamServiceClient interface {
 	PurgeTeam(context.Context, *connect.Request[v1.PurgeTeamRequest]) (*connect.Response[v1.PurgeTeamResponse], error)
 	// The team's members, bots included.
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
-	// Adds someone with an account. At most 30 an hour per caller.
+	// Adds someone with an account, as a member unless role says otherwise.
+	// A maintainer's (or an admin's). At most 30 an hour per caller.
 	AddMember(context.Context, *connect.Request[v1.AddMemberRequest]) (*connect.Response[v1.AddMemberResponse], error)
-	// Never the team's last person (failed_precondition, LAST_MEMBER).
+	// A maintainer's. Never the team's last maintainer (failed_precondition,
+	// LAST_MAINTAINER).
 	RemoveMember(context.Context, *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error)
+	// Makes someone a maintainer or a member: a maintainer's. Never leaves
+	// the team without a maintainer (failed_precondition, LAST_MAINTAINER).
+	SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error)
 	// Applies the team's reviewed SecretStore file: only SecretStores in its
 	// namespace, credentials only from eso-auth, and ESO's own
 	// ServiceAccounts; anything else is refused with every problem listed.
@@ -188,6 +196,13 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		setMemberRole: connect.NewClient[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse](
+			httpClient,
+			baseURL+TeamServiceSetMemberRoleProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("SetMemberRole")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		applySecretStore: connect.NewClient[v1.ApplySecretStoreRequest, v1.ApplySecretStoreResponse](
 			httpClient,
 			baseURL+TeamServiceApplySecretStoreProcedure,
@@ -224,6 +239,7 @@ type teamServiceClient struct {
 	listMembers              *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
 	addMember                *connect.Client[v1.AddMemberRequest, v1.AddMemberResponse]
 	removeMember             *connect.Client[v1.RemoveMemberRequest, v1.RemoveMemberResponse]
+	setMemberRole            *connect.Client[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse]
 	applySecretStore         *connect.Client[v1.ApplySecretStoreRequest, v1.ApplySecretStoreResponse]
 	setSecretStoreCredential *connect.Client[v1.SetSecretStoreCredentialRequest, v1.SetSecretStoreCredentialResponse]
 	listPods                 *connect.Client[v1.ListPodsRequest, v1.ListPodsResponse]
@@ -279,6 +295,11 @@ func (c *teamServiceClient) RemoveMember(ctx context.Context, req *connect.Reque
 	return c.removeMember.CallUnary(ctx, req)
 }
 
+// SetMemberRole calls vertra.console.v1.TeamService.SetMemberRole.
+func (c *teamServiceClient) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
+	return c.setMemberRole.CallUnary(ctx, req)
+}
+
 // ApplySecretStore calls vertra.console.v1.TeamService.ApplySecretStore.
 func (c *teamServiceClient) ApplySecretStore(ctx context.Context, req *connect.Request[v1.ApplySecretStoreRequest]) (*connect.Response[v1.ApplySecretStoreResponse], error) {
 	return c.applySecretStore.CallUnary(ctx, req)
@@ -319,10 +340,15 @@ type TeamServiceHandler interface {
 	PurgeTeam(context.Context, *connect.Request[v1.PurgeTeamRequest]) (*connect.Response[v1.PurgeTeamResponse], error)
 	// The team's members, bots included.
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
-	// Adds someone with an account. At most 30 an hour per caller.
+	// Adds someone with an account, as a member unless role says otherwise.
+	// A maintainer's (or an admin's). At most 30 an hour per caller.
 	AddMember(context.Context, *connect.Request[v1.AddMemberRequest]) (*connect.Response[v1.AddMemberResponse], error)
-	// Never the team's last person (failed_precondition, LAST_MEMBER).
+	// A maintainer's. Never the team's last maintainer (failed_precondition,
+	// LAST_MAINTAINER).
 	RemoveMember(context.Context, *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error)
+	// Makes someone a maintainer or a member: a maintainer's. Never leaves
+	// the team without a maintainer (failed_precondition, LAST_MAINTAINER).
+	SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error)
 	// Applies the team's reviewed SecretStore file: only SecretStores in its
 	// namespace, credentials only from eso-auth, and ESO's own
 	// ServiceAccounts; anything else is refused with every problem listed.
@@ -411,6 +437,13 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	teamServiceSetMemberRoleHandler := connect.NewUnaryHandler(
+		TeamServiceSetMemberRoleProcedure,
+		svc.SetMemberRole,
+		connect.WithSchema(teamServiceMethods.ByName("SetMemberRole")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	teamServiceApplySecretStoreHandler := connect.NewUnaryHandler(
 		TeamServiceApplySecretStoreProcedure,
 		svc.ApplySecretStore,
@@ -454,6 +487,8 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 			teamServiceAddMemberHandler.ServeHTTP(w, r)
 		case TeamServiceRemoveMemberProcedure:
 			teamServiceRemoveMemberHandler.ServeHTTP(w, r)
+		case TeamServiceSetMemberRoleProcedure:
+			teamServiceSetMemberRoleHandler.ServeHTTP(w, r)
 		case TeamServiceApplySecretStoreProcedure:
 			teamServiceApplySecretStoreHandler.ServeHTTP(w, r)
 		case TeamServiceSetSecretStoreCredentialProcedure:
@@ -507,6 +542,10 @@ func (UnimplementedTeamServiceHandler) AddMember(context.Context, *connect.Reque
 
 func (UnimplementedTeamServiceHandler) RemoveMember(context.Context, *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.RemoveMember is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.SetMemberRole is not implemented"))
 }
 
 func (UnimplementedTeamServiceHandler) ApplySecretStore(context.Context, *connect.Request[v1.ApplySecretStoreRequest]) (*connect.Response[v1.ApplySecretStoreResponse], error) {

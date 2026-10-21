@@ -16,19 +16,32 @@ import {
   retireTeam,
   SecretStoreCredential,
   SecretStoreDocuments,
+  setMemberRole,
   setSecretStoreCredential,
   teamPods,
   teamRecord,
   TeamName,
   unretireTeam,
 } from "../../core/teams.js";
-import { TaskPodState, type TeamService } from "../../gen/vertra/console/v1/team_pb.js";
+import { TaskPodState, TeamRole, type TeamService } from "../../gen/vertra/console/v1/team_pb.js";
+import type { TeamRole as Role } from "../../db/schema.js";
 import { timestamp } from "../convert.js";
 import { callerOf, logOf } from "../context.js";
+import { badRequest } from "../errors.js";
 import { FixedWindowLimit } from "../rateLimit.js";
 import { check } from "../validate.js";
 
 const AnyTeam = Type.String({ minLength: 1 });
+
+const toRole = { maintainer: TeamRole.MAINTAINER, member: TeamRole.MEMBER } as const;
+
+/** The role asked for; `whenUnspecified` (adding someone), or a refusal. */
+function roleOf(role: TeamRole, whenUnspecified?: Role): Role {
+  if (role === TeamRole.MAINTAINER) return "maintainer";
+  if (role === TeamRole.MEMBER) return "member";
+  if (whenUnspecified) return whenUnspecified;
+  throw badRequest("Maintainer or member.", "role");
+}
 
 // "No such user" tells a member whether an email has an account, which
 // adding by email can't avoid: limited per caller.
@@ -106,6 +119,7 @@ export function teamService(): ServiceImpl<typeof TeamService> {
           isBot: member.isBot,
           isAdmin: member.isAdmin,
           addedAt: timestamp(member.addedAt),
+          role: toRole[member.role],
         })),
       };
     },
@@ -114,13 +128,19 @@ export function teamService(): ServiceImpl<typeof TeamService> {
       const caller = callerOf(ctx);
       addMemberLimit.take(`members:${caller.id}`, ctx);
       const { team: name, email } = check({ team: AnyTeam, email: MemberEmail }, req);
-      await addMember(caller, name, email);
+      await addMember(caller, name, email, roleOf(req.role, "member"));
       return {};
     },
 
     async removeMember(req, ctx) {
       const { team: name, userId } = check({ team: AnyTeam, userId: MemberId }, req);
       await removeMember(callerOf(ctx), name, userId, logOf(ctx));
+      return {};
+    },
+
+    async setMemberRole(req, ctx) {
+      const { team: name, userId } = check({ team: AnyTeam, userId: MemberId }, req);
+      await setMemberRole(callerOf(ctx), name, userId, roleOf(req.role), logOf(ctx));
       return {};
     },
 

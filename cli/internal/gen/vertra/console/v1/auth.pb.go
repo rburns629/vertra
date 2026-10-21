@@ -350,11 +350,13 @@ func (*GetMeRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetMeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	TeamNames     []string               `protobuf:"bytes,3,rep,name=team_names,json=teamNames,proto3" json:"team_names,omitempty"`
-	IsAdmin       bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	UserId    string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email     string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	TeamNames []string               `protobuf:"bytes,3,rep,name=team_names,json=teamNames,proto3" json:"team_names,omitempty"`
+	IsAdmin   bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	// The teams in team_names this person maintains.
+	MaintainerOf  []string `protobuf:"bytes,5,rep,name=maintainer_of,json=maintainerOf,proto3" json:"maintainer_of,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -415,6 +417,13 @@ func (x *GetMeResponse) GetIsAdmin() bool {
 		return x.IsAdmin
 	}
 	return false
+}
+
+func (x *GetMeResponse) GetMaintainerOf() []string {
+	if x != nil {
+		return x.MaintainerOf
+	}
+	return nil
 }
 
 type ChangePasswordRequest struct {
@@ -533,13 +542,14 @@ const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
 	"\rLoginResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"\x0e\n" +
-	"\fGetMeRequest\"x\n" +
+	"\fGetMeRequest\"\x9d\x01\n" +
 	"\rGetMeResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1d\n" +
 	"\n" +
 	"team_names\x18\x03 \x03(\tR\tteamNames\x12\x19\n" +
-	"\bis_admin\x18\x04 \x01(\bR\aisAdmin\"e\n" +
+	"\bis_admin\x18\x04 \x01(\bR\aisAdmin\x12#\n" +
+	"\rmaintainer_of\x18\x05 \x03(\tR\fmaintainerOf\"e\n" +
 	"\x15ChangePasswordRequest\x12)\n" +
 	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\".\n" +

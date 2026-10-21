@@ -15,6 +15,7 @@ import {
 } from "../src/db/queries.js";
 import { submittedExecutions, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { loadExecution } from "../src/auth/access.js";
 import { KernelApiError, cancelExecution, retryTask, submitExecution } from "../src/kernel/client.js";
 import { ensureServiceAccount } from "../src/k8s.js";
 import { missingImages, pinImages } from "../src/registry.js";
@@ -538,5 +539,53 @@ describe("recording a submission", () => {
     vi.mocked(recordSubmittedExecution).mockRejectedValueOnce(new Error("database unavailable"));
     expect((await submit({ image: "unregistered-image:1", serviceAccount: "default" })).code).toBe("internal");
     expect(cancelExecution).not.toHaveBeenCalled();
+  });
+});
+
+describe("a member who isn't a maintainer", () => {
+  let memberToken: string;
+  let memberId: string;
+
+  beforeAll(async () => {
+    const email = `plain-member-${randomUUID()}@example.com`;
+    userEmails.push(email);
+    const user = await createUser(email, await hashPassword("correct-horse-battery"));
+    memberId = user.id;
+    await addTeamMember(user.id, teamId, "member");
+    memberToken = app.jwt.sign({ userId: user.id });
+  });
+
+  async function recordedFor(teamsOf: string[]): Promise<string> {
+    const executionId = randomUUID();
+    recordedExecutionIds.push(executionId);
+    const payload = { tasks: [{ id: "t", image: "some-image:latest", action: "create", team: teamName, serviceAccount: GRANTEE }] };
+    await recordSubmittedExecution({ executionId, teams: teamsOf, submittedBy: userId, name: "roles", payload });
+    return executionId;
+  }
+
+  it("can't submit a raw DAG for the team", async () => {
+    const response = await call<RpcError>(memberToken, "ExecutionService/SubmitExecution", {
+      dag: { name: "roles", tasks: [{ id: "t", image: "unregistered-image:1", action: "create", team: teamName }] },
+    });
+    expect(response.code).toBe("permission_denied");
+    expect(response.message).toContain("a member, not a maintainer");
+    expect(submitExecution).not.toHaveBeenCalled();
+  });
+
+  it("can't cancel or retry the team's runs", async () => {
+    const id = await recordedFor([teamName]);
+    expect((await call(memberToken, "ExecutionService/CancelExecution", { executionId: id })).code).toBe("permission_denied");
+    expect((await call(memberToken, "ExecutionService/RetryTask", { executionId: id, taskId: "t" })).code).toBe(
+      "permission_denied",
+    );
+    expect(cancelExecution).not.toHaveBeenCalled();
+    expect(retryTask).not.toHaveBeenCalled();
+  });
+
+  it("still sees the team's runs", async () => {
+    const id = await recordedFor([teamName]);
+    const asMember = { id: memberId, teamNames: [teamName], maintainerOf: [], isAdmin: false };
+    await expect(loadExecution(id, asMember, "any")).resolves.toMatchObject({ executionId: id });
+    await expect(loadExecution(id, asMember, "every")).rejects.toThrow("Not a maintainer");
   });
 });

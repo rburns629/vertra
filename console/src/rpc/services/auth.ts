@@ -83,7 +83,13 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       const user = await findUserById(caller.id);
       // A deleted account outliving its own still-valid token.
       if (!user) throw unauthenticated("Account no longer exists.");
-      return { userId: user.id, email: user.email, teamNames: caller.teamNames, isAdmin: user.isAdmin };
+      return {
+        userId: user.id,
+        email: user.email,
+        teamNames: caller.teamNames,
+        maintainerOf: caller.maintainerOf,
+        isAdmin: user.isAdmin,
+      };
     },
 
     async changePassword(req, ctx) {

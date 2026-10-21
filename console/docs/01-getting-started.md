@@ -33,7 +33,7 @@ One pull request creates your team. Merging it sets up your namespace and your t
 3. Add your team's line to `.github/CODEOWNERS`, with the other teams' lines: `/teams/team-a/ @<your-org>/<your-team>`. From then on, your team approves changes to your products.
 4. Open a pull request. A catalog admin approves it, since it changes `.github/`. The `check-new-team-names` check fails if the name is taken or was used before; pick another.
 5. Merge once it's approved.
-6. Ask a Vertra admin to add you to the `team-a` team. A new team starts empty, so its first member comes from an admin; after that, any member adds teammates on the Members tab.
+6. Ask a Vertra admin to add you to the `team-a` team. A new team starts empty, so its first person comes from an admin, as a maintainer; after that, its maintainers add teammates on the Members tab, as members (who see the team's work and run its actions) or maintainers (who also manage it).
 
 **You're done when** the console's Teams page lists `team-a` and you can open it.
 

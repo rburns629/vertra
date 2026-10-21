@@ -52,6 +52,7 @@ import { fetchRelease } from "./registry.js";
 const CATALOG: AuthUser = {
   id: "catalog-sync",
   teamNames: [],
+  maintainerOf: [],
   isAdmin: false,
   scopes: [SCOPES.TEAMS_CREATE, SCOPES.TEAMS_RETIRE, SCOPES.PRODUCTS_REGISTER, SCOPES.SECRET_STORES_APPLY],
 };

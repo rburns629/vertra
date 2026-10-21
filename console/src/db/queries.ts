@@ -16,6 +16,7 @@ import {
   wiringTypes,
   templates,
   type ProductResources,
+  type TeamRole,
   type TemplateStep,
 } from "./schema.js";
 
@@ -148,8 +149,20 @@ export async function purgeTeam(teamId: string): Promise<{ revokedBotTokens: num
   });
 }
 
-export async function addTeamMember(userId: string, teamId: string): Promise<void> {
-  await db.insert(teamMemberships).values({ userId, teamId }).onConflictDoNothing();
+/** Adds someone, as a maintainer unless said otherwise; someone already in
+ * the team keeps the role they have. */
+export async function addTeamMember(userId: string, teamId: string, role: TeamRole = "maintainer"): Promise<void> {
+  await db.insert(teamMemberships).values({ userId, teamId, role }).onConflictDoNothing();
+}
+
+/** False when the user isn't a member. */
+export async function setTeamMemberRole(userId: string, teamId: string, role: TeamRole): Promise<boolean> {
+  const updated = await db
+    .update(teamMemberships)
+    .set({ role })
+    .where(and(eq(teamMemberships.userId, userId), eq(teamMemberships.teamId, teamId)))
+    .returning({ userId: teamMemberships.userId });
+  return updated.length > 0;
 }
 
 /** False when the user wasn't a member. */
@@ -230,12 +243,16 @@ export async function countAdmins(): Promise<number> {
  * into a JWT, is the live authorization source checked on every request,
  * so a membership change takes effect immediately, not at next login. */
 export async function teamNamesForUser(userId: string): Promise<string[]> {
-  const rows = await db
-    .select({ name: teams.name })
+  return (await teamRolesForUser(userId)).map((row) => row.name);
+}
+
+/** Every team a user belongs to, and as what: the same live source. */
+export async function teamRolesForUser(userId: string): Promise<{ name: string; role: TeamRole }[]> {
+  return db
+    .select({ name: teams.name, role: teamMemberships.role })
     .from(teamMemberships)
     .innerJoin(teams, eq(teams.id, teamMemberships.teamId))
     .where(eq(teamMemberships.userId, userId));
-  return rows.map((row) => row.name);
 }
 
 /** Idempotent: reuses the bot user if one with this email already exists
@@ -377,6 +394,7 @@ export interface TeamMember {
   email: string;
   isBot: boolean;
   isAdmin: boolean;
+  role: TeamRole;
   addedAt: Date;
 }
 
@@ -391,6 +409,7 @@ export async function listMembersForTeam(teamId: string): Promise<TeamMember[]> 
       email: users.email,
       isBot: users.isBot,
       isAdmin: users.isAdmin,
+      role: teamMemberships.role,
       addedAt: teamMemberships.createdAt,
     })
     .from(teamMemberships)

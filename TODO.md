@@ -405,8 +405,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   registration and daily, records the principal, and shows what's missing.
 - [ ] **P2: caps per product, and schedules** (a template on a cron, run as
   a bot).
-- [ ] **P1: roles** (admin, maintainer, consumer), then SSO with groups
-  mapped to them.
+- [x] **P1: roles** (done 2026-10-21): a team's people are maintainers or
+  members (`team_memberships.role`; memberships from before are
+  maintainers). Members see the team's runs, logs, Pods and secrets'
+  names, and run its actions; maintainers also manage people and roles,
+  secrets, bots, raw DAGs and cancelling its runs. Everyone signed in is a
+  consumer of what's shared with their teams. Managed on the team's
+  Members tab (`TeamService/SetMemberRole`); never without a maintainer
+  (`LAST_MAINTAINER`). Bots, and people an admin creates in a team, are
+  maintainers. Left: SSO groups mapped to roles (with SSO sign-in).
 - [ ] **P1: `visibility` on actions** and "not shared with you" with Ask
   for access, which opens GitHub's prefilled page in the person's browser
   (the console keeps read-only catalog access). New actions are shared
