@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs ./catalogctl in a catalog assembled from catalog-template/, with
+# Runs ./vertra in a catalog assembled from catalog-template/, with
 # samples installed as teams (each folder under samples/ copied to teams/,
 # with its CODEOWNERS line), so samples are checked and can be published as
 # the catalog a new install starts with.
@@ -20,11 +20,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 cp -R "$template/." "$work"
-rm -rf "$work/.catalogctl"
-# This checkout's catalogctl, not the template's pinned release.
-if [ -z "${VERTRA_CATALOGCTL:-}" ]; then
-  VERTRA_CATALOGCTL=$(bash "$root/.github/scripts/build-catalogctl.sh")
-  export VERTRA_CATALOGCTL
+rm -rf "$work/.vertra"
+# This checkout's vertra, not the template's pinned release.
+if [ -z "${VERTRA_BIN:-}" ]; then
+  VERTRA_BIN=$(bash "$root/.github/scripts/build-vertra.sh")
+  export VERTRA_BIN
 fi
 for team in $samples; do
   [ -d "$template/samples/$team" ] || { echo "No sample named $team in catalog-template/samples/." >&2; exit 1; }
@@ -41,7 +41,7 @@ cd "$work"
 command=()
 for arg in "$@" --; do
   if [ "$arg" = "--" ]; then
-    [ ${#command[@]} -eq 0 ] || ./catalogctl "${command[@]}"
+    [ ${#command[@]} -eq 0 ] || ./vertra catalog "${command[@]}"
     command=()
   else
     command+=("$arg")

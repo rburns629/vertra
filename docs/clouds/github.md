@@ -1,6 +1,6 @@
 # Getting GitHub ready for the catalog
 
-`vertra catalog` creates the catalog repository with `gh`, as you.
+`vertra catalog create` creates the catalog repository with `gh`, as you.
 
 ## Sign in
 

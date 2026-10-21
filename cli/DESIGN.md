@@ -40,7 +40,8 @@ releases, multi-cluster installs, or a hosted service.
 vertra init <env>        ask the questions, write deploy/<env>/vertra.yaml
 vertra check [<env>]     read-only: tools, sign-ins, policies, what exists, what's missing
 vertra apply [<env>]     plan, show the approval screen, then create or change and install
-vertra catalog [<env>]   create the catalog repository and the first team, smoke-test it
+vertra catalog create [<env>]   create the catalog repository and the first team, smoke-test it
+vertra catalog check|publish|release|...   a catalog's own commands, run in it (its CI runs them through ./vertra)
 vertra status [<env>]    what's running, awake or asleep, versions, last plan
 vertra sleep|wake [<env>]
 vertra console [<env>]   reach the console on localhost (a port-forward with the CLI's own tools)
@@ -406,7 +407,7 @@ console is public; `apply` then reserves the console's global address
 name by default, and `trustProxy` for Google's front ends) and the
 federation (a Workload Identity pool whose provider accepts only the
 repository's `main`, and a publish identity that may write the task
-registry). `vertra catalog` sets the variables before the push (the
+registry). `vertra catalog create` sets the variables before the push (the
 console makes the team when it applies the first release), and
 creates the Environments only where the plan has them (a public
 repository, or a paid plan; GitHub doesn't always report the plan, and an
@@ -439,7 +440,7 @@ waits, and retries. Missing scopes go through `gh auth refresh -s <scope>`.
 secrets, environments, protected branches, code owners, OIDC subject format,
 authorization errors), implemented for GitHub with `gh`, then GitLab with
 `glab` (gitlab.com and self-managed; public, internal, private), with the
-catalog template gaining GitLab CI wrappers over catalogctl.
+catalog template gaining GitLab CI wrappers over vertra catalog.
 
 ## `destroy`
 
@@ -519,17 +520,17 @@ arm64, signed, attached to the GitHub release, and a Homebrew formula.
 Steps 1–5 are done. On 2026-10-19 Azure and GitLab were set aside to work
 on the platform and its user experience first
 ([`docs/assessment.md`](../docs/assessment.md)): pull-based catalog
-registration changes what `vertra catalog` does, so it comes before
+registration changes what `vertra catalog create` does, so it comes before
 the CLI is called finished.
 
-`catalogctl` moves here too (decided 2026-10-20; ported the same day): a
-second binary from this module (`cmd/catalogctl`, `internal/catalogctl`),
-sharing its console client, which each catalog's `./catalogctl` wrapper
-downloads (pinned, checksum-verified) instead of setting up a Python
-virtualenv. Its commands stay the same. It embeds the schemas it checks
+The catalog tool moved here too (decided 2026-10-20; ported the same day),
+first as a second binary, `catalogctl`; since 2026-10-21 it's part of
+`vertra` itself, one command line for everything: `vertra catalog ...`
+(`cmd/vertra/catalog_commands.go`, `internal/catalogtool`), which each
+catalog's `./vertra` wrapper downloads (pinned, checksum-verified). Its commands stay the same. It embeds the schemas it checks
 `product.yaml` and `team.yaml` against, so a catalog's pull request can't
-loosen them. Until a release is pinned in the wrapper, `VERTRA_CATALOGCTL`
-names a binary built from a checkout (`.github/scripts/build-catalogctl.sh`).
+loosen them. Until a release is pinned in the wrapper, `VERTRA_BIN`
+names a binary built from a checkout (`.github/scripts/build-vertra.sh`).
 
 ## Open questions
 

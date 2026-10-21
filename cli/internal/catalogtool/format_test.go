@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package catalogctl
+package catalogtool
 
 import (
 	"os"
@@ -71,9 +71,9 @@ func TestFormatVersionIsRequired(t *testing.T) {
 	})
 	out := errorsOf(t, (*Catalog).ValidateTeams, c)
 	for _, want := range []string{
-		"teams/a/team.yaml: written in the catalog format from before v2 (it has no apiVersion): ./catalogctl migrate rewrites it",
+		"teams/a/team.yaml: written in the catalog format from before v2 (it has no apiVersion): ./vertra catalog migrate rewrites it",
 		"teams/b/team.yaml: kind 'Product': this file is kind Team",
-		"teams/c/team.yaml: apiVersion 'vertra.dev/v1': this catalogctl reads vertra.dev/v2",
+		"teams/c/team.yaml: apiVersion 'vertra.dev/v1': this vertra reads vertra.dev/v2",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("no %q in:\n%s", want, out)
@@ -210,10 +210,10 @@ func TestMigrateFromBeforeTheRename(t *testing.T) {
 		"teams/a/products/mine/tests/run/says-hi/expected.json": `{"status": "succeeded"}`,
 		FormerSettingsFile:                                      "registry: registry.example/catalog\n",
 	})
-	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(c.AllProducts()[0]) }, c); !strings.Contains(out, "./catalogctl migrate rewrites it to "+APIVersion) {
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(c.AllProducts()[0]) }, c); !strings.Contains(out, "./vertra catalog migrate rewrites it to "+APIVersion) {
 		t.Errorf("the old apiVersion: %s", out)
 	}
-	if _, err := c.Settings(); err == nil || !strings.Contains(err.Error(), "./catalogctl migrate renames it") {
+	if _, err := c.Settings(); err == nil || !strings.Contains(err.Error(), "./vertra catalog migrate renames it") {
 		t.Errorf("the old settings file: %v", err)
 	}
 

@@ -116,7 +116,7 @@ func For(target string, fromSource bool) []Requirement {
 	return reqs
 }
 
-// ForCatalog returns the tools `vertra catalog` needs on GitHub.
+// ForCatalog returns the tools `vertra catalog create` needs on GitHub.
 func ForCatalog() []Requirement {
 	return []Requirement{
 		{Tool: "git", Why: "the catalog's first commit"},

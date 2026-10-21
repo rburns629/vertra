@@ -72,7 +72,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.hostname, "hostname", "", "the console's public hostname (gcp default: a nip.io name; aws default: console.<zone>)")
 	fl.StringVar(&f.console, "console", "", "gcp, aws: private (reached with `vertra console`) or public (HTTPS from the internet)")
 	fl.StringVar(&f.zone, "zone", "", "aws: a DNS zone for the console's public address, created in Route 53 for you to delegate (e.g. vertra.example.com)")
-	fl.BoolVar(&f.noCatalog, "no-catalog", false, "gcp: no catalog repository (`vertra catalog` creates one)")
+	fl.BoolVar(&f.noCatalog, "no-catalog", false, "gcp: no catalog repository (`vertra catalog create` creates one)")
 	fl.StringVar(&f.catalogOwner, "catalog-owner", "", "the catalog's GitHub owner, an account or organization (default: you)")
 	fl.StringVar(&f.catalogRepo, "catalog-repo", "", "the catalog repository's name (default vertra-catalog)")
 	fl.BoolVar(&f.useExistingCatalog, "catalog-use-existing", false, "if the catalog repository exists, use it (its contents stay)")
@@ -328,11 +328,11 @@ func validEmail(s string) error {
 }
 
 // askCatalog asks where the catalog repository goes (created later by
-// `vertra catalog`; apply needs it now for its CI's federation).
+// `vertra catalog create`; apply needs it now for its CI's federation).
 func (a *app) askCatalog(ctx context.Context, out io.Writer, c *config.Config, f *initFlags) error {
 	var err error
 	want := !f.noCatalog
-	if want, err = a.ask.Confirm("Create a catalog repository on GitHub? (`vertra catalog`, after apply)", want); err != nil || !want {
+	if want, err = a.ask.Confirm("Create a catalog repository on GitHub? (`vertra catalog create`, after apply)", want); err != nil || !want {
 		return err
 	}
 	login, err := a.githubAccess(ctx, out, c)
@@ -363,7 +363,7 @@ func (a *app) askCatalog(ctx context.Context, out io.Writer, c *config.Config, f
 			def = "use"
 		}
 		choice, err := a.ask.Choose(fmt.Sprintf("github.com/%s already exists:", cat.Repo()), []prompt.Option{
-			{Value: "use", Label: "use it", Note: "its contents stay; `vertra catalog` sets its variables, secrets and federation for this install"},
+			{Value: "use", Label: "use it", Note: "its contents stay; `vertra catalog create` sets its variables, secrets and federation for this install"},
 			{Value: "other", Label: "choose another name", Note: "a new repository"},
 		}, def)
 		if err != nil {

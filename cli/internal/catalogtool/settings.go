@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package catalogctl
+package catalogtool
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ func (c *Catalog) Settings() (Settings, error) {
 		return Settings{}, err
 	} else if _, err := os.Stat(c.path(FormerSettingsFile)); err == nil {
 		// Never read past silently: its registry would be lost.
-		return Settings{}, fmt.Errorf("%s: renamed vertra.yaml on 2026-10-20: ./catalogctl migrate renames it", FormerSettingsFile)
+		return Settings{}, fmt.Errorf("%s: renamed vertra.yaml on 2026-10-20: ./vertra catalog migrate renames it", FormerSettingsFile)
 	}
 	or := func(env, fallback string) string {
 		if v := c.Getenv(env); v != "" {

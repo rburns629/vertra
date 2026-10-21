@@ -178,7 +178,7 @@ build-products: kind-registry
 	$(DOCKER) push $(KIND_REGISTRY)/demo-application-product:local
 
 # Local mode: publish a catalog repository's products to kind without any Git
-# hosting or CI, with ./catalogctl (built from this checkout), the tool its CI runs:
+# hosting or CI, with ./vertra (built from this checkout), the tool its CI runs:
 # each product is validated, built, tested and scanned and pushed to the
 # local registry, then the catalog's release is, and the console is asked to
 # apply it now rather than at its next look (every team folder becomes a team
@@ -191,14 +191,14 @@ CATALOG ?=
 SAMPLES ?= local
 PRODUCTS ?=
 catalog-publish: kind-registry
-	@if [ -n "$(CATALOG)" ]; then test -x "$(CATALOG)/catalogctl" || { echo "No catalog at $(CATALOG)."; exit 1; }; fi
-	@# This checkout's catalogctl.
-	@VERTRA_CATALOGCTL=$$(bash .github/scripts/build-catalogctl.sh) || exit 1; \
-	export VERTRA_CATALOGCTL VERTRA_REGISTRY=$(KIND_REGISTRY); \
+	@if [ -n "$(CATALOG)" ]; then test -x "$(CATALOG)/vertra" || { echo "No catalog at $(CATALOG)."; exit 1; }; fi
+	@# This checkout's vertra.
+	@VERTRA_BIN=$$(bash .github/scripts/build-vertra.sh) || exit 1; \
+	export VERTRA_BIN VERTRA_REGISTRY=$(KIND_REGISTRY); \
 	if [ -z "$(CATALOG)" ]; then \
 		SAMPLES="$(SAMPLES)" bash .github/scripts/catalog-template.sh publish $(PRODUCTS) -- release; \
 	else \
-		(cd $(CATALOG) && ./catalogctl publish $(PRODUCTS) && ./catalogctl release); \
+		(cd $(CATALOG) && ./vertra catalog publish $(PRODUCTS) && ./vertra catalog release); \
 	fi || exit 1; \
 	token=$$(jq -nc --arg email "$(ADMIN_EMAIL)" --arg password "$(ADMIN_PASSWORD)" '{email: $$email, password: $$password}' \
 		| curl -sf -X POST -H 'Content-Type: application/json' -d @- $(CONSOLE_URL)/api/vertra.console.v1.AuthService/Login | jq -r '.token // empty'); \

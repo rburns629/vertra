@@ -98,7 +98,7 @@ flowchart TB
 ### Catalog CI with no cluster credentials
 - **Normally:** a GitOps pipeline holds credentials to apply what it merges.
 - **Here:** the catalog's workflows only call the console with a bot token. The console creates, retires and purges team namespaces and applies a team's reviewed SecretStore file after checking it holds nothing outside that team. Admission policies limit what the console itself may do to namespaces.
-- **Code:** `console/src/core/teams.ts`, `console/src/secretStores.ts`, `catalogctl` (`cli/internal/catalogctl/teams.go`: `teams`, `secret-stores`).
+- **Code:** `console/src/core/teams.ts`, `console/src/secretStores.ts`, `vertra catalog secret-stores check` (`cli/internal/catalogtool/teams.go`).
 
 ### Secrets synced from the cloud
 - **Normally:** Secrets are created by hand or by CI.
@@ -176,12 +176,12 @@ flowchart TB
 - **Code:** `console/src/index.ts`.
 
 ### An API defined by its protos
-- **Here:** the API is a set of Connect services, defined in protobuf (`proto/vertra/console/v1`): the console serves them, and its pages, `vertra` and `catalogctl` call them through clients generated from the same files, so a change to the contract shows up as a compile error in every caller, not a surprise at run time. The [API reference](api-reference.md) is generated from them too, comments included; a test fails if a service or method has no description.
+- **Here:** the API is a set of Connect services, defined in protobuf (`proto/vertra/console/v1`): the console serves them, and its pages and `vertra` call them through clients generated from the same files, so a change to the contract shows up as a compile error in every caller, not a surprise at run time. The [API reference](api-reference.md) is generated from them too, comments included; a test fails if a service or method has no description.
 - **Code:** `proto/`, `console/src/rpc/` (serving), `console/src/core/` (what each method does), `console/scripts/api-reference.ts`.
 
 ## The catalog pipeline
 
-- **A release, pulled:** on every merge to main, catalog CI publishes the changed products, then `catalogctl release` pushes the whole catalog as one signed artifact beside the images (`<registry>/catalog-release`). Each console reads it every few minutes (or on **Sync now**), verifies its signature, and applies it. CI holds no console credential, and one catalog serves any number of installs.
+- **A release, pulled:** on every merge to main, catalog CI publishes the changed products, then `vertra catalog release` pushes the whole catalog as one signed artifact beside the images (`<registry>/catalog-release`). Each console reads it every few minutes (or on **Sync now**), verifies its signature, and applies it. CI holds no console credential, and one catalog serves any number of installs.
 - **Teams from folders:** a team folder in `vertra-catalog` becomes a team: the release names it, and the console creates the team and its labelled namespace. A folder removed retires the team. Purging is an admin's action in the console, never a release's; the namespace stays, labelled retired, for a cluster administrator to delete.
 - **Scan, then sign:** catalog CI builds each product, scans it, pushes it, and only then signs it with the KMS key, so "signed" means "passed the scans".
 - **Least-privilege CI:** CI signs in to the registry (on GCP, through Workload Identity Federation) and nothing else: no cluster, no console.

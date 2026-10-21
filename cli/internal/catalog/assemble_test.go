@@ -60,8 +60,8 @@ func TestAssemble(t *testing.T) {
 	if !strings.Contains(settings, "registry: us-central1-docker.pkg.dev/p/vertra-products\n") || strings.Contains(settings, "\nconsole:") {
 		t.Errorf("vertra.yaml:\n%s", settings)
 	}
-	if info, err := os.Stat(filepath.Join(dst, "catalogctl")); err != nil || info.Mode().Perm()&0o100 == 0 {
-		t.Error("catalogctl should stay executable")
+	if info, err := os.Stat(filepath.Join(dst, "vertra")); err != nil || info.Mode().Perm()&0o100 == 0 {
+		t.Error("./vertra should stay executable")
 	}
 	// The samples stay, to copy from later; a second team's worth of them
 	// isn't added.

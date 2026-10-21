@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package catalogctl
+package catalogtool
 
 import (
 	"fmt"
@@ -21,11 +21,11 @@ var (
 	dagSchema      = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("dag.schema.json") })
 )
 
-// APIVersion is the catalog format this catalogctl reads and writes.
+// APIVersion is the catalog format this vertra reads and writes.
 const APIVersion = "vertra.dev/v2"
 
 // FormerAPIVersion is format v2 under the platform's name until 2026-10-20,
-// Acyclix: ./catalogctl migrate rewrites it to APIVersion.
+// Acyclix: ./vertra catalog migrate rewrites it to APIVersion.
 const FormerAPIVersion = "acyclix.dev/v2"
 
 // formatProblem is why doc isn't a format-v2 file of one of kinds, or "".
@@ -37,13 +37,13 @@ func formatProblem(doc any, kinds ...string) string {
 	}
 	version, present := m["apiVersion"]
 	if !present {
-		return "written in the catalog format from before v2 (it has no apiVersion): ./catalogctl migrate rewrites it"
+		return "written in the catalog format from before v2 (it has no apiVersion): ./vertra catalog migrate rewrites it"
 	}
 	if version == FormerAPIVersion {
-		return fmt.Sprintf("apiVersion %s: the platform was renamed Vertra on 2026-10-20: ./catalogctl migrate rewrites it to %s", FormerAPIVersion, APIVersion)
+		return fmt.Sprintf("apiVersion %s: the platform was renamed Vertra on 2026-10-20: ./vertra catalog migrate rewrites it to %s", FormerAPIVersion, APIVersion)
 	}
 	if version != APIVersion {
-		return fmt.Sprintf("apiVersion %s: this catalogctl reads %s", pyRepr(version), APIVersion)
+		return fmt.Sprintf("apiVersion %s: this vertra reads %s", pyRepr(version), APIVersion)
 	}
 	if !contains(kinds, fmt.Sprint(m["kind"])) {
 		return fmt.Sprintf("kind %s: this file is kind %s", pyRepr(m["kind"]), strings.Join(kinds, " or "))
@@ -152,7 +152,7 @@ func (c *Catalog) ValidateTeams() bool {
 // adminPaths are what only the catalog admins (the fallback's owners) may
 // approve: what CI runs and publishes with, the starters, and SecretStores.
 var adminPaths = []string{".github/CODEOWNERS", ".github/workflows/ci.yml", "tools/product.schema.json",
-	"vertra.yaml", "catalogctl", "templates/hello/product.yaml", "teams/x/secret-stores/secretstore.yaml"}
+	"vertra.yaml", "vertra", "templates/hello/product.yaml", "teams/x/secret-stores/secretstore.yaml"}
 
 var (
 	// A team's own line: /teams/<team>/.

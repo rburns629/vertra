@@ -25,6 +25,8 @@ ACTIONLINT_VERSION=1.7.12
 ACTIONLINT_SHA256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 COSIGN_VERSION=3.1.3
 COSIGN_SHA256=4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
+ORAS_VERSION=1.3.4
+ORAS_SHA256=f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454
 
 bin="${RUNNER_TEMP:-/tmp}/scanners"
 mkdir -p "$bin"
@@ -64,6 +66,11 @@ for tool in "$@"; do
       fetch "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
         "$COSIGN_SHA256" "$bin/cosign"
       chmod +x "$bin/cosign"
+      ;;
+    oras)
+      fetch "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
+        "$ORAS_SHA256" "$work/oras.tar.gz"
+      tar -xzf "$work/oras.tar.gz" -C "$bin" oras
       ;;
     *)
       echo "::error::Unknown scanner: $tool"

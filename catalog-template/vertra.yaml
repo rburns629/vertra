@@ -1,11 +1,11 @@
-# Where this catalog publishes, read by ./catalogctl, the
+# Where this catalog publishes, read by ./vertra, the
 # same in CI and on a laptop. Anything here can be overridden per run with
 # environment variables (shown on each line), which is how CI points the
 # same files at a hosted registry.
 
 # Images are pushed to <registry>/<team>/<product>, the path derived
 # from the product's folder: teams/<team>/products/<product>/, and the
-# catalog's release (`./catalogctl release`) to <registry>/catalog-release,
+# catalog's release (`./vertra catalog release`) to <registry>/catalog-release,
 # where each install's console reads it.
 # VERTRA_REGISTRY. On kind: the local registry from `make kind-registry`.
 registry: localhost:5001

@@ -113,7 +113,7 @@ function verifications(reference: string): { args: string[]; publicKey?: string 
   // identity of the Job's ServiceAccount (GKE Workload Identity, EKS), which
   // cosign reads only with --k8s-keychain.
   const keychain = config.scanning.pullSecretName ? [] : ["--k8s-keychain"];
-  // Catalog CI's key signatures go to no public log (catalogctl's sign).
+  // Catalog CI's key signatures go to no public log (`vertra catalog publish`'s signing).
   const tries: { args: string[]; publicKey?: string }[] = publicKeys.map((publicKey) => ({
     args: [...keychain, "--key", "env://COSIGN_PUBLIC_KEY", "--insecure-ignore-tlog=true", reference],
     publicKey,

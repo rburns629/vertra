@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/access"
 	"github.com/rburns629/vertra/cli/internal/awscloud"
 	"github.com/rburns629/vertra/cli/internal/catalog"
+	"github.com/rburns629/vertra/cli/internal/catalogtool"
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/consoleapi"
 	"github.com/rburns629/vertra/cli/internal/gcp"
@@ -34,7 +34,7 @@ import (
 // What earlier versions set on a catalog repository: the console it called
 // and its tokens, from before consoles pulled its release, and every
 // variable under the platform's name before 2026-10-20 (Acyclix). Removed
-// from the repository, and the tokens revoked, when vertra catalog runs
+// from the repository, and the tokens revoked, when `vertra catalog create` runs
 // again.
 var (
 	oldCatalogVariables = []string{"ACYCLIX_CONSOLE_URL", "ACYCLIX_REGISTRY", "ACYCLIX_SIGNING_MODE", "ACYCLIX_SIGNING_KEY"}
@@ -45,10 +45,22 @@ func oldTokenLabels(repo string) []string {
 	return []string{"catalog CI: " + repo, "catalog purge: " + repo}
 }
 
+// catalogCmd is everything about a catalog: making its repository
+// (create, here), and its own commands (catalog_commands.go).
 func (a *app) catalogCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "catalog",
+		Short: "A catalog: create its repository; validate, test, publish and release its products",
+	}
+	cmd.AddCommand(a.catalogCreateCmd())
+	cmd.AddCommand(catalogCommands()...)
+	return cmd
+}
+
+func (a *app) catalogCreateCmd() *cobra.Command {
 	var yes, planOnly, noSmoke bool
 	cmd := &cobra.Command{
-		Use:   "catalog [env]",
+		Use:   "create [env]",
 		Short: "Create the catalog repository on GitHub, its first team and starters, and smoke-test it",
 		Long: "Creates the catalog repository from the catalog template (with the first team and the\n" +
 			"starters for the languages picked), sets its variables (the registry and its sign-in: no\n" +
@@ -494,18 +506,18 @@ func waitFor(ctx context.Context, limit, every time.Duration, done func() (bool,
 	}
 }
 
-// validateCatalog runs the catalog's own checks on the assembled commit,
-// when Python is there for catalogctl.
+// validateCatalog runs the catalog's own checks (`vertra catalog validate`)
+// on the assembled commit, before anything is pushed.
 func validateCatalog(ctx context.Context, dir string) error {
-	if _, err := exec.LookPath("python3"); err != nil {
-		return nil
-	}
-	cmd := exec.CommandContext(ctx, "./catalogctl", "validate")
-	cmd.Dir = dir
+	c := catalogtool.New(dir)
 	var buf bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &buf, &buf
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("the assembled catalog fails `catalogctl validate`:\n%s", buf.String())
+	c.Stdout, c.Stderr = &buf, &buf
+	ok, err := c.Products(ctx, "validate", nil, nil)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("the assembled catalog fails `vertra catalog validate`:\n%s", buf.String())
 	}
 	return nil
 }

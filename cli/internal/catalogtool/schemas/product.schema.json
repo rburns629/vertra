@@ -16,7 +16,7 @@
   ],
   "properties": {
     "apiVersion": {
-      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./vertra catalog migrate rewrites it.",
       "const": "vertra.dev/v2"
     },
     "kind": {
@@ -32,7 +32,7 @@
       "$ref": "#/$defs/dnsLabel"
     },
     "version": {
-      "description": "Its contract's version, 1 when left out. Raise it for a breaking change (an action, input or output removed or retyped, a new required input, a team no longer shared with): catalogctl check refuses one otherwise, since other teams' templates rely on the contract.",
+      "description": "Its contract's version, 1 when left out. Raise it for a breaking change (an action, input or output removed or retyped, a new required input, a team no longer shared with): vertra catalog check refuses one otherwise, since other teams' templates rely on the contract.",
       "type": "integer",
       "minimum": 1
     },

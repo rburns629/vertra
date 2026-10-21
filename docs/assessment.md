@@ -106,7 +106,7 @@ are done (decided 2026-10-19).
 | Inputs checked against `inputSchema` | Missing: structure only | `console/src/core/executions.ts`, `console/frontend/src/dagCheck.ts` |
 | Outputs checked against `outputSchema` | Missing | |
 | Forms from input schemas | Missing: schemas stored, not rendered | `console/src/db/schema.ts:134` |
-| Product versions | Partial: a git-SHA tag plus `latest`; `product_releases` lists images | `cli/internal/catalogctl/publish.go` (`versionTag`, `push`) |
+| Product versions | Partial: a git-SHA tag plus `latest`; `product_releases` lists images | `cli/internal/catalogtool/publish.go` (`versionTag`, `push`) |
 | Schema compatibility, deprecation | Missing | |
 | A product's ServiceAccount enforced by policy | Built; proven on EKS 2026-10-19 | `helm/charts/execution-kernel/templates/identity-policy.yaml`, `executions.ts:352` |
 | Team secrets chosen per step, enforced twice | Built | `executions.ts:522-546`, identity policy |
@@ -218,7 +218,7 @@ references fixed in the owning team's template. **API done 2026-10-21**
 
 **M1. One catalog repository serves one install.** Architectural
 limitation; high. The catalog's workflows push to one
-`VERTRA_CONSOLE_URL` with one `VERTRA_TOKEN`, and `vertra catalog`
+`VERTRA_CONSOLE_URL` with one `VERTRA_TOKEN`, and `vertra catalog create`
 overwrites both (`catalog.go:261-263`), so a second install pointed at the
 same repository silently takes registrations away from the first. **Do:**
 pull-based registration: each console reads `main` (a read-only deploy key
@@ -265,7 +265,7 @@ checks a schema it's given and stays product-agnostic, failing with
 `INPUT_INVALID`); check outputs against the output schema. **Done 2026-10-21** (`TODO.md`).
 
 **C2. No versions or compatibility checks.** Missing capability; medium.
-Other teams' templates depend on a product's outputs. **Do:** `catalogctl
+Other teams' templates depend on a product's outputs. **Do:** `vertra catalog
 check` compares a product's schemas with its last release and fails on a
 removed action, a new required input, or a removed or retyped output,
 unless the change is marked breaking; add `deprecated: <message>`.
@@ -655,8 +655,7 @@ compatibility shims while nobody depends on them.
 done (decided 2026-10-19).
 
 **16. The console's API on Connect** (decided 2026-10-20). Protos written by
-maintainers; clients generated for the frontend, `vertra` and
-`catalogctl`; JSON over HTTP for `curl`, and gRPC for callers that want it,
+maintainers; clients generated for the frontend and `vertra`; JSON over HTTP for `curl`, and gRPC for callers that want it,
 from the same endpoints. Resources and actions alike are RPCs; health,
 metrics, static files and outside webhooks stay plain HTTP. Chosen for its
 schema and generated clients, not for speed: neither protocol is the
@@ -674,10 +673,16 @@ against the same schema, proven by the existing scenarios, then kernel-api
 so each is replaced alone. New kernel features are built in Go. (Done the
 same day: one binary, `kernel`, with the Python removed.)
 
-**18. `catalogctl` in Go** (decided 2026-10-20), a binary of its own built
-from the CLI's module and sharing its packages, downloaded pinned and
-checked by each catalog's `./catalogctl` wrapper in place of today's
+**18. The catalog tool in Go** (decided 2026-10-20), first `catalogctl`, a
+binary of its own built from the CLI's module and sharing its packages,
+downloaded pinned and checked by each catalog's wrapper in place of today's
 virtualenv. Ported while the catalog format changes anyway (Phase 1).
+
+**19. One command line** (decided 2026-10-21): the catalog tool is part of
+`vertra`, as `vertra catalog ...` (`check`, `publish`, `release`, ...), and
+a catalog's wrapper is `./vertra`, downloading the pinned `vertra`. The
+repository's setup is `vertra catalog create`. Accepted: a larger download
+in catalog CI, and a catalog pinning a whole `vertra` release.
 
 ## 18. Roadmap
 

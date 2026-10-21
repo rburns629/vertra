@@ -1,4 +1,4 @@
-# Go for vertra and catalogctl (`make proto`): the console's API and the
+# Go for vertra (`make proto`): the console's API and the
 # catalog release format, from the plugins pinned as tools in cli/go.mod.
 # Output is committed.
 version: v2

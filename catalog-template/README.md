@@ -8,10 +8,11 @@ catalog's release names it. Each Vertra install's console reads that release
 and registers what it says: CI never calls a console, and one catalog can serve
 any number of installs.
 
-CI runs one tool, `./catalogctl` (the platform's catalogctl, at the release
-pinned in that file, downloaded and checksum-verified on first use), and so
-can you: `./catalogctl check` runs every pull request check on your machine,
-and `./catalogctl publish` publishes from a laptop when there's no CI.
+CI runs one tool, `./vertra` (the platform's command line, at the release
+pinned in that file: downloaded on first use from the platform's public
+package by its SHA-256, and checked against it), and so
+can you: `./vertra catalog check` runs every pull request check on your machine,
+and `./vertra catalog publish` publishes from a laptop when there's no CI.
 
 `teams/` starts empty: your first team goes there. `samples/` holds whole
 example teams, never published from there:
@@ -32,7 +33,7 @@ A copied product's `team:` must be changed to its new team's name.
 
 ```
 vertra.yaml                  where products publish: registry, signing
-catalogctl                    runs the pinned catalogctl (downloaded into .catalogctl/)
+vertra                        runs the pinned vertra (downloaded into .vertra/)
 tools/                        the schemas of every catalog file (format v2), for editors
 templates/                    starters to copy (checked by CI, never published)
 samples/<team>/               example teams: local (five languages); gcp, aws, azure (billed)
@@ -77,7 +78,7 @@ merging the team's folder. So: team, access, secrets, then code.
 4. **Add a product.** `cp -r templates/hello teams/<team>/products/<product>`
    (or a starter in your language from `samples/local/products/`), change
    what's marked `CHANGE` (a starter's `team:` too), then run what CI will:
-   `./catalogctl check teams/<team>/products/<product>`.
+   `./vertra catalog check teams/<team>/products/<product>`.
 5. **Run it.** Submit a DAG naming `<registry>/<team>/<product>:latest`,
    the action, your `team`, and any `secretRefs`. The console pins `:latest`
    to its digest at submission, so what runs (and is retried and scanned) is
@@ -118,7 +119,7 @@ again, resolved, before it starts (`INPUT_INVALID`), and its outputs against
 `output` when it finishes (`OUTPUT_INVALID`; no later step gets them). Keep
 them to what the action really takes and returns, and self-contained (no
 `$ref` to another file or URL). Every field is in
-[tools/product.schema.json](tools/product.schema.json); `./catalogctl validate`
+[tools/product.schema.json](tools/product.schema.json); `./vertra catalog validate`
 checks against it. There's no image field: the image comes from the folder.
 
 An action's `secretRefs` are its bindings, reviewed with the code that
@@ -142,7 +143,7 @@ product's ServiceAccount.
 
 ### Changing a product other teams use
 
-Other teams' templates rely on a product's contract, so `./catalogctl check
+Other teams' templates rely on a product's contract, so `./vertra catalog check
 --changed <base>` (what CI runs on every pull request) compares each changed
 product with the same product at the base, which is what's published, and
 refuses a change that could break them:
@@ -171,7 +172,7 @@ A team's `dags/` folder holds two kinds of file:
   `<team>/<product>.<action>` of a team that shares it, never an image, so
   a template keeps working as products release. Inputs are values,
   `{$param: <name>}`, or `{$fromStep: <id>, $output: <name>}` from a step
-  in `dependsOn`. `./catalogctl validate` checks every action exists and is
+  in `dependsOn`. `./vertra catalog validate` checks every action exists and is
   shared with your team, and that each step gets the inputs its action
   needs. See [samples/local/dags/shout-backwards.yaml](samples/local/dags/shout-backwards.yaml).
 - **`kind: Dag`**: a concrete DAG, exactly what the console's Submit page
@@ -186,8 +187,8 @@ and rerun that run, as can your team. Every action is also runnable on its
 own, by whoever its `shareWith` covers.
 
 A catalog from before format v2 (no `apiVersion` in its files) is
-converted in place by `./catalogctl migrate`, comments and all; review the
-diff, then `./catalogctl validate`.
+converted in place by `./vertra catalog migrate`, comments and all; review the
+diff, then `./vertra catalog validate`.
 
 ### The container contract
 
@@ -210,7 +211,7 @@ diff, then `./catalogctl validate`.
 ## Testing
 
 A product's tests are contract tests: `tests/<action>/<case>/request.json`
-and the `expected.json` its result must contain. `./catalogctl check` runs
+and the `expected.json` its result must contain. `./vertra catalog check` runs
 each against the built image the way the platform runs a step, with no
 network. A succeeding case must also match the action's schemas. A case that
 needs a secret puts a placeholder in `secrets/<name>/<key>` beside it (the
@@ -220,14 +221,14 @@ product needs at least one test.
 
 ## What CI blocks
 
-Per product (`./catalogctl check`, in `ci.yml`):
+Per product (`./vertra catalog check`, in `ci.yml`):
 
 | Blocks on | Fix |
 |---|---|
 | A HIGH or CRITICAL vulnerability with a fix | Usually OS packages: keep the templates' `apt-get upgrade`, or pin a fixed package version |
 | A secret in the image | Remove it; secrets are mounted at run time |
 | A known-malicious package ([OSV](https://osv.dev)) | Check the package name for a typo |
-| A base image not pinned by digest | `./catalogctl bases` pins it; `bases --update` moves every pin to its tag's current image |
+| A base image not pinned by digest | `./vertra catalog bases` pins it; `./vertra catalog bases --update` moves every pin to its tag's current image |
 
 Across the repository (`security.yml`): committed secrets (gitleaks; rotate
 anything it finds), and Semgrep's rules plus
@@ -247,17 +248,17 @@ that fail.
 requiring a code owner's review: the catalog admins own everything by
 default, each team's owners own `/teams/<team>/`, and the admins
 own, last so nothing overrides them, `.github/`, `tools/`, `vertra.yaml`,
-`catalogctl`, `templates/` and every `/teams/*/secret-stores/`. A
+`vertra catalog`, `templates/` and every `/teams/*/secret-stores/`. A
 team ships its own products, but can't change how CI builds and
 publishes, take another team's folder, add a team, or change what
-vault its namespace can read. `./catalogctl validate` checks this layout, and
+vault its namespace can read. `./vertra catalog validate` checks this layout, and
 `check-codeowners.yml` checks every owner exists.
 
 ## Publishing
 
-`./catalogctl publish` checks each product, then pushes its image tagged with
+`./vertra catalog publish` checks each product, then pushes its image tagged with
 the commit (or the time, from a laptop) and `:latest`, signs it if the
-catalog signs. `./catalogctl release` then pushes the catalog's release to
+catalog signs. `./vertra catalog release` then pushes the catalog's release to
 `<registry>/catalog-release` (tagged with the commit and `latest`) and signs it
 the same way: every team, its SecretStore files, and every action as
 `<team>-<product>-<action>`, its image pinned by digest. It's complete, not a
@@ -283,8 +284,8 @@ CI needs only the registry: no console token, no cluster credential. Each
 install points its console at the release (the console chart's
 `catalog.release`) and trusts the same signing key or identity as its images.
 
-From a laptop: `./catalogctl publish [teams/<team>/products/<product> ...]`,
-then `./catalogctl release`, signed in to the registry with `docker login`.
+From a laptop: `./vertra catalog publish [teams/<team>/products/<product> ...]`,
+then `./vertra catalog release`, signed in to the registry with `docker login`.
 
 ## A team's SecretStore
 

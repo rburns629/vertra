@@ -135,7 +135,7 @@ scanning:
 
 # -- The catalog this console registers from (console/src/catalogSync.ts):
 # its release, which catalog CI pushes from main beside the images
-# (`catalogctl release`, <registry>/catalog-release:latest). The console reads
+# (`vertra catalog release`, <registry>/catalog-release:latest). The console reads
 # it every pollSeconds (and on the Admin page's Sync now), verifies its
 # signature when `signature` trusts one, and applies it: teams, products and
 # SecretStores, with the release's rights only (never purging). It reads the

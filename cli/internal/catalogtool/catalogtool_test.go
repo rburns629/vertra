@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package catalogctl
+package catalogtool
 
 import (
 	"bytes"
@@ -35,7 +35,7 @@ func TestEmbeddedSchemasMatchTheTemplates(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(embedded, inTemplate) {
-			t.Errorf("%s: internal/catalogctl/schemas and catalog-template/tools differ; copy the one you changed over the other", name)
+			t.Errorf("%s: internal/catalogtool/schemas and catalog-template/tools differ; copy the one you changed over the other", name)
 		}
 	}
 }
@@ -58,7 +58,7 @@ func TestCodeownersMatching(t *testing.T) {
 	}{
 		{"*", "anything/at/all", true},
 		{"/tools/", "tools/product.schema.json", true},
-		{"/catalogctl", "catalogctl", true},
+		{"/vertra", "vertra", true},
 		{"/teams/*/secret-stores/", "teams/x/secret-stores/secretstore.yaml", true},
 		{"/teams/*/secret-stores/", "teams/x/products/p/product.yaml", false},
 		{"/teams/a/", "teams/ab/team.yaml", false},

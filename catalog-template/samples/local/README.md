@@ -27,15 +27,15 @@ request mounted at `/platform/input`, no network), so they test what
 actually runs. Once copied into `teams/<team>/`, from the repository root:
 
 ```bash
-./catalogctl check teams/<team>/products/slug     # validate, build, test, scan
+./vertra catalog check teams/<team>/products/slug     # validate, build, test, scan
 ```
 
 ## All five in one DAG
 
 Each step takes the previous step's `text`. They need no secrets and no
 ServiceAccount of their own, so this runs as soon as the team is published
-(copy this folder to `teams/local/`, then `./catalogctl publish teams/local/products/*`
-and `./catalogctl release`, or merge it for CI). `:latest` is
+(copy this folder to `teams/local/`, then `./vertra catalog publish teams/local/products/*`
+and `./vertra catalog release`, or merge it for CI). `:latest` is
 fine: the console pins each image to its digest when you submit. The
 registry here is a local install's:
 

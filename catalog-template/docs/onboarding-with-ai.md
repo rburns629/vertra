@@ -21,7 +21,7 @@ creates namespaces and publishes images.
    reads it (`/platform/secrets/<name>/<key>`). Every file starts with
    `apiVersion: vertra.dev/v2` and its `kind`, as the templates do.
 2. **Proof it works.** Ask for the output of
-   `./catalogctl check teams/<team>/products/<product>`, which
+   `./vertra catalog check teams/<team>/products/<product>`, which
    validates, builds, runs the tests and scans the image. "I wrote a test"
    isn't the same as "the tests passed".
 3. **A pull request, not a push to `main`.** Review it as you would a

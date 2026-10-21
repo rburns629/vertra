@@ -162,7 +162,7 @@ its own directory.
   `ensureNotRetired` (`console/src/core/retired.ts`). Team lookups skip
   purged teams unless they use `findTeamByNameIncludingDeleted`.
 - **The console pulls the catalog** (`console/src/catalogSync.ts`): catalog
-  CI publishes images, then `./catalogctl release` pushes the whole catalog
+  CI publishes images, then `./vertra catalog release` pushes the whole catalog
   as a signed OCI artifact, `<registry>/catalog-release`
   (`proto/vertra/catalog/v1/release.proto`). Each console polls it
   (`catalog.release` in the console chart), verifies it with a cosign Job
@@ -175,18 +175,18 @@ its own directory.
   installs. A store's stored credential is set per install
   (`TeamService/SetSecretStoreCredential`).
 - **`catalog-template/`**: what a new catalog repository starts as
-  (the `./catalogctl` wrapper, its workflows, the starter `templates/`, an empty `teams/`
+  (the `./vertra` wrapper, its workflows, the starter `templates/`, an empty `teams/`
   for the adopter's first team, and `samples/`: `local`, one no-cloud
   product in five languages that new teams copy starters from, and `gcp`,
   `aws`, `azure`, billed cloud examples; azure unproven). It's
   versioned with the platform because its release format and schemas must
-  match the console's; `.github/scripts/catalog-template.sh` runs catalogctl
+  match the console's; `.github/scripts/catalog-template.sh` runs `vertra catalog`
   in it with samples installed as teams (CI checks it that way, and
   `make catalog-publish` publishes it that way). A team's real products live in its own catalog
   repository, created from this, **not here**; adding a product needs no
   change to this repo. Its files are catalog format v2 (`apiVersion:
   vertra.dev/v2` and a `kind`: Team, Product, Template, Dag); the schemas
-  are in `tools/` and embedded in catalogctl (`cli/internal/catalogctl/
+  are in `tools/` and embedded in vertra (`cli/internal/catalogtool/
   schemas/`, kept equal by a test): change both together.
 - **`_local/`** (gitignored): personal scratch space, such as a clone of
   your own catalog repository.

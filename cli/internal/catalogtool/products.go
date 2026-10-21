@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package catalogctl
+package catalogtool
 
 import (
 	"fmt"
@@ -156,7 +156,7 @@ func (c *Catalog) ChangedProducts(base string, products []*Product) []string {
 	}
 	names := strings.Split(strings.TrimSpace(out+"\n"+untracked), "\n")
 	for _, n := range names {
-		if strings.HasPrefix(n, "tools/") || strings.HasPrefix(n, "vertra.yaml") || n == "catalogctl" {
+		if strings.HasPrefix(n, "tools/") || strings.HasPrefix(n, "vertra.yaml") || n == "vertra" {
 			return labels
 		}
 	}
@@ -173,7 +173,7 @@ func (c *Catalog) ChangedProducts(base string, products []*Product) []string {
 }
 
 // root finds the catalog a command runs in: VERTRA_CATALOG_ROOT (set by
-// the ./catalogctl wrapper), else the working directory.
+// the ./vertra wrapper), else the working directory.
 func Root() (string, error) {
 	root := os.Getenv("VERTRA_CATALOG_ROOT")
 	if root == "" {

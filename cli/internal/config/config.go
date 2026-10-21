@@ -61,7 +61,7 @@ type Config struct {
 	Admin        Admin    `yaml:"admin"`
 	// Console says how the console is reached from outside the cluster.
 	Console Console `yaml:"console,omitempty"`
-	// Catalog is the catalog repository `vertra catalog` creates.
+	// Catalog is the catalog repository `vertra catalog create` creates.
 	Catalog Catalog `yaml:"catalog,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.

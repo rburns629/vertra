@@ -133,7 +133,7 @@ spec:
           serviceAccountRef:
             name: eso-gcp
 EOF
-$ ./catalogctl secret-stores check $TEAM
+$ ./vertra catalog secret-stores check $TEAM
   ok   teams/team-a/secret-stores
 $ git add teams/$TEAM/secret-stores
 $ git commit -m "$TEAM: sync secrets from GCP Secret Manager"

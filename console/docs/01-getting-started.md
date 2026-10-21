@@ -48,7 +48,7 @@ Copy the `hello` sample, rename three things, and merge: CI builds it, tests it,
 3. Optional, before pushing: run what CI will, from the catalog repo's root.
 
    ```bash
-   ./catalogctl check teams/team-a/products/hello
+   ./vertra catalog check teams/team-a/products/hello
    ```
 
 4. Open a pull request. CI checks `product.yaml`, builds the image, runs its tests (each `tests/<action>/<case>/` folder: a `request.json` and the `expected.json` its result must contain), and scans it for fixable vulnerabilities, baked-in secrets and malicious packages. Nothing is published from a pull request.

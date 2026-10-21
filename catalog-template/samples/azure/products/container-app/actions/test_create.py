@@ -1,5 +1,5 @@
 """Tests for azure/container-app's create action, with the Azure clients
-mocked, so they run without an Azure subscription. `./catalogctl check` runs
+mocked, so they run without an Azure subscription. `./vertra catalog check` runs
 them in the product's own image with its python3 (unittest, no pytest).
 """
 

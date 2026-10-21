@@ -8,7 +8,7 @@ containers, and why it's built the way it is. For running it, see
 [`kernel/ARCHITECTURE.md`](../kernel/ARCHITECTURE.md).
 
 The platform was called Acyclix until 2026-10-20; older notes, tags and
-installs may still use that name (`catalogctl migrate` converts a catalog).
+installs may still use that name (`vertra catalog migrate` converts a catalog).
 
 ## What Vertra is
 
@@ -30,7 +30,7 @@ every other team's.
 ```
   catalog repository (one per organization; started from catalog-template/)
     teams/<team>/products/<product>/    product.yaml, Dockerfile, actions, tests
-    CI (./catalogctl): build, test, scan, sign, push; then release
+    CI (./vertra): build, test, scan, sign, push; then release
             │                                 │
             │ images                          │ <registry>/catalog-release (signed):
             │                                 │ teams, products, SecretStores
@@ -276,7 +276,7 @@ roadmap are in [assessment.md](assessment.md), the work in
 - **Languages and APIs** (decided 2026-10-20). The console stays
   TypeScript, its API moves to Connect (protos, generated clients, gRPC
   available). The kernel is Go, against the same schema (2026-10-20),
-  and `catalogctl` is Go beside `vertra`. Products keep any
+  and the catalog tool is part of `vertra` (`vertra catalog ...`, decided 2026-10-21). Products keep any
   language and JSON Schema.
 
 ## Glossary

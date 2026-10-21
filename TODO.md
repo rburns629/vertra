@@ -94,7 +94,7 @@ design.
     secrets, environments, protected branches, code owners, OIDC, SSO), so
     **GitLab** (gitlab.com and self-managed, public, internal and private,
     with `glab`) follows GitHub as a second implementation; the catalog
-    template then ships GitLab CI wrappers over catalogctl alongside its
+    template then ships GitLab CI wrappers over vertra catalog alongside its
     GitHub workflows.
 
 - [x] **Guided access in `vertra init`** (done 2026-10-18:
@@ -173,8 +173,8 @@ elsewhere in this file wait until then).
 
 Order of work (decided 2026-10-20): **0** R1, R2 and R4 in the Python
 scheduler (done 2026-10-20). **1** The contracts: the console's API on Connect (protos,
-generated clients for the frontend, `vertra` and `catalogctl`), the
-catalog format version 2, `catalogctl` ported to Go in the CLI's module,
+generated clients for the frontend and `vertra`), the
+catalog format version 2, the catalog tool ported to Go in the CLI's module,
 the compatibility check. **Kernel track:** the kernel in Go, Python
 removed (done 2026-10-20). **2** Pull-based registration. **3** Roles,
 consumers, templates, exports, targets. **4** Schema checks and forms.
@@ -202,8 +202,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   every 15s so idle timeouts don't cut it, and GKE's default 30s backend
   timeout just means a reconnect); `vertra`'s `internal/consoleapi`
   on the generated Go client (proven on kind: sign-in, `EnsureTeam`,
-  token rotation, submit and watch); `catalogctl` ported to Go
-  (`cli/cmd/catalogctl`; the same verdicts as the Python tool on 37
+  token rotation, submit and watch); the catalog tool ported to Go
+  (`cli/cmd/vertra`; the same verdicts as the Python tool on 37
   broken and unbroken catalogs, and `make catalog-publish` proven on kind:
   teams applied, five products built, tested, scanned, pushed and
   registered over Connect, then run); the REST routes, `openapi.ts` and
@@ -214,8 +214,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (`apiVersion: vertra.dev/v2` and a `kind` in every file; actions'
   `secretRefs` bindings, `shareWith` and `deprecated`, recorded by the
   console; `kind: Template` with parameters and steps naming actions,
-  checked by catalogctl; `catalogctl migrate`, which converted the
-  template); the compatibility check (C2: `catalogctl check --changed`
+  checked by vertra catalog; `vertra catalog migrate`, which converted the
+  template); the compatibility check (C2: `vertra catalog check --changed`
   compares each product with its last release on the base and refuses a
   breaking change unless its `version` is raised, and a removal unless it
   was deprecated first). Phase 1 is done. Load balancers need HTTP/2 end
@@ -227,8 +227,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (`/api/vertra.console.v1.*`), the catalog format (`vertra.dev/v2`, its
   settings file `vertra.yaml`), labels (`vertra/team`), the platform
   namespace (`vertra-system`), environment variables (`VERTRA_*`) and the
-  kind cluster (`vertra-local`). `catalogctl migrate` converts a catalog
-  from before; `vertra catalog` removes a repository's `ACYCLIX_*`
+  kind cluster (`vertra-local`). `vertra catalog migrate` converts a catalog
+  from before; `vertra catalog create` removes a repository's `ACYCLIX_*`
   variables. Not renamed: the GCP project `acyclix-dev`, a real resource.
   An install from before keeps its old labels and namespace: reinstall it
   (none outside kind existed).
@@ -272,18 +272,23 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   nothing but the project's own defaults. That run found client-go
   printing Autopilot's warning on every Job unstructured; each distinct
   API warning is now logged once, as JSON.
-- [ ] **Release `catalogctl` binaries, and pin one in the catalog
-  template's `./catalogctl`** (version and per-platform SHA-256). Until
-  then the wrapper refuses to run without `VERTRA_CATALOGCTL`, so a
-  catalog repository created now (`vertra catalog`) has CI that can't
-  run; this checkout's CI and `make catalog-publish` build it from source.
-  Needs somewhere public to download from (the platform repository's
-  releases once it's public), and a release workflow that builds
-  linux/darwin × amd64/arm64 and writes the checksums.
+- [ ] **Release `vertra` binaries, and pin one in the catalog
+  template's `./vertra`** (version and per-platform SHA-256). Ready
+  2026-10-21, waiting on the first tag: `release.yml`'s `cli` job builds
+  linux/darwin × amd64/arm64, pushes each to `ghcr.io/<owner>/<repo>/cli`
+  as one blob (its digest the binary's SHA-256), signs it and attaches
+  it with `vertra-checksums.txt` to the release; `./vertra` downloads
+  its platform's blob anonymously by SHA-256 (tested against a local
+  registry). Left: push and tag a version, make the `cli` package public
+  (once, as for the images), then `.github/scripts/pin-vertra.sh
+  <version>` for `catalog-template/vertra` and each catalog's wrapper.
+  Until then the wrapper refuses to run without `VERTRA_BIN`, so a
+  catalog repository's CI can't run; this checkout's CI and `make
+  catalog-publish` build it from source.
 - [ ] **`buf breaking` in CI at the first release**, against the released
   protos: until then contracts change freely (decided 2026-10-19).
 - [x] **P0: pull-based catalog registration (M1, S1)** (done 2026-10-20).
-  Catalog CI publishes, then `./catalogctl release` pushes the whole
+  Catalog CI publishes, then `./vertra catalog release` pushes the whole
   catalog (teams, their SecretStore files, every product action pinned by
   digest; `proto/vertra/catalog/v1/release.proto`) as a signed OCI
   artifact, `<registry>/catalog-release`. Each console polls it
@@ -294,9 +299,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   A team the catalog didn't make is left alone until an admin adopts it
   (`AdminService/AdoptCatalogTeam`), replacing `check-new-team-names`. A
   SecretStore's stored credential is set per install
-  (`TeamService/SetSecretStoreCredential`). The push workflows, catalogctl's
+  (`TeamService/SetSecretStoreCredential`). The push workflows, the catalog tool's
   `teams` commands and every console token in the catalog are gone;
-  `delete-team-images` keeps the registry clean-up; `vertra catalog`
+  `delete-team-images` keeps the registry clean-up; `vertra catalog create`
   sets only registry variables (and removes and revokes the old ones) and
   the install sets the console's `catalog.release`, so a catalog no
   longer needs a public console. Templates aren't in the release yet
@@ -491,11 +496,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Testing and housekeeping
 
-- [ ] **`catalogctl publish` from a laptop builds for the laptop's
+- [ ] **`vertra catalog publish` from a laptop builds for the laptop's
   platform** (arm64 on a Mac), which an amd64 cluster can't run;
   `DOCKER_DEFAULT_PLATFORM=linux/amd64` works around it. Build for the
   target's platforms (a setting in vertra.yaml, multi-platform with buildx).
-- [ ] **`vertra` can't set up a signed catalog yet**: `vertra catalog` sets
+- [ ] **`vertra` can't set up a signed catalog yet**: `vertra catalog create` sets
   signing mode none, and nothing puts a public key in the console's
   `catalog.signature` (the GKE proof set it with Helm). Generate or take a
   key (or keyless with the repository's identity) and set both sides.

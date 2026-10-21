@@ -345,7 +345,7 @@ async function body(response: Response, what: string): Promise<Uint8Array> {
 }
 
 /**
- * A catalog release (catalog CI's `catalogctl release`): its manifest's
+ * A catalog release (catalog CI's `vertra catalog release`): its manifest's
  * digest, and its one layer, the release as JSON. `reference` is the
  * console's own setting (config.catalog.release), never a caller's. Every
  * byte read is checked against the digest that names it, so the JSON is

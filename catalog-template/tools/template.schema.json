@@ -15,7 +15,7 @@
   ],
   "properties": {
     "apiVersion": {
-      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./catalogctl migrate rewrites it.",
+      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./vertra catalog migrate rewrites it.",
       "const": "vertra.dev/v2"
     },
     "kind": {

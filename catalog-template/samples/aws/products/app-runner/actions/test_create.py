@@ -1,5 +1,5 @@
 """Tests for aws/app-runner's create action, with boto3 mocked, so they run
-without an AWS account. `./catalogctl check` runs them in the product's own
+without an AWS account. `./vertra catalog check` runs them in the product's own
 image with its python3 (unittest, no pytest).
 """
 

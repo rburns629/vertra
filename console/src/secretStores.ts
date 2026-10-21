@@ -12,7 +12,7 @@
  *    eso-azure, eso-aws.
  *
  * The same rules as the catalog's own pull-request check (its
- * `./catalogctl secret-stores check`): that one gives the author an early
+ * `./vertra catalog secret-stores check`): that one gives the author an early
  * answer; this one is the one that holds.
  */
 import { SECRET_STORE_CREDENTIAL } from "./k8s.js";

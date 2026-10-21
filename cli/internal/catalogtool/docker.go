@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package catalogctl
+package catalogtool
 
 import (
 	"bytes"
@@ -108,7 +108,7 @@ func (c *Catalog) Build(p *Product) bool {
 
 // Every FROM names its base by digest (python:3.12-slim@sha256:…), so a
 // build is the same bytes until someone deliberately moves it:
-// ./catalogctl bases --update re-pins each tag to what it names now.
+// ./vertra catalog bases --update re-pins each tag to what it names now.
 var fromLine = regexp.MustCompile(`(?i)^(FROM\s+(?:--platform=\S+\s+)?)(\S+)(.*)$`)
 
 // stageAlias is the name a FROM line gives its stage ("AS name"), or "".
@@ -134,7 +134,7 @@ func baseProblems(path string) []string {
 		}
 		image, rest := m[2], m[3]
 		if !stages[strings.ToLower(image)] && image != "scratch" && !strings.Contains(image, "@sha256:") {
-			problems = append(problems, fmt.Sprintf("Dockerfile line %d: base image %s isn't pinned by digest: run ./catalogctl bases", i+1, image))
+			problems = append(problems, fmt.Sprintf("Dockerfile line %d: base image %s isn't pinned by digest: run ./vertra catalog bases", i+1, image))
 		}
 		if alias := stageAlias(rest); alias != "" {
 			stages[alias] = true

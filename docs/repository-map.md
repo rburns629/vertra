@@ -41,7 +41,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `buf.yaml` | buf's module (`proto/`) and lint rules for the APIs. |
 | `buf.gen.es.yaml`, `buf.gen.frontend.yaml`, `buf.gen.go.yaml`, `buf.gen.kernel.yaml` | What `make proto` generates: TypeScript for the console (`console/src/gen/`: its API and kernel-api's, which it calls) and for the frontend (`console/frontend/src/gen/`, the console's API only, JavaScript with type declarations), Go for the CLI (`cli/internal/gen/`, the console's API and the catalog release) and for the kernel (`kernel/internal/gen/`, its own), each from plugins pinned in that project. |
 | `proto/vertra/console/v1/` | The console's API as Connect services: one file per service (`execution.proto`'s `ExecutionService` streams `WatchExecution`), and `common.proto` (failures, problems, paging). The API reference page is built from these. |
-| `proto/vertra/catalog/v1/release.proto` | A catalog release: every team (with its SecretStore files) and product action of a catalog's `main`, which `catalogctl release` pushes as an OCI artifact and each console pulls. |
+| `proto/vertra/catalog/v1/release.proto` | A catalog release: every team (with its SecretStore files) and product action of a catalog's `main`, which `vertra catalog release` pushes as an OCI artifact and each console pulls. |
 | `proto/vertra/kernel/v1/kernel.proto` | kernel-api's `KernelService`, internal: only the console calls it. |
 | `.semgrep/malicious.yml` | Semgrep rules for code that has no business in a product (running remote code, hidden payloads, reverse shells, mining). Run by `security.yml`. |
 
@@ -51,11 +51,12 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | --- | --- |
 | `workflows/ci.yml` | Every PR: the kernel's `gofmt`, `go vet`, migrations and tests (`-race`), with its kind tests in the kubernetes job; console tests, lint and build; the API's protos linted and their committed generated code checked against `make proto`; Helm lint and render of `helm/values/*`; `actionlint` (this repo's workflows and the catalog template's); the catalog template's checks; building both platform images and scanning them (Trivy, OSV-Scanner). |
 | `dependabot.yml` | Weekly, grouped update pull requests (a week's cooldown) for the kernel's and the CLI's Go, the console's npm, every Dockerfile, the workflows, and the catalog template's starters. |
-| `workflows/release.yml` | On a version tag: builds both platform images for amd64 and arm64, scans them, pushes them to GHCR, signs them keyless; packages, pushes and signs both charts; creates the GitHub release. |
+| `workflows/release.yml` | On a version tag: builds both platform images for amd64 and arm64, scans them, pushes them to GHCR, signs them keyless; packages, pushes and signs both charts; creates the GitHub release; builds `vertra` for linux and macOS (amd64, arm64), pushes each binary to GHCR as a blob a catalog's `./vertra` downloads by SHA-256, signs them, and attaches them with their checksums. |
 | `workflows/security.yml` | Secret scanning (gitleaks) and code scanning (Semgrep, including `.semgrep/`). |
-| `scripts/install-scanners.sh` | Installs pinned, checksum-verified tool binaries (Trivy, OSV-Scanner, gitleaks, actionlint, cosign) for the workflows. |
-| `scripts/catalog-template.sh` | Runs catalogctl (built from this checkout) in `catalog-template/` with its samples (all, or `SAMPLES=`) installed as teams: CI's `validate` and `check`, and `make catalog-publish`'s `publish -- release` (commands separated by `--` run in the same assembled catalog). |
-| `scripts/build-catalogctl.sh` | Builds catalogctl for this machine in the pinned Go image (no Go needed) into `cli/bin/`, and prints its path, for `VERTRA_CATALOGCTL`. |
+| `scripts/install-scanners.sh` | Installs pinned, checksum-verified tool binaries (Trivy, OSV-Scanner, gitleaks, actionlint, cosign, oras) for the workflows. |
+| `scripts/pin-vertra.sh` | Pins a released `vertra` in a catalog's `./vertra` (default `catalog-template/vertra`): its version and each platform's SHA-256 from the release, after checking each downloads anonymously and matches. |
+| `scripts/catalog-template.sh` | Runs `vertra catalog` (vertra built from this checkout) in `catalog-template/` with its samples (all, or `SAMPLES=`) installed as teams: CI's `validate` and `check`, and `make catalog-publish`'s `publish -- release` (commands separated by `--` run in the same assembled catalog). |
+| `scripts/build-vertra.sh` | Builds `vertra` for this machine in the pinned Go image (no Go needed) into `cli/bin/`, and prints its path, for `VERTRA_BIN`. |
 | `scripts/scan-image.sh` | Scans one built platform image and fails if it must not ship (fixable high or critical vulnerabilities, and more). |
 | `ISSUE_TEMPLATE/bug_report.yml`, `feature_request.yml` | Issue forms for bugs and feature requests. |
 | `ISSUE_TEMPLATE/config.yml` | Turns off blank issues and points security reports to private reporting. |
@@ -363,13 +364,13 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `DESIGN.md` | The design for `vertra`: targets, cluster modes, sizes, scale-down, requirements, the OpenTofu modules, the approval screen and cost estimate, the catalog step, the build order. |
 | `go.mod`, `go.sum` | The Go module (`github.com/rburns629/vertra/cli`): cobra and yaml.v3, protobuf and Connect for the console's API, and `make proto`'s two plugins as `tool` dependencies. |
 | `internal/gen/` | Generated from `proto/` by `make proto` (messages and Connect clients); never edited. |
-| `cmd/catalogctl/main.go` | `catalogctl`, the catalog tool every catalog's `./catalogctl` runs: `validate`, `check`, `publish`, `release`, `changed`, `secret-stores check`, `bases`, `migrate`. |
-| `internal/catalogctl/` | What catalogctl does: validating teams, CODEOWNERS, products and `dags/` templates and DAGs in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing and signing products; building, pushing and signing the catalog's release (`release.go`). It never calls a console. |
+| `cmd/vertra/catalog_commands.go` | A catalog's own commands, `vertra catalog validate`, `check`, `publish`, `release`, `changed`, `secret-stores check`, `bases`, `migrate`: what every catalog's `./vertra` runs. `vertra catalog create` (making the repository) is `catalog.go`. |
+| `internal/catalogtool/` | What `vertra catalog` does in a catalog: validating teams, CODEOWNERS, products and `dags/` templates and DAGs in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing and signing products; building, pushing and signing the catalog's release (`release.go`). It never calls a console. |
 | `cmd/vertra/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
 | `cmd/vertra/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/vertra.yaml`. |
 | `cmd/vertra/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
 | `cmd/vertra/operate.go` | `check`, `status`, `sleep`, `wake`, `console` and `destroy`. |
-| `cmd/vertra/catalog.go` | `catalog`: creates the catalog repository on GitHub with its first team and starters, sets its variables and secrets (tokens minted on the console, never shown), pushes it, waits for its CI and runs a starter. |
+| `cmd/vertra/catalog.go` | `catalog create`: creates the catalog repository on GitHub with its first team and starters, sets its registry variables (no console credential; old ones removed and revoked), pushes it, waits for its CI, has the console apply the release, and runs a starter. |
 | `cmd/vertra/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
 | `cmd/vertra/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
 | `cmd/vertra/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |
@@ -401,8 +402,8 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | Path | What it's for |
 | --- | --- |
 | `README.md` | The catalog's guide: layout, onboarding a team, `product.yaml`, testing, CI, publishing, SecretStores, retiring. |
-| `vertra.yaml` | Where products publish (registry, console, signing); local defaults, overridden by CI variables. |
-| `catalogctl`, `tools/` | The wrapper that runs catalogctl (`cli/cmd/catalogctl`) at a pinned, checksum-verified release, or `VERTRA_CATALOGCTL`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`), for editors (catalogctl embeds its own). |
+| `vertra.yaml` | Where products publish (registry, signing); local defaults, overridden by CI variables. |
+| `vertra`, `tools/` | The wrapper that runs `vertra` (`cli/cmd/vertra`) at a pinned, checksum-verified release, or `VERTRA_BIN`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`), for editors (vertra catalog embeds its own). |
 | `.github/` | The catalog's workflows (check, then publish and release; SecretStore and CODEOWNERS checks; deleting a removed team's images), its scanner installer, and a placeholder `CODEOWNERS`. |
 | `.semgrep/malicious.yml` | Code rules for products: download-and-execute, reverse shells, mining, reading the Pod's token. |
 | `templates/` | Starters to copy: a team, three products, and DAGs that use them. Checked by CI, never published. |

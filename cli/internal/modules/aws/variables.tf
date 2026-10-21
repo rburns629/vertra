@@ -112,7 +112,7 @@ variable "console_hostname" {
 }
 
 variable "catalog_subject_prefix" {
-  description = "The catalog repository's OIDC subject prefix as GitHub sends it: repo:<owner>/<name>, or with immutable subjects repo:<owner>@<id>/<name>@<id> (vertra catalog reads it). Empty: repo:<catalog_repository>."
+  description = "The catalog repository's OIDC subject prefix as GitHub sends it: repo:<owner>/<name>, or with immutable subjects repo:<owner>@<id>/<name>@<id> (`vertra catalog create` reads it). Empty: repo:<catalog_repository>."
   type        = string
   default     = ""
 }

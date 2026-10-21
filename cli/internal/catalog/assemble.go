@@ -26,19 +26,19 @@ type Options struct {
 	// changes, e.g. "@octocat" or "@my-org/catalog-admins".
 	Owners    string
 	Languages []string
-	// Registry goes into vertra.yaml, for running catalogctl from a
+	// Registry goes into vertra.yaml, for running `vertra catalog` from a
 	// laptop (CI takes it from the repository's variables).
 	Registry string
 }
 
 // skipped are never copied: local build and tool state.
-var skipped = map[string]bool{".catalogctl": true, ".venv": true, "__pycache__": true, "node_modules": true, "target": true, ".pytest_cache": true}
+var skipped = map[string]bool{".vertra": true, ".venv": true, "__pycache__": true, "node_modules": true, "target": true, ".pytest_cache": true}
 
 // Assemble writes the catalog's first commit into dst (which must be empty
 // or missing), and returns the starters' product names.
 func Assemble(o Options, dst string) ([]string, error) {
-	if _, err := os.Stat(filepath.Join(o.Template, "catalogctl")); err != nil {
-		return nil, fmt.Errorf("%s isn't a catalog template (no catalogctl)", o.Template)
+	if _, err := os.Stat(filepath.Join(o.Template, "vertra")); err != nil {
+		return nil, fmt.Errorf("%s isn't a catalog template (no ./vertra)", o.Template)
 	}
 	if err := copyTree(o.Template, dst); err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func Assemble(o Options, dst string) ([]string, error) {
 		return nil, err
 	}
 
-	// Where it publishes, for catalogctl from a laptop.
+	// Where it publishes, for `vertra catalog` from a laptop.
 	settings := filepath.Join(dst, "vertra.yaml")
 	data, err = os.ReadFile(settings)
 	if err != nil {

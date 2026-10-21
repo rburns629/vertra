@@ -14,7 +14,7 @@ name: ci
 #             settings in helm/values/, of every size preset, and of the charts' optional branches
 #             (backup destinations, a shared database, policies off), so a
 #             change that breaks a template fails here, not at helm upgrade.
-#   cli       gofmt, go vet and the unit tests of vertra and catalogctl, and macOS builds.
+#   cli       gofmt, go vet and the unit tests of vertra (its catalog commands included), and macOS builds.
 #   opentofu  init, validate and fmt of the CLI's OpenTofu modules.
 #   workflows actionlint over .github/workflows and the catalog template's.
 #   catalog-template  the template a new catalog starts from, with every
@@ -223,12 +223,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "run gofmt -w on these"; exit 1; }
       - run: go vet ./...
-      # catalogctl's compatibility tests make git histories of their own
+      # The catalog commands' compatibility tests make git histories of their own
       # (they'd skip without it; CI must run them).
       - run: apk add --no-cache git
       - run: go test ./...
       - run: GOOS=darwin GOARCH=arm64 go build -o /dev/null ./cmd/vertra
-      - run: GOOS=darwin GOARCH=arm64 go build -o /dev/null ./cmd/catalogctl
 
   proto:
     # The console's API (proto/): its protos lint, and the generated code

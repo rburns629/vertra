@@ -1,6 +1,6 @@
 name: catalog-ci
 
-# A thin wrapper: everything it does is ./catalogctl (the pinned catalogctl), the
+# A thin wrapper: everything it does is ./vertra catalog (the pinned vertra), the
 # same command a laptop runs in local mode. On main it publishes the changed
 # products, then the catalog's release (<registry>/catalog-release): every
 # team, product and SecretStore as of this commit, which each install's
@@ -21,10 +21,10 @@ name: catalog-ci
 
 on:
   pull_request:
-    paths: ["teams/**", "templates/**", "tools/**", "vertra.yaml", "catalogctl", ".github/CODEOWNERS"]
+    paths: ["teams/**", "templates/**", "tools/**", "vertra.yaml", "vertra", ".github/CODEOWNERS"]
   push:
     branches: [main]
-    paths: ["teams/**", "tools/**", "vertra.yaml", "catalogctl"]
+    paths: ["teams/**", "tools/**", "vertra.yaml", "vertra"]
   # Checks every product again: base images get new fixes, and the
   # vulnerability database new findings, without anything here changing.
   schedule:
@@ -51,7 +51,7 @@ jobs:
         env:
           # Empty (the weekly run) checks everything.
           BASE: ${{ github.event.pull_request.base.sha }}
-        run: ./catalogctl check --changed "$BASE"
+        run: ./vertra catalog check --changed "$BASE"
 
   # main: the same checks, then push and sign each product that passed, then
   # the release. Runs in the catalog-publish Environment, which only main may
@@ -114,5 +114,5 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
-          ./catalogctl publish --changed "$BASE"
-          ./catalogctl release
+          ./vertra catalog publish --changed "$BASE"
+          ./vertra catalog release

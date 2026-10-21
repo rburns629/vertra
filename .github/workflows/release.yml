@@ -12,13 +12,21 @@ name: release
 #           too, so they run the images just pushed), pushes them to
 #           oci://ghcr.io/<owner>/<repo>/charts, signs them, and creates the
 #           GitHub release with the packaged charts attached.
+#   cli     builds vertra for linux and darwin, amd64 and arm64, from this
+#           tag, pushes each binary to ghcr.io/<owner>/<repo>/cli as one
+#           blob (tag <version>-<os>-<arch>; its digest is the binary's
+#           SHA-256), signs each, and attaches the binaries and
+#           vertra-checksums.txt to the release. A catalog's ./vertra
+#           downloads its platform's blob anonymously by that SHA-256:
+#           pin a release with .github/scripts/pin-vertra.sh <version>.
 #
 # Verify an image: cosign verify ghcr.io/<owner>/<repo>/execution-kernel:<v> \
 #   --certificate-identity-regexp 'https://github.com/<owner>/<repo>/.github/workflows/release.yml@.*' \
 #   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 #
 # The packages are private on first push: make them public on GitHub (the
-# package's settings) once, so `helm install` and image pulls need no login.
+# package's settings) once, so `helm install`, image pulls and a catalog's
+# ./vertra need no login.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
@@ -115,3 +123,56 @@ jobs:
           prerelease=()
           case "$TAG" in *-*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" dist/*.tgz --verify-tag --generate-notes "${prerelease[@]}"
+
+  cli:
+    needs: charts   # the GitHub release it attaches to
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # attach to the GitHub release
+      packages: write
+      id-token: write   # keyless signing
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: bash .github/scripts/install-scanners.sh oras cosign
+      - name: Build vertra for each platform
+        # In the Go image CI uses, pinned by digest (the Makefile's GO_IMAGE).
+        run: |
+          image=$(sed -n 's/^GO_IMAGE ?= *//p' Makefile)
+          mkdir -p dist
+          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            docker run --rm -v "$PWD":/repo -w /repo/cli -e CGO_ENABLED=0 \
+              -e GOOS="${platform%-*}" -e GOARCH="${platform#*-}" "$image" \
+              go build -trimpath -ldflags "-s -w -X main.Version=$TAG" -o "/repo/dist/vertra-$platform" ./cmd/vertra
+          done
+          (cd dist && sha256sum vertra-* > vertra-checksums.txt && cat vertra-checksums.txt)
+      - name: Sign in to GHCR
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | oras login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Push and sign each binary
+        run: |
+          version="${TAG#v}"
+          registry="ghcr.io/${GITHUB_REPOSITORY,,}/cli"
+          cd dist
+          {
+            echo "### vertra $TAG"
+            echo
+            echo "Pin it in a catalog's ./vertra: \`.github/scripts/pin-vertra.sh $version\`"
+            echo
+            echo '| Platform | SHA-256 (the blob a catalog downloads) |'
+            echo '| --- | --- |'
+          } >> "$GITHUB_STEP_SUMMARY"
+          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            oras push "$registry:$version-$platform" \
+              --artifact-type application/vnd.vertra.cli.v1 \
+              "vertra-$platform:application/vnd.vertra.cli.binary.v1"
+            digest=$(oras resolve "$registry:$version-$platform")
+            cosign sign --yes "$registry@$digest"
+            echo "| $platform | \`$(sha256sum "vertra-$platform" | cut -d' ' -f1)\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" dist/vertra-* --clobber

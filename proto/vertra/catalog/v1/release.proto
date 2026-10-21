@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 
 // A catalog release: everything a catalog's main branch says, as of one
 // commit, for every install that uses the catalog. Catalog CI writes it
-// (`catalogctl release`), only from main, as an OCI artifact beside the
+// (`vertra catalog release`), only from main, as an OCI artifact beside the
 // images, <registry>/catalog-release, tagged with the commit and "latest",
 // and signs it as it signs the images. Each console reads it, verifies it,
 // and applies it: so CI holds no console credential, and one catalog serves
@@ -28,7 +28,7 @@ message Release {
   // Every product action of every team, with its image pinned to a digest.
   repeated ProductAction products = 5;
   // Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
-  // catalogctl checked them: what consumers run, with parameters only.
+  // vertra catalog checked them: what consumers run, with parameters only.
   repeated Template templates = 6;
 }
 
@@ -36,7 +36,7 @@ message Team {
   // Its folder's name, teams/<name>/: the team and its namespace.
   string name = 1;
   // Its SecretStore files' documents (teams/<name>/secret-stores/*.yaml), as
-  // catalogctl checked them; none when it has no file. The stored
+  // vertra catalog checked them; none when it has no file. The stored
   // credential such a store may use is never here: each install sets its
   // own in the console.
   repeated google.protobuf.Struct secret_store_documents = 2;
@@ -91,7 +91,7 @@ message Template {
 message TemplateStep {
   // Unique within the template.
   string id = 1;
-  // <team>/<product>.<action>, always with its team (catalogctl fills in the
+  // <team>/<product>.<action>, always with its team (vertra catalog fills in the
   // template's own for an action of its team).
   string action = 2;
   repeated string depends_on = 3;
