@@ -51,6 +51,16 @@ service ExecutionService {
   // Runs the same DAG again as a new execution, checked again against the
   // caller's current teams and secrets.
   rpc RerunExecution(RerunExecutionRequest) returns (RerunExecutionResponse);
+  // Approves or declines a step awaiting approval. Only a maintainer of the
+  // step's team may, and never whoever submitted the run. Declined, the step
+  // fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
+  // and stays approved if it's retried.
+  rpc DecideApproval(DecideApprovalRequest) returns (DecideApprovalResponse);
+  // The steps awaiting approval in the teams the caller maintains (every
+  // team, for an admin), the longest waiting first.
+  rpc ListPendingApprovals(ListPendingApprovalsRequest) returns (ListPendingApprovalsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 enum ExecutionState {
@@ -73,6 +83,9 @@ enum TaskState {
   TASK_STATE_SUCCEEDED = 5;
   TASK_STATE_FAILED = 6;
   TASK_STATE_CANCELLED = 7;
+  // Waiting for a maintainer of its team to approve it (product.yaml's
+  // approval, or a target team.yaml lets through only with one).
+  TASK_STATE_AWAITING_APPROVAL = 8;
 }
 
 // A DAG, as submitted.
@@ -172,6 +185,18 @@ message TaskStatus {
   // Once it failed: what that means and what to do, whether retrying is
   // safe, and whom to ask.
   optional FailureHelp help = 10;
+  // Set when the step needs an approval.
+  optional Approval approval = 11;
+}
+
+message Approval {
+  // The email of who approved it, and when; empty while it hasn't been.
+  string approved_by = 1;
+  google.protobuf.Timestamp approved_at = 2;
+  // While it awaits approval: since when.
+  google.protobuf.Timestamp awaiting_since = 3;
+  // Whether the caller may approve or decline it now.
+  bool can_decide = 4;
 }
 
 message FailureHelp {
@@ -310,4 +335,38 @@ message RerunExecutionResponse {
   // The new execution.
   string execution_id = 1;
   ExecutionState state = 2;
+}
+
+message DecideApprovalRequest {
+  string execution_id = 1;
+  string task_id = 2;
+  // false declines it.
+  bool approve = 3;
+  // Why, when declining: shown with the step's failure. At most 500 characters.
+  string reason = 4;
+}
+
+message DecideApprovalResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}
+
+message ListPendingApprovalsRequest {}
+
+message ListPendingApprovalsResponse {
+  repeated PendingApproval approvals = 1;
+}
+
+message PendingApproval {
+  string execution_id = 1;
+  string execution_name = 2;
+  string task_id = 3;
+  string team = 4;
+  string image = 5;
+  string action = 6;
+  // The email of who submitted the run.
+  string requested_by = 7;
+  google.protobuf.Timestamp awaiting_since = 8;
+  // False when the caller submitted the run: someone else decides.
+  bool can_decide = 9;
 }

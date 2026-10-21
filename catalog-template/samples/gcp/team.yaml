@@ -27,3 +27,7 @@ help:
 allowedTargets:
   - teams: ["*"]
     gcp.project: ["sandbox-*"]
+  # Shared projects too, once one of this team's maintainers approves.
+  - teams: ["*"]
+    gcp.project: ["shared-*"]
+    approval: true

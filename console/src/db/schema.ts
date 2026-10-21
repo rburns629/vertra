@@ -70,7 +70,12 @@ export const teams = pgTable("teams", {
 export interface TargetRule {
   teams: string[];
   targets: Record<string, string[]>;
+  /** The steps it lets through still wait for an approval. */
+  approval?: boolean;
 }
+
+/** When a product's steps wait for an approval (product.yaml's approval). */
+export type Approval = "always" | "otherTeams";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -198,6 +203,10 @@ export const products = pgTable(
     // The inputs naming what a step of it changes (product.yaml's
     // concurrencyKey): the kernel runs one step per set of values at a time.
     concurrencyKey: text("concurrency_key").array().notNull().default(sql`'{}'::text[]`),
+    // When a step of it waits for a maintainer of its team to approve it
+    // (product.yaml's approval): always, or only when another team runs it.
+    // Null: never, unless an allowedTargets rule asks (core/approvals.ts).
+    approval: text("approval").$type<Approval>(),
     // product.yaml's errors: what each error code its actions report means
     // and what to do, shown when a step fails with one (failureHelp.ts).
     errorHelp: jsonb("error_help").$type<Record<string, ErrorHelp>>().notNull().default({}),

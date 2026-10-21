@@ -369,6 +369,13 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
    * @generated from field: optional vertra.console.v1.FailureHelp help = 10;
    */
   help?: FailureHelp | undefined;
+
+  /**
+   * Set when the step needs an approval.
+   *
+   * @generated from field: optional vertra.console.v1.Approval approval = 11;
+   */
+  approval?: Approval | undefined;
 };
 
 /**
@@ -376,6 +383,43 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
  * Use `create(TaskStatusSchema)` to create a new message.
  */
 export declare const TaskStatusSchema: GenMessage<TaskStatus>;
+
+/**
+ * @generated from message vertra.console.v1.Approval
+ */
+export declare type Approval = Message<"vertra.console.v1.Approval"> & {
+  /**
+   * The email of who approved it, and when; empty while it hasn't been.
+   *
+   * @generated from field: string approved_by = 1;
+   */
+  approvedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp approved_at = 2;
+   */
+  approvedAt?: Timestamp | undefined;
+
+  /**
+   * While it awaits approval: since when.
+   *
+   * @generated from field: google.protobuf.Timestamp awaiting_since = 3;
+   */
+  awaitingSince?: Timestamp | undefined;
+
+  /**
+   * Whether the caller may approve or decline it now.
+   *
+   * @generated from field: bool can_decide = 4;
+   */
+  canDecide: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.Approval.
+ * Use `create(ApprovalSchema)` to create a new message.
+ */
+export declare const ApprovalSchema: GenMessage<Approval>;
 
 /**
  * @generated from message vertra.console.v1.FailureHelp
@@ -918,6 +962,150 @@ export declare type RerunExecutionResponse = Message<"vertra.console.v1.RerunExe
 export declare const RerunExecutionResponseSchema: GenMessage<RerunExecutionResponse>;
 
 /**
+ * @generated from message vertra.console.v1.DecideApprovalRequest
+ */
+export declare type DecideApprovalRequest = Message<"vertra.console.v1.DecideApprovalRequest"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+
+  /**
+   * false declines it.
+   *
+   * @generated from field: bool approve = 3;
+   */
+  approve: boolean;
+
+  /**
+   * Why, when declining: shown with the step's failure. At most 500 characters.
+   *
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.DecideApprovalRequest.
+ * Use `create(DecideApprovalRequestSchema)` to create a new message.
+ */
+export declare const DecideApprovalRequestSchema: GenMessage<DecideApprovalRequest>;
+
+/**
+ * @generated from message vertra.console.v1.DecideApprovalResponse
+ */
+export declare type DecideApprovalResponse = Message<"vertra.console.v1.DecideApprovalResponse"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: vertra.console.v1.ExecutionState state = 2;
+   */
+  state: ExecutionState;
+};
+
+/**
+ * Describes the message vertra.console.v1.DecideApprovalResponse.
+ * Use `create(DecideApprovalResponseSchema)` to create a new message.
+ */
+export declare const DecideApprovalResponseSchema: GenMessage<DecideApprovalResponse>;
+
+/**
+ * @generated from message vertra.console.v1.ListPendingApprovalsRequest
+ */
+export declare type ListPendingApprovalsRequest = Message<"vertra.console.v1.ListPendingApprovalsRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.ListPendingApprovalsRequest.
+ * Use `create(ListPendingApprovalsRequestSchema)` to create a new message.
+ */
+export declare const ListPendingApprovalsRequestSchema: GenMessage<ListPendingApprovalsRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ListPendingApprovalsResponse
+ */
+export declare type ListPendingApprovalsResponse = Message<"vertra.console.v1.ListPendingApprovalsResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.PendingApproval approvals = 1;
+   */
+  approvals: PendingApproval[];
+};
+
+/**
+ * Describes the message vertra.console.v1.ListPendingApprovalsResponse.
+ * Use `create(ListPendingApprovalsResponseSchema)` to create a new message.
+ */
+export declare const ListPendingApprovalsResponseSchema: GenMessage<ListPendingApprovalsResponse>;
+
+/**
+ * @generated from message vertra.console.v1.PendingApproval
+ */
+export declare type PendingApproval = Message<"vertra.console.v1.PendingApproval"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string execution_name = 2;
+   */
+  executionName: string;
+
+  /**
+   * @generated from field: string task_id = 3;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string team = 4;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string image = 5;
+   */
+  image: string;
+
+  /**
+   * @generated from field: string action = 6;
+   */
+  action: string;
+
+  /**
+   * The email of who submitted the run.
+   *
+   * @generated from field: string requested_by = 7;
+   */
+  requestedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp awaiting_since = 8;
+   */
+  awaitingSince?: Timestamp | undefined;
+
+  /**
+   * False when the caller submitted the run: someone else decides.
+   *
+   * @generated from field: bool can_decide = 9;
+   */
+  canDecide: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.PendingApproval.
+ * Use `create(PendingApprovalSchema)` to create a new message.
+ */
+export declare const PendingApprovalSchema: GenMessage<PendingApproval>;
+
+/**
  * @generated from enum vertra.console.v1.ExecutionState
  */
 export enum ExecutionState {
@@ -1004,6 +1192,14 @@ export enum TaskState {
    * @generated from enum value: TASK_STATE_CANCELLED = 7;
    */
   CANCELLED = 7,
+
+  /**
+   * Waiting for a maintainer of its team to approve it (product.yaml's
+   * approval, or a target team.yaml lets through only with one).
+   *
+   * @generated from enum value: TASK_STATE_AWAITING_APPROVAL = 8;
+   */
+  AWAITING_APPROVAL = 8,
 }
 
 /**
@@ -1117,6 +1313,30 @@ export declare const ExecutionService: GenService<{
     methodKind: "unary";
     input: typeof RerunExecutionRequestSchema;
     output: typeof RerunExecutionResponseSchema;
+  },
+  /**
+   * Approves or declines a step awaiting approval. Only a maintainer of the
+   * step's team may, and never whoever submitted the run. Declined, the step
+   * fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
+   * and stays approved if it's retried.
+   *
+   * @generated from rpc vertra.console.v1.ExecutionService.DecideApproval
+   */
+  decideApproval: {
+    methodKind: "unary";
+    input: typeof DecideApprovalRequestSchema;
+    output: typeof DecideApprovalResponseSchema;
+  },
+  /**
+   * The steps awaiting approval in the teams the caller maintains (every
+   * team, for an admin), the longest waiting first.
+   *
+   * @generated from rpc vertra.console.v1.ExecutionService.ListPendingApprovals
+   */
+  listPendingApprovals: {
+    methodKind: "unary";
+    input: typeof ListPendingApprovalsRequestSchema;
+    output: typeof ListPendingApprovalsResponseSchema;
   },
 }>;
 

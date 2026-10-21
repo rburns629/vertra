@@ -207,6 +207,24 @@
      "streaming": false,
      "idempotency": "",
      "public": false
+    },
+    {
+     "name": "DecideApproval",
+     "comment": "Approves or declines a step awaiting approval. Only a maintainer of the\nstep's team may, and never whoever submitted the run. Declined, the step\nfails with APPROVAL_DECLINED, failing its execution; approved, it runs,\nand stays approved if it's retried.",
+     "input": "vertra.console.v1.DecideApprovalRequest",
+     "output": "vertra.console.v1.DecideApprovalResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ListPendingApprovals",
+     "comment": "The steps awaiting approval in the teams the caller maintains (every\nteam, for an admin), the longest waiting first.",
+     "input": "vertra.console.v1.ListPendingApprovalsRequest",
+     "output": "vertra.console.v1.ListPendingApprovalsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
     }
    ]
   },
@@ -1739,6 +1757,48 @@
      "repeated": false,
      "optional": true,
      "comment": "Once it failed: what that means and what to do, whether retrying is\nsafe, and whom to ask."
+    },
+    {
+     "name": "approval",
+     "type": "Approval",
+     "ref": "vertra.console.v1.Approval",
+     "repeated": false,
+     "optional": true,
+     "comment": "Set when the step needs an approval."
+    }
+   ]
+  },
+  "vertra.console.v1.Approval": {
+   "name": "Approval",
+   "comment": "",
+   "fields": [
+    {
+     "name": "approvedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The email of who approved it, and when; empty while it hasn't been."
+    },
+    {
+     "name": "approvedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "awaitingSince",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "While it awaits approval: since when."
+    },
+    {
+     "name": "canDecide",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether the caller may approve or decline it now."
     }
    ]
   },
@@ -2247,6 +2307,149 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DecideApprovalRequest": {
+   "name": "DecideApprovalRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "taskId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "approve",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "false declines it."
+    },
+    {
+     "name": "reason",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why, when declining: shown with the step's failure. At most 500 characters."
+    }
+   ]
+  },
+  "vertra.console.v1.DecideApprovalResponse": {
+   "name": "DecideApprovalResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListPendingApprovalsRequest": {
+   "name": "ListPendingApprovalsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListPendingApprovalsResponse": {
+   "name": "ListPendingApprovalsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "approvals",
+     "type": "PendingApproval",
+     "ref": "vertra.console.v1.PendingApproval",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PendingApproval": {
+   "name": "PendingApproval",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "executionName",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "taskId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "image",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "action",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "requestedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The email of who submitted the run."
+    },
+    {
+     "name": "awaitingSince",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "canDecide",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "False when the caller submitted the run: someone else decides."
     }
    ]
   },
@@ -4967,6 +5170,10 @@
     {
      "name": "TASK_STATE_CANCELLED",
      "comment": ""
+    },
+    {
+     "name": "TASK_STATE_AWAITING_APPROVAL",
+     "comment": "Waiting for a maintainer of its team to approve it (product.yaml's\napproval, or a target team.yaml lets through only with one)."
     }
    ]
   },

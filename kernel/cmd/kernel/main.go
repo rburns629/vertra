@@ -281,7 +281,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		ExecutorConcurrency: s.ExecutorConcurrency, MaxRunning: s.MaxRunning,
 		MaxRunningPerTeam: s.MaxRunningPerTeam, RetryBackoff: s.RetryBackoff,
 		MaxDispatchFailures: s.MaxDispatchFailures, LogRefresh: s.TaskLogRefresh,
-		JobDeadlineGrace: s.JobDeadlineGrace,
+		JobDeadlineGrace: s.JobDeadlineGrace, ApprovalTimeout: s.ApprovalTimeout,
 	}
 	loop := &scheduler.Loop{Pool: pool, Executor: exec, Options: opts, PollInterval: s.PollInterval,
 		RetentionDays: s.ExecutionRetentionDays, HeartbeatFile: s.HeartbeatFile, Log: log}

@@ -16,6 +16,7 @@ import {
   wiringTypes,
   templates,
   catalogSync,
+  type Approval,
   type ErrorHelp,
   type ProductResources,
   type TargetRule,
@@ -446,6 +447,7 @@ export interface Product {
   idempotent: boolean;
   maxAttempts: number;
   concurrencyKey: string[];
+  approval: Approval | null;
   errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
   resources: ProductResources | null;
@@ -486,6 +488,7 @@ export interface ProductInput {
   idempotent?: boolean | undefined;
   maxAttempts?: number | undefined;
   concurrencyKey?: string[] | undefined;
+  approval?: Approval | null | undefined;
   errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
@@ -533,6 +536,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
+      approval: input.approval,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated,
       resources: input.resources,

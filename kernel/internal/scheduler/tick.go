@@ -46,6 +46,9 @@ type Options struct {
 	// JobDeadlineGrace is how far past its timeout a Job's own deadline is:
 	// a timed-out task whose Job can't be stopped fails only after it.
 	JobDeadlineGrace time.Duration
+	// ApprovalTimeout is how long a task may await approval before it
+	// fails with APPROVAL_EXPIRED; 0, forever.
+	ApprovalTimeout time.Duration
 }
 
 // DefaultOptions are the scheduler's defaults (the Python kernel's).
@@ -53,6 +56,7 @@ func DefaultOptions(owner string) Options {
 	return Options{
 		Owner: owner, LeaseDuration: 60 * time.Second, ClaimLimit: 50, ExecutorConcurrency: 16,
 		RetryBackoff: domain.DefaultRetryBackoff, MaxDispatchFailures: 5, JobDeadlineGrace: 600 * time.Second,
+		ApprovalTimeout: 72 * time.Hour,
 	}
 }
 
@@ -84,6 +88,9 @@ type pass struct {
 // Only executor calls overlap; every row read and write is in order.
 func RunTick(ctx context.Context, db DB, exec executor.Executor, opts Options, now time.Time, log *slog.Logger) (Outcome, error) {
 	p := &pass{ctx: ctx, db: db, exec: exec, opts: opts, now: now, log: log}
+	if err := p.expireApprovals(); err != nil {
+		return Outcome{}, fmt.Errorf("expiring approvals: %w", err)
+	}
 	claimed, err := p.claimReadyTasks()
 	if err != nil {
 		return Outcome{}, fmt.Errorf("claiming: %w", err)
@@ -484,7 +491,42 @@ func (p *pass) handleFailure(t *Task, attempt *Attempt, failure domain.Structure
 	return p.failExecution(t.ExecutionID)
 }
 
-// releaseReadyDependents makes each BLOCKED dependent of t READY once every
+// expireApprovals fails each task that has awaited approval longer than
+// ApprovalTimeout (APPROVAL_EXPIRED), and with it its execution, as a
+// decline would.
+func (p *pass) expireApprovals() error {
+	if p.opts.ApprovalTimeout <= 0 {
+		return nil
+	}
+	rows, err := p.db.Query(p.ctx, `SELECT `+taskColumns+` FROM execution_tasks
+		WHERE state = 'AWAITING_APPROVAL' AND available_at <= $1 FOR NO KEY UPDATE SKIP LOCKED`, p.now.Add(-p.opts.ApprovalTimeout))
+	if err != nil {
+		return err
+	}
+	expired, err := scanTasks(rows)
+	if err != nil {
+		return err
+	}
+	for _, t := range expired {
+		failure := domain.StructuredError{Code: "APPROVAL_EXPIRED", Message: "Nobody approved or declined it in time."}
+		t.State = domain.TaskFailed
+		t.Failure = failure.AsMap()
+		if err := saveTask(p.ctx, p.db, t); err != nil {
+			return err
+		}
+		if err := p.recordEvent(t.ExecutionID, &t.ID, domain.EventTaskFailed, map[string]any{
+			"taskKey": t.TaskKey, "attempt": t.AttemptCount, "error": failure.AsMap(), "willRetry": false}); err != nil {
+			return err
+		}
+		if err := p.failExecution(t.ExecutionID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// releaseReadyDependents makes each BLOCKED dependent of t READY (or
+// AWAITING_APPROVAL, if it needs an approval it hasn't had) once every
 // one of its dependencies has succeeded. The dependent is locked before its
 // dependencies are read: two schedulers finishing two of its dependencies
 // at once would otherwise each see the other still running, and neither
@@ -524,8 +566,8 @@ func (p *pass) releaseReadyDependents(t *Task) error {
 			return err
 		}
 		if unfinished == 0 {
-			if _, err := p.db.Exec(p.ctx, `UPDATE execution_tasks SET state = 'READY', available_at = $2, updated_at = now()
-				WHERE id = $1`, id, p.now); err != nil {
+			if _, err := p.db.Exec(p.ctx, `UPDATE execution_tasks SET state = `+domain.ReadyOrAwaitingSQL+`,
+				available_at = $2, updated_at = now() WHERE id = $1`, id, p.now); err != nil {
 				return err
 			}
 		}
@@ -581,7 +623,7 @@ func (p *pass) settleExecution(executionID string) error {
 		}
 		return p.recordEvent(executionID, nil, domain.EventExecutionSucceeded, nil)
 	}
-	runnable := counts[domain.TaskReady] + counts[domain.TaskClaimed] + counts[domain.TaskRunning]
+	runnable := counts[domain.TaskReady] + counts[domain.TaskAwaitingApproval] + counts[domain.TaskClaimed] + counts[domain.TaskRunning]
 	if counts[domain.TaskFailed] > 0 && runnable == 0 {
 		return p.failExecution(executionID)
 	}
@@ -593,7 +635,7 @@ func (p *pass) settleExecution(executionID string) error {
 // execution's own row, in the order kernel-api's cancel locks them too.
 func (p *pass) failExecution(executionID string) error {
 	if _, err := p.db.Exec(p.ctx, `UPDATE execution_tasks SET state = 'CANCELLED', updated_at = now()
-		WHERE execution_id = $1 AND state IN ('READY', 'BLOCKED')`, executionID); err != nil {
+		WHERE execution_id = $1 AND state IN ('READY', 'BLOCKED', 'AWAITING_APPROVAL')`, executionID); err != nil {
 		return err
 	}
 	moved, err := transitionExecution(p.ctx, p.db, executionID, domain.ExecutionFailed, domain.ActiveExecutionStates...)

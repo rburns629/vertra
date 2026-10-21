@@ -36,6 +36,7 @@ import { computeStages } from "../dagLayout";
 import {
   ApiError,
   cancelExecution,
+  decideApproval,
   rerunExecution,
   retryTask,
   type ExecutionDetail,
@@ -43,6 +44,7 @@ import {
   type SubmittedExecutionPayload,
   type TaskLogs,
   type FailureHelp,
+  type TaskApproval,
   type TaskAttempt,
   type TaskStatus,
 } from "../api";
@@ -90,6 +92,7 @@ function TaskNodeCard({
   selected,
   retryBlocked,
   onRetry,
+  onDecide,
   onSelect,
   width,
 }: {
@@ -101,6 +104,7 @@ function TaskNodeCard({
   /** Why a retry would be refused (the page explains it once, up top). */
   retryBlocked: string | null;
   onRetry: (taskId: string) => void;
+  onDecide: (taskId: string, approve: boolean, reason: string) => void;
   onSelect: (taskId: string) => void;
 }) {
   const duration = formatDuration(task.startedAt, task.completedAt);
@@ -191,6 +195,15 @@ function TaskNodeCard({
       )}
 
       {task.help && <Help help={task.help} />}
+
+      {task.approval && (
+        <Approval
+          approval={task.approval}
+          awaiting={task.state === "AWAITING_APPROVAL"}
+          busy={busy === task.taskId}
+          onDecide={(approve, reason) => { onDecide(task.taskId, approve, reason); }}
+        />
+      )}
 
       {task.attempts.length > 0 && <Attempts attempts={task.attempts} />}
 
@@ -632,6 +645,19 @@ export function ExecutionDetailPage() {
     }
   }
 
+  async function handleDecide(taskId: string, approve: boolean, reason: string): Promise<void> {
+    setActionError(null);
+    setBusy(taskId);
+    try {
+      await decideApproval(id, taskId, approve, reason);
+      resume();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : approve ? "Approving failed." : "Declining failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   // Rerun produces a brand-new execution id (see api.ts's own comment on
   // why), so there's nothing to refresh on this page -- navigate straight
   // to the new execution instead, same as submitting a fresh one would.
@@ -881,6 +907,7 @@ export function ExecutionDetailPage() {
                             selected={selectedTaskId === task.taskId}
                             retryBlocked={retryBlockedFor(task.taskId)}
                             onRetry={(taskId) => void handleRetry(taskId)}
+                            onDecide={(taskId, approve, reason) => void handleDecide(taskId, approve, reason)}
                             onSelect={handleSelectTask}
                           />,
                         ];
@@ -979,6 +1006,85 @@ function Attempts({ attempts }: { attempts: TaskAttempt[] }) {
           </Box>
         ))}
       </Box>
+    </Box>
+  );
+}
+
+function since(at: string | null): string {
+  return at ? new Date(at).toLocaleString() : "";
+}
+
+/**
+ * A step that needs an approval: who approved it, or that it's waiting, and
+ * for a maintainer of its team who didn't submit the run, Approve and
+ * Decline (with an optional reason, shown with the failure).
+ */
+function Approval({
+  approval,
+  awaiting,
+  busy,
+  onDecide,
+}: {
+  approval: TaskApproval;
+  awaiting: boolean;
+  busy: boolean;
+  onDecide: (approve: boolean, reason: string) => void;
+}) {
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+  if (!awaiting) {
+    return approval.approvedBy ? (
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+        Approved by {approval.approvedBy}
+        {approval.approvedAt && `, ${since(approval.approvedAt)}`}
+      </Typography>
+    ) : null;
+  }
+  return (
+    <Box
+      sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 1 }}
+      onClick={(event: MouseEvent) => {
+        // Deciding isn't selecting the step.
+        event.stopPropagation();
+      }}
+    >
+      <Typography variant="caption" color="text.secondary">
+        Waiting for a maintainer of its team to approve it
+        {approval.awaitingSince && `, since ${since(approval.awaitingSince)}`}.
+        {!approval.canDecide && " You can't decide on it: only its team's maintainers can, and never whoever ran it."}
+      </Typography>
+      {approval.canDecide && declining && (
+        <TextField
+          size="small"
+          label="Why (shown with the step)"
+          value={reason}
+          onChange={(event) => { setReason(event.target.value); }}
+          slotProps={{ htmlInput: { maxLength: 500 } }}
+        />
+      )}
+      {approval.canDecide && (
+        <Stack direction="row" spacing={1}>
+          {declining ? (
+            <>
+              <Button size="small" color="error" variant="contained" disabled={busy} onClick={() => { onDecide(false, reason); }}>
+                {busy ? "Declining…" : "Decline"}
+              </Button>
+              <Button size="small" disabled={busy} onClick={() => { setDeclining(false); }}>
+                Back
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="small" variant="contained" disabled={busy} onClick={() => { onDecide(true, ""); }}>
+                {busy ? "Approving…" : "Approve"}
+              </Button>
+              <Button size="small" color="error" disabled={busy} onClick={() => { setDeclining(true); }}>
+                Decline…
+              </Button>
+            </>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }

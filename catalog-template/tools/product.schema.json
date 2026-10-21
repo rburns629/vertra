@@ -262,6 +262,13 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "approval": {
+          "description": "When a step of this action waits for a person to approve it before it runs: always, or otherTeams (only when another team runs it). A maintainer of this team approves or declines it on the run's page, never the person who ran it; nobody deciding within the install's approval timeout (3 days by default) fails it with APPROVAL_EXPIRED. Left out: never, unless a rule of your team.yaml's allowedTargets asks for one.",
+          "enum": [
+            "always",
+            "otherTeams"
+          ]
         }
       },
       "allOf": [

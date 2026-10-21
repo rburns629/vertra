@@ -50,9 +50,11 @@ import {
 } from "../kernel/client.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { ensureStillRunnable, rerunTemplate } from "./templates.js";
+import { mayDecide, taskTeams } from "./approvals.js";
 import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { scanBlocker } from "../scanning.js";
+import { targetsNeedApproval } from "../targets.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -457,7 +459,7 @@ async function withProductResources(submission: Record<string, unknown>): Promis
 }
 
 /** The fields a task gets from its product, never from whoever submits it. */
-const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey"] as const;
+const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey", "approvalRequired"] as const;
 
 const isReference = (value: unknown) =>
   isRecord(value) && Object.keys(value).length === 2 && "$fromTask" in value && "$output" in value;
@@ -489,7 +491,28 @@ function attemptsFor(product: { idempotent: boolean; maxAttempts: number }, requ
   return typeof requested === "number" && Number.isInteger(requested) && requested >= 1 ? Math.min(requested, allowed) : allowed;
 }
 
-async function withProductContract(submission: Record<string, unknown>): Promise<Record<string, unknown>> {
+/** Who a run is by, for approvals: the caller's teams, and the team it's for. */
+interface Runner {
+  teamNames: string[];
+  forTeam?: string | undefined;
+}
+
+/**
+ * Whether a step of `product`, in its team `team`, waits for a maintainer of
+ * that team to approve it: always, if its product.yaml says so; for another
+ * team's run (the caller isn't in the product's team), if it says
+ * otherTeams, or if a target it's aimed at is one the team's allowedTargets
+ * let through only with an approval (targets.ts).
+ */
+async function approvalRequired(product: Product, team: string, inputs: Record<string, unknown>, runner: Runner): Promise<boolean> {
+  if (product.approval === "always") return true;
+  if (runner.teamNames.includes(team)) return false;
+  if (product.approval === "otherTeams") return true;
+  const owner = await findTeamByName(team);
+  return owner !== undefined && targetsNeedApproval(owner, product.inputSchema, inputs, runner.forTeam ? [runner.forTeam] : runner.teamNames);
+}
+
+async function withProductContract(submission: Record<string, unknown>, runner: Runner): Promise<Record<string, unknown>> {
   const tasks = submission["tasks"];
   if (!Array.isArray(tasks)) return submission;
   const products = productLookup();
@@ -528,6 +551,9 @@ async function withProductContract(submission: Record<string, unknown>): Promise
       // One step per set of these inputs' values at a time, the product's
       // own (the kernel works the key out once the inputs are resolved).
       ...(product.concurrencyKey.length > 0 ? { concurrencyKey: { scope: product.name, inputs: product.concurrencyKey } } : {}),
+      ...((await approvalRequired(product, team ?? "", isRecord(task["inputs"]) ? task["inputs"] : {}, runner))
+        ? { approvalRequired: true }
+        : {}),
     });
   }
   if (problems.length > 0) {
@@ -779,7 +805,10 @@ export async function submitChecked(
 
   const pinnedBody = await pinned(body as Record<string, unknown>, context);
   await refuseUnscanned(taskImages(pinnedBody), context);
-  const submission = await withProductContract(await withProductResources(pinnedBody));
+  const submission = await withProductContract(await withProductResources(pinnedBody), {
+    teamNames: caller?.teamNames ?? [],
+    forTeam: run?.onBehalfOf,
+  });
 
   const result = await submitExecution(scopeRequestId(submission, run ? [`user:${caller?.id ?? ""}`] : teams), requester(caller));
   await recordOrCancel(
@@ -815,16 +844,27 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
   // Who asked for each attempt, as the kernel recorded it: "user:<id>",
   // shown by email (an account since deleted says so).
   const emails = new Map<string, string>();
-  for (const id of new Set(detail.tasks.flatMap((t) => t.attempts.map((a) => a.requestedBy)).filter((r) => r.startsWith("user:")))) {
+  const askers = detail.tasks.flatMap((t) => [...t.attempts.map((a) => a.requestedBy), t.approvedBy]);
+  for (const id of new Set(askers.filter((r) => r.startsWith("user:")))) {
     emails.set(id, (await findUserById(id.slice("user:".length)))?.email ?? "(deleted account)");
   }
   const helped = await failuresExplained(detail.tasks, submitted.payload);
+  const teamOf = taskTeams(submitted.payload);
   return {
     ...detail,
     tasks: detail.tasks.map((t) => ({
       ...t,
       attempts: t.attempts.map((a) => ({ ...a, requestedBy: emails.get(a.requestedBy) ?? "" })),
       help: helped.get(t.taskId) ?? null,
+      approval: t.approvalRequired
+        ? {
+            approvedBy: emails.get(t.approvedBy) ?? "",
+            approvedAt: t.approvedAt,
+            awaitingSince: t.awaitingSince,
+            canDecide:
+              t.state === "AWAITING_APPROVAL" && caller !== undefined && mayDecide(caller, teamOf.get(t.taskId) ?? "", submitted.submittedBy),
+          }
+        : null,
     })),
     teams: submitted.teams,
     submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),
@@ -921,7 +961,9 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
   // from before pinning has tags; they're pinned now.
   const pinnedReplay = await pinned(replayed as Record<string, unknown>, context);
   await refuseUnscanned(taskImages(pinnedReplay), context);
-  const rerunPayload = await withProductContract(await withProductResources({ ...pinnedReplay, requestId: randomUUID() }));
+  const rerunPayload = await withProductContract(await withProductResources({ ...pinnedReplay, requestId: randomUUID() }), {
+    teamNames: caller?.teamNames ?? [],
+  });
 
   const result = await submitExecution(scopeRequestId(rerunPayload, submitted.teams), requester(caller));
   await recordOrCancel(

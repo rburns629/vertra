@@ -36,6 +36,9 @@ type TaskDef struct {
 	// never held.
 	ConcurrencyScope  string
 	ConcurrencyInputs []string
+	// ApprovalRequired holds the task in AWAITING_APPROVAL until a person
+	// approves it, instead of letting it become READY.
+	ApprovalRequired bool
 }
 
 // MaxTokenAudiences is how many a task may ask for.
@@ -76,10 +79,14 @@ func TokenAudiencesProblem(audiences []string) string {
 	return ""
 }
 
-// InitialState is READY for a task with no dependencies, else BLOCKED.
+// InitialState is BLOCKED for a task with dependencies, else
+// AWAITING_APPROVAL if it needs an approval, else READY.
 func (t TaskDef) InitialState() TaskState {
 	if len(t.DependsOn) > 0 {
 		return TaskBlocked
+	}
+	if t.ApprovalRequired {
+		return TaskAwaitingApproval
 	}
 	return TaskReady
 }

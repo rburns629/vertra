@@ -112,6 +112,7 @@ const TASK_FIELDS = new Set([
   "inputSchema",
   "outputSchema",
   "concurrencyKey",
+  "approvalRequired",
   "inputs",
   "timeoutSeconds",
   "maxAttempts",
@@ -184,6 +185,7 @@ function task(value: unknown, index: number): Task {
           inputs: texts(value.concurrencyKey.inputs, `${where}.concurrencyKey.inputs`),
         })
       : undefined,
+    approvalRequired: value.approvalRequired === true,
     inputs: inputs as JsonObject,
     timeoutSeconds: whole(value.timeoutSeconds, `${where}.timeoutSeconds`),
     maxAttempts: whole(value.maxAttempts, `${where}.maxAttempts`),
@@ -252,6 +254,12 @@ export interface KernelTaskStatus {
   startedAt: string | null;
   completedAt: string | null;
   attempts: KernelAttempt[];
+  approvalRequired: boolean;
+  /** "user:<id>" as the console sent it, once approved; else "". */
+  approvedBy: string;
+  approvedAt: string | null;
+  /** While AWAITING_APPROVAL: since when. */
+  awaitingSince: string | null;
 }
 
 export interface KernelExecution {
@@ -287,6 +295,10 @@ export async function getExecution(executionId: string): Promise<KernelExecution
         actedAs: a.actedAs,
         image: a.image,
       })),
+      approvalRequired: task.approvalRequired,
+      approvedBy: task.approvedBy,
+      approvedAt: iso(task.approvedAt),
+      awaitingSince: iso(task.awaitingSince),
     })),
   };
 }
@@ -353,4 +365,44 @@ export async function cancelExecution(executionId: string): Promise<ExecutionSub
 export async function retryTask(executionId: string, taskId: string, requestedBy = ""): Promise<ExecutionSubmissionResponse> {
   const response = await call(() => client().retryTask({ executionId, taskId, requestedBy }));
   return { executionId: response.executionId, state: executionState(response.state) };
+}
+
+/** Approves (approve) or declines a task awaiting approval; decidedBy is "user:<id>". */
+export async function decideApproval(
+  executionId: string,
+  taskId: string,
+  approve: boolean,
+  decidedBy: string,
+  reason = "",
+): Promise<ExecutionSubmissionResponse> {
+  const response = await call(() => client().decideApproval({ executionId, taskId, approve, decidedBy, reason }));
+  return { executionId: response.executionId, state: executionState(response.state) };
+}
+
+export interface KernelAwaitingApproval {
+  executionId: string;
+  executionName: string;
+  taskId: string;
+  team: string;
+  image: string;
+  action: string;
+  /** The execution's requestedBy: "user:<id>". */
+  requestedBy: string;
+  awaitingSince: string | null;
+}
+
+/** Every task awaiting approval in these teams, the longest waiting first. */
+export async function listAwaitingApproval(teams: string[]): Promise<KernelAwaitingApproval[]> {
+  if (teams.length === 0) return [];
+  const response = await call(() => client().listAwaitingApproval({ teams }));
+  return response.tasks.map((t) => ({
+    executionId: t.executionId,
+    executionName: t.executionName,
+    taskId: t.taskId,
+    team: t.team,
+    image: t.image,
+    action: t.action,
+    requestedBy: t.requestedBy,
+    awaitingSince: iso(t.awaitingSince),
+  }));
 }

@@ -173,6 +173,18 @@ own runs aren't limited, and a value an earlier step produced isn't
 checked. The identity's cloud permissions, scoped to the same folders,
 hold if the console's check is ever bypassed.
 
+A team can also make a step wait for a person (approvals): product.yaml's
+`approval` (`always`, or `otherTeams` for another team's runs), or an
+`allowedTargets` rule's `approval: true`. The console marks such a step
+`approvalRequired` (a submitter can't set or clear it), and the kernel holds
+it in `AWAITING_APPROVAL`, never claimed, until a maintainer of the step's
+team approves it. The person who submitted the run can't decide, even as a
+maintainer, so two people agree before it runs (`console/src/core/
+approvals.ts`). Each decision is in the audit log and, with who decided, in
+the step's events; a declined or expired step fails (`APPROVAL_DECLINED`,
+`APPROVAL_EXPIRED`), and retrying it asks again. The check is the console's:
+kernel-api trusts its caller, as it does for everything else.
+
 A raw DAG needs a maintainer of every team it names. The run belongs to
 whoever ran it as well as to its steps' teams: they may see, cancel, retry
 and rerun it (a rerun runs the template again, as it is now; a retry is

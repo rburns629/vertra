@@ -187,6 +187,7 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
       const allowedTargets = team.allowedTargets.map((rule) => ({
         teams: rule.teams,
         targets: Object.fromEntries(rule.targets.map((t) => [t.type, t.values])),
+        ...(rule.approval ? { approval: true } : {}),
       }));
       await db
         .update(teams)
@@ -223,6 +224,7 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         idempotent: p.idempotent,
         maxAttempts: p.maxAttempts > 0 ? p.maxAttempts : 1,
         concurrencyKey: p.concurrencyKey,
+        approval: p.approval === "always" || p.approval === "otherTeams" ? p.approval : "",
         errorHelp: Object.fromEntries(
           Object.entries(p.errors).map(([code, help]) => [code, { means: help.means, ...(help.do ? { do: help.do } : {}) }]),
         ),

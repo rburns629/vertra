@@ -93,7 +93,8 @@ every other team's.
    dependencies, no cycles, `$fromTask` references only to upstream tasks,
    no credential-shaped inputs. Every problem comes back at once as a 422.
    One transaction stores the execution, its tasks (`READY` without
-   dependencies, `BLOCKED` with) and its edges. A repeated `requestId`
+   dependencies, `BLOCKED` with, `AWAITING_APPROVAL` instead of `READY`
+   for a step the console marked as needing an approval) and its edges. A repeated `requestId`
    returns the existing execution instead of a second one.
 4. **Claim** (kernel-scheduler, `kernel/internal/scheduler/`): each pass recovers
    expired leases, claims up to 50 `READY` tasks with

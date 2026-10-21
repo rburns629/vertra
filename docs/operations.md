@@ -342,6 +342,12 @@ cluster can take a minute while a node scales up. `IMAGE_NOT_FOUND` fails
 at once; other pull errors (registry auth, network) fail as
 `IMAGE_PULL_FAILED` after two minutes.
 
+**A task stays `AWAITING_APPROVAL`.** Its product (or its team's
+`allowedTargets`) asks a maintainer of its team to approve it, on the run's
+page; the person who ran it can't. Nobody deciding within the kernel
+chart's `scheduler.approvalTimeoutSeconds` (3 days; 0 never) fails it with
+`APPROVAL_EXPIRED`.
+
 **A task fails with `OUTPUT_CONTAINS_CREDENTIAL`.** Its outputs held
 something shaped like a credential, so they weren't stored: the product must
 output a reference instead.

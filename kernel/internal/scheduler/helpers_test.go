@@ -52,6 +52,7 @@ type TaskDef struct {
 	// One task per key at a time: its scope and the inputs naming what it changes.
 	ConcurrencyScope  string
 	ConcurrencyInputs []string
+	ApprovalRequired  bool
 }
 
 func task(id string, fields ...func(*TaskDef)) TaskDef {
@@ -70,6 +71,7 @@ func team(name string) func(*TaskDef)        { return func(d *TaskDef) { d.Team 
 func concurrency(scope string, inputs ...string) func(*TaskDef) {
 	return func(d *TaskDef) { d.ConcurrencyScope, d.ConcurrencyInputs = scope, inputs }
 }
+func needsApproval(d *TaskDef) { d.ApprovalRequired = true }
 func schemas(in, out map[string]any) func(*TaskDef) {
 	return func(d *TaskDef) { d.InputSchema, d.OutputSchema = in, out }
 }
@@ -92,6 +94,8 @@ func submit(t *testing.T, db DB, key string, tasks ...TaskDef) string {
 		state := domain.TaskReady
 		if len(d.DependsOn) > 0 {
 			state = domain.TaskBlocked
+		} else if d.ApprovalRequired {
+			state = domain.TaskAwaitingApproval
 		}
 		if d.TimeoutSeconds == 0 {
 			d.TimeoutSeconds = 300
@@ -120,13 +124,13 @@ func submit(t *testing.T, db DB, key string, tasks ...TaskDef) string {
 		var id string
 		if err := db.QueryRow(ctx, `INSERT INTO execution_tasks (id, execution_id, task_key, image, action, team,
 			service_account, secret_refs, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count, available_at,
-			input_schema, output_schema, concurrency_scope, concurrency_inputs)
+			input_schema, output_schema, concurrency_scope, concurrency_inputs, approval_required)
 			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb, $11, $12, 0, now() - interval '1 second',
-			$13::jsonb, $14::jsonb, NULLIF($15, ''), $16)
+			$13::jsonb, $14::jsonb, NULLIF($15, ''), $16, $17)
 			RETURNING id::text`,
 			executionID, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, resources, string(state),
 			jsonValue(d.Inputs), d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema,
-			d.ConcurrencyScope, append([]string{}, d.ConcurrencyInputs...)).Scan(&id); err != nil {
+			d.ConcurrencyScope, append([]string{}, d.ConcurrencyInputs...), d.ApprovalRequired).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
 		ids[d.ID] = id
@@ -152,7 +156,7 @@ func cancelExecution(t *testing.T, db DB, executionID string) {
 	t.Helper()
 	ctx := context.Background()
 	rows, err := db.Query(ctx, `UPDATE execution_tasks SET state = 'CANCELLED' WHERE execution_id = $1
-		AND state IN ('READY', 'BLOCKED') RETURNING id::text, task_key`, executionID)
+		AND state IN ('READY', 'BLOCKED', 'AWAITING_APPROVAL') RETURNING id::text, task_key`, executionID)
 	if err != nil {
 		t.Fatal(err)
 	}

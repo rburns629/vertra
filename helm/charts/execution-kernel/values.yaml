@@ -207,6 +207,9 @@ scheduler:
   # backstop, so Kubernetes stops a Job the scheduler lost track of. Covers
   # pulling the image.
   jobDeadlineGraceSeconds: 600
+  # A step that needs an approval fails with APPROVAL_EXPIRED if nobody
+  # approves or declines it within this many seconds (3 days); 0, never.
+  approvalTimeoutSeconds: 259200
   # Step Pods meet Pod Security's `restricted`: non-root (images must name a
   # numeric non-root USER), a read-only root filesystem with a writable
   # /tmp, no capabilities, no privilege escalation, no Kubernetes token.

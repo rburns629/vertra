@@ -54,6 +54,9 @@ message Team {
 message TargetRule {
   repeated string teams = 1;
   repeated Targets targets = 2;
+  // Steps aimed at these targets still wait for a maintainer of the
+  // owning team to approve them.
+  bool approval = 3;
 }
 
 message Targets {
@@ -101,6 +104,10 @@ message ProductAction {
   // product.yaml's errors: what each error code its actions report means,
   // and what to do.
   map<string, ErrorHelp> errors = 20;
+  // When a step of it waits for a maintainer of its team to approve it:
+  // "always", "otherTeams" (only when another team runs it), or empty
+  // (never, unless an allowedTargets rule asks).
+  string approval = 21;
 }
 
 message ErrorHelp {

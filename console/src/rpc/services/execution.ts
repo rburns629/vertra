@@ -15,6 +15,7 @@ import {
   retry,
   submit,
 } from "../../core/executions.js";
+import { decide, pendingApprovals } from "../../core/approvals.js";
 import {
   DagSchema,
   ExecutionState,
@@ -54,6 +55,7 @@ const TASK_STATE: Record<string, TaskState> = {
   SUCCEEDED: TaskState.SUCCEEDED,
   FAILED: TaskState.FAILED,
   CANCELLED: TaskState.CANCELLED,
+  AWAITING_APPROVAL: TaskState.AWAITING_APPROVAL,
 };
 export const executionState = (state: unknown) =>
   (typeof state === "string" ? EXECUTION_STATE[state] : undefined) ?? ExecutionState.UNSPECIFIED;
@@ -174,6 +176,14 @@ function execution(detail: Detail) {
             contact: task.help.contact,
             chat: task.help.chat,
             url: task.help.url,
+          }
+        : undefined,
+      approval: task.approval
+        ? {
+            approvedBy: task.approval.approvedBy,
+            approvedAt: timestamp(task.approval.approvedAt),
+            awaitingSince: timestamp(task.approval.awaitingSince),
+            canDecide: task.approval.canDecide,
           }
         : undefined,
     })),
@@ -312,6 +322,32 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
       return {
         executionId: result.executionId,
         state: executionState(result.state),
+      };
+    },
+
+    async decideApproval(req, ctx) {
+      const { executionId, taskId, approve, reason } = check(
+        { executionId: ExecutionId, taskId: Type.String({ minLength: 1 }), approve: Type.Boolean(), reason: Type.String({ maxLength: 500 }) },
+        req,
+      );
+      const result = await viaKernel(ctx, () => decide(callerOf(ctx), executionId, taskId, approve, reason));
+      return { executionId: result.executionId, state: executionState(result.state) };
+    },
+
+    async listPendingApprovals(_req, ctx) {
+      const approvals = await viaKernel(ctx, () => pendingApprovals(callerOf(ctx)));
+      return {
+        approvals: approvals.map((a) => ({
+          executionId: a.executionId,
+          executionName: a.executionName,
+          taskId: a.taskId,
+          team: a.team,
+          image: a.image,
+          action: a.action,
+          requestedBy: a.requestedBy,
+          awaitingSince: timestamp(a.awaitingSince),
+          canDecide: a.canDecide,
+        })),
       };
     },
 

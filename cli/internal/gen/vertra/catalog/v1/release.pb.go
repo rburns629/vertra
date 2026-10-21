@@ -220,9 +220,12 @@ func (x *Team) GetHelpUrl() string {
 // team) and, per kind of target, the values or patterns ("*" matches any
 // run of characters) they may supply.
 type TargetRule struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Teams         []string               `protobuf:"bytes,1,rep,name=teams,proto3" json:"teams,omitempty"`
-	Targets       []*Targets             `protobuf:"bytes,2,rep,name=targets,proto3" json:"targets,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Teams   []string               `protobuf:"bytes,1,rep,name=teams,proto3" json:"teams,omitempty"`
+	Targets []*Targets             `protobuf:"bytes,2,rep,name=targets,proto3" json:"targets,omitempty"`
+	// Steps aimed at these targets still wait for a maintainer of the
+	// owning team to approve them.
+	Approval      bool `protobuf:"varint,3,opt,name=approval,proto3" json:"approval,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -269,6 +272,13 @@ func (x *TargetRule) GetTargets() []*Targets {
 		return x.Targets
 	}
 	return nil
+}
+
+func (x *TargetRule) GetApproval() bool {
+	if x != nil {
+		return x.Approval
+	}
+	return false
 }
 
 type Targets struct {
@@ -363,7 +373,11 @@ type ProductAction struct {
 	ConcurrencyKey []string `protobuf:"bytes,19,rep,name=concurrency_key,json=concurrencyKey,proto3" json:"concurrency_key,omitempty"`
 	// product.yaml's errors: what each error code its actions report means,
 	// and what to do.
-	Errors        map[string]*ErrorHelp `protobuf:"bytes,20,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Errors map[string]*ErrorHelp `protobuf:"bytes,20,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// When a step of it waits for a maintainer of its team to approve it:
+	// "always", "otherTeams" (only when another team runs it), or empty
+	// (never, unless an allowedTargets rule asks).
+	Approval      string `protobuf:"bytes,21,opt,name=approval,proto3" json:"approval,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -536,6 +550,13 @@ func (x *ProductAction) GetErrors() map[string]*ErrorHelp {
 		return x.Errors
 	}
 	return nil
+}
+
+func (x *ProductAction) GetApproval() string {
+	if x != nil {
+		return x.Approval
+	}
+	return ""
 }
 
 type ErrorHelp struct {
@@ -890,14 +911,15 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x0fallowed_targets\x18\x03 \x03(\v2\x1d.vertra.catalog.v1.TargetRuleR\x0eallowedTargets\x12\x18\n" +
 	"\acontact\x18\x04 \x01(\tR\acontact\x12\x1b\n" +
 	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
-	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\"X\n" +
+	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\"t\n" +
 	"\n" +
 	"TargetRule\x12\x14\n" +
 	"\x05teams\x18\x01 \x03(\tR\x05teams\x124\n" +
-	"\atargets\x18\x02 \x03(\v2\x1a.vertra.catalog.v1.TargetsR\atargets\"5\n" +
+	"\atargets\x18\x02 \x03(\v2\x1a.vertra.catalog.v1.TargetsR\atargets\x12\x1a\n" +
+	"\bapproval\x18\x03 \x01(\bR\bapproval\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xc9\x06\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xe5\x06\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -925,7 +947,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"idempotent\x12!\n" +
 	"\fmax_attempts\x18\x12 \x01(\x05R\vmaxAttempts\x12'\n" +
 	"\x0fconcurrency_key\x18\x13 \x03(\tR\x0econcurrencyKey\x12D\n" +
-	"\x06errors\x18\x14 \x03(\v2,.vertra.catalog.v1.ProductAction.ErrorsEntryR\x06errors\x1aW\n" +
+	"\x06errors\x18\x14 \x03(\v2,.vertra.catalog.v1.ProductAction.ErrorsEntryR\x06errors\x12\x1a\n" +
+	"\bapproval\x18\x15 \x01(\tR\bapproval\x1aW\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
 	"\x05value\x18\x02 \x01(\v2\x1c.vertra.catalog.v1.ErrorHelpR\x05value:\x028\x01\"1\n" +

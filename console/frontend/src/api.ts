@@ -712,6 +712,18 @@ export interface TaskStatus {
   attempts: TaskAttempt[];
   /** Once it failed: what that means, what to do, whether retrying is safe, whom to ask. */
   help: FailureHelp | null;
+  /** Set when the step needs a maintainer of its team to approve it. */
+  approval: TaskApproval | null;
+}
+
+export interface TaskApproval {
+  /** The email of who approved it; "" while it hasn't been. */
+  approvedBy: string;
+  approvedAt: string | null;
+  /** While it awaits approval: since when. */
+  awaitingSince: string | null;
+  /** Whether the signed-in user may approve or decline it now. */
+  canDecide: boolean;
 }
 
 export interface FailureHelp {
@@ -861,6 +873,14 @@ function executionDetail(execution: Execution): ExecutionDetail {
             url: task.help.url,
           }
         : null,
+      approval: task.approval
+        ? {
+            approvedBy: task.approval.approvedBy,
+            approvedAt: iso(task.approval.approvedAt),
+            awaitingSince: iso(task.approval.awaitingSince),
+            canDecide: task.approval.canDecide,
+          }
+        : null,
     })),
     teams: execution.teams,
     submittedBy: execution.submittedBy || null,
@@ -905,6 +925,47 @@ export async function cancelExecution(executionId: string): Promise<{ executionI
 export async function retryTask(executionId: string, taskId: string): Promise<{ executionId: string; state: string }> {
   const result = await call(() => executions.retryTask({ executionId, taskId }));
   return { executionId: result.executionId, state: ExecutionState[result.state] };
+}
+
+/** Approves (approve) or declines a step awaiting approval; a decline may say why. */
+export async function decideApproval(
+  executionId: string,
+  taskId: string,
+  approve: boolean,
+  reason = "",
+): Promise<{ executionId: string; state: string }> {
+  const result = await call(() => executions.decideApproval({ executionId, taskId, approve, reason }));
+  return { executionId: result.executionId, state: ExecutionState[result.state] };
+}
+
+export interface PendingApproval {
+  executionId: string;
+  executionName: string;
+  taskId: string;
+  team: string;
+  image: string;
+  action: string;
+  /** The email of who submitted the run. */
+  requestedBy: string;
+  awaitingSince: string | null;
+  /** False when the signed-in user submitted it: someone else decides. */
+  canDecide: boolean;
+}
+
+/** The steps awaiting approval in the teams the signed-in user maintains. */
+export async function listPendingApprovals(): Promise<PendingApproval[]> {
+  const result = await call(() => executions.listPendingApprovals({}));
+  return result.approvals.map((a) => ({
+    executionId: a.executionId,
+    executionName: a.executionName,
+    taskId: a.taskId,
+    team: a.team,
+    image: a.image,
+    action: a.action,
+    requestedBy: a.requestedBy,
+    awaitingSince: iso(a.awaitingSince),
+    canDecide: a.canDecide,
+  }));
 }
 
 /** Resubmits the execution's original task graph as a brand-new execution

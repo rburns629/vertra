@@ -114,6 +114,7 @@ actions:
     idempotent: true          # optional: running it again with the same inputs does no harm
     maxAttempts: 3            # optional: attempts in all (default 1); more than 1 needs idempotent
     concurrencyKey: [projectId]   # optional: one step per projectId at a time
+    approval: otherTeams      # optional: a maintainer approves each step first: always, or otherTeams
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
@@ -144,6 +145,14 @@ sample does) before you declare it. `concurrencyKey` names the inputs that
 say what a step changes: while one step with the same values is starting
 or running, another waits its turn, so two runs never change the same
 project at once (a value an earlier step produced counts too).
+
+`approval` makes a step wait for a person before it runs: `always`, or
+`otherTeams` (only when another team runs the action). A maintainer of your
+team approves or declines it on the run's page (the home page lists what's
+waiting), never whoever ran it. A declined step fails with
+`APPROVAL_DECLINED`; one nobody decides on within the install's approval
+timeout (3 days by default) fails with `APPROVAL_EXPIRED`. Retrying an
+approved step doesn't ask again; retrying a declined or expired one does.
 
 When a step of yours fails, the run page explains it in your words, if you
 give them. product.yaml's top-level `errors` says what each code your
@@ -234,12 +243,18 @@ allowedTargets:
     gcp.project: ["web-*"]        # * matches anything
   - teams: ["*"]
     gcp.project: [sandbox-1]
+  - teams: [web]
+    gcp.project: ["web-prod-*"]
+    approval: true                # allowed, once one of your maintainers approves
 ```
 
 The console refuses another team's run with any other value before it
 starts (`TARGET_NOT_ALLOWED`), and its form offers only those values. With
 no rule for a team, that team can't supply the target at all. Your own
 team isn't limited, and a value an earlier step produced isn't checked.
+A rule with `approval: true` lets its values through only with an approval
+(as product.yaml's `approval` does), unless another rule without one
+allows the same value.
 Keep your identity's cloud permissions to the same folders: that's what
 holds if anything else goes wrong (samples/gcp shows both).
 

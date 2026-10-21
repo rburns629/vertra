@@ -279,19 +279,20 @@ func TestAllowedTargets(t *testing.T) {
 		return catalogWith(t, map[string]string{"teams/a/team.yaml": "apiVersion: " + APIVersion +
 			"\nkind: Team\nname: a\ndisplayName: A\ndescription: A\nowner: a\n" + targets})
 	}
-	good := "allowedTargets:\n  - teams: [web]\n    gcp.project: [\"web-*\"]\n    gcp.folder: [folders/12]\n"
+	good := "allowedTargets:\n  - teams: [web]\n    gcp.project: [\"web-*\"]\n    gcp.folder: [folders/12]\n    approval: true\n"
 	c := team(good)
 	if out := errorsOf(t, (*Catalog).ValidateTeams, c); out != "" {
 		t.Fatalf("good rules were refused:\n%s", out)
 	}
 	rules, err := targetRules(filepath.Join(c.Root, "teams/a/team.yaml"))
 	if err != nil || len(rules) != 1 || strings.Join(rules[0].GetTeams(), ",") != "web" || len(rules[0].GetTargets()) != 2 ||
-		rules[0].GetTargets()[0].GetType() != "gcp.project" || rules[0].GetTargets()[0].GetValues()[0] != "web-*" {
+		rules[0].GetTargets()[0].GetType() != "gcp.project" || rules[0].GetTargets()[0].GetValues()[0] != "web-*" || !rules[0].GetApproval() {
 		t.Errorf("rules = %v, %v", rules, err)
 	}
 	for name, bad := range map[string]string{
 		"an unknown kind": "allowedTargets:\n  - teams: [web]\n    gcp.org: [\"1\"]\n",
 		"no targets":      "allowedTargets:\n  - teams: [web]\n",
+		"only approval":   "allowedTargets:\n  - teams: [web]\n    approval: true\n",
 		"no teams":        "allowedTargets:\n  - gcp.project: [x]\n",
 	} {
 		if out := errorsOf(t, (*Catalog).ValidateTeams, team(bad)); out == "" {
@@ -351,6 +352,29 @@ func TestConcurrencyKeys(t *testing.T) {
 	}
 	if out, _ := check("    concurrencyKey: [colour]\n"); !strings.Contains(out, "concurrencyKey names 'colour'") {
 		t.Errorf("a key naming no input was accepted:\n%s", out)
+	}
+}
+
+// An action may wait for an approval, always or for other teams' runs, and
+// a release carries which.
+func TestApprovals(t *testing.T) {
+	check := func(extra string) (string, *Product) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    shareWith: []\n"+extra, 1)
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p
+	}
+	out, p := check("    approval: otherTeams\n")
+	if out != "" {
+		t.Fatalf("an approval was refused:\n%s", out)
+	}
+	actions, err := p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || actions[0].GetApproval() != "otherTeams" {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	if out, _ := check("    approval: sometimes\n"); !strings.Contains(out, "product.yaml") {
+		t.Errorf("an unknown approval was accepted:\n%s", out)
 	}
 }
 

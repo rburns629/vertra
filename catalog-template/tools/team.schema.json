@@ -72,7 +72,6 @@
         "required": [
           "teams"
         ],
-        "minProperties": 2,
         "properties": {
           "teams": {
             "description": "The teams this rule covers, or [\"*\"] for every team.",
@@ -142,8 +141,34 @@
               "pattern": "^[A-Za-z0-9_./:*-]+$",
               "description": "A value, or a pattern where * matches any run of characters (azure-apps-*)."
             }
+          },
+          "approval": {
+            "description": "Runs this rule lets through still wait for a maintainer of this team to approve each step that aims at one of its targets.",
+            "type": "boolean"
           }
-        }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "gcp.project"
+            ]
+          },
+          {
+            "required": [
+              "gcp.folder"
+            ]
+          },
+          {
+            "required": [
+              "aws.account"
+            ]
+          },
+          {
+            "required": [
+              "azure.subscription"
+            ]
+          }
+        ]
       }
     }
   }

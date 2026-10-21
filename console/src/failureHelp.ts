@@ -30,6 +30,8 @@ export const PLATFORM_ERRORS: Record<string, ErrorHelp> = {
   PRODUCT_RESULT_MISSING: { means: "It ended without writing its result." },
   PRODUCT_RESULT_INVALID: { means: "It wrote a result the platform couldn't read." },
   UNSUPPORTED_ACTION: { means: "The product doesn't have that action." },
+  APPROVAL_DECLINED: { means: "A maintainer of its team declined it, so it never ran.", do: "Ask them why, then run it again." },
+  APPROVAL_EXPIRED: { means: "Nobody approved or declined it in time, so it never ran.", do: "Retry it to ask again, and tell its team." },
 };
 
 export interface FailureHelp {

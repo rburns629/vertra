@@ -16,6 +16,7 @@ export function statusColor(state: string): ChipProps["color"] {
       return "default";
     case "RUNNING":
     case "CLAIMED":
+    case "AWAITING_APPROVAL":
       return "warning";
     default: // PENDING, READY, BLOCKED
       return "info";
@@ -31,6 +32,7 @@ const STATUS_LABEL: Record<string, string> = {
   PENDING: "Pending",
   READY: "Ready",
   BLOCKED: "Blocked",
+  AWAITING_APPROVAL: "Awaiting approval",
 };
 
 /** The human label for a state, instead of the raw kernel enum string. */

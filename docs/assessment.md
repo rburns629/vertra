@@ -543,10 +543,10 @@ team's page, preview and approval, and a failed step explained.
 
 In order of value for the work:
 
-1. **Approvals.** An owner marks an action, or sharing with a team or into
-   a target, as needing approval; the run waits at that step until a
-   maintainer approves or declines (audited); unanswered requests are
-   withdrawn after 3 days. Needs a waiting state in the kernel.
+1. **Approvals** (done 2026-10-21). An owner marks an action, or sharing
+   with other teams or into a target, as needing approval; the run waits at
+   that step until a maintainer approves or declines (audited); unanswered
+   requests are withdrawn after 3 days. Needs a waiting state in the kernel.
 2. **Failure help from the owner.** Products declare their error codes with
    what they mean and what to do; teams declare where to ask for help. The
    run page shows the owner's explanation, whether retrying is safe, and who
@@ -748,7 +748,7 @@ for what consumers may do to runs (cancel and retry their own).
 
 - Roles (admin, maintainer, consumer), then SSO groups mapped to them.
 - `visibility` on actions; "not shared with you" with Ask for access.
-- Approvals (a waiting state in the kernel).
+- Approvals (a waiting state in the kernel) (done 2026-10-21).
 - Failure help: error codes in `product.yaml`, help contacts in
   `team.yaml`.
 - Concurrency keys per product.

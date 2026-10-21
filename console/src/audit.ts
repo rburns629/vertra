@@ -36,6 +36,7 @@ const TARGET_FIELDS = [
   "additional",
   "executionId",
   "taskId",
+  "approve",
   "tokenId",
   "userId",
   "digest",

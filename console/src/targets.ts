@@ -47,6 +47,29 @@ export function allowedValues(rules: TargetRule[], teams: string[], kind: string
 }
 
 /**
+ * Whether these inputs aim the owner's product at a target that `teams` may
+ * use only with an approval: one a rule asking for approval (approval: true)
+ * allows, and no rule without one does. A value an earlier step produced
+ * isn't checked, as in targetProblems.
+ */
+export function targetsNeedApproval(
+  owner: { allowedTargets: TargetRule[] },
+  inputSchema: unknown,
+  inputs: Record<string, unknown>,
+  teams: string[],
+): boolean {
+  const rules = owner.allowedTargets.filter((rule) => rule.teams.includes("*") || rule.teams.some((team) => teams.includes(team)));
+  const allows = (rule: TargetRule, kind: string, value: string) => (rule.targets[kind] ?? []).some((p) => matchesTarget(p, value));
+  for (const [name, kind] of targetInputs(inputSchema)) {
+    const value = inputs[name];
+    if (typeof value !== "string") continue;
+    if (rules.some((rule) => !rule.approval && allows(rule, kind, value))) continue;
+    if (rules.some((rule) => rule.approval && allows(rule, kind, value))) return true;
+  }
+  return false;
+}
+
+/**
  * Why these inputs aim the owner's product somewhere `teams` may not, one
  * problem per input; none when every target input is allowed (or comes
  * from an earlier step).

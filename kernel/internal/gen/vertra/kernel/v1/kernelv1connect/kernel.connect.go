@@ -55,6 +55,12 @@ const (
 	KernelServiceCancelExecutionProcedure = "/vertra.kernel.v1.KernelService/CancelExecution"
 	// KernelServiceRetryTaskProcedure is the fully-qualified name of the KernelService's RetryTask RPC.
 	KernelServiceRetryTaskProcedure = "/vertra.kernel.v1.KernelService/RetryTask"
+	// KernelServiceDecideApprovalProcedure is the fully-qualified name of the KernelService's
+	// DecideApproval RPC.
+	KernelServiceDecideApprovalProcedure = "/vertra.kernel.v1.KernelService/DecideApproval"
+	// KernelServiceListAwaitingApprovalProcedure is the fully-qualified name of the KernelService's
+	// ListAwaitingApproval RPC.
+	KernelServiceListAwaitingApprovalProcedure = "/vertra.kernel.v1.KernelService/ListAwaitingApproval"
 )
 
 // KernelServiceClient is a client for the vertra.kernel.v1.KernelService service.
@@ -82,6 +88,13 @@ type KernelServiceClient interface {
 	// whatever its max_attempts: the execution resumes, and the tasks its
 	// failure cancelled come back.
 	RetryTask(context.Context, *connect.Request[v1.RetryTaskRequest]) (*connect.Response[v1.RetryTaskResponse], error)
+	// Approves or declines a task in AWAITING_APPROVAL (failed_precondition
+	// otherwise). Approved, it becomes READY and stays approved across
+	// retries; declined, it fails with APPROVAL_DECLINED, failing its
+	// execution. Who may decide is the caller's to check.
+	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
+	// The tasks awaiting approval in the given teams, oldest first.
+	ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error)
 }
 
 // NewKernelServiceClient constructs a client for the vertra.kernel.v1.KernelService service. By
@@ -141,18 +154,33 @@ func NewKernelServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(kernelServiceMethods.ByName("RetryTask")),
 			connect.WithClientOptions(opts...),
 		),
+		decideApproval: connect.NewClient[v1.DecideApprovalRequest, v1.DecideApprovalResponse](
+			httpClient,
+			baseURL+KernelServiceDecideApprovalProcedure,
+			connect.WithSchema(kernelServiceMethods.ByName("DecideApproval")),
+			connect.WithClientOptions(opts...),
+		),
+		listAwaitingApproval: connect.NewClient[v1.ListAwaitingApprovalRequest, v1.ListAwaitingApprovalResponse](
+			httpClient,
+			baseURL+KernelServiceListAwaitingApprovalProcedure,
+			connect.WithSchema(kernelServiceMethods.ByName("ListAwaitingApproval")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // kernelServiceClient implements KernelServiceClient.
 type kernelServiceClient struct {
-	submitExecution     *connect.Client[v1.SubmitExecutionRequest, v1.SubmitExecutionResponse]
-	getExecution        *connect.Client[v1.GetExecutionRequest, v1.GetExecutionResponse]
-	getExecutionStates  *connect.Client[v1.GetExecutionStatesRequest, v1.GetExecutionStatesResponse]
-	listExecutionEvents *connect.Client[v1.ListExecutionEventsRequest, v1.ListExecutionEventsResponse]
-	getExecutionLogs    *connect.Client[v1.GetExecutionLogsRequest, v1.GetExecutionLogsResponse]
-	cancelExecution     *connect.Client[v1.CancelExecutionRequest, v1.CancelExecutionResponse]
-	retryTask           *connect.Client[v1.RetryTaskRequest, v1.RetryTaskResponse]
+	submitExecution      *connect.Client[v1.SubmitExecutionRequest, v1.SubmitExecutionResponse]
+	getExecution         *connect.Client[v1.GetExecutionRequest, v1.GetExecutionResponse]
+	getExecutionStates   *connect.Client[v1.GetExecutionStatesRequest, v1.GetExecutionStatesResponse]
+	listExecutionEvents  *connect.Client[v1.ListExecutionEventsRequest, v1.ListExecutionEventsResponse]
+	getExecutionLogs     *connect.Client[v1.GetExecutionLogsRequest, v1.GetExecutionLogsResponse]
+	cancelExecution      *connect.Client[v1.CancelExecutionRequest, v1.CancelExecutionResponse]
+	retryTask            *connect.Client[v1.RetryTaskRequest, v1.RetryTaskResponse]
+	decideApproval       *connect.Client[v1.DecideApprovalRequest, v1.DecideApprovalResponse]
+	listAwaitingApproval *connect.Client[v1.ListAwaitingApprovalRequest, v1.ListAwaitingApprovalResponse]
 }
 
 // SubmitExecution calls vertra.kernel.v1.KernelService.SubmitExecution.
@@ -190,6 +218,16 @@ func (c *kernelServiceClient) RetryTask(ctx context.Context, req *connect.Reques
 	return c.retryTask.CallUnary(ctx, req)
 }
 
+// DecideApproval calls vertra.kernel.v1.KernelService.DecideApproval.
+func (c *kernelServiceClient) DecideApproval(ctx context.Context, req *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error) {
+	return c.decideApproval.CallUnary(ctx, req)
+}
+
+// ListAwaitingApproval calls vertra.kernel.v1.KernelService.ListAwaitingApproval.
+func (c *kernelServiceClient) ListAwaitingApproval(ctx context.Context, req *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error) {
+	return c.listAwaitingApproval.CallUnary(ctx, req)
+}
+
 // KernelServiceHandler is an implementation of the vertra.kernel.v1.KernelService service.
 type KernelServiceHandler interface {
 	// Validates a DAG (ids, dependencies, cycles, $fromTask references,
@@ -215,6 +253,13 @@ type KernelServiceHandler interface {
 	// whatever its max_attempts: the execution resumes, and the tasks its
 	// failure cancelled come back.
 	RetryTask(context.Context, *connect.Request[v1.RetryTaskRequest]) (*connect.Response[v1.RetryTaskResponse], error)
+	// Approves or declines a task in AWAITING_APPROVAL (failed_precondition
+	// otherwise). Approved, it becomes READY and stays approved across
+	// retries; declined, it fails with APPROVAL_DECLINED, failing its
+	// execution. Who may decide is the caller's to check.
+	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
+	// The tasks awaiting approval in the given teams, oldest first.
+	ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error)
 }
 
 // NewKernelServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -270,6 +315,19 @@ func NewKernelServiceHandler(svc KernelServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(kernelServiceMethods.ByName("RetryTask")),
 		connect.WithHandlerOptions(opts...),
 	)
+	kernelServiceDecideApprovalHandler := connect.NewUnaryHandler(
+		KernelServiceDecideApprovalProcedure,
+		svc.DecideApproval,
+		connect.WithSchema(kernelServiceMethods.ByName("DecideApproval")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kernelServiceListAwaitingApprovalHandler := connect.NewUnaryHandler(
+		KernelServiceListAwaitingApprovalProcedure,
+		svc.ListAwaitingApproval,
+		connect.WithSchema(kernelServiceMethods.ByName("ListAwaitingApproval")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.kernel.v1.KernelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case KernelServiceSubmitExecutionProcedure:
@@ -286,6 +344,10 @@ func NewKernelServiceHandler(svc KernelServiceHandler, opts ...connect.HandlerOp
 			kernelServiceCancelExecutionHandler.ServeHTTP(w, r)
 		case KernelServiceRetryTaskProcedure:
 			kernelServiceRetryTaskHandler.ServeHTTP(w, r)
+		case KernelServiceDecideApprovalProcedure:
+			kernelServiceDecideApprovalHandler.ServeHTTP(w, r)
+		case KernelServiceListAwaitingApprovalProcedure:
+			kernelServiceListAwaitingApprovalHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -321,4 +383,12 @@ func (UnimplementedKernelServiceHandler) CancelExecution(context.Context, *conne
 
 func (UnimplementedKernelServiceHandler) RetryTask(context.Context, *connect.Request[v1.RetryTaskRequest]) (*connect.Response[v1.RetryTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.RetryTask is not implemented"))
+}
+
+func (UnimplementedKernelServiceHandler) DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.DecideApproval is not implemented"))
+}
+
+func (UnimplementedKernelServiceHandler) ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.ListAwaitingApproval is not implemented"))
 }

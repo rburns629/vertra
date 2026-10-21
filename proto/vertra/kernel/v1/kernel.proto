@@ -48,6 +48,15 @@ service KernelService {
   // whatever its max_attempts: the execution resumes, and the tasks its
   // failure cancelled come back.
   rpc RetryTask(RetryTaskRequest) returns (RetryTaskResponse);
+  // Approves or declines a task in AWAITING_APPROVAL (failed_precondition
+  // otherwise). Approved, it becomes READY and stays approved across
+  // retries; declined, it fails with APPROVAL_DECLINED, failing its
+  // execution. Who may decide is the caller's to check.
+  rpc DecideApproval(DecideApprovalRequest) returns (DecideApprovalResponse);
+  // The tasks awaiting approval in the given teams, oldest first.
+  rpc ListAwaitingApproval(ListAwaitingApprovalRequest) returns (ListAwaitingApprovalResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 enum ExecutionState {
@@ -68,6 +77,8 @@ enum TaskState {
   TASK_STATE_SUCCEEDED = 5;
   TASK_STATE_FAILED = 6;
   TASK_STATE_CANCELLED = 7;
+  // Would be READY, but waits for a person to approve it (Task.approval_required).
+  TASK_STATE_AWAITING_APPROVAL = 8;
 }
 
 // One step of a DAG.
@@ -109,6 +120,10 @@ message Task {
   // (product.yaml's concurrencyKey): the key is the scope (the product)
   // and these inputs' values, resolved, as the step is about to start.
   ConcurrencyKey concurrency_key = 15;
+  // Waits in AWAITING_APPROVAL, instead of becoming READY, until someone
+  // approves it (DecideApproval); expires with APPROVAL_EXPIRED after the
+  // scheduler's approval timeout.
+  bool approval_required = 16;
 }
 
 message ConcurrencyKey {
@@ -186,6 +201,12 @@ message TaskStatus {
   google.protobuf.Timestamp completed_at = 8;
   // Every attempt, first to last.
   repeated Attempt attempts = 9;
+  bool approval_required = 10;
+  // Once approved: who (decided_by) and when.
+  string approved_by = 11;
+  google.protobuf.Timestamp approved_at = 12;
+  // While AWAITING_APPROVAL: since when.
+  google.protobuf.Timestamp awaiting_since = 13;
 }
 
 message Attempt {
@@ -275,4 +296,41 @@ message RetryTaskRequest {
 message RetryTaskResponse {
   string execution_id = 1;
   ExecutionState state = 2;
+}
+
+message DecideApprovalRequest {
+  string execution_id = 1;
+  string task_id = 2;
+  // false declines it.
+  bool approve = 3;
+  // Who decided, in the caller's own terms ("user:<id>"), recorded as is.
+  string decided_by = 4;
+  // Why, when declining; shown in the task's failure.
+  string reason = 5;
+}
+
+message DecideApprovalResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}
+
+message ListAwaitingApprovalRequest {
+  // At most 1000.
+  repeated string teams = 1;
+}
+
+message ListAwaitingApprovalResponse {
+  repeated AwaitingApproval tasks = 1;
+}
+
+message AwaitingApproval {
+  string execution_id = 1;
+  string execution_name = 2;
+  string task_id = 3;
+  string team = 4;
+  string image = 5;
+  string action = 6;
+  // The execution's requested_by.
+  string requested_by = 7;
+  google.protobuf.Timestamp awaiting_since = 8;
 }

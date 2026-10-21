@@ -139,6 +139,9 @@ type Settings struct {
 	// on it too: a timed-out task whose Job it can't stop is failed (and
 	// maybe retried) only once this deadline has passed.
 	JobDeadlineGrace time.Duration
+	// A task awaiting approval fails with APPROVAL_EXPIRED after this; 0,
+	// never.
+	ApprovalTimeout time.Duration
 
 	// A step's stored output: its last TaskLogMaxLines lines, at most
 	// TaskLogMaxBytes, refreshed this often while it runs and once more
@@ -268,6 +271,7 @@ func Load(getenv func(string) string) (Settings, error) {
 		ImagePullGrace:         r.seconds("IMAGE_PULL_GRACE_SECONDS", 120, true),
 		KubernetesTimeout:      r.seconds("KUBERNETES_REQUEST_TIMEOUT_SECONDS", 30, true),
 		JobDeadlineGrace:       r.seconds("KUBERNETES_JOB_DEADLINE_GRACE_SECONDS", 600, false),
+		ApprovalTimeout:        r.seconds("SCHEDULER_APPROVAL_TIMEOUT_SECONDS", 259200, false),
 		TaskLogMaxLines:        r.integer("TASK_LOG_MAX_LINES", 5000, true),
 		TaskLogMaxBytes:        r.integer("TASK_LOG_MAX_BYTES", 1_048_576, true),
 		TaskLogRefresh:         r.seconds("TASK_LOG_REFRESH_SECONDS", 60, true),

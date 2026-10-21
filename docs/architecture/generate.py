@@ -723,7 +723,7 @@ def sequence_page() -> Page:
     message(
         4, 4,
         "taskDefs: each field · domain.ValidateDAG: duplicate ids, unknown dependencies, cycles, $fromTask references\n"
-        "each task READY (no dependencies) or BLOCKED",
+        "each task READY (no dependencies), AWAITING_APPROVAL (no dependencies, needs one) or BLOCKED",
     )
     message(4, 5, "a savepoint: INSERT executions, execution_tasks, task_dependencies · recordEvent EXECUTION_CREATED")
     message(4, 1, "{executionId, state: PENDING, created: true}", reply=True)
@@ -763,7 +763,7 @@ def sequence_page() -> Page:
     message(
         6, 5,
         "task_outputs · captureLogs → task_logs · TASK_SUCCEEDED\n"
-        "releaseReadyDependents (BLOCKED → READY once every dependency SUCCEEDED) · settleExecution",
+        "releaseReadyDependents (BLOCKED → READY, or AWAITING_APPROVAL, once every dependency SUCCEEDED) · settleExecution",
     )
     message(6, 7, "once the pass has committed: ReleaseFinished → Release(handle)")
     message(7, 8, "deleteJob · deleteConfigMap")
@@ -772,7 +772,7 @@ def sequence_page() -> Page:
     message(
         6, 5,
         "failed: handleFailure → ShouldRetry? READY again after the backoff (claimed by a later pass)\n"
-        "otherwise FAILED → failExecution (execution FAILED; its READY/BLOCKED tasks CANCELLED)",
+        "otherwise FAILED → failExecution (execution FAILED; its READY/BLOCKED/AWAITING_APPROVAL tasks CANCELLED)",
     )
     fragment("alt  [the task failed instead]", alt_start - 6, y - 10, 5, 6, "#b85450")
     fragment("loop  [kernel-scheduler: a pass at once after progress, else on a watched change or the poll interval (1 s)]", loop_start, y + 4, 5, 9, "#555555")
@@ -810,9 +810,14 @@ def states_page() -> Page:
     succeeded = node(1100, 300, "SUCCEEDED", GREEN)
     failed = node(1100, 640, "FAILED", RED)
     cancelled = node(500, 180, "CANCELLED", GREY)
+    awaiting = node(330, 325, "AWAITING_APPROVAL", YELLOW)
     p.edge(start, blocked, "has dependencies", EDGE + ends(0.5, 0, 0, 0.5))
     p.edge(start, ready, "no dependencies", EDGE + ends(0.5, 1, 0, 0.5))
-    p.edge(blocked, ready, "every dependency\nSUCCEEDED\n(releaseReadyDependents)", EDGE + ends(0.3, 1, 0.3, 0))
+    p.edge(blocked, ready, "", EDGE + ends(0.3, 1, 0.3, 0))
+    p.vertex(
+        106, 384, 112, 64, "every dependency\nSUCCEEDED (release-\nReadyDependents)",
+        "text;align=right;verticalAlign=middle;" + FONT + "fontSize=11;",
+    )
     p.edge(ready, claimed, "claimReadyTasks:\nlease, attempt_count+1", EDGE + ends(1, 0.5, 0, 0.5))
     p.edge(claimed, running, "dispatch:\nStart ok", EDGE + ends(1, 0.5, 0, 0.5))
     p.edge(running, succeeded, "Status Succeeded", EDGE + ends(1, 0.3, 0, 0.5), points=[(1040, 485), (1040, 325)])
@@ -826,12 +831,21 @@ def states_page() -> Page:
         EDGE + ends(0.3, 1, 0.5, 1), points=[(862, 600), (250, 600)],
     )
     p.edge(claimed, ready, "lease expired", EDGE + ends(0.3, 1, 0.75, 1), points=[(542, 560), (285, 560)])
-    p.edge(failed, ready, "RetryTask", EDGE + ends(1, 0.5, 0.15, 1), points=[(1270, 665), (1270, 730), (201, 730)])
+    p.edge(failed, ready, "RetryTask (AWAITING_APPROVAL instead, if not yet approved)", EDGE + ends(1, 0.5, 0.15, 1), points=[(1270, 665), (1270, 730), (201, 730)])
     p.edge(
         ready, cancelled, "execution cancelled, or another\ntask failed (failExecution)",
         EDGE + ends(0.75, 0, 0.15, 1), points=[(285, 400), (521, 400)],
     )
     p.edge(blocked, cancelled, "same reasons", EDGE + ends(1, 0.5, 0, 0.5))
+    p.edge(start, awaiting, "", EDGE + ends(1, 0.5, 0, 0.4))
+    p.vertex(228, 300, 100, 44, "no dependencies,\nneeds an approval", "text;align=center;verticalAlign=middle;" + FONT)
+    p.edge(blocked, awaiting, "dependencies done,\nnot yet approved", EDGE + ends(0.8, 1, 0.3, 0))
+    p.edge(awaiting, ready, "approved\n(DecideApproval)", EDGE + ends(0.3, 1, 0.6, 0))
+    p.edge(
+        awaiting, failed, "declined (APPROVAL_DECLINED), or nobody decided\nin time (APPROVAL_EXPIRED: expireApprovals)",
+        EDGE + ends(1, 0.9, 0.57, 0), points=[(1180, 370)],
+    )
+    p.edge(awaiting, cancelled, "same reasons", EDGE + ends(0.5, 0, 0.5, 1), points=[(400, 280), (570, 280)])
     p.edge(running, cancelled, "execution cancelled\n(next poll cancels the Job)", EDGE + ends(0.5, 0, 1, 0.5))
     p.edge(
         cancelled, blocked, "a retry revives it (RetryTask)",

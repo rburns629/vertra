@@ -34,8 +34,29 @@ import { MetricCard } from "../components/MetricCard";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { statusFill, statusLabel } from "../statusColor";
-import { ApiError, getStats, listExecutions, type ExecutionSummary, type PlatformStats } from "../api";
+import {
+  ApiError,
+  getStats,
+  listExecutions,
+  listPendingApprovals,
+  type ExecutionSummary,
+  type PendingApproval,
+  type PlatformStats,
+} from "../api";
 import { useAuth } from "../auth/AuthContext";
+
+const APPROVAL_COLUMNS: DataTableColumn<PendingApproval>[] = [
+  { key: "run", header: "Run", render: (a) => a.executionName || a.executionId },
+  { key: "step", header: "Step", render: (a) => `${a.taskId} (${a.team})` },
+  { key: "by", header: "Run by", render: (a) => a.requestedBy || "—", hideBelow: "sm" },
+  {
+    key: "since",
+    header: "Waiting since",
+    render: (a) => (a.awaitingSince ? new Date(a.awaitingSince).toLocaleString() : "—"),
+    hideBelow: "md",
+  },
+  { key: "you", header: "", render: (a) => (a.canDecide ? "" : "You ran it: another maintainer decides"), hideBelow: "sm" },
+];
 
 const CHART_STATUS_ORDER = ["SUCCEEDED", "FAILED", "RUNNING", "PENDING", "CANCELLED"];
 
@@ -164,6 +185,7 @@ export function HomePage() {
   const [executions, setExecutions] = useState<ExecutionSummary[] | null>(null);
   const [capped, setCapped] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<PendingApproval[]>([]);
 
   const requestedRange = searchParams.get("range");
   const rangeId: RangeId = RANGES.some((r) => r.id === requestedRange) ? (requestedRange as RangeId) : DEFAULT_RANGE;
@@ -183,6 +205,21 @@ export function HomePage() {
       cancelled = true;
     };
   }, [rangeId]);
+
+  // Steps waiting for a maintainer's approval, in the teams this user maintains.
+  useEffect(() => {
+    let cancelled = false;
+    listPendingApprovals()
+      .then((pending) => {
+        if (!cancelled) setApprovals(pending);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load approvals.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const requests: Promise<unknown>[] = [];
@@ -265,6 +302,25 @@ export function HomePage() {
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
+      )}
+
+      {approvals.length > 0 && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
+              Waiting for approval
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Steps of teams you maintain that wait for a maintainer to approve them. Open one to approve or decline it.
+            </Typography>
+            <DataTable
+              columns={APPROVAL_COLUMNS}
+              rows={approvals}
+              getRowKey={(a) => `${a.executionId}/${a.taskId}`}
+              onRowClick={(a) => { navigate(`/executions/${a.executionId}`); }}
+            />
+          </CardContent>
+        </Card>
       )}
 
       <Grid container spacing={2} sx={{ mb: 3 }}>

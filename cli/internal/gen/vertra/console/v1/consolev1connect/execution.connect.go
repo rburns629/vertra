@@ -62,6 +62,12 @@ const (
 	// ExecutionServiceRerunExecutionProcedure is the fully-qualified name of the ExecutionService's
 	// RerunExecution RPC.
 	ExecutionServiceRerunExecutionProcedure = "/vertra.console.v1.ExecutionService/RerunExecution"
+	// ExecutionServiceDecideApprovalProcedure is the fully-qualified name of the ExecutionService's
+	// DecideApproval RPC.
+	ExecutionServiceDecideApprovalProcedure = "/vertra.console.v1.ExecutionService/DecideApproval"
+	// ExecutionServiceListPendingApprovalsProcedure is the fully-qualified name of the
+	// ExecutionService's ListPendingApprovals RPC.
+	ExecutionServiceListPendingApprovalsProcedure = "/vertra.console.v1.ExecutionService/ListPendingApprovals"
 )
 
 // ExecutionServiceClient is a client for the vertra.console.v1.ExecutionService service.
@@ -91,6 +97,14 @@ type ExecutionServiceClient interface {
 	// Runs the same DAG again as a new execution, checked again against the
 	// caller's current teams and secrets.
 	RerunExecution(context.Context, *connect.Request[v1.RerunExecutionRequest]) (*connect.Response[v1.RerunExecutionResponse], error)
+	// Approves or declines a step awaiting approval. Only a maintainer of the
+	// step's team may, and never whoever submitted the run. Declined, the step
+	// fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
+	// and stays approved if it's retried.
+	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
+	// The steps awaiting approval in the teams the caller maintains (every
+	// team, for an admin), the longest waiting first.
+	ListPendingApprovals(context.Context, *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error)
 }
 
 // NewExecutionServiceClient constructs a client for the vertra.console.v1.ExecutionService service.
@@ -164,20 +178,35 @@ func NewExecutionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(executionServiceMethods.ByName("RerunExecution")),
 			connect.WithClientOptions(opts...),
 		),
+		decideApproval: connect.NewClient[v1.DecideApprovalRequest, v1.DecideApprovalResponse](
+			httpClient,
+			baseURL+ExecutionServiceDecideApprovalProcedure,
+			connect.WithSchema(executionServiceMethods.ByName("DecideApproval")),
+			connect.WithClientOptions(opts...),
+		),
+		listPendingApprovals: connect.NewClient[v1.ListPendingApprovalsRequest, v1.ListPendingApprovalsResponse](
+			httpClient,
+			baseURL+ExecutionServiceListPendingApprovalsProcedure,
+			connect.WithSchema(executionServiceMethods.ByName("ListPendingApprovals")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // executionServiceClient implements ExecutionServiceClient.
 type executionServiceClient struct {
-	listExecutions      *connect.Client[v1.ListExecutionsRequest, v1.ListExecutionsResponse]
-	submitExecution     *connect.Client[v1.SubmitExecutionRequest, v1.SubmitExecutionResponse]
-	getExecution        *connect.Client[v1.GetExecutionRequest, v1.GetExecutionResponse]
-	watchExecution      *connect.Client[v1.WatchExecutionRequest, v1.WatchExecutionResponse]
-	listExecutionEvents *connect.Client[v1.ListExecutionEventsRequest, v1.ListExecutionEventsResponse]
-	getExecutionLogs    *connect.Client[v1.GetExecutionLogsRequest, v1.GetExecutionLogsResponse]
-	cancelExecution     *connect.Client[v1.CancelExecutionRequest, v1.CancelExecutionResponse]
-	retryTask           *connect.Client[v1.RetryTaskRequest, v1.RetryTaskResponse]
-	rerunExecution      *connect.Client[v1.RerunExecutionRequest, v1.RerunExecutionResponse]
+	listExecutions       *connect.Client[v1.ListExecutionsRequest, v1.ListExecutionsResponse]
+	submitExecution      *connect.Client[v1.SubmitExecutionRequest, v1.SubmitExecutionResponse]
+	getExecution         *connect.Client[v1.GetExecutionRequest, v1.GetExecutionResponse]
+	watchExecution       *connect.Client[v1.WatchExecutionRequest, v1.WatchExecutionResponse]
+	listExecutionEvents  *connect.Client[v1.ListExecutionEventsRequest, v1.ListExecutionEventsResponse]
+	getExecutionLogs     *connect.Client[v1.GetExecutionLogsRequest, v1.GetExecutionLogsResponse]
+	cancelExecution      *connect.Client[v1.CancelExecutionRequest, v1.CancelExecutionResponse]
+	retryTask            *connect.Client[v1.RetryTaskRequest, v1.RetryTaskResponse]
+	rerunExecution       *connect.Client[v1.RerunExecutionRequest, v1.RerunExecutionResponse]
+	decideApproval       *connect.Client[v1.DecideApprovalRequest, v1.DecideApprovalResponse]
+	listPendingApprovals *connect.Client[v1.ListPendingApprovalsRequest, v1.ListPendingApprovalsResponse]
 }
 
 // ListExecutions calls vertra.console.v1.ExecutionService.ListExecutions.
@@ -225,6 +254,16 @@ func (c *executionServiceClient) RerunExecution(ctx context.Context, req *connec
 	return c.rerunExecution.CallUnary(ctx, req)
 }
 
+// DecideApproval calls vertra.console.v1.ExecutionService.DecideApproval.
+func (c *executionServiceClient) DecideApproval(ctx context.Context, req *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error) {
+	return c.decideApproval.CallUnary(ctx, req)
+}
+
+// ListPendingApprovals calls vertra.console.v1.ExecutionService.ListPendingApprovals.
+func (c *executionServiceClient) ListPendingApprovals(ctx context.Context, req *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error) {
+	return c.listPendingApprovals.CallUnary(ctx, req)
+}
+
 // ExecutionServiceHandler is an implementation of the vertra.console.v1.ExecutionService service.
 type ExecutionServiceHandler interface {
 	// Executions the caller can see, newest first.
@@ -252,6 +291,14 @@ type ExecutionServiceHandler interface {
 	// Runs the same DAG again as a new execution, checked again against the
 	// caller's current teams and secrets.
 	RerunExecution(context.Context, *connect.Request[v1.RerunExecutionRequest]) (*connect.Response[v1.RerunExecutionResponse], error)
+	// Approves or declines a step awaiting approval. Only a maintainer of the
+	// step's team may, and never whoever submitted the run. Declined, the step
+	// fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
+	// and stays approved if it's retried.
+	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
+	// The steps awaiting approval in the teams the caller maintains (every
+	// team, for an admin), the longest waiting first.
+	ListPendingApprovals(context.Context, *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error)
 }
 
 // NewExecutionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -321,6 +368,19 @@ func NewExecutionServiceHandler(svc ExecutionServiceHandler, opts ...connect.Han
 		connect.WithSchema(executionServiceMethods.ByName("RerunExecution")),
 		connect.WithHandlerOptions(opts...),
 	)
+	executionServiceDecideApprovalHandler := connect.NewUnaryHandler(
+		ExecutionServiceDecideApprovalProcedure,
+		svc.DecideApproval,
+		connect.WithSchema(executionServiceMethods.ByName("DecideApproval")),
+		connect.WithHandlerOptions(opts...),
+	)
+	executionServiceListPendingApprovalsHandler := connect.NewUnaryHandler(
+		ExecutionServiceListPendingApprovalsProcedure,
+		svc.ListPendingApprovals,
+		connect.WithSchema(executionServiceMethods.ByName("ListPendingApprovals")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ExecutionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExecutionServiceListExecutionsProcedure:
@@ -341,6 +401,10 @@ func NewExecutionServiceHandler(svc ExecutionServiceHandler, opts ...connect.Han
 			executionServiceRetryTaskHandler.ServeHTTP(w, r)
 		case ExecutionServiceRerunExecutionProcedure:
 			executionServiceRerunExecutionHandler.ServeHTTP(w, r)
+		case ExecutionServiceDecideApprovalProcedure:
+			executionServiceDecideApprovalHandler.ServeHTTP(w, r)
+		case ExecutionServiceListPendingApprovalsProcedure:
+			executionServiceListPendingApprovalsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -384,4 +448,12 @@ func (UnimplementedExecutionServiceHandler) RetryTask(context.Context, *connect.
 
 func (UnimplementedExecutionServiceHandler) RerunExecution(context.Context, *connect.Request[v1.RerunExecutionRequest]) (*connect.Response[v1.RerunExecutionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ExecutionService.RerunExecution is not implemented"))
+}
+
+func (UnimplementedExecutionServiceHandler) DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ExecutionService.DecideApproval is not implemented"))
+}
+
+func (UnimplementedExecutionServiceHandler) ListPendingApprovals(context.Context, *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ExecutionService.ListPendingApprovals is not implemented"))
 }

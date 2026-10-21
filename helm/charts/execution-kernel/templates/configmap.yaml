@@ -28,6 +28,7 @@ data:
   KUBERNETES_REQUEST_TIMEOUT_SECONDS: {{ .Values.scheduler.kubernetesRequestTimeoutSeconds | quote }}
   SCHEDULER_MAX_DISPATCH_FAILURES: {{ .Values.scheduler.maxDispatchFailures | quote }}
   KUBERNETES_JOB_DEADLINE_GRACE_SECONDS: {{ .Values.scheduler.jobDeadlineGraceSeconds | quote }}
+  SCHEDULER_APPROVAL_TIMEOUT_SECONDS: {{ .Values.scheduler.approvalTimeoutSeconds | quote }}
   SCHEDULER_HEARTBEAT_FILE: {{ .Values.scheduler.heartbeatFile | quote }}
   DATABASE_COMMAND_TIMEOUT_SECONDS: {{ .Values.databaseCommandTimeoutSeconds | quote }}
   SCHEDULER_RETRY_BACKOFF_SECONDS: {{ .Values.scheduler.retryBackoffSeconds | quote }}

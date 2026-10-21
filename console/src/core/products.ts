@@ -15,6 +15,7 @@ import { canMaintainTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
 import { config } from "../config.js";
+import type { Approval } from "../db/schema.js";
 import { tokenAudienceProblems } from "../tokenAudiences.js";
 import {
   deleteProductByName,
@@ -89,6 +90,8 @@ export const RegisterProductBody = Type.Object({
   maxAttempts: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })),
   // The inputs naming what a step changes: one step per set of values at a time.
   concurrencyKey: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 8, uniqueItems: true })),
+  // When a step waits for a maintainer of its team to approve it; "": never.
+  approval: Type.Optional(Type.Union([Type.Literal("always"), Type.Literal("otherTeams"), Type.Literal("")])),
   // What its error codes mean, and what to do about each.
   errorHelp: Type.Optional(
     Type.Record(
@@ -123,6 +126,8 @@ export type RegisterProductInput = {
   maxAttempts?: number;
   /** The inputs naming what a step changes; one step per set of values at a time. */
   concurrencyKey?: string[];
+  /** When a step waits for a maintainer of its team to approve it; "": never. */
+  approval?: Approval | "";
   /** What its error codes mean, and what to do about each. */
   errorHelp?: Record<string, { means: string; do?: string }>;
   /** Empty: not deprecated. */
@@ -263,6 +268,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
+      approval: input.approval === undefined ? undefined : input.approval || null,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,

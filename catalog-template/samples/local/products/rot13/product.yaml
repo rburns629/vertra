@@ -27,6 +27,9 @@ actions:
     # Anyone may run it, or use it in their templates: these samples are
     # for every team to try. Left out, only this team could.
     shareWith: ["*"]
+    # Another team's run waits for one of this team's maintainers to
+    # approve it (never whoever ran it); this team's own runs don't.
+    approval: otherTeams
     script: src/main.rs
     input:
       type: object

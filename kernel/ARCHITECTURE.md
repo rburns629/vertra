@@ -103,14 +103,15 @@ KernelService/SubmitExecution
               [invalid?] → invalid_argument with ValidationIssues details, every issue
           → a savepoint: insert()
               → INSERT executions (PENDING), execution_tasks (READY if no
-                dependencies, else BLOCKED), task_dependencies
+                dependencies, else BLOCKED; AWAITING_APPROVAL instead of READY
+                when approval_required), task_dependencies
               [lost a race on request_id?] → roll back the savepoint, return that one
           → recordEvent(EXECUTION_CREATED)
       ← {execution_id, state: PENDING, created: true}; the event counted once committed
 ```
 
 Nothing has *run* yet — only rows exist: one `executions` row (`PENDING`),
-one `execution_tasks` row per task (`READY` or `BLOCKED`), edges in
+one `execution_tasks` row per task (`READY`, `AWAITING_APPROVAL` or `BLOCKED`), edges in
 `task_dependencies`, one `execution_events` row.
 
 ### 2. The scheduler loop
@@ -217,7 +218,8 @@ read concurrently first, then `poll()` acts on each in order)
     Succeeded → task_outputs row, the logs → SUCCEEDED → recordEvent(TASK_SUCCEEDED)
                 → releaseReadyDependents()
                     [lock each dependent (FOR NO KEY UPDATE), then:
-                     a BLOCKED task whose every dependency SUCCEEDED → READY]
+                     a BLOCKED task whose every dependency SUCCEEDED → READY,
+                     or AWAITING_APPROVAL if it needs an approval it hasn't had]
                 → settleExecution()
                     [lock the execution (FOR NO KEY UPDATE), then:
                      every task SUCCEEDED?] → SUCCEEDED → recordEvent(EXECUTION_SUCCEEDED)
@@ -242,7 +244,7 @@ read concurrently first, then `poll()` acts on each in order)
     false → FAILED, recordEvent(TASK_FAILED)
             → failExecution()
                 → execution FAILED (compare-and-set) → recordEvent(EXECUTION_FAILED)
-                → every READY/BLOCKED sibling → CANCELLED (they will never run now)
+                → every READY/BLOCKED/AWAITING_APPROVAL sibling → CANCELLED (they will never run now)
 ```
 
 Inside the executor (`internal/executor/kubernetes.go`, the one
@@ -290,7 +292,7 @@ KernelService/CancelExecution → internal/api/service.go : CancelExecution()
     [already CANCELLED?] → fine, idempotent
     [already SUCCEEDED/FAILED?] → failed_precondition
     → in a savepoint, conditionally:
-        UPDATE every READY/BLOCKED task → CANCELLED (never dispatched, nothing to stop)
+        UPDATE every READY/BLOCKED/AWAITING_APPROVAL task → CANCELLED (never dispatched, nothing to stop)
         UPDATE the execution → CANCELLED, only if still PENDING/RUNNING
         [it finished meanwhile?] → roll back the savepoint, answer as above
     → recordEvent(EXECUTION_CANCELLED), recordEvent(TASK_CANCELLED) for each
@@ -311,7 +313,30 @@ KernelService/RetryTask → internal/api/service.go : RetryTask()
     → the execution → RUNNING if FAILED (compare-and-set) → recordEvent(EXECUTION_RESUMED)
     → every CANCELLED sibling → READY (its dependencies all SUCCEEDED) or BLOCKED
         (without this, the execution could never reach all-SUCCEEDED again)
+    [a task, retried or revived, that needs an approval it hasn't had (a
+     declined one) goes to AWAITING_APPROVAL instead of READY; an approval,
+     once given, lasts]
     [the scheduler's next pass claims the revived task normally]
+```
+
+### 6. Approving a task
+
+```
+KernelService/DecideApproval → internal/api/approvals.go : DecideApproval()
+    (the console has already checked the caller is a maintainer of the
+     task's team and didn't submit the run; decided_by is recorded as is)
+    approve → UPDATE the task → READY, approved_by/approved_at set,
+              WHERE it's still AWAITING_APPROVAL → recordEvent(TASK_APPROVED)
+    decline → UPDATE the task → FAILED (APPROVAL_DECLINED, not retryable),
+              WHERE it's still AWAITING_APPROVAL → recordEvent(TASK_FAILED)
+              → its READY/BLOCKED/AWAITING_APPROVAL siblings → CANCELLED,
+                the execution → FAILED → recordEvent(EXECUTION_FAILED)
+        [no row?] → not_found, or failed_precondition if it isn't awaiting
+
+kernel-scheduler, at the start of every pass : expireApprovals()
+    → each task AWAITING_APPROVAL since before now − ApprovalTimeout
+      (SCHEDULER_APPROVAL_TIMEOUT_SECONDS, 3 days; 0 never), FOR NO KEY UPDATE SKIP LOCKED
+      → FAILED (APPROVAL_EXPIRED) → recordEvent(TASK_FAILED) → failExecution()
 ```
 
 ---

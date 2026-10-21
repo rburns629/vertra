@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/kernel/v1/kernel.proto.
  */
 export const file_vertra_kernel_v1_kernel: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEva2VybmVsL3YxL2tlcm5lbC5wcm90bxIQdmVydHJhLmtlcm5lbC52MSLrAwoEVGFzaxIKCgJpZBgBIAEoCRINCgVpbWFnZRgCIAEoCRIOCgZhY3Rpb24YAyABKAkSDAoEdGVhbRgEIAEoCRIXCg9zZXJ2aWNlX2FjY291bnQYBSABKAkSEgoKZGVwZW5kc19vbhgGIAMoCRITCgtzZWNyZXRfcmVmcxgHIAMoCRInCgZpbnB1dHMYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgJIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgKIAEoBUgBiAEBEi4KCXJlc291cmNlcxgLIAEoCzIbLnZlcnRyYS5rZXJuZWwudjEuUmVzb3VyY2VzEhcKD3Rva2VuX2F1ZGllbmNlcxgMIAMoCRItCgxpbnB1dF9zY2hlbWEYDSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KDW91dHB1dF9zY2hlbWEYDiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EjkKD2NvbmN1cnJlbmN5X2tleRgPIAEoCzIgLnZlcnRyYS5rZXJuZWwudjEuQ29uY3VycmVuY3lLZXlCEgoQX3RpbWVvdXRfc2Vjb25kc0IPCg1fbWF4X2F0dGVtcHRzIi8KDkNvbmN1cnJlbmN5S2V5Eg0KBXNjb3BlGAEgASgJEg4KBmlucHV0cxgCIAMoCSI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAkidwoWU3VibWl0RXhlY3V0aW9uUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCnJlcXVlc3RfaWQYAiABKAkSJQoFdGFza3MYAyADKAsyFi52ZXJ0cmEua2VybmVsLnYxLlRhc2sSFAoMcmVxdWVzdGVkX2J5GAQgASgJInEKF1N1Ym1pdEV4ZWN1dGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUSDwoHY3JlYXRlZBgDIAEoCCJFChBWYWxpZGF0aW9uSXNzdWVzEjEKBmlzc3VlcxgBIAMoCzIhLnZlcnRyYS5rZXJuZWwudjEuVmFsaWRhdGlvbklzc3VlIkEKD1ZhbGlkYXRpb25Jc3N1ZRIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkSDwoHdGFza19pZBgDIAEoCSIrChNHZXRFeGVjdXRpb25SZXF1ZXN0EhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSJGChRHZXRFeGVjdXRpb25SZXNwb25zZRIuCglleGVjdXRpb24YASABKAsyGy52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvbiKNAQoJRXhlY3V0aW9uEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KBXN0YXRlGAMgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZRIrCgV0YXNrcxgEIAMoCzIcLnZlcnRyYS5rZXJuZWwudjEuVGFza1N0YXR1cyLXAgoKVGFza1N0YXR1cxIPCgd0YXNrX2lkGAEgASgJEioKBXN0YXRlGAIgASgOMhsudmVydHJhLmtlcm5lbC52MS5UYXNrU3RhdGUSFQoNYXR0ZW1wdF9jb3VudBgDIAEoBRIoCgdvdXRwdXRzGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIoCgdmYWlsdXJlGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBISCgpkZXBlbmRzX29uGAYgAygJEi4KCnN0YXJ0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGNvbXBsZXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoIYXR0ZW1wdHMYCSADKAsyGS52ZXJ0cmEua2VybmVsLnYxLkF0dGVtcHQi7QEKB0F0dGVtcHQSDgoGbnVtYmVyGAEgASgFEi4KCnN0YXJ0ZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGNvbXBsZXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKAoHZmFpbHVyZRgEIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMcmVxdWVzdGVkX2J5GAUgASgJEg8KB3RyaWdnZXIYBiABKAkSEAoIYWN0ZWRfYXMYByABKAkSDQoFaW1hZ2UYCCABKAkiMgoZR2V0RXhlY3V0aW9uU3RhdGVzUmVxdWVzdBIVCg1leGVjdXRpb25faWRzGAEgAygJIlMKGkdldEV4ZWN1dGlvblN0YXRlc1Jlc3BvbnNlEjUKBnN0YXRlcxgBIAMoCzIlLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGVFbnRyeSJcChNFeGVjdXRpb25TdGF0ZUVudHJ5EhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUiXwoaTGlzdEV4ZWN1dGlvbkV2ZW50c1JlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJEhIKBWFmdGVyGAIgASgDSACIAQESDQoFbGltaXQYAyABKAVCCAoGX2FmdGVyInkKG0xpc3RFeGVjdXRpb25FdmVudHNSZXNwb25zZRIwCgZldmVudHMYASADKAsyIC52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvbkV2ZW50EhgKC25leHRfY3Vyc29yGAIgASgDSACIAQFCDgoMX25leHRfY3Vyc29yIpsBCg5FeGVjdXRpb25FdmVudBIKCgJpZBgBIAEoAxISCgpldmVudF90eXBlGAIgASgJEg8KB3Rhc2tfaWQYAyABKAkSKAoHcGF5bG9hZBgEIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLwoXR2V0RXhlY3V0aW9uTG9nc1JlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJIkUKGEdldEV4ZWN1dGlvbkxvZ3NSZXNwb25zZRIpCgV0YXNrcxgBIAMoCzIaLnZlcnRyYS5rZXJuZWwudjEuVGFza0xvZ3MiKgoIVGFza0xvZ3MSDwoHdGFza19pZBgBIAEoCRINCgVsaW5lcxgCIAMoCSIuChZDYW5jZWxFeGVjdXRpb25SZXF1ZXN0EhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSJgChdDYW5jZWxFeGVjdXRpb25SZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSLwoFc3RhdGUYAiABKA4yIC52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvblN0YXRlIk8KEFJldHJ5VGFza1JlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSFAoMcmVxdWVzdGVkX2J5GAMgASgJIloKEVJldHJ5VGFza1Jlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUqxQEKDkV4ZWN1dGlvblN0YXRlEh8KG0VYRUNVVElPTl9TVEFURV9VTlNQRUNJRklFRBAAEhsKF0VYRUNVVElPTl9TVEFURV9QRU5ESU5HEAESGwoXRVhFQ1VUSU9OX1NUQVRFX1JVTk5JTkcQAhIdChlFWEVDVVRJT05fU1RBVEVfU1VDQ0VFREVEEAMSGgoWRVhFQ1VUSU9OX1NUQVRFX0ZBSUxFRBAEEh0KGUVYRUNVVElPTl9TVEFURV9DQU5DRUxMRUQQBSrQAQoJVGFza1N0YXRlEhoKFlRBU0tfU1RBVEVfVU5TUEVDSUZJRUQQABIWChJUQVNLX1NUQVRFX0JMT0NLRUQQARIUChBUQVNLX1NUQVRFX1JFQURZEAISFgoSVEFTS19TVEFURV9DTEFJTUVEEAMSFgoSVEFTS19TVEFURV9SVU5OSU5HEAQSGAoUVEFTS19TVEFURV9TVUNDRUVERUQQBRIVChFUQVNLX1NUQVRFX0ZBSUxFRBAGEhgKFFRBU0tfU1RBVEVfQ0FOQ0VMTEVEEAcy+AUKDUtlcm5lbFNlcnZpY2USZgoPU3VibWl0RXhlY3V0aW9uEigudmVydHJhLmtlcm5lbC52MS5TdWJtaXRFeGVjdXRpb25SZXF1ZXN0GikudmVydHJhLmtlcm5lbC52MS5TdWJtaXRFeGVjdXRpb25SZXNwb25zZRJiCgxHZXRFeGVjdXRpb24SJS52ZXJ0cmEua2VybmVsLnYxLkdldEV4ZWN1dGlvblJlcXVlc3QaJi52ZXJ0cmEua2VybmVsLnYxLkdldEV4ZWN1dGlvblJlc3BvbnNlIgOQAgESdAoSR2V0RXhlY3V0aW9uU3RhdGVzEisudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25TdGF0ZXNSZXF1ZXN0GiwudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25TdGF0ZXNSZXNwb25zZSIDkAIBEncKE0xpc3RFeGVjdXRpb25FdmVudHMSLC52ZXJ0cmEua2VybmVsLnYxLkxpc3RFeGVjdXRpb25FdmVudHNSZXF1ZXN0Gi0udmVydHJhLmtlcm5lbC52MS5MaXN0RXhlY3V0aW9uRXZlbnRzUmVzcG9uc2UiA5ACARJuChBHZXRFeGVjdXRpb25Mb2dzEikudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25Mb2dzUmVxdWVzdBoqLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uTG9nc1Jlc3BvbnNlIgOQAgESZgoPQ2FuY2VsRXhlY3V0aW9uEigudmVydHJhLmtlcm5lbC52MS5DYW5jZWxFeGVjdXRpb25SZXF1ZXN0GikudmVydHJhLmtlcm5lbC52MS5DYW5jZWxFeGVjdXRpb25SZXNwb25zZRJUCglSZXRyeVRhc2sSIi52ZXJ0cmEua2VybmVsLnYxLlJldHJ5VGFza1JlcXVlc3QaIy52ZXJ0cmEua2VybmVsLnYxLlJldHJ5VGFza1Jlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch12ZXJ0cmEva2VybmVsL3YxL2tlcm5lbC5wcm90bxIQdmVydHJhLmtlcm5lbC52MSKGBAoEVGFzaxIKCgJpZBgBIAEoCRINCgVpbWFnZRgCIAEoCRIOCgZhY3Rpb24YAyABKAkSDAoEdGVhbRgEIAEoCRIXCg9zZXJ2aWNlX2FjY291bnQYBSABKAkSEgoKZGVwZW5kc19vbhgGIAMoCRITCgtzZWNyZXRfcmVmcxgHIAMoCRInCgZpbnB1dHMYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgJIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgKIAEoBUgBiAEBEi4KCXJlc291cmNlcxgLIAEoCzIbLnZlcnRyYS5rZXJuZWwudjEuUmVzb3VyY2VzEhcKD3Rva2VuX2F1ZGllbmNlcxgMIAMoCRItCgxpbnB1dF9zY2hlbWEYDSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KDW91dHB1dF9zY2hlbWEYDiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EjkKD2NvbmN1cnJlbmN5X2tleRgPIAEoCzIgLnZlcnRyYS5rZXJuZWwudjEuQ29uY3VycmVuY3lLZXkSGQoRYXBwcm92YWxfcmVxdWlyZWQYECABKAhCEgoQX3RpbWVvdXRfc2Vjb25kc0IPCg1fbWF4X2F0dGVtcHRzIi8KDkNvbmN1cnJlbmN5S2V5Eg0KBXNjb3BlGAEgASgJEg4KBmlucHV0cxgCIAMoCSI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAkidwoWU3VibWl0RXhlY3V0aW9uUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCnJlcXVlc3RfaWQYAiABKAkSJQoFdGFza3MYAyADKAsyFi52ZXJ0cmEua2VybmVsLnYxLlRhc2sSFAoMcmVxdWVzdGVkX2J5GAQgASgJInEKF1N1Ym1pdEV4ZWN1dGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUSDwoHY3JlYXRlZBgDIAEoCCJFChBWYWxpZGF0aW9uSXNzdWVzEjEKBmlzc3VlcxgBIAMoCzIhLnZlcnRyYS5rZXJuZWwudjEuVmFsaWRhdGlvbklzc3VlIkEKD1ZhbGlkYXRpb25Jc3N1ZRIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkSDwoHdGFza19pZBgDIAEoCSIrChNHZXRFeGVjdXRpb25SZXF1ZXN0EhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSJGChRHZXRFeGVjdXRpb25SZXNwb25zZRIuCglleGVjdXRpb24YASABKAsyGy52ZXJ0cmEua2VybmVsLnYxLkV4ZWN1dGlvbiKNAQoJRXhlY3V0aW9uEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KBXN0YXRlGAMgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZRIrCgV0YXNrcxgEIAMoCzIcLnZlcnRyYS5rZXJuZWwudjEuVGFza1N0YXR1cyLsAwoKVGFza1N0YXR1cxIPCgd0YXNrX2lkGAEgASgJEioKBXN0YXRlGAIgASgOMhsudmVydHJhLmtlcm5lbC52MS5UYXNrU3RhdGUSFQoNYXR0ZW1wdF9jb3VudBgDIAEoBRIoCgdvdXRwdXRzGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIoCgdmYWlsdXJlGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBISCgpkZXBlbmRzX29uGAYgAygJEi4KCnN0YXJ0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGNvbXBsZXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoIYXR0ZW1wdHMYCSADKAsyGS52ZXJ0cmEua2VybmVsLnYxLkF0dGVtcHQSGQoRYXBwcm92YWxfcmVxdWlyZWQYCiABKAgSEwoLYXBwcm92ZWRfYnkYCyABKAkSLwoLYXBwcm92ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjIKDmF3YWl0aW5nX3NpbmNlGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLtAQoHQXR0ZW1wdBIOCgZudW1iZXIYASABKAUSLgoKc3RhcnRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMY29tcGxldGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIoCgdmYWlsdXJlGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIUCgxyZXF1ZXN0ZWRfYnkYBSABKAkSDwoHdHJpZ2dlchgGIAEoCRIQCghhY3RlZF9hcxgHIAEoCRINCgVpbWFnZRgIIAEoCSIyChlHZXRFeGVjdXRpb25TdGF0ZXNSZXF1ZXN0EhUKDWV4ZWN1dGlvbl9pZHMYASADKAkiUwoaR2V0RXhlY3V0aW9uU3RhdGVzUmVzcG9uc2USNQoGc3RhdGVzGAEgAygLMiUudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZUVudHJ5IlwKE0V4ZWN1dGlvblN0YXRlRW50cnkSFAoMZXhlY3V0aW9uX2lkGAEgASgJEi8KBXN0YXRlGAIgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZSJfChpMaXN0RXhlY3V0aW9uRXZlbnRzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSEgoFYWZ0ZXIYAiABKANIAIgBARINCgVsaW1pdBgDIAEoBUIICgZfYWZ0ZXIieQobTGlzdEV4ZWN1dGlvbkV2ZW50c1Jlc3BvbnNlEjAKBmV2ZW50cxgBIAMoCzIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uRXZlbnQSGAoLbmV4dF9jdXJzb3IYAiABKANIAIgBAUIOCgxfbmV4dF9jdXJzb3IimwEKDkV4ZWN1dGlvbkV2ZW50EgoKAmlkGAEgASgDEhIKCmV2ZW50X3R5cGUYAiABKAkSDwoHdGFza19pZBgDIAEoCRIoCgdwYXlsb2FkGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIvChdHZXRFeGVjdXRpb25Mb2dzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkiRQoYR2V0RXhlY3V0aW9uTG9nc1Jlc3BvbnNlEikKBXRhc2tzGAEgAygLMhoudmVydHJhLmtlcm5lbC52MS5UYXNrTG9ncyIqCghUYXNrTG9ncxIPCgd0YXNrX2lkGAEgASgJEg0KBWxpbmVzGAIgAygJIi4KFkNhbmNlbEV4ZWN1dGlvblJlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJImAKF0NhbmNlbEV4ZWN1dGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUiTwoQUmV0cnlUYXNrUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSDwoHdGFza19pZBgCIAEoCRIUCgxyZXF1ZXN0ZWRfYnkYAyABKAkiWgoRUmV0cnlUYXNrUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEi8KBXN0YXRlGAIgASgOMiAudmVydHJhLmtlcm5lbC52MS5FeGVjdXRpb25TdGF0ZSJzChVEZWNpZGVBcHByb3ZhbFJlcXVlc3QSFAoMZXhlY3V0aW9uX2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSDwoHYXBwcm92ZRgDIAEoCBISCgpkZWNpZGVkX2J5GAQgASgJEg4KBnJlYXNvbhgFIAEoCSJfChZEZWNpZGVBcHByb3ZhbFJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIvCgVzdGF0ZRgCIAEoDjIgLnZlcnRyYS5rZXJuZWwudjEuRXhlY3V0aW9uU3RhdGUiLAobTGlzdEF3YWl0aW5nQXBwcm92YWxSZXF1ZXN0Eg0KBXRlYW1zGAEgAygJIlEKHExpc3RBd2FpdGluZ0FwcHJvdmFsUmVzcG9uc2USMQoFdGFza3MYASADKAsyIi52ZXJ0cmEua2VybmVsLnYxLkF3YWl0aW5nQXBwcm92YWwiyAEKEEF3YWl0aW5nQXBwcm92YWwSFAoMZXhlY3V0aW9uX2lkGAEgASgJEhYKDmV4ZWN1dGlvbl9uYW1lGAIgASgJEg8KB3Rhc2tfaWQYAyABKAkSDAoEdGVhbRgEIAEoCRINCgVpbWFnZRgFIAEoCRIOCgZhY3Rpb24YBiABKAkSFAoMcmVxdWVzdGVkX2J5GAcgASgJEjIKDmF3YWl0aW5nX3NpbmNlGAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCrFAQoORXhlY3V0aW9uU3RhdGUSHwobRVhFQ1VUSU9OX1NUQVRFX1VOU1BFQ0lGSUVEEAASGwoXRVhFQ1VUSU9OX1NUQVRFX1BFTkRJTkcQARIbChdFWEVDVVRJT05fU1RBVEVfUlVOTklORxACEh0KGUVYRUNVVElPTl9TVEFURV9TVUNDRUVERUQQAxIaChZFWEVDVVRJT05fU1RBVEVfRkFJTEVEEAQSHQoZRVhFQ1VUSU9OX1NUQVRFX0NBTkNFTExFRBAFKvIBCglUYXNrU3RhdGUSGgoWVEFTS19TVEFURV9VTlNQRUNJRklFRBAAEhYKElRBU0tfU1RBVEVfQkxPQ0tFRBABEhQKEFRBU0tfU1RBVEVfUkVBRFkQAhIWChJUQVNLX1NUQVRFX0NMQUlNRUQQAxIWChJUQVNLX1NUQVRFX1JVTk5JTkcQBBIYChRUQVNLX1NUQVRFX1NVQ0NFRURFRBAFEhUKEVRBU0tfU1RBVEVfRkFJTEVEEAYSGAoUVEFTS19TVEFURV9DQU5DRUxMRUQQBxIgChxUQVNLX1NUQVRFX0FXQUlUSU5HX0FQUFJPVkFMEAgy2QcKDUtlcm5lbFNlcnZpY2USZgoPU3VibWl0RXhlY3V0aW9uEigudmVydHJhLmtlcm5lbC52MS5TdWJtaXRFeGVjdXRpb25SZXF1ZXN0GikudmVydHJhLmtlcm5lbC52MS5TdWJtaXRFeGVjdXRpb25SZXNwb25zZRJiCgxHZXRFeGVjdXRpb24SJS52ZXJ0cmEua2VybmVsLnYxLkdldEV4ZWN1dGlvblJlcXVlc3QaJi52ZXJ0cmEua2VybmVsLnYxLkdldEV4ZWN1dGlvblJlc3BvbnNlIgOQAgESdAoSR2V0RXhlY3V0aW9uU3RhdGVzEisudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25TdGF0ZXNSZXF1ZXN0GiwudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25TdGF0ZXNSZXNwb25zZSIDkAIBEncKE0xpc3RFeGVjdXRpb25FdmVudHMSLC52ZXJ0cmEua2VybmVsLnYxLkxpc3RFeGVjdXRpb25FdmVudHNSZXF1ZXN0Gi0udmVydHJhLmtlcm5lbC52MS5MaXN0RXhlY3V0aW9uRXZlbnRzUmVzcG9uc2UiA5ACARJuChBHZXRFeGVjdXRpb25Mb2dzEikudmVydHJhLmtlcm5lbC52MS5HZXRFeGVjdXRpb25Mb2dzUmVxdWVzdBoqLnZlcnRyYS5rZXJuZWwudjEuR2V0RXhlY3V0aW9uTG9nc1Jlc3BvbnNlIgOQAgESZgoPQ2FuY2VsRXhlY3V0aW9uEigudmVydHJhLmtlcm5lbC52MS5DYW5jZWxFeGVjdXRpb25SZXF1ZXN0GikudmVydHJhLmtlcm5lbC52MS5DYW5jZWxFeGVjdXRpb25SZXNwb25zZRJUCglSZXRyeVRhc2sSIi52ZXJ0cmEua2VybmVsLnYxLlJldHJ5VGFza1JlcXVlc3QaIy52ZXJ0cmEua2VybmVsLnYxLlJldHJ5VGFza1Jlc3BvbnNlEmMKDkRlY2lkZUFwcHJvdmFsEicudmVydHJhLmtlcm5lbC52MS5EZWNpZGVBcHByb3ZhbFJlcXVlc3QaKC52ZXJ0cmEua2VybmVsLnYxLkRlY2lkZUFwcHJvdmFsUmVzcG9uc2USegoUTGlzdEF3YWl0aW5nQXBwcm92YWwSLS52ZXJ0cmEua2VybmVsLnYxLkxpc3RBd2FpdGluZ0FwcHJvdmFsUmVxdWVzdBouLnZlcnRyYS5rZXJuZWwudjEuTGlzdEF3YWl0aW5nQXBwcm92YWxSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * One step of a DAG.
@@ -130,6 +130,15 @@ export type Task = Message<"vertra.kernel.v1.Task"> & {
    * @generated from field: vertra.kernel.v1.ConcurrencyKey concurrency_key = 15;
    */
   concurrencyKey?: ConcurrencyKey | undefined;
+
+  /**
+   * Waits in AWAITING_APPROVAL, instead of becoming READY, until someone
+   * approves it (DecideApproval); expires with APPROVAL_EXPIRED after the
+   * scheduler's approval timeout.
+   *
+   * @generated from field: bool approval_required = 16;
+   */
+  approvalRequired: boolean;
 };
 
 /**
@@ -436,6 +445,30 @@ export type TaskStatus = Message<"vertra.kernel.v1.TaskStatus"> & {
    * @generated from field: repeated vertra.kernel.v1.Attempt attempts = 9;
    */
   attempts: Attempt[];
+
+  /**
+   * @generated from field: bool approval_required = 10;
+   */
+  approvalRequired: boolean;
+
+  /**
+   * Once approved: who (decided_by) and when.
+   *
+   * @generated from field: string approved_by = 11;
+   */
+  approvedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp approved_at = 12;
+   */
+  approvedAt?: Timestamp | undefined;
+
+  /**
+   * While AWAITING_APPROVAL: since when.
+   *
+   * @generated from field: google.protobuf.Timestamp awaiting_since = 13;
+   */
+  awaitingSince?: Timestamp | undefined;
 };
 
 /**
@@ -809,6 +842,161 @@ export const RetryTaskResponseSchema: GenMessage<RetryTaskResponse> = /*@__PURE_
   messageDesc(file_vertra_kernel_v1_kernel, 24);
 
 /**
+ * @generated from message vertra.kernel.v1.DecideApprovalRequest
+ */
+export type DecideApprovalRequest = Message<"vertra.kernel.v1.DecideApprovalRequest"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+
+  /**
+   * false declines it.
+   *
+   * @generated from field: bool approve = 3;
+   */
+  approve: boolean;
+
+  /**
+   * Who decided, in the caller's own terms ("user:<id>"), recorded as is.
+   *
+   * @generated from field: string decided_by = 4;
+   */
+  decidedBy: string;
+
+  /**
+   * Why, when declining; shown in the task's failure.
+   *
+   * @generated from field: string reason = 5;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message vertra.kernel.v1.DecideApprovalRequest.
+ * Use `create(DecideApprovalRequestSchema)` to create a new message.
+ */
+export const DecideApprovalRequestSchema: GenMessage<DecideApprovalRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_kernel_v1_kernel, 25);
+
+/**
+ * @generated from message vertra.kernel.v1.DecideApprovalResponse
+ */
+export type DecideApprovalResponse = Message<"vertra.kernel.v1.DecideApprovalResponse"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: vertra.kernel.v1.ExecutionState state = 2;
+   */
+  state: ExecutionState;
+};
+
+/**
+ * Describes the message vertra.kernel.v1.DecideApprovalResponse.
+ * Use `create(DecideApprovalResponseSchema)` to create a new message.
+ */
+export const DecideApprovalResponseSchema: GenMessage<DecideApprovalResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_kernel_v1_kernel, 26);
+
+/**
+ * @generated from message vertra.kernel.v1.ListAwaitingApprovalRequest
+ */
+export type ListAwaitingApprovalRequest = Message<"vertra.kernel.v1.ListAwaitingApprovalRequest"> & {
+  /**
+   * At most 1000.
+   *
+   * @generated from field: repeated string teams = 1;
+   */
+  teams: string[];
+};
+
+/**
+ * Describes the message vertra.kernel.v1.ListAwaitingApprovalRequest.
+ * Use `create(ListAwaitingApprovalRequestSchema)` to create a new message.
+ */
+export const ListAwaitingApprovalRequestSchema: GenMessage<ListAwaitingApprovalRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_kernel_v1_kernel, 27);
+
+/**
+ * @generated from message vertra.kernel.v1.ListAwaitingApprovalResponse
+ */
+export type ListAwaitingApprovalResponse = Message<"vertra.kernel.v1.ListAwaitingApprovalResponse"> & {
+  /**
+   * @generated from field: repeated vertra.kernel.v1.AwaitingApproval tasks = 1;
+   */
+  tasks: AwaitingApproval[];
+};
+
+/**
+ * Describes the message vertra.kernel.v1.ListAwaitingApprovalResponse.
+ * Use `create(ListAwaitingApprovalResponseSchema)` to create a new message.
+ */
+export const ListAwaitingApprovalResponseSchema: GenMessage<ListAwaitingApprovalResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_kernel_v1_kernel, 28);
+
+/**
+ * @generated from message vertra.kernel.v1.AwaitingApproval
+ */
+export type AwaitingApproval = Message<"vertra.kernel.v1.AwaitingApproval"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string execution_name = 2;
+   */
+  executionName: string;
+
+  /**
+   * @generated from field: string task_id = 3;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string team = 4;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string image = 5;
+   */
+  image: string;
+
+  /**
+   * @generated from field: string action = 6;
+   */
+  action: string;
+
+  /**
+   * The execution's requested_by.
+   *
+   * @generated from field: string requested_by = 7;
+   */
+  requestedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp awaiting_since = 8;
+   */
+  awaitingSince?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.kernel.v1.AwaitingApproval.
+ * Use `create(AwaitingApprovalSchema)` to create a new message.
+ */
+export const AwaitingApprovalSchema: GenMessage<AwaitingApproval> = /*@__PURE__*/
+  messageDesc(file_vertra_kernel_v1_kernel, 29);
+
+/**
  * @generated from enum vertra.kernel.v1.ExecutionState
  */
 export enum ExecutionState {
@@ -892,6 +1080,13 @@ export enum TaskState {
    * @generated from enum value: TASK_STATE_CANCELLED = 7;
    */
   CANCELLED = 7,
+
+  /**
+   * Would be READY, but waits for a person to approve it (Task.approval_required).
+   *
+   * @generated from enum value: TASK_STATE_AWAITING_APPROVAL = 8;
+   */
+  AWAITING_APPROVAL = 8,
 }
 
 /**
@@ -992,6 +1187,29 @@ export const KernelService: GenService<{
     methodKind: "unary";
     input: typeof RetryTaskRequestSchema;
     output: typeof RetryTaskResponseSchema;
+  },
+  /**
+   * Approves or declines a task in AWAITING_APPROVAL (failed_precondition
+   * otherwise). Approved, it becomes READY and stays approved across
+   * retries; declined, it fails with APPROVAL_DECLINED, failing its
+   * execution. Who may decide is the caller's to check.
+   *
+   * @generated from rpc vertra.kernel.v1.KernelService.DecideApproval
+   */
+  decideApproval: {
+    methodKind: "unary";
+    input: typeof DecideApprovalRequestSchema;
+    output: typeof DecideApprovalResponseSchema;
+  },
+  /**
+   * The tasks awaiting approval in the given teams, oldest first.
+   *
+   * @generated from rpc vertra.kernel.v1.KernelService.ListAwaitingApproval
+   */
+  listAwaitingApproval: {
+    methodKind: "unary";
+    input: typeof ListAwaitingApprovalRequestSchema;
+    output: typeof ListAwaitingApprovalResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_kernel_v1_kernel, 0);

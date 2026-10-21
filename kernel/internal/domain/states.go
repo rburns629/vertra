@@ -15,20 +15,28 @@ import (
 // execution_tasks.state.
 //
 // A task with no dependencies starts READY, one with dependencies BLOCKED.
+// A task that needs an approval waits in AWAITING_APPROVAL instead of
+// becoming READY, until it's approved (then READY) or declined (FAILED).
 // An execution starts PENDING, becomes RUNNING once its first task starts,
 // and succeeds only when every task succeeds; one task's unrecoverable
 // failure fails it.
 type TaskState string
 
 const (
-	TaskBlocked   TaskState = "BLOCKED"
-	TaskReady     TaskState = "READY"
-	TaskClaimed   TaskState = "CLAIMED"
-	TaskRunning   TaskState = "RUNNING"
-	TaskSucceeded TaskState = "SUCCEEDED"
-	TaskFailed    TaskState = "FAILED"
-	TaskCancelled TaskState = "CANCELLED"
+	TaskBlocked          TaskState = "BLOCKED"
+	TaskReady            TaskState = "READY"
+	TaskAwaitingApproval TaskState = "AWAITING_APPROVAL"
+	TaskClaimed          TaskState = "CLAIMED"
+	TaskRunning          TaskState = "RUNNING"
+	TaskSucceeded        TaskState = "SUCCEEDED"
+	TaskFailed           TaskState = "FAILED"
+	TaskCancelled        TaskState = "CANCELLED"
 )
+
+// ReadyOrAwaitingSQL is the state a task that may run now goes to, as an
+// SQL expression over its execution_tasks row: AWAITING_APPROVAL if it needs
+// an approval it hasn't had, else READY.
+const ReadyOrAwaitingSQL = `CASE WHEN approval_required AND approved_at IS NULL THEN 'AWAITING_APPROVAL' ELSE 'READY' END`
 
 // ExecutionState is an execution's state, as stored in executions.state.
 type ExecutionState string

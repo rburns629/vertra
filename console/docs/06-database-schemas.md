@@ -102,8 +102,10 @@ One row per task in a DAG, and the scheduler's work queue: it claims rows from h
 | `concurrency_inputs` | text[] | no | The inputs naming what it changes (product.yaml's `concurrencyKey`). |
 | `concurrency_key` | text | yes | Its key, worked out from its resolved inputs when it's claimed: while a task with this key is claimed or running, another with it waits, READY. |
 | `next_attempt_requested_by` | text | yes | Who retried it, for its next attempt; cleared when that attempt is claimed. |
+| `approval_required` | boolean | no | It waits in `AWAITING_APPROVAL`, instead of becoming `READY`, until a maintainer of its team approves it. The console sets it from product.yaml's `approval` and the owning team's `allowedTargets`. |
+| `approved_by`, `approved_at` | text, timestamptz | yes | Who approved it (`user:<id>`) and when. Kept across retries, so an approved step isn't asked about again. |
 | `resources` | jsonb | yes | The task's own Pod size: `cpu`, `memory` and `memoryLimit`, as Kubernetes quantities. Null, or a part left out, means the deployment's default (`TASK_DEFAULT_RESOURCES`). |
-| `state` | varchar | no | `BLOCKED` (waiting on dependencies), `READY`, `CLAIMED` (a scheduler took it), `RUNNING` (its Job exists), then `SUCCEEDED`, `FAILED` or `CANCELLED`. |
+| `state` | varchar | no | `BLOCKED` (waiting on dependencies), `AWAITING_APPROVAL` (waiting for a person to approve it), `READY`, `CLAIMED` (a scheduler took it), `RUNNING` (its Job exists), then `SUCCEEDED`, `FAILED` or `CANCELLED`. |
 | `original_inputs` | jsonb | no | The inputs as submitted, `$fromTask` references included. |
 | `resolved_inputs` | jsonb | yes | The inputs actually sent, with references replaced by upstream outputs. Set at dispatch. |
 | `timeout_seconds` | integer | no | How long one attempt may run. |
@@ -112,7 +114,7 @@ One row per task in a DAG, and the scheduler's work queue: it claims rows from h
 | `dispatch_failures` | integer | no | Starts of the current attempt that raised in a row (an API timeout, say). Each retries the same attempt, so its Job name, adopting what the failed start left; past the scheduler's limit the attempt fails. Back to 0 once a start succeeds. |
 | `lease_owner` | text | yes | Which scheduler holds the task while `CLAIMED`/`RUNNING`. |
 | `lease_expires_at` | timestamptz | yes | If this passes (the scheduler died or was replaced), another scheduler takes the task over: it keeps watching a running task's Job, and a task that hadn't started yet goes back to `READY`. |
-| `available_at` | timestamptz | no | When the task may be claimed: when it became `READY`, or later for an automatic retry (the backoff). Schedulers claim the oldest first. |
+| `available_at` | timestamptz | no | When the task may be claimed: when it became `READY`, or later for an automatic retry (the backoff). Schedulers claim the oldest first. While `AWAITING_APPROVAL`, since when it has waited: it fails with `APPROVAL_EXPIRED` after the scheduler's approval timeout. |
 | `executor_handle` | jsonb | yes | Where the current attempt runs: `{"namespace", "jobName"}`. |
 | `failure` | jsonb | yes | Why it failed: `{"code", "message", "retryable"}`. |
 | `created_at`, `updated_at` | timestamptz | no | |
@@ -267,7 +269,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `retired_at` | timestamptz | yes | Set when the team is retired: read-only, products unregistered. Clearing it brings the team back. |
 | `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
 | `from_catalog` | boolean | no | Made by a catalog release: retired when a release no longer names it. A team an admin made isn't touched. |
-| `allowed_targets` | jsonb | no | team.yaml's `allowedTargets` from the release: `[{ teams, targets: { "gcp.project": [values or patterns], ... } }]`, where other teams may aim this team's products. Empty: nowhere. |
+| `allowed_targets` | jsonb | no | team.yaml's `allowedTargets` from the release: `[{ teams, targets: { "gcp.project": [values or patterns], ... }, approval? }]`, where other teams may aim this team's products; a rule with `approval: true` lets its targets through only with a maintainer's approval. Empty: nowhere. |
 | `contact`, `help_chat`, `help_url` | text | yes | team.yaml's `contact` and `help` (`chat`, `url`), from the release: whom to ask when one of its steps fails. |
 
 ### users
@@ -335,6 +337,7 @@ What a DAG step can run: one row per image and action.
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
+| `approval` | text | yes | product.yaml's `approval`: `always`, or `otherTeams` (only when another team runs it). A step of it then waits for a maintainer of its team to approve it. Null: never, unless an `allowedTargets` rule asks. |
 | `error_help` | jsonb | no | product.yaml's `errors`: `{ CODE: { means, do } }`, shown when a step fails with that code. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |

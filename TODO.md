@@ -446,10 +446,22 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   console only reads the catalog). Releases carry each file's path
   (`ProductAction.path`, `Template.path`) and `hidden`. Left: links for
   catalogs not on GitHub (GitLab, with GitLab).
-- [ ] **P1: approvals.** An owner marks an action, or sharing with a team or
-  into a target, as needing approval; the step waits (a new state in the
-  kernel) until a maintainer approves or declines, audited; withdrawn after
-  3 days.
+- [x] **P1: approvals** (done 2026-10-21): product.yaml's `approval`
+  (`always`, or `otherTeams`: only another team's runs) and an
+  `allowedTargets` rule's `approval: true` (its targets allowed only with
+  one), carried by releases. The console marks such steps
+  `approvalRequired` (submitters can't); the kernel holds them in
+  `AWAITING_APPROVAL` instead of `READY` (kernel migration 0006, console
+  0011). A maintainer of the step's team, never whoever submitted the run,
+  approves or declines on the run page (`ExecutionService/DecideApproval`,
+  audited; the kernel records who in `TASK_APPROVED`); the home page lists
+  what's waiting (`ListPendingApprovals`). Declined: `APPROVAL_DECLINED`;
+  undecided for `scheduler.approvalTimeoutSeconds` (3 days):
+  `APPROVAL_EXPIRED`. An approval lasts across retries; a declined step
+  asks again. Proven on kind with the local sample's rot13
+  (`approval: otherTeams`). Left: approval for one consumer team and not
+  another without a target rule; notifying approvers (P2 notifications);
+  showing an action's Preview to the approver (with Preview).
 - [x] **P1: failure help from the owner** (done 2026-10-21): product.yaml's
   `errors` (CODE: means, do) and team.yaml's `help` (chat, url) beside
   `contact`, carried by releases (console migration 0010). A failed step's

@@ -75,6 +75,7 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			Path:           p.Label() + "/product.yaml",
 			Idempotent:     action["idempotent"] == true,
 			ConcurrencyKey: stringList(action["concurrencyKey"]),
+			Approval:       text(action, "approval"),
 		}
 		if errs, ok := p.Spec["errors"].(map[string]any); ok && len(errs) > 0 {
 			a.Errors = map[string]*catalogv1.ErrorHelp{}
@@ -417,7 +418,7 @@ func targetRulesOf(spec map[string]any) []*catalogv1.TargetRule {
 	var rules []*catalogv1.TargetRule
 	for _, r := range raw {
 		m, _ := r.(map[string]any)
-		rule := &catalogv1.TargetRule{Teams: stringList(m["teams"])}
+		rule := &catalogv1.TargetRule{Teams: stringList(m["teams"]), Approval: m["approval"] == true}
 		for _, kind := range TargetTypes {
 			if values := stringList(m[kind]); len(values) > 0 {
 				rule.Targets = append(rule.Targets, &catalogv1.Targets{Type: kind, Values: values})

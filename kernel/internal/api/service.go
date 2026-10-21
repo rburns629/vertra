@@ -112,7 +112,8 @@ func taskDefs(tasks []*kernelv1.Task) ([]domain.TaskDef, []domain.ValidationIssu
 		}
 		def := domain.TaskDef{ID: t.GetId(), Image: t.GetImage(), Action: t.GetAction(), DependsOn: t.GetDependsOn(),
 			Inputs: t.GetInputs().AsMap(), TimeoutSeconds: 300, MaxAttempts: 1, Team: t.GetTeam(),
-			ServiceAccount: t.GetServiceAccount(), SecretRefs: t.GetSecretRefs(), TokenAudiences: t.GetTokenAudiences()}
+			ServiceAccount: t.GetServiceAccount(), SecretRefs: t.GetSecretRefs(), TokenAudiences: t.GetTokenAudiences(),
+			ApprovalRequired: t.GetApprovalRequired()}
 		if def.DependsOn == nil {
 			def.DependsOn = []string{}
 		}
@@ -288,11 +289,11 @@ func (s *Service) insert(ctx context.Context, db pgx.Tx, id, name, requestID, re
 		}
 		if _, err := db.Exec(ctx, `INSERT INTO execution_tasks (id, execution_id, task_key, image, action, team, service_account,
 			secret_refs, token_audiences, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count,
-			input_schema, output_schema, concurrency_scope, concurrency_inputs)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16, $17, $18)`,
+			input_schema, output_schema, concurrency_scope, concurrency_inputs, approval_required)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16, $17, $18, $19)`,
 			ids[d.ID], id, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, d.TokenAudiences, resources,
 			string(d.InitialState()), inputs, d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema,
-			nullable(d.ConcurrencyScope), d.ConcurrencyInputs); err != nil {
+			nullable(d.ConcurrencyScope), d.ConcurrencyInputs, d.ApprovalRequired); err != nil {
 			return err
 		}
 	}
@@ -344,7 +345,8 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 	rows, err := s.Pool.Query(ctx, `SELECT t.task_key, t.state, t.attempt_count, o.outputs, t.failure,
 			coalesce((SELECT array_agg(d.task_key ORDER BY d.task_key) FROM task_dependencies td
 				JOIN execution_tasks d ON d.id = td.depends_on_task_id WHERE td.task_id = t.id), '{}'),
-			a.started_at, a.completed_at
+			a.started_at, a.completed_at, t.approval_required, coalesce(t.approved_by, ''), t.approved_at,
+			CASE WHEN t.state = 'AWAITING_APPROVAL' THEN t.available_at END
 		FROM execution_tasks t
 		LEFT JOIN task_outputs o ON o.task_id = t.id
 		LEFT JOIN LATERAL (SELECT started_at, completed_at FROM task_attempts
@@ -359,8 +361,9 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 		var taskSt string
 		var attempts int32
 		var outputs, failure []byte
-		var started, completed *time.Time
-		if err := rows.Scan(&task.TaskId, &taskSt, &attempts, &outputs, &failure, &task.DependsOn, &started, &completed); err != nil {
+		var started, completed, approved, awaiting *time.Time
+		if err := rows.Scan(&task.TaskId, &taskSt, &attempts, &outputs, &failure, &task.DependsOn, &started, &completed,
+			&task.ApprovalRequired, &task.ApprovedBy, &approved, &awaiting); err != nil {
 			return nil, err
 		}
 		task.State, task.AttemptCount = taskState(taskSt), attempts
@@ -371,6 +374,7 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 			return nil, err
 		}
 		task.StartedAt, task.CompletedAt = timestamp(started), timestamp(completed)
+		task.ApprovedAt, task.AwaitingSince = timestamp(approved), timestamp(awaiting)
 		execution.Tasks = append(execution.Tasks, task)
 	}
 	if err := rows.Err(); err != nil {
@@ -547,7 +551,7 @@ func (s *Service) CancelExecution(ctx context.Context, req *connect.Request[kern
 		var tasks []cancelled
 		err = pgx.BeginFunc(ctx, t.Tx, func(sp pgx.Tx) error {
 			rows, err := sp.Query(ctx, `UPDATE execution_tasks SET state = 'CANCELLED', updated_at = now()
-				WHERE execution_id = $1 AND state IN ('READY', 'BLOCKED') RETURNING id::text, task_key`, id)
+				WHERE execution_id = $1 AND state IN ('READY', 'BLOCKED', 'AWAITING_APPROVAL') RETURNING id::text, task_key`, id)
 			if err != nil {
 				return err
 			}
@@ -603,7 +607,9 @@ func (s *Service) CancelExecution(ctx context.Context, req *connect.Request[kern
 // RetryTask gives a FAILED task one more attempt, whatever its max_attempts
 // (that only gates the scheduler's automatic retries). A failed task means
 // a failed execution, so it resumes, and the tasks the failure cancelled
-// come back: READY if their dependencies all succeeded, else BLOCKED.
+// come back: READY if their dependencies all succeeded, else BLOCKED. A task
+// that needs an approval it hasn't had (a declined one, say) awaits it
+// again instead of becoming READY.
 func (s *Service) RetryTask(ctx context.Context, req *connect.Request[kernelv1.RetryTaskRequest]) (*connect.Response[kernelv1.RetryTaskResponse], error) {
 	id, err := executionID(req.Msg.GetExecutionId())
 	if err != nil {
@@ -620,7 +626,7 @@ func (s *Service) RetryTask(ctx context.Context, req *connect.Request[kernelv1.R
 		// Conditional, like every state change here: the scheduler may be
 		// changing the same row.
 		requestedBy := nullable(req.Msg.GetRequestedBy())
-		err := t.QueryRow(ctx, `UPDATE execution_tasks SET state = 'READY', lease_owner = NULL, lease_expires_at = NULL,
+		err := t.QueryRow(ctx, `UPDATE execution_tasks SET state = `+domain.ReadyOrAwaitingSQL+`, lease_owner = NULL, lease_expires_at = NULL,
 			executor_handle = NULL, failure = NULL, available_at = now(), next_attempt_requested_by = $3, updated_at = now()
 			WHERE execution_id = $1 AND task_key = $2 AND state = 'FAILED' RETURNING id::text, attempt_count`, id, key, requestedBy).Scan(&taskID, &attempts)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -649,7 +655,8 @@ func (s *Service) RetryTask(ctx context.Context, req *connect.Request[kernelv1.R
 			}
 		}
 		_, err = t.Exec(ctx, `UPDATE execution_tasks t SET
-				state = CASE WHEN waiting THEN 'BLOCKED' ELSE 'READY' END,
+				state = CASE WHEN waiting THEN 'BLOCKED' WHEN t.approval_required AND t.approved_at IS NULL
+					THEN 'AWAITING_APPROVAL' ELSE 'READY' END,
 				available_at = CASE WHEN waiting THEN t.available_at ELSE now() END,
 				next_attempt_requested_by = $2,
 				updated_at = now()

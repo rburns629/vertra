@@ -18,6 +18,9 @@ const (
 	EventTaskFailed         EventType = "TASK_FAILED"
 	EventTaskCancelled      EventType = "TASK_CANCELLED"
 	EventTaskRetried        EventType = "TASK_RETRIED"
+	// A person approved a task awaiting approval (a decline is TASK_FAILED,
+	// APPROVAL_DECLINED); the payload says who (decidedBy).
+	EventTaskApproved EventType = "TASK_APPROVED"
 	// Starting the attempt raised (an API timeout, say); the same attempt
 	// is tried again later, adopting whatever that start left.
 	EventTaskDispatchRetry EventType = "TASK_DISPATCH_RETRY"
