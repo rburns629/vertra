@@ -39,8 +39,11 @@ const (
 	resultMountPath  = "/platform/output"
 	resultFilePath   = resultMountPath + "/result.json"
 	secretMountPath  = "/platform/secrets"
-	containerName    = "product"
-	kernelLabel      = "app=execution-kernel"
+	tokenMountPath   = "/platform/tokens"
+	// A projected token's lifetime; the identity policy allows no longer.
+	tokenExpiry   = time.Hour
+	containerName = "product"
+	kernelLabel   = "app=execution-kernel"
 	// How long a finished Job's result stays cached: past the pass that
 	// reads it and that pass's retries.
 	terminalRetention = 15 * time.Minute
@@ -291,6 +294,21 @@ func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error
 		volume := fmt.Sprintf("secret-%d", i)
 		mounts = append(mounts, corev1.VolumeMount{Name: volume, MountPath: secretMountPath + "/" + secret, ReadOnly: true})
 		volumes = append(volumes, corev1.Volume{Name: volume, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: secret}}})
+	}
+	// One projected volume holding a short-lived token per audience the
+	// product declared, for signing in to another cloud (OIDC federation).
+	// Issued for those audiences only, never the Kubernetes API's; the
+	// kubelet renews each before it expires.
+	if len(task.TokenAudiences) > 0 {
+		expiry := int64(tokenExpiry.Seconds())
+		var sources []corev1.VolumeProjection
+		for _, audience := range task.TokenAudiences {
+			sources = append(sources, corev1.VolumeProjection{ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+				Audience: audience, ExpirationSeconds: &expiry, Path: domain.TokenFileName(audience)}})
+		}
+		mounts = append(mounts, corev1.VolumeMount{Name: "tokens", MountPath: tokenMountPath, ReadOnly: true})
+		volumes = append(volumes, corev1.Volume{Name: "tokens", VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{Sources: sources}}})
 	}
 	var env []corev1.EnvVar
 	keys := make([]string, 0, len(k.opts.ExtraEnvironment))

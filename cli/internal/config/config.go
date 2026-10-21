@@ -291,9 +291,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Vertra == "source" {
 		if c.Source == "" {
-			add("source: needed when vertra is \"source\": the path to an Vertra checkout")
+			add("source: needed when vertra is \"source\": the path to a Vertra checkout")
 		} else if _, err := os.Stat(filepath.Join(c.Source, "helm", "charts", "execution-kernel", "Chart.yaml")); err != nil {
-			add("source: %s isn't an Vertra checkout (no helm/charts/execution-kernel)", c.Source)
+			add("source: %s isn't a Vertra checkout (no helm/charts/execution-kernel)", c.Source)
 		}
 	}
 	if !dnsLabel.MatchString(c.Namespace) {
@@ -448,7 +448,7 @@ func Load(dir string) (*Config, error) {
 	return &c, nil
 }
 
-const header = `# An Vertra install's settings, written by vertra. Names and references
+const header = `# A Vertra install's settings, written by vertra. Names and references
 # only, never a secret: safe to keep in a private repository of your own.
 # Change a setting with ` + "`vertra config set <key> <value>`" + `, then ` + "`vertra apply`" + `.
 `

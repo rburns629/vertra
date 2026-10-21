@@ -5,6 +5,8 @@ package scheduler
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -156,16 +158,70 @@ func TestMissingDeclaredOutputFailsTheDownstreamTask(t *testing.T) {
 	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
 }
 
+// The product's schemas: inputs that don't fit fail the step before it
+// starts, outputs that don't fit fail it when it finishes; neither retries.
+var countSchema = map[string]any{
+	"type": "object", "required": []any{"count"},
+	"properties": map[string]any{"count": map[string]any{"type": "integer"}},
+}
+
+func TestInputsThatDontFitTheSchemaFailTheStepBeforeItStarts(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-input-schema",
+		task("create-project", inputs(map[string]any{"count": "three"}), maxAttempts(3), schemas(countSchema, nil)))
+	k := newTicker(t, tx, fake())
+	k.tick(time.Now())
+	created := tasksByKey(t, tx, id)["create-project"]
+	equal(t, "state", created.State, domain.TaskFailed)
+	equal(t, "code", created.Failure["code"], "INPUT_INVALID")
+	equal(t, "retryable", created.Failure["retryable"], false)
+	equal(t, "started", created.ExecutorHandle == nil, true)
+	if !strings.Contains(fmt.Sprint(created.Failure["message"]), "count") {
+		t.Errorf("message = %v", created.Failure["message"])
+	}
+}
+
+func TestOutputsThatDontFitTheSchemaFailTheStep(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-output-schema",
+		task("create-project", inputs(map[string]any{"count": 3}), maxAttempts(3), schemas(countSchema, countSchema)))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	t0 := time.Now()
+	k.tick(t0)
+	equal(t, "state", tasksByKey(t, tx, id)["create-project"].State, domain.TaskRunning)
+	exec.Complete(tasksByKey(t, tx, id)["create-project"].ExecutorHandle, map[string]any{"count": "three"})
+	k.tick(t0.Add(time.Second))
+	created := tasksByKey(t, tx, id)["create-project"]
+	equal(t, "state", created.State, domain.TaskFailed)
+	equal(t, "code", created.Failure["code"], "OUTPUT_INVALID")
+	equal(t, "retryable", created.Failure["retryable"], false)
+	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
+}
+
+func TestValuesThatFitTheSchemasRunAsUsual(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-schemas-fit",
+		task("create-project", inputs(map[string]any{"count": 3}), schemas(countSchema, countSchema)))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	t0 := time.Now()
+	k.tick(t0)
+	exec.Complete(tasksByKey(t, tx, id)["create-project"].ExecutorHandle, map[string]any{"count": 4})
+	k.tick(t0.Add(time.Second))
+	equal(t, "state", tasksByKey(t, tx, id)["create-project"].State, domain.TaskSucceeded)
+}
+
 func TestDispatchRejectedByClusterPolicyFailsWithoutRetrying(t *testing.T) {
 	tx := txFor(t)
 	id := submit(t, tx, "idem-sched-dispatch-rejected", task("create-project", maxAttempts(3)))
 	exec := fake()
-	exec.StartError = &executor.DispatchRejected{Code: "DISPATCH_REJECTED", Message: "namespace test-team is not an Vertra team namespace"}
+	exec.StartError = &executor.DispatchRejected{Code: "DISPATCH_REJECTED", Message: "namespace test-team is not a Vertra team namespace"}
 	newTicker(t, tx, exec).tick(time.Now())
 	tk := tasksByKey(t, tx, id)["create-project"]
 	equal(t, "state", tk.State, domain.TaskFailed)
 	equal(t, "attempts", tk.AttemptCount, 1)
-	equal(t, "failure", tk.Failure, map[string]any{"code": "DISPATCH_REJECTED", "message": "namespace test-team is not an Vertra team namespace", "retryable": false})
+	equal(t, "failure", tk.Failure, map[string]any{"code": "DISPATCH_REJECTED", "message": "namespace test-team is not a Vertra team namespace", "retryable": false})
 	equal(t, "execution", executionState(t, tx, id), domain.ExecutionFailed)
 }
 

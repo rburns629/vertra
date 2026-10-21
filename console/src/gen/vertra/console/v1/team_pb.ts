@@ -75,7 +75,7 @@ export type Member = Message<"vertra.console.v1.Member"> & {
   isBot: boolean;
 
   /**
-   * An Vertra admin, not just this team's member.
+   * A Vertra admin, not just this team's member.
    *
    * @generated from field: bool is_admin = 4;
    */

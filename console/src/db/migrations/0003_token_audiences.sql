@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "token_audiences" text[] DEFAULT '{}'::text[] NOT NULL;

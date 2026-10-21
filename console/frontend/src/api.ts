@@ -13,7 +13,7 @@
  */
 import { createClient, Code, ConnectError, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { fromJson, type JsonValue } from "@bufbuild/protobuf";
+import { fromJson, type JsonObject, type JsonValue } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { AdminService } from "./gen/vertra/console/v1/admin_pb.js";
 import { AuthService } from "./gen/vertra/console/v1/auth_pb.js";
@@ -32,14 +32,31 @@ import { SecretService, SecretSource } from "./gen/vertra/console/v1/secret_pb.j
 import { TaskPodState, TeamService, type Team as TeamMessage } from "./gen/vertra/console/v1/team_pb.js";
 import { TokenService } from "./gen/vertra/console/v1/token_pb.js";
 import { UserService } from "./gen/vertra/console/v1/user_pb.js";
+import { FailureSchema, ProblemSchema } from "./gen/vertra/console/v1/common_pb.js";
+import { Runnable_Kind, TemplateService } from "./gen/vertra/console/v1/template_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
   readonly status: number;
+  /** The server's stable code (INVALID_PARAMETERS, TEAM_RETIRED, ...), when it sent one. */
+  readonly code: string | undefined;
+  /** More about it (the Failure detail). */
+  readonly detail: Record<string, unknown> | undefined;
+  /** Each thing wrong with the request (Problem details), on its field when it's about one. */
+  readonly problems: { field: string; message: string }[];
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    code?: string,
+    detail?: Record<string, unknown>,
+    problems: { field: string; message: string }[] = [],
+  ) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.detail = detail;
+    this.problems = problems;
   }
 }
 
@@ -95,10 +112,13 @@ const secrets = createClient(SecretService, transport);
 const teams = createClient(TeamService, transport);
 const tokens = createClient(TokenService, transport);
 const users = createClient(UserService, transport);
+const templates = createClient(TemplateService, transport);
 
 function apiError(error: unknown): ApiError {
   const connect = ConnectError.from(error);
-  return new ApiError(HTTP_STATUS[connect.code] ?? 500, connect.rawMessage);
+  const [failure] = connect.findDetails(FailureSchema);
+  const problems = connect.findDetails(ProblemSchema).map((p) => ({ field: p.field, message: p.message }));
+  return new ApiError(HTTP_STATUS[connect.code] ?? 500, connect.rawMessage, failure?.code, failure?.detail, problems);
 }
 
 /** Runs a call, turning a Connect error into an ApiError with its message alone. */
@@ -178,7 +198,7 @@ export interface TeamMember {
   id: string;
   email: string;
   isBot: boolean;
-  /** An Vertra admin (platform-wide), not just this team's member. */
+  /** A Vertra admin (platform-wide), not just this team's member. */
   isAdmin: boolean;
   addedAt: string;
 }
@@ -453,6 +473,9 @@ export interface Product {
   serviceAccount: string | null;
   /** The team secrets it uses: its bindings in product.yaml. */
   secretRefs: string[];
+  /** Audiences its steps get a short-lived ServiceAccount token for, to
+   * sign in to another cloud (product.yaml's tokenAudiences). */
+  tokenAudiences: string[];
   /** The other teams that may use it, or "*" for every team; empty, only its own. */
   shareWith: string[];
   /** Why it's deprecated and what to use instead, or null. */
@@ -486,6 +509,7 @@ export async function listProducts(): Promise<Product[]> {
     outputSchema: p.outputSchema ?? {},
     serviceAccount: p.serviceAccount ?? null,
     secretRefs: p.secretRefs,
+    tokenAudiences: p.tokenAudiences,
     shareWith: p.shareWith,
     deprecated: p.deprecated || null,
     createdAt: iso(p.createdAt) ?? "",
@@ -716,6 +740,12 @@ export interface ExecutionDetail {
     missingImages?: string[];
     disallowedImages?: string[];
   } | null;
+  /** Run from a template: <team>/<template>, or <team>/<product>.<action>
+   * for an action run on its own; null for a DAG submitted as such. */
+  template: string | null;
+  templateParameters: Record<string, unknown> | null;
+  /** Which of the submitter's teams it ran for, if any. */
+  onBehalfOf: string | null;
 }
 
 export async function getExecution(executionId: string): Promise<ExecutionDetail> {
@@ -787,6 +817,9 @@ function executionDetail(execution: Execution): ExecutionDetail {
           disallowedImages: execution.runBlocked.disallowedImages,
         }
       : null,
+    template: execution.template ?? null,
+    templateParameters: execution.templateParameters ?? null,
+    onBehalfOf: execution.onBehalfOf ?? null,
   };
 }
 
@@ -1000,4 +1033,53 @@ export async function listDocs(): Promise<DocSummary[]> {
 /** A guide's markdown. */
 export async function getDoc(id: string): Promise<string> {
   return (await call(() => guides.getGuide({ id }))).markdown;
+}
+
+/** A template, or an action that can run on its own, that the caller may
+ * run (TemplateService: ../../src/core/templates.ts). */
+export interface Runnable {
+  kind: "template" | "action";
+  /** RunTemplate names it by team and name; RunAction by its product's name. */
+  team: string;
+  name: string;
+  displayName: string;
+  description: string;
+  /** A JSON Schema for an object: the form to fill in. */
+  parameters: Record<string, unknown>;
+  /** Its steps' actions, as <team>/<product>.<action>. */
+  actions: string[];
+  deprecated: string | null;
+  /** The caller's teams it may run on behalf of; one is needed when required. */
+  onBehalfOf: string[];
+  onBehalfOfRequired: boolean;
+}
+
+export async function listRunnables(): Promise<Runnable[]> {
+  const { runnables } = await call(() => templates.listTemplates({}));
+  return runnables.map((r) => ({
+    kind: r.kind === Runnable_Kind.ACTION ? "action" : "template",
+    team: r.team,
+    name: r.name,
+    displayName: r.displayName,
+    description: r.description,
+    parameters: (r.parameters ?? {}) as Record<string, unknown>,
+    actions: r.actions,
+    deprecated: r.deprecated || null,
+    onBehalfOf: r.onBehalfOf,
+    onBehalfOfRequired: r.onBehalfOfRequired,
+  }));
+}
+
+/** Runs a template, or an action on its own, with these parameters; returns the execution's id. */
+export async function runRunnable(
+  runnable: Pick<Runnable, "kind" | "team" | "name">,
+  parameters: Record<string, unknown>,
+  onBehalfOf?: string,
+): Promise<string> {
+  const values = parameters as JsonObject;
+  const result =
+    runnable.kind === "template"
+      ? await call(() => templates.runTemplate({ team: runnable.team, name: runnable.name, parameters: values, onBehalfOf }))
+      : await call(() => templates.runAction({ product: runnable.name, inputs: values, onBehalfOf }));
+  return result.executionId;
 }

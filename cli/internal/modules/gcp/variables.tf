@@ -86,7 +86,7 @@ variable "delete_data" {
 }
 
 variable "console_public" {
-  description = "Reserve a global address for reaching the console over HTTPS (the catalog's CI needs it)."
+  description = "Reserve a global address for reaching the console over HTTPS from the internet."
   type        = bool
   default     = true
 }

@@ -145,6 +145,50 @@ mounting any Secret there. The console makes it in step 2, and the
 cluster makes it again when the scheduler creates the Job (the identity
 policy, below), so it holds even for a Job the console never checked.
 
+## Consumers and templates
+
+Running a team's template (`TemplateService`) needs no membership of the
+teams its steps run in. Who may run one: its team's members, admins, and
+whoever its `shareWith` covers (everyone, `*`, or members of the teams it
+lists, who then run it on behalf of one of them). What runs is built by the
+console from the registered products its steps name
+(`console/src/core/templates.ts`): each step's image, ServiceAccount,
+secrets (its action's `secretRefs`), token audiences and namespace are the
+product's; the person running it supplies parameters, checked against the
+template's schema, and nothing else. A step of another team's action needs
+that action shared with the template's team. Then every check a submission
+gets applies (identity, registered secrets, images, scans), and the
+cluster's policies hold as for any Job.
+
+A raw DAG still needs membership of every team it names. The run belongs
+to whoever ran it as well as to its steps' teams: they may see, cancel,
+retry and rerun it (a rerun runs the template again, as it is now).
+
+## Tokens for another cloud
+
+A step can sign in to a cloud other than the one hosting the cluster by
+OIDC federation (AWS web identity, Entra workload identity, a GCP workload
+identity pool), with a ServiceAccount token issued for that cloud. A
+product asks for one by declaring its audiences (`tokenAudiences` in
+`product.yaml`); a submitter can't choose them, as they can't choose a
+ServiceAccount.
+
+- The kernel mounts one projected token per declared audience at
+  `/platform/tokens/<audience>` (characters outside `[A-Za-z0-9._-]` become
+  `_`), each issued for that audience only and lasting an hour; the kubelet
+  renews them. Steps still get no Kubernetes API token.
+- The console refuses, at registration, any audience that would make the
+  token good inside this cluster: the Kubernetes API server's (read from
+  the console's own API token's `aud` claim) and kernel-api's
+  (`console/src/tokenAudiences.ts`).
+- The identity policy refuses a Job with a token for any audience its
+  product didn't declare, or one lasting over an hour, so it holds for a
+  Job the console never checked.
+
+What the token is good for is the cloud's decision: trust the cluster's
+issuer for the specific ServiceAccount (`system:serviceaccount:<team>:<sa>`),
+never for the whole issuer.
+
 ## How kernel-api knows its caller
 
 kernel-api knows nothing about users or teams; it acts on whatever the

@@ -94,6 +94,9 @@ One row per task in a DAG, and the scheduler's work queue: it claims rows from h
 | `team` | text | no | The namespace the task's Job runs in. |
 | `service_account` | text | no | The Pod's identity in that namespace. |
 | `secret_refs` | text[] | no | Kubernetes Secrets to mount at `/platform/secrets/<name>`. |
+| `token_audiences` | text[] | no | Audiences its Pod gets a projected ServiceAccount token for, at `/platform/tokens/<audience>`: its product's `tokenAudiences`, set by the console. |
+| `input_schema` | jsonb | yes | Its product's input schema, as the console attached it: its resolved inputs are checked against it before it starts, failing with `INPUT_INVALID`. Empty: not checked. |
+| `output_schema` | jsonb | yes | Its product's output schema: its outputs are checked against it when it finishes, failing with `OUTPUT_INVALID`. Empty: not checked. |
 | `resources` | jsonb | yes | The task's own Pod size: `cpu`, `memory` and `memoryLimit`, as Kubernetes quantities. Null, or a part left out, means the deployment's default (`TASK_DEFAULT_RESOURCES`). |
 | `state` | varchar | no | `BLOCKED` (waiting on dependencies), `READY`, `CLAIMED` (a scheduler took it), `RUNNING` (its Job exists), then `SUCCEEDED`, `FAILED` or `CANCELLED`. |
 | `original_inputs` | jsonb | no | The inputs as submitted, `$fromTask` references included. |
@@ -184,6 +187,7 @@ erDiagram
   products ||--o{ product_releases : "released as"
   teams ||--o{ image_repositories : "owns"
   teams ||--o{ secret_grants : "has"
+  teams ||--o{ templates : "owns"
   users ||--o{ submitted_executions : "submitted"
   teams {
     uuid id PK
@@ -310,6 +314,7 @@ What a DAG step can run: one row per image and action.
 | `output_schema` | jsonb | no | What the action outputs, as JSON Schema, including which wiring types it provides. |
 | `service_account` | text | yes | The ServiceAccount its tasks run as, in the owning team's namespace. |
 | `required_secrets` | text[] | no | The team secrets it uses: the action's `secretRefs` in `product.yaml`, its bindings. (The column keeps its name from before catalog format v2.) |
+| `token_audiences` | text[] | no | Audiences its tasks get a projected ServiceAccount token for, to sign in to another cloud: `tokenAudiences` in `product.yaml`. |
 | `resources` | jsonb | yes | The Pod size its tasks get when a task doesn't set its own: `cpu`, `memory`, `memoryLimit` as Kubernetes quantities. Null: the deployment's default. |
 | `share_with` | text[] | no | The other teams that may run it or include it in their templates, or `*` for every team; empty, only its own team. Recorded; enforced once consumers run templates. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
@@ -411,6 +416,23 @@ The catalog release this console last applied (its teams, products and SecretSto
 | `checked_at` | timestamptz | yes | The last look. |
 | `error` | text | yes | Why the last look failed (reading or verifying the release); nothing was applied then. |
 
+### templates
+
+What a consumer runs, filling in only parameters: each team's `dags/*.yaml` of kind `Template`, from the catalog's release (which removes them too). Running one builds a DAG from the products its steps name: each step runs its product's latest image, as the product's ServiceAccount, with its action's own secrets, in its team's namespace. Deleted with its team.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `team_id` | uuid | no | Its team (`teams.id`); unique with `name`. |
+| `name` | text | no | Its file's name. |
+| `display_name` | text | no | |
+| `description` | text | no | |
+| `parameters` | jsonb | no | A JSON Schema for an object: what the person running it fills in, checked before it runs. |
+| `steps` | jsonb | no | Its steps: each one's `id`, `action` (`<team>/<product>.<action>`), and optionally `dependsOn`, `inputs` (values, `{"$param": ...}`, `{"$fromStep": ..., "$output": ...}`), `timeoutSeconds`, `maxAttempts`. |
+| `share_with` | text[] | no | The other teams that may run it, or `*` for every team; empty, only its own. |
+| `deprecated` | text | yes | What to use instead; it still runs. |
+| `updated_at` | timestamptz | no | |
+
 ### submitted_executions
 
 The console's record of every execution submitted through it, and who may see it. The kernel has no idea who submitted what.
@@ -422,6 +444,9 @@ The console's record of every execution submitted through it, and who may see it
 | `submitted_by` | uuid | yes | The user or bot. Emptied if that account is deleted; the record stays. |
 | `external_reference` | text | no | The DAG's `name`. |
 | `payload` | jsonb | yes | The DAG as sent to the kernel, so **Rerun** can resubmit it. Empty for rows from before this column existed. |
+| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone. Whoever ran it can see, cancel, retry and rerun it; a rerun runs the template again. Empty for a DAG submitted as such. |
+| `template_parameters` | jsonb | yes | The parameters it ran with. |
+| `on_behalf_of` | text | yes | Which of the submitter's teams it ran for, when the template is shared with specific teams (or the submitter named one). |
 | `created_at` | timestamptz | no | |
 
 The console's migrations are tracked in the `drizzle` schema, outside `public`.

@@ -12,7 +12,9 @@
  *   identityRefusal matches a task: its team (its namespace; "" for a
  *   platform product), its image repository (any tag or digest, read as
  *   imageRepository reads it, which the policy's CEL does too), its action,
- *   and the ServiceAccount it runs as ("default" when it declares none).
+ *   the ServiceAccount it runs as ("default" when it declares none), and
+ *   the token audiences it declared, comma-separated (tokenAudiences.ts
+ *   refuses a comma in one).
  * - `teamSecrets`: each team's registered secret names, comma-separated (CEL
  *   wants every value in a literal map to be one type; Secret names can't
  *   hold commas). A registered product may mount any of its namespace's.
@@ -30,6 +32,7 @@ export interface PolicyProduct {
   repository: string;
   action: string;
   serviceAccount: string;
+  audiences: string;
 }
 
 export function policyProducts(identities: ProductIdentity[]): PolicyProduct[] {
@@ -38,6 +41,7 @@ export function policyProducts(identities: ProductIdentity[]): PolicyProduct[] {
     repository: imageRepository(identity.image),
     action: identity.action,
     serviceAccount: identity.serviceAccount ?? UNREGISTERED_SERVICE_ACCOUNT,
+    audiences: identity.tokenAudiences.join(","),
   }));
 }
 

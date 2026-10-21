@@ -324,6 +324,7 @@ console clears it.
 | `IMAGE_NOT_ALLOWED` | Its image isn't under an allowed source (Admin page) |
 | `IMAGE_NOT_PINNED`, `IMAGE_SCAN_FAILED` | Not pinned by digest; a failed scan |
 | `IMAGE_NOT_SIGNED` | Not signed by the catalog's key (with policy-controller) |
+| `INPUT_INVALID`, `OUTPUT_INVALID` | Not refused by the cluster but by the kernel: its resolved inputs, or its outputs, don't fit its product's schema (`product.yaml`'s `input` and `output`) |
 | `IDENTITY_NOT_ALLOWED` | A ServiceAccount or secret its product isn't allowed. If the console allowed it, the policy may be behind: the Admin's policy sync (`AdminService/GetPolicySync`) shows the last sync's outcome |
 
 **A task never starts, or stays `RUNNING`.** `kubectl get pods -n <team>`

@@ -35,7 +35,7 @@ didn't make waits for that install's admin to adopt it.
 
 ## What isn't automatic
 
-- **The team's first member**: an Vertra admin adds them.
+- **The team's first member**: a Vertra admin adds them.
 - **Cloud identity.** A product that calls a cloud API declares a
   `serviceAccount` in `product.yaml`; someone binds that ServiceAccount to
   a cloud identity (GKE Workload Identity, AKS Workload Identity, EKS Pod

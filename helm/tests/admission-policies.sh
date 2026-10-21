@@ -7,7 +7,7 @@
 # so nothing is created, made as the identity the policy guards (impersonated).
 #
 # Renders the policies under their own release name, "policytest", so they
-# only ever match that release's (impersonated) identities: an Vertra
+# only ever match that release's (impersonated) identities: a Vertra
 # install on the same cluster is unaffected. Removes everything it added.
 #
 #   bash helm/tests/admission-policies.sh            # kubectl's current context
@@ -169,14 +169,14 @@ expect() {  # label, "allowed" | text the refusal must contain, output
 
 # Policies take a few seconds to reach the API server's admission chain.
 for _ in $(seq 1 30); do
-  job "$OTHER_NS" $SOURCE/app:1 run default "" | grep -q "not an Vertra team namespace" && break
+  job "$OTHER_NS" $SOURCE/app:1 run default "" | grep -q "not a Vertra team namespace" && break
   sleep 1
 done
 
 echo "Dispatch:"
 expect "a team namespace"                     allowed                        "$(job "$TEAM_A" $SOURCE/app:1 run default "")"
-expect "a namespace without the team label"   "not an Vertra team namespace" "$(job "$OTHER_NS" $SOURCE/app:1 run default "")"
-expect "the platform's own namespace"         "not an Vertra team namespace" "$(job "$PLATFORM_NS" $SOURCE/app:1 run default "")"
+expect "a namespace without the team label"   "not a Vertra team namespace" "$(job "$OTHER_NS" $SOURCE/app:1 run default "")"
+expect "the platform's own namespace"         "not a Vertra team namespace" "$(job "$PLATFORM_NS" $SOURCE/app:1 run default "")"
 
 echo "Image sources:"
 expect "an image from another registry"       IMAGE_NOT_ALLOWED              "$(job "$TEAM_A" busybox:1.36 run default "")"

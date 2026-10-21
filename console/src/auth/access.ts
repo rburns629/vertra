@@ -8,7 +8,7 @@ import { findSubmittedExecution, type SubmittedExecution } from "../db/queries.j
 import { ApiError } from "../apiError.js";
 
 /** What the checks need of the caller (request.authUser). */
-type AuthUser = { teamNames: string[]; isAdmin: boolean } | undefined;
+type AuthUser = { id?: string; teamNames: string[]; isAdmin: boolean } | undefined;
 
 /** A member of the team, or a platform admin. */
 export function canActForTeam(authUser: AuthUser, team: string): boolean {
@@ -36,9 +36,14 @@ export async function loadExecution(
   const submitted = await findSubmittedExecution(executionId);
   if (!submitted) throw new ApiError(404, "NOT_FOUND", "Execution not found.");
   const member = (team: string) => canActForTeam(authUser, team);
+  // Whoever ran a template, too: a consumer who ran another team's template
+  // sees, cancels and retries that run (core/templates.ts). A DAG submitted
+  // as such stays its teams': cancelling it stops all of their tasks.
+  const own = submitted.template !== null && authUser?.id !== undefined && submitted.submittedBy === authUser.id;
   // An execution always has a team; without one, "every" would hold for anyone.
   const allowed =
-    need === "any" ? submitted.teams.some(member) : submitted.teams.length > 0 && submitted.teams.every(member);
+    own ||
+    (need === "any" ? submitted.teams.some(member) : submitted.teams.length > 0 && submitted.teams.every(member));
   if (!allowed) {
     throw new ApiError(
       403,

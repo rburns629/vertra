@@ -117,6 +117,14 @@ export declare type Product = Message<"vertra.console.v1.Product"> & {
    * @generated from field: string deprecated = 17;
    */
   deprecated: string;
+
+  /**
+   * Audiences its tasks get a projected ServiceAccount token for, at
+   * /platform/tokens/<audience> (product.yaml's tokenAudiences).
+   *
+   * @generated from field: repeated string token_audiences = 18;
+   */
+  tokenAudiences: string[];
 };
 
 /**
@@ -285,7 +293,7 @@ export declare type RegisterProductRequest = Message<"vertra.console.v1.Register
 
   /**
    * Each field below left unset keeps what's stored, except secret_refs,
-   * share_with and deprecated, which are always replaced: a registration is
+   * share_with, deprecated and token_audiences, which are always replaced: a registration is
    * the whole product.yaml, and an empty list can't be told from an unset
    * one.
    *
@@ -332,6 +340,14 @@ export declare type RegisterProductRequest = Message<"vertra.console.v1.Register
    * @generated from field: string deprecated = 13;
    */
   deprecated: string;
+
+  /**
+   * Audiences its tasks get a projected ServiceAccount token for, to sign
+   * in to another cloud. Never the Kubernetes API's or kernel-api's.
+   *
+   * @generated from field: repeated string token_audiences = 14;
+   */
+  tokenAudiences: string[];
 };
 
 /**

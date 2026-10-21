@@ -125,7 +125,7 @@
   {
    "name": "ExecutionService",
    "fullName": "vertra.console.v1.ExecutionService",
-   "comment": "Executions: DAGs submitted to run, their tasks, events and logs.\nEverything here is checked against the caller's teams first: an\nexecution is visible to a member of any team it names, and changed only\nby a member of every one.",
+   "comment": "Executions: DAGs submitted to run, their tasks, events and logs.\nEverything here is checked against the caller's teams first: an\nexecution is visible to a member of any team it names, and changed only\nby a member of every one, or by whoever submitted it (a consumer's run of\nanother team's template, TemplateService).",
    "methods": [
     {
      "name": "ListExecutions",
@@ -543,6 +543,40 @@
    ]
   },
   {
+   "name": "TemplateService",
+   "fullName": "vertra.console.v1.TemplateService",
+   "comment": "Templates: what a consumer runs, filling in only parameters. A template\ncomes from a team's catalog (dags/*.yaml of kind Template); each step\nnames an action, and runs that action's product as its ServiceAccount,\nwith that action's own secrets, in its team's namespace: none of which\nthe person running it chooses. Every shared action can also be run on its\nown, as a one-step template whose parameters are its inputs.\n\nAnyone signed in may run what's shared with them: a template's own team,\nthe teams it lists in share_with, or everyone (\"*\"). Whoever runs one may\nsee, cancel, retry and rerun that run (ExecutionService), as may members\nof the teams its steps ran in.",
+   "methods": [
+    {
+     "name": "ListTemplates",
+     "comment": "The templates and shared actions the caller may run.",
+     "input": "vertra.console.v1.ListTemplatesRequest",
+     "output": "vertra.console.v1.ListTemplatesResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "RunTemplate",
+     "comment": "Runs a template with these parameters. They're checked against its\nparameter schema first; problems come back together, as\ninvalid_argument with Problem details.",
+     "input": "vertra.console.v1.RunTemplateRequest",
+     "output": "vertra.console.v1.RunTemplateResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "RunAction",
+     "comment": "Runs one shared action with these inputs, as a one-step template.",
+     "input": "vertra.console.v1.RunActionRequest",
+     "output": "vertra.console.v1.RunActionResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "TokenService",
    "fullName": "vertra.console.v1.TokenService",
    "comment": "Bots and their API tokens. A team's bot acts as a member of that team;\nan automation token belongs to no team and can do exactly what its scopes\nsay. A token is shown once, when it's made, and only its hash is kept.",
@@ -628,7 +662,7 @@
     },
     {
      "name": "SetAdmin",
-     "comment": "Makes someone an Vertra admin, or takes it away.",
+     "comment": "Makes someone a Vertra admin, or takes it away.",
      "input": "vertra.console.v1.SetAdminRequest",
      "output": "vertra.console.v1.SetAdminResponse",
      "streaming": false,
@@ -1547,6 +1581,27 @@
      "repeated": false,
      "optional": true,
      "comment": "Why retrying or rerunning would be refused now, if it would."
+    },
+    {
+     "name": "template",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "For a run of a template (TemplateService): which one, as\n<team>/<template> or, for an action run alone, <team>/<product>.<action>."
+    },
+    {
+     "name": "templateParameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "The parameters it ran with, and which of the submitter's teams it ran for."
+    },
+    {
+     "name": "onBehalfOf",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
     }
    ]
   },
@@ -2583,6 +2638,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Why it's deprecated and what to use instead, or empty when it isn't."
+    },
+    {
+     "name": "tokenAudiences",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Audiences its tasks get a projected ServiceAccount token for, at\n/platform/tokens/<audience> (product.yaml's tokenAudiences)."
     }
    ]
   },
@@ -2744,7 +2806,7 @@
      "type": "object",
      "repeated": false,
      "optional": false,
-     "comment": "Each field below left unset keeps what's stored, except secret_refs,\nshare_with and deprecated, which are always replaced: a registration is\nthe whole product.yaml, and an empty list can't be told from an unset\none."
+     "comment": "Each field below left unset keeps what's stored, except secret_refs,\nshare_with, deprecated and token_audiences, which are always replaced: a registration is\nthe whole product.yaml, and an empty list can't be told from an unset\none."
     },
     {
      "name": "outputSchema",
@@ -2802,6 +2864,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "tokenAudiences",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Audiences its tasks get a projected ServiceAccount token for, to sign\nin to another cloud. Never the Kubernetes API's or kernel-api's."
     }
    ]
   },
@@ -3382,7 +3451,7 @@
      "type": "boolean",
      "repeated": false,
      "optional": false,
-     "comment": "An Vertra admin, not just this team's member."
+     "comment": "A Vertra admin, not just this team's member."
     },
     {
      "name": "addedAt",
@@ -3881,6 +3950,219 @@
      "type": "integer",
      "repeated": false,
      "optional": true,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListTemplatesRequest": {
+   "name": "ListTemplatesRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListTemplatesResponse": {
+   "name": "ListTemplatesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "runnables",
+     "type": "Runnable",
+     "ref": "vertra.console.v1.Runnable",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.Runnable": {
+   "name": "Runnable",
+   "comment": "A template, or an action that can run as one, as the caller may run it.",
+   "fields": [
+    {
+     "name": "kind",
+     "type": "Kind",
+     "ref": "vertra.console.v1.Runnable.Kind",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "How RunTemplate (team and name) or RunAction (product) name it."
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "displayName",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "description",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "A JSON Schema for an object: what to fill in."
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Its steps' actions, as <team>/<product>.<action>."
+    },
+    {
+     "name": "deprecated",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why it's deprecated and what to use instead; empty when it isn't."
+    },
+    {
+     "name": "onBehalfOf",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The caller's teams it may be run on behalf of. When on_behalf_of_required\nis set, a run names one of them; otherwise naming one is optional."
+    },
+    {
+     "name": "onBehalfOfRequired",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.RunTemplateRequest": {
+   "name": "RunTemplateRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The template's team and name."
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "onBehalfOf",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "Which of the caller's teams it runs for: needed when the template is\nshared with specific teams rather than its own or everyone."
+    },
+    {
+     "name": "requestId",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "Ties retries of this request to one run, as SubmitExecution's does."
+    }
+   ]
+  },
+  "vertra.console.v1.RunTemplateResponse": {
+   "name": "RunTemplateResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.RunActionRequest": {
+   "name": "RunActionRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The registered product (one action of a product.yaml), as ListProducts\nnames it: <team>-<product>-<action> from a catalog."
+    },
+    {
+     "name": "inputs",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "onBehalfOf",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "requestId",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.RunActionResponse": {
+   "name": "RunActionResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
+     "repeated": false,
+     "optional": false,
      "comment": ""
     }
    ]
@@ -4489,6 +4771,24 @@
     },
     {
      "name": "TASK_POD_STATE_FAILED",
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.Runnable.Kind": {
+   "name": "Kind",
+   "comment": "",
+   "values": [
+    {
+     "name": "KIND_UNSPECIFIED",
+     "comment": ""
+    },
+    {
+     "name": "KIND_TEMPLATE",
+     "comment": ""
+    },
+    {
+     "name": "KIND_ACTION",
      "comment": ""
     }
    ]

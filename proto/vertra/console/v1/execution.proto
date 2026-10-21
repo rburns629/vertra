@@ -11,7 +11,8 @@ import "google/protobuf/timestamp.proto";
 // Executions: DAGs submitted to run, their tasks, events and logs.
 // Everything here is checked against the caller's teams first: an
 // execution is visible to a member of any team it names, and changed only
-// by a member of every one.
+// by a member of every one, or by whoever submitted it (a consumer's run of
+// another team's template, TemplateService).
 service ExecutionService {
   // Executions the caller can see, newest first.
   rpc ListExecutions(ListExecutionsRequest) returns (ListExecutionsResponse) {
@@ -134,6 +135,12 @@ message Execution {
   Dag dag = 8;
   // Why retrying or rerunning would be refused now, if it would.
   optional RunBlocked run_blocked = 9;
+  // For a run of a template (TemplateService): which one, as
+  // <team>/<template> or, for an action run alone, <team>/<product>.<action>.
+  optional string template = 10;
+  // The parameters it ran with, and which of the submitter's teams it ran for.
+  google.protobuf.Struct template_parameters = 11;
+  optional string on_behalf_of = 12;
 }
 
 // Why retrying or rerunning an execution would be refused now.

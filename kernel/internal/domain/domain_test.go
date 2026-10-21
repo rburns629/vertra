@@ -183,3 +183,45 @@ func TestTaskResourcesAcceptKubernetesQuantitiesOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenAudiences(t *testing.T) {
+	if got := TokenFileName("api://AzureADTokenExchange"); got != "api___AzureADTokenExchange" {
+		t.Errorf("file name = %s", got)
+	}
+	if problem := TokenAudiencesProblem([]string{"sts.amazonaws.com", "api://AzureADTokenExchange"}); problem != "" {
+		t.Errorf("good audiences refused: %s", problem)
+	}
+	for name, audiences := range map[string][]string{
+		"empty":      {""},
+		"padded":     {" sts.amazonaws.com"},
+		"same file":  {"a:b", "a/b"},
+		"not a file": {".."},
+		"too long":   {strings.Repeat("a", 257)},
+		"too many":   {"1", "2", "3", "4", "5", "6", "7", "8", "9"},
+	} {
+		if TokenAudiencesProblem(audiences) == "" {
+			t.Errorf("%s: accepted %v", name, audiences)
+		}
+	}
+}
+
+func TestSchemaProblems(t *testing.T) {
+	schema, err := CompileSchema(map[string]any{
+		"type": "object", "required": []any{"name"}, "additionalProperties": false,
+		"properties": map[string]any{"name": map[string]any{"type": "string"}, "count": map[string]any{"type": "integer"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if problems := schema.Problems(map[string]any{"name": "a", "count": float64(2)}); problems != nil {
+		t.Errorf("a fitting value: %v", problems)
+	}
+	problems := schema.Problems(map[string]any{"count": 2.5, "extra": true})
+	if len(problems) != 3 {
+		t.Errorf("problems = %v", problems)
+	}
+	// Nothing outside the schema is ever fetched.
+	if _, err := CompileSchema(map[string]any{"$ref": "https://example.com/schema.json"}); err == nil {
+		t.Error("a schema referring outside itself compiled")
+	}
+}

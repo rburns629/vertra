@@ -234,6 +234,26 @@ export declare type Execution = Message<"vertra.console.v1.Execution"> & {
    * @generated from field: optional vertra.console.v1.RunBlocked run_blocked = 9;
    */
   runBlocked?: RunBlocked | undefined;
+
+  /**
+   * For a run of a template (TemplateService): which one, as
+   * <team>/<template> or, for an action run alone, <team>/<product>.<action>.
+   *
+   * @generated from field: optional string template = 10;
+   */
+  template?: string | undefined;
+
+  /**
+   * The parameters it ran with, and which of the submitter's teams it ran for.
+   *
+   * @generated from field: google.protobuf.Struct template_parameters = 11;
+   */
+  templateParameters?: JsonObject | undefined;
+
+  /**
+   * @generated from field: optional string on_behalf_of = 12;
+   */
+  onBehalfOf?: string | undefined;
 };
 
 /**
@@ -862,7 +882,8 @@ export declare const TaskStateSchema: GenEnum<TaskState>;
  * Executions: DAGs submitted to run, their tasks, events and logs.
  * Everything here is checked against the caller's teams first: an
  * execution is visible to a member of any team it names, and changed only
- * by a member of every one.
+ * by a member of every one, or by whoever submitted it (a consumer's run of
+ * another team's template, TemplateService).
  *
  * @generated from service vertra.console.v1.ExecutionService
  */

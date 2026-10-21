@@ -100,7 +100,7 @@ func status(code int32, reason metav1.StatusReason, message string) error {
 }
 
 const policyMessage = `jobs.batch "ek-env-1" is forbidden: ValidatingAdmissionPolicy ` +
-	`'kernel-execution-kernel-dispatch' denied request: namespace vertra-system is not an Vertra team namespace`
+	`'kernel-execution-kernel-dispatch' denied request: namespace vertra-system is not a Vertra team namespace`
 
 func check(t *testing.T, what string, got, want any) {
 	t.Helper()
@@ -276,6 +276,41 @@ func TestSecretsAreMountedEachUnderItsName(t *testing.T) {
 	}
 	check(t, "first", mounts["secret-0"], "/platform/secrets/gcp-key")
 	check(t, "second", mounts["secret-1"], "/platform/secrets/"+task.SecretRefs[1])
+}
+
+// A product's declared audiences each get a short-lived token, in one
+// projected volume at /platform/tokens/, and still no Kubernetes API token.
+func TestTokenAudiencesAreProjectedEachInItsOwnFile(t *testing.T) {
+	c := newCluster(options())
+	task := stepTask()
+	task.TokenAudiences = []string{"sts.amazonaws.com", "api://AzureADTokenExchange"}
+	if _, err := c.k.Start(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+	pod := c.job(t).Spec.Template.Spec
+	check(t, "automount", *pod.AutomountServiceAccountToken, false)
+	var projected *corev1.ProjectedVolumeSource
+	for _, v := range pod.Volumes {
+		if v.Name == "tokens" {
+			projected = v.Projected
+		}
+	}
+	if projected == nil {
+		t.Fatalf("no tokens volume: %+v", pod.Volumes)
+	}
+	var got [][3]any
+	for _, s := range projected.Sources {
+		got = append(got, [3]any{s.ServiceAccountToken.Audience, s.ServiceAccountToken.Path, *s.ServiceAccountToken.ExpirationSeconds})
+	}
+	check(t, "tokens", got, [][3]any{
+		{"sts.amazonaws.com", "sts.amazonaws.com", int64(3600)},
+		{"api://AzureADTokenExchange", "api___AzureADTokenExchange", int64(3600)},
+	})
+	mounted := false
+	for _, m := range pod.Containers[0].VolumeMounts {
+		mounted = mounted || (m.Name == "tokens" && m.MountPath == "/platform/tokens" && m.ReadOnly)
+	}
+	check(t, "mounted read-only at /platform/tokens", mounted, true)
 }
 
 func TestStepPodsNameThePullSecretWhenOneIsSet(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -181,10 +182,17 @@ func (p *pass) resolve(t *Task) (executor.ResolvedTask, bool, error) {
 	if err != nil {
 		return executor.ResolvedTask{}, false, err
 	}
+	// Inputs that don't fit the product's schema fail the step before it
+	// starts, rather than minutes later inside it: never worth retrying,
+	// as the same inputs would come again.
+	if problems := schemaProblems(t.InputSchema, inputs); len(problems) > 0 {
+		return executor.ResolvedTask{}, false, p.handleFailure(t, nil, domain.StructuredError{
+			Code: "INPUT_INVALID", Message: "its inputs don't fit its product's input schema: " + strings.Join(problems, "; ")}, nil)
+	}
 	return executor.ResolvedTask{
 		ExecutionID: t.ExecutionID, TaskKey: t.TaskKey, Image: t.Image, Action: t.Action, Attempt: t.AttemptCount,
 		ResolvedInputs: inputs, TimeoutSeconds: t.TimeoutSeconds, Team: t.Team, ServiceAccount: t.ServiceAccount,
-		SecretRefs: t.SecretRefs, Resources: t.Resources,
+		SecretRefs: t.SecretRefs, TokenAudiences: t.TokenAudiences, Resources: t.Resources,
 	}, true, nil
 }
 
@@ -287,6 +295,22 @@ func (p *pass) recordStart(t *Task, resolved executor.ResolvedTask, handle execu
 	return p.recordEvent(t.ExecutionID, &t.ID, domain.EventTaskStarted, map[string]any{"taskKey": t.TaskKey, "attempt": t.AttemptCount})
 }
 
+// schemaProblems are what a task's schema refuses in v; none when it has no
+// schema. One that doesn't compile (kernel-api refuses those) is a problem.
+func schemaProblems(schema map[string]any, v map[string]any) []string {
+	if schema == nil {
+		return nil
+	}
+	compiled, err := domain.CompileSchema(schema)
+	if err != nil {
+		return []string{"the schema isn't usable: " + err.Error()}
+	}
+	if v == nil {
+		v = map[string]any{}
+	}
+	return compiled.Problems(v)
+}
+
 // poll acts on a RUNNING task's status (read before, alongside the others')
 // and says whether the task left RUNNING. A task only leaves RUNNING for a
 // retry once its attempt is known to have stopped (finished, stopped, or
@@ -318,8 +342,14 @@ func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, err
 	}
 
 	// A result already in wins over the timeout: a task that finished is
-	// never failed for taking too long, even when seen late.
+	// never failed for taking too long, even when seen late. Outputs that
+	// don't fit the product's schema are a failure of the product's
+	// contract, not worth retrying: no later step gets them.
 	if statusErr == nil && status.State == executor.Succeeded {
+		if problems := schemaProblems(t.OutputSchema, status.Outputs); len(problems) > 0 {
+			return true, p.handleFailure(t, attempt, domain.StructuredError{
+				Code: "OUTPUT_INVALID", Message: "its outputs don't fit its product's output schema: " + strings.Join(problems, "; ")}, handle)
+		}
 		attempt.CompletedAt = ptr(p.now)
 		if err := saveAttempt(p.ctx, p.db, attempt); err != nil {
 			return false, err

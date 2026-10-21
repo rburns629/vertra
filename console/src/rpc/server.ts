@@ -21,6 +21,7 @@ import { ImageService } from "../gen/vertra/console/v1/image_pb.js";
 import { ProductService } from "../gen/vertra/console/v1/product_pb.js";
 import { SecretService } from "../gen/vertra/console/v1/secret_pb.js";
 import { TeamService } from "../gen/vertra/console/v1/team_pb.js";
+import { TemplateService } from "../gen/vertra/console/v1/template_pb.js";
 import { GuideService } from "../gen/vertra/console/v1/guide_pb.js";
 import { TokenService } from "../gen/vertra/console/v1/token_pb.js";
 import { UserService } from "../gen/vertra/console/v1/user_pb.js";
@@ -33,6 +34,7 @@ import { imageService } from "./services/image.js";
 import { productService } from "./services/product.js";
 import { secretService } from "./services/secret.js";
 import { teamService } from "./services/team.js";
+import { templateService } from "./services/template.js";
 import { guideService } from "./services/guide.js";
 import { tokenService } from "./services/token.js";
 import { userService } from "./services/user.js";
@@ -74,6 +76,7 @@ export async function registerRpc(app: FastifyInstance, api: FastifyInstance): P
         router.service(SecretService, secretService());
         router.service(ProductService, productService());
         router.service(TeamService, teamService());
+        router.service(TemplateService, templateService());
         router.service(ExecutionService, executionService());
       },
       // Outermost first.

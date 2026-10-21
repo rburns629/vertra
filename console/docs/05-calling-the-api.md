@@ -46,6 +46,24 @@ $ call ExecutionService/SubmitExecution "$(jq -c '{dag: .}' dag.json)"
 {"executionId":"6b7a4378-6939-4270-8f96-c288e78571a6","state":"EXECUTION_STATE_PENDING"}
 ```
 
+### Or run a template
+
+A team's template runs with its parameters only: its steps, images,
+identities and secrets are the team's, whatever you're allowed to submit.
+List what's shared with you, then run one:
+
+```console
+$ call TemplateService/ListTemplates | jq -r '.runnables[] | "\(.team)/\(.name)"'
+local/shout-backwards
+$ call TemplateService/RunTemplate '{"team":"local","name":"shout-backwards","parameters":{"text":"hello"}}'
+{"executionId":"0c1f…","state":"EXECUTION_STATE_PENDING"}
+```
+
+Parameters that don't fit the template's schema are refused before
+anything runs. A template shared with specific teams runs on behalf of one
+of yours (`onBehalfOf`). `TemplateService/RunAction` runs one shared action
+the same way, its inputs as the parameters.
+
 ## 3. Wait for it to finish
 
 Ask for the execution until its `state` is `EXECUTION_STATE_SUCCEEDED`, `_FAILED` or `_CANCELLED`:

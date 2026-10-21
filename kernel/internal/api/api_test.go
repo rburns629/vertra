@@ -270,6 +270,15 @@ func TestMalformedSubmissionsAreRefused(t *testing.T) {
 		"a size that isn't a quantity": func(r *kernelv1.SubmitExecutionRequest) {
 			r.Tasks[0].Resources = &kernelv1.Resources{Memory: "512 MiB"}
 		},
+		"a token audience that can't be a file": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].TokenAudiences = []string{".."}
+		},
+		"an input schema that isn't one": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].InputSchema, _ = structpb.NewStruct(map[string]any{"type": "no-such-type"})
+		},
+		"an output schema that refers outside itself": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].OutputSchema, _ = structpb.NewStruct(map[string]any{"$ref": "https://example.com/s.json"})
+		},
 	} {
 		req := single(unique("malformed"))
 		change(req)

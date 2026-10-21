@@ -86,7 +86,7 @@ message Member {
   string id = 1;
   string email = 2;
   bool is_bot = 3;
-  // An Vertra admin, not just this team's member.
+  // A Vertra admin, not just this team's member.
   bool is_admin = 4;
   google.protobuf.Timestamp added_at = 5;
 }

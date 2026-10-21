@@ -16,7 +16,9 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { ApiError, listProducts, type Product, type ProductRelease } from "../api";
+import { Link as RouterLink } from "react-router-dom";
+import Button from "@mui/material/Button";
+import { ApiError, listProducts, listRunnables, type Product, type ProductRelease } from "../api";
 import { imageName, imageVersion } from "../imageRef";
 
 /** How many releases one product shows. A long-lived product's full
@@ -56,8 +58,16 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // The products the caller may run on their own (shared with them).
+  const [runnable, setRunnable] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    listRunnables()
+      .then((all) => {
+        setRunnable(new Set(all.filter((r) => r.kind === "action").map((r) => r.name)));
+      })
+      // Only the Run buttons depend on it; the registry still shows.
+      .catch(() => undefined);
     listProducts()
       .then(setProducts)
       .catch((err: unknown) => {
@@ -86,7 +96,7 @@ export function ProductsPage() {
     <Box>
       <PageHeader
         title="Products"
-        subtitle="What's currently registered for catalog discovery, by platform -- kept up to date automatically by each platform's own CI. Expand a platform for its products, and a product for its releases. Not a gate on execution: any image is runnable directly in a DAG payload, registered here or not."
+        subtitle="Every team's products, as each catalog release registers them, by team. Expand a team for its products, and a product for its releases. Run one shared with you on its own, or find templates that use them on the Run page."
       />
 
       {error && (
@@ -130,6 +140,7 @@ export function ProductsPage() {
           platform={platform}
           products={platformProducts}
           defaultExpanded={query !== ""}
+          runnable={runnable}
         />
       ))}
     </Box>
@@ -140,10 +151,12 @@ function PlatformAccordion({
   platform,
   products,
   defaultExpanded,
+  runnable,
 }: {
   platform: string;
   products: Product[];
   defaultExpanded: boolean;
+  runnable: Set<string>;
 }) {
   return (
     <Accordion
@@ -162,14 +175,14 @@ function PlatformAccordion({
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0, bgcolor: "background.default" }}>
         {products.map((product) => (
-          <ProductAccordion key={product.id} product={product} />
+          <ProductAccordion key={product.id} product={product} runnable={runnable.has(product.name)} />
         ))}
       </AccordionDetails>
     </Accordion>
   );
 }
 
-function ProductAccordion({ product }: { product: Product }) {
+function ProductAccordion({ product, runnable }: { product: Product; runnable: boolean }) {
   const releaseCount = product.releases.length;
   const shown = product.releases.slice(0, MAX_RELEASES_SHOWN);
 
@@ -219,7 +232,19 @@ function ProductAccordion({ product }: { product: Product }) {
               ? `shared with ${product.shareWith.join(", ")}`
               : "its own team only"}
           {product.secretRefs.length > 0 && <> · uses {product.secretRefs.join(", ")}</>}
+          {product.tokenAudiences.length > 0 && <> · tokens for {product.tokenAudiences.join(", ")}</>}
         </Typography>
+        {runnable && (
+          <Button
+            component={RouterLink}
+            to={`/run?action=${encodeURIComponent(product.name)}`}
+            size="small"
+            variant="outlined"
+            sx={{ mb: 1 }}
+          >
+            Run on its own
+          </Button>
+        )}
         {shown.map((release) => (
           <ReleaseRow key={release.image} release={release} isLatest={release.image === product.image} />
         ))}

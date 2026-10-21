@@ -157,6 +157,9 @@ export const products = pgTable(
     // The team secrets it uses (product.yaml's actions[].secretRefs): its
     // bindings. (The column keeps its v1 name.)
     secretRefs: text("required_secrets").array().notNull().default(sql`'{}'::text[]`),
+    // Audiences its tasks get a projected ServiceAccount token for, to sign
+    // in to another cloud (product.yaml's tokenAudiences; tokenAudiences.ts).
+    tokenAudiences: text("token_audiences").array().notNull().default(sql`'{}'::text[]`),
     // The other teams that may run it or include it in their templates, or
     // "*" for every team; empty, only its own team (product.yaml's
     // actions[].shareWith). Recorded; enforced once consumers run templates.
@@ -356,6 +359,15 @@ export const submittedExecutions = pgTable("submitted_executions", {
   // before this column existed have nothing to backfill it with; a rerun
   // of one of those is refused rather than guessed at.
   payload: jsonb("payload"),
+  // Run from a template (core/templates.ts), not submitted as a DAG: which
+  // one ("<team>/<template>", or "<team>/<product>.<action>" for an action
+  // run as a one-step template), with what parameters, and on behalf of
+  // which of the submitter's teams (null: the person alone). A rerun runs
+  // the template again with these; the submitter may see, cancel and retry
+  // it without being in the teams its steps ran in.
+  template: text("template"),
+  templateParameters: jsonb("template_parameters"),
+  onBehalfOf: text("on_behalf_of"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   // The execution list's order and cursor (listSubmittedExecutionsPage).
@@ -378,6 +390,49 @@ export const teamMemberships = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.teamId] })],
 );
+
+/**
+ * Templates (catalog format v2's dags/*.yaml of kind Template): what a
+ * consumer runs, filling in only the parameters, from a catalog release
+ * (catalogSync.ts), which also removes them. Each step names an action as
+ * "<team>/<product>.<action>"; running one (core/templates.ts) runs each
+ * step's product as its ServiceAccount, with its action's own secrets, in
+ * its team's namespace. A template is its team's: retired or purged with
+ * it.
+ */
+export const templates = pgTable(
+  "templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    displayName: text("display_name").notNull(),
+    description: text("description").notNull().default(""),
+    // A JSON Schema for an object: the parameters, and the run form.
+    parameters: jsonb("parameters").notNull().default({}),
+    // [{ id, action, dependsOn?, inputs?, timeoutSeconds?, maxAttempts? }]
+    steps: jsonb("steps").$type<TemplateStep[]>().notNull(),
+    // The other teams that may run it, or "*" for every team; empty, only
+    // its own.
+    shareWith: text("share_with").array().notNull().default(sql`'{}'::text[]`),
+    deprecated: text("deprecated"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.teamId, table.name)],
+);
+
+/** One step of a template, as the catalog release carries it. */
+export interface TemplateStep {
+  id: string;
+  /** <team>/<product>.<action> */
+  action: string;
+  dependsOn?: string[];
+  inputs?: Record<string, unknown>;
+  timeoutSeconds?: number;
+  maxAttempts?: number;
+}
 
 /**
  * The catalog release this console last applied, and how its last look went

@@ -16,11 +16,13 @@ export function normalizeImage(image: string): string {
 }
 
 /** An image without its tag or digest, normalized: what every release of
- * one product has in common (`…/app:1.2` and `…/app@sha256:…` are `…/app`). */
+ * one product has in common (`…/app:1.2`, `…/app@sha256:…` and a pinned
+ * `…/app:1.2@sha256:…` are `…/app`). The digest comes off, then the tag, as
+ * the identity policy's CEL does. */
 export function imageRepository(image: string): string {
   const normalized = normalizeImage(image);
   const at = normalized.indexOf("@");
-  if (at >= 0) return normalized.slice(0, at);
-  const colon = normalized.lastIndexOf(":");
-  return colon > normalized.lastIndexOf("/") ? normalized.slice(0, colon) : normalized;
+  const unpinned = at >= 0 ? normalized.slice(0, at) : normalized;
+  const colon = unpinned.lastIndexOf(":");
+  return colon > unpinned.lastIndexOf("/") ? unpinned.slice(0, colon) : unpinned;
 }

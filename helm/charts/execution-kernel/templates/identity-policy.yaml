@@ -19,8 +19,16 @@ another way could run as any product's ServiceAccount in that namespace and
 mount any Secret there (the kubelet mounts whatever a Pod names; RBAC
 doesn't apply to mounts).
 
+A step may also get a short-lived ServiceAccount token for another cloud
+(a projected token with an audience; OIDC federation), but only for an
+audience its product declared (product.yaml's tokenAudiences), lasting an
+hour at most. A projected token with no audience is the Kubernetes API's
+own, which the kernel never asks for (it turns automounting off, unless
+scheduler.taskPodHardening is off).
+
 What's registered lives in this policy itself, as two CEL literals:
-`products`, a JSON list of {team, repository, action, serviceAccount}, and
+`products`, a JSON list of {team, repository, action, serviceAccount,
+audiences} (audiences comma-separated, "" for none), and
 `teamSecrets`, a JSON map of team to its registered Secret names,
 comma-separated (CEL wants every value in a literal to have one type;
 Secret names can't contain commas). The console rewrites both whenever
@@ -47,11 +55,12 @@ imageRepository) read them.
 {{- $kept := list }}
 {{- range fromJsonArray .expression }}
 {{- $entry := . }}
-{{- if or (not (kindIs "map" $entry)) (not (and (kindIs "string" (get $entry "team")) (kindIs "string" (get $entry "repository")) (kindIs "string" (get $entry "action")) (kindIs "string" (get $entry "serviceAccount")))) }}
-{{- fail (printf "%s's products list isn't a JSON list of {team, repository, action, serviceAccount} strings; delete the policy and let the console resync it." $name) }}
+{{- if or (not (kindIs "map" $entry)) (not (and (kindIs "string" (get $entry "team")) (kindIs "string" (get $entry "repository")) (kindIs "string" (get $entry "action")) (kindIs "string" (get $entry "serviceAccount")))) (and (hasKey $entry "audiences") (not (kindIs "string" (get $entry "audiences")))) }}
+{{- fail (printf "%s's products list isn't a JSON list of {team, repository, action, serviceAccount, audiences} strings; delete the policy and let the console resync it." $name) }}
 {{- end }}
-{{- /* Only these four: an older console also wrote each product's secrets. */}}
-{{- $kept = append $kept (dict "team" $entry.team "repository" $entry.repository "action" $entry.action "serviceAccount" $entry.serviceAccount) }}
+{{- /* Only these five (an older console also wrote each product's secrets,
+     and none wrote audiences). */}}
+{{- $kept = append $kept (dict "team" $entry.team "repository" $entry.repository "action" $entry.action "serviceAccount" $entry.serviceAccount "audiences" (default "" (get $entry "audiences"))) }}
 {{- end }}
 {{- $productsExpr = toJson $kept }}
 {{- end }}
@@ -130,6 +139,21 @@ spec:
       expression: >-
         has(variables.pod.containers[0].args) && size(variables.pod.containers[0].args) > 0 ?
           variables.pod.containers[0].args[0] : ""
+    # The registered products this step is.
+    - name: matched
+      expression: >-
+        variables.products.filter(p,
+          (p.team == "" || p.team == request.namespace) &&
+          p.repository == variables.repository && p.action == variables.action &&
+          p.serviceAccount == variables.serviceAccount)
+    # Every projected token that names an audience (one with none is the
+    # Kubernetes API's: automounting's, governed by taskPodHardening).
+    - name: tokens
+      expression: >-
+        has(variables.pod.volumes) ?
+          variables.pod.volumes.filter(v, has(v.projected) && has(v.projected.sources) &&
+            v.projected.sources.exists(s, has(s.serviceAccountToken) &&
+              has(s.serviceAccountToken.audience) && s.serviceAccountToken.audience != "")) : []
   validations:
     - expression: >-
         size(variables.pod.containers) == 1 && !has(variables.pod.initContainers) &&
@@ -140,10 +164,7 @@ spec:
       reason: Forbidden
     - expression: >-
         (variables.serviceAccount == "default" && size(variables.secrets) == 0) ||
-        variables.products.exists(p,
-          (p.team == "" || p.team == request.namespace) &&
-          p.repository == variables.repository && p.action == variables.action &&
-          p.serviceAccount == variables.serviceAccount)
+        size(variables.matched) > 0
       messageExpression: >-
         "IDENTITY_NOT_ALLOWED: " + variables.repository + " (action \"" + variables.action +
         "\") may not run as ServiceAccount \"" + variables.serviceAccount + "\"" +
@@ -158,6 +179,16 @@ spec:
       messageExpression: >-
         "IDENTITY_NOT_ALLOWED: Secrets " + variables.secrets.join(", ") + " aren't all registered " +
         "for team " + request.namespace + " in the console; only registered secrets may be mounted."
+      reason: Forbidden
+    - expression: >-
+        variables.tokens.all(v, v.projected.sources.all(s, !has(s.serviceAccountToken) ||
+          !has(s.serviceAccountToken.audience) || s.serviceAccountToken.audience == "" ||
+          ((!has(s.serviceAccountToken.expirationSeconds) || s.serviceAccountToken.expirationSeconds <= 3600) &&
+            variables.matched.exists(p, s.serviceAccountToken.audience in p.audiences.split(",")))))
+      messageExpression: >-
+        "IDENTITY_NOT_ALLOWED: " + variables.repository + " (action \"" + variables.action +
+        "\") may not have a ServiceAccount token for an audience its product didn't declare " +
+        "(product.yaml's tokenAudiences), or one lasting over an hour, in " + request.namespace + "."
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1

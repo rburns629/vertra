@@ -4,7 +4,7 @@ In about an hour you take a trial team from nothing to a product that runs on Ve
 
 You need:
 
-- **An Vertra console account.** An Vertra admin creates it; there is no sign-up page.
+- **A Vertra console account.** A Vertra admin creates it; there is no sign-up page.
 - **Access to the catalog repo** (`my-org/vertra-catalog`), to open pull requests.
 - **Docker on your laptop** (optional). It lets you run a product's test before you push, instead of waiting for CI.
 - **A team name.** Lowercase letters, digits and dashes, not used by anyone before; a removed team's name stays reserved. For a trial, use `try-<your-name>`, for example `team-a`.
@@ -33,7 +33,7 @@ One pull request creates your team. Merging it sets up your namespace and your t
 3. Add your team's line to `.github/CODEOWNERS`, with the other teams' lines: `/teams/team-a/ @<your-org>/<your-team>`. From then on, your team approves changes to your products.
 4. Open a pull request. A catalog admin approves it, since it changes `.github/`. The `check-new-team-names` check fails if the name is taken or was used before; pick another.
 5. Merge once it's approved.
-6. Ask an Vertra admin to add you to the `team-a` team. A new team starts empty, so its first member comes from an admin; after that, any member adds teammates on the Members tab.
+6. Ask a Vertra admin to add you to the `team-a` team. A new team starts empty, so its first member comes from an admin; after that, any member adds teammates on the Members tab.
 
 **You're done when** the console's Teams page lists `team-a` and you can open it.
 
@@ -78,6 +78,8 @@ tasks:
 **You're done when** the task's output reads `{"message": "Hello, Anna!", "secretFound": false}` and its logs show `greeting Anna`.
 
 Every submission is a new run, so you can paste the same DAG again as often as you like. A pipeline that may retry a submission adds a `requestId`: sending the same one again returns the run it already started instead of starting a second.
+
+Templates other teams share with you don't need a DAG at all: open **Run**, pick one, fill in what it asks for, and it runs as that team's products, with their own identities and secrets. The run is yours to follow, cancel and rerun from **Executions**.
 
 ## Step 4: Give it a secret
 
@@ -198,22 +200,25 @@ Every error names its cause; this table maps the common ones to the fix.
 | Submit refused: `Secret "hello-secret" is not registered for team "team-a"` | The secret isn't added yet, or its name in `secretRefs` has a typo | Add it on the Secrets tab (step 4), or fix the name |
 | Submit refused: `... runs as ServiceAccount "hello" (its product.yaml), not "default"` | The task names a ServiceAccount its product doesn't declare | Leave `serviceAccount` out: the task gets its product's |
 | Submit refused: `... isn't a registered product of team ...` | The image or action isn't in the catalog for your team, so it can only run as `default`, with no secrets | Copy `image` and `action` from the Products page, or publish the product first |
+| Submit refused: `Inputs that don't fit their product's input schema: tasks.<id>.inputs.<name> ...` | An input the step gives isn't what its action's `input` schema in `product.yaml` asks for (a missing one, a wrong type, too long) | Fix the input: the Products page shows each action's schema |
+| Task failed: `INPUT_INVALID` | An input that came from an earlier step's output didn't fit this step's input schema once it was known | Fix the earlier step's output, or how the DAG wires it |
+| Task failed: `OUTPUT_INVALID` | The step's `result.json` didn't fit its action's `output` schema, so no later step got it | Fix the product, or its schema, in the catalog |
 | Task failed: `MISSING_SECRET` | The action wanted its secret, but the task didn't list it | Add the secret to the task's `secretRefs` |
 | Task failed: `IMAGE_NOT_FOUND` | A typo in `image`, or the product's pull request isn't merged yet | Copy the exact image from the Products page |
 | Task failed: `IMAGE_NOT_ALLOWED` | The image isn't from the catalog's registry | Publish it through a catalog pull request |
 | Task failed: `IDENTITY_NOT_ALLOWED` | The step ran as a ServiceAccount its product doesn't declare, or mounted a secret that isn't one of its team's (normally the console refuses this first; seeing it means the console and cluster disagree, e.g. the product or secret changed after submitting) | Check the product's `serviceAccount` on the Products page and the secret on the Secrets tab; an admin can check the console's log for an identity policy sync error |
 | Task failed: `IMAGE_NOT_SIGNED` | The image wasn't published by catalog CI | Publish it through a catalog pull request |
 | Submitting shows an old run instead of a new one | The DAG's `requestId` was used before | Remove the `requestId`, or change it |
-| Pull request check `check-new-team-names` fails | The team name is taken, or belonged to a removed team | Pick another name |
+| The Admin page's Catalog card: `a team named ... already exists here and the catalog didn't make it` | A new team folder has the name of a team someone made by hand | An admin adopts the team (if it's meant to be the same one), or the folder gets another name |
 | CI: `no tests` | The product has no `tests/<action>/<case>/` folders | Add one; copy the sample's |
 | CI: a `HIGH`/`CRITICAL` vulnerability, a secret, or a malicious package | The image failed its security scan | The run's summary lists each; usually keep the `apt-get upgrade` line and pin a fixed version |
-| You can't open your team | You're not a member yet | Ask an Vertra admin (first member) or a teammate |
+| You can't open your team | You're not a member yet | Ask a Vertra admin (first member) or a teammate |
 
 A task's own logs are on its execution's page; the team's **Running now** tab shows a task that can't start and why.
 
 ## Help, and what isn't ready yet
 
-Ask the Vertra team; for an account, or the first member of a new team, ask an Vertra admin.
+Ask the Vertra team; for an account, or the first member of a new team, ask a Vertra admin.
 
 Known gaps today:
 
@@ -222,4 +227,4 @@ Known gaps today:
 - **One namespace per team.** Separate environments by secret name for now, for example `db-password-prod`.
 - **The console is served over plain HTTP** while HTTPS is set up. Don't reuse a password you use elsewhere.
 
-**Cleaning up a trial team:** a pull request that deletes `teams/team-a/` retires it (its tasks stop and the team becomes read-only); an Vertra admin can then remove it for good. Its name stays reserved.
+**Cleaning up a trial team:** a pull request that deletes `teams/team-a/` retires it (its tasks stop and the team becomes read-only); a Vertra admin can then remove it for good. Its name stays reserved.

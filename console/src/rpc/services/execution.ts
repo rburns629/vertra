@@ -55,7 +55,7 @@ const TASK_STATE: Record<string, TaskState> = {
   FAILED: TaskState.FAILED,
   CANCELLED: TaskState.CANCELLED,
 };
-const executionState = (state: unknown) =>
+export const executionState = (state: unknown) =>
   (typeof state === "string" ? EXECUTION_STATE[state] : undefined) ?? ExecutionState.UNSPECIFIED;
 
 /**
@@ -63,7 +63,7 @@ const executionState = (state: unknown) =>
  * console's own credentials, not the caller's: unavailable, never
  * unauthenticated (a client would take that for an expired session).
  */
-async function viaKernel<T>(ctx: HandlerContext, call: () => Promise<T>): Promise<T> {
+export async function viaKernel<T>(ctx: HandlerContext, call: () => Promise<T>): Promise<T> {
   try {
     return await call();
   } catch (error) {
@@ -168,6 +168,9 @@ function execution(detail: Detail) {
           allowedSources: detail.runBlocked.allowedSources ?? [],
         }
       : undefined,
+    template: detail.template ?? undefined,
+    templateParameters: (detail.templateParameters ?? undefined) as JsonObject | undefined,
+    onBehalfOf: detail.onBehalfOf ?? undefined,
   };
 }
 

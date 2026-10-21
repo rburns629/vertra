@@ -19,7 +19,7 @@ service UserService {
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
     option idempotency_level = IDEMPOTENT;
   }
-  // Makes someone an Vertra admin, or takes it away.
+  // Makes someone a Vertra admin, or takes it away.
   rpc SetAdmin(SetAdminRequest) returns (SetAdminResponse) {
     option idempotency_level = IDEMPOTENT;
   }

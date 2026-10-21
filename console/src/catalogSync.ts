@@ -18,6 +18,8 @@
  *   - each product action is registered at its pinned image (scanned, owned,
  *     checked as any registration is); one an earlier release registered
  *     that this one doesn't have is unregistered;
+ *   - each team's templates are stored as the release has them; one it
+ *     no longer has is removed;
  *   - each team's SecretStore documents are applied. A store's stored
  *     credential is set per install (TeamService.SetSecretStoreCredential),
  *     never carried by a release.
@@ -38,7 +40,9 @@ import type { AuthUser } from "./auth/plugin.js";
 import { config } from "./config.js";
 import { deleteProduct, registerProduct } from "./core/products.js";
 import { applySecretStore, ensureTeam, retireTeam } from "./core/teams.js";
+import { parameterSchemaProblem } from "./core/templates.js";
 import { db } from "./db/client.js";
+import { deleteTemplatesExcept, findTeamByName, upsertTemplate } from "./db/queries.js";
 import { catalogSync, products, teams } from "./db/schema.js";
 import { ReleaseSchema, type Release } from "./gen/vertra/catalog/v1/release_pb.js";
 import { createVerifyJob, deleteScanJob, readScanJob } from "./k8s.js";
@@ -104,14 +108,19 @@ function message(error: unknown): string {
  * nothing verified (the registry's main-only write access is the trust). */
 function verifications(reference: string): { args: string[]; publicKey?: string }[] {
   const { publicKeys, keylessIssuer, keylessSubjectRegExp } = config.catalog.signature;
+  // Registry sign-in as the scan Jobs have it: the pull Secret's Docker
+  // config when there is one (cosign's default keychain), else the cloud
+  // identity of the Job's ServiceAccount (GKE Workload Identity, EKS), which
+  // cosign reads only with --k8s-keychain.
+  const keychain = config.scanning.pullSecretName ? [] : ["--k8s-keychain"];
   // Catalog CI's key signatures go to no public log (catalogctl's sign).
   const tries: { args: string[]; publicKey?: string }[] = publicKeys.map((publicKey) => ({
-    args: ["--key", "env://COSIGN_PUBLIC_KEY", "--insecure-ignore-tlog=true", reference],
+    args: [...keychain, "--key", "env://COSIGN_PUBLIC_KEY", "--insecure-ignore-tlog=true", reference],
     publicKey,
   }));
   if (keylessIssuer && keylessSubjectRegExp) {
     tries.push({
-      args: ["--certificate-oidc-issuer", keylessIssuer, "--certificate-identity-regexp", keylessSubjectRegExp, reference],
+      args: [...keychain, "--certificate-oidc-issuer", keylessIssuer, "--certificate-identity-regexp", keylessSubjectRegExp, reference],
     });
   }
   return tries;
@@ -193,6 +202,7 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
         ...(p.description ? { description: p.description } : {}),
         ...(p.serviceAccount ? { serviceAccount: p.serviceAccount } : {}),
         secretRefs: p.secretRefs,
+        tokenAudiences: p.tokenAudiences,
         shareWith: p.shareWith,
         deprecated: p.deprecated,
         ...(p.resources
@@ -208,6 +218,39 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
       await db.update(products).set({ fromCatalog: true }).where(eq(products.name, p.name));
     });
   }
+  // Each named team's templates, as the release has them. One that fails to
+  // apply keeps what was stored; every other template of a team the catalog
+  // made goes, as its products do.
+  const keepTemplates = new Set<string>();
+  for (const t of release.templates) {
+    if (foreign.has(t.team) || !named.has(t.team)) continue;
+    const team = await findTeamByName(t.team);
+    if (!team) continue; // its own problem, above
+    keepTemplates.add(`${team.id}/${t.name}`);
+    await attempt(`template ${t.team}/${t.name}`, async () => {
+      const parameters = t.parameters ?? { type: "object" };
+      const problem = parameterSchemaProblem(parameters);
+      if (problem) throw new Error(`its parameters aren't a usable JSON Schema: ${problem}`);
+      await upsertTemplate({
+        teamId: team.id,
+        name: t.name,
+        displayName: t.displayName,
+        description: t.description,
+        parameters,
+        steps: t.steps.map((step) => ({
+          id: step.id,
+          action: step.action,
+          ...(step.dependsOn.length > 0 ? { dependsOn: step.dependsOn } : {}),
+          ...(step.inputs ? { inputs: step.inputs } : {}),
+          ...(step.timeoutSeconds !== undefined ? { timeoutSeconds: step.timeoutSeconds } : {}),
+          ...(step.maxAttempts !== undefined ? { maxAttempts: step.maxAttempts } : {}),
+        })),
+        shareWith: t.shareWith,
+        deprecated: t.deprecated || null,
+      });
+    });
+  }
+  await attempt("removing templates", () => deleteTemplatesExcept(keepTemplates));
   // What earlier releases made and this one no longer has.
   for (const gone of await db.select({ name: products.name }).from(products).where(eq(products.fromCatalog, true))) {
     if (!released.has(gone.name)) await attempt(`removing product ${gone.name}`, () => deleteProduct(CATALOG, gone.name));

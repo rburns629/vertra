@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/catalog/v1/release.proto.
  */
 export const file_vertra_catalog_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSK5AQoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uIk0KBFRlYW0SDAoEbmFtZRgBIAEoCRI3ChZzZWNyZXRfc3RvcmVfZG9jdW1lbnRzGAIgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCLbAgoNUHJvZHVjdEFjdGlvbhIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIMCgR0ZWFtGAQgASgJEi0KDGlucHV0X3NjaGVtYRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNb3V0cHV0X3NjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMZGlzcGxheV9uYW1lGAcgASgJEhMKC2Rlc2NyaXB0aW9uGAggASgJEhcKD3NlcnZpY2VfYWNjb3VudBgJIAEoCRITCgtzZWNyZXRfcmVmcxgKIAMoCRIvCglyZXNvdXJjZXMYCyABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5SZXNvdXJjZXMSEgoKc2hhcmVfd2l0aBgMIAMoCRISCgpkZXByZWNhdGVkGA0gASgJIj4KCVJlc291cmNlcxILCgNjcHUYASABKAkSDgoGbWVtb3J5GAIgASgJEhQKDG1lbW9yeV9saW1pdBgDIAEoCWIGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSLpAQoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlIk0KBFRlYW0SDAoEbmFtZRgBIAEoCRI3ChZzZWNyZXRfc3RvcmVfZG9jdW1lbnRzGAIgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCL0AgoNUHJvZHVjdEFjdGlvbhIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIMCgR0ZWFtGAQgASgJEi0KDGlucHV0X3NjaGVtYRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNb3V0cHV0X3NjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMZGlzcGxheV9uYW1lGAcgASgJEhMKC2Rlc2NyaXB0aW9uGAggASgJEhcKD3NlcnZpY2VfYWNjb3VudBgJIAEoCRITCgtzZWNyZXRfcmVmcxgKIAMoCRIvCglyZXNvdXJjZXMYCyABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5SZXNvdXJjZXMSEgoKc2hhcmVfd2l0aBgMIAMoCRISCgpkZXByZWNhdGVkGA0gASgJEhcKD3Rva2VuX2F1ZGllbmNlcxgOIAMoCSLWAQoIVGVtcGxhdGUSDAoEbmFtZRgBIAEoCRIMCgR0ZWFtGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIrCgpwYXJhbWV0ZXJzGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgVzdGVwcxgGIAMoCzIfLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlU3RlcBISCgpzaGFyZV93aXRoGAcgAygJEhIKCmRlcHJlY2F0ZWQYCCABKAkixQEKDFRlbXBsYXRlU3RlcBIKCgJpZBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEgoKZGVwZW5kc19vbhgDIAMoCRInCgZpbnB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgFIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgGIAEoBUgBiAEBQhIKEF90aW1lb3V0X3NlY29uZHNCDwoNX21heF9hdHRlbXB0cyI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAliBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * A catalog release: everything a catalog's main branch says, as of one
@@ -62,6 +62,14 @@ export type Release = Message<"vertra.catalog.v1.Release"> & {
    * @generated from field: repeated vertra.catalog.v1.ProductAction products = 5;
    */
   products: ProductAction[];
+
+  /**
+   * Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
+   * catalogctl checked them: what consumers run, with parameters only.
+   *
+   * @generated from field: repeated vertra.catalog.v1.Template templates = 6;
+   */
+  templates: Template[];
 };
 
 /**
@@ -179,6 +187,14 @@ export type ProductAction = Message<"vertra.catalog.v1.ProductAction"> & {
    * @generated from field: string deprecated = 13;
    */
   deprecated: string;
+
+  /**
+   * Audiences its tasks get a projected ServiceAccount token for
+   * (product.yaml's tokenAudiences, the product's).
+   *
+   * @generated from field: repeated string token_audiences = 14;
+   */
+  tokenAudiences: string[];
 };
 
 /**
@@ -187,6 +203,123 @@ export type ProductAction = Message<"vertra.catalog.v1.ProductAction"> & {
  */
 export const ProductActionSchema: GenMessage<ProductAction> = /*@__PURE__*/
   messageDesc(file_vertra_catalog_v1_release, 2);
+
+/**
+ * A template: a DAG of actions with parameters, which a consumer runs by
+ * filling in only the parameters. Each step runs its action's product, as
+ * that product's ServiceAccount, with that action's own secrets, in that
+ * product's team's namespace.
+ *
+ * @generated from message vertra.catalog.v1.Template
+ */
+export type Template = Message<"vertra.catalog.v1.Template"> & {
+  /**
+   * Its file's name, dags/<name>.yaml; unique within its team.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+
+  /**
+   * A JSON Schema (draft 2020-12) for an object: what the person running it
+   * fills in, and the form the console shows.
+   *
+   * @generated from field: google.protobuf.Struct parameters = 5;
+   */
+  parameters?: JsonObject | undefined;
+
+  /**
+   * @generated from field: repeated vertra.catalog.v1.TemplateStep steps = 6;
+   */
+  steps: TemplateStep[];
+
+  /**
+   * The other teams that may run it, or "*" for every team; empty, only its
+   * own.
+   *
+   * @generated from field: repeated string share_with = 7;
+   */
+  shareWith: string[];
+
+  /**
+   * Why it's deprecated and what to use instead; empty when it isn't.
+   *
+   * @generated from field: string deprecated = 8;
+   */
+  deprecated: string;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.Template.
+ * Use `create(TemplateSchema)` to create a new message.
+ */
+export const TemplateSchema: GenMessage<Template> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 3);
+
+/**
+ * @generated from message vertra.catalog.v1.TemplateStep
+ */
+export type TemplateStep = Message<"vertra.catalog.v1.TemplateStep"> & {
+  /**
+   * Unique within the template.
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * <team>/<product>.<action>, always with its team (catalogctl fills in the
+   * template's own for an action of its team).
+   *
+   * @generated from field: string action = 2;
+   */
+  action: string;
+
+  /**
+   * @generated from field: repeated string depends_on = 3;
+   */
+  dependsOn: string[];
+
+  /**
+   * The action's inputs: a value, {"$param": name} for a parameter, or
+   * {"$fromStep": id, "$output": name} for an output of a step it depends on.
+   *
+   * @generated from field: google.protobuf.Struct inputs = 4;
+   */
+  inputs?: JsonObject | undefined;
+
+  /**
+   * @generated from field: optional int32 timeout_seconds = 5;
+   */
+  timeoutSeconds?: number | undefined;
+
+  /**
+   * @generated from field: optional int32 max_attempts = 6;
+   */
+  maxAttempts?: number | undefined;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.TemplateStep.
+ * Use `create(TemplateStepSchema)` to create a new message.
+ */
+export const TemplateStepSchema: GenMessage<TemplateStep> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 4);
 
 /**
  * The Pod size its tasks get, as Kubernetes quantities.
@@ -215,5 +348,5 @@ export type Resources = Message<"vertra.catalog.v1.Resources"> & {
  * Use `create(ResourcesSchema)` to create a new message.
  */
 export const ResourcesSchema: GenMessage<Resources> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 3);
+  messageDesc(file_vertra_catalog_v1_release, 5);
 

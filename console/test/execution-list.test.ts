@@ -29,6 +29,8 @@ const email = `${prefix}@example.com`;
 let app: FastifyInstance;
 let token: string;
 const ids: string[] = [];
+/** When the first fixture execution was made. */
+let base = 0;
 
 interface Page {
   executions: { executionId: string; name: string; state: string }[];
@@ -64,7 +66,9 @@ beforeAll(async () => {
   await addTeamMember(user.id, team.id);
   token = app.jwt.sign({ userId: user.id });
   // Five of ours, newest last; the 3rd and 4th share a timestamp. One of theirs.
-  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  // Yesterday, to the second: inside retention (retention.test.ts, running
+  // alongside, deletes executions past it).
+  base = Math.floor((Date.now() - 86_400_000) / 1000) * 1000;
   const times = [0, 1000, 2000, 2000, 3000];
   for (const [i, offset] of times.entries()) {
     const executionId = randomUUID();
@@ -127,7 +131,7 @@ describe("ListExecutions", () => {
   });
 
   it("narrows to a time window", async () => {
-    const result = await page({ team: ours, since: "2026-01-01T00:00:02.000Z" });
+    const result = await page({ team: ours, since: new Date(base + 2000).toISOString() });
     expect(result.executions.map((e) => e.executionId).sort()).toEqual([ids[2], ids[3], ids[4]].sort());
   });
 

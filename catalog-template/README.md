@@ -69,7 +69,7 @@ merging the team's folder. So: team, access, secrets, then code.
    creates it and its namespace. A name that ever was a purged team's is
    refused there, and so is one already taken by a team the catalog didn't
    make, until that install's admin adopts it (Admin page → Catalog).
-2. **Get access.** An Vertra admin creates your console account and adds
+2. **Get access.** A Vertra admin creates your console account and adds
    you to the team; after that, members add each other.
 3. **Register secrets**, in the console (Team page → Secrets): paste a value,
    or sync from a vault once your team has a SecretStore (below). Note each
@@ -99,6 +99,7 @@ owner: gcp-team
 version: 1                  # optional: raise it for a breaking change (see below)
 runtime: python3.12         # what the Dockerfile installs (for readers)
 serviceAccount: project     # optional: the identity it runs as (otherwise default)
+tokenAudiences: [sts.amazonaws.com]  # optional: tokens for another cloud (below)
 actions:
   - name: create
     script: actions/create.py
@@ -111,7 +112,12 @@ actions:
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
-`input` and `output` are JSON Schema. Every field is in
+`input` and `output` are JSON Schema, and they're enforced: a step's inputs
+are checked against `input` when it's submitted (the values known then) and
+again, resolved, before it starts (`INPUT_INVALID`), and its outputs against
+`output` when it finishes (`OUTPUT_INVALID`; no later step gets them). Keep
+them to what the action really takes and returns, and self-contained (no
+`$ref` to another file or URL). Every field is in
 [tools/product.schema.json](tools/product.schema.json); `./catalogctl validate`
 checks against it. There's no image field: the image comes from the folder.
 
@@ -125,7 +131,14 @@ teams may run the action or put it in their templates, and `deprecated`
 says what to use instead while it keeps working: the console records both
 and shows them. A product with a `serviceAccount` runs as it in every step
 (the console creates it in the team's namespace); bind a cloud identity to
-that one, never to `default`.
+that one, never to `default`. To sign in to a cloud other than the one
+running the cluster (OIDC federation), list its audiences in
+`tokenAudiences`: each step gets a short-lived token for each at
+`/platform/tokens/<audience>` (characters outside `[A-Za-z0-9._-]` become
+`_`, so `api://AzureADTokenExchange` is `api___AzureADTokenExchange`).
+Point the cloud's SDK at it (`AWS_WEB_IDENTITY_TOKEN_FILE`,
+`AZURE_FEDERATED_TOKEN_FILE`) and have the cloud trust exactly this
+product's ServiceAccount.
 
 ### Changing a product other teams use
 
@@ -164,8 +177,13 @@ A team's `dags/` folder holds two kinds of file:
 - **`kind: Dag`**: a concrete DAG, exactly what the console's Submit page
   takes (images, teams, inputs): examples and walkthroughs.
 
-The console runs templates once consumers do (the platform's roadmap);
-until then, they're validated and reviewed like everything else here.
+Each install runs your templates from the catalog's release: anyone they're
+shared with fills in the parameters on the console's **Run** page
+(or `TemplateService/RunTemplate`), and nothing else. Each step runs its product as its
+ServiceAccount, with its action's own `secretRefs`, in its team's
+namespace, whoever runs it; the person running it can see, cancel, retry
+and rerun that run, as can your team. Every action is also runnable on its
+own, by whoever its `shareWith` covers.
 
 A catalog from before format v2 (no `apiVersion` in its files) is
 converted in place by `./catalogctl migrate`, comments and all; review the

@@ -19,7 +19,7 @@ import { KernelApiError, cancelExecution, retryTask, submitExecution } from "../
 import { ensureServiceAccount } from "../src/k8s.js";
 import { missingImages, pinImages } from "../src/registry.js";
 import { config } from "../src/config.js";
-import { caller, failureDetail, type RpcError } from "./rpc.js";
+import { caller, failureDetail, problemFields, type RpcError } from "./rpc.js";
 
 // Creating a product's ServiceAccount in its team's namespace is the one
 // cluster write a submission makes; here it's recorded, not made.
@@ -125,7 +125,21 @@ beforeAll(async () => {
     teamId,
     serviceAccount: GRANTEE,
     secretRefs: ["product-a-secret", "ungranted-secret"],
+    tokenAudiences: ["sts.amazonaws.com"],
     resources: { cpu: "50m", memory: "64Mi" },
+  });
+  // A product whose action declares its schemas (C1).
+  await upsertProduct({
+    name: `${teamName}-schema-check`,
+    image: "schema-image:1",
+    action: "check",
+    teamId,
+    inputSchema: {
+      type: "object",
+      required: ["name", "count"],
+      properties: { name: { type: "string" }, count: { type: "integer" } },
+    },
+    outputSchema: { type: "object", required: ["ok"] },
   });
 });
 
@@ -239,6 +253,72 @@ describe("SubmitExecution: a product runs as its ServiceAccount, with its team's
     });
     expect(withSecret.code).toBe("permission_denied");
     expect(submitExecution).not.toHaveBeenCalled();
+  });
+});
+
+describe("SubmitExecution: token audiences are the product's, never the submitter's", () => {
+  const forwarded = () =>
+    (vi.mocked(submitExecution).mock.calls[0]?.[0] as { tasks: Record<string, unknown>[] }).tasks[0];
+
+  it("gives a product's task the audiences its product declared", async () => {
+    expect((await submit({ image: "some-image:1" })).code).toBe("ok");
+    expect(forwarded()?.["tokenAudiences"]).toEqual(["sts.amazonaws.com"]);
+  });
+
+  it("gives an unregistered image none", async () => {
+    expect((await submit({ image: "unregistered-image:1" })).code).toBe("ok");
+    expect(forwarded()).not.toHaveProperty("tokenAudiences");
+  });
+
+  it("gives the product's image run as \"default\" none: that isn't the product", async () => {
+    expect((await submit({ image: "some-image:1", serviceAccount: "default" })).code).toBe("ok");
+    expect(forwarded()).not.toHaveProperty("tokenAudiences");
+  });
+
+  it("has no field a submitter could set them with: one sent anyway never reaches kernel-api", async () => {
+    expect((await submit({ image: "unregistered-image:1", tokenAudiences: ["sts.amazonaws.com"] })).code).toBe("ok");
+    expect(forwarded()).not.toHaveProperty("tokenAudiences");
+  });
+});
+
+describe("SubmitExecution: inputs are checked against the product's schema", () => {
+  const sent = () => (vi.mocked(submitExecution).mock.calls[0]?.[0] as { tasks: Record<string, unknown>[] }).tasks;
+  const check = (id: string, inputs: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    id,
+    image: "schema-image:1",
+    action: "check",
+    team: teamName,
+    inputs,
+    ...extra,
+  });
+
+  it("refuses literal inputs that don't fit, each problem on its field, and sends nothing", async () => {
+    const refused = await submitDag({ name: "schemas", tasks: [check("t", { name: 3, count: "many" })] });
+    expect(refused.code).toBe("invalid_argument");
+    expect(refused.failure).toBe("INPUT_INVALID");
+    expect(problemFields(refused.body)).toEqual(expect.arrayContaining(["tasks.t.inputs.name", "tasks.t.inputs.count"]));
+    expect(submitExecution).not.toHaveBeenCalled();
+  });
+
+  it("leaves an upstream output to the kernel, and sends it both schemas to check", async () => {
+    const response = await submitDag({
+      name: "schemas",
+      tasks: [
+        check("first", { name: "a", count: 1 }),
+        check("second", { name: "b", count: { $fromTask: "first", $output: "count" } }, { dependsOn: ["first"] }),
+      ],
+    });
+    expect(response.code).toBe("ok");
+    const [, second] = sent();
+    expect(second).toMatchObject({ inputSchema: { required: ["name", "count"] }, outputSchema: { required: ["ok"] } });
+    // Recorded without them: a rerun gets the product's current ones.
+    const recorded = vi.mocked(recordSubmittedExecution).mock.calls.at(-1)?.[0];
+    expect(JSON.stringify(recorded?.payload)).not.toContain("inputSchema");
+  });
+
+  it("sends no schemas for an image that isn't a registered product", async () => {
+    expect((await submit({ image: "unregistered-image:1" })).code).toBe("ok");
+    expect(sent()[0]).not.toHaveProperty("inputSchema");
   });
 });
 

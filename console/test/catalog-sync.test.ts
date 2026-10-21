@@ -19,7 +19,7 @@ import { syncCatalog } from "../src/catalogSync.js";
 import { config } from "../src/config.js";
 import { db } from "../src/db/client.js";
 import { createTeam } from "../src/db/queries.js";
-import { auditLog, catalogSync, products, teams } from "../src/db/schema.js";
+import { auditLog, catalogSync, products, teams, templates } from "../src/db/schema.js";
 import { ReleaseSchema, type Release } from "../src/gen/vertra/catalog/v1/release_pb.js";
 import { buildApp } from "../src/index.js";
 import { applySecretStoreObjects, createVerifyJob, readScanJob } from "../src/k8s.js";
@@ -216,12 +216,22 @@ describe("a signed catalog", () => {
     const args = vi.mocked(createVerifyJob).mock.calls[0]?.[0];
     expect(args?.args.at(-1)).toBe(`${registry}/catalog-release@${digestOf(20)}`); // verified by digest
     expect(args?.publicKey).toContain("BEGIN PUBLIC KEY");
+    // No pull Secret: the Job signs in to the registry as its cloud identity.
+    expect(args?.args[0]).toBe("--k8s-keychain");
     expect((await status())?.error).toContain("no trusted signer");
     expect((await status())?.commit).toBe("c4"); // nothing applied
     expect((await catalogTeams()).find((t) => t.name === teamA)?.retiredAt).toBeNull();
 
+    // With a pull Secret, its Docker config instead (cosign's default keychain).
+    config.scanning.pullSecretName = "registry-pull";
+    vi.mocked(createVerifyJob).mockClear();
     publish(release({ commit: "signed", teams: [{ name: teamA }] }), digestOf(21));
-    await syncCatalog(log);
+    try {
+      await syncCatalog(log);
+    } finally {
+      config.scanning.pullSecretName = "";
+    }
+    expect(vi.mocked(createVerifyJob).mock.calls[0]?.[0].args).not.toContain("--k8s-keychain");
     expect((await status())?.commit).toBe("signed");
   });
 });
@@ -296,5 +306,41 @@ describe("a team the catalog didn't make", () => {
     expect(adopted.body.status.problems ?? []).toEqual([]);
     expect(await names()).toContain(`${taken}-svc-run`);
     expect(vi.mocked(applySecretStoreObjects).mock.calls.map((c) => c[0])).toEqual([taken]);
+  });
+});
+
+describe("a release's templates", () => {
+  it("are stored as the release has them, and removed when a release drops them", async () => {
+    const stored = () =>
+      db
+        .select({ name: templates.name, steps: templates.steps, shareWith: templates.shareWith })
+        .from(templates)
+        .innerJoin(teams, eq(teams.id, templates.teamId))
+        .where(eq(teams.name, teamA));
+    publish(
+      release({
+        commit: "templates",
+        teams: [{ name: teamA }],
+        products: [product(teamA, "site")],
+        templates: [
+          {
+            name: "go",
+            team: teamA,
+            displayName: "Go",
+            parameters: { type: "object" },
+            steps: [{ id: "s", action: `${teamA}/site.run`, inputs: { n: 1 } }],
+            shareWith: ["*"],
+          },
+        ],
+      }),
+      digestOf(50),
+    );
+    await syncCatalog(log);
+    expect((await status())?.problems).toEqual([]);
+    expect(await stored()).toEqual([{ name: "go", steps: [{ id: "s", action: `${teamA}/site.run`, inputs: { n: 1 } }], shareWith: ["*"] }]);
+
+    publish(release({ commit: "no-templates", teams: [{ name: teamA }], products: [product(teamA, "site")] }), digestOf(51));
+    await syncCatalog(log);
+    expect(await stored()).toEqual([]);
   });
 });

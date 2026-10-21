@@ -148,9 +148,11 @@ catalog:
   # a keyless identity (both issuer and subjectRegExp). Usually the same as
   # the kernel chart's imageSignature. Empty: releases aren't verified, and
   # the registry's write access (main only) is the whole trust. Verifying
-  # runs a short cosign Job as the scan Jobs do (scanning.enabled, their
-  # ServiceAccount and registryCheck.pullSecretName), which must reach the
-  # registry by the name in `release` (not kind's localhost:5001).
+  # runs a short cosign Job as the scan Jobs do (scanning.enabled), signed in
+  # to the registry with registryCheck.pullSecretName if set, else as their
+  # ServiceAccount's cloud identity (scanning.serviceAccountAnnotations: GKE
+  # Workload Identity, EKS). It must reach the registry by the name in
+  # `release` (not kind's localhost:5001).
   signature:
     publicKeys: []
     keyless:

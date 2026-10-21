@@ -77,13 +77,20 @@ describe("policy entries", () => {
           image: "registry.example/platform/db@sha256:abc",
           action: "create",
           serviceAccount: "db-product",
+          tokenAudiences: ["sts.amazonaws.com", "api://AzureADTokenExchange"],
           teamName: "team-a",
         },
-        { image: "node:20", action: "run", serviceAccount: null, teamName: null },
+        { image: "node:20", action: "run", serviceAccount: null, tokenAudiences: [], teamName: null },
       ]),
     ).toEqual([
-      { team: "team-a", repository: "registry.example/platform/db", action: "create", serviceAccount: "db-product" },
-      { team: "", repository: "docker.io/library/node", action: "run", serviceAccount: "default" },
+      {
+        team: "team-a",
+        repository: "registry.example/platform/db",
+        action: "create",
+        serviceAccount: "db-product",
+        audiences: "sts.amazonaws.com,api://AzureADTokenExchange",
+      },
+      { team: "", repository: "docker.io/library/node", action: "run", serviceAccount: "default", audiences: "" },
     ]);
   });
 
@@ -121,7 +128,7 @@ describe("syncing", () => {
   it("adds a product when it's registered, and creates its ServiceAccount", async () => {
     expect((await register(product)).code).toBe("ok");
     expect(ours()).toEqual([
-      { team: prefix, repository: `example.com/${prefix}/db`, action: "create", serviceAccount: "db-product" },
+      { team: prefix, repository: `example.com/${prefix}/db`, action: "create", serviceAccount: "db-product", audiences: "" },
     ]);
     expect(ensureServiceAccount).toHaveBeenCalledWith(prefix, "db-product");
   });

@@ -34,6 +34,9 @@ type ResolvedTask struct {
 	ServiceAccount string
 	// SecretRefs are the Secrets mounted at /platform/secrets/<name>/.
 	SecretRefs []string
+	// TokenAudiences each get a projected ServiceAccount token at
+	// /platform/tokens/<domain.TokenFileName(audience)>.
+	TokenAudiences []string
 	// Resources are the task's own, before the deployment's defaults.
 	Resources *domain.TaskResources
 }

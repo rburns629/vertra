@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.console.v1;
+
+import "vertra/console/v1/execution.proto";
+import "google/protobuf/struct.proto";
+
+// Templates: what a consumer runs, filling in only parameters. A template
+// comes from a team's catalog (dags/*.yaml of kind Template); each step
+// names an action, and runs that action's product as its ServiceAccount,
+// with that action's own secrets, in its team's namespace: none of which
+// the person running it chooses. Every shared action can also be run on its
+// own, as a one-step template whose parameters are its inputs.
+//
+// Anyone signed in may run what's shared with them: a template's own team,
+// the teams it lists in share_with, or everyone ("*"). Whoever runs one may
+// see, cancel, retry and rerun that run (ExecutionService), as may members
+// of the teams its steps ran in.
+service TemplateService {
+  // The templates and shared actions the caller may run.
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Runs a template with these parameters. They're checked against its
+  // parameter schema first; problems come back together, as
+  // invalid_argument with Problem details.
+  rpc RunTemplate(RunTemplateRequest) returns (RunTemplateResponse);
+  // Runs one shared action with these inputs, as a one-step template.
+  rpc RunAction(RunActionRequest) returns (RunActionResponse);
+}
+
+message ListTemplatesRequest {}
+
+message ListTemplatesResponse {
+  repeated Runnable runnables = 1;
+}
+
+// A template, or an action that can run as one, as the caller may run it.
+message Runnable {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_TEMPLATE = 1;
+    KIND_ACTION = 2;
+  }
+  Kind kind = 1;
+  // How RunTemplate (team and name) or RunAction (product) name it.
+  string team = 2;
+  string name = 3;
+  string display_name = 4;
+  string description = 5;
+  // A JSON Schema for an object: what to fill in.
+  google.protobuf.Struct parameters = 6;
+  // Its steps' actions, as <team>/<product>.<action>.
+  repeated string actions = 7;
+  // Why it's deprecated and what to use instead; empty when it isn't.
+  string deprecated = 8;
+  // The caller's teams it may be run on behalf of. When on_behalf_of_required
+  // is set, a run names one of them; otherwise naming one is optional.
+  repeated string on_behalf_of = 9;
+  bool on_behalf_of_required = 10;
+}
+
+message RunTemplateRequest {
+  // The template's team and name.
+  string team = 1;
+  string name = 2;
+  google.protobuf.Struct parameters = 3;
+  // Which of the caller's teams it runs for: needed when the template is
+  // shared with specific teams rather than its own or everyone.
+  optional string on_behalf_of = 4;
+  // Ties retries of this request to one run, as SubmitExecution's does.
+  optional string request_id = 5;
+}
+
+message RunTemplateResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}
+
+message RunActionRequest {
+  // The registered product (one action of a product.yaml), as ListProducts
+  // names it: <team>-<product>-<action> from a catalog.
+  string product = 1;
+  google.protobuf.Struct inputs = 2;
+  optional string on_behalf_of = 3;
+  optional string request_id = 4;
+}
+
+message RunActionResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
+}

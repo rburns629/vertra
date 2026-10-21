@@ -87,7 +87,28 @@ func TestBuildReleasePinsEachPublishedProduct(t *testing.T) {
 	}
 	digest, _ := image.Digest()
 
-	c := catalogWith(t, product("mine", "[b]"))
+	files := product("mine", "[b]")
+	files["teams/a/products/mine/product.yaml"] = strings.Replace(files["teams/a/products/mine/product.yaml"],
+		"owner: x\n", "owner: x\ntokenAudiences: [sts.amazonaws.com]\n", 1)
+	files["teams/a/dags/hello.yaml"] = `apiVersion: vertra.dev/v2
+kind: Template
+name: hello
+displayName: Hello
+description: One step.
+shareWith: ["*"]
+parameters:
+  type: object
+  required: [text]
+  properties:
+    text: {type: string}
+steps:
+  - id: one
+    action: mine.run
+    timeoutSeconds: 60
+    inputs:
+      text: {$param: text}
+`
+	c := catalogWith(t, files)
 	var out strings.Builder
 	c.Stdout, c.Stderr = &out, &out
 	release, err := c.BuildRelease(context.Background(), s, "c1", "github.com/my-org/vertra-catalog")
@@ -99,11 +120,22 @@ func TestBuildReleasePinsEachPublishedProduct(t *testing.T) {
 	}
 	got := release.GetProducts()[0]
 	if got.GetName() != "a-mine-run" || got.GetImage() != s.Registry+"/a/mine@"+digest.String() || got.GetTeam() != "a" ||
-		got.GetAction() != "run" || len(got.GetShareWith()) != 1 || got.GetInputSchema().GetFields()["required"] == nil {
+		got.GetAction() != "run" || len(got.GetShareWith()) != 1 || got.GetInputSchema().GetFields()["required"] == nil ||
+		strings.Join(got.GetTokenAudiences(), ",") != "sts.amazonaws.com" {
 		t.Errorf("action = %v", got)
 	}
+	if len(release.GetTemplates()) != 1 {
+		t.Fatalf("templates = %v", release.GetTemplates())
+	}
+	tpl := release.GetTemplates()[0]
+	step := tpl.GetSteps()[0]
+	if tpl.GetTeam() != "a" || tpl.GetName() != "hello" || strings.Join(tpl.GetShareWith(), ",") != "*" ||
+		tpl.GetParameters().GetFields()["required"] == nil || step.GetAction() != "a/mine.run" || step.GetTimeoutSeconds() != 60 ||
+		step.GetInputs().GetFields()["text"].GetStructValue().GetFields()["$param"].GetStringValue() != "text" {
+		t.Errorf("template = %v", tpl)
+	}
 
-	files := product("mine", "[]")
+	files = product("mine", "[]")
 	for path, content := range product("never", "[]") {
 		files[path] = content
 	}

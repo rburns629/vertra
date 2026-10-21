@@ -112,12 +112,32 @@ func taskDefs(tasks []*kernelv1.Task) ([]domain.TaskDef, []domain.ValidationIssu
 		}
 		def := domain.TaskDef{ID: t.GetId(), Image: t.GetImage(), Action: t.GetAction(), DependsOn: t.GetDependsOn(),
 			Inputs: t.GetInputs().AsMap(), TimeoutSeconds: 300, MaxAttempts: 1, Team: t.GetTeam(),
-			ServiceAccount: t.GetServiceAccount(), SecretRefs: t.GetSecretRefs()}
+			ServiceAccount: t.GetServiceAccount(), SecretRefs: t.GetSecretRefs(), TokenAudiences: t.GetTokenAudiences()}
 		if def.DependsOn == nil {
 			def.DependsOn = []string{}
 		}
 		if def.SecretRefs == nil {
 			def.SecretRefs = []string{}
+		}
+		if def.TokenAudiences == nil {
+			def.TokenAudiences = []string{}
+		}
+		if problem := domain.TokenAudiencesProblem(def.TokenAudiences); problem != "" {
+			bad("token_audiences", problem)
+		}
+		for field, schema := range map[string]*structpb.Struct{"input_schema": t.GetInputSchema(), "output_schema": t.GetOutputSchema()} {
+			if schema == nil {
+				continue
+			}
+			if _, err := domain.CompileSchema(schema.AsMap()); err != nil {
+				bad(field, "isn't a usable JSON Schema: "+err.Error())
+			}
+		}
+		if t.GetInputSchema() != nil {
+			def.InputSchema = t.GetInputSchema().AsMap()
+		}
+		if t.GetOutputSchema() != nil {
+			def.OutputSchema = t.GetOutputSchema().AsMap()
 		}
 		if t.TimeoutSeconds != nil {
 			def.TimeoutSeconds = int(t.GetTimeoutSeconds())
@@ -241,17 +261,28 @@ func (s *Service) insert(ctx context.Context, db pgx.Tx, id, name, requestID str
 		if err != nil {
 			return err
 		}
-		var resources []byte
+		var resources, inputSchema, outputSchema []byte
 		if d.Resources != nil {
 			if resources, err = json.Marshal(d.Resources); err != nil {
 				return err
 			}
 		}
+		if d.InputSchema != nil {
+			if inputSchema, err = json.Marshal(d.InputSchema); err != nil {
+				return err
+			}
+		}
+		if d.OutputSchema != nil {
+			if outputSchema, err = json.Marshal(d.OutputSchema); err != nil {
+				return err
+			}
+		}
 		if _, err := db.Exec(ctx, `INSERT INTO execution_tasks (id, execution_id, task_key, image, action, team, service_account,
-			secret_refs, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 0)`,
-			ids[d.ID], id, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, resources,
-			string(d.InitialState()), inputs, d.TimeoutSeconds, d.MaxAttempts); err != nil {
+			secret_refs, token_audiences, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count,
+			input_schema, output_schema)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16)`,
+			ids[d.ID], id, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, d.TokenAudiences, resources,
+			string(d.InitialState()), inputs, d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema); err != nil {
 			return err
 		}
 	}

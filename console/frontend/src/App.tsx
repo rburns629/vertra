@@ -17,6 +17,7 @@ const ExecutionDetailPage = lazy(() => import("./pages/ExecutionDetailPage").the
 const ExecutionsListPage = lazy(() => import("./pages/ExecutionsListPage").then((m) => ({ default: m.ExecutionsListPage })));
 const HomePage = lazy(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
 const ProductsPage = lazy(() => import("./pages/ProductsPage").then((m) => ({ default: m.ProductsPage })));
+const RunPage = lazy(() => import("./pages/RunPage").then((m) => ({ default: m.RunPage })));
 const SubmitExecutionPage = lazy(() => import("./pages/SubmitExecutionPage").then((m) => ({ default: m.SubmitExecutionPage })));
 const TeamPage = lazy(() => import("./pages/TeamPage").then((m) => ({ default: m.TeamPage })));
 const TeamsPage = lazy(() => import("./pages/TeamsPage").then((m) => ({ default: m.TeamsPage })));
@@ -43,6 +44,7 @@ export function App() {
           <Route path="/executions/submit" element={<SubmitExecutionPage />} />
           <Route path="/executions/:id" element={<ExecutionDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/run" element={<RunPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/docs/:id" element={<DocsPage />} />
         </Route>

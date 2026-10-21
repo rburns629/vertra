@@ -22,6 +22,7 @@ import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import HomeIcon from "@mui/icons-material/HomeOutlined";
 import PlayCircleIcon from "@mui/icons-material/PlayCircleOutlined";
+import RunIcon from "@mui/icons-material/RocketLaunchOutlined";
 import GroupsIcon from "@mui/icons-material/GroupsOutlined";
 import InventoryIcon from "@mui/icons-material/Inventory2Outlined";
 import DocsIcon from "@mui/icons-material/MenuBookOutlined";
@@ -36,6 +37,7 @@ const DRAWER_WIDTH = 232;
 
 const NAV_ITEMS = [
   { label: "Home", to: "/", icon: <HomeIcon /> },
+  { label: "Run", to: "/run", icon: <RunIcon /> },
   { label: "Executions", to: "/executions", icon: <PlayCircleIcon /> },
   { label: "Products", to: "/products", icon: <InventoryIcon /> },
   { label: "Teams", to: "/teams", icon: <GroupsIcon /> },

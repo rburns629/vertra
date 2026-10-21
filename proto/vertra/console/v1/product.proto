@@ -73,6 +73,9 @@ message Product {
   repeated string share_with = 16;
   // Why it's deprecated and what to use instead, or empty when it isn't.
   string deprecated = 17;
+  // Audiences its tasks get a projected ServiceAccount token for, at
+  // /platform/tokens/<audience> (product.yaml's tokenAudiences).
+  repeated string token_audiences = 18;
 }
 
 message ProductRelease {
@@ -115,7 +118,7 @@ message RegisterProductRequest {
   // Unset for a platform product.
   optional string team = 4;
   // Each field below left unset keeps what's stored, except secret_refs,
-  // share_with and deprecated, which are always replaced: a registration is
+  // share_with, deprecated and token_audiences, which are always replaced: a registration is
   // the whole product.yaml, and an empty list can't be told from an unset
   // one.
   google.protobuf.Struct input_schema = 5;
@@ -127,6 +130,9 @@ message RegisterProductRequest {
   optional TaskResources resources = 11;
   repeated string share_with = 12;
   string deprecated = 13;
+  // Audiences its tasks get a projected ServiceAccount token for, to sign
+  // in to another cloud. Never the Kubernetes API's or kernel-api's.
+  repeated string token_audiences = 14;
 }
 
 message RegisterProductResponse {

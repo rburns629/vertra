@@ -23,6 +23,51 @@ type TaskDef struct {
 	ServiceAccount string
 	SecretRefs     []string
 	Resources      *TaskResources
+	// TokenAudiences each get a projected token at /platform/tokens/
+	// <TokenFileName(audience)>.
+	TokenAudiences []string
+	// InputSchema and OutputSchema are the product's (JSON Schema); nil:
+	// not checked.
+	InputSchema  map[string]any
+	OutputSchema map[string]any
+}
+
+// MaxTokenAudiences is how many a task may ask for.
+const MaxTokenAudiences = 8
+
+// TokenFileName is where an audience's token is, under /platform/tokens/:
+// the audience with every character outside [A-Za-z0-9._-] replaced by "_"
+// ("api://AzureADTokenExchange" is api___AzureADTokenExchange).
+func TokenFileName(audience string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '_' || r == '-' {
+			return r
+		}
+		return '_'
+	}, audience)
+}
+
+// TokenAudiencesProblem says what's wrong with a task's audiences, or "".
+func TokenAudiencesProblem(audiences []string) string {
+	if len(audiences) > MaxTokenAudiences {
+		return fmt.Sprintf("may name at most %d", MaxTokenAudiences)
+	}
+	files := map[string]string{}
+	for _, a := range audiences {
+		switch {
+		case strings.TrimSpace(a) != a || a == "":
+			return fmt.Sprintf("has an empty or space-padded audience %q", a)
+		case len(a) > 256:
+			return fmt.Sprintf("has an audience longer than 256 characters (%.40s…)", a)
+		case TokenFileName(a) == "." || TokenFileName(a) == "..":
+			return fmt.Sprintf("has an audience that can't be a file name (%q)", a)
+		}
+		if other, seen := files[TokenFileName(a)]; seen {
+			return fmt.Sprintf("names %q and %q, which share the file %s", other, a, TokenFileName(a))
+		}
+		files[TokenFileName(a)] = a
+	}
+	return ""
 }
 
 // InitialState is READY for a task with no dependencies, else BLOCKED.

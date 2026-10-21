@@ -14,7 +14,9 @@ import {
   submittedExecutions,
   secretGrants,
   wiringTypes,
+  templates,
   type ProductResources,
+  type TemplateStep,
 } from "./schema.js";
 
 export interface User {
@@ -409,6 +411,7 @@ export interface Product {
   outputSchema: unknown;
   serviceAccount: string | null;
   secretRefs: string[];
+  tokenAudiences: string[];
   shareWith: string[];
   deprecated: string | null;
   resources: ProductResources | null;
@@ -442,6 +445,7 @@ export interface ProductInput {
   outputSchema?: unknown;
   serviceAccount?: string | undefined;
   secretRefs?: string[] | undefined;
+  tokenAudiences?: string[] | undefined;
   shareWith?: string[] | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
@@ -482,6 +486,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       outputSchema: input.outputSchema,
       serviceAccount: input.serviceAccount,
       secretRefs: input.secretRefs,
+      tokenAudiences: input.tokenAudiences,
       shareWith: input.shareWith,
       deprecated: input.deprecated,
       resources: input.resources,
@@ -607,6 +612,7 @@ export interface ProductIdentity {
   image: string;
   action: string;
   serviceAccount: string | null;
+  tokenAudiences: string[];
   /** The owning team's name (its namespace); null for a platform product. */
   teamName: string | null;
 }
@@ -619,6 +625,7 @@ export function listProductIdentities(): Promise<ProductIdentity[]> {
       image: products.image,
       action: products.action,
       serviceAccount: products.serviceAccount,
+      tokenAudiences: products.tokenAudiences,
       teamName: teams.name,
     })
     .from(products)
@@ -705,6 +712,10 @@ export interface SubmittedExecution {
   // rows recorded before this column existed (see schema.ts). This is
   // what a rerun resubmits, unmodified apart from a fresh requestId.
   payload: unknown;
+  /** Set for a run of a template (schema.ts): which, with what, for which team. */
+  template: string | null;
+  templateParameters: unknown;
+  onBehalfOf: string | null;
   createdAt: Date;
 }
 
@@ -724,6 +735,9 @@ export async function recordSubmittedExecution(input: {
   submittedBy: string;
   name: string;
   payload: unknown;
+  template?: string | undefined;
+  templateParameters?: unknown;
+  onBehalfOf?: string | undefined;
 }): Promise<void> {
   await db.insert(submittedExecutions).values(input).onConflictDoNothing();
 }
@@ -749,7 +763,7 @@ export async function findSubmittedExecutions(executionIds: string[]): Promise<S
     .where(inArray(submittedExecutions.executionId, executionIds));
 }
 
-export type SubmittedExecutionSummary = Omit<SubmittedExecution, "payload">;
+export type SubmittedExecutionSummary = Omit<SubmittedExecution, "payload" | "template" | "templateParameters" | "onBehalfOf">;
 
 // Every list caller (core/executions.ts's list) only ever
 // renders summary fields -- `payload` is a full stored task graph, fetched
@@ -765,8 +779,10 @@ const summaryColumns = {
 };
 
 export interface ExecutionPageQuery {
-  /** Only executions sharing one of these teams; null for every execution (an admin). */
+  /** Only executions sharing one of these teams, or submitted by visibleToUser; null for every execution (an admin). */
   visibleTo: string[] | null;
+  /** Whose own runs are visible too, whatever their teams. */
+  visibleToUser?: string | undefined;
   limit: number;
   /** A previous page's `nextCursor`. */
   cursor?: string | undefined;
@@ -796,8 +812,10 @@ const CURSOR_SEPARATOR = "|";
 export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Promise<ExecutionPage> {
   const conditions = [];
   if (query.visibleTo !== null) {
-    if (query.visibleTo.length === 0) return { rows: [], nextCursor: null };
-    conditions.push(arrayOverlaps(submittedExecutions.teams, query.visibleTo));
+    const ownRuns = query.visibleToUser ? eq(submittedExecutions.submittedBy, query.visibleToUser) : undefined;
+    if (query.visibleTo.length === 0 && !ownRuns) return { rows: [], nextCursor: null };
+    const teamRuns = query.visibleTo.length > 0 ? arrayOverlaps(submittedExecutions.teams, query.visibleTo) : undefined;
+    conditions.push(or(teamRuns, ownRuns));
   }
   if (query.team) conditions.push(arrayContains(submittedExecutions.teams, [query.team]));
   if (query.since) conditions.push(gte(submittedExecutions.createdAt, query.since));
@@ -958,4 +976,92 @@ export function listAllSecretGrants(): Promise<{ teamName: string; secretName: s
     .select({ teamName: teams.name, secretName: secretGrants.secretName })
     .from(secretGrants)
     .innerJoin(teams, eq(teams.id, secretGrants.teamId));
+}
+
+/** A template with its team's name (schema.ts's templates). */
+export interface TemplateRow {
+  id: string;
+  teamId: string;
+  teamName: string;
+  name: string;
+  displayName: string;
+  description: string;
+  parameters: unknown;
+  steps: TemplateStep[];
+  shareWith: string[];
+  deprecated: string | null;
+}
+
+const templateColumns = {
+  id: templates.id,
+  teamId: templates.teamId,
+  teamName: teams.name,
+  name: templates.name,
+  displayName: templates.displayName,
+  description: templates.description,
+  parameters: templates.parameters,
+  steps: templates.steps,
+  shareWith: templates.shareWith,
+  deprecated: templates.deprecated,
+};
+
+/** Every template of a team that's neither retired nor purged: what can run. */
+export function listRunnableTemplates(): Promise<TemplateRow[]> {
+  return db
+    .select(templateColumns)
+    .from(templates)
+    .innerJoin(teams, eq(teams.id, templates.teamId))
+    .where(and(isNull(teams.retiredAt), isNull(teams.deletedAt)))
+    .orderBy(teams.name, templates.name);
+}
+
+export async function findRunnableTemplate(teamName: string, name: string): Promise<TemplateRow | undefined> {
+  const [row] = await db
+    .select(templateColumns)
+    .from(templates)
+    .innerJoin(teams, eq(teams.id, templates.teamId))
+    .where(and(eq(teams.name, teamName), eq(templates.name, name), isNull(teams.retiredAt), isNull(teams.deletedAt)));
+  return row;
+}
+
+/** Stores a template as a catalog release has it, keyed on its team and name. */
+export async function upsertTemplate(input: Omit<TemplateRow, "id" | "teamName">): Promise<void> {
+  const { teamId, name, ...rest } = input;
+  await db
+    .insert(templates)
+    .values({ teamId, name, ...rest })
+    .onConflictDoUpdate({ target: [templates.teamId, templates.name], set: { ...rest, updatedAt: new Date() } });
+}
+
+/** Removes every template of a team the catalog made but these ("<team id>/<name>"); returns how many went. */
+export async function deleteTemplatesExcept(keep: Set<string>): Promise<number> {
+  const all = await db
+    .select({ id: templates.id, teamId: templates.teamId, name: templates.name })
+    .from(templates)
+    .innerJoin(teams, eq(teams.id, templates.teamId))
+    .where(eq(teams.fromCatalog, true));
+  const gone = all.filter((t) => !keep.has(`${t.teamId}/${t.name}`)).map((t) => t.id);
+  if (gone.length > 0) await db.delete(templates).where(inArray(templates.id, gone));
+  return gone.length;
+}
+
+/** A product and its team's name, by its registered name, if its team can run it. */
+export async function findRunnableProduct(name: string): Promise<(Product & { teamName: string }) | undefined> {
+  const [row] = await db
+    .select({ product: products, teamName: teams.name })
+    .from(products)
+    .innerJoin(teams, eq(teams.id, products.teamId))
+    .where(and(eq(products.name, name), isNull(teams.retiredAt), isNull(teams.deletedAt)));
+  return row ? { ...row.product, teamName: row.teamName } : undefined;
+}
+
+/** Every team's product whose team can run it (platform products have no namespace of their own). */
+export async function listRunnableProducts(): Promise<(Product & { teamName: string })[]> {
+  const rows = await db
+    .select({ product: products, teamName: teams.name })
+    .from(products)
+    .innerJoin(teams, eq(teams.id, products.teamId))
+    .where(and(isNull(teams.retiredAt), isNull(teams.deletedAt)))
+    .orderBy(products.name);
+  return rows.map((row) => ({ ...row.product, teamName: row.teamName }));
 }

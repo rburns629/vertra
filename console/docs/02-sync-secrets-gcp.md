@@ -226,7 +226,7 @@ $ gcloud secrets remove-iam-policy-binding hello-secret \
 Updated IAM policy for secret [hello-secret].
 ```
 
-Removing a secret from the console's list, or disconnecting the source entirely, isn't self-service yet: ask an Vertra admin.
+Removing a secret from the console's list, or disconnecting the source entirely, isn't self-service yet: ask a Vertra admin.
 
 ## When something goes wrong
 

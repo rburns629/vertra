@@ -45,7 +45,10 @@ type Release struct {
 	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	Teams      []*Team                `protobuf:"bytes,4,rep,name=teams,proto3" json:"teams,omitempty"`
 	// Every product action of every team, with its image pinned to a digest.
-	Products      []*ProductAction `protobuf:"bytes,5,rep,name=products,proto3" json:"products,omitempty"`
+	Products []*ProductAction `protobuf:"bytes,5,rep,name=products,proto3" json:"products,omitempty"`
+	// Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
+	// catalogctl checked them: what consumers run, with parameters only.
+	Templates     []*Template `protobuf:"bytes,6,rep,name=templates,proto3" json:"templates,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -111,6 +114,13 @@ func (x *Release) GetTeams() []*Team {
 func (x *Release) GetProducts() []*ProductAction {
 	if x != nil {
 		return x.Products
+	}
+	return nil
+}
+
+func (x *Release) GetTemplates() []*Template {
+	if x != nil {
+		return x.Templates
 	}
 	return nil
 }
@@ -192,9 +202,12 @@ type ProductAction struct {
 	Resources      *Resources `protobuf:"bytes,11,opt,name=resources,proto3" json:"resources,omitempty"`
 	ShareWith      []string   `protobuf:"bytes,12,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
 	// Why it's deprecated and what to use instead; empty when it isn't.
-	Deprecated    string `protobuf:"bytes,13,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Deprecated string `protobuf:"bytes,13,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	// Audiences its tasks get a projected ServiceAccount token for
+	// (product.yaml's tokenAudiences, the product's).
+	TokenAudiences []string `protobuf:"bytes,14,rep,name=token_audiences,json=tokenAudiences,proto3" json:"token_audiences,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ProductAction) Reset() {
@@ -318,6 +331,212 @@ func (x *ProductAction) GetDeprecated() string {
 	return ""
 }
 
+func (x *ProductAction) GetTokenAudiences() []string {
+	if x != nil {
+		return x.TokenAudiences
+	}
+	return nil
+}
+
+// A template: a DAG of actions with parameters, which a consumer runs by
+// filling in only the parameters. Each step runs its action's product, as
+// that product's ServiceAccount, with that action's own secrets, in that
+// product's team's namespace.
+type Template struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Its file's name, dags/<name>.yaml; unique within its team.
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Team        string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
+	DisplayName string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// A JSON Schema (draft 2020-12) for an object: what the person running it
+	// fills in, and the form the console shows.
+	Parameters *structpb.Struct `protobuf:"bytes,5,opt,name=parameters,proto3" json:"parameters,omitempty"`
+	Steps      []*TemplateStep  `protobuf:"bytes,6,rep,name=steps,proto3" json:"steps,omitempty"`
+	// The other teams that may run it, or "*" for every team; empty, only its
+	// own.
+	ShareWith []string `protobuf:"bytes,7,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
+	// Why it's deprecated and what to use instead; empty when it isn't.
+	Deprecated    string `protobuf:"bytes,8,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Template) Reset() {
+	*x = Template{}
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Template) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Template) ProtoMessage() {}
+
+func (x *Template) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Template.ProtoReflect.Descriptor instead.
+func (*Template) Descriptor() ([]byte, []int) {
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Template) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Template) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *Template) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *Template) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Template) GetParameters() *structpb.Struct {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *Template) GetSteps() []*TemplateStep {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+func (x *Template) GetShareWith() []string {
+	if x != nil {
+		return x.ShareWith
+	}
+	return nil
+}
+
+func (x *Template) GetDeprecated() string {
+	if x != nil {
+		return x.Deprecated
+	}
+	return ""
+}
+
+type TemplateStep struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique within the template.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// <team>/<product>.<action>, always with its team (catalogctl fills in the
+	// template's own for an action of its team).
+	Action    string   `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	DependsOn []string `protobuf:"bytes,3,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	// The action's inputs: a value, {"$param": name} for a parameter, or
+	// {"$fromStep": id, "$output": name} for an output of a step it depends on.
+	Inputs         *structpb.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	TimeoutSeconds *int32           `protobuf:"varint,5,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
+	MaxAttempts    *int32           `protobuf:"varint,6,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TemplateStep) Reset() {
+	*x = TemplateStep{}
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TemplateStep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TemplateStep) ProtoMessage() {}
+
+func (x *TemplateStep) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TemplateStep.ProtoReflect.Descriptor instead.
+func (*TemplateStep) Descriptor() ([]byte, []int) {
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TemplateStep) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TemplateStep) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *TemplateStep) GetDependsOn() []string {
+	if x != nil {
+		return x.DependsOn
+	}
+	return nil
+}
+
+func (x *TemplateStep) GetInputs() *structpb.Struct {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
+func (x *TemplateStep) GetTimeoutSeconds() int32 {
+	if x != nil && x.TimeoutSeconds != nil {
+		return *x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *TemplateStep) GetMaxAttempts() int32 {
+	if x != nil && x.MaxAttempts != nil {
+		return *x.MaxAttempts
+	}
+	return 0
+}
+
 // The Pod size its tasks get, as Kubernetes quantities.
 type Resources struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -330,7 +549,7 @@ type Resources struct {
 
 func (x *Resources) Reset() {
 	*x = Resources{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -342,7 +561,7 @@ func (x *Resources) String() string {
 func (*Resources) ProtoMessage() {}
 
 func (x *Resources) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -355,7 +574,7 @@ func (x *Resources) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resources.ProtoReflect.Descriptor instead.
 func (*Resources) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{3}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Resources) GetCpu() string {
@@ -383,7 +602,7 @@ var File_vertra_catalog_v1_release_proto protoreflect.FileDescriptor
 
 const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\n" +
-	"\x1fvertra/catalog/v1/release.proto\x12\x11vertra.catalog.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe9\x01\n" +
+	"\x1fvertra/catalog/v1/release.proto\x12\x11vertra.catalog.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa4\x02\n" +
 	"\aRelease\x12\x16\n" +
 	"\x06commit\x18\x01 \x01(\tR\x06commit\x12\x1e\n" +
 	"\n" +
@@ -392,10 +611,11 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12-\n" +
 	"\x05teams\x18\x04 \x03(\v2\x17.vertra.catalog.v1.TeamR\x05teams\x12<\n" +
-	"\bproducts\x18\x05 \x03(\v2 .vertra.catalog.v1.ProductActionR\bproducts\"i\n" +
+	"\bproducts\x18\x05 \x03(\v2 .vertra.catalog.v1.ProductActionR\bproducts\x129\n" +
+	"\ttemplates\x18\x06 \x03(\v2\x1b.vertra.catalog.v1.TemplateR\ttemplates\"i\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12M\n" +
-	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\"\xe9\x03\n" +
+	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\"\x92\x04\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -414,7 +634,32 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"share_with\x18\f \x03(\tR\tshareWith\x12\x1e\n" +
 	"\n" +
 	"deprecated\x18\r \x01(\tR\n" +
-	"deprecated\"X\n" +
+	"deprecated\x12'\n" +
+	"\x0ftoken_audiences\x18\x0e \x03(\tR\x0etokenAudiences\"\xa6\x02\n" +
+	"\bTemplate\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x127\n" +
+	"\n" +
+	"parameters\x18\x05 \x01(\v2\x17.google.protobuf.StructR\n" +
+	"parameters\x125\n" +
+	"\x05steps\x18\x06 \x03(\v2\x1f.vertra.catalog.v1.TemplateStepR\x05steps\x12\x1d\n" +
+	"\n" +
+	"share_with\x18\a \x03(\tR\tshareWith\x12\x1e\n" +
+	"\n" +
+	"deprecated\x18\b \x01(\tR\n" +
+	"deprecated\"\x81\x02\n" +
+	"\fTemplateStep\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1d\n" +
+	"\n" +
+	"depends_on\x18\x03 \x03(\tR\tdependsOn\x12/\n" +
+	"\x06inputs\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x12,\n" +
+	"\x0ftimeout_seconds\x18\x05 \x01(\x05H\x00R\x0etimeoutSeconds\x88\x01\x01\x12&\n" +
+	"\fmax_attempts\x18\x06 \x01(\x05H\x01R\vmaxAttempts\x88\x01\x01B\x12\n" +
+	"\x10_timeout_secondsB\x0f\n" +
+	"\r_max_attempts\"X\n" +
 	"\tResources\x12\x10\n" +
 	"\x03cpu\x18\x01 \x01(\tR\x03cpu\x12\x16\n" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\x12!\n" +
@@ -433,28 +678,34 @@ func file_vertra_catalog_v1_release_proto_rawDescGZIP() []byte {
 	return file_vertra_catalog_v1_release_proto_rawDescData
 }
 
-var file_vertra_catalog_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_vertra_catalog_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_vertra_catalog_v1_release_proto_goTypes = []any{
 	(*Release)(nil),               // 0: vertra.catalog.v1.Release
 	(*Team)(nil),                  // 1: vertra.catalog.v1.Team
 	(*ProductAction)(nil),         // 2: vertra.catalog.v1.ProductAction
-	(*Resources)(nil),             // 3: vertra.catalog.v1.Resources
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),       // 5: google.protobuf.Struct
+	(*Template)(nil),              // 3: vertra.catalog.v1.Template
+	(*TemplateStep)(nil),          // 4: vertra.catalog.v1.TemplateStep
+	(*Resources)(nil),             // 5: vertra.catalog.v1.Resources
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),       // 7: google.protobuf.Struct
 }
 var file_vertra_catalog_v1_release_proto_depIdxs = []int32{
-	4, // 0: vertra.catalog.v1.Release.created_at:type_name -> google.protobuf.Timestamp
-	1, // 1: vertra.catalog.v1.Release.teams:type_name -> vertra.catalog.v1.Team
-	2, // 2: vertra.catalog.v1.Release.products:type_name -> vertra.catalog.v1.ProductAction
-	5, // 3: vertra.catalog.v1.Team.secret_store_documents:type_name -> google.protobuf.Struct
-	5, // 4: vertra.catalog.v1.ProductAction.input_schema:type_name -> google.protobuf.Struct
-	5, // 5: vertra.catalog.v1.ProductAction.output_schema:type_name -> google.protobuf.Struct
-	3, // 6: vertra.catalog.v1.ProductAction.resources:type_name -> vertra.catalog.v1.Resources
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6,  // 0: vertra.catalog.v1.Release.created_at:type_name -> google.protobuf.Timestamp
+	1,  // 1: vertra.catalog.v1.Release.teams:type_name -> vertra.catalog.v1.Team
+	2,  // 2: vertra.catalog.v1.Release.products:type_name -> vertra.catalog.v1.ProductAction
+	3,  // 3: vertra.catalog.v1.Release.templates:type_name -> vertra.catalog.v1.Template
+	7,  // 4: vertra.catalog.v1.Team.secret_store_documents:type_name -> google.protobuf.Struct
+	7,  // 5: vertra.catalog.v1.ProductAction.input_schema:type_name -> google.protobuf.Struct
+	7,  // 6: vertra.catalog.v1.ProductAction.output_schema:type_name -> google.protobuf.Struct
+	5,  // 7: vertra.catalog.v1.ProductAction.resources:type_name -> vertra.catalog.v1.Resources
+	7,  // 8: vertra.catalog.v1.Template.parameters:type_name -> google.protobuf.Struct
+	4,  // 9: vertra.catalog.v1.Template.steps:type_name -> vertra.catalog.v1.TemplateStep
+	7,  // 10: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_vertra_catalog_v1_release_proto_init() }
@@ -462,13 +713,14 @@ func file_vertra_catalog_v1_release_proto_init() {
 	if File_vertra_catalog_v1_release_proto != nil {
 		return
 	}
+	file_vertra_catalog_v1_release_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_catalog_v1_release_proto_rawDesc), len(file_vertra_catalog_v1_release_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

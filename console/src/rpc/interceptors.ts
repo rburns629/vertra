@@ -46,14 +46,22 @@ export const maskErrors: Interceptor = (next) => async (req) => {
   const mask = (error: unknown): ConnectError => {
     if (error instanceof ConnectError) return error;
     // An expected refusal from the shared logic (apiError.ts), with any
-    // problems it lists as Problem details.
+    // problems it lists as Problem details: each a message, or a message
+    // about a field ({field, message}: a template's parameters, say).
     if (error instanceof ApiError) {
       const { problems, ...rest } = error.extra;
       const detail = Object.keys(rest).length > 0 ? (JSON.parse(JSON.stringify(rest)) as JsonObject) : undefined;
       const refusal = rpcError(error.connectCode, error.code, error.message, false, detail);
       if (Array.isArray(problems)) {
-        for (const problem of problems) {
-          refusal.details.push({ desc: ProblemSchema, value: { field: "", code: error.code, message: String(problem) } });
+        for (const problem of problems as unknown[]) {
+          const { field, message } =
+            typeof problem === "object" && problem !== null
+              ? (problem as { field?: unknown; message?: unknown })
+              : { field: "", message: problem };
+          refusal.details.push({
+            desc: ProblemSchema,
+            value: { field: typeof field === "string" ? field : "", code: error.code, message: String(message) },
+          });
         }
       }
       return refusal;

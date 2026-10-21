@@ -303,20 +303,19 @@ func contains(list []string, s string) bool {
 // askConsole asks how the console is reached, with what each way costs and
 // gives up, and what a public one needs on this cloud.
 func (a *app) askConsole(ctx context.Context, out io.Writer, c *config.Config, f *initFlags) error {
-	publicNote := "HTTPS from the internet, so the catalog's CI can reach it: a load balancer (about $18 a month) and a sign-in page on the internet (rate-limited)"
+	publicNote := "HTTPS from the internet, for people outside the cluster's network: a load balancer (about $18 a month) and a sign-in page on the internet (rate-limited)"
 	if c.Target == "aws" {
 		publicNote += "; needs a DNS zone you can delegate to Route 53, and Auto Mode"
 	} else {
 		publicNote += "; a nip.io name by default, or a hostname of yours"
 	}
 	choice, err := a.ask.Choose("How should the console be reached?", []prompt.Option{
-		{Value: "private", Label: "private", Note: "nothing outside the cluster: `vertra console` port-forwards to it; products are published from your machine"},
+		{Value: "private", Label: "private", Note: "nothing outside the cluster: `vertra console` port-forwards to it; a catalog works either way (its CI only pushes to the registry)"},
 		{Value: "public", Label: "public", Note: publicNote},
 	}, orDefault(f.console, "private"))
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "  (Later: catalog CI through a runner inside the cluster, with no public console.)")
 	c.Console.Public = choice == "public"
 	if !c.Console.Public {
 		return nil

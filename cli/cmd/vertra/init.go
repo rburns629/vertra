@@ -51,7 +51,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.BoolVar(&f.force, "force", false, "replace an existing environment's settings")
 	fl.StringVar(&f.target, "target", "", "kind (local), gcp or existing (aws and azure come later)")
 	fl.StringVar(&f.release, "release", "", "install a released version (e.g. 0.1.0) instead of from source")
-	fl.StringVar(&f.source, "source", "", "an Vertra checkout to install from (charts, and images built from it)")
+	fl.StringVar(&f.source, "source", "", "a Vertra checkout to install from (charts, and images built from it)")
 	fl.StringVar(&f.clusterName, "cluster-name", "", "kind or gcp: the cluster's name (default vertra)")
 	fl.IntVar(&f.registryPort, "registry-port", 0, "kind: the local registry's port (default 5001)")
 	fl.StringVar(&f.kubeContext, "context", "", "existing: the kubectl context")
@@ -70,7 +70,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.IntVar(&f.headroom, "step-headroom", -1, "without scale-down: steps that can start without waiting")
 	fl.StringVar(&f.adminEmail, "admin-email", "", "the first admin's email")
 	fl.StringVar(&f.hostname, "hostname", "", "the console's public hostname (gcp default: a nip.io name; aws default: console.<zone>)")
-	fl.StringVar(&f.console, "console", "", "gcp, aws: private (reached with `vertra console`) or public (HTTPS from the internet; the catalog's CI needs it)")
+	fl.StringVar(&f.console, "console", "", "gcp, aws: private (reached with `vertra console`) or public (HTTPS from the internet)")
 	fl.StringVar(&f.zone, "zone", "", "aws: a DNS zone for the console's public address, created in Route 53 for you to delegate (e.g. vertra.example.com)")
 	fl.BoolVar(&f.noCatalog, "no-catalog", false, "gcp: no catalog repository (`vertra catalog` creates one)")
 	fl.StringVar(&f.catalogOwner, "catalog-owner", "", "the catalog's GitHub owner, an account or organization (default: you)")
@@ -274,7 +274,7 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 	return nil
 }
 
-// findCheckout looks for an Vertra checkout at or above the working directory.
+// findCheckout looks for a Vertra checkout at or above the working directory.
 func findCheckout() string {
 	dir, err := os.Getwd()
 	if err != nil {

@@ -51,9 +51,12 @@ type Product struct {
 	// "*" for every team; empty, only its own team.
 	ShareWith []string `protobuf:"bytes,16,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
 	// Why it's deprecated and what to use instead, or empty when it isn't.
-	Deprecated    string `protobuf:"bytes,17,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Deprecated string `protobuf:"bytes,17,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	// Audiences its tasks get a projected ServiceAccount token for, at
+	// /platform/tokens/<audience> (product.yaml's tokenAudiences).
+	TokenAudiences []string `protobuf:"bytes,18,rep,name=token_audiences,json=tokenAudiences,proto3" json:"token_audiences,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Product) Reset() {
@@ -203,6 +206,13 @@ func (x *Product) GetDeprecated() string {
 		return x.Deprecated
 	}
 	return ""
+}
+
+func (x *Product) GetTokenAudiences() []string {
+	if x != nil {
+		return x.TokenAudiences
+	}
+	return nil
 }
 
 type ProductRelease struct {
@@ -503,7 +513,7 @@ type RegisterProductRequest struct {
 	// Unset for a platform product.
 	Team *string `protobuf:"bytes,4,opt,name=team,proto3,oneof" json:"team,omitempty"`
 	// Each field below left unset keeps what's stored, except secret_refs,
-	// share_with and deprecated, which are always replaced: a registration is
+	// share_with, deprecated and token_audiences, which are always replaced: a registration is
 	// the whole product.yaml, and an empty list can't be told from an unset
 	// one.
 	InputSchema    *structpb.Struct `protobuf:"bytes,5,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`
@@ -515,6 +525,9 @@ type RegisterProductRequest struct {
 	Resources      *TaskResources   `protobuf:"bytes,11,opt,name=resources,proto3,oneof" json:"resources,omitempty"`
 	ShareWith      []string         `protobuf:"bytes,12,rep,name=share_with,json=shareWith,proto3" json:"share_with,omitempty"`
 	Deprecated     string           `protobuf:"bytes,13,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
+	// Audiences its tasks get a projected ServiceAccount token for, to sign
+	// in to another cloud. Never the Kubernetes API's or kernel-api's.
+	TokenAudiences []string `protobuf:"bytes,14,rep,name=token_audiences,json=tokenAudiences,proto3" json:"token_audiences,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -638,6 +651,13 @@ func (x *RegisterProductRequest) GetDeprecated() string {
 		return x.Deprecated
 	}
 	return ""
+}
+
+func (x *RegisterProductRequest) GetTokenAudiences() []string {
+	if x != nil {
+		return x.TokenAudiences
+	}
+	return nil
 }
 
 type RegisterProductResponse struct {
@@ -1165,7 +1185,7 @@ var File_vertra_console_v1_product_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\n" +
-	"\x1fvertra/console/v1/product.proto\x12\x11vertra.console.v1\x1a\x1evertra/console/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8e\x06\n" +
+	"\x1fvertra/console/v1/product.proto\x12\x11vertra.console.v1\x1a\x1evertra/console/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb7\x06\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1189,7 +1209,8 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"share_with\x18\x10 \x03(\tR\tshareWith\x12\x1e\n" +
 	"\n" +
 	"deprecated\x18\x11 \x01(\tR\n" +
-	"deprecatedB\n" +
+	"deprecated\x12'\n" +
+	"\x0ftoken_audiences\x18\x12 \x03(\tR\x0etokenAudiencesB\n" +
 	"\n" +
 	"\b_team_idB\f\n" +
 	"\n" +
@@ -1224,7 +1245,7 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\x11_default_provider\"\x15\n" +
 	"\x13ListProductsRequest\"N\n" +
 	"\x14ListProductsResponse\x126\n" +
-	"\bproducts\x18\x01 \x03(\v2\x1a.vertra.console.v1.ProductR\bproducts\"\xdb\x04\n" +
+	"\bproducts\x18\x01 \x03(\v2\x1a.vertra.console.v1.ProductR\bproducts\"\x84\x05\n" +
 	"\x16RegisterProductRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1243,7 +1264,8 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"share_with\x18\f \x03(\tR\tshareWith\x12\x1e\n" +
 	"\n" +
 	"deprecated\x18\r \x01(\tR\n" +
-	"deprecatedB\a\n" +
+	"deprecated\x12'\n" +
+	"\x0ftoken_audiences\x18\x0e \x03(\tR\x0etokenAudiencesB\a\n" +
 	"\x05_teamB\x0f\n" +
 	"\r_display_nameB\x0e\n" +
 	"\f_descriptionB\x12\n" +

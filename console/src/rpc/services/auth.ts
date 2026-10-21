@@ -41,7 +41,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
       const { email, password } = check({ email: Email, password: NewPassword }, req);
       if (!config.allowSelfRegistration) {
-        throw forbidden("Accounts are created by an admin. Ask an Vertra admin for one.", "REGISTRATION_DISABLED");
+        throw forbidden("Accounts are created by an admin. Ask a Vertra admin for one.", "REGISTRATION_DISABLED");
       }
       if (await findUserByEmail(email)) {
         throw rpcError(Code.AlreadyExists, "CONFLICT", "Email already registered.");

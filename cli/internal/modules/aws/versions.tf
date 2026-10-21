@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# The cloud side of an Vertra install on AWS. vertra runs it (embedded
+# The cloud side of a Vertra install on AWS. vertra runs it (embedded
 # in the binary); it also works on its own with OpenTofu or Terraform.
 
 terraform {

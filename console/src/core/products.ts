@@ -15,6 +15,7 @@ import { canActForTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
 import { config } from "../config.js";
+import { tokenAudienceProblems } from "../tokenAudiences.js";
 import {
   deleteProductByName,
   findProductByName,
@@ -70,6 +71,8 @@ export const RegisterProductBody = Type.Object({
   outputSchema: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   serviceAccount: Type.Optional(KubernetesName),
   secretRefs: Type.Optional(Type.Array(KubernetesName, { uniqueItems: true, maxItems: 50 })),
+  // Checked further by tokenAudienceProblems (tokenAudiences.ts).
+  tokenAudiences: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 256 }), { uniqueItems: true })),
   resources: Type.Optional(Resources),
   // A team name, or "*" for every team.
   shareWith: Type.Optional(
@@ -92,6 +95,7 @@ export type RegisterProductInput = {
   outputSchema?: Record<string, unknown>;
   serviceAccount?: string;
   secretRefs?: string[];
+  tokenAudiences?: string[];
   resources?: { cpu?: string; memory?: string; memoryLimit?: string };
   shareWith?: string[];
   /** Empty: not deprecated. */
@@ -151,6 +155,10 @@ export function products() {
 
 export async function registerProduct(caller: AuthUser | undefined, input: RegisterProductInput) {
   const teamName = input.team ?? null;
+  const audienceProblems = tokenAudienceProblems(input.tokenAudiences ?? []);
+  if (audienceProblems.length > 0) {
+    throw new ApiError(422, "UNPROCESSABLE_ENTITY", `${input.name}: ${audienceProblems.join("; ")}.`);
+  }
 
   let teamId: string | null = null;
   if (teamName === null) {
@@ -212,6 +220,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       outputSchema: input.outputSchema,
       serviceAccount: input.serviceAccount,
       secretRefs: input.secretRefs,
+      tokenAudiences: input.tokenAudiences,
       shareWith: input.shareWith,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,

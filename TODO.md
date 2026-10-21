@@ -300,8 +300,28 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   sets only registry variables (and removes and revokes the old ones) and
   the install sets the console's `catalog.release`, so a catalog no
   longer needs a public console. Templates aren't in the release yet
-  (they come with consumers, A1).
-- [ ] **P0: consumers and templates (A1).** A consumer role that may run a
+  (they come with consumers, A1). Proven on GKE Autopilot in acyclix-dev
+  (2026-10-20): a release signed by catalog CI's cosign (3.1.3, key mode)
+  verified by the console's (2.5.3) and applied; one signed by another key,
+  and an unsigned one, refused with nothing applied. That run found the
+  verification Job signing in to Artifact Registry anonymously: it now
+  passes `--k8s-keychain` (the ServiceAccount's Workload Identity) unless a
+  pull Secret is configured.
+- [x] **P0: consumers and templates (A1)** (done 2026-10-21):
+  templates travel in the catalog release and are stored per team
+  (`templates`); `TemplateService` lists what a person may run (templates
+  and shared actions) and runs one with parameters only, checked against
+  its schema, each step built from its product (image, ServiceAccount,
+  the action's secrets, token audiences, namespace); sharing with
+  specific teams runs on behalf of one; a step of an unshared action is
+  refused; the submitter sees, cancels, retries and reruns their run
+  (a rerun runs the template again). Proven on kind with a consumer in no
+  team. The Run page lists them and runs one through a form built from its
+  parameter schema (the server's problems shown on their fields), with
+  "Run for" when sharing needs a team; the Products page links shared
+  actions to it; an execution shows the template it came from. Proven in
+  a browser on kind as a consumer in no team. Roles beyond member and
+  admin are P1 below. The original item: a consumer role that may run a
   team's published templates with parameters only; templates
   (`teams/<team>/dags/`, with a `parameters` block) fix each step's
   `secretRefs` and identity. Every product action is also a one-step
@@ -310,15 +330,28 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   keeps its owner's bindings in any DAG; steps use the product's latest
   release. Everyone signed in is a consumer; consumers may cancel and retry
   their own runs.
-- [ ] **P0: projected ServiceAccount tokens for federation (I1).** A product
-  declares `tokenAudiences`; the kernel projects a short-lived token for
-  those only (steps get none today, `kubernetes.py:594`); the identity
-  policy allows that volume. Needed wherever the host cloud isn't the
-  target cloud.
-- [ ] **P1: check inputs and outputs against their schemas (C1).** Literal
-  inputs at submit; resolved inputs before each step starts (the console
-  attaches the schema, the kernel checks it and fails with
-  `INPUT_INVALID`); outputs against the output schema.
+- [x] **P0: projected ServiceAccount tokens for federation (I1)** (done
+  2026-10-20). A product declares `tokenAudiences` in `product.yaml`; the
+  release carries them, the console stores them and sets them on its
+  tasks (a submitter can't), and the kernel projects one hour-long token
+  per audience at `/platform/tokens/<audience>`. The console refuses the
+  Kubernetes API's audiences (read from its own token) and kernel-api's;
+  the identity policy refuses an undeclared audience or a longer token.
+  Proven on kind and on GKE Autopilot (2026-10-20): each declared token
+  arrives from the cluster's issuer for the product's ServiceAccount,
+  lasting an hour; the policy refuses the rest; registration refuses
+  GKE's API audience, read from the console's own token. Not yet: a
+  sample that federates with it (S2's samples, or AWS from GKE).
+- [x] **P1: check inputs and outputs against their schemas (C1)** (done
+  2026-10-21). The console checks each step's literal inputs against its
+  product's input schema at submit (`INPUT_INVALID`, each problem on its
+  field; upstream references left for later) and attaches both schemas to
+  the kernel's task; the kernel checks the resolved inputs before the step
+  starts (`INPUT_INVALID`) and its outputs when it finishes
+  (`OUTPUT_INVALID`), neither retried, and refuses a schema that isn't one
+  or refers outside itself. Proven on kind (a refused literal, a template
+  run checked both ways); the kernel's failures by its scheduler tests
+  against Postgres.
 - [ ] **P1: exports (X2).** Each team lists which of its actions other
   teams' templates may include, and for which teams; checked when a
   template is loaded and at submit.
@@ -458,6 +491,20 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Testing and housekeeping
 
+- [ ] **`catalogctl publish` from a laptop builds for the laptop's
+  platform** (arm64 on a Mac), which an amd64 cluster can't run;
+  `DOCKER_DEFAULT_PLATFORM=linux/amd64` works around it. Build for the
+  target's platforms (a setting in vertra.yaml, multi-platform with buildx).
+- [ ] **`vertra` can't set up a signed catalog yet**: `vertra catalog` sets
+  signing mode none, and nothing puts a public key in the console's
+  `catalog.signature` (the GKE proof set it with Helm). Generate or take a
+  key (or keyless with the repository's identity) and set both sides.
+- [ ] **An intermittent console test:** `product-ownership.test.ts`'s "is
+  claimed at startup for products registered before repositories had
+  owners" failed once in a full run (2026-10-20) and passes alone and on
+  reruns. It claims every product's repository, so another test file
+  registering products in the same database at the same time can race it:
+  scope it to its own products, or run that file on its own.
 - [ ] **The frontend's two low-severity advisories** (KaTeX, through
   mermaid): `npm audit` offers only mermaid 12, a major version; take it
   when the docs page's diagrams are checked against it.

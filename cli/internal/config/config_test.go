@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// checkout makes a directory that passes for an Vertra checkout.
+// checkout makes a directory that passes for a Vertra checkout.
 func checkout(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -86,7 +86,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(filepath.Join(dir, FileName))
-	if !strings.HasPrefix(string(data), "# An Vertra install's settings") {
+	if !strings.HasPrefix(string(data), "# A Vertra install's settings") {
 		t.Errorf("no header:\n%s", data)
 	}
 	got, err := Load(dir)

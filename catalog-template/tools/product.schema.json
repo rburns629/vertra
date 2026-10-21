@@ -57,6 +57,13 @@
       "description": "Optional. The Kubernetes ServiceAccount the product runs as, for a cloud identity bound to it. Without one, it runs as default.",
       "$ref": "#/$defs/kubernetesName"
     },
+    "tokenAudiences": {
+      "description": "Optional. Audiences its steps get a short-lived ServiceAccount token for, to sign in to another cloud by OIDC federation: sts.amazonaws.com (AWS), api://AzureADTokenExchange (Azure), or a GCP workload identity provider. Each is at /platform/tokens/<audience>, its characters outside [A-Za-z0-9._-] replaced by _. Never the cluster's own (the Kubernetes API's); the console refuses those.",
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\s,]+$"}
+    },
     "resources": {
       "$ref": "#/$defs/resources"
     },

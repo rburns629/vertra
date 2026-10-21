@@ -808,6 +808,19 @@ export function ExecutionDetailPage() {
                 }
               />
               <MetadataItem label="Triggered by" value={execution.submittedBy ?? "—"} />
+              {execution.template && (
+                <MetadataItem
+                  label="From"
+                  value={
+                    <Tooltip title={`Parameters: ${JSON.stringify(execution.templateParameters ?? {})}`}>
+                      <span>
+                        <Mono>{execution.template}</Mono>
+                        {execution.onBehalfOf && <> for {execution.onBehalfOf}</>}
+                      </span>
+                    </Tooltip>
+                  }
+                />
+              )}
               <MetadataItem label="Started" value={new Date(execution.createdAt).toLocaleString()} />
               <MetadataItem label="Duration" value={executionDuration ?? "—"} />
             </Box>

@@ -93,6 +93,18 @@ message Task {
   optional int32 max_attempts = 10;
   // Unset: the deployment's default size.
   Resources resources = 11;
+  // Audiences to project a short-lived token for, for the step to sign in
+  // to another cloud with (OIDC federation): each one's token is at
+  // /platform/tokens/<audience>, its characters outside [A-Za-z0-9._-]
+  // replaced by "_". The console sets them from the product's declaration;
+  // the cluster's identity policy refuses any its product didn't declare.
+  repeated string token_audiences = 12;
+  // The product's input and output schemas (JSON Schema), as the console
+  // attaches them: the step's resolved inputs are checked before it starts
+  // (INPUT_INVALID) and its outputs when it finishes (OUTPUT_INVALID).
+  // Unset: not checked. Neither may refer outside itself.
+  google.protobuf.Struct input_schema = 13;
+  google.protobuf.Struct output_schema = 14;
 }
 
 // A Pod's size, as Kubernetes quantities ("250m", "512Mi").

@@ -34,6 +34,7 @@ function product(row: Omit<ProductWithReleases, "teamName" | "releases"> & Parti
     description: row.description ?? undefined,
     serviceAccount: row.serviceAccount ?? undefined,
     secretRefs: row.secretRefs,
+    tokenAudiences: row.tokenAudiences,
     shareWith: row.shareWith,
     deprecated: row.deprecated ?? "",
     resources: row.resources ?? undefined,
@@ -70,6 +71,7 @@ export function productService(): ServiceImpl<typeof ProductService> {
         serviceAccount: req.serviceAccount,
         // Always replaced: a registration is the whole product.yaml.
         secretRefs: req.secretRefs,
+        tokenAudiences: req.tokenAudiences,
         shareWith: req.shareWith,
         deprecated: req.deprecated,
         resources: req.resources ? defined({ cpu: req.resources.cpu, memory: req.resources.memory, memoryLimit: req.resources.memoryLimit }) : undefined,

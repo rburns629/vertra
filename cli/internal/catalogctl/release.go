@@ -4,7 +4,9 @@ package catalogctl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -73,6 +75,10 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			if m, ok := s.(map[string]any); ok {
 				a.SecretRefs = append(a.SecretRefs, text(m, "name"))
 			}
+		}
+		audiences, _ := p.Spec["tokenAudiences"].([]any)
+		for _, audience := range audiences {
+			a.TokenAudiences = append(a.TokenAudiences, fmt.Sprint(audience))
 		}
 		shareWith, _ := action["shareWith"].([]any)
 		for _, team := range shareWith {
@@ -164,11 +170,90 @@ func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, reposito
 		}
 		release.Products = append(release.Products, actions...)
 	}
+	if !c.ValidateDags() {
+		problems = append(problems, "a dags/ file isn't valid (above)")
+	} else {
+		templates, err := c.releaseTemplates()
+		if err != nil {
+			return nil, err
+		}
+		release.Templates = templates
+	}
 	if len(problems) > 0 {
 		return nil, fmt.Errorf("the release can't be made:\n  %s", strings.Join(problems, "\n  "))
 	}
 	sort.Slice(release.Products, func(i, j int) bool { return release.Products[i].Name < release.Products[j].Name })
 	return release, nil
+}
+
+// releaseTemplates are every team's templates (the starters' aren't a
+// team's), already checked by ValidateDags, each step's action with its team.
+func (c *Catalog) releaseTemplates() ([]*catalogv1.Template, error) {
+	var out []*catalogv1.Template
+	for _, path := range c.DagFiles() {
+		team := c.dagTeam(path)
+		if team == "templates" {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		doc, _ := loadYAML(data)
+		spec, _ := doc.(map[string]any)
+		if spec["kind"] != "Template" {
+			continue
+		}
+		parameters, err := structOf(spec["parameters"])
+		if err != nil {
+			return nil, fmt.Errorf("%s: parameters: %w", c.rel(path), err)
+		}
+		t := &catalogv1.Template{
+			Name: text(spec, "name"), Team: team, DisplayName: text(spec, "displayName"),
+			Description: text(spec, "description"), Parameters: parameters, ShareWith: stringList(spec["shareWith"]),
+			Deprecated: text(spec, "deprecated"),
+		}
+		steps, _ := spec["steps"].([]any)
+		for _, raw := range steps {
+			step, _ := raw.(map[string]any)
+			action := text(step, "action")
+			if !strings.Contains(action, "/") {
+				action = team + "/" + action
+			}
+			inputs, err := structOf(step["inputs"])
+			if err != nil {
+				return nil, fmt.Errorf("%s: step %s's inputs: %w", c.rel(path), text(step, "id"), err)
+			}
+			s := &catalogv1.TemplateStep{Id: text(step, "id"), Action: action, DependsOn: stringList(step["dependsOn"]), Inputs: inputs}
+			if n, ok := whole(step["timeoutSeconds"]); ok {
+				s.TimeoutSeconds = &n
+			}
+			if n, ok := whole(step["maxAttempts"]); ok {
+				s.MaxAttempts = &n
+			}
+			t.Steps = append(t.Steps, s)
+		}
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Team+"/"+out[i].Name < out[j].Team+"/"+out[j].Name })
+	return out, nil
+}
+
+// whole is a number from a catalog file (loadYAML's json.Number) as an
+// int32, if it's a whole one.
+func whole(v any) (int32, bool) {
+	switch n := v.(type) {
+	case json.Number:
+		i, err := n.Int64()
+		return int32(i), err == nil && i == int64(int32(i))
+	case int:
+		return int32(n), true
+	case int64:
+		return int32(n), true
+	case float64:
+		return int32(n), n == float64(int32(n))
+	}
+	return 0, false
 }
 
 // latestDigest is the digest <repository>:latest names now (an index's,

@@ -213,7 +213,8 @@ team's secrets to any of its products (`executions.ts:522-546`) and
 register new ones. The marketplace model (a consumer runs the GCP team's
 steps without choosing its identities) can't be expressed. **Do:** a
 consumer role that may run published templates with inputs only; secret
-references fixed in the owning team's template.
+references fixed in the owning team's template. **API done 2026-10-21**
+(`TemplateService`); the Run page the same day (`TODO.md`).
 
 **M1. One catalog repository serves one install.** Architectural
 limitation; high. The catalog's workflows push to one
@@ -261,7 +262,7 @@ after it. Across teams, one service's outputs are another's inputs.
 **Do:** check literal inputs at submit; check resolved inputs before each
 step starts (the console attaches the schema to the task, so the kernel
 checks a schema it's given and stays product-agnostic, failing with
-`INPUT_INVALID`); check outputs against the output schema.
+`INPUT_INVALID`); check outputs against the output schema. **Done 2026-10-21** (`TODO.md`).
 
 **C2. No versions or compatibility checks.** Missing capability; medium.
 Other teams' templates depend on a product's outputs. **Do:** `catalogctl
@@ -280,7 +281,7 @@ work because they bring their own (GKE's metadata server, EKS Pod
 Identity's webhook). **Do:** a product declares the token audiences it
 needs (`tokenAudiences: [sts.amazonaws.com]`); the kernel adds a projected,
 short-lived token for those only; the identity policy allows that volume
-and nothing more.
+and nothing more. **Done 2026-10-20** (`TODO.md`).
 
 **I2. AKS Workload Identity needs a Pod label the kernel can't set.**
 Blocker for Azure; in TODO already.

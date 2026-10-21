@@ -27,6 +27,9 @@ message Release {
   repeated Team teams = 4;
   // Every product action of every team, with its image pinned to a digest.
   repeated ProductAction products = 5;
+  // Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
+  // catalogctl checked them: what consumers run, with parameters only.
+  repeated Template templates = 6;
 }
 
 message Team {
@@ -59,6 +62,44 @@ message ProductAction {
   repeated string share_with = 12;
   // Why it's deprecated and what to use instead; empty when it isn't.
   string deprecated = 13;
+  // Audiences its tasks get a projected ServiceAccount token for
+  // (product.yaml's tokenAudiences, the product's).
+  repeated string token_audiences = 14;
+}
+
+// A template: a DAG of actions with parameters, which a consumer runs by
+// filling in only the parameters. Each step runs its action's product, as
+// that product's ServiceAccount, with that action's own secrets, in that
+// product's team's namespace.
+message Template {
+  // Its file's name, dags/<name>.yaml; unique within its team.
+  string name = 1;
+  string team = 2;
+  string display_name = 3;
+  string description = 4;
+  // A JSON Schema (draft 2020-12) for an object: what the person running it
+  // fills in, and the form the console shows.
+  google.protobuf.Struct parameters = 5;
+  repeated TemplateStep steps = 6;
+  // The other teams that may run it, or "*" for every team; empty, only its
+  // own.
+  repeated string share_with = 7;
+  // Why it's deprecated and what to use instead; empty when it isn't.
+  string deprecated = 8;
+}
+
+message TemplateStep {
+  // Unique within the template.
+  string id = 1;
+  // <team>/<product>.<action>, always with its team (catalogctl fills in the
+  // template's own for an action of its team).
+  string action = 2;
+  repeated string depends_on = 3;
+  // The action's inputs: a value, {"$param": name} for a parameter, or
+  // {"$fromStep": id, "$output": name} for an output of a step it depends on.
+  google.protobuf.Struct inputs = 4;
+  optional int32 timeout_seconds = 5;
+  optional int32 max_attempts = 6;
 }
 
 // The Pod size its tasks get, as Kubernetes quantities.

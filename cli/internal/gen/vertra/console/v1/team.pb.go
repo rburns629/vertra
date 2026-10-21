@@ -165,7 +165,7 @@ type Member struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Email string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
 	IsBot bool                   `protobuf:"varint,3,opt,name=is_bot,json=isBot,proto3" json:"is_bot,omitempty"`
-	// An Vertra admin, not just this team's member.
+	// A Vertra admin, not just this team's member.
 	IsAdmin       bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
 	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
 	unknownFields protoimpl.UnknownFields

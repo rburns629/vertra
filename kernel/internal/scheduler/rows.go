@@ -33,7 +33,10 @@ type Task struct {
 	Team             string
 	ServiceAccount   string
 	SecretRefs       []string
+	TokenAudiences   []string
 	Resources        *domain.TaskResources
+	InputSchema      map[string]any
+	OutputSchema     map[string]any
 	State            domain.TaskState
 	OriginalInputs   map[string]any
 	ResolvedInputs   map[string]any
@@ -49,15 +52,16 @@ type Task struct {
 }
 
 const taskColumns = `id::text, execution_id::text, task_key, image, action, team, service_account, secret_refs,
-	resources, state, original_inputs, resolved_inputs, timeout_seconds, max_attempts, attempt_count,
-	dispatch_failures, lease_owner, lease_expires_at, available_at, executor_handle, failure`
+	token_audiences, resources, state, original_inputs, resolved_inputs, timeout_seconds, max_attempts, attempt_count,
+	dispatch_failures, lease_owner, lease_expires_at, available_at, executor_handle, failure, input_schema, output_schema`
 
 // taskColumnsOf is taskColumns qualified with a table alias.
 func taskColumnsOf(alias string) string {
 	return fmt.Sprintf(`%[1]s.id::text, %[1]s.execution_id::text, %[1]s.task_key, %[1]s.image, %[1]s.action,
-	%[1]s.team, %[1]s.service_account, %[1]s.secret_refs, %[1]s.resources, %[1]s.state, %[1]s.original_inputs,
+	%[1]s.team, %[1]s.service_account, %[1]s.secret_refs, %[1]s.token_audiences, %[1]s.resources, %[1]s.state, %[1]s.original_inputs,
 	%[1]s.resolved_inputs, %[1]s.timeout_seconds, %[1]s.max_attempts, %[1]s.attempt_count, %[1]s.dispatch_failures,
-	%[1]s.lease_owner, %[1]s.lease_expires_at, %[1]s.available_at, %[1]s.executor_handle, %[1]s.failure`, alias)
+	%[1]s.lease_owner, %[1]s.lease_expires_at, %[1]s.available_at, %[1]s.executor_handle, %[1]s.failure,
+	%[1]s.input_schema, %[1]s.output_schema`, alias)
 }
 
 func scanTasks(rows pgx.Rows) ([]*Task, error) {
@@ -65,19 +69,20 @@ func scanTasks(rows pgx.Rows) ([]*Task, error) {
 	var tasks []*Task
 	for rows.Next() {
 		t := &Task{}
-		var resources, original, resolved, handle, failure []byte
+		var resources, original, resolved, handle, failure, inputSchema, outputSchema []byte
 		var state string
 		if err := rows.Scan(&t.ID, &t.ExecutionID, &t.TaskKey, &t.Image, &t.Action, &t.Team, &t.ServiceAccount,
-			&t.SecretRefs, &resources, &state, &original, &resolved, &t.TimeoutSeconds, &t.MaxAttempts,
+			&t.SecretRefs, &t.TokenAudiences, &resources, &state, &original, &resolved, &t.TimeoutSeconds, &t.MaxAttempts,
 			&t.AttemptCount, &t.DispatchFailures, &t.LeaseOwner, &t.LeaseExpiresAt, &t.AvailableAt, &handle,
-			&failure); err != nil {
+			&failure, &inputSchema, &outputSchema); err != nil {
 			return nil, err
 		}
 		t.State = domain.TaskState(state)
 		for _, field := range []struct {
 			data []byte
 			into any
-		}{{original, &t.OriginalInputs}, {resolved, &t.ResolvedInputs}, {handle, &t.ExecutorHandle}, {failure, &t.Failure}} {
+		}{{original, &t.OriginalInputs}, {resolved, &t.ResolvedInputs}, {handle, &t.ExecutorHandle}, {failure, &t.Failure},
+			{inputSchema, &t.InputSchema}, {outputSchema, &t.OutputSchema}} {
 			if err := decodeJSON(field.data, field.into); err != nil {
 				return nil, err
 			}

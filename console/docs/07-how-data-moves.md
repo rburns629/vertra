@@ -213,7 +213,7 @@ say-hello's `request.json` therefore carries a plain value, and say-hello never 
  "action": "greet", "attempt": 1, "inputs": {"name": "Anna Berg"}}
 ```
 
-If the output it needs isn't there (make-name didn't output `name`), say-hello fails with `MISSING_UPSTREAM_OUTPUT` and isn't retried.
+If the output it needs isn't there (make-name didn't output `name`), say-hello fails with `MISSING_UPSTREAM_OUTPUT` and isn't retried. If it's there but doesn't fit say-hello's input schema, say-hello fails with `INPUT_INVALID` before it starts; and a step whose outputs don't fit its own output schema fails with `OUTPUT_INVALID`. Inputs given as values are checked when the DAG is submitted.
 
 ### 9–10. The same again, and the execution is done
 

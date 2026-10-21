@@ -238,9 +238,10 @@ Decided on 2026-10-19 and not built yet; the reasoning, findings and
 roadmap are in [assessment.md](assessment.md), the work in
 [`TODO.md`](../TODO.md#agreed-direction).
 
-- **Consumers run templates.** Anyone may run a team's published template,
-  supplying only its inputs; the template fixes each step's secrets and
-  identity, and its steps feed each other. Templates may include other
+- **Consumers run templates** (built 2026-10-21: the Run page).
+  Anyone may run a team's published template, supplying only its inputs;
+  the template fixes each step's secrets and identity, and its steps feed
+  each other (`console/src/core/templates.ts`). Templates may include other
   teams' steps only where those teams export them. The owning team writes
   the dependencies; the service may draft them. Maintainers keep choosing
   secrets per step.

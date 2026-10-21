@@ -263,7 +263,7 @@ export declare const UserService: GenService<{
     output: typeof DeleteUserResponseSchema;
   },
   /**
-   * Makes someone an Vertra admin, or takes it away.
+   * Makes someone a Vertra admin, or takes it away.
    *
    * @generated from rpc vertra.console.v1.UserService.SetAdmin
    */

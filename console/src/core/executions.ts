@@ -48,6 +48,8 @@ import {
   submitExecution,
 } from "../kernel/client.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
+import { rerunTemplate } from "./templates.js";
+import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { scanBlocker } from "../scanning.js";
 
@@ -453,17 +455,106 @@ async function withProductResources(submission: Record<string, unknown>): Promis
   return { ...submission, tasks: sized };
 }
 
+/** The fields a task gets from its product, never from whoever submits it. */
+const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema"] as const;
+
+const isReference = (value: unknown) =>
+  isRecord(value) && Object.keys(value).length === 2 && "$fromTask" in value && "$output" in value;
+
+const nonEmpty = (schema: unknown) => isRecord(schema) && Object.keys(schema).length > 0;
+
 /**
- * The checks every submission gets: team membership per task, the identity
+ * The submission with what each task gets from its product (the one its
+ * ServiceAccount runs), and none of it for anything else:
+ *   - tokenAudiences, as product.yaml declares them: never the submitter's
+ *     to choose, as its ServiceAccount isn't;
+ *   - its input and output schemas, for the kernel to check the resolved
+ *     inputs before it starts and its outputs when it finishes (C1).
+ * Replaces whatever a task carries, so a stored submission rerun gets its
+ * product's current ones. And the inputs known now (every one but an
+ * upstream output's reference, which the kernel checks once resolved) are
+ * checked against the input schema: all the problems refused together, as
+ * INPUT_INVALID. Run after authorization, as withProductResources is.
+ */
+async function withProductContract(submission: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const tasks = submission["tasks"];
+  if (!Array.isArray(tasks)) return submission;
+  const products = productLookup();
+  const out: unknown[] = [];
+  const problems: { field: string; message: string }[] = [];
+  for (const task of tasks) {
+    if (!isRecord(task)) {
+      out.push(task);
+      continue;
+    }
+    const rest = Object.fromEntries(Object.entries(task).filter(([key]) => !(PRODUCT_FIELDS as readonly string[]).includes(key)));
+    const team = optionalString(task["team"]);
+    const matching = team === undefined ? [] : await products.matching(team, optionalString(task["image"]), optionalString(task["action"]));
+    const serviceAccount = optionalString(task["serviceAccount"]) ?? UNREGISTERED_SERVICE_ACCOUNT;
+    const product = matching.find((p) => runsAs(p) === serviceAccount);
+    if (!product) {
+      out.push(rest);
+      continue;
+    }
+    if (nonEmpty(product.inputSchema)) {
+      const inputs = isRecord(task["inputs"]) ? task["inputs"] : {};
+      const references = new Set(Object.keys(inputs).filter((key) => isReference(inputs[key])));
+      const known = Object.fromEntries(Object.entries(inputs).filter(([key]) => !references.has(key)));
+      for (const e of schemaErrors(product.inputSchema, known)) {
+        const missing = e.keyword === "required" ? String((e.params as { missingProperty?: unknown }).missingProperty) : undefined;
+        if (missing !== undefined && references.has(missing)) continue; // an upstream output, checked when resolved
+        problems.push({ field: `tasks.${String(task["id"])}.inputs${errorPath(e)}`, message: e.message ?? "is invalid" });
+      }
+    }
+    out.push({
+      ...rest,
+      ...(product.tokenAudiences.length > 0 ? { tokenAudiences: product.tokenAudiences } : {}),
+      ...(nonEmpty(product.inputSchema) ? { inputSchema: product.inputSchema } : {}),
+      ...(nonEmpty(product.outputSchema) ? { outputSchema: product.outputSchema } : {}),
+    });
+  }
+  if (problems.length > 0) {
+    throw new ApiError(
+      422,
+      "INPUT_INVALID",
+      `Inputs that don't fit their product's input schema: ${problems.map((p) => `${p.field} ${p.message}`).join("; ")}.`,
+      undefined,
+      { problems },
+    );
+  }
+  return { ...submission, tasks: out };
+}
+
+/** A submission as recorded: without the products' schemas, which a rerun gets afresh. */
+function recordable(submission: Record<string, unknown>): Record<string, unknown> {
+  const tasks = submission["tasks"];
+  if (!Array.isArray(tasks)) return submission;
+  return {
+    ...submission,
+    tasks: tasks.map((task: unknown) =>
+      isRecord(task) ? Object.fromEntries(Object.entries(task).filter(([key]) => key !== "inputSchema" && key !== "outputSchema")) : task,
+    ),
+  };
+}
+
+/**
+ * The checks every submission gets: team membership per task (except for a
+ * template's run, authorized as a whole by core/templates.ts), the identity
  * each task runs as, then secretRefs against each team's current secrets.
  * Rerun and retry apply them afresh against current membership and grants,
  * rather than trusting what was true at the first submission (a team can
  * lose a secret, or a caller leave a team, in between).
  */
-async function authorizeTasks(tasksInfo: TaskAuthInfo[], caller: AuthUser | undefined): Promise<void> {
+async function authorizeTasks(
+  tasksInfo: TaskAuthInfo[],
+  caller: AuthUser | undefined,
+  { members = true }: { members?: boolean } = {},
+): Promise<void> {
   const uniqueTeams = [...new Set(tasksInfo.map((t) => t.team))];
   for (const team of uniqueTeams) {
-    ensureTeamMember(caller, team);
+    // A template's run is authorized as a whole instead (core/templates.ts):
+    // its steps run in their products' teams, which the consumer isn't in.
+    if (members) ensureTeamMember(caller, team);
     const blocker = await teamRunBlocker(team);
     if (blocker) throw blocked(409, blocker);
   }
@@ -566,6 +657,8 @@ export async function listExecutions(
   try {
     page = await listSubmittedExecutionsPage({
       visibleTo: caller?.isAdmin ? null : (caller?.teamNames ?? []),
+      // A consumer's own runs, in teams they aren't in (core/templates.ts).
+      visibleToUser: caller?.id,
       limit,
       cursor,
       since: since === undefined ? undefined : new Date(since),
@@ -595,6 +688,29 @@ export async function listExecutions(
  * created it, or found the one its requestId already started.
  */
 export async function submit(caller: AuthUser | undefined, submitted: unknown, log: FastifyBaseLogger) {
+  return submitChecked(caller, submitted, log);
+}
+
+/** What a run of a template records (core/templates.ts). */
+export interface TemplateRun {
+  /** <team>/<template>, or <team>/<product>.<action> for an action run alone. */
+  template: string;
+  parameters: Record<string, unknown>;
+  onBehalfOf: string | undefined;
+}
+
+/**
+ * Checks and submits a DAG. A template's run (`run`) is built by
+ * core/templates.ts from products and already authorized, so it skips team
+ * membership and nothing else; its requestId is scoped to the person, who
+ * may not be in any of its teams.
+ */
+export async function submitChecked(
+  caller: AuthUser | undefined,
+  submitted: unknown,
+  log: FastifyBaseLogger,
+  run?: TemplateRun,
+) {
   const body = isRecord(submitted) ? await withProductIdentities(withCurrentFieldNames(submitted)) : submitted;
   const tasksInfo = extractTasksAuthInfo(body);
   if (tasksInfo === null) {
@@ -605,7 +721,7 @@ export async function submit(caller: AuthUser | undefined, submitted: unknown, l
         '"secretRefs" if present must be an array of non-empty strings.',
     );
   }
-  await authorizeTasks(tasksInfo, caller);
+  await authorizeTasks(tasksInfo, caller, { members: run === undefined });
   const teams = [...new Set(tasksInfo.map((t) => t.team))];
   const context: RunContext = { action: "submit", teams, caller, log };
   await refuseBlockedImages(taskImages(body), context);
@@ -613,16 +729,19 @@ export async function submit(caller: AuthUser | undefined, submitted: unknown, l
 
   const pinnedBody = await pinned(body as Record<string, unknown>, context);
   await refuseUnscanned(taskImages(pinnedBody), context);
-  const submission = await withProductResources(pinnedBody);
+  const submission = await withProductContract(await withProductResources(pinnedBody));
 
-  const result = await submitExecution(scopeRequestId(submission, teams));
+  const result = await submitExecution(scopeRequestId(submission, run ? [`user:${caller?.id ?? ""}`] : teams));
   await recordOrCancel(
     {
       executionId: result.executionId,
       teams,
       submittedBy: caller?.id ?? "",
       name: typeof submission["name"] === "string" ? submission["name"] : "",
-      payload: submission,
+      payload: recordable(submission),
+      template: run?.template,
+      templateParameters: run?.parameters,
+      onBehalfOf: run?.onBehalfOf,
     },
     result.created,
     log,
@@ -650,6 +769,9 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
     createdAt: submitted.createdAt,
     payload: submitted.payload,
     runBlocked: blocker,
+    template: submitted.template,
+    templateParameters: submitted.templateParameters,
+    onBehalfOf: submitted.onBehalfOf,
   };
 }
 
@@ -686,7 +808,10 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
         "so there's nothing to check a retry's access against.",
     );
   }
-  await authorizeTasks(tasksInfo, caller);
+  // A consumer retries their own run of a template without being in its
+  // teams; anyone else as for any execution.
+  const ownTemplateRun = submitted.template !== null && caller?.id !== undefined && submitted.submittedBy === caller.id;
+  await authorizeTasks(tasksInfo, caller, { members: !ownTemplateRun });
   const images = taskImages(submitted.payload, taskId);
   const context: RunContext = { action: "retry", teams: submitted.teams, executionId, caller, log };
   await refuseBlockedImages(images, context);
@@ -710,6 +835,8 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
       "This execution was submitted before rerun support existed, so there's no stored submission to replay.",
     );
   }
+  // A template's run is rerun as the template, against its current products.
+  if (submitted.template !== null) return rerunTemplate(caller, submitted, log);
   // Stored DAGs from before the rename get the current field names first,
   // and a task with no serviceAccount the one it runs as now.
   const replayed = isRecord(submitted.payload)
@@ -730,11 +857,11 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
   // from before pinning has tags; they're pinned now.
   const pinnedReplay = await pinned(replayed as Record<string, unknown>, context);
   await refuseUnscanned(taskImages(pinnedReplay), context);
-  const rerunPayload = await withProductResources({ ...pinnedReplay, requestId: randomUUID() });
+  const rerunPayload = await withProductContract(await withProductResources({ ...pinnedReplay, requestId: randomUUID() }));
 
   const result = await submitExecution(scopeRequestId(rerunPayload, submitted.teams));
   await recordOrCancel(
-    { executionId: result.executionId, teams: submitted.teams, submittedBy: caller?.id ?? "", name: submitted.name, payload: rerunPayload },
+    { executionId: result.executionId, teams: submitted.teams, submittedBy: caller?.id ?? "", name: submitted.name, payload: recordable(rerunPayload) },
     result.created,
     log,
   );

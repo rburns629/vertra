@@ -170,7 +170,19 @@ type Task struct {
 	// Default 1.
 	MaxAttempts *int32 `protobuf:"varint,10,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
 	// Unset: the deployment's default size.
-	Resources     *Resources `protobuf:"bytes,11,opt,name=resources,proto3" json:"resources,omitempty"`
+	Resources *Resources `protobuf:"bytes,11,opt,name=resources,proto3" json:"resources,omitempty"`
+	// Audiences to project a short-lived token for, for the step to sign in
+	// to another cloud with (OIDC federation): each one's token is at
+	// /platform/tokens/<audience>, its characters outside [A-Za-z0-9._-]
+	// replaced by "_". The console sets them from the product's declaration;
+	// the cluster's identity policy refuses any its product didn't declare.
+	TokenAudiences []string `protobuf:"bytes,12,rep,name=token_audiences,json=tokenAudiences,proto3" json:"token_audiences,omitempty"`
+	// The product's input and output schemas (JSON Schema), as the console
+	// attaches them: the step's resolved inputs are checked before it starts
+	// (INPUT_INVALID) and its outputs when it finishes (OUTPUT_INVALID).
+	// Unset: not checked. Neither may refer outside itself.
+	InputSchema   *structpb.Struct `protobuf:"bytes,13,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`
+	OutputSchema  *structpb.Struct `protobuf:"bytes,14,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -278,6 +290,27 @@ func (x *Task) GetMaxAttempts() int32 {
 func (x *Task) GetResources() *Resources {
 	if x != nil {
 		return x.Resources
+	}
+	return nil
+}
+
+func (x *Task) GetTokenAudiences() []string {
+	if x != nil {
+		return x.TokenAudiences
+	}
+	return nil
+}
+
+func (x *Task) GetInputSchema() *structpb.Struct {
+	if x != nil {
+		return x.InputSchema
+	}
+	return nil
+}
+
+func (x *Task) GetOutputSchema() *structpb.Struct {
+	if x != nil {
+		return x.OutputSchema
 	}
 	return nil
 }
@@ -1512,7 +1545,7 @@ var File_vertra_kernel_v1_kernel_proto protoreflect.FileDescriptor
 
 const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/kernel/v1/kernel.proto\x12\x10vertra.kernel.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa8\x03\n" +
+	"\x1dvertra/kernel/v1/kernel.proto\x12\x10vertra.kernel.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xcb\x04\n" +
 	"\x04Task\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1527,7 +1560,10 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\x0ftimeout_seconds\x18\t \x01(\x05H\x00R\x0etimeoutSeconds\x88\x01\x01\x12&\n" +
 	"\fmax_attempts\x18\n" +
 	" \x01(\x05H\x01R\vmaxAttempts\x88\x01\x01\x129\n" +
-	"\tresources\x18\v \x01(\v2\x1b.vertra.kernel.v1.ResourcesR\tresourcesB\x12\n" +
+	"\tresources\x18\v \x01(\v2\x1b.vertra.kernel.v1.ResourcesR\tresources\x12'\n" +
+	"\x0ftoken_audiences\x18\f \x03(\tR\x0etokenAudiences\x12:\n" +
+	"\finput_schema\x18\r \x01(\v2\x17.google.protobuf.StructR\vinputSchema\x12<\n" +
+	"\routput_schema\x18\x0e \x01(\v2\x17.google.protobuf.StructR\foutputSchemaB\x12\n" +
 	"\x10_timeout_secondsB\x0f\n" +
 	"\r_max_attempts\"X\n" +
 	"\tResources\x12\x10\n" +
@@ -1685,44 +1721,46 @@ var file_vertra_kernel_v1_kernel_proto_goTypes = []any{
 var file_vertra_kernel_v1_kernel_proto_depIdxs = []int32{
 	25, // 0: vertra.kernel.v1.Task.inputs:type_name -> google.protobuf.Struct
 	3,  // 1: vertra.kernel.v1.Task.resources:type_name -> vertra.kernel.v1.Resources
-	2,  // 2: vertra.kernel.v1.SubmitExecutionRequest.tasks:type_name -> vertra.kernel.v1.Task
-	0,  // 3: vertra.kernel.v1.SubmitExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
-	7,  // 4: vertra.kernel.v1.ValidationIssues.issues:type_name -> vertra.kernel.v1.ValidationIssue
-	10, // 5: vertra.kernel.v1.GetExecutionResponse.execution:type_name -> vertra.kernel.v1.Execution
-	0,  // 6: vertra.kernel.v1.Execution.state:type_name -> vertra.kernel.v1.ExecutionState
-	11, // 7: vertra.kernel.v1.Execution.tasks:type_name -> vertra.kernel.v1.TaskStatus
-	1,  // 8: vertra.kernel.v1.TaskStatus.state:type_name -> vertra.kernel.v1.TaskState
-	25, // 9: vertra.kernel.v1.TaskStatus.outputs:type_name -> google.protobuf.Struct
-	25, // 10: vertra.kernel.v1.TaskStatus.failure:type_name -> google.protobuf.Struct
-	26, // 11: vertra.kernel.v1.TaskStatus.started_at:type_name -> google.protobuf.Timestamp
-	26, // 12: vertra.kernel.v1.TaskStatus.completed_at:type_name -> google.protobuf.Timestamp
-	14, // 13: vertra.kernel.v1.GetExecutionStatesResponse.states:type_name -> vertra.kernel.v1.ExecutionStateEntry
-	0,  // 14: vertra.kernel.v1.ExecutionStateEntry.state:type_name -> vertra.kernel.v1.ExecutionState
-	17, // 15: vertra.kernel.v1.ListExecutionEventsResponse.events:type_name -> vertra.kernel.v1.ExecutionEvent
-	25, // 16: vertra.kernel.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
-	26, // 17: vertra.kernel.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
-	20, // 18: vertra.kernel.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.kernel.v1.TaskLogs
-	0,  // 19: vertra.kernel.v1.CancelExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
-	0,  // 20: vertra.kernel.v1.RetryTaskResponse.state:type_name -> vertra.kernel.v1.ExecutionState
-	4,  // 21: vertra.kernel.v1.KernelService.SubmitExecution:input_type -> vertra.kernel.v1.SubmitExecutionRequest
-	8,  // 22: vertra.kernel.v1.KernelService.GetExecution:input_type -> vertra.kernel.v1.GetExecutionRequest
-	12, // 23: vertra.kernel.v1.KernelService.GetExecutionStates:input_type -> vertra.kernel.v1.GetExecutionStatesRequest
-	15, // 24: vertra.kernel.v1.KernelService.ListExecutionEvents:input_type -> vertra.kernel.v1.ListExecutionEventsRequest
-	18, // 25: vertra.kernel.v1.KernelService.GetExecutionLogs:input_type -> vertra.kernel.v1.GetExecutionLogsRequest
-	21, // 26: vertra.kernel.v1.KernelService.CancelExecution:input_type -> vertra.kernel.v1.CancelExecutionRequest
-	23, // 27: vertra.kernel.v1.KernelService.RetryTask:input_type -> vertra.kernel.v1.RetryTaskRequest
-	5,  // 28: vertra.kernel.v1.KernelService.SubmitExecution:output_type -> vertra.kernel.v1.SubmitExecutionResponse
-	9,  // 29: vertra.kernel.v1.KernelService.GetExecution:output_type -> vertra.kernel.v1.GetExecutionResponse
-	13, // 30: vertra.kernel.v1.KernelService.GetExecutionStates:output_type -> vertra.kernel.v1.GetExecutionStatesResponse
-	16, // 31: vertra.kernel.v1.KernelService.ListExecutionEvents:output_type -> vertra.kernel.v1.ListExecutionEventsResponse
-	19, // 32: vertra.kernel.v1.KernelService.GetExecutionLogs:output_type -> vertra.kernel.v1.GetExecutionLogsResponse
-	22, // 33: vertra.kernel.v1.KernelService.CancelExecution:output_type -> vertra.kernel.v1.CancelExecutionResponse
-	24, // 34: vertra.kernel.v1.KernelService.RetryTask:output_type -> vertra.kernel.v1.RetryTaskResponse
-	28, // [28:35] is the sub-list for method output_type
-	21, // [21:28] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	25, // 2: vertra.kernel.v1.Task.input_schema:type_name -> google.protobuf.Struct
+	25, // 3: vertra.kernel.v1.Task.output_schema:type_name -> google.protobuf.Struct
+	2,  // 4: vertra.kernel.v1.SubmitExecutionRequest.tasks:type_name -> vertra.kernel.v1.Task
+	0,  // 5: vertra.kernel.v1.SubmitExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
+	7,  // 6: vertra.kernel.v1.ValidationIssues.issues:type_name -> vertra.kernel.v1.ValidationIssue
+	10, // 7: vertra.kernel.v1.GetExecutionResponse.execution:type_name -> vertra.kernel.v1.Execution
+	0,  // 8: vertra.kernel.v1.Execution.state:type_name -> vertra.kernel.v1.ExecutionState
+	11, // 9: vertra.kernel.v1.Execution.tasks:type_name -> vertra.kernel.v1.TaskStatus
+	1,  // 10: vertra.kernel.v1.TaskStatus.state:type_name -> vertra.kernel.v1.TaskState
+	25, // 11: vertra.kernel.v1.TaskStatus.outputs:type_name -> google.protobuf.Struct
+	25, // 12: vertra.kernel.v1.TaskStatus.failure:type_name -> google.protobuf.Struct
+	26, // 13: vertra.kernel.v1.TaskStatus.started_at:type_name -> google.protobuf.Timestamp
+	26, // 14: vertra.kernel.v1.TaskStatus.completed_at:type_name -> google.protobuf.Timestamp
+	14, // 15: vertra.kernel.v1.GetExecutionStatesResponse.states:type_name -> vertra.kernel.v1.ExecutionStateEntry
+	0,  // 16: vertra.kernel.v1.ExecutionStateEntry.state:type_name -> vertra.kernel.v1.ExecutionState
+	17, // 17: vertra.kernel.v1.ListExecutionEventsResponse.events:type_name -> vertra.kernel.v1.ExecutionEvent
+	25, // 18: vertra.kernel.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
+	26, // 19: vertra.kernel.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
+	20, // 20: vertra.kernel.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.kernel.v1.TaskLogs
+	0,  // 21: vertra.kernel.v1.CancelExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
+	0,  // 22: vertra.kernel.v1.RetryTaskResponse.state:type_name -> vertra.kernel.v1.ExecutionState
+	4,  // 23: vertra.kernel.v1.KernelService.SubmitExecution:input_type -> vertra.kernel.v1.SubmitExecutionRequest
+	8,  // 24: vertra.kernel.v1.KernelService.GetExecution:input_type -> vertra.kernel.v1.GetExecutionRequest
+	12, // 25: vertra.kernel.v1.KernelService.GetExecutionStates:input_type -> vertra.kernel.v1.GetExecutionStatesRequest
+	15, // 26: vertra.kernel.v1.KernelService.ListExecutionEvents:input_type -> vertra.kernel.v1.ListExecutionEventsRequest
+	18, // 27: vertra.kernel.v1.KernelService.GetExecutionLogs:input_type -> vertra.kernel.v1.GetExecutionLogsRequest
+	21, // 28: vertra.kernel.v1.KernelService.CancelExecution:input_type -> vertra.kernel.v1.CancelExecutionRequest
+	23, // 29: vertra.kernel.v1.KernelService.RetryTask:input_type -> vertra.kernel.v1.RetryTaskRequest
+	5,  // 30: vertra.kernel.v1.KernelService.SubmitExecution:output_type -> vertra.kernel.v1.SubmitExecutionResponse
+	9,  // 31: vertra.kernel.v1.KernelService.GetExecution:output_type -> vertra.kernel.v1.GetExecutionResponse
+	13, // 32: vertra.kernel.v1.KernelService.GetExecutionStates:output_type -> vertra.kernel.v1.GetExecutionStatesResponse
+	16, // 33: vertra.kernel.v1.KernelService.ListExecutionEvents:output_type -> vertra.kernel.v1.ListExecutionEventsResponse
+	19, // 34: vertra.kernel.v1.KernelService.GetExecutionLogs:output_type -> vertra.kernel.v1.GetExecutionLogsResponse
+	22, // 35: vertra.kernel.v1.KernelService.CancelExecution:output_type -> vertra.kernel.v1.CancelExecutionResponse
+	24, // 36: vertra.kernel.v1.KernelService.RetryTask:output_type -> vertra.kernel.v1.RetryTaskResponse
+	30, // [30:37] is the sub-list for method output_type
+	23, // [23:30] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_vertra_kernel_v1_kernel_proto_init() }

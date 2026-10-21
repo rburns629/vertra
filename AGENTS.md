@@ -199,7 +199,14 @@ its own directory.
   `request.json` at `/platform/input` (read-only). The action is passed as
   the container's `args`. The container writes `result.json` to
   `/platform/output`, which is read back via `terminationMessagePath`, so
-  no sidecar is needed. Job names are prefixed `ek-`.
+  no sidecar is needed. Job names are prefixed `ek-`. A product that
+  declares `tokenAudiences` also gets a short-lived ServiceAccount token
+  per audience at `/platform/tokens/<audience>`, for OIDC federation to
+  another cloud; never the Kubernetes API's. The action's `input` and
+  `output` schemas are enforced: literal inputs at submit (the console),
+  resolved inputs before it starts and outputs when it finishes (the
+  kernel, from schemas the console attaches: `INPUT_INVALID`,
+  `OUTPUT_INVALID`).
 - **Input references**: a task input of exactly
   `{"$fromTask": "<id>", "$output": "<name>"}` is replaced with the
   upstream task's output at dispatch time

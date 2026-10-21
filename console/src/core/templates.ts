@@ -1,0 +1,340 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Templates: what a consumer runs, filling in only parameters (the logic
+ * behind TemplateService). A template comes from its team's catalog
+ * (dags/*.yaml of kind Template, applied by catalogSync.ts); each step names
+ * an action as <team>/<product>.<action>. Running one builds the DAG here,
+ * from the registered products, never from the caller: each step runs its
+ * product's latest registered image, as the product's ServiceAccount, with
+ * its action's own secrets (product.yaml's secretRefs), in its team's
+ * namespace. The caller supplies parameters, checked against the template's
+ * schema, and nothing else.
+ *
+ * Who may run what (decided 2026-10-21):
+ *   - a template: members of its team, admins, and whoever its shareWith
+ *     covers: everyone ("*"), or members of the teams it lists, who then
+ *     run it on behalf of one of those teams (the run records which);
+ *   - a step of another team's action: only when that action is shared with
+ *     the template's team (catalogctl checks too; this holds for hand-made
+ *     products and changed sharing);
+ *   - an action on its own, as a one-step template whose parameters are its
+ *     inputs: as a template, by the action's shareWith.
+ * The run then belongs to whoever ran it as well as to its steps' teams
+ * (auth/access.ts): they may see, cancel, retry and rerun it. Everything
+ * else is a submission's checks (core/executions.ts's submitChecked), but
+ * team membership: identities, secrets, images, scans.
+ */
+import type { FastifyBaseLogger } from "fastify";
+import { Code } from "@connectrpc/connect";
+import { ApiError } from "../apiError.js";
+import type { AuthUser } from "../auth/plugin.js";
+import {
+  findRunnableProduct,
+  findRunnableTemplate,
+  listRunnableProducts,
+  listRunnableTemplates,
+  type Product,
+  type SubmittedExecution,
+} from "../db/queries.js";
+import type { TemplateStep } from "../db/schema.js";
+import { errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
+import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
+import { submitChecked } from "./executions.js";
+
+type TeamProduct = Product & { teamName: string };
+
+/** Why a parameter schema can't be used, or null. */
+export const parameterSchemaProblem = schemaProblem;
+
+function checkParameters(schema: unknown, parameters: Record<string, unknown>, label: string): void {
+  const errors = schemaErrors(schema, parameters);
+  if (errors.length === 0) return;
+  const problems = errors.map((e) => ({ field: "parameters" + errorPath(e), message: e.message ?? "is invalid" }));
+  throw new ApiError(
+    422,
+    "INVALID_PARAMETERS",
+    `${label}: ${problems.map((p) => `${p.field} ${p.message}`).join("; ")}.`,
+    undefined,
+    { problems },
+  );
+}
+
+/** Whether the caller may run something of `ownerTeam` shared with `shareWith`, and for which of their teams. */
+interface Access {
+  allowed: boolean;
+  /** The caller's teams it may run on behalf of. */
+  onBehalfOf: string[];
+  /** Shared with specific teams only: a run names one of them. */
+  required: boolean;
+}
+
+function access(caller: AuthUser, ownerTeam: string, shareWith: string[]): Access {
+  const mine = caller.teamNames;
+  if (caller.isAdmin || mine.includes(ownerTeam) || shareWith.includes("*")) {
+    return { allowed: true, onBehalfOf: mine, required: false };
+  }
+  const eligible = mine.filter((team) => shareWith.includes(team));
+  return { allowed: eligible.length > 0, onBehalfOf: eligible, required: true };
+}
+
+/** The team a run is on behalf of: the one asked for, if it may be; the only choice; or none. */
+function onBehalfOf(allowed: Access, requested: string | undefined, label: string): string | undefined {
+  if (requested) {
+    if (!allowed.onBehalfOf.includes(requested)) {
+      throw new ApiError(
+        403,
+        "FORBIDDEN",
+        allowed.required
+          ? `${label} isn't shared with team "${requested}", or you aren't in it.`
+          : `You aren't a member of team "${requested}".`,
+      );
+    }
+    return requested;
+  }
+  if (!allowed.required) return undefined;
+  if (allowed.onBehalfOf.length === 1) return allowed.onBehalfOf[0];
+  throw new ApiError(
+    422,
+    "ON_BEHALF_OF_REQUIRED",
+    `${label} is shared with specific teams: say which of yours it runs for (${allowed.onBehalfOf.join(", ")}).`,
+  );
+}
+
+/** <team>/<product>.<action>, for a product registered from a catalog (named <team>-<product>-<action>). */
+export function actionRef(product: TeamProduct): string {
+  const prefix = `${product.teamName}-`;
+  const suffix = `-${product.action}`;
+  const productName =
+    product.name.startsWith(prefix) && product.name.endsWith(suffix) && product.name.length > prefix.length + suffix.length
+      ? product.name.slice(prefix.length, -suffix.length)
+      : product.name;
+  return `${product.teamName}/${productName}.${product.action}`;
+}
+
+const ACTION_REF = /^([a-z0-9-]+)\/([a-z0-9-]+)\.([a-z0-9-]+)$/;
+
+/** The registered product an action reference names, if its team can run it. */
+async function productFor(ref: string): Promise<TeamProduct | undefined> {
+  const match = ACTION_REF.exec(ref);
+  if (!match) return undefined;
+  const [, team = "", product = "", action = ""] = match;
+  const matches = (p: TeamProduct | undefined) => p && p.teamName === team && p.action === action;
+  const conventional = await findRunnableProduct(`${team}-${product}-${action}`);
+  if (matches(conventional)) return conventional;
+  const named = await findRunnableProduct(product);
+  return matches(named) ? named : undefined;
+}
+
+/** A step's product, which must be shared with the template's team when it's another team's. */
+async function stepProduct(step: TemplateStep, templateTeam: string, label: string): Promise<TeamProduct> {
+  const product = await productFor(step.action);
+  if (!product) {
+    throw new ApiError(
+      422,
+      "STEP_UNAVAILABLE",
+      `${label}: step "${step.id}" runs ${step.action}, which isn't registered here (or its team is retired).`,
+    );
+  }
+  if (product.teamName !== templateTeam && !product.shareWith.includes("*") && !product.shareWith.includes(templateTeam)) {
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      `${label}: step "${step.id}" runs ${step.action}, which team "${product.teamName}" doesn't share with team "${templateTeam}".`,
+    );
+  }
+  return product;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A step's inputs with its parameters filled in ({$param: name}; one the
+ * caller left out leaves its input out), and its upstream references in the
+ * kernel's form ({$fromStep, $output} becomes {$fromTask, $output}, at the
+ * top level only, where the kernel resolves them).
+ */
+function bind(inputs: Record<string, unknown> | undefined, parameters: Record<string, unknown>): Record<string, unknown> {
+  const value = (v: unknown, top: boolean): unknown => {
+    if (Array.isArray(v)) return v.map((item) => value(item, false)).filter((item) => item !== undefined);
+    if (!isRecord(v)) return v;
+    const keys = Object.keys(v);
+    if (keys.length === 1 && keys[0] === "$param") return parameters[String(v["$param"])];
+    if (top && keys.length === 2 && "$fromStep" in v && "$output" in v) return { $fromTask: v["$fromStep"], $output: v["$output"] };
+    return Object.fromEntries(
+      Object.entries(v)
+        .map(([k, item]) => [k, value(item, false)] as const)
+        .filter(([, item]) => item !== undefined),
+    );
+  };
+  return Object.fromEntries(
+    Object.entries(inputs ?? {})
+      .map(([k, v]) => [k, value(v, true)] as const)
+      .filter(([, v]) => v !== undefined),
+  );
+}
+
+interface ResolvedStep {
+  step: TemplateStep;
+  product: TeamProduct;
+  inputs: Record<string, unknown>;
+}
+
+/** The DAG the steps make: what core/executions.ts submits. */
+function dagOf(name: string, steps: ResolvedStep[], requestId: string | undefined): Record<string, unknown> {
+  return {
+    name,
+    ...(requestId ? { requestId } : {}),
+    tasks: steps.map(({ step, product, inputs }) => ({
+      id: step.id,
+      image: product.image,
+      action: product.action,
+      team: product.teamName,
+      serviceAccount: product.serviceAccount ?? UNREGISTERED_SERVICE_ACCOUNT,
+      secretRefs: product.secretRefs,
+      inputs,
+      ...(step.dependsOn && step.dependsOn.length > 0 ? { dependsOn: step.dependsOn } : {}),
+      ...(step.timeoutSeconds !== undefined ? { timeoutSeconds: step.timeoutSeconds } : {}),
+      ...(step.maxAttempts !== undefined ? { maxAttempts: step.maxAttempts } : {}),
+    })),
+  };
+}
+
+export interface Runnable {
+  kind: "template" | "action";
+  team: string;
+  name: string;
+  displayName: string;
+  description: string;
+  parameters: unknown;
+  actions: string[];
+  deprecated: string | null;
+  onBehalfOf: string[];
+  onBehalfOfRequired: boolean;
+}
+
+function signedIn(caller: AuthUser | undefined): AuthUser {
+  if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
+  return caller;
+}
+
+/** The templates, and actions as one-step templates, the caller may run. */
+export async function runnables(caller: AuthUser | undefined): Promise<Runnable[]> {
+  const who = signedIn(caller);
+  const out: Runnable[] = [];
+  for (const t of await listRunnableTemplates()) {
+    const a = access(who, t.teamName, t.shareWith);
+    if (!a.allowed) continue;
+    out.push({
+      kind: "template",
+      team: t.teamName,
+      name: t.name,
+      displayName: t.displayName,
+      description: t.description,
+      parameters: t.parameters,
+      actions: t.steps.map((s) => s.action),
+      deprecated: t.deprecated,
+      onBehalfOf: a.onBehalfOf,
+      onBehalfOfRequired: a.required,
+    });
+  }
+  for (const p of await listRunnableProducts()) {
+    const a = access(who, p.teamName, p.shareWith);
+    if (!a.allowed) continue;
+    out.push({
+      kind: "action",
+      team: p.teamName,
+      name: p.name,
+      displayName: p.displayName ?? p.name,
+      description: p.description ?? "",
+      parameters: p.inputSchema,
+      actions: [actionRef(p)],
+      deprecated: p.deprecated,
+      onBehalfOf: a.onBehalfOf,
+      onBehalfOfRequired: a.required,
+    });
+  }
+  return out;
+}
+
+export interface RunRequest {
+  parameters: Record<string, unknown>;
+  onBehalfOf?: string | undefined;
+  requestId?: string | undefined;
+}
+
+/** Runs a template with these parameters. Not found and not shared look the same: 404. */
+export async function runTemplate(
+  caller: AuthUser | undefined,
+  team: string,
+  name: string,
+  request: RunRequest,
+  log: FastifyBaseLogger,
+) {
+  const who = signedIn(caller);
+  const template = await findRunnableTemplate(team, name);
+  const allowed = template ? access(who, template.teamName, template.shareWith) : undefined;
+  if (!template || !allowed?.allowed) {
+    throw new ApiError(404, "NOT_FOUND", `No template "${team}/${name}" that's shared with you.`);
+  }
+  const label = `Template ${template.teamName}/${template.name}`;
+  const forTeam = onBehalfOf(allowed, request.onBehalfOf, label);
+  checkParameters(template.parameters, request.parameters, label);
+  const steps: ResolvedStep[] = [];
+  for (const step of template.steps) {
+    steps.push({ step, product: await stepProduct(step, template.teamName, label), inputs: bind(step.inputs, request.parameters) });
+  }
+  return submitChecked(who, dagOf(template.displayName, steps, request.requestId), log, {
+    template: `${template.teamName}/${template.name}`,
+    parameters: request.parameters,
+    onBehalfOf: forTeam,
+  });
+}
+
+/** Runs one action with these inputs, as a one-step template. */
+export async function runAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger) {
+  const who = signedIn(caller);
+  const product = await findRunnableProduct(productName);
+  return runProduct(who, product, request, log, productName);
+}
+
+async function runProduct(
+  who: AuthUser,
+  product: TeamProduct | undefined,
+  request: RunRequest,
+  log: FastifyBaseLogger,
+  label: string,
+) {
+  const allowed = product ? access(who, product.teamName, product.shareWith) : undefined;
+  if (!product || !allowed?.allowed) {
+    throw new ApiError(404, "NOT_FOUND", `No action "${label}" that's shared with you.`);
+  }
+  const ref = actionRef(product);
+  const forTeam = onBehalfOf(allowed, request.onBehalfOf, `Action ${ref}`);
+  checkParameters(product.inputSchema, request.parameters, `Action ${ref}`);
+  const step: TemplateStep = { id: product.action, action: ref };
+  return submitChecked(
+    who,
+    dagOf(product.displayName ?? product.name, [{ step, product, inputs: request.parameters }], request.requestId),
+    log,
+    { template: ref, parameters: request.parameters, onBehalfOf: forTeam },
+  );
+}
+
+/**
+ * Reruns a template's run: the template (or action) as it is now, with the
+ * same parameters, for the same team, as whoever reruns it, who must be
+ * allowed to run it now. Its steps use their products' current images.
+ */
+export async function rerunTemplate(caller: AuthUser | undefined, submitted: SubmittedExecution, log: FastifyBaseLogger) {
+  const who = signedIn(caller);
+  const ref = submitted.template ?? "";
+  const request: RunRequest = {
+    parameters: isRecord(submitted.templateParameters) ? submitted.templateParameters : {},
+    onBehalfOf: submitted.onBehalfOf ?? undefined,
+  };
+  if (ACTION_REF.test(ref)) return runProduct(who, await productFor(ref), request, log, ref);
+  const [team = "", name = ""] = ref.split("/");
+  return runTemplate(who, team, name, request, log);
+}
