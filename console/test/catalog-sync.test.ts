@@ -343,4 +343,42 @@ describe("a release's templates", () => {
     await syncCatalog(log);
     expect(await stored()).toEqual([]);
   });
+
+  it("aren't stored while a step's action isn't shared with their team (X2)", async () => {
+    const withB = (shareWith: string[]) =>
+      release({
+        commit: `x2-${shareWith.join("-") || "none"}`,
+        teams: [{ name: teamA }, { name: teamB }],
+        products: [product(teamA, "site"), { ...product(teamB, "db"), shareWith }],
+        templates: [
+          {
+            name: "uses-b",
+            team: teamA,
+            displayName: "Uses B",
+            parameters: { type: "object" },
+            steps: [{ id: "s", action: `${teamB}/db.run` }],
+          },
+        ],
+      });
+    const stored = async () =>
+      (
+        await db
+          .select({ name: templates.name })
+          .from(templates)
+          .innerJoin(teams, eq(teams.id, templates.teamId))
+          .where(eq(teams.name, teamA))
+      ).map((t) => t.name);
+
+    publish(withB([]), digestOf(52));
+    await syncCatalog(log);
+    expect((await status())?.problems).toEqual([
+      expect.objectContaining({ item: `template ${teamA}/uses-b`, message: expect.stringContaining(`doesn't share with team "${teamA}"`) }),
+    ]);
+    expect(await stored()).not.toContain("uses-b");
+
+    publish(withB([teamA]), digestOf(53));
+    await syncCatalog(log);
+    expect((await status())?.problems).toEqual([]);
+    expect(await stored()).toContain("uses-b");
+  });
 });

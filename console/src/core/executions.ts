@@ -48,7 +48,7 @@ import {
   submitExecution,
 } from "../kernel/client.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
-import { rerunTemplate } from "./templates.js";
+import { ensureStillRunnable, rerunTemplate } from "./templates.js";
 import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { scanBlocker } from "../scanning.js";
@@ -811,6 +811,8 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
   // A consumer retries their own run of a template without being in its
   // teams; anyone else as for any execution.
   const ownTemplateRun = submitted.template !== null && caller?.id !== undefined && submitted.submittedBy === caller.id;
+  // Theirs only while it's still shared with them, and its steps with its team.
+  if (ownTemplateRun) await ensureStillRunnable(caller, submitted);
   await authorizeTasks(tasksInfo, caller, { maintainers: !ownTemplateRun });
   const images = taskImages(submitted.payload, taskId);
   const context: RunContext = { action: "retry", teams: submitted.teams, executionId, caller, log };

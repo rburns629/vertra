@@ -40,7 +40,7 @@ import type { AuthUser } from "./auth/plugin.js";
 import { config } from "./config.js";
 import { deleteProduct, registerProduct } from "./core/products.js";
 import { applySecretStore, ensureTeam, retireTeam } from "./core/teams.js";
-import { parameterSchemaProblem } from "./core/templates.js";
+import { parameterSchemaProblem, templateStepProblems } from "./core/templates.js";
 import { db } from "./db/client.js";
 import { deleteTemplatesExcept, findTeamByName, upsertTemplate } from "./db/queries.js";
 import { catalogSync, products, teams } from "./db/schema.js";
@@ -234,6 +234,9 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
       const parameters = t.parameters ?? { type: "object" };
       const problem = parameterSchemaProblem(parameters);
       if (problem) throw new Error(`its parameters aren't a usable JSON Schema: ${problem}`);
+      // Every step's action, as applied just above, shared with this team.
+      const stepProblems = await templateStepProblems(t.team, t.name, t.steps);
+      if (stepProblems.length > 0) throw new Error(stepProblems.join(" "));
       await upsertTemplate({
         teamId: team.id,
         name: t.name,

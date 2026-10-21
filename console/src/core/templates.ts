@@ -127,7 +127,7 @@ async function productFor(ref: string): Promise<TeamProduct | undefined> {
 }
 
 /** A step's product, which must be shared with the template's team when it's another team's. */
-async function stepProduct(step: TemplateStep, templateTeam: string, label: string): Promise<TeamProduct> {
+async function stepProduct(step: Pick<TemplateStep, "id" | "action">, templateTeam: string, label: string): Promise<TeamProduct> {
   const product = await productFor(step.action);
   if (!product) {
     throw new ApiError(
@@ -387,6 +387,53 @@ async function runProduct(
  * same parameters, for the same team, as whoever reruns it, who must be
  * allowed to run it now. Its steps use their products' current images.
  */
+/**
+ * Why a template's steps can't run for its team now, one problem per step:
+ * an action that isn't registered here, or another team's that isn't
+ * shared with the template's team (X2: a step's team consents through its
+ * shareWith). Checked when a release is applied, before the template is
+ * stored, and again on every run.
+ */
+export async function templateStepProblems(
+  team: string,
+  name: string,
+  steps: Pick<TemplateStep, "id" | "action">[],
+): Promise<string[]> {
+  const problems: string[] = [];
+  for (const step of steps) {
+    try {
+      await stepProduct(step, team, `Template ${team}/${name}`);
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      problems.push(error.message);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Refuses retrying a consumer's own template or action run once it couldn't
+ * be run any more: no longer shared with them, gone, or a step's action no
+ * longer shared with the template's team. Retrying runs those steps again,
+ * so it needs the same consent as running them did.
+ */
+export async function ensureStillRunnable(caller: AuthUser | undefined, submitted: SubmittedExecution): Promise<void> {
+  const who = signedIn(caller);
+  const ref = submitted.template ?? "";
+  const refused = (why: string) =>
+    new ApiError(403, "FORBIDDEN", `${ref} ${why}, so this run can't be retried. Its team can share it again.`);
+  if (ACTION_REF.test(ref)) {
+    const product = await productFor(ref);
+    if (!product || !access(who, product.teamName, product.shareWith).allowed) throw refused("isn't shared with you any more");
+    return;
+  }
+  const [team = "", name = ""] = ref.split("/");
+  const template = await findRunnableTemplate(team, name);
+  if (!template || !access(who, template.teamName, template.shareWith).allowed) throw refused("isn't shared with you any more");
+  const problems = await templateStepProblems(template.teamName, template.name, template.steps);
+  if (problems.length > 0) throw new ApiError(403, "FORBIDDEN", `${problems.join(" ")} This run can't be retried.`);
+}
+
 export async function rerunTemplate(caller: AuthUser | undefined, submitted: SubmittedExecution, log: FastifyBaseLogger) {
   const who = signedIn(caller);
   const ref = submitted.template ?? "";

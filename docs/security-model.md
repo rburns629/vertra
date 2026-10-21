@@ -157,13 +157,17 @@ console from the registered products its steps name
 secrets (its action's `secretRefs`), token audiences and namespace are the
 product's; the person running it supplies parameters, checked against the
 template's schema, and nothing else. A step of another team's action needs
-that action shared with the template's team. Then every check a submission
-gets applies (identity, registered secrets, images, scans), and the
-cluster's policies hold as for any Job.
+that action shared with the template's team: the team whose identity does
+the work consents through its `shareWith`, checked by catalog CI, when a
+release is applied (such a template isn't stored), on every run and on
+every retry. Then every check a submission gets applies (identity,
+registered secrets, images, scans), and the cluster's policies hold as for
+any Job.
 
-A raw DAG still needs membership of every team it names. The run belongs
-to whoever ran it as well as to its steps' teams: they may see, cancel,
-retry and rerun it (a rerun runs the template again, as it is now).
+A raw DAG needs a maintainer of every team it names. The run belongs to
+whoever ran it as well as to its steps' teams: they may see, cancel, retry
+and rerun it (a rerun runs the template again, as it is now; a retry is
+refused once it, or a step's action, is no longer shared).
 
 ## Tokens for another cloud
 

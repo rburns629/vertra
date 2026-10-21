@@ -39,6 +39,7 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => {
     submitExecution: vi.fn(() => Promise.resolve({ executionId: uuid(), state: "PENDING", created: true })),
     getExecution: vi.fn((executionId: string) => Promise.resolve({ executionId, name: "x", state: "RUNNING", tasks: [] })),
     cancelExecution: vi.fn((executionId: string) => Promise.resolve({ executionId, state: "CANCELLED" })),
+    retryTask: vi.fn((executionId: string) => Promise.resolve({ executionId, state: "RUNNING" })),
   };
 });
 vi.mock("../src/imagePolicy.js", async (importOriginal) => ({
@@ -352,6 +353,28 @@ describe("a consumer's run", () => {
     expect((await call(otherOutsiderToken, "ExecutionService/CancelExecution", { executionId })).code).toBe("permission_denied");
     expect((await call(outsiderToken, "ExecutionService/CancelExecution", { executionId })).code).toBe("ok");
     expect(cancelExecution).toHaveBeenCalledWith(executionId);
+  });
+
+  it("is retried only while its steps are still shared with the template's team (X2)", async () => {
+    const run = await call<{ executionId: string }>(outsiderToken, "TemplateService/RunTemplate", {
+      team: own,
+      name: "chain",
+      parameters: { text: "retry me" },
+    });
+    const retry = () => call<RpcError>(outsiderToken, "ExecutionService/RetryTask", { executionId: run.body.executionId, taskId: "two" });
+    expect((await retry()).code).toBe("ok");
+
+    const [store] = await db.select().from(products).where(eq(products.name, `${db_}-store-put`));
+    const share = (shareWith: string[]) =>
+      upsertProduct({ name: store?.name ?? "", image: store?.image ?? "", action: "put", teamId: store?.teamId ?? null, shareWith });
+    await share([]);
+    try {
+      const refused = await retry();
+      expect(refused.code).toBe("permission_denied");
+      expect(refused.message).toContain(`doesn't share with team "${own}"`);
+    } finally {
+      await share([own]);
+    }
   });
 
   it("is rerun as the template, with the same parameters", async () => {

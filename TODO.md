@@ -381,9 +381,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   or refers outside itself. Proven on kind (a refused literal, a template
   run checked both ways); the kernel's failures by its scheduler tests
   against Postgres.
-- [ ] **P1: exports (X2).** Each team lists which of its actions other
-  teams' templates may include, and for which teams; checked when a
-  template is loaded and at submit.
+- [x] **P1: exports (X2)** (done 2026-10-21): an action's `shareWith` in
+  product.yaml is its export list, so there's no second list. Checked by
+  `vertra catalog validate`; when a release is applied (a template whose
+  step's action isn't shared with its team is a problem, not stored); on
+  every run; and on retrying a consumer's own run, which is refused once the
+  template, the action or a step is no longer shared. Raw DAGs need a
+  maintainer of every team they run in.
 - [ ] **P1: allowed targets per team (X1).** Which projects, folders or
   accounts each consumer team may aim a team's templates at; forms offer
   only those. Owner identities scoped to the folders they serve, and later

@@ -253,7 +253,9 @@ later steps act on the project an earlier step outputs, not a typed one.
 **X2. Any template could include any team's step.** Medium. The team whose
 identity does the work should consent. **Do:** each team exports the
 actions other teams' templates may include, and to which teams; the console
-checks this when it loads a template and again at submit.
+checks this when it loads a template and again at submit. **Done
+2026-10-21:** an action's `shareWith` is that export; checked by catalog CI,
+when a release is applied, on each run, and on retrying a consumer's run.
 
 **C1. Schemas declared but not enforced.** Missing capability; medium. The
 console stores each action's input and output schemas but checks
