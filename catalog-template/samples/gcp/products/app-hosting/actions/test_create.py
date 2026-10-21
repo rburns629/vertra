@@ -5,7 +5,6 @@ the product's own image with its python3 (unittest, no pytest).
 
 import importlib.util
 import json
-import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -186,16 +185,16 @@ class CreateActionTest(unittest.TestCase):
 class BuildCredentialsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = _load_create_module()
+        # Where the team secret gcp-target would be mounted: absent until a test writes it.
+        self.module.TARGET_SERVICE_ACCOUNT_FILE = Path(tempfile.mkdtemp()) / "service-account"
 
-    def test_returns_none_when_target_env_var_unset(self) -> None:
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop(self.module.TARGET_SERVICE_ACCOUNT_ENV_VAR, None)
-            self.assertIsNone(self.module._build_credentials())
+    def test_returns_none_without_the_target_secret(self) -> None:
+        self.assertIsNone(self.module._build_credentials())
 
-    def test_impersonates_target_when_env_var_set(self) -> None:
+    def test_impersonates_the_target_in_the_secret(self) -> None:
         target = "kernel-gcp-test@my-project.iam.gserviceaccount.com"
+        self.module.TARGET_SERVICE_ACCOUNT_FILE.write_text(target + "\n")
         with (
-            patch.dict(os.environ, {self.module.TARGET_SERVICE_ACCOUNT_ENV_VAR: target}),
             patch.object(self.module.google.auth, "default") as default_mock,
             patch.object(self.module.impersonated_credentials, "Credentials") as creds_cls,
         ):
@@ -217,8 +216,8 @@ class BuildCredentialsTest(unittest.TestCase):
         when impersonation is configured, main() must actually pass the
         resulting credentials to every client it constructs."""
         target = "kernel-gcp-test@my-project.iam.gserviceaccount.com"
+        self.module.TARGET_SERVICE_ACCOUNT_FILE.write_text(target + "\n")
         with (
-            patch.dict(os.environ, {self.module.TARGET_SERVICE_ACCOUNT_ENV_VAR: target}),
             patch.object(self.module.google.auth, "default") as default_mock,
             patch.object(self.module.impersonated_credentials, "Credentials") as creds_cls,
             patch.object(self.module.run_v2, "ServicesClient") as client_cls,
