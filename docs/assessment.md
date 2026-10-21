@@ -684,6 +684,26 @@ a catalog's wrapper is `./vertra`, downloading the pinned `vertra`. The
 repository's setup is `vertra catalog create`. Accepted: a larger download
 in catalog CI, and a catalog pinning a whole `vertra` release.
 
+**20. API products, through one gateway** (decided 2026-10-21). Besides
+steps, which run as Jobs, a team may publish a backend it already runs as
+an API product: `api.yaml` (`kind: Api`: the backend's URL and how to
+authenticate to it, `shareWith`, limits) and its OpenAPI file, reviewed and
+released with the catalog like any product. A gateway, a process of its
+own, forwards each request directly to the backend: the same method, path,
+query, headers and body, with the caller's credential swapped for the
+backend's and the caller named in a signed header; the answer comes back
+unchanged. The spec is the allowlist: a request whose method and path
+aren't in it is blocked at the gateway (404) and never forwarded, and one
+that doesn't match the operation's schemas is refused (400). Backends must
+be under hosts the admins allow, so the gateway can't be pointed anywhere,
+and their credentials are minted per request where the backend's cloud
+allows it (as I1), not stored. Nothing of the team's runs per request.
+Rejected: a Job per request (seconds of start-up per call, no streaming);
+running the team's own code in the path as a long-lived Deployment (a
+second way to run things, with rollouts and scaling; not needed to
+publish an existing backend). This replaces the earlier Invoke idea of
+calling an action as a run.
+
 ## 18. Roadmap
 
 None of these needs a new service. All contract changes are additive.

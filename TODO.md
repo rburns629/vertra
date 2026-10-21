@@ -7,6 +7,31 @@ design.
 
 ## Installing and operating
 
+- [ ] **Observe: security checks, logs and metrics for everyone**
+  (mocked up 2026-10-21, boards 17–19). One console section with tabs:
+  - Security checks: what the cluster enforces (and what it doesn't yet),
+    every allowed image with its scan, signer and SBOM, and every refusal
+    (admission codes, unsigned or off-main releases). Images rescanned
+    daily against new advisories.
+  - Logs: steps, gateway and platform in one search, labelled with run,
+    step, attempt, product, team and image digest. Collected from Pod
+    stdout by Grafana Alloy into Loki (both in the chart, off by default on
+    kind); the console queries Loki itself and adds the caller's
+    visibility to every query, since Loki and Grafana know nothing of
+    Vertra's teams. Mounted Secrets' values masked before storage; kept 30
+    days.
+  - Metrics: Prometheus scraping the kernel (`kernel_*`, already exported),
+    the console (`console_*`, to add) and the gateway (`gateway_*`);
+    ServiceMonitors in the charts; the console's charts for everyone,
+    Grafana with shipped dashboards and alerts for admins.
+  - The audit log, which only admins see today, as its fourth tab.
+  Who sees a step's logs, by level (decided 2026-10-21): INFO lines to
+  everyone who can see the run, with Secrets masked; DEBUG, WARN and ERROR
+  to the product's team (and admins). Steps log JSON lines with a `level`
+  (plain lines count as DEBUG, so nothing is shown to consumers by
+  accident); the level becomes a Loki label, and the console filters on it
+  by the caller's role. The product docs say: write INFO for consumers.
+
 - [ ] **An installer CLI, `vertra`**, in Go (one static binary per OS,
   released signed with the platform). Step 1 of `cli/DESIGN.md`'s build
   order is in `cli/`: kind (local) and existing clusters, `init`, `check`,
@@ -180,8 +205,8 @@ removed (done 2026-10-20). **2** Pull-based registration. **3** Roles,
 consumers, templates, exports, targets. **4** Schema checks and forms.
 **5** Default-deny networking, projected tokens, identity references from
 secrets. **6** Kernel features, in Go: retry policy, concurrency keys,
-approvals, attempts, `WatchRun`. **7** The console pages. **8** Invoke, bots
-with keyless sign-in, per-product protos. **9** Preview, what a run
+approvals, attempts, `WatchRun`. **7** The console pages. **8** API products
+through the gateway (decision 20), bots with keyless sign-in. **9** Preview, what a run
 created, examples. **10** Production: SSO, TLS, audit store, alerts, scale,
 backups, docs; then CLI releases and a public repository.
 Related items elsewhere in this file: default-deny between team
@@ -272,19 +297,18 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   nothing but the project's own defaults. That run found client-go
   printing Autopilot's warning on every Job unstructured; each distinct
   API warning is now logged once, as JSON.
-- [ ] **Release `vertra` binaries, and pin one in the catalog
-  template's `./vertra`** (version and per-platform SHA-256). Ready
-  2026-10-21, waiting on the first tag: `release.yml`'s `cli` job builds
+- [x] **Release `vertra` binaries, and pin one in the catalog
+  template's `./vertra`** (done 2026-10-21: v0.2.2, pinned in
+  `catalog-template/vertra`; the package is public with the repository).
+  `release.yml`'s `cli` job builds
   linux/darwin × amd64/arm64, pushes each to `ghcr.io/<owner>/<repo>/cli`
   as one blob (its digest the binary's SHA-256), signs it and attaches
   it with `vertra-checksums.txt` to the release; `./vertra` downloads
   its platform's blob anonymously by SHA-256 (tested against a local
-  registry). Left: push and tag a version, make the `cli` package public
-  (once, as for the images), then `.github/scripts/pin-vertra.sh
-  <version>` for `catalog-template/vertra` and each catalog's wrapper.
-  Until then the wrapper refuses to run without `VERTRA_BIN`, so a
-  catalog repository's CI can't run; this checkout's CI and `make
-  catalog-publish` build it from source.
+  registry, then from GHCR). Each later release: `.github/scripts/pin-vertra.sh
+  <version>` for `catalog-template/vertra` and each catalog's wrapper. A
+  signing step that fails with Rekor's 409 "equivalent entry" is a retried
+  upload that had succeeded: rerun the job.
 - [ ] **`buf breaking` in CI at the first release**, against the released
   protos: until then contracts change freely (decided 2026-10-19).
 - [x] **P0: pull-based catalog registration (M1, S1)** (done 2026-10-20).
@@ -479,6 +503,41 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   frontend's `dagCheck.ts`.
 
 ## Products and catalog
+
+- [ ] **API products and the gateway** (decision 20, `docs/assessment.md`;
+  mocked up 2026-10-21 in the console mockups, boards 12–16). A team
+  publishes a backend it already runs: `teams/<team>/apis/<name>/api.yaml`
+  (`kind: Api`) and its `openapi.yaml`; the gateway forwards exactly what
+  the spec describes and blocks the rest (404, never forwarded). In order:
+  1. The format: an `Api` schema in `tools/` and the CLI's embedded copy;
+     `vertra catalog validate` checks the OpenAPI file (3.0 or 3.1, every
+     operation's parameters and body schemas), that `servers` matches
+     `backend.url`, and the limits; the release carries APIs
+     (`release.proto`).
+  2. The console stores them (with the spec), applies and removes them
+     with releases, and keeps the admins' backend host allowlist (Helm
+     values); an API under no allowed host is held, not published.
+  3. The gateway: a process of its own (not the console, whose
+     interceptors and limits are for the API), in Go, reading published
+     APIs from the console's database. Per request: caller sign-in (session,
+     bot token, keyless bot), `shareWith`, the spec match (method and
+     path), parameters, headers and body against the operation's schemas,
+     per-team limits, then forward with the caller's `Authorization` and
+     hop-by-hop headers removed, the backend credential and a signed
+     `Vertra-Caller` added, and the answer streamed back. Answers say
+     `Vertra-Answered-By`. Logs and metrics without bodies.
+  4. Backend credentials, minted per request: a token for the API's own
+     ServiceAccount (TokenRequest, its audience), then Google ID tokens,
+     AWS SigV4 and Azure tokens through I1's federation. A Secret from the
+     team's store only as a fallback, read by name. The gateway's RBAC is
+     `serviceaccounts/token` on the API ServiceAccounts alone.
+  5. Its chart: Deployment, Service, its own hostname and certificate,
+     NetworkPolicy egress to allowed hosts; pausing an API, and closing the
+     gateway, from the console.
+  6. The pages: an API's page, traffic and blocked requests, a team's
+     APIs, the admin's gateway settings.
+  Proven on kind with a backend in a team namespace, then on GKE with a
+  Cloud Run backend.
 
 - [ ] **Submit orders from outside the cluster** (a storefront, an event
   bus): a public HTTPS front door for the console's `/api`, keyless sign-in

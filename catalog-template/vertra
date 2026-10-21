@@ -15,7 +15,7 @@
 # checkout: .github/scripts/build-vertra.sh there).
 set -euo pipefail
 
-version=""
+version="0.2.2"
 registry="https://ghcr.io"
 repository="rburns629/vertra/cli"
 
@@ -35,10 +35,10 @@ esac
 platform="$os-$arch"
 # Each platform's binary's SHA-256 (the release's vertra-checksums.txt).
 case $platform in
-  linux-amd64) sha256="" ;;
-  linux-arm64) sha256="" ;;
-  darwin-amd64) sha256="" ;;
-  darwin-arm64) sha256="" ;;
+  linux-amd64) sha256="7ee3c8169709e9debc0497f118e50f0f097a896d6f6095e45b0dd90ce5015df4" ;;
+  linux-arm64) sha256="1ff6bfa09a8a5d61b0cf8c86946a0bbf14bd91ef3d51271ceb3540b1df2f0b58" ;;
+  darwin-amd64) sha256="e4359af0433dd41551ffb0b4251af064e3ded4feef369df85f3cd7c5b3985f9e" ;;
+  darwin-arm64) sha256="6e682b673b1c266b97519668fe4cf6ee3a4c3e67f57033e09f2834b6b801c286" ;;
   *) echo "vertra: no release for $platform" >&2; exit 1 ;;
 esac
 if [ -z "$version" ] || [ -z "$sha256" ]; then
