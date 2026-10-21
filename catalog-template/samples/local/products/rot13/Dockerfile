@@ -1,6 +1,6 @@
 # Build: one release binary, from the locked dependency versions. The Rust
 # toolchain stays in this stage.
-FROM rust:1.90-slim-bookworm@sha256:64232e656c058f4468e8d024e990acff04f0fd5a5c0a88a574dc37773d7325c9 AS build
+FROM rust:1.98-slim-bookworm@sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730 AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY src/ src/
