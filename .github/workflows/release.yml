@@ -104,7 +104,10 @@ jobs:
       - name: Sign in to GHCR
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+        # Helm keeps its own credentials; cosign reads Docker's.
+        run: |
+          echo "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
       - name: Package, push and sign the charts
         run: |
           version="${TAG#v}"
