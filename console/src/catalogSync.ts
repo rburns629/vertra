@@ -184,7 +184,11 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
     }
     await attempt(`team ${team.name}`, async () => {
       await ensureTeam(CATALOG, team.name, log);
-      await db.update(teams).set({ fromCatalog: true }).where(eq(teams.name, team.name));
+      const allowedTargets = team.allowedTargets.map((rule) => ({
+        teams: rule.teams,
+        targets: Object.fromEntries(rule.targets.map((t) => [t.type, t.values])),
+      }));
+      await db.update(teams).set({ fromCatalog: true, allowedTargets }).where(eq(teams.name, team.name));
     });
   }
   const released = new Set<string>();

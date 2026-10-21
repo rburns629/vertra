@@ -249,6 +249,10 @@ a folder or the organization, a consumer can point it at someone else's
 project. **Do:** scope owner identities to the folders they serve; give
 each team a list of allowed targets per consumer team (section 12); have
 later steps act on the project an earlier step outputs, not a typed one.
+**Allowed targets done 2026-10-21:** team.yaml's `allowedTargets`, checked
+against inputs typed `x-vertra-needs` before another team's run starts;
+outputs passed between steps aren't checked. Scoping owner identities stays
+each team's own (the gcp sample shows it).
 
 **X2. Any template could include any team's step.** Medium. The team whose
 identity does the work should consent. **Do:** each team exports the

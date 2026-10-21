@@ -1081,6 +1081,8 @@ export interface Runnable {
   sourceUrl: string | null;
   /** Not shared with you: GitHub's new-issue page asking its team for it. */
   askForAccessUrl: string | null;
+  /** Its parameters that name another team's targets, with what yours may give. */
+  targets: { parameter: string; type: string; allowed: string[] }[];
 }
 
 export async function listRunnables(): Promise<Runnable[]> {
@@ -1100,6 +1102,7 @@ export async function listRunnables(): Promise<Runnable[]> {
     shareWith: r.shareWith,
     sourceUrl: r.sourceUrl || null,
     askForAccessUrl: r.askForAccessUrl || null,
+    targets: r.targets.map((t) => ({ parameter: t.parameter, type: t.type, allowed: t.allowed })),
   }));
 }
 

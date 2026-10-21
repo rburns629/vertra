@@ -54,7 +54,18 @@ export const teams = pgTable("teams", {
   // longer names it. A team an admin made isn't touched by releases, unless
   // one names it, which makes it the catalog's.
   fromCatalog: boolean("from_catalog").notNull().default(false),
+  // team.yaml's allowedTargets, from the catalog's release: where other
+  // teams may aim this team's products (targets.ts). Empty: nowhere.
+  allowedTargets: jsonb("allowed_targets").$type<TargetRule[]>().notNull().default([]),
 });
+
+/** One rule of a team's allowedTargets: the teams it covers ("*" for every
+ * team), and per kind of target (gcp.project, ...) the values or patterns
+ * they may supply. */
+export interface TargetRule {
+  teams: string[];
+  targets: Record<string, string[]>;
+}
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),

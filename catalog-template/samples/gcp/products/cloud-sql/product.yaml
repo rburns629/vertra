@@ -23,6 +23,7 @@ actions:
       properties:
         projectId:
           type: string
+          x-vertra-needs: gcp.project  # a target: checked against allowedTargets for other teams
           description: >-
             The already-existing GCP project this instance should live in
             -- typically gcp/_project's own output, via $fromTask/$output.

@@ -1,0 +1,1 @@
+ALTER TABLE "teams" ADD COLUMN "allowed_targets" jsonb DEFAULT '[]'::jsonb NOT NULL;

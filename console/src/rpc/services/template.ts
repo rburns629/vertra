@@ -31,6 +31,7 @@ export function templateService(): ServiceImpl<typeof TemplateService> {
           shareWith: r.shareWith,
           sourceUrl: r.sourceUrl ?? "",
           askForAccessUrl: r.askForAccessUrl ?? "",
+          targets: r.targets,
         })),
       };
     },

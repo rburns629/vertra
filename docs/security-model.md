@@ -164,6 +164,15 @@ every retry. Then every check a submission gets applies (identity,
 registered secrets, images, scans), and the cluster's policies hold as for
 any Job.
 
+Where another team may aim a team's products is the owning team's: an
+input typed as a target (`x-vertra-needs: gcp.project`, `gcp.folder`,
+`aws.account`, `azure.subscription`) must match its team.yaml's
+`allowedTargets` for the running team, or the run is refused before it
+starts (`TARGET_NOT_ALLOWED`, `console/src/targets.ts`). The owning team's
+own runs aren't limited, and a value an earlier step produced isn't
+checked. The identity's cloud permissions, scoped to the same folders,
+hold if the console's check is ever bypassed.
+
 A raw DAG needs a maintainer of every team it names. The run belongs to
 whoever ran it as well as to its steps' teams: they may see, cancel, retry
 and rerun it (a rerun runs the template again, as it is now; a retry is

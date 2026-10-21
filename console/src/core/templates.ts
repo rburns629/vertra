@@ -35,11 +35,15 @@ import {
   listRunnableTemplates,
   type Product,
   type SubmittedExecution,
+  type Team,
   catalogRepository,
+  findTeamByName,
+  listAllTeams,
 } from "../db/queries.js";
-import type { TemplateStep } from "../db/schema.js";
+import type { TargetRule, TemplateStep } from "../db/schema.js";
 import { errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
+import { allowedValues, targetInputs, targetProblems } from "../targets.js";
 import { submitChecked } from "./executions.js";
 
 type TeamProduct = Product & { teamName: string };
@@ -182,6 +186,65 @@ interface ResolvedStep {
   inputs: Record<string, unknown>;
 }
 
+/**
+ * Refuses a run that aims a product's target inputs (targets.ts) somewhere
+ * its team doesn't let the run's team, before anything runs (X1). The run's
+ * team is the one it's for, else any of the caller's. The owning team's own
+ * people, and admins, aren't limited. Each problem names the parameter that
+ * supplied the value when there is one.
+ */
+async function ensureTargetsAllowed(who: AuthUser, forTeam: string | undefined, steps: ResolvedStep[], label: string): Promise<void> {
+  if (who.isAdmin) return;
+  const teams = forTeam ? [forTeam] : who.teamNames;
+  const owners = new Map<string, Team | undefined>();
+  const problems: { field: string; message: string }[] = [];
+  for (const { step, product, inputs } of steps) {
+    if (who.teamNames.includes(product.teamName)) continue;
+    if (!owners.has(product.teamName)) owners.set(product.teamName, await findTeamByName(product.teamName));
+    const owner = owners.get(product.teamName);
+    if (!owner) continue;
+    for (const problem of targetProblems(owner, product.inputSchema, inputs, teams)) {
+      const source = step.inputs?.[problem.field];
+      const parameter = isRecord(source) && typeof source["$param"] === "string" ? source["$param"] : undefined;
+      const field = parameter
+        ? `parameters.${parameter}`
+        : step.inputs === undefined
+          ? `parameters.${problem.field}`
+          : `steps.${step.id}.inputs.${problem.field}`;
+      problems.push({ field, message: problem.message });
+    }
+  }
+  if (problems.length === 0) return;
+  throw new ApiError(403, "TARGET_NOT_ALLOWED", `${label}: ${problems.map((p) => p.message).join(" ")}`, undefined, { problems });
+}
+
+/** A runnable's parameters that name targets, with what the caller's teams may give each (X1). */
+export interface TargetChoice {
+  parameter: string;
+  type: string;
+  /** Values or patterns ("*" matches any run of characters); empty: none. */
+  allowed: string[];
+}
+
+function targetChoices(
+  who: AuthUser,
+  steps: { inputs?: Record<string, unknown> | undefined; product: { teamName: string; inputSchema: unknown } }[],
+  rulesOf: (team: string) => TargetRule[],
+): TargetChoice[] {
+  if (who.isAdmin) return [];
+  const choices = new Map<string, TargetChoice>();
+  for (const { inputs, product } of steps) {
+    if (who.teamNames.includes(product.teamName)) continue;
+    for (const [name, type] of targetInputs(product.inputSchema)) {
+      const source = inputs === undefined ? { $param: name } : inputs[name];
+      const parameter = isRecord(source) && typeof source["$param"] === "string" ? source["$param"] : undefined;
+      if (!parameter) continue;
+      choices.set(parameter, { parameter, type, allowed: allowedValues(rulesOf(product.teamName), who.teamNames, type) });
+    }
+  }
+  return [...choices.values()];
+}
+
 /** The DAG the steps make: what core/executions.ts submits. */
 function dagOf(name: string, steps: ResolvedStep[], requestId: string | undefined): Record<string, unknown> {
   return {
@@ -220,6 +283,8 @@ export interface Runnable {
   sourceUrl: string | null;
   /** Not shared: GitHub's new-issue page, filled in with what to change. */
   askForAccessUrl: string | null;
+  /** Its parameters that name targets, and what the caller's teams may give them. */
+  targets: TargetChoice[];
 }
 
 /** https://github.com/<owner>/<repo> for a release's repository, or null for
@@ -276,6 +341,10 @@ function signedIn(caller: AuthUser | undefined): AuthUser {
 export async function runnables(caller: AuthUser | undefined): Promise<Runnable[]> {
   const who = signedIn(caller);
   const base = githubBase(await catalogRepository());
+  const rules = new Map((await listAllTeams()).map((team) => [team.name, team.allowedTargets]));
+  const rulesOf = (team: string) => rules.get(team) ?? [];
+  const products = await listRunnableProducts();
+  const byRef = new Map(products.map((p) => [actionRef(p), p]));
   const out: Runnable[] = [];
   for (const t of await listRunnableTemplates()) {
     if (!sees(who, t.teamName, t.hidden)) continue;
@@ -294,9 +363,17 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       shared: a.allowed,
       shareWith: t.shareWith,
       ...catalogLinks(base, t.sourcePath, "the template", `${t.teamName}/${t.name}`, who, a.allowed),
+      targets: targetChoices(
+        who,
+        t.steps.flatMap((s) => {
+          const product = byRef.get(s.action);
+          return product ? [{ inputs: s.inputs ?? {}, product }] : [];
+        }),
+        rulesOf,
+      ),
     });
   }
-  for (const p of await listRunnableProducts()) {
+  for (const p of products) {
     if (!sees(who, p.teamName, p.hidden)) continue;
     const a = access(who, p.teamName, p.shareWith);
     out.push({
@@ -313,6 +390,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       shared: a.allowed,
       shareWith: p.shareWith,
       ...catalogLinks(base, p.sourcePath, "the action", actionRef(p), who, a.allowed),
+      targets: targetChoices(who, [{ product: p }], rulesOf),
     });
   }
   return out;
@@ -345,6 +423,7 @@ export async function runTemplate(
   for (const step of template.steps) {
     steps.push({ step, product: await stepProduct(step, template.teamName, label), inputs: bind(step.inputs, request.parameters) });
   }
+  await ensureTargetsAllowed(who, forTeam, steps, label);
   return submitChecked(who, dagOf(template.displayName, steps, request.requestId), log, {
     template: `${template.teamName}/${template.name}`,
     parameters: request.parameters,
@@ -374,6 +453,7 @@ async function runProduct(
   const forTeam = onBehalfOf(allowed, request.onBehalfOf, `Action ${ref}`);
   checkParameters(product.inputSchema, request.parameters, `Action ${ref}`);
   const step: TemplateStep = { id: product.action, action: ref };
+  await ensureTargetsAllowed(who, forTeam, [{ step, product, inputs: request.parameters }], `Action ${ref}`);
   return submitChecked(
     who,
     dagOf(product.displayName ?? product.name, [{ step, product, inputs: request.parameters }], request.requestId),

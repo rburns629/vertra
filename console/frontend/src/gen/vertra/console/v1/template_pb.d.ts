@@ -139,6 +139,17 @@ export declare type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: string ask_for_access_url = 14;
    */
   askForAccessUrl: string;
+
+  /**
+   * Its parameters that name a target (a project, folder, account or
+   * subscription another team's product acts on), with what the caller's
+   * teams may give each. A run with any other value is refused
+   * (permission_denied, TARGET_NOT_ALLOWED). Empty for the owning team's
+   * own people and admins, who aren't limited.
+   *
+   * @generated from field: repeated vertra.console.v1.TargetChoice targets = 15;
+   */
+  targets: TargetChoice[];
 };
 
 /**
@@ -171,6 +182,37 @@ export enum Runnable_Kind {
  * Describes the enum vertra.console.v1.Runnable.Kind.
  */
 export declare const Runnable_KindSchema: GenEnum<Runnable_Kind>;
+
+/**
+ * @generated from message vertra.console.v1.TargetChoice
+ */
+export declare type TargetChoice = Message<"vertra.console.v1.TargetChoice"> & {
+  /**
+   * @generated from field: string parameter = 1;
+   */
+  parameter: string;
+
+  /**
+   * gcp.project, gcp.folder, aws.account or azure.subscription.
+   *
+   * @generated from field: string type = 2;
+   */
+  type: string;
+
+  /**
+   * Values, or patterns where "*" matches any run of characters; empty:
+   * none, so a run can't supply one.
+   *
+   * @generated from field: repeated string allowed = 3;
+   */
+  allowed: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.TargetChoice.
+ * Use `create(TargetChoiceSchema)` to create a new message.
+ */
+export declare const TargetChoiceSchema: GenMessage<TargetChoice>;
 
 /**
  * @generated from message vertra.console.v1.RunTemplateRequest

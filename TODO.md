@@ -388,10 +388,17 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   every run; and on retrying a consumer's own run, which is refused once the
   template, the action or a step is no longer shared. Raw DAGs need a
   maintainer of every team they run in.
-- [ ] **P1: allowed targets per team (X1).** Which projects, folders or
-  accounts each consumer team may aim a team's templates at; forms offer
-  only those. Owner identities scoped to the folders they serve, and later
-  steps acting on a project an earlier step outputs.
+- [x] **P1: allowed targets per team (X1)** (done 2026-10-21): team.yaml's
+  `allowedTargets` (rules of teams and, per kind, values or `*` patterns),
+  carried by releases; an action input typed `x-vertra-needs` gcp.project,
+  gcp.folder, aws.account or azure.subscription is a target. Another
+  team's run with any other value is refused before it starts
+  (`TARGET_NOT_ALLOWED`, `console/src/targets.ts`); the Run form offers the
+  allowed values. The owning team and admins aren't limited; a value from
+  an earlier step isn't checked. Proven on kind. Left: re-checking targets
+  on retry if a team narrows its rules; GCP folder membership isn't looked
+  up (patterns on IDs, by decision); scoping owner identities to folders is
+  each team's cloud setup.
 - [ ] **P1: retry policy and idempotency per action (R3)** in
   `product.yaml`; platform failures (a reclaimed node, a lost Job) retried
   for idempotent actions. Default `maxAttempts` is 1 today.

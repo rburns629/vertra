@@ -17,6 +17,7 @@ import {
   templates,
   catalogSync,
   type ProductResources,
+  type TargetRule,
   type TeamRole,
   type TemplateStep,
 } from "./schema.js";
@@ -58,6 +59,8 @@ export interface Team {
   createdAt: Date;
   retiredAt: Date | null;
   deletedAt: Date | null;
+  /** Where other teams may aim its products (targets.ts). */
+  allowedTargets: TargetRule[];
 }
 
 /** A live team: purged (deleted) teams are invisible to every route. A

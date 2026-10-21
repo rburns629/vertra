@@ -13,3 +13,13 @@ description: >-
   cloud account at all.
 owner: gcp-team
 contact: gcp-team@example.com
+# Where other teams may aim these products. Each projectId input is a
+# gcp.project target (x-vertra-needs in product.yaml): when another team
+# runs one, the project must match a rule for that team, or the run is
+# refused before it starts. Your own team isn't limited. Narrow it to each
+# consumer's projects, for example:
+#   - teams: [web]
+#     gcp.project: ["web-*"]
+allowedTargets:
+  - teams: ["*"]
+    gcp.project: ["sandbox-*"]

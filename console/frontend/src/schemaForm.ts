@@ -144,3 +144,31 @@ export function serverProblems(problems: { field: string; message: string }[]): 
   }
   return { fields, general };
 }
+
+/** What a target parameter may be, as the console lists it (TargetChoice). */
+export interface TargetChoice {
+  parameter: string;
+  type: string;
+  allowed: string[];
+}
+
+/**
+ * Fields for a run's target parameters (where another team's product acts):
+ * a choice when its team allows exact values, otherwise the allowed
+ * patterns beneath it. The console refuses any other value either way.
+ */
+export function withTargets(fields: Field[] | null, targets: TargetChoice[]): Field[] | null {
+  if (!fields) return fields;
+  return fields.map((field) => {
+    const target = targets.find((t) => t.parameter === field.name);
+    if (!target) return field;
+    const exact = target.allowed.length > 0 && target.allowed.every((value) => !value.includes("*"));
+    if (exact && field.kind === "text") return { ...field, kind: "choice", choices: target.allowed };
+    const description =
+      target.allowed.length > 0
+        ? `Its team lets yours use ${target.type} ${target.allowed.join(", ")} (* is anything).`
+        : `Its team hasn't let yours use any ${target.type}; ask them to.`;
+    return { ...field, description };
+  });
+}
+

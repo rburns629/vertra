@@ -40,6 +40,22 @@ message Team {
   // credential such a store may use is never here: each install sets its
   // own in the console.
   repeated google.protobuf.Struct secret_store_documents = 2;
+  // team.yaml's allowedTargets: where other teams may aim its products.
+  repeated TargetRule allowed_targets = 3;
+}
+
+// One rule of a team's allowedTargets: the teams it covers ("*" for every
+// team) and, per kind of target, the values or patterns ("*" matches any
+// run of characters) they may supply.
+message TargetRule {
+  repeated string teams = 1;
+  repeated Targets targets = 2;
+}
+
+message Targets {
+  // gcp.project, gcp.folder, aws.account or azure.subscription.
+  string type = 1;
+  repeated string values = 2;
 }
 
 // One action of a product.yaml, as the console registers it.

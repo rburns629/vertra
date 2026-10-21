@@ -39,7 +39,7 @@ templates/                    starters to copy (checked by CI, never published)
 samples/<team>/               example teams: local (five languages); gcp, aws, azure (billed)
 teams/
   <team>/                    one team = one console team = one Kubernetes namespace
-    team.yaml                 who the team is: name, description, owner, contact
+    team.yaml                 who the team is: name, description, owner, contact; allowedTargets
     README.md                 optional
     products/
       <product>/              its image is <registry>/<team>/<product>
@@ -193,6 +193,27 @@ for access**, which opens a new issue on this repository in the person's
 browser saying what to add to `shareWith` and where. Mark one
 `visibility: hidden` (an action in product.yaml, or a template) and only
 your team sees it; it can't be shared then.
+
+When another team runs your product, it chooses the inputs, so it could aim
+your identity at something that isn't theirs. Type each input that names a
+project, folder, account or subscription with `x-vertra-needs` (`gcp.project`,
+`gcp.folder`, `aws.account` or `azure.subscription`), and list in your
+team.yaml where each team may aim it:
+
+```yaml
+allowedTargets:
+  - teams: [web]
+    gcp.project: ["web-*"]        # * matches anything
+  - teams: ["*"]
+    gcp.project: [sandbox-1]
+```
+
+The console refuses another team's run with any other value before it
+starts (`TARGET_NOT_ALLOWED`), and its form offers only those values. With
+no rule for a team, that team can't supply the target at all. Your own
+team isn't limited, and a value an earlier step produced isn't checked.
+Keep your identity's cloud permissions to the same folders: that's what
+holds if anything else goes wrong (samples/gcp shows both).
 
 A catalog from before format v2 (no `apiVersion` in its files) is
 converted in place by `./vertra catalog migrate`, comments and all; review the

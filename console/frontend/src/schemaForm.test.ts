@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { fieldsOf, initialValues, serverProblems, toParameters } from "./schemaForm";
+import { fieldsOf, initialValues, serverProblems, toParameters, withTargets } from "./schemaForm";
 
 const schema = {
   type: "object",
@@ -59,3 +59,21 @@ describe("a run form from a schema", () => {
     ).toEqual({ fields: { text: "must NOT have more than 10 characters" }, general: ["must have required property 'count'"] });
   });
 });
+
+describe("target parameters", () => {
+  const fields = fieldsOf({ type: "object", properties: { projectId: { type: "string" }, name: { type: "string" } } });
+
+  it("are a choice when their team allows exact values, and the rest is untouched", () => {
+    const out = withTargets(fields, [{ parameter: "projectId", type: "gcp.project", allowed: ["apps-dev", "apps-prod"] }]);
+    expect(out?.find((f) => f.name === "projectId")).toMatchObject({ kind: "choice", choices: ["apps-dev", "apps-prod"] });
+    expect(out?.find((f) => f.name === "name")).toEqual(fields?.find((f) => f.name === "name"));
+  });
+
+  it("say what's allowed when it's a pattern, or that nothing is", () => {
+    const patterned = withTargets(fields, [{ parameter: "projectId", type: "gcp.project", allowed: ["apps-*"] }]);
+    expect(patterned?.find((f) => f.name === "projectId")).toMatchObject({ kind: "text", description: expect.stringContaining("apps-*") });
+    const none = withTargets(fields, [{ parameter: "projectId", type: "gcp.project", allowed: [] }]);
+    expect(none?.find((f) => f.name === "projectId")?.description).toContain("hasn't let yours");
+  });
+});
+

@@ -20,6 +20,7 @@ actions:
       properties:
         projectId:
           type: string
+          x-vertra-needs: gcp.project  # a target: checked against allowedTargets for other teams
           description: >-
             GCP project the service is deployed into. Typically supplied
             via $fromTask/$output from a gcp/_project create task.

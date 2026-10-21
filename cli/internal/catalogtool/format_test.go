@@ -271,3 +271,31 @@ func TestVisibility(t *testing.T) {
 		t.Error("a hidden template that's also shared was accepted")
 	}
 }
+
+// allowedTargets in team.yaml: checked against the schema, and carried in
+// the release as rules of kinds and values.
+func TestAllowedTargets(t *testing.T) {
+	team := func(targets string) *Catalog {
+		return catalogWith(t, map[string]string{"teams/a/team.yaml": "apiVersion: " + APIVersion +
+			"\nkind: Team\nname: a\ndisplayName: A\ndescription: A\nowner: a\n" + targets})
+	}
+	good := "allowedTargets:\n  - teams: [web]\n    gcp.project: [\"web-*\"]\n    gcp.folder: [folders/12]\n"
+	c := team(good)
+	if out := errorsOf(t, (*Catalog).ValidateTeams, c); out != "" {
+		t.Fatalf("good rules were refused:\n%s", out)
+	}
+	rules, err := targetRules(filepath.Join(c.Root, "teams/a/team.yaml"))
+	if err != nil || len(rules) != 1 || strings.Join(rules[0].GetTeams(), ",") != "web" || len(rules[0].GetTargets()) != 2 ||
+		rules[0].GetTargets()[0].GetType() != "gcp.project" || rules[0].GetTargets()[0].GetValues()[0] != "web-*" {
+		t.Errorf("rules = %v, %v", rules, err)
+	}
+	for name, bad := range map[string]string{
+		"an unknown kind": "allowedTargets:\n  - teams: [web]\n    gcp.org: [\"1\"]\n",
+		"no targets":      "allowedTargets:\n  - teams: [web]\n",
+		"no teams":        "allowedTargets:\n  - gcp.project: [x]\n",
+	} {
+		if out := errorsOf(t, (*Catalog).ValidateTeams, team(bad)); out == "" {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+}

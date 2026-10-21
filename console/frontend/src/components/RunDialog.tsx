@@ -14,7 +14,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ApiError, runRunnable, type Runnable } from "../api";
-import { fieldsOf, initialValues, serverProblems, toParameters, type Field, type Values } from "../schemaForm";
+import { fieldsOf, initialValues, serverProblems, toParameters, withTargets, type Field, type Values } from "../schemaForm";
 
 /**
  * Runs a template, or an action on its own: a form from its parameter
@@ -25,7 +25,7 @@ import { fieldsOf, initialValues, serverProblems, toParameters, type Field, type
  */
 export function RunDialog({ runnable, onClose }: { runnable: Runnable; onClose: () => void }) {
   const navigate = useNavigate();
-  const fields = useMemo(() => fieldsOf(runnable.parameters), [runnable]);
+  const fields = useMemo(() => withTargets(fieldsOf(runnable.parameters), runnable.targets), [runnable]);
   const [values, setValues] = useState<Values>(() => (fields ? initialValues(runnable.parameters, fields) : {}));
   const [json, setJson] = useState("{}");
   const [team, setTeam] = useState(runnable.onBehalfOfRequired && runnable.onBehalfOf.length === 1 ? (runnable.onBehalfOf[0] ?? "") : "");

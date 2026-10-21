@@ -4140,6 +4140,41 @@
      "repeated": false,
      "optional": false,
      "comment": "When it isn't shared with the caller: GitHub's new-issue page on the\ncatalog repository, filled in with what to change, which the person\nopens in their own browser. Empty when it can't be built."
+    },
+    {
+     "name": "targets",
+     "type": "TargetChoice",
+     "ref": "vertra.console.v1.TargetChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "Its parameters that name a target (a project, folder, account or\nsubscription another team's product acts on), with what the caller's\nteams may give each. A run with any other value is refused\n(permission_denied, TARGET_NOT_ALLOWED). Empty for the owning team's\nown people and admins, who aren't limited."
+    }
+   ]
+  },
+  "vertra.console.v1.TargetChoice": {
+   "name": "TargetChoice",
+   "comment": "",
+   "fields": [
+    {
+     "name": "parameter",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "type",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "gcp.project, gcp.folder, aws.account or azure.subscription."
+    },
+    {
+     "name": "allowed",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Values, or patterns where \"*\" matches any run of characters; empty:\nnone, so a run can't supply one."
     }
    ]
   },

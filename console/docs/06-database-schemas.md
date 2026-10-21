@@ -258,6 +258,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `retired_at` | timestamptz | yes | Set when the team is retired: read-only, products unregistered. Clearing it brings the team back. |
 | `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
 | `from_catalog` | boolean | no | Made by a catalog release: retired when a release no longer names it. A team an admin made isn't touched. |
+| `allowed_targets` | jsonb | no | team.yaml's `allowedTargets` from the release: `[{ teams, targets: { "gcp.project": [values or patterns], ... } }]`, where other teams may aim this team's products. Empty: nowhere. |
 
 ### users
 

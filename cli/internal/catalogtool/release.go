@@ -5,8 +5,10 @@ package catalogtool
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -121,12 +123,22 @@ func structOf(value any) (*structpb.Struct, error) {
 func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, repository string) (*catalogv1.Release, error) {
 	release := &catalogv1.Release{Commit: commit, Repository: repository, CreatedAt: timestamppb.Now()}
 	var problems []string
+	dirs := map[string]string{}
+	for _, d := range c.TeamDirs() {
+		dirs[filepath.Base(d)] = d
+	}
 	for _, team := range c.TeamNames() {
 		if team == ReleaseRepositoryName {
 			problems = append(problems, fmt.Sprintf("teams/%s: %s is the release's own repository; rename the team", team, team))
 			continue
 		}
 		t := &catalogv1.Team{Name: team}
+		rules, err := targetRules(filepath.Join(dirs[team], "team.yaml"))
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("teams/%s/team.yaml: %v", team, err))
+			continue
+		}
+		t.AllowedTargets = rules
 		if len(c.secretStoreFiles(team)) > 0 {
 			documents, found := c.secretStoreDocuments(team)
 			if len(found) == 0 {
@@ -354,4 +366,37 @@ func (c *Catalog) Release(ctx context.Context) (bool, error) {
 	c.info("Released %d team(s) and %d product action(s) as %s", len(release.GetTeams()), len(release.GetProducts()), reference)
 	c.summary(fmt.Sprintf("- Released the catalog as `%s` (%d teams, %d actions)", reference, len(release.GetTeams()), len(release.GetProducts())))
 	return true, nil
+}
+
+// TargetTypes are the kinds of target a team's allowedTargets lists, and an
+// action input names with x-vertra-needs to be checked against them.
+var TargetTypes = []string{"gcp.project", "gcp.folder", "aws.account", "azure.subscription"}
+
+// targetRules are a team.yaml's allowedTargets, as a release carries them.
+func targetRules(path string) ([]*catalogv1.TargetRule, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil // validation asks for it; a release names no rules then
+	}
+	if err != nil {
+		return nil, err
+	}
+	doc, problem := loadYAML(data)
+	if problem != "" {
+		return nil, errors.New(problem)
+	}
+	spec, _ := doc.(map[string]any)
+	raw, _ := spec["allowedTargets"].([]any)
+	var rules []*catalogv1.TargetRule
+	for _, r := range raw {
+		m, _ := r.(map[string]any)
+		rule := &catalogv1.TargetRule{Teams: stringList(m["teams"])}
+		for _, kind := range TargetTypes {
+			if values := stringList(m[kind]); len(values) > 0 {
+				rule.Targets = append(rule.Targets, &catalogv1.Targets{Type: kind, Values: values})
+			}
+		}
+		rules = append(rules, rule)
+	}
+	return rules, nil
 }

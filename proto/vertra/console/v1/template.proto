@@ -74,6 +74,21 @@ message Runnable {
   // catalog repository, filled in with what to change, which the person
   // opens in their own browser. Empty when it can't be built.
   string ask_for_access_url = 14;
+  // Its parameters that name a target (a project, folder, account or
+  // subscription another team's product acts on), with what the caller's
+  // teams may give each. A run with any other value is refused
+  // (permission_denied, TARGET_NOT_ALLOWED). Empty for the owning team's
+  // own people and admins, who aren't limited.
+  repeated TargetChoice targets = 15;
+}
+
+message TargetChoice {
+  string parameter = 1;
+  // gcp.project, gcp.folder, aws.account or azure.subscription.
+  string type = 2;
+  // Values, or patterns where "*" matches any run of characters; empty:
+  // none, so a run can't supply one.
+  repeated string allowed = 3;
 }
 
 message RunTemplateRequest {
