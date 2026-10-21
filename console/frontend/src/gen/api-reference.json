@@ -1723,6 +1723,77 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "attempts",
+     "type": "Attempt",
+     "ref": "vertra.console.v1.Attempt",
+     "repeated": true,
+     "optional": false,
+     "comment": "Every attempt, first to last: who asked for it and what acted in it."
+    }
+   ]
+  },
+  "vertra.console.v1.Attempt": {
+   "name": "Attempt",
+   "comment": "",
+   "fields": [
+    {
+     "name": "number",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "startedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "completedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "failure",
+     "type": "Failure",
+     "ref": "vertra.console.v1.Failure",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "requestedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The email of who asked for it: whoever submitted the run for a first\nattempt, or retried it; empty for an automatic retry."
+    },
+    {
+     "name": "trigger",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "submitted, retried or automatic_retry."
+    },
+    {
+     "name": "actedAs",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The identity it ran as, <team>/<serviceAccount>, and its image."
+    },
+    {
+     "name": "image",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

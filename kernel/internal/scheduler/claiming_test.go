@@ -352,3 +352,50 @@ func TestTwoSchedulersNeverClaimTwoTasksWithTheSameKey(t *testing.T) {
 	sort.Ints(counts)
 	equal(t, "claims", counts, []int{0, 1})
 }
+
+func TestEachAttemptSaysWhoAskedAndWhatActed(t *testing.T) {
+	tx := txFor(t)
+	ctx := context.Background()
+	id := submit(t, tx, "idem-who-asked", task("only", team("payments")))
+	if _, err := tx.Exec(ctx, `UPDATE executions SET requested_by = 'user:ana' WHERE id = $1::uuid`, id); err != nil {
+		t.Fatal(err)
+	}
+	type row struct {
+		number                               int
+		requestedBy, trigger, actedAs, image string
+	}
+	attempt := func(n int) row {
+		t.Helper()
+		var r row
+		var by *string
+		if err := tx.QueryRow(ctx, `SELECT a.attempt_number, a.requested_by, a.trigger, a.acted_as, a.image FROM task_attempts a
+			JOIN execution_tasks t ON t.id = a.task_id WHERE t.execution_id = $1::uuid AND a.attempt_number = $2`, id, n).
+			Scan(&r.number, &by, &r.trigger, &r.actedAs, &r.image); err != nil {
+			t.Fatal(err)
+		}
+		if by != nil {
+			r.requestedBy = *by
+		}
+		return r
+	}
+	again := func(by *string) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `UPDATE execution_tasks SET state = 'READY', next_attempt_requested_by = $2
+			WHERE execution_id = $1::uuid`, id, by); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now()
+	claim(t, tx, "scheduler-1", time.Minute, now)
+	equal(t, "first", attempt(1), row{1, "user:ana", "submitted", "payments/default", "demo-project-product:local"})
+
+	sam := "user:sam"
+	again(&sam)
+	claimed := claim(t, tx, "scheduler-1", time.Minute, now)
+	equal(t, "retried by someone", attempt(2), row{2, "user:sam", "retried", "payments/default", "demo-project-product:local"})
+	equal(t, "cleared", claimed[0].NextAttemptRequestedBy == nil, true)
+
+	again(nil)
+	claim(t, tx, "scheduler-1", time.Minute, now)
+	equal(t, "retried automatically", attempt(3), row{3, "", "automatic_retry", "payments/default", "demo-project-product:local"})
+}

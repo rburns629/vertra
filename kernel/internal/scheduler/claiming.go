@@ -174,11 +174,23 @@ func (p *pass) claimReadyTasks() ([]*Task, error) {
 		t.LeaseOwner = &p.opts.Owner
 		t.LeaseExpiresAt = ptr(p.now.Add(p.opts.LeaseDuration))
 		t.AttemptCount++
+		// Who asked for this attempt: whoever retried it, else whoever
+		// submitted it for its first, else nobody (an automatic retry).
+		trigger, requestedBy := "automatic_retry", t.NextAttemptRequestedBy
+		switch {
+		case requestedBy != nil:
+			trigger = "retried"
+		case t.AttemptCount == 1:
+			trigger = "submitted"
+		}
+		t.NextAttemptRequestedBy = nil
 		if err := saveTask(p.ctx, p.db, t); err != nil {
 			return nil, err
 		}
-		if _, err := p.db.Exec(p.ctx, `INSERT INTO task_attempts (id, task_id, attempt_number)
-			VALUES (gen_random_uuid(), $1, $2)`, t.ID, t.AttemptCount); err != nil {
+		if _, err := p.db.Exec(p.ctx, `INSERT INTO task_attempts (id, task_id, attempt_number, requested_by, trigger, acted_as, image)
+			VALUES (gen_random_uuid(), $1, $2,
+				CASE WHEN $3 = 'submitted' THEN (SELECT requested_by FROM executions WHERE id = $4::uuid) ELSE $5 END, $3, $6, $7)`,
+			t.ID, t.AttemptCount, trigger, t.ExecutionID, requestedBy, t.Team+"/"+t.ServiceAccount, t.Image); err != nil {
 			return nil, err
 		}
 		if err := p.recordEvent(t.ExecutionID, &t.ID, domain.EventTaskClaimed,

@@ -57,6 +57,18 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => {
             dependsOn: [],
             startedAt: "2026-10-20T10:00:00Z",
             completedAt: "2026-10-20T10:00:05Z",
+            attempts: [
+              {
+                number: 1,
+                startedAt: "2026-10-20T10:00:00Z",
+                completedAt: "2026-10-20T10:00:05Z",
+                failure: null,
+                requestedBy: "",
+                trigger: "submitted",
+                actedAs: "team/default",
+                image: "img@sha256:aa",
+              },
+            ],
           },
         ],
       }),

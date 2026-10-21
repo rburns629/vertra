@@ -447,8 +447,11 @@ type SubmitExecutionRequest struct {
 	// A label for people; may repeat.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Makes a resubmission safe. Unset: every submission is a new execution.
-	RequestId     string  `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Tasks         []*Task `protobuf:"bytes,3,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	RequestId string  `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Tasks     []*Task `protobuf:"bytes,3,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	// Who asked, in the caller's own terms ("user:<id>"): recorded on each
+	// task's first attempt and returned as is. The kernel never resolves it.
+	RequestedBy   string `protobuf:"bytes,4,opt,name=requested_by,json=requestedBy,proto3" json:"requested_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -502,6 +505,13 @@ func (x *SubmitExecutionRequest) GetTasks() []*Task {
 		return x.Tasks
 	}
 	return nil
+}
+
+func (x *SubmitExecutionRequest) GetRequestedBy() string {
+	if x != nil {
+		return x.RequestedBy
+	}
+	return ""
 }
 
 type SubmitExecutionResponse struct {
@@ -839,8 +849,10 @@ type TaskStatus struct {
 	Failure   *structpb.Struct `protobuf:"bytes,5,opt,name=failure,proto3" json:"failure,omitempty"`
 	DependsOn []string         `protobuf:"bytes,6,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
 	// The current attempt's.
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	StartedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	// Every attempt, first to last.
+	Attempts      []*Attempt `protobuf:"bytes,9,rep,name=attempts,proto3" json:"attempts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -931,6 +943,117 @@ func (x *TaskStatus) GetCompletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *TaskStatus) GetAttempts() []*Attempt {
+	if x != nil {
+		return x.Attempts
+	}
+	return nil
+}
+
+type Attempt struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Number      int32                  `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
+	StartedAt   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	// How it ended, when it failed: {code, message, retryable}.
+	Failure *structpb.Struct `protobuf:"bytes,4,opt,name=failure,proto3" json:"failure,omitempty"`
+	// Who asked for it (requested_by); empty for an automatic retry.
+	RequestedBy string `protobuf:"bytes,5,opt,name=requested_by,json=requestedBy,proto3" json:"requested_by,omitempty"`
+	// submitted, retried or automatic_retry.
+	Trigger string `protobuf:"bytes,6,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	// What acted: <team>/<serviceAccount>, and the image it ran.
+	ActedAs       string `protobuf:"bytes,7,opt,name=acted_as,json=actedAs,proto3" json:"acted_as,omitempty"`
+	Image         string `protobuf:"bytes,8,opt,name=image,proto3" json:"image,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Attempt) Reset() {
+	*x = Attempt{}
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Attempt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Attempt) ProtoMessage() {}
+
+func (x *Attempt) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Attempt.ProtoReflect.Descriptor instead.
+func (*Attempt) Descriptor() ([]byte, []int) {
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *Attempt) GetNumber() int32 {
+	if x != nil {
+		return x.Number
+	}
+	return 0
+}
+
+func (x *Attempt) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *Attempt) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *Attempt) GetFailure() *structpb.Struct {
+	if x != nil {
+		return x.Failure
+	}
+	return nil
+}
+
+func (x *Attempt) GetRequestedBy() string {
+	if x != nil {
+		return x.RequestedBy
+	}
+	return ""
+}
+
+func (x *Attempt) GetTrigger() string {
+	if x != nil {
+		return x.Trigger
+	}
+	return ""
+}
+
+func (x *Attempt) GetActedAs() string {
+	if x != nil {
+		return x.ActedAs
+	}
+	return ""
+}
+
+func (x *Attempt) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
 type GetExecutionStatesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// At most 1000.
@@ -941,7 +1064,7 @@ type GetExecutionStatesRequest struct {
 
 func (x *GetExecutionStatesRequest) Reset() {
 	*x = GetExecutionStatesRequest{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[11]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -953,7 +1076,7 @@ func (x *GetExecutionStatesRequest) String() string {
 func (*GetExecutionStatesRequest) ProtoMessage() {}
 
 func (x *GetExecutionStatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[11]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -966,7 +1089,7 @@ func (x *GetExecutionStatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExecutionStatesRequest.ProtoReflect.Descriptor instead.
 func (*GetExecutionStatesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{11}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetExecutionStatesRequest) GetExecutionIds() []string {
@@ -985,7 +1108,7 @@ type GetExecutionStatesResponse struct {
 
 func (x *GetExecutionStatesResponse) Reset() {
 	*x = GetExecutionStatesResponse{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[12]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -997,7 +1120,7 @@ func (x *GetExecutionStatesResponse) String() string {
 func (*GetExecutionStatesResponse) ProtoMessage() {}
 
 func (x *GetExecutionStatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[12]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1010,7 +1133,7 @@ func (x *GetExecutionStatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExecutionStatesResponse.ProtoReflect.Descriptor instead.
 func (*GetExecutionStatesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{12}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetExecutionStatesResponse) GetStates() []*ExecutionStateEntry {
@@ -1030,7 +1153,7 @@ type ExecutionStateEntry struct {
 
 func (x *ExecutionStateEntry) Reset() {
 	*x = ExecutionStateEntry{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[13]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1042,7 +1165,7 @@ func (x *ExecutionStateEntry) String() string {
 func (*ExecutionStateEntry) ProtoMessage() {}
 
 func (x *ExecutionStateEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[13]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1055,7 +1178,7 @@ func (x *ExecutionStateEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecutionStateEntry.ProtoReflect.Descriptor instead.
 func (*ExecutionStateEntry) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{13}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ExecutionStateEntry) GetExecutionId() string {
@@ -1085,7 +1208,7 @@ type ListExecutionEventsRequest struct {
 
 func (x *ListExecutionEventsRequest) Reset() {
 	*x = ListExecutionEventsRequest{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[14]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1097,7 +1220,7 @@ func (x *ListExecutionEventsRequest) String() string {
 func (*ListExecutionEventsRequest) ProtoMessage() {}
 
 func (x *ListExecutionEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[14]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1233,7 @@ func (x *ListExecutionEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExecutionEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListExecutionEventsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{14}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListExecutionEventsRequest) GetExecutionId() string {
@@ -1145,7 +1268,7 @@ type ListExecutionEventsResponse struct {
 
 func (x *ListExecutionEventsResponse) Reset() {
 	*x = ListExecutionEventsResponse{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[15]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1157,7 +1280,7 @@ func (x *ListExecutionEventsResponse) String() string {
 func (*ListExecutionEventsResponse) ProtoMessage() {}
 
 func (x *ListExecutionEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[15]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1170,7 +1293,7 @@ func (x *ListExecutionEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExecutionEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListExecutionEventsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{15}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListExecutionEventsResponse) GetEvents() []*ExecutionEvent {
@@ -1202,7 +1325,7 @@ type ExecutionEvent struct {
 
 func (x *ExecutionEvent) Reset() {
 	*x = ExecutionEvent{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[16]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1214,7 +1337,7 @@ func (x *ExecutionEvent) String() string {
 func (*ExecutionEvent) ProtoMessage() {}
 
 func (x *ExecutionEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[16]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1227,7 +1350,7 @@ func (x *ExecutionEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecutionEvent.ProtoReflect.Descriptor instead.
 func (*ExecutionEvent) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{16}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ExecutionEvent) GetId() int64 {
@@ -1274,7 +1397,7 @@ type GetExecutionLogsRequest struct {
 
 func (x *GetExecutionLogsRequest) Reset() {
 	*x = GetExecutionLogsRequest{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[17]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1286,7 +1409,7 @@ func (x *GetExecutionLogsRequest) String() string {
 func (*GetExecutionLogsRequest) ProtoMessage() {}
 
 func (x *GetExecutionLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[17]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1299,7 +1422,7 @@ func (x *GetExecutionLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExecutionLogsRequest.ProtoReflect.Descriptor instead.
 func (*GetExecutionLogsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{17}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetExecutionLogsRequest) GetExecutionId() string {
@@ -1318,7 +1441,7 @@ type GetExecutionLogsResponse struct {
 
 func (x *GetExecutionLogsResponse) Reset() {
 	*x = GetExecutionLogsResponse{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[18]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1330,7 +1453,7 @@ func (x *GetExecutionLogsResponse) String() string {
 func (*GetExecutionLogsResponse) ProtoMessage() {}
 
 func (x *GetExecutionLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[18]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1343,7 +1466,7 @@ func (x *GetExecutionLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExecutionLogsResponse.ProtoReflect.Descriptor instead.
 func (*GetExecutionLogsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{18}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetExecutionLogsResponse) GetTasks() []*TaskLogs {
@@ -1364,7 +1487,7 @@ type TaskLogs struct {
 
 func (x *TaskLogs) Reset() {
 	*x = TaskLogs{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[19]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1376,7 +1499,7 @@ func (x *TaskLogs) String() string {
 func (*TaskLogs) ProtoMessage() {}
 
 func (x *TaskLogs) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[19]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1512,7 @@ func (x *TaskLogs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskLogs.ProtoReflect.Descriptor instead.
 func (*TaskLogs) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{19}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TaskLogs) GetTaskId() string {
@@ -1415,7 +1538,7 @@ type CancelExecutionRequest struct {
 
 func (x *CancelExecutionRequest) Reset() {
 	*x = CancelExecutionRequest{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[20]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1427,7 +1550,7 @@ func (x *CancelExecutionRequest) String() string {
 func (*CancelExecutionRequest) ProtoMessage() {}
 
 func (x *CancelExecutionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[20]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1440,7 +1563,7 @@ func (x *CancelExecutionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelExecutionRequest.ProtoReflect.Descriptor instead.
 func (*CancelExecutionRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{20}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CancelExecutionRequest) GetExecutionId() string {
@@ -1460,7 +1583,7 @@ type CancelExecutionResponse struct {
 
 func (x *CancelExecutionResponse) Reset() {
 	*x = CancelExecutionResponse{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[21]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1472,7 +1595,7 @@ func (x *CancelExecutionResponse) String() string {
 func (*CancelExecutionResponse) ProtoMessage() {}
 
 func (x *CancelExecutionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[21]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1485,7 +1608,7 @@ func (x *CancelExecutionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelExecutionResponse.ProtoReflect.Descriptor instead.
 func (*CancelExecutionResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{21}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CancelExecutionResponse) GetExecutionId() string {
@@ -1503,16 +1626,19 @@ func (x *CancelExecutionResponse) GetState() ExecutionState {
 }
 
 type RetryTaskRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	ExecutionId string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	TaskId      string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	// Who asked for the retry, as for SubmitExecutionRequest.requested_by:
+	// recorded on the next attempt of the task and of every task it revives.
+	RequestedBy   string `protobuf:"bytes,3,opt,name=requested_by,json=requestedBy,proto3" json:"requested_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RetryTaskRequest) Reset() {
 	*x = RetryTaskRequest{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[22]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +1650,7 @@ func (x *RetryTaskRequest) String() string {
 func (*RetryTaskRequest) ProtoMessage() {}
 
 func (x *RetryTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[22]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +1663,7 @@ func (x *RetryTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryTaskRequest.ProtoReflect.Descriptor instead.
 func (*RetryTaskRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{22}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *RetryTaskRequest) GetExecutionId() string {
@@ -1554,6 +1680,13 @@ func (x *RetryTaskRequest) GetTaskId() string {
 	return ""
 }
 
+func (x *RetryTaskRequest) GetRequestedBy() string {
+	if x != nil {
+		return x.RequestedBy
+	}
+	return ""
+}
+
 type RetryTaskResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
@@ -1564,7 +1697,7 @@ type RetryTaskResponse struct {
 
 func (x *RetryTaskResponse) Reset() {
 	*x = RetryTaskResponse{}
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[23]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1576,7 +1709,7 @@ func (x *RetryTaskResponse) String() string {
 func (*RetryTaskResponse) ProtoMessage() {}
 
 func (x *RetryTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[23]
+	mi := &file_vertra_kernel_v1_kernel_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1589,7 +1722,7 @@ func (x *RetryTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryTaskResponse.ProtoReflect.Descriptor instead.
 func (*RetryTaskResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{23}
+	return file_vertra_kernel_v1_kernel_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RetryTaskResponse) GetExecutionId() string {
@@ -1638,12 +1771,13 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\tResources\x12\x10\n" +
 	"\x03cpu\x18\x01 \x01(\tR\x03cpu\x12\x16\n" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\x12!\n" +
-	"\fmemory_limit\x18\x03 \x01(\tR\vmemoryLimit\"y\n" +
+	"\fmemory_limit\x18\x03 \x01(\tR\vmemoryLimit\"\x9c\x01\n" +
 	"\x16SubmitExecutionRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12,\n" +
-	"\x05tasks\x18\x03 \x03(\v2\x16.vertra.kernel.v1.TaskR\x05tasks\"\x8e\x01\n" +
+	"\x05tasks\x18\x03 \x03(\v2\x16.vertra.kernel.v1.TaskR\x05tasks\x12!\n" +
+	"\frequested_by\x18\x04 \x01(\tR\vrequestedBy\"\x8e\x01\n" +
 	"\x17SubmitExecutionResponse\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x126\n" +
 	"\x05state\x18\x02 \x01(\x0e2 .vertra.kernel.v1.ExecutionStateR\x05state\x12\x18\n" +
@@ -1662,7 +1796,7 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x126\n" +
 	"\x05state\x18\x03 \x01(\x0e2 .vertra.kernel.v1.ExecutionStateR\x05state\x122\n" +
-	"\x05tasks\x18\x04 \x03(\v2\x1c.vertra.kernel.v1.TaskStatusR\x05tasks\"\xfc\x02\n" +
+	"\x05tasks\x18\x04 \x03(\v2\x1c.vertra.kernel.v1.TaskStatusR\x05tasks\"\xb3\x03\n" +
 	"\n" +
 	"TaskStatus\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x121\n" +
@@ -1674,7 +1808,18 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"depends_on\x18\x06 \x03(\tR\tdependsOn\x129\n" +
 	"\n" +
 	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n" +
-	"\fcompleted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"@\n" +
+	"\fcompleted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x125\n" +
+	"\battempts\x18\t \x03(\v2\x19.vertra.kernel.v1.AttemptR\battempts\"\xbc\x02\n" +
+	"\aAttempt\x12\x16\n" +
+	"\x06number\x18\x01 \x01(\x05R\x06number\x129\n" +
+	"\n" +
+	"started_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n" +
+	"\fcompleted_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x121\n" +
+	"\afailure\x18\x04 \x01(\v2\x17.google.protobuf.StructR\afailure\x12!\n" +
+	"\frequested_by\x18\x05 \x01(\tR\vrequestedBy\x12\x18\n" +
+	"\atrigger\x18\x06 \x01(\tR\atrigger\x12\x19\n" +
+	"\bacted_as\x18\a \x01(\tR\aactedAs\x12\x14\n" +
+	"\x05image\x18\b \x01(\tR\x05image\"@\n" +
 	"\x19GetExecutionStatesRequest\x12#\n" +
 	"\rexecution_ids\x18\x01 \x03(\tR\fexecutionIds\"[\n" +
 	"\x1aGetExecutionStatesResponse\x12=\n" +
@@ -1711,10 +1856,11 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"t\n" +
 	"\x17CancelExecutionResponse\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x126\n" +
-	"\x05state\x18\x02 \x01(\x0e2 .vertra.kernel.v1.ExecutionStateR\x05state\"N\n" +
+	"\x05state\x18\x02 \x01(\x0e2 .vertra.kernel.v1.ExecutionStateR\x05state\"q\n" +
 	"\x10RetryTaskRequest\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x17\n" +
-	"\atask_id\x18\x02 \x01(\tR\x06taskId\"n\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12!\n" +
+	"\frequested_by\x18\x03 \x01(\tR\vrequestedBy\"n\n" +
 	"\x11RetryTaskResponse\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x126\n" +
 	"\x05state\x18\x02 \x01(\x0e2 .vertra.kernel.v1.ExecutionStateR\x05state*\xc5\x01\n" +
@@ -1757,7 +1903,7 @@ func file_vertra_kernel_v1_kernel_proto_rawDescGZIP() []byte {
 }
 
 var file_vertra_kernel_v1_kernel_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_vertra_kernel_v1_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_vertra_kernel_v1_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_vertra_kernel_v1_kernel_proto_goTypes = []any{
 	(ExecutionState)(0),                 // 0: vertra.kernel.v1.ExecutionState
 	(TaskState)(0),                      // 1: vertra.kernel.v1.TaskState
@@ -1772,27 +1918,28 @@ var file_vertra_kernel_v1_kernel_proto_goTypes = []any{
 	(*GetExecutionResponse)(nil),        // 10: vertra.kernel.v1.GetExecutionResponse
 	(*Execution)(nil),                   // 11: vertra.kernel.v1.Execution
 	(*TaskStatus)(nil),                  // 12: vertra.kernel.v1.TaskStatus
-	(*GetExecutionStatesRequest)(nil),   // 13: vertra.kernel.v1.GetExecutionStatesRequest
-	(*GetExecutionStatesResponse)(nil),  // 14: vertra.kernel.v1.GetExecutionStatesResponse
-	(*ExecutionStateEntry)(nil),         // 15: vertra.kernel.v1.ExecutionStateEntry
-	(*ListExecutionEventsRequest)(nil),  // 16: vertra.kernel.v1.ListExecutionEventsRequest
-	(*ListExecutionEventsResponse)(nil), // 17: vertra.kernel.v1.ListExecutionEventsResponse
-	(*ExecutionEvent)(nil),              // 18: vertra.kernel.v1.ExecutionEvent
-	(*GetExecutionLogsRequest)(nil),     // 19: vertra.kernel.v1.GetExecutionLogsRequest
-	(*GetExecutionLogsResponse)(nil),    // 20: vertra.kernel.v1.GetExecutionLogsResponse
-	(*TaskLogs)(nil),                    // 21: vertra.kernel.v1.TaskLogs
-	(*CancelExecutionRequest)(nil),      // 22: vertra.kernel.v1.CancelExecutionRequest
-	(*CancelExecutionResponse)(nil),     // 23: vertra.kernel.v1.CancelExecutionResponse
-	(*RetryTaskRequest)(nil),            // 24: vertra.kernel.v1.RetryTaskRequest
-	(*RetryTaskResponse)(nil),           // 25: vertra.kernel.v1.RetryTaskResponse
-	(*structpb.Struct)(nil),             // 26: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),       // 27: google.protobuf.Timestamp
+	(*Attempt)(nil),                     // 13: vertra.kernel.v1.Attempt
+	(*GetExecutionStatesRequest)(nil),   // 14: vertra.kernel.v1.GetExecutionStatesRequest
+	(*GetExecutionStatesResponse)(nil),  // 15: vertra.kernel.v1.GetExecutionStatesResponse
+	(*ExecutionStateEntry)(nil),         // 16: vertra.kernel.v1.ExecutionStateEntry
+	(*ListExecutionEventsRequest)(nil),  // 17: vertra.kernel.v1.ListExecutionEventsRequest
+	(*ListExecutionEventsResponse)(nil), // 18: vertra.kernel.v1.ListExecutionEventsResponse
+	(*ExecutionEvent)(nil),              // 19: vertra.kernel.v1.ExecutionEvent
+	(*GetExecutionLogsRequest)(nil),     // 20: vertra.kernel.v1.GetExecutionLogsRequest
+	(*GetExecutionLogsResponse)(nil),    // 21: vertra.kernel.v1.GetExecutionLogsResponse
+	(*TaskLogs)(nil),                    // 22: vertra.kernel.v1.TaskLogs
+	(*CancelExecutionRequest)(nil),      // 23: vertra.kernel.v1.CancelExecutionRequest
+	(*CancelExecutionResponse)(nil),     // 24: vertra.kernel.v1.CancelExecutionResponse
+	(*RetryTaskRequest)(nil),            // 25: vertra.kernel.v1.RetryTaskRequest
+	(*RetryTaskResponse)(nil),           // 26: vertra.kernel.v1.RetryTaskResponse
+	(*structpb.Struct)(nil),             // 27: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),       // 28: google.protobuf.Timestamp
 }
 var file_vertra_kernel_v1_kernel_proto_depIdxs = []int32{
-	26, // 0: vertra.kernel.v1.Task.inputs:type_name -> google.protobuf.Struct
+	27, // 0: vertra.kernel.v1.Task.inputs:type_name -> google.protobuf.Struct
 	4,  // 1: vertra.kernel.v1.Task.resources:type_name -> vertra.kernel.v1.Resources
-	26, // 2: vertra.kernel.v1.Task.input_schema:type_name -> google.protobuf.Struct
-	26, // 3: vertra.kernel.v1.Task.output_schema:type_name -> google.protobuf.Struct
+	27, // 2: vertra.kernel.v1.Task.input_schema:type_name -> google.protobuf.Struct
+	27, // 3: vertra.kernel.v1.Task.output_schema:type_name -> google.protobuf.Struct
 	3,  // 4: vertra.kernel.v1.Task.concurrency_key:type_name -> vertra.kernel.v1.ConcurrencyKey
 	2,  // 5: vertra.kernel.v1.SubmitExecutionRequest.tasks:type_name -> vertra.kernel.v1.Task
 	0,  // 6: vertra.kernel.v1.SubmitExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
@@ -1801,37 +1948,41 @@ var file_vertra_kernel_v1_kernel_proto_depIdxs = []int32{
 	0,  // 9: vertra.kernel.v1.Execution.state:type_name -> vertra.kernel.v1.ExecutionState
 	12, // 10: vertra.kernel.v1.Execution.tasks:type_name -> vertra.kernel.v1.TaskStatus
 	1,  // 11: vertra.kernel.v1.TaskStatus.state:type_name -> vertra.kernel.v1.TaskState
-	26, // 12: vertra.kernel.v1.TaskStatus.outputs:type_name -> google.protobuf.Struct
-	26, // 13: vertra.kernel.v1.TaskStatus.failure:type_name -> google.protobuf.Struct
-	27, // 14: vertra.kernel.v1.TaskStatus.started_at:type_name -> google.protobuf.Timestamp
-	27, // 15: vertra.kernel.v1.TaskStatus.completed_at:type_name -> google.protobuf.Timestamp
-	15, // 16: vertra.kernel.v1.GetExecutionStatesResponse.states:type_name -> vertra.kernel.v1.ExecutionStateEntry
-	0,  // 17: vertra.kernel.v1.ExecutionStateEntry.state:type_name -> vertra.kernel.v1.ExecutionState
-	18, // 18: vertra.kernel.v1.ListExecutionEventsResponse.events:type_name -> vertra.kernel.v1.ExecutionEvent
-	26, // 19: vertra.kernel.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
-	27, // 20: vertra.kernel.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
-	21, // 21: vertra.kernel.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.kernel.v1.TaskLogs
-	0,  // 22: vertra.kernel.v1.CancelExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
-	0,  // 23: vertra.kernel.v1.RetryTaskResponse.state:type_name -> vertra.kernel.v1.ExecutionState
-	5,  // 24: vertra.kernel.v1.KernelService.SubmitExecution:input_type -> vertra.kernel.v1.SubmitExecutionRequest
-	9,  // 25: vertra.kernel.v1.KernelService.GetExecution:input_type -> vertra.kernel.v1.GetExecutionRequest
-	13, // 26: vertra.kernel.v1.KernelService.GetExecutionStates:input_type -> vertra.kernel.v1.GetExecutionStatesRequest
-	16, // 27: vertra.kernel.v1.KernelService.ListExecutionEvents:input_type -> vertra.kernel.v1.ListExecutionEventsRequest
-	19, // 28: vertra.kernel.v1.KernelService.GetExecutionLogs:input_type -> vertra.kernel.v1.GetExecutionLogsRequest
-	22, // 29: vertra.kernel.v1.KernelService.CancelExecution:input_type -> vertra.kernel.v1.CancelExecutionRequest
-	24, // 30: vertra.kernel.v1.KernelService.RetryTask:input_type -> vertra.kernel.v1.RetryTaskRequest
-	6,  // 31: vertra.kernel.v1.KernelService.SubmitExecution:output_type -> vertra.kernel.v1.SubmitExecutionResponse
-	10, // 32: vertra.kernel.v1.KernelService.GetExecution:output_type -> vertra.kernel.v1.GetExecutionResponse
-	14, // 33: vertra.kernel.v1.KernelService.GetExecutionStates:output_type -> vertra.kernel.v1.GetExecutionStatesResponse
-	17, // 34: vertra.kernel.v1.KernelService.ListExecutionEvents:output_type -> vertra.kernel.v1.ListExecutionEventsResponse
-	20, // 35: vertra.kernel.v1.KernelService.GetExecutionLogs:output_type -> vertra.kernel.v1.GetExecutionLogsResponse
-	23, // 36: vertra.kernel.v1.KernelService.CancelExecution:output_type -> vertra.kernel.v1.CancelExecutionResponse
-	25, // 37: vertra.kernel.v1.KernelService.RetryTask:output_type -> vertra.kernel.v1.RetryTaskResponse
-	31, // [31:38] is the sub-list for method output_type
-	24, // [24:31] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	27, // 12: vertra.kernel.v1.TaskStatus.outputs:type_name -> google.protobuf.Struct
+	27, // 13: vertra.kernel.v1.TaskStatus.failure:type_name -> google.protobuf.Struct
+	28, // 14: vertra.kernel.v1.TaskStatus.started_at:type_name -> google.protobuf.Timestamp
+	28, // 15: vertra.kernel.v1.TaskStatus.completed_at:type_name -> google.protobuf.Timestamp
+	13, // 16: vertra.kernel.v1.TaskStatus.attempts:type_name -> vertra.kernel.v1.Attempt
+	28, // 17: vertra.kernel.v1.Attempt.started_at:type_name -> google.protobuf.Timestamp
+	28, // 18: vertra.kernel.v1.Attempt.completed_at:type_name -> google.protobuf.Timestamp
+	27, // 19: vertra.kernel.v1.Attempt.failure:type_name -> google.protobuf.Struct
+	16, // 20: vertra.kernel.v1.GetExecutionStatesResponse.states:type_name -> vertra.kernel.v1.ExecutionStateEntry
+	0,  // 21: vertra.kernel.v1.ExecutionStateEntry.state:type_name -> vertra.kernel.v1.ExecutionState
+	19, // 22: vertra.kernel.v1.ListExecutionEventsResponse.events:type_name -> vertra.kernel.v1.ExecutionEvent
+	27, // 23: vertra.kernel.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
+	28, // 24: vertra.kernel.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
+	22, // 25: vertra.kernel.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.kernel.v1.TaskLogs
+	0,  // 26: vertra.kernel.v1.CancelExecutionResponse.state:type_name -> vertra.kernel.v1.ExecutionState
+	0,  // 27: vertra.kernel.v1.RetryTaskResponse.state:type_name -> vertra.kernel.v1.ExecutionState
+	5,  // 28: vertra.kernel.v1.KernelService.SubmitExecution:input_type -> vertra.kernel.v1.SubmitExecutionRequest
+	9,  // 29: vertra.kernel.v1.KernelService.GetExecution:input_type -> vertra.kernel.v1.GetExecutionRequest
+	14, // 30: vertra.kernel.v1.KernelService.GetExecutionStates:input_type -> vertra.kernel.v1.GetExecutionStatesRequest
+	17, // 31: vertra.kernel.v1.KernelService.ListExecutionEvents:input_type -> vertra.kernel.v1.ListExecutionEventsRequest
+	20, // 32: vertra.kernel.v1.KernelService.GetExecutionLogs:input_type -> vertra.kernel.v1.GetExecutionLogsRequest
+	23, // 33: vertra.kernel.v1.KernelService.CancelExecution:input_type -> vertra.kernel.v1.CancelExecutionRequest
+	25, // 34: vertra.kernel.v1.KernelService.RetryTask:input_type -> vertra.kernel.v1.RetryTaskRequest
+	6,  // 35: vertra.kernel.v1.KernelService.SubmitExecution:output_type -> vertra.kernel.v1.SubmitExecutionResponse
+	10, // 36: vertra.kernel.v1.KernelService.GetExecution:output_type -> vertra.kernel.v1.GetExecutionResponse
+	15, // 37: vertra.kernel.v1.KernelService.GetExecutionStates:output_type -> vertra.kernel.v1.GetExecutionStatesResponse
+	18, // 38: vertra.kernel.v1.KernelService.ListExecutionEvents:output_type -> vertra.kernel.v1.ListExecutionEventsResponse
+	21, // 39: vertra.kernel.v1.KernelService.GetExecutionLogs:output_type -> vertra.kernel.v1.GetExecutionLogsResponse
+	24, // 40: vertra.kernel.v1.KernelService.CancelExecution:output_type -> vertra.kernel.v1.CancelExecutionResponse
+	26, // 41: vertra.kernel.v1.KernelService.RetryTask:output_type -> vertra.kernel.v1.RetryTaskResponse
+	35, // [35:42] is the sub-list for method output_type
+	28, // [28:35] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_vertra_kernel_v1_kernel_proto_init() }
@@ -1840,15 +1991,15 @@ func file_vertra_kernel_v1_kernel_proto_init() {
 		return
 	}
 	file_vertra_kernel_v1_kernel_proto_msgTypes[0].OneofWrappers = []any{}
-	file_vertra_kernel_v1_kernel_proto_msgTypes[14].OneofWrappers = []any{}
 	file_vertra_kernel_v1_kernel_proto_msgTypes[15].OneofWrappers = []any{}
+	file_vertra_kernel_v1_kernel_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_kernel_v1_kernel_proto_rawDesc), len(file_vertra_kernel_v1_kernel_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

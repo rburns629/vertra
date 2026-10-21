@@ -132,6 +132,9 @@ message SubmitExecutionRequest {
   // Makes a resubmission safe. Unset: every submission is a new execution.
   string request_id = 2;
   repeated Task tasks = 3;
+  // Who asked, in the caller's own terms ("user:<id>"): recorded on each
+  // task's first attempt and returned as is. The kernel never resolves it.
+  string requested_by = 4;
 }
 
 message SubmitExecutionResponse {
@@ -181,6 +184,23 @@ message TaskStatus {
   // The current attempt's.
   google.protobuf.Timestamp started_at = 7;
   google.protobuf.Timestamp completed_at = 8;
+  // Every attempt, first to last.
+  repeated Attempt attempts = 9;
+}
+
+message Attempt {
+  int32 number = 1;
+  google.protobuf.Timestamp started_at = 2;
+  google.protobuf.Timestamp completed_at = 3;
+  // How it ended, when it failed: {code, message, retryable}.
+  google.protobuf.Struct failure = 4;
+  // Who asked for it (requested_by); empty for an automatic retry.
+  string requested_by = 5;
+  // submitted, retried or automatic_retry.
+  string trigger = 6;
+  // What acted: <team>/<serviceAccount>, and the image it ran.
+  string acted_as = 7;
+  string image = 8;
 }
 
 message GetExecutionStatesRequest {
@@ -247,6 +267,9 @@ message CancelExecutionResponse {
 message RetryTaskRequest {
   string execution_id = 1;
   string task_id = 2;
+  // Who asked for the retry, as for SubmitExecutionRequest.requested_by:
+  // recorded on the next attempt of the task and of every task it revives.
+  string requested_by = 3;
 }
 
 message RetryTaskResponse {

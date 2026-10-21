@@ -354,6 +354,13 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
    * @generated from field: google.protobuf.Timestamp completed_at = 8;
    */
   completedAt?: Timestamp | undefined;
+
+  /**
+   * Every attempt, first to last: who asked for it and what acted in it.
+   *
+   * @generated from field: repeated vertra.console.v1.Attempt attempts = 9;
+   */
+  attempts: Attempt[];
 };
 
 /**
@@ -361,6 +368,64 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
  * Use `create(TaskStatusSchema)` to create a new message.
  */
 export declare const TaskStatusSchema: GenMessage<TaskStatus>;
+
+/**
+ * @generated from message vertra.console.v1.Attempt
+ */
+export declare type Attempt = Message<"vertra.console.v1.Attempt"> & {
+  /**
+   * @generated from field: int32 number = 1;
+   */
+  number: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 2;
+   */
+  startedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp completed_at = 3;
+   */
+  completedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: optional vertra.console.v1.Failure failure = 4;
+   */
+  failure?: Failure | undefined;
+
+  /**
+   * The email of who asked for it: whoever submitted the run for a first
+   * attempt, or retried it; empty for an automatic retry.
+   *
+   * @generated from field: string requested_by = 5;
+   */
+  requestedBy: string;
+
+  /**
+   * submitted, retried or automatic_retry.
+   *
+   * @generated from field: string trigger = 6;
+   */
+  trigger: string;
+
+  /**
+   * The identity it ran as, <team>/<serviceAccount>, and its image.
+   *
+   * @generated from field: string acted_as = 7;
+   */
+  actedAs: string;
+
+  /**
+   * @generated from field: string image = 8;
+   */
+  image: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.Attempt.
+ * Use `create(AttemptSchema)` to create a new message.
+ */
+export declare const AttemptSchema: GenMessage<Attempt>;
 
 /**
  * @generated from message vertra.console.v1.ListExecutionsRequest

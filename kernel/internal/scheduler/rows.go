@@ -54,12 +54,15 @@ type Task struct {
 	ConcurrencyScope  *string
 	ConcurrencyInputs []string
 	ConcurrencyKey    *string
+	// Who asked for its next attempt, by retrying it; nil when nobody did
+	// (its first attempt is whoever submitted it, a later one automatic).
+	NextAttemptRequestedBy *string
 }
 
 const taskColumns = `id::text, execution_id::text, task_key, image, action, team, service_account, secret_refs,
 	token_audiences, resources, state, original_inputs, resolved_inputs, timeout_seconds, max_attempts, attempt_count,
 	dispatch_failures, lease_owner, lease_expires_at, available_at, executor_handle, failure, input_schema, output_schema,
-	concurrency_scope, concurrency_inputs, concurrency_key`
+	concurrency_scope, concurrency_inputs, concurrency_key, next_attempt_requested_by`
 
 // taskColumnsOf is taskColumns qualified with a table alias.
 func taskColumnsOf(alias string) string {
@@ -67,7 +70,8 @@ func taskColumnsOf(alias string) string {
 	%[1]s.team, %[1]s.service_account, %[1]s.secret_refs, %[1]s.token_audiences, %[1]s.resources, %[1]s.state, %[1]s.original_inputs,
 	%[1]s.resolved_inputs, %[1]s.timeout_seconds, %[1]s.max_attempts, %[1]s.attempt_count, %[1]s.dispatch_failures,
 	%[1]s.lease_owner, %[1]s.lease_expires_at, %[1]s.available_at, %[1]s.executor_handle, %[1]s.failure,
-	%[1]s.input_schema, %[1]s.output_schema, %[1]s.concurrency_scope, %[1]s.concurrency_inputs, %[1]s.concurrency_key`, alias)
+	%[1]s.input_schema, %[1]s.output_schema, %[1]s.concurrency_scope, %[1]s.concurrency_inputs, %[1]s.concurrency_key,
+	%[1]s.next_attempt_requested_by`, alias)
 }
 
 func scanTasks(rows pgx.Rows) ([]*Task, error) {
@@ -80,7 +84,8 @@ func scanTasks(rows pgx.Rows) ([]*Task, error) {
 		if err := rows.Scan(&t.ID, &t.ExecutionID, &t.TaskKey, &t.Image, &t.Action, &t.Team, &t.ServiceAccount,
 			&t.SecretRefs, &t.TokenAudiences, &resources, &state, &original, &resolved, &t.TimeoutSeconds, &t.MaxAttempts,
 			&t.AttemptCount, &t.DispatchFailures, &t.LeaseOwner, &t.LeaseExpiresAt, &t.AvailableAt, &handle,
-			&failure, &inputSchema, &outputSchema, &t.ConcurrencyScope, &t.ConcurrencyInputs, &t.ConcurrencyKey); err != nil {
+			&failure, &inputSchema, &outputSchema, &t.ConcurrencyScope, &t.ConcurrencyInputs, &t.ConcurrencyKey,
+			&t.NextAttemptRequestedBy); err != nil {
 			return nil, err
 		}
 		t.State = domain.TaskState(state)
@@ -133,9 +138,11 @@ func jsonValue[M ~map[string]any](m M) any {
 func saveTask(ctx context.Context, db DB, t *Task) error {
 	_, err := db.Exec(ctx, `UPDATE execution_tasks SET state = $2, lease_owner = $3, lease_expires_at = $4,
 		available_at = $5, executor_handle = $6::jsonb, failure = $7::jsonb, resolved_inputs = $8::jsonb,
-		attempt_count = $9, dispatch_failures = $10, concurrency_key = $11, updated_at = now() WHERE id = $1`,
+		attempt_count = $9, dispatch_failures = $10, concurrency_key = $11, next_attempt_requested_by = $12,
+		updated_at = now() WHERE id = $1`,
 		t.ID, string(t.State), t.LeaseOwner, t.LeaseExpiresAt, t.AvailableAt, jsonValue(t.ExecutorHandle),
-		jsonValue(t.Failure), jsonValue(t.ResolvedInputs), t.AttemptCount, t.DispatchFailures, t.ConcurrencyKey)
+		jsonValue(t.Failure), jsonValue(t.ResolvedInputs), t.AttemptCount, t.DispatchFailures, t.ConcurrencyKey,
+		t.NextAttemptRequestedBy)
 	return err
 }
 

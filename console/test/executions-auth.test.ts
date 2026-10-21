@@ -168,6 +168,8 @@ describe("SubmitExecution: a product runs as its ServiceAccount, with its team's
     const response = await submit({ serviceAccount: GRANTEE, secretRefs: ["product-a-secret"] });
     expect(response.code).toBe("ok");
     expect(submitExecution).toHaveBeenCalledOnce();
+    // Who asked, for the kernel to record on each task's first attempt.
+    expect(vi.mocked(submitExecution).mock.calls[0]?.[1]).toBe(`user:${userId}`);
     // Its ServiceAccount is made sure of, in its team's namespace.
     expect(ensureServiceAccount).toHaveBeenCalledWith(teamName, GRANTEE);
   });
@@ -429,6 +431,8 @@ describe("retry and cancel check access again, over every team", () => {
     const response = await retry(id, "t");
     expect(response.code).toBe("ok");
     expect(retryTask).toHaveBeenCalledOnce();
+    // Who retried it, for the kernel to record on the next attempt.
+    expect(retryTask).toHaveBeenCalledWith(id, "t", `user:${userId}`);
   });
 
   it("refuses a retry that would mount a secret no longer registered", async () => {

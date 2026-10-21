@@ -14,7 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSecretGrant, upsertProduct, upsertTemplate } from "../src/db/queries.js";
-import { catalogSync, products, submittedExecutions, teams } from "../src/db/schema.js";
+import { products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { cancelExecution, getExecution, submitExecution } from "../src/kernel/client.js";
 import { caller, problemFields, rpcClient, type RpcError } from "./rpc.js";
@@ -42,6 +42,12 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => {
     retryTask: vi.fn((executionId: string) => Promise.resolve({ executionId, state: "RUNNING" })),
   };
 });
+// The catalog repository a release came from, for "Ask for access": faked
+// here, since catalog_sync is one row other test files write too.
+vi.mock("../src/db/queries.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/db/queries.js")>()),
+  catalogRepository: vi.fn(() => Promise.resolve("github.com/acme/vertra-catalog")),
+}));
 vi.mock("../src/imagePolicy.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/imagePolicy.js")>()),
   readImagePolicy: vi.fn(() => Promise.resolve({ exists: true, source: "registry.example/", additional: [], version: "1" })),
@@ -197,21 +203,6 @@ describe("what a consumer may run", () => {
 });
 
 describe("what isn't shared with someone", () => {
-  const original = { repository: null as string | null };
-
-  beforeAll(async () => {
-    const [row] = await db.select({ repository: catalogSync.repository }).from(catalogSync).where(eq(catalogSync.id, 1));
-    original.repository = row?.repository ?? null;
-    await db
-      .insert(catalogSync)
-      .values({ id: 1, repository: "github.com/acme/vertra-catalog" })
-      .onConflictDoUpdate({ target: catalogSync.id, set: { repository: "github.com/acme/vertra-catalog" } });
-  });
-
-  afterAll(async () => {
-    await db.update(catalogSync).set({ repository: original.repository }).where(eq(catalogSync.id, 1));
-  });
-
   it("is listed, not runnable, with where it's defined and an issue asking for it", async () => {
     const consumer = await listed(consumerToken);
     const theirs = consumer.find((r) => r.name === `${priv}-secret-get`);

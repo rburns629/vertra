@@ -221,10 +221,25 @@ export interface SubmittedExecutionResult extends ExecutionSubmissionResponse {
   created: boolean;
 }
 
-export async function submitExecution(payload: unknown): Promise<SubmittedExecutionResult> {
+/** requestedBy: who asked, as "user:<id>"; the kernel records it on each
+ * task's first attempt and hands it back, never resolving it. */
+export async function submitExecution(payload: unknown, requestedBy = ""): Promise<SubmittedExecutionResult> {
   const request = submissionRequest(payload);
+  request.requestedBy = requestedBy;
   const response = await call(() => client().submitExecution(request));
   return { executionId: response.executionId, state: executionState(response.state), created: response.created };
+}
+
+export interface KernelAttempt {
+  number: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  failure: JsonObject | null;
+  /** "user:<id>" as the console sent it; "" for an automatic retry. */
+  requestedBy: string;
+  trigger: string;
+  actedAs: string;
+  image: string;
 }
 
 export interface KernelTaskStatus {
@@ -236,6 +251,7 @@ export interface KernelTaskStatus {
   dependsOn: string[];
   startedAt: string | null;
   completedAt: string | null;
+  attempts: KernelAttempt[];
 }
 
 export interface KernelExecution {
@@ -261,6 +277,16 @@ export async function getExecution(executionId: string): Promise<KernelExecution
       dependsOn: task.dependsOn,
       startedAt: iso(task.startedAt),
       completedAt: iso(task.completedAt),
+      attempts: task.attempts.map((a) => ({
+        number: a.number,
+        startedAt: iso(a.startedAt),
+        completedAt: iso(a.completedAt),
+        failure: a.failure ?? null,
+        requestedBy: a.requestedBy,
+        trigger: a.trigger,
+        actedAs: a.actedAs,
+        image: a.image,
+      })),
     })),
   };
 }
@@ -324,7 +350,7 @@ export async function cancelExecution(executionId: string): Promise<ExecutionSub
   return { executionId: response.executionId, state: executionState(response.state) };
 }
 
-export async function retryTask(executionId: string, taskId: string): Promise<ExecutionSubmissionResponse> {
-  const response = await call(() => client().retryTask({ executionId, taskId }));
+export async function retryTask(executionId: string, taskId: string, requestedBy = ""): Promise<ExecutionSubmissionResponse> {
+  const response = await call(() => client().retryTask({ executionId, taskId, requestedBy }));
   return { executionId: response.executionId, state: executionState(response.state) };
 }

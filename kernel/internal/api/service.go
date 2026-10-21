@@ -237,7 +237,7 @@ func (s *Service) SubmitExecution(ctx context.Context, req *connect.Request[kern
 		id := uuid.NewString()
 		// A savepoint: if a concurrent request with the same request_id
 		// committed first, only this insert rolls back.
-		err := pgx.BeginFunc(ctx, t.Tx, func(sp pgx.Tx) error { return s.insert(ctx, sp, id, m.GetName(), requestID, defs) })
+		err := pgx.BeginFunc(ctx, t.Tx, func(sp pgx.Tx) error { return s.insert(ctx, sp, id, m.GetName(), requestID, m.GetRequestedBy(), defs) })
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "executions_idempotency_key_key" {
 			_, err = existing()
@@ -258,9 +258,9 @@ func (s *Service) SubmitExecution(ctx context.Context, req *connect.Request[kern
 	return connect.NewResponse(out), nil
 }
 
-func (s *Service) insert(ctx context.Context, db pgx.Tx, id, name, requestID string, defs []domain.TaskDef) error {
-	if _, err := db.Exec(ctx, `INSERT INTO executions (id, external_reference, idempotency_key, state) VALUES ($1, $2, $3, 'PENDING')`,
-		id, name, requestID); err != nil {
+func (s *Service) insert(ctx context.Context, db pgx.Tx, id, name, requestID, requestedBy string, defs []domain.TaskDef) error {
+	if _, err := db.Exec(ctx, `INSERT INTO executions (id, external_reference, idempotency_key, state, requested_by) VALUES ($1, $2, $3, 'PENDING', $4)`,
+		id, name, requestID, nullable(requestedBy)); err != nil {
 		return err
 	}
 	ids := map[string]string{}
@@ -374,6 +374,9 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 		execution.Tasks = append(execution.Tasks, task)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := s.attachAttempts(ctx, id, execution.Tasks); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&kernelv1.GetExecutionResponse{Execution: execution}), nil
@@ -616,9 +619,10 @@ func (s *Service) RetryTask(ctx context.Context, req *connect.Request[kernelv1.R
 		var attempts int
 		// Conditional, like every state change here: the scheduler may be
 		// changing the same row.
+		requestedBy := nullable(req.Msg.GetRequestedBy())
 		err := t.QueryRow(ctx, `UPDATE execution_tasks SET state = 'READY', lease_owner = NULL, lease_expires_at = NULL,
-			executor_handle = NULL, failure = NULL, available_at = now(), updated_at = now()
-			WHERE execution_id = $1 AND task_key = $2 AND state = 'FAILED' RETURNING id::text, attempt_count`, id, key).Scan(&taskID, &attempts)
+			executor_handle = NULL, failure = NULL, available_at = now(), next_attempt_requested_by = $3, updated_at = now()
+			WHERE execution_id = $1 AND task_key = $2 AND state = 'FAILED' RETURNING id::text, attempt_count`, id, key, requestedBy).Scan(&taskID, &attempts)
 		if errors.Is(err, pgx.ErrNoRows) {
 			var exists bool
 			if err := t.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM execution_tasks WHERE execution_id = $1 AND task_key = $2)`, id, key).Scan(&exists); err != nil {
@@ -647,11 +651,12 @@ func (s *Service) RetryTask(ctx context.Context, req *connect.Request[kernelv1.R
 		_, err = t.Exec(ctx, `UPDATE execution_tasks t SET
 				state = CASE WHEN waiting THEN 'BLOCKED' ELSE 'READY' END,
 				available_at = CASE WHEN waiting THEN t.available_at ELSE now() END,
+				next_attempt_requested_by = $2,
 				updated_at = now()
 			FROM (SELECT c.id, EXISTS (SELECT 1 FROM task_dependencies td JOIN execution_tasks d ON d.id = td.depends_on_task_id
 					WHERE td.task_id = c.id AND d.state <> 'SUCCEEDED') AS waiting
 				FROM execution_tasks c WHERE c.execution_id = $1 AND c.state = 'CANCELLED') revived
-			WHERE t.id = revived.id`, id)
+			WHERE t.id = revived.id`, id, requestedBy)
 		return err
 	})
 	if err != nil {
@@ -670,4 +675,38 @@ func nullable(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+// attachAttempts adds every attempt of the execution's tasks, first to last:
+// when it ran, how it ended, who asked for it and what acted in it.
+func (s *Service) attachAttempts(ctx context.Context, executionID string, tasks []*kernelv1.TaskStatus) error {
+	byKey := map[string]*kernelv1.TaskStatus{}
+	for _, t := range tasks {
+		byKey[t.TaskId] = t
+	}
+	rows, err := s.Pool.Query(ctx, `SELECT t.task_key, a.attempt_number, a.started_at, a.completed_at, a.failure,
+			coalesce(a.requested_by, ''), coalesce(a.trigger, ''), coalesce(a.acted_as, ''), coalesce(a.image, '')
+		FROM task_attempts a JOIN execution_tasks t ON t.id = a.task_id
+		WHERE t.execution_id = $1 ORDER BY t.task_key, a.attempt_number`, executionID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		var started, completed *time.Time
+		var failure []byte
+		a := &kernelv1.Attempt{}
+		if err := rows.Scan(&key, &a.Number, &started, &completed, &failure, &a.RequestedBy, &a.Trigger, &a.ActedAs, &a.Image); err != nil {
+			return err
+		}
+		a.StartedAt, a.CompletedAt = timestamp(started), timestamp(completed)
+		if a.Failure, err = structOf(failure); err != nil {
+			return err
+		}
+		if t := byKey[key]; t != nil {
+			t.Attempts = append(t.Attempts, a)
+		}
+	}
+	return rows.Err()
 }

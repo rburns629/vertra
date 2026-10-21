@@ -408,8 +408,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   with a growing backoff. Every sample's create or transform action is
   idempotent. Proven on kind. Left: the run page saying whether a manual
   retry is safe, from the same flag.
-- [ ] **P1: who asked and who acted, per attempt**, and attempts in the API
-  (`task_attempts` is stored; the API returns only `attemptCount`).
+- [x] **P1: who asked and who acted, per attempt** (done 2026-10-21):
+  each attempt records who asked for it (the submitter for a first
+  attempt, whoever retried it, or nobody for an automatic retry: the
+  console passes "user:<id>", which the kernel never resolves), the
+  identity it ran as and its image (kernel migration 0005). Attempts are in
+  both APIs (`TaskStatus.attempts`) with the requester as an email, and
+  under each step on the run page. Proven on kind.
 - [ ] **P1: samples read identity references from team secrets (S2)**,
   not the deployment-wide `GCP_TARGET_SERVICE_ACCOUNT`
   (`TASK_EXTRA_ENVIRONMENT`, `kernel/internal/config`), which gives every team the same

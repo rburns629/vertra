@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { dump as dumpYaml } from "js-yaml";
 import {
@@ -42,6 +42,7 @@ import {
   type ExecutionEvent,
   type SubmittedExecutionPayload,
   type TaskLogs,
+  type TaskAttempt,
   type TaskStatus,
 } from "../api";
 import { TERMINAL_STATES, useExecutionWatch } from "./useExecutionWatch";
@@ -187,6 +188,8 @@ function TaskNodeCard({
           {!task.failure.retryable && " (not retryable)"}
         </Alert>
       )}
+
+      {task.attempts.length > 0 && <Attempts attempts={task.attempts} />}
 
       {task.state === "FAILED" && (
         <Tooltip title={retryBlocked ?? ""}>
@@ -935,3 +938,45 @@ export function ExecutionDetailPage() {
     </Box>
   );
 }
+
+const TRIGGER: Record<string, string> = {
+  submitted: "asked by",
+  retried: "retried by",
+  automatic_retry: "retried automatically",
+};
+
+/** Each attempt: who asked for it and what acted in it (the kernel's task_attempts). */
+function Attempts({ attempts }: { attempts: TaskAttempt[] }) {
+  return (
+    <Box
+      component="details"
+      sx={{ mt: 1, "& > summary": { cursor: "pointer", fontSize: 12, color: "text.secondary" } }}
+      onClick={(event: MouseEvent) => {
+        // Opening the list isn't selecting the step.
+        event.stopPropagation();
+      }}
+    >
+      <summary>
+        {attempts.length} attempt{attempts.length === 1 ? "" : "s"}: who asked, what ran
+      </summary>
+      <Box component="ol" sx={{ listStyle: "none", p: 0, m: 0, mt: 0.5, display: "flex", flexDirection: "column", gap: 0.75 }}>
+        {attempts.map((a) => (
+          <Box component="li" key={a.number} sx={{ fontSize: 12, lineHeight: 1.45 }}>
+            <strong>#{a.number}</strong> {TRIGGER[a.trigger] ?? a.trigger}
+            {a.requestedBy && ` ${a.requestedBy}`}
+            {a.actedAs && (
+              <>
+                {" · ran as "}
+                <Box component="span" sx={{ fontFamily: "fontFamilyMono" }}>
+                  {a.actedAs}
+                </Box>
+              </>
+            )}
+            {a.failure ? ` · ${a.failure.code}` : a.completedAt ? " · done" : a.startedAt ? " · running" : " · waiting"}
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+

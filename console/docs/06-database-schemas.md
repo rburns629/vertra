@@ -78,6 +78,7 @@ One row per submitted DAG.
 | `id` | uuid | no | The execution id every API call uses. |
 | `external_reference` | text | no | The DAG's `name`. The column kept its old name when the API field was renamed. |
 | `idempotency_key` | text | no, unique | The DAG's `requestId`. The console prefixes it with the submitting teams (`team-a+team-b/<requestId>`) so two teams can't collide; without one, it's a random UUID. A second submission with the same key returns this execution instead of creating another. |
+| `requested_by` | text | yes | Who submitted it, in the console's terms (`user:<id>`), recorded on each task's first attempt. The kernel never resolves it. |
 | `state` | varchar | no | `PENDING` → `RUNNING` → `SUCCEEDED`, `FAILED` or `CANCELLED`. |
 | `created_at`, `updated_at` | timestamptz | no | |
 
@@ -100,6 +101,7 @@ One row per task in a DAG, and the scheduler's work queue: it claims rows from h
 | `concurrency_scope` | text | yes | Whose concurrency key it has (its product); null: it never waits for another task. |
 | `concurrency_inputs` | text[] | no | The inputs naming what it changes (product.yaml's `concurrencyKey`). |
 | `concurrency_key` | text | yes | Its key, worked out from its resolved inputs when it's claimed: while a task with this key is claimed or running, another with it waits, READY. |
+| `next_attempt_requested_by` | text | yes | Who retried it, for its next attempt; cleared when that attempt is claimed. |
 | `resources` | jsonb | yes | The task's own Pod size: `cpu`, `memory` and `memoryLimit`, as Kubernetes quantities. Null, or a part left out, means the deployment's default (`TASK_DEFAULT_RESOURCES`). |
 | `state` | varchar | no | `BLOCKED` (waiting on dependencies), `READY`, `CLAIMED` (a scheduler took it), `RUNNING` (its Job exists), then `SUCCEEDED`, `FAILED` or `CANCELLED`. |
 | `original_inputs` | jsonb | no | The inputs as submitted, `$fromTask` references included. |
@@ -138,6 +140,10 @@ The retry history: one row per attempt. `execution_tasks.attempt_count` is the l
 | `executor_handle` | jsonb | yes | That attempt's Job. |
 | `started_at`, `completed_at` | timestamptz | yes | |
 | `failure` | jsonb | yes | That attempt's failure, if it failed. |
+| `requested_by` | text | yes | Who asked for this attempt: the submitter for a first attempt, whoever retried it, or null for an automatic retry. |
+| `trigger` | text | yes | `submitted`, `retried` or `automatic_retry`. |
+| `acted_as` | text | yes | The identity it ran as: `<team>/<serviceAccount>`. |
+| `image` | text | yes | The image it ran, pinned to its digest. |
 
 ### task_outputs
 

@@ -121,6 +121,7 @@ describe("kernel-api client", () => {
           dependsOn: [],
           startedAt: null,
           completedAt: null,
+          attempts: [],
         },
       ],
     });

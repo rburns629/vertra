@@ -167,6 +167,23 @@ message TaskStatus {
   repeated string depends_on = 6;
   google.protobuf.Timestamp started_at = 7;
   google.protobuf.Timestamp completed_at = 8;
+  // Every attempt, first to last: who asked for it and what acted in it.
+  repeated Attempt attempts = 9;
+}
+
+message Attempt {
+  int32 number = 1;
+  google.protobuf.Timestamp started_at = 2;
+  google.protobuf.Timestamp completed_at = 3;
+  optional Failure failure = 4;
+  // The email of who asked for it: whoever submitted the run for a first
+  // attempt, or retried it; empty for an automatic retry.
+  string requested_by = 5;
+  // submitted, retried or automatic_retry.
+  string trigger = 6;
+  // The identity it ran as, <team>/<serviceAccount>, and its image.
+  string acted_as = 7;
+  string image = 8;
 }
 
 message ListExecutionsRequest {

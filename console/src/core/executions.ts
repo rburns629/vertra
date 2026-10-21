@@ -553,6 +553,11 @@ function recordable(submission: Record<string, unknown>): Record<string, unknown
   };
 }
 
+/** Who asked, as the kernel records it on attempts. */
+function requester(caller: AuthUser | undefined): string {
+  return caller?.id ? `user:${caller.id}` : "";
+}
+
 /**
  * The checks every submission gets: a maintainer of each task's team (except
  * for a template's run, authorized as a whole by core/templates.ts), the identity
@@ -747,7 +752,7 @@ export async function submitChecked(
   await refuseUnscanned(taskImages(pinnedBody), context);
   const submission = await withProductContract(await withProductResources(pinnedBody));
 
-  const result = await submitExecution(scopeRequestId(submission, run ? [`user:${caller?.id ?? ""}`] : teams));
+  const result = await submitExecution(scopeRequestId(submission, run ? [`user:${caller?.id ?? ""}`] : teams), requester(caller));
   await recordOrCancel(
     {
       executionId: result.executionId,
@@ -778,8 +783,18 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
   // are kept, see db/schema.ts).
   const submitter = submitted.submittedBy ? await findUserById(submitted.submittedBy) : undefined;
   const blocker = (await runBlocker(submitted.teams)) ?? (await detailImageBlocker(submitted.payload, log));
+  // Who asked for each attempt, as the kernel recorded it: "user:<id>",
+  // shown by email (an account since deleted says so).
+  const emails = new Map<string, string>();
+  for (const id of new Set(detail.tasks.flatMap((t) => t.attempts.map((a) => a.requestedBy)).filter((r) => r.startsWith("user:")))) {
+    emails.set(id, (await findUserById(id.slice("user:".length)))?.email ?? "(deleted account)");
+  }
   return {
     ...detail,
+    tasks: detail.tasks.map((t) => ({
+      ...t,
+      attempts: t.attempts.map((a) => ({ ...a, requestedBy: emails.get(a.requestedBy) ?? "" })),
+    })),
     teams: submitted.teams,
     submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),
     createdAt: submitted.createdAt,
@@ -835,7 +850,7 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
   await refuseBlockedImages(images, context);
   await refuseUnscanned(images, context);
   await ensureServiceAccounts(tasksInfo);
-  return retryTask(executionId, taskId);
+  return retryTask(executionId, taskId, requester(caller));
 }
 
 /**
@@ -877,7 +892,7 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
   await refuseUnscanned(taskImages(pinnedReplay), context);
   const rerunPayload = await withProductContract(await withProductResources({ ...pinnedReplay, requestId: randomUUID() }));
 
-  const result = await submitExecution(scopeRequestId(rerunPayload, submitted.teams));
+  const result = await submitExecution(scopeRequestId(rerunPayload, submitted.teams), requester(caller));
   await recordOrCancel(
     { executionId: result.executionId, teams: submitted.teams, submittedBy: caller?.id ?? "", name: submitted.name, payload: recordable(rerunPayload) },
     result.created,

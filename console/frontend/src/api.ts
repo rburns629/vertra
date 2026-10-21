@@ -708,6 +708,21 @@ export interface TaskStatus {
    * started yet. */
   startedAt: string | null;
   completedAt: string | null;
+  /** Every attempt, first to last: who asked for it and what acted in it. */
+  attempts: TaskAttempt[];
+}
+
+export interface TaskAttempt {
+  number: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  failure: { code: string; message: string; retryable: boolean } | null;
+  /** The email of who asked for it; "" for an automatic retry. */
+  requestedBy: string;
+  trigger: "submitted" | "retried" | "automatic_retry" | string;
+  /** <team>/<serviceAccount>. */
+  actedAs: string;
+  image: string;
 }
 
 /** One task as submitted (images pinned) -- this is *input*, kept for
@@ -808,6 +823,18 @@ function executionDetail(execution: Execution): ExecutionDetail {
       dependsOn: task.dependsOn,
       startedAt: iso(task.startedAt),
       completedAt: iso(task.completedAt),
+      attempts: task.attempts.map((attempt) => ({
+        number: attempt.number,
+        startedAt: iso(attempt.startedAt),
+        completedAt: iso(attempt.completedAt),
+        failure: attempt.failure
+          ? { code: attempt.failure.code, message: attempt.failure.message, retryable: attempt.failure.retryable }
+          : null,
+        requestedBy: attempt.requestedBy,
+        trigger: attempt.trigger,
+        actedAs: attempt.actedAs,
+        image: attempt.image,
+      })),
     })),
     teams: execution.teams,
     submittedBy: execution.submittedBy || null,
