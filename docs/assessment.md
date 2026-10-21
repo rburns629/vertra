@@ -110,7 +110,7 @@ are done (decided 2026-10-19).
 | Schema compatibility, deprecation | Missing | |
 | A product's ServiceAccount enforced by policy | Built; proven on EKS 2026-10-19 | `helm/charts/execution-kernel/templates/identity-policy.yaml`, `executions.ts:352` |
 | Team secrets chosen per step, enforced twice | Built | `executions.ts:522-546`, identity policy |
-| Identity references read from a team secret | Missing: the samples read one deployment-wide variable instead | `TASK_EXTRA_ENVIRONMENT` (`kernel/internal/config`), `catalog-template/samples/gcp` |
+| Identity references read from a team secret | Built (2026-10-21): the samples read `gcp-target`/`aws-target` when the action lists it | `catalog-template/samples/{gcp,aws}` |
 | A consumer role; templates with parameters; exports | Missing: running a team's step requires membership of that team | `executions.ts:494-497` |
 | Triggers: console, API with bot tokens | Built | `console/src/core/tokens.ts` |
 | Schedules, webhooks | Missing | |
@@ -195,7 +195,10 @@ GCP samples impersonate `GCP_TARGET_SERVICE_ACCOUNT` from the kernel's
 `TASK_EXTRA_ENVIRONMENT` (`config.py:72-76`), so every step of every team
 gets the same one. **Do:** read the target from the team secret the step
 names (`/platform/secrets/<name>/value`), as the intended model says, and
-drop the deployment-wide setting.
+drop the deployment-wide setting. **Done 2026-10-21**: the gcp and aws
+samples read `/platform/secrets/gcp-target/service-account` and
+`/platform/secrets/aws-target/role-arn`, mounted only for actions that list
+them in `secretRefs`.
 
 **S3. Steps can reach other teams' Pods.** High for production; documented.
 **Do:** a default-deny ingress NetworkPolicy in every team namespace,

@@ -148,10 +148,10 @@ func TestKindARunningTaskIsRunningAndCancelStopsIt(t *testing.T) {
 func TestKindExtraEnvironmentReachesEveryPodAndNothingElse(t *testing.T) {
 	image := kindtest.Image(t, kindtest.FixtureImage)
 	k, client := kindExecutor(t, func(o *executor.KubernetesOptions) {
-		o.ExtraEnvironment = map[string]string{"GCP_TARGET_SERVICE_ACCOUNT": "sa@x.iam.gserviceaccount.com"}
+		o.ExtraEnvironment = map[string]string{"EXAMPLE_SETTING": "example-value"}
 	})
 	env := job(t, client, start(t, k, fixtureTask(t, "sleep", map[string]any{"seconds": 30}, image))).Containers[0].Env
-	if len(env) != 1 || env[0].Name != "GCP_TARGET_SERVICE_ACCOUNT" || env[0].Value != "sa@x.iam.gserviceaccount.com" {
+	if len(env) != 1 || env[0].Name != "EXAMPLE_SETTING" || env[0].Value != "example-value" {
 		t.Errorf("env = %v", env)
 	}
 	plain, client := kindExecutor(t)

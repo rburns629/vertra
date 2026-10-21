@@ -6,11 +6,10 @@ exists. Never builds an image: `image` is an ECR (or ECR Public) reference.
 The service is reachable only through a VPC interface endpoint unless
 `public` is true. Waits for a new service to be running, so later steps can
 use its URL. Credentials as in the aws team's README.md: boto3's default
-chain (EKS Pod Identity or IRSA), optionally assuming AWS_TARGET_ROLE_ARN.
+chain (EKS Pod Identity or IRSA), optionally assuming the aws-target role.
 """
 
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -22,7 +21,10 @@ from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
-TARGET_ROLE_ENV_VAR = "AWS_TARGET_ROLE_ARN"
+# The role to act as, if the team registered one: its secret aws-target (key
+# role-arn), mounted when the action lists it in secretRefs. See the aws
+# team's README.md.
+TARGET_ROLE_FILE = Path("/platform/secrets/aws-target/role-arn")
 RETRYABLE_CODES = {
     "Throttling", "ThrottlingException", "RequestLimitExceeded", "TooManyRequestsException",
     "ServiceUnavailable", "InternalError", "InternalFailure", "InternalServiceErrorException",
@@ -58,7 +60,7 @@ def _aws_failure(error: Exception) -> int:
 
 def _session(region: str) -> boto3.session.Session:
     session = boto3.session.Session(region_name=region)
-    target = os.environ.get(TARGET_ROLE_ENV_VAR)
+    target = TARGET_ROLE_FILE.read_text().strip() if TARGET_ROLE_FILE.exists() else ""
     if not target:
         return session
     credentials = session.client("sts").assume_role(

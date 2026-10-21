@@ -4,12 +4,11 @@
 
 Credentials come from boto3's default chain: on EKS, Pod Identity or IRSA
 supplies short-lived ones for the step's ServiceAccount, so nothing is
-mounted. If AWS_TARGET_ROLE_ARN is set, those are used only to assume that
+mounted. With the team secret aws-target, those are used only to assume its
 role, and the calls are made as it (see the aws team's README.md).
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,7 +19,10 @@ from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
-TARGET_ROLE_ENV_VAR = "AWS_TARGET_ROLE_ARN"
+# The role to act as, if the team registered one: its secret aws-target (key
+# role-arn), mounted when the action lists it in secretRefs. See the aws
+# team's README.md.
+TARGET_ROLE_FILE = Path("/platform/secrets/aws-target/role-arn")
 RETRYABLE_CODES = {
     "Throttling", "ThrottlingException", "RequestLimitExceeded", "TooManyRequestsException",
     "SlowDown", "ServiceUnavailable", "InternalError", "InternalFailure", "OperationAborted",
@@ -51,10 +53,10 @@ def _aws_failure(error: Exception) -> int:
 
 
 def _session(region: str) -> boto3.session.Session:
-    """The default credentials, or the role in AWS_TARGET_ROLE_ARN assumed
+    """The default credentials, or the aws-target role assumed
     with them (short-lived; nothing is stored)."""
     session = boto3.session.Session(region_name=region)
-    target = os.environ.get(TARGET_ROLE_ENV_VAR)
+    target = TARGET_ROLE_FILE.read_text().strip() if TARGET_ROLE_FILE.exists() else ""
     if not target:
         return session
     credentials = session.client("sts").assume_role(

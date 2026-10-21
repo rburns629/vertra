@@ -415,10 +415,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   identity it ran as and its image (kernel migration 0005). Attempts are in
   both APIs (`TaskStatus.attempts`) with the requester as an email, and
   under each step on the run page. Proven on kind.
-- [ ] **P1: samples read identity references from team secrets (S2)**,
-  not the deployment-wide `GCP_TARGET_SERVICE_ACCOUNT`
-  (`TASK_EXTRA_ENVIRONMENT`, `kernel/internal/config`), which gives every team the same
-  identity; then drop that setting from the docs.
+- [x] **P1: samples read identity references from team secrets (S2)**
+  (done 2026-10-21): the gcp samples impersonate the service account in
+  the team secret `gcp-target` (key `service-account`), and the aws samples
+  assume the role in `aws-target` (key `role-arn`), each mounted only for
+  actions that list it in `secretRefs`; the deployment-wide
+  `GCP_TARGET_SERVICE_ACCOUNT` and `AWS_TARGET_ROLE_ARN` are gone from code
+  and docs. Proven locally against the built images (impersonation and
+  AssumeRole only with the secret mounted; the old variables ignored).
+  Left: proving it against a real cloud with the next GKE or EKS run.
 - [ ] **P1: registry access across clouds (M2)**: an install on another
   cloud reading the catalog's one registry, federated where possible, and
   trusting its signing identity.

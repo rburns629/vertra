@@ -25,9 +25,19 @@ cluster lets only that product's image run as it), bound to a Google service
 account granted only what that product does (for `project`'s lookup,
 `roles/browser`). Don't bind `default`: every unregistered image runs as it.
 
-Optionally, set `GCP_TARGET_SERVICE_ACCOUNT` on the step (the kernel's
-`TASK_EXTRA_ENVIRONMENT`) to have the actions impersonate a second service
-account, using their own identity only to mint its tokens. The first needs
-`roles/iam.serviceAccountTokenCreator` on the second. Leave it unset when the
-bound identity already is the one to act as: impersonating yourself fails,
-after a minute's timeout, as `PERMISSION_DENIED`.
+Optionally, the actions impersonate a second service account, using their
+own identity only to mint its tokens: register a team secret `gcp-target`
+whose key `service-account` is that account's email, and list it in each
+action that should act as it:
+
+```yaml
+    secretRefs:
+      - name: gcp-target
+        keys: [service-account]
+```
+
+It's mounted at `/platform/secrets/gcp-target/service-account` for those
+steps only, so each team (and each product) chooses its own. The first
+account needs `roles/iam.serviceAccountTokenCreator` on the second. Leave it
+out when the bound identity already is the one to act as: impersonating
+yourself fails, after a minute's timeout, as `PERMISSION_DENIED`.

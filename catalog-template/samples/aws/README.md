@@ -61,10 +61,12 @@ An EKS Pod Identity role trusts `pods.eks.amazonaws.com` for
 `sts:AssumeRole` and `sts:TagSession`; narrow it with the conditions
 `aws:SourceAccount` (your account) and `aws:SourceArn` (the cluster's ARN).
 
-Optionally, set `AWS_TARGET_ROLE_ARN` on the step (the kernel's
-`TASK_EXTRA_ENVIRONMENT`): the actions then use their own credentials only to
-assume that role (`sts:AssumeRole`, which the target's trust policy must
-allow) and act as it.
+Optionally, register a team secret `aws-target` whose key `role-arn` is a
+role's ARN, and list it in each action that should act as it
+(`secretRefs: [{name: aws-target, keys: [role-arn]}]`): those steps then use
+their own credentials only to assume that role (`sts:AssumeRole`, which the
+target's trust policy must allow) and act as it. Each team, and each
+product, chooses its own.
 
 ## Secrets
 

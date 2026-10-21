@@ -409,8 +409,8 @@ real kernel/UI code).
 over a broad one.**
 - Where the target platform supports it, use impersonation/federation
   (short-lived tokens, minted on demand) over a static key
-  (`GCP_TARGET_SERVICE_ACCOUNT` + `impersonated_credentials`, not a
-  downloaded service-account key file).
+  (the gcp samples' `gcp-target` team secret + `impersonated_credentials`,
+  not a downloaded service-account key file).
 - When a static credential is genuinely unavoidable, scope it to exactly
   what the one thing it's used for needs (`roles/browser` for a
   read-only check, not `roles/editor` "to be safe") — grant on the

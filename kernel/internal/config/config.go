@@ -100,8 +100,9 @@ type Settings struct {
 	WatchResync time.Duration
 
 	// Env vars set on every step container, whatever its image: knobs every
-	// Pod needs the same value for (GCP_TARGET_SERVICE_ACCOUNT, say). One
-	// that varies per task belongs in that task's inputs.
+	// Pod needs the same value for (on kind, GOOGLE_APPLICATION_CREDENTIALS
+	// pointing at a mounted key). One that varies per team belongs in a team
+	// secret, and per task in its inputs.
 	TaskExtraEnvironment map[string]string
 	// The Pod size for any part a task doesn't set itself. Unset, a task
 	// with no size of its own requests nothing and the cluster's defaults

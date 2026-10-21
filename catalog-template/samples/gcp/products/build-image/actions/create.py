@@ -15,7 +15,7 @@ buildpacks or otherwise infer how to build arbitrary source.
 
 By default, calls Cloud Build and Artifact Registry using whatever
 GOOGLE_APPLICATION_CREDENTIALS/ADC the container finds. If
-GCP_TARGET_SERVICE_ACCOUNT is set, those base credentials are never used to
+the gcp-target secret is mounted, those base credentials are never used to
 call GCP APIs directly -- they're only the *source* identity used to
 impersonate that service account instead (short-lived tokens, minted on
 demand; no static key for the target identity ever exists). The source
@@ -26,7 +26,6 @@ bucket, artifactregistry.tags.get) -- see the gcp team's README.md.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -42,7 +41,10 @@ from google.cloud.devtools import cloudbuild_v1
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
-TARGET_SERVICE_ACCOUNT_ENV_VAR = "GCP_TARGET_SERVICE_ACCOUNT"
+# The service account to act as, if the team registered one: its secret
+# gcp-target (key service-account), mounted when the action lists it in
+# secretRefs. See the gcp team's README.md.
+TARGET_SERVICE_ACCOUNT_FILE = Path("/platform/secrets/gcp-target/service-account")
 IMPERSONATION_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 
@@ -58,12 +60,12 @@ def _failure(code: str, message: str, *, retryable: bool = False) -> int:
 
 
 def _build_credentials() -> google.auth.credentials.Credentials | None:
-    """Impersonated credentials for GCP_TARGET_SERVICE_ACCOUNT, or None to
-    leave each client's own ADC discovery in charge, unimpersonated, when
-    that env var isn't set -- None is a valid "use the default" value for
-    every google-cloud client's credentials= argument.
+    """Impersonated credentials for the gcp-target service account, or None
+    to leave each client's own ADC discovery in charge, unimpersonated, when
+    the team's gcp-target secret isn't mounted -- None is a valid "use the
+    default" value for every google-cloud client's credentials= argument.
     """
-    target = os.environ.get(TARGET_SERVICE_ACCOUNT_ENV_VAR)
+    target = TARGET_SERVICE_ACCOUNT_FILE.read_text().strip() if TARGET_SERVICE_ACCOUNT_FILE.exists() else ""
     if not target:
         return None
     source_credentials, _ = google.auth.default()

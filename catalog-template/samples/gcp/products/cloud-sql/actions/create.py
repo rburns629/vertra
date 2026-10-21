@@ -17,7 +17,7 @@ instead of `google.cloud.*`.
 
 By default, calls the Cloud SQL Admin API using whatever
 GOOGLE_APPLICATION_CREDENTIALS/ADC the container finds. If
-GCP_TARGET_SERVICE_ACCOUNT is set, those base credentials are never used to
+the gcp-target secret is mounted, those base credentials are never used to
 call GCP APIs directly -- they're only the *source* identity used to
 impersonate that service account instead. See gcp/_project's own
 create.py and catalog/README.md for the full reasoning (identical pattern,
@@ -26,7 +26,6 @@ share code).
 """
 
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -41,7 +40,10 @@ from googleapiclient.errors import HttpError
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
-TARGET_SERVICE_ACCOUNT_ENV_VAR = "GCP_TARGET_SERVICE_ACCOUNT"
+# The service account to act as, if the team registered one: its secret
+# gcp-target (key service-account), mounted when the action lists it in
+# secretRefs. See the gcp team's README.md.
+TARGET_SERVICE_ACCOUNT_FILE = Path("/platform/secrets/gcp-target/service-account")
 IMPERSONATION_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 DEFAULT_DATABASE_VERSION = "POSTGRES_15"
@@ -70,13 +72,12 @@ def _failure(code: str, message: str, *, retryable: bool = False) -> int:
 
 
 def _build_credentials() -> google.auth.credentials.Credentials | None:
-    """Impersonated credentials for GCP_TARGET_SERVICE_ACCOUNT, or None to
-    leave the client's own ADC discovery in charge, unimpersonated, when
-    that env var isn't set -- None is a valid "use the default" value for
-    discovery.build's own credentials= argument, same as every
-    google-cloud client's.
+    """Impersonated credentials for the gcp-target service account, or None
+    to leave each client's own ADC discovery in charge, unimpersonated, when
+    the team's gcp-target secret isn't mounted -- None is a valid "use the
+    default" value for every google-cloud client's credentials= argument.
     """
-    target = os.environ.get(TARGET_SERVICE_ACCOUNT_ENV_VAR)
+    target = TARGET_SERVICE_ACCOUNT_FILE.read_text().strip() if TARGET_SERVICE_ACCOUNT_FILE.exists() else ""
     if not target:
         return None
     source_credentials, _ = google.auth.default()
