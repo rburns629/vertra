@@ -39,7 +39,7 @@ fi
 # Every finding goes in the JSON report; the gate is applied when reading it,
 # so a scanner that fails outright (no report) blocks too.
 if ! trivy image --quiet --scanners vuln,secret --format json --output "$report/trivy.json" \
-     "${ignore_args[@]}" "$image"; then
+     ${ignore_args[@]+"${ignore_args[@]}"} "$image"; then
   echo "::error::Trivy couldn't scan $image."
   echo "- :x: Trivy couldn't scan the image." >> "$summary"
   failed=1

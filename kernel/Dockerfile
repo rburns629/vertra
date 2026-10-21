@@ -1,7 +1,7 @@
 # The kernel: one static binary, `kernel`, whose subcommand picks the
 # process (the chart's `command:`): api, scheduler, migrate, sleep.
 # On the builder's own platform, cross-compiling for the target: no emulation.
-FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd AS build
 ARG TARGETOS TARGETARCH
 WORKDIR /src
 COPY go.mod go.sum ./

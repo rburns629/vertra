@@ -46,7 +46,7 @@ jobs:
   kernel:
     runs-on: ubuntu-latest
     # The Go toolchain the kernel is built with (kernel/Dockerfile), pinned by digest.
-    container: golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d
+    container: golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd
     defaults:
       run:
         working-directory: kernel
@@ -205,7 +205,7 @@ jobs:
           kubectl create namespace execution-kernel
           docker run --rm --network host -v "$PWD":/src -w /src -e CGO_ENABLED=0 \
             -e DATABASE_URL=postgresql://runner@localhost/execution_kernel_test \
-            golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d \
+            golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd \
             sh -c 'go run ./cmd/kernel migrate && go test -c -o bin/executor.test ./internal/executor && go test -c -o bin/scheduler.test ./internal/scheduler'
           (cd internal/executor && ../../bin/executor.test -test.run '^TestKind' -test.v)
           (cd internal/scheduler && ../../bin/scheduler.test -test.run '^TestKind' -test.v)
@@ -213,7 +213,7 @@ jobs:
   cli:
     runs-on: ubuntu-latest
     # The Go toolchain the CLI is built with, pinned by digest.
-    container: golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d
+    container: golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd
     defaults:
       run:
         working-directory: cli
