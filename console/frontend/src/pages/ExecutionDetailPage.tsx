@@ -444,12 +444,14 @@ function eventEntryColor(eventType: string): string {
  * whatever order the API happened to return them in.
  */
 function ContainerLogsView({
+  executionId,
   tasksWithLogs,
   events,
   selectedTaskId,
   onSelectTask,
   isLive,
 }: {
+  executionId: string;
   tasksWithLogs: TaskLogs[];
   events: ExecutionEvent[];
   selectedTaskId: string | null;
@@ -543,6 +545,9 @@ function ContainerLogsView({
         />
         <Button size="small" startIcon={<DownloadIcon />} onClick={handleDownload} sx={{ ml: "auto" }}>
           Download
+        </Button>
+        <Button size="small" component={RouterLink} to={`/observe?tab=logs&run=${encodeURIComponent(executionId)}`}>
+          Search in Observe
         </Button>
         {isLive && (
           <Chip icon={<CircleIcon sx={{ fontSize: "8px !important" }} />} label="Live" size="small" color="warning" variant="outlined" />
@@ -957,6 +962,7 @@ export function ExecutionDetailPage() {
             Logs
           </Typography>
           <ContainerLogsView
+            executionId={execution.executionId}
             tasksWithLogs={logs}
             events={events}
             selectedTaskId={selectedTaskId}

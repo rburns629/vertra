@@ -126,6 +126,7 @@ database:
   type: in-cluster           # in-cluster | managed
   highAvailability: false    # managed only
   backups: {enabled: true, retentionDays: 30}   # in-cluster only
+logs: {enabled: false, searchDays: 30, keepDays: 365}   # Observe's log search; archived after searchDays (gcp, aws)
 admin: {email: you@example.com}
 catalog:
   host: github

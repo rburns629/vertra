@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
-/** ObserveService (proto/vertra/console/v1/observe.proto): core/observe.ts over Connect. */
+/** ObserveService (proto/vertra/console/v1/observe.proto): core/observe.ts and core/logs.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
+import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { searchLogs, SearchLogsQuery, type SearchLogsInput } from "../../core/logs.js";
 import { getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
 import type { ObserveService } from "../../gen/vertra/console/v1/observe_pb.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
@@ -43,6 +45,28 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
         entries: page.entries.map(auditEntryMessage),
         nextBefore: BigInt(page.nextBefore ?? 0),
       };
+    },
+
+    async searchLogs(req, ctx) {
+      const query = check(
+        { query: SearchLogsQuery },
+        {
+          query: {
+            text: unsetIfEmpty(req.text),
+            team: unsetIfEmpty(req.team),
+            executionId: unsetIfEmpty(req.executionId),
+            level: unsetIfEmpty(req.level),
+            source: unsetIfEmpty(req.source),
+            limit: unsetIfEmpty(req.limit),
+          },
+        },
+      ).query as SearchLogsInput;
+      const found = await searchLogs(callerOf(ctx), {
+        ...query,
+        since: req.since ? timestampDate(req.since) : undefined,
+        until: req.until ? timestampDate(req.until) : undefined,
+      });
+      return { ...found, lines: found.lines.map((l) => ({ ...l, at: timestamp(l.at) })) };
     },
   };
 }

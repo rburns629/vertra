@@ -92,6 +92,13 @@ async function checks(): Promise<Check[]> {
         : "The gateway isn't running on this install.",
     },
     {
+      name: "Logs redacted, and searched only by who may see them",
+      state: config.logs.lokiUrl ? "enforced" : "off",
+      text: config.logs.lokiUrl
+        ? `Credentials a step prints are redacted before its logs are kept. Its INFO lines reach anyone who may see its run, the rest only its team; the platform's own, admins. Searchable for ${String(config.logs.searchDays)} days, then archived.`
+        : "This install doesn't keep logs: a run's page shows its steps' output, kept with the run.",
+    },
+    {
       name: "The console's Secret writes fenced per team",
       state: "not_yet",
       text: "The console can still create and replace Secrets in any team namespace (it can't read them).",

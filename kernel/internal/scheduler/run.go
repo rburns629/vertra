@@ -34,6 +34,9 @@ type Loop struct {
 	Options  Options
 	// PollInterval is the longest wait between passes when nothing happened.
 	PollInterval time.Duration
+	// ReleaseAfter keeps a finished attempt's Job this long once its result
+	// is committed, so a log collector can still read its Pod's output.
+	ReleaseAfter time.Duration
 	// RetentionDays deletes finished executions this long after their last
 	// event; 0 keeps them forever.
 	RetentionDays int
@@ -41,6 +44,38 @@ type Loop struct {
 	// probe restarts the Pod if it goes stale (a hung pass).
 	HeartbeatFile string
 	Log           *slog.Logger
+
+	held heldJobs
+}
+
+// heldJobs are finished attempts' Jobs waiting out ReleaseAfter. Only in
+// memory: after a crash the orphan sweep removes them.
+type heldJobs []heldJob
+
+type heldJob struct {
+	handle executor.Handle
+	due    time.Time
+}
+
+func (h *heldJobs) hold(handles []executor.Handle, due time.Time) {
+	for _, handle := range handles {
+		*h = append(*h, heldJob{handle, due})
+	}
+}
+
+// take removes and returns the Jobs due by now (all of them, given the zero time).
+func (h *heldJobs) take(now time.Time) []executor.Handle {
+	var due []executor.Handle
+	kept := (*h)[:0]
+	for _, job := range *h {
+		if now.IsZero() || !job.due.After(now) {
+			due = append(due, job.handle)
+		} else {
+			kept = append(kept, job)
+		}
+	}
+	*h = kept
+	return due
 }
 
 func (l *Loop) heartbeat() {
@@ -79,10 +114,11 @@ func (l *Loop) Run(ctx context.Context) error {
 			for _, event := range outcome.Events {
 				metrics.Events.WithLabelValues(string(event)).Inc()
 			}
-			// Committed: only now may what finished be removed.
-			ReleaseFinished(work, l.Executor, outcome.Finished, l.Log)
+			// Committed: only now may what finished be removed, once held.
+			l.held.hold(outcome.Finished, time.Now().Add(l.ReleaseAfter))
 			l.housekeeping(work, &nextRetention, &nextOrphanSweep)
 		}
+		ReleaseFinished(work, l.Executor, l.held.take(time.Now()), l.Log)
 		if time.Now().After(nextGauges) {
 			nextGauges = time.Now().Add(gaugeInterval)
 			if err := SampleTasks(work, l.Pool, time.Now()); err != nil {
@@ -100,6 +136,8 @@ func (l *Loop) Run(ctx context.Context) error {
 		}
 		l.heartbeat()
 	}
+	// Not held any longer: another scheduler wouldn't know of them.
+	ReleaseFinished(work, l.Executor, l.held.take(time.Time{}), l.Log)
 	// Not retried: if this fails, the leases expire on their own and are
 	// recovered then, as after a crash.
 	released, err := ReleaseLeases(work, l.Pool, l.Options.Owner, time.Now())

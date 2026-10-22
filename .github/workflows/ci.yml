@@ -200,6 +200,10 @@ jobs:
           helm template console helm/charts/execution-console --set kernelApiUrl=http://x $monitoring \
             --set monitoring.dashboard.enabled=true --set gateway.enabled=true \
             --set 'networkPolicy.metricsFrom[0].namespaceSelector.matchLabels.x=y' > /dev/null
+          for storage in filesystem gcs s3; do
+            helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
+              --set logs.enabled=true --set logs.storage.type=$storage --set logs.storage.bucket=b > /dev/null
+          done
       - name: Render every size, with sleeping and headroom on
         run: |
           for size in minimal resilient scaled auto; do

@@ -79,8 +79,26 @@ variable "backup_retention_days" {
   default = 30
 }
 
+variable "logs" {
+  description = "A bucket for Loki's logs (Observe's log search), archived after log_search_days."
+  type        = bool
+  default     = false
+}
+
+variable "log_search_days" {
+  description = "Days logs stay searchable in the standard storage class before moving to the archive class."
+  type        = number
+  default     = 30
+}
+
+variable "log_keep_days" {
+  description = "Days logs are kept in all; Loki deletes them then, the bucket a day later if Loki didn't."
+  type        = number
+  default     = 365
+}
+
 variable "delete_data" {
-  description = "Let destroy delete the backup bucket even when it holds backups (vertra destroy asks first)."
+  description = "Let destroy delete the backup and logs buckets even when they hold data (vertra destroy asks first)."
   type        = bool
   default     = false
 }

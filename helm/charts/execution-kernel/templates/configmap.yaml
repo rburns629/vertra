@@ -35,6 +35,7 @@ data:
   SCHEDULER_RETRY_BACKOFF_MAX_SECONDS: {{ .Values.scheduler.retryBackoffMaxSeconds | quote }}
   KUBERNETES_WATCH_RESYNC_SECONDS: {{ .Values.scheduler.watchResyncSeconds | quote }}
   KUBERNETES_JOB_TTL_SECONDS: {{ .Values.scheduler.jobTtlSecondsAfterFinished | quote }}
+  RELEASE_FINISHED_AFTER_SECONDS: {{ .Values.scheduler.releaseFinishedAfterSeconds | quote }}
   IMAGE_PULL_GRACE_SECONDS: {{ .Values.scheduler.imagePullGraceSeconds | quote }}
   # Only kernel-scheduler acts on this (kernel/cmd/kernel-scheduler starts a
   # dedicated metrics HTTP server on it); kernel-api ignores it and serves

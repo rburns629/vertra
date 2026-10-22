@@ -1,0 +1,145 @@
+// Vertra's log collector (values: logs). Reads the output of every step's
+// Pod and of the platform's own, through the Kubernetes API, and sends it
+// to Loki labelled for Observe's log search (console/src/core/logs.ts):
+//
+//   labels:              namespace (a step's team), component (step or
+//                        platform), app (a platform Pod's), level
+//   structured metadata: execution_id, task, attempt, image, pod
+//
+// Credentials a step prints are redacted here, before anything is stored,
+// with the same patterns the kernel uses for the output it keeps
+// (kernel/internal/domain/credentials.go; a kernel test keeps them equal).
+// A line's level is its JSON `level` (or `severity`); a plain line counts
+// as debug, so it reaches only the step's own team.
+
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  // Steps (the kernel's Jobs, in team namespaces) and the platform's own Pods.
+  rule {
+    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_vertra_dev_execution_id"]
+    regex         = sys.env("PLATFORM_NAMESPACE") + `;.*|.+;.+`
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    target_label = "component"
+    replacement  = "platform"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_vertra_dev_execution_id"]
+    regex         = `.+`
+    target_label  = "component"
+    replacement   = "step"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_component"]
+    target_label  = "app"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_vertra_dev_execution_id"]
+    target_label  = "execution_id"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_annotation_vertra_dev_task"]
+    target_label  = "task"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_vertra_dev_attempt"]
+    target_label  = "attempt"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_image"]
+    target_label  = "image"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+}
+
+loki.source.kubernetes "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [loki.process.vertra.receiver]
+}
+
+loki.process "vertra" {
+  forward_to = [loki.write.loki.receiver]
+
+  // --- credentials, by shape (the kernel's patterns) ---
+  stage.replace {
+    expression = `(-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----[\s\S]*)`
+    replace    = "[redacted private key]"
+  }
+  // A key's body, line by line: nothing but long base64.
+  stage.replace {
+    expression = `^([A-Za-z0-9+/]{60,}={0,2})$`
+    replace    = "[redacted key material]"
+  }
+  stage.replace {
+    expression = `(\b(?:AKIA|ASIA)[0-9A-Z]{16}\b)`
+    replace    = "[redacted AWS access key]"
+  }
+  stage.replace {
+    expression = `(\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})\b)`
+    replace    = "[redacted GitHub token]"
+  }
+  stage.replace {
+    expression = `(\bAIza[0-9A-Za-z_\-]{35}\b)`
+    replace    = "[redacted Google API key]"
+  }
+  stage.replace {
+    expression = `(\bxox[abprs]-[A-Za-z0-9-]{10,})`
+    replace    = "[redacted Slack token]"
+  }
+  stage.replace {
+    expression = `(\b[rs]k_live_[0-9A-Za-z]{20,}\b)`
+    replace    = "[redacted Stripe key]"
+  }
+  stage.replace {
+    expression = `(AccountKey=[A-Za-z0-9+/]{40,}={0,2})`
+    replace    = "[redacted Azure storage key]"
+  }
+  stage.replace {
+    expression = `((?i)\bbearer\s+[A-Za-z0-9._~+/\-]{20,}=*)`
+    replace    = "[redacted bearer token]"
+  }
+  stage.replace {
+    expression = `(\beyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,})`
+    replace    = "[redacted JWT]"
+  }
+
+  // --- the level: JSON level or severity (pino's numbers too); else debug ---
+  stage.json {
+    expressions = { raw_level = "level", raw_severity = "severity" }
+  }
+  stage.template {
+    source   = "level"
+    template = `{{ $l := ToLower (or .raw_level .raw_severity "") }}{{ if or (eq $l "info") (eq $l "information") (eq $l "30") }}info{{ else if or (eq $l "warn") (eq $l "warning") (eq $l "40") }}warn{{ else if or (eq $l "error") (eq $l "fatal") (eq $l "critical") (eq $l "50") (eq $l "60") }}error{{ else }}debug{{ end }}`
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+
+  // Searchable per line, without making a stream per run.
+  stage.structured_metadata {
+    regex = `execution_id|task|attempt|image|pod`
+  }
+  // instance and job: one stream per Pod otherwise.
+  stage.label_drop {
+    values = ["execution_id", "task", "attempt", "image", "pod", "instance", "job"]
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = sys.env("LOKI_URL") + "/loki/api/v1/push"
+  }
+}

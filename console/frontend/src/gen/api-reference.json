@@ -406,6 +406,15 @@
      "streaming": false,
      "idempotency": "read",
      "public": false
+    },
+    {
+     "name": "SearchLogs",
+     "comment": "Searches the logs kept in Loki (when the install collects them), newest\nfirst. A step's INFO lines reach anyone who may see its run; its other\nlines its own team; the platform's own logs admins only. failed_precondition\n(LOGS_OFF) when this install doesn't collect logs.",
+     "input": "vertra.console.v1.SearchLogsRequest",
+     "output": "vertra.console.v1.SearchLogsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
     }
    ]
   },
@@ -4043,6 +4052,158 @@
      "repeated": false,
      "optional": false,
      "comment": "Pass as `before` for the next page; 0 on the last."
+    }
+   ]
+  },
+  "vertra.console.v1.SearchLogsRequest": {
+   "name": "SearchLogsRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "text",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Lines containing this, ignoring case."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Only this team's steps."
+    },
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Only this run's steps."
+    },
+    {
+     "name": "level",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "debug, info, warn or error; any when empty."
+    },
+    {
+     "name": "source",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "step (the default) or platform (admins only)."
+    },
+    {
+     "name": "since",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The window; the last hour when unset. At most the install's search\nwindow (searchDays) back: older logs are archived."
+    },
+    {
+     "name": "until",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "limit",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "200 when unset, at most 1000."
+    }
+   ]
+  },
+  "vertra.console.v1.SearchLogsResponse": {
+   "name": "SearchLogsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "lines",
+     "type": "LogLine",
+     "ref": "vertra.console.v1.LogLine",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "truncated",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "More matched than limit: narrow the search."
+    },
+    {
+     "name": "searchDays",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How far back this install searches."
+    }
+   ]
+  },
+  "vertra.console.v1.LogLine": {
+   "name": "LogLine",
+   "comment": "",
+   "fields": [
+    {
+     "name": "at",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "A step's team (its namespace); empty for the platform's."
+    },
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "task",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "attempt",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "level",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "app",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "For the platform's: which part (app, gateway, scheduler...)."
+    },
+    {
+     "name": "line",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

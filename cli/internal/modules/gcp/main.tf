@@ -275,6 +275,60 @@ resource "google_service_account_iam_member" "backup_workload_identity" {
   depends_on         = [google_container_cluster.this]
 }
 
+# --- logs: Loki's bucket, archived after log_search_days --------------------
+# Loki (single tenant) keeps chunks under fake/ and its index under index/;
+# only chunks move to the Archive class, and Loki still reads them there.
+
+resource "google_storage_bucket" "logs" {
+  count                       = var.logs ? 1 : 0
+  name                        = "${var.project}-${var.name}-logs"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = var.delete_data
+  lifecycle_rule {
+    condition {
+      age            = var.log_search_days
+      matches_prefix = ["fake/"]
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "ARCHIVE"
+    }
+  }
+  lifecycle_rule {
+    condition {
+      age = var.log_keep_days + 1
+    }
+    action {
+      type = "Delete"
+    }
+  }
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_service_account" "logs" {
+  count        = var.logs ? 1 : 0
+  account_id   = "${var.name}-logs"
+  display_name = "Vertra ${var.name}: Loki's logs (one bucket)"
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_storage_bucket_iam_member" "logs" {
+  count  = var.logs ? 1 : 0
+  bucket = google_storage_bucket.logs[0].name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.logs[0].member
+}
+
+resource "google_service_account_iam_member" "logs_workload_identity" {
+  count              = var.logs ? 1 : 0
+  service_account_id = google_service_account.logs[0].name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "${local.ksa}/vertra-loki]"
+  depends_on         = [google_container_cluster.this]
+}
+
 # --- reaching the console: an address for its load balancer -----------------
 
 resource "google_compute_global_address" "console" {

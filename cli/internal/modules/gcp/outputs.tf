@@ -25,6 +25,13 @@ output "console_service_account" {
   value = google_service_account.console.email
 }
 
+output "logs" {
+  value = var.logs ? {
+    bucket          = google_storage_bucket.logs[0].name
+    service_account = google_service_account.logs[0].email
+  } : null
+}
+
 output "backup" {
   value = var.backups ? {
     bucket          = google_storage_bucket.backups[0].name

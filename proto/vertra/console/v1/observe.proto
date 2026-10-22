@@ -28,6 +28,13 @@ service ObserveService {
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Searches the logs kept in Loki (when the install collects them), newest
+  // first. A step's INFO lines reach anyone who may see its run; its other
+  // lines its own team; the platform's own logs admins only. failed_precondition
+  // (LOGS_OFF) when this install doesn't collect logs.
+  rpc SearchLogs(SearchLogsRequest) returns (SearchLogsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message GetSecurityRequest {}
@@ -128,4 +135,44 @@ message ListAuditResponse {
   repeated AuditEntry entries = 1;
   // Pass as `before` for the next page; 0 on the last.
   int64 next_before = 2;
+}
+
+message SearchLogsRequest {
+  // Lines containing this, ignoring case.
+  string text = 1;
+  // Only this team's steps.
+  string team = 2;
+  // Only this run's steps.
+  string execution_id = 3;
+  // debug, info, warn or error; any when empty.
+  string level = 4;
+  // step (the default) or platform (admins only).
+  string source = 5;
+  // The window; the last hour when unset. At most the install's search
+  // window (searchDays) back: older logs are archived.
+  google.protobuf.Timestamp since = 6;
+  google.protobuf.Timestamp until = 7;
+  // 200 when unset, at most 1000.
+  int32 limit = 8;
+}
+
+message SearchLogsResponse {
+  repeated LogLine lines = 1;
+  // More matched than limit: narrow the search.
+  bool truncated = 2;
+  // How far back this install searches.
+  int32 search_days = 3;
+}
+
+message LogLine {
+  google.protobuf.Timestamp at = 1;
+  // A step's team (its namespace); empty for the platform's.
+  string team = 2;
+  string execution_id = 3;
+  string task = 4;
+  int32 attempt = 5;
+  string level = 6;
+  // For the platform's: which part (app, gateway, scheduler...).
+  string app = 7;
+  string line = 8;
 }

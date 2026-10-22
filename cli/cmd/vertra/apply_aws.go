@@ -81,6 +81,10 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 			Bucket string `json:"bucket"`
 			Region string `json:"region"`
 		}
+		Logs *struct {
+			Bucket string `json:"bucket"`
+			Region string `json:"region"`
+		}
 		StepPlacement map[string]any
 		Spot          bool
 		Catalog       *struct {
@@ -95,7 +99,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		}
 	}
 	for name, into := range map[string]any{
-		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup,
+		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs,
 		"step_placement": &v.StepPlacement, "spot": &v.Spot, "catalog": &v.Catalog,
 		"console_address": &v.ConsoleAddress,
 	} {
@@ -121,6 +125,9 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	}
 	if v.Backup != nil {
 		cloud.BackupBucket, cloud.BackupRegion = v.Backup.Bucket, v.Backup.Region
+	}
+	if v.Logs != nil {
+		cloud.LogsBucket, cloud.LogsRegion = v.Logs.Bucket, v.Logs.Region
 	}
 	if v.Catalog != nil {
 		cloud.CatalogServiceAccount = v.Catalog.RoleArn
@@ -240,11 +247,22 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 	if c.Database.Backups.Enabled && !deleteData {
 		keep = append(keep, bucket, "aws_s3_bucket_public_access_block.backups[0]", "aws_s3_bucket_lifecycle_configuration.backups[0]")
 	}
+	const logsBucket = "aws_s3_bucket.logs[0]"
+	if c.Logs.Enabled && !deleteData {
+		keep = append(keep, logsBucket, "aws_s3_bucket_public_access_block.logs[0]", "aws_s3_bucket_lifecycle_configuration.logs[0]")
+	}
 	if tf.HasState(ctx) {
+		var emptied []string
 		if c.Database.Backups.Enabled && deleteData {
-			// A bucket with backups in it is deleted only once the state
-			// says it may be (delete_data: force_destroy).
-			if err := tf.ApplyOnly(ctx, bucket); err != nil {
+			emptied = append(emptied, bucket)
+		}
+		if c.Logs.Enabled && deleteData {
+			emptied = append(emptied, logsBucket)
+		}
+		if len(emptied) > 0 {
+			// A bucket with data in it is deleted only once the state says
+			// it may be (delete_data: force_destroy).
+			if err := tf.ApplyOnly(ctx, emptied...); err != nil {
 				return err
 			}
 		}

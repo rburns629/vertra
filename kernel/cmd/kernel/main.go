@@ -284,7 +284,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		JobDeadlineGrace: s.JobDeadlineGrace, ApprovalTimeout: s.ApprovalTimeout,
 	}
 	loop := &scheduler.Loop{Pool: pool, Executor: exec, Options: opts, PollInterval: s.PollInterval,
-		RetentionDays: s.ExecutionRetentionDays, HeartbeatFile: s.HeartbeatFile, Log: log}
+		ReleaseAfter: s.ReleaseFinishedAfter, RetentionDays: s.ExecutionRetentionDays, HeartbeatFile: s.HeartbeatFile, Log: log}
 	return loop.Run(ctx)
 }
 

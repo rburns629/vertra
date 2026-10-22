@@ -71,6 +71,8 @@ type Config struct {
 	CatalogSignature CatalogSignature `yaml:"catalogSignature,omitempty"`
 	// Gateway: the API gateway, which serves the catalog's API products.
 	Gateway Gateway `yaml:"gateway,omitempty"`
+	// Logs: log search in Observe (Loki), and how long logs are kept.
+	Logs Logs `yaml:"logs"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
@@ -141,6 +143,15 @@ type Database struct {
 type Backups struct {
 	Enabled       bool `yaml:"enabled"`
 	RetentionDays int  `yaml:"retentionDays,omitempty"`
+}
+
+// Logs: steps' and the platform's logs collected into Loki for Observe's
+// search. Searchable for SearchDays; then, on gcp and aws, moved to the
+// bucket's archive storage class; deleted after KeepDays.
+type Logs struct {
+	Enabled    bool `yaml:"enabled"`
+	SearchDays int  `yaml:"searchDays,omitempty"`
+	KeepDays   int  `yaml:"keepDays,omitempty"`
 }
 
 // Console: reached over HTTPS from the internet (what the catalog's CI
@@ -244,6 +255,7 @@ func Default(target string) *Config {
 		Size:      "minimal",
 		ScaleDown: ScaleDown{Enabled: true, IdleAfter: "2h"},
 		Database:  Database{Type: "in-cluster", Backups: Backups{Enabled: false, RetentionDays: 30}},
+		Logs:      Logs{SearchDays: 30, KeepDays: 365},
 	}
 	switch target {
 	case "kind":
@@ -413,6 +425,14 @@ func (c *Config) Validate() error {
 		}
 	} else if c.MinReplicas < 1 || c.MinReplicas > 10 {
 		add("minReplicas: %d: at least 1 (and at most 10) when scaleDown is off", c.MinReplicas)
+	}
+	if c.Logs.Enabled {
+		if c.Logs.SearchDays < 1 || c.Logs.SearchDays > 365 {
+			add("logs.searchDays: %d isn't between 1 and 365", c.Logs.SearchDays)
+		}
+		if c.Logs.KeepDays < c.Logs.SearchDays || c.Logs.KeepDays > 3650 {
+			add("logs.keepDays: %d: at least logs.searchDays (%d), at most 3650", c.Logs.KeepDays, c.Logs.SearchDays)
+		}
 	}
 	if c.StepHeadroom < 0 || c.StepHeadroom > 100 {
 		add("stepHeadroom: %d isn't between 0 and 100", c.StepHeadroom)

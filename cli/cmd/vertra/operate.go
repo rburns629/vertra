@@ -233,13 +233,17 @@ func (a *app) destroyCmd() *cobra.Command {
 			case "gcp", "aws":
 				kind := map[string]string{"gcp": "GKE", "aws": "EKS"}[c.Target]
 				steps = append(steps, fmt.Sprintf("delete the %s cluster %s and what the module created with it (network, identities, the platform registry)", kind, c.Cluster.Name))
-				if deleteData, err = ask("Delete the data too: the database's disk and the backups bucket?"); err != nil {
+				buckets, kept := "the backups bucket", "every backup"
+				if c.Logs.Enabled {
+					buckets, kept = "the backups and logs buckets", "every backup and archived log"
+				}
+				if deleteData, err = ask("Delete the data too: the database's disk and " + buckets + "?"); err != nil {
 					return err
 				}
 				if deleteData {
-					steps = append(steps, "delete the database's disk and every backup")
+					steps = append(steps, "delete the database's disk and "+kept)
 				} else {
-					steps = append(steps, "keep the database's disk and the backups bucket (billed until you delete them)")
+					steps = append(steps, "keep the database's disk and "+buckets+" (billed until you delete them)")
 				}
 				if c.TaskImages.Create {
 					if deleteRegistry, err = ask(fmt.Sprintf("Delete the task registry %s and the catalog's images in it?", c.TaskImages.Name)); err != nil {

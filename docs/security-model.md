@@ -199,6 +199,16 @@ the run; every other line (debug, warn, error, and any plain line, so
 nothing reaches a consumer by accident) only to the step's team and admins.
 A consumer sees how many lines were held back and which team sees them.
 
+Observe's log search (the console chart's `logs`, off by default) keeps the
+same rule over Loki, which has no users of its own: the console adds the
+caller's visibility to every query (`console/src/core/logs.ts`), and Loki
+accepts only the collector's pushes and the console's queries
+(NetworkPolicy). The collector, Grafana Alloy, redacts credentials before
+anything is stored, with the kernel's patterns, and may read every Pod's
+logs in the cluster (a read-only ClusterRole on `pods` and `pods/log`:
+steps run in every team's namespace); it keeps only steps' Pods and the
+platform's own. The platform's own logs are for admins only.
+
 ## The API gateway
 
 API products (decision 20) publish a team's own backend through one

@@ -129,6 +129,9 @@ type Settings struct {
 	TaskPodHardening bool
 
 	JobTTL time.Duration
+	// How long a finished step's Job (and Pod) is kept once its result is
+	// committed, so a log collector can still read its output.
+	ReleaseFinishedAfter time.Duration
 	// How long an image may keep failing to pull for a reason other than
 	// "it doesn't exist" (registry auth, network) before the task fails as
 	// IMAGE_PULL_FAILED. A missing image fails at once.
@@ -269,6 +272,7 @@ func Load(getenv func(string) string) (Settings, error) {
 		TaskImagePullSecret:    r.str("TASK_IMAGE_PULL_SECRET", ""),
 		TaskPodHardening:       r.boolean("TASK_POD_HARDENING", true),
 		JobTTL:                 r.seconds("KUBERNETES_JOB_TTL_SECONDS", 3600, false),
+		ReleaseFinishedAfter:   r.seconds("RELEASE_FINISHED_AFTER_SECONDS", 30, false),
 		ImagePullGrace:         r.seconds("IMAGE_PULL_GRACE_SECONDS", 120, true),
 		KubernetesTimeout:      r.seconds("KUBERNETES_REQUEST_TIMEOUT_SECONDS", 30, true),
 		JobDeadlineGrace:       r.seconds("KUBERNETES_JOB_DEADLINE_GRACE_SECONDS", 600, false),

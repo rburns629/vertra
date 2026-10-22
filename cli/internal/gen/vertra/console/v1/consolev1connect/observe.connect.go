@@ -44,6 +44,9 @@ const (
 	// ObserveServiceListAuditProcedure is the fully-qualified name of the ObserveService's ListAudit
 	// RPC.
 	ObserveServiceListAuditProcedure = "/vertra.console.v1.ObserveService/ListAudit"
+	// ObserveServiceSearchLogsProcedure is the fully-qualified name of the ObserveService's SearchLogs
+	// RPC.
+	ObserveServiceSearchLogsProcedure = "/vertra.console.v1.ObserveService/SearchLogs"
 )
 
 // ObserveServiceClient is a client for the vertra.console.v1.ObserveService service.
@@ -58,6 +61,11 @@ type ObserveServiceClient interface {
 	// Who changed what, newest first. Admins see every entry; anyone else
 	// their own, and what was done to their teams and to runs in them.
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	// Searches the logs kept in Loki (when the install collects them), newest
+	// first. A step's INFO lines reach anyone who may see its run; its other
+	// lines its own team; the platform's own logs admins only. failed_precondition
+	// (LOGS_OFF) when this install doesn't collect logs.
+	SearchLogs(context.Context, *connect.Request[v1.SearchLogsRequest]) (*connect.Response[v1.SearchLogsResponse], error)
 }
 
 // NewObserveServiceClient constructs a client for the vertra.console.v1.ObserveService service. By
@@ -92,6 +100,13 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		searchLogs: connect.NewClient[v1.SearchLogsRequest, v1.SearchLogsResponse](
+			httpClient,
+			baseURL+ObserveServiceSearchLogsProcedure,
+			connect.WithSchema(observeServiceMethods.ByName("SearchLogs")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -100,6 +115,7 @@ type observeServiceClient struct {
 	getSecurity *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
 	getMetrics  *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
 	listAudit   *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
+	searchLogs  *connect.Client[v1.SearchLogsRequest, v1.SearchLogsResponse]
 }
 
 // GetSecurity calls vertra.console.v1.ObserveService.GetSecurity.
@@ -117,6 +133,11 @@ func (c *observeServiceClient) ListAudit(ctx context.Context, req *connect.Reque
 	return c.listAudit.CallUnary(ctx, req)
 }
 
+// SearchLogs calls vertra.console.v1.ObserveService.SearchLogs.
+func (c *observeServiceClient) SearchLogs(ctx context.Context, req *connect.Request[v1.SearchLogsRequest]) (*connect.Response[v1.SearchLogsResponse], error) {
+	return c.searchLogs.CallUnary(ctx, req)
+}
+
 // ObserveServiceHandler is an implementation of the vertra.console.v1.ObserveService service.
 type ObserveServiceHandler interface {
 	// What this install enforces (and what it doesn't yet), what it refused
@@ -129,6 +150,11 @@ type ObserveServiceHandler interface {
 	// Who changed what, newest first. Admins see every entry; anyone else
 	// their own, and what was done to their teams and to runs in them.
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	// Searches the logs kept in Loki (when the install collects them), newest
+	// first. A step's INFO lines reach anyone who may see its run; its other
+	// lines its own team; the platform's own logs admins only. failed_precondition
+	// (LOGS_OFF) when this install doesn't collect logs.
+	SearchLogs(context.Context, *connect.Request[v1.SearchLogsRequest]) (*connect.Response[v1.SearchLogsResponse], error)
 }
 
 // NewObserveServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -159,6 +185,13 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	observeServiceSearchLogsHandler := connect.NewUnaryHandler(
+		ObserveServiceSearchLogsProcedure,
+		svc.SearchLogs,
+		connect.WithSchema(observeServiceMethods.ByName("SearchLogs")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ObserveService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ObserveServiceGetSecurityProcedure:
@@ -167,6 +200,8 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 			observeServiceGetMetricsHandler.ServeHTTP(w, r)
 		case ObserveServiceListAuditProcedure:
 			observeServiceListAuditHandler.ServeHTTP(w, r)
+		case ObserveServiceSearchLogsProcedure:
+			observeServiceSearchLogsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -186,4 +221,8 @@ func (UnimplementedObserveServiceHandler) GetMetrics(context.Context, *connect.R
 
 func (UnimplementedObserveServiceHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.ListAudit is not implemented"))
+}
+
+func (UnimplementedObserveServiceHandler) SearchLogs(context.Context, *connect.Request[v1.SearchLogsRequest]) (*connect.Response[v1.SearchLogsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.SearchLogs is not implemented"))
 }

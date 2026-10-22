@@ -48,3 +48,12 @@ gateway:
 networkPolicy:
   metricsFrom:
     - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+
+# Log search, on a volume: no bucket, so no archive; kept 30 days.
+logs:
+  enabled: true
+  searchDays: 30
+  keepDays: 30
+  storage:
+    type: filesystem
+    size: 5Gi

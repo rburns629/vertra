@@ -258,6 +258,34 @@ the charts don't ship yet (`TODO.md`).
   ConfigMap labelled for Grafana's dashboard sidecar; set
   `monitoring.dashboard.namespace` if the sidecar watches only Grafana's.
 
+### Logs
+
+Observe's Logs tab searches every step's output (and, for admins, the
+platform's own) when the console chart's `logs.enabled` is on (`vertra`:
+`logs.enabled` in vertra.yaml). Grafana Alloy collects through the
+Kubernetes API, redacting credentials, into one Loki; the console queries
+Loki with each caller's visibility added. Each step's Job is kept
+`scheduler.releaseFinishedAfterSeconds` (kernel chart, 30) after it
+finishes so the collector reads it all.
+
+- `logs.searchDays` (30): how far back anyone searches.
+- `logs.keepDays` (365): when Loki deletes them.
+- `logs.storage`: `filesystem` (a volume of `size`; kind's), `gcs` or
+  `s3` with a `bucket`. Loki's identity goes on its ServiceAccount
+  (`serviceAccountName`, `serviceAccountAnnotations`).
+
+Archiving is the bucket's: on gcp and aws, `vertra` creates
+`<project>-<name>-logs` (GCS) or `<name>-logs-<account>-<region>` (S3)
+with a lifecycle rule moving Loki's chunks (`fake/`) to the Archive class
+(GCS) or Glacier Instant Retrieval (S3) after `searchDays`, and deleting
+everything a day after `keepDays`. Loki still reads archived chunks, so an
+admin can query older logs with Loki's own tools (`logcli`) through a
+port-forward; the console searches only `searchDays` back. Archived
+storage costs a fraction of a cent per GB-month, but has a minimum stay
+(GCS Archive 365 days, Glacier IR 90), billed if deleted earlier. A volume
+has no archive class: logs are kept on it until `keepDays`.
+`vertra destroy` keeps the logs bucket unless you delete the data too.
+
 ## Upgrading
 
 `helm upgrade` with the same values files and `--reset-values`. Two things

@@ -100,7 +100,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `internal/scheduler/tick.go` | One pass: expire undecided approvals, claim, start each task, poll running ones, save results, retry or fail, release dependents, finish executions. |
 | `internal/scheduler/claiming.go` | Takes READY tasks with `FOR UPDATE SKIP LOCKED` and a lease, within the running caps; recovers tasks whose lease expired; releases a stopping scheduler's leases. |
 | `internal/scheduler/rows.go` | The task and attempt rows, events, and compare-and-set execution transitions. |
-| `internal/scheduler/run.go` | The loop: a pass per transaction, finished Jobs released after the commit, housekeeping, the queue gauges (`kernel_tasks`, the oldest ready task's age), the heartbeat, leases released on stop. |
+| `internal/scheduler/run.go` | The loop: a pass per transaction, finished Jobs released after the commit (held `ReleaseAfter` first, for the log collector), housekeeping, the queue gauges (`kernel_tasks`, the oldest ready task's age), the heartbeat, leases released on stop. |
 | `internal/scheduler/retention.go` | Deletes finished executions past their retention (with everything of theirs). |
 | `internal/scheduler/orphans.go` | Every few minutes, removes attempts' Jobs no task can use any more (a pass that rolled back, a release that failed, a deleted execution). |
 | **`internal/migrate/`** | **The schema.** |
@@ -170,6 +170,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/templates.ts` | Templates: what a person may run (templates and shared actions), running one with parameters only, each step built from its product; reruns of a template's run. |
+| `core/logs.ts` | Observe's log search over Loki, each query carrying the caller's visibility: a step's lines to its team, its INFO to anyone who may see its run, the platform's to admins. |
 | `core/observe.ts` | Observe for everyone: the security checks (what this install enforces and doesn't yet, what the cluster refused this week, a run linked only for those who may see it, every image allowed to run and its scan), the metrics (from kernel-api's `GetStats`, each image named by its product, a hidden one only for its team), and the audit log as each caller may see it (`listAudit`). |
 | `core/apis.ts` | API products: who sees and may call each, whether it's live, held (its backend's host isn't allowed) or paused, and pausing one. |
 | `core/approvals.ts` | Approvals: a maintainer of a step's team, never whoever ran it, approves or declines it; the steps awaiting one. |
@@ -277,6 +278,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a target rule), and who may decide. |
 | `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
 | `observe.test.ts` | The security checks: what's enforced, refusals linked only for those who may see the run, images (a hidden product's for its team); the metrics, named by product, a hidden one's only for its team. |
+| `logs.test.ts` | The LogQL the log search sends (a stand-in Loki records it): each caller's visibility, names checked, typed text quoted; LOGS_OFF. |
 | `metrics.test.ts` | The console's Prometheus metrics: calls counted by procedure and code, served on their own port and not on the console's. |
 | `log-levels.test.ts` | A step's log lines by level: INFO for everyone who can see the run, the rest for its team. |
 | `reset-admin.test.ts` | Resetting a lost admin password: printed once, sessions revoked, audited, admins only. |
@@ -340,6 +342,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `Chart.yaml`, `values.yaml`, `.helmignore` | The chart and its defaults. |
 | `sizes/{minimal,resilient,scaled,auto}.yaml` | The size presets: copies and retention. |
 | `templates/autoscaling.yaml` | The console's HorizontalPodAutoscaler (`auto`) and its PodDisruptionBudget from two copies. |
+| `templates/logs.yaml`, `files/alloy.alloy` | Log search (`logs`): one Loki (a volume or a bucket) and Grafana Alloy collecting steps' and the platform's Pods with credentials redacted; only Alloy and the console reach Loki. |
 | `templates/monitoring.yaml`, `files/grafana-dashboard.json` | With the Prometheus Operator (`monitoring`): a PodMonitor for the console and gateway, alerts (calls failing, sign-in bursts, the catalog not applying, backends unreachable), and Vertra's Grafana dashboard as a ConfigMap. |
 | `templates/ingress.yaml` | Reaching the console from outside the cluster (HTTPS only), for the catalog's CI; with `trustProxy`, the console believes the load balancer's X-Forwarded-For. |
 | `templates/activity.yaml` | The ConfigMap the console records its last use in (for the kernel's sleeper), and the Role that lets it update that one. |

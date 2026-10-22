@@ -851,6 +851,278 @@ func (x *ListAuditResponse) GetNextBefore() int64 {
 	return 0
 }
 
+type SearchLogsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lines containing this, ignoring case.
+	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	// Only this team's steps.
+	Team string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
+	// Only this run's steps.
+	ExecutionId string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	// debug, info, warn or error; any when empty.
+	Level string `protobuf:"bytes,4,opt,name=level,proto3" json:"level,omitempty"`
+	// step (the default) or platform (admins only).
+	Source string `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
+	// The window; the last hour when unset. At most the install's search
+	// window (searchDays) back: older logs are archived.
+	Since *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=since,proto3" json:"since,omitempty"`
+	Until *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=until,proto3" json:"until,omitempty"`
+	// 200 when unset, at most 1000.
+	Limit         int32 `protobuf:"varint,8,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchLogsRequest) Reset() {
+	*x = SearchLogsRequest{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchLogsRequest) ProtoMessage() {}
+
+func (x *SearchLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchLogsRequest.ProtoReflect.Descriptor instead.
+func (*SearchLogsRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SearchLogsRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *SearchLogsRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *SearchLogsRequest) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *SearchLogsRequest) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *SearchLogsRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *SearchLogsRequest) GetSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Since
+	}
+	return nil
+}
+
+func (x *SearchLogsRequest) GetUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Until
+	}
+	return nil
+}
+
+func (x *SearchLogsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type SearchLogsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Lines []*LogLine             `protobuf:"bytes,1,rep,name=lines,proto3" json:"lines,omitempty"`
+	// More matched than limit: narrow the search.
+	Truncated bool `protobuf:"varint,2,opt,name=truncated,proto3" json:"truncated,omitempty"`
+	// How far back this install searches.
+	SearchDays    int32 `protobuf:"varint,3,opt,name=search_days,json=searchDays,proto3" json:"search_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchLogsResponse) Reset() {
+	*x = SearchLogsResponse{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchLogsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchLogsResponse) ProtoMessage() {}
+
+func (x *SearchLogsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchLogsResponse.ProtoReflect.Descriptor instead.
+func (*SearchLogsResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SearchLogsResponse) GetLines() []*LogLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+func (x *SearchLogsResponse) GetTruncated() bool {
+	if x != nil {
+		return x.Truncated
+	}
+	return false
+}
+
+func (x *SearchLogsResponse) GetSearchDays() int32 {
+	if x != nil {
+		return x.SearchDays
+	}
+	return 0
+}
+
+type LogLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	At    *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
+	// A step's team (its namespace); empty for the platform's.
+	Team        string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
+	ExecutionId string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	Task        string `protobuf:"bytes,4,opt,name=task,proto3" json:"task,omitempty"`
+	Attempt     int32  `protobuf:"varint,5,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Level       string `protobuf:"bytes,6,opt,name=level,proto3" json:"level,omitempty"`
+	// For the platform's: which part (app, gateway, scheduler...).
+	App           string `protobuf:"bytes,7,opt,name=app,proto3" json:"app,omitempty"`
+	Line          string `protobuf:"bytes,8,opt,name=line,proto3" json:"line,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogLine) Reset() {
+	*x = LogLine{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogLine) ProtoMessage() {}
+
+func (x *LogLine) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogLine.ProtoReflect.Descriptor instead.
+func (*LogLine) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *LogLine) GetAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.At
+	}
+	return nil
+}
+
+func (x *LogLine) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *LogLine) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *LogLine) GetTask() string {
+	if x != nil {
+		return x.Task
+	}
+	return ""
+}
+
+func (x *LogLine) GetAttempt() int32 {
+	if x != nil {
+		return x.Attempt
+	}
+	return 0
+}
+
+func (x *LogLine) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *LogLine) GetApp() string {
+	if x != nil {
+		return x.App
+	}
+	return ""
+}
+
+func (x *LogLine) GetLine() string {
+	if x != nil {
+		return x.Line
+	}
+	return ""
+}
+
 var File_vertra_console_v1_observe_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_observe_proto_rawDesc = "" +
@@ -918,12 +1190,37 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\x11ListAuditResponse\x127\n" +
 	"\aentries\x18\x01 \x03(\v2\x1d.vertra.console.v1.AuditEntryR\aentries\x12\x1f\n" +
 	"\vnext_before\x18\x02 \x01(\x03R\n" +
-	"nextBefore2\xb0\x02\n" +
+	"nextBefore\"\x86\x02\n" +
+	"\x11SearchLogsRequest\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12\x12\n" +
+	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
+	"\fexecution_id\x18\x03 \x01(\tR\vexecutionId\x12\x14\n" +
+	"\x05level\x18\x04 \x01(\tR\x05level\x12\x16\n" +
+	"\x06source\x18\x05 \x01(\tR\x06source\x120\n" +
+	"\x05since\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x120\n" +
+	"\x05until\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x12\x14\n" +
+	"\x05limit\x18\b \x01(\x05R\x05limit\"\x85\x01\n" +
+	"\x12SearchLogsResponse\x120\n" +
+	"\x05lines\x18\x01 \x03(\v2\x1a.vertra.console.v1.LogLineR\x05lines\x12\x1c\n" +
+	"\ttruncated\x18\x02 \x01(\bR\ttruncated\x12\x1f\n" +
+	"\vsearch_days\x18\x03 \x01(\x05R\n" +
+	"searchDays\"\xd6\x01\n" +
+	"\aLogLine\x12*\n" +
+	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x12\n" +
+	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
+	"\fexecution_id\x18\x03 \x01(\tR\vexecutionId\x12\x12\n" +
+	"\x04task\x18\x04 \x01(\tR\x04task\x12\x18\n" +
+	"\aattempt\x18\x05 \x01(\x05R\aattempt\x12\x14\n" +
+	"\x05level\x18\x06 \x01(\tR\x05level\x12\x10\n" +
+	"\x03app\x18\a \x01(\tR\x03app\x12\x12\n" +
+	"\x04line\x18\b \x01(\tR\x04line2\x90\x03\n" +
 	"\x0eObserveService\x12a\n" +
 	"\vGetSecurity\x12%.vertra.console.v1.GetSecurityRequest\x1a&.vertra.console.v1.GetSecurityResponse\"\x03\x90\x02\x01\x12^\n" +
 	"\n" +
 	"GetMetrics\x12$.vertra.console.v1.GetMetricsRequest\x1a%.vertra.console.v1.GetMetricsResponse\"\x03\x90\x02\x01\x12[\n" +
-	"\tListAudit\x12#.vertra.console.v1.ListAuditRequest\x1a$.vertra.console.v1.ListAuditResponse\"\x03\x90\x02\x01B\xd5\x01\n" +
+	"\tListAudit\x12#.vertra.console.v1.ListAuditRequest\x1a$.vertra.console.v1.ListAuditResponse\"\x03\x90\x02\x01\x12^\n" +
+	"\n" +
+	"SearchLogs\x12$.vertra.console.v1.SearchLogsRequest\x1a%.vertra.console.v1.SearchLogsResponse\"\x03\x90\x02\x01B\xd5\x01\n" +
 	"\x15com.vertra.console.v1B\fObserveProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -938,7 +1235,7 @@ func file_vertra_console_v1_observe_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_observe_proto_rawDescData
 }
 
-var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_vertra_console_v1_observe_proto_goTypes = []any{
 	(*GetSecurityRequest)(nil),    // 0: vertra.console.v1.GetSecurityRequest
 	(*GetSecurityResponse)(nil),   // 1: vertra.console.v1.GetSecurityResponse
@@ -952,31 +1249,40 @@ var file_vertra_console_v1_observe_proto_goTypes = []any{
 	(*ProductMetrics)(nil),        // 9: vertra.console.v1.ProductMetrics
 	(*ListAuditRequest)(nil),      // 10: vertra.console.v1.ListAuditRequest
 	(*ListAuditResponse)(nil),     // 11: vertra.console.v1.ListAuditResponse
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
-	(*AuditEntry)(nil),            // 13: vertra.console.v1.AuditEntry
+	(*SearchLogsRequest)(nil),     // 12: vertra.console.v1.SearchLogsRequest
+	(*SearchLogsResponse)(nil),    // 13: vertra.console.v1.SearchLogsResponse
+	(*LogLine)(nil),               // 14: vertra.console.v1.LogLine
+	(*timestamppb.Timestamp)(nil), // 15: google.protobuf.Timestamp
+	(*AuditEntry)(nil),            // 16: vertra.console.v1.AuditEntry
 }
 var file_vertra_console_v1_observe_proto_depIdxs = []int32{
 	2,  // 0: vertra.console.v1.GetSecurityResponse.checks:type_name -> vertra.console.v1.SecurityCheck
 	3,  // 1: vertra.console.v1.GetSecurityResponse.refusals:type_name -> vertra.console.v1.Refusal
 	4,  // 2: vertra.console.v1.GetSecurityResponse.images:type_name -> vertra.console.v1.AllowedImage
-	12, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
-	12, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
+	15, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
+	15, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
 	7,  // 5: vertra.console.v1.GetMetricsResponse.hours:type_name -> vertra.console.v1.HourMetrics
 	8,  // 6: vertra.console.v1.GetMetricsResponse.failures:type_name -> vertra.console.v1.FailureMetrics
 	9,  // 7: vertra.console.v1.GetMetricsResponse.products:type_name -> vertra.console.v1.ProductMetrics
-	12, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
-	13, // 9: vertra.console.v1.ListAuditResponse.entries:type_name -> vertra.console.v1.AuditEntry
-	0,  // 10: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
-	5,  // 11: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
-	10, // 12: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
-	1,  // 13: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
-	6,  // 14: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
-	11, // 15: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
-	13, // [13:16] is the sub-list for method output_type
-	10, // [10:13] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	15, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
+	16, // 9: vertra.console.v1.ListAuditResponse.entries:type_name -> vertra.console.v1.AuditEntry
+	15, // 10: vertra.console.v1.SearchLogsRequest.since:type_name -> google.protobuf.Timestamp
+	15, // 11: vertra.console.v1.SearchLogsRequest.until:type_name -> google.protobuf.Timestamp
+	14, // 12: vertra.console.v1.SearchLogsResponse.lines:type_name -> vertra.console.v1.LogLine
+	15, // 13: vertra.console.v1.LogLine.at:type_name -> google.protobuf.Timestamp
+	0,  // 14: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
+	5,  // 15: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
+	10, // 16: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
+	12, // 17: vertra.console.v1.ObserveService.SearchLogs:input_type -> vertra.console.v1.SearchLogsRequest
+	1,  // 18: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
+	6,  // 19: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
+	11, // 20: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
+	13, // 21: vertra.console.v1.ObserveService.SearchLogs:output_type -> vertra.console.v1.SearchLogsResponse
+	18, // [18:22] is the sub-list for method output_type
+	14, // [14:18] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_observe_proto_init() }
@@ -991,7 +1297,7 @@ func file_vertra_console_v1_observe_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_observe_proto_rawDesc), len(file_vertra_console_v1_observe_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

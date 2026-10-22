@@ -1496,3 +1496,53 @@ export async function listAudit(filters: { before?: string; team?: string; mine?
     nextBefore: page.nextBefore ? String(page.nextBefore) : "",
   };
 }
+
+export interface LogLineView {
+  at: string | null;
+  team: string;
+  executionId: string;
+  task: string;
+  attempt: number;
+  level: string;
+  app: string;
+  line: string;
+}
+
+export interface LogSearch {
+  text?: string;
+  team?: string;
+  executionId?: string;
+  level?: string;
+  source?: "step" | "platform";
+  /** How far back, in hours, from now. */
+  hours: number;
+}
+
+/** Steps' logs as the caller may see them (and the platform's, for admins). Throws ApiError LOGS_OFF when none are kept. */
+export async function searchLogs(search: LogSearch): Promise<{ lines: LogLineView[]; truncated: boolean; searchDays: number }> {
+  const found = await call(() =>
+    observe.searchLogs({
+      text: search.text ?? "",
+      team: search.team ?? "",
+      executionId: search.executionId ?? "",
+      level: search.level ?? "",
+      source: search.source ?? "",
+      since: timestampFromDate(new Date(Date.now() - search.hours * 3_600_000)),
+      limit: 500,
+    }),
+  );
+  return {
+    lines: found.lines.map((l) => ({
+      at: iso(l.at),
+      team: l.team,
+      executionId: l.executionId,
+      task: l.task,
+      attempt: l.attempt,
+      level: l.level,
+      app: l.app,
+      line: l.line,
+    })),
+    truncated: found.truncated,
+    searchDays: found.searchDays,
+  };
+}

@@ -420,6 +420,157 @@ export declare type ListAuditResponse = Message<"vertra.console.v1.ListAuditResp
 export declare const ListAuditResponseSchema: GenMessage<ListAuditResponse>;
 
 /**
+ * @generated from message vertra.console.v1.SearchLogsRequest
+ */
+export declare type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsRequest"> & {
+  /**
+   * Lines containing this, ignoring case.
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+
+  /**
+   * Only this team's steps.
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * Only this run's steps.
+   *
+   * @generated from field: string execution_id = 3;
+   */
+  executionId: string;
+
+  /**
+   * debug, info, warn or error; any when empty.
+   *
+   * @generated from field: string level = 4;
+   */
+  level: string;
+
+  /**
+   * step (the default) or platform (admins only).
+   *
+   * @generated from field: string source = 5;
+   */
+  source: string;
+
+  /**
+   * The window; the last hour when unset. At most the install's search
+   * window (searchDays) back: older logs are archived.
+   *
+   * @generated from field: google.protobuf.Timestamp since = 6;
+   */
+  since?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp until = 7;
+   */
+  until?: Timestamp | undefined;
+
+  /**
+   * 200 when unset, at most 1000.
+   *
+   * @generated from field: int32 limit = 8;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchLogsRequest.
+ * Use `create(SearchLogsRequestSchema)` to create a new message.
+ */
+export declare const SearchLogsRequestSchema: GenMessage<SearchLogsRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SearchLogsResponse
+ */
+export declare type SearchLogsResponse = Message<"vertra.console.v1.SearchLogsResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.LogLine lines = 1;
+   */
+  lines: LogLine[];
+
+  /**
+   * More matched than limit: narrow the search.
+   *
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+
+  /**
+   * How far back this install searches.
+   *
+   * @generated from field: int32 search_days = 3;
+   */
+  searchDays: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchLogsResponse.
+ * Use `create(SearchLogsResponseSchema)` to create a new message.
+ */
+export declare const SearchLogsResponseSchema: GenMessage<SearchLogsResponse>;
+
+/**
+ * @generated from message vertra.console.v1.LogLine
+ */
+export declare type LogLine = Message<"vertra.console.v1.LogLine"> & {
+  /**
+   * @generated from field: google.protobuf.Timestamp at = 1;
+   */
+  at?: Timestamp | undefined;
+
+  /**
+   * A step's team (its namespace); empty for the platform's.
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string execution_id = 3;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string task = 4;
+   */
+  task: string;
+
+  /**
+   * @generated from field: int32 attempt = 5;
+   */
+  attempt: number;
+
+  /**
+   * @generated from field: string level = 6;
+   */
+  level: string;
+
+  /**
+   * For the platform's: which part (app, gateway, scheduler...).
+   *
+   * @generated from field: string app = 7;
+   */
+  app: string;
+
+  /**
+   * @generated from field: string line = 8;
+   */
+  line: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.LogLine.
+ * Use `create(LogLineSchema)` to create a new message.
+ */
+export declare const LogLineSchema: GenMessage<LogLine>;
+
+/**
  * Observe: what this install checks, what it refused, and what everything
  * is doing. Everyone signed in sees the security checks (what's enforced,
  * what's refused, every image that may run and its scan); runs' details
@@ -461,6 +612,19 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof ListAuditRequestSchema;
     output: typeof ListAuditResponseSchema;
+  },
+  /**
+   * Searches the logs kept in Loki (when the install collects them), newest
+   * first. A step's INFO lines reach anyone who may see its run; its other
+   * lines its own team; the platform's own logs admins only. failed_precondition
+   * (LOGS_OFF) when this install doesn't collect logs.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.SearchLogs
+   */
+  searchLogs: {
+    methodKind: "unary";
+    input: typeof SearchLogsRequestSchema;
+    output: typeof SearchLogsResponseSchema;
   },
 }>;
 

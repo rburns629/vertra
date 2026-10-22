@@ -124,7 +124,7 @@ func sameIdentity(recorded, now string) error {
 
 // optionalOutputs are the modules' outputs that are null when not used
 // (no backups, no catalog, no public console), which `tofu output` omits.
-var optionalOutputs = map[string]bool{"backup": true, "catalog": true, "console_address": true}
+var optionalOutputs = map[string]bool{"backup": true, "logs": true, "catalog": true, "console_address": true}
 
 // cloudFromGCP reads the module's outputs.
 func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
@@ -136,6 +136,10 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 		TaskRegistry   string
 		ConsoleAccount string
 		Backup         *struct {
+			Bucket         string `json:"bucket"`
+			ServiceAccount string `json:"service_account"`
+		}
+		Logs *struct {
 			Bucket         string `json:"bucket"`
 			ServiceAccount string `json:"service_account"`
 		}
@@ -151,7 +155,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "workload_identity_pool": &v.WorkloadPool, "task_registry": &v.TaskRegistry,
-		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "step_placement": &v.StepPlacement,
+		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "step_placement": &v.StepPlacement,
 		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog,
 	} {
 		raw, ok := outputs[name]
@@ -178,6 +182,9 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	if v.Backup != nil {
 		cloud.BackupBucket, cloud.BackupServiceAccount = v.Backup.Bucket, v.Backup.ServiceAccount
+	}
+	if v.Logs != nil {
+		cloud.LogsBucket, cloud.LogsServiceAccount = v.Logs.Bucket, v.Logs.ServiceAccount
 	}
 	if v.ConsoleAddress != nil {
 		cloud.ConsoleAddressName, cloud.ConsoleIP = v.ConsoleAddress.Name, v.ConsoleAddress.IP
@@ -281,14 +288,25 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 	if c.Database.Backups.Enabled && !deleteData {
 		keep = append(keep, bucket)
 	}
+	const logsBucket = "google_storage_bucket.logs[0]"
+	if c.Logs.Enabled && !deleteData {
+		keep = append(keep, logsBucket)
+	}
 	if c.TaskImages.Create && !deleteRegistry {
 		keep = append(keep, "google_artifact_registry_repository.tasks[0]")
 	}
 	if tf.HasState(ctx) {
+		var emptied []string
 		if c.Database.Backups.Enabled && deleteData {
-			// A bucket with backups in it is deleted only once the state
-			// says it may be (delete_data: force_destroy).
-			if err := tf.ApplyOnly(ctx, bucket); err != nil {
+			emptied = append(emptied, bucket)
+		}
+		if c.Logs.Enabled && deleteData {
+			emptied = append(emptied, logsBucket)
+		}
+		if len(emptied) > 0 {
+			// A bucket with data in it is deleted only once the state says
+			// it may be (delete_data: force_destroy).
+			if err := tf.ApplyOnly(ctx, emptied...); err != nil {
 				return err
 			}
 		}

@@ -23,6 +23,13 @@ output "platform_registry" {
   value = var.platform_registry == "" ? "" : "${local.registry}/${var.platform_registry}"
 }
 
+output "logs" {
+  value = var.logs ? {
+    bucket = aws_s3_bucket.logs[0].bucket
+    region = var.region
+  } : null
+}
+
 output "backup" {
   value = var.backups ? {
     bucket = aws_s3_bucket.backups[0].bucket

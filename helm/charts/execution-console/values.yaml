@@ -139,6 +139,53 @@ scanning:
 # any name below it); only internetTeams' APIs may be reachable from the
 # internet; url and publicUrl are where callers reach the gateway, inside
 # the cluster and from outside.
+# -- Log search (Observe's Logs tab, console/src/core/logs.ts): Grafana
+# Alloy reads every step's output and the platform's own through the
+# Kubernetes API, redacts credentials, and sends it to a single Loki here.
+# The console queries Loki itself, adding each caller's visibility (a step's
+# INFO lines to anyone who may see its run; the rest to its team; the
+# platform's to admins), so Loki is reachable from the console and Alloy
+# only. Logs are searchable for searchDays, then archived: kept, in a
+# bucket's archive storage class, until keepDays (filesystem storage, as on
+# kind, has no archive class: there they're simply kept until keepDays).
+logs:
+  enabled: false
+  searchDays: 30
+  keepDays: 365
+  storage:
+    # -- filesystem (a volume here), gcs or s3. A bucket's lifecycle moves
+    # chunks older than searchDays to its archive class (vertra creates the
+    # bucket so; docs/operations.md, Logs).
+    type: filesystem
+    bucket: ""
+    # s3 only.
+    region: ""
+    # filesystem only.
+    size: 10Gi
+    storageClassName: ""
+  # -- Loki's ServiceAccount (default: <release>-execution-console-loki):
+  # the name its bucket identity is bound to (vertra uses vertra-loki).
+  serviceAccountName: ""
+  # -- On it: GKE's iam.gke.io/gcp-service-account (EKS binds a role to the
+  # name by Pod Identity instead).
+  serviceAccountAnnotations: {}
+  loki:
+    image:
+      repository: grafana/loki
+      tag: "3.7.8"
+      digest: sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {memory: 1Gi}
+  collector:
+    image:
+      repository: grafana/alloy
+      tag: v1.20.1
+      digest: sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
+    resources:
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {memory: 512Mi}
+
 gateway:
   backendHosts: []
   internetTeams: []

@@ -245,6 +245,13 @@ export const config = {
     // pick linux/amd64 whatever the cluster is.
     platform: process.env["SCAN_PLATFORM"] || `linux/${process.arch === "x64" ? "amd64" : process.arch}`,
   },
+  // Log search (core/logs.ts): the chart's Loki, which the console queries
+  // with each caller's visibility added. Empty: this install keeps no logs.
+  // Older than searchDays, logs are archived and not searched.
+  logs: {
+    lokiUrl: process.env["LOKI_URL"] ?? "",
+    searchDays: Number(process.env["LOG_SEARCH_DAYS"] ?? "30"),
+  },
   // The catalog this console registers from (catalogSync.ts): its release,
   // <registry>/catalog-release:latest, read through the same registry
   // sign-in as image checks (registryCredentials, the GKE metadata token,

@@ -14,13 +14,21 @@ design.
     doesn't yet), every allowed image with its scan, and every refusal
     (admission codes via kernel-api's `ListRefusals`, and a catalog release
     that couldn't be applied). Left: each image's signer and SBOM.
-  - Logs: steps, gateway and platform in one search, labelled with run,
-    step, attempt, product, team and image digest. Collected from Pod
-    stdout by Grafana Alloy into Loki (both in the chart, off by default on
-    kind); the console queries Loki itself and adds the caller's
-    visibility to every query, since Loki and Grafana know nothing of
-    Vertra's teams. Mounted Secrets' values masked before storage; kept 30
-    days.
+  - Logs (done 2026-10-22, proven on kind: `ObserveService.SearchLogs`,
+    the Observe page's Logs tab, the console chart's `logs`): Grafana Alloy
+    reads steps' and the platform's Pods through the Kubernetes API,
+    redacts credentials with the kernel's patterns (a kernel test keeps
+    them equal) and sends them to one Loki, labelled with team, level and
+    source, and the run, task, attempt and image as structured metadata.
+    The console adds the caller's visibility to every query. Searchable
+    `searchDays` (30); on gcp and aws, `vertra` makes the bucket, whose
+    lifecycle moves chunks to Archive / Glacier Instant Retrieval then, and
+    deletes them after `keepDays` (365). The scheduler keeps a finished
+    step's Job 30 s (`scheduler.releaseFinishedAfterSeconds`) so even a
+    short step's output is collected. Left: proving the bucket, its
+    lifecycle and Loki's identity on GKE and EKS; API products' backends'
+    logs (in team namespaces, not steps) for their teams; Secret values
+    (not just credential shapes) masked.
   - Metrics (done 2026-10-22): the Observe page's Metrics tab for
     everyone, from kernel-api's own tables (`GetStats`: steps started and
     their p95 wait by hour, failures by code, each product's step times),

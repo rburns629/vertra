@@ -232,6 +232,10 @@ scheduler:
   # (and every few minutes, any no task needs); this is the backstop for
   # one it never gets back to (kernel/internal/executor/kubernetes.go).
   jobTtlSecondsAfterFinished: 3600
+  # -- How long a finished step's Job (and Pod) is kept once its result is
+  # committed, so the console chart's log collector (logs.enabled) can
+  # still read its output. A finished Pod uses no CPU or quota.
+  releaseFinishedAfterSeconds: 30
   # How long a task's image may fail to pull for a reason other than "it
   # doesn't exist" (registry auth, network) before the task fails as a
   # retryable IMAGE_PULL_FAILED. A missing image fails at once as

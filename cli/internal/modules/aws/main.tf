@@ -444,6 +444,82 @@ resource "aws_eks_pod_identity_association" "backup" {
   role_arn        = aws_iam_role.backup[0].arn
 }
 
+# --- logs: Loki's bucket, archived after log_search_days --------------------
+# Loki (single tenant) keeps chunks under fake/ and its index under index/;
+# only chunks move to Glacier Instant Retrieval, which Loki still reads.
+
+resource "aws_s3_bucket" "logs" {
+  count         = var.logs ? 1 : 0
+  bucket        = "${var.name}-logs-${local.account}-${var.region}"
+  force_destroy = var.delete_data
+}
+
+resource "aws_s3_bucket_public_access_block" "logs" {
+  count                   = var.logs ? 1 : 0
+  bucket                  = aws_s3_bucket.logs[0].id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "logs" {
+  count  = var.logs ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+  rule {
+    id     = "archive"
+    status = "Enabled"
+    filter {
+      prefix = "fake/"
+    }
+    transition {
+      days          = var.log_search_days
+      storage_class = "GLACIER_IR"
+    }
+  }
+  rule {
+    id     = "expire"
+    status = "Enabled"
+    filter {}
+    expiration {
+      days = var.log_keep_days + 1
+    }
+  }
+}
+
+resource "aws_iam_role" "logs" {
+  count              = var.logs ? 1 : 0
+  name               = "${var.name}-logs"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+data "aws_iam_policy_document" "logs" {
+  count = var.logs ? 1 : 0
+  statement {
+    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.logs[0].arn}/*"]
+  }
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.logs[0].arn]
+  }
+}
+
+resource "aws_iam_role_policy" "logs" {
+  count  = var.logs ? 1 : 0
+  name   = "loki-bucket"
+  role   = aws_iam_role.logs[0].id
+  policy = data.aws_iam_policy_document.logs[0].json
+}
+
+resource "aws_eks_pod_identity_association" "logs" {
+  count           = var.logs ? 1 : 0
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = var.namespace
+  service_account = "vertra-loki"
+  role_arn        = aws_iam_role.logs[0].arn
+}
+
 # --- the catalog's CI: pushes images from main, by GitHub's OIDC token -------
 
 resource "aws_iam_openid_connect_provider" "github" {

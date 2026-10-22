@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/observe.proto.
  */
 export const file_vertra_console_v1_observe: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QipgEKE0dldFNlY3VyaXR5UmVzcG9uc2USMAoGY2hlY2tzGAEgAygLMiAudmVydHJhLmNvbnNvbGUudjEuU2VjdXJpdHlDaGVjaxIsCghyZWZ1c2FscxgCIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzYWwSLwoGaW1hZ2VzGAMgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQWxsb3dlZEltYWdlIjoKDVNlY3VyaXR5Q2hlY2sSDAoEbmFtZRgBIAEoCRINCgVzdGF0ZRgCIAEoCRIMCgR0ZXh0GAMgASgJIn4KB1JlZnVzYWwSJgoCYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHdoYXQYAiABKAkSDAoEdGVhbRgDIAEoCRIMCgRjb2RlGAQgASgJEgsKA3doeRgFIAEoCRIUCgxleGVjdXRpb25faWQYBiABKAkiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiYgoLSG91ck1ldHJpY3MSKAoEaG91chgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHc3RhcnRlZBgCIAEoBRIYChB3YWl0X3A5NV9zZWNvbmRzGAMgASgBIk0KDkZhaWx1cmVNZXRyaWNzEgwKBGNvZGUYASABKAkSDQoFY291bnQYAiABKAUSDwoHcmV0cmllZBgDIAEoCBINCgVtZWFucxgEIAEoCSKLAQoOUHJvZHVjdE1ldHJpY3MSDwoHcHJvZHVjdBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSDAoEdGVhbRgDIAEoCRINCgVzdGVwcxgEIAEoBRIRCglzdWNjZWVkZWQYBSABKAUSEwoLcDUwX3NlY29uZHMYBiABKAESEwoLcDk1X3NlY29uZHMYByABKAEiYwoQTGlzdEF1ZGl0UmVxdWVzdBIOCgZiZWZvcmUYASABKAMSDAoEdGVhbRgCIAEoCRIMCgRtaW5lGAMgASgIEhQKDHJlZnVzZWRfb25seRgEIAEoCBINCgVsaW1pdBgFIAEoBSJYChFMaXN0QXVkaXRSZXNwb25zZRIuCgdlbnRyaWVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXVkaXRFbnRyeRITCgtuZXh0X2JlZm9yZRgCIAEoAzKwAgoOT2JzZXJ2ZVNlcnZpY2USYQoLR2V0U2VjdXJpdHkSJS52ZXJ0cmEuY29uc29sZS52MS5HZXRTZWN1cml0eVJlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5HZXRTZWN1cml0eVJlc3BvbnNlIgOQAgESXgoKR2V0TWV0cmljcxIkLnZlcnRyYS5jb25zb2xlLnYxLkdldE1ldHJpY3NSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuR2V0TWV0cmljc1Jlc3BvbnNlIgOQAgESWwoJTGlzdEF1ZGl0EiMudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0UmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdFJlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_timestamp, file_vertra_console_v1_admin]);
+  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QipgEKE0dldFNlY3VyaXR5UmVzcG9uc2USMAoGY2hlY2tzGAEgAygLMiAudmVydHJhLmNvbnNvbGUudjEuU2VjdXJpdHlDaGVjaxIsCghyZWZ1c2FscxgCIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzYWwSLwoGaW1hZ2VzGAMgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQWxsb3dlZEltYWdlIjoKDVNlY3VyaXR5Q2hlY2sSDAoEbmFtZRgBIAEoCRINCgVzdGF0ZRgCIAEoCRIMCgR0ZXh0GAMgASgJIn4KB1JlZnVzYWwSJgoCYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHdoYXQYAiABKAkSDAoEdGVhbRgDIAEoCRIMCgRjb2RlGAQgASgJEgsKA3doeRgFIAEoCRIUCgxleGVjdXRpb25faWQYBiABKAkiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiYgoLSG91ck1ldHJpY3MSKAoEaG91chgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHc3RhcnRlZBgCIAEoBRIYChB3YWl0X3A5NV9zZWNvbmRzGAMgASgBIk0KDkZhaWx1cmVNZXRyaWNzEgwKBGNvZGUYASABKAkSDQoFY291bnQYAiABKAUSDwoHcmV0cmllZBgDIAEoCBINCgVtZWFucxgEIAEoCSKLAQoOUHJvZHVjdE1ldHJpY3MSDwoHcHJvZHVjdBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSDAoEdGVhbRgDIAEoCRINCgVzdGVwcxgEIAEoBRIRCglzdWNjZWVkZWQYBSABKAUSEwoLcDUwX3NlY29uZHMYBiABKAESEwoLcDk1X3NlY29uZHMYByABKAEiYwoQTGlzdEF1ZGl0UmVxdWVzdBIOCgZiZWZvcmUYASABKAMSDAoEdGVhbRgCIAEoCRIMCgRtaW5lGAMgASgIEhQKDHJlZnVzZWRfb25seRgEIAEoCBINCgVsaW1pdBgFIAEoBSJYChFMaXN0QXVkaXRSZXNwb25zZRIuCgdlbnRyaWVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXVkaXRFbnRyeRITCgtuZXh0X2JlZm9yZRgCIAEoAyLJAQoRU2VhcmNoTG9nc1JlcXVlc3QSDAoEdGV4dBgBIAEoCRIMCgR0ZWFtGAIgASgJEhQKDGV4ZWN1dGlvbl9pZBgDIAEoCRINCgVsZXZlbBgEIAEoCRIOCgZzb3VyY2UYBSABKAkSKQoFc2luY2UYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEikKBXVudGlsGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVsaW1pdBgIIAEoBSJnChJTZWFyY2hMb2dzUmVzcG9uc2USKQoFbGluZXMYASADKAsyGi52ZXJ0cmEuY29uc29sZS52MS5Mb2dMaW5lEhEKCXRydW5jYXRlZBgCIAEoCBITCgtzZWFyY2hfZGF5cxgDIAEoBSKeAQoHTG9nTGluZRImCgJhdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEdGVhbRgCIAEoCRIUCgxleGVjdXRpb25faWQYAyABKAkSDAoEdGFzaxgEIAEoCRIPCgdhdHRlbXB0GAUgASgFEg0KBWxldmVsGAYgASgJEgsKA2FwcBgHIAEoCRIMCgRsaW5lGAggASgJMpADCg5PYnNlcnZlU2VydmljZRJhCgtHZXRTZWN1cml0eRIlLnZlcnRyYS5jb25zb2xlLnYxLkdldFNlY3VyaXR5UmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLkdldFNlY3VyaXR5UmVzcG9uc2UiA5ACARJeCgpHZXRNZXRyaWNzEiQudmVydHJhLmNvbnNvbGUudjEuR2V0TWV0cmljc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5HZXRNZXRyaWNzUmVzcG9uc2UiA5ACARJbCglMaXN0QXVkaXQSIy52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRSZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0UmVzcG9uc2UiA5ACARJeCgpTZWFyY2hMb2dzEiQudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoTG9nc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hMb2dzUmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_timestamp, file_vertra_console_v1_admin]);
 
 /**
  * @generated from message vertra.console.v1.GetSecurityRequest
@@ -436,6 +436,160 @@ export const ListAuditResponseSchema: GenMessage<ListAuditResponse> = /*@__PURE_
   messageDesc(file_vertra_console_v1_observe, 11);
 
 /**
+ * @generated from message vertra.console.v1.SearchLogsRequest
+ */
+export type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsRequest"> & {
+  /**
+   * Lines containing this, ignoring case.
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+
+  /**
+   * Only this team's steps.
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * Only this run's steps.
+   *
+   * @generated from field: string execution_id = 3;
+   */
+  executionId: string;
+
+  /**
+   * debug, info, warn or error; any when empty.
+   *
+   * @generated from field: string level = 4;
+   */
+  level: string;
+
+  /**
+   * step (the default) or platform (admins only).
+   *
+   * @generated from field: string source = 5;
+   */
+  source: string;
+
+  /**
+   * The window; the last hour when unset. At most the install's search
+   * window (searchDays) back: older logs are archived.
+   *
+   * @generated from field: google.protobuf.Timestamp since = 6;
+   */
+  since?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp until = 7;
+   */
+  until?: Timestamp | undefined;
+
+  /**
+   * 200 when unset, at most 1000.
+   *
+   * @generated from field: int32 limit = 8;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchLogsRequest.
+ * Use `create(SearchLogsRequestSchema)` to create a new message.
+ */
+export const SearchLogsRequestSchema: GenMessage<SearchLogsRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 12);
+
+/**
+ * @generated from message vertra.console.v1.SearchLogsResponse
+ */
+export type SearchLogsResponse = Message<"vertra.console.v1.SearchLogsResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.LogLine lines = 1;
+   */
+  lines: LogLine[];
+
+  /**
+   * More matched than limit: narrow the search.
+   *
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+
+  /**
+   * How far back this install searches.
+   *
+   * @generated from field: int32 search_days = 3;
+   */
+  searchDays: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchLogsResponse.
+ * Use `create(SearchLogsResponseSchema)` to create a new message.
+ */
+export const SearchLogsResponseSchema: GenMessage<SearchLogsResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 13);
+
+/**
+ * @generated from message vertra.console.v1.LogLine
+ */
+export type LogLine = Message<"vertra.console.v1.LogLine"> & {
+  /**
+   * @generated from field: google.protobuf.Timestamp at = 1;
+   */
+  at?: Timestamp | undefined;
+
+  /**
+   * A step's team (its namespace); empty for the platform's.
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string execution_id = 3;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string task = 4;
+   */
+  task: string;
+
+  /**
+   * @generated from field: int32 attempt = 5;
+   */
+  attempt: number;
+
+  /**
+   * @generated from field: string level = 6;
+   */
+  level: string;
+
+  /**
+   * For the platform's: which part (app, gateway, scheduler...).
+   *
+   * @generated from field: string app = 7;
+   */
+  app: string;
+
+  /**
+   * @generated from field: string line = 8;
+   */
+  line: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.LogLine.
+ * Use `create(LogLineSchema)` to create a new message.
+ */
+export const LogLineSchema: GenMessage<LogLine> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 14);
+
+/**
  * Observe: what this install checks, what it refused, and what everything
  * is doing. Everyone signed in sees the security checks (what's enforced,
  * what's refused, every image that may run and its scan); runs' details
@@ -477,6 +631,19 @@ export const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof ListAuditRequestSchema;
     output: typeof ListAuditResponseSchema;
+  },
+  /**
+   * Searches the logs kept in Loki (when the install collects them), newest
+   * first. A step's INFO lines reach anyone who may see its run; its other
+   * lines its own team; the platform's own logs admins only. failed_precondition
+   * (LOGS_OFF) when this install doesn't collect logs.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.SearchLogs
+   */
+  searchLogs: {
+    methodKind: "unary";
+    input: typeof SearchLogsRequestSchema;
+    output: typeof SearchLogsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_observe, 0);

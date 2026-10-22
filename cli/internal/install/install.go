@@ -33,6 +33,11 @@ type Cloud struct {
 	// BackupServiceAccount is the cloud identity the backups run as (gcp);
 	// on aws, EKS Pod Identity binds the role by ServiceAccount name.
 	BackupServiceAccount string
+	// Loki's bucket, its region (aws) and identity (gcp; on aws, Pod
+	// Identity binds the role to LokiServiceAccountName).
+	LogsBucket         string
+	LogsRegion         string
+	LogsServiceAccount string
 	// The chart's scheduler.taskPlacement: where steps run (Spot, a pool).
 	StepPlacement   map[string]any
 	ClusterName     string
@@ -94,6 +99,11 @@ func CertificateStatus(ctx context.Context, r *run.Runner, c *config.Config) str
 		"get", "managedcertificate", certificateName, "--ignore-not-found", "-o", "jsonpath={.status.certificateStatus}")
 	return strings.TrimSpace(out)
 }
+
+// LokiServiceAccountName is the Kubernetes ServiceAccount Loki runs as (the
+// console chart's logs.serviceAccountName), bound to the module's logs
+// identity.
+const LokiServiceAccountName = "vertra-loki"
 
 // BackupServiceAccountName is the Kubernetes ServiceAccount the database
 // backups run as (the kernel chart's backup.serviceAccountName), bound to
@@ -445,7 +455,28 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		}
 		v["gateway"] = gateway
 	}
+	if c.Logs.Enabled {
+		v["logs"] = logsValues(c, cloud)
+	}
 	return v
+}
+
+// logsValues: Loki on the module's bucket (archived after searchDays), or on
+// a volume where there's no bucket (kind, an existing cluster).
+func logsValues(c *config.Config, cloud *Cloud) map[string]any {
+	logs := map[string]any{
+		"enabled": true, "searchDays": c.Logs.SearchDays, "keepDays": c.Logs.KeepDays,
+		"serviceAccountName": LokiServiceAccountName,
+		"storage":            map[string]any{"type": "filesystem"},
+	}
+	switch {
+	case cloud != nil && cloud.LogsBucket != "" && cloud.Provider == "aws":
+		logs["storage"] = map[string]any{"type": "s3", "bucket": cloud.LogsBucket, "region": cloud.LogsRegion}
+	case cloud != nil && cloud.LogsBucket != "":
+		logs["storage"] = map[string]any{"type": "gcs", "bucket": cloud.LogsBucket}
+		logs["serviceAccountAnnotations"] = map[string]any{"iam.gke.io/gcp-service-account": cloud.LogsServiceAccount}
+	}
+	return logs
 }
 
 // EnsureBackupServiceAccount creates (or updates) the Kubernetes

@@ -284,6 +284,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		{Label: "Scale down", Text: scale},
 		{Label: "Task images", Text: taskImages},
 		{Label: "Database", Text: database},
+		{Label: "Logs", Text: logsLine(c)},
 		{Label: "Admin", Text: admin},
 	}
 	if cloud != nil {
@@ -374,4 +375,16 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		p.Notes = append(p.Notes, "While asleep, the console and API don't answer: catalog CI and automation fail until `vertra wake`.")
 	}
 	return p
+}
+
+// logsLine says what log search keeps, and where, for the approval screen.
+func logsLine(c *config.Config) string {
+	if !c.Logs.Enabled {
+		return "not kept beyond each run's own (logs.enabled for Observe's search)"
+	}
+	switch c.Target {
+	case "gcp", "aws":
+		return fmt.Sprintf("searchable %d days, then archived in a bucket; deleted after %d days", c.Logs.SearchDays, c.Logs.KeepDays)
+	}
+	return fmt.Sprintf("searchable on a volume, deleted after %d days (no archive without a bucket)", c.Logs.KeepDays)
 }

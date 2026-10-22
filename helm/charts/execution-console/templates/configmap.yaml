@@ -15,6 +15,10 @@ metadata:
 data:
   PORT: {{ .Values.service.port | quote }}
   METRICS_PORT: {{ .Values.monitoring.port | quote }}
+  {{- if .Values.logs.enabled }}
+  LOKI_URL: "http://{{ include "execution-console.fullname" . }}-loki.{{ .Release.Namespace }}.svc.cluster.local:3100"
+  {{- end }}
+  LOG_SEARCH_DAYS: {{ .Values.logs.searchDays | quote }}
   KERNEL_API_URL: {{ .Values.kernelApiUrl | quote }}
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}
