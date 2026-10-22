@@ -35,6 +35,7 @@ type initFlags struct {
 	noCatalog, useExistingCatalog          bool
 	scaleDown                              string
 	logs, auditExport, auditLock, gateway  string
+	monitoring                             string
 	registryPort, minReplicas, headroom    int
 }
 
@@ -70,6 +71,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.auditExport, "audit-export", "", "gcp, aws: true or false: copy the audit log to a bucket that refuses deletes")
 	fl.StringVar(&f.auditLock, "audit-lock", "", "gcp, aws: true or false: lock that bucket's retention for good (permanent)")
 	fl.StringVar(&f.gateway, "gateway", "", "true or false: serve the catalog's API products through the API gateway")
+	fl.StringVar(&f.monitoring, "monitoring", "", "kind, existing: true or false: PodMonitors, alerts and a Grafana dashboard for the cluster's Prometheus Operator")
 	fl.StringVar(&f.idleAfter, "idle-after", "", "with scale-down: how long idle before sleeping (default 2h)")
 	fl.IntVar(&f.minReplicas, "min-replicas", 0, "without scale-down: always-on copies of the console and API")
 	fl.IntVar(&f.headroom, "step-headroom", -1, "without scale-down: steps that can start without waiting")
@@ -276,6 +278,11 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 	// 7. What else it keeps and serves.
 	if err := a.askFeatures(out, c, f); err != nil {
 		return err
+	}
+	if c.Target == "kind" || c.Target == "existing" {
+		if err := a.askMonitoring(ctx, out, c, f); err != nil {
+			return err
+		}
 	}
 
 	c.FillDefaults()

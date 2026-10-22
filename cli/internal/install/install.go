@@ -343,6 +343,11 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 	if len(scheduler) > 0 {
 		v["scheduler"] = scheduler
 	}
+	if c.Monitoring.Enabled {
+		monitoring, metricsFrom := monitoringValues(c, false)
+		v["monitoring"] = monitoring
+		v["networkPolicy"] = map[string]any{"metricsFrom": metricsFrom}
+	}
 	return v
 }
 
@@ -477,6 +482,11 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	if c.Logs.Enabled {
 		v["logs"] = logsValues(c, cloud)
 	}
+	if c.Monitoring.Enabled {
+		monitoring, metricsFrom := monitoringValues(c, true)
+		v["monitoring"] = monitoring
+		v["networkPolicy"] = map[string]any{"metricsFrom": metricsFrom}
+	}
 	// Signing in with Google: the client's id here, its secret in the
 	// Secret EnsureSSOSecret writes.
 	if c.SSO.Provider == "google" {
@@ -572,6 +582,59 @@ func MetricsServer(ctx context.Context, r *run.Runner, c *config.Config) error {
 
 // MetricsServerChart is the metrics-server chart version installed on kind.
 const MetricsServerChart = "3.14.0"
+
+// Prometheus is a Prometheus Operator's Prometheus in the cluster: where it
+// runs, and the labels it selects PodMonitors and rules by.
+type Prometheus struct {
+	Namespace                    string
+	PodMonitorLabels, RuleLabels map[string]string
+}
+
+// FindPrometheus finds the cluster's first Prometheus (kube-prometheus-stack
+// makes one); nil when there's no Prometheus Operator.
+func FindPrometheus(ctx context.Context, r *run.Runner, c *config.Config) *Prometheus {
+	out, err := r.Output(ctx, "kubectl", "--context", cluster.Context(c), "get", "prometheuses.monitoring.coreos.com",
+		"--all-namespaces", "-o", "json")
+	if err != nil {
+		return nil
+	}
+	var list struct {
+		Items []struct {
+			Metadata struct {
+				Namespace string `json:"namespace"`
+			} `json:"metadata"`
+			Spec struct {
+				PodMonitorSelector struct {
+					MatchLabels map[string]string `json:"matchLabels"`
+				} `json:"podMonitorSelector"`
+				RuleSelector struct {
+					MatchLabels map[string]string `json:"matchLabels"`
+				} `json:"ruleSelector"`
+			} `json:"spec"`
+		} `json:"items"`
+	}
+	if json.Unmarshal([]byte(out), &list) != nil || len(list.Items) == 0 {
+		return nil
+	}
+	p := list.Items[0]
+	return &Prometheus{Namespace: p.Metadata.Namespace, PodMonitorLabels: p.Spec.PodMonitorSelector.MatchLabels, RuleLabels: p.Spec.RuleSelector.MatchLabels}
+}
+
+// monitoringValues are a chart's monitoring and metricsFrom, for the
+// cluster's Prometheus as vertra init found it.
+func monitoringValues(c *config.Config, dashboard bool) (monitoring map[string]any, metricsFrom []any) {
+	m := c.Monitoring
+	monitoring = map[string]any{
+		"podMonitor": map[string]any{"enabled": true, "labels": m.PodMonitorLabels},
+		"alerts":     map[string]any{"enabled": true, "labels": m.RuleLabels},
+	}
+	if dashboard {
+		// Grafana's dashboard sidecar watches its own namespace by default.
+		monitoring["dashboard"] = map[string]any{"enabled": true, "namespace": m.Namespace}
+	}
+	metricsFrom = []any{map[string]any{"namespaceSelector": map[string]any{"matchLabels": map[string]string{"kubernetes.io/metadata.name": m.Namespace}}}}
+	return monitoring, metricsFrom
+}
 
 // SSOSecretName is the Secret holding the Google OAuth client's secret.
 const SSOSecretName = "vertra-sso"

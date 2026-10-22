@@ -438,3 +438,31 @@ func (a *app) askFeatures(out io.Writer, c *config.Config, f *initFlags) error {
 	}
 	return nil
 }
+
+// askMonitoring offers the charts' PodMonitors, alerts and Grafana dashboard
+// when the cluster runs a Prometheus Operator, set up for that Prometheus:
+// its namespace may scrape, and the labels it selects them by are put on.
+func (a *app) askMonitoring(ctx context.Context, out io.Writer, c *config.Config, f *initFlags) error {
+	if f.monitoring == "false" {
+		return nil
+	}
+	p := install.FindPrometheus(ctx, a.runner, c)
+	if p == nil {
+		if f.monitoring == "true" {
+			return fmt.Errorf("--monitoring: no Prometheus Operator in this cluster (kube-prometheus-stack, for one)")
+		}
+		return nil
+	}
+	on := f.monitoring == "true"
+	if f.monitoring == "" {
+		var err error
+		if on, err = a.ask.Confirm(fmt.Sprintf("A Prometheus Operator runs in %s. Add Vertra's PodMonitors, alerts and Grafana dashboard for it?", p.Namespace), true); err != nil {
+			return err
+		}
+	}
+	if on {
+		c.Monitoring = config.Monitoring{Enabled: true, Namespace: p.Namespace, PodMonitorLabels: p.PodMonitorLabels, RuleLabels: p.RuleLabels}
+		fmt.Fprintf(out, "Monitoring: scraped from %s; its alerts and dashboard go to that Prometheus and Grafana.\n", p.Namespace)
+	}
+	return nil
+}

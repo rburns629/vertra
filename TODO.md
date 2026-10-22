@@ -43,9 +43,11 @@ design.
     (`kernel_tasks`, `kernel_oldest_ready_task_age_seconds`), PodMonitors,
     PrometheusRules and a Grafana dashboard in the charts (`monitoring`, off
     by default), with every metrics port open only to
-    `networkPolicy.metricsFrom`. Left: proving the PodMonitors, rules and
-    dashboard against a real Prometheus Operator and Grafana (checked
-    with promtool, and scraped by hand on kind). And GKE's Managed Service for Prometheus,
+    `networkPolicy.metricsFrom`. Proven on kind with kube-prometheus-stack
+    92.1.0 (2026-10-22): all four components scraped through the
+    PodMonitors, all seven alerts loaded, the dashboard in Grafana with its
+    queries answering; `vertra init` finds the operator and its selector
+    labels (`--monitoring`). Left: GKE's Managed Service for Prometheus,
     which reads `PodMonitoring` and `Rules`
     (`monitoring.googleapis.com`), not the operator's resources: ship those
     too, behind their own value.

@@ -226,7 +226,8 @@ KIND_HELM_INSTALL := --kube-context $(KIND_CONTEXT) -n $(PLATFORM_NAMESPACE) --r
 kind-deploy-kernel:
 	$(DOCKER) build -t execution-kernel:latest kernel/
 	kind load docker-image execution-kernel:latest --name $(KIND_CLUSTER)
-	helm upgrade kernel helm/charts/execution-kernel $(KIND_HELM_UPGRADE) -f helm/values/kind/kernel.yaml
+	helm upgrade kernel helm/charts/execution-kernel $(KIND_HELM_UPGRADE) -f helm/values/kind/kernel.yaml \
+		$(foreach file,$(KIND_KERNEL_VALUES),-f $(file))
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment kernel-execution-kernel-scheduler --timeout=5m
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment kernel-execution-kernel-api --timeout=5m

@@ -77,6 +77,9 @@ type Config struct {
 	Audit Audit `yaml:"audit,omitempty"`
 	// SSO: signing in with Google (vertra sso google sets it up).
 	SSO SSO `yaml:"sso,omitempty"`
+	// Monitoring: the charts' PodMonitors, alerts and Grafana dashboard,
+	// for a Prometheus Operator already in the cluster.
+	Monitoring Monitoring `yaml:"monitoring,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
@@ -177,6 +180,16 @@ type SSO struct {
 	AllowedDomains []string `yaml:"allowedDomains,omitempty"`
 	// RedirectURL: the console's sign-in callback, as registered with the client.
 	RedirectURL string `yaml:"redirectUrl,omitempty"`
+}
+
+// Monitoring is for a cluster's Prometheus Operator, as vertra init found
+// it: the namespace it scrapes from, and the labels it selects
+// PodMonitors and rules by.
+type Monitoring struct {
+	Enabled          bool              `yaml:"enabled,omitempty"`
+	Namespace        string            `yaml:"namespace,omitempty"`
+	PodMonitorLabels map[string]string `yaml:"podMonitorLabels,omitempty"`
+	RuleLabels       map[string]string `yaml:"ruleLabels,omitempty"`
 }
 
 // Console: reached over HTTPS from the internet (what the catalog's CI

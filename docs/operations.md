@@ -329,6 +329,11 @@ networkPolicy:
     - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
 ```
 
+On kind or an existing cluster, `vertra init` finds a Prometheus Operator
+and offers all of this (`--monitoring`), reading which labels its Prometheus
+selects PodMonitors and rules by and which namespace it scrapes from, so
+nothing needs looking up.
+
 With the Prometheus Operator (kube-prometheus-stack; VictoriaMetrics's
 operator reads the same resources), the charts can add the rest, each off
 by default because it needs that operator's CRDs. GKE's Managed Service
