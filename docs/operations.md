@@ -363,6 +363,15 @@ Outbound traffic isn't restricted.
 
 ## Troubleshooting
 
+**The first admin's password is lost.** It's printed once, by the first
+migrate Job, and the next upgrade replaces that log. `vertra admin
+reset-password <env>` gives that admin (or `--email` another) a new random
+password, shown once, from inside the console's Pod: only someone with
+access to the cluster can. Every session the account had is signed out,
+and the reset is in the audit log. Without vertra: `kubectl exec
+deploy/console-execution-console -n vertra-system -- node
+dist/db/resetAdmin.js <email>`.
+
 **`401` from the console's API.** The token is missing, malformed, expired
 (sessions last 8 hours), from before a password change (which signs out
 every session), or a revoked bot token.

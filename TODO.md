@@ -444,10 +444,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   down after. Left: the reverse direction (ECR read from GKE, by AWS web
   identity), a `vertra` command for the owner's grant, and policy-controller
   (step image signatures) on EKS.
-- [ ] **P1: recovering the first admin's password.** It's printed once, by
-  the first migrate Job, whose log the next upgrade replaces; losing it
-  leaves only the database. Add `vertra admin reset-password` (a new one
-  minted through the cluster and shown once).
+- [x] **P1: recovering the first admin's password** (done 2026-10-22):
+  `vertra admin reset-password` runs the console's `dist/db/resetAdmin.js`
+  in its Pod (cluster access required): a new random password for an
+  admin, printed once, every session revoked, audited. Proven on kind.
 - [ ] **Cross-building the console on Apple silicon** broke under amd64
   emulation (npm's cache size computed as 0: emulated floating-point); the
   console's Dockerfile now runs its npm stages on the build platform. The

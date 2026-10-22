@@ -70,7 +70,7 @@ func newRoot() *cobra.Command {
 	root.AddCommand(
 		a.initCmd(), a.checkCmd(), a.applyCmd(), a.statusCmd(),
 		a.sleepCmd(), a.wakeCmd(), a.destroyCmd(), a.configCmd(),
-		a.catalogCmd(), a.toolsCmd(), a.consoleCmd(), versionCmd(),
+		a.catalogCmd(), a.toolsCmd(), a.consoleCmd(), a.adminCmd(), versionCmd(),
 	)
 	return root
 }
