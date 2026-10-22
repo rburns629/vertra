@@ -7,7 +7,9 @@
  * with canned JSON (an empty message when a test gives none), so these
  * tests check what the pages do with the API, whatever the pages look like.
  */
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { create, toBinary } from "@bufbuild/protobuf";
+import { FailureSchema } from "./gen/vertra/console/v1/common_pb.js";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import type { ComponentType } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -17,15 +19,19 @@ import { theme } from "./theme";
 type Answer = unknown | ((request: Record<string, unknown>) => unknown);
 let answers: Record<string, Answer> = {};
 
-/** A Connect error, as the console sends one. */
-const refused = (status: number, code: string, message: string) => ({ refused: { status, code, message } });
+/** A Connect error, as the console sends one: its Connect code, and the
+ * console's stable code in a Failure detail. */
+const refused = (status: number, code: string, message: string, failure?: string) => ({ refused: { status, code, message, failure } });
 
 function connectResponse(key: string, request: Record<string, unknown>, streaming: boolean): Response {
   const answer = answers[key];
   const value = typeof answer === "function" ? (answer as (r: Record<string, unknown>) => unknown)(request) : (answer ?? {});
   if (value && typeof value === "object" && "refused" in value) {
-    const { status, code, message } = (value as ReturnType<typeof refused>).refused;
-    return new Response(JSON.stringify({ code, message }), { status, headers: { "content-type": "application/json" } });
+    const { status, code, message, failure } = (value as ReturnType<typeof refused>).refused;
+    const details = failure
+      ? [{ type: "vertra.console.v1.Failure", value: btoa(String.fromCharCode(...toBinary(FailureSchema, create(FailureSchema, { code: failure, message })))) }]
+      : undefined;
+    return new Response(JSON.stringify({ code, message, details }), { status, headers: { "content-type": "application/json" } });
   }
   if (!streaming) return new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
   // A server stream: the end-of-stream envelope alone (no messages).
@@ -169,7 +175,7 @@ describe("signing in", () => {
   it("sends someone who isn't signed in to the sign-in page", async () => {
     await renderAt("/observe", null);
     expect(await screen.findByLabelText(/email/i)).toBeTruthy();
-    expect(screen.queryByRole("main")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: /main/i })).toBeNull();
   });
 
   it("treats a session the console no longer accepts as signed out", async () => {
@@ -188,10 +194,43 @@ describe("signing in", () => {
     expect(screen.queryByRole("link", { name: /sign in with google/i })).toBeNull();
   });
 
-  it("holds someone with a password set by someone else on their account page", async () => {
-    await renderAt("/observe", { ...MEMBER, mustChangePassword: true });
-    expect(await screen.findByLabelText(/current password/i)).toBeTruthy();
+  it("holds someone with a password set by someone else until they choose their own", async () => {
+    let changed = false;
+    await renderAt("/observe", { ...MEMBER, mustChangePassword: true }, {
+      "AuthService/GetMe": () => ({ ...MEMBER, mustChangePassword: !changed }),
+      "AuthService/ChangePassword": () => {
+        changed = true;
+        return { token: "their-own-session" };
+      },
+    });
+    expect(await screen.findByRole("heading", { name: /choose your own password/i })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: /main/i })).toBeNull();
     expect(calls).not.toContain("ObserveService/GetSecurity");
+
+    fireEvent.change(screen.getByLabelText(/temporary password/i), { target: { value: "from-the-admin" } });
+    fireEvent.change(screen.getByLabelText(/^new password \*?$/i), { target: { value: "too-short" } });
+    fireEvent.change(screen.getByLabelText(/new password, again/i), { target: { value: "too-short" } });
+    fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
+    expect(await screen.findByText(/at least 12 characters: this one has 9/i)).toBeTruthy();
+    expect(calls).not.toContain("AuthService/ChangePassword");
+
+    fireEvent.change(screen.getByLabelText(/^new password \*?$/i), { target: { value: "a-long-enough-one" } });
+    fireEvent.change(screen.getByLabelText(/new password, again/i), { target: { value: "a-long-enough-one" } });
+    fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
+    expect(await screen.findByRole("navigation", { name: /main/i })).toBeTruthy();
+    expect(localStorage.getItem("token")).toBe("their-own-session");
+  });
+
+  it("says when a team requires single sign-on instead of a password", async () => {
+    await renderAt("/login", null, {
+      "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" },
+      "AuthService/Login": refused(403, "permission_denied", "payments signs in with Google: use that instead of a password.", "SSO_REQUIRED"),
+    });
+    fireEvent.change(await screen.findByLabelText(/email/i), { target: { value: "lee@acme.com" } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: "their-password" } });
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    expect(await screen.findByText(/sign in with google instead/i)).toBeTruthy();
+    expect(screen.getByText(/payments signs in with google/i)).toBeTruthy();
   });
 });
 

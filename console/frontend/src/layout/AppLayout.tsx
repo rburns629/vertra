@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
@@ -29,8 +29,9 @@ import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import PersonIcon from "@mui/icons-material/PersonOutlined";
 import HelpIcon from "@mui/icons-material/HelpOutlineOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { getEnvironment, type Me } from "../api";
+import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { useEnvironment } from "../environment";
 
 const DRAWER_WIDTH = 248;
 
@@ -72,12 +73,7 @@ function Mark() {
 
 /** Which install this tab is talking to (the chart's environmentLabel). */
 function InstallCard() {
-  const [label, setLabel] = useState<string | null>(null);
-  useEffect(() => {
-    getEnvironment()
-      .then((env) => { setLabel(env.label); })
-      .catch(() => { /* cosmetic only: no card */ });
-  }, []);
+  const label = useEnvironment()?.label;
   if (!label) return null;
   return (
     <Box sx={{ mx: 1.5, px: 1.5, py: 1.25, borderRadius: 2, bgcolor: "sidebar.hoverBg", display: "flex", flexDirection: "column", gap: 0.25 }}>

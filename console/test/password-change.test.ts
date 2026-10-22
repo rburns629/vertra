@@ -49,6 +49,8 @@ describe("a password someone else set", () => {
     const refused = await listProducts(first);
     expect(refused.statusCode).toBe(403);
     expect(failureCode(refused.json<RpcError>())).toBe("PASSWORD_CHANGE_REQUIRED");
+    // The install's public settings, for the screen where it's changed.
+    expect((await rpc("AuthService", "GetEnvironment", {}, { token: first })).statusCode).toBe(200);
 
     const changed = await rpc("AuthService", "ChangePassword", { currentPassword: created.temporaryPassword, newPassword: PASSWORD }, { token: first });
     expect(changed.statusCode).toBe(200);

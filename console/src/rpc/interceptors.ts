@@ -34,8 +34,9 @@ export const PUBLIC = new Set(
 );
 
 /** All a session may do while its password must be changed. */
+// GetEnvironment is public anyway: the screen to change it shows the install.
 const WHILE_CHANGING_PASSWORD = new Set(
-  [AuthService.method.getMe, AuthService.method.changePassword].map((m) => procedure(m.parent, m)),
+  [AuthService.method.getMe, AuthService.method.changePassword, AuthService.method.getEnvironment].map((m) => procedure(m.parent, m)),
 );
 
 /** Changes nothing worth recording, or carries secrets: never audited. */

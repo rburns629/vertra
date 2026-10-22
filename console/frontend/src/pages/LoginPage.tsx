@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useState, type FormEvent } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Divider,
-  Link,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
-import { ApiError, getEnvironment, SSO_START } from "../api";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import GlobeIcon from "@mui/icons-material/LanguageOutlined";
+import { ApiError, SSO_START } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import { EnvironmentBadge } from "../layout/EnvironmentBadge";
+import { useEnvironment } from "../environment";
+import { SignInLayout } from "../layout/SignInLayout";
 
 /** What /login#error=<CODE> means, from a single sign-on that was refused. */
 const SSO_ERRORS: Record<string, string> = {
@@ -30,24 +29,17 @@ const SSO_ERRORS: Record<string, string> = {
 export function LoginPage() {
   const { login, sessionExpired, adoptToken, refresh } = useAuth();
   const navigate = useNavigate();
+  const environment = useEnvironment();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // A team of theirs signs in with single sign-on only: said apart, since
+  // the way forward is the button above, not another password.
+  const [ssoRequired, setSsoRequired] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Registration is usually closed (admins create accounts); only offer
-  // it when the server says it's open.
-  const [selfRegistration, setSelfRegistration] = useState(false);
   // Single sign-on's provider, when it's on. Passwords still work, except
   // for teams that require single sign-on.
-  const [sso, setSso] = useState("");
-  useEffect(() => {
-    getEnvironment()
-      .then((environment) => {
-        setSelfRegistration(environment.selfRegistration);
-        setSso(environment.ssoLabel);
-      })
-      .catch(() => undefined);
-  }, []);
+  const sso = environment?.ssoLabel ?? "";
 
   // Back from single sign-on: the session (or why not) in the fragment,
   // which never reaches a server. Taken off the address straight away.
@@ -72,91 +64,91 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
     setError(null);
+    setSsoRequired(null);
     setSubmitting(true);
     try {
       await login(email, password);
       navigate("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+      if (err instanceof ApiError && err.code === "SSO_REQUIRED") setSsoRequired(err.message);
+      else setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "background.default",
-      }}
-    >
-      <Card sx={{ width: 380 }} variant="outlined">
-        <CardContent sx={{ p: 4 }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              Sign in
-            </Typography>
-            <EnvironmentBadge />
-          </Box>
-          {sso && (
-            <Stack spacing={2} sx={{ mb: 2 }}>
-              <Button variant="contained" size="large" href={SSO_START}>
-                Sign in with {sso}
-              </Button>
-              <Divider>
-                <Typography variant="caption" color="text.secondary">
-                  or with a password
-                </Typography>
-              </Divider>
-            </Stack>
-          )}
-          <Box component="form" onSubmit={(event: FormEvent) => void handleSubmit(event)}>
-            <Stack spacing={2}>
-              {sessionExpired && !error && (
-                <Alert severity="info">Your session has ended. Sign in again to continue.</Alert>
-              )}
-              <TextField
-                label="Email"
-                type="email"
-                required
-                fullWidth
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                }}
-              />
-              <TextField
-                label="Password"
-                type="password"
-                required
-                fullWidth
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                }}
-              />
-              {error && <Alert severity="error">{error}</Alert>}
-              <Button type="submit" variant={sso ? "outlined" : "contained"} size="large" disabled={submitting}>
-                {submitting ? "Signing in…" : "Sign in"}
-              </Button>
-              <Typography variant="body2" sx={{ textAlign: "center" }}>
-                {selfRegistration ? (
-                  <>
-                    No account? <Link component={RouterLink} to="/register">Register</Link>
-                  </>
-                ) : sso ? (
-                  `No account? Sign in with ${sso}, or ask a Vertra admin for one.`
-                ) : (
-                  "No account? Ask a Vertra admin to create one for you."
-                )}
+    <SignInLayout>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, mb: 3 }}>
+        <Typography component="h2" sx={{ fontSize: 22, fontWeight: 600 }}>
+          Sign in
+        </Typography>
+        {environment?.label && (
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>to Vertra on {environment.label}</Typography>
+        )}
+      </Box>
+      <Stack spacing={2}>
+        {sessionExpired && !error && !ssoRequired && <Alert severity="info">Your session has ended. Sign in again to continue.</Alert>}
+        {ssoRequired && (
+          <Alert severity="error" role="alert">
+            <AlertTitle>Sign in with {sso || "single sign-on"} instead</AlertTitle>
+            {ssoRequired}
+          </Alert>
+        )}
+        {sso && (
+          <>
+            <Button variant="outlined" size="large" href={SSO_START} startIcon={<GlobeIcon />} sx={{ color: "text.primary", borderColor: "divider" }}>
+              Sign in with {sso}
+            </Button>
+            <Divider>
+              <Typography variant="caption" color="text.secondary">
+                or with a password
               </Typography>
-            </Stack>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
+            </Divider>
+          </>
+        )}
+        <Box component="form" onSubmit={(event: FormEvent) => void handleSubmit(event)}>
+          <Stack spacing={2}>
+            <TextField
+              label="Email"
+              type="email"
+              autoComplete="username"
+              required
+              fullWidth
+              value={email}
+              onChange={(event) => { setEmail(event.target.value); }}
+            />
+            <TextField
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              required
+              fullWidth
+              value={password}
+              onChange={(event) => { setPassword(event.target.value); }}
+            />
+            {error && <Alert severity="error">{error}</Alert>}
+            <Button type="submit" variant="contained" size="large" disabled={submitting}>
+              {submitting ? "Signing in…" : "Sign in"}
+            </Button>
+          </Stack>
+        </Box>
+        <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.5 }}>
+          Forgot your password? Ask a Vertra admin for a new one; you choose your own when you next sign in. Too many
+          tries from one place wait a few minutes.
+        </Typography>
+        <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+          {environment?.selfRegistration ? (
+            <>
+              No account? <Link component={RouterLink} to="/register">Register</Link>
+            </>
+          ) : sso ? (
+            `No account? Sign in with ${sso}, or ask a Vertra admin for one.`
+          ) : (
+            "No account? Ask a Vertra admin for one."
+          )}
+        </Typography>
+      </Stack>
+    </SignInLayout>
   );
 }
