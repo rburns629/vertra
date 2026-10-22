@@ -79,7 +79,10 @@ describe("a team's members", () => {
 
     expect((await rpc("TeamService", "GetTeam", { name: team.name }, { token })).statusCode).toBe(200);
     const listed = await rpc("TeamService", "ListMembers", { team: team.name }, { token });
-    expect(listed.json<{ members: { email: string }[] }>().members.map((m) => m.email)).toEqual([member.email]);
+    const members = listed.json<{ members: { email: string; hasPassword?: boolean; usesSso?: boolean }[] }>().members;
+    expect(members.map((m) => m.email)).toEqual([member.email]);
+    // How each signs in: what requiring single sign-on would change for them.
+    expect(members[0]).toMatchObject({ hasPassword: true, usesSso: false });
 
     const outsider = await signIn((await makeUser()).email);
     expect((await rpc("TeamService", "GetTeam", { name: team.name }, { token: outsider })).statusCode).toBe(404);

@@ -227,9 +227,13 @@ type Member struct {
 	Email string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
 	IsBot bool                   `protobuf:"varint,3,opt,name=is_bot,json=isBot,proto3" json:"is_bot,omitempty"`
 	// A Vertra admin, not just this team's member.
-	IsAdmin       bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
-	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
-	Role          TeamRole               `protobuf:"varint,6,opt,name=role,proto3,enum=vertra.console.v1.TeamRole" json:"role,omitempty"`
+	IsAdmin bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	AddedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	Role    TeamRole               `protobuf:"varint,6,opt,name=role,proto3,enum=vertra.console.v1.TeamRole" json:"role,omitempty"`
+	// How it signs in (a bot has neither): what requiring single sign-on
+	// would change for it.
+	HasPassword   bool `protobuf:"varint,7,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
+	UsesSso       bool `protobuf:"varint,8,opt,name=uses_sso,json=usesSso,proto3" json:"uses_sso,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -304,6 +308,20 @@ func (x *Member) GetRole() TeamRole {
 		return x.Role
 	}
 	return TeamRole_TEAM_ROLE_UNSPECIFIED
+}
+
+func (x *Member) GetHasPassword() bool {
+	if x != nil {
+		return x.HasPassword
+	}
+	return false
+}
+
+func (x *Member) GetUsesSso() bool {
+	if x != nil {
+		return x.UsesSso
+	}
+	return false
 }
 
 type ListTeamsRequest struct {
@@ -1933,14 +1951,16 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"deleted_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x1f\n" +
 	"\vrequire_sso\x18\x06 \x01(\bR\n" +
-	"requireSso\"\xc8\x01\n" +
+	"requireSso\"\x86\x02\n" +
 	"\x06Member\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x15\n" +
 	"\x06is_bot\x18\x03 \x01(\bR\x05isBot\x12\x19\n" +
 	"\bis_admin\x18\x04 \x01(\bR\aisAdmin\x125\n" +
 	"\badded_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12/\n" +
-	"\x04role\x18\x06 \x01(\x0e2\x1b.vertra.console.v1.TeamRoleR\x04role\"\x12\n" +
+	"\x04role\x18\x06 \x01(\x0e2\x1b.vertra.console.v1.TeamRoleR\x04role\x12!\n" +
+	"\fhas_password\x18\a \x01(\bR\vhasPassword\x12\x19\n" +
+	"\buses_sso\x18\b \x01(\bR\ausesSso\"\x12\n" +
 	"\x10ListTeamsRequest\"B\n" +
 	"\x11ListTeamsResponse\x12-\n" +
 	"\x05teams\x18\x01 \x03(\v2\x17.vertra.console.v1.TeamR\x05teams\"$\n" +

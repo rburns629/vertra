@@ -295,6 +295,7 @@ People and bots alike.
 | `password_changed_at` | timestamptz | yes | Sessions issued before this are rejected, so changing a password signs out every other session. |
 | `must_change_password` | boolean | no | Its password was set by someone else (an admin's new account or reset, `vertra admin reset-password`): a session it signs in may only change it. |
 | `oidc_subject` | text, unique | yes | The single sign-on account bound at the first sign-in through it (`<issuer> <sub>`): from then on only that account signs in as this person. |
+| `last_signed_in_at` | timestamptz | yes | Its last sign-in, with a password or single sign-on; empty if it never has. Shown on the Admin page's list of people. |
 | `created_at` | timestamptz | no | |
 
 ### team_memberships

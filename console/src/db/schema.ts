@@ -121,6 +121,9 @@ export const users = pgTable("users", {
   // provider account signs in as them: a new account given the same email
   // can't take this one over.
   oidcSubject: text("oidc_subject").unique(),
+  // Its last sign-in, with a password or single sign-on, for the admins'
+  // list of people. Null means never.
+  lastSignedInAt: timestamp("last_signed_in_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

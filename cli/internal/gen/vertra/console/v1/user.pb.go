@@ -25,13 +25,21 @@ const (
 )
 
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	IsAdmin       bool                   `protobuf:"varint,2,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	TeamNames     []string               `protobuf:"bytes,4,rep,name=team_names,json=teamNames,proto3" json:"team_names,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Email     string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	IsAdmin   bool                   `protobuf:"varint,2,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	TeamNames []string               `protobuf:"bytes,4,rep,name=team_names,json=teamNames,proto3" json:"team_names,omitempty"`
+	// How it signs in: a password of its own, single sign-on (bound at its
+	// first), or both.
+	HasPassword bool `protobuf:"varint,5,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
+	UsesSso     bool `protobuf:"varint,6,opt,name=uses_sso,json=usesSso,proto3" json:"uses_sso,omitempty"`
+	// Its password was set by an admin and not changed since.
+	MustChangePassword bool `protobuf:"varint,7,opt,name=must_change_password,json=mustChangePassword,proto3" json:"must_change_password,omitempty"`
+	// Unset when it never has.
+	LastSignedInAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_signed_in_at,json=lastSignedInAt,proto3,oneof" json:"last_signed_in_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -88,6 +96,34 @@ func (x *User) GetCreatedAt() *timestamppb.Timestamp {
 func (x *User) GetTeamNames() []string {
 	if x != nil {
 		return x.TeamNames
+	}
+	return nil
+}
+
+func (x *User) GetHasPassword() bool {
+	if x != nil {
+		return x.HasPassword
+	}
+	return false
+}
+
+func (x *User) GetUsesSso() bool {
+	if x != nil {
+		return x.UsesSso
+	}
+	return false
+}
+
+func (x *User) GetMustChangePassword() bool {
+	if x != nil {
+		return x.MustChangePassword
+	}
+	return false
+}
+
+func (x *User) GetLastSignedInAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSignedInAt
 	}
 	return nil
 }
@@ -563,14 +599,19 @@ var File_vertra_console_v1_user_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1cvertra/console/v1/user.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x91\x01\n" +
+	"\x1cvertra/console/v1/user.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe3\x02\n" +
 	"\x04User\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x19\n" +
 	"\bis_admin\x18\x02 \x01(\bR\aisAdmin\x129\n" +
 	"\n" +
 	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"team_names\x18\x04 \x03(\tR\tteamNames\"\x12\n" +
+	"team_names\x18\x04 \x03(\tR\tteamNames\x12!\n" +
+	"\fhas_password\x18\x05 \x01(\bR\vhasPassword\x12\x19\n" +
+	"\buses_sso\x18\x06 \x01(\bR\ausesSso\x120\n" +
+	"\x14must_change_password\x18\a \x01(\bR\x12mustChangePassword\x12J\n" +
+	"\x11last_signed_in_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0elastSignedInAt\x88\x01\x01B\x14\n" +
+	"\x12_last_signed_in_at\"\x12\n" +
 	"\x10ListUsersRequest\"B\n" +
 	"\x11ListUsersResponse\x12-\n" +
 	"\x05users\x18\x01 \x03(\v2\x17.vertra.console.v1.UserR\x05users\"U\n" +
@@ -633,22 +674,23 @@ var file_vertra_console_v1_user_proto_goTypes = []any{
 }
 var file_vertra_console_v1_user_proto_depIdxs = []int32{
 	11, // 0: vertra.console.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 1: vertra.console.v1.ListUsersResponse.users:type_name -> vertra.console.v1.User
-	1,  // 2: vertra.console.v1.UserService.ListUsers:input_type -> vertra.console.v1.ListUsersRequest
-	3,  // 3: vertra.console.v1.UserService.CreateUser:input_type -> vertra.console.v1.CreateUserRequest
-	5,  // 4: vertra.console.v1.UserService.DeleteUser:input_type -> vertra.console.v1.DeleteUserRequest
-	7,  // 5: vertra.console.v1.UserService.SetAdmin:input_type -> vertra.console.v1.SetAdminRequest
-	9,  // 6: vertra.console.v1.UserService.ResetPassword:input_type -> vertra.console.v1.ResetPasswordRequest
-	2,  // 7: vertra.console.v1.UserService.ListUsers:output_type -> vertra.console.v1.ListUsersResponse
-	4,  // 8: vertra.console.v1.UserService.CreateUser:output_type -> vertra.console.v1.CreateUserResponse
-	6,  // 9: vertra.console.v1.UserService.DeleteUser:output_type -> vertra.console.v1.DeleteUserResponse
-	8,  // 10: vertra.console.v1.UserService.SetAdmin:output_type -> vertra.console.v1.SetAdminResponse
-	10, // 11: vertra.console.v1.UserService.ResetPassword:output_type -> vertra.console.v1.ResetPasswordResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	11, // 1: vertra.console.v1.User.last_signed_in_at:type_name -> google.protobuf.Timestamp
+	0,  // 2: vertra.console.v1.ListUsersResponse.users:type_name -> vertra.console.v1.User
+	1,  // 3: vertra.console.v1.UserService.ListUsers:input_type -> vertra.console.v1.ListUsersRequest
+	3,  // 4: vertra.console.v1.UserService.CreateUser:input_type -> vertra.console.v1.CreateUserRequest
+	5,  // 5: vertra.console.v1.UserService.DeleteUser:input_type -> vertra.console.v1.DeleteUserRequest
+	7,  // 6: vertra.console.v1.UserService.SetAdmin:input_type -> vertra.console.v1.SetAdminRequest
+	9,  // 7: vertra.console.v1.UserService.ResetPassword:input_type -> vertra.console.v1.ResetPasswordRequest
+	2,  // 8: vertra.console.v1.UserService.ListUsers:output_type -> vertra.console.v1.ListUsersResponse
+	4,  // 9: vertra.console.v1.UserService.CreateUser:output_type -> vertra.console.v1.CreateUserResponse
+	6,  // 10: vertra.console.v1.UserService.DeleteUser:output_type -> vertra.console.v1.DeleteUserResponse
+	8,  // 11: vertra.console.v1.UserService.SetAdmin:output_type -> vertra.console.v1.SetAdminResponse
+	10, // 12: vertra.console.v1.UserService.ResetPassword:output_type -> vertra.console.v1.ResetPasswordResponse
+	8,  // [8:13] is the sub-list for method output_type
+	3,  // [3:8] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_user_proto_init() }
@@ -656,6 +698,7 @@ func file_vertra_console_v1_user_proto_init() {
 	if File_vertra_console_v1_user_proto != nil {
 		return
 	}
+	file_vertra_console_v1_user_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

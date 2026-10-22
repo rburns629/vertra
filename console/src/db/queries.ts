@@ -223,16 +223,36 @@ export async function setUserPassword(userId: string, passwordHash: string, must
     .where(eq(users.id, userId));
 }
 
+/** A successful sign-in, with a password or single sign-on. */
+export async function recordSignIn(userId: string): Promise<void> {
+  await db.update(users).set({ lastSignedInAt: new Date() }).where(eq(users.id, userId));
+}
+
 export async function setUserAdmin(userId: string, isAdmin: boolean): Promise<void> {
   await db.update(users).set({ isAdmin }).where(eq(users.id, userId));
 }
 
-export interface UserSummary {
+/** How an account signs in: a password of its own, single sign-on, or both. */
+export interface SignInMethods {
+  hasPassword: boolean;
+  /** Bound to an identity provider's account at its first single sign-on. */
+  usesSso: boolean;
+}
+
+export interface UserSummary extends SignInMethods {
   email: string;
   isAdmin: boolean;
   createdAt: Date;
   teamNames: string[];
+  /** Its password was set by an admin and not changed since. */
+  mustChangePassword: boolean;
+  lastSignedInAt: Date | null;
 }
+
+const signInMethods = {
+  hasPassword: sql<boolean>`${users.passwordHash} is not null`,
+  usesSso: sql<boolean>`${users.oidcSubject} is not null`,
+};
 
 /** Every human account (bots are listed per team, see core/tokens.ts) with
  * the active teams it belongs to, for the Admin page. */
@@ -242,6 +262,9 @@ export async function listHumanUsersWithTeams(): Promise<UserSummary[]> {
       email: users.email,
       isAdmin: users.isAdmin,
       createdAt: users.createdAt,
+      mustChangePassword: users.mustChangePassword,
+      lastSignedInAt: users.lastSignedInAt,
+      ...signInMethods,
       teamName: teams.name,
     })
     .from(users)
@@ -251,13 +274,9 @@ export async function listHumanUsersWithTeams(): Promise<UserSummary[]> {
     .orderBy(users.email);
   const byEmail = new Map<string, UserSummary>();
   for (const row of rows) {
-    const summary = byEmail.get(row.email) ?? {
-      email: row.email,
-      isAdmin: row.isAdmin,
-      createdAt: row.createdAt,
-      teamNames: [],
-    };
-    if (row.teamName) summary.teamNames.push(row.teamName);
+    const { teamName, ...account } = row;
+    const summary = byEmail.get(row.email) ?? { ...account, teamNames: [] };
+    if (teamName) summary.teamNames.push(teamName);
     byEmail.set(row.email, summary);
   }
   return [...byEmail.values()];
@@ -433,7 +452,7 @@ export async function listBotsForTeam(teamId: string): Promise<BotWithTokens[]> 
   return withTokens;
 }
 
-export interface TeamMember {
+export interface TeamMember extends SignInMethods {
   id: string;
   email: string;
   isBot: boolean;
@@ -455,6 +474,7 @@ export async function listMembersForTeam(teamId: string): Promise<TeamMember[]> 
       isAdmin: users.isAdmin,
       role: teamMemberships.role,
       addedAt: teamMemberships.createdAt,
+      ...signInMethods,
     })
     .from(teamMemberships)
     .innerJoin(users, eq(users.id, teamMemberships.userId))

@@ -122,6 +122,8 @@ export function teamService(): ServiceImpl<typeof TeamService> {
           isAdmin: member.isAdmin,
           addedAt: timestamp(member.addedAt),
           role: toRole[member.role],
+          hasPassword: member.hasPassword,
+          usesSso: member.usesSso,
         })),
       };
     },

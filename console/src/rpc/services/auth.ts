@@ -13,7 +13,7 @@ import type { FastifyInstance } from "fastify";
 import { loginWaitSeconds, recordLoginFailure, recordLoginSuccess } from "../../auth/loginThrottle.js";
 import { hashPassword, NewPassword, verifyAgainstNothing, verifyPassword } from "../../auth/password.js";
 import { config } from "../../config.js";
-import { createUser, findUserByEmail, findUserById, setUserPassword, teamRolesForUser } from "../../db/queries.js";
+import { createUser, findUserByEmail, findUserById, recordSignIn, setUserPassword, teamRolesForUser } from "../../db/queries.js";
 import { ssoRequiredBy } from "../../auth/plugin.js";
 import type { AuthService } from "../../gen/vertra/console/v1/auth_pb.js";
 import { callerOf, kClientIp, logOf } from "../context.js";
@@ -90,6 +90,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
         );
       }
       recordLoginSuccess(email);
+      await recordSignIn(user.id);
       return { token: app.jwt.sign({ userId: user.id }) };
     },
 

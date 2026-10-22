@@ -33,6 +33,14 @@ message User {
   bool is_admin = 2;
   google.protobuf.Timestamp created_at = 3;
   repeated string team_names = 4;
+  // How it signs in: a password of its own, single sign-on (bound at its
+  // first), or both.
+  bool has_password = 5;
+  bool uses_sso = 6;
+  // Its password was set by an admin and not changed since.
+  bool must_change_password = 7;
+  // Unset when it never has.
+  optional google.protobuf.Timestamp last_signed_in_at = 8;
 }
 
 message ListUsersRequest {}

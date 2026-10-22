@@ -19,6 +19,10 @@ export function userService(): ServiceImpl<typeof UserService> {
           isAdmin: user.isAdmin,
           createdAt: timestampFromDate(user.createdAt),
           teamNames: user.teamNames,
+          hasPassword: user.hasPassword,
+          usesSso: user.usesSso,
+          mustChangePassword: user.mustChangePassword,
+          lastSignedInAt: user.lastSignedInAt ? timestampFromDate(user.lastSignedInAt) : undefined,
         })),
       };
     },

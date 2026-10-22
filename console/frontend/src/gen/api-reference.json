@@ -5190,6 +5190,20 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "hasPassword",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "How it signs in (a bot has neither): what requiring single sign-on\nwould change for it."
+    },
+    {
+     "name": "usesSso",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -6340,6 +6354,34 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "hasPassword",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "How it signs in: a password of its own, single sign-on (bound at its\nfirst), or both."
+    },
+    {
+     "name": "usesSso",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "mustChangePassword",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its password was set by an admin and not changed since."
+    },
+    {
+     "name": "lastSignedInAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": true,
+     "comment": "Unset when it never has."
     }
    ]
   },

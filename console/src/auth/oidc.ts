@@ -24,7 +24,7 @@ import fastifyCookie from "@fastify/cookie";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply } from "fastify";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "../config.js";
-import { bindOidcSubject, createSsoUser, findUserByEmail, findUserByOidcSubject } from "../db/queries.js";
+import { bindOidcSubject, createSsoUser, findUserByEmail, findUserByOidcSubject, recordSignIn } from "../db/queries.js";
 
 const COOKIE = "vertra_oidc";
 const COOKIE_PATH = "/api/auth/oidc";
@@ -188,6 +188,7 @@ export async function registerOidc(api: FastifyInstance): Promise<void> {
 
       const { email, subject } = await verifiedClaims(oidc, idToken, flow.nonce);
       const user = await accountFor(email, subject, request.log);
+      await recordSignIn(user.id);
       request.log.info({ event: "sso_sign_in", userId: user.id }, "signed in with single sign-on");
       return await reply.redirect(`/login#token=${encodeURIComponent(api.jwt.sign({ userId: user.id, sso: true }))}`);
     } catch (error) {

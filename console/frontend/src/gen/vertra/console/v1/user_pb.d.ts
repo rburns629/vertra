@@ -36,6 +36,33 @@ export declare type User = Message<"vertra.console.v1.User"> & {
    * @generated from field: repeated string team_names = 4;
    */
   teamNames: string[];
+
+  /**
+   * How it signs in: a password of its own, single sign-on (bound at its
+   * first), or both.
+   *
+   * @generated from field: bool has_password = 5;
+   */
+  hasPassword: boolean;
+
+  /**
+   * @generated from field: bool uses_sso = 6;
+   */
+  usesSso: boolean;
+
+  /**
+   * Its password was set by an admin and not changed since.
+   *
+   * @generated from field: bool must_change_password = 7;
+   */
+  mustChangePassword: boolean;
+
+  /**
+   * Unset when it never has.
+   *
+   * @generated from field: optional google.protobuf.Timestamp last_signed_in_at = 8;
+   */
+  lastSignedInAt?: Timestamp | undefined;
 };
 
 /**

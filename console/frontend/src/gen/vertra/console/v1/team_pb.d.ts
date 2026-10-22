@@ -93,6 +93,19 @@ export declare type Member = Message<"vertra.console.v1.Member"> & {
    * @generated from field: vertra.console.v1.TeamRole role = 6;
    */
   role: TeamRole;
+
+  /**
+   * How it signs in (a bot has neither): what requiring single sign-on
+   * would change for it.
+   *
+   * @generated from field: bool has_password = 7;
+   */
+  hasPassword: boolean;
+
+  /**
+   * @generated from field: bool uses_sso = 8;
+   */
+  usesSso: boolean;
 };
 
 /**

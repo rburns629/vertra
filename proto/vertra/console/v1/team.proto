@@ -114,6 +114,10 @@ message Member {
   bool is_admin = 4;
   google.protobuf.Timestamp added_at = 5;
   TeamRole role = 6;
+  // How it signs in (a bot has neither): what requiring single sign-on
+  // would change for it.
+  bool has_password = 7;
+  bool uses_sso = 8;
 }
 
 message ListTeamsRequest {}
