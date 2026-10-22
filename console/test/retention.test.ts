@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /** Deleting what's past retention (retention.ts), and keeping the rest. */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { inArray, like } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "../src/db/client.js";
@@ -13,7 +13,9 @@ const prefix = `ret-${randomUUID().slice(0, 6)}`;
 const longAgo = new Date("2000-01-01T00:00:00Z");
 const oldId = randomUUID();
 const newId = randomUUID();
-const digest = (c: string) => `sha256:${c.repeat(64)}`;
+// Its own digests: another file's scans (a digest is image_scans' key) would
+// collide with fixed ones when the files run at the same time.
+const digest = (name: string) => `sha256:${createHash("sha256").update(prefix + name).digest("hex")}`;
 
 const email = `${prefix}@example.com`;
 
@@ -36,8 +38,8 @@ describe("retention", () => {
       { method: "POST", route: `/api/${prefix}/new`, status: 200 },
     ]);
     await db.insert(imageScans).values([
-      { digest: digest("d"), image: `${prefix}/old`, status: "passed", lastUsedAt: longAgo },
-      { digest: digest("e"), image: `${prefix}/new`, status: "passed" },
+      { digest: digest("old"), image: `${prefix}/old`, status: "passed", lastUsedAt: longAgo },
+      { digest: digest("new"), image: `${prefix}/new`, status: "passed" },
     ]);
 
     await deleteExpired();

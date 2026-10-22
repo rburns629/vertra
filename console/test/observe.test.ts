@@ -4,7 +4,7 @@
  * linked only for those who may see it), and every image allowed to run
  * with its scan (a hidden product's only for its team).
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -14,8 +14,9 @@ import { apis, apiTraffic, imageScans, products, submittedExecutions, teams } fr
 import { buildApp } from "../src/index.js";
 import { caller, rpcClient } from "./rpc.js";
 
-const digest = `sha256:${"e".repeat(64)}`;
 const prefix = `obs-${randomUUID().slice(0, 6)}`;
+// Its own: a digest is image_scans' key, shared with every other test file.
+const digest = `sha256:${createHash("sha256").update(prefix).digest("hex")}`;
 const owner = `${prefix}-owner`;
 const other = `${prefix}-other`;
 const stranger = `${prefix}-stranger`;
