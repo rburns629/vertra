@@ -188,6 +188,9 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 		}
 	}
 
+	// A hostname of the user's: the record it needs, before the certificate.
+	a.consoleDNS(ctx, out, c, made)
+
 	// Awake now (an apply wakes it): the sleeper looks again.
 	if err := platform.SuspendSleeper(ctx, a.runner, c, false); err != nil {
 		return err

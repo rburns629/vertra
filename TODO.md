@@ -573,6 +573,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Encrypt proven on GKE (2026-10-22): the chart's Issuer, HTTP-01 through
   Traefik's load balancer, staging then production; a certificate for a
   real hostname trusted by an ordinary client, plain HTTP refused.
+  `vertra apply` names the DNS record a hostname of yours needs and waits
+  for it; `vertra status` shows it and the certificate (2026-10-22; not yet
+  run against a cluster whose Ingress has a public address).
 - [ ] **SSO/OIDC sign-in**, with groups mapped to teams. Sign-in with
   Google is in (2026-10-22: `console/src/auth/oidc.ts`, the console chart's
   `sso`): the authorization code flow with PKCE, a verified email in an

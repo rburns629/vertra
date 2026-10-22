@@ -126,6 +126,17 @@ func (a *app) statusCmd() *cobra.Command {
 			default:
 				fmt.Fprintln(out, "Awake. Console:", platform.ConsoleAccess(c, envName(dir)))
 			}
+			// An existing cluster's public console: its record and certificate.
+			if c.Target == "existing" && c.Console.Public {
+				dns := "no address published on the Ingress yet"
+				if host, kind, target := a.consoleRecord(ctx, c, nil); target != "" {
+					dns = fmt.Sprintf("needs %s %s → %s", kind, host, target)
+					if resolvesTo(ctx, host, kind, target) {
+						dns = "→ " + target + " ✓"
+					}
+				}
+				fmt.Fprintf(out, "Public:  https://%s (DNS %s; certificate %s)\n", c.Console.Hostname, dns, install.ConsoleCertificate(ctx, a.runner, c))
+			}
 			return nil
 		},
 	}

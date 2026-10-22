@@ -145,8 +145,12 @@ console is reached at a hostname, which Ingress class serves it, and where
 its certificate comes from (Let's Encrypt, or a ClusterIssuer of yours), and
 offers to install cert-manager (pinned) if the cluster hasn't got it
 (`console.public`, `console.hostname`, `console.ingressClass`,
-`console.tls.*` in vertra.yaml). `vertra apply` reports the certificate's
-state; Let's Encrypt needs the hostname pointed at the Ingress first.
+`console.tls.*` in vertra.yaml). `vertra apply` then says which DNS record
+the hostname needs (an A record to the Ingress controller's address, or a
+CNAME to its name), waits for it to resolve when run interactively, and
+reports the certificate's state; `vertra status` shows both. Let's Encrypt
+can't issue until the record resolves. On gcp with a hostname of yours,
+apply names the A record to the console's reserved address the same way.
 
 On kind, `make kind-tls` installs cert-manager, Traefik (an Ingress
 controller and a Gateway at once) and a private test CA
