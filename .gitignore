@@ -47,3 +47,6 @@ cli/internal/modules/*/.terraform/
 # Built binaries (.github/scripts/build-vertra.sh; the kernel's kind tests in CI).
 cli/bin/
 kernel/bin/
+
+# The vertra binary, built in place (`go build -o vertra ./cmd/vertra`).
+/cli/vertra

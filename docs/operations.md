@@ -270,8 +270,10 @@ finishes so the collector reads it all.
 
 - `logs.searchDays` (30): how far back anyone searches.
 - `logs.keepDays` (365): when Loki deletes them.
-- `logs.storage`: `filesystem` (a volume of `size`; kind's), `gcs` or
-  `s3` with a `bucket`. Loki's identity goes on its ServiceAccount
+- `logs.storage`: `filesystem` (kind's: every log on Loki's volume),
+  `gcs` or `s3` with a `bucket`. Loki always has a volume of `size` for
+  its write-ahead log and the index it uploads every 15 minutes, so a
+  restart loses nothing (`vertra` gives it 2Gi with a bucket). Loki's identity goes on its ServiceAccount
   (`serviceAccountName`, `serviceAccountAnnotations`).
 
 Archiving is the bucket's: on gcp and aws, `vertra` creates

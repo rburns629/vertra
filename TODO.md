@@ -25,8 +25,11 @@ design.
     lifecycle moves chunks to Archive / Glacier Instant Retrieval then, and
     deletes them after `keepDays` (365). The scheduler keeps a finished
     step's Job 30 s (`scheduler.releaseFinishedAfterSeconds`) so even a
-    short step's output is collected. Left: proving the bucket, its
-    lifecycle and Loki's identity on GKE and EKS; API products' backends'
+    short step's output is collected. Proven on GKE (2026-10-22): the
+    bucket and its rules, Loki writing through Workload Identity, and
+    reading back chunks moved to Archive after a restart wiped its local
+    copy (which also showed a restart lost the not-yet-uploaded logs: Loki
+    now always has a volume). Left: the same on EKS; API products' backends'
     logs (in team namespaces, not steps) for their teams; Secret values
     (not just credential shapes) masked.
   - Metrics (done 2026-10-22): the Observe page's Metrics tab for

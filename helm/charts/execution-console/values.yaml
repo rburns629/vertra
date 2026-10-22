@@ -160,7 +160,8 @@ logs:
     bucket: ""
     # s3 only.
     region: ""
-    # filesystem only.
+    # -- Loki's volume: its write-ahead log and recent index (a few GiB is
+    # plenty with a bucket); with filesystem, every log too.
     size: 10Gi
     storageClassName: ""
   # -- Loki's ServiceAccount (default: <release>-execution-console-loki):

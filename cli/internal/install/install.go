@@ -471,9 +471,9 @@ func logsValues(c *config.Config, cloud *Cloud) map[string]any {
 	}
 	switch {
 	case cloud != nil && cloud.LogsBucket != "" && cloud.Provider == "aws":
-		logs["storage"] = map[string]any{"type": "s3", "bucket": cloud.LogsBucket, "region": cloud.LogsRegion}
+		logs["storage"] = map[string]any{"type": "s3", "bucket": cloud.LogsBucket, "region": cloud.LogsRegion, "size": "2Gi"}
 	case cloud != nil && cloud.LogsBucket != "":
-		logs["storage"] = map[string]any{"type": "gcs", "bucket": cloud.LogsBucket}
+		logs["storage"] = map[string]any{"type": "gcs", "bucket": cloud.LogsBucket, "size": "2Gi"}
 		logs["serviceAccountAnnotations"] = map[string]any{"iam.gke.io/gcp-service-account": cloud.LogsServiceAccount}
 	}
 	return logs

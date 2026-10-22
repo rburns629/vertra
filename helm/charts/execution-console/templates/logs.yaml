@@ -140,10 +140,8 @@ spec:
         - name: config
           configMap: {name: {{ $loki }}}
         - {name: tmp, emptyDir: {}}
-        {{- if ne $logs.storage.type "filesystem" }}
-        - {name: data, emptyDir: {sizeLimit: 5Gi}}
-        {{- end }}
-  {{- if eq $logs.storage.type "filesystem" }}
+  # Always a volume: with a bucket too, its write-ahead log and the index
+  # not yet uploaded (every 15 minutes) must outlive a restart.
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -155,7 +153,6 @@ spec:
         resources:
           requests:
             storage: {{ $logs.storage.size }}
-  {{- end }}
 ---
 apiVersion: v1
 kind: Service
