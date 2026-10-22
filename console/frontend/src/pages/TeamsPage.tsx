@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: MIT
-import { useState, type FormEvent } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Grid from "@mui/material/Grid";
-import Link from "@mui/material/Link";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { TeamCard } from "../components/TeamCard";
-import { ApiError, createTeam } from "../api";
+import { ApiError, createTeam, listAllTeams, type Team } from "../api";
 import { useAuth } from "../auth/AuthContext";
 
 export function TeamsPage() {
@@ -24,6 +23,12 @@ export function TeamsPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  // An admin also sees every other team.
+  const [allTeams, setAllTeams] = useState<Team[] | null>(null);
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+    listAllTeams().then(setAllTeams).catch(() => undefined);
+  }, [user?.isAdmin]);
 
   async function handleCreateTeam(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -46,8 +51,8 @@ export function TeamsPage() {
   return (
     <Box>
       <PageHeader
-        title="Your teams"
-        subtitle="Manage team access and resources."
+        title="Teams"
+        subtitle="The teams you're in: their members, secrets, bots, APIs and what's running."
         action={
           user.isAdmin && (
             <Button
@@ -106,7 +111,7 @@ export function TeamsPage() {
         <EmptyState
           message={
             user.isAdmin
-              ? "You're not a member of any team. As an admin you can open any team from the Admin page."
+              ? "You're not a member of any team. As an admin, you can open any of them below."
               : "You're not a member of any team yet. Ask a member of your team, or an admin, to add you."
           }
         />
@@ -120,10 +125,24 @@ export function TeamsPage() {
         </Grid>
       )}
 
-      {user.isAdmin && (
-        <Link component={RouterLink} to="/admin" variant="body2" sx={{ display: "block", mt: 3 }}>
-          Looking for every team, not just yours? See Admin.
-        </Link>
+      {allTeams && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 0.5 }}>
+            Every other team
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            You see these as an admin; their members see only their own.
+          </Typography>
+          <Grid container spacing={2}>
+            {allTeams
+              .filter((team) => !user.teamNames.includes(team.name))
+              .map((team) => (
+                <Grid key={team.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <TeamCard name={team.name} />
+                </Grid>
+              ))}
+          </Grid>
+        </Box>
       )}
     </Box>
   );

@@ -324,6 +324,44 @@ describe("an API", () => {
   });
 });
 
+describe("admin", () => {
+  const PEOPLE = {
+    users: [
+      { email: "ana@acme.com", isAdmin: true, teamNames: ["azure-apps"], hasPassword: true, usesSso: true, lastSignedInAt: "2026-10-22T13:58:00Z" },
+      { email: "lee@acme.com", teamNames: ["payments"], hasPassword: true, mustChangePassword: true },
+      { email: "kim@acme.com", teamNames: [], usesSso: true },
+    ],
+  };
+
+  it("lists people with how they sign in, and resets a password from a person's menu", async () => {
+    const reset: Record<string, unknown>[] = [];
+    await renderAt("/admin?tab=people", ADMIN, {
+      "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" },
+      "UserService/ListUsers": PEOPLE,
+      "UserService/ResetPassword": (request: Record<string, unknown>) => {
+        reset.push(request);
+        return {};
+      },
+    });
+    expect(await screen.findByText("Google and a password")).toBeTruthy();
+    expect(screen.getByText(/hasn't chosen a password yet/i)).toBeTruthy();
+    expect(screen.getByText("No team yet")).toBeTruthy();
+    expect(screen.getAllByText("Never")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Actions for lee@acme.com" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /reset password/i }));
+    fireEvent.change(await screen.findByLabelText(/temporary password/i), { target: { value: "a-temporary-one" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reset password" }));
+    await waitFor(() => { expect(reset).toEqual([{ email: "lee@acme.com", newPassword: "a-temporary-one" }]); });
+  });
+
+  it("opens a tab from the address", async () => {
+    await renderAt("/admin?tab=gateway", ADMIN, { "ApiService/GetGateway": { enabled: true, url: "http://gateway:8080" } });
+    expect(await screen.findByRole("button", { name: "Close the gateway" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Gateway", selected: true })).toBeTruthy();
+  });
+});
+
 describe("pages that moved", () => {
   it.each([
     ["/executions", "Runs"],

@@ -334,11 +334,81 @@ export interface UserAccount {
   isAdmin: boolean;
   createdAt: string;
   teamNames: string[];
+  /** How they sign in: a password of their own, single sign-on, or both. */
+  hasPassword: boolean;
+  usesSso: boolean;
+  /** Their password is still the temporary one an admin set. */
+  mustChangePassword: boolean;
+  lastSignedInAt: string | null;
 }
 
 export async function listUsers(): Promise<UserAccount[]> {
   const { users: accounts } = await call(() => users.listUsers({}));
-  return accounts.map((u) => ({ email: u.email, isAdmin: u.isAdmin, createdAt: iso(u.createdAt) ?? "", teamNames: u.teamNames }));
+  return accounts.map((u) => ({
+    email: u.email,
+    isAdmin: u.isAdmin,
+    createdAt: iso(u.createdAt) ?? "",
+    teamNames: u.teamNames,
+    hasPassword: u.hasPassword,
+    usesSso: u.usesSso,
+    mustChangePassword: u.mustChangePassword,
+    lastSignedInAt: iso(u.lastSignedInAt),
+  }));
+}
+
+/** One of the cluster's admission policies the console keeps current. */
+export interface PolicySync {
+  /** identityPolicy, scanPolicy, ... */
+  name: string;
+  /** False: nothing to write to (not configured, or not installed). */
+  applies: boolean;
+  ok: boolean;
+  at: string | null;
+  error: string | null;
+}
+
+function policySync(outcomes: Record<string, { applies: boolean; ok: boolean; at?: Timestamp; error?: string }>): PolicySync[] {
+  return Object.entries(outcomes)
+    .map(([name, o]) => ({ name, applies: o.applies, ok: o.ok, at: iso(o.at), error: o.error ?? null }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Admins: whether each policy was written since the console started. */
+export async function getPolicySync(): Promise<PolicySync[]> {
+  return policySync((await call(() => admin.getPolicySync({}))).outcomes);
+}
+
+/** Admins: writes every policy again now. */
+export async function syncPolicies(): Promise<PolicySync[]> {
+  return policySync((await call(() => admin.syncPolicies({}))).outcomes);
+}
+
+/** The audit log's write-once copy (ObserveService.GetAuditCopy). */
+export interface AuditCopy {
+  enabled: boolean;
+  /** gs:// or s3://; admins only. */
+  destination: string;
+  copiedThrough: number;
+  copiedAt: string | null;
+  waiting: number;
+  checkedAt: string | null;
+  /** The entry where the chain broke; 0 while it holds. */
+  brokenAt: number;
+  problem: string;
+}
+
+export async function getAuditCopy(): Promise<AuditCopy> {
+  const c = await call(() => observe.getAuditCopy({}));
+  return {
+    enabled: c.enabled,
+    destination: c.destination,
+    copiedThrough: Number(c.copiedThrough),
+    copiedAt: iso(c.copiedAt),
+    waiting: Number(c.waiting),
+    checkedAt: iso(c.checkedAt),
+    brokenAt: Number(c.brokenAt),
+    problem: c.problem,
+  };
 }
 
 /** Admin only. The temporary password comes back exactly once; hand it

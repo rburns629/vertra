@@ -228,11 +228,11 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
 | `src/pages/ObservePage.tsx` | Observe: the security checks, the metrics (steps started and waits by hour, failures, step times by product), the audit log (filtered by team, mine, refused), and logs to come. |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/api/`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, and one API's page: Overview (its endpoints and how to call them) for anyone who may see it; Traffic and Definition (what its api.yaml says, what the gateway does with a request, and pausing it) for its own team. The tab is in the address (`?tab=`). |
-| `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page: its tabs, the chosen one in the address (`?tab=`). |
+| `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams (an admin, every team), and one team's page: its tabs, the chosen one in the address (`?tab=`). |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
 | `src/pages/team/SettingsTab.tsx` | A team's Settings: requiring single sign-on (and who it would lock out), where the team comes from, and for an admin retiring, restoring and purging it. |
 | `src/pages/CatalogPage.tsx`, `src/components/RunDialog.tsx` | The Catalog (`/catalog`): every template and action, as cards: what each asks for, Run (a form from its parameters) or, when it isn't shared with you, Ask for access; by team, and only what you can run. |
-| `src/pages/AdminPage.tsx` | People, admin rights, the catalog release applied (Sync now, adopting a team), automation tokens, allowed image sources. |
+| `src/pages/AdminPage.tsx`, `src/pages/admin/` | Admin, in tabs (`?tab=`): Overview (the catalog, the cluster's policies, the audit log's copy, image sources), People (how people sign in, adding them, everyone with how they sign in and when they last did, admin rights, password resets, deletes; automation tokens), and the API gateway (its settings, closing it). |
 | `src/pages/AccountPage.tsx`, `ChoosePasswordPage.tsx`, `src/components/PasswordChangeForm.tsx` | Your account and password; the screen a password someone else set holds you on until you choose your own. |
 | `src/pages/DocsPage.tsx`, `ApiReference.tsx` | The guides from `console/docs/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos). |
 | `src/pages/LoginPage.tsx`, `RegisterPage.tsx` | Sign-in and registration. |
