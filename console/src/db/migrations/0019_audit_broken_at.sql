@@ -1,0 +1,1 @@
+ALTER TABLE "audit_export" ADD COLUMN "broken_at" bigint;

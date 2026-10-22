@@ -327,6 +327,8 @@ export const auditExport = pgTable("audit_export", {
   // The last look, and why it didn't export (a broken chain, the bucket).
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   error: text("error"),
+  // The entry where the chain broke at the last look; null while it holds.
+  brokenAt: bigint("broken_at", { mode: "number" }),
 });
 
 /**

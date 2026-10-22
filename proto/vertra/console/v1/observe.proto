@@ -28,6 +28,12 @@ service ObserveService {
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // The audit log's write-once copy: whether this install keeps one, how
+  // far it has gone, and whether the entries' hash chain held when they
+  // were copied. Where it goes is for admins only.
+  rpc GetAuditCopy(GetAuditCopyRequest) returns (GetAuditCopyResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Searches the logs kept in Loki (when the install collects them), newest
   // first. A step's INFO lines reach anyone who may see its run; its other
   // lines its own team; the platform's own logs admins only. failed_precondition
@@ -135,6 +141,30 @@ message ListAuditResponse {
   repeated AuditEntry entries = 1;
   // Pass as `before` for the next page; 0 on the last.
   int64 next_before = 2;
+}
+
+message GetAuditCopyRequest {}
+
+message GetAuditCopyResponse {
+  // False when this install keeps no copy: the log is then only in the
+  // console's database, and its chain is checked by nothing.
+  bool enabled = 1;
+  // gs://bucket/prefix or s3://bucket/prefix; empty unless the caller is an
+  // admin.
+  string destination = 2;
+  // The newest entry copied (0 for none yet), and when.
+  int64 copied_through = 3;
+  optional google.protobuf.Timestamp copied_at = 4;
+  // Entries written since, waiting for the next copy.
+  int64 waiting = 5;
+  // When the export last looked: each look checks the chain of the entries
+  // it is about to copy.
+  optional google.protobuf.Timestamp checked_at = 6;
+  // The entry where the chain broke (changed, or one before it removed or
+  // slipped in); 0 while it holds. Nothing from there on is copied.
+  int64 broken_at = 7;
+  // Why the last look didn't copy, if it didn't.
+  string problem = 8;
 }
 
 message SearchLogsRequest {

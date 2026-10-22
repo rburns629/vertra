@@ -134,6 +134,13 @@
       "when": 1792696049903,
       "tag": "0018_last_signed_in",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792696337150,
+      "tag": "0019_audit_broken_at",
+      "breakpoints": true
     }
   ]
 }

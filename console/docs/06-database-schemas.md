@@ -406,6 +406,7 @@ The audit log's write-once copy (`src/auditExport.ts`), one row: how far the cop
 | `exported_at` | timestamptz | yes | When the last copy was written. |
 | `checked_at` | timestamptz | yes | When the export last looked. |
 | `error` | text | yes | Why the last look didn't copy: a broken chain (where), or the bucket. |
+| `broken_at` | bigint | yes | The entry where the chain broke at the last look; empty while it holds. |
 
 ### image_scans
 

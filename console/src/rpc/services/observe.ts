@@ -3,7 +3,7 @@
 import type { ServiceImpl } from "@connectrpc/connect";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { searchLogs, SearchLogsQuery, type SearchLogsInput } from "../../core/logs.js";
-import { getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
+import { getAuditCopy, getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
 import type { ObserveService } from "../../gen/vertra/console/v1/observe_pb.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
 import { callerOf } from "../context.js";
@@ -19,6 +19,18 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
         checks: s.checks,
         refusals: s.refusals.map((r) => ({ ...r, at: timestamp(r.at) })),
         images: s.images.map((i) => ({ ...i, scannedAt: timestamp(i.scannedAt) })),
+      };
+    },
+
+    async getAuditCopy(_req, ctx) {
+      const copy = await getAuditCopy(callerOf(ctx));
+      return {
+        ...copy,
+        copiedThrough: BigInt(copy.copiedThrough),
+        copiedAt: timestamp(copy.copiedAt),
+        waiting: BigInt(copy.waiting),
+        checkedAt: timestamp(copy.checkedAt),
+        brokenAt: BigInt(copy.brokenAt),
       };
     },
 

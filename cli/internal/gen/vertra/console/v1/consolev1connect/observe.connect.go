@@ -44,6 +44,9 @@ const (
 	// ObserveServiceListAuditProcedure is the fully-qualified name of the ObserveService's ListAudit
 	// RPC.
 	ObserveServiceListAuditProcedure = "/vertra.console.v1.ObserveService/ListAudit"
+	// ObserveServiceGetAuditCopyProcedure is the fully-qualified name of the ObserveService's
+	// GetAuditCopy RPC.
+	ObserveServiceGetAuditCopyProcedure = "/vertra.console.v1.ObserveService/GetAuditCopy"
 	// ObserveServiceSearchLogsProcedure is the fully-qualified name of the ObserveService's SearchLogs
 	// RPC.
 	ObserveServiceSearchLogsProcedure = "/vertra.console.v1.ObserveService/SearchLogs"
@@ -61,6 +64,10 @@ type ObserveServiceClient interface {
 	// Who changed what, newest first. Admins see every entry; anyone else
 	// their own, and what was done to their teams and to runs in them.
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	// The audit log's write-once copy: whether this install keeps one, how
+	// far it has gone, and whether the entries' hash chain held when they
+	// were copied. Where it goes is for admins only.
+	GetAuditCopy(context.Context, *connect.Request[v1.GetAuditCopyRequest]) (*connect.Response[v1.GetAuditCopyResponse], error)
 	// Searches the logs kept in Loki (when the install collects them), newest
 	// first. A step's INFO lines reach anyone who may see its run; its other
 	// lines its own team; the platform's own logs admins only. failed_precondition
@@ -100,6 +107,13 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getAuditCopy: connect.NewClient[v1.GetAuditCopyRequest, v1.GetAuditCopyResponse](
+			httpClient,
+			baseURL+ObserveServiceGetAuditCopyProcedure,
+			connect.WithSchema(observeServiceMethods.ByName("GetAuditCopy")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		searchLogs: connect.NewClient[v1.SearchLogsRequest, v1.SearchLogsResponse](
 			httpClient,
 			baseURL+ObserveServiceSearchLogsProcedure,
@@ -112,10 +126,11 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // observeServiceClient implements ObserveServiceClient.
 type observeServiceClient struct {
-	getSecurity *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
-	getMetrics  *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
-	listAudit   *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
-	searchLogs  *connect.Client[v1.SearchLogsRequest, v1.SearchLogsResponse]
+	getSecurity  *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
+	getMetrics   *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
+	listAudit    *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
+	getAuditCopy *connect.Client[v1.GetAuditCopyRequest, v1.GetAuditCopyResponse]
+	searchLogs   *connect.Client[v1.SearchLogsRequest, v1.SearchLogsResponse]
 }
 
 // GetSecurity calls vertra.console.v1.ObserveService.GetSecurity.
@@ -131,6 +146,11 @@ func (c *observeServiceClient) GetMetrics(ctx context.Context, req *connect.Requ
 // ListAudit calls vertra.console.v1.ObserveService.ListAudit.
 func (c *observeServiceClient) ListAudit(ctx context.Context, req *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
 	return c.listAudit.CallUnary(ctx, req)
+}
+
+// GetAuditCopy calls vertra.console.v1.ObserveService.GetAuditCopy.
+func (c *observeServiceClient) GetAuditCopy(ctx context.Context, req *connect.Request[v1.GetAuditCopyRequest]) (*connect.Response[v1.GetAuditCopyResponse], error) {
+	return c.getAuditCopy.CallUnary(ctx, req)
 }
 
 // SearchLogs calls vertra.console.v1.ObserveService.SearchLogs.
@@ -150,6 +170,10 @@ type ObserveServiceHandler interface {
 	// Who changed what, newest first. Admins see every entry; anyone else
 	// their own, and what was done to their teams and to runs in them.
 	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
+	// The audit log's write-once copy: whether this install keeps one, how
+	// far it has gone, and whether the entries' hash chain held when they
+	// were copied. Where it goes is for admins only.
+	GetAuditCopy(context.Context, *connect.Request[v1.GetAuditCopyRequest]) (*connect.Response[v1.GetAuditCopyResponse], error)
 	// Searches the logs kept in Loki (when the install collects them), newest
 	// first. A step's INFO lines reach anyone who may see its run; its other
 	// lines its own team; the platform's own logs admins only. failed_precondition
@@ -185,6 +209,13 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	observeServiceGetAuditCopyHandler := connect.NewUnaryHandler(
+		ObserveServiceGetAuditCopyProcedure,
+		svc.GetAuditCopy,
+		connect.WithSchema(observeServiceMethods.ByName("GetAuditCopy")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	observeServiceSearchLogsHandler := connect.NewUnaryHandler(
 		ObserveServiceSearchLogsProcedure,
 		svc.SearchLogs,
@@ -200,6 +231,8 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 			observeServiceGetMetricsHandler.ServeHTTP(w, r)
 		case ObserveServiceListAuditProcedure:
 			observeServiceListAuditHandler.ServeHTTP(w, r)
+		case ObserveServiceGetAuditCopyProcedure:
+			observeServiceGetAuditCopyHandler.ServeHTTP(w, r)
 		case ObserveServiceSearchLogsProcedure:
 			observeServiceSearchLogsHandler.ServeHTTP(w, r)
 		default:
@@ -221,6 +254,10 @@ func (UnimplementedObserveServiceHandler) GetMetrics(context.Context, *connect.R
 
 func (UnimplementedObserveServiceHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.ListAudit is not implemented"))
+}
+
+func (UnimplementedObserveServiceHandler) GetAuditCopy(context.Context, *connect.Request[v1.GetAuditCopyRequest]) (*connect.Response[v1.GetAuditCopyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetAuditCopy is not implemented"))
 }
 
 func (UnimplementedObserveServiceHandler) SearchLogs(context.Context, *connect.Request[v1.SearchLogsRequest]) (*connect.Response[v1.SearchLogsResponse], error) {

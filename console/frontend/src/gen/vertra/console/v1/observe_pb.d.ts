@@ -420,6 +420,87 @@ export declare type ListAuditResponse = Message<"vertra.console.v1.ListAuditResp
 export declare const ListAuditResponseSchema: GenMessage<ListAuditResponse>;
 
 /**
+ * @generated from message vertra.console.v1.GetAuditCopyRequest
+ */
+export declare type GetAuditCopyRequest = Message<"vertra.console.v1.GetAuditCopyRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetAuditCopyRequest.
+ * Use `create(GetAuditCopyRequestSchema)` to create a new message.
+ */
+export declare const GetAuditCopyRequestSchema: GenMessage<GetAuditCopyRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetAuditCopyResponse
+ */
+export declare type GetAuditCopyResponse = Message<"vertra.console.v1.GetAuditCopyResponse"> & {
+  /**
+   * False when this install keeps no copy: the log is then only in the
+   * console's database, and its chain is checked by nothing.
+   *
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * gs://bucket/prefix or s3://bucket/prefix; empty unless the caller is an
+   * admin.
+   *
+   * @generated from field: string destination = 2;
+   */
+  destination: string;
+
+  /**
+   * The newest entry copied (0 for none yet), and when.
+   *
+   * @generated from field: int64 copied_through = 3;
+   */
+  copiedThrough: bigint;
+
+  /**
+   * @generated from field: optional google.protobuf.Timestamp copied_at = 4;
+   */
+  copiedAt?: Timestamp | undefined;
+
+  /**
+   * Entries written since, waiting for the next copy.
+   *
+   * @generated from field: int64 waiting = 5;
+   */
+  waiting: bigint;
+
+  /**
+   * When the export last looked: each look checks the chain of the entries
+   * it is about to copy.
+   *
+   * @generated from field: optional google.protobuf.Timestamp checked_at = 6;
+   */
+  checkedAt?: Timestamp | undefined;
+
+  /**
+   * The entry where the chain broke (changed, or one before it removed or
+   * slipped in); 0 while it holds. Nothing from there on is copied.
+   *
+   * @generated from field: int64 broken_at = 7;
+   */
+  brokenAt: bigint;
+
+  /**
+   * Why the last look didn't copy, if it didn't.
+   *
+   * @generated from field: string problem = 8;
+   */
+  problem: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetAuditCopyResponse.
+ * Use `create(GetAuditCopyResponseSchema)` to create a new message.
+ */
+export declare const GetAuditCopyResponseSchema: GenMessage<GetAuditCopyResponse>;
+
+/**
  * @generated from message vertra.console.v1.SearchLogsRequest
  */
 export declare type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsRequest"> & {
@@ -612,6 +693,18 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof ListAuditRequestSchema;
     output: typeof ListAuditResponseSchema;
+  },
+  /**
+   * The audit log's write-once copy: whether this install keeps one, how
+   * far it has gone, and whether the entries' hash chain held when they
+   * were copied. Where it goes is for admins only.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.GetAuditCopy
+   */
+  getAuditCopy: {
+    methodKind: "unary";
+    input: typeof GetAuditCopyRequestSchema;
+    output: typeof GetAuditCopyResponseSchema;
   },
   /**
    * Searches the logs kept in Loki (when the install collects them), newest

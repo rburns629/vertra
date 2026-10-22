@@ -364,7 +364,9 @@ gcp and aws), every `minutes` it checks the new entries' chain and copies
 them as one JSON-lines object (`<prefix><yyyy>/<mm>/<dd>/<first>-<last>.jsonl`)
 to a bucket that refuses deletes and overwrites, create-only on its side
 too. A broken chain stops the copy where it breaks; Observe's security
-checks say where.
+checks say where, and `ObserveService/GetAuditCopy` gives the copy's state
+(how far it has gone, what's waiting, the entry where the chain broke; the
+bucket to admins).
 
 - **gcs**: a retention policy of `audit.keepDays`; the console's Google
   identity may only create objects.

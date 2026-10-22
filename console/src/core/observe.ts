@@ -22,7 +22,7 @@ import { readImagePolicy } from "../imagePolicy.js";
 import { getStats, listRefusals } from "../kernel/client.js";
 import { PLATFORM_ERRORS } from "../failureHelp.js";
 import { imageRepository } from "../imageRef.js";
-import { auditExportStatus } from "../auditExport.js";
+import { auditEntriesNotCopied, auditExportDestination, auditExportStatus } from "../auditExport.js";
 import { auditPage } from "./admin.js";
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
@@ -134,6 +134,23 @@ async function auditCheck(): Promise<Check> {
     name: "A write-once copy of the audit log",
     state: "enforced",
     text: `Every few minutes, the entries since the last copy, their hash chain checked, go to a bucket that refuses deletes and overwrites. ${status.exportedAt ? `Last copied ${status.exportedAt.toISOString()}, through entry ${String(status.lastId)}.` : "Nothing copied yet."}`,
+  };
+}
+
+/** The audit log's copy, for Observe's Audit log tab and the Admin page. */
+export async function getAuditCopy(caller: AuthUser | undefined) {
+  const who = signedIn(caller);
+  const status = await auditExportStatus();
+  if (!status) return { enabled: false, destination: "", copiedThrough: 0, copiedAt: null, waiting: 0, checkedAt: null, brokenAt: 0, problem: "" };
+  return {
+    enabled: true,
+    destination: who.isAdmin ? auditExportDestination() : "",
+    copiedThrough: status.lastId,
+    copiedAt: status.exportedAt,
+    waiting: await auditEntriesNotCopied(status.lastId),
+    checkedAt: status.checkedAt,
+    brokenAt: status.brokenAt ?? 0,
+    problem: status.error ?? "",
   };
 }
 

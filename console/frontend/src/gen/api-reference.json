@@ -408,6 +408,15 @@
      "public": false
     },
     {
+     "name": "GetAuditCopy",
+     "comment": "The audit log's write-once copy: whether this install keeps one, how\nfar it has gone, and whether the entries' hash chain held when they\nwere copied. Where it goes is for admins only.",
+     "input": "vertra.console.v1.GetAuditCopyRequest",
+     "output": "vertra.console.v1.GetAuditCopyResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
      "name": "SearchLogs",
      "comment": "Searches the logs kept in Loki (when the install collects them), newest\nfirst. A step's INFO lines reach anyone who may see its run; its other\nlines its own team; the platform's own logs admins only. failed_precondition\n(LOGS_OFF) when this install doesn't collect logs.",
      "input": "vertra.console.v1.SearchLogsRequest",
@@ -4075,6 +4084,73 @@
      "repeated": false,
      "optional": false,
      "comment": "Pass as `before` for the next page; 0 on the last."
+    }
+   ]
+  },
+  "vertra.console.v1.GetAuditCopyRequest": {
+   "name": "GetAuditCopyRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetAuditCopyResponse": {
+   "name": "GetAuditCopyResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "False when this install keeps no copy: the log is then only in the\nconsole's database, and its chain is checked by nothing."
+    },
+    {
+     "name": "destination",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "gs://bucket/prefix or s3://bucket/prefix; empty unless the caller is an\nadmin."
+    },
+    {
+     "name": "copiedThrough",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The newest entry copied (0 for none yet), and when."
+    },
+    {
+     "name": "copiedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "waiting",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Entries written since, waiting for the next copy."
+    },
+    {
+     "name": "checkedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": true,
+     "comment": "When the export last looked: each look checks the chain of the entries\nit is about to copy."
+    },
+    {
+     "name": "brokenAt",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The entry where the chain broke (changed, or one before it removed or\nslipped in); 0 while it holds. Nothing from there on is copied."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why the last look didn't copy, if it didn't."
     }
    ]
   },
