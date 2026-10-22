@@ -488,6 +488,24 @@ export async function writeTeamPullSecret(namespace: string, dockerConfigJson: s
   }
 }
 
+/**
+ * Writes the federated registry token's Docker config into the platform's
+ * namespace (registryFederation.ts), for the verify and scan Jobs to sign in
+ * with. The write fence lets the console write this one Secret there, and
+ * nothing else.
+ */
+export async function writeRegistryTokenSecret(namespace: string, name: string, dockerConfigJson: string): Promise<void> {
+  await createOrReplaceSecret(
+    namespace,
+    {
+      metadata: { name, namespace, labels: MANAGED_LABELS },
+      stringData: { ".dockerconfigjson": dockerConfigJson },
+      type: "kubernetes.io/dockerconfigjson",
+    },
+    true,
+  );
+}
+
 /** The NetworkPolicy every team namespace holds (teamNetwork.ts). The
  * console's write fence accepts no other name, and only this shape. */
 export const TEAM_NETWORK_POLICY = "vertra-default-deny";

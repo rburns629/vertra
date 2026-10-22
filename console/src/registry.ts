@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 
 import { ECRClient, GetAuthorizationTokenCommand } from "@aws-sdk/client-ecr";
 import { config } from "./config.js";
+import { federatedGcpToken, federatedHost } from "./registryFederation.js";
 import { isImageAllowed, normalizeImage } from "./imagePolicy.js";
 
 export type ImageStatus = "available" | "missing" | "unverified";
@@ -133,6 +134,7 @@ async function ecrCredential(account: string, region: string): Promise<Credentia
 
 /** Null means ask anonymously. */
 async function credentialFor(host: string): Promise<Credential | null> {
+  if (federatedHost(host)) return { username: "oauth2accesstoken", password: await federatedGcpToken() };
   const configured = config.registryCredentials.get(host);
   if (configured) return configured;
   if (config.registryGcpMetadataToken && GOOGLE_REGISTRY.test(host)) {

@@ -424,9 +424,36 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   and docs. Proven locally against the built images (impersonation and
   AssumeRole only with the secret mounted; the old variables ignored).
   Left: proving it against a real cloud with the next GKE or EKS run.
-- [ ] **P1: registry access across clouds (M2)**: an install on another
-  cloud reading the catalog's one registry, federated where possible, and
-  trusting its signing identity.
+- [x] **P1: registry access across clouds (M2)** (done 2026-10-22): an
+  install reads another install's catalog (`externalCatalog` in vertra.yaml:
+  the registry, and for a Google Artifact Registry on another cloud a
+  Workload Identity provider) and trusts its signing key
+  (`catalogSignature.publicKeyFile`). With no stored key: the console's
+  projected token, exchanged at Google's STS, signs it in
+  (`console/src/registryFederation.ts`), and every policy sync it writes the
+  short-lived token as `vertra-pull` in each team namespace (the kubelet)
+  and `vertra-registry-token` in its own (the verify and scan Jobs; the
+  write fence allows that one Secret). `vertra apply` prints the catalog
+  owner's three gcloud commands (a pool, a provider for the cluster's
+  issuer limited to the console's ServiceAccount, read on the repository).
+  Proven 2026-10-22: one catalog in Artifact Registry (acyclix-dev), signed
+  with a catalog key; a GKE install read it natively and an EKS install
+  (us-east-2) by federation. Both applied the signed release, pinned,
+  scanned and ran a step from it (the EKS kubelet pulling from Google), and
+  both refused a release signed with another key and an unsigned one. Torn
+  down after. Left: the reverse direction (ECR read from GKE, by AWS web
+  identity), a `vertra` command for the owner's grant, and policy-controller
+  (step image signatures) on EKS.
+- [ ] **P1: recovering the first admin's password.** It's printed once, by
+  the first migrate Job, whose log the next upgrade replaces; losing it
+  leaves only the database. Add `vertra admin reset-password` (a new one
+  minted through the cluster and shown once).
+- [ ] **Cross-building the console on Apple silicon** broke under amd64
+  emulation (npm's cache size computed as 0: emulated floating-point); the
+  console's Dockerfile now runs its npm stages on the build platform. The
+  catalog's Node samples (reverse) still build under emulation when
+  published from a Mac for amd64: publish from CI, or give their
+  Dockerfiles the same split.
 - [ ] **P2: readiness per install.** Each product may ship a `check` action
   (who am I, may I do this); the console runs it per install on
   registration and daily, records the principal, and shows what's missing.

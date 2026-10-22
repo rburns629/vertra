@@ -4,7 +4,13 @@
 # the shipped artifact minimal. Never carries any secret either way --
 # credentials are provisioned into the cluster by this service at
 # runtime, never baked into what this build produces.
-FROM node:25-slim AS frontend-build
+# The build stages run on the building machine's own platform
+# ($BUILDPLATFORM): what they make is JavaScript and static files, the same
+# on any CPU, and a cross-build then never runs npm under emulation (which
+# on Apple silicon has miscomputed floating-point and broken npm). The one
+# native dependency, argon2, ships prebuilt binaries for every platform and
+# loads the right one at run time.
+FROM --platform=$BUILDPLATFORM node:25-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -13,7 +19,7 @@ COPY frontend/public ./public
 COPY frontend/src ./src
 RUN npm run build
 
-FROM node:25-slim AS build
+FROM --platform=$BUILDPLATFORM node:25-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -21,16 +27,21 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
+FROM --platform=$BUILDPLATFORM node:25-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
 FROM node:25-slim
 # Security fixes released since the base image was published; CI's image
 # scan fails on any high or critical one that has a fix.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY --from=deps /app/node_modules ./node_modules
 # npm isn't needed once dependencies are installed, and its own bundled
 # packages are a steady source of CVEs in an image that never runs it.
-RUN npm ci --omit=dev \
- && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=build /app/dist ./dist
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 # db/migrate.ts resolves "./src/db/migrations" relative to the process's

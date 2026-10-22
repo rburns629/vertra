@@ -72,7 +72,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.hostname, "hostname", "", "the console's public hostname (gcp default: a nip.io name; aws default: console.<zone>)")
 	fl.StringVar(&f.console, "console", "", "gcp, aws: private (reached with `vertra console`) or public (HTTPS from the internet)")
 	fl.StringVar(&f.zone, "zone", "", "aws: a DNS zone for the console's public address, created in Route 53 for you to delegate (e.g. vertra.example.com)")
-	fl.BoolVar(&f.noCatalog, "no-catalog", false, "gcp: no catalog repository (`vertra catalog create` creates one)")
+	fl.BoolVar(&f.noCatalog, "no-catalog", false, "gcp, aws: no catalog repository (`vertra catalog create` creates one)")
 	fl.StringVar(&f.catalogOwner, "catalog-owner", "", "the catalog's GitHub owner, an account or organization (default: you)")
 	fl.StringVar(&f.catalogRepo, "catalog-repo", "", "the catalog repository's name (default vertra-catalog)")
 	fl.BoolVar(&f.useExistingCatalog, "catalog-use-existing", false, "if the catalog repository exists, use it (its contents stay)")

@@ -239,7 +239,9 @@ images, not `main` itself, so an install needs registry access only (see
 **M2. One registry per catalog.** Medium. CI publishes to one registry;
 other installs pull from it through their allowed sources. An install on
 another cloud needs read access to it (federated, or the `vertra-pull`
-copy) and must trust the catalog's signing identity.
+copy) and must trust the catalog's signing identity. **Done 2026-10-22**
+for an Artifact Registry catalog read from EKS by Workload Identity
+Federation (docs/operations.md, "Reading another install's catalog").
 
 **M3. Per install: values and bindings; in the catalog: names.** A design
 note, and a strength. Secret values, ServiceAccount bindings and target
@@ -742,7 +744,7 @@ None of these needs a new service. All contract changes are additive.
 - Compatibility checks and `deprecated` (C2).
 - Who asked and who acted, on every attempt; attempts in the API.
 - Samples reading identity references from team secrets (S2).
-- Registry access across clouds (M2).
+- Registry access across clouds (M2) (done 2026-10-22).
 
 With A1 in P0: secret bindings per action in `product.yaml`, and rules
 for what consumers may do to runs (cancel and retry their own).

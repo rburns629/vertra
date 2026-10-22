@@ -7,13 +7,20 @@
  * Written when a team is created or un-retired, and again in every policy
  * resync (policySync.ts), which carries a rotated credential to every team
  * within one interval. One Secret holds any number of registries.
+ *
+ * With a federated registry (registryFederation.ts), the Secret is minted
+ * instead: a fresh short-lived token for those hosts beside any static
+ * credentials, written here and, for the verify and scan Jobs, in the
+ * platform's namespace, every resync.
  */
 import { readFile } from "node:fs/promises";
 import { config } from "./config.js";
 import { listAllTeams } from "./db/queries.js";
-import { writeTeamPullSecret } from "./k8s.js";
+import { writeRegistryTokenSecret, writeTeamPullSecret } from "./k8s.js";
+import { federatedDockerConfig } from "./registryFederation.js";
 
 async function readPullSecret(): Promise<string | null> {
+  if (config.registryFederation.gcpProvider) return federatedDockerConfig();
   if (!config.teamPullSecretFile) return null;
   return readFile(config.teamPullSecretFile, "utf8");
 }
@@ -29,6 +36,9 @@ export async function copyPullSecret(team: string): Promise<void> {
 export async function syncPullSecrets(): Promise<boolean> {
   const dockerConfigJson = await readPullSecret();
   if (dockerConfigJson === null) return false;
+  if (config.registryFederation.gcpProvider && config.registryFederation.tokenSecret) {
+    await writeRegistryTokenSecret(config.platformNamespace, config.registryFederation.tokenSecret, dockerConfigJson);
+  }
   const failed: string[] = [];
   for (const team of await listAllTeams()) {
     try {

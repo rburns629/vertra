@@ -149,6 +149,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `jsonSchema.ts` | Checking values against the JSON Schemas teams write (ajv, draft 2020-12, nothing fetched): template parameters and products' inputs. |
 | `tokenAudiences.ts` | Which audiences a product's steps may get a projected token for: refuses the Kubernetes API's (from the console's own token) and kernel-api's, and names each token's file. |
 | `policySync.ts` | Rewrites the identity and scan policies and the teams' pull Secrets every few minutes, so drift doesn't last; keeps each sync's outcome for admins. |
+| `registryFederation.ts` | Reading a Google Artifact Registry from another cloud: the console's projected token exchanged at Google's STS (Workload Identity Federation), and the Docker config it hands out. |
 | `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`vertra-pull`), for steps' images in private registries. |
 | `failureHelp.ts` | What a failed step's error means, what to do, whether a retry is safe and whom to ask: the owner's words, else the platform's. |
 | `targets.ts` | Allowed targets (X1): which projects, folders, accounts or subscriptions another team may aim a team's products at, from its `allowedTargets`. |
@@ -262,6 +263,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `docs.test.ts`, `schemaDoc.test.ts` | The guides load and link correctly; the database guide matches the schema. |
 | `secrets.test.ts` | Registering and revoking secrets: other teams refused, names Kubernetes would refuse, a Secret the console didn't create. |
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a target rule), and who may decide. |
+| `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |
 | `access.test.ts` | The authorization rules in `auth/access.ts`. |
 | `security-headers.test.ts` | The browser security headers (CSP and others) on pages and errors. |

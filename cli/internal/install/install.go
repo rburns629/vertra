@@ -263,10 +263,11 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 	if img.Kernel != "" {
 		v["image"] = map[string]any{"repository": img.Kernel, "tag": img.Tag}
 	}
+	scheduler := map[string]any{}
 	if cloud != nil {
 		v["imagePolicy"] = map[string]any{"sourceRegistry": cloud.TaskRegistry}
 		if cloud.StepPlacement != nil {
-			v["scheduler"] = map[string]any{"taskPlacement": cloud.StepPlacement}
+			scheduler["taskPlacement"] = cloud.StepPlacement
 		}
 		switch {
 		case cloud.BackupBucket != "" && cloud.Provider == "aws":
@@ -280,6 +281,17 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 				"gcs": map[string]any{"bucket": cloud.BackupBucket},
 			}
 		}
+	}
+	if e := c.ExternalCatalog; e.Registry != "" {
+		// Steps run the other install's catalog images.
+		v["imagePolicy"] = map[string]any{"sourceRegistry": e.Registry}
+		if e.GCPWorkloadIdentityProvider != "" {
+			// The kubelet pulls them with the console's federated token.
+			scheduler["taskImagePullSecret"] = "vertra-pull"
+		}
+	}
+	if len(scheduler) > 0 {
+		v["scheduler"] = scheduler
 	}
 	return v
 }
@@ -356,10 +368,35 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 			v["trustProxy"] = append(append([]string{}, googleFrontEnds...), cloud.ConsoleIP)
 		}
 	}
+	catalog := map[string]any{}
 	if cloud != nil && c.Catalog.Repo() != "" {
 		// The catalog's release, which its CI pushes beside the images and
-		// the console reads (unsigned: vertra's catalogs sign nothing yet).
-		v["catalog"] = map[string]any{"release": cloud.TaskRegistry + "/catalog-release:latest"}
+		// the console reads.
+		catalog["release"] = cloud.TaskRegistry + "/catalog-release:latest"
+	}
+	if e := c.ExternalCatalog; e.Registry != "" {
+		catalog["release"] = e.Registry + "/catalog-release:latest"
+		if e.GCPWorkloadIdentityProvider != "" {
+			// Another cloud's Artifact Registry, read by federation
+			// (console/src/registryFederation.ts).
+			check, _ := v["registryCheck"].(map[string]any)
+			if check == nil {
+				check = map[string]any{}
+			}
+			check["gcpFederation"] = map[string]any{
+				"workloadIdentityProvider": e.GCPWorkloadIdentityProvider,
+				"serviceAccount":           e.GCPServiceAccount,
+				"hosts":                    []string{strings.SplitN(e.Registry, "/", 2)[0]},
+			}
+			v["registryCheck"] = check
+		}
+	}
+	if key := c.CatalogSignature.PublicKey; key != "" {
+		// Only releases this key signed are applied.
+		catalog["signature"] = map[string]any{"publicKeys": []string{key}}
+	}
+	if len(catalog) > 0 {
+		v["catalog"] = catalog
 	}
 	if img.Console != "" {
 		v["image"] = map[string]any{"repository": img.Console, "tag": img.Tag}
@@ -498,4 +535,48 @@ func Uninstall(ctx context.Context, r *run.Runner, c *config.Config, release str
 		return nil
 	}
 	return r.Run(ctx, "helm", "uninstall", release, "--kube-context", cluster.Context(c), "--namespace", c.Namespace, "--wait")
+}
+
+// FederationSteps is what the catalog registry's owner runs, in its Google
+// Cloud project, to let this install read it with no stored key: a pool,
+// a provider trusting this cluster's OIDC issuer for the console's
+// ServiceAccount alone, and read access to the repository for that
+// identity. Then the provider is set here and applied again. Empty when
+// the install doesn't read an Artifact Registry on another cloud.
+func FederationSteps(c *config.Config, issuer string) []string {
+	e := c.ExternalCatalog
+	host, path, _ := strings.Cut(e.Registry, "/")
+	project, repository, _ := strings.Cut(path, "/")
+	region, isAR := strings.CutSuffix(host, "-docker.pkg.dev")
+	if !isAR || issuer == "" || repository == "" {
+		return nil
+	}
+	subject := fmt.Sprintf("system:serviceaccount:%s:%s-execution-console", c.Namespace, ConsoleRelease)
+	provider := envProviderName(c)
+	if !strings.HasPrefix(provider, "vertra") {
+		provider = "vertra-" + provider
+	}
+	pool := "vertra-installs"
+	return []string{
+		fmt.Sprintf("gcloud iam workload-identity-pools create %s --location=global --project=%s", pool, project),
+		fmt.Sprintf("gcloud iam workload-identity-pools providers create-oidc %s --location=global --workload-identity-pool=%s --project=%s --issuer-uri=%s --attribute-mapping=google.subject=assertion.sub --attribute-condition=\"assertion.sub=='%s'\"",
+			provider, pool, project, issuer, subject),
+		fmt.Sprintf("gcloud artifacts repositories add-iam-policy-binding %s --location=%s --project=%s --role=roles/artifactregistry.reader --member=principal://iam.googleapis.com/projects/$(gcloud projects describe %s --format='value(projectNumber)')/locations/global/workloadIdentityPools/%s/subject/%s",
+			repository, region, project, project, pool, subject),
+		fmt.Sprintf("vertra config set externalCatalog.gcpWorkloadIdentityProvider projects/$(gcloud projects describe %s --format='value(projectNumber)')/locations/global/workloadIdentityPools/%s/providers/%s", project, pool, provider),
+		"vertra apply",
+	}
+}
+
+// envProviderName is a provider id for this install's cluster (4 to 32
+// lowercase letters, digits and dashes).
+func envProviderName(c *config.Config) string {
+	name := strings.ToLower(c.Cluster.Name)
+	if name == "" {
+		name = "cluster"
+	}
+	if len(name) > 25 {
+		name = strings.TrimRight(name[:25], "-")
+	}
+	return name
 }

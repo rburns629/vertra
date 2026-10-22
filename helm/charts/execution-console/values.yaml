@@ -198,6 +198,26 @@ registryCheck:
   # for the console's ServiceAccount with a role that may
   # ecr:GetAuthorizationToken and read the repositories to check.
   ecrToken: false
+  # -- A Google Artifact Registry on another cloud (another install's
+  # catalog), read with no stored key: the console's ServiceAccount token,
+  # projected for workloadIdentityProvider, is exchanged at Google's STS
+  # (Workload Identity Federation) for an hour's access token, used as is,
+  # or to impersonate serviceAccount when set. The console signs in to
+  # `hosts` with it, and writes it every policy sync as `vertra-pull` in
+  # every team namespace (set the kernel chart's
+  # scheduler.taskImagePullSecret to `vertra-pull`) and as
+  # `vertra-registry-token` here, for the verify and scan Jobs. The pool's
+  # provider trusts this cluster's OIDC issuer; grant
+  # roles/artifactregistry.reader on the repository to the console's
+  # principal (principal://iam.googleapis.com/<pool>/subject/
+  # system:serviceaccount:<namespace>:<console ServiceAccount>), or to
+  # serviceAccount. docs/operations.md has the commands.
+  gcpFederation:
+    # projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+    workloadIdentityProvider: ""
+    serviceAccount: ""
+    # Such as us-central1-docker.pkg.dev.
+    hosts: []
   # -- Where to reach a registry from inside the cluster when that differs
   # from its name in image references, as {host: url}. On kind:
   # {"localhost:5001": "http://kind-registry:5000"}.

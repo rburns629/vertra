@@ -218,3 +218,51 @@ func TestAWS(t *testing.T) {
 		}
 	}
 }
+
+func TestExternalCatalog(t *testing.T) {
+	c := Default("aws")
+	c.Source = checkout(t)
+	c.Admin.Email = "admin@example.com"
+	c.AWS = AWS{Profile: "vertra", Region: "us-east-1"}
+	c.ExternalCatalog = ExternalCatalog{
+		Registry:                    "us-central1-docker.pkg.dev/acyclix-dev/vertra-products",
+		GCPWorkloadIdentityProvider: "projects/123/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-eks",
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	c.ExternalCatalog = ExternalCatalog{Registry: "nope", GCPWorkloadIdentityProvider: "pools/x", GCPServiceAccount: "a@b"}
+	c.Catalog = Catalog{Host: "github", Owner: "o", Repository: "r", Visibility: "private", Team: "t"}
+	err := c.Validate()
+	for _, want := range []string{"externalCatalog.registry", "externalCatalog.gcpWorkloadIdentityProvider: \"pools/x\"", "not both"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in %v", want, err)
+		}
+	}
+	c.Catalog = Catalog{}
+	c.ExternalCatalog = ExternalCatalog{Registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/p",
+		GCPWorkloadIdentityProvider: "projects/123/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-eks"}
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "only for an Artifact Registry") {
+		t.Errorf("an ECR registry with a Google provider: %v", err)
+	}
+}
+
+func TestLoadReadsTheCatalogsPublicKey(t *testing.T) {
+	c := validKind(t)
+	dir := filepath.Join(t.TempDir(), "dev")
+	c.CatalogSignature.PublicKeyFile = "cosign.pub"
+	if err := c.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(dir); err == nil || !strings.Contains(err.Error(), "catalogSignature.publicKeyFile") {
+		t.Errorf("a missing key: %v", err)
+	}
+	pem := "-----BEGIN PUBLIC KEY-----\nMFkw\n-----END PUBLIC KEY-----\n"
+	if err := os.WriteFile(filepath.Join(dir, "cosign.pub"), []byte(pem), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(dir)
+	if err != nil || got.CatalogSignature.PublicKey != pem {
+		t.Errorf("loaded %q, %v", got.CatalogSignature.PublicKey, err)
+	}
+}

@@ -174,6 +174,10 @@ its own directory.
   holds no console or cluster credential, and serves any number of
   installs. A store's stored credential is set per install
   (`TeamService/SetSecretStoreCredential`).
+  An install can read another's catalog (`externalCatalog` in vertra.yaml);
+  a Google Artifact Registry on another cloud it reads by Workload Identity
+  Federation, the console handing the kubelet and its Jobs the hour's token
+  (`console/src/registryFederation.ts`).
 - **`catalog-template/`**: what a new catalog repository starts as
   (the `./vertra` wrapper, its workflows, the starter `templates/`, an empty `teams/`
   for the adopter's first team, and `samples/`: `local`, one no-cloud

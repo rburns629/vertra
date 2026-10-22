@@ -125,6 +125,39 @@ it in `registryCheck.pullSecretName`; with `registryCheck.copyToTeams`, the
 console copies it into every team namespace as `vertra-pull` and the
 kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
+### Reading another install's catalog
+
+One catalog serves many installs. An install that reads another's sets
+`externalCatalog.registry` in its vertra.yaml (the image source, and where
+its release lives) and `catalogSignature.publicKeyFile` (the catalog's
+cosign public key: only releases it signed are applied). On the same cloud,
+grant the install's console and scanner identities read on that registry.
+
+For a Google Artifact Registry read from another cloud (EKS, AKS, any
+cluster with an OIDC issuer), nothing is stored: the console exchanges its
+own ServiceAccount token for an hour's Google token (Workload Identity
+Federation) and hands it to the kubelet (`vertra-pull` in each team
+namespace) and its Jobs (`vertra-registry-token`), renewed every policy
+sync. After the first `vertra apply`, the registry's owner runs, in its
+project, the commands apply prints:
+
+```
+gcloud iam workload-identity-pools create vertra-installs --location=global --project=<project>
+gcloud iam workload-identity-pools providers create-oidc <cluster> --location=global \
+  --workload-identity-pool=vertra-installs --project=<project> --issuer-uri=<cluster's OIDC issuer> \
+  --attribute-mapping=google.subject=assertion.sub \
+  --attribute-condition="assertion.sub=='system:serviceaccount:vertra-system:console-execution-console'"
+gcloud artifacts repositories add-iam-policy-binding <repository> --location=<region> --project=<project> \
+  --role=roles/artifactregistry.reader \
+  --member=principal://iam.googleapis.com/projects/<number>/locations/global/workloadIdentityPools/vertra-installs/subject/system:serviceaccount:vertra-system:console-execution-console
+```
+
+then sets `externalCatalog.gcpWorkloadIdentityProvider` to
+`projects/<number>/locations/global/workloadIdentityPools/vertra-installs/providers/<cluster>`
+and applies again. The provider trusts only that cluster's issuer, and only
+the console's ServiceAccount from it. Revoke the install by deleting its
+provider.
+
 ### Sizes, sleeping and headroom
 
 Each chart ships four presets in `sizes/` (`minimal`, `resilient`,

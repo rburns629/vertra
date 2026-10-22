@@ -146,6 +146,21 @@ export const config = {
   // (EKS Pod Identity), for ECR registries, instead of a stored key.
   registryEcrToken: parseBoolean("REGISTRY_ECR_TOKEN"),
   registryMirrors: parseRegistryMirrors(process.env["REGISTRY_MIRRORS"]),
+  // A registry on another cloud, read with no stored key
+  // (registryFederation.ts): Google Artifact Registry hosts read through
+  // Workload Identity Federation, exchanging the console's projected token
+  // (tokenFile, with the provider as its audience) for an access token,
+  // used directly or to impersonate gcpServiceAccount. tokenSecret is the
+  // Docker config Secret written in this namespace for the verify and scan
+  // Jobs. gcpProvider: projects/<number>/locations/global/
+  // workloadIdentityPools/<pool>/providers/<provider>; empty: off.
+  registryFederation: {
+    gcpProvider: process.env["REGISTRY_GCP_WIF_PROVIDER"] ?? "",
+    gcpServiceAccount: process.env["REGISTRY_GCP_SERVICE_ACCOUNT"] ?? "",
+    hosts: (process.env["REGISTRY_FEDERATED_HOSTS"] ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    tokenFile: process.env["REGISTRY_FEDERATION_TOKEN_FILE"] ?? "/var/run/secrets/vertra/registry/token",
+    tokenSecret: process.env["REGISTRY_TOKEN_SECRET"] ?? "",
+  },
   // Every task's image is pinned to its digest at submission (routes/
   // executions.ts): "required" refuses a submission whose image the registry
   // can't resolve; "off" sends tags as they are (tests, a registry the

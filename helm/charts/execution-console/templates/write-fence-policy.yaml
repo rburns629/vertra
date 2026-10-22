@@ -44,9 +44,15 @@ spec:
     - name: from-the-console
       expression: request.userInfo.username == {{ $console | quote }}
   validations:
+    # Outside team namespaces, only the federated registry token's Secret
+    # in this one (registryFederation.ts), when that's configured.
     - expression: >-
-        has(namespaceObject.metadata.labels) &&
-        {{ .Values.writeFence.teamNamespaceLabel | quote }} in namespaceObject.metadata.labels
+        (has(namespaceObject.metadata.labels) &&
+        {{ .Values.writeFence.teamNamespaceLabel | quote }} in namespaceObject.metadata.labels)
+        {{- if .Values.registryCheck.gcpFederation.workloadIdentityProvider }} || (
+        request.namespace == {{ .Release.Namespace | quote }} && request.resource.resource == "secrets" &&
+        request.operation != "DELETE" && object.metadata.name == "vertra-registry-token")
+        {{- end }}
       messageExpression: >-
         "The console may only write in team namespaces (labelled " +
         {{ .Values.writeFence.teamNamespaceLabel | quote }} + "), not in " + request.namespace + "."

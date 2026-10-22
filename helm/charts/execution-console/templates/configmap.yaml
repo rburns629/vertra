@@ -35,7 +35,7 @@ data:
   SCANNER_SERVER_URL: {{ printf "http://%s-trivy:4954" (include "execution-console.fullname" .) | quote }}
   SCANNER_IMAGE: {{ include "execution-console.image" .Values.scanning.image | quote }}
   SCANNER_SERVICE_ACCOUNT: {{ printf "%s-scanner" (include "execution-console.fullname" .) | quote }}
-  SCANNER_PULL_SECRET: {{ .Values.registryCheck.pullSecretName | quote }}
+  SCANNER_PULL_SECRET: {{ ternary "vertra-registry-token" .Values.registryCheck.pullSecretName (ne .Values.registryCheck.gcpFederation.workloadIdentityProvider "") | quote }}
   SCAN_WAIT_SECONDS: {{ .Values.scanning.waitSeconds | quote }}
   SCAN_RESCAN_HOURS: {{ .Values.scanning.rescanHours | quote }}
   SCAN_POLICY_NAME: {{ .Values.scanning.policyName | quote }}

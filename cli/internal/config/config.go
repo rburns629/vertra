@@ -63,6 +63,12 @@ type Config struct {
 	Console Console `yaml:"console,omitempty"`
 	// Catalog is the catalog repository `vertra catalog create` creates.
 	Catalog Catalog `yaml:"catalog,omitempty"`
+	// ExternalCatalog: this install reads another install's catalog (its
+	// images and release, in that install's registry) instead of one of
+	// its own.
+	ExternalCatalog ExternalCatalog `yaml:"externalCatalog,omitempty"`
+	// CatalogSignature: who may sign the catalog's releases.
+	CatalogSignature CatalogSignature `yaml:"catalogSignature,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
@@ -164,6 +170,32 @@ type Catalog struct {
 	SubjectPrefix string `yaml:"subjectPrefix,omitempty"`
 }
 
+// ExternalCatalog is a catalog published to another install's registry.
+type ExternalCatalog struct {
+	// Registry holds its images and its release (catalog-release), such as
+	// us-central1-docker.pkg.dev/<project>/vertra-products: the image
+	// policy's source, and where the console reads the release.
+	Registry string `yaml:"registry,omitempty"`
+	// GCPWorkloadIdentityProvider, for an Artifact Registry on another
+	// cloud: projects/<number>/locations/global/workloadIdentityPools/
+	// <pool>/providers/<provider>, a provider trusting this cluster's OIDC
+	// issuer. The console reads it with no stored key, and hands the
+	// kubelet and its Jobs short-lived tokens (docs/operations.md).
+	GCPWorkloadIdentityProvider string `yaml:"gcpWorkloadIdentityProvider,omitempty"`
+	// GCPServiceAccount, if the federated identity should impersonate one
+	// rather than be granted the repository itself.
+	GCPServiceAccount string `yaml:"gcpServiceAccount,omitempty"`
+}
+
+// CatalogSignature trusts a key to sign the catalog's releases.
+type CatalogSignature struct {
+	// PublicKeyFile is the catalog's cosign public key (PEM), relative to
+	// this directory.
+	PublicKeyFile string `yaml:"publicKeyFile,omitempty"`
+	// PublicKey is its contents, read by Load.
+	PublicKey string `yaml:"-"`
+}
+
 // Languages are the starters a catalog can begin with: the language, and
 // its product in the template's samples/local.
 var Languages = map[string]string{
@@ -262,15 +294,18 @@ func (c *Config) FillDefaults() {
 }
 
 var (
-	dnsLabel   = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`)
-	gcpProject = regexp.MustCompile(`^[a-z][-a-z0-9]{4,28}[a-z0-9]$`)
-	gcpRegion  = regexp.MustCompile(`^[a-z]+-[a-z]+[0-9]$`)
-	gcpName    = regexp.MustCompile(`^[a-z][a-z0-9-]{1,18}[a-z0-9]$`)
-	awsRegion  = regexp.MustCompile(`^[a-z]{2}(-gov)?-[a-z]+-[0-9]$`)
-	ecrPrefix  = regexp.MustCompile(`^[a-z0-9]+([._-][a-z0-9]+)*$`)
-	hostname   = regexp.MustCompile(`^([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`)
-	githubName = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9._-]{0,98})$`)
-	version    = regexp.MustCompile(`^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
+	dnsLabel = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`)
+	// <host>/<path>: a registry and repository path, no tag.
+	registryPath = regexp.MustCompile(`^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+)+$`)
+	wifProvider  = regexp.MustCompile(`^projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]{4,32}/providers/[a-z0-9-]{4,32}$`)
+	gcpProject   = regexp.MustCompile(`^[a-z][-a-z0-9]{4,28}[a-z0-9]$`)
+	gcpRegion    = regexp.MustCompile(`^[a-z]+-[a-z]+[0-9]$`)
+	gcpName      = regexp.MustCompile(`^[a-z][a-z0-9-]{1,18}[a-z0-9]$`)
+	awsRegion    = regexp.MustCompile(`^[a-z]{2}(-gov)?-[a-z]+-[0-9]$`)
+	ecrPrefix    = regexp.MustCompile(`^[a-z0-9]+([._-][a-z0-9]+)*$`)
+	hostname     = regexp.MustCompile(`^([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`)
+	githubName   = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9._-]{0,98})$`)
+	version      = regexp.MustCompile(`^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
 )
 
 // Validate returns every problem with the config, not just the first.
@@ -417,6 +452,23 @@ func (c *Config) Validate() error {
 			add("catalog: only gcp and aws installs give its CI a registry to publish to so far")
 		}
 	}
+	if e := c.ExternalCatalog; e.Registry != "" || e.GCPWorkloadIdentityProvider != "" || e.GCPServiceAccount != "" {
+		if c.Catalog.Repo() != "" {
+			add("externalCatalog: an install reads its own catalog or another's, not both (catalog.owner is set)")
+		}
+		if !registryPath.MatchString(e.Registry) {
+			add("externalCatalog.registry: %q isn't <host>/<path>, such as us-central1-docker.pkg.dev/<project>/vertra-products", e.Registry)
+		}
+		if e.GCPWorkloadIdentityProvider != "" && !wifProvider.MatchString(e.GCPWorkloadIdentityProvider) {
+			add("externalCatalog.gcpWorkloadIdentityProvider: %q isn't projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>", e.GCPWorkloadIdentityProvider)
+		}
+		if e.GCPWorkloadIdentityProvider != "" && !strings.HasSuffix(strings.SplitN(e.Registry, "/", 2)[0], "-docker.pkg.dev") {
+			add("externalCatalog.gcpWorkloadIdentityProvider: only for an Artifact Registry (<region>-docker.pkg.dev/...)")
+		}
+		if e.GCPServiceAccount != "" && e.GCPWorkloadIdentityProvider == "" {
+			add("externalCatalog.gcpServiceAccount: needs gcpWorkloadIdentityProvider")
+		}
+	}
 	if !strings.Contains(c.Admin.Email, "@") {
 		add("admin.email: %q isn't an email address", c.Admin.Email)
 	}
@@ -444,6 +496,16 @@ func Load(dir string) (*Config, error) {
 	c.FillDefaults()
 	if err := c.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", filepath.Join(dir, FileName), err)
+	}
+	if f := c.CatalogSignature.PublicKeyFile; f != "" {
+		key, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			return nil, fmt.Errorf("catalogSignature.publicKeyFile: %w", err)
+		}
+		if !strings.Contains(string(key), "-----BEGIN PUBLIC KEY-----") {
+			return nil, fmt.Errorf("catalogSignature.publicKeyFile: %s isn't a PEM public key (cosign.pub)", f)
+		}
+		c.CatalogSignature.PublicKey = string(key)
 	}
 	return &c, nil
 }
@@ -569,7 +631,9 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"platformImages.registry": true, "scaleDown.idleAfter": true, "scaleDown.schedule": true,
 		"kind.registryName": true, "kind.registryPort": true,
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
-		"gcp.project": true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
+		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
+		"catalogSignature.publicKeyFile": true,
+		"gcp.project":                    true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
 	}
 	if !known[strings.Join(path, ".")] {
 		return fmt.Errorf("no setting %q (see `vertra config get` for every key)", strings.Join(path, "."))

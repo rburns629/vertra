@@ -187,6 +187,15 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 				made.ConsoleHost, orDefault(install.CertificateStatus(ctx, a.runner, c), "requested"))
 		}
 	}
+	if made != nil && made.Provider == "aws" && c.ExternalCatalog.Registry != "" && c.ExternalCatalog.GCPWorkloadIdentityProvider == "" {
+		if steps := install.FederationSteps(c, made.ClusterIssuer); steps != nil {
+			fmt.Fprintln(out, "\nThis install reads the catalog in", c.ExternalCatalog.Registry, "but can't sign in to it yet.")
+			fmt.Fprintln(out, "Its owner lets it, in that Google Cloud project (no key is stored anywhere):")
+			for _, step := range steps {
+				fmt.Fprintln(out, "  "+step)
+			}
+		}
+	}
 	if installed[install.ConsoleRelease] == "" {
 		if pw := install.Password(ctx, a.runner, c); pw != "" {
 			fmt.Fprintf(out, "  Sign in as %s with %s\n", c.Admin.Email, pw)

@@ -267,6 +267,10 @@ violations).
   The console has it as a mounted file and rewrites every team's copy on
   each policy resync, so a rotation reaches every team within one
   interval. Turning the option off leaves the copies; delete them by hand.
+  Reading another cloud's Artifact Registry (`registryCheck.gcpFederation`),
+  the copy is a token the console minted that hour by Workload Identity
+  Federation, renewed every resync; it reads the catalog's repository and
+  nothing else, and lapses within the hour once the provider is deleted.
 - **Cluster administrators**, and anyone else the cluster's own RBAC lets read
   Secrets in a team namespace. Vertra doesn't grant people Kubernetes
   access, but doesn't prevent a cluster operator from doing so.

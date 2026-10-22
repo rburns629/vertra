@@ -146,6 +146,43 @@ func TestConsoleReadsTheCatalogsRelease(t *testing.T) {
 	}
 }
 
+// An install reading another cloud's catalog: its registry is the image
+// source and the release's home, read by federation, the kubelet pulling
+// with the console's token; and only releases the catalog's key signed.
+func TestAnExternalCatalogIsReadByFederation(t *testing.T) {
+	c := kindConfig()
+	c.Namespace = "vertra-system"
+	c.Cluster.Name = "vertra-eks"
+	cloud := &Cloud{Provider: "aws", TaskRegistry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/vertra-products"}
+	c.ExternalCatalog.Registry = "us-central1-docker.pkg.dev/acyclix-dev/vertra-products"
+	c.CatalogSignature.PublicKey = "-----BEGIN PUBLIC KEY-----\nk\n-----END PUBLIC KEY-----\n"
+
+	steps := FederationSteps(c, "https://oidc.eks.us-east-1.amazonaws.com/id/ABC")
+	if len(steps) != 5 || !strings.Contains(steps[1], "--issuer-uri=https://oidc.eks.us-east-1.amazonaws.com/id/ABC") ||
+		!strings.Contains(steps[1], "assertion.sub=='system:serviceaccount:vertra-system:console-execution-console'") ||
+		!strings.Contains(steps[2], "repositories add-iam-policy-binding vertra-products --location=us-central1 --project=acyclix-dev") {
+		t.Errorf("steps: %q", steps)
+	}
+
+	c.ExternalCatalog.GCPWorkloadIdentityProvider = "projects/1/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-eks"
+	kernel := KernelValues(c, Images{}, "", cloud)
+	if fmt.Sprint(kernel["imagePolicy"]) != "map[sourceRegistry:us-central1-docker.pkg.dev/acyclix-dev/vertra-products]" ||
+		fmt.Sprint(kernel["scheduler"]) != "map[taskImagePullSecret:vertra-pull]" {
+		t.Errorf("kernel: %v %v", kernel["imagePolicy"], kernel["scheduler"])
+	}
+	console := ConsoleValues(c, "dev", Images{}, cloud)
+	want := "map[ecrToken:true gcpFederation:map[hosts:[us-central1-docker.pkg.dev] serviceAccount: " +
+		"workloadIdentityProvider:projects/1/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-eks]]"
+	if fmt.Sprint(console["registryCheck"]) != want {
+		t.Errorf("registryCheck: %v", console["registryCheck"])
+	}
+	catalog, _ := console["catalog"].(map[string]any)
+	if catalog["release"] != "us-central1-docker.pkg.dev/acyclix-dev/vertra-products/catalog-release:latest" ||
+		!strings.Contains(fmt.Sprint(catalog["signature"]), "BEGIN PUBLIC KEY") {
+		t.Errorf("catalog: %v", catalog)
+	}
+}
+
 func TestWriteValues(t *testing.T) {
 	dir := t.TempDir()
 	path, err := WriteValues(dir, "kernel", map[string]any{"api": map[string]any{"replicaCount": 2}})
