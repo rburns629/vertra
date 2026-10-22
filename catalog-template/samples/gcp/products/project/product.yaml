@@ -11,6 +11,8 @@ description: >-
   an existing one (project is found and left untouched).
 owner: gcp-team
 runtime: python3.12
+# Its own identity: bound to only what it does (README.md, Credentials).
+serviceAccount: gcp-project
 actions:
   - name: create
     # Finds what it would create before creating it, so a step that

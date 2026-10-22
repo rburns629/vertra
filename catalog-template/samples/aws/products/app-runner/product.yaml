@@ -10,6 +10,8 @@ description: Deploys a container image as an App Runner service and waits for it
   unless public is true.
 owner: aws-team
 runtime: python3.12
+# Its own identity: bound to only what it does (README.md, Credentials).
+serviceAccount: aws-app-runner
 actions:
 - name: create
   # Finds what it would create before creating it, so a step that

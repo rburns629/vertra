@@ -9,6 +9,8 @@ description: 'Finds an S3 bucket by name, or creates it with every kind of publi
   Bucket names are global: a name another account owns fails with BUCKET_NAME_TAKEN.'
 owner: aws-team
 runtime: python3.12
+# Its own identity: bound to only what it does (README.md, Credentials).
+serviceAccount: aws-s3-bucket
 actions:
 - name: create
   # Finds what it would create before creating it, so a step that

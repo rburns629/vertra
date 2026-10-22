@@ -10,6 +10,8 @@ description: >-
   -- the image to deploy is always a caller-supplied input.
 owner: gcp-team
 runtime: python3.12
+# Its own identity: bound to only what it does (README.md, Credentials).
+serviceAccount: gcp-app-hosting
 actions:
   - name: create
     # Finds what it would create before creating it, so a step that

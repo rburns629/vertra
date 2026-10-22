@@ -639,8 +639,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **Have the GKE deploy use released images** (`make gke-deploy` still
   builds from the working copy with Cloud Build); the release workflow
   builds, scans and signs them in CI.
-- [ ] **One cloud identity per product in the gcp sample:** its products
-  declare no `serviceAccount`, so they share the namespace's `default`.
+- [x] **One cloud identity per product in the gcp sample** (done
+  2026-10-22): each gcp and aws sample product declares its own
+  `serviceAccount` (`gcp-<product>`, `aws-<product>`), and the READMEs grant
+  each only what it calls: on GCP straight to its Kubernetes identity
+  (Workload Identity Federation, no Google service account or annotation),
+  on AWS by Pod Identity to its own role. Left: proving the gcp grants on a
+  cluster.
 - [ ] **Catalog: keep pull-request workflows away from secrets and cloud
   identities**: every workflow that holds one in a `main`-only Environment.
 

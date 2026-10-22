@@ -27,10 +27,10 @@ the execution.
 ## Credentials
 
 No keys: the actions use boto3's default credential chain, which EKS fills in
-for the step's Kubernetes ServiceAccount. Give each product its own:
-`serviceAccount: <name>` in its `product.yaml` (the console creates it in the
-`aws` namespace, and the cluster lets only that product's image run as it).
-Then either:
+for the step's Kubernetes ServiceAccount. Each product runs as its own
+(`serviceAccount` in its `product.yaml`: `aws-s3-bucket`, `aws-app-runner`,
+`aws-rds-postgres`), which the console creates in the `aws` namespace, and
+only that product's image may run as it. Bind each to its own role, either:
 
 - **EKS Pod Identity** (simplest): install the Pod Identity agent add-on and
   create an association from that ServiceAccount to an IAM role. Nothing on

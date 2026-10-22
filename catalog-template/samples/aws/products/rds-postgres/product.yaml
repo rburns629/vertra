@@ -11,6 +11,8 @@ description: 'Finds an RDS for PostgreSQL instance by id, or creates it (encrypt
   1500 or more.'
 owner: aws-team
 runtime: python3.12
+# Its own identity: bound to only what it does (README.md, Credentials).
+serviceAccount: aws-rds-postgres
 actions:
 - name: create
   # Finds what it would create before creating it, so a step that

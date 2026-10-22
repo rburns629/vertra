@@ -13,6 +13,8 @@ description: >-
   place is a separate, prior concern -- see the gcp team's README.md.
 owner: gcp-team
 runtime: python3.12
+# Its own identity: bound to only what it does (README.md, Credentials).
+serviceAccount: gcp-build-image
 actions:
   - name: create
     # Finds what it would create before creating it, so a step that

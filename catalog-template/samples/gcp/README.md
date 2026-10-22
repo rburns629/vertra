@@ -17,13 +17,34 @@ first three.
 ## Credentials
 
 No keys: the actions use Application Default Credentials, which GKE
-Workload Identity supplies from the step's Kubernetes ServiceAccount. These
-examples don't declare one yet, so they run as the namespace's `default`.
-For real use, give each product its own: `serviceAccount: <name>` in its
-`product.yaml` (the console creates it in the `gcp` namespace, and the
-cluster lets only that product's image run as it), bound to a Google service
-account granted only what that product does (for `project`'s lookup,
-`roles/browser`). Don't bind `default`: every unregistered image runs as it.
+Workload Identity supplies from the step's Kubernetes ServiceAccount. Each
+product runs as its own (`serviceAccount` in its `product.yaml`), which the
+console creates in the `gcp` namespace, and only that product's image may
+run as it. Grant each one only what its product does, straight to its
+Kubernetes identity (GKE Workload Identity Federation: no Google service
+account, no annotation):
+
+```sh
+PROJECT=my-gcp-project                      # the cluster's project
+NUMBER=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
+member() { echo "principal://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/$PROJECT.svc.id.goog/subject/ns/gcp/sa/gcp-$1"; }
+
+# project: look projects up; create them under a folder, and link billing.
+gcloud resource-manager folders add-iam-policy-binding $FOLDER --role roles/browser --member "$(member project)"
+gcloud resource-manager folders add-iam-policy-binding $FOLDER --role roles/resourcemanager.projectCreator --member "$(member project)"
+gcloud billing accounts add-iam-policy-binding $BILLING --role roles/billing.user --member "$(member project)"
+# build-image: run Cloud Build, read the source bucket, look tags up.
+gcloud projects add-iam-policy-binding $TARGET --role roles/cloudbuild.builds.editor --member "$(member build-image)"
+gcloud storage buckets add-iam-policy-binding gs://$SOURCES --role roles/storage.objectViewer --member "$(member build-image)"
+gcloud artifacts repositories add-iam-policy-binding $REPO --location $REGION --role roles/artifactregistry.reader --member "$(member build-image)"
+# app-hosting: Cloud Run services.
+gcloud projects add-iam-policy-binding $TARGET --role roles/run.developer --member "$(member app-hosting)"
+# cloud-sql: Cloud SQL instances.
+gcloud projects add-iam-policy-binding $TARGET --role roles/cloudsql.admin --member "$(member cloud-sql)"
+```
+
+So `project` can't touch Cloud Run, and `app-hosting` can't make projects.
+Don't grant anything to `default`: every unregistered image runs as it.
 
 Optionally, the actions impersonate a second service account, using their
 own identity only to mint its tokens: register a team secret `gcp-target`
