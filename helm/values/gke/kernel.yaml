@@ -1,12 +1,15 @@
 # execution-kernel on GKE `vertra-gke` (release `kernel`, namespace
 # default; a new install uses its own, vertra-system):
-#   helm upgrade --install kernel helm/charts/execution-kernel -n default \
+#   make gke-deploy VERSION=v<x.y.z>   (the release's signed chart and images)
+#   or: helm upgrade --install kernel oci://ghcr.io/rburns629/vertra/charts/execution-kernel --version <x.y.z> -n default \
 #     --kube-context gke_my-gcp-project_us-central1_vertra-gke \
 #     -f helm/values/gke/kernel.yaml
+# A release's image, signed by its workflow (make gke-deploy VERSION=v...):
+# no tag, so the release's chart runs its own (appVersion).
+# gke-deploy-kernel-from-source overrides both for a working-copy build.
 image:
-  repository: us-central1-docker.pkg.dev/my-gcp-project/platform-images/execution-kernel
-  tag: latest
-  pullPolicy: Always
+  repository: ghcr.io/rburns629/vertra/execution-kernel
+  pullPolicy: IfNotPresent
 backup:
   enabled: false
 # Only because this install runs the platform in `default`, which is also

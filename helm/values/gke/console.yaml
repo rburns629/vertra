@@ -1,13 +1,16 @@
 # execution-console on GKE (release `console`, namespace default):
-#   helm upgrade --install console helm/charts/execution-console -n default \
+#   make gke-deploy VERSION=v<x.y.z>   (the release's signed chart and images)
+#   or: helm upgrade --install console oci://ghcr.io/rburns629/vertra/charts/execution-console --version <x.y.z> -n default \
 #     --kube-context gke_my-gcp-project_us-central1_vertra-gke \
 #     -f helm/values/gke/console.yaml
 # No bootstrapAdmin.password here on purpose: a fresh install generates one
 # and prints it once to the migration Job's log.
+# A release's image, signed by its workflow (make gke-deploy VERSION=v...):
+# no tag, so the release's chart runs its own (appVersion).
+# gke-deploy-console-from-source overrides both for a working-copy build.
 image:
-  repository: us-central1-docker.pkg.dev/my-gcp-project/platform-images/execution-console
-  tag: latest
-  pullPolicy: Always
+  repository: ghcr.io/rburns629/vertra/execution-console
+  pullPolicy: IfNotPresent
 backup:
   enabled: false
 kernelApiUrl: http://kernel-execution-kernel-api.default.svc.cluster.local:8000

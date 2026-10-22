@@ -1,4 +1,4 @@
-.PHONY: kind-tls kind-audit-store quickstart _quickstart-prereqs kind-cluster kind-namespaces \
+.PHONY: gke-verify-release gke-deploy-console-from-source gke-deploy-kernel-from-source kind-tls kind-audit-store quickstart _quickstart-prereqs kind-cluster kind-namespaces \
 	build-products catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
 	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
@@ -528,18 +528,59 @@ _gke-confirm:
 		if [ "$$answer" != "$(GKE_CLUSTER)" ]; then echo "Not confirmed -- nothing was deployed."; exit 1; fi; \
 	fi
 
-gke-deploy-console: GKE_WHAT = the console (console/)
-gke-deploy-console: _gke-confirm
+# A release, as CI built, scanned and signed it (.github/workflows/release.yml):
+# its signed charts, which run its signed images (each chart's appVersion),
+# each signature checked against the release workflow's identity at exactly
+# that tag before anything is deployed.
+# make gke-deploy VERSION=v0.2.3
+RELEASE_REGISTRY ?= ghcr.io/rburns629/vertra
+RELEASE_IDENTITY = https://github.com/$(subst ghcr.io/,,$(RELEASE_REGISTRY))/.github/workflows/release.yml@refs/tags/$(VERSION)
+# The console chart's own pinned cosign (catalog.signature's verify Job).
+COSIGN := $(DOCKER) run --rm ghcr.io/sigstore/cosign/cosign:v2.5.3@sha256:f1946d0f30fc8e3777b02f2201e02efdba9fe38f4918162f937052fac98e083f
+COSIGN_VERIFY = $(COSIGN) verify --certificate-identity $(RELEASE_IDENTITY) \
+	--certificate-oidc-issuer https://token.actions.githubusercontent.com -o text
+
+gke-verify-release:
+	@test -n "$(VERSION)" || { echo "VERSION=v<x.y.z>: the release to deploy."; exit 1; }
+	@for ref in execution-kernel:$(VERSION) execution-console:$(VERSION) \
+		charts/execution-kernel:$(VERSION:v%=%) charts/execution-console:$(VERSION:v%=%); do \
+		printf "  %-40s " "$$ref"; \
+		$(COSIGN_VERIFY) $(RELEASE_REGISTRY)/$$ref > /dev/null 2>&1 \
+			&& echo "signed by the $(VERSION) release" \
+			|| { echo "NOT VERIFIED: nothing was deployed."; exit 1; }; \
+	done
+
+gke-deploy-console: GKE_WHAT = the console, release $(VERSION)
+gke-deploy-console: gke-verify-release _gke-confirm
+	helm upgrade console oci://$(RELEASE_REGISTRY)/charts/execution-console --version $(VERSION:v%=%) \
+		$(GKE_HELM_UPGRADE) -f helm/values/gke/console.yaml
+	$(GKE_KUBECTL) rollout status deployment console-execution-console --timeout=5m
+	@echo "Console $(VERSION) deployed. Hard-refresh open browser tabs to load the new UI."
+
+gke-deploy-kernel: GKE_WHAT = the kernel, release $(VERSION)
+gke-deploy-kernel: gke-verify-release _gke-confirm
+	helm upgrade kernel oci://$(RELEASE_REGISTRY)/charts/execution-kernel --version $(VERSION:v%=%) \
+		$(GKE_HELM_UPGRADE) -f helm/values/gke/kernel.yaml
+	$(GKE_KUBECTL) rollout status deployment kernel-execution-kernel-api --timeout=5m
+	$(GKE_KUBECTL) rollout status deployment kernel-execution-kernel-scheduler --timeout=5m
+	@echo "Kernel $(VERSION) deployed."
+
+# From the working copy instead (Cloud Build, :latest, unsigned): for trying
+# a change on a cluster that isn't production. Says so before it starts.
+gke-deploy-console-from-source: GKE_WHAT = the console from the WORKING COPY (unreleased, unsigned)
+gke-deploy-console-from-source: _gke-confirm
 	gcloud builds submit --project $(GKE_PROJECT) --tag $(GKE_REGISTRY)/execution-console:latest console/
-	helm upgrade console helm/charts/execution-console $(GKE_HELM_UPGRADE) -f helm/values/gke/console.yaml
+	helm upgrade console helm/charts/execution-console $(GKE_HELM_UPGRADE) -f helm/values/gke/console.yaml \
+		--set image.repository=$(GKE_REGISTRY)/execution-console --set image.tag=latest
 	$(GKE_KUBECTL) rollout restart deployment console-execution-console
 	$(GKE_KUBECTL) rollout status deployment console-execution-console --timeout=5m
 	@echo "Console deployed. Hard-refresh open browser tabs to load the new UI."
 
-gke-deploy-kernel: GKE_WHAT = the kernel (kernel/)
-gke-deploy-kernel: _gke-confirm
+gke-deploy-kernel-from-source: GKE_WHAT = the kernel from the WORKING COPY (unreleased, unsigned)
+gke-deploy-kernel-from-source: _gke-confirm
 	gcloud builds submit --project $(GKE_PROJECT) --tag $(GKE_REGISTRY)/execution-kernel:latest kernel/
-	helm upgrade kernel helm/charts/execution-kernel $(GKE_HELM_UPGRADE) -f helm/values/gke/kernel.yaml
+	helm upgrade kernel helm/charts/execution-kernel $(GKE_HELM_UPGRADE) -f helm/values/gke/kernel.yaml \
+		--set image.repository=$(GKE_REGISTRY)/execution-kernel --set image.tag=latest
 	$(GKE_KUBECTL) rollout restart deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler
 	$(GKE_KUBECTL) rollout status deployment kernel-execution-kernel-api --timeout=5m
 	$(GKE_KUBECTL) rollout status deployment kernel-execution-kernel-scheduler --timeout=5m
@@ -560,7 +601,7 @@ gke-deploy-eso: _gke-confirm
 
 # Both, asking once. Kernel first: the console calls the kernel, never the
 # other way round.
-gke-deploy: GKE_WHAT = the kernel and the console
-gke-deploy: _gke-confirm
-	@$(MAKE) --no-print-directory gke-deploy-kernel CONFIRM=$(GKE_CLUSTER)
-	@$(MAKE) --no-print-directory gke-deploy-console CONFIRM=$(GKE_CLUSTER)
+gke-deploy: GKE_WHAT = the kernel and the console, release $(VERSION)
+gke-deploy: gke-verify-release _gke-confirm
+	@$(MAKE) --no-print-directory gke-deploy-kernel CONFIRM=$(GKE_CLUSTER) VERSION=$(VERSION)
+	@$(MAKE) --no-print-directory gke-deploy-console CONFIRM=$(GKE_CLUSTER) VERSION=$(VERSION)

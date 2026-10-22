@@ -636,9 +636,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   outputs, failure messages, template parameters or logs, in the run's
   details, events, logs and Observe's log search. Cancel and retry still
   need every team.
-- [ ] **Have the GKE deploy use released images** (`make gke-deploy` still
-  builds from the working copy with Cloud Build); the release workflow
-  builds, scans and signs them in CI.
+- [ ] **Have the GKE deploy use released images** (done 2026-10-22 in the
+  Makefile: `make gke-deploy VERSION=...` deploys the release's signed
+  charts and images, every signature checked against the release
+  workflow's identity at that tag first; the working-copy build is
+  `gke-deploy-*-from-source`). Left: making the release packages public on
+  ghcr.io and running it once.
 - [x] **One cloud identity per product in the gcp sample** (done
   2026-10-22): each gcp and aws sample product declares its own
   `serviceAccount` (`gcp-<product>`, `aws-<product>`), and the READMEs grant

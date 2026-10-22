@@ -98,10 +98,18 @@ network policy agent or Calico; on AKS a network policy engine).
 7. **Sign in, change the password**, and on the Admin page: add admins,
    mint the catalog's automation token, and set the allowed image sources.
 
-`make gke-deploy` (and `gke-deploy-kernel`, `-console`, `-policy-controller`,
-`-eso`) does the build and upgrade for GKE with Cloud Build, with the
-settings in `helm/values/gke/` and the context named in the Makefile; it
-shows what's about to ship and asks you to type the cluster's name first.
+`make gke-deploy VERSION=v<x.y.z>` (and `gke-deploy-kernel`, `-console`)
+deploys a release to GKE: the release's signed charts, which run its signed
+images, each signature checked first (cosign, against the release workflow's
+identity at exactly that tag; `make gke-verify-release VERSION=...` alone),
+with the settings in `helm/values/gke/` and the context named in the
+Makefile. It shows what's about to ship and asks you to type the cluster's
+name first. The release's packages on ghcr.io must be public (once, in each
+package's settings) or `docker login ghcr.io` done first. To try an
+unreleased change on a cluster that isn't production,
+`gke-deploy-{kernel,console}-from-source` build the working copy with Cloud
+Build instead (unsigned, `:latest`). `-policy-controller` and `-eso` install
+those charts.
 
 ### HTTPS for the console
 
