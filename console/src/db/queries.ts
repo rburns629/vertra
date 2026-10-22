@@ -867,7 +867,7 @@ export async function findSubmittedExecutions(executionIds: string[]): Promise<S
     .where(inArray(submittedExecutions.executionId, executionIds));
 }
 
-export type SubmittedExecutionSummary = Omit<SubmittedExecution, "payload" | "template" | "templateParameters" | "onBehalfOf">;
+export type SubmittedExecutionSummary = Omit<SubmittedExecution, "payload" | "templateParameters" | "onBehalfOf">;
 
 // Every list caller (core/executions.ts's list) only ever
 // renders summary fields -- `payload` is a full stored task graph, fetched
@@ -880,6 +880,7 @@ const summaryColumns = {
   submittedBy: submittedExecutions.submittedBy,
   name: submittedExecutions.name,
   createdAt: submittedExecutions.createdAt,
+  template: submittedExecutions.template,
 };
 
 export interface ExecutionPageQuery {
@@ -895,6 +896,8 @@ export interface ExecutionPageQuery {
   team?: string | undefined;
   /** Part of the name, any case. */
   search?: string | undefined;
+  /** Only this account's own runs. */
+  submittedBy?: string | undefined;
 }
 
 export interface ExecutionPage {
@@ -922,6 +925,7 @@ export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Pr
     conditions.push(or(teamRuns, ownRuns));
   }
   if (query.team) conditions.push(arrayContains(submittedExecutions.teams, [query.team]));
+  if (query.submittedBy) conditions.push(eq(submittedExecutions.submittedBy, query.submittedBy));
   if (query.since) conditions.push(gte(submittedExecutions.createdAt, query.since));
   if (query.search) {
     const escaped = query.search.replace(/[\\%_]/g, (c) => `\\${c}`);
@@ -951,6 +955,7 @@ export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Pr
       submittedBy: row.submittedBy,
       name: row.name,
       createdAt: row.createdAt,
+      template: row.template,
     })),
     nextCursor: rows.length > query.limit && last ? `${last.cursorTime}${CURSOR_SEPARATOR}${last.executionId}` : null,
   };

@@ -172,6 +172,29 @@ export declare type ExecutionSummary = Message<"vertra.console.v1.ExecutionSumma
    * @generated from field: vertra.console.v1.ExecutionState state = 6;
    */
   state: ExecutionState;
+
+  /**
+   * Run from a template: <team>/<template>, or <team>/<product>.<action>
+   * for an action run alone. Empty for a DAG submitted as such.
+   *
+   * @generated from field: string template = 7;
+   */
+  template: string;
+
+  /**
+   * How many of its steps are in each state (PENDING, RUNNING, SUCCEEDED,
+   * ...); empty if the kernel couldn't be asked.
+   *
+   * @generated from field: map<string, int32> steps = 8;
+   */
+  steps: { [key: string]: number };
+
+  /**
+   * When it finished, once it has.
+   *
+   * @generated from field: optional google.protobuf.Timestamp finished_at = 9;
+   */
+  finishedAt?: Timestamp | undefined;
 };
 
 /**
@@ -570,6 +593,13 @@ export declare type ListExecutionsRequest = Message<"vertra.console.v1.ListExecu
    * @generated from field: google.protobuf.Timestamp since = 4;
    */
   since?: Timestamp | undefined;
+
+  /**
+   * Only the caller's own.
+   *
+   * @generated from field: bool mine = 5;
+   */
+  mine: boolean;
 };
 
 /**

@@ -666,6 +666,12 @@ export interface ExecutionSummary {
    * only if that lookup itself failed (kernel-api briefly unreachable),
    * not a real execution state. */
   state: string | null;
+  /** Run from a template: <team>/<template>, or <team>/<product>.<action>; "" for a DAG. */
+  template: string;
+  /** How many of its steps are in each state (PENDING, RUNNING, SUCCEEDED, ...). */
+  steps: Record<string, number>;
+  /** When it finished, once it has. */
+  finishedAt: string | null;
 }
 
 export interface ExecutionPage {
@@ -682,6 +688,8 @@ export interface ExecutionListQuery {
   team?: string;
   /** Part of the name. */
   search?: string;
+  /** Only your own runs. */
+  mine?: boolean;
 }
 
 /** The executions you can see, newest first, a page at a time. */
@@ -691,6 +699,7 @@ export async function listExecutions(query: ExecutionListQuery = {}): Promise<Ex
       page: { limit: query.limit ?? 0, cursor: query.cursor ?? "" },
       team: query.team ?? "",
       search: query.search ?? "",
+      mine: query.mine ?? false,
       ...(query.since ? { since: timestampFromDate(new Date(query.since)) } : {}),
     }),
   );
@@ -702,6 +711,9 @@ export async function listExecutions(query: ExecutionListQuery = {}): Promise<Ex
       name: row.name,
       createdAt: iso(row.createdAt) ?? "",
       state: row.state === ExecutionState.UNSPECIFIED ? null : ExecutionState[row.state],
+      template: row.template,
+      steps: { ...row.steps },
+      finishedAt: iso(row.finishedAt),
     })),
     nextCursor: page.nextCursor || null,
   };

@@ -233,6 +233,7 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
               since: req.since ? new Date(Number(req.since.seconds) * 1000).toISOString() : undefined,
               team: unsetIfEmpty(req.team),
               search: unsetIfEmpty(req.search),
+              mine: req.mine || undefined,
             }).filter(([, v]) => v !== undefined),
           ),
         },
@@ -246,6 +247,9 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
           submittedBy: row.submittedBy ?? undefined,
           createdAt: timestamp(row.createdAt),
           state: executionState(row.state),
+          template: row.template ?? "",
+          steps: row.steps,
+          finishedAt: timestamp(row.finishedAt),
         })),
         nextCursor: page.nextCursor ?? "",
       };

@@ -12,14 +12,13 @@ export function statusColor(state: string): ChipProps["color"] {
       return "success";
     case "FAILED":
       return "error";
-    case "CANCELLED":
-      return "default";
     case "RUNNING":
     case "CLAIMED":
+      return "info";
     case "AWAITING_APPROVAL":
       return "warning";
-    default: // PENDING, READY, BLOCKED
-      return "info";
+    default: // CANCELLED, and not started yet: PENDING, READY, BLOCKED
+      return "default";
   }
 }
 
@@ -44,6 +43,7 @@ export function statusLabel(state: string): string {
  * (chart bars and slices), so a chart's Running is the chips' Running. */
 export function statusFill(theme: Theme, state: string): string {
   const color = statusColor(state);
-  if (!color || color === "default") return theme.palette.grey[600];
-  return theme.palette[color].main;
+  if (!color || color === "default") return theme.palette.grey[500];
+  // The tints' strong ends, as on the chips' dots.
+  return color === "info" ? theme.palette.primary.main : theme.palette[color].main;
 }

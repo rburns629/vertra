@@ -18,7 +18,15 @@ import { caller } from "./rpc.js";
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/kernel/client.js")>()),
   getExecutionStates: vi.fn((ids: string[]) =>
-    Promise.resolve(ids.map((executionId) => ({ executionId, state: "SUCCEEDED" }))),
+    Promise.resolve(
+      ids.map((executionId) => ({
+        executionId,
+        state: "SUCCEEDED",
+        steps: { SUCCEEDED: 3, SKIPPED: 1 },
+        createdAt: "2026-10-21T10:00:00.000Z",
+        updatedAt: "2026-10-21T10:06:02.000Z",
+      })),
+    ),
   ),
 }));
 
@@ -33,7 +41,7 @@ const ids: string[] = [];
 let base = 0;
 
 interface Page {
-  executions: { executionId: string; name: string; state: string }[];
+  executions: { executionId: string; name: string; state: string; template: string; steps: Record<string, number>; finishedAt?: string }[];
   nextCursor: string;
 }
 
@@ -43,6 +51,7 @@ interface Query {
   team?: string;
   search?: string;
   since?: string;
+  mine?: boolean;
 }
 
 const call = caller(() => app);
@@ -76,7 +85,9 @@ beforeAll(async () => {
     await db.insert(submittedExecutions).values({
       executionId,
       teams: [ours],
-      submittedBy: null,
+      // The newest is the caller's own, run from a template.
+      submittedBy: i === 4 ? user.id : null,
+      template: i === 4 ? "gcp-platform/app-on-cloud-run" : null,
       name: i === 1 ? "Nightly 50%_backup" : `${prefix}-run-${String(i)}`,
       payload: {},
       createdAt: new Date(base + offset),
@@ -123,6 +134,22 @@ describe("ListExecutions", () => {
     expect(names).not.toContain(`${prefix}-theirs`);
     expect(result.executions.filter((e) => ids.includes(e.executionId))).toHaveLength(5);
     expect(result.executions.every((e) => e.state === "EXECUTION_STATE_SUCCEEDED")).toBe(true);
+  });
+
+  it("says what each run was, how its steps went, and when it finished", async () => {
+    const newest = (await page({ team: ours, limit: 1 })).executions[0];
+    expect(newest).toMatchObject({
+      executionId: ids[4],
+      template: "gcp-platform/app-on-cloud-run",
+      steps: { SUCCEEDED: 3, SKIPPED: 1 },
+      finishedAt: "2026-10-21T10:06:02Z",
+    });
+    const older = (await page({ team: ours })).executions.find((e) => e.executionId === ids[0]);
+    expect(older?.template).toBe("");
+  });
+
+  it("narrows to the caller's own runs", async () => {
+    expect((await page({ mine: true })).executions.map((e) => e.executionId)).toEqual([ids[4]]);
   });
 
   it("searches names on the server, treating % and _ as plain characters", async () => {

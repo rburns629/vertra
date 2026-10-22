@@ -47,6 +47,7 @@ import {
   getExecutionStates,
   retryTask,
   submitExecution,
+  type ExecutionStateEntry,
 } from "../kernel/client.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { ensureStillRunnable, rerunTemplate } from "./templates.js";
@@ -710,8 +711,12 @@ export const ListQuery = Type.Object({
   since: Type.Optional(Type.String({ format: "date-time" })),
   team: Type.Optional(Type.String({ minLength: 1 })),
   search: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+  mine: Type.Optional(Type.Boolean()),
 });
 export const ExecutionId = Type.String({ format: "uuid" });
+
+/** A run in one of these has finished: its last change is when. */
+const TERMINAL_STATES = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
 
 /**
  * The executions the caller can see, newest first, a page at a time. Their
@@ -727,10 +732,12 @@ export async function listExecutions(
     since?: string | undefined;
     team?: string | undefined;
     search?: string | undefined;
+    /** Only the caller's own runs. */
+    mine?: boolean | undefined;
   },
   log: FastifyBaseLogger,
 ) {
-  const { limit = DEFAULT_PAGE_SIZE, cursor, since, team, search } = query;
+  const { limit = DEFAULT_PAGE_SIZE, cursor, since, team, search, mine } = query;
   let page;
   try {
     page = await listSubmittedExecutionsPage({
@@ -742,20 +749,30 @@ export async function listExecutions(
       since: since === undefined ? undefined : new Date(since),
       team,
       search,
+      submittedBy: mine ? (caller?.id ?? "") : undefined,
     });
   } catch (error) {
     if (error instanceof InvalidCursorError) throw new ApiError(400, "BAD_REQUEST", error.message);
     throw error;
   }
-  let statesByExecutionId = new Map<string, string>();
+  let statesByExecutionId = new Map<string, ExecutionStateEntry>();
   try {
     const states = await getExecutionStates(page.rows.map((row) => row.executionId));
-    statesByExecutionId = new Map(states.map((s) => [s.executionId, s.state]));
+    statesByExecutionId = new Map(states.map((s) => [s.executionId, s]));
   } catch (error) {
     log.warn({ err: error }, "Failed to fetch execution states from kernel-api");
   }
   return {
-    executions: page.rows.map((row) => ({ ...row, state: statesByExecutionId.get(row.executionId) ?? null })),
+    executions: page.rows.map((row) => {
+      const kernel = statesByExecutionId.get(row.executionId);
+      const finished = kernel && TERMINAL_STATES.has(kernel.state);
+      return {
+        ...row,
+        state: kernel?.state ?? null,
+        steps: kernel?.steps ?? {},
+        finishedAt: finished && kernel.updatedAt ? new Date(kernel.updatedAt) : null,
+      };
+    }),
     nextCursor: page.nextCursor,
   };
 }

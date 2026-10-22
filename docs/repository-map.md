@@ -220,7 +220,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/environment.tsx` | The install's public settings (its label, open registration, single sign-on), fetched once for the whole app. |
 | `src/components/` | Shared pieces: tables, page headers, status badges, metric cards, team cards, empty states, confirm dialogs, inline monospace (`Mono`). |
 | `src/pages/HomePage.tsx` | Dashboard: counts, executions over time, status breakdown, recent runs. |
-| `src/pages/ExecutionsListPage.tsx` | Every execution you can see, a page at a time; name and team filtered on the server. |
+| `src/pages/ExecutionsListPage.tsx` | Runs (`/runs`): every run you can see, a page at a time (yours, or by team and name, filtered on the server), each with what it ran, its steps' progress and how long it took; and the steps waiting for your team to approve. |
 | `src/pages/useExecutionWatch.ts` | Follows one execution over `WatchExecution` until it finishes, with its events and logs; reopens a stream that ends or drops, backs off when it can't connect; `resume()` after a retry or cancel. Tested alongside. |
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |

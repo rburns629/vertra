@@ -133,6 +133,14 @@ message ExecutionSummary {
   google.protobuf.Timestamp created_at = 5;
   // Unspecified if the kernel couldn't be asked.
   ExecutionState state = 6;
+  // Run from a template: <team>/<template>, or <team>/<product>.<action>
+  // for an action run alone. Empty for a DAG submitted as such.
+  string template = 7;
+  // How many of its steps are in each state (PENDING, RUNNING, SUCCEEDED,
+  // ...); empty if the kernel couldn't be asked.
+  map<string, int32> steps = 8;
+  // When it finished, once it has.
+  optional google.protobuf.Timestamp finished_at = 9;
 }
 
 message Execution {
@@ -239,6 +247,8 @@ message ListExecutionsRequest {
   string search = 3;
   // Only executions created since.
   google.protobuf.Timestamp since = 4;
+  // Only the caller's own.
+  bool mine = 5;
 }
 
 message ListExecutionsResponse {

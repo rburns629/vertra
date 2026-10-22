@@ -2335,6 +2335,27 @@
      "repeated": false,
      "optional": false,
      "comment": "Unspecified if the kernel couldn't be asked."
+    },
+    {
+     "name": "template",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Run from a template: <team>/<template>, or <team>/<product>.<action>\nfor an action run alone. Empty for a DAG submitted as such."
+    },
+    {
+     "name": "steps",
+     "type": "map of string to integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How many of its steps are in each state (PENDING, RUNNING, SUCCEEDED,\n...); empty if the kernel couldn't be asked."
+    },
+    {
+     "name": "finishedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": true,
+     "comment": "When it finished, once it has."
     }
    ]
   },
@@ -2752,6 +2773,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Only executions created since."
+    },
+    {
+     "name": "mine",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Only the caller's own."
     }
    ]
   },

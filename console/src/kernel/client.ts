@@ -306,6 +306,11 @@ export async function getExecution(executionId: string): Promise<KernelExecution
 export interface ExecutionStateEntry {
   executionId: string;
   state: string;
+  /** How many of its steps are in each state (PENDING, RUNNING, SUCCEEDED, ...). */
+  steps: Record<string, number>;
+  createdAt: string | null;
+  /** Its last change: when it finished, once it has. */
+  updatedAt: string | null;
 }
 
 /** Per call to kernel-api, which takes at most 1000. */
@@ -317,7 +322,15 @@ export async function getExecutionStates(executionIds: string[]): Promise<Execut
   const states: ExecutionStateEntry[] = [];
   for (let i = 0; i < executionIds.length; i += STATES_BATCH) {
     const page = await call(() => client().getExecutionStates({ executionIds: executionIds.slice(i, i + STATES_BATCH) }));
-    states.push(...page.states.map((entry) => ({ executionId: entry.executionId, state: executionState(entry.state) })));
+    states.push(
+      ...page.states.map((entry) => ({
+        executionId: entry.executionId,
+        state: executionState(entry.state),
+        steps: { ...entry.steps },
+        createdAt: iso(entry.createdAt),
+        updatedAt: iso(entry.updatedAt),
+      })),
+    );
   }
   return states;
 }

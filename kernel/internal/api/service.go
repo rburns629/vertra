@@ -403,17 +403,31 @@ func (s *Service) GetExecutionStates(ctx context.Context, req *connect.Request[k
 	if len(ids) == 0 {
 		return connect.NewResponse(out), nil
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT id::text, state FROM executions WHERE id = ANY($1::uuid[])`, ids)
+	// Each execution with its steps counted by state, in one query.
+	rows, err := s.Pool.Query(ctx, `
+		SELECT e.id::text, e.state, e.created_at, e.updated_at,
+		       COALESCE((SELECT jsonb_object_agg(t.state, t.n)
+		                 FROM (SELECT state, count(*)::int AS n FROM execution_tasks
+		                       WHERE execution_id = e.id GROUP BY state) t), '{}'::jsonb)
+		FROM executions e WHERE e.id = ANY($1::uuid[])`, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id, st string
-		if err := rows.Scan(&id, &st); err != nil {
+		var created, updated time.Time
+		var steps map[string]int32
+		if err := rows.Scan(&id, &st, &created, &updated, &steps); err != nil {
 			return nil, err
 		}
-		out.States = append(out.States, &kernelv1.ExecutionStateEntry{ExecutionId: id, State: executionState(st)})
+		out.States = append(out.States, &kernelv1.ExecutionStateEntry{
+			ExecutionId: id,
+			State:       executionState(st),
+			Steps:       steps,
+			CreatedAt:   timestamppb.New(created),
+			UpdatedAt:   timestamppb.New(updated),
+		})
 	}
 	return connect.NewResponse(out), rows.Err()
 }

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -386,6 +387,14 @@ func TestStatesAnswerForTheIDsThatExist(t *testing.T) {
 	}
 	if len(res.Msg.States) != 1 || res.Msg.States[0].ExecutionId != id || res.Msg.States[0].State != kernelv1.ExecutionState_EXECUTION_STATE_PENDING {
 		t.Fatalf("states = %v", res.Msg.States)
+	}
+	// With its steps counted by state, and when it was made and last changed.
+	got := res.Msg.States[0]
+	if !maps.Equal(got.Steps, map[string]int32{"READY": 1}) {
+		t.Errorf("steps = %v", got.Steps)
+	}
+	if got.CreatedAt == nil || got.UpdatedAt == nil || got.UpdatedAt.AsTime().Before(got.CreatedAt.AsTime()) {
+		t.Errorf("created %v, updated %v", got.CreatedAt, got.UpdatedAt)
 	}
 	ids := func(n int) []string {
 		out := make([]string, n)

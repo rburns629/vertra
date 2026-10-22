@@ -250,6 +250,12 @@ message GetExecutionStatesResponse {
 message ExecutionStateEntry {
   string execution_id = 1;
   ExecutionState state = 2;
+  // How many of its steps are in each state (PENDING, RUNNING, SUCCEEDED,
+  // ...), for a list's progress.
+  map<string, int32> steps = 3;
+  google.protobuf.Timestamp created_at = 4;
+  // Its last change: when it finished, once it has.
+  google.protobuf.Timestamp updated_at = 5;
 }
 
 message ListExecutionEventsRequest {

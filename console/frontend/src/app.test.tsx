@@ -7,7 +7,7 @@
  * with canned JSON (an empty message when a test gives none), so these
  * tests check what the pages do with the API, whatever the pages look like.
  */
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { FailureSchema } from "./gen/vertra/console/v1/common_pb.js";
 import { CssBaseline, ThemeProvider } from "@mui/material";
@@ -58,8 +58,10 @@ beforeAll(() => {
     let body: Record<string, unknown> = {};
     const raw = init?.body;
     if (typeof raw === "string") body = JSON.parse(raw || "{}") as Record<string, unknown>;
-    else if (raw instanceof Uint8Array) {
-      const text = new TextDecoder().decode(streaming ? raw.subarray(5) : raw);
+    else if (raw && ArrayBuffer.isView(raw)) {
+      // A byte array, possibly from another realm (jsdom's), so not instanceof.
+      const bytes = new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+      const text = new TextDecoder().decode(streaming ? bytes.subarray(5) : bytes);
       body = JSON.parse(text || "{}") as Record<string, unknown>;
     }
     return connectResponse(key, body, streaming);
@@ -145,6 +147,45 @@ describe("the navigation", () => {
     await renderAt("/", MEMBER);
     const memberNav = await screen.findByRole("navigation", { name: /main/i });
     expect(within(memberNav).queryByRole("link", { name: /admin/i })).toBeNull();
+  });
+});
+
+describe("runs", () => {
+  const RUN = {
+    executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11",
+    name: "orders-api first deploy",
+    teams: ["azure-apps"],
+    createdAt: "2026-10-22T14:02:00Z",
+    state: "EXECUTION_STATE_RUNNING",
+    template: "gcp-platform/app-on-cloud-run",
+    steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 },
+  };
+
+  it("says what each run was and how far its steps got", async () => {
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [RUN] } });
+    expect(await screen.findByRole("link", { name: "orders-api first deploy" })).toBeTruthy();
+    expect(screen.getByText("app-on-cloud-run · gcp-platform")).toBeTruthy();
+    expect(screen.getByText("2 of 4")).toBeTruthy();
+    expect(screen.getAllByText("Running").length).toBeGreaterThan(0);
+  });
+
+  it("asks the server for your own runs, and lists the steps waiting for your team to approve", async () => {
+    const asked: Record<string, unknown>[] = [];
+    await renderAt("/runs", MEMBER, {
+      "ExecutionService/ListExecutions": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return { executions: [RUN] };
+      },
+      "ExecutionService/ListPendingApprovals": {
+        approvals: [{ executionId: RUN.executionId, executionName: "orders-api prod database", taskId: "database", team: "gcp-platform", requestedBy: "sam@acme.com", canDecide: true }],
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Mine" }));
+    await waitFor(() => { expect(asked.at(-1)).toMatchObject({ mine: true }); });
+
+    fireEvent.click(screen.getByRole("button", { name: /to approve \(1\)/i }));
+    expect(await screen.findByRole("link", { name: "orders-api prod database" })).toBeTruthy();
+    expect(screen.getByText("sam@acme.com")).toBeTruthy();
   });
 });
 
