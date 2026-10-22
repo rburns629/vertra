@@ -233,6 +233,30 @@ func (g *GitHub) DeleteSecret(ctx context.Context, repo, env, name string) error
 	return err
 }
 
+// RepositorySecrets are the names of the repository-level Actions secrets:
+// every workflow run gets them, a pull request's from a branch of the
+// repository included (one that edits a workflow can print them). Only a
+// main-only Environment keeps a secret from pull requests.
+func (g *GitHub) RepositorySecrets(ctx context.Context, repo string) ([]string, error) {
+	body, err := g.api(ctx, "GET", "/repos/"+repo+"/actions/secrets?per_page=100", "")
+	if err != nil {
+		return nil, err
+	}
+	var list struct {
+		Secrets []struct {
+			Name string `json:"name"`
+		} `json:"secrets"`
+	}
+	if err := json.Unmarshal([]byte(body), &list); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(list.Secrets))
+	for _, s := range list.Secrets {
+		names = append(names, s.Name)
+	}
+	return names, nil
+}
+
 // CreateEnvironment creates an Environment limited to the main branch,
 // with reviewers (user ids) when given. It fails where the plan has no
 // Environments (a private repository on GitHub Free).

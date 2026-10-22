@@ -304,6 +304,17 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 			}
 		}
 	}
+	// Secrets added by hand at repository level (a signing key, a registry
+	// password) reach every pull request's workflows; they belong in the
+	// main-only Environment, or not at all (OIDC, keyless signing).
+	if names, err := gh.RepositorySecrets(ctx, repo); err == nil && len(names) > 0 {
+		where := "the catalog-publish Environment (main only)"
+		if !environments {
+			where = "nowhere: this repository has no Environments, so use OIDC for the registry and keyless signing, which need no secret"
+		}
+		fmt.Fprintf(out, "Warning: repository-level secrets %s are given to every pull request's workflows, which can print them. Move them to %s.\n",
+			strings.Join(names, ", "), where)
+	}
 	if push {
 		fmt.Fprintln(out, "Pushing main...")
 		if err := gh.Push(ctx, work, repo); err != nil {
