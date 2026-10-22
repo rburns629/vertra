@@ -32,6 +32,8 @@ export interface User {
   isAdmin: boolean;
   isBot: boolean;
   passwordChangedAt: Date | null;
+  // A password someone else set: only changing it is allowed until then.
+  mustChangePassword: boolean;
   // Its single sign-on identity, once bound (auth/oidc.ts).
   oidcSubject: string | null;
 }
@@ -46,8 +48,8 @@ export async function findUserById(id: string): Promise<User | undefined> {
   return user;
 }
 
-export async function createUser(email: string, passwordHash: string | null): Promise<User> {
-  const [user] = await db.insert(users).values({ email, passwordHash }).returning();
+export async function createUser(email: string, passwordHash: string | null, mustChangePassword = false): Promise<User> {
+  const [user] = await db.insert(users).values({ email, passwordHash, mustChangePassword }).returning();
   if (!user) throw new Error("Insert returned no row");
   return user;
 }
@@ -212,11 +214,12 @@ export async function removeTeamMember(userId: string, teamId: string): Promise<
 }
 
 /** Also stamps passwordChangedAt, which is what revokes every session
- * issued before this call (see auth/plugin.ts). */
-export async function setUserPassword(userId: string, passwordHash: string): Promise<void> {
+ * issued before this call (see auth/plugin.ts). mustChange: set by someone
+ * other than its owner, who must change it before doing anything else. */
+export async function setUserPassword(userId: string, passwordHash: string, mustChange = false): Promise<void> {
   await db
     .update(users)
-    .set({ passwordHash, passwordChangedAt: new Date() })
+    .set({ passwordHash, passwordChangedAt: new Date(), mustChangePassword: mustChange })
     .where(eq(users.id, userId));
 }
 

@@ -26,7 +26,7 @@ async function main(): Promise<void> {
     const password = randomBytes(18).toString("base64url");
     const updated = await db
       .update(schema.users)
-      .set({ passwordHash: await hashPassword(password), passwordChangedAt: new Date() })
+      .set({ passwordHash: await hashPassword(password), passwordChangedAt: new Date(), mustChangePassword: true })
       .where(and(eq(schema.users.email, email), eq(schema.users.isAdmin, true), eq(schema.users.isBot, false)))
       .returning({ id: schema.users.id });
     if (updated.length === 0) {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -17,13 +18,19 @@ export function AccountPage() {
   return (
     <Box>
       <PageHeader title="Account" subtitle={user?.email} />
+      {user?.mustChangePassword && (
+        <Alert severity="warning" sx={{ mb: 2, maxWidth: 480 }}>
+          An admin set this password. Choose your own to carry on: nothing else works until you do.
+        </Alert>
+      )}
       <ChangePasswordCard />
     </Box>
   );
 }
 
 function ChangePasswordCard() {
-  const { adoptToken } = useAuth();
+  const { adoptToken, refresh, user } = useAuth();
+  const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,6 +49,12 @@ function ChangePasswordCard() {
       // The change revokes this very session, so the new token has to be
       // swapped in before anything else makes a request.
       adoptToken(await changePassword(currentPassword, newPassword));
+      // Their own password now: everything works again.
+      if (user?.mustChangePassword) {
+        await refresh();
+        navigate("/");
+        return;
+      }
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

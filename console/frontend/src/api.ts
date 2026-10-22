@@ -161,6 +161,8 @@ export interface Me {
   /** The teams in teamNames this person maintains (manages). */
   maintainerOf: string[];
   isAdmin: boolean;
+  /** Signed in with a password someone else set: nothing works until it's changed. */
+  mustChangePassword: boolean;
 }
 
 export interface Team {
@@ -187,7 +189,14 @@ export async function login(email: string, password: string): Promise<string> {
 
 export async function getMe(): Promise<Me> {
   const me = await call(() => auth.getMe({}));
-  return { id: me.userId, email: me.email, teamNames: me.teamNames, maintainerOf: me.maintainerOf, isAdmin: me.isAdmin };
+  return {
+    id: me.userId,
+    email: me.email,
+    teamNames: me.teamNames,
+    maintainerOf: me.maintainerOf,
+    isAdmin: me.isAdmin,
+    mustChangePassword: me.mustChangePassword,
+  };
 }
 
 export async function createTeam(name: string): Promise<Team> {

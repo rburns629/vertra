@@ -2017,6 +2017,13 @@
      "repeated": true,
      "optional": false,
      "comment": "The teams in team_names this person maintains."
+    },
+    {
+     "name": "mustChangePassword",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Signed in with a password someone else set (a new account's, an\nadmin's reset): nothing but ChangePassword works until it's changed\n(permission_denied, PASSWORD_CHANGE_REQUIRED)."
     }
    ]
   },

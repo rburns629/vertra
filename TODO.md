@@ -583,8 +583,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   admin's password kept working. Left: Google Groups mapped to
   teams (Cloud Identity's Groups API, with the Groups Reader role); Entra ID
   and Okta (the flow is generic, untried); `vertra` setting it up.
-- [ ] **Force a password change on first sign-in** for admin-created
-  accounts.
+- [x] **Force a password change on first sign-in** for admin-created
+  accounts (done 2026-10-22): a password someone else set (a new account's,
+  an admin's reset of someone else's, `vertra admin reset-password`) marks
+  the account (`users.must_change_password`); until its owner changes it,
+  a password session may only GetMe and ChangePassword
+  (`PASSWORD_CHANGE_REQUIRED`), the gateway refuses it, and the console
+  sends them to their account page. Single sign-on and bots aren't held
+  back. The chart's bootstrap admin isn't marked (kind's fixed password).
 - [x] **Limit what steps can reach inside the cluster** (S3, done
   2026-10-21): the console writes `vertra-default-deny` into every team
   namespace (`teamNetwork.ts`; with the namespace, and on every policy

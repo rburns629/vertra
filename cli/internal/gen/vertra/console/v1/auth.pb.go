@@ -367,9 +367,13 @@ type GetMeResponse struct {
 	TeamNames []string               `protobuf:"bytes,3,rep,name=team_names,json=teamNames,proto3" json:"team_names,omitempty"`
 	IsAdmin   bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
 	// The teams in team_names this person maintains.
-	MaintainerOf  []string `protobuf:"bytes,5,rep,name=maintainer_of,json=maintainerOf,proto3" json:"maintainer_of,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaintainerOf []string `protobuf:"bytes,5,rep,name=maintainer_of,json=maintainerOf,proto3" json:"maintainer_of,omitempty"`
+	// Signed in with a password someone else set (a new account's, an
+	// admin's reset): nothing but ChangePassword works until it's changed
+	// (permission_denied, PASSWORD_CHANGE_REQUIRED).
+	MustChangePassword bool `protobuf:"varint,6,opt,name=must_change_password,json=mustChangePassword,proto3" json:"must_change_password,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GetMeResponse) Reset() {
@@ -435,6 +439,13 @@ func (x *GetMeResponse) GetMaintainerOf() []string {
 		return x.MaintainerOf
 	}
 	return nil
+}
+
+func (x *GetMeResponse) GetMustChangePassword() bool {
+	if x != nil {
+		return x.MustChangePassword
+	}
+	return false
 }
 
 type ChangePasswordRequest struct {
@@ -554,14 +565,15 @@ const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
 	"\rLoginResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"\x0e\n" +
-	"\fGetMeRequest\"\x9d\x01\n" +
+	"\fGetMeRequest\"\xcf\x01\n" +
 	"\rGetMeResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1d\n" +
 	"\n" +
 	"team_names\x18\x03 \x03(\tR\tteamNames\x12\x19\n" +
 	"\bis_admin\x18\x04 \x01(\bR\aisAdmin\x12#\n" +
-	"\rmaintainer_of\x18\x05 \x03(\tR\fmaintainerOf\"e\n" +
+	"\rmaintainer_of\x18\x05 \x03(\tR\fmaintainerOf\x120\n" +
+	"\x14must_change_password\x18\x06 \x01(\bR\x12mustChangePassword\"e\n" +
 	"\x15ChangePasswordRequest\x12)\n" +
 	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\".\n" +

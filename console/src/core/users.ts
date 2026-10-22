@@ -70,7 +70,8 @@ export async function createAccount(
   // with the provider as this email, which binds the account to them then.
   const ssoOnly = config.oidc && !input.admin && teamsRequireSso;
   const temporaryPassword = ssoOnly ? "" : randomBytes(18).toString("base64url");
-  const user = await createUser(email, temporaryPassword ? await hashPassword(temporaryPassword) : null);
+  // Whoever receives a temporary password must change it first.
+  const user = await createUser(email, temporaryPassword ? await hashPassword(temporaryPassword) : null, temporaryPassword !== "");
   // A maintainer: often a new team's first person, who must be able to
   // manage it. Its maintainers can make them a member afterwards.
   for (const teamId of teamIds) await addTeamMember(user.id, teamId, "maintainer");
@@ -138,6 +139,7 @@ export async function resetPassword(
       "Bot accounts have no password -- revoke and reissue their API token instead.",
     );
   }
-  await setUserPassword(user.id, await hashPassword(newPassword));
+  // Someone else's: its owner must change it first. An admin's own: theirs.
+  await setUserPassword(user.id, await hashPassword(newPassword), user.id !== caller?.id);
   log?.info({ targetUserId: user.id, resetBy: caller?.id }, "password reset by admin");
 }

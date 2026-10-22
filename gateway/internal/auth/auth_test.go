@@ -112,6 +112,16 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 	if _, err := r.Resolve(ctx, "Bearer "+same); err != nil {
 		t.Errorf("the session the change issued, in the same second: %v", err)
 	}
+	// A password an admin set: refused until its owner changes it.
+	_, err = db.Exec(ctx, `UPDATE users SET must_change_password = true WHERE id = $1`, userID)
+	must(err)
+	if _, err := r.Resolve(ctx, "Bearer "+same); err != ErrUnauthenticated {
+		t.Errorf("a session whose password must be changed: %v", err)
+	}
+	ssoSession := jwt(t, secret, "HS256", map[string]any{"userId": userID, "sso": true, "iat": now.Unix(), "exp": now.Unix() + 60})
+	if _, err := r.Resolve(ctx, "Bearer "+ssoSession); err != nil {
+		t.Errorf("a single sign-on session, whatever the password: %v", err)
+	}
 	// A revoked token.
 	_, err = db.Exec(ctx, `UPDATE api_tokens SET revoked_at = now() WHERE user_id = $1`, botID)
 	must(err)

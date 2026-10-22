@@ -104,6 +104,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
         teamNames: caller.teamNames,
         maintainerOf: caller.maintainerOf,
         isAdmin: user.isAdmin,
+        mustChangePassword: caller.mustChangePassword ?? false,
       };
     },
 
@@ -126,7 +127,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       if (newPassword === currentPassword) {
         throw badRequest("New password must be different from the current one.", "newPassword");
       }
-      await setUserPassword(user.id, await hashPassword(newPassword));
+      await setUserPassword(user.id, await hashPassword(newPassword), false);
       logOf(ctx).info({ userId: user.id }, "password changed");
       return { token: app.jwt.sign({ userId: user.id }) };
     },

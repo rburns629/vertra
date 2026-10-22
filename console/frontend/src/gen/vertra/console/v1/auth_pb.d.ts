@@ -179,6 +179,15 @@ export declare type GetMeResponse = Message<"vertra.console.v1.GetMeResponse"> &
    * @generated from field: repeated string maintainer_of = 5;
    */
   maintainerOf: string[];
+
+  /**
+   * Signed in with a password someone else set (a new account's, an
+   * admin's reset): nothing but ChangePassword works until it's changed
+   * (permission_denied, PASSWORD_CHANGE_REQUIRED).
+   *
+   * @generated from field: bool must_change_password = 6;
+   */
+  mustChangePassword: boolean;
 };
 
 /**

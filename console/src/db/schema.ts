@@ -112,6 +112,10 @@ export const users = pgTable("users", {
   // session, instead of only affecting future logins. Null means never
   // changed since the account was created.
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+  // Its password was set by someone else (an admin's new account or reset,
+  // `vertra admin reset-password`): until its owner changes it, a session
+  // it signs in may only change it (rpc/interceptors.ts).
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   // The identity provider's id for this person (OIDC's iss and sub), bound
   // at their first single sign-on (auth/oidc.ts). From then on only that
   // provider account signs in as them: a new account given the same email

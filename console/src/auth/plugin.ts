@@ -29,7 +29,16 @@ declare module "fastify" {
      * is non-empty only for an automation API token (auth/scopes.ts). */
     // teamNames: every team the caller is in; maintainerOf: the ones it
     // maintains (auth/access.ts).
-    authUser?: { id: string; teamNames: string[]; maintainerOf: string[]; isAdmin: boolean; scopes: string[] };
+    // mustChangePassword: a password session whose password someone else
+    // set; it may only change it (rpc/interceptors.ts).
+    authUser?: {
+      id: string;
+      teamNames: string[];
+      maintainerOf: string[];
+      isAdmin: boolean;
+      scopes: string[];
+      mustChangePassword?: boolean;
+    };
   }
 }
 
@@ -107,7 +116,8 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
   }
   const teamNames = roles.map((row) => row.name);
   const maintainerOf = roles.filter((row) => row.role === "maintainer").map((row) => row.name);
-  return { authUser: { id: user.id, teamNames, maintainerOf, isAdmin: user.isAdmin, scopes } };
+  const mustChangePassword = passwordSession && user.mustChangePassword;
+  return { authUser: { id: user.id, teamNames, maintainerOf, isAdmin: user.isAdmin, scopes, mustChangePassword } };
 }
 
 const authPlugin: FastifyPluginAsync = async (app) => {

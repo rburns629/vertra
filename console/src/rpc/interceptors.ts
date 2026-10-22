@@ -33,6 +33,11 @@ export const PUBLIC = new Set(
   ),
 );
 
+/** All a session may do while its password must be changed. */
+const WHILE_CHANGING_PASSWORD = new Set(
+  [AuthService.method.getMe, AuthService.method.changePassword].map((m) => procedure(m.parent, m)),
+);
+
 /** Changes nothing worth recording, or carries secrets: never audited. */
 const UNAUDITED = new Set(
   [AuthService.method.register, AuthService.method.login, AuthService.method.changePassword].map((m) =>
@@ -130,8 +135,14 @@ export const audit: Interceptor = (next) => async (req) => {
 export const requireCaller: Interceptor = (next) => async (req) => {
   const authError = req.contextValues.get(kAuthError);
   if (authError !== undefined) throw authError;
-  if (!PUBLIC.has(procedure(req.service, req.method)) && !req.contextValues.get(kCaller)) {
+  const name = procedure(req.service, req.method);
+  const caller = req.contextValues.get(kCaller);
+  if (!PUBLIC.has(name) && !caller) {
     throw unauthenticated(req.contextValues.get(kAuthProblem));
+  }
+  // A password someone else set: nothing but changing it until then.
+  if (caller?.mustChangePassword && !WHILE_CHANGING_PASSWORD.has(name)) {
+    throw rpcError(Code.PermissionDenied, "PASSWORD_CHANGE_REQUIRED", "Change your password first: an admin set this one.");
   }
   return next(req);
 };

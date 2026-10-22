@@ -313,6 +313,11 @@ would open the strict team's runs and secrets too. Admins are exempt, as the
 way in if the provider fails. While single sign-on is off the setting has
 no effect, so nobody is locked out. Bots keep their tokens.
 
+A password someone else set (a new account's temporary one, an admin's
+reset of someone else's, `vertra admin reset-password`) has to be changed
+before anything else: until then its session may only read who it is and
+change it (`PASSWORD_CHANGE_REQUIRED`), and the gateway refuses it.
+
 ## In the browser
 
 The console sends a Content-Security-Policy on every response: scripts only

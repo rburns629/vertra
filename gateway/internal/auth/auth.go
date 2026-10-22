@@ -64,6 +64,7 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 	}
 	var c Caller
 	var passwordChanged *time.Time
+	var mustChangePassword bool
 	passwordSession := false
 	if strings.HasPrefix(bearer, APITokenPrefix) {
 		sum := sha256.Sum256([]byte(bearer))
@@ -81,8 +82,8 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 		if err != nil {
 			return nil, ErrUnauthenticated
 		}
-		err = r.DB.QueryRow(ctx, `SELECT id::text, email, is_admin, is_bot, password_changed_at FROM users WHERE id::text = $1`, claims.UserID).
-			Scan(&c.UserID, &c.Email, &c.IsAdmin, &c.IsBot, &passwordChanged)
+		err = r.DB.QueryRow(ctx, `SELECT id::text, email, is_admin, is_bot, password_changed_at, must_change_password FROM users WHERE id::text = $1`, claims.UserID).
+			Scan(&c.UserID, &c.Email, &c.IsAdmin, &c.IsBot, &passwordChanged, &mustChangePassword)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUnauthenticated
 		}
@@ -95,6 +96,11 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 			return nil, ErrUnauthenticated
 		}
 		passwordSession = !claims.SSO
+		// A password someone else set: the console allows nothing but
+		// changing it, and neither does the gateway.
+		if passwordSession && mustChangePassword {
+			return nil, ErrUnauthenticated
+		}
 	}
 	rows, err := r.DB.Query(ctx, `SELECT t.name, t.require_sso FROM team_memberships m JOIN teams t ON t.id = m.team_id
 		WHERE m.user_id::text = $1 ORDER BY t.name`, c.UserID)

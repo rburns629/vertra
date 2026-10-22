@@ -68,6 +68,10 @@ message GetMeResponse {
   bool is_admin = 4;
   // The teams in team_names this person maintains.
   repeated string maintainer_of = 5;
+  // Signed in with a password someone else set (a new account's, an
+  // admin's reset): nothing but ChangePassword works until it's changed
+  // (permission_denied, PASSWORD_CHANGE_REQUIRED).
+  bool must_change_password = 6;
 }
 
 message ChangePasswordRequest {
