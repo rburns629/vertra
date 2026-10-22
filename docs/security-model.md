@@ -190,6 +190,18 @@ whoever ran it as well as to its steps' teams: they may see, cancel, retry
 and rerun it (a rerun runs the template again, as it is now; a retry is
 refused once it, or a step's action, is no longer shared).
 
+## Who sees a run that spans teams
+
+A template run can have steps in several teams' namespaces: the team it was
+run for (its consumer) and the teams whose products it uses (its
+providers). Its owners (admins, whoever submitted it, members of the team
+it was run for; for a raw DAG, every team in it) see every step, so a
+consumer sees what each provider's step returned. A provider's member sees
+their own team's steps in full and, of the rest, only each step's product,
+state, timing and failure code: never its inputs, outputs, failure message,
+the run's template parameters or its logs (`console/src/core/runView.ts`,
+in the run's details, its events and logs, and Observe's log search).
+
 ## Who sees a step's logs
 
 A step's output is stored (the kernel redacts recognizable credentials

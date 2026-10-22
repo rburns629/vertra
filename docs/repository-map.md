@@ -170,6 +170,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/templates.ts` | Templates: what a person may run (templates and shared actions), running one with parameters only, each step built from its product; reruns of a template's run. |
+| `core/runView.ts` | How much of a run a caller sees: its owners every step; a provider team's member only its own steps in full (the rest: state and failure codes). |
 | `core/logs.ts` | Observe's log search over Loki, each query carrying the caller's visibility: a step's lines to its team, its INFO to anyone who may see its run, the platform's to admins. |
 | `core/observe.ts` | Observe for everyone: the security checks (what this install enforces and doesn't yet, what the cluster refused this week, a run linked only for those who may see it, every image allowed to run and its scan), the metrics (from kernel-api's `GetStats`, each image named by its product, a hidden one only for its team), and the audit log as each caller may see it (`listAudit`). |
 | `core/apis.ts` | API products: who sees and may call each, whether it's live, held (its backend's host isn't allowed) or paused, and pausing one. |
@@ -282,6 +283,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `logs.test.ts` | The LogQL the log search sends (a stand-in Loki records it): each caller's visibility, names checked, typed text quoted; LOGS_OFF. |
 | `metrics.test.ts` | The console's Prometheus metrics: calls counted by procedure and code, served on their own port and not on the console's. |
 | `log-levels.test.ts` | A step's log lines by level: INFO for everyone who can see the run, the rest for its team. |
+| `run-view.test.ts` | Who sees what of a run across teams: the consumer and submitter everything, a provider's member their own steps in full and only codes of the rest (details, events, logs); a raw DAG all its teams. |
 | `password-change.test.ts` | A password someone else set: nothing but changing it until then (an admin's own reset and single sign-on aren't held back). |
 | `oidc.test.ts` | Signing in with single sign-on against a stand-in provider: new accounts, binding an existing one once, every refusal (domain, unverified email, signature, nonce, state); a team requiring it refusing its members' passwords and password sessions, admins exempt, nothing while it's off. |
 | `reset-admin.test.ts` | Resetting a lost admin password: printed once, sessions revoked, audited, admins only. |

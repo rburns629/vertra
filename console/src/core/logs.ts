@@ -5,8 +5,8 @@
  * console sends carries the caller's visibility:
  *
  * - a step's lines, every level, to its own team (its namespace);
- * - its INFO lines to anyone else who may see its run (its submitter, or a
- *   member of any team in it: the run page's rule);
+ * - its INFO lines to the run's other owners (its submitter, the team it
+ *   was run for; core/runView.ts), never to another provider's member;
  * - the platform's own logs to admins only.
  *
  * Nothing the caller typed reaches a query unchecked: teams and levels are
@@ -15,13 +15,14 @@
  */
 import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
-import { and, arrayOverlaps, desc, eq, gte, or } from "drizzle-orm";
+import { and, arrayOverlaps, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import { ApiError } from "../apiError.js";
 import { canActForTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { submittedExecutions } from "../db/schema.js";
+import { runView } from "./runView.js";
 
 const LEVELS = ["debug", "info", "warn", "error"] as const;
 const HOUR_MS = 3_600_000;
@@ -70,15 +71,23 @@ function signedIn(caller: AuthUser | undefined): AuthUser {
   return caller;
 }
 
-/** The runs a caller may see that started since `since`, newest first. */
-async function visibleRuns(who: AuthUser, since: Date): Promise<string[]> {
+/**
+ * The runs a caller owns (sees every step of, core/runView.ts) that started
+ * since `since`, newest first: submitted, a template run for one of their
+ * teams, or a raw DAG of their teams.
+ */
+async function ownedRuns(who: AuthUser, since: Date): Promise<string[]> {
   const rows = await db
     .select({ executionId: submittedExecutions.executionId })
     .from(submittedExecutions)
     .where(
       and(
         gte(submittedExecutions.createdAt, new Date(since.getTime() - 24 * HOUR_MS)),
-        or(eq(submittedExecutions.submittedBy, who.id), arrayOverlaps(submittedExecutions.teams, who.teamNames)),
+        or(
+          eq(submittedExecutions.submittedBy, who.id),
+          and(isNull(submittedExecutions.template), arrayOverlaps(submittedExecutions.teams, who.teamNames)),
+          inArray(submittedExecutions.onBehalfOf, who.teamNames.length > 0 ? who.teamNames : [""]),
+        ),
       ),
     )
     .orderBy(desc(submittedExecutions.createdAt))
@@ -86,11 +95,12 @@ async function visibleRuns(who: AuthUser, since: Date): Promise<string[]> {
   return rows.map((r) => r.executionId);
 }
 
-/** Whether `who` may see this run at all (the run page's rule). */
-async function maySeeRun(who: AuthUser, executionId: string): Promise<boolean> {
-  if (who.isAdmin) return true;
+/** How much of this run `who` sees: none (not theirs at all), their own steps, or every step. */
+async function runAccess(who: AuthUser, executionId: string): Promise<"none" | "own" | "full"> {
+  if (who.isAdmin) return "full";
   const [run] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.executionId, executionId));
-  return run !== undefined && (run.submittedBy === who.id || run.teams.some((team) => canActForTeam(who, team)));
+  if (!run || !(run.submittedBy === who.id || run.teams.some((team) => canActForTeam(who, team)))) return "none";
+  return runView(who, run).full ? "full" : "own";
 }
 
 /** The LogQL queries that together are what `who` may see of this search. */
@@ -105,7 +115,8 @@ export async function visibleQueries(who: AuthUser, input: SearchLogsInput, sinc
     if (!who.isAdmin) throw new ApiError(403, "FORBIDDEN", "The platform's own logs are for admins.", Code.PermissionDenied);
     return [`{component="platform"${level}}${pipeline}`];
   }
-  if (input.executionId && !(await maySeeRun(who, input.executionId))) {
+  const access = input.executionId ? await runAccess(who, input.executionId) : "full";
+  if (access === "none") {
     throw new ApiError(404, "NOT_FOUND", "No such run, or you can't see it.", Code.NotFound);
   }
   const team = input.team ? `, namespace=${quoted(input.team)}` : "";
@@ -115,9 +126,9 @@ export async function visibleQueries(who: AuthUser, input: SearchLogsInput, sinc
   // Every level of the caller's own teams' steps.
   const own = who.teamNames.filter((t) => !input.team || t === input.team);
   if (own.length > 0) queries.push(`{component="step", namespace=~${oneOf(own)}${level}}${pipeline}`);
-  // INFO lines of other teams' steps, in runs the caller may see.
-  if (!input.level || input.level === "info") {
-    const runs = input.executionId ? [input.executionId] : await visibleRuns(who, since);
+  // INFO lines of other teams' steps, in runs the caller owns.
+  if ((!input.level || input.level === "info") && access === "full") {
+    const runs = input.executionId ? [input.executionId] : await ownedRuns(who, since);
     const elsewhere = who.teamNames.length > 0 ? `, namespace!~${oneOf(who.teamNames)}` : "";
     if (runs.length > 0 && !(input.team && who.teamNames.includes(input.team))) {
       queries.push(`{component="step", level="info"${team}${elsewhere}} | execution_id=~${oneOf(runs)}${pipeline}`);

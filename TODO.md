@@ -612,9 +612,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   created, instead of cluster-wide fenced by an admission policy.
 - [ ] **Ship audit log lines to a write-once store**: the audit log lives in
   the console's database, which its writers could change.
-- [ ] **Decide who may read a multi-team execution.** Cancel and retry need
-  every team; reads need one, so a member of team A sees team B's outputs
-  and logs in a shared DAG. Filter by team, or require every team.
+- [x] **Decide who may read a multi-team execution** (decided and done
+  2026-10-22, `console/src/core/runView.ts`): a run's owners (admins, its
+  submitter, the team a template run was for; a raw DAG's every team) see
+  every step; a provider team's member sees their own steps in full and, of
+  the rest, only product, state, timing and failure code, never inputs,
+  outputs, failure messages, template parameters or logs, in the run's
+  details, events, logs and Observe's log search. Cancel and retry still
+  need every team.
 - [ ] **Have the GKE deploy use released images** (`make gke-deploy` still
   builds from the working copy with Cloud Build); the release workflow
   builds, scans and signs them in CI.

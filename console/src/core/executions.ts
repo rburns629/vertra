@@ -52,6 +52,7 @@ import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { ensureStillRunnable, rerunTemplate } from "./templates.js";
 import { mayDecide, taskTeams } from "./approvals.js";
 import { visibleLines } from "../logLevels.js";
+import { failureCodeOnly, runView, visibleEvent, visiblePayload } from "./runView.js";
 import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { scanBlocker } from "../scanning.js";
@@ -851,11 +852,18 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
   }
   const helped = await failuresExplained(detail.tasks, submitted.payload);
   const teamOf = taskTeams(submitted.payload);
+  // A provider's member sees only their own steps in full (runView.ts).
+  const view = runView(caller, submitted);
   return {
     ...detail,
     tasks: detail.tasks.map((t) => ({
       ...t,
-      attempts: t.attempts.map((a) => ({ ...a, requestedBy: emails.get(a.requestedBy) ?? "" })),
+      ...(view.sees(t.taskId) ? {} : { outputs: null, failure: failureCodeOnly(t.failure) }),
+      attempts: t.attempts.map((a) => ({
+        ...a,
+        requestedBy: emails.get(a.requestedBy) ?? "",
+        ...(view.sees(t.taskId) ? {} : { failure: failureCodeOnly(a.failure) }),
+      })),
       help: helped.get(t.taskId) ?? null,
       approval: t.approvalRequired
         ? {
@@ -870,33 +878,39 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
     teams: submitted.teams,
     submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),
     createdAt: submitted.createdAt,
-    payload: submitted.payload,
+    payload: visiblePayload(submitted.payload, view),
     runBlocked: blocker,
     template: submitted.template,
-    templateParameters: submitted.templateParameters,
+    // The consumer's parameters, theirs to see.
+    templateParameters: view.full ? submitted.templateParameters : null,
     onBehalfOf: submitted.onBehalfOf,
   };
 }
 
 export async function executionEvents(caller: AuthUser | undefined, executionId: string, after: number | undefined) {
-  await loadExecution(executionId, caller, "any");
-  return getExecutionEvents(executionId, after);
+  const submitted = await loadExecution(executionId, caller, "any");
+  const view = runView(caller, submitted);
+  const page = await getExecutionEvents(executionId, after);
+  return { ...page, events: page.events.map((event) => visibleEvent(event, view)) };
 }
 
 /**
  * Every step's captured output, as the caller may see it: everything for
- * the step's team and admins, only its INFO lines for anyone else who can
- * see the run (logLevels.ts).
+ * the step's team and admins, only its INFO lines for the run's other
+ * owners (logLevels.ts), and nothing for a provider's member outside their
+ * own steps (runView.ts).
  */
 export async function executionLogs(caller: AuthUser | undefined, executionId: string) {
   const submitted = await loadExecution(executionId, caller, "any");
   const teams = taskTeams(submitted.payload);
+  const view = runView(caller, submitted);
   const logs = await getExecutionLogs(executionId);
   return {
     tasks: logs.tasks.map((t) => {
       const team = teams.get(t.taskId) ?? "";
       const seesEverything = caller?.isAdmin === true || (caller?.teamNames ?? []).includes(team);
-      return { taskId: t.taskId, ...visibleLines(t.lines, seesEverything), visibleTo: team };
+      const shown = view.sees(t.taskId) ? visibleLines(t.lines, seesEverything) : { lines: [], hidden: t.lines.length };
+      return { taskId: t.taskId, ...shown, visibleTo: team };
     }),
   };
 }
