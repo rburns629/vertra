@@ -115,3 +115,20 @@ Usage: include "execution-kernel.appImage" .
 {{- define "execution-kernel.appImage" -}}
 {{- include "execution-kernel.image" (dict "repository" .Values.image.repository "tag" (.Values.image.tag | default .Chart.AppVersion) "digest" .Values.image.digest) -}}
 {{- end }}
+
+{{/*
+Pod Security's restricted, for this chart's own Pods: required, so a change
+to an image can't quietly start running as root. The image picks its
+(numeric, non-root) user; the root filesystem is read-only, /tmp an emptyDir.
+Usage: include "execution-kernel.podSecurityContext" . (and containerSecurityContext)
+*/}}
+{{- define "execution-kernel.podSecurityContext" -}}
+runAsNonRoot: true
+seccompProfile: {type: RuntimeDefault}
+{{- end }}
+
+{{- define "execution-kernel.containerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities: {drop: ["ALL"]}
+{{- end }}

@@ -595,9 +595,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   through; the fence refused opening it, a second policy, one in the
   platform namespace, and deleting it. Next, when the gateway comes: let it
   reach API products' backends in team namespaces.
-- [ ] **Make the charts require non-root** on the kernel and console Pods
-  (`runAsNonRoot`, no privilege escalation, dropped capabilities, read-only
-  root filesystem). The images run as non-root; nothing stops a regression.
+- [x] **Make the charts require non-root** on the kernel and console Pods
+  (done 2026-10-22, proven on kind: a step ran end to end): kernel-api, the
+  scheduler, the console and both migrations require `runAsNonRoot`, the
+  runtime's seccomp profile, no privilege escalation, no capabilities and a
+  read-only root filesystem (`/tmp` an emptyDir), like the gateway, Loki,
+  the collector and Trivy already did. Left: Postgres and the Jobs that run
+  its image (backups, the console's database), whose image starts as root.
 - [ ] **Bind the console's Secret rights per team namespace** as teams are
   created, instead of cluster-wide fenced by an admission policy.
 - [ ] **Ship audit log lines to a write-once store**: the audit log lives in

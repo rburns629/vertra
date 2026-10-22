@@ -32,6 +32,10 @@ spec:
       # The only workload in this chart that gets a ServiceAccount with any
       # Kubernetes API access — see templates/rbac.yaml. kernel-api never
       # touches the Kubernetes API, only Postgres.
+      securityContext:
+        {{- include "execution-kernel.podSecurityContext" . | nindent 8 }}
+      volumes:
+        - {name: tmp, emptyDir: {}}
       serviceAccountName: {{ include "execution-kernel.serviceAccountName" . }}
       topologySpreadConstraints:
         - maxSkew: 1
@@ -45,6 +49,10 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: {{ include "execution-kernel.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
           # See kernel-api-deployment.yaml's identical comment -- an
           # unset imagePullPolicy defaults to Always for a "latest" tag.
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -53,6 +61,10 @@ spec:
       containers:
         - name: scheduler
           image: {{ include "execution-kernel.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/usr/local/bin/kernel", "scheduler"]
           ports:

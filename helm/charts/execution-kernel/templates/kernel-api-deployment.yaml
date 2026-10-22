@@ -27,6 +27,10 @@ spec:
         # same ConfigMap, same fix.
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
+      securityContext:
+        {{- include "execution-kernel.podSecurityContext" . | nindent 8 }}
+      volumes:
+        - {name: tmp, emptyDir: {}}
       serviceAccountName: {{ include "execution-kernel.apiServiceAccountName" . }}
       # Copies on different nodes where there's a choice, so one node's
       # maintenance doesn't take them all.
@@ -42,6 +46,10 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: {{ include "execution-kernel.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
           # Explicit, not left to default -- Kubernetes defaults an unset
           # imagePullPolicy to Always whenever the tag is "latest",
           # regardless of what's already on the node (confirmed directly:
@@ -55,6 +63,10 @@ spec:
       containers:
         - name: api
           image: {{ include "execution-kernel.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           # KernelService over Connect, /health and /metrics, on API_PORT (8000).
           command: ["/usr/local/bin/kernel", "api"]

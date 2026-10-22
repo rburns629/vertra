@@ -38,10 +38,18 @@ spec:
         {{- include "execution-console.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: migrate
     spec:
+      securityContext:
+        {{- include "execution-console.podSecurityContext" . | nindent 8 }}
+      volumes:
+        - {name: tmp, emptyDir: {}}
       restartPolicy: Never
       containers:
         - name: migrate
           image: {{ include "execution-console.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-console.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.migration.resources | nindent 12 }}

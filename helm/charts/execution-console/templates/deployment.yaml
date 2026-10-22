@@ -45,6 +45,8 @@ spec:
       # console/src/k8s.ts. Unlike execution-kernel's split (only the scheduler
       # gets one), there's only one workload here, and it's the one that
       # provisions Secrets/RBAC.
+      securityContext:
+        {{- include "execution-console.podSecurityContext" . | nindent 8 }}
       serviceAccountName: {{ include "execution-console.serviceAccountName" . }}
       # Copies on different nodes where there's a choice, so one node's
       # maintenance doesn't take them all.
@@ -60,6 +62,8 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: {{ include "execution-console.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-console.containerSecurityContext" . | nindent 12 }}
           # Explicit, not left to default -- Kubernetes defaults an unset
           # imagePullPolicy to Always whenever the tag is "latest",
           # regardless of what's already on the node. Confirmed the hard
@@ -83,6 +87,8 @@ spec:
       containers:
         - name: execution-console
           image: {{ include "execution-console.appImage" . | quote }}
+          securityContext:
+            {{- include "execution-console.containerSecurityContext" . | nindent 12 }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -163,6 +169,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
+            - {name: tmp, mountPath: /tmp}
             {{- if .Values.kernelApiToken.enabled }}
             - name: kernel-api-token
               mountPath: /var/run/secrets/vertra/kernel-api
@@ -179,6 +186,7 @@ spec:
               readOnly: true
             {{- end }}
       volumes:
+        - {name: tmp, emptyDir: {}}
         {{- if .Values.kernelApiToken.enabled }}
         # This Pod's ServiceAccount token, issued for kernel-api only (its
         # audience), so it's no use against the Kubernetes API or anything

@@ -125,3 +125,20 @@ Usage: include "execution-console.ssoEnv" .
       key: {{ .Values.sso.clientSecret.key }}
 {{- end }}
 {{- end }}
+
+{{/*
+Pod Security's restricted, for this chart's own Pods: required, so a change
+to an image can't quietly start running as root. The image picks its
+(numeric, non-root) user; the root filesystem is read-only, /tmp an emptyDir.
+Usage: include "execution-console.podSecurityContext" . (and containerSecurityContext)
+*/}}
+{{- define "execution-console.podSecurityContext" -}}
+runAsNonRoot: true
+seccompProfile: {type: RuntimeDefault}
+{{- end }}
+
+{{- define "execution-console.containerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities: {drop: ["ALL"]}
+{{- end }}
