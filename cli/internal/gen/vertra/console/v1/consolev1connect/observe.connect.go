@@ -41,6 +41,9 @@ const (
 	// ObserveServiceGetMetricsProcedure is the fully-qualified name of the ObserveService's GetMetrics
 	// RPC.
 	ObserveServiceGetMetricsProcedure = "/vertra.console.v1.ObserveService/GetMetrics"
+	// ObserveServiceListAuditProcedure is the fully-qualified name of the ObserveService's ListAudit
+	// RPC.
+	ObserveServiceListAuditProcedure = "/vertra.console.v1.ObserveService/ListAudit"
 )
 
 // ObserveServiceClient is a client for the vertra.console.v1.ObserveService service.
@@ -52,6 +55,9 @@ type ObserveServiceClient interface {
 	// hour over the last day; why they failed; and each product's step
 	// times over the last week.
 	GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error)
+	// Who changed what, newest first. Admins see every entry; anyone else
+	// their own, and what was done to their teams and to runs in them.
+	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
 }
 
 // NewObserveServiceClient constructs a client for the vertra.console.v1.ObserveService service. By
@@ -79,6 +85,13 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		listAudit: connect.NewClient[v1.ListAuditRequest, v1.ListAuditResponse](
+			httpClient,
+			baseURL+ObserveServiceListAuditProcedure,
+			connect.WithSchema(observeServiceMethods.ByName("ListAudit")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -86,6 +99,7 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type observeServiceClient struct {
 	getSecurity *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
 	getMetrics  *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
+	listAudit   *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
 }
 
 // GetSecurity calls vertra.console.v1.ObserveService.GetSecurity.
@@ -98,6 +112,11 @@ func (c *observeServiceClient) GetMetrics(ctx context.Context, req *connect.Requ
 	return c.getMetrics.CallUnary(ctx, req)
 }
 
+// ListAudit calls vertra.console.v1.ObserveService.ListAudit.
+func (c *observeServiceClient) ListAudit(ctx context.Context, req *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
+	return c.listAudit.CallUnary(ctx, req)
+}
+
 // ObserveServiceHandler is an implementation of the vertra.console.v1.ObserveService service.
 type ObserveServiceHandler interface {
 	// What this install enforces (and what it doesn't yet), what it refused
@@ -107,6 +126,9 @@ type ObserveServiceHandler interface {
 	// hour over the last day; why they failed; and each product's step
 	// times over the last week.
 	GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error)
+	// Who changed what, newest first. Admins see every entry; anyone else
+	// their own, and what was done to their teams and to runs in them.
+	ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error)
 }
 
 // NewObserveServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -130,12 +152,21 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	observeServiceListAuditHandler := connect.NewUnaryHandler(
+		ObserveServiceListAuditProcedure,
+		svc.ListAudit,
+		connect.WithSchema(observeServiceMethods.ByName("ListAudit")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ObserveService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ObserveServiceGetSecurityProcedure:
 			observeServiceGetSecurityHandler.ServeHTTP(w, r)
 		case ObserveServiceGetMetricsProcedure:
 			observeServiceGetMetricsHandler.ServeHTTP(w, r)
+		case ObserveServiceListAuditProcedure:
+			observeServiceListAuditHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -151,4 +182,8 @@ func (UnimplementedObserveServiceHandler) GetSecurity(context.Context, *connect.
 
 func (UnimplementedObserveServiceHandler) GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetMetrics is not implemented"))
+}
+
+func (UnimplementedObserveServiceHandler) ListAudit(context.Context, *connect.Request[v1.ListAuditRequest]) (*connect.Response[v1.ListAuditResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.ListAudit is not implemented"))
 }

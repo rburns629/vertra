@@ -5,6 +5,7 @@ syntax = "proto3";
 package vertra.console.v1;
 
 import "google/protobuf/timestamp.proto";
+import "vertra/console/v1/admin.proto";
 
 // Observe: what this install checks, what it refused, and what everything
 // is doing. Everyone signed in sees the security checks (what's enforced,
@@ -20,6 +21,11 @@ service ObserveService {
   // hour over the last day; why they failed; and each product's step
   // times over the last week.
   rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Who changed what, newest first. Admins see every entry; anyone else
+  // their own, and what was done to their teams and to runs in them.
+  rpc ListAudit(ListAuditRequest) returns (ListAuditResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -103,4 +109,23 @@ message ProductMetrics {
   int32 succeeded = 5;
   double p50_seconds = 6;
   double p95_seconds = 7;
+}
+
+message ListAuditRequest {
+  // Older than this entry id; the newest when unset.
+  int64 before = 1;
+  // Only what was done to this team (or to runs in it).
+  string team = 2;
+  // Only the caller's own.
+  bool mine = 3;
+  // Only what was refused (a status of 400 or more).
+  bool refused_only = 4;
+  // 100 when unset, at most 500.
+  int32 limit = 5;
+}
+
+message ListAuditResponse {
+  repeated AuditEntry entries = 1;
+  // Pass as `before` for the next page; 0 on the last.
+  int64 next_before = 2;
 }

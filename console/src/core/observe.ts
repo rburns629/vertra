@@ -8,6 +8,8 @@
  * see that run; a hidden product's image only for its own team.
  */
 import { Code } from "@connectrpc/connect";
+import { Type } from "@sinclair/typebox";
+import { eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
 import { ApiError } from "../apiError.js";
 import { canActForTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
@@ -15,11 +17,12 @@ import { catalogStatus } from "../catalogSync.js";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { findSubmittedExecutions, listRunnableProducts } from "../db/queries.js";
-import { imageScans } from "../db/schema.js";
+import { auditLog, imageScans } from "../db/schema.js";
 import { readImagePolicy } from "../imagePolicy.js";
 import { getStats, listRefusals } from "../kernel/client.js";
 import { PLATFORM_ERRORS } from "../failureHelp.js";
 import { imageRepository } from "../imageRef.js";
+import { auditPage } from "./admin.js";
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
   if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
@@ -183,4 +186,52 @@ export async function getMetrics(caller: AuthUser | undefined) {
     ready: stats.ready,
     running: stats.running,
   };
+}
+
+/** Methods that name their team as `name`; the rest name it `team`. */
+const TEAM_NAMED = ["CreateTeam", "EnsureTeam", "RetireTeam", "UnretireTeam", "PurgeTeam"].map(
+  (m) => `vertra.console.v1.TeamService/${m}`,
+).concat("vertra.console.v1.AdminService/AdoptCatalogTeam");
+
+function textArray(values: string[]): SQL {
+  return values.length > 0 ? sql`ARRAY[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]` : sql`ARRAY[]::text[]`;
+}
+
+/** Entries about any of these teams: done to the team, or to a run in it. */
+function aboutTeams(names: string[]): SQL {
+  const teams = textArray(names);
+  return or(
+    sql`${auditLog.target}->>'team' = ANY(${teams})`,
+    sql`(${inArray(auditLog.route, TEAM_NAMED)} AND ${auditLog.target}->>'name' = ANY(${teams}))`,
+    sql`EXISTS (SELECT 1 FROM submitted_executions e
+      WHERE e.execution_id::text = ${auditLog.target}->>'executionId' AND e.teams && ${teams})`,
+  ) as SQL;
+}
+
+export const ListAuditQuery = Type.Object({
+  before: Type.Optional(Type.Integer({ minimum: 1 })),
+  team: Type.Optional(Type.String({ minLength: 1, maxLength: 63 })),
+  mine: Type.Optional(Type.Boolean()),
+  refusedOnly: Type.Optional(Type.Boolean()),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500 })),
+});
+
+/**
+ * Who changed what, for everyone: an admin sees every entry; anyone else
+ * their own, and what was done to their teams or to runs in them (by
+ * anyone, admins included). Entries about no team (users, the catalog,
+ * the gateway, policies) stay with admins.
+ */
+export async function listAudit(
+  caller: AuthUser | undefined,
+  query: { before?: number | undefined; team?: string | undefined; mine?: boolean | undefined; refusedOnly?: boolean | undefined; limit?: number | undefined },
+) {
+  const who = signedIn(caller);
+  const conditions: (SQL | undefined)[] = [
+    who.isAdmin ? undefined : or(eq(auditLog.actorId, who.id), aboutTeams(who.teamNames)),
+    query.team !== undefined ? aboutTeams([query.team]) : undefined,
+    query.mine ? eq(auditLog.actorId, who.id) : undefined,
+    query.refusedOnly ? gte(auditLog.status, 400) : undefined,
+  ];
+  return auditPage(conditions, query.before, query.limit ?? 100);
 }

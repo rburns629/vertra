@@ -397,6 +397,15 @@
      "streaming": false,
      "idempotency": "read",
      "public": false
+    },
+    {
+     "name": "ListAudit",
+     "comment": "Who changed what, newest first. Admins see every entry; anyone else\ntheir own, and what was done to their teams and to runs in them.",
+     "input": "vertra.console.v1.ListAuditRequest",
+     "output": "vertra.console.v1.ListAuditResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
     }
    ]
   },
@@ -3972,6 +3981,68 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListAuditRequest": {
+   "name": "ListAuditRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "before",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Older than this entry id; the newest when unset."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Only what was done to this team (or to runs in it)."
+    },
+    {
+     "name": "mine",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Only the caller's own."
+    },
+    {
+     "name": "refusedOnly",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Only what was refused (a status of 400 or more)."
+    },
+    {
+     "name": "limit",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "100 when unset, at most 500."
+    }
+   ]
+  },
+  "vertra.console.v1.ListAuditResponse": {
+   "name": "ListAuditResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "entries",
+     "type": "AuditEntry",
+     "ref": "vertra.console.v1.AuditEntry",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "nextBefore",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Pass as `before` for the next page; 0 on the last."
     }
    ]
   },

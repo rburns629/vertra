@@ -170,13 +170,13 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/templates.ts` | Templates: what a person may run (templates and shared actions), running one with parameters only, each step built from its product; reruns of a template's run. |
-| `core/observe.ts` | Observe for everyone: the security checks (what this install enforces and doesn't yet, what the cluster refused this week, a run linked only for those who may see it, every image allowed to run and its scan) and the metrics (from kernel-api's `GetStats`, each image named by its product, a hidden one only for its team). |
+| `core/observe.ts` | Observe for everyone: the security checks (what this install enforces and doesn't yet, what the cluster refused this week, a run linked only for those who may see it, every image allowed to run and its scan), the metrics (from kernel-api's `GetStats`, each image named by its product, a hidden one only for its team), and the audit log as each caller may see it (`listAudit`). |
 | `core/apis.ts` | API products: who sees and may call each, whether it's live, held (its backend's host isn't allowed) or paused, and pausing one. |
 | `core/approvals.ts` | Approvals: a maintainer of a step's team, never whoever ran it, approves or declines it; the steps awaiting one. |
 | `core/retired.ts` | The shared "this team is retired, it's read-only" refusal. |
 | **`rpc/`** | **The API**: Connect services from `proto/`, at `/api/vertra.console.v1.<Service>/<Method>`. |
 | `rpc/server.ts` | Mounts every service on Fastify with `@connectrpc/connect-fastify`, resolving each call's caller from its bearer token. |
-| `rpc/interceptors.ts` | Masking unexpected errors as `internal`, auditing every changing call, requiring a caller outside the public methods. |
+| `rpc/interceptors.ts` | Masking unexpected errors as `internal`, auditing every changing call (with the run it started), requiring a caller outside the public methods. |
 | `rpc/errors.ts`, `rpc/context.ts`, `rpc/validate.ts`, `rpc/rateLimit.ts`, `rpc/convert.ts` | Connect errors with `Failure`/`Problem` details; the caller, log and request in the handler context; checking requests against REST's TypeBox schemas; fixed-window rate limits; timestamps. |
 | `rpc/services/*.ts` | One file per service in `proto/vertra/console/v1/`, each mapping messages to and from `core/`. `execution.ts` also streams `WatchExecution` (re-reading and re-authorizing every 2 seconds). |
 | **`auth/`** | **Who's calling.** |
@@ -218,7 +218,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
-| `src/pages/ObservePage.tsx` | Observe: the security checks, the metrics (steps started and waits by hour, failures, step times by product), and the tabs to come (the audit log, logs). |
+| `src/pages/ObservePage.tsx` | Observe: the security checks, the metrics (steps started and waits by hour, failures, step times by product), the audit log (filtered by team, mine, refused), and logs to come. |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/ApiTraffic.tsx`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; for its own team its backend, traffic and Pause), and a team's APIs. The Admin page's gateway card shows its settings, what it refused, and closes it. |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
@@ -266,6 +266,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `client-ip.test.ts` | Who the client is behind a load balancer: only trusted proxies' X-Forwarded-For counts. |
 | `activity.test.ts` | Recording the console's last use: signed-in requests only, once a minute at most. |
 | `audit.test.ts` | What the audit log records (a change, a refusal) and never records (secret values; reads; sign-in and passwords). |
+| `audit-visibility.test.ts` | Who sees which audit entries in Observe: admins all; anyone else their own, and those about their teams and runs; filters within that. |
 | `policy-sync.test.ts`, `retention.test.ts` | The policy resync and its reported outcome; what retention deletes and keeps. |
 | `automation-tokens.test.ts` | Automation tokens and their scopes. |
 | `image-policy.test.ts`, `registry.test.ts` | Allowed image sources; the registry check. |

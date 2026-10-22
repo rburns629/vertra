@@ -8,7 +8,8 @@
  *    message, as the REST error handler does for a 5xx.
  * 2. audit: a method that can change something is recorded once answered,
  *    allowed or refused, with its request's identifying fields only
- *    (audit.ts). Reads aren't, nor sign-in and passwords.
+ *    (audit.ts), and the run it started, if any. Reads aren't, nor
+ *    sign-in and passwords.
  * 3. requireCaller: every method but the few public ones needs a valid
  *    credential; one that couldn't be checked (the database failed) fails
  *    the call, whatever the method.
@@ -95,8 +96,16 @@ export const audit: Interceptor = (next) => async (req) => {
     return next(req);
   }
   let status = 200;
+  // The run a call started, when it started one (a submit, a template, a
+  // rerun): recorded so the entry reaches every team in that run.
+  let started: string | undefined;
   try {
-    return await next(req);
+    const res = await next(req);
+    if (!res.stream) {
+      const executionId = (res.message as { executionId?: unknown }).executionId;
+      if (typeof executionId === "string" && executionId) started = executionId;
+    }
+    return res;
   } catch (error) {
     // A refusal from the shared logic records the status REST would have.
     status = error instanceof ApiError ? error.statusCode : httpStatusFor(ConnectError.from(error).code);
@@ -104,6 +113,7 @@ export const audit: Interceptor = (next) => async (req) => {
   } finally {
     const log = req.contextValues.get(kLog);
     const target = req.stream ? {} : targetFields(toJson(req.method.input, req.message));
+    if (started && target["executionId"] === undefined) target["executionId"] = started;
     if (log) {
       await writeAuditEntry(log, {
         actorId: req.contextValues.get(kCaller)?.id ?? null,

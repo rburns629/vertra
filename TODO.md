@@ -32,7 +32,11 @@ design.
     `networkPolicy.metricsFrom`. Left: proving the PodMonitors, rules and
     dashboard against a real Prometheus Operator and Grafana (checked
     with promtool, and scraped by hand on kind).
-  - The audit log, which only admins see today, as its fourth tab.
+  - The audit log (done 2026-10-22: `ObserveService.ListAudit`, the
+    Observe page's Audit log tab): an admin sees every entry; anyone else
+    their own, and what was done to their teams or to runs in them, by
+    anyone. An entry records the run a call started, so a submission
+    reaches every team in it. Filters: a team, only mine, only refused.
   Who sees a step's logs, by level (decided 2026-10-21; done 2026-10-22 for
   the step output the kernel captures: `console/src/logLevels.ts`, every
   sample logging JSON INFO lines): INFO lines to
@@ -576,9 +580,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Console
 
-- [ ] **Pages for the audit log and image scans**
-  (`AdminService/ListAuditEntries`, `ImageService/ListImageScans`), which
-  have an API only.
+- [ ] **A page for image scans** (`ImageService/ListImageScans`), which
+  has an API only (Observe's security checks show each image's latest
+  verdict). The audit log's is Observe's Audit log tab (2026-10-22).
 - [ ] **Usable on a phone:** the sidebar is a permanent drawer
   (`layout/AppLayout.tsx`); collapse it into a menu below `md`.
 - [ ] **Connect a team's `owner` to its console team**: membership is

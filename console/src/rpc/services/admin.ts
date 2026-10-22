@@ -3,7 +3,7 @@
 import type { ServiceImpl } from "@connectrpc/connect";
 import type { JsonObject } from "@bufbuild/protobuf";
 import type { CatalogStatus } from "../../catalogSync.js";
-import { AuditQuery, adoptCatalogTeam, auditEntries, catalogState, platformStats, policySync, syncCatalogNow, syncPoliciesNow } from "../../core/admin.js";
+import { AuditQuery, adoptCatalogTeam, auditEntries, type auditPage, catalogState, platformStats, policySync, syncCatalogNow, syncPoliciesNow } from "../../core/admin.js";
 import type { AdminService } from "../../gen/vertra/console/v1/admin_pb.js";
 import type { SyncOutcome } from "../../policySync.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
@@ -34,6 +34,24 @@ function catalog(status: CatalogStatus) {
   };
 }
 
+type AuditRow = Awaited<ReturnType<typeof auditPage>>["entries"][number];
+
+/** An audit_log row (with its actor) as an AuditEntry; ObserveService's too. */
+export function auditEntryMessage(entry: AuditRow) {
+  return {
+    id: BigInt(entry.id),
+    at: timestamp(entry.at),
+    actorId: entry.actorId ?? undefined,
+    actorEmail: entry.actorEmail ?? undefined,
+    actorIsBot: entry.actorIsBot ?? false,
+    method: entry.method,
+    route: entry.route,
+    target: entry.target as JsonObject,
+    status: entry.status,
+    requestId: entry.requestId ?? undefined,
+  };
+}
+
 export function adminService(): ServiceImpl<typeof AdminService> {
   return {
     async getStats(_req, ctx) {
@@ -59,18 +77,7 @@ export function adminService(): ServiceImpl<typeof AdminService> {
       ).query;
       const page = await auditEntries(callerOf(ctx), query);
       return {
-        entries: page.entries.map((entry) => ({
-          id: BigInt(entry.id),
-          at: timestamp(entry.at),
-          actorId: entry.actorId ?? undefined,
-          actorEmail: entry.actorEmail ?? undefined,
-          actorIsBot: entry.actorIsBot ?? false,
-          method: entry.method,
-          route: entry.route,
-          target: entry.target as JsonObject,
-          status: entry.status,
-          requestId: entry.requestId ?? undefined,
-        })),
+        entries: page.entries.map(auditEntryMessage),
         nextBefore: BigInt(page.nextBefore ?? 0),
       };
     },

@@ -7,6 +7,7 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { AuditEntry } from "./admin_pb";
 
 /**
  * Describes the file vertra/console/v1/observe.proto.
@@ -350,6 +351,75 @@ export declare type ProductMetrics = Message<"vertra.console.v1.ProductMetrics">
 export declare const ProductMetricsSchema: GenMessage<ProductMetrics>;
 
 /**
+ * @generated from message vertra.console.v1.ListAuditRequest
+ */
+export declare type ListAuditRequest = Message<"vertra.console.v1.ListAuditRequest"> & {
+  /**
+   * Older than this entry id; the newest when unset.
+   *
+   * @generated from field: int64 before = 1;
+   */
+  before: bigint;
+
+  /**
+   * Only what was done to this team (or to runs in it).
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * Only the caller's own.
+   *
+   * @generated from field: bool mine = 3;
+   */
+  mine: boolean;
+
+  /**
+   * Only what was refused (a status of 400 or more).
+   *
+   * @generated from field: bool refused_only = 4;
+   */
+  refusedOnly: boolean;
+
+  /**
+   * 100 when unset, at most 500.
+   *
+   * @generated from field: int32 limit = 5;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAuditRequest.
+ * Use `create(ListAuditRequestSchema)` to create a new message.
+ */
+export declare const ListAuditRequestSchema: GenMessage<ListAuditRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ListAuditResponse
+ */
+export declare type ListAuditResponse = Message<"vertra.console.v1.ListAuditResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.AuditEntry entries = 1;
+   */
+  entries: AuditEntry[];
+
+  /**
+   * Pass as `before` for the next page; 0 on the last.
+   *
+   * @generated from field: int64 next_before = 2;
+   */
+  nextBefore: bigint;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAuditResponse.
+ * Use `create(ListAuditResponseSchema)` to create a new message.
+ */
+export declare const ListAuditResponseSchema: GenMessage<ListAuditResponse>;
+
+/**
  * Observe: what this install checks, what it refused, and what everything
  * is doing. Everyone signed in sees the security checks (what's enforced,
  * what's refused, every image that may run and its scan); runs' details
@@ -380,6 +450,17 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetMetricsRequestSchema;
     output: typeof GetMetricsResponseSchema;
+  },
+  /**
+   * Who changed what, newest first. Admins see every entry; anyone else
+   * their own, and what was done to their teams and to runs in them.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.ListAudit
+   */
+  listAudit: {
+    methodKind: "unary";
+    input: typeof ListAuditRequestSchema;
+    output: typeof ListAuditResponseSchema;
   },
 }>;
 

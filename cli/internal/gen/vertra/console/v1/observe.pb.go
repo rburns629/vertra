@@ -717,11 +717,145 @@ func (x *ProductMetrics) GetP95Seconds() float64 {
 	return 0
 }
 
+type ListAuditRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Older than this entry id; the newest when unset.
+	Before int64 `protobuf:"varint,1,opt,name=before,proto3" json:"before,omitempty"`
+	// Only what was done to this team (or to runs in it).
+	Team string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
+	// Only the caller's own.
+	Mine bool `protobuf:"varint,3,opt,name=mine,proto3" json:"mine,omitempty"`
+	// Only what was refused (a status of 400 or more).
+	RefusedOnly bool `protobuf:"varint,4,opt,name=refused_only,json=refusedOnly,proto3" json:"refused_only,omitempty"`
+	// 100 when unset, at most 500.
+	Limit         int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAuditRequest) Reset() {
+	*x = ListAuditRequest{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAuditRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAuditRequest) ProtoMessage() {}
+
+func (x *ListAuditRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAuditRequest.ProtoReflect.Descriptor instead.
+func (*ListAuditRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListAuditRequest) GetBefore() int64 {
+	if x != nil {
+		return x.Before
+	}
+	return 0
+}
+
+func (x *ListAuditRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *ListAuditRequest) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+func (x *ListAuditRequest) GetRefusedOnly() bool {
+	if x != nil {
+		return x.RefusedOnly
+	}
+	return false
+}
+
+func (x *ListAuditRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListAuditResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Entries []*AuditEntry          `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	// Pass as `before` for the next page; 0 on the last.
+	NextBefore    int64 `protobuf:"varint,2,opt,name=next_before,json=nextBefore,proto3" json:"next_before,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAuditResponse) Reset() {
+	*x = ListAuditResponse{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAuditResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAuditResponse) ProtoMessage() {}
+
+func (x *ListAuditResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAuditResponse.ProtoReflect.Descriptor instead.
+func (*ListAuditResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListAuditResponse) GetEntries() []*AuditEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *ListAuditResponse) GetNextBefore() int64 {
+	if x != nil {
+		return x.NextBefore
+	}
+	return 0
+}
+
 var File_vertra_console_v1_observe_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\n" +
-	"\x1fvertra/console/v1/observe.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x14\n" +
+	"\x1fvertra/console/v1/observe.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dvertra/console/v1/admin.proto\"\x14\n" +
 	"\x12GetSecurityRequest\"\xc0\x01\n" +
 	"\x13GetSecurityResponse\x128\n" +
 	"\x06checks\x18\x01 \x03(\v2 .vertra.console.v1.SecurityCheckR\x06checks\x126\n" +
@@ -774,11 +908,22 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\vp50_seconds\x18\x06 \x01(\x01R\n" +
 	"p50Seconds\x12\x1f\n" +
 	"\vp95_seconds\x18\a \x01(\x01R\n" +
-	"p95Seconds2\xd3\x01\n" +
+	"p95Seconds\"\x8b\x01\n" +
+	"\x10ListAuditRequest\x12\x16\n" +
+	"\x06before\x18\x01 \x01(\x03R\x06before\x12\x12\n" +
+	"\x04team\x18\x02 \x01(\tR\x04team\x12\x12\n" +
+	"\x04mine\x18\x03 \x01(\bR\x04mine\x12!\n" +
+	"\frefused_only\x18\x04 \x01(\bR\vrefusedOnly\x12\x14\n" +
+	"\x05limit\x18\x05 \x01(\x05R\x05limit\"m\n" +
+	"\x11ListAuditResponse\x127\n" +
+	"\aentries\x18\x01 \x03(\v2\x1d.vertra.console.v1.AuditEntryR\aentries\x12\x1f\n" +
+	"\vnext_before\x18\x02 \x01(\x03R\n" +
+	"nextBefore2\xb0\x02\n" +
 	"\x0eObserveService\x12a\n" +
 	"\vGetSecurity\x12%.vertra.console.v1.GetSecurityRequest\x1a&.vertra.console.v1.GetSecurityResponse\"\x03\x90\x02\x01\x12^\n" +
 	"\n" +
-	"GetMetrics\x12$.vertra.console.v1.GetMetricsRequest\x1a%.vertra.console.v1.GetMetricsResponse\"\x03\x90\x02\x01B\xd5\x01\n" +
+	"GetMetrics\x12$.vertra.console.v1.GetMetricsRequest\x1a%.vertra.console.v1.GetMetricsResponse\"\x03\x90\x02\x01\x12[\n" +
+	"\tListAudit\x12#.vertra.console.v1.ListAuditRequest\x1a$.vertra.console.v1.ListAuditResponse\"\x03\x90\x02\x01B\xd5\x01\n" +
 	"\x15com.vertra.console.v1B\fObserveProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -793,7 +938,7 @@ func file_vertra_console_v1_observe_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_observe_proto_rawDescData
 }
 
-var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_vertra_console_v1_observe_proto_goTypes = []any{
 	(*GetSecurityRequest)(nil),    // 0: vertra.console.v1.GetSecurityRequest
 	(*GetSecurityResponse)(nil),   // 1: vertra.console.v1.GetSecurityResponse
@@ -805,27 +950,33 @@ var file_vertra_console_v1_observe_proto_goTypes = []any{
 	(*HourMetrics)(nil),           // 7: vertra.console.v1.HourMetrics
 	(*FailureMetrics)(nil),        // 8: vertra.console.v1.FailureMetrics
 	(*ProductMetrics)(nil),        // 9: vertra.console.v1.ProductMetrics
-	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(*ListAuditRequest)(nil),      // 10: vertra.console.v1.ListAuditRequest
+	(*ListAuditResponse)(nil),     // 11: vertra.console.v1.ListAuditResponse
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(*AuditEntry)(nil),            // 13: vertra.console.v1.AuditEntry
 }
 var file_vertra_console_v1_observe_proto_depIdxs = []int32{
 	2,  // 0: vertra.console.v1.GetSecurityResponse.checks:type_name -> vertra.console.v1.SecurityCheck
 	3,  // 1: vertra.console.v1.GetSecurityResponse.refusals:type_name -> vertra.console.v1.Refusal
 	4,  // 2: vertra.console.v1.GetSecurityResponse.images:type_name -> vertra.console.v1.AllowedImage
-	10, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
-	10, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
+	12, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
+	12, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
 	7,  // 5: vertra.console.v1.GetMetricsResponse.hours:type_name -> vertra.console.v1.HourMetrics
 	8,  // 6: vertra.console.v1.GetMetricsResponse.failures:type_name -> vertra.console.v1.FailureMetrics
 	9,  // 7: vertra.console.v1.GetMetricsResponse.products:type_name -> vertra.console.v1.ProductMetrics
-	10, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
-	0,  // 9: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
-	5,  // 10: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
-	1,  // 11: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
-	6,  // 12: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	12, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
+	13, // 9: vertra.console.v1.ListAuditResponse.entries:type_name -> vertra.console.v1.AuditEntry
+	0,  // 10: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
+	5,  // 11: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
+	10, // 12: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
+	1,  // 13: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
+	6,  // 14: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
+	11, // 15: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
+	13, // [13:16] is the sub-list for method output_type
+	10, // [10:13] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_observe_proto_init() }
@@ -833,13 +984,14 @@ func file_vertra_console_v1_observe_proto_init() {
 	if File_vertra_console_v1_observe_proto != nil {
 		return
 	}
+	file_vertra_console_v1_admin_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_observe_proto_rawDesc), len(file_vertra_console_v1_observe_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

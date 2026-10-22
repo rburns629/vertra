@@ -8,13 +8,15 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { AuditEntry } from "./admin_pb.js";
+import { file_vertra_console_v1_admin } from "./admin_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file vertra/console/v1/observe.proto.
  */
 export const file_vertra_console_v1_observe: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QipgEKE0dldFNlY3VyaXR5UmVzcG9uc2USMAoGY2hlY2tzGAEgAygLMiAudmVydHJhLmNvbnNvbGUudjEuU2VjdXJpdHlDaGVjaxIsCghyZWZ1c2FscxgCIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzYWwSLwoGaW1hZ2VzGAMgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQWxsb3dlZEltYWdlIjoKDVNlY3VyaXR5Q2hlY2sSDAoEbmFtZRgBIAEoCRINCgVzdGF0ZRgCIAEoCRIMCgR0ZXh0GAMgASgJIn4KB1JlZnVzYWwSJgoCYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHdoYXQYAiABKAkSDAoEdGVhbRgDIAEoCRIMCgRjb2RlGAQgASgJEgsKA3doeRgFIAEoCRIUCgxleGVjdXRpb25faWQYBiABKAkiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiYgoLSG91ck1ldHJpY3MSKAoEaG91chgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHc3RhcnRlZBgCIAEoBRIYChB3YWl0X3A5NV9zZWNvbmRzGAMgASgBIk0KDkZhaWx1cmVNZXRyaWNzEgwKBGNvZGUYASABKAkSDQoFY291bnQYAiABKAUSDwoHcmV0cmllZBgDIAEoCBINCgVtZWFucxgEIAEoCSKLAQoOUHJvZHVjdE1ldHJpY3MSDwoHcHJvZHVjdBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSDAoEdGVhbRgDIAEoCRINCgVzdGVwcxgEIAEoBRIRCglzdWNjZWVkZWQYBSABKAUSEwoLcDUwX3NlY29uZHMYBiABKAESEwoLcDk1X3NlY29uZHMYByABKAEy0wEKDk9ic2VydmVTZXJ2aWNlEmEKC0dldFNlY3VyaXR5EiUudmVydHJhLmNvbnNvbGUudjEuR2V0U2VjdXJpdHlSZXF1ZXN0GiYudmVydHJhLmNvbnNvbGUudjEuR2V0U2VjdXJpdHlSZXNwb25zZSIDkAIBEl4KCkdldE1ldHJpY3MSJC52ZXJ0cmEuY29uc29sZS52MS5HZXRNZXRyaWNzUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkdldE1ldHJpY3NSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QipgEKE0dldFNlY3VyaXR5UmVzcG9uc2USMAoGY2hlY2tzGAEgAygLMiAudmVydHJhLmNvbnNvbGUudjEuU2VjdXJpdHlDaGVjaxIsCghyZWZ1c2FscxgCIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzYWwSLwoGaW1hZ2VzGAMgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQWxsb3dlZEltYWdlIjoKDVNlY3VyaXR5Q2hlY2sSDAoEbmFtZRgBIAEoCRINCgVzdGF0ZRgCIAEoCRIMCgR0ZXh0GAMgASgJIn4KB1JlZnVzYWwSJgoCYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHdoYXQYAiABKAkSDAoEdGVhbRgDIAEoCRIMCgRjb2RlGAQgASgJEgsKA3doeRgFIAEoCRIUCgxleGVjdXRpb25faWQYBiABKAkiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiYgoLSG91ck1ldHJpY3MSKAoEaG91chgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHc3RhcnRlZBgCIAEoBRIYChB3YWl0X3A5NV9zZWNvbmRzGAMgASgBIk0KDkZhaWx1cmVNZXRyaWNzEgwKBGNvZGUYASABKAkSDQoFY291bnQYAiABKAUSDwoHcmV0cmllZBgDIAEoCBINCgVtZWFucxgEIAEoCSKLAQoOUHJvZHVjdE1ldHJpY3MSDwoHcHJvZHVjdBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSDAoEdGVhbRgDIAEoCRINCgVzdGVwcxgEIAEoBRIRCglzdWNjZWVkZWQYBSABKAUSEwoLcDUwX3NlY29uZHMYBiABKAESEwoLcDk1X3NlY29uZHMYByABKAEiYwoQTGlzdEF1ZGl0UmVxdWVzdBIOCgZiZWZvcmUYASABKAMSDAoEdGVhbRgCIAEoCRIMCgRtaW5lGAMgASgIEhQKDHJlZnVzZWRfb25seRgEIAEoCBINCgVsaW1pdBgFIAEoBSJYChFMaXN0QXVkaXRSZXNwb25zZRIuCgdlbnRyaWVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXVkaXRFbnRyeRITCgtuZXh0X2JlZm9yZRgCIAEoAzKwAgoOT2JzZXJ2ZVNlcnZpY2USYQoLR2V0U2VjdXJpdHkSJS52ZXJ0cmEuY29uc29sZS52MS5HZXRTZWN1cml0eVJlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5HZXRTZWN1cml0eVJlc3BvbnNlIgOQAgESXgoKR2V0TWV0cmljcxIkLnZlcnRyYS5jb25zb2xlLnYxLkdldE1ldHJpY3NSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuR2V0TWV0cmljc1Jlc3BvbnNlIgOQAgESWwoJTGlzdEF1ZGl0EiMudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0UmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdFJlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_timestamp, file_vertra_console_v1_admin]);
 
 /**
  * @generated from message vertra.console.v1.GetSecurityRequest
@@ -363,6 +365,77 @@ export const ProductMetricsSchema: GenMessage<ProductMetrics> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_observe, 9);
 
 /**
+ * @generated from message vertra.console.v1.ListAuditRequest
+ */
+export type ListAuditRequest = Message<"vertra.console.v1.ListAuditRequest"> & {
+  /**
+   * Older than this entry id; the newest when unset.
+   *
+   * @generated from field: int64 before = 1;
+   */
+  before: bigint;
+
+  /**
+   * Only what was done to this team (or to runs in it).
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * Only the caller's own.
+   *
+   * @generated from field: bool mine = 3;
+   */
+  mine: boolean;
+
+  /**
+   * Only what was refused (a status of 400 or more).
+   *
+   * @generated from field: bool refused_only = 4;
+   */
+  refusedOnly: boolean;
+
+  /**
+   * 100 when unset, at most 500.
+   *
+   * @generated from field: int32 limit = 5;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAuditRequest.
+ * Use `create(ListAuditRequestSchema)` to create a new message.
+ */
+export const ListAuditRequestSchema: GenMessage<ListAuditRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 10);
+
+/**
+ * @generated from message vertra.console.v1.ListAuditResponse
+ */
+export type ListAuditResponse = Message<"vertra.console.v1.ListAuditResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.AuditEntry entries = 1;
+   */
+  entries: AuditEntry[];
+
+  /**
+   * Pass as `before` for the next page; 0 on the last.
+   *
+   * @generated from field: int64 next_before = 2;
+   */
+  nextBefore: bigint;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAuditResponse.
+ * Use `create(ListAuditResponseSchema)` to create a new message.
+ */
+export const ListAuditResponseSchema: GenMessage<ListAuditResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 11);
+
+/**
  * Observe: what this install checks, what it refused, and what everything
  * is doing. Everyone signed in sees the security checks (what's enforced,
  * what's refused, every image that may run and its scan); runs' details
@@ -393,6 +466,17 @@ export const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetMetricsRequestSchema;
     output: typeof GetMetricsResponseSchema;
+  },
+  /**
+   * Who changed what, newest first. Admins see every entry; anyone else
+   * their own, and what was done to their teams and to runs in them.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.ListAudit
+   */
+  listAudit: {
+    methodKind: "unary";
+    input: typeof ListAuditRequestSchema;
+    output: typeof ListAuditResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_observe, 0);

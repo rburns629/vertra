@@ -48,9 +48,12 @@ export async function auditEntries(
 ) {
   forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
   const { before, actor, limit = 100 } = query;
-  const conditions: SQL[] = [];
-  if (before !== undefined) conditions.push(lt(auditLog.id, before));
-  if (actor !== undefined) conditions.push(eq(auditLog.actorId, actor));
+  return auditPage(actor !== undefined ? [eq(auditLog.actorId, actor)] : [], before, limit);
+}
+
+/** One page of the entries matching every condition, newest first, with their actors. */
+export async function auditPage(conditions: (SQL | undefined)[], before: number | undefined, limit: number) {
+  const where = [...conditions, before !== undefined ? lt(auditLog.id, before) : undefined].filter((c) => c !== undefined);
   const rows = await db
     .select({
       id: auditLog.id,
@@ -66,7 +69,7 @@ export async function auditEntries(
     })
     .from(auditLog)
     .leftJoin(users, eq(users.id, auditLog.actorId))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(where.length > 0 ? and(...where) : undefined)
     .orderBy(desc(auditLog.id))
     .limit(limit);
   return { entries: rows, nextBefore: rows.length === limit ? (rows.at(-1)?.id ?? null) : null };

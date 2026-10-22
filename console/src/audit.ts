@@ -42,6 +42,8 @@ const TARGET_FIELDS = [
   "digest",
   "repository",
   "secretStore",
+  "product",
+  "onBehalfOf",
 ] as const;
 
 export function targetFields(body: unknown): Record<string, unknown> {

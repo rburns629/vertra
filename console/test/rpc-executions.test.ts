@@ -7,12 +7,12 @@
  * core/executions.ts.
  */
 import { randomUUID } from "node:crypto";
-import { like } from "drizzle-orm";
+import { like, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSubmittedExecution } from "../src/db/queries.js";
-import { teams } from "../src/db/schema.js";
+import { auditLog, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { cancelExecution, getExecution, KernelApiError, submitExecution } from "../src/kernel/client.js";
 import { config } from "../src/config.js";
@@ -146,6 +146,10 @@ describe("submitting", () => {
     expect(task?.["inputs"]).toEqual({ greeting: "hello" });
     // Unset in the message, so the product's identity fills it, not "".
     expect(task?.["serviceAccount"]).toBe("default");
+    // Its audit entry names the run it started, so the run's teams see it.
+    const { executionId } = response.json<{ executionId: string }>();
+    const audited = await db.select().from(auditLog).where(sql`${auditLog.target}->>'executionId' = ${executionId}`);
+    expect(audited.map((e) => e.route)).toEqual(["vertra.console.v1.ExecutionService/SubmitExecution"]);
   });
 
   it("refuses a team the caller isn't in, before kernel-api hears of it", async () => {

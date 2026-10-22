@@ -1456,3 +1456,43 @@ export async function getMetrics(): Promise<MetricsView> {
     running: m.running,
   };
 }
+
+export interface AuditEntryView {
+  id: string;
+  at: string | null;
+  actorEmail: string | null;
+  actorIsBot: boolean;
+  route: string;
+  target: Record<string, unknown>;
+  status: number;
+}
+
+export interface AuditPage {
+  entries: AuditEntryView[];
+  /** Pass as `before` for the next page; "" on the last. */
+  nextBefore: string;
+}
+
+/** Who changed what: everything for an admin; for anyone else their own, and what was done to their teams and runs. */
+export async function listAudit(filters: { before?: string; team?: string; mine?: boolean; refusedOnly?: boolean }): Promise<AuditPage> {
+  const page = await call(() =>
+    observe.listAudit({
+      before: BigInt(filters.before || 0),
+      team: filters.team ?? "",
+      mine: filters.mine ?? false,
+      refusedOnly: filters.refusedOnly ?? false,
+    }),
+  );
+  return {
+    entries: page.entries.map((e) => ({
+      id: String(e.id),
+      at: iso(e.at),
+      actorEmail: e.actorEmail ?? null,
+      actorIsBot: e.actorIsBot,
+      route: e.route,
+      target: (e.target ?? {}) as Record<string, unknown>,
+      status: e.status,
+    })),
+    nextBefore: page.nextBefore ? String(page.nextBefore) : "",
+  };
+}
