@@ -287,6 +287,20 @@ export const config = {
     // pick linux/amd64 whatever the cluster is.
     platform: process.env["SCAN_PLATFORM"] || `linux/${process.arch === "x64" ? "amd64" : process.arch}`,
   },
+  // The audit log's write-once copy (auditExport.ts): a bucket that refuses
+  // deletes and overwrites, written every `minutes`. Empty bucket: off.
+  audit: {
+    export: {
+      bucket: process.env["AUDIT_EXPORT_BUCKET"] ?? "",
+      // gcs (the console's Workload Identity) or s3 (its AWS identity, or
+      // AWS_* credentials and an endpoint for an S3-compatible store).
+      provider: (process.env["AUDIT_EXPORT_PROVIDER"] ?? "gcs") === "s3" ? ("s3" as const) : ("gcs" as const),
+      region: process.env["AUDIT_EXPORT_REGION"] ?? "",
+      endpoint: process.env["AUDIT_EXPORT_ENDPOINT"] ?? "",
+      prefix: process.env["AUDIT_EXPORT_PREFIX"] ?? "vertra-audit/",
+      minutes: Number(process.env["AUDIT_EXPORT_MINUTES"] ?? "5"),
+    },
+  },
   // Log search (core/logs.ts): the chart's Loki, which the console queries
   // with each caller's visibility added. Empty: this install keeps no logs.
   // Older than searchDays, logs are archived and not searched.

@@ -127,6 +127,7 @@ database:
   highAvailability: false    # managed only
   backups: {enabled: true, retentionDays: 30}   # in-cluster only
 logs: {enabled: false, searchDays: 30, keepDays: 365}   # Observe's log search; archived after searchDays (gcp, aws)
+audit: {export: false, keepDays: 365, lock: false}       # the audit log's write-once copy (gcp, aws); lock is permanent
 admin: {email: you@example.com}
 catalog:
   host: github

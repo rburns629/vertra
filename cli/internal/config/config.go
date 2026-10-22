@@ -73,6 +73,8 @@ type Config struct {
 	Gateway Gateway `yaml:"gateway,omitempty"`
 	// Logs: log search in Observe (Loki), and how long logs are kept.
 	Logs Logs `yaml:"logs"`
+	// Audit: the audit log's write-once copy (gcp, aws).
+	Audit Audit `yaml:"audit,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
@@ -152,6 +154,15 @@ type Logs struct {
 	Enabled    bool `yaml:"enabled"`
 	SearchDays int  `yaml:"searchDays,omitempty"`
 	KeepDays   int  `yaml:"keepDays,omitempty"`
+}
+
+// Audit: a bucket that refuses deletes and overwrites, which the console
+// copies its audit log to every few minutes. Lock makes the retention
+// permanent: it can't be shortened, nor the bucket deleted, until it lapses.
+type Audit struct {
+	Export   bool `yaml:"export"`
+	KeepDays int  `yaml:"keepDays,omitempty"`
+	Lock     bool `yaml:"lock,omitempty"`
 }
 
 // Console: reached over HTTPS from the internet (what the catalog's CI
@@ -256,6 +267,7 @@ func Default(target string) *Config {
 		ScaleDown: ScaleDown{Enabled: true, IdleAfter: "2h"},
 		Database:  Database{Type: "in-cluster", Backups: Backups{Enabled: false, RetentionDays: 30}},
 		Logs:      Logs{SearchDays: 30, KeepDays: 365},
+		Audit:     Audit{KeepDays: 365},
 	}
 	switch target {
 	case "kind":
@@ -432,6 +444,14 @@ func (c *Config) Validate() error {
 		}
 		if c.Logs.KeepDays < c.Logs.SearchDays || c.Logs.KeepDays > 3650 {
 			add("logs.keepDays: %d: at least logs.searchDays (%d), at most 3650", c.Logs.KeepDays, c.Logs.SearchDays)
+		}
+	}
+	if c.Audit.Export {
+		if c.Target != "gcp" && c.Target != "aws" {
+			add("audit.export: only on gcp and aws, where vertra makes the bucket (elsewhere, set the console chart's audit.export)")
+		}
+		if c.Audit.KeepDays < 1 || c.Audit.KeepDays > 3650 {
+			add("audit.keepDays: %d isn't between 1 and 3650", c.Audit.KeepDays)
 		}
 	}
 	if c.StepHeadroom < 0 || c.StepHeadroom > 100 {

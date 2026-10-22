@@ -14,6 +14,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { appendAuditEntry } from "../audit.js";
 import { hashPassword } from "../auth/password.js";
 import { config } from "../config.js";
 import * as schema from "./schema.js";
@@ -34,7 +35,7 @@ async function main(): Promise<void> {
       process.exitCode = 2;
       return;
     }
-    await db.insert(schema.auditLog).values({
+    await appendAuditEntry(db, {
       actorId: null,
       method: "CLI",
       route: "reset-admin-password",

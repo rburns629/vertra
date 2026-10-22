@@ -520,6 +520,61 @@ resource "aws_eks_pod_identity_association" "logs" {
   role_arn        = aws_iam_role.logs[0].arn
 }
 
+# --- the audit log's write-once copy --------------------------------------
+# Object Lock: every object kept audit_keep_days (governance; compliance
+# when audit_lock, which nobody can shorten, the root account included).
+# The console may only put objects. Kept by destroy: it's the record.
+
+resource "aws_s3_bucket" "audit" {
+  count               = var.audit_export ? 1 : 0
+  bucket              = "${var.name}-audit-${local.account}-${var.region}"
+  object_lock_enabled = true
+}
+
+resource "aws_s3_bucket_public_access_block" "audit" {
+  count                   = var.audit_export ? 1 : 0
+  bucket                  = aws_s3_bucket.audit[0].id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "audit" {
+  count  = var.audit_export ? 1 : 0
+  bucket = aws_s3_bucket.audit[0].id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_object_lock_configuration" "audit" {
+  count  = var.audit_export ? 1 : 0
+  bucket = aws_s3_bucket.audit[0].id
+  rule {
+    default_retention {
+      mode = var.audit_lock ? "COMPLIANCE" : "GOVERNANCE"
+      days = var.audit_keep_days
+    }
+  }
+  depends_on = [aws_s3_bucket_versioning.audit]
+}
+
+data "aws_iam_policy_document" "console_audit" {
+  count = var.audit_export ? 1 : 0
+  statement {
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.audit[0].arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "console_audit" {
+  count  = var.audit_export ? 1 : 0
+  name   = "write-audit-copy"
+  role   = aws_iam_role.console.id
+  policy = data.aws_iam_policy_document.console_audit[0].json
+}
+
 # --- the catalog's CI: pushes images from main, by GitHub's OIDC token -------
 
 resource "aws_iam_openid_connect_provider" "github" {

@@ -329,6 +329,32 @@ resource "google_service_account_iam_member" "logs_workload_identity" {
   depends_on         = [google_container_cluster.this]
 }
 
+# --- the audit log's write-once copy --------------------------------------
+# Entries can't be deleted or changed for audit_keep_days (a retention
+# policy; locked, it can't be shortened or removed either). The console may
+# only create objects, which can't replace one. Kept by destroy: it's the
+# record (docs/operations.md).
+
+resource "google_storage_bucket" "audit" {
+  count                       = var.audit_export ? 1 : 0
+  name                        = "${var.project}-${var.name}-audit"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  retention_policy {
+    retention_period = var.audit_keep_days * 86400
+    is_locked        = var.audit_lock
+  }
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_storage_bucket_iam_member" "audit" {
+  count  = var.audit_export ? 1 : 0
+  bucket = google_storage_bucket.audit[0].name
+  role   = "roles/storage.objectCreator"
+  member = google_service_account.console.member
+}
+
 # --- reaching the console: an address for its load balancer -----------------
 
 resource "google_compute_global_address" "console" {

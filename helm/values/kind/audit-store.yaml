@@ -1,0 +1,80 @@
+# Applied by make kind-audit-store: an S3-compatible store with Object Lock
+# (SeaweedFS) for the console's write-once audit copy on kind, its locked
+# bucket, and the keys the console uses (SeaweedFS here accepts any).
+# A day's compliance-mode retention: nothing written can be removed for a
+# day. Never for a real cluster: there, vertra makes a GCS or S3 bucket.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vertra-audit-store
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs
+  namespace: vertra-audit-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: seaweedfs}
+  template:
+    metadata:
+      labels: {app: seaweedfs}
+    spec:
+      containers:
+        - name: seaweedfs
+          image: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+          args: ["server", "-s3", "-s3.port=8333", "-dir=/data"]
+          ports: [{name: s3, containerPort: 8333}]
+          readinessProbe:
+            tcpSocket: {port: s3}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes: [{name: data, emptyDir: {}}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seaweedfs
+  namespace: vertra-audit-store
+spec:
+  selector: {app: seaweedfs}
+  ports: [{name: s3, port: 8333, targetPort: s3}]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: audit-bucket
+  namespace: vertra-audit-store
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: aws
+          image: amazon/aws-cli:2.37.9@sha256:92de75724b6a746951f0e8b915d86bbccd7cb55aff96cd0cb4f7017272160780
+          env:
+            - {name: AWS_ACCESS_KEY_ID, value: kind}
+            - {name: AWS_SECRET_ACCESS_KEY, value: kind}
+            - {name: AWS_REGION, value: us-east-1}
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              S3="--endpoint-url http://seaweedfs.vertra-audit-store.svc.cluster.local:8333"
+              aws s3api head-bucket --bucket vertra-audit $S3 2>/dev/null ||
+                aws s3api create-bucket --bucket vertra-audit --object-lock-enabled-for-bucket $S3
+              aws s3api put-object-lock-configuration --bucket vertra-audit $S3 \
+                --object-lock-configuration '{"ObjectLockEnabled":"Enabled","Rule":{"DefaultRetention":{"Mode":"COMPLIANCE","Days":1}}}'
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: audit-store-keys
+  namespace: vertra-system
+stringData:
+  access-key-id: kind
+  secret-access-key: kind

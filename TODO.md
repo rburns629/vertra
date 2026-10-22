@@ -619,8 +619,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the fence is in force (fails closed, checks something, bound to deny)
   before it starts and refuses to start without it (proven on kind by
   deleting the binding), and Observe reports it.
-- [ ] **Ship audit log lines to a write-once store**: the audit log lives in
-  the console's database, which its writers could change.
+- [x] **Ship audit log lines to a write-once store** (done 2026-10-22): the
+  audit log is hash-chained (`audit_log.hash`), and with `audit.export` the
+  console copies new entries every few minutes, their chain checked, to a
+  bucket that refuses deletes and overwrites (GCS retention, S3 Object
+  Lock; `vertra` makes it, kept by destroy, `audit.lock` for the permanent
+  kind), create-only. Proven on kind (`make kind-audit-store`, SeaweedFS):
+  copies written, an overwrite and a locked delete refused, a forged entry
+  stopping the copy and Observe saying where. Left: the GCS and S3 buckets
+  proven on a cloud; checking the database against the copies.
 - [x] **Decide who may read a multi-team execution** (decided and done
   2026-10-22, `console/src/core/runView.ts`): a run's owners (admins, its
   submitter, the team a template run was for; a raw DAG's every team) see

@@ -207,6 +207,8 @@ jobs:
           helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
             --set gatewayApi.enabled=true --set gatewayApi.host=v.example.com \
             --set 'gatewayApi.parentRefs[0].name=gw' --set 'gatewayApi.redirectParentRefs[0].name=gw' > /dev/null
+          helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
+            --set audit.export.bucket=b --set audit.export.provider=s3 --set audit.export.credentialsSecret=k > /dev/null
           for storage in filesystem gcs s3; do
             helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
               --set logs.enabled=true --set logs.storage.type=$storage --set logs.storage.bucket=b > /dev/null

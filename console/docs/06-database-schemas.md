@@ -247,6 +247,11 @@ erDiagram
     bigserial id PK
     uuid actor_id
     text route
+    text hash
+  }
+  audit_export {
+    int id PK
+    bigint last_id
   }
   secret_grants {
     uuid id PK
@@ -386,6 +391,20 @@ Who changed what (`src/audit.ts`): one row per call that tried to change somethi
 | `target` | jsonb | no | The identifying fields of the request (names, teams, images, emails, scopes, reasons); never a secret value, password or token. |
 | `status` | integer | no | The answer's status, as HTTP would say it (200, 403, 409, ...): a refusal is recorded too. |
 | `request_id` | text | yes | The request's id, as in the logs. |
+| `hash` | text | yes | sha256 of the previous entry's hash and this entry's fields, so changing, removing or adding an entry breaks every later hash. Null on entries from before the chain. |
+
+### audit_export
+
+The audit log's write-once copy (`src/auditExport.ts`), one row: how far the copy has gone.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | no | Always 1. |
+| `last_id` | bigint | no | The last entry copied; the next copy starts after it. |
+| `last_hash` | text | no | Its hash, which the next copy's chain must follow from. |
+| `exported_at` | timestamptz | yes | When the last copy was written. |
+| `checked_at` | timestamptz | yes | When the export last looked. |
+| `error` | text | yes | Why the last look didn't copy: a broken chain (where), or the bucket. |
 
 ### image_scans
 

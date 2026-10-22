@@ -1,4 +1,4 @@
-.PHONY: kind-tls quickstart _quickstart-prereqs kind-cluster kind-namespaces \
+.PHONY: kind-tls kind-audit-store quickstart _quickstart-prereqs kind-cluster kind-namespaces \
 	build-products catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
 	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
@@ -252,6 +252,14 @@ kind-tls:
 		--kube-context $(KIND_CONTEXT) -n traefik --create-namespace --wait --timeout 10m -f helm/values/kind/traefik.yaml
 	$(KUBECTL) apply -f helm/values/kind/tls-test.yaml
 	$(KUBECTL) -n cert-manager wait --for=condition=Ready certificate/vertra-test-ca --timeout=2m
+
+# Optional: a write-once store for the console's audit copy on kind
+# (SeaweedFS, S3 with Object Lock). Then deploy the console with audit.export
+# pointing at it (docs/operations.md, "The audit log's copy").
+kind-audit-store:
+	$(KUBECTL) apply -f helm/values/kind/audit-store.yaml
+	$(KUBECTL) -n vertra-audit-store rollout status deployment seaweedfs --timeout=5m
+	$(KUBECTL) -n vertra-audit-store wait --for=condition=complete job/audit-bucket --timeout=5m
 
 kind-deploy-console:
 	$(DOCKER) build -t execution-console:latest console/

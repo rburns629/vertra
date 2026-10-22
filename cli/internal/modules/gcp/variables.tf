@@ -97,6 +97,24 @@ variable "log_keep_days" {
   default     = 365
 }
 
+variable "audit_export" {
+  description = "A bucket for the console's write-once copy of the audit log."
+  type        = bool
+  default     = false
+}
+
+variable "audit_keep_days" {
+  description = "Days each copied audit entry can't be deleted or changed."
+  type        = number
+  default     = 365
+}
+
+variable "audit_lock" {
+  description = "Lock the retention: it can never be shortened or removed, nor the bucket deleted, until it lapses (GCS locked retention, S3 Object Lock compliance mode)."
+  type        = bool
+  default     = false
+}
+
 variable "delete_data" {
   description = "Let destroy delete the backup and logs buckets even when they hold data (vertra destroy asks first)."
   type        = bool

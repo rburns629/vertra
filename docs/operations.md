@@ -322,6 +322,30 @@ the charts don't ship yet (`TODO.md`).
   ConfigMap labelled for Grafana's dashboard sidecar; set
   `monitoring.dashboard.namespace` if the sidecar watches only Grafana's.
 
+### The audit log's copy
+
+The console hash-chains its audit log: each entry's hash covers the entry
+before it, so changing, removing or adding one breaks every later hash. With
+the console chart's `audit.export` (vertra: `audit.export` in vertra.yaml, on
+gcp and aws), every `minutes` it checks the new entries' chain and copies
+them as one JSON-lines object (`<prefix><yyyy>/<mm>/<dd>/<first>-<last>.jsonl`)
+to a bucket that refuses deletes and overwrites, create-only on its side
+too. A broken chain stops the copy where it breaks; Observe's security
+checks say where.
+
+- **gcs**: a retention policy of `audit.keepDays`; the console's Google
+  identity may only create objects.
+- **s3**: Object Lock, governance mode, `audit.keepDays`; the console's role
+  may only put objects.
+- `audit.lock: true` locks it: GCS locked retention, S3 compliance mode.
+  Nobody, the cloud account's owners included, can then shorten it, and the
+  bucket can't be deleted until the last object's retention lapses. That's
+  the point, and it's permanent: decide before you set it.
+
+`vertra destroy` never deletes the audit bucket. On kind, `make
+kind-audit-store` runs SeaweedFS (S3 with Object Lock) with a bucket locked
+for a day; point `audit.export` at it in a values file under `_local/`.
+
 ### Logs
 
 Observe's Logs tab searches every step's output (and, for admins, the

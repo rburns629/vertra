@@ -94,7 +94,8 @@ export function parseImageRef(image: string): ImageRef | null {
 
 let gcpToken: { value: string; expiresAt: number } | null = null;
 
-async function gcpMetadataToken(): Promise<string> {
+/** The console's own Google access token (Workload Identity), from the node's metadata server; also auditExport.ts's. */
+export async function gcpMetadataToken(): Promise<string> {
   if (gcpToken && gcpToken.expiresAt > Date.now()) return gcpToken.value;
   // The metadata server is node-local and only speaks plain HTTP.
   // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request

@@ -303,9 +303,28 @@ export const auditLog = pgTable(
     target: jsonb("target").notNull().default({}),
     status: integer("status").notNull(),
     requestId: text("request_id"),
+    // sha256 of the previous entry's hash and this entry (audit.ts), so
+    // changing or removing one breaks every later hash. Null on entries
+    // from before the chain.
+    hash: text("hash"),
   },
   (table) => [index("audit_log_at_idx").on(table.at), index("audit_log_actor_idx").on(table.actorId)],
 );
+
+/**
+ * Shipping the audit log to write-once storage (auditExport.ts): one row,
+ * the last entry exported and its hash, from which the next export's chain
+ * is checked.
+ */
+export const auditExport = pgTable("audit_export", {
+  id: integer("id").primaryKey().default(1),
+  lastId: bigint("last_id", { mode: "number" }).notNull().default(0),
+  lastHash: text("last_hash").notNull().default(""),
+  exportedAt: timestamp("exported_at", { withTimezone: true }),
+  // The last look, and why it didn't export (a broken chain, the bucket).
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+  error: text("error"),
+});
 
 /**
  * The catalog's wiring vocabulary (its schema/types.yaml): the names a

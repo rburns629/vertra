@@ -172,6 +172,25 @@ scanning:
 # any name below it); only internetTeams' APIs may be reachable from the
 # internet; url and publicUrl are where callers reach the gateway, inside
 # the cluster and from outside.
+# -- The audit log's write-once copy (console/src/auditExport.ts): every
+# `minutes`, the entries since the last copy, their hash chain checked, as
+# one JSON-lines object in a bucket that refuses deletes and overwrites (a
+# GCS retention policy, S3 Object Lock; vertra makes it). A broken chain
+# stops the copy there and shows on Observe. Empty bucket: off.
+audit:
+  export:
+    bucket: ""
+    # -- gcs (the console's Workload Identity) or s3 (its AWS identity).
+    provider: gcs
+    region: ""
+    # -- An S3-compatible store's address (MinIO on kind); empty for S3.
+    endpoint: ""
+    # -- A Secret with access-key-id and secret-access-key, for a store
+    # without the cloud's identities (MinIO); empty otherwise.
+    credentialsSecret: ""
+    prefix: vertra-audit/
+    minutes: 5
+
 # -- Log search (Observe's Logs tab, console/src/core/logs.ts): Grafana
 # Alloy reads every step's output and the platform's own through the
 # Kubernetes API, redacts credentials, and sends it to a single Loki here.

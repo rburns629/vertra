@@ -445,7 +445,7 @@ Vertra isn't production-ready yet.
 | The console can still create and replace Secrets in any team namespace | A compromised console could plant or overwrite a team's secret values (it can't read them) | Bind its Secret rights per team namespace as teams are created |
 | No TLS in the chart | The console must be put behind TLS by the operator | An optional Ingress or Gateway with certificates |
 | Teams aren't taken from the identity provider | Leaving a Google Group doesn't remove anyone from a team | Google Groups (and later Entra, Okta) mapped to teams |
-| The audit log lives in the console's own database (Observe shows it: everything to admins; to anyone else, their own entries and those about their teams and runs) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
+| The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
 | Any member of one team in a multi-team execution can read all of its outputs (its steps' logs are filtered by level: other teams see INFO lines only) | Cross-team visibility of outputs within shared executions | Decide: filter outputs by team, or require every team for reads |
 
 ## Out of scope

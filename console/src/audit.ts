@@ -14,6 +14,9 @@
  * Sign-in and password changes aren't recorded (they have their own
  * throttling and logs, and their requests are mostly secrets).
  */
+import { createHash } from "node:crypto";
+import { desc, isNotNull, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { FastifyBaseLogger } from "fastify";
 import { db } from "./db/client.js";
 import { auditLog } from "./db/schema.js";
@@ -62,6 +65,60 @@ export function targetFields(body: unknown): Record<string, unknown> {
   return target;
 }
 
+/** Every console's audit writes take this lock, so the chain stays one line. */
+const CHAIN_LOCK = 0x76657274617564; // "vertaud"
+
+export interface AuditEntryInput {
+  actorId: string | null;
+  method: string;
+  route: string;
+  target: Record<string, unknown>;
+  status: number;
+  requestId: string;
+}
+
+/** JSON with every object's keys sorted: the same entry always hashes the same. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** An entry's hash: of the previous entry's hash and the entry itself. */
+export function chainHash(previous: string, entry: AuditEntryInput & { at: Date }): string {
+  const fields = {
+    at: entry.at.toISOString(),
+    actorId: entry.actorId,
+    method: entry.method,
+    route: entry.route,
+    target: entry.target,
+    status: entry.status,
+    requestId: entry.requestId,
+  };
+  return createHash("sha256").update(previous).update("\n").update(canonical(fields)).digest("hex");
+}
+
+/** Appends an entry to the chain (auditExport.ts checks it before shipping it). */
+export async function appendAuditEntry<S extends Record<string, unknown>>(database: NodePgDatabase<S>, entry: AuditEntryInput): Promise<void> {
+  // Microseconds are kept by Postgres, milliseconds by Date: hash what's stored.
+  const at = new Date();
+  await database.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${CHAIN_LOCK})`);
+    const [last] = await tx
+      .select({ hash: auditLog.hash })
+      .from(auditLog)
+      .where(isNotNull(auditLog.hash))
+      .orderBy(desc(auditLog.id))
+      .limit(1);
+    await tx.insert(auditLog).values({ ...entry, at, hash: chainHash(last?.hash ?? "", { ...entry, at }) });
+  });
+}
+
 /** Writes one audit entry, as a log line and a row; a failed write is logged. */
 export async function writeAuditEntry(
   log: FastifyBaseLogger,
@@ -76,7 +133,7 @@ export async function writeAuditEntry(
 ): Promise<void> {
   log.info({ event: "audit", ...entry }, `${entry.method} ${entry.route} ${String(entry.status)}`);
   try {
-    await db.insert(auditLog).values(entry);
+    await appendAuditEntry(db, entry);
   } catch (error) {
     // The request has been answered; losing its record is logged loudly,
     // and the log line above still has it.

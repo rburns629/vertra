@@ -7,6 +7,7 @@ import helmet from "@fastify/helmet";
 import authPlugin from "./auth/plugin.js";
 import { registerActivity } from "./activity.js";
 import { startCatalogSync } from "./catalogSync.js";
+import { startAuditExport } from "./auditExport.js";
 import { reconcileScans } from "./scanning.js";
 import { startPolicySync } from "./policySync.js";
 import { startRetention } from "./retention.js";
@@ -137,6 +138,7 @@ async function main(): Promise<void> {
   startRetention(app.log);
   // The catalog's release (catalogSync.ts): now, then every few minutes.
   startCatalogSync(app.log);
+  startAuditExport(app.log);
   // Image scans (scanning.ts): the cluster's list of failed digests now,
   // then finished scans read, and due rescans started, every 15 seconds.
   // A failure is logged and tried again on the next round.

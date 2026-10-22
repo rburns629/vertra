@@ -22,6 +22,7 @@ import { readImagePolicy } from "../imagePolicy.js";
 import { getStats, listRefusals } from "../kernel/client.js";
 import { PLATFORM_ERRORS } from "../failureHelp.js";
 import { imageRepository } from "../imageRef.js";
+import { auditExportStatus } from "../auditExport.js";
 import { auditPage } from "./admin.js";
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
@@ -117,13 +118,23 @@ async function checks(): Promise<Check[]> {
       state: "not_yet",
       text: "Team membership is set in Vertra; mapping your directory's groups to teams is planned.",
     },
-    {
-      name: "A write-once audit log",
-      state: "not_yet",
-      text: "The audit log lives in the console's own database; ship its log lines to a SIEM for now.",
-    },
+    await auditCheck(),
   ];
   return list;
+}
+
+/** The audit log's write-once copy: on, and whether its chain held at the last export. */
+async function auditCheck(): Promise<Check> {
+  const status = await auditExportStatus();
+  if (!status) {
+    return { name: "A write-once copy of the audit log", state: "off", text: "The audit log lives in the console's own database only; its entries are hash-chained, so a change shows once it's exported." };
+  }
+  if (status.error) return { name: "A write-once copy of the audit log", state: "off", text: `The last export stopped: ${status.error}` };
+  return {
+    name: "A write-once copy of the audit log",
+    state: "enforced",
+    text: `Every few minutes, the entries since the last copy, their hash chain checked, go to a bucket that refuses deletes and overwrites. ${status.exportedAt ? `Last copied ${status.exportedAt.toISOString()}, through entry ${String(status.lastId)}.` : "Nothing copied yet."}`,
+  };
 }
 
 function mayCount(n: unknown): number {

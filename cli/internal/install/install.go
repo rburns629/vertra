@@ -38,6 +38,9 @@ type Cloud struct {
 	LogsBucket         string
 	LogsRegion         string
 	LogsServiceAccount string
+	// The audit log's write-once copy: its bucket, and region (aws).
+	AuditBucket string
+	AuditRegion string
 	// The chart's scheduler.taskPlacement: where steps run (Spot, a pool).
 	StepPlacement   map[string]any
 	ClusterName     string
@@ -457,6 +460,14 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	}
 	if c.Logs.Enabled {
 		v["logs"] = logsValues(c, cloud)
+	}
+	// The console writes the copy as itself (Workload Identity, Pod Identity).
+	if cloud != nil && cloud.AuditBucket != "" {
+		export := map[string]any{"bucket": cloud.AuditBucket, "provider": "gcs"}
+		if cloud.Provider == "aws" {
+			export = map[string]any{"bucket": cloud.AuditBucket, "provider": "s3", "region": cloud.AuditRegion}
+		}
+		v["audit"] = map[string]any{"export": export}
 	}
 	return v
 }

@@ -85,6 +85,10 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 			Bucket string `json:"bucket"`
 			Region string `json:"region"`
 		}
+		Audit *struct {
+			Bucket string `json:"bucket"`
+			Region string `json:"region"`
+		}
 		StepPlacement map[string]any
 		Spot          bool
 		Catalog       *struct {
@@ -99,7 +103,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		}
 	}
 	for name, into := range map[string]any{
-		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs,
+		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit,
 		"step_placement": &v.StepPlacement, "spot": &v.Spot, "catalog": &v.Catalog,
 		"console_address": &v.ConsoleAddress,
 	} {
@@ -128,6 +132,9 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	}
 	if v.Logs != nil {
 		cloud.LogsBucket, cloud.LogsRegion = v.Logs.Bucket, v.Logs.Region
+	}
+	if v.Audit != nil {
+		cloud.AuditBucket, cloud.AuditRegion = v.Audit.Bucket, v.Audit.Region
 	}
 	if v.Catalog != nil {
 		cloud.CatalogServiceAccount = v.Catalog.RoleArn
@@ -246,6 +253,11 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 	var keep []string
 	if c.Database.Backups.Enabled && !deleteData {
 		keep = append(keep, bucket, "aws_s3_bucket_public_access_block.backups[0]", "aws_s3_bucket_lifecycle_configuration.backups[0]")
+	}
+	// The audit log's copy is the record, and Object Lock refuses deletes.
+	if c.Audit.Export {
+		keep = append(keep, "aws_s3_bucket.audit[0]", "aws_s3_bucket_public_access_block.audit[0]",
+			"aws_s3_bucket_versioning.audit[0]", "aws_s3_bucket_object_lock_configuration.audit[0]")
 	}
 	const logsBucket = "aws_s3_bucket.logs[0]"
 	if c.Logs.Enabled && !deleteData {

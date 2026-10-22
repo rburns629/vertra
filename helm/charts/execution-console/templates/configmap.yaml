@@ -22,6 +22,16 @@ data:
   LOKI_URL: "http://{{ include "execution-console.fullname" . }}-loki.{{ .Release.Namespace }}.svc.cluster.local:3100"
   {{- end }}
   LOG_SEARCH_DAYS: {{ .Values.logs.searchDays | quote }}
+  {{- with .Values.audit.export }}
+  {{- if .bucket }}
+  AUDIT_EXPORT_BUCKET: {{ .bucket | quote }}
+  AUDIT_EXPORT_PROVIDER: {{ .provider | quote }}
+  AUDIT_EXPORT_REGION: {{ .region | quote }}
+  AUDIT_EXPORT_ENDPOINT: {{ .endpoint | quote }}
+  AUDIT_EXPORT_PREFIX: {{ .prefix | quote }}
+  AUDIT_EXPORT_MINUTES: {{ .minutes | quote }}
+  {{- end }}
+  {{- end }}
   KERNEL_API_URL: {{ .Values.kernelApiUrl | quote }}
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}

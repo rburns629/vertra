@@ -5,7 +5,8 @@
  * runs in them, by anyone. Entries about no team stay with admins.
  */
 import { randomUUID } from "node:crypto";
-import { inArray, like } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
+import { appendAuditEntry } from "../src/audit.js";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { hashPassword } from "../src/auth/password.js";
@@ -77,11 +78,11 @@ beforeAll(async () => {
     adminOnly: { actorId: admin.id, route: route("UserService/CreateUser"), target: { email: "someone@example.com" } },
     refusedMine: { actorId: other.id, route: route("SecretService/RevokeSecret"), target: { team: mine }, status: 403 },
   };
+  // Through the chain, as the console writes them (audit.ts).
   for (const [name, entry] of Object.entries(entries)) {
-    const [row] = await db
-      .insert(auditLog)
-      .values({ ...entry, method: "POST", status: entry.status ?? 200, requestId: name })
-      .returning({ id: auditLog.id });
+    const requestId = `${prefix}-${name}`;
+    await appendAuditEntry(db, { ...entry, target: entry.target as Record<string, unknown>, method: "POST", status: entry.status ?? 200, requestId });
+    const [row] = await db.select({ id: auditLog.id }).from(auditLog).where(eq(auditLog.requestId, requestId));
     ids[name] = row!.id;
   }
 });

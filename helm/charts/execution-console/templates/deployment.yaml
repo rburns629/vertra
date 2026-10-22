@@ -102,6 +102,13 @@ spec:
                 name: {{ include "execution-console.fullname" . }}-config
           env:
             {{- include "execution-console.ssoEnv" . | nindent 12 }}
+            {{- with .Values.audit.export.credentialsSecret }}
+            # An S3-compatible store's keys, for the audit log's copy.
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: {secretKeyRef: {name: {{ . }}, key: access-key-id}}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: {secretKeyRef: {name: {{ . }}, key: secret-access-key}}
+            {{- end }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

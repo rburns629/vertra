@@ -124,7 +124,7 @@ func sameIdentity(recorded, now string) error {
 
 // optionalOutputs are the modules' outputs that are null when not used
 // (no backups, no catalog, no public console), which `tofu output` omits.
-var optionalOutputs = map[string]bool{"backup": true, "logs": true, "catalog": true, "console_address": true}
+var optionalOutputs = map[string]bool{"backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true}
 
 // cloudFromGCP reads the module's outputs.
 func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
@@ -143,6 +143,9 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 			Bucket         string `json:"bucket"`
 			ServiceAccount string `json:"service_account"`
 		}
+		Audit *struct {
+			Bucket string `json:"bucket"`
+		}
 		StepPlacement  map[string]any
 		ConsoleAddress *struct {
 			Name string `json:"name"`
@@ -155,7 +158,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "workload_identity_pool": &v.WorkloadPool, "task_registry": &v.TaskRegistry,
-		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "step_placement": &v.StepPlacement,
+		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement,
 		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog,
 	} {
 		raw, ok := outputs[name]
@@ -185,6 +188,9 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	if v.Logs != nil {
 		cloud.LogsBucket, cloud.LogsServiceAccount = v.Logs.Bucket, v.Logs.ServiceAccount
+	}
+	if v.Audit != nil {
+		cloud.AuditBucket = v.Audit.Bucket
 	}
 	if v.ConsoleAddress != nil {
 		cloud.ConsoleAddressName, cloud.ConsoleIP = v.ConsoleAddress.Name, v.ConsoleAddress.IP
@@ -294,6 +300,10 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 	}
 	if c.TaskImages.Create && !deleteRegistry {
 		keep = append(keep, "google_artifact_registry_repository.tasks[0]")
+	}
+	// The audit log's copy is the record, and its retention refuses deletes.
+	if c.Audit.Export {
+		keep = append(keep, "google_storage_bucket.audit[0]")
 	}
 	if tf.HasState(ctx) {
 		var emptied []string

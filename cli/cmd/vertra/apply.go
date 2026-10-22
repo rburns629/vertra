@@ -285,6 +285,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		{Label: "Task images", Text: taskImages},
 		{Label: "Database", Text: database},
 		{Label: "Logs", Text: logsLine(c)},
+		{Label: "Audit", Text: auditLine(c)},
 		{Label: "Admin", Text: admin},
 	}
 	if cloud != nil {
@@ -387,4 +388,16 @@ func logsLine(c *config.Config) string {
 		return fmt.Sprintf("searchable %d days, then archived in a bucket; deleted after %d days", c.Logs.SearchDays, c.Logs.KeepDays)
 	}
 	return fmt.Sprintf("searchable on a volume, deleted after %d days (no archive without a bucket)", c.Logs.KeepDays)
+}
+
+// auditLine says where the audit log's copy goes, for the approval screen.
+func auditLine(c *config.Config) string {
+	if !c.Audit.Export {
+		return "in the console's database, hash-chained (audit.export for a write-once copy)"
+	}
+	lock := "unlocked: an admin of the cloud account can still shorten it"
+	if c.Audit.Lock {
+		lock = "LOCKED: it can never be shortened, nor the bucket deleted, until it lapses"
+	}
+	return fmt.Sprintf("copied every 5 minutes to a bucket that refuses deletes for %d days (%s); kept by destroy", c.Audit.KeepDays, lock)
 }
