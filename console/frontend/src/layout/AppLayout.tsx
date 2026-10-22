@@ -26,6 +26,7 @@ import RunIcon from "@mui/icons-material/RocketLaunchOutlined";
 import GroupsIcon from "@mui/icons-material/GroupsOutlined";
 import InventoryIcon from "@mui/icons-material/Inventory2Outlined";
 import DocsIcon from "@mui/icons-material/MenuBookOutlined";
+import ApiIcon from "@mui/icons-material/ApiOutlined";
 import AdminIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import KeyIcon from "@mui/icons-material/KeyOutlined";
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { label: "Run", to: "/run", icon: <RunIcon /> },
   { label: "Executions", to: "/executions", icon: <PlayCircleIcon /> },
   { label: "Products", to: "/products", icon: <InventoryIcon /> },
+  { label: "APIs", to: "/apis", icon: <ApiIcon /> },
   { label: "Teams", to: "/teams", icon: <GroupsIcon /> },
   { label: "Docs", to: "/docs", icon: <DocsIcon /> },
 ];

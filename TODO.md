@@ -643,8 +643,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   5. Its chart: Deployment, Service, its own hostname and certificate,
      NetworkPolicy egress to allowed hosts; pausing an API, and closing the
      gateway, from the console.
-  6. The pages: an API's page, traffic and blocked requests, a team's
-     APIs, the admin's gateway settings.
+  6. The pages: ~~the APIs list and an API's page~~ (done 2026-10-22:
+     endpoints from its spec, how to call it, the caller's limit, sharing,
+     its backend for its own team, pausing for its maintainers, its OpenAPI
+     file to download); still to do: traffic and blocked requests (needs
+     the gateway's metrics read back), a team's APIs tab, the admin's
+     gateway settings.
   Proven on kind with a backend in a team namespace, then on GKE with a
   Cloud Run backend.
 

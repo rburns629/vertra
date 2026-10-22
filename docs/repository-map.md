@@ -212,6 +212,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
+| `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx` | API products: every one you may see, and one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; its backend and Pause for its own team). |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
 | `src/pages/RunPage.tsx`, `src/components/RunDialog.tsx` | The Run page: the templates and actions shared with you, each run through a form from its parameter schema (`src/schemaForm.ts`, tested in `schemaForm.test.ts`), with "Run for" when sharing needs a team. |

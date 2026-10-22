@@ -17,6 +17,7 @@ import { fromJson, type JsonObject, type JsonValue } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { AdminService } from "./gen/vertra/console/v1/admin_pb.js";
 import { AuthService } from "./gen/vertra/console/v1/auth_pb.js";
+import { ApiService, ApiState } from "./gen/vertra/console/v1/api_pb.js";
 import {
   DagSchema,
   ExecutionService,
@@ -103,6 +104,7 @@ const session: Interceptor = (next) => async (req) => {
 // collide with a same-named React Router page on a hard refresh.
 const transport = createConnectTransport({ baseUrl: "/api", interceptors: [session] });
 const auth = createClient(AuthService, transport);
+const apisApi = createClient(ApiService, transport);
 const admin = createClient(AdminService, transport);
 const executions = createClient(ExecutionService, transport);
 const guides = createClient(GuideService, transport);
@@ -1232,4 +1234,87 @@ export async function runRunnable(
       ? await call(() => templates.runTemplate({ team: runnable.team, name: runnable.name, parameters: values, onBehalfOf }))
       : await call(() => templates.runAction({ product: runnable.name, inputs: values, onBehalfOf }));
   return result.executionId;
+}
+
+export interface ApiEndpoint {
+  method: string;
+  path: string;
+  summary: string;
+}
+
+/** An API product (proto/vertra/console/v1/api.proto). */
+export interface ApiProduct {
+  team: string;
+  name: string;
+  displayName: string;
+  description: string;
+  state: "LIVE" | "HELD" | "PAUSED" | "UNSPECIFIED";
+  heldReason: string;
+  pausedMessage: string;
+  mayCall: boolean;
+  shareWith: string[];
+  hidden: boolean;
+  deprecated: string;
+  internet: boolean;
+  url: string;
+  publicUrl: string;
+  endpoints: ApiEndpoint[];
+  perMinute: number;
+  timeoutSeconds: number;
+  maxRequestBytes: number;
+  sourcePath: string;
+  /** Its own team only. */
+  backendUrl: string;
+  backendAuth: string;
+  specTitle: string;
+  specVersion: string;
+}
+
+function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][number]): ApiProduct {
+  return {
+    team: a.team,
+    name: a.name,
+    displayName: a.displayName,
+    description: a.description,
+    state: ApiState[a.state] as ApiProduct["state"],
+    heldReason: a.heldReason,
+    pausedMessage: a.pausedMessage,
+    mayCall: a.mayCall,
+    shareWith: a.shareWith,
+    hidden: a.hidden,
+    deprecated: a.deprecated,
+    internet: a.internet,
+    url: a.url,
+    publicUrl: a.publicUrl,
+    endpoints: a.endpoints.map((e) => ({ method: e.method, path: e.path, summary: e.summary })),
+    perMinute: a.perMinute,
+    timeoutSeconds: a.timeoutSeconds,
+    maxRequestBytes: a.maxRequestBytes,
+    sourcePath: a.sourcePath,
+    backendUrl: a.backendUrl,
+    backendAuth: a.backendAuth,
+    specTitle: a.specTitle,
+    specVersion: a.specVersion,
+  };
+}
+
+/** Every API the signed-in user may see. */
+export async function listApis(): Promise<ApiProduct[]> {
+  const result = await call(() => apisApi.listApis({}));
+  return result.apis.map(apiProduct);
+}
+
+/** One API, and its OpenAPI document as JSON. */
+export async function getApi(team: string, name: string): Promise<{ api: ApiProduct; openapi: string }> {
+  const result = await call(() => apisApi.getApi({ team, name }));
+  if (!result.api) throw new ApiError(404, `No API "${team}/${name}".`);
+  return { api: apiProduct(result.api), openapi: result.openapi };
+}
+
+export async function pauseApi(team: string, name: string, message: string): Promise<void> {
+  await call(() => apisApi.pauseApi({ team, name, message }));
+}
+
+export async function resumeApi(team: string, name: string): Promise<void> {
+  await call(() => apisApi.resumeApi({ team, name }));
 }

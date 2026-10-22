@@ -11,6 +11,8 @@ import { RegisterPage } from "./pages/RegisterPage";
 // (AppLayout shows a spinner meanwhile): the Docs page alone brings mermaid,
 // and the home page recharts, which nobody should download just to log in.
 const AccountPage = lazy(() => import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const ApiPage = lazy(() => import("./pages/ApiPage").then((m) => ({ default: m.ApiPage })));
+const ApisPage = lazy(() => import("./pages/ApisPage").then((m) => ({ default: m.ApisPage })));
 const AdminPage = lazy(() => import("./pages/AdminPage").then((m) => ({ default: m.AdminPage })));
 const DocsPage = lazy(() => import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })));
 const ExecutionDetailPage = lazy(() => import("./pages/ExecutionDetailPage").then((m) => ({ default: m.ExecutionDetailPage })));
@@ -45,6 +47,8 @@ export function App() {
           <Route path="/executions/:id" element={<ExecutionDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/run" element={<RunPage />} />
+          <Route path="/apis" element={<ApisPage />} />
+          <Route path="/apis/:team/:name" element={<ApiPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/docs/:id" element={<DocsPage />} />
         </Route>
