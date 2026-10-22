@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-import type { ChipProps } from "@mui/material/Chip";
+import type { PillTone } from "./components/Pill";
 import type { Theme } from "@mui/material/styles";
 
 /** Maps kernel's real ExecutionState/TaskState strings (see kernel/
- * internal/domain/states.go) to a Chip color -- one place, so a status reads the
+ * internal/domain/states.go) to a pill tone -- one place, so a status reads the
  * same way everywhere it appears (list, detail, home's recent-activity,
  * home's charts). */
-export function statusColor(state: string): ChipProps["color"] {
+export function statusColor(state: string): PillTone {
   switch (state) {
     case "SUCCEEDED":
       return "success";
@@ -18,7 +18,7 @@ export function statusColor(state: string): ChipProps["color"] {
     case "AWAITING_APPROVAL":
       return "warning";
     default: // CANCELLED, and not started yet: PENDING, READY, BLOCKED
-      return "default";
+      return "neutral";
   }
 }
 
@@ -43,7 +43,7 @@ export function statusLabel(state: string): string {
  * (chart bars and slices), so a chart's Running is the chips' Running. */
 export function statusFill(theme: Theme, state: string): string {
   const color = statusColor(state);
-  if (!color || color === "default") return theme.palette.grey[500];
+  if (color === "neutral") return theme.palette.grey[500];
   // The tints' strong ends, as on the chips' dots.
   return color === "info" ? theme.palette.primary.main : theme.palette[color].main;
 }

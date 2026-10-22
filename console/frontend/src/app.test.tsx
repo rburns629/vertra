@@ -247,6 +247,53 @@ describe("a run", () => {
   });
 });
 
+describe("the catalog", () => {
+  const CATALOG = {
+    runnables: [
+      {
+        kind: "KIND_TEMPLATE",
+        team: "gcp-platform",
+        name: "app-on-cloud-run",
+        displayName: "App on Cloud Run",
+        description: "A project, an image and a Cloud Run service.",
+        parameters: { type: "object", properties: { projectId: { type: "string" }, region: { type: "string" } } },
+        actions: ["gcp-platform/project.create", "gcp-platform/app-hosting.create"],
+        shared: true,
+        sourceUrl: "https://github.com/acme/vertra-catalog/blob/main/teams/gcp-platform/templates/app.yaml",
+      },
+      {
+        kind: "KIND_ACTION",
+        team: "aws-platform",
+        name: "rds",
+        displayName: "RDS for PostgreSQL",
+        actions: ["aws-platform/rds.create"],
+        shared: false,
+        shareWith: ["data-team"],
+        askForAccessUrl: "https://github.com/acme/vertra-catalog/issues/new?title=rds",
+      },
+    ],
+  };
+
+  it("shows what you can run and what you can ask for, by team", async () => {
+    await renderAt("/catalog", MEMBER, { "TemplateService/ListTemplates": CATALOG });
+    expect(await screen.findByRole("heading", { name: "App on Cloud Run" })).toBeTruthy();
+    expect(screen.getByText("projectId, region")).toBeTruthy();
+    expect(screen.getByText("gcp-platform · template · 2 steps")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Run" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /ask for access/i }).getAttribute("href")).toContain("issues/new");
+    expect(screen.getByRole("link", { name: /catalog repository/i }).getAttribute("href")).toBe("https://github.com/acme/vertra-catalog");
+
+    fireEvent.click(screen.getByRole("button", { name: "aws-platform" }));
+    expect(screen.queryByRole("heading", { name: "App on Cloud Run" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "RDS for PostgreSQL" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "All teams" }));
+    fireEvent.click(screen.getByRole("switch", { name: /only what i can run/i }));
+    expect(screen.queryByRole("heading", { name: "RDS for PostgreSQL" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "App on Cloud Run" })).toBeTruthy();
+  });
+});
+
 describe("pages that moved", () => {
   it.each([
     ["/executions", "Runs"],

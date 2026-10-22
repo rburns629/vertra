@@ -15,8 +15,9 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3, gap: 2 }}>
-      <Box sx={{ minWidth: 0 }}>
+    // The actions wrap below the title when there isn't room beside it (a phone).
+    <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", mb: 3, gap: 2 }}>
+      <Box sx={{ minWidth: 0, flex: "1 1 320px" }}>
         <Typography variant="h4" sx={{ fontWeight: 600, fontSize: 28, overflowWrap: "anywhere" }}>
           {title}
         </Typography>
@@ -26,7 +27,7 @@ export function PageHeader({
           </Typography>
         )}
       </Box>
-      {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+      {action && <Box sx={{ flexShrink: 0, maxWidth: "100%" }}>{action}</Box>}
     </Box>
   );
 }
