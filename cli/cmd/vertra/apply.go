@@ -327,7 +327,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 				dest = "for amd64, pushed to " + c.PlatformImages.Registry
 			}
 		}
-		p.Changes = append(p.Changes, plan.Line{Label: "Will build", Text: fmt.Sprintf("execution-kernel and execution-console from source, tagged %s, %s", img.Tag, dest)})
+		p.Changes = append(p.Changes, plan.Line{Label: "Will build", Text: fmt.Sprintf("%s from source, tagged %s, %s", img.Names(), img.Tag, dest)})
 	}
 	var installs, upgrades []string
 	for _, r := range []struct{ release, chart string }{

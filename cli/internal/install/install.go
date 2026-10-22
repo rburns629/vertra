@@ -167,14 +167,31 @@ func ImagesFor(c *config.Config, now time.Time) Images {
 	}
 	tag := "src-" + now.UTC().Format("20060102-150405")
 	if c.Target == "kind" {
-		return Images{Kernel: "execution-kernel", Console: "execution-console", Gateway: "execution-gateway", Tag: tag, Build: true}
+		return withGateway(c, Images{Kernel: "execution-kernel", Console: "execution-console", Tag: tag, Build: true}, "execution-gateway")
 	}
 	prefix := strings.TrimSuffix(c.PlatformImages.Registry, "/")
 	if c.Target == "gcp" {
 		prefix = gcp.PlatformRegistry(c)
 	}
-	return Images{Kernel: prefix + "/execution-kernel", Console: prefix + "/execution-console", Gateway: prefix + "/execution-gateway",
-		Tag: tag, Build: true, Push: true}
+	return withGateway(c, Images{Kernel: prefix + "/execution-kernel", Console: prefix + "/execution-console", Tag: tag, Build: true, Push: true},
+		prefix+"/execution-gateway")
+}
+
+// withGateway adds the gateway's image when the install runs it.
+func withGateway(c *config.Config, img Images, repository string) Images {
+	if c.Gateway.Enabled {
+		img.Gateway = repository
+	}
+	return img
+}
+
+// Names are the images it builds, for the approval screen.
+func (img Images) Names() string {
+	names := []string{"execution-kernel", "execution-console"}
+	if img.Gateway != "" {
+		names = append(names, "execution-gateway")
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 }
 
 // BuildImages builds both images from source, then loads them onto kind's
@@ -183,6 +200,9 @@ func BuildImages(ctx context.Context, r *run.Runner, c *config.Config, img Image
 	for _, part := range []struct{ repo, dir string }{
 		{img.Kernel, "kernel"}, {img.Console, "console"}, {img.Gateway, "gateway"},
 	} {
+		if part.repo == "" {
+			continue
+		}
 		ref := part.repo + ":" + img.Tag
 		args := []string{"build", "-t", ref}
 		if img.Push {

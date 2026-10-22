@@ -635,8 +635,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      backend: forwarded, blocked, invalid, limited, not shared, paused, and
      its token fence. Left: keyless bots (with them in the console);
      a read-only database role for it.
-  4. Backend credentials, minted per request (done 2026-10-22, the cloud
-     proof pending): a token for the API's own ServiceAccount
+  4. Backend credentials, minted per request (done and proven
+     2026-10-22: a GKE install's gateway called a Cloud Run service that
+     requires Google sign-in with an ID token for its invoker account, and
+     a Lambda function URL that requires IAM signed as a role trusting the
+     GKE cluster's issuer, both forwarded with Vertra-Caller; both torn
+     down after): a token for the API's own ServiceAccount
      (TokenRequest), a Google ID token (its token federated at Google's
      STS, then generateIdToken), AWS SigV4 (AssumeRoleWithWebIdentity,
      then signing). AWS only besides Google, no Azure (decided
@@ -656,7 +660,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      them into `api_traffic`, kept a week), a team's APIs tab, and the
      admin's gateway card (done 2026-10-22).
   Proven on kind with a backend in a team namespace, then on GKE with a
-  Cloud Run backend.
+  Cloud Run backend and a Lambda function URL (2026-10-22). Left:
+  keyless bots; a read-only database role for the gateway (it only
+  writes api_traffic).
 
 - [ ] **Submit orders from outside the cluster** (a storefront, an event
   bus): a public HTTPS front door for the console's `/api`, keyless sign-in

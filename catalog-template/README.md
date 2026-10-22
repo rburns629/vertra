@@ -308,7 +308,10 @@ ServiceAccount (`<name>-api` in your namespace), so nothing is stored:
 `googleIdToken` (Cloud Run, Cloud Functions, IAP: a Google ID token as a
 service account that federation lets the API's ServiceAccount act as),
 `awsSigV4` (a Lambda function URL or API Gateway that takes IAM: the
-request signed as a role trusting the cluster for that ServiceAccount), or
+request signed as a role trusting the cluster's OIDC issuer for
+`system:serviceaccount:<team>:<api>-api`, audience `sts.amazonaws.com`; for
+a function URL the role needs both `lambda:InvokeFunctionUrl` and
+`lambda:InvokeFunction`), or
 `serviceAccountToken` (the Kubernetes token itself, for a backend that
 checks those). A backend that takes only a static key can't be published:
 the gateway reads no secrets. Your backend learns who called from the

@@ -144,7 +144,11 @@ Backend credentials: `googleIdToken` needs `gateway.gcp` (vertra sets it
 on GKE; the API's Google service account grants its ServiceAccount's
 principal `roles/iam.serviceAccountOpenIdTokenCreator`), and `awsSigV4` a
 role whose trust policy accepts the cluster's OIDC issuer for
-`system:serviceaccount:<team>:<api>-api`, audience `sts.amazonaws.com`. On kind, `make kind-deploy-console` builds
+`system:serviceaccount:<team>:<api>-api`, audience `sts.amazonaws.com`
+(the issuer registered as an IAM OIDC provider; a GKE cluster's is public,
+so a GKE install calls AWS backends with no AWS cluster). A Lambda
+function URL needs both `lambda:InvokeFunctionUrl` and
+`lambda:InvokeFunction` on the role. On kind, `make kind-deploy-console` builds
 it and allows backends in the `vertra-samples` namespace.
 
 ### Reading another install's catalog
