@@ -87,6 +87,20 @@ describe("useExecutionWatch", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("waits before reopening a stream that ends without sending anything", async () => {
+    scripts = [{ states: [] }, { states: [] }, { states: ["SUCCEEDED"] }];
+    const { result } = renderHook(() => useExecutionWatch("e"));
+    await advance(0);
+    expect(watchExecution).toHaveBeenCalledTimes(1);
+    await advance(RETRY_MIN_MS);
+    expect(watchExecution).toHaveBeenCalledTimes(2);
+    await advance(RETRY_MIN_MS);
+    expect(watchExecution).toHaveBeenCalledTimes(2);
+    await advance(RETRY_MIN_MS);
+    expect(watchExecution).toHaveBeenCalledTimes(3);
+    expect(result.current.execution?.state).toBe("SUCCEEDED");
+  });
+
   it("gives up on a 4xx", async () => {
     scripts = [{ states: [], ending: new ApiError(403, "Not a member.") }];
     const { result } = renderHook(() => useExecutionWatch("e"));

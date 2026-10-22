@@ -45,8 +45,9 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  * overwritten per attempt) are fetched with each one. It stops once the
  * execution has finished, or on a 4xx, which watching again won't change.
  * A stream that ends unfinished (the server's limit per stream) or drops
- * after delivering is reopened at once; one that can't be opened is tried
- * again, less and less often, with its error shown until it works.
+ * after delivering is reopened at once; one that can't be opened, or ends
+ * without sending anything (the server always sends the execution first),
+ * is tried again, less and less often, with its error shown until it works.
  */
 export function useExecutionWatch(id: string): ExecutionWatch {
   const [execution, setExecution] = useState<ExecutionDetail | null>(null);
@@ -98,7 +99,13 @@ export function useExecutionWatch(id: string): ExecutionWatch {
             setError(null);
           }
           if (finished) return;
-          failures = 0;
+          if (delivered) {
+            failures = 0;
+          } else {
+            // Ended at once, empty: reopening at once would only spin.
+            failures += 1;
+            await sleep(Math.min(RETRY_MIN_MS * 2 ** (failures - 1), RETRY_MAX_MS), signal);
+          }
         } catch (err) {
           if (signal.aborted) return;
           if (permanent(err)) {
