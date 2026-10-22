@@ -3,6 +3,8 @@ name: ci
 # Everything that has to pass before a change reaches main:
 #
 #   kernel    gofmt, go vet, its migrations, and its tests (with -race)
+#   gateway   gofmt, go vet, and its tests (with -race), its sign-in checks
+#             against the console's migrated database
 #             against a real Postgres. The Kubernetes tests skip here; the
 #             kubernetes job runs them.
 #   kubernetes  on a kind cluster: the kernel's Kubernetes tests (required
@@ -73,6 +75,37 @@ jobs:
       # -race needs cgo, so a C toolchain.
       - run: apk add --no-cache gcc musl-dev
       - run: CGO_ENABLED=1 go test -race ./...
+
+  gateway:
+    runs-on: ubuntu-latest
+    # The Go toolchain the gateway is built with (gateway/Dockerfile), pinned by digest.
+    container: golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_DB: execution_console_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd "pg_isready -U runner" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://runner@postgres/execution_console_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Migrate the console's test database (the gateway reads it)
+        run: |
+          apk add --no-cache nodejs npm
+          cd console && npm ci && DATABASE_URL=$TEST_DATABASE_URL JWT_SECRET=ci-only-unused KERNEL_API_URL=http://unused.invalid npm run db:migrate
+      - working-directory: gateway
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "run gofmt -w on these"; exit 1; }
+      - working-directory: gateway
+        run: go vet ./...
+      # -race needs cgo, so a C toolchain.
+      - run: apk add --no-cache gcc musl-dev
+      - working-directory: gateway
+        run: CGO_ENABLED=1 go test -race ./...
 
   console:
     runs-on: ubuntu-latest
@@ -309,7 +342,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [kernel, console]
+        component: [kernel, console, gateway]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: bash .github/scripts/install-scanners.sh trivy osv-scanner

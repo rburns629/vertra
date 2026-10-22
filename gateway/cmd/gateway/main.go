@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: MIT
+
+// The gateway (decision 20): one front door for every team's API products,
+// forwarding to each API's backend exactly what its OpenAPI document
+// describes (internal/gateway). It reads the console's database and never
+// writes it; it holds no state of its own beyond rate counters.
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/rburns629/vertra/gateway/internal/auth"
+	"github.com/rburns629/vertra/gateway/internal/caller"
+	"github.com/rburns629/vertra/gateway/internal/config"
+	"github.com/rburns629/vertra/gateway/internal/credentials"
+	"github.com/rburns629/vertra/gateway/internal/gateway"
+	"github.com/rburns629/vertra/gateway/internal/limits"
+	"github.com/rburns629/vertra/gateway/internal/store"
+)
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("service", "gateway")
+	if err := run(log); err != nil {
+		log.Error("gateway stopped", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(log *slog.Logger) error {
+	s, err := config.Load(os.Getenv)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	pool, err := pgxpool.New(ctx, s.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	apis := &store.Store{DB: pool, Log: log}
+	if err := apis.Refresh(ctx); err != nil {
+		return err
+	}
+	go apis.Run(ctx, s.Refresh)
+	tokenRequest, err := credentials.InCluster()
+	if err != nil {
+		return err
+	}
+	registry := prometheus.NewRegistry()
+	metrics := gateway.NewMetrics(registry)
+	newGateway := func(public bool) *gateway.Gateway {
+		return &gateway.Gateway{
+			Store:   apis,
+			Callers: &auth.Resolver{DB: pool, JWTSecret: s.JWTSecret},
+			Signer:  &caller.Signer{Key: s.SigningKey, Issuer: s.Issuer},
+			Limiter: limits.New(),
+			Minter:  &credentials.Minter{TokenRequest: tokenRequest},
+			Settings: gateway.Settings{BackendHosts: s.BackendHosts, InternetTeams: s.InternetTeams,
+				DefaultPerMinute: s.DefaultPerMinute, Closed: s.Closed},
+			Log: log, Metrics: metrics, Public: public,
+		}
+	}
+	servers := []*http.Server{
+		server(s.Listen, newGateway(false)),
+		server(s.MetricsListen, promhttp.HandlerFor(registry, promhttp.HandlerOpts{})),
+	}
+	if s.PublicListen != "" {
+		servers = append(servers, server(s.PublicListen, newGateway(true)))
+	}
+	failed := make(chan error, len(servers))
+	for _, srv := range servers {
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				failed <- err
+			}
+		}()
+	}
+	log.Info("gateway listening", "listen", s.Listen, "public", s.PublicListen, "apis", apis.Len())
+	select {
+	case <-ctx.Done():
+	case err := <-failed:
+		return err
+	}
+	shutdown, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	for _, srv := range servers {
+		_ = srv.Shutdown(shutdown)
+	}
+	return nil
+}
+
+func server(addr string, h http.Handler) *http.Server {
+	// No write timeout: answers stream for as long as the backend sends.
+	return &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
+}

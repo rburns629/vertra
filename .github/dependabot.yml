@@ -34,10 +34,18 @@ updates:
     groups:
       kernel-go: {patterns: ["*"]}
 
+  - package-ecosystem: gomod
+    directory: /gateway
+    schedule: {interval: weekly}
+    cooldown: {default-days: 7}
+    groups:
+      gateway-go: {patterns: ["*"]}
+
   - package-ecosystem: docker
     directories:
       - /kernel
       - /console
+      - /gateway
       - /examples/*
       - /catalog-template/templates/*
       - /catalog-template/samples/*/products/*

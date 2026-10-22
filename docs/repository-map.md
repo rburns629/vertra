@@ -43,6 +43,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `proto/vertra/console/v1/` | The console's API as Connect services: one file per service (`execution.proto`'s `ExecutionService` streams `WatchExecution`), and `common.proto` (failures, problems, paging). The API reference page is built from these. |
 | `proto/vertra/catalog/v1/release.proto` | A catalog release: every team (with its SecretStore files) and product action of a catalog's `main`, which `vertra catalog release` pushes as an OCI artifact and each console pulls. |
 | `proto/vertra/kernel/v1/kernel.proto` | kernel-api's `KernelService`, internal: only the console calls it. |
+| `gateway/` | The API gateway (its own section, below). |
 | `.semgrep/malicious.yml` | Semgrep rules for code that has no business in a product (running remote code, hidden payloads, reverse shells, mining). Run by `security.yml`. |
 
 ## `.github/`: CI
@@ -273,6 +274,20 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `rpc-*.test.ts` | Each Connect service (auth, users, tokens, admin, secrets, products, teams, executions): who may call it, its refusals as Connect codes and details, and requests checked against their schemas. |
 | `api-reference.test.ts` | The generated API reference marks exactly the public methods, and documents every service and method. |
 
+## `gateway/`: the API gateway
+
+| Path | What it's for |
+| --- | --- |
+| `cmd/gateway/main.go` | Reads its settings, the published APIs (every few seconds) and serves: inside the cluster, optionally a public listener, and metrics. |
+| `internal/gateway/` | The request path: the API, paused or held, who's calling, shared with them, size, the spec (404 when not in it, 400 when unfit), the team's rate, then forwarded with the backend's credential and a signed `Vertra-Caller`, the answer streamed back. |
+| `internal/auth/` | Signing callers in as the console does: session JWTs and bot tokens, against its database. |
+| `internal/store/` | The published APIs from the console's `apis` table, each with its OpenAPI validator; the backend host rule. |
+| `internal/credentials/` | Minting backend credentials per request: ServiceAccount tokens (TokenRequest), kept for most of their life. |
+| `internal/caller/` | The `Vertra-Caller` header (an EdDSA JWT) and its public key at `/.vertra/jwks.json`. |
+| `internal/limits/` | A token bucket per API and calling team. |
+| `internal/config/` | Its settings, checked at startup. |
+| `Dockerfile` | One static binary on distroless, cross-compiled on the builder's platform. |
+
 ## `helm/`: Kubernetes packaging
 
 `helm/charts/` holds the two charts; each chart's `values.yaml` has neutral defaults. `helm/values/` holds each cluster's own settings.
@@ -316,6 +331,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/postgres-*.yaml`, `migration-job.yaml`, `backup-cronjob.yaml` | Its own Postgres, migrations and backups. |
 | `templates/networkpolicy.yaml` | When it runs its own Postgres, only this release's Pods may reach it. |
 | `templates/write-fence-policy.yaml` | Admission policy: the console may write Secrets, ServiceAccounts, Roles, RoleBindings and ExternalSecrets only in team namespaces. |
+| `templates/gateway.yaml` | The API gateway (`gateway.enabled`): its Deployment and Service, its signing key (generated once, kept), its one RBAC verb (ServiceAccount tokens), and the admission policy limiting that to `*-api` ServiceAccounts in team namespaces. |
 | `templates/namespace-policy.yaml` | Admission policy: the console may only create namespaces labelled a team's and change that one label on a team's namespace, never on kube-* or protected ones. |
 | `templates/scanner.yaml` | The Trivy server image scans run against, the scan Jobs' ServiceAccount (no token) and the Role that lets the console run them in its own namespace and idle the server (its replica count only). |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, generated secrets (kept across upgrades), the console's identity. |

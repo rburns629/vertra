@@ -234,9 +234,12 @@ kind-deploy-kernel:
 kind-deploy-console:
 	$(DOCKER) build -t execution-console:latest console/
 	kind load docker-image execution-console:latest --name $(KIND_CLUSTER)
+	$(DOCKER) build -t execution-gateway:latest gateway/
+	kind load docker-image execution-gateway:latest --name $(KIND_CLUSTER)
 	helm upgrade console helm/charts/execution-console $(KIND_HELM_UPGRADE) -f helm/values/kind/console.yaml
-	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment console-execution-console
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment console-execution-console console-execution-console-gateway
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console --timeout=5m
+	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console-gateway --timeout=5m
 	@# A running port-forward stays attached to the replaced pod; stop it so
 	@# the next `make up` connects to the new one.
 	@pkill -f "$(PORT_FORWARD)" 2>/dev/null && echo "Stopped the old port-forward; run make up." || true

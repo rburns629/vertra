@@ -144,8 +144,9 @@
       }
     },
     "serviceAccount": {
-      "description": "The Kubernetes ServiceAccount the API's credentials come from, in the team's namespace (the console creates it). Left out: <name>-api.",
-      "$ref": "#/$defs/dnsLabel"
+      "description": "The Kubernetes ServiceAccount, in the team's namespace, the gateway mints this API's backend credentials for (the console creates it). It ends in -api: the gateway may mint tokens for those ServiceAccounts and no others. Left out: <name>-api.",
+      "type": "string",
+      "pattern": "^[a-z0-9]([-a-z0-9]{0,57}[a-z0-9])?-api$"
     },
     "shareWith": {
       "description": "The other teams that may call it, or [\"*\"] for every team. Left out, only its own team.",

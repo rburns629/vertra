@@ -1,0 +1,200 @@
+{{/*
+The API gateway (gateway/, decision 20): forwards to each API product's
+backend exactly what its OpenAPI document describes. It reads this console's
+database (published APIs, and who callers are) and never writes it. It may
+mint ServiceAccount tokens for API ServiceAccounts (*-api, in team
+namespaces) and nothing else: its ClusterRole's one verb, fenced by the
+admission policy below.
+*/}}
+{{- if .Values.gateway.enabled }}
+{{- $name := printf "%s-gateway" (include "execution-console.fullname" .) }}
+{{- $signing := printf "%s-signing" $name }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $signing }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $signing }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+  annotations:
+    # Kept across upgrades and uninstalls: backends may have cached its
+    # public key (/.vertra/jwks.json).
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  # The Ed25519 seed Vertra-Caller is signed with: generated once.
+  seed: {{ if $existing }}{{ index $existing.data "seed" }}{{ else }}{{ randAlphaNum 32 | b64enc }}{{ end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+rules:
+  # Tokens for API ServiceAccounts, for their backends' audiences
+  # (backend.auth.serviceAccountToken): fenced below to *-api in team
+  # namespaces.
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}-tokens
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["serviceaccounts/token"]
+  matchConditions:
+    - name: from-the-gateway
+      expression: request.userInfo.username == {{ printf "system:serviceaccount:%s:%s" .Release.Namespace $name | quote }}
+  validations:
+    - expression: >-
+        request.name.endsWith("-api") && has(namespaceObject.metadata.labels) &&
+        {{ .Values.writeFence.teamNamespaceLabel | quote }} in namespaceObject.metadata.labels
+      messageExpression: >-
+        "The gateway may only mint tokens for API ServiceAccounts (*-api) in team namespaces, not " +
+        request.namespace + "/" + request.name + "."
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}-tokens
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}-tokens
+  validationActions: [Deny]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "execution-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "execution-console.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+    spec:
+      serviceAccountName: {{ $name }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: gateway
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          ports:
+            - {name: http, containerPort: 8080}
+            {{- if .Values.gateway.publicListener }}
+            - {name: public, containerPort: 8081}
+            {{- end }}
+            - {name: metrics, containerPort: 9090}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.databaseSecretName" . }}
+                  key: {{ include "execution-console.databaseSecretKey" . }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.secretName" . }}
+                  key: jwt-secret
+            - name: SIGNING_KEY_FILE
+              value: /var/run/secrets/vertra/signing/seed
+            - name: GATEWAY_ISSUER
+              value: {{ .Values.gateway.publicUrl | default .Values.gateway.url | default (printf "http://%s.%s.svc.cluster.local:8080" $name .Release.Namespace) | quote }}
+            - name: BACKEND_HOSTS
+              value: {{ join "," .Values.gateway.backendHosts | quote }}
+            - name: INTERNET_TEAMS
+              value: {{ join "," .Values.gateway.internetTeams | quote }}
+            - name: DEFAULT_PER_MINUTE
+              value: {{ .Values.gateway.defaultPerMinute | quote }}
+            - name: CLOSED
+              value: {{ .Values.gateway.closed | quote }}
+            {{- if .Values.gateway.publicListener }}
+            - name: PUBLIC_LISTEN
+              value: ":8081"
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /.vertra/health, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /.vertra/health, port: http}
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          volumeMounts:
+            - name: signing
+              mountPath: /var/run/secrets/vertra/signing
+              readOnly: true
+      volumes:
+        - name: signing
+          secret:
+            secretName: {{ $signing }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "execution-console.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+    {{- if .Values.gateway.publicListener }}
+    - {name: public, port: 8081, targetPort: public}
+    {{- end }}
+{{- end }}

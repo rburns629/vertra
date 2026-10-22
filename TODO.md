@@ -621,17 +621,22 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      no allowed host is held. `ApiService`: ListApis, GetApi (with the
      spec), PauseApi and ResumeApi (a maintainer of its team, with a
      message for callers).
-  3. The gateway: a process of its own (not the console, whose
-     interceptors and limits are for the API), in Go, reading published
-     APIs from the console's database. Per request: caller sign-in (session,
-     bot token, keyless bot), `shareWith`, the spec match (method and
-     path), parameters, headers and body against the operation's schemas,
-     per-team limits, then forward with the caller's `Authorization` and
-     hop-by-hop headers removed, the backend credential and a signed
-     `Vertra-Caller` added, and the answer streamed back. Answers say
-     `Vertra-Answered-By`. Logs and metrics without bodies.
+  3. ~~The gateway~~ (done 2026-10-22): `gateway/`, a Go process of its
+     own reading published APIs from the console's database, deployed by
+     the console chart (`gateway.enabled`). Per request: the API (paused,
+     held, closed), caller sign-in as at the console (session, bot token),
+     `shareWith` (and `Vertra-Team` to pick among the caller's teams), size,
+     the spec (404 not in it, 400 unfit; libopenapi-validator), the calling
+     team's rate (429), then forwarded with the caller's `Authorization`,
+     hop-by-hop and `Vertra-*` headers removed, the backend credential and
+     a signed `Vertra-Caller` (EdDSA, `/.vertra/jwks.json`) added, the
+     answer streamed back. `Vertra-Answered-By` on every answer; logs and
+     metrics without bodies or credentials. Proven on kind with an echo
+     backend: forwarded, blocked, invalid, limited, not shared, paused, and
+     its token fence. Left: keyless bots (with them in the console);
+     a read-only database role for it.
   4. Backend credentials, minted per request: a token for the API's own
-     ServiceAccount (TokenRequest, its audience), then Google ID tokens,
+     ServiceAccount (TokenRequest, its audience: done 2026-10-22), then Google ID tokens,
      AWS SigV4 and Azure tokens through I1's federation. A Secret from the
      team's store only as a fallback, read by name. The gateway's RBAC is
      `serviceaccounts/token` on the API ServiceAccounts alone.

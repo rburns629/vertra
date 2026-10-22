@@ -5,7 +5,7 @@ name: release
 #   images  builds the kernel and console images, scans them with the same
 #           gate CI uses (.github/scripts/scan-image.sh), then builds them
 #           for linux/amd64 and linux/arm64, pushes them to
-#           ghcr.io/<owner>/<repo>/execution-{kernel,console} as the version
+#           ghcr.io/<owner>/<repo>/execution-{kernel,console,gateway} as the version
 #           (and as latest, unless it's a pre-release), and signs each by
 #           digest, keyless, with this workflow's own identity.
 #   charts  packages both Helm charts at that version (their appVersion
@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        component: [kernel, console]
+        component: [kernel, console, gateway]
     env:
       COMPONENT: ${{ matrix.component }}
       TAG: ${{ github.ref_name }}

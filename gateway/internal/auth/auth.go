@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: MIT
+
+// Package auth signs a gateway caller in exactly as the console does
+// (console/src/auth/plugin.ts, kept in step): a person's session JWT
+// (HS256, the console's JWT_SECRET; one issued before the account's last
+// password change is revoked), or a bot's API token (mp_..., found by its
+// SHA-256 in api_tokens, unless revoked). The caller's teams are read from
+// the console's database on every request, so a membership change counts at
+// once. A token is never logged or kept.
+package auth
+
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+)
+
+// APITokenPrefix marks a bot's API token (console/src/auth/apiToken.ts).
+const APITokenPrefix = "mp_"
+
+// Caller is who's calling.
+type Caller struct {
+	UserID  string
+	Email   string
+	IsAdmin bool
+	IsBot   bool
+	// Teams are the teams the caller is in.
+	Teams []string
+}
+
+// ErrUnauthenticated is a missing, malformed, expired or revoked credential.
+var ErrUnauthenticated = errors.New("missing, invalid, expired or revoked credential")
+
+// DB is what the lookups run on (a pool).
+type DB interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// Resolver signs callers in.
+type Resolver struct {
+	DB        DB
+	JWTSecret []byte
+	Now       func() time.Time
+}
+
+// Resolve turns an Authorization header into its caller.
+func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, error) {
+	bearer, ok := strings.CutPrefix(authorization, "Bearer ")
+	if !ok || bearer == "" {
+		return nil, ErrUnauthenticated
+	}
+	var c Caller
+	var passwordChanged *time.Time
+	if strings.HasPrefix(bearer, APITokenPrefix) {
+		sum := sha256.Sum256([]byte(bearer))
+		err := r.DB.QueryRow(ctx, `SELECT u.id::text, u.email, u.is_admin, u.is_bot FROM api_tokens t
+			JOIN users u ON u.id = t.user_id WHERE t.token_hash = $1 AND t.revoked_at IS NULL`, hex.EncodeToString(sum[:])).
+			Scan(&c.UserID, &c.Email, &c.IsAdmin, &c.IsBot)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUnauthenticated
+		}
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		claims, err := r.verifyJWT(bearer)
+		if err != nil {
+			return nil, ErrUnauthenticated
+		}
+		err = r.DB.QueryRow(ctx, `SELECT id::text, email, is_admin, is_bot, password_changed_at FROM users WHERE id::text = $1`, claims.UserID).
+			Scan(&c.UserID, &c.Email, &c.IsAdmin, &c.IsBot, &passwordChanged)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUnauthenticated
+		}
+		if err != nil {
+			return nil, err
+		}
+		// Whole seconds, as the console compares: the token a password
+		// change issues in the same second still counts.
+		if passwordChanged != nil && claims.IssuedAt < passwordChanged.Unix() {
+			return nil, ErrUnauthenticated
+		}
+	}
+	rows, err := r.DB.Query(ctx, `SELECT t.name FROM team_memberships m JOIN teams t ON t.id = m.team_id
+		WHERE m.user_id::text = $1 ORDER BY t.name`, c.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var team string
+		if err := rows.Scan(&team); err != nil {
+			return nil, err
+		}
+		c.Teams = append(c.Teams, team)
+	}
+	return &c, rows.Err()
+}
+
+type claims struct {
+	UserID    string `json:"userId"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
+}
+
+// verifyJWT checks an HS256 JWT signed with the console's secret, and that
+// it hasn't expired.
+func (r *Resolver) verifyJWT(token string) (*claims, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return nil, ErrUnauthenticated
+	}
+	var header struct {
+		Alg string `json:"alg"`
+	}
+	if err := decodeSegment(parts[0], &header); err != nil || header.Alg != "HS256" {
+		return nil, ErrUnauthenticated
+	}
+	mac := hmac.New(sha256.New, r.JWTSecret)
+	mac.Write([]byte(parts[0] + "." + parts[1]))
+	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil || !hmac.Equal(signature, mac.Sum(nil)) {
+		return nil, ErrUnauthenticated
+	}
+	var c claims
+	if err := decodeSegment(parts[1], &c); err != nil || c.UserID == "" {
+		return nil, ErrUnauthenticated
+	}
+	now := time.Now
+	if r.Now != nil {
+		now = r.Now
+	}
+	if c.ExpiresAt == 0 || now().Unix() >= c.ExpiresAt {
+		return nil, ErrUnauthenticated
+	}
+	return &c, nil
+}
+
+func decodeSegment(segment string, into any) error {
+	data, err := base64.RawURLEncoding.DecodeString(segment)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, into)
+}

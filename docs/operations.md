@@ -125,6 +125,20 @@ it in `registryCheck.pullSecretName`; with `registryCheck.copyToTeams`, the
 console copies it into every team namespace as `vertra-pull` and the
 kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
+### The API gateway
+
+API products are served by the gateway, which the console chart runs when
+`gateway.enabled` is on. Set `gateway.backendHosts` to the hosts backends
+may be under (`orders.example.com`, or `*.a.run.app` for any name below
+it); an API under none is held. `gateway.url` is where callers reach it
+inside the cluster (its Service, `<release>-execution-console-gateway:8080`);
+with `gateway.publicListener`, port 8081 serves the APIs of
+`gateway.internetTeams` that ask to be reachable from the internet: put an
+Ingress or load balancer in front of it, at `gateway.publicUrl`.
+`gateway.closed` stops every API at once (503); a team's maintainers pause
+one of theirs from the console. On kind, `make kind-deploy-console` builds
+it and allows backends in the `vertra-samples` namespace.
+
 ### Reading another install's catalog
 
 One catalog serves many installs. An install that reads another's sets

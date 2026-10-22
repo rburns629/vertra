@@ -190,6 +190,31 @@ whoever ran it as well as to its steps' teams: they may see, cancel, retry
 and rerun it (a rerun runs the template again, as it is now; a retry is
 refused once it, or a step's action, is no longer shared).
 
+## The API gateway
+
+API products (decision 20) publish a team's own backend through one
+gateway (`gateway/`). The gateway forwards a request only when its method
+and path are an operation in the API's reviewed OpenAPI document and it fits
+that operation's schemas; anything else is answered by the gateway (404 or
+400) and never reaches the backend. Callers sign in as at the console (a
+session or a bot token, checked against the console's database the same
+way), and may call an API only when it's shared with one of their teams.
+The caller's `Authorization` stops at the gateway; the backend gets its own
+credential instead, minted per request, and `Vertra-Caller`, an EdDSA JWT
+the gateway signs (its key at `/.vertra/jwks.json`) naming the caller,
+their team and the API. A caller's own `Vertra-*` headers are dropped.
+Paths with encoded slashes or dot segments are refused, so what's checked
+is what's forwarded.
+
+Backends must be under hosts the admins allow (`gateway.backendHosts`), or
+the API is held: the gateway can't be pointed anywhere a catalog says. Its
+only Kubernetes right is minting ServiceAccount tokens, and an admission
+policy limits that to API ServiceAccounts (`*-api`) in team namespaces, so
+it can't mint the platform's or a team's other identities. It reads the
+console's database and never writes it. Requests are logged and counted by
+API, team, caller and outcome, never with bodies, header values or
+credentials.
+
 ## Tokens for another cloud
 
 A step can sign in to a cloud other than the one hosting the cluster by
