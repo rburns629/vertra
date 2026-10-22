@@ -75,6 +75,8 @@ type Config struct {
 	Logs Logs `yaml:"logs"`
 	// Audit: the audit log's write-once copy (gcp, aws).
 	Audit Audit `yaml:"audit,omitempty"`
+	// SSO: signing in with Google (vertra sso google sets it up).
+	SSO SSO `yaml:"sso,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
@@ -163,6 +165,18 @@ type Audit struct {
 	Export   bool `yaml:"export"`
 	KeepDays int  `yaml:"keepDays,omitempty"`
 	Lock     bool `yaml:"lock,omitempty"`
+}
+
+// SSO is single sign-on with Google: an OAuth web client made in Google's
+// console. ClientFile is the client's downloaded JSON, read at apply to
+// make the console's Secret; the secret itself is never written here.
+type SSO struct {
+	Provider       string   `yaml:"provider,omitempty"` // google
+	ClientID       string   `yaml:"clientId,omitempty"`
+	ClientFile     string   `yaml:"clientFile,omitempty"`
+	AllowedDomains []string `yaml:"allowedDomains,omitempty"`
+	// RedirectURL: the console's sign-in callback, as registered with the client.
+	RedirectURL string `yaml:"redirectUrl,omitempty"`
 }
 
 // Console: reached over HTTPS from the internet (what the catalog's CI
@@ -467,6 +481,17 @@ func (c *Config) Validate() error {
 		}
 		if e := c.Console.TLS.LetsEncryptEmail; e != "" && !strings.Contains(e, "@") {
 			add("console.tls.letsEncryptEmail: %q isn't an email address", e)
+		}
+	}
+	if c.SSO.Provider != "" {
+		if c.SSO.Provider != "google" {
+			add("sso.provider: %q: google, so far", c.SSO.Provider)
+		}
+		if c.SSO.ClientID == "" || c.SSO.ClientFile == "" {
+			add("sso: clientId and clientFile (vertra sso google sets them)")
+		}
+		if len(c.SSO.AllowedDomains) == 0 {
+			add("sso.allowedDomains: the Workspace domains whose people may sign in")
 		}
 	}
 	if c.Logs.Enabled {

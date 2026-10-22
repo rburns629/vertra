@@ -587,7 +587,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   password session refused by the console and the gateway alike, while an
   admin's password kept working. Left: Google Groups mapped to
   teams (Cloud Identity's Groups API, with the Groups Reader role); Entra ID
-  and Okta (the flow is generic, untried); `vertra` setting it up.
+  and Okta (the flow is generic, untried). `vertra sso google` sets it up
+  (2026-10-22: the links and redirect URI, the client file checked, the
+  secret written by apply through stdin).
 - [x] **Force a password change on first sign-in** for admin-created
   accounts (done 2026-10-22): a password someone else set (a new account's,
   an admin's reset of someone else's, `vertra admin reset-password`) marks

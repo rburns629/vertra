@@ -172,6 +172,11 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.KernelRelease, kernelChart, kernelValues); err != nil {
 		return err
 	}
+	if c.SSO.Provider != "" {
+		if err := install.EnsureSSOSecret(ctx, a.runner, c); err != nil {
+			return fmt.Errorf("signing in with Google: %w", err)
+		}
+	}
 	fmt.Fprintln(out, "Installing execution-console...")
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.ConsoleRelease, consoleChart, consoleValues); err != nil {
 		return err

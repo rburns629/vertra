@@ -5,6 +5,7 @@ package install
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -215,5 +216,45 @@ func TestWriteValues(t *testing.T) {
 	data, _ := os.ReadFile(path)
 	if !strings.HasPrefix(string(data), "# Written by vertra") || !strings.Contains(string(data), "replicaCount: 2") {
 		t.Errorf("got:\n%s", data)
+	}
+}
+
+// A web client's JSON is read; anything else, refused.
+func TestReadGoogleClient(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	web := write("web.json", `{"web":{"client_id":"id.apps.googleusercontent.com","client_secret":"s","redirect_uris":["http://localhost:18080/api/auth/oidc/callback"]}}`)
+	client, err := ReadGoogleClient(web)
+	if err != nil || client.ID != "id.apps.googleusercontent.com" || client.Secret != "s" || len(client.RedirectURIs) != 1 {
+		t.Fatalf("a web client: %+v, %v", client, err)
+	}
+	if _, err := ReadGoogleClient(write("desktop.json", `{"installed":{"client_id":"x","client_secret":"y"}}`)); err == nil {
+		t.Error("a desktop client was accepted")
+	}
+	if _, err := ReadGoogleClient(write("junk.json", `not json`)); err == nil {
+		t.Error("junk was accepted")
+	}
+}
+
+// Signing in with Google reaches the console chart as its sso, the secret
+// by reference only.
+func TestSSOValues(t *testing.T) {
+	c := config.Default("kind")
+	c.SSO = config.SSO{Provider: "google", ClientID: "id", ClientFile: "/x.json", AllowedDomains: []string{"example.com"}, RedirectURL: "http://localhost:18080/api/auth/oidc/callback"}
+	sso, ok := ConsoleValues(c, "dev", Images{}, nil)["sso"].(map[string]any)
+	if !ok {
+		t.Fatal("no sso values")
+	}
+	if sso["issuer"] != "https://accounts.google.com" || sso["clientId"] != "id" || sso["redirectUrl"] != c.SSO.RedirectURL {
+		t.Errorf("sso values: %v", sso)
+	}
+	if secret := sso["clientSecret"].(map[string]any); secret["name"] != SSOSecretName {
+		t.Errorf("the secret's reference: %v", secret)
 	}
 }

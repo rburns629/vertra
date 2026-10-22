@@ -8,6 +8,7 @@ package install
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -476,6 +477,17 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	if c.Logs.Enabled {
 		v["logs"] = logsValues(c, cloud)
 	}
+	// Signing in with Google: the client's id here, its secret in the
+	// Secret EnsureSSOSecret writes.
+	if c.SSO.Provider == "google" {
+		v["sso"] = map[string]any{
+			"issuer": "https://accounts.google.com", "clientId": c.SSO.ClientID,
+			"clientSecret":   map[string]any{"name": SSOSecretName, "key": "client-secret"},
+			"redirectUrl":    c.SSO.RedirectURL,
+			"allowedDomains": c.SSO.AllowedDomains,
+			"label":          "Google",
+		}
+	}
 	// An existing cluster's public console: its Ingress, and cert-manager's
 	// certificate for it (an issuer of yours, or Let's Encrypt).
 	if c.Target == "existing" && c.Console.Public {
@@ -560,6 +572,71 @@ func MetricsServer(ctx context.Context, r *run.Runner, c *config.Config) error {
 
 // MetricsServerChart is the metrics-server chart version installed on kind.
 const MetricsServerChart = "3.14.0"
+
+// SSOSecretName is the Secret holding the Google OAuth client's secret.
+const SSOSecretName = "vertra-sso"
+
+// GoogleClient is an OAuth client's downloaded JSON (Google Cloud console,
+// Clients, Download JSON): a web client, its id, secret and redirect URIs.
+type GoogleClient struct {
+	ID, Secret   string
+	RedirectURIs []string
+}
+
+// ReadGoogleClient reads that file, refusing anything but a web client.
+func ReadGoogleClient(path string) (*GoogleClient, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var file struct {
+		Web *struct {
+			ClientID     string   `json:"client_id"`
+			ClientSecret string   `json:"client_secret"`
+			RedirectURIs []string `json:"redirect_uris"`
+		} `json:"web"`
+	}
+	if err := json.Unmarshal(raw, &file); err != nil {
+		return nil, fmt.Errorf("%s isn't an OAuth client's JSON: %w", path, err)
+	}
+	if file.Web == nil || file.Web.ClientID == "" || file.Web.ClientSecret == "" {
+		return nil, fmt.Errorf("%s isn't a web application client's JSON (Clients, Create client, Web application)", path)
+	}
+	return &GoogleClient{ID: file.Web.ClientID, Secret: file.Web.ClientSecret, RedirectURIs: file.Web.RedirectURIs}, nil
+}
+
+// SSORedirect is where Google sends people back: the console's public
+// address, or the port-forward's (vertra console) when it has none.
+func SSORedirect(ctx context.Context, r *run.Runner, c *config.Config) (string, error) {
+	if !c.Console.Public {
+		return "http://localhost:18080/api/auth/oidc/callback", nil
+	}
+	host := c.Console.Hostname
+	if host == "" {
+		// gcp's nip.io name: on the console's Ingress once applied.
+		out, err := r.Output(ctx, "kubectl", "--context", cluster.Context(c), "--namespace", c.Namespace,
+			"get", "ingress", ConsoleRelease+"-execution-console", "--ignore-not-found", "-o", "jsonpath={.spec.rules[0].host}")
+		if host = strings.TrimSpace(out); err != nil || host == "" {
+			return "", fmt.Errorf("the console's public address isn't known until it's installed: `vertra apply` first")
+		}
+	}
+	return "https://" + host + "/api/auth/oidc/callback", nil
+}
+
+// EnsureSSOSecret writes the OAuth client's secret into the console's
+// namespace, through stdin: it never appears in a command line.
+func EnsureSSOSecret(ctx context.Context, r *run.Runner, c *config.Config) error {
+	client, err := ReadGoogleClient(c.SSO.ClientFile)
+	if err != nil {
+		return err
+	}
+	manifest, _ := json.Marshal(map[string]any{
+		"apiVersion": "v1", "kind": "Secret",
+		"metadata":   map[string]any{"name": SSOSecretName, "namespace": c.Namespace, "labels": map[string]string{"app.kubernetes.io/managed-by": "vertra"}},
+		"stringData": map[string]string{"client-secret": client.Secret},
+	})
+	return r.RunInput(ctx, string(manifest), "kubectl", "--context", cluster.Context(c), "apply", "-f", "-")
+}
 
 // CertManagerChart is the cert-manager chart version vertra installs, on an
 // existing cluster that hasn't got it, for the console's certificate.

@@ -180,6 +180,14 @@ kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
 ### Signing in with Google
 
+With `vertra`: `vertra sso google <env>` says which two pages of the Google
+Cloud console to open and the exact redirect URI to paste, reads the
+client's downloaded JSON (checking it's a web client with that URI), asks
+which Workspace domains may sign in, and saves the settings (the file's
+path, never its secret). `vertra apply` then writes the secret into a
+Kubernetes Secret through stdin and turns it on; `vertra sso off` turns it
+off. By hand, with Helm:
+
 1. In the Google Cloud console for a project in your Workspace
    organization, set up the OAuth consent screen (Google Auth Platform) with
    the audience **Internal**, then create an OAuth client of type **Web

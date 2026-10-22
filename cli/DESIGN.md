@@ -132,7 +132,8 @@ console:                     # existing clusters: a public console behind your I
   hostname: console.example.com
   ingressClass: nginx
   tls: {letsEncryptEmail: you@example.com, installCertManager: true}   # or issuer: <ClusterIssuer>
-audit: {export: false, keepDays: 365, lock: false}       # the audit log's write-once copy (gcp, aws); lock is permanent
+audit: {export: false, keepDays: 365, lock: false}
+sso: {provider: google, clientId: ..., clientFile: ~/vertra-oauth.json, allowedDomains: [example.com]}   # vertra sso google       # the audit log's write-once copy (gcp, aws); lock is permanent
 admin: {email: you@example.com}
 catalog:
   host: github
