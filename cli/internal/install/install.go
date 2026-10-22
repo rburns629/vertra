@@ -219,8 +219,8 @@ func BuildImages(ctx context.Context, r *run.Runner, c *config.Config, img Image
 		ref := part.repo + ":" + img.Tag
 		args := []string{"build", "-t", ref}
 		if img.Push {
-			// A cloud's nodes are x86, whatever this machine is.
-			args = append(args, "--platform", "linux/amd64")
+			// The nodes', whatever this machine is.
+			args = append(args, "--platform", NodePlatform(ctx, r, c))
 		}
 		if err := r.Run(ctx, "docker", append(args, filepath.Join(c.Source, part.dir))...); err != nil {
 			return err
@@ -234,6 +234,21 @@ func BuildImages(ctx context.Context, r *run.Runner, c *config.Config, img Image
 		}
 	}
 	return nil
+}
+
+// NodePlatform is what to build for: a cloud's nodes are x86; an existing
+// cluster's are whatever its first node says (Graviton, Ampere and kind on
+// Apple silicon are arm64), x86 when it can't be read.
+func NodePlatform(ctx context.Context, r *run.Runner, c *config.Config) string {
+	if c.Target != "existing" {
+		return "linux/amd64"
+	}
+	out, err := r.Output(ctx, "kubectl", "--context", cluster.Context(c), "get", "nodes",
+		"-o", "jsonpath={.items[0].status.nodeInfo.architecture}")
+	if arch := strings.TrimSpace(out); err == nil && (arch == "amd64" || arch == "arm64") {
+		return "linux/" + arch
+	}
+	return "linux/amd64"
 }
 
 // AlwaysOn is how many copies of the console and kernel-api the config
@@ -461,6 +476,17 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	if c.Logs.Enabled {
 		v["logs"] = logsValues(c, cloud)
 	}
+	// An existing cluster's public console: its Ingress, and cert-manager's
+	// certificate for it (an issuer of yours, or Let's Encrypt).
+	if c.Target == "existing" && c.Console.Public {
+		v["ingress"] = map[string]any{
+			"enabled": true, "host": c.Console.Hostname, "className": c.Console.IngressClass,
+			"certManager": map[string]any{
+				"issuer": c.Console.TLS.Issuer,
+				"acme":   map[string]any{"email": c.Console.TLS.LetsEncryptEmail},
+			},
+		}
+	}
 	// The console writes the copy as itself (Workload Identity, Pod Identity).
 	if cloud != nil && cloud.AuditBucket != "" {
 		export := map[string]any{"bucket": cloud.AuditBucket, "provider": "gcs"}
@@ -534,6 +560,41 @@ func MetricsServer(ctx context.Context, r *run.Runner, c *config.Config) error {
 
 // MetricsServerChart is the metrics-server chart version installed on kind.
 const MetricsServerChart = "3.14.0"
+
+// CertManagerChart is the cert-manager chart version vertra installs, on an
+// existing cluster that hasn't got it, for the console's certificate.
+const CertManagerChart = "v1.21.2"
+
+// CertManagerInstalled is whether the cluster has cert-manager's
+// Certificate resource (whoever installed it).
+func CertManagerInstalled(ctx context.Context, r *run.Runner, c *config.Config) bool {
+	out, err := r.Output(ctx, "kubectl", "--context", cluster.Context(c), "get", "crd", "certificates.cert-manager.io",
+		"--ignore-not-found", "-o", "name")
+	return err == nil && strings.TrimSpace(out) != ""
+}
+
+// CertManager installs cert-manager, pinned, with its resource definitions.
+func CertManager(ctx context.Context, r *run.Runner, c *config.Config) error {
+	return r.Run(ctx, "helm", "upgrade", "--install", "cert-manager", "cert-manager",
+		"--repo", "https://charts.jetstack.io", "--version", CertManagerChart,
+		"--kube-context", cluster.Context(c), "--namespace", "cert-manager", "--create-namespace",
+		"--set", "crds.enabled=true", "--wait", "--timeout", "10m")
+}
+
+// ConsoleCertificate is the console's certificate's state on an existing
+// cluster: "ready", or why not yet, from cert-manager.
+func ConsoleCertificate(ctx context.Context, r *run.Runner, c *config.Config) string {
+	out, err := r.Output(ctx, "kubectl", "--context", cluster.Context(c), "--namespace", c.Namespace,
+		"get", "certificate", ConsoleRelease+"-execution-console-tls", "--ignore-not-found",
+		"-o", `jsonpath={.status.conditions[?(@.type=="Ready")].status} {.status.conditions[?(@.type=="Ready")].message}`)
+	if err != nil || strings.TrimSpace(out) == "" {
+		return "not requested yet"
+	}
+	if strings.HasPrefix(out, "True") {
+		return "ready"
+	}
+	return "not ready: " + strings.TrimSpace(strings.TrimPrefix(out, "False"))
+}
 
 // WriteValues writes generated values next to the config, for the record
 // and for helm -f.

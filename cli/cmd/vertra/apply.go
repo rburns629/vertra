@@ -143,6 +143,17 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			return err
 		}
 	}
+	if certManagerNeeded(c) {
+		if !install.CertManagerInstalled(ctx, a.runner, c) {
+			if !c.Console.TLS.InstallCertManager {
+				return fmt.Errorf("the console's certificate needs cert-manager, which this cluster hasn't got: install it, or `vertra config set console.tls.installCertManager true` for vertra to (%s)", install.CertManagerChart)
+			}
+			fmt.Fprintln(out, "Installing cert-manager", install.CertManagerChart, "(the console's certificate)...")
+			if err := install.CertManager(ctx, a.runner, c); err != nil {
+				return err
+			}
+		}
+	}
 	if c.Target == "kind" && c.Size == "auto" {
 		fmt.Fprintln(out, "Installing metrics-server (the auto size's autoscalers need it)...")
 		if err := install.MetricsServer(ctx, a.runner, c); err != nil {
@@ -186,6 +197,13 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			fmt.Fprintf(out, "  Public:  https://%s (certificate %s; Google issues it within the hour)\n",
 				made.ConsoleHost, orDefault(install.CertificateStatus(ctx, a.runner, c), "requested"))
 		}
+	}
+	if certManagerNeeded(c) {
+		how := "Let's Encrypt, which proves the hostname over HTTP: point " + c.Console.Hostname + " at the Ingress first"
+		if c.Console.TLS.Issuer != "" {
+			how = "issuer " + c.Console.TLS.Issuer
+		}
+		fmt.Fprintf(out, "  Public:  https://%s (certificate %s; %s)\n", c.Console.Hostname, install.ConsoleCertificate(ctx, a.runner, c), how)
 	}
 	if made != nil && made.Provider == "aws" && c.ExternalCatalog.Registry != "" && c.ExternalCatalog.GCPWorkloadIdentityProvider == "" {
 		if steps := install.FederationSteps(c, made.ClusterIssuer); steps != nil {
@@ -322,6 +340,9 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		dest := "loaded onto the kind node"
 		if img.Push {
 			dest = "pushed to " + c.PlatformImages.Registry
+			if c.Target == "existing" && s.NodeArch != "" {
+				dest = "for " + s.NodeArch + " (its nodes'), pushed to " + c.PlatformImages.Registry
+			}
 			if c.Target == "gcp" {
 				dest = "pushed to " + gcp.PlatformRegistry(c)
 			}
@@ -365,6 +386,16 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 	if c.Target == "kind" && c.Size == "auto" {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "metrics-server " + install.MetricsServerChart + " into kube-system, for the auto size's autoscalers"})
 	}
+	if certManagerNeeded(c) && c.Console.TLS.InstallCertManager && !s.CertManager {
+		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "cert-manager " + install.CertManagerChart + " into cert-manager, for the console's certificate"})
+	}
+	if certManagerNeeded(c) {
+		cert := "Let's Encrypt (" + c.Console.TLS.LetsEncryptEmail + "), proving the hostname through the Ingress"
+		if c.Console.TLS.Issuer != "" {
+			cert = "cert-manager issuer " + c.Console.TLS.Issuer
+		}
+		p.Settings = append(p.Settings, plan.Line{Label: "Public", Text: fmt.Sprintf("https://%s through Ingress class %s; certificate from %s", c.Console.Hostname, c.Console.IngressClass, cert)})
+	}
 
 	if now.volume != "" && now.volume != floor.Volume {
 		p.Notes = append(p.Notes, fmt.Sprintf("The database volume stays at %s (the %s size's is %s): volumes can't shrink, and growing one is up to its storage class.", now.volume, c.Size, floor.Volume))
@@ -400,4 +431,10 @@ func auditLine(c *config.Config) string {
 		lock = "LOCKED: it can never be shortened, nor the bucket deleted, until it lapses"
 	}
 	return fmt.Sprintf("copied every 5 minutes to a bucket that refuses deletes for %d days (%s); kept by destroy", c.Audit.KeepDays, lock)
+}
+
+// certManagerNeeded: an existing cluster's public console gets its
+// certificate from cert-manager.
+func certManagerNeeded(c *config.Config) bool {
+	return c.Target == "existing" && c.Console.Public
 }

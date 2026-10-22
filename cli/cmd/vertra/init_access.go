@@ -12,6 +12,7 @@ import (
 
 	"github.com/rburns629/vertra/cli/internal/access"
 	"github.com/rburns629/vertra/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/install"
 	"github.com/rburns629/vertra/cli/internal/prompt"
 )
 
@@ -341,6 +342,56 @@ func (a *app) askConsole(ctx context.Context, out io.Writer, c *config.Config, f
 		}
 		if c.Console.Zone, err = a.ask.Text("DNS zone for it, created in Route 53 (e.g. vertra.example.com: you then add its NS records where the parent domain lives)", f.zone, nil); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// askExistingConsole asks whether an existing cluster's console is reached
+// over HTTPS, and how: its hostname, the Ingress class that serves it, and
+// its certificate from cert-manager (installed by vertra if it's missing).
+func (a *app) askExistingConsole(ctx context.Context, out io.Writer, c *config.Config) error {
+	public, err := a.ask.Confirm("Reach the console over HTTPS at a hostname of yours (an Ingress, and a certificate from cert-manager)? No: `vertra console` port-forwards to it", false)
+	if err != nil || !public {
+		return err
+	}
+	c.Console.Public = true
+	if c.Console.Hostname, err = a.ask.Text("Hostname, pointed at your Ingress controller", c.Console.Hostname, nil); err != nil {
+		return err
+	}
+	classes, _ := a.runner.Output(ctx, "kubectl", "--context", c.Cluster.Context, "get", "ingressclass", "-o", "jsonpath={.items[*].metadata.name}")
+	var options []prompt.Option
+	for _, name := range strings.Fields(classes) {
+		options = append(options, prompt.Option{Value: name, Label: name})
+	}
+	if len(options) == 0 {
+		if c.Console.IngressClass, err = a.ask.Text("Ingress class (none found in the cluster: install a controller first)", c.Console.IngressClass, nil); err != nil {
+			return err
+		}
+	} else if c.Console.IngressClass, err = a.ask.Choose("Which Ingress class serves it?", options, options[0].Value); err != nil {
+		return err
+	}
+	source, err := a.ask.Choose("Where does its certificate come from?", []prompt.Option{
+		{Value: "letsencrypt", Label: "Let's Encrypt", Note: "free, renewed by itself; the hostname must reach the Ingress from the internet"},
+		{Value: "issuer", Label: "an issuer of yours", Note: "a cert-manager ClusterIssuer already in the cluster, e.g. your internal CA"},
+	}, "letsencrypt")
+	if err != nil {
+		return err
+	}
+	c.Console.TLS.Issuer, c.Console.TLS.LetsEncryptEmail = "", ""
+	if source == "issuer" {
+		if c.Console.TLS.Issuer, err = a.ask.Text("ClusterIssuer name", "", nil); err != nil {
+			return err
+		}
+	} else if c.Console.TLS.LetsEncryptEmail, err = a.ask.Text("Email for Let's Encrypt (expiry warnings)", c.Admin.Email, nil); err != nil {
+		return err
+	}
+	if !a.runner.Succeeds(ctx, "kubectl", "--context", c.Cluster.Context, "get", "crd", "certificates.cert-manager.io") {
+		if c.Console.TLS.InstallCertManager, err = a.ask.Confirm(fmt.Sprintf("cert-manager isn't installed. Install it (%s, into cert-manager)?", install.CertManagerChart), true); err != nil {
+			return err
+		}
+		if !c.Console.TLS.InstallCertManager {
+			fmt.Fprintln(out, "Install cert-manager before `vertra apply`: it issues the console's certificate.")
 		}
 	}
 	return nil

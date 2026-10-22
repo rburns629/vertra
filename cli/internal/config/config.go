@@ -174,6 +174,23 @@ type Console struct {
 	// console's address (e.g. vertra.example.com), which you delegate with
 	// its NS records; the hostname defaults to console.<zone>.
 	Zone string `yaml:"zone,omitempty"`
+	// IngressClass (existing clusters): the Ingress controller serving it.
+	IngressClass string `yaml:"ingressClass,omitempty"`
+	// TLS (existing clusters): its certificate, from cert-manager.
+	TLS ConsoleTLS `yaml:"tls,omitempty"`
+}
+
+// ConsoleTLS is where a public console's certificate comes from on an
+// existing cluster: cert-manager, with an issuer of yours or Let's Encrypt.
+type ConsoleTLS struct {
+	// Issuer is a cert-manager ClusterIssuer already in the cluster.
+	Issuer string `yaml:"issuer,omitempty"`
+	// LetsEncryptEmail: Let's Encrypt, through an Issuer the console chart
+	// makes, proving the hostname over HTTP through the Ingress.
+	LetsEncryptEmail string `yaml:"letsEncryptEmail,omitempty"`
+	// InstallCertManager: vertra installs cert-manager (pinned) when the
+	// cluster hasn't got it.
+	InstallCertManager bool `yaml:"installCertManager,omitempty"`
 }
 
 // Catalog is where the catalog repository goes and what it starts with.
@@ -438,6 +455,20 @@ func (c *Config) Validate() error {
 	} else if c.MinReplicas < 1 || c.MinReplicas > 10 {
 		add("minReplicas: %d: at least 1 (and at most 10) when scaleDown is off", c.MinReplicas)
 	}
+	if c.Target == "existing" && c.Console.Public {
+		if !hostname.MatchString(c.Console.Hostname) {
+			add("console.hostname: %q: a public console on an existing cluster needs the hostname it's reached at", c.Console.Hostname)
+		}
+		if c.Console.IngressClass == "" {
+			add("console.ingressClass: the Ingress class that serves it (kubectl get ingressclass)")
+		}
+		if (c.Console.TLS.Issuer == "") == (c.Console.TLS.LetsEncryptEmail == "") {
+			add("console.tls: one of issuer (a cert-manager ClusterIssuer) or letsEncryptEmail")
+		}
+		if e := c.Console.TLS.LetsEncryptEmail; e != "" && !strings.Contains(e, "@") {
+			add("console.tls.letsEncryptEmail: %q isn't an email address", e)
+		}
+	}
 	if c.Logs.Enabled {
 		if c.Logs.SearchDays < 1 || c.Logs.SearchDays > 365 {
 			add("logs.searchDays: %d isn't between 1 and 365", c.Logs.SearchDays)
@@ -471,8 +502,8 @@ func (c *Config) Validate() error {
 	if c.Console.Hostname != "" && !hostname.MatchString(c.Console.Hostname) {
 		add("console.hostname: %q isn't a hostname", c.Console.Hostname)
 	}
-	if c.Console.Public && c.Target != "gcp" && c.Target != "aws" {
-		add("console.public: only gcp and aws can expose the console so far")
+	if c.Console.Public && c.Target != "gcp" && c.Target != "aws" && c.Target != "existing" {
+		add("console.public: only gcp, aws and existing clusters can expose the console so far")
 	}
 	if c.Console.Public && c.Target == "aws" {
 		if !hostname.MatchString(c.Console.Zone) {
@@ -685,6 +716,9 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
 		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
 		"catalogSignature.publicKeyFile": true, "gateway.enabled": true,
+		"console.ingressClass": true, "console.tls.issuer": true, "console.tls.letsEncryptEmail": true, "console.tls.installCertManager": true,
+		"logs.enabled": true, "logs.searchDays": true, "logs.keepDays": true,
+		"audit.export": true, "audit.keepDays": true, "audit.lock": true,
 		"gcp.project": true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
 	}
 	if !known[strings.Join(path, ".")] {

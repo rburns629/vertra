@@ -127,6 +127,11 @@ database:
   highAvailability: false    # managed only
   backups: {enabled: true, retentionDays: 30}   # in-cluster only
 logs: {enabled: false, searchDays: 30, keepDays: 365}   # Observe's log search; archived after searchDays (gcp, aws)
+console:                     # existing clusters: a public console behind your Ingress
+  public: false
+  hostname: console.example.com
+  ingressClass: nginx
+  tls: {letsEncryptEmail: you@example.com, installCertManager: true}   # or issuer: <ClusterIssuer>
 audit: {export: false, keepDays: 365, lock: false}       # the audit log's write-once copy (gcp, aws); lock is permanent
 admin: {email: you@example.com}
 catalog:

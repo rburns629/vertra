@@ -252,6 +252,11 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 		return err
 	}
 
+	if c.Target == "existing" && a.ask.Interactive {
+		if err := a.askExistingConsole(ctx, out, c); err != nil {
+			return err
+		}
+	}
 	if c.Target == "gcp" || c.Target == "aws" {
 		if err := a.askConsole(ctx, out, c, f); err != nil {
 			return err

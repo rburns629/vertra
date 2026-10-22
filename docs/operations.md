@@ -140,6 +140,14 @@ Either way, the console sends Strict-Transport-Security, so a browser that
 has seen it keeps to HTTPS; set `trustProxy` to the load balancer's
 addresses so sign-in limits see real clients.
 
+`vertra` does this on an existing cluster: `vertra init` asks whether the
+console is reached at a hostname, which Ingress class serves it, and where
+its certificate comes from (Let's Encrypt, or a ClusterIssuer of yours), and
+offers to install cert-manager (pinned) if the cluster hasn't got it
+(`console.public`, `console.hostname`, `console.ingressClass`,
+`console.tls.*` in vertra.yaml). `vertra apply` reports the certificate's
+state; Let's Encrypt needs the hostname pointed at the Ingress first.
+
 On kind, `make kind-tls` installs cert-manager, Traefik (an Ingress
 controller and a Gateway at once) and a private test CA
 (`helm/values/kind/tls-test.yaml`, which no browser trusts). Then deploy with

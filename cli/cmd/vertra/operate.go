@@ -266,8 +266,11 @@ func (a *app) destroyCmd() *cobra.Command {
 						steps = append(steps, "delete the kind cluster "+c.Cluster.Name+" and everything in it")
 					}
 				}
-				if st.RegistryExists {
-					if deleteRegistry, err = ask(fmt.Sprintf("Also delete the local registry %s and its images? (other kind clusters may use it)", c.Kind.RegistryName)); err != nil {
+				if others := cluster.OtherKindClusters(ctx, a.runner, c); st.RegistryExists && len(others) > 0 {
+					// Never, not even with --all: theirs too.
+					steps = append(steps, fmt.Sprintf("keep the local registry %s: kind cluster %s uses it too", c.Kind.RegistryName, strings.Join(others, ", ")))
+				} else if st.RegistryExists {
+					if deleteRegistry, err = ask(fmt.Sprintf("Also delete the local registry %s and its images?", c.Kind.RegistryName)); err != nil {
 						return err
 					}
 					if deleteRegistry {

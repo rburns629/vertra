@@ -56,6 +56,10 @@ type State struct {
 	Reachable       bool
 	ServerVersion   string
 	NamespaceExists bool
+	// CertManager: cert-manager's Certificate resource is installed.
+	CertManager bool
+	// NodeArch: its first node's architecture (amd64, arm64), when read.
+	NodeArch string
 	// Problems that stop an apply (an unreachable or too-old cluster).
 	Problems []string
 }
@@ -87,6 +91,10 @@ func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 		s.Problems = append(s.Problems, fmt.Sprintf("Kubernetes %s is too old: Vertra needs 1.%d or later", version, MinKubernetesMinor))
 	}
 	s.NamespaceExists = r.Succeeds(ctx, "kubectl", "--context", Context(c), "get", "namespace", c.Namespace)
+	s.CertManager = r.Succeeds(ctx, "kubectl", "--context", Context(c), "get", "crd", "certificates.cert-manager.io")
+	if arch, err := r.Output(ctx, "kubectl", "--context", Context(c), "get", "nodes", "-o", "jsonpath={.items[0].status.nodeInfo.architecture}"); err == nil {
+		s.NodeArch = strings.TrimSpace(arch)
+	}
 	return s
 }
 
@@ -208,6 +216,22 @@ func EnsureNamespace(ctx context.Context, r *run.Runner, c *config.Config) error
 // DeleteKind deletes the kind cluster: everything in it, data included.
 func DeleteKind(ctx context.Context, r *run.Runner, c *config.Config) error {
 	return r.Run(ctx, "kind", "delete", "cluster", "--name", c.Cluster.Name)
+}
+
+// OtherKindClusters are the kind clusters on this machine besides this
+// environment's: they may pull from the same local registry.
+func OtherKindClusters(ctx context.Context, r *run.Runner, c *config.Config) []string {
+	out, err := r.Output(ctx, "kind", "get", "clusters")
+	if err != nil {
+		return nil
+	}
+	var others []string
+	for _, name := range strings.Fields(out) {
+		if name != c.Cluster.Name {
+			others = append(others, name)
+		}
+	}
+	return others
 }
 
 // DeleteRegistry removes the local registry container and its images.

@@ -566,8 +566,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   cert-manager (an issuer of yours, or Let's Encrypt through the chart's own
   Issuer) as well as a Secret or the cloud, and refuses plain HTTP for
   Traefik, NGINX and GKE; or an HTTPRoute on a Gateway you run, with a
-  redirect from its HTTP listener. Left: `vertra` offering cert-manager on
-  existing clusters; Let's Encrypt proven on a real public host.
+  redirect from its HTTP listener. `vertra` sets it up on existing clusters
+  (2026-10-22, proven on a second kind cluster treated as existing: cert-manager
+  installed by vertra, the certificate reported not ready until its issuer
+  existed, then HTTPS verified through the cluster's own Traefik). Left:
+  Let's Encrypt proven on a real public host.
 - [ ] **SSO/OIDC sign-in**, with groups mapped to teams. Sign-in with
   Google is in (2026-10-22: `console/src/auth/oidc.ts`, the console chart's
   `sso`): the authorization code flow with PKCE, a verified email in an
