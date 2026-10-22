@@ -23,8 +23,9 @@ export default defineConfig({
     // The old per-prefix list had already drifted once (no /docs entry,
     // even though console/'s own docs.ts route existed) -- a single shared
     // prefix means there's no longer a list to forget to update.
+    // "/api/", not "/api": the app's own /apis pages start with "/api" too.
     proxy: {
-      "/api": "http://localhost:8080",
+      "/api/": "http://localhost:8080",
     },
   },
 });

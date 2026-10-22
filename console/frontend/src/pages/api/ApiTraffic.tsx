@@ -11,10 +11,10 @@ import BlockIcon from "@mui/icons-material/BlockOutlined";
 import CallMadeIcon from "@mui/icons-material/CallMade";
 import CallReceivedIcon from "@mui/icons-material/CallReceived";
 import ErrorIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import { DataTable, type DataTableColumn } from "../components/DataTable";
-import { MetricCard } from "../components/MetricCard";
-import { Mono } from "../components/Mono";
-import { ApiError, getApiTraffic, type ApiTraffic as Traffic } from "../api";
+import { DataTable, type DataTableColumn } from "../../components/DataTable";
+import { MetricCard } from "../../components/MetricCard";
+import { Mono } from "../../components/Mono";
+import { ApiError, getApiTraffic, type ApiTraffic as Traffic } from "../../api";
 
 const shown = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
 
@@ -75,11 +75,11 @@ export function ApiTraffic({ team, name }: { team: string; name: string }) {
   }, [team, name, hours]);
 
   return (
-    <Card variant="outlined" sx={{ mt: 2 }}>
-      <CardContent>
+    <Card>
+      <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 1 }}>
-          <Typography variant="h6" component="h2">
-            Traffic
+          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
+            What callers sent, what the gateway stopped, and what your backend answered. Bodies are never recorded; callers only by team.
           </Typography>
           <ToggleButtonGroup
             size="small"
@@ -93,11 +93,8 @@ export function ApiTraffic({ team, name }: { team: string; name: string }) {
             <ToggleButton value={168}>Last 7 days</ToggleButton>
           </ToggleButtonGroup>
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          What callers sent, what the gateway stopped, and what your backend answered. Bodies are never recorded; callers only by team.
-        </Typography>
         {error && <Alert severity="error">{error}</Alert>}
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, mb: 3 }}>
+        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, my: 3 }}>
           <MetricCard label="Requests" value={shown(traffic?.requests)} icon={<CallReceivedIcon fontSize="small" />} />
           <MetricCard label="Forwarded" value={shown(traffic?.forwarded)} icon={<CallMadeIcon fontSize="small" />} />
           <MetricCard label="Stopped at the gateway" value={shown(traffic?.stopped)} icon={<BlockIcon fontSize="small" />} />

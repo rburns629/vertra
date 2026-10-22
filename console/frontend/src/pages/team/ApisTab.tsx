@@ -2,16 +2,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
-import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { Mono } from "../../components/Mono";
 import { ApiError, listApis, type ApiProduct } from "../../api";
-import { API_STATE } from "../ApisPage";
+import { ApiStatePill } from "../api/ApiStatePill";
 
 const COLUMNS: DataTableColumn<ApiProduct>[] = [
   { key: "name", header: "API", render: (a) => a.displayName },
-  { key: "state", header: "State", render: (a) => <Chip size="small" label={API_STATE[a.state].label} color={API_STATE[a.state].color} /> },
+  { key: "state", header: "State", render: (a) => <ApiStatePill state={a.state} /> },
   { key: "backend", header: "Backend", render: (a) => (a.backendUrl ? <Mono>{a.backendUrl}</Mono> : "—"), hideBelow: "md" },
   { key: "shared", header: "Shared with", render: (a) => a.shareWith.join(", ") || "only this team", hideBelow: "sm" },
 ];

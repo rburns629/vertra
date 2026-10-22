@@ -294,6 +294,36 @@ describe("the catalog", () => {
   });
 });
 
+describe("an API", () => {
+  const ORDERS = { team: "payments", name: "orders", displayName: "Orders API", state: "API_STATE_LIVE", mayCall: true, endpoints: [{ method: "GET", path: "/orders/{id}", summary: "One order" }], perMinute: 600 };
+
+  it("tells a caller how to call it, without its team's tabs", async () => {
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: ORDERS, openapi: "{}" } });
+    expect(await screen.findByRole("heading", { name: "Orders API" })).toBeTruthy();
+    expect(screen.getByText(/curl -X GET/)).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Traffic" })).toBeNull();
+  });
+
+  it("gives its own team its traffic, and lets a maintainer pause it", async () => {
+    const paused: Record<string, unknown>[] = [];
+    await renderAt("/apis/payments/orders?tab=definition", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "ApiService/GetApi": { api: { ...ORDERS, backendUrl: "https://orders.internal", sourcePath: "teams/payments/apis/orders/api.yaml" }, openapi: "{}" },
+      "ApiService/PauseApi": (request: Record<string, unknown>) => {
+        paused.push(request);
+        return {};
+      },
+    });
+    expect(await screen.findByText("teams/payments/apis/orders/api.yaml")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Traffic" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
+    fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
+    await waitFor(() => { expect(paused).toEqual([{ team: "payments", name: "orders", message: "Failing over" }]); });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Traffic" }));
+    await waitFor(() => { expect(calls).toContain("ApiService/GetApiTraffic"); });
+  });
+});
+
 describe("pages that moved", () => {
   it.each([
     ["/executions", "Runs"],

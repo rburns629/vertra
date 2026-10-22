@@ -3,20 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
 import { PageHeader } from "../components/PageHeader";
 import { ApiError, listApis, type ApiProduct } from "../api";
-
-/** How an API's state reads, and its chip's color. */
-export const API_STATE: Record<ApiProduct["state"], { label: string; color: "success" | "warning" | "default" }> = {
-  LIVE: { label: "Live", color: "success" },
-  HELD: { label: "Held", color: "warning" },
-  PAUSED: { label: "Paused", color: "warning" },
-  UNSPECIFIED: { label: "Unknown", color: "default" },
-};
+import { ApiStatePill } from "./api/ApiStatePill";
 
 const COLUMNS: DataTableColumn<ApiProduct>[] = [
   {
@@ -33,7 +25,7 @@ const COLUMNS: DataTableColumn<ApiProduct>[] = [
       </Box>
     ),
   },
-  { key: "state", header: "State", render: (a) => <Chip size="small" label={API_STATE[a.state].label} color={API_STATE[a.state].color} /> },
+  { key: "state", header: "State", render: (a) => <ApiStatePill state={a.state} /> },
   { key: "endpoints", header: "Endpoints", render: (a) => a.endpoints.length, align: "right", hideBelow: "sm" },
   {
     key: "you",
