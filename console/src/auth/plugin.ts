@@ -12,9 +12,10 @@ const TOKEN_USE_RESOLUTION_MS = 5 * 60 * 1000;
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { userId: string };
+    // sso: made by single sign-on (auth/oidc.ts), not a password.
+    payload: { userId: string; sso?: boolean };
     // iat/exp are added by the signer, not by our own jwtSign call.
-    user: { userId: string; iat: number; exp: number };
+    user: { userId: string; sso?: boolean; iat: number; exp: number };
   }
 }
 
@@ -30,6 +31,16 @@ declare module "fastify" {
     // maintains (auth/access.ts).
     authUser?: { id: string; teamNames: string[]; maintainerOf: string[]; isAdmin: boolean; scopes: string[] };
   }
+}
+
+/**
+ * The teams that make this person sign in with single sign-on, while it's
+ * on: none for an admin (a way in if the provider fails), or for anyone
+ * while it's off (nobody is locked out).
+ */
+export function ssoRequiredBy(user: { isAdmin: boolean }, roles: { name: string; requireSso: boolean }[]): string[] {
+  if (!config.oidc || user.isAdmin) return [];
+  return roles.filter((r) => r.requireSso).map((r) => r.name);
 }
 
 /** Who's calling, or why nobody is: a session JWT or an API token. */
@@ -53,6 +64,8 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
 
   let user;
   let scopes: string[] = [];
+  // A session a password made (not single sign-on, not an API token).
+  let passwordSession = false;
   if (bearer?.startsWith(API_TOKEN_PREFIX)) {
     const principal = await findApiTokenPrincipal(hashApiToken(bearer));
     user = principal?.user;
@@ -70,6 +83,7 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
       return { problem: "Missing or invalid token." };
     }
     user = await findUserById(request.user.userId);
+    passwordSession = request.user.sso !== true;
     // A session issued before the user's last password change/reset is
     // revoked. `iat` only has one-second resolution, so compare in
     // whole seconds: the replacement token a password change issues in
@@ -86,6 +100,11 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
     return { problem: "Invalid, expired, or revoked credential." };
   }
   const roles = await teamRolesForUser(user.id);
+  // A password's session ends once one of the person's teams requires
+  // single sign-on.
+  if (passwordSession && ssoRequiredBy(user, roles).length > 0) {
+    return { problem: "Your team signs in with single sign-on now: sign in again." };
+  }
   const teamNames = roles.map((row) => row.name);
   const maintainerOf = roles.filter((row) => row.role === "maintainer").map((row) => row.name);
   return { authUser: { id: user.id, teamNames, maintainerOf, isAdmin: user.isAdmin, scopes } };

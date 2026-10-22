@@ -49,7 +49,11 @@ type DB interface {
 type Resolver struct {
 	DB        DB
 	JWTSecret []byte
-	Now       func() time.Time
+	// SSO: the console signs people in with single sign-on, so a password's
+	// session is refused for someone a team requires it of (as the
+	// console's auth/plugin.ts does; admins are exempt).
+	SSO bool
+	Now func() time.Time
 }
 
 // Resolve turns an Authorization header into its caller.
@@ -60,6 +64,7 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 	}
 	var c Caller
 	var passwordChanged *time.Time
+	passwordSession := false
 	if strings.HasPrefix(bearer, APITokenPrefix) {
 		sum := sha256.Sum256([]byte(bearer))
 		err := r.DB.QueryRow(ctx, `SELECT u.id::text, u.email, u.is_admin, u.is_bot FROM api_tokens t
@@ -89,27 +94,39 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 		if passwordChanged != nil && claims.IssuedAt < passwordChanged.Unix() {
 			return nil, ErrUnauthenticated
 		}
+		passwordSession = !claims.SSO
 	}
-	rows, err := r.DB.Query(ctx, `SELECT t.name FROM team_memberships m JOIN teams t ON t.id = m.team_id
+	rows, err := r.DB.Query(ctx, `SELECT t.name, t.require_sso FROM team_memberships m JOIN teams t ON t.id = m.team_id
 		WHERE m.user_id::text = $1 ORDER BY t.name`, c.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	ssoRequired := false
 	for rows.Next() {
 		var team string
-		if err := rows.Scan(&team); err != nil {
+		var requireSSO bool
+		if err := rows.Scan(&team, &requireSSO); err != nil {
 			return nil, err
 		}
 		c.Teams = append(c.Teams, team)
+		ssoRequired = ssoRequired || requireSSO
 	}
-	return &c, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if r.SSO && passwordSession && ssoRequired && !c.IsAdmin {
+		return nil, ErrUnauthenticated
+	}
+	return &c, nil
 }
 
 type claims struct {
-	UserID    string `json:"userId"`
-	IssuedAt  int64  `json:"iat"`
-	ExpiresAt int64  `json:"exp"`
+	UserID string `json:"userId"`
+	// Made by single sign-on, not a password.
+	SSO       bool  `json:"sso"`
+	IssuedAt  int64 `json:"iat"`
+	ExpiresAt int64 `json:"exp"`
 }
 
 // verifyJWT checks an HS256 JWT signed with the console's secret, and that

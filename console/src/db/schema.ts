@@ -55,6 +55,11 @@ export const teams = pgTable("teams", {
   // longer names it. A team an admin made isn't touched by releases, unless
   // one names it, which makes it the catalog's.
   fromCatalog: boolean("from_catalog").notNull().default(false),
+  // Its members sign in with single sign-on only (auth/plugin.ts): no
+  // password, and no session a password made, while single sign-on is on.
+  // Ignored while it's off, so nobody is locked out. Admins are exempt (a
+  // way in if the provider fails).
+  requireSso: boolean("require_sso").notNull().default(false),
   // team.yaml's allowedTargets, from the catalog's release: where other
   // teams may aim this team's products (targets.ts). Empty: nowhere.
   allowedTargets: jsonb("allowed_targets").$type<TargetRule[]>().notNull().default([]),

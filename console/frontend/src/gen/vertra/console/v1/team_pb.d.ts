@@ -43,6 +43,13 @@ export declare type Team = Message<"vertra.console.v1.Team"> & {
    * @generated from field: google.protobuf.Timestamp deleted_at = 5;
    */
   deletedAt?: Timestamp | undefined;
+
+  /**
+   * Its members sign in with single sign-on only (while it's on).
+   *
+   * @generated from field: bool require_sso = 6;
+   */
+  requireSso: boolean;
 };
 
 /**
@@ -481,6 +488,39 @@ export declare type SetMemberRoleResponse = Message<"vertra.console.v1.SetMember
 export declare const SetMemberRoleResponseSchema: GenMessage<SetMemberRoleResponse>;
 
 /**
+ * @generated from message vertra.console.v1.SetTeamSignInRequest
+ */
+export declare type SetTeamSignInRequest = Message<"vertra.console.v1.SetTeamSignInRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: bool require_sso = 2;
+   */
+  requireSso: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamSignInRequest.
+ * Use `create(SetTeamSignInRequestSchema)` to create a new message.
+ */
+export declare const SetTeamSignInRequestSchema: GenMessage<SetTeamSignInRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetTeamSignInResponse
+ */
+export declare type SetTeamSignInResponse = Message<"vertra.console.v1.SetTeamSignInResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamSignInResponse.
+ * Use `create(SetTeamSignInResponseSchema)` to create a new message.
+ */
+export declare const SetTeamSignInResponseSchema: GenMessage<SetTeamSignInResponse>;
+
+/**
  * @generated from message vertra.console.v1.ApplySecretStoreRequest
  */
 export declare type ApplySecretStoreRequest = Message<"vertra.console.v1.ApplySecretStoreRequest"> & {
@@ -911,6 +951,18 @@ export declare const TeamService: GenService<{
     methodKind: "unary";
     input: typeof SetMemberRoleRequestSchema;
     output: typeof SetMemberRoleResponseSchema;
+  },
+  /**
+   * Whether the team's members must sign in with single sign-on: then no
+   * password signs them in, and their password sessions end. Admins only;
+   * admins themselves are exempt. Has no effect while single sign-on is off.
+   *
+   * @generated from rpc vertra.console.v1.TeamService.SetTeamSignIn
+   */
+  setTeamSignIn: {
+    methodKind: "unary";
+    input: typeof SetTeamSignInRequestSchema;
+    output: typeof SetTeamSignInResponseSchema;
   },
   /**
    * Applies the team's reviewed SecretStore file: only SecretStores in its

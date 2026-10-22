@@ -34,8 +34,8 @@ message GetEnvironmentResponse {
   string label = 1;
   bool self_registration = 2;
   // Single sign-on, when on: the provider's name for its button ("Google").
-  // Sign in at /api/auth/oidc/start. While it's on, passwords sign in
-  // admins only.
+  // Sign in at /api/auth/oidc/start. Passwords still work, except for the
+  // members of a team that requires single sign-on (Team.require_sso).
   string sso_label = 3;
 }
 

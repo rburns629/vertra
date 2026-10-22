@@ -160,6 +160,10 @@ spec:
               value: {{ .Values.gateway.defaultPerMinute | quote }}
             - name: CLOSED
               value: {{ .Values.gateway.closed | quote }}
+            # A team may require single sign-on: then it refuses password
+            # sessions, as the console does.
+            - name: SSO_ENABLED
+              value: {{ ternary "true" "false" (not (empty .Values.sso.issuer)) | quote }}
             - name: GCP_STS_AUDIENCE
               value: {{ .Values.gateway.gcp.stsAudience | quote }}
             - name: GCP_TOKEN_AUDIENCE

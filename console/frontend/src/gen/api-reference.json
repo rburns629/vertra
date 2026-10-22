@@ -654,6 +654,15 @@
      "public": false
     },
     {
+     "name": "SetTeamSignIn",
+     "comment": "Whether the team's members must sign in with single sign-on: then no\npassword signs them in, and their password sessions end. Admins only;\nadmins themselves are exempt. Has no effect while single sign-on is off.",
+     "input": "vertra.console.v1.SetTeamSignInRequest",
+     "output": "vertra.console.v1.SetTeamSignInResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
+    },
+    {
      "name": "ApplySecretStore",
      "comment": "Applies the team's reviewed SecretStore file: only SecretStores in its\nnamespace, credentials only from eso-auth, and ESO's own\nServiceAccounts; anything else is refused with every problem listed.",
      "input": "vertra.console.v1.ApplySecretStoreRequest",
@@ -1888,7 +1897,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "Single sign-on, when on: the provider's name for its button (\"Google\").\nSign in at /api/auth/oidc/start. While it's on, passwords sign in\nadmins only."
+     "comment": "Single sign-on, when on: the provider's name for its button (\"Google\").\nSign in at /api/auth/oidc/start. Passwords still work, except for the\nmembers of a team that requires single sign-on (Team.require_sso)."
     }
    ]
   },
@@ -5118,6 +5127,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "requireSso",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its members sign in with single sign-on only (while it's on)."
     }
    ]
   },
@@ -5476,6 +5492,31 @@
   },
   "vertra.console.v1.SetMemberRoleResponse": {
    "name": "SetMemberRoleResponse",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.SetTeamSignInRequest": {
+   "name": "SetTeamSignInRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "requireSso",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetTeamSignInResponse": {
+   "name": "SetTeamSignInResponse",
    "comment": "",
    "fields": []
   },

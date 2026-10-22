@@ -141,7 +141,7 @@ export interface Environment {
   label: string;
   /** Whether /auth/register is open; otherwise admins create accounts. */
   selfRegistration: boolean;
-  /** Single sign-on's provider ("Google") when it's on: passwords are then for admins only. */
+  /** Single sign-on's provider ("Google") when it's on. Passwords still work, except for teams that require it. */
   ssoLabel: string;
 }
 
@@ -172,6 +172,8 @@ export interface Team {
   retiredAt: string | null;
   /** Set once the team has been purged; its name stays reserved. */
   deletedAt: string | null;
+  /** Its members sign in with single sign-on only, while it's on. */
+  requireSso: boolean;
 }
 
 export async function register(email: string, password: string): Promise<{ id: string; email: string }> {
@@ -199,7 +201,13 @@ function team(message: TeamMessage | undefined): Team {
     createdAt: iso(message?.createdAt) ?? "",
     retiredAt: iso(message?.retiredAt),
     deletedAt: iso(message?.deletedAt),
+    requireSso: message?.requireSso ?? false,
   };
+}
+
+/** Admins: whether a team's members must sign in with single sign-on. */
+export async function setTeamSignIn(teamName: string, requireSso: boolean): Promise<void> {
+  await call(() => teams.setTeamSignIn({ team: teamName, requireSso }));
 }
 
 /** A maintainer manages the team (people, secrets, bots, raw DAGs); a

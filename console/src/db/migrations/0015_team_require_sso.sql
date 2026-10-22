@@ -1,0 +1,1 @@
+ALTER TABLE "teams" ADD COLUMN "require_sso" boolean DEFAULT false NOT NULL;

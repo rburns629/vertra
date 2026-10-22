@@ -119,3 +119,48 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 		t.Errorf("a revoked token: %v", err)
 	}
 }
+
+// A team that requires single sign-on refuses its members' password
+// sessions, as the console does: not a single sign-on's, not an admin's,
+// not a bot's token, and nothing while the console has single sign-on off.
+func TestATeamRequiringSingleSignOnRefusesPasswordSessions(t *testing.T) {
+	db := tx(t)
+	ctx := context.Background()
+	var personID, adminID, teamID string
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(db.QueryRow(ctx, `INSERT INTO users (email) VALUES ('gw-sso-person@example.com') RETURNING id::text`).Scan(&personID))
+	must(db.QueryRow(ctx, `INSERT INTO users (email, is_admin) VALUES ('gw-sso-admin@example.com', true) RETURNING id::text`).Scan(&adminID))
+	must(db.QueryRow(ctx, `INSERT INTO teams (name, require_sso) VALUES ('gw-sso-team', true) RETURNING id::text`).Scan(&teamID))
+	for _, id := range []string{personID, adminID} {
+		_, err := db.Exec(ctx, `INSERT INTO team_memberships (user_id, team_id, role) VALUES ($1, $2, 'member')`, id, teamID)
+		must(err)
+	}
+	now := time.Now()
+	session := func(userID string, sso bool) string {
+		claims := map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60}
+		if sso {
+			claims["sso"] = true
+		}
+		return "Bearer " + jwt(t, secret, "HS256", claims)
+	}
+	on := &Resolver{DB: db, JWTSecret: secret, SSO: true, Now: func() time.Time { return now }}
+	off := &Resolver{DB: db, JWTSecret: secret, Now: func() time.Time { return now }}
+
+	if _, err := on.Resolve(ctx, session(personID, false)); err != ErrUnauthenticated {
+		t.Errorf("a member's password session: %v", err)
+	}
+	if _, err := on.Resolve(ctx, session(personID, true)); err != nil {
+		t.Errorf("a member's single sign-on: %v", err)
+	}
+	if _, err := on.Resolve(ctx, session(adminID, false)); err != nil {
+		t.Errorf("an admin's password session: %v", err)
+	}
+	if _, err := off.Resolve(ctx, session(personID, false)); err != nil {
+		t.Errorf("a password session with single sign-on off: %v", err)
+	}
+}

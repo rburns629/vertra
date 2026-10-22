@@ -567,8 +567,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Google is in (2026-10-22: `console/src/auth/oidc.ts`, the console chart's
   `sso`): the authorization code flow with PKCE, a verified email in an
   allowed Workspace domain, each account bound to its Google identity at the
-  first sign-in, and passwords for admins only while it's on. Teams are
-  still set in Vertra (decided 2026-10-22). Left: Google Groups mapped to
+  first sign-in. Passwords keep working; a team an admin sets to require
+  single sign-on refuses its members' passwords and password sessions
+  (admins exempt; not every team can use it, decided 2026-10-22). Teams
+  are still set in Vertra (decided 2026-10-22). Left: Google Groups mapped to
   teams (Cloud Identity's Groups API, with the Groups Reader role); Entra ID
   and Okta (the flow is generic, untried); `vertra` setting it up.
 - [ ] **Force a password change on first sign-in** for admin-created
@@ -725,6 +727,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   signing mode none, and nothing puts a public key in the console's
   `catalog.signature` (the GKE proof set it with Helm). Generate or take a
   key (or keyless with the repository's identity) and set both sides.
+- [ ] **Another intermittent console test:** `retention.test.ts` failed once
+  in a full parallel run (2026-10-22) and passes alone; likely another
+  suite's rows meeting its retention cut-off.
 - [ ] **An intermittent console test:** `product-ownership.test.ts`'s "is
   claimed at startup for products registered before repositories had
   owners" failed once in a full run (2026-10-20) and passes alone and on

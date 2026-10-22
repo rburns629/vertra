@@ -45,8 +45,8 @@ export type GetEnvironmentResponse = Message<"vertra.console.v1.GetEnvironmentRe
 
   /**
    * Single sign-on, when on: the provider's name for its button ("Google").
-   * Sign in at /api/auth/oidc/start. While it's on, passwords sign in
-   * admins only.
+   * Sign in at /api/auth/oidc/start. Passwords still work, except for the
+   * members of a team that requires single sign-on (Team.require_sso).
    *
    * @generated from field: string sso_label = 3;
    */

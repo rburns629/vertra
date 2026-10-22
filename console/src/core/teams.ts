@@ -36,6 +36,7 @@ import {
   purgeTeam as purgeTeamRecords,
   removeTeamMember,
   setTeamMemberRole,
+  setTeamRequireSso,
   setTeamRetired,
   type TeamMember,
 } from "../db/queries.js";
@@ -248,6 +249,21 @@ export async function setMemberRole(
   if (role === "member") ensureAMaintainerStays(team, all, target);
   await setTeamMemberRole(target.id, team.id, role);
   log.info({ team: team.name, member: target.email, role, by: caller?.id }, "team member's role changed");
+}
+
+/**
+ * Whether a team's members must sign in with single sign-on (admins only).
+ * Turning it on ends its members' password sessions at their next request
+ * (auth/plugin.ts); admins are exempt. Kept while single sign-on is off,
+ * but without effect, so nobody is locked out.
+ */
+export async function setTeamSignIn(caller: AuthUser | undefined, teamName: string, requireSso: boolean, log: FastifyBaseLogger) {
+  forbiddenUnlessAdmin(caller, "Only an admin decides how a team signs in.");
+  const team = await findTeamByName(teamName);
+  if (!team) throw new ApiError(404, "NOT_FOUND", `No team named "${teamName}".`, Code.NotFound);
+  if (team.requireSso === requireSso) return;
+  await setTeamRequireSso(team.id, requireSso);
+  log.warn({ event: "team_sign_in_changed", team: team.name, requireSso, by: caller?.id }, "team's sign-in changed");
 }
 
 function requireRetireRight(caller: AuthUser | undefined): void {

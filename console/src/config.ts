@@ -169,8 +169,9 @@ export const config = {
   // console could make an account; turn it on only behind a trusted
   // network boundary.
   allowSelfRegistration: parseBoolean("ALLOW_SELF_REGISTRATION"),
-  // Single sign-on; null when off. While it's on, passwords sign in admins
-  // only (a way in if the provider fails), and nobody registers themselves.
+  // Single sign-on; null when off. Turning it on changes nothing else:
+  // passwords still work, except for the members of a team that requires
+  // single sign-on (teams.requireSso; admins are exempt).
   oidc: loadOidc(),
   // The proxies in front of the console, as addresses and CIDR ranges
   // (comma-separated), so request.ip (the sign-in throttle, rate limits,

@@ -141,9 +141,14 @@ kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
 People then sign in with Google; the first sign-in makes their account (or
 binds the one an admin made for that email), with no teams until someone
-adds them. Passwords keep working for admins only, so an admin can still get
-in if Google can't be reached; `vertra admin reset-password` remains the way
-back for a lost one.
+adds them. Turning it on changes nothing else: passwords keep working.
+Teams then move to Google one at a time: an admin turns on **Require Google
+sign-in** on the team's page (`TeamService/SetTeamSignIn`), and its members'
+passwords stop working, including sessions they already have (the console
+and the gateway both refuse them). Someone in several teams uses Google if
+any of them requires it. Admins are exempt, so an admin can still get in if
+Google can't be reached; `vertra admin reset-password` remains the way back
+for a lost password. A team that can't use Google simply leaves it off.
 
 ### The API gateway
 

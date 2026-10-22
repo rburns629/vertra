@@ -18,6 +18,7 @@ import {
   SecretStoreDocuments,
   setMemberRole,
   setSecretStoreCredential,
+  setTeamSignIn,
   teamPods,
   teamRecord,
   TeamName,
@@ -55,13 +56,14 @@ const POD_STATE: Record<string, TaskPodState> = {
   failed: TaskPodState.FAILED,
 };
 
-function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date | null; deletedAt?: Date | null }) {
+function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date | null; deletedAt?: Date | null; requireSso?: boolean }) {
   return {
     id: row.id,
     name: row.name,
     createdAt: timestamp(row.createdAt),
     retiredAt: timestamp(row.retiredAt),
     deletedAt: timestamp(row.deletedAt),
+    requireSso: row.requireSso ?? false,
   };
 }
 
@@ -141,6 +143,12 @@ export function teamService(): ServiceImpl<typeof TeamService> {
     async setMemberRole(req, ctx) {
       const { team: name, userId } = check({ team: AnyTeam, userId: MemberId }, req);
       await setMemberRole(callerOf(ctx), name, userId, roleOf(req.role), logOf(ctx));
+      return {};
+    },
+
+    async setTeamSignIn(req, ctx) {
+      const { team: name } = check({ team: AnyTeam }, req);
+      await setTeamSignIn(callerOf(ctx), name, req.requireSso, logOf(ctx));
       return {};
     },
 

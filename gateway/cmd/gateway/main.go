@@ -66,7 +66,7 @@ func run(log *slog.Logger) error {
 	newGateway := func(public bool) *gateway.Gateway {
 		return &gateway.Gateway{
 			Store:   apis,
-			Callers: &auth.Resolver{DB: pool, JWTSecret: s.JWTSecret},
+			Callers: &auth.Resolver{DB: pool, JWTSecret: s.JWTSecret, SSO: s.SSO},
 			Signer:  &caller.Signer{Key: s.SigningKey, Issuer: s.Issuer},
 			Limiter: limits.New(),
 			Minter:  &credentials.Minter{TokenRequest: tokenRequest, GCPAudience: s.GCPAudience, GCPTokenAudience: s.GCPTokenAudience},

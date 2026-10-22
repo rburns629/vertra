@@ -13,7 +13,8 @@ import type { FastifyInstance } from "fastify";
 import { loginWaitSeconds, recordLoginFailure, recordLoginSuccess } from "../../auth/loginThrottle.js";
 import { hashPassword, NewPassword, verifyAgainstNothing, verifyPassword } from "../../auth/password.js";
 import { config } from "../../config.js";
-import { createUser, findUserByEmail, findUserById, setUserPassword } from "../../db/queries.js";
+import { createUser, findUserByEmail, findUserById, setUserPassword, teamRolesForUser } from "../../db/queries.js";
+import { ssoRequiredBy } from "../../auth/plugin.js";
 import type { AuthService } from "../../gen/vertra/console/v1/auth_pb.js";
 import { callerOf, kClientIp, logOf } from "../context.js";
 import { badRequest, forbidden, rpcError, unauthenticated } from "../errors.js";
@@ -36,7 +37,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
     getEnvironment() {
       return {
         label: config.environmentLabel,
-        selfRegistration: config.allowSelfRegistration && !config.oidc,
+        selfRegistration: config.allowSelfRegistration,
         ssoLabel: config.oidc?.label ?? "",
       };
     },
@@ -44,7 +45,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
     async register(req, ctx) {
       registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
       const { email, password } = check({ email: Email, password: NewPassword }, req);
-      if (!config.allowSelfRegistration || config.oidc) {
+      if (!config.allowSelfRegistration) {
         throw forbidden("Accounts are created by an admin. Ask a Vertra admin for one.", "REGISTRATION_DISABLED");
       }
       if (await findUserByEmail(email)) {
@@ -78,11 +79,15 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
         recordLoginFailure(email);
         throw unauthenticated("Invalid email or password.");
       }
-      // With single sign-on on, a password is an admin's way in if the
-      // provider fails; checked only once the password was right, so the
-      // answer says nothing about an account to someone guessing.
-      if (config.oidc && !user.isAdmin) {
-        throw forbidden(`Sign in with ${config.oidc.label}: passwords are for admins here.`, "PASSWORD_SIGN_IN_OFF");
+      // A team that requires single sign-on refuses its members' passwords;
+      // checked only once the password was right, so the answer says
+      // nothing about an account to someone guessing.
+      const requiring = ssoRequiredBy(user, await teamRolesForUser(user.id));
+      if (requiring.length > 0) {
+        throw forbidden(
+          `${requiring.join(", ")} sign${requiring.length === 1 ? "s" : ""} in with ${config.oidc?.label ?? "single sign-on"}: use that instead of a password.`,
+          "SSO_REQUIRED",
+        );
       }
       recordLoginSuccess(email);
       return { token: app.jwt.sign({ userId: user.id }) };

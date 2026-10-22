@@ -55,6 +55,7 @@ export async function createAccount(
   // Every team checked before anything is created, so a typo can't leave a
   // half-made account behind.
   const teamIds: string[] = [];
+  let teamsRequireSso = false;
   for (const name of [...new Set(input.teams)]) {
     const team = await findTeamByName(name);
     if (!team) throw new ApiError(400, "BAD_REQUEST", `No team named "${name}".`);
@@ -62,12 +63,13 @@ export async function createAccount(
       throw new ApiError(409, "TEAM_RETIRED", `Team "${name}" is retired, so nobody new can join it.`);
     }
     teamIds.push(team.id);
+    teamsRequireSso ||= team.requireSso;
   }
 
-  // With single sign-on, only an admin has a password (a way in if the
-  // provider fails); anyone else signs in with the provider as this email,
-  // which binds the account to them then.
-  const temporaryPassword = config.oidc && !input.admin ? "" : randomBytes(18).toString("base64url");
+  // No password for someone whose team requires single sign-on: they sign in
+  // with the provider as this email, which binds the account to them then.
+  const ssoOnly = config.oidc && !input.admin && teamsRequireSso;
+  const temporaryPassword = ssoOnly ? "" : randomBytes(18).toString("base64url");
   const user = await createUser(email, temporaryPassword ? await hashPassword(temporaryPassword) : null);
   // A maintainer: often a new team's first person, who must be able to
   // manage it. Its maintainers can make them a member afterwards.

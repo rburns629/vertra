@@ -393,8 +393,10 @@ allowSelfRegistration: false
 # oidc.ts): Google's for now. People sign in as their verified email, if
 # it's in an allowed Workspace domain; their first sign-in makes their
 # account (no teams: admins and maintainers add them) or binds the one with
-# that email. While it's on, passwords sign in admins only (a way in if the
-# provider fails) and nobody registers themselves. Off while issuer is empty.
+# that email. Turning it on changes nothing else: passwords still work,
+# except for the members of a team an admin sets to require single sign-on
+# (admins are exempt, a way in if the provider fails). Off while issuer is
+# empty.
 sso:
   issuer: ""            # https://accounts.google.com
   clientId: ""

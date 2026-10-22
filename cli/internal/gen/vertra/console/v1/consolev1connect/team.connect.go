@@ -60,6 +60,9 @@ const (
 	// TeamServiceSetMemberRoleProcedure is the fully-qualified name of the TeamService's SetMemberRole
 	// RPC.
 	TeamServiceSetMemberRoleProcedure = "/vertra.console.v1.TeamService/SetMemberRole"
+	// TeamServiceSetTeamSignInProcedure is the fully-qualified name of the TeamService's SetTeamSignIn
+	// RPC.
+	TeamServiceSetTeamSignInProcedure = "/vertra.console.v1.TeamService/SetTeamSignIn"
 	// TeamServiceApplySecretStoreProcedure is the fully-qualified name of the TeamService's
 	// ApplySecretStore RPC.
 	TeamServiceApplySecretStoreProcedure = "/vertra.console.v1.TeamService/ApplySecretStore"
@@ -104,6 +107,10 @@ type TeamServiceClient interface {
 	// Makes someone a maintainer or a member: a maintainer's. Never leaves
 	// the team without a maintainer (failed_precondition, LAST_MAINTAINER).
 	SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error)
+	// Whether the team's members must sign in with single sign-on: then no
+	// password signs them in, and their password sessions end. Admins only;
+	// admins themselves are exempt. Has no effect while single sign-on is off.
+	SetTeamSignIn(context.Context, *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error)
 	// Applies the team's reviewed SecretStore file: only SecretStores in its
 	// namespace, credentials only from eso-auth, and ESO's own
 	// ServiceAccounts; anything else is refused with every problem listed.
@@ -203,6 +210,13 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		setTeamSignIn: connect.NewClient[v1.SetTeamSignInRequest, v1.SetTeamSignInResponse](
+			httpClient,
+			baseURL+TeamServiceSetTeamSignInProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("SetTeamSignIn")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		applySecretStore: connect.NewClient[v1.ApplySecretStoreRequest, v1.ApplySecretStoreResponse](
 			httpClient,
 			baseURL+TeamServiceApplySecretStoreProcedure,
@@ -240,6 +254,7 @@ type teamServiceClient struct {
 	addMember                *connect.Client[v1.AddMemberRequest, v1.AddMemberResponse]
 	removeMember             *connect.Client[v1.RemoveMemberRequest, v1.RemoveMemberResponse]
 	setMemberRole            *connect.Client[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse]
+	setTeamSignIn            *connect.Client[v1.SetTeamSignInRequest, v1.SetTeamSignInResponse]
 	applySecretStore         *connect.Client[v1.ApplySecretStoreRequest, v1.ApplySecretStoreResponse]
 	setSecretStoreCredential *connect.Client[v1.SetSecretStoreCredentialRequest, v1.SetSecretStoreCredentialResponse]
 	listPods                 *connect.Client[v1.ListPodsRequest, v1.ListPodsResponse]
@@ -300,6 +315,11 @@ func (c *teamServiceClient) SetMemberRole(ctx context.Context, req *connect.Requ
 	return c.setMemberRole.CallUnary(ctx, req)
 }
 
+// SetTeamSignIn calls vertra.console.v1.TeamService.SetTeamSignIn.
+func (c *teamServiceClient) SetTeamSignIn(ctx context.Context, req *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error) {
+	return c.setTeamSignIn.CallUnary(ctx, req)
+}
+
 // ApplySecretStore calls vertra.console.v1.TeamService.ApplySecretStore.
 func (c *teamServiceClient) ApplySecretStore(ctx context.Context, req *connect.Request[v1.ApplySecretStoreRequest]) (*connect.Response[v1.ApplySecretStoreResponse], error) {
 	return c.applySecretStore.CallUnary(ctx, req)
@@ -349,6 +369,10 @@ type TeamServiceHandler interface {
 	// Makes someone a maintainer or a member: a maintainer's. Never leaves
 	// the team without a maintainer (failed_precondition, LAST_MAINTAINER).
 	SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error)
+	// Whether the team's members must sign in with single sign-on: then no
+	// password signs them in, and their password sessions end. Admins only;
+	// admins themselves are exempt. Has no effect while single sign-on is off.
+	SetTeamSignIn(context.Context, *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error)
 	// Applies the team's reviewed SecretStore file: only SecretStores in its
 	// namespace, credentials only from eso-auth, and ESO's own
 	// ServiceAccounts; anything else is refused with every problem listed.
@@ -444,6 +468,13 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	teamServiceSetTeamSignInHandler := connect.NewUnaryHandler(
+		TeamServiceSetTeamSignInProcedure,
+		svc.SetTeamSignIn,
+		connect.WithSchema(teamServiceMethods.ByName("SetTeamSignIn")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	teamServiceApplySecretStoreHandler := connect.NewUnaryHandler(
 		TeamServiceApplySecretStoreProcedure,
 		svc.ApplySecretStore,
@@ -489,6 +520,8 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 			teamServiceRemoveMemberHandler.ServeHTTP(w, r)
 		case TeamServiceSetMemberRoleProcedure:
 			teamServiceSetMemberRoleHandler.ServeHTTP(w, r)
+		case TeamServiceSetTeamSignInProcedure:
+			teamServiceSetTeamSignInHandler.ServeHTTP(w, r)
 		case TeamServiceApplySecretStoreProcedure:
 			teamServiceApplySecretStoreHandler.ServeHTTP(w, r)
 		case TeamServiceSetSecretStoreCredentialProcedure:
@@ -546,6 +579,10 @@ func (UnimplementedTeamServiceHandler) RemoveMember(context.Context, *connect.Re
 
 func (UnimplementedTeamServiceHandler) SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.SetMemberRole is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) SetTeamSignIn(context.Context, *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.SetTeamSignIn is not implemented"))
 }
 
 func (UnimplementedTeamServiceHandler) ApplySecretStore(context.Context, *connect.Request[v1.ApplySecretStoreRequest]) (*connect.Response[v1.ApplySecretStoreResponse], error) {

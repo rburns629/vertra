@@ -303,9 +303,15 @@ provider's identity (`users.oidc_subject`): from then on, a different
 provider account given the same email is refused. The session comes back in
 the URL's fragment, which browsers never send to a server.
 
-While single sign-on is on, a password signs in an admin only (a way in if
-the provider fails), checked only after the password itself, and nobody
-registers themselves. Bots keep their tokens.
+Turning single sign-on on changes nothing else: passwords still work. A team
+an admin sets to require it (`teams.require_sso`) refuses its members'
+passwords (checked only after the password itself, so the refusal says
+nothing to someone guessing) and every session a password made, at the
+console and the gateway alike; sessions say which they are. Someone in
+several teams must use single sign-on if any requires it, since a password
+would open the strict team's runs and secrets too. Admins are exempt, as the
+way in if the provider fails. While single sign-on is off the setting has
+no effect, so nobody is locked out. Bots keep their tokens.
 
 ## In the browser
 

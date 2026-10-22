@@ -107,7 +107,7 @@ async function checks(): Promise<Check[]> {
       name: "Single sign-on",
       state: config.oidc ? "enforced" : "off",
       text: config.oidc
-        ? `People sign in with ${config.oidc.label}, from ${config.oidc.allowedDomains.join(", ")} only; passwords sign in admins only.`
+        ? `People may sign in with ${config.oidc.label}, from ${config.oidc.allowedDomains.join(", ")} only. A team can require it: then its members' passwords don't work (admins' do).`
         : "Sign-in is by password.",
     },
     {

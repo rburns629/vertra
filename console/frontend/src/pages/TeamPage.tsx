@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
-import { Alert, Box, Button, Chip, Link, Tab, Tabs, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, FormControlLabel, Link, Switch, Tab, Tabs, Typography } from "@mui/material";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
   ApiError,
@@ -11,6 +11,8 @@ import {
   listTeamSecrets,
   purgeTeam,
   retireTeam,
+  getEnvironment,
+  setTeamSignIn,
   unretireTeam,
   type Team,
 } from "../api";
@@ -69,6 +71,29 @@ export function TeamPage() {
   const [confirmingPurge, setConfirmingPurge] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const retired = Boolean(team?.retiredAt);
+  // Single sign-on's provider, when it's on: then an admin may make this
+  // team sign in with it only.
+  const [sso, setSso] = useState("");
+  useEffect(() => {
+    getEnvironment()
+      .then((environment) => {
+        setSso(environment.ssoLabel);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function changeSignIn(requireSso: boolean): Promise<void> {
+    setLifecycleError(null);
+    setLifecycleBusy(true);
+    try {
+      await setTeamSignIn(teamName, requireSso);
+      setTeam(await getTeam(teamName));
+    } catch (err) {
+      setLifecycleError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
   const counts = useTabCounts(teamName, tab, canSee);
 
   useEffect(() => {
@@ -123,13 +148,30 @@ export function TeamPage() {
         {retired && <Chip label="Retired" size="small" color="warning" />}
         {!isMember && user?.isAdmin && <Chip label="viewing as admin" size="small" />}
         {isMember && !canMaintain && <Chip label="Member: view only" size="small" variant="outlined" />}
+        {sso && team?.requireSso && (
+          <Chip label={`${sso} sign-in only`} size="small" variant="outlined" title={`Members sign in with ${sso}; their passwords don't work (admins' do).`} />
+        )}
+        {sso && user?.isAdmin && team && (
+          <FormControlLabel
+            sx={{ ml: "auto" }}
+            control={
+              <Switch
+                size="small"
+                checked={team.requireSso}
+                disabled={lifecycleBusy}
+                onChange={(event) => void changeSignIn(event.target.checked)}
+              />
+            }
+            label={<Typography variant="body2">Require {sso} sign-in</Typography>}
+          />
+        )}
         {user?.isAdmin && team && (
           <Button
             size="small"
             variant="outlined"
             color={retired ? "primary" : "warning"}
             disabled={lifecycleBusy}
-            sx={{ ml: "auto" }}
+            sx={{ ml: sso ? 0 : "auto" }}
             onClick={() => {
               if (retired) void changeRetired(false);
               else setConfirmingRetire(true);

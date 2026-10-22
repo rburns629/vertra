@@ -4,8 +4,9 @@
  * own key, discovery document and token endpoint, which checks the PKCE
  * verifier and the client's secret as a real one does. A new person gets an
  * account with no password and no teams; an existing one is bound to their
- * provider identity once; and every check on the ID token refuses. With
- * single sign-on on, passwords sign in admins only.
+ * provider identity once; and every check on the ID token refuses. A team
+ * that requires single sign-on refuses its members' passwords (not an
+ * admin's), and nothing changes for anyone else.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
@@ -18,8 +19,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { hashPassword } from "../src/auth/password.js";
 import { config } from "../src/config.js";
 import { db } from "../src/db/client.js";
-import { createUser, setUserAdmin } from "../src/db/queries.js";
-import { users } from "../src/db/schema.js";
+import { addTeamMember, createUser, setUserAdmin } from "../src/db/queries.js";
+import { teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { PASSWORD, rpcClient } from "./rpc.js";
 
@@ -95,6 +96,7 @@ beforeEach(() => {
 afterAll(async () => {
   config.oidc = null;
   provider.close();
+  await db.delete(teams).where(like(teams.name, `${domain.split(".")[0]}-%`));
   await db.delete(users).where(like(users.email, `%@${domain}`));
   await app.close();
 });
@@ -178,32 +180,85 @@ describe("single sign-on", () => {
   });
 });
 
-describe("passwords, with single sign-on on", () => {
-  it("sign in admins only, and only once the password is right", async () => {
-    const person = await createUser(emailOf("pw-member"), await hashPassword(PASSWORD));
+describe("a team that requires single sign-on", () => {
+  const login = (email: string, password: string) => rpc("AuthService", "Login", { email, password });
+
+  async function teamOf(name: string, requireSso: boolean, ...members: string[]) {
+    const [team] = await db.insert(teams).values({ name: `${domain.split(".")[0]}-${name}`, requireSso }).returning();
+    for (const userId of members) await addTeamMember(userId, team!.id);
+    return team!;
+  }
+
+  it("leaves everyone else's password working: turning single sign-on on changes nothing else", async () => {
+    const person = await createUser(emailOf("pw-free"), await hashPassword(PASSWORD));
+    await teamOf("free", false, person.id);
+    expect((await login(person.email, PASSWORD)).statusCode).toBe(200);
+    const environment = (await rpc("AuthService", "GetEnvironment", {})).json<{ ssoLabel?: string }>();
+    expect(environment.ssoLabel).toBe("Google");
+  });
+
+  it("refuses its members' passwords, once the password is right; never an admin's", async () => {
+    const member = await createUser(emailOf("pw-member"), await hashPassword(PASSWORD));
     const admin = await createUser(emailOf("pw-admin"), await hashPassword(PASSWORD));
     await setUserAdmin(admin.id, true);
-    const login = (email: string, password: string) => rpc("AuthService", "Login", { email, password });
+    // In a free team and a strict one: the strict one wins.
+    await teamOf("strict", true, member.id, admin.id);
+    await teamOf("loose", false, member.id);
 
-    const member = await login(person.email, PASSWORD);
-    expect(member.statusCode).toBe(403);
-    expect(member.body).toContain("PASSWORD_SIGN_IN_OFF");
-    expect((await login(person.email, "wrong-password-here")).statusCode).toBe(401);
+    const refused = await login(member.email, PASSWORD);
+    expect(refused.statusCode).toBe(403);
+    expect(refused.body).toContain("SSO_REQUIRED");
+    expect((await login(member.email, "wrong-password-here")).statusCode).toBe(401);
     expect((await login(admin.email, PASSWORD)).statusCode).toBe(200);
   });
 
-  it("are no longer handed out, nor can anyone register", async () => {
-    const environment = (await rpc("AuthService", "GetEnvironment", {})).json<{ ssoLabel?: string; selfRegistration?: boolean }>();
-    expect(environment.ssoLabel).toBe("Google");
-    expect(environment.selfRegistration ?? false).toBe(false);
-    expect((await rpc("AuthService", "Register", { email: emailOf("self"), password: PASSWORD })).statusCode).toBe(403);
+  it("ends its members' password sessions when it starts requiring it, not their single sign-on", async () => {
+    const member = await createUser(emailOf("sessions"), await hashPassword(PASSWORD));
+    const team = await teamOf("sessions", false, member.id);
+    const password = app.jwt.sign({ userId: member.id });
+    const sso = app.jwt.sign({ userId: member.id, sso: true });
+    expect((await rpc("AuthService", "GetMe", {}, { token: password })).statusCode).toBe(200);
 
-    const admin = await createUser(emailOf("creator"), await hashPassword(PASSWORD));
-    await setUserAdmin(admin.id, true);
-    const token = app.jwt.sign({ userId: admin.id });
-    const made = (await rpc("UserService", "CreateUser", { email: emailOf("made"), teams: [], admin: false }, { token })).json<{ temporaryPassword?: string }>();
-    expect(made.temporaryPassword ?? "").toBe("");
-    const madeAdmin = (await rpc("UserService", "CreateUser", { email: emailOf("made-admin"), teams: [], admin: true }, { token })).json<{ temporaryPassword?: string }>();
-    expect(madeAdmin.temporaryPassword).toMatch(/.{20,}/);
+    const adminUser = await createUser(emailOf("switcher"), await hashPassword(PASSWORD));
+    await setUserAdmin(adminUser.id, true);
+    const admin = app.jwt.sign({ userId: adminUser.id });
+    expect((await rpc("TeamService", "SetTeamSignIn", { team: team.name, requireSso: true }, { token: admin })).statusCode).toBe(200);
+
+    expect((await rpc("AuthService", "GetMe", {}, { token: password })).statusCode).toBe(401);
+    expect((await rpc("AuthService", "GetMe", {}, { token: sso })).statusCode).toBe(200);
+    const listed = (await rpc("TeamService", "GetTeam", { name: team.name }, { token: admin })).json<{ team?: { requireSso?: boolean } }>();
+    expect(listed.team?.requireSso).toBe(true);
+  });
+
+  it("is an admin's to set", async () => {
+    const member = await createUser(emailOf("not-admin"), await hashPassword(PASSWORD));
+    const team = await teamOf("guarded", false, member.id);
+    const token = app.jwt.sign({ userId: member.id });
+    expect((await rpc("TeamService", "SetTeamSignIn", { team: team.name, requireSso: true }, { token })).statusCode).toBe(403);
+  });
+
+  it("gives its new people no password; others still get one", async () => {
+    const adminUser = await createUser(emailOf("creator"), await hashPassword(PASSWORD));
+    await setUserAdmin(adminUser.id, true);
+    const token = app.jwt.sign({ userId: adminUser.id });
+    const strict = await teamOf("new-strict", true);
+    const loose = await teamOf("new-loose", false);
+    const create = async (name: string, team: string) =>
+      (await rpc("UserService", "CreateUser", { email: emailOf(name), teams: [team], admin: false }, { token })).json<{ temporaryPassword?: string }>();
+    expect((await create("made-strict", strict.name)).temporaryPassword ?? "").toBe("");
+    expect((await create("made-loose", loose.name)).temporaryPassword).toMatch(/.{20,}/);
+  });
+
+  it("has no effect while single sign-on is off, so nobody is locked out", async () => {
+    const member = await createUser(emailOf("off"), await hashPassword(PASSWORD));
+    await teamOf("off", true, member.id);
+    const oidc = config.oidc;
+    config.oidc = null;
+    try {
+      expect((await login(member.email, PASSWORD)).statusCode).toBe(200);
+      expect((await rpc("AuthService", "GetMe", {}, { token: app.jwt.sign({ userId: member.id }) })).statusCode).toBe(200);
+    } finally {
+      config.oidc = oidc;
+    }
   });
 });

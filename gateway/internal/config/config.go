@@ -20,6 +20,9 @@ type Settings struct {
 	DatabaseURL string
 	// The console's session secret, to check sessions as it does.
 	JWTSecret []byte
+	// The console signs people in with single sign-on, so a team may
+	// refuse password sessions (teams.require_sso).
+	SSO bool
 	// SigningKey signs Vertra-Caller; Issuer is the gateway's address, its iss.
 	SigningKey ed25519.PrivateKey
 	Issuer     string
@@ -67,6 +70,7 @@ func Load(getenv func(string) string) (*Settings, error) {
 	s := &Settings{
 		DatabaseURL:      need("DATABASE_URL"),
 		JWTSecret:        []byte(need("JWT_SECRET")),
+		SSO:              getenv("SSO_ENABLED") == "true",
 		Issuer:           need("GATEWAY_ISSUER"),
 		Listen:           or("LISTEN", ":8080"),
 		PublicListen:     getenv("PUBLIC_LISTEN"),

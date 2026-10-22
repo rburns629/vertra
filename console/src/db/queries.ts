@@ -92,6 +92,8 @@ export interface Team {
   contact: string | null;
   helpChat: string | null;
   helpUrl: string | null;
+  /** Its members sign in with single sign-on only (auth/plugin.ts's ssoRequiredBy). */
+  requireSso: boolean;
 }
 
 /** A live team: purged (deleted) teams are invisible to every route. A
@@ -282,9 +284,13 @@ export async function teamNamesForUser(userId: string): Promise<string[]> {
 }
 
 /** Every team a user belongs to, and as what: the same live source. */
-export async function teamRolesForUser(userId: string): Promise<{ name: string; role: TeamRole }[]> {
+export async function setTeamRequireSso(teamId: string, requireSso: boolean): Promise<void> {
+  await db.update(teams).set({ requireSso }).where(eq(teams.id, teamId));
+}
+
+export async function teamRolesForUser(userId: string): Promise<{ name: string; role: TeamRole; requireSso: boolean }[]> {
   return db
-    .select({ name: teams.name, role: teamMemberships.role })
+    .select({ name: teams.name, role: teamMemberships.role, requireSso: teams.requireSso })
     .from(teamMemberships)
     .innerJoin(teams, eq(teams.id, teamMemberships.teamId))
     .where(eq(teamMemberships.userId, userId));

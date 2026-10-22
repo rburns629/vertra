@@ -189,7 +189,7 @@ export async function registerOidc(api: FastifyInstance): Promise<void> {
       const { email, subject } = await verifiedClaims(oidc, idToken, flow.nonce);
       const user = await accountFor(email, subject, request.log);
       request.log.info({ event: "sso_sign_in", userId: user.id }, "signed in with single sign-on");
-      return await reply.redirect(`/login#token=${encodeURIComponent(api.jwt.sign({ userId: user.id }))}`);
+      return await reply.redirect(`/login#token=${encodeURIComponent(api.jwt.sign({ userId: user.id, sso: true }))}`);
     } catch (error) {
       return refuse(reply, request.log, error);
     }

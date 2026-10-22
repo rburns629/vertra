@@ -61,6 +61,12 @@ service TeamService {
   rpc SetMemberRole(SetMemberRoleRequest) returns (SetMemberRoleResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+  // Whether the team's members must sign in with single sign-on: then no
+  // password signs them in, and their password sessions end. Admins only;
+  // admins themselves are exempt. Has no effect while single sign-on is off.
+  rpc SetTeamSignIn(SetTeamSignInRequest) returns (SetTeamSignInResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
   // Applies the team's reviewed SecretStore file: only SecretStores in its
   // namespace, credentials only from eso-auth, and ESO's own
   // ServiceAccounts; anything else is refused with every problem listed.
@@ -87,6 +93,8 @@ message Team {
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp retired_at = 4;
   google.protobuf.Timestamp deleted_at = 5;
+  // Its members sign in with single sign-on only (while it's on).
+  bool require_sso = 6;
 }
 
 // What someone may do in a team. Any member sees the team's executions,
@@ -201,6 +209,13 @@ message SetMemberRoleRequest {
 }
 
 message SetMemberRoleResponse {}
+
+message SetTeamSignInRequest {
+  string team = 1;
+  bool require_sso = 2;
+}
+
+message SetTeamSignInResponse {}
 
 message ApplySecretStoreRequest {
   string team = 1;
