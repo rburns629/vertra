@@ -176,6 +176,8 @@ export interface Team {
   deletedAt: string | null;
   /** Its members sign in with single sign-on only, while it's on. */
   requireSso: boolean;
+  /** Made by the catalog; else made here, and left alone by it until adopted. */
+  fromCatalog: boolean;
 }
 
 export async function register(email: string, password: string): Promise<{ id: string; email: string }> {
@@ -211,6 +213,7 @@ function team(message: TeamMessage | undefined): Team {
     retiredAt: iso(message?.retiredAt),
     deletedAt: iso(message?.deletedAt),
     requireSso: message?.requireSso ?? false,
+    fromCatalog: message?.fromCatalog ?? false,
   };
 }
 
@@ -237,6 +240,9 @@ export interface TeamMember {
   isAdmin: boolean;
   role: Role;
   addedAt: string;
+  /** How they sign in: a password of their own, single sign-on, or both (a bot neither). */
+  hasPassword: boolean;
+  usesSso: boolean;
 }
 
 export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
@@ -248,6 +254,8 @@ export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
     isAdmin: m.isAdmin,
     role: m.role === TeamRole.MAINTAINER ? "maintainer" : "member",
     addedAt: iso(m.addedAt) ?? "",
+    hasPassword: m.hasPassword,
+    usesSso: m.usesSso,
   }));
 }
 

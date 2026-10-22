@@ -95,6 +95,9 @@ message Team {
   google.protobuf.Timestamp deleted_at = 5;
   // Its members sign in with single sign-on only (while it's on).
   bool require_sso = 6;
+  // Made by the catalog (a release adds, retires and restores it); else
+  // made here, and the catalog leaves it alone until an admin adopts it.
+  bool from_catalog = 7;
 }
 
 // What someone may do in a team. Any member sees the team's executions,

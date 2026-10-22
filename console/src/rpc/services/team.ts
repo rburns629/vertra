@@ -56,7 +56,7 @@ const POD_STATE: Record<string, TaskPodState> = {
   failed: TaskPodState.FAILED,
 };
 
-function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date | null; deletedAt?: Date | null; requireSso?: boolean }) {
+function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date | null; deletedAt?: Date | null; requireSso?: boolean; fromCatalog?: boolean }) {
   return {
     id: row.id,
     name: row.name,
@@ -64,6 +64,7 @@ function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date 
     retiredAt: timestamp(row.retiredAt),
     deletedAt: timestamp(row.deletedAt),
     requireSso: row.requireSso ?? false,
+    fromCatalog: row.fromCatalog ?? false,
   };
 }
 

@@ -228,8 +228,9 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
 | `src/pages/ObservePage.tsx` | Observe: the security checks, the metrics (steps started and waits by hour, failures, step times by product), the audit log (filtered by team, mine, refused), and logs to come. |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/ApiTraffic.tsx`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; for its own team its backend, traffic and Pause), and a team's APIs. The Admin page's gateway card shows its settings, what it refused, and closes it. |
-| `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
+| `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page: its tabs, the chosen one in the address (`?tab=`). |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
+| `src/pages/team/SettingsTab.tsx` | A team's Settings: requiring single sign-on (and who it would lock out), where the team comes from, and for an admin retiring, restoring and purging it. |
 | `src/pages/CatalogPage.tsx`, `src/components/RunDialog.tsx` | The Catalog (`/catalog`): every template and action, as cards: what each asks for, Run (a form from its parameters) or, when it isn't shared with you, Ask for access; by team, and only what you can run. |
 | `src/pages/AdminPage.tsx` | People, admin rights, the catalog release applied (Sync now, adopting a team), automation tokens, allowed image sources. |
 | `src/pages/AccountPage.tsx`, `ChoosePasswordPage.tsx`, `src/components/PasswordChangeForm.tsx` | Your account and password; the screen a password someone else set holds you on until you choose your own. |

@@ -7,7 +7,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { fromBinary } from "@bufbuild/protobuf";
-import { like } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/client.js";
@@ -71,13 +71,25 @@ describe("creating teams", () => {
 });
 
 describe("a team's members", () => {
+  it("say whether the catalog made it", async () => {
+    const team = await createTeam(`${prefix}-from-catalog`);
+    await db.update(teams).set({ fromCatalog: true }).where(eq(teams.id, team.id));
+    const member = await makeUser();
+    await addTeamMember(member.id, team.id);
+    const got = await rpc("TeamService", "GetTeam", { name: team.name }, { token: await signIn(member.email) });
+    expect(got.json<{ team: { fromCatalog?: boolean } }>().team.fromCatalog).toBe(true);
+  });
+
   it("see it and its members; anyone else is told it doesn't exist", async () => {
     const team = await createTeam(`${prefix}-seen`);
     const member = await makeUser();
     await addTeamMember(member.id, team.id);
     const token = await signIn(member.email);
 
-    expect((await rpc("TeamService", "GetTeam", { name: team.name }, { token })).statusCode).toBe(200);
+    const got = await rpc("TeamService", "GetTeam", { name: team.name }, { token });
+    expect(got.statusCode).toBe(200);
+    // Made here, not by the catalog.
+    expect(got.json<{ team: { fromCatalog?: boolean } }>().team.fromCatalog).toBe(false);
     const listed = await rpc("TeamService", "ListMembers", { team: team.name }, { token });
     const members = listed.json<{ members: { email: string; hasPassword?: boolean; usesSso?: boolean }[] }>().members;
     expect(members.map((m) => m.email)).toEqual([member.email]);

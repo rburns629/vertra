@@ -5259,6 +5259,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Its members sign in with single sign-on only (while it's on)."
+    },
+    {
+     "name": "fromCatalog",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Made by the catalog (a release adds, retires and restores it); else\nmade here, and the catalog leaves it alone until an admin adopts it."
     }
    ]
   },

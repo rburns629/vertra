@@ -50,6 +50,14 @@ export declare type Team = Message<"vertra.console.v1.Team"> & {
    * @generated from field: bool require_sso = 6;
    */
   requireSso: boolean;
+
+  /**
+   * Made by the catalog (a release adds, retires and restores it); else
+   * made here, and the catalog leaves it alone until an admin adopts it.
+   *
+   * @generated from field: bool from_catalog = 7;
+   */
+  fromCatalog: boolean;
 };
 
 /**

@@ -380,13 +380,32 @@ describe("signing in", () => {
   });
 });
 
-describe("a retired team", () => {
-  it("says it's read-only, and offers an admin to un-retire it", async () => {
-    await renderAt("/teams/old-team", ADMIN, {
-      "TeamService/GetTeam": { team: { id: "t1", name: "old-team", retiredAt: "2026-10-21T12:00:00Z" } },
+describe("a team's settings", () => {
+  it("say a retired team is read-only, and offer an admin to restore it", async () => {
+    await renderAt("/teams/old-team?tab=settings", ADMIN, {
+      "TeamService/GetTeam": { team: { id: "t1", name: "old-team", retiredAt: "2026-10-21T12:00:00Z", fromCatalog: true } },
     });
-    expect(await screen.findByText(/read-only/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /un-retire/i })).toBeTruthy();
+    expect(await screen.findByText(/this team is retired: it's read-only/i)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Restore old-team" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /purge old-team/i })).toHaveProperty("disabled", false);
+    expect(screen.getByText("teams/old-team/")).toBeTruthy();
+  });
+
+  it("name the members a Google-only rule would lock out, and keep the controls from non-admins", async () => {
+    await renderAt("/teams/payments?tab=settings", { ...MEMBER, teamNames: ["payments"] }, {
+      "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" },
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TeamService/ListMembers": {
+        members: [
+          { id: "u1", email: "ana@acme.com", hasPassword: true, usesSso: true, role: "TEAM_ROLE_MAINTAINER" },
+          { id: "u2", email: "lee@acme.com", hasPassword: true, usesSso: false, role: "TEAM_ROLE_MEMBER" },
+          { id: "u3", email: "ci@bots.vertra.local", isBot: true, role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+    });
+    expect(await screen.findByText(/1 member signs in with a password only: lee@acme.com/i)).toBeTruthy();
+    expect(screen.getByRole("switch", { name: /require google sign-in/i })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: /retire payments/i })).toBeNull();
   });
 });
 

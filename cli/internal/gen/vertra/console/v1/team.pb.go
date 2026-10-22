@@ -144,7 +144,10 @@ type Team struct {
 	RetiredAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=retired_at,json=retiredAt,proto3" json:"retired_at,omitempty"`
 	DeletedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
 	// Its members sign in with single sign-on only (while it's on).
-	RequireSso    bool `protobuf:"varint,6,opt,name=require_sso,json=requireSso,proto3" json:"require_sso,omitempty"`
+	RequireSso bool `protobuf:"varint,6,opt,name=require_sso,json=requireSso,proto3" json:"require_sso,omitempty"`
+	// Made by the catalog (a release adds, retires and restores it); else
+	// made here, and the catalog leaves it alone until an admin adopts it.
+	FromCatalog   bool `protobuf:"varint,7,opt,name=from_catalog,json=fromCatalog,proto3" json:"from_catalog,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -217,6 +220,13 @@ func (x *Team) GetDeletedAt() *timestamppb.Timestamp {
 func (x *Team) GetRequireSso() bool {
 	if x != nil {
 		return x.RequireSso
+	}
+	return false
+}
+
+func (x *Team) GetFromCatalog() bool {
+	if x != nil {
+		return x.FromCatalog
 	}
 	return false
 }
@@ -1940,7 +1950,7 @@ var File_vertra_console_v1_team_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\n" +
-	"\x1cvertra/console/v1/team.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfc\x01\n" +
+	"\x1cvertra/console/v1/team.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9f\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x129\n" +
@@ -1951,7 +1961,8 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"deleted_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x1f\n" +
 	"\vrequire_sso\x18\x06 \x01(\bR\n" +
-	"requireSso\"\x86\x02\n" +
+	"requireSso\x12!\n" +
+	"\ffrom_catalog\x18\a \x01(\bR\vfromCatalog\"\x86\x02\n" +
 	"\x06Member\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x15\n" +
