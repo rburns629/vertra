@@ -204,10 +204,14 @@ message Api {
 }
 
 message BackendAuth {
+  // 3 was a team secret, dropped before any release: the gateway reads no
+  // Secrets.
+  reserved 3;
+  reserved "secret";
   oneof kind {
     ServiceAccountTokenAuth service_account_token = 1;
     GoogleIdTokenAuth google_id_token = 2;
-    SecretAuth secret = 3;
+    AwsSigV4Auth aws_sig_v4 = 4;
   }
 }
 
@@ -223,11 +227,10 @@ message GoogleIdTokenAuth {
   string audience = 2;
 }
 
-// A team secret's key, sent in header (after scheme, if set): for a
-// backend that only takes a static key.
-message SecretAuth {
-  string name = 1;
-  string key = 2;
-  string header = 3;
-  string scheme = 4;
+// AWS SigV4 for service in region, as role_arn, assumed per request with
+// the API ServiceAccount's token (AssumeRoleWithWebIdentity).
+message AwsSigV4Auth {
+  string role_arn = 1;
+  string region = 2;
+  string service = 3;
 }

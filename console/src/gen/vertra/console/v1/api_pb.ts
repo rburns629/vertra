@@ -6,13 +6,15 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file vertra/console/v1/api.proto.
  */
 export const file_vertra_console_v1_api: GenFile = /*@__PURE__*/
-  fileDesc("Cht2ZXJ0cmEvY29uc29sZS92MS9hcGkucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIo4ECgpBcGlQcm9kdWN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSKgoFc3RhdGUYBSABKA4yGy52ZXJ0cmEuY29uc29sZS52MS5BcGlTdGF0ZRITCgtoZWxkX3JlYXNvbhgGIAEoCRIWCg5wYXVzZWRfbWVzc2FnZRgHIAEoCRIQCghtYXlfY2FsbBgIIAEoCBISCgpzaGFyZV93aXRoGAkgAygJEg4KBmhpZGRlbhgKIAEoCBISCgpkZXByZWNhdGVkGAsgASgJEhAKCGludGVybmV0GAwgASgIEgsKA3VybBgNIAEoCRISCgpwdWJsaWNfdXJsGA4gASgJEjEKCWVuZHBvaW50cxgPIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLkFwaUVuZHBvaW50EhIKCnBlcl9taW51dGUYECABKAUSFwoPdGltZW91dF9zZWNvbmRzGBEgASgFEhkKEW1heF9yZXF1ZXN0X2J5dGVzGBIgASgFEhMKC3NvdXJjZV9wYXRoGBMgASgJEhMKC2JhY2tlbmRfdXJsGBQgASgJEhQKDGJhY2tlbmRfYXV0aBgVIAEoCRISCgpzcGVjX3RpdGxlGBYgASgJEhQKDHNwZWNfdmVyc2lvbhgXIAEoCSI8CgtBcGlFbmRwb2ludBIOCgZtZXRob2QYASABKAkSDAoEcGF0aBgCIAEoCRIPCgdzdW1tYXJ5GAMgASgJIhEKD0xpc3RBcGlzUmVxdWVzdCI/ChBMaXN0QXBpc1Jlc3BvbnNlEisKBGFwaXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BcGlQcm9kdWN0IisKDUdldEFwaVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJIk0KDkdldEFwaVJlc3BvbnNlEioKA2FwaRgBIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLkFwaVByb2R1Y3QSDwoHb3BlbmFwaRgCIAEoCSI+Cg9QYXVzZUFwaVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB21lc3NhZ2UYAyABKAkiEgoQUGF1c2VBcGlSZXNwb25zZSIuChBSZXN1bWVBcGlSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCSITChFSZXN1bWVBcGlSZXNwb25zZSpjCghBcGlTdGF0ZRIZChVBUElfU1RBVEVfVU5TUEVDSUZJRUQQABISCg5BUElfU1RBVEVfTElWRRABEhIKDkFQSV9TVEFURV9IRUxEEAISFAoQQVBJX1NUQVRFX1BBVVNFRBADMucCCgpBcGlTZXJ2aWNlElgKCExpc3RBcGlzEiIudmVydHJhLmNvbnNvbGUudjEuTGlzdEFwaXNSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuTGlzdEFwaXNSZXNwb25zZSIDkAIBElIKBkdldEFwaRIgLnZlcnRyYS5jb25zb2xlLnYxLkdldEFwaVJlcXVlc3QaIS52ZXJ0cmEuY29uc29sZS52MS5HZXRBcGlSZXNwb25zZSIDkAIBElMKCFBhdXNlQXBpEiIudmVydHJhLmNvbnNvbGUudjEuUGF1c2VBcGlSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuUGF1c2VBcGlSZXNwb25zZRJWCglSZXN1bWVBcGkSIy52ZXJ0cmEuY29uc29sZS52MS5SZXN1bWVBcGlSZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuUmVzdW1lQXBpUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("Cht2ZXJ0cmEvY29uc29sZS92MS9hcGkucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIo4ECgpBcGlQcm9kdWN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSKgoFc3RhdGUYBSABKA4yGy52ZXJ0cmEuY29uc29sZS52MS5BcGlTdGF0ZRITCgtoZWxkX3JlYXNvbhgGIAEoCRIWCg5wYXVzZWRfbWVzc2FnZRgHIAEoCRIQCghtYXlfY2FsbBgIIAEoCBISCgpzaGFyZV93aXRoGAkgAygJEg4KBmhpZGRlbhgKIAEoCBISCgpkZXByZWNhdGVkGAsgASgJEhAKCGludGVybmV0GAwgASgIEgsKA3VybBgNIAEoCRISCgpwdWJsaWNfdXJsGA4gASgJEjEKCWVuZHBvaW50cxgPIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLkFwaUVuZHBvaW50EhIKCnBlcl9taW51dGUYECABKAUSFwoPdGltZW91dF9zZWNvbmRzGBEgASgFEhkKEW1heF9yZXF1ZXN0X2J5dGVzGBIgASgFEhMKC3NvdXJjZV9wYXRoGBMgASgJEhMKC2JhY2tlbmRfdXJsGBQgASgJEhQKDGJhY2tlbmRfYXV0aBgVIAEoCRISCgpzcGVjX3RpdGxlGBYgASgJEhQKDHNwZWNfdmVyc2lvbhgXIAEoCSI8CgtBcGlFbmRwb2ludBIOCgZtZXRob2QYASABKAkSDAoEcGF0aBgCIAEoCRIPCgdzdW1tYXJ5GAMgASgJIhEKD0xpc3RBcGlzUmVxdWVzdCI/ChBMaXN0QXBpc1Jlc3BvbnNlEisKBGFwaXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BcGlQcm9kdWN0IisKDUdldEFwaVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJIk0KDkdldEFwaVJlc3BvbnNlEioKA2FwaRgBIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLkFwaVByb2R1Y3QSDwoHb3BlbmFwaRgCIAEoCSI+Cg9QYXVzZUFwaVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB21lc3NhZ2UYAyABKAkiEgoQUGF1c2VBcGlSZXNwb25zZSIuChBSZXN1bWVBcGlSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCSITChFSZXN1bWVBcGlSZXNwb25zZSJBChRHZXRBcGlUcmFmZmljUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFaG91cnMYAyABKAUigAIKFUdldEFwaVRyYWZmaWNSZXNwb25zZRIQCghyZXF1ZXN0cxgBIAEoAxIRCglmb3J3YXJkZWQYAiABKAMSDwoHc3RvcHBlZBgDIAEoAxIWCg5iYWNrZW5kX2Vycm9ycxgEIAEoAxI1CgllbmRwb2ludHMYBSADKAsyIi52ZXJ0cmEuY29uc29sZS52MS5FbmRwb2ludFRyYWZmaWMSMwoHYmxvY2tlZBgGIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLkJsb2NrZWRSZXF1ZXN0cxItCgV0ZWFtcxgHIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLlRlYW1UcmFmZmljIoQBCg9FbmRwb2ludFRyYWZmaWMSEAoIZW5kcG9pbnQYASABKAkSEAoIcmVxdWVzdHMYAiABKAMSDwoHaW52YWxpZBgDIAEoAxITCgtiYWNrZW5kXzR4eBgEIAEoAxITCgtiYWNrZW5kXzV4eBgFIAEoAxISCgphdmVyYWdlX21zGAYgASgDImoKD0Jsb2NrZWRSZXF1ZXN0cxIPCgdyZXF1ZXN0GAEgASgJEg0KBWNvdW50GAIgASgDEg0KBXRlYW1zGAMgAygJEigKBGxhc3QYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImAKC1RlYW1UcmFmZmljEgwKBHRlYW0YASABKAkSEAoIcmVxdWVzdHMYAiABKAMSFwoPcGVha19wZXJfbWludXRlGAMgASgDEhgKEGxpbWl0X3Blcl9taW51dGUYBCABKAUiEwoRR2V0R2F0ZXdheVJlcXVlc3QiqAIKEkdldEdhdGV3YXlSZXNwb25zZRIPCgdlbmFibGVkGAEgASgIEhUKDWJhY2tlbmRfaG9zdHMYAiADKAkSFgoOaW50ZXJuZXRfdGVhbXMYAyADKAkSCwoDdXJsGAQgASgJEhIKCnB1YmxpY191cmwYBSABKAkSFgoOY2xvc2VkX21lc3NhZ2UYBiABKAkSEQoJY2xvc2VkX2J5GAcgASgJEi0KCWNsb3NlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEYXBpcxgJIAEoBRIUCgxyZXF1ZXN0c18yNGgYCiABKAMSMwoHcmVmdXNlZBgLIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzZWRSZXF1ZXN0cyJBCg9SZWZ1c2VkUmVxdWVzdHMSDwoHb3V0Y29tZRgBIAEoCRINCgVjb3VudBgCIAEoAxIOCgZtb3N0bHkYAyABKAkiKgoXU2V0R2F0ZXdheUNsb3NlZFJlcXVlc3QSDwoHbWVzc2FnZRgBIAEoCSIaChhTZXRHYXRld2F5Q2xvc2VkUmVzcG9uc2UqYwoIQXBpU3RhdGUSGQoVQVBJX1NUQVRFX1VOU1BFQ0lGSUVEEAASEgoOQVBJX1NUQVRFX0xJVkUQARISCg5BUElfU1RBVEVfSEVMRBACEhQKEEFQSV9TVEFURV9QQVVTRUQQAzKdBQoKQXBpU2VydmljZRJYCghMaXN0QXBpcxIiLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBcGlzUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBcGlzUmVzcG9uc2UiA5ACARJSCgZHZXRBcGkSIC52ZXJ0cmEuY29uc29sZS52MS5HZXRBcGlSZXF1ZXN0GiEudmVydHJhLmNvbnNvbGUudjEuR2V0QXBpUmVzcG9uc2UiA5ACARJTCghQYXVzZUFwaRIiLnZlcnRyYS5jb25zb2xlLnYxLlBhdXNlQXBpUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLlBhdXNlQXBpUmVzcG9uc2USVgoJUmVzdW1lQXBpEiMudmVydHJhLmNvbnNvbGUudjEuUmVzdW1lQXBpUmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLlJlc3VtZUFwaVJlc3BvbnNlEmcKDUdldEFwaVRyYWZmaWMSJy52ZXJ0cmEuY29uc29sZS52MS5HZXRBcGlUcmFmZmljUmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkdldEFwaVRyYWZmaWNSZXNwb25zZSIDkAIBEl4KCkdldEdhdGV3YXkSJC52ZXJ0cmEuY29uc29sZS52MS5HZXRHYXRld2F5UmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkdldEdhdGV3YXlSZXNwb25zZSIDkAIBEmsKEFNldEdhdGV3YXlDbG9zZWQSKi52ZXJ0cmEuY29uc29sZS52MS5TZXRHYXRld2F5Q2xvc2VkUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLlNldEdhdGV3YXlDbG9zZWRSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.ApiProduct
@@ -133,7 +135,7 @@ export type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
 
   /**
    * The API's own team only: where the gateway forwards to, and how it
-   * signs in there (service_account_token, google_id_token or secret).
+   * signs in there (service_account_token, google_id_token or aws_sig_v4).
    *
    * @generated from field: string backend_url = 20;
    */
@@ -349,6 +351,351 @@ export const ResumeApiResponseSchema: GenMessage<ResumeApiResponse> = /*@__PURE_
   messageDesc(file_vertra_console_v1_api, 9);
 
 /**
+ * @generated from message vertra.console.v1.GetApiTrafficRequest
+ */
+export type GetApiTrafficRequest = Message<"vertra.console.v1.GetApiTrafficRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * 24 when unset; at most 168.
+   *
+   * @generated from field: int32 hours = 3;
+   */
+  hours: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetApiTrafficRequest.
+ * Use `create(GetApiTrafficRequestSchema)` to create a new message.
+ */
+export const GetApiTrafficRequestSchema: GenMessage<GetApiTrafficRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 10);
+
+/**
+ * @generated from message vertra.console.v1.GetApiTrafficResponse
+ */
+export type GetApiTrafficResponse = Message<"vertra.console.v1.GetApiTrafficResponse"> & {
+  /**
+   * @generated from field: int64 requests = 1;
+   */
+  requests: bigint;
+
+  /**
+   * @generated from field: int64 forwarded = 2;
+   */
+  forwarded: bigint;
+
+  /**
+   * Answered by the gateway: not in the spec, unfit, over the rate, not
+   * signed in or not shared, paused, held or closed.
+   *
+   * @generated from field: int64 stopped = 3;
+   */
+  stopped: bigint;
+
+  /**
+   * @generated from field: int64 backend_errors = 4;
+   */
+  backendErrors: bigint;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.EndpointTraffic endpoints = 5;
+   */
+  endpoints: EndpointTraffic[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.BlockedRequests blocked = 6;
+   */
+  blocked: BlockedRequests[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.TeamTraffic teams = 7;
+   */
+  teams: TeamTraffic[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetApiTrafficResponse.
+ * Use `create(GetApiTrafficResponseSchema)` to create a new message.
+ */
+export const GetApiTrafficResponseSchema: GenMessage<GetApiTrafficResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 11);
+
+/**
+ * @generated from message vertra.console.v1.EndpointTraffic
+ */
+export type EndpointTraffic = Message<"vertra.console.v1.EndpointTraffic"> & {
+  /**
+   * "METHOD /path/{param}", as its spec writes it.
+   *
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: int64 requests = 2;
+   */
+  requests: bigint;
+
+  /**
+   * Stopped by the gateway for not fitting the spec's schemas.
+   *
+   * @generated from field: int64 invalid = 3;
+   */
+  invalid: bigint;
+
+  /**
+   * @generated from field: int64 backend_4xx = 4;
+   */
+  backend4xx: bigint;
+
+  /**
+   * @generated from field: int64 backend_5xx = 5;
+   */
+  backend5xx: bigint;
+
+  /**
+   * The backend's average answer time, in milliseconds.
+   *
+   * @generated from field: int64 average_ms = 6;
+   */
+  averageMs: bigint;
+};
+
+/**
+ * Describes the message vertra.console.v1.EndpointTraffic.
+ * Use `create(EndpointTrafficSchema)` to create a new message.
+ */
+export const EndpointTrafficSchema: GenMessage<EndpointTraffic> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 12);
+
+/**
+ * @generated from message vertra.console.v1.BlockedRequests
+ */
+export type BlockedRequests = Message<"vertra.console.v1.BlockedRequests"> & {
+  /**
+   * "METHOD /path" as sent (no query): what the spec doesn't describe.
+   *
+   * @generated from field: string request = 1;
+   */
+  request: string;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * @generated from field: repeated string teams = 3;
+   */
+  teams: string[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last = 4;
+   */
+  last?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.BlockedRequests.
+ * Use `create(BlockedRequestsSchema)` to create a new message.
+ */
+export const BlockedRequestsSchema: GenMessage<BlockedRequests> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 13);
+
+/**
+ * @generated from message vertra.console.v1.TeamTraffic
+ */
+export type TeamTraffic = Message<"vertra.console.v1.TeamTraffic"> & {
+  /**
+   * "" for callers who weren't signed in.
+   *
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: int64 requests = 2;
+   */
+  requests: bigint;
+
+  /**
+   * Its busiest minute, against its limit.
+   *
+   * @generated from field: int64 peak_per_minute = 3;
+   */
+  peakPerMinute: bigint;
+
+  /**
+   * @generated from field: int32 limit_per_minute = 4;
+   */
+  limitPerMinute: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamTraffic.
+ * Use `create(TeamTrafficSchema)` to create a new message.
+ */
+export const TeamTrafficSchema: GenMessage<TeamTraffic> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 14);
+
+/**
+ * @generated from message vertra.console.v1.GetGatewayRequest
+ */
+export type GetGatewayRequest = Message<"vertra.console.v1.GetGatewayRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGatewayRequest.
+ * Use `create(GetGatewayRequestSchema)` to create a new message.
+ */
+export const GetGatewayRequestSchema: GenMessage<GetGatewayRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 15);
+
+/**
+ * @generated from message vertra.console.v1.GetGatewayResponse
+ */
+export type GetGatewayResponse = Message<"vertra.console.v1.GetGatewayResponse"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: repeated string backend_hosts = 2;
+   */
+  backendHosts: string[];
+
+  /**
+   * @generated from field: repeated string internet_teams = 3;
+   */
+  internetTeams: string[];
+
+  /**
+   * @generated from field: string url = 4;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string public_url = 5;
+   */
+  publicUrl: string;
+
+  /**
+   * Closed by an admin, and why; empty when open.
+   *
+   * @generated from field: string closed_message = 6;
+   */
+  closedMessage: string;
+
+  /**
+   * @generated from field: string closed_by = 7;
+   */
+  closedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp closed_at = 8;
+   */
+  closedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: int32 apis = 9;
+   */
+  apis: number;
+
+  /**
+   * @generated from field: int64 requests_24h = 10;
+   */
+  requests24h: bigint;
+
+  /**
+   * What it answered itself, without forwarding, over the last day.
+   *
+   * @generated from field: repeated vertra.console.v1.RefusedRequests refused = 11;
+   */
+  refused: RefusedRequests[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGatewayResponse.
+ * Use `create(GetGatewayResponseSchema)` to create a new message.
+ */
+export const GetGatewayResponseSchema: GenMessage<GetGatewayResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 16);
+
+/**
+ * @generated from message vertra.console.v1.RefusedRequests
+ */
+export type RefusedRequests = Message<"vertra.console.v1.RefusedRequests"> & {
+  /**
+   * blocked, invalid, limited, unauthenticated, forbidden, paused, held,
+   * closed, unavailable, backend_error.
+   *
+   * @generated from field: string outcome = 1;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * The team with the most of them.
+   *
+   * @generated from field: string mostly = 3;
+   */
+  mostly: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RefusedRequests.
+ * Use `create(RefusedRequestsSchema)` to create a new message.
+ */
+export const RefusedRequestsSchema: GenMessage<RefusedRequests> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 17);
+
+/**
+ * @generated from message vertra.console.v1.SetGatewayClosedRequest
+ */
+export type SetGatewayClosedRequest = Message<"vertra.console.v1.SetGatewayClosedRequest"> & {
+  /**
+   * Empty reopens it. At most 500 characters.
+   *
+   * @generated from field: string message = 1;
+   */
+  message: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetGatewayClosedRequest.
+ * Use `create(SetGatewayClosedRequestSchema)` to create a new message.
+ */
+export const SetGatewayClosedRequestSchema: GenMessage<SetGatewayClosedRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 18);
+
+/**
+ * @generated from message vertra.console.v1.SetGatewayClosedResponse
+ */
+export type SetGatewayClosedResponse = Message<"vertra.console.v1.SetGatewayClosedResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SetGatewayClosedResponse.
+ * Use `create(SetGatewayClosedResponseSchema)` to create a new message.
+ */
+export const SetGatewayClosedResponseSchema: GenMessage<SetGatewayClosedResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 19);
+
+/**
  * @generated from enum vertra.console.v1.ApiState
  */
 export enum ApiState {
@@ -442,6 +789,41 @@ export const ApiService: GenService<{
     methodKind: "unary";
     input: typeof ResumeApiRequestSchema;
     output: typeof ResumeApiResponseSchema;
+  },
+  /**
+   * What callers sent an API, what the gateway stopped and what its
+   * backend answered, over the last hours (at most a week): by endpoint,
+   * the requests its spec doesn't describe, and by calling team. Its own
+   * team, and admins.
+   *
+   * @generated from rpc vertra.console.v1.ApiService.GetApiTraffic
+   */
+  getApiTraffic: {
+    methodKind: "unary";
+    input: typeof GetApiTrafficRequestSchema;
+    output: typeof GetApiTrafficResponseSchema;
+  },
+  /**
+   * The gateway's settings (this install's Helm values), whether it's
+   * closed, and what it refused at the door over the last day. Admins.
+   *
+   * @generated from rpc vertra.console.v1.ApiService.GetGateway
+   */
+  getGateway: {
+    methodKind: "unary";
+    input: typeof GetGatewayRequestSchema;
+    output: typeof GetGatewayResponseSchema;
+  },
+  /**
+   * Closes the gateway (a message: every API answers 503 with it, and
+   * nothing is forwarded) or reopens it (empty). Admins; audited.
+   *
+   * @generated from rpc vertra.console.v1.ApiService.SetGatewayClosed
+   */
+  setGatewayClosed: {
+    methodKind: "unary";
+    input: typeof SetGatewayClosedRequestSchema;
+    output: typeof SetGatewayClosedResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_api, 0);

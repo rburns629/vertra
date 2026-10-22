@@ -635,20 +635,26 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      backend: forwarded, blocked, invalid, limited, not shared, paused, and
      its token fence. Left: keyless bots (with them in the console);
      a read-only database role for it.
-  4. Backend credentials, minted per request: a token for the API's own
-     ServiceAccount (TokenRequest, its audience: done 2026-10-22), then Google ID tokens,
+  4. Backend credentials, minted per request (done 2026-10-22, the cloud
+     proof pending): a token for the API's own ServiceAccount
+     (TokenRequest), a Google ID token (its token federated at Google's
+     STS, then generateIdToken), AWS SigV4 (AssumeRoleWithWebIdentity,
+     then signing). AWS only besides Google, no Azure (decided
+     2026-10-22); no static-secret fallback (the gateway reads no
+     Secrets). Then Google ID tokens,
      AWS SigV4 and Azure tokens through I1's federation. A Secret from the
      team's store only as a fallback, read by name. The gateway's RBAC is
      `serviceaccounts/token` on the API ServiceAccounts alone.
-  5. Its chart: Deployment, Service, its own hostname and certificate,
-     NetworkPolicy egress to allowed hosts; pausing an API, and closing the
-     gateway, from the console.
+  5. ~~Its chart~~ (done 2026-10-22): Deployment, Service, an Ingress for
+     the public listener, egress anywhere but the cloud metadata server
+     (`gateway.egress` to narrow); pausing an API and closing the gateway
+     from the console (`gateway_state`, console migration 0013).
   6. The pages: ~~the APIs list and an API's page~~ (done 2026-10-22:
      endpoints from its spec, how to call it, the caller's limit, sharing,
      its backend for its own team, pausing for its maintainers, its OpenAPI
-     file to download); still to do: traffic and blocked requests (needs
-     the gateway's metrics read back), a team's APIs tab, the admin's
-     gateway settings.
+     file to download); traffic and blocked requests (the gateway counts
+     them into `api_traffic`, kept a week), a team's APIs tab, and the
+     admin's gateway card (done 2026-10-22).
   Proven on kind with a backend in a team namespace, then on GKE with a
   Cloud Run backend.
 

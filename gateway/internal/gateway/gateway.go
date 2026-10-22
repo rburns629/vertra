@@ -31,6 +31,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -49,6 +50,7 @@ import (
 	"github.com/rburns629/vertra/gateway/internal/caller"
 	"github.com/rburns629/vertra/gateway/internal/limits"
 	"github.com/rburns629/vertra/gateway/internal/store"
+	"github.com/rburns629/vertra/gateway/internal/traffic"
 )
 
 // AnsweredBy says who answered: gateway or backend.
@@ -69,11 +71,13 @@ type Gateway struct {
 	Signer  *caller.Signer
 	Limiter *limits.Limiter
 	Minter  interface {
-		Header(context.Context, string, string, map[string]map[string]string) (string, string, error)
+		Authorize(ctx context.Context, out *http.Request, body []byte, team, serviceAccount string, auth map[string]map[string]string) error
 	}
 	Settings Settings
 	Log      *slog.Logger
 	Metrics  *Metrics
+	// Traffic counts what each API's requests came to (its page shows it).
+	Traffic *traffic.Recorder
 	// Public: this listener is the internet's, which serves only APIs that
 	// are reachable from the internet and allowed to be.
 	Public bool
@@ -120,6 +124,13 @@ var hopByHop = []string{"Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy
 type outcome struct {
 	name, team, subject string
 	status              int
+	// apiID and endpoint, once the API is known: for traffic.
+	apiID, endpoint string
+}
+
+func (o outcome) as(name string) outcome {
+	o.name = name
+	return o
 }
 
 func (g *Gateway) now() time.Time {
@@ -166,6 +177,13 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.Metrics.Requests.WithLabelValues(key, result.name).Inc()
 		g.Metrics.Duration.WithLabelValues(key, answeredBy).Observe(g.now().Sub(start).Seconds())
 	}
+	if g.Traffic != nil && result.apiID != "" {
+		outcomeName := result.name
+		if outcomeName == "forwarded" {
+			outcomeName = fmt.Sprintf("forwarded_%dxx", result.status/100)
+		}
+		g.Traffic.Record(result.apiID, result.team, result.endpoint, outcomeName, start, g.now().Sub(start))
+	}
 	g.Log.Info("request", "request_id", requestID, "api", key, "team", result.team, "caller", result.subject,
 		"method", r.Method, "outcome", result.name, "status", result.status, "duration_ms", g.now().Sub(start).Milliseconds())
 }
@@ -175,27 +193,37 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, team, name, rest
 	if api == nil || (g.Public && !(api.Internet && slices.Contains(g.Settings.InternetTeams, api.Team))) {
 		return g.refuse(w, outcome{name: "not_found"}, http.StatusNotFound, "NOT_FOUND", "No such API here.")
 	}
+	o := outcome{apiID: api.ID, endpoint: api.Match(r.Method, rest)}
+	if o.endpoint == "" {
+		o.endpoint = r.Method + " " + rest
+	}
+	closed := g.Store.Closed()
 	switch {
-	case g.Settings.Closed:
-		return g.refuse(w, outcome{name: "paused"}, http.StatusServiceUnavailable, "GATEWAY_CLOSED", "The gateway is closed: nothing is forwarded until it's reopened.")
+	case g.Settings.Closed || closed != "":
+		message := "The gateway is closed: nothing is forwarded until it's reopened."
+		if closed != "" {
+			message = closed
+		}
+		return g.refuse(w, o.as("closed"), http.StatusServiceUnavailable, "GATEWAY_CLOSED", message)
 	case api.PausedMessage != nil:
-		return g.refuse(w, outcome{name: "paused"}, http.StatusServiceUnavailable, "API_PAUSED", *api.PausedMessage)
+		return g.refuse(w, o.as("paused"), http.StatusServiceUnavailable, "API_PAUSED", *api.PausedMessage)
 	case !store.BackendAllowed(api.BackendURL, g.Settings.BackendHosts):
-		return g.refuse(w, outcome{name: "held"}, http.StatusServiceUnavailable, "API_HELD", "This API's backend isn't one this install allows yet.")
+		return g.refuse(w, o.as("held"), http.StatusServiceUnavailable, "API_HELD", "This API's backend isn't one this install allows yet.")
 	case api.Validator == nil:
-		return g.refuse(w, outcome{name: "unavailable"}, http.StatusServiceUnavailable, "API_UNAVAILABLE", "This API's OpenAPI document can't be used, so nothing is forwarded.")
+		return g.refuse(w, o.as("unavailable"), http.StatusServiceUnavailable, "API_UNAVAILABLE", "This API's OpenAPI document can't be used, so nothing is forwarded.")
 	}
 
 	who, err := g.Callers.Resolve(r.Context(), r.Header.Get("Authorization"))
 	if errors.Is(err, auth.ErrUnauthenticated) {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="vertra"`)
-		return g.refuse(w, outcome{name: "unauthenticated"}, http.StatusUnauthorized, "UNAUTHENTICATED", "Sign in: Authorization: Bearer <a session or bot token>.")
+		return g.refuse(w, o.as("unauthenticated"), http.StatusUnauthorized, "UNAUTHENTICATED", "Sign in: Authorization: Bearer <a session or bot token>.")
 	}
 	if err != nil {
 		g.Log.Error("couldn't sign a caller in", "error", err)
-		return g.refuse(w, outcome{name: "unavailable"}, http.StatusServiceUnavailable, "UNAVAILABLE", "The gateway can't check who you are right now.")
+		return g.refuse(w, o.as("unavailable"), http.StatusServiceUnavailable, "UNAVAILABLE", "The gateway can't check who you are right now.")
 	}
-	result := outcome{subject: "user:" + who.UserID}
+	result := o
+	result.subject = "user:" + who.UserID
 	callingTeam, ok := g.callingTeam(who, api, r.Header.Get(TeamHeader))
 	if !ok {
 		result.name = "forbidden"
@@ -246,12 +274,6 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, team, name, rest
 		return g.refuse(w, result, http.StatusTooManyRequests, "RATE_LIMITED", "Your team has used this API's "+strconv.Itoa(perMinute)+" requests a minute.")
 	}
 
-	credentialHeader, credential, err := g.Minter.Header(r.Context(), api.Team, api.ServiceAccount, api.BackendAuth)
-	if err != nil {
-		g.Log.Error("couldn't mint a backend credential", "api", api.Key(), "error", err)
-		result.name = "backend_error"
-		return g.refuse(w, result, http.StatusBadGateway, "BACKEND_CREDENTIAL", "The gateway couldn't get this API's backend credential.")
-	}
 	signed, err := g.Signer.Sign(caller.Claims{Subject: "user:" + who.UserID, Email: who.Email, Bot: who.IsBot, Team: callingTeam,
 		API: api.Key(), Audience: api.BackendURL.Scheme + "://" + api.BackendURL.Host, RequestID: requestID}, g.now())
 	if err != nil {
@@ -265,12 +287,15 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, team, name, rest
 		return g.refuse(w, result, http.StatusBadRequest, "BAD_REQUEST", "The request can't be read.")
 	}
 	out.Header = forwardHeaders(r.Header)
-	if credentialHeader != "" {
-		out.Header.Set(credentialHeader, credential)
-	}
 	out.Header.Set(caller.Header, signed)
 	out.Header.Set(RequestIDHeader, requestID)
 	out.ContentLength = int64(len(body))
+	// Last: SigV4 signs the request as it will go.
+	if err := g.Minter.Authorize(r.Context(), out, body, api.Team, api.ServiceAccount, api.BackendAuth); err != nil {
+		g.Log.Error("couldn't sign in to a backend", "api", api.Key(), "error", err)
+		result.name = "backend_error"
+		return g.refuse(w, result, http.StatusBadGateway, "BACKEND_CREDENTIAL", "The gateway couldn't get this API's backend credential.")
+	}
 
 	res, err := g.transport(api.Timeout).RoundTrip(out)
 	if err != nil {

@@ -27,6 +27,7 @@ import (
 	"github.com/rburns629/vertra/gateway/internal/gateway"
 	"github.com/rburns629/vertra/gateway/internal/limits"
 	"github.com/rburns629/vertra/gateway/internal/store"
+	"github.com/rburns629/vertra/gateway/internal/traffic"
 )
 
 func main() {
@@ -58,6 +59,8 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	recorder := &traffic.Recorder{DB: pool, Log: log}
+	go recorder.Run(ctx, 30*time.Second)
 	registry := prometheus.NewRegistry()
 	metrics := gateway.NewMetrics(registry)
 	newGateway := func(public bool) *gateway.Gateway {
@@ -66,10 +69,10 @@ func run(log *slog.Logger) error {
 			Callers: &auth.Resolver{DB: pool, JWTSecret: s.JWTSecret},
 			Signer:  &caller.Signer{Key: s.SigningKey, Issuer: s.Issuer},
 			Limiter: limits.New(),
-			Minter:  &credentials.Minter{TokenRequest: tokenRequest},
+			Minter:  &credentials.Minter{TokenRequest: tokenRequest, GCPAudience: s.GCPAudience, GCPTokenAudience: s.GCPTokenAudience},
 			Settings: gateway.Settings{BackendHosts: s.BackendHosts, InternetTeams: s.InternetTeams,
 				DefaultPerMinute: s.DefaultPerMinute, Closed: s.Closed},
-			Log: log, Metrics: metrics, Public: public,
+			Log: log, Metrics: metrics, Traffic: recorder, Public: public,
 		}
 	}
 	servers := []*http.Server{

@@ -12,8 +12,10 @@ import { ApiError } from "../apiError.js";
 import { canMaintainTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
-import { findApi, listLiveTeamApis, setApiPaused, type ApiRow } from "../db/queries.js";
-import type { BackendAuth } from "../db/schema.js";
+import { and, eq, gte, sql } from "drizzle-orm";
+import { db } from "../db/client.js";
+import { findApi, findUserById, listLiveTeamApis, setApiPaused, type ApiRow } from "../db/queries.js";
+import { apiTraffic, gatewayState, type BackendAuth } from "../db/schema.js";
 
 type Api = ApiRow & { teamName: string };
 
@@ -97,7 +99,7 @@ function authKind(auth: BackendAuth | null): string {
   if (!auth) return "";
   if ("serviceAccountToken" in auth) return "service_account_token";
   if ("googleIdToken" in auth) return "google_id_token";
-  return "secret";
+  return "aws_sig_v4";
 }
 
 function joinUrl(base: string, api: Api): string {
@@ -164,4 +166,140 @@ export async function pauseApi(caller: AuthUser | undefined, team: string, name:
     throw new ApiError(400, "BAD_REQUEST", "Say why it's paused: every caller is told.", Code.InvalidArgument);
   }
   await setApiPaused(api.id, message === null ? null : message.trim(), who.id);
+}
+
+/** Outcomes the gateway answers itself, without forwarding. */
+const STOPPED = ["blocked", "invalid", "limited", "unauthenticated", "forbidden", "paused", "held", "closed", "unavailable"];
+
+/** An API's traffic over the last `hours`: its own team, and admins. */
+export async function getApiTraffic(caller: AuthUser | undefined, team: string, name: string, hours: number) {
+  const who = signedIn(caller);
+  const api = await visibleApi(who, team, name);
+  if (!who.isAdmin && !who.teamNames.includes(api.teamName)) {
+    throw new ApiError(403, "FORBIDDEN", `Only ${api.teamName} sees its API's traffic.`);
+  }
+  const since = new Date(Date.now() - Math.min(Math.max(hours || 24, 1), 168) * 3_600_000);
+  const rows = await db
+    .select()
+    .from(apiTraffic)
+    .where(and(eq(apiTraffic.apiId, api.id), gte(apiTraffic.minute, since)));
+  let requests = 0;
+  let forwarded = 0;
+  let stopped = 0;
+  let backendErrors = 0;
+  const endpoints = new Map<string, { requests: number; invalid: number; backend4xx: number; backend5xx: number; ms: number; answered: number }>();
+  const blocked = new Map<string, { count: number; teams: Set<string>; last: Date }>();
+  const teams = new Map<string, { requests: number; minutes: Map<number, number> }>();
+  for (const r of rows) {
+    requests += r.count;
+    const isForwarded = r.outcome.startsWith("forwarded_");
+    if (isForwarded) forwarded += r.count;
+    if (STOPPED.includes(r.outcome)) stopped += r.count;
+    if (r.outcome === "forwarded_5xx" || r.outcome === "backend_error") backendErrors += r.count;
+    const t = teams.get(r.team) ?? { requests: 0, minutes: new Map<number, number>() };
+    t.requests += r.count;
+    t.minutes.set(r.minute.getTime(), (t.minutes.get(r.minute.getTime()) ?? 0) + r.count);
+    teams.set(r.team, t);
+    if (r.outcome === "blocked") {
+      const b = blocked.get(r.endpoint) ?? { count: 0, teams: new Set<string>(), last: r.minute };
+      b.count += r.count;
+      if (r.team) b.teams.add(r.team);
+      if (r.minute > b.last) b.last = r.minute;
+      blocked.set(r.endpoint, b);
+      continue;
+    }
+    const e = endpoints.get(r.endpoint) ?? { requests: 0, invalid: 0, backend4xx: 0, backend5xx: 0, ms: 0, answered: 0 };
+    e.requests += r.count;
+    if (r.outcome === "invalid") e.invalid += r.count;
+    if (r.outcome === "forwarded_4xx") e.backend4xx += r.count;
+    if (r.outcome === "forwarded_5xx") e.backend5xx += r.count;
+    if (isForwarded) {
+      e.ms += r.durationMs;
+      e.answered += r.count;
+    }
+    endpoints.set(r.endpoint, e);
+  }
+  const fallback = api.perMinute["default"] ?? 0;
+  return {
+    requests,
+    forwarded,
+    stopped,
+    backendErrors,
+    endpoints: [...endpoints]
+      .map(([endpoint, e]) => ({
+        endpoint,
+        requests: e.requests,
+        invalid: e.invalid,
+        backend4xx: e.backend4xx,
+        backend5xx: e.backend5xx,
+        averageMs: e.answered ? Math.round(e.ms / e.answered) : 0,
+      }))
+      .sort((a, b) => b.requests - a.requests),
+    blocked: [...blocked]
+      .map(([request, b]) => ({ request, count: b.count, teams: [...b.teams].sort(), last: b.last }))
+      .sort((a, b) => b.count - a.count),
+    teams: [...teams]
+      .map(([name, t]) => ({
+        team: name,
+        requests: t.requests,
+        peakPerMinute: Math.max(0, ...t.minutes.values()),
+        limitPerMinute: name ? (api.perMinute[name] ?? fallback) : 0,
+      }))
+      .sort((a, b) => b.requests - a.requests),
+  };
+}
+
+function admin(caller: AuthUser | undefined): AuthUser {
+  const who = signedIn(caller);
+  if (!who.isAdmin) throw new ApiError(403, "FORBIDDEN", "The gateway's settings are an admin's.");
+  return who;
+}
+
+/** The gateway's settings, whether it's closed, and what it refused over the last day. */
+export async function getGateway(caller: AuthUser | undefined) {
+  admin(caller);
+  const [state] = await db.select().from(gatewayState).where(eq(gatewayState.id, 1));
+  const closedBy = state?.closedBy ? ((await findUserById(state.closedBy))?.email ?? "(deleted account)") : "";
+  const since = new Date(Date.now() - 24 * 3_600_000);
+  const byOutcome = await db
+    .select({ outcome: apiTraffic.outcome, team: apiTraffic.team, count: sql<number>`sum(${apiTraffic.count})::int` })
+    .from(apiTraffic)
+    .where(gte(apiTraffic.minute, since))
+    .groupBy(apiTraffic.outcome, apiTraffic.team);
+  const refused = new Map<string, { count: number; mostly: string; most: number }>();
+  let requests = 0;
+  for (const r of byOutcome) {
+    requests += r.count;
+    if (!STOPPED.includes(r.outcome) && r.outcome !== "backend_error") continue;
+    const entry = refused.get(r.outcome) ?? { count: 0, mostly: "", most: 0 };
+    entry.count += r.count;
+    if (r.count > entry.most) Object.assign(entry, { mostly: r.team, most: r.count });
+    refused.set(r.outcome, entry);
+  }
+  return {
+    enabled: config.gateway.url !== "",
+    backendHosts: config.gateway.backendHosts,
+    internetTeams: config.gateway.internetTeams,
+    url: config.gateway.url,
+    publicUrl: config.gateway.publicUrl,
+    closedMessage: state?.closedMessage ?? "",
+    closedBy,
+    closedAt: state?.closedAt ?? null,
+    apis: (await listLiveTeamApis()).length,
+    requests24h: requests,
+    refused: [...refused].map(([outcome, r]) => ({ outcome, count: r.count, mostly: r.mostly })).sort((a, b) => b.count - a.count),
+  };
+}
+
+/** Closes the gateway with a message, or reopens it (""). */
+export async function setGatewayClosed(caller: AuthUser | undefined, message: string): Promise<void> {
+  const who = admin(caller);
+  const closed = message.trim();
+  await db
+    .insert(gatewayState)
+    .values({ id: 1, closedMessage: closed || null, closedBy: closed ? who.id : null, closedAt: closed ? new Date() : null })
+    .onConflictDoUpdate({
+      target: gatewayState.id,
+      set: { closedMessage: closed || null, closedBy: closed ? who.id : null, closedAt: closed ? new Date() : null },
+    });
 }

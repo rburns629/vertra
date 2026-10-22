@@ -23,6 +23,7 @@ import {
   unique,
   index,
   bigserial,
+  bigint,
   integer,
   check,
 } from "drizzle-orm/pg-core";
@@ -508,9 +509,10 @@ export const apis = pgTable(
     // allowlist the gateway enforces.
     openapi: jsonb("openapi").notNull(),
     backendUrl: text("backend_url").notNull(),
-    // How the gateway signs in to the backend; null: it doesn't.
-    // {serviceAccountToken: {audience}} | {googleIdToken: {serviceAccount,
-    // audience}} | {secret: {name, key, header, scheme?}}
+    // How the gateway signs in to the backend, minted per request from the
+    // API's ServiceAccount; null: it doesn't. {serviceAccountToken:
+    // {audience}} | {googleIdToken: {serviceAccount, audience}} |
+    // {awsSigV4: {roleArn, region, service}}
     backendAuth: jsonb("backend_auth").$type<BackendAuth>(),
     // The Kubernetes ServiceAccount, in the team's namespace, its backend
     // credentials are minted for (the console creates it).
@@ -535,10 +537,45 @@ export const apis = pgTable(
   (table) => [unique().on(table.teamId, table.name)],
 );
 
+/**
+ * What the gateway did with each API's requests, a minute at a time: by
+ * calling team, endpoint (its spec's path for a request that matched one;
+ * "METHOD /path" as sent, without its query, for one that matched none)
+ * and outcome. The gateway adds to it every 30 seconds; nothing else
+ * writes it. No caller's identity, body or header is kept. Kept a week.
+ */
+export const apiTraffic = pgTable(
+  "api_traffic",
+  {
+    apiId: uuid("api_id")
+      .notNull()
+      .references(() => apis.id, { onDelete: "cascade" }),
+    minute: timestamp("minute", { withTimezone: true }).notNull(),
+    // The team that called ("" before one was known: not signed in).
+    team: text("team").notNull(),
+    endpoint: text("endpoint").notNull(),
+    // forwarded_2xx..5xx, blocked, invalid, limited, unauthenticated,
+    // forbidden, paused, held, unavailable, backend_error.
+    outcome: text("outcome").notNull(),
+    count: integer("count").notNull(),
+    // Their total time, for averages.
+    durationMs: bigint("duration_ms", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.apiId, table.minute, table.team, table.endpoint, table.outcome] }), index("api_traffic_minute_idx").on(table.minute)],
+);
+
+/** The gateway as a whole: one row. Closed, every API answers 503. */
+export const gatewayState = pgTable("gateway_state", {
+  id: integer("id").primaryKey().default(1),
+  closedMessage: text("closed_message"),
+  closedBy: uuid("closed_by").references(() => users.id, { onDelete: "set null" }),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+});
+
 export type BackendAuth =
   | { serviceAccountToken: { audience: string } }
   | { googleIdToken: { serviceAccount: string; audience: string } }
-  | { secret: { name: string; key: string; header: string; scheme?: string } };
+  | { awsSigV4: { roleArn: string; region: string; service: string } };
 
 /** One step of a template, as the catalog release carries it. */
 export interface TemplateStep {

@@ -69,6 +69,8 @@ type Config struct {
 	ExternalCatalog ExternalCatalog `yaml:"externalCatalog,omitempty"`
 	// CatalogSignature: who may sign the catalog's releases.
 	CatalogSignature CatalogSignature `yaml:"catalogSignature,omitempty"`
+	// Gateway: the API gateway, which serves the catalog's API products.
+	Gateway Gateway `yaml:"gateway,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
 	Access Access `yaml:"access,omitempty"`
@@ -185,6 +187,16 @@ type ExternalCatalog struct {
 	// GCPServiceAccount, if the federated identity should impersonate one
 	// rather than be granted the repository itself.
 	GCPServiceAccount string `yaml:"gcpServiceAccount,omitempty"`
+}
+
+// Gateway is the API gateway's settings (the console chart's gateway).
+type Gateway struct {
+	Enabled bool `yaml:"enabled,omitempty"`
+	// BackendHosts are the hosts API backends may be under: exactly, or
+	// "*.a.run.app" for any name below it.
+	BackendHosts []string `yaml:"backendHosts,omitempty"`
+	// InternetTeams may publish APIs to the internet.
+	InternetTeams []string `yaml:"internetTeams,omitempty"`
 }
 
 // CatalogSignature trusts a key to sign the catalog's releases.
@@ -632,8 +644,8 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"kind.registryName": true, "kind.registryPort": true,
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
 		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
-		"catalogSignature.publicKeyFile": true,
-		"gcp.project":                    true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
+		"catalogSignature.publicKeyFile": true, "gateway.enabled": true,
+		"gcp.project": true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
 	}
 	if !known[strings.Join(path, ".")] {
 		return fmt.Errorf("no setting %q (see `vertra config get` for every key)", strings.Join(path, "."))

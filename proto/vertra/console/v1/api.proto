@@ -4,6 +4,8 @@ syntax = "proto3";
 
 package vertra.console.v1;
 
+import "google/protobuf/timestamp.proto";
+
 // API products (decision 20): a backend a team already runs, published
 // through this install's gateway. Its OpenAPI file is the allowlist: the
 // gateway forwards only requests whose method and path are an operation
@@ -29,6 +31,21 @@ service ApiService {
   rpc PauseApi(PauseApiRequest) returns (PauseApiResponse);
   // Lets a paused API through again; as PauseApi.
   rpc ResumeApi(ResumeApiRequest) returns (ResumeApiResponse);
+  // What callers sent an API, what the gateway stopped and what its
+  // backend answered, over the last hours (at most a week): by endpoint,
+  // the requests its spec doesn't describe, and by calling team. Its own
+  // team, and admins.
+  rpc GetApiTraffic(GetApiTrafficRequest) returns (GetApiTrafficResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The gateway's settings (this install's Helm values), whether it's
+  // closed, and what it refused at the door over the last day. Admins.
+  rpc GetGateway(GetGatewayRequest) returns (GetGatewayResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Closes the gateway (a message: every API answers 503 with it, and
+  // nothing is forwarded) or reopens it (empty). Admins; audited.
+  rpc SetGatewayClosed(SetGatewayClosedRequest) returns (SetGatewayClosedResponse);
 }
 
 enum ApiState {
@@ -74,7 +91,7 @@ message ApiProduct {
   // Its api.yaml in the catalog repository.
   string source_path = 19;
   // The API's own team only: where the gateway forwards to, and how it
-  // signs in there (service_account_token, google_id_token or secret).
+  // signs in there (service_account_token, google_id_token or aws_sig_v4).
   string backend_url = 20;
   string backend_auth = 21;
   // The spec's title and version.
@@ -122,3 +139,85 @@ message ResumeApiRequest {
 }
 
 message ResumeApiResponse {}
+
+message GetApiTrafficRequest {
+  string team = 1;
+  string name = 2;
+  // 24 when unset; at most 168.
+  int32 hours = 3;
+}
+
+message GetApiTrafficResponse {
+  int64 requests = 1;
+  int64 forwarded = 2;
+  // Answered by the gateway: not in the spec, unfit, over the rate, not
+  // signed in or not shared, paused, held or closed.
+  int64 stopped = 3;
+  int64 backend_errors = 4;
+  repeated EndpointTraffic endpoints = 5;
+  repeated BlockedRequests blocked = 6;
+  repeated TeamTraffic teams = 7;
+}
+
+message EndpointTraffic {
+  // "METHOD /path/{param}", as its spec writes it.
+  string endpoint = 1;
+  int64 requests = 2;
+  // Stopped by the gateway for not fitting the spec's schemas.
+  int64 invalid = 3;
+  int64 backend_4xx = 4;
+  int64 backend_5xx = 5;
+  // The backend's average answer time, in milliseconds.
+  int64 average_ms = 6;
+}
+
+message BlockedRequests {
+  // "METHOD /path" as sent (no query): what the spec doesn't describe.
+  string request = 1;
+  int64 count = 2;
+  repeated string teams = 3;
+  google.protobuf.Timestamp last = 4;
+}
+
+message TeamTraffic {
+  // "" for callers who weren't signed in.
+  string team = 1;
+  int64 requests = 2;
+  // Its busiest minute, against its limit.
+  int64 peak_per_minute = 3;
+  int32 limit_per_minute = 4;
+}
+
+message GetGatewayRequest {}
+
+message GetGatewayResponse {
+  bool enabled = 1;
+  repeated string backend_hosts = 2;
+  repeated string internet_teams = 3;
+  string url = 4;
+  string public_url = 5;
+  // Closed by an admin, and why; empty when open.
+  string closed_message = 6;
+  string closed_by = 7;
+  google.protobuf.Timestamp closed_at = 8;
+  int32 apis = 9;
+  int64 requests_24h = 10;
+  // What it answered itself, without forwarding, over the last day.
+  repeated RefusedRequests refused = 11;
+}
+
+message RefusedRequests {
+  // blocked, invalid, limited, unauthenticated, forbidden, paused, held,
+  // closed, unavailable, backend_error.
+  string outcome = 1;
+  int64 count = 2;
+  // The team with the most of them.
+  string mostly = 3;
+}
+
+message SetGatewayClosedRequest {
+  // Empty reopens it. At most 500 characters.
+  string message = 1;
+}
+
+message SetGatewayClosedResponse {}

@@ -54,8 +54,9 @@ func (c callers) Resolve(_ context.Context, authorization string) (*auth.Caller,
 
 type minter struct{}
 
-func (minter) Header(context.Context, string, string, map[string]map[string]string) (string, string, error) {
-	return "Authorization", "Bearer backend-credential", nil
+func (minter) Authorize(_ context.Context, out *http.Request, _ []byte, _, _ string, _ map[string]map[string]string) error {
+	out.Header.Set("Authorization", "Bearer backend-credential")
+	return nil
 }
 
 // backend records what reached it.

@@ -213,7 +213,11 @@ policy limits that to API ServiceAccounts (`*-api`) in team namespaces, so
 it can't mint the platform's or a team's other identities. It reads the
 console's database and never writes it. Requests are logged and counted by
 API, team, caller and outcome, never with bodies, header values or
-credentials.
+credentials; the counts kept for each API's page (`api_traffic`, a week)
+hold only the calling team, never who. Its egress excludes the cloud
+metadata server, so no backend URL can reach the node's credentials
+through it, and it reads no Secrets: a backend that takes only a static
+key can't be published.
 
 ## Tokens for another cloud
 

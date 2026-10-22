@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ import (
 
 // API is one published API, as the gateway serves it.
 type API struct {
+	ID             string
 	Team, Name     string
 	BackendURL     *url.URL
 	BackendAuth    map[string]map[string]string
@@ -39,6 +41,49 @@ type API struct {
 	// forwarded).
 	Validator validator.Validator
 	Problem   string
+	// Endpoints are its spec's operations, to name what a request matched.
+	Endpoints []Endpoint
+}
+
+// Endpoint is one operation: its method and its path as the spec writes it.
+type Endpoint struct {
+	Method, Path string
+	pattern      *regexp.Regexp
+}
+
+// Match is the operation a request's method and path (relative to the
+// backend) matched, as "METHOD /path/{param}", or "".
+func (a *API) Match(method, path string) string {
+	for _, e := range a.Endpoints {
+		if e.Method == method && e.pattern.MatchString(path) {
+			return e.Method + " " + e.Path
+		}
+	}
+	return ""
+}
+
+var parameter = regexp.MustCompile(`\{[^}/]*\}`)
+
+// endpoints are a spec's operations.
+func endpoints(spec []byte) []Endpoint {
+	var doc struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if json.Unmarshal(spec, &doc) != nil {
+		return nil
+	}
+	var out []Endpoint
+	for path, item := range doc.Paths {
+		quoted := regexp.QuoteMeta(parameter.ReplaceAllString(path, "\x00"))
+		pattern := regexp.MustCompile("^" + strings.ReplaceAll(quoted, "\x00", "[^/]+") + "/?$")
+		for method := range item {
+			switch method {
+			case "get", "put", "post", "delete", "options", "head", "patch", "trace":
+				out = append(out, Endpoint{Method: strings.ToUpper(method), Path: path, pattern: pattern})
+			}
+		}
+	}
+	return out
 }
 
 // Key is <team>/<name>.
@@ -53,6 +98,15 @@ type Store struct {
 
 	mu   sync.RWMutex
 	apis map[string]*API
+	// closed is the message an admin closed the gateway with, or "".
+	closed string
+}
+
+// Closed is why an admin closed the gateway, or "" when it's open.
+func (s *Store) Closed() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.closed
 }
 
 // Get is an API by team and name.
@@ -71,7 +125,19 @@ func (s *Store) Len() int {
 
 // Refresh reads the APIs again, building a validator for each that's new or changed.
 func (s *Store) Refresh(ctx context.Context) error {
-	rows, err := s.DB.Query(ctx, `SELECT t.name, a.name, a.openapi::text, a.backend_url, coalesce(a.backend_auth::text, ''),
+	var closed string
+	states, err := s.DB.Query(ctx, `SELECT coalesce(closed_message, '') FROM gateway_state WHERE id = 1`)
+	if err != nil {
+		return err
+	}
+	for states.Next() {
+		if err := states.Scan(&closed); err != nil {
+			states.Close()
+			return err
+		}
+	}
+	states.Close()
+	rows, err := s.DB.Query(ctx, `SELECT a.id::text, t.name, a.name, a.openapi::text, a.backend_url, coalesce(a.backend_auth::text, ''),
 			a.service_account, a.share_with, a.internet, a.per_minute::text, a.timeout_seconds, a.max_request_bytes,
 			a.paused_message, a.updated_at
 		FROM apis a JOIN teams t ON t.id = a.team_id WHERE t.retired_at IS NULL AND t.deleted_at IS NULL`)
@@ -87,7 +153,7 @@ func (s *Store) Refresh(ctx context.Context) error {
 		var a API
 		var spec, backendURL, auth, perMinute string
 		var timeout int
-		if err := rows.Scan(&a.Team, &a.Name, &spec, &backendURL, &auth, &a.ServiceAccount, &a.ShareWith, &a.Internet,
+		if err := rows.Scan(&a.ID, &a.Team, &a.Name, &spec, &backendURL, &auth, &a.ServiceAccount, &a.ShareWith, &a.Internet,
 			&perMinute, &timeout, &a.MaxRequest, &a.PausedMessage, &a.UpdatedAt); err != nil {
 			return err
 		}
@@ -106,6 +172,7 @@ func (s *Store) Refresh(ctx context.Context) error {
 			a.Problem = problem
 		} else {
 			a.Validator = v
+			a.Endpoints = endpoints([]byte(spec))
 		}
 		if a.Problem != "" {
 			s.Log.Warn("an API can't be served", "api", a.Key(), "problem", a.Problem)
@@ -117,6 +184,7 @@ func (s *Store) Refresh(ctx context.Context) error {
 	}
 	s.mu.Lock()
 	s.apis = next
+	s.closed = closed
 	s.mu.Unlock()
 	return nil
 }
@@ -125,6 +193,7 @@ func (s *Store) Refresh(ctx context.Context) error {
 func (s *Store) Put(a *API, spec []byte) {
 	if a.Validator == nil {
 		a.Validator, a.Problem = build(spec)
+		a.Endpoints = endpoints(spec)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

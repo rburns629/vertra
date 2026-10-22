@@ -1089,7 +1089,7 @@ type BackendAuth struct {
 	//
 	//	*BackendAuth_ServiceAccountToken
 	//	*BackendAuth_GoogleIdToken
-	//	*BackendAuth_Secret
+	//	*BackendAuth_AwsSigV4
 	Kind          isBackendAuth_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1150,10 +1150,10 @@ func (x *BackendAuth) GetGoogleIdToken() *GoogleIdTokenAuth {
 	return nil
 }
 
-func (x *BackendAuth) GetSecret() *SecretAuth {
+func (x *BackendAuth) GetAwsSigV4() *AwsSigV4Auth {
 	if x != nil {
-		if x, ok := x.Kind.(*BackendAuth_Secret); ok {
-			return x.Secret
+		if x, ok := x.Kind.(*BackendAuth_AwsSigV4); ok {
+			return x.AwsSigV4
 		}
 	}
 	return nil
@@ -1171,15 +1171,15 @@ type BackendAuth_GoogleIdToken struct {
 	GoogleIdToken *GoogleIdTokenAuth `protobuf:"bytes,2,opt,name=google_id_token,json=googleIdToken,proto3,oneof"`
 }
 
-type BackendAuth_Secret struct {
-	Secret *SecretAuth `protobuf:"bytes,3,opt,name=secret,proto3,oneof"`
+type BackendAuth_AwsSigV4 struct {
+	AwsSigV4 *AwsSigV4Auth `protobuf:"bytes,4,opt,name=aws_sig_v4,json=awsSigV4,proto3,oneof"`
 }
 
 func (*BackendAuth_ServiceAccountToken) isBackendAuth_Kind() {}
 
 func (*BackendAuth_GoogleIdToken) isBackendAuth_Kind() {}
 
-func (*BackendAuth_Secret) isBackendAuth_Kind() {}
+func (*BackendAuth_AwsSigV4) isBackendAuth_Kind() {}
 
 // A token for the API's own ServiceAccount, for this audience.
 type ServiceAccountTokenAuth struct {
@@ -1280,32 +1280,31 @@ func (x *GoogleIdTokenAuth) GetAudience() string {
 	return ""
 }
 
-// A team secret's key, sent in header (after scheme, if set): for a
-// backend that only takes a static key.
-type SecretAuth struct {
+// AWS SigV4 for service in region, as role_arn, assumed per request with
+// the API ServiceAccount's token (AssumeRoleWithWebIdentity).
+type AwsSigV4Auth struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Key           string                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	Header        string                 `protobuf:"bytes,3,opt,name=header,proto3" json:"header,omitempty"`
-	Scheme        string                 `protobuf:"bytes,4,opt,name=scheme,proto3" json:"scheme,omitempty"`
+	RoleArn       string                 `protobuf:"bytes,1,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
+	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
+	Service       string                 `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SecretAuth) Reset() {
-	*x = SecretAuth{}
+func (x *AwsSigV4Auth) Reset() {
+	*x = AwsSigV4Auth{}
 	mi := &file_vertra_catalog_v1_release_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SecretAuth) String() string {
+func (x *AwsSigV4Auth) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SecretAuth) ProtoMessage() {}
+func (*AwsSigV4Auth) ProtoMessage() {}
 
-func (x *SecretAuth) ProtoReflect() protoreflect.Message {
+func (x *AwsSigV4Auth) ProtoReflect() protoreflect.Message {
 	mi := &file_vertra_catalog_v1_release_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1317,35 +1316,28 @@ func (x *SecretAuth) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SecretAuth.ProtoReflect.Descriptor instead.
-func (*SecretAuth) Descriptor() ([]byte, []int) {
+// Deprecated: Use AwsSigV4Auth.ProtoReflect.Descriptor instead.
+func (*AwsSigV4Auth) Descriptor() ([]byte, []int) {
 	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *SecretAuth) GetName() string {
+func (x *AwsSigV4Auth) GetRoleArn() string {
 	if x != nil {
-		return x.Name
+		return x.RoleArn
 	}
 	return ""
 }
 
-func (x *SecretAuth) GetKey() string {
+func (x *AwsSigV4Auth) GetRegion() string {
 	if x != nil {
-		return x.Key
+		return x.Region
 	}
 	return ""
 }
 
-func (x *SecretAuth) GetHeader() string {
+func (x *AwsSigV4Auth) GetService() string {
 	if x != nil {
-		return x.Header
-	}
-	return ""
-}
-
-func (x *SecretAuth) GetScheme() string {
-	if x != nil {
-		return x.Scheme
+		return x.Service
 	}
 	return ""
 }
@@ -1472,23 +1464,22 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x04path\x18\x10 \x01(\tR\x04path\x1a<\n" +
 	"\x0ePerMinuteEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\x80\x02\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\x96\x02\n" +
 	"\vBackendAuth\x12`\n" +
 	"\x15service_account_token\x18\x01 \x01(\v2*.vertra.catalog.v1.ServiceAccountTokenAuthH\x00R\x13serviceAccountToken\x12N\n" +
-	"\x0fgoogle_id_token\x18\x02 \x01(\v2$.vertra.catalog.v1.GoogleIdTokenAuthH\x00R\rgoogleIdToken\x127\n" +
-	"\x06secret\x18\x03 \x01(\v2\x1d.vertra.catalog.v1.SecretAuthH\x00R\x06secretB\x06\n" +
-	"\x04kind\"5\n" +
+	"\x0fgoogle_id_token\x18\x02 \x01(\v2$.vertra.catalog.v1.GoogleIdTokenAuthH\x00R\rgoogleIdToken\x12?\n" +
+	"\n" +
+	"aws_sig_v4\x18\x04 \x01(\v2\x1f.vertra.catalog.v1.AwsSigV4AuthH\x00R\bawsSigV4B\x06\n" +
+	"\x04kindJ\x04\b\x03\x10\x04R\x06secret\"5\n" +
 	"\x17ServiceAccountTokenAuth\x12\x1a\n" +
 	"\baudience\x18\x01 \x01(\tR\baudience\"X\n" +
 	"\x11GoogleIdTokenAuth\x12'\n" +
 	"\x0fservice_account\x18\x01 \x01(\tR\x0eserviceAccount\x12\x1a\n" +
-	"\baudience\x18\x02 \x01(\tR\baudience\"b\n" +
-	"\n" +
-	"SecretAuth\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\x12\x16\n" +
-	"\x06header\x18\x03 \x01(\tR\x06header\x12\x16\n" +
-	"\x06scheme\x18\x04 \x01(\tR\x06schemeB\xd5\x01\n" +
+	"\baudience\x18\x02 \x01(\tR\baudience\"[\n" +
+	"\fAwsSigV4Auth\x12\x19\n" +
+	"\brole_arn\x18\x01 \x01(\tR\aroleArn\x12\x16\n" +
+	"\x06region\x18\x02 \x01(\tR\x06region\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aserviceB\xd5\x01\n" +
 	"\x15com.vertra.catalog.v1B\fReleaseProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/catalog/v1;catalogv1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Catalog.V1\xca\x02\x11Vertra\\Catalog\\V1\xe2\x02\x1dVertra\\Catalog\\V1\\GPBMetadata\xea\x02\x13Vertra::Catalog::V1b\x06proto3"
 
 var (
@@ -1518,7 +1509,7 @@ var file_vertra_catalog_v1_release_proto_goTypes = []any{
 	(*BackendAuth)(nil),             // 10: vertra.catalog.v1.BackendAuth
 	(*ServiceAccountTokenAuth)(nil), // 11: vertra.catalog.v1.ServiceAccountTokenAuth
 	(*GoogleIdTokenAuth)(nil),       // 12: vertra.catalog.v1.GoogleIdTokenAuth
-	(*SecretAuth)(nil),              // 13: vertra.catalog.v1.SecretAuth
+	(*AwsSigV4Auth)(nil),            // 13: vertra.catalog.v1.AwsSigV4Auth
 	nil,                             // 14: vertra.catalog.v1.ProductAction.ErrorsEntry
 	nil,                             // 15: vertra.catalog.v1.Api.PerMinuteEntry
 	(*timestamppb.Timestamp)(nil),   // 16: google.protobuf.Timestamp
@@ -1544,7 +1535,7 @@ var file_vertra_catalog_v1_release_proto_depIdxs = []int32{
 	15, // 16: vertra.catalog.v1.Api.per_minute:type_name -> vertra.catalog.v1.Api.PerMinuteEntry
 	11, // 17: vertra.catalog.v1.BackendAuth.service_account_token:type_name -> vertra.catalog.v1.ServiceAccountTokenAuth
 	12, // 18: vertra.catalog.v1.BackendAuth.google_id_token:type_name -> vertra.catalog.v1.GoogleIdTokenAuth
-	13, // 19: vertra.catalog.v1.BackendAuth.secret:type_name -> vertra.catalog.v1.SecretAuth
+	13, // 19: vertra.catalog.v1.BackendAuth.aws_sig_v4:type_name -> vertra.catalog.v1.AwsSigV4Auth
 	5,  // 20: vertra.catalog.v1.ProductAction.ErrorsEntry.value:type_name -> vertra.catalog.v1.ErrorHelp
 	21, // [21:21] is the sub-list for method output_type
 	21, // [21:21] is the sub-list for method input_type
@@ -1562,7 +1553,7 @@ func file_vertra_catalog_v1_release_proto_init() {
 	file_vertra_catalog_v1_release_proto_msgTypes[10].OneofWrappers = []any{
 		(*BackendAuth_ServiceAccountToken)(nil),
 		(*BackendAuth_GoogleIdToken)(nil),
-		(*BackendAuth_Secret)(nil),
+		(*BackendAuth_AwsSigV4)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

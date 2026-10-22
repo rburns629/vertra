@@ -200,6 +200,7 @@ erDiagram
   teams ||--o{ secret_grants : "has"
   teams ||--o{ templates : "owns"
   teams ||--o{ apis : "publishes"
+  apis ||--o{ api_traffic : "counted in"
   users ||--o{ submitted_executions : "submitted"
   teams {
     uuid id PK
@@ -471,7 +472,7 @@ API products (decision 20): a backend a team runs, published through the gateway
 | `description` | text | no | |
 | `openapi` | jsonb | no | Its OpenAPI document (3.0 or 3.1, references inside it only): the allowlist the gateway enforces, and what callers are shown. |
 | `backend_url` | text | no | Where the gateway forwards. Its host must be one of the gateway's `backendHosts`, or the API is held. |
-| `backend_auth` | jsonb | yes | How the gateway signs in there: `{"serviceAccountToken": {audience}}`, `{"googleIdToken": {serviceAccount, audience}}` or `{"secret": {name, key, header, scheme?}}`. Null: it doesn't. |
+| `backend_auth` | jsonb | yes | How the gateway signs in there: `{"serviceAccountToken": {audience}}`, `{"googleIdToken": {serviceAccount, audience}}` or `{"awsSigV4": {roleArn, region, service}}`, each minted per request from the API's ServiceAccount. Null: it doesn't. |
 | `service_account` | text | no | The ServiceAccount, in the team's namespace, its backend credentials are minted for; the console creates it. |
 | `share_with` | text[] | no | The other teams that may call it, or `*` for every team; empty, only its own. |
 | `hidden` | boolean | no | Only its own team (and admins) see it; it then has no `share_with`. |
@@ -484,6 +485,31 @@ API products (decision 20): a backend a team runs, published through the gateway
 | `paused_message` | text | yes | Set while a maintainer has it paused: every caller gets 503 with this, and nothing is forwarded. |
 | `paused_by` | uuid | yes | Who paused it (`users.id`; null if since deleted). |
 | `updated_at` | timestamptz | no | |
+
+### api_traffic
+
+What the gateway did with each API's requests, a minute at a time; it adds to this every 30 seconds, and nothing else writes it. No caller's identity, body or header is kept. Kept a week. Deleted with its API.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `api_id` | uuid | no | The API (`apis.id`). With `minute`, `team`, `endpoint` and `outcome`, the key. |
+| `minute` | timestamptz | no | The minute, in UTC. |
+| `team` | text | no | The calling team; empty for a caller who wasn't signed in. |
+| `endpoint` | text | no | The operation it matched (`GET /orders/{orderId}`), or for one it didn't, `METHOD /path` as sent, without the query (up to 160 characters). |
+| `outcome` | text | no | `forwarded_2xx` to `forwarded_5xx` (the backend's answer), or what the gateway answered itself: `blocked` (not in the spec), `invalid`, `limited`, `unauthenticated`, `forbidden`, `paused`, `held`, `closed`, `unavailable`, `backend_error`. |
+| `count` | integer | no | How many. |
+| `duration_ms` | bigint | no | Their total time, for averages. |
+
+### gateway_state
+
+The gateway as a whole: one row (`id` 1), which the gateway reads every few seconds.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | no | Always 1. |
+| `closed_message` | text | yes | Set while an admin has the gateway closed: every API answers 503 with this, and nothing is forwarded. |
+| `closed_by` | uuid | yes | Who closed it (`users.id`; null if since deleted). |
+| `closed_at` | timestamptz | yes | When. |
 
 ### submitted_executions
 

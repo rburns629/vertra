@@ -43,6 +43,7 @@ import {
   type Team,
   type UserAccount,
 } from "../api";
+import { getGateway, setGatewayClosed, type GatewayInfo } from "../api";
 
 export function AdminPage() {
   return (
@@ -50,6 +51,7 @@ export function AdminPage() {
       <PageHeader title="Admin" subtitle="Platform-wide administration." />
       <Stack spacing={3}>
         <CatalogCard />
+        <GatewayCard />
         <ImageSourcesCard />
         <AccountsCard />
         <AllTeamsCard />
@@ -936,6 +938,146 @@ function ResetPasswordCard() {
           setConfirming(false);
         }}
       />
+    </Card>
+  );
+}
+
+const REFUSED_LABEL: Record<string, string> = {
+  blocked: "Not in the API's spec",
+  invalid: "Didn't fit the spec",
+  limited: "Over a team's rate",
+  unauthenticated: "Not signed in",
+  forbidden: "Not shared with the caller",
+  paused: "API paused",
+  held: "API held",
+  closed: "Gateway closed",
+  unavailable: "Couldn't be checked",
+  backend_error: "Backend unreachable or its credential failed",
+};
+
+type Refused = GatewayInfo["refused"][number];
+const REFUSED: DataTableColumn<Refused>[] = [
+  { key: "why", header: "Why", render: (r) => REFUSED_LABEL[r.outcome] ?? r.outcome },
+  { key: "count", header: "Count", render: (r) => r.count.toLocaleString(), align: "right" },
+  { key: "mostly", header: "Mostly", render: (r) => r.mostly || "—", hideBelow: "sm" },
+];
+
+/**
+ * The API gateway: this install's settings (its Helm values, changed by an
+ * upgrade, not here), what it refused at the door over the last day, and
+ * closing it: every API answers 503 with the message, and nothing is
+ * forwarded, until it's reopened. Runs and schedules carry on.
+ */
+function GatewayCard() {
+  const [gateway, setGateway] = useState<GatewayInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    getGateway()
+      .then(setGateway)
+      .catch((err: unknown) => {
+        setError(err instanceof ApiError ? err.message : "Failed to load the gateway.");
+      });
+  };
+  useEffect(load, []);
+
+  async function toggle(): Promise<void> {
+    if (!gateway) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setGatewayClosed(gateway.closedMessage ? "" : message);
+      setMessage("");
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "That didn't work.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card variant="outlined">
+      <CardContent>
+        <Typography variant="h6" component="h2">
+          API gateway
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          One front door for every team&apos;s API products: it signs callers in, lets through only what each API&apos;s reviewed OpenAPI file
+          describes, and forwards it to that API&apos;s backend, minting the backend&apos;s credential per request. These settings are this
+          install&apos;s Helm values (the console chart&apos;s gateway): an upgrade changes them, not this page.
+        </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {gateway && !gateway.enabled && <Alert severity="info">The gateway isn&apos;t running on this install (gateway.enabled).</Alert>}
+        {gateway?.enabled && (
+          <Stack spacing={2}>
+            {gateway.closedMessage && (
+              <Alert severity="warning">
+                Closed by {gateway.closedBy || "an admin"}
+                {gateway.closedAt ? ` at ${new Date(gateway.closedAt).toLocaleString()}` : ""}: every API answers 503 with “{gateway.closedMessage}”.
+              </Alert>
+            )}
+            <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "200px 1fr" }, gap: 1, fontSize: 14 }}>
+              <dt>Backends may be under</dt>
+              <dd style={{ margin: 0, fontFamily: "monospace" }}>{gateway.backendHosts.join(", ") || "nothing yet: every API is held"}</dd>
+              <dt>May publish to the internet</dt>
+              <dd style={{ margin: 0 }}>{gateway.internetTeams.join(", ") || "no team"}</dd>
+              <dt>Inside the cluster</dt>
+              <dd style={{ margin: 0, fontFamily: "monospace", overflowWrap: "anywhere" }}>{gateway.url}</dd>
+              <dt>From the internet</dt>
+              <dd style={{ margin: 0, fontFamily: "monospace", overflowWrap: "anywhere" }}>{gateway.publicUrl || "not published"}</dd>
+              <dt>Last 24 hours</dt>
+              <dd style={{ margin: 0 }}>
+                {gateway.requests24h.toLocaleString()} requests to {String(gateway.apis)} {gateway.apis === 1 ? "API" : "APIs"}
+              </dd>
+            </Box>
+            <Box>
+              <Typography variant="subtitle1" component="h3">
+                Refused at the door, last 24 hours
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Requests that never reached a backend.
+              </Typography>
+              <DataTable columns={REFUSED} rows={gateway.refused} getRowKey={(r) => r.outcome} emptyMessage="Nothing refused." />
+            </Box>
+            <Box>
+              <Typography variant="subtitle1" component="h3">
+                {gateway.closedMessage ? "Reopen the gateway" : "Close the gateway"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Every API answers 503 until it&apos;s reopened, and nothing is forwarded. The console, runs and schedules carry on.
+              </Typography>
+              {!gateway.closedMessage && (
+                <TextField
+                  size="small"
+                  fullWidth
+                  label="Message to every caller"
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                  }}
+                  slotProps={{ htmlInput: { maxLength: 500 } }}
+                  sx={{ mb: 1.5 }}
+                />
+              )}
+              <Button
+                variant="contained"
+                color={gateway.closedMessage ? "primary" : "warning"}
+                disabled={busy || (!gateway.closedMessage && !message.trim())}
+                onClick={() => void toggle()}
+              >
+                {gateway.closedMessage ? "Reopen" : "Close the gateway"}
+              </Button>
+            </Box>
+          </Stack>
+        )}
+      </CardContent>
     </Card>
   );
 }

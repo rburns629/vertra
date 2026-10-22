@@ -17,10 +17,11 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { AutomationTab } from "./team/AutomationTab";
 import { MembersTab } from "./team/MembersTab";
+import { ApisTab } from "./team/ApisTab";
 import { RunningTab } from "./team/RunningTab";
 import { SecretsTab } from "./team/SecretsTab";
 
-type TabId = "members" | "secrets" | "automation" | "running";
+type TabId = "members" | "secrets" | "automation" | "apis" | "running";
 
 /** The small counts on the tabs. Display only: a failed count just isn't
  * shown, and each tab loads (and reports errors for) its own data. */
@@ -210,6 +211,7 @@ export function TeamPage() {
                 ["members", "Members"],
                 ["secrets", "Secrets"],
                 ["automation", "Automation"],
+                ["apis", "APIs"],
                 ["running", "Running now"],
               ] as [TabId, string][]
             )
@@ -246,6 +248,7 @@ export function TeamPage() {
           )}
           {tab === "secrets" && <SecretsTab teamName={teamName} readOnly={retired || !canMaintain} />}
           {tab === "automation" && canMaintain && <AutomationTab teamName={teamName} readOnly={retired} />}
+          {tab === "apis" && <ApisTab teamName={teamName} />}
           {tab === "running" && <RunningTab teamName={teamName} />}
         </>
       )}

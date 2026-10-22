@@ -155,6 +155,20 @@ gateway:
   # -- A second listener (the Service's port public) for APIs reachable
   # from the internet; put an Ingress or load balancer in front of it.
   publicListener: false
+  # -- An Ingress in front of the public listener (publicListener on), at
+  # host, for publicUrl.
+  ingress:
+    enabled: false
+    className: ""
+    host: ""
+    annotations: {}
+    # A TLS Secret for host; empty with a controller that manages its own.
+    tlsSecretName: ""
+  # -- Where the gateway may connect, as NetworkPolicy egress peers (with
+  # networkPolicy.enabled). Empty: anywhere but the cloud metadata server
+  # (it mints every credential itself, so it never needs the node's).
+  # Narrow it to your backends' ranges where you can.
+  egress: []
   # -- Requests a minute for a calling team an API's limits don't name.
   defaultPerMinute: 600
   # -- Close the gateway: every API answers 503 and nothing is forwarded.
@@ -162,6 +176,17 @@ gateway:
   resources:
     requests: {cpu: 50m, memory: 64Mi}
     limits: {memory: 256Mi}
+  # -- Minting Google ID tokens (backend.auth.googleIdToken): the STS
+  # audience an API ServiceAccount's token is exchanged for, and the
+  # audience that token carries. On GKE, the cluster's Workload Identity
+  # pool: tokenAudience <project>.svc.id.goog, stsAudience
+  # identitynamespace:<project>.svc.id.goog:https://container.googleapis.com/v1/projects/<project>/locations/<location>/clusters/<cluster>
+  # (vertra sets both). Elsewhere, a pool's provider trusting the cluster's
+  # issuer: //iam.googleapis.com/projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>,
+  # and its https:// form.
+  gcp:
+    stsAudience: ""
+    tokenAudience: ""
 
 # -- The catalog this console registers from (console/src/catalogSync.ts):
 # its release, which catalog CI pushes from main beside the images

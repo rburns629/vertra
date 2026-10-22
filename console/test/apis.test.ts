@@ -6,7 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { create } from "@bufbuild/protobuf";
-import { inArray, like } from "drizzle-orm";
+import { and, eq, inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { applyApis } from "../src/catalogSync.js";
@@ -14,7 +14,7 @@ import { config } from "../src/config.js";
 import { backendAllowed } from "../src/core/apis.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, findTeamByName } from "../src/db/queries.js";
-import { apis, teams } from "../src/db/schema.js";
+import { apiTraffic, apis, gatewayState, teams } from "../src/db/schema.js";
 import { ApiSchema } from "../src/gen/vertra/catalog/v1/release_pb.js";
 import { buildApp } from "../src/index.js";
 import { ensureServiceAccount } from "../src/k8s.js";
@@ -186,5 +186,51 @@ describe("pausing", () => {
     expect((await listFor("maintainer")).find((a) => a.name === "orders")?.state).toBe("API_STATE_PAUSED");
     expect((await call(tokens.maintainer, "ApiService/ResumeApi", { team: owner, name: "orders" })).code).toBe("ok");
     expect((await listFor("maintainer")).find((a) => a.name === "orders")?.state).toBe("API_STATE_LIVE");
+  });
+});
+
+describe("traffic", () => {
+  it("adds up what the gateway recorded, for the API's own team", async () => {
+    const ownerTeam = await findTeamByName(owner);
+    const [orders] = await db.select().from(apis).where(and(eq(apis.teamId, ownerTeam?.id ?? ""), eq(apis.name, "orders")));
+    const minute = (ago: number) => new Date(Math.floor(Date.now() / 60_000) * 60_000 - ago * 60_000);
+    await db.insert(apiTraffic).values([
+      { apiId: orders?.id ?? "", minute: minute(5), team: consumer, endpoint: "POST /orders", outcome: "forwarded_2xx", count: 40, durationMs: 4000 },
+      { apiId: orders?.id ?? "", minute: minute(4), team: consumer, endpoint: "POST /orders", outcome: "forwarded_2xx", count: 70, durationMs: 7000 },
+      { apiId: orders?.id ?? "", minute: minute(4), team: consumer, endpoint: "POST /orders", outcome: "invalid", count: 3, durationMs: 3 },
+      { apiId: orders?.id ?? "", minute: minute(3), team: consumer, endpoint: "GET /orders/{id}", outcome: "forwarded_5xx", count: 2, durationMs: 100 },
+      { apiId: orders?.id ?? "", minute: minute(2), team: consumer, endpoint: "DELETE /admin/users", outcome: "blocked", count: 5, durationMs: 0 },
+      { apiId: orders?.id ?? "", minute: minute(2), team: "", endpoint: "POST /orders", outcome: "unauthenticated", count: 1, durationMs: 0 },
+      { apiId: orders?.id ?? "", minute: minute(60 * 30), team: consumer, endpoint: "POST /orders", outcome: "forwarded_2xx", count: 999, durationMs: 0 },
+    ]);
+    type Traffic = { requests: string; forwarded: string; stopped: string; backendErrors: string; endpoints: { endpoint: string; requests: string; invalid: string; backend5xx: string; averageMs: string }[]; blocked: { request: string; count: string; teams: string[] }[]; teams: { team: string; peakPerMinute: string; limitPerMinute: number }[] };
+    const got = await call<Traffic>(tokens.member, "ApiService/GetApiTraffic", { team: owner, name: "orders", hours: 24 });
+    expect(got.code).toBe("ok");
+    const t = got.body;
+    expect([t.requests, t.forwarded, t.stopped, t.backendErrors]).toEqual(["121", "112", "9", "2"]);
+    expect(t.endpoints.find((e) => e.endpoint === "POST /orders")).toMatchObject({ requests: "114", invalid: "3", averageMs: "100" });
+    expect(t.blocked).toEqual([expect.objectContaining({ request: "DELETE /admin/users", count: "5", teams: [consumer] })]);
+    expect(t.teams.find((x) => x.team === consumer)).toMatchObject({ peakPerMinute: "73", limitPerMinute: 600 });
+    expect((await call(tokens.consumer, "ApiService/GetApiTraffic", { team: owner, name: "orders" })).code).toBe("permission_denied");
+  });
+});
+
+describe("the gateway's settings", () => {
+  it("are an admin's, who may close it with a message and reopen it", async () => {
+    expect((await call(tokens.maintainer, "ApiService/GetGateway")).code).toBe("permission_denied");
+    expect((await call(tokens.maintainer, "ApiService/SetGatewayClosed", { message: "no" })).code).toBe("permission_denied");
+    const adminUser = await users.makeUser({ admin: true });
+    const adminToken = await users.signIn(adminUser.email);
+    try {
+      expect((await call(adminToken, "ApiService/SetGatewayClosed", { message: "Rotating the signing key" })).code).toBe("ok");
+      type Gateway = { closedMessage: string; closedBy: string; backendHosts: string[]; refused: { outcome: string; count: string }[] };
+      const g = (await call<Gateway>(adminToken, "ApiService/GetGateway")).body;
+      expect(g).toMatchObject({ closedMessage: "Rotating the signing key", closedBy: adminUser.email, backendHosts: ["*.example.run.app"] });
+      expect(g.refused.map((r) => r.outcome)).toEqual(expect.arrayContaining(["blocked", "invalid"]));
+    } finally {
+      expect((await call(adminToken, "ApiService/SetGatewayClosed", { message: "" })).code).toBe("ok");
+    }
+    const [state] = await db.select().from(gatewayState);
+    expect(state?.closedMessage ?? null).toBeNull();
   });
 });

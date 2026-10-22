@@ -17,11 +17,12 @@ import { PageHeader } from "../components/PageHeader";
 import { ApiError, getApi, pauseApi, resumeApi, type ApiEndpoint, type ApiProduct } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { API_STATE } from "./ApisPage";
+import { ApiTraffic } from "./ApiTraffic";
 
 const AUTH: Record<string, string> = {
   service_account_token: "a token for the API's own ServiceAccount, minted per request",
   google_id_token: "a Google ID token, minted per request",
-  secret: "a team secret (a static key)",
+  aws_sig_v4: "AWS SigV4, as a role it assumes per request",
   "": "none: it checks Vertra-Caller, or nothing",
 };
 
@@ -229,6 +230,8 @@ export function ApiPage() {
               )}
             </Stack>
           </Box>
+          {/* Its own team (and admins), who see its backend, see its traffic. */}
+          {api.backendUrl && <ApiTraffic team={team} name={name} />}
         </>
       )}
     </Box>

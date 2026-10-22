@@ -303,11 +303,17 @@ every parameter and request body, no two paths matching the same requests,
 and nothing under `/.vertra/` (the gateway's own). Every field of
 `api.yaml` is in [tools/api.schema.json](tools/api.schema.json). The
 backend's host must be one the install's admins allow, or the API is held,
-not published. `backend.auth` is `googleIdToken`, `serviceAccountToken`
-(a token for the API's own ServiceAccount, for a backend that checks
-Kubernetes tokens) or, only for a backend that takes nothing else, a team
-`secret`. Your backend learns who called from the `Vertra-Caller` header,
-which the gateway signs.
+not published. `backend.auth` is minted per request from the API's own
+ServiceAccount (`<name>-api` in your namespace), so nothing is stored:
+`googleIdToken` (Cloud Run, Cloud Functions, IAP: a Google ID token as a
+service account that federation lets the API's ServiceAccount act as),
+`awsSigV4` (a Lambda function URL or API Gateway that takes IAM: the
+request signed as a role trusting the cluster for that ServiceAccount), or
+`serviceAccountToken` (the Kubernetes token itself, for a backend that
+checks those). A backend that takes only a static key can't be published:
+the gateway reads no secrets. Your backend learns who called from the
+`Vertra-Caller` header, which the gateway signs (its public key at
+`/.vertra/jwks.json` on the gateway).
 
 ### The container contract
 

@@ -318,10 +318,10 @@ func backendAuth(backend map[string]any) *catalogv1.BackendAuth {
 		m, _ := auth["googleIdToken"].(map[string]any)
 		return &catalogv1.BackendAuth{Kind: &catalogv1.BackendAuth_GoogleIdToken{
 			GoogleIdToken: &catalogv1.GoogleIdTokenAuth{ServiceAccount: text(m, "serviceAccount"), Audience: or(text(m, "audience"), text(backend, "url"))}}}
-	case auth["secret"] != nil:
-		m, _ := auth["secret"].(map[string]any)
-		return &catalogv1.BackendAuth{Kind: &catalogv1.BackendAuth_Secret{
-			Secret: &catalogv1.SecretAuth{Name: text(m, "name"), Key: text(m, "key"), Header: text(m, "header"), Scheme: text(m, "scheme")}}}
+	case auth["awsSigV4"] != nil:
+		m, _ := auth["awsSigV4"].(map[string]any)
+		return &catalogv1.BackendAuth{Kind: &catalogv1.BackendAuth_AwsSigV4{
+			AwsSigV4: &catalogv1.AwsSigV4Auth{RoleArn: text(m, "roleArn"), Region: text(m, "region"), Service: text(m, "service")}}}
 	}
 	return nil
 }

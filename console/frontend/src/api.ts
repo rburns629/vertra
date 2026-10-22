@@ -1318,3 +1318,71 @@ export async function pauseApi(team: string, name: string, message: string): Pro
 export async function resumeApi(team: string, name: string): Promise<void> {
   await call(() => apisApi.resumeApi({ team, name }));
 }
+
+export interface ApiTraffic {
+  requests: number;
+  forwarded: number;
+  stopped: number;
+  backendErrors: number;
+  endpoints: { endpoint: string; requests: number; invalid: number; backend4xx: number; backend5xx: number; averageMs: number }[];
+  blocked: { request: string; count: number; teams: string[]; last: string | null }[];
+  teams: { team: string; requests: number; peakPerMinute: number; limitPerMinute: number }[];
+}
+
+/** An API's traffic over the last `hours`: its own team's, and admins'. */
+export async function getApiTraffic(team: string, name: string, hours: number): Promise<ApiTraffic> {
+  const t = await call(() => apisApi.getApiTraffic({ team, name, hours }));
+  return {
+    requests: Number(t.requests),
+    forwarded: Number(t.forwarded),
+    stopped: Number(t.stopped),
+    backendErrors: Number(t.backendErrors),
+    endpoints: t.endpoints.map((e) => ({
+      endpoint: e.endpoint,
+      requests: Number(e.requests),
+      invalid: Number(e.invalid),
+      backend4xx: Number(e.backend4xx),
+      backend5xx: Number(e.backend5xx),
+      averageMs: Number(e.averageMs),
+    })),
+    blocked: t.blocked.map((b) => ({ request: b.request, count: Number(b.count), teams: b.teams, last: iso(b.last) })),
+    teams: t.teams.map((x) => ({ team: x.team, requests: Number(x.requests), peakPerMinute: Number(x.peakPerMinute), limitPerMinute: x.limitPerMinute })),
+  };
+}
+
+export interface GatewayInfo {
+  enabled: boolean;
+  backendHosts: string[];
+  internetTeams: string[];
+  url: string;
+  publicUrl: string;
+  closedMessage: string;
+  closedBy: string;
+  closedAt: string | null;
+  apis: number;
+  requests24h: number;
+  refused: { outcome: string; count: number; mostly: string }[];
+}
+
+/** The gateway's settings and state: admins. */
+export async function getGateway(): Promise<GatewayInfo> {
+  const g = await call(() => apisApi.getGateway({}));
+  return {
+    enabled: g.enabled,
+    backendHosts: g.backendHosts,
+    internetTeams: g.internetTeams,
+    url: g.url,
+    publicUrl: g.publicUrl,
+    closedMessage: g.closedMessage,
+    closedBy: g.closedBy,
+    closedAt: iso(g.closedAt),
+    apis: g.apis,
+    requests24h: Number(g.requests24h),
+    refused: g.refused.map((r) => ({ outcome: r.outcome, count: Number(r.count), mostly: r.mostly })),
+  };
+}
+
+/** Closes the gateway with a message, or reopens it (""). */
+export async function setGatewayClosed(message: string): Promise<void> {
+  await call(() => apisApi.setGatewayClosed({ message }));
+}

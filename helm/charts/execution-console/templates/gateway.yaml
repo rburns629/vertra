@@ -160,6 +160,10 @@ spec:
               value: {{ .Values.gateway.defaultPerMinute | quote }}
             - name: CLOSED
               value: {{ .Values.gateway.closed | quote }}
+            - name: GCP_STS_AUDIENCE
+              value: {{ .Values.gateway.gcp.stsAudience | quote }}
+            - name: GCP_TOKEN_AUDIENCE
+              value: {{ .Values.gateway.gcp.tokenAudience | quote }}
             {{- if .Values.gateway.publicListener }}
             - name: PUBLIC_LISTEN
               value: ":8081"
@@ -197,4 +201,70 @@ spec:
     {{- if .Values.gateway.publicListener }}
     - {name: public, port: 8081, targetPort: public}
     {{- end }}
+{{- if .Values.networkPolicy.enabled }}
+---
+# What the gateway may connect to: DNS, and by default anywhere but the
+# cloud metadata server, so a backend URL can't reach the node's
+# credentials through it. Its callers may reach it from anywhere.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "execution-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  policyTypes: ["Egress"]
+  egress:
+    - ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    {{- if .Values.gateway.egress }}
+    - to:
+        {{- toYaml .Values.gateway.egress | nindent 8 }}
+    {{- else }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: ["169.254.169.254/32"]
+        - namespaceSelector: {}
+    {{- end }}
+{{- end }}
+{{- if and .Values.gateway.publicListener .Values.gateway.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+  {{- with .Values.gateway.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.gateway.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.gateway.ingress.tlsSecretName }}
+  tls:
+    - hosts: [{{ $.Values.gateway.ingress.host | quote }}]
+      secretName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.gateway.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port: {name: public}
+{{- end }}
 {{- end }}

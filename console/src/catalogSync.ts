@@ -162,9 +162,9 @@ function backendAuth(auth: ReleaseBackendAuth | undefined): BackendAuth | null {
       return { serviceAccountToken: { audience: auth.kind.value.audience } };
     case "googleIdToken":
       return { googleIdToken: { serviceAccount: auth.kind.value.serviceAccount, audience: auth.kind.value.audience } };
-    case "secret": {
-      const { name, key, header, scheme } = auth.kind.value;
-      return { secret: { name, key, header, ...(scheme ? { scheme } : {}) } };
+    case "awsSigV4": {
+      const { roleArn, region, service } = auth.kind.value;
+      return { awsSigV4: { roleArn, region, service } };
     }
     default:
       return null;

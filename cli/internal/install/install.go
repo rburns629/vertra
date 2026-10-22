@@ -150,8 +150,8 @@ func SizeValues(chart Chart, size string) string {
 // Images says which platform images the releases run. Empty Repository
 // means the chart's default (the release's own images).
 type Images struct {
-	Kernel, Console string // repositories
-	Tag             string
+	Kernel, Console, Gateway string // repositories
+	Tag                      string
 	// Build: built from Source by this apply.
 	Build bool
 	// Push: pushed to a registry (an existing cluster) rather than loaded
@@ -167,20 +167,21 @@ func ImagesFor(c *config.Config, now time.Time) Images {
 	}
 	tag := "src-" + now.UTC().Format("20060102-150405")
 	if c.Target == "kind" {
-		return Images{Kernel: "execution-kernel", Console: "execution-console", Tag: tag, Build: true}
+		return Images{Kernel: "execution-kernel", Console: "execution-console", Gateway: "execution-gateway", Tag: tag, Build: true}
 	}
 	prefix := strings.TrimSuffix(c.PlatformImages.Registry, "/")
 	if c.Target == "gcp" {
 		prefix = gcp.PlatformRegistry(c)
 	}
-	return Images{Kernel: prefix + "/execution-kernel", Console: prefix + "/execution-console", Tag: tag, Build: true, Push: true}
+	return Images{Kernel: prefix + "/execution-kernel", Console: prefix + "/execution-console", Gateway: prefix + "/execution-gateway",
+		Tag: tag, Build: true, Push: true}
 }
 
 // BuildImages builds both images from source, then loads them onto kind's
 // node or pushes them.
 func BuildImages(ctx context.Context, r *run.Runner, c *config.Config, img Images) error {
 	for _, part := range []struct{ repo, dir string }{
-		{img.Kernel, "kernel"}, {img.Console, "console"},
+		{img.Kernel, "kernel"}, {img.Console, "console"}, {img.Gateway, "gateway"},
 	} {
 		ref := part.repo + ":" + img.Tag
 		args := []string{"build", "-t", ref}
@@ -400,6 +401,29 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	}
 	if img.Console != "" {
 		v["image"] = map[string]any{"repository": img.Console, "tag": img.Tag}
+	}
+	if c.Gateway.Enabled {
+		gateway := map[string]any{
+			"enabled":       true,
+			"backendHosts":  c.Gateway.BackendHosts,
+			"internetTeams": c.Gateway.InternetTeams,
+			"url":           fmt.Sprintf("http://%s-execution-console-gateway.%s.svc.cluster.local:8080", ConsoleRelease, c.Namespace),
+		}
+		if img.Gateway != "" {
+			gateway["image"] = map[string]any{"repository": img.Gateway, "tag": img.Tag}
+		}
+		if cloud != nil && cloud.Provider == "gcp" {
+			// API ServiceAccounts federate through the cluster's own
+			// Workload Identity pool: a googleIdToken API's service account
+			// grants its principal roles/iam.serviceAccountOpenIdTokenCreator.
+			pool := c.GCP.Project + ".svc.id.goog"
+			gateway["gcp"] = map[string]any{
+				"tokenAudience": pool,
+				"stsAudience": fmt.Sprintf("identitynamespace:%s:https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s",
+					pool, c.GCP.Project, cloud.ClusterLocation, cloud.ClusterName),
+			}
+		}
+		v["gateway"] = gateway
 	}
 	return v
 }

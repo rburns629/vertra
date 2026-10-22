@@ -6,6 +6,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file vertra/console/v1/api.proto.
@@ -131,7 +132,7 @@ export declare type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
 
   /**
    * The API's own team only: where the gateway forwards to, and how it
-   * signs in there (service_account_token, google_id_token or secret).
+   * signs in there (service_account_token, google_id_token or aws_sig_v4).
    *
    * @generated from field: string backend_url = 20;
    */
@@ -337,6 +338,341 @@ export declare type ResumeApiResponse = Message<"vertra.console.v1.ResumeApiResp
 export declare const ResumeApiResponseSchema: GenMessage<ResumeApiResponse>;
 
 /**
+ * @generated from message vertra.console.v1.GetApiTrafficRequest
+ */
+export declare type GetApiTrafficRequest = Message<"vertra.console.v1.GetApiTrafficRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * 24 when unset; at most 168.
+   *
+   * @generated from field: int32 hours = 3;
+   */
+  hours: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetApiTrafficRequest.
+ * Use `create(GetApiTrafficRequestSchema)` to create a new message.
+ */
+export declare const GetApiTrafficRequestSchema: GenMessage<GetApiTrafficRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetApiTrafficResponse
+ */
+export declare type GetApiTrafficResponse = Message<"vertra.console.v1.GetApiTrafficResponse"> & {
+  /**
+   * @generated from field: int64 requests = 1;
+   */
+  requests: bigint;
+
+  /**
+   * @generated from field: int64 forwarded = 2;
+   */
+  forwarded: bigint;
+
+  /**
+   * Answered by the gateway: not in the spec, unfit, over the rate, not
+   * signed in or not shared, paused, held or closed.
+   *
+   * @generated from field: int64 stopped = 3;
+   */
+  stopped: bigint;
+
+  /**
+   * @generated from field: int64 backend_errors = 4;
+   */
+  backendErrors: bigint;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.EndpointTraffic endpoints = 5;
+   */
+  endpoints: EndpointTraffic[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.BlockedRequests blocked = 6;
+   */
+  blocked: BlockedRequests[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.TeamTraffic teams = 7;
+   */
+  teams: TeamTraffic[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetApiTrafficResponse.
+ * Use `create(GetApiTrafficResponseSchema)` to create a new message.
+ */
+export declare const GetApiTrafficResponseSchema: GenMessage<GetApiTrafficResponse>;
+
+/**
+ * @generated from message vertra.console.v1.EndpointTraffic
+ */
+export declare type EndpointTraffic = Message<"vertra.console.v1.EndpointTraffic"> & {
+  /**
+   * "METHOD /path/{param}", as its spec writes it.
+   *
+   * @generated from field: string endpoint = 1;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: int64 requests = 2;
+   */
+  requests: bigint;
+
+  /**
+   * Stopped by the gateway for not fitting the spec's schemas.
+   *
+   * @generated from field: int64 invalid = 3;
+   */
+  invalid: bigint;
+
+  /**
+   * @generated from field: int64 backend_4xx = 4;
+   */
+  backend4xx: bigint;
+
+  /**
+   * @generated from field: int64 backend_5xx = 5;
+   */
+  backend5xx: bigint;
+
+  /**
+   * The backend's average answer time, in milliseconds.
+   *
+   * @generated from field: int64 average_ms = 6;
+   */
+  averageMs: bigint;
+};
+
+/**
+ * Describes the message vertra.console.v1.EndpointTraffic.
+ * Use `create(EndpointTrafficSchema)` to create a new message.
+ */
+export declare const EndpointTrafficSchema: GenMessage<EndpointTraffic>;
+
+/**
+ * @generated from message vertra.console.v1.BlockedRequests
+ */
+export declare type BlockedRequests = Message<"vertra.console.v1.BlockedRequests"> & {
+  /**
+   * "METHOD /path" as sent (no query): what the spec doesn't describe.
+   *
+   * @generated from field: string request = 1;
+   */
+  request: string;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * @generated from field: repeated string teams = 3;
+   */
+  teams: string[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last = 4;
+   */
+  last?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.BlockedRequests.
+ * Use `create(BlockedRequestsSchema)` to create a new message.
+ */
+export declare const BlockedRequestsSchema: GenMessage<BlockedRequests>;
+
+/**
+ * @generated from message vertra.console.v1.TeamTraffic
+ */
+export declare type TeamTraffic = Message<"vertra.console.v1.TeamTraffic"> & {
+  /**
+   * "" for callers who weren't signed in.
+   *
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: int64 requests = 2;
+   */
+  requests: bigint;
+
+  /**
+   * Its busiest minute, against its limit.
+   *
+   * @generated from field: int64 peak_per_minute = 3;
+   */
+  peakPerMinute: bigint;
+
+  /**
+   * @generated from field: int32 limit_per_minute = 4;
+   */
+  limitPerMinute: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamTraffic.
+ * Use `create(TeamTrafficSchema)` to create a new message.
+ */
+export declare const TeamTrafficSchema: GenMessage<TeamTraffic>;
+
+/**
+ * @generated from message vertra.console.v1.GetGatewayRequest
+ */
+export declare type GetGatewayRequest = Message<"vertra.console.v1.GetGatewayRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGatewayRequest.
+ * Use `create(GetGatewayRequestSchema)` to create a new message.
+ */
+export declare const GetGatewayRequestSchema: GenMessage<GetGatewayRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetGatewayResponse
+ */
+export declare type GetGatewayResponse = Message<"vertra.console.v1.GetGatewayResponse"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: repeated string backend_hosts = 2;
+   */
+  backendHosts: string[];
+
+  /**
+   * @generated from field: repeated string internet_teams = 3;
+   */
+  internetTeams: string[];
+
+  /**
+   * @generated from field: string url = 4;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string public_url = 5;
+   */
+  publicUrl: string;
+
+  /**
+   * Closed by an admin, and why; empty when open.
+   *
+   * @generated from field: string closed_message = 6;
+   */
+  closedMessage: string;
+
+  /**
+   * @generated from field: string closed_by = 7;
+   */
+  closedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp closed_at = 8;
+   */
+  closedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: int32 apis = 9;
+   */
+  apis: number;
+
+  /**
+   * @generated from field: int64 requests_24h = 10;
+   */
+  requests24h: bigint;
+
+  /**
+   * What it answered itself, without forwarding, over the last day.
+   *
+   * @generated from field: repeated vertra.console.v1.RefusedRequests refused = 11;
+   */
+  refused: RefusedRequests[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGatewayResponse.
+ * Use `create(GetGatewayResponseSchema)` to create a new message.
+ */
+export declare const GetGatewayResponseSchema: GenMessage<GetGatewayResponse>;
+
+/**
+ * @generated from message vertra.console.v1.RefusedRequests
+ */
+export declare type RefusedRequests = Message<"vertra.console.v1.RefusedRequests"> & {
+  /**
+   * blocked, invalid, limited, unauthenticated, forbidden, paused, held,
+   * closed, unavailable, backend_error.
+   *
+   * @generated from field: string outcome = 1;
+   */
+  outcome: string;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * The team with the most of them.
+   *
+   * @generated from field: string mostly = 3;
+   */
+  mostly: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RefusedRequests.
+ * Use `create(RefusedRequestsSchema)` to create a new message.
+ */
+export declare const RefusedRequestsSchema: GenMessage<RefusedRequests>;
+
+/**
+ * @generated from message vertra.console.v1.SetGatewayClosedRequest
+ */
+export declare type SetGatewayClosedRequest = Message<"vertra.console.v1.SetGatewayClosedRequest"> & {
+  /**
+   * Empty reopens it. At most 500 characters.
+   *
+   * @generated from field: string message = 1;
+   */
+  message: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetGatewayClosedRequest.
+ * Use `create(SetGatewayClosedRequestSchema)` to create a new message.
+ */
+export declare const SetGatewayClosedRequestSchema: GenMessage<SetGatewayClosedRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetGatewayClosedResponse
+ */
+export declare type SetGatewayClosedResponse = Message<"vertra.console.v1.SetGatewayClosedResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SetGatewayClosedResponse.
+ * Use `create(SetGatewayClosedResponseSchema)` to create a new message.
+ */
+export declare const SetGatewayClosedResponseSchema: GenMessage<SetGatewayClosedResponse>;
+
+/**
  * @generated from enum vertra.console.v1.ApiState
  */
 export enum ApiState {
@@ -429,6 +765,41 @@ export declare const ApiService: GenService<{
     methodKind: "unary";
     input: typeof ResumeApiRequestSchema;
     output: typeof ResumeApiResponseSchema;
+  },
+  /**
+   * What callers sent an API, what the gateway stopped and what its
+   * backend answered, over the last hours (at most a week): by endpoint,
+   * the requests its spec doesn't describe, and by calling team. Its own
+   * team, and admins.
+   *
+   * @generated from rpc vertra.console.v1.ApiService.GetApiTraffic
+   */
+  getApiTraffic: {
+    methodKind: "unary";
+    input: typeof GetApiTrafficRequestSchema;
+    output: typeof GetApiTrafficResponseSchema;
+  },
+  /**
+   * The gateway's settings (this install's Helm values), whether it's
+   * closed, and what it refused at the door over the last day. Admins.
+   *
+   * @generated from rpc vertra.console.v1.ApiService.GetGateway
+   */
+  getGateway: {
+    methodKind: "unary";
+    input: typeof GetGatewayRequestSchema;
+    output: typeof GetGatewayResponseSchema;
+  },
+  /**
+   * Closes the gateway (a message: every API answers 503 with it, and
+   * nothing is forwarded) or reopens it (empty). Admins; audited.
+   *
+   * @generated from rpc vertra.console.v1.ApiService.SetGatewayClosed
+   */
+  setGatewayClosed: {
+    methodKind: "unary";
+    input: typeof SetGatewayClosedRequestSchema;
+    output: typeof SetGatewayClosedResponseSchema;
   },
 }>;
 

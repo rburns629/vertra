@@ -135,8 +135,16 @@ inside the cluster (its Service, `<release>-execution-console-gateway:8080`);
 with `gateway.publicListener`, port 8081 serves the APIs of
 `gateway.internetTeams` that ask to be reachable from the internet: put an
 Ingress or load balancer in front of it, at `gateway.publicUrl`.
-`gateway.closed` stops every API at once (503); a team's maintainers pause
-one of theirs from the console. On kind, `make kind-deploy-console` builds
+An admin closes it from the Admin page (every API answers 503 with their
+message), or `gateway.closed` keeps it closed; a team's maintainers pause
+one of theirs from its page. With `gateway.ingress`, an Ingress serves the
+public listener at `gateway.ingress.host`. Its NetworkPolicy lets it reach
+anything but the cloud metadata server; narrow it with `gateway.egress`.
+Backend credentials: `googleIdToken` needs `gateway.gcp` (vertra sets it
+on GKE; the API's Google service account grants its ServiceAccount's
+principal `roles/iam.serviceAccountOpenIdTokenCreator`), and `awsSigV4` a
+role whose trust policy accepts the cluster's OIDC issuer for
+`system:serviceaccount:<team>:<api>-api`, audience `sts.amazonaws.com`. On kind, `make kind-deploy-console` builds
 it and allows backends in the `vertra-samples` namespace.
 
 ### Reading another install's catalog

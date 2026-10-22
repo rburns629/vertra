@@ -43,6 +43,14 @@ const (
 	ApiServicePauseApiProcedure = "/vertra.console.v1.ApiService/PauseApi"
 	// ApiServiceResumeApiProcedure is the fully-qualified name of the ApiService's ResumeApi RPC.
 	ApiServiceResumeApiProcedure = "/vertra.console.v1.ApiService/ResumeApi"
+	// ApiServiceGetApiTrafficProcedure is the fully-qualified name of the ApiService's GetApiTraffic
+	// RPC.
+	ApiServiceGetApiTrafficProcedure = "/vertra.console.v1.ApiService/GetApiTraffic"
+	// ApiServiceGetGatewayProcedure is the fully-qualified name of the ApiService's GetGateway RPC.
+	ApiServiceGetGatewayProcedure = "/vertra.console.v1.ApiService/GetGateway"
+	// ApiServiceSetGatewayClosedProcedure is the fully-qualified name of the ApiService's
+	// SetGatewayClosed RPC.
+	ApiServiceSetGatewayClosedProcedure = "/vertra.console.v1.ApiService/SetGatewayClosed"
 )
 
 // ApiServiceClient is a client for the vertra.console.v1.ApiService service.
@@ -57,6 +65,17 @@ type ApiServiceClient interface {
 	PauseApi(context.Context, *connect.Request[v1.PauseApiRequest]) (*connect.Response[v1.PauseApiResponse], error)
 	// Lets a paused API through again; as PauseApi.
 	ResumeApi(context.Context, *connect.Request[v1.ResumeApiRequest]) (*connect.Response[v1.ResumeApiResponse], error)
+	// What callers sent an API, what the gateway stopped and what its
+	// backend answered, over the last hours (at most a week): by endpoint,
+	// the requests its spec doesn't describe, and by calling team. Its own
+	// team, and admins.
+	GetApiTraffic(context.Context, *connect.Request[v1.GetApiTrafficRequest]) (*connect.Response[v1.GetApiTrafficResponse], error)
+	// The gateway's settings (this install's Helm values), whether it's
+	// closed, and what it refused at the door over the last day. Admins.
+	GetGateway(context.Context, *connect.Request[v1.GetGatewayRequest]) (*connect.Response[v1.GetGatewayResponse], error)
+	// Closes the gateway (a message: every API answers 503 with it, and
+	// nothing is forwarded) or reopens it (empty). Admins; audited.
+	SetGatewayClosed(context.Context, *connect.Request[v1.SetGatewayClosedRequest]) (*connect.Response[v1.SetGatewayClosedResponse], error)
 }
 
 // NewApiServiceClient constructs a client for the vertra.console.v1.ApiService service. By default,
@@ -96,15 +115,38 @@ func NewApiServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(apiServiceMethods.ByName("ResumeApi")),
 			connect.WithClientOptions(opts...),
 		),
+		getApiTraffic: connect.NewClient[v1.GetApiTrafficRequest, v1.GetApiTrafficResponse](
+			httpClient,
+			baseURL+ApiServiceGetApiTrafficProcedure,
+			connect.WithSchema(apiServiceMethods.ByName("GetApiTraffic")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getGateway: connect.NewClient[v1.GetGatewayRequest, v1.GetGatewayResponse](
+			httpClient,
+			baseURL+ApiServiceGetGatewayProcedure,
+			connect.WithSchema(apiServiceMethods.ByName("GetGateway")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setGatewayClosed: connect.NewClient[v1.SetGatewayClosedRequest, v1.SetGatewayClosedResponse](
+			httpClient,
+			baseURL+ApiServiceSetGatewayClosedProcedure,
+			connect.WithSchema(apiServiceMethods.ByName("SetGatewayClosed")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // apiServiceClient implements ApiServiceClient.
 type apiServiceClient struct {
-	listApis  *connect.Client[v1.ListApisRequest, v1.ListApisResponse]
-	getApi    *connect.Client[v1.GetApiRequest, v1.GetApiResponse]
-	pauseApi  *connect.Client[v1.PauseApiRequest, v1.PauseApiResponse]
-	resumeApi *connect.Client[v1.ResumeApiRequest, v1.ResumeApiResponse]
+	listApis         *connect.Client[v1.ListApisRequest, v1.ListApisResponse]
+	getApi           *connect.Client[v1.GetApiRequest, v1.GetApiResponse]
+	pauseApi         *connect.Client[v1.PauseApiRequest, v1.PauseApiResponse]
+	resumeApi        *connect.Client[v1.ResumeApiRequest, v1.ResumeApiResponse]
+	getApiTraffic    *connect.Client[v1.GetApiTrafficRequest, v1.GetApiTrafficResponse]
+	getGateway       *connect.Client[v1.GetGatewayRequest, v1.GetGatewayResponse]
+	setGatewayClosed *connect.Client[v1.SetGatewayClosedRequest, v1.SetGatewayClosedResponse]
 }
 
 // ListApis calls vertra.console.v1.ApiService.ListApis.
@@ -127,6 +169,21 @@ func (c *apiServiceClient) ResumeApi(ctx context.Context, req *connect.Request[v
 	return c.resumeApi.CallUnary(ctx, req)
 }
 
+// GetApiTraffic calls vertra.console.v1.ApiService.GetApiTraffic.
+func (c *apiServiceClient) GetApiTraffic(ctx context.Context, req *connect.Request[v1.GetApiTrafficRequest]) (*connect.Response[v1.GetApiTrafficResponse], error) {
+	return c.getApiTraffic.CallUnary(ctx, req)
+}
+
+// GetGateway calls vertra.console.v1.ApiService.GetGateway.
+func (c *apiServiceClient) GetGateway(ctx context.Context, req *connect.Request[v1.GetGatewayRequest]) (*connect.Response[v1.GetGatewayResponse], error) {
+	return c.getGateway.CallUnary(ctx, req)
+}
+
+// SetGatewayClosed calls vertra.console.v1.ApiService.SetGatewayClosed.
+func (c *apiServiceClient) SetGatewayClosed(ctx context.Context, req *connect.Request[v1.SetGatewayClosedRequest]) (*connect.Response[v1.SetGatewayClosedResponse], error) {
+	return c.setGatewayClosed.CallUnary(ctx, req)
+}
+
 // ApiServiceHandler is an implementation of the vertra.console.v1.ApiService service.
 type ApiServiceHandler interface {
 	// Every API the caller may see, by team and name.
@@ -139,6 +196,17 @@ type ApiServiceHandler interface {
 	PauseApi(context.Context, *connect.Request[v1.PauseApiRequest]) (*connect.Response[v1.PauseApiResponse], error)
 	// Lets a paused API through again; as PauseApi.
 	ResumeApi(context.Context, *connect.Request[v1.ResumeApiRequest]) (*connect.Response[v1.ResumeApiResponse], error)
+	// What callers sent an API, what the gateway stopped and what its
+	// backend answered, over the last hours (at most a week): by endpoint,
+	// the requests its spec doesn't describe, and by calling team. Its own
+	// team, and admins.
+	GetApiTraffic(context.Context, *connect.Request[v1.GetApiTrafficRequest]) (*connect.Response[v1.GetApiTrafficResponse], error)
+	// The gateway's settings (this install's Helm values), whether it's
+	// closed, and what it refused at the door over the last day. Admins.
+	GetGateway(context.Context, *connect.Request[v1.GetGatewayRequest]) (*connect.Response[v1.GetGatewayResponse], error)
+	// Closes the gateway (a message: every API answers 503 with it, and
+	// nothing is forwarded) or reopens it (empty). Admins; audited.
+	SetGatewayClosed(context.Context, *connect.Request[v1.SetGatewayClosedRequest]) (*connect.Response[v1.SetGatewayClosedResponse], error)
 }
 
 // NewApiServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -174,6 +242,26 @@ func NewApiServiceHandler(svc ApiServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(apiServiceMethods.ByName("ResumeApi")),
 		connect.WithHandlerOptions(opts...),
 	)
+	apiServiceGetApiTrafficHandler := connect.NewUnaryHandler(
+		ApiServiceGetApiTrafficProcedure,
+		svc.GetApiTraffic,
+		connect.WithSchema(apiServiceMethods.ByName("GetApiTraffic")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	apiServiceGetGatewayHandler := connect.NewUnaryHandler(
+		ApiServiceGetGatewayProcedure,
+		svc.GetGateway,
+		connect.WithSchema(apiServiceMethods.ByName("GetGateway")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	apiServiceSetGatewayClosedHandler := connect.NewUnaryHandler(
+		ApiServiceSetGatewayClosedProcedure,
+		svc.SetGatewayClosed,
+		connect.WithSchema(apiServiceMethods.ByName("SetGatewayClosed")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ApiService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ApiServiceListApisProcedure:
@@ -184,6 +272,12 @@ func NewApiServiceHandler(svc ApiServiceHandler, opts ...connect.HandlerOption) 
 			apiServicePauseApiHandler.ServeHTTP(w, r)
 		case ApiServiceResumeApiProcedure:
 			apiServiceResumeApiHandler.ServeHTTP(w, r)
+		case ApiServiceGetApiTrafficProcedure:
+			apiServiceGetApiTrafficHandler.ServeHTTP(w, r)
+		case ApiServiceGetGatewayProcedure:
+			apiServiceGetGatewayHandler.ServeHTTP(w, r)
+		case ApiServiceSetGatewayClosedProcedure:
+			apiServiceSetGatewayClosedHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -207,4 +301,16 @@ func (UnimplementedApiServiceHandler) PauseApi(context.Context, *connect.Request
 
 func (UnimplementedApiServiceHandler) ResumeApi(context.Context, *connect.Request[v1.ResumeApiRequest]) (*connect.Response[v1.ResumeApiResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ApiService.ResumeApi is not implemented"))
+}
+
+func (UnimplementedApiServiceHandler) GetApiTraffic(context.Context, *connect.Request[v1.GetApiTrafficRequest]) (*connect.Response[v1.GetApiTrafficResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ApiService.GetApiTraffic is not implemented"))
+}
+
+func (UnimplementedApiServiceHandler) GetGateway(context.Context, *connect.Request[v1.GetGatewayRequest]) (*connect.Response[v1.GetGatewayResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ApiService.GetGateway is not implemented"))
+}
+
+func (UnimplementedApiServiceHandler) SetGatewayClosed(context.Context, *connect.Request[v1.SetGatewayClosedRequest]) (*connect.Response[v1.SetGatewayClosedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ApiService.SetGatewayClosed is not implemented"))
 }

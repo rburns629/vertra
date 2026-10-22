@@ -183,6 +183,29 @@ func TestAnExternalCatalogIsReadByFederation(t *testing.T) {
 	}
 }
 
+// The gateway, when it's on: its image built from source, and on GKE the
+// cluster's Workload Identity pool for minting Google ID tokens.
+func TestTheGatewaysValues(t *testing.T) {
+	c := kindConfig()
+	c.Namespace = "vertra-system"
+	c.GCP.Project = "acme-dev"
+	cloud := &Cloud{Provider: "gcp", ClusterName: "vertra", ClusterLocation: "us-central1"}
+	img := Images{Gateway: "us-docker.pkg.dev/acme-dev/platform/execution-gateway", Tag: "src-1"}
+	if _, ok := ConsoleValues(c, "dev", img, cloud)["gateway"]; ok {
+		t.Error("off unless it's enabled")
+	}
+	c.Gateway = config.Gateway{Enabled: true, BackendHosts: []string{"*.a.run.app"}}
+	gw, _ := ConsoleValues(c, "dev", img, cloud)["gateway"].(map[string]any)
+	gcp, _ := gw["gcp"].(map[string]any)
+	if gw["enabled"] != true || fmt.Sprint(gw["backendHosts"]) != "[*.a.run.app]" ||
+		gw["url"] != "http://console-execution-console-gateway.vertra-system.svc.cluster.local:8080" ||
+		fmt.Sprint(gw["image"]) != "map[repository:us-docker.pkg.dev/acme-dev/platform/execution-gateway tag:src-1]" ||
+		gcp["tokenAudience"] != "acme-dev.svc.id.goog" ||
+		gcp["stsAudience"] != "identitynamespace:acme-dev.svc.id.goog:https://container.googleapis.com/v1/projects/acme-dev/locations/us-central1/clusters/vertra" {
+		t.Errorf("gateway = %v", gw)
+	}
+}
+
 func TestWriteValues(t *testing.T) {
 	dir := t.TempDir()
 	path, err := WriteValues(dir, "kernel", map[string]any{"api": map[string]any{"replicaCount": 2}})

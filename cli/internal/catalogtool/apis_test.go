@@ -99,6 +99,30 @@ func TestAPIs(t *testing.T) {
 	}
 }
 
+// An AWS backend that takes IAM: signed as a role, carried in the
+// release; a static secret isn't a backend credential at all.
+func TestAPIBackendCredentials(t *testing.T) {
+	aws := strings.Replace(apiYAML, `    googleIdToken:
+      serviceAccount: orders-gateway@payments-prod.iam.gserviceaccount.com`, `    awsSigV4:
+      roleArn: arn:aws:iam::123456789012:role/orders-gateway
+      region: us-east-1
+      service: lambda`, 1)
+	c := apiCatalog(t, aws, openapiYAML)
+	if out := errorsOf(t, (*Catalog).ValidateAPIs, c); out != "" {
+		t.Fatalf("refused:\n%s", out)
+	}
+	apis, err := c.releaseAPIs()
+	if err != nil || apis[0].GetBackendAuth().GetAwsSigV4().GetRoleArn() != "arn:aws:iam::123456789012:role/orders-gateway" ||
+		apis[0].GetBackendAuth().GetAwsSigV4().GetService() != "lambda" {
+		t.Errorf("apis = %v, %v", apis, err)
+	}
+	secret := strings.Replace(apiYAML, `    googleIdToken:
+      serviceAccount: orders-gateway@payments-prod.iam.gserviceaccount.com`, `    secret: {name: key, key: value, header: X-Api-Key}`, 1)
+	if out := errorsOf(t, (*Catalog).ValidateAPIs, apiCatalog(t, secret, openapiYAML)); !strings.Contains(out, "api.yaml") {
+		t.Errorf("a static secret was accepted:\n%s", out)
+	}
+}
+
 // An http backend is fine inside the cluster, where the gateway reaches a
 // team's Service directly.
 func TestAPIsInTheCluster(t *testing.T) {

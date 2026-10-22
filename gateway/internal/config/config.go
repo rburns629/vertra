@@ -28,8 +28,13 @@ type Settings struct {
 	Listen, PublicListen, MetricsListen string
 	BackendHosts, InternetTeams         []string
 	DefaultPerMinute                    int
-	Closed                              bool
-	Refresh                             time.Duration
+	// Minting Google ID tokens: the STS audience API ServiceAccounts'
+	// tokens are exchanged for (GKE: the cluster's Workload Identity
+	// pool; elsewhere a provider trusting its issuer), and the audience
+	// those tokens carry. Empty: googleIdToken APIs fail with 502.
+	GCPAudience, GCPTokenAudience string
+	Closed                        bool
+	Refresh                       time.Duration
 }
 
 // Load reads the environment.
@@ -69,6 +74,8 @@ func Load(getenv func(string) string) (*Settings, error) {
 		BackendHosts:     list(getenv("BACKEND_HOSTS")),
 		InternetTeams:    list(getenv("INTERNET_TEAMS")),
 		DefaultPerMinute: number("DEFAULT_PER_MINUTE", 600),
+		GCPAudience:      getenv("GCP_STS_AUDIENCE"),
+		GCPTokenAudience: getenv("GCP_TOKEN_AUDIENCE"),
 		Closed:           getenv("CLOSED") == "true",
 		Refresh:          time.Duration(number("REFRESH_SECONDS", 5)) * time.Second,
 	}
