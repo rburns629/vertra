@@ -237,9 +237,11 @@ networkPolicy:
     - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
 ```
 
-With the Prometheus Operator (kube-prometheus-stack, or GKE's managed
-collection with its operator), the charts can add the rest, each off by
-default because it needs that operator's CRDs:
+With the Prometheus Operator (kube-prometheus-stack; VictoriaMetrics's
+operator reads the same resources), the charts can add the rest, each off
+by default because it needs that operator's CRDs. GKE's Managed Service
+for Prometheus doesn't read them: it has its own `PodMonitoring`, which
+the charts don't ship yet (`TODO.md`).
 
 - `monitoring.podMonitor.enabled` (both charts): PodMonitors. Add the
   labels your Prometheus selects them by in `monitoring.podMonitor.labels`

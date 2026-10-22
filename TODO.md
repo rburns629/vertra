@@ -31,7 +31,10 @@ design.
     by default), with every metrics port open only to
     `networkPolicy.metricsFrom`. Left: proving the PodMonitors, rules and
     dashboard against a real Prometheus Operator and Grafana (checked
-    with promtool, and scraped by hand on kind).
+    with promtool, and scraped by hand on kind). And GKE's Managed Service for Prometheus,
+    which reads `PodMonitoring` and `Rules`
+    (`monitoring.googleapis.com`), not the operator's resources: ship those
+    too, behind their own value.
   - The audit log (done 2026-10-22: `ObserveService.ListAudit`, the
     Observe page's Audit log tab): an admin sees every entry; anyone else
     their own, and what was done to their teams or to runs in them, by

@@ -511,7 +511,8 @@ networkPolicy:
   metricsFrom: []
 
 # Prometheus, through the Prometheus Operator's resources (kube-prometheus-
-# stack, Google Managed Prometheus's operator, ...). Off by default: each
+# stack, VictoriaMetrics, ...; not GKE Managed Prometheus, which reads its own
+# PodMonitoring). Off by default: each
 # needs its CRDs installed. List the scraper in networkPolicy.metricsFrom.
 monitoring:
   # -- The console's /metrics port, never served by its Ingress. 0: off.
