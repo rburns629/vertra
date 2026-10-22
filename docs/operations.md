@@ -125,6 +125,26 @@ it in `registryCheck.pullSecretName`; with `registryCheck.copyToTeams`, the
 console copies it into every team namespace as `vertra-pull` and the
 kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
+### Signing in with Google
+
+1. In the Google Cloud console for a project in your Workspace
+   organization, set up the OAuth consent screen (Google Auth Platform) with
+   the audience **Internal**, then create an OAuth client of type **Web
+   application** whose authorized redirect URI is the console's address +
+   `/api/auth/oidc/callback` (`http://localhost:18080/...` for a
+   port-forward).
+2. Put its secret in a Secret in the console's namespace:
+   `kubectl -n vertra-system create secret generic console-sso --from-file=client-secret=<file>`.
+3. Set the console chart's `sso`: `issuer: https://accounts.google.com`, the
+   `clientId`, `clientSecret.name: console-sso`, the same `redirectUrl`, and
+   `allowedDomains` (your Workspace domains).
+
+People then sign in with Google; the first sign-in makes their account (or
+binds the one an admin made for that email), with no teams until someone
+adds them. Passwords keep working for admins only, so an admin can still get
+in if Google can't be reached; `vertra admin reset-password` remains the way
+back for a lost one.
+
 ### The API gateway
 
 API products are served by the gateway, which the console chart runs when

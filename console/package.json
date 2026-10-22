@@ -20,6 +20,7 @@
     "@connectrpc/connect": "2.2.0",
     "@connectrpc/connect-fastify": "2.2.0",
     "@connectrpc/connect-node": "2.2.0",
+    "@fastify/cookie": "11.1.2",
     "@fastify/helmet": "13.2.0",
     "@fastify/jwt": "^10.2.4",
     "@fastify/static": "^10.1.6",
@@ -30,6 +31,7 @@
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",
     "fastify-plugin": "^6.0.1",
+    "jose": "6.2.12",
     "pg": "^8.23.1",
     "prom-client": "15.1.3"
   },

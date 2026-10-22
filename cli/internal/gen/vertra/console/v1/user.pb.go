@@ -234,11 +234,13 @@ func (x *CreateUserRequest) GetAdmin() bool {
 }
 
 type CreateUserResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Email             string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	TemporaryPassword string                 `protobuf:"bytes,2,opt,name=temporary_password,json=temporaryPassword,proto3" json:"temporary_password,omitempty"`
-	Teams             []string               `protobuf:"bytes,3,rep,name=teams,proto3" json:"teams,omitempty"`
-	Admin             bool                   `protobuf:"varint,4,opt,name=admin,proto3" json:"admin,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Email string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	// Shown once. Empty when single sign-on is on and the account isn't an
+	// admin's: they sign in with the provider, as this email.
+	TemporaryPassword string   `protobuf:"bytes,2,opt,name=temporary_password,json=temporaryPassword,proto3" json:"temporary_password,omitempty"`
+	Teams             []string `protobuf:"bytes,3,rep,name=teams,proto3" json:"teams,omitempty"`
+	Admin             bool     `protobuf:"varint,4,opt,name=admin,proto3" json:"admin,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }

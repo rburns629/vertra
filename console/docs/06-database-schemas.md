@@ -213,6 +213,7 @@ erDiagram
     text email UK
     bool is_admin
     bool is_bot
+    text oidc_subject UK
   }
   team_memberships {
     uuid user_id PK,FK
@@ -282,10 +283,11 @@ People and bots alike.
 | --- | --- | --- | --- |
 | `id` | uuid | no | |
 | `email` | text | no, unique | A bot's is made up, such as `team-a-release-pipeline@bots.vertra.local`. |
-| `password_hash` | text | yes | An argon2 hash. Empty for bots, which use tokens. |
+| `password_hash` | text | yes | An argon2 hash. Empty for bots, which use tokens, and for people who sign in only through single sign-on. |
 | `is_admin` | boolean | no | A platform admin: may act on every team and use the Admin page. |
 | `is_bot` | boolean | no | A machine identity, which signs in only with an API token. |
 | `password_changed_at` | timestamptz | yes | Sessions issued before this are rejected, so changing a password signs out every other session. |
+| `oidc_subject` | text, unique | yes | The single sign-on account bound at the first sign-in through it (`<issuer> <sub>`): from then on only that account signs in as this person. |
 | `created_at` | timestamptz | no | |
 
 ### team_memberships

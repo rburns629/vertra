@@ -23,6 +23,18 @@ data:
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}
   ALLOW_SELF_REGISTRATION: {{ .Values.allowSelfRegistration | quote }}
+  {{- with .Values.sso }}
+  {{- if .issuer }}
+  {{- if not (and .clientId .clientSecret.name .redirectUrl .allowedDomains) }}
+  {{- fail "sso.issuer is set, so sso.clientId, sso.clientSecret.name, sso.redirectUrl and sso.allowedDomains are needed too." }}
+  {{- end }}
+  OIDC_ISSUER: {{ .issuer | quote }}
+  OIDC_CLIENT_ID: {{ .clientId | quote }}
+  OIDC_REDIRECT_URL: {{ .redirectUrl | quote }}
+  OIDC_ALLOWED_DOMAINS: {{ join "," .allowedDomains | quote }}
+  OIDC_LABEL: {{ .label | quote }}
+  {{- end }}
+  {{- end }}
   TRUST_PROXY: {{ join "," .Values.trustProxy | quote }}
   # The kernel's image admission policy, whose allowed-source list the
   # Admin page edits (the execution-kernel chart's image-policy.yaml).

@@ -1882,6 +1882,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "ssoLabel",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Single sign-on, when on: the provider's name for its button (\"Google\").\nSign in at /api/auth/oidc/start. While it's on, passwords sign in\nadmins only."
     }
    ]
   },
@@ -6350,7 +6357,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": ""
+     "comment": "Shown once. Empty when single sign-on is on and the account isn't an\nadmin's: they sign in with the provider, as this email."
     },
     {
      "name": "teams",

@@ -10,6 +10,7 @@ import { Code } from "@connectrpc/connect";
 import { randomBytes } from "node:crypto";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
+import { config } from "../config.js";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hashPassword } from "../auth/password.js";
@@ -63,8 +64,11 @@ export async function createAccount(
     teamIds.push(team.id);
   }
 
-  const temporaryPassword = randomBytes(18).toString("base64url");
-  const user = await createUser(email, await hashPassword(temporaryPassword));
+  // With single sign-on, only an admin has a password (a way in if the
+  // provider fails); anyone else signs in with the provider as this email,
+  // which binds the account to them then.
+  const temporaryPassword = config.oidc && !input.admin ? "" : randomBytes(18).toString("base64url");
+  const user = await createUser(email, temporaryPassword ? await hashPassword(temporaryPassword) : null);
   // A maintainer: often a new team's first person, who must be able to
   // manage it. Its maintainers can make them a member afterwards.
   for (const teamId of teamIds) await addTeamMember(user.id, teamId, "maintainer");

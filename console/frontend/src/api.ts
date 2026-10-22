@@ -141,12 +141,18 @@ export interface Environment {
   label: string;
   /** Whether /auth/register is open; otherwise admins create accounts. */
   selfRegistration: boolean;
+  /** Single sign-on's provider ("Google") when it's on: passwords are then for admins only. */
+  ssoLabel: string;
 }
 
 /** Unauthenticated -- see ../../src/index.ts's /environment route. */
-export function getEnvironment(): Promise<Environment> {
-  return call(() => auth.getEnvironment({}));
+export async function getEnvironment(): Promise<Environment> {
+  const environment = await call(() => auth.getEnvironment({}));
+  return { label: environment.label, selfRegistration: environment.selfRegistration, ssoLabel: environment.ssoLabel };
 }
+
+/** Where a browser goes to sign in with single sign-on (../../src/auth/oidc.ts). */
+export const SSO_START = "/api/auth/oidc/start";
 
 export interface Me {
   id: string;

@@ -62,6 +62,41 @@ function list(value: string | undefined): string[] {
   return (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+/**
+ * Single sign-on (auth/oidc.ts): an OpenID Connect provider, Google's for
+ * now. Off unless OIDC_ISSUER is set; then every other setting is needed,
+ * and at least one allowed domain: a provider anyone can sign up to
+ * (Google is one) must never let just anyone in.
+ */
+function loadOidc() {
+  const issuer = process.env["OIDC_ISSUER"] ?? "";
+  if (!issuer) return null;
+  const oidc = {
+    issuer,
+    clientId: process.env["OIDC_CLIENT_ID"] ?? "",
+    clientSecret: process.env["OIDC_CLIENT_SECRET"] ?? "",
+    // Where the provider sends people back: <console URL>/api/auth/oidc/callback.
+    redirectUrl: process.env["OIDC_REDIRECT_URL"] ?? "",
+    // Workspace domains whose people may sign in (Google's hd claim).
+    allowedDomains: list(process.env["OIDC_ALLOWED_DOMAINS"]).map((d) => d.toLowerCase()),
+    // On the sign-in button: "Sign in with <label>".
+    label: process.env["OIDC_LABEL"] || "Google",
+  };
+  const missing = Object.entries({
+    OIDC_CLIENT_ID: oidc.clientId,
+    OIDC_CLIENT_SECRET: oidc.clientSecret,
+    OIDC_REDIRECT_URL: oidc.redirectUrl,
+    OIDC_ALLOWED_DOMAINS: oidc.allowedDomains.join(","),
+  })
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  if (missing.length > 0) throw new Error(`OIDC_ISSUER is set, so these are needed too: ${missing.join(", ")}`);
+  if (!/^https?:\/\/[^/]+\/api\/auth\/oidc\/callback$/.test(oidc.redirectUrl)) {
+    throw new Error("OIDC_REDIRECT_URL must be the console's own <scheme>://<host>/api/auth/oidc/callback.");
+  }
+  return oidc;
+}
+
 function loadRegistryCredentials(path: string | undefined): RegistryCredentials {
   const credentials: RegistryCredentials = new Map();
   if (!path) return credentials;
@@ -134,6 +169,9 @@ export const config = {
   // console could make an account; turn it on only behind a trusted
   // network boundary.
   allowSelfRegistration: parseBoolean("ALLOW_SELF_REGISTRATION"),
+  // Single sign-on; null when off. While it's on, passwords sign in admins
+  // only (a way in if the provider fails), and nobody registers themselves.
+  oidc: loadOidc(),
   // The proxies in front of the console, as addresses and CIDR ranges
   // (comma-separated), so request.ip (the sign-in throttle, rate limits,
   // logs) is the real client: behind Google's external Application Load

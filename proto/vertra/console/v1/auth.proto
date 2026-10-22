@@ -33,6 +33,10 @@ message GetEnvironmentResponse {
   // Shown on every page, such as "local" or "production".
   string label = 1;
   bool self_registration = 2;
+  // Single sign-on, when on: the provider's name for its button ("Google").
+  // Sign in at /api/auth/oidc/start. While it's on, passwords sign in
+  // admins only.
+  string sso_label = 3;
 }
 
 message RegisterRequest {

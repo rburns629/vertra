@@ -521,7 +521,13 @@ function AccountsCard() {
           </Box>
         </Stack>
 
-        {created && (
+        {created && created.temporaryPassword === "" && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            Account created for <strong>{created.email}</strong>. They sign in with single sign-on as that
+            email; their first sign-in ties the account to them.
+          </Alert>
+        )}
+        {created && created.temporaryPassword !== "" && (
           <Alert severity="success" sx={{ mt: 2 }}>
             Account created for <strong>{created.email}</strong>. Temporary password:{" "}
             <code>{created.temporaryPassword}</code>

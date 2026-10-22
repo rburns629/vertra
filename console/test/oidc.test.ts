@@ -1,0 +1,209 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Single sign-on (auth/oidc.ts) against a stand-in OpenID provider: its
+ * own key, discovery document and token endpoint, which checks the PKCE
+ * verifier and the client's secret as a real one does. A new person gets an
+ * account with no password and no teams; an existing one is bound to their
+ * provider identity once; and every check on the ID token refuses. With
+ * single sign-on on, passwords sign in admins only.
+ */
+import { createHash, randomUUID } from "node:crypto";
+import { once } from "node:events";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { eq, inArray, like } from "drizzle-orm";
+import type { FastifyInstance } from "fastify";
+import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { hashPassword } from "../src/auth/password.js";
+import { config } from "../src/config.js";
+import { db } from "../src/db/client.js";
+import { createUser, setUserAdmin } from "../src/db/queries.js";
+import { users } from "../src/db/schema.js";
+import { buildApp } from "../src/index.js";
+import { PASSWORD, rpcClient } from "./rpc.js";
+
+const domain = `sso-${randomUUID().slice(0, 6)}.example.com`;
+const emailOf = (name: string) => `${name}@${domain}`;
+let app: FastifyInstance;
+let provider: Server;
+let issuer: string;
+let signingKey: CryptoKey;
+let otherKey: CryptoKey;
+let publicJwk: JWK;
+/** What the next ID token says, and how it's signed. */
+let next: { claims: Record<string, unknown>; key?: CryptoKey };
+/** The PKCE challenge the console sent, which the token endpoint checks. */
+let challenge = "";
+let tokenRequests = 0;
+const { rpc } = rpcClient(() => app);
+
+beforeAll(async () => {
+  const pair = await generateKeyPair("RS256");
+  signingKey = pair.privateKey;
+  otherKey = (await generateKeyPair("RS256")).privateKey;
+  publicJwk = { ...(await exportJWK(pair.publicKey)), kid: "k1", alg: "RS256", use: "sig" };
+
+  provider = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", issuer);
+    const json = (body: unknown, status = 200) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(body));
+    if (url.pathname === "/.well-known/openid-configuration") {
+      return json({ issuer, authorization_endpoint: `${issuer}/authorize`, token_endpoint: `${issuer}/token`, jwks_uri: `${issuer}/jwks` });
+    }
+    if (url.pathname === "/jwks") return json({ keys: [publicJwk] });
+    if (url.pathname === "/token" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk: Buffer) => (body += chunk.toString()));
+      req.on("end", () => {
+        tokenRequests++;
+        const form = new URLSearchParams(body);
+        const verifier = form.get("code_verifier") ?? "";
+        if (form.get("client_secret") !== "the-secret" || createHash("sha256").update(verifier).digest("base64url") !== challenge) {
+          return json({ error: "invalid_grant" }, 400);
+        }
+        void new SignJWT(next.claims)
+          .setProtectedHeader({ alg: "RS256", kid: "k1" })
+          .setIssuer(issuer)
+          .setAudience("the-client")
+          .setIssuedAt()
+          .setExpirationTime("5m")
+          .sign(next.key ?? signingKey)
+          .then((idToken) => json({ id_token: idToken, access_token: "unused", token_type: "Bearer" }));
+      });
+      return;
+    }
+    res.writeHead(404).end();
+  }).listen(0, "127.0.0.1");
+  await once(provider, "listening");
+  issuer = `http://127.0.0.1:${String((provider.address() as AddressInfo).port)}`;
+  config.oidc = {
+    issuer,
+    clientId: "the-client",
+    clientSecret: "the-secret",
+    redirectUrl: "http://localhost/api/auth/oidc/callback",
+    allowedDomains: [domain],
+    label: "Google",
+  };
+  app = await buildApp();
+  await app.ready();
+});
+
+beforeEach(() => {
+  tokenRequests = 0;
+});
+
+afterAll(async () => {
+  config.oidc = null;
+  provider.close();
+  await db.delete(users).where(like(users.email, `%@${domain}`));
+  await app.close();
+});
+
+/** A whole sign-in as a browser does it; the session, or /login's error code. */
+async function signInWith(claims: Record<string, unknown>, options: { key?: CryptoKey; tamper?: "state" | "nonce" | "cookie" } = {}) {
+  const start = await app.inject({ method: "GET", url: "/api/auth/oidc/start" });
+  expect(start.statusCode).toBe(302);
+  const authorize = new URL(start.headers.location as string);
+  expect(authorize.origin + authorize.pathname).toBe(`${issuer}/authorize`);
+  expect(authorize.searchParams.get("code_challenge_method")).toBe("S256");
+  expect(authorize.searchParams.get("hd")).toBe(domain);
+  challenge = authorize.searchParams.get("code_challenge") ?? "";
+  const cookie = String(start.headers["set-cookie"]).split(";")[0] ?? "";
+  expect(String(start.headers["set-cookie"])).toMatch(/HttpOnly/);
+  const nonce = options.tamper === "nonce" ? "another" : authorize.searchParams.get("nonce");
+  next = { claims: { nonce, ...claims }, key: options.key };
+  const state = options.tamper === "state" ? "another" : authorize.searchParams.get("state");
+  const callback = await app.inject({
+    method: "GET",
+    url: `/api/auth/oidc/callback?state=${String(state)}&code=c`,
+    headers: { cookie: options.tamper === "cookie" ? cookie.replace(/.$/, "x") : cookie },
+  });
+  expect(callback.statusCode).toBe(302);
+  const fragment = new URLSearchParams((callback.headers.location as string).split("#")[1]);
+  return { token: fragment.get("token") ?? "", error: fragment.get("error") ?? "" };
+}
+
+const person = (name: string, extra: Record<string, unknown> = {}) => ({
+  sub: `sub-${name}`,
+  email: emailOf(name),
+  email_verified: true,
+  hd: domain,
+  ...extra,
+});
+
+async function me(token: string) {
+  const response = await rpc("AuthService", "GetMe", {}, { token });
+  return response.json<{ email?: string; teamNames?: string[]; isAdmin?: boolean }>();
+}
+
+describe("single sign-on", () => {
+  it("makes a new person an account with no password and no teams", async () => {
+    const { token, error } = await signInWith(person("new"));
+    expect(error).toBe("");
+    expect((await me(token)).email).toBe(emailOf("new"));
+    const [row] = await db.select().from(users).where(eq(users.email, emailOf("new")));
+    expect(row).toMatchObject({ passwordHash: null, isAdmin: false, oidcSubject: `${issuer} sub-new` });
+    expect((await me(token)).teamNames ?? []).toEqual([]);
+  });
+
+  it("binds an existing account to its identity once, and never to another", async () => {
+    const existing = await createUser(emailOf("existing"), await hashPassword(PASSWORD));
+    await setUserAdmin(existing.id, true);
+    const first = await signInWith(person("existing"));
+    expect((await me(first.token)).isAdmin).toBe(true);
+    // Another provider account given the same email later.
+    expect((await signInWith(person("existing", { sub: "someone-else" }))).error).toBe("ACCOUNT_LINKED_ELSEWHERE");
+    // The bound one still signs in.
+    expect((await signInWith(person("existing"))).error).toBe("");
+  });
+
+  it("refuses another domain, an unverified email and a bot's", async () => {
+    expect((await signInWith(person("outsider", { hd: "elsewhere.example.com", email: "x@elsewhere.example.com" }))).error).toBe("DOMAIN_NOT_ALLOWED");
+    expect((await signInWith(person("unverified", { email_verified: false }))).error).toBe("EMAIL_NOT_VERIFIED");
+    const bot = await createUser(emailOf("bot"), null);
+    await db.update(users).set({ isBot: true }).where(eq(users.id, bot.id));
+    expect((await signInWith(person("bot"))).error).toBe("SIGN_IN_FAILED");
+    expect(await db.select().from(users).where(inArray(users.email, [emailOf("outsider"), emailOf("unverified")]))).toEqual([]);
+  });
+
+  it("refuses a token signed by another key, or for another sign-in", async () => {
+    expect((await signInWith(person("forged"), { key: otherKey })).error).toBe("SIGN_IN_FAILED");
+    expect((await signInWith(person("replayed"), { tamper: "nonce" })).error).toBe("SIGN_IN_FAILED");
+  });
+
+  it("refuses an answer that isn't for the sign-in this browser started, before asking for a token", async () => {
+    expect((await signInWith(person("csrf"), { tamper: "state" })).error).toBe("SIGN_IN_EXPIRED");
+    expect((await signInWith(person("csrf"), { tamper: "cookie" })).error).toBe("SIGN_IN_EXPIRED");
+    expect(tokenRequests).toBe(0);
+  });
+});
+
+describe("passwords, with single sign-on on", () => {
+  it("sign in admins only, and only once the password is right", async () => {
+    const person = await createUser(emailOf("pw-member"), await hashPassword(PASSWORD));
+    const admin = await createUser(emailOf("pw-admin"), await hashPassword(PASSWORD));
+    await setUserAdmin(admin.id, true);
+    const login = (email: string, password: string) => rpc("AuthService", "Login", { email, password });
+
+    const member = await login(person.email, PASSWORD);
+    expect(member.statusCode).toBe(403);
+    expect(member.body).toContain("PASSWORD_SIGN_IN_OFF");
+    expect((await login(person.email, "wrong-password-here")).statusCode).toBe(401);
+    expect((await login(admin.email, PASSWORD)).statusCode).toBe(200);
+  });
+
+  it("are no longer handed out, nor can anyone register", async () => {
+    const environment = (await rpc("AuthService", "GetEnvironment", {})).json<{ ssoLabel?: string; selfRegistration?: boolean }>();
+    expect(environment.ssoLabel).toBe("Google");
+    expect(environment.selfRegistration ?? false).toBe(false);
+    expect((await rpc("AuthService", "Register", { email: emailOf("self"), password: PASSWORD })).statusCode).toBe(403);
+
+    const admin = await createUser(emailOf("creator"), await hashPassword(PASSWORD));
+    await setUserAdmin(admin.id, true);
+    const token = app.jwt.sign({ userId: admin.id });
+    const made = (await rpc("UserService", "CreateUser", { email: emailOf("made"), teams: [], admin: false }, { token })).json<{ temporaryPassword?: string }>();
+    expect(made.temporaryPassword ?? "").toBe("");
+    const madeAdmin = (await rpc("UserService", "CreateUser", { email: emailOf("made-admin"), teams: [], admin: true }, { token })).json<{ temporaryPassword?: string }>();
+    expect(madeAdmin.temporaryPassword).toMatch(/.{20,}/);
+  });
+});

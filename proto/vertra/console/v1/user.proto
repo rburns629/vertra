@@ -50,6 +50,8 @@ message CreateUserRequest {
 
 message CreateUserResponse {
   string email = 1;
+  // Shown once. Empty when single sign-on is on and the account isn't an
+  // admin's: they sign in with the provider, as this email.
   string temporary_password = 2;
   repeated string teams = 3;
   bool admin = 4;

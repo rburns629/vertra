@@ -34,13 +34,17 @@ const passwordChangeLimit = new FixedWindowLimit(10, 15 * MINUTE);
 export function authService(app: FastifyInstance): ServiceImpl<typeof AuthService> {
   return {
     getEnvironment() {
-      return { label: config.environmentLabel, selfRegistration: config.allowSelfRegistration };
+      return {
+        label: config.environmentLabel,
+        selfRegistration: config.allowSelfRegistration && !config.oidc,
+        ssoLabel: config.oidc?.label ?? "",
+      };
     },
 
     async register(req, ctx) {
       registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
       const { email, password } = check({ email: Email, password: NewPassword }, req);
-      if (!config.allowSelfRegistration) {
+      if (!config.allowSelfRegistration || config.oidc) {
         throw forbidden("Accounts are created by an admin. Ask a Vertra admin for one.", "REGISTRATION_DISABLED");
       }
       if (await findUserByEmail(email)) {
@@ -73,6 +77,12 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       if (!user || !valid) {
         recordLoginFailure(email);
         throw unauthenticated("Invalid email or password.");
+      }
+      // With single sign-on on, a password is an admin's way in if the
+      // provider fails; checked only once the password was right, so the
+      // answer says nothing about an account to someone guessing.
+      if (config.oidc && !user.isAdmin) {
+        throw forbidden(`Sign in with ${config.oidc.label}: passwords are for admins here.`, "PASSWORD_SIGN_IN_OFF");
       }
       recordLoginSuccess(email);
       return { token: app.jwt.sign({ userId: user.id }) };

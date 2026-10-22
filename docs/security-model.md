@@ -289,6 +289,24 @@ console's and the gateway's) accepts only `networkPolicy.metricsFrom`, so a
 step can't read them, and no metric is labelled with a user, a team or a
 token.
 
+## Signing in
+
+People sign in with a password, or with single sign-on when the console
+chart's `sso` is set (Google, through OpenID Connect:
+`console/src/auth/oidc.ts`). The sign-in uses the authorization code flow
+with PKCE; its state, nonce and verifier live in a signed, HttpOnly cookie
+for ten minutes. The ID token must carry the provider's signature, this
+console as its audience, this sign-in's nonce, a verified email, and a
+Workspace domain listed in `sso.allowedDomains` (a personal Google account
+has none, so it can't sign in). The first sign-in binds the account to the
+provider's identity (`users.oidc_subject`): from then on, a different
+provider account given the same email is refused. The session comes back in
+the URL's fragment, which browsers never send to a server.
+
+While single sign-on is on, a password signs in an admin only (a way in if
+the provider fails), checked only after the password itself, and nobody
+registers themselves. Bots keep their tokens.
+
 ## In the browser
 
 The console sends a Content-Security-Policy on every response: scripts only
@@ -390,7 +408,7 @@ Vertra isn't production-ready yet.
 | --- | --- | --- |
 | The console can still create and replace Secrets in any team namespace | A compromised console could plant or overwrite a team's secret values (it can't read them) | Bind its Secret rights per team namespace as teams are created |
 | No TLS in the chart | The console must be put behind TLS by the operator | An optional Ingress or Gateway with certificates |
-| Password sign-in only | No single sign-on or central account control | OIDC sign-in with groups mapped to teams |
+| Teams aren't taken from the identity provider | Leaving a Google Group doesn't remove anyone from a team | Google Groups (and later Entra, Okta) mapped to teams |
 | The audit log lives in the console's own database (Observe shows it: everything to admins; to anyone else, their own entries and those about their teams and runs) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
 | Any member of one team in a multi-team execution can read all of its outputs (its steps' logs are filtered by level: other teams see INFO lines only) | Cross-team visibility of outputs within shared executions | Decide: filter outputs by team, or require every team for reads |
 

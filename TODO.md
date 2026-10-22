@@ -563,8 +563,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 - [ ] **TLS in front of the console** in the charts: an optional Ingress or
   Gateway with certificates. Today the operator provides it.
-- [ ] **SSO/OIDC sign-in**, with groups mapped to teams. Email and password
-  are the only sign-in today.
+- [ ] **SSO/OIDC sign-in**, with groups mapped to teams. Sign-in with
+  Google is in (2026-10-22: `console/src/auth/oidc.ts`, the console chart's
+  `sso`): the authorization code flow with PKCE, a verified email in an
+  allowed Workspace domain, each account bound to its Google identity at the
+  first sign-in, and passwords for admins only while it's on. Teams are
+  still set in Vertra (decided 2026-10-22). Left: Google Groups mapped to
+  teams (Cloud Identity's Groups API, with the Groups Reader role); Entra ID
+  and Okta (the flow is generic, untried); `vertra` setting it up.
 - [ ] **Force a password change on first sign-in** for admin-created
   accounts.
 - [x] **Limit what steps can reach inside the cluster** (S3, done

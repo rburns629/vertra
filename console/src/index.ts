@@ -16,6 +16,7 @@ import { claimRegisteredImageRepositories, listAllSecretGrants } from "./db/quer
 import { deleteLegacySecretRole } from "./k8s.js";
 import { db } from "./db/client.js";
 import { registerRpc } from "./rpc/server.js";
+import { registerOidc } from "./auth/oidc.js";
 import { startMetricsServer } from "./metrics.js";
 
 // Built by ../frontend's own `npm run build`, copied to ../frontend/dist
@@ -99,6 +100,7 @@ export async function buildApp() {
   await app.register(
     async (api) => {
       await registerRpc(app, api);
+      await registerOidc(api);
     },
     { prefix: "/api" },
   );

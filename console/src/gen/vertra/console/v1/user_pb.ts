@@ -117,6 +117,9 @@ export type CreateUserResponse = Message<"vertra.console.v1.CreateUserResponse">
   email: string;
 
   /**
+   * Shown once. Empty when single sign-on is on and the account isn't an
+   * admin's: they sign in with the provider, as this email.
+   *
    * @generated from field: string temporary_password = 2;
    */
   temporaryPassword: string;

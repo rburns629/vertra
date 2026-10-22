@@ -105,8 +105,15 @@ async function checks(): Promise<Check[]> {
     },
     {
       name: "Single sign-on",
+      state: config.oidc ? "enforced" : "off",
+      text: config.oidc
+        ? `People sign in with ${config.oidc.label}, from ${config.oidc.allowedDomains.join(", ")} only; passwords sign in admins only.`
+        : "Sign-in is by password.",
+    },
+    {
+      name: "Teams from the directory",
       state: "not_yet",
-      text: "Sign-in is by password; SSO with groups mapped to teams is planned.",
+      text: "Team membership is set in Vertra; mapping your directory's groups to teams is planned.",
     },
     {
       name: "A write-once audit log",

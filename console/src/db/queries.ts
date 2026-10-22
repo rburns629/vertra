@@ -32,6 +32,8 @@ export interface User {
   isAdmin: boolean;
   isBot: boolean;
   passwordChangedAt: Date | null;
+  // Its single sign-on identity, once bound (auth/oidc.ts).
+  oidcSubject: string | null;
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
@@ -44,8 +46,30 @@ export async function findUserById(id: string): Promise<User | undefined> {
   return user;
 }
 
-export async function createUser(email: string, passwordHash: string): Promise<User> {
+export async function createUser(email: string, passwordHash: string | null): Promise<User> {
   const [user] = await db.insert(users).values({ email, passwordHash }).returning();
+  if (!user) throw new Error("Insert returned no row");
+  return user;
+}
+
+export async function findUserByOidcSubject(subject: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.oidcSubject, subject)).limit(1);
+  return user;
+}
+
+/** Binds an account to its single sign-on identity, once: never over another. */
+export async function bindOidcSubject(userId: string, subject: string): Promise<boolean> {
+  const bound = await db
+    .update(users)
+    .set({ oidcSubject: subject })
+    .where(and(eq(users.id, userId), isNull(users.oidcSubject)))
+    .returning({ id: users.id });
+  return bound.length === 1;
+}
+
+/** An account made at its first single sign-on: no password. */
+export async function createSsoUser(email: string, subject: string): Promise<User> {
+  const [user] = await db.insert(users).values({ email, oidcSubject: subject }).returning();
   if (!user) throw new Error("Insert returned no row");
   return user;
 }

@@ -64,8 +64,12 @@ type GetEnvironmentResponse struct {
 	// Shown on every page, such as "local" or "production".
 	Label            string `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
 	SelfRegistration bool   `protobuf:"varint,2,opt,name=self_registration,json=selfRegistration,proto3" json:"self_registration,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Single sign-on, when on: the provider's name for its button ("Google").
+	// Sign in at /api/auth/oidc/start. While it's on, passwords sign in
+	// admins only.
+	SsoLabel      string `protobuf:"bytes,3,opt,name=sso_label,json=ssoLabel,proto3" json:"sso_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetEnvironmentResponse) Reset() {
@@ -110,6 +114,13 @@ func (x *GetEnvironmentResponse) GetSelfRegistration() bool {
 		return x.SelfRegistration
 	}
 	return false
+}
+
+func (x *GetEnvironmentResponse) GetSsoLabel() string {
+	if x != nil {
+		return x.SsoLabel
+	}
+	return ""
 }
 
 type RegisterRequest struct {
@@ -527,10 +538,11 @@ var File_vertra_console_v1_auth_proto protoreflect.FileDescriptor
 const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x1cvertra/console/v1/auth.proto\x12\x11vertra.console.v1\"\x17\n" +
-	"\x15GetEnvironmentRequest\"[\n" +
+	"\x15GetEnvironmentRequest\"x\n" +
 	"\x16GetEnvironmentResponse\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12+\n" +
-	"\x11self_registration\x18\x02 \x01(\bR\x10selfRegistration\"C\n" +
+	"\x11self_registration\x18\x02 \x01(\bR\x10selfRegistration\x12\x1b\n" +
+	"\tsso_label\x18\x03 \x01(\tR\bssoLabel\"C\n" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"A\n" +
