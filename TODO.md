@@ -570,7 +570,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   first sign-in. Passwords keep working; a team an admin sets to require
   single sign-on refuses its members' passwords and password sessions
   (admins exempt; not every team can use it, decided 2026-10-22). Teams
-  are still set in Vertra (decided 2026-10-22). Left: Google Groups mapped to
+  are still set in Vertra (decided 2026-10-22). Proven on kind with a real
+  Google OAuth client (2026-10-22): a Workspace account's first sign-in
+  made and bound its account; with its team restricted, a member's password
+  was refused (403 SSO_REQUIRED, a wrong one still 401) and their earlier
+  password session refused by the console and the gateway alike, while an
+  admin's password kept working. Left: Google Groups mapped to
   teams (Cloud Identity's Groups API, with the Groups Reader role); Entra ID
   and Okta (the flow is generic, untried); `vertra` setting it up.
 - [ ] **Force a password change on first sign-in** for admin-created

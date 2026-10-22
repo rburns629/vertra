@@ -137,7 +137,9 @@ kernel's `scheduler.taskImagePullSecret` names it on step Pods.
    `kubectl -n vertra-system create secret generic console-sso --from-file=client-secret=<file>`.
 3. Set the console chart's `sso`: `issuer: https://accounts.google.com`, the
    `clientId`, `clientSecret.name: console-sso`, the same `redirectUrl`, and
-   `allowedDomains` (your Workspace domains).
+   `allowedDomains` (your Workspace domains). On kind, keep these in a file
+   under `_local/` and pass it:
+   `make kind-deploy-console KIND_CONSOLE_VALUES=_local/kind-console-sso.yaml`.
 
 People then sign in with Google; the first sign-in makes their account (or
 binds the one an admin made for that email), with no teams until someone

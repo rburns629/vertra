@@ -236,7 +236,8 @@ kind-deploy-console:
 	kind load docker-image execution-console:latest --name $(KIND_CLUSTER)
 	$(DOCKER) build -t execution-gateway:latest gateway/
 	kind load docker-image execution-gateway:latest --name $(KIND_CLUSTER)
-	helm upgrade console helm/charts/execution-console $(KIND_HELM_UPGRADE) -f helm/values/kind/console.yaml
+	helm upgrade console helm/charts/execution-console $(KIND_HELM_UPGRADE) -f helm/values/kind/console.yaml \
+		$(if $(KIND_CONSOLE_VALUES),-f $(KIND_CONSOLE_VALUES))
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment console-execution-console console-execution-console-gateway
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console --timeout=5m
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console-gateway --timeout=5m
