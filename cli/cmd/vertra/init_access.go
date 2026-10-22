@@ -396,3 +396,45 @@ func (a *app) askExistingConsole(ctx context.Context, out io.Writer, c *config.C
 	}
 	return nil
 }
+
+// askFeatures asks about what else the install keeps and serves, each with
+// what it adds: log search, the audit log's write-once copy (and its lock,
+// which is permanent), and the API gateway. A flag answers without asking.
+func (a *app) askFeatures(out io.Writer, c *config.Config, f *initFlags) error {
+	yes := func(flag string, question string, def bool) (bool, error) {
+		if flag != "" {
+			return flag == "true", nil
+		}
+		return a.ask.Confirm(question, def)
+	}
+	cloud := c.Target == "gcp" || c.Target == "aws"
+
+	logs := "Keep steps' and the platform's logs for search in Observe (Loki; about 0.15 vCPU and 0.4 GiB while awake)"
+	if cloud {
+		logs += "? Searchable 30 days, then archived in a bucket (cents a GB) and deleted after a year"
+	} else {
+		logs += "? Searchable 30 days, on a volume"
+	}
+	var err error
+	if c.Logs.Enabled, err = yes(f.logs, logs, c.Logs.Enabled); err != nil {
+		return err
+	}
+
+	if cloud {
+		if c.Audit.Export, err = yes(f.auditExport, "Copy the audit log every few minutes to a bucket that refuses deletes and overwrites (a year's retention; cents a month)?", true); err != nil {
+			return err
+		}
+		if c.Audit.Export {
+			fmt.Fprintln(out, "Locking that bucket's retention is permanent: nobody, your cloud account's owners included, can shorten it,")
+			fmt.Fprintln(out, "and the bucket can't be deleted until the last copy's year is up. Unlocked, an account admin still could.")
+			if c.Audit.Lock, err = yes(f.auditLock, "Lock it?", false); err != nil {
+				return err
+			}
+		}
+	}
+
+	if c.Gateway.Enabled, err = yes(f.gateway, "Serve the catalog's API products through the API gateway (a small Deployment; backends it may reach listed later under gateway.backendHosts in vertra.yaml)?", c.Gateway.Enabled); err != nil {
+		return err
+	}
+	return nil
+}

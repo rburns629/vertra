@@ -34,6 +34,7 @@ type initFlags struct {
 	catalogVisibility, languages, hostname string
 	noCatalog, useExistingCatalog          bool
 	scaleDown                              string
+	logs, auditExport, auditLock, gateway  string
 	registryPort, minReplicas, headroom    int
 }
 
@@ -65,6 +66,10 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.platformImages, "platform-images", "", "existing, from source: the registry to push the built images to")
 	fl.StringVar(&f.size, "size", "", "minimal, resilient, scaled or auto")
 	fl.StringVar(&f.scaleDown, "scale-down", "", "true or false: sleep when idle")
+	fl.StringVar(&f.logs, "logs", "", "true or false: keep steps' and the platform's logs for Observe's search (Loki)")
+	fl.StringVar(&f.auditExport, "audit-export", "", "gcp, aws: true or false: copy the audit log to a bucket that refuses deletes")
+	fl.StringVar(&f.auditLock, "audit-lock", "", "gcp, aws: true or false: lock that bucket's retention for good (permanent)")
+	fl.StringVar(&f.gateway, "gateway", "", "true or false: serve the catalog's API products through the API gateway")
 	fl.StringVar(&f.idleAfter, "idle-after", "", "with scale-down: how long idle before sleeping (default 2h)")
 	fl.IntVar(&f.minReplicas, "min-replicas", 0, "without scale-down: always-on copies of the console and API")
 	fl.IntVar(&f.headroom, "step-headroom", -1, "without scale-down: steps that can start without waiting")
@@ -266,6 +271,11 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 		if err := a.askCatalog(ctx, out, c, f); err != nil {
 			return err
 		}
+	}
+
+	// 7. What else it keeps and serves.
+	if err := a.askFeatures(out, c, f); err != nil {
+		return err
 	}
 
 	c.FillDefaults()
