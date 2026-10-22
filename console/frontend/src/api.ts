@@ -1428,3 +1428,31 @@ export async function getSecurity(): Promise<SecurityView> {
     })),
   };
 }
+
+export interface MetricsView {
+  hours: { hour: string | null; started: number; waitP95Seconds: number }[];
+  failures: { code: string; count: number; retried: boolean; means: string }[];
+  products: { product: string; action: string; team: string; steps: number; succeeded: number; p50Seconds: number; p95Seconds: number }[];
+  ready: number;
+  running: number;
+}
+
+/** Steps started and their waits by hour, why steps failed, and each product's step times. */
+export async function getMetrics(): Promise<MetricsView> {
+  const m = await call(() => observe.getMetrics({}));
+  return {
+    hours: m.hours.map((h) => ({ hour: iso(h.hour), started: h.started, waitP95Seconds: h.waitP95Seconds })),
+    failures: m.failures.map((f) => ({ code: f.code, count: f.count, retried: f.retried, means: f.means })),
+    products: m.products.map((p) => ({
+      product: p.product,
+      action: p.action,
+      team: p.team,
+      steps: p.steps,
+      succeeded: p.succeeded,
+      p50Seconds: p.p50Seconds,
+      p95Seconds: p.p95Seconds,
+    })),
+    ready: m.ready,
+    running: m.running,
+  };
+}

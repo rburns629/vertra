@@ -219,6 +219,43 @@ Workload Identity's `azure.workload.identity/use: "true"`, go in
   a step takes a placeholder's place instead of waiting for a node. It's
   reserved around the clock: for always-on installs.
 
+### Metrics and alerts
+
+Everyone signed in sees the Observe page's Metrics tab, which needs nothing
+installed: steps started and how long they waited, why they failed, and
+each product's step times, from kernel-api's own tables.
+
+For Prometheus, every component serves `/metrics`: kernel-api on its API
+port (8000), the scheduler on `scheduler.metricsPort`, and the console
+(`monitoring.port`) and gateway on 9090. The console's metrics port is
+never behind its Ingress. Each is open only to
+`networkPolicy.metricsFrom`, so list your Prometheus there, in both charts:
+
+```yaml
+networkPolicy:
+  metricsFrom:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+```
+
+With the Prometheus Operator (kube-prometheus-stack, or GKE's managed
+collection with its operator), the charts can add the rest, each off by
+default because it needs that operator's CRDs:
+
+- `monitoring.podMonitor.enabled` (both charts): PodMonitors. Add the
+  labels your Prometheus selects them by in `monitoring.podMonitor.labels`
+  (kube-prometheus-stack: `release: <its release name>`).
+- `monitoring.alerts.enabled` (both charts): PrometheusRules.
+  `VertraSchedulerDown` (no pass in 10 minutes while the scheduler should
+  be running; needs kube-state-metrics, so an install that's asleep isn't
+  down), `VertraSchedulerFailing`, `VertraStepsWaiting` (the oldest ready
+  step waited past `monitoring.alerts.readyWaitSeconds`),
+  `VertraConsoleFailing`, `VertraSignInBurst`, `VertraCatalogNotApplying`
+  and `VertraGatewayBackendUnreachable`.
+- `monitoring.dashboard.enabled` (console chart): the Grafana dashboard
+  (`files/grafana-dashboard.json`: steps, the console, the gateway) as a
+  ConfigMap labelled for Grafana's dashboard sidecar; set
+  `monitoring.dashboard.namespace` if the sidecar watches only Grafana's.
+
 ## Upgrading
 
 `helm upgrade` with the same values files and `--reset-values`. Two things
@@ -349,6 +386,8 @@ Both charts ship NetworkPolicies (`networkPolicy.enabled`, on by default):
 | Kernel Postgres | The kernel release's Pods, and the console's when it holds the console's database |
 | kernel-api | The console (`networkPolicy.consoleSelector`), and `networkPolicy.metricsFrom` |
 | Scheduler | `networkPolicy.metricsFrom` only |
+| Console | Anyone on its port; its metrics port, `networkPolicy.metricsFrom` only |
+| Gateway | Anyone on its ports; its metrics port, `networkPolicy.metricsFrom` only |
 | Console Postgres | The console release's Pods |
 
 So a step can reach neither database nor kernel-api.

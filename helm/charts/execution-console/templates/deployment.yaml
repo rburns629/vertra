@@ -85,7 +85,12 @@ spec:
           image: {{ include "execution-console.appImage" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - name: http
+              containerPort: {{ .Values.service.port }}
+            {{- if .Values.monitoring.port }}
+            - name: metrics
+              containerPort: {{ .Values.monitoring.port }}
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "execution-console.fullname" . }}-config

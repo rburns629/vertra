@@ -29,6 +29,7 @@ import { TokenService } from "../gen/vertra/console/v1/token_pb.js";
 import { UserService } from "../gen/vertra/console/v1/user_pb.js";
 import { kAuthError, kAuthProblem, kCaller, kClientIp, kLog, kRequestId } from "./context.js";
 import { audit, maskErrors, requireCaller } from "./interceptors.js";
+import { countCalls } from "../metrics.js";
 import { adminService } from "./services/admin.js";
 import { observeService } from "./services/observe.js";
 import { apiService } from "./services/api.js";
@@ -86,7 +87,7 @@ export async function registerRpc(app: FastifyInstance, api: FastifyInstance): P
         router.service(ExecutionService, executionService());
       },
       // Outermost first.
-      interceptors: [maskErrors, audit, requireCaller],
+      interceptors: [countCalls, maskErrors, audit, requireCaller],
       // Defaults spelled out (false, 0, [], ""), for callers reading the JSON.
       jsonOptions: { alwaysEmitImplicit: true },
       contextValues: (request) =>

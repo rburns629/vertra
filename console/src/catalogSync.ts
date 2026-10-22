@@ -50,6 +50,7 @@ import type { BackendAuth } from "./db/schema.js";
 import { catalogSync, products, teams } from "./db/schema.js";
 import { ReleaseSchema, type BackendAuth as ReleaseBackendAuth, type Release } from "./gen/vertra/catalog/v1/release_pb.js";
 import { createVerifyJob, deleteScanJob, ensureServiceAccount, readScanJob } from "./k8s.js";
+import { catalogSyncs } from "./metrics.js";
 import { fetchRelease } from "./registry.js";
 
 /** The rights a release is applied with: what catalog CI's token held. */
@@ -390,6 +391,7 @@ export async function syncCatalog(log: FastifyBaseLogger, force = false): Promis
       const [current] = await db.select().from(catalogSync).where(eq(catalogSync.id, 1));
       if (!force && current?.digest === digest) {
         await record({ checkedAt: now, error: null });
+        catalogSyncs.inc({ outcome: "unchanged" });
         return true;
       }
       const repository = config.catalog.release.replace(/[:@][^/]*$/, "");
@@ -407,12 +409,14 @@ export async function syncCatalog(log: FastifyBaseLogger, force = false): Promis
         status: problems.length === 0 ? 200 : 207,
         requestId: digest,
       });
+      catalogSyncs.inc({ outcome: problems.length === 0 ? "applied" : "applied_with_problems" });
       log.info(
         { event: "catalog_release_applied", commit: release.commit, digest, teams: release.teams.length, products: release.products.length, problems: problems.length },
         "catalog release applied",
       );
     } catch (error) {
       await record({ checkedAt: now, error: message(error) });
+      catalogSyncs.inc({ outcome: "failed" });
       log.error({ event: "catalog_sync_failed", err: error }, "couldn't sync the catalog");
     }
     return true;

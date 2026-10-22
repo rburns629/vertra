@@ -64,6 +64,8 @@ const (
 	// KernelServiceListRefusalsProcedure is the fully-qualified name of the KernelService's
 	// ListRefusals RPC.
 	KernelServiceListRefusalsProcedure = "/vertra.kernel.v1.KernelService/ListRefusals"
+	// KernelServiceGetStatsProcedure is the fully-qualified name of the KernelService's GetStats RPC.
+	KernelServiceGetStatsProcedure = "/vertra.kernel.v1.KernelService/GetStats"
 )
 
 // KernelServiceClient is a client for the vertra.kernel.v1.KernelService service.
@@ -103,6 +105,11 @@ type KernelServiceClient interface {
 	// IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
 	// first, at most 500.
 	ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error)
+	// What the steps did: started and waited per hour over the last day,
+	// why they failed over the last day, and how long each image's action
+	// took over the last week. From the kernel's own tables, so it needs no
+	// metrics system.
+	GetStats(context.Context, *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.GetStatsResponse], error)
 }
 
 // NewKernelServiceClient constructs a client for the vertra.kernel.v1.KernelService service. By
@@ -182,6 +189,13 @@ func NewKernelServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getStats: connect.NewClient[v1.GetStatsRequest, v1.GetStatsResponse](
+			httpClient,
+			baseURL+KernelServiceGetStatsProcedure,
+			connect.WithSchema(kernelServiceMethods.ByName("GetStats")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -197,6 +211,7 @@ type kernelServiceClient struct {
 	decideApproval       *connect.Client[v1.DecideApprovalRequest, v1.DecideApprovalResponse]
 	listAwaitingApproval *connect.Client[v1.ListAwaitingApprovalRequest, v1.ListAwaitingApprovalResponse]
 	listRefusals         *connect.Client[v1.ListRefusalsRequest, v1.ListRefusalsResponse]
+	getStats             *connect.Client[v1.GetStatsRequest, v1.GetStatsResponse]
 }
 
 // SubmitExecution calls vertra.kernel.v1.KernelService.SubmitExecution.
@@ -249,6 +264,11 @@ func (c *kernelServiceClient) ListRefusals(ctx context.Context, req *connect.Req
 	return c.listRefusals.CallUnary(ctx, req)
 }
 
+// GetStats calls vertra.kernel.v1.KernelService.GetStats.
+func (c *kernelServiceClient) GetStats(ctx context.Context, req *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.GetStatsResponse], error) {
+	return c.getStats.CallUnary(ctx, req)
+}
+
 // KernelServiceHandler is an implementation of the vertra.kernel.v1.KernelService service.
 type KernelServiceHandler interface {
 	// Validates a DAG (ids, dependencies, cycles, $fromTask references,
@@ -286,6 +306,11 @@ type KernelServiceHandler interface {
 	// IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
 	// first, at most 500.
 	ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error)
+	// What the steps did: started and waited per hour over the last day,
+	// why they failed over the last day, and how long each image's action
+	// took over the last week. From the kernel's own tables, so it needs no
+	// metrics system.
+	GetStats(context.Context, *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.GetStatsResponse], error)
 }
 
 // NewKernelServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -361,6 +386,13 @@ func NewKernelServiceHandler(svc KernelServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	kernelServiceGetStatsHandler := connect.NewUnaryHandler(
+		KernelServiceGetStatsProcedure,
+		svc.GetStats,
+		connect.WithSchema(kernelServiceMethods.ByName("GetStats")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.kernel.v1.KernelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case KernelServiceSubmitExecutionProcedure:
@@ -383,6 +415,8 @@ func NewKernelServiceHandler(svc KernelServiceHandler, opts ...connect.HandlerOp
 			kernelServiceListAwaitingApprovalHandler.ServeHTTP(w, r)
 		case KernelServiceListRefusalsProcedure:
 			kernelServiceListRefusalsHandler.ServeHTTP(w, r)
+		case KernelServiceGetStatsProcedure:
+			kernelServiceGetStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -430,4 +464,8 @@ func (UnimplementedKernelServiceHandler) ListAwaitingApproval(context.Context, *
 
 func (UnimplementedKernelServiceHandler) ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.ListRefusals is not implemented"))
+}
+
+func (UnimplementedKernelServiceHandler) GetStats(context.Context, *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.GetStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.GetStats is not implemented"))
 }

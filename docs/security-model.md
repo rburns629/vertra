@@ -274,7 +274,10 @@ one thing on every call: that the caller is the console
   request fails.
 
 `/health` and `/metrics` stay open for probes and scrapers; they carry no
-execution data.
+execution data. Every metrics port (kernel-api's, the scheduler's, the
+console's and the gateway's) accepts only `networkPolicy.metricsFrom`, so a
+step can't read them, and no metric is labelled with a user, a team or a
+token.
 
 ## In the browser
 

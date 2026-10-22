@@ -430,3 +430,23 @@ export async function listRefusals(since: Date): Promise<KernelRefusal[]> {
     at: iso(r.at),
   }));
 }
+
+/** What the steps did (kernel-api's GetStats). */
+export async function getStats() {
+  const s = await call(() => client().getStats({}));
+  return {
+    hours: s.hours.map((h) => ({ hour: iso(h.hour), started: h.started, waitP95Seconds: h.waitP95Seconds })),
+    failures: s.failures.map((f) => ({ code: f.code, count: f.count, retried: f.retried })),
+    steps: s.steps.map((x) => ({
+      repository: x.repository,
+      action: x.action,
+      team: x.team,
+      attempts: x.attempts,
+      succeeded: x.succeeded,
+      p50Seconds: x.p50Seconds,
+      p95Seconds: x.p95Seconds,
+    })),
+    ready: s.ready,
+    running: s.running,
+  };
+}

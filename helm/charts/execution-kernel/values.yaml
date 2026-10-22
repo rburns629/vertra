@@ -481,6 +481,26 @@ networkPolicy:
   #   - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
   metricsFrom: []
 
+# Prometheus, through the Prometheus Operator's resources (kube-prometheus-
+# stack, Google Managed Prometheus's operator, ...). Off by default: each
+# needs its CRDs installed. Without them, scrape the pods' prometheus.io
+# annotations instead. Either way, list the scraper in metricsFrom.
+monitoring:
+  podMonitor:
+    # -- A PodMonitor for kernel-api (port 8000) and the scheduler (metricsPort).
+    enabled: false
+    interval: 30s
+    # -- Labels your Prometheus selects PodMonitors by (kube-prometheus-stack:
+    # release: <its release name>).
+    labels: {}
+  alerts:
+    # -- A PrometheusRule: the scheduler stopped or keeps failing, or steps
+    # wait too long to start.
+    enabled: false
+    labels: {}
+    # -- How long the oldest READY step may wait before VertraStepsWaiting.
+    readyWaitSeconds: 600
+
 migration:
   # Generous on purpose: the migration Job isn't gated on Postgres actually
   # being ready (Kubernetes has no native "wait for another resource"

@@ -59,7 +59,8 @@ spec:
           # KernelService over Connect, /health and /metrics, on API_PORT (8000).
           command: ["/usr/local/bin/kernel", "api"]
           ports:
-            - containerPort: 8000
+            - name: http
+              containerPort: 8000
           envFrom:
             - configMapRef:
                 name: {{ include "execution-kernel.fullname" . }}-config

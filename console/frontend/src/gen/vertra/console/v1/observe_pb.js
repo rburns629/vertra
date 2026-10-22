@@ -11,7 +11,7 @@ import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
  * Describes the file vertra/console/v1/observe.proto.
  */
 export const file_vertra_console_v1_observe = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QipgEKE0dldFNlY3VyaXR5UmVzcG9uc2USMAoGY2hlY2tzGAEgAygLMiAudmVydHJhLmNvbnNvbGUudjEuU2VjdXJpdHlDaGVjaxIsCghyZWZ1c2FscxgCIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzYWwSLwoGaW1hZ2VzGAMgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQWxsb3dlZEltYWdlIjoKDVNlY3VyaXR5Q2hlY2sSDAoEbmFtZRgBIAEoCRINCgVzdGF0ZRgCIAEoCRIMCgR0ZXh0GAMgASgJIn4KB1JlZnVzYWwSJgoCYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHdoYXQYAiABKAkSDAoEdGVhbRgDIAEoCRIMCgRjb2RlGAQgASgJEgsKA3doeRgFIAEoCRIUCgxleGVjdXRpb25faWQYBiABKAkiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCTJzCg5PYnNlcnZlU2VydmljZRJhCgtHZXRTZWN1cml0eRIlLnZlcnRyYS5jb25zb2xlLnYxLkdldFNlY3VyaXR5UmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLkdldFNlY3VyaXR5UmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QipgEKE0dldFNlY3VyaXR5UmVzcG9uc2USMAoGY2hlY2tzGAEgAygLMiAudmVydHJhLmNvbnNvbGUudjEuU2VjdXJpdHlDaGVjaxIsCghyZWZ1c2FscxgCIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzYWwSLwoGaW1hZ2VzGAMgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQWxsb3dlZEltYWdlIjoKDVNlY3VyaXR5Q2hlY2sSDAoEbmFtZRgBIAEoCRINCgVzdGF0ZRgCIAEoCRIMCgR0ZXh0GAMgASgJIn4KB1JlZnVzYWwSJgoCYXQYASABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBHdoYXQYAiABKAkSDAoEdGVhbRgDIAEoCRIMCgRjb2RlGAQgASgJEgsKA3doeRgFIAEoCRIUCgxleGVjdXRpb25faWQYBiABKAkiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiYgoLSG91ck1ldHJpY3MSKAoEaG91chgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHc3RhcnRlZBgCIAEoBRIYChB3YWl0X3A5NV9zZWNvbmRzGAMgASgBIk0KDkZhaWx1cmVNZXRyaWNzEgwKBGNvZGUYASABKAkSDQoFY291bnQYAiABKAUSDwoHcmV0cmllZBgDIAEoCBINCgVtZWFucxgEIAEoCSKLAQoOUHJvZHVjdE1ldHJpY3MSDwoHcHJvZHVjdBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSDAoEdGVhbRgDIAEoCRINCgVzdGVwcxgEIAEoBRIRCglzdWNjZWVkZWQYBSABKAUSEwoLcDUwX3NlY29uZHMYBiABKAESEwoLcDk1X3NlY29uZHMYByABKAEy0wEKDk9ic2VydmVTZXJ2aWNlEmEKC0dldFNlY3VyaXR5EiUudmVydHJhLmNvbnNvbGUudjEuR2V0U2VjdXJpdHlSZXF1ZXN0GiYudmVydHJhLmNvbnNvbGUudjEuR2V0U2VjdXJpdHlSZXNwb25zZSIDkAIBEl4KCkdldE1ldHJpY3MSJC52ZXJ0cmEuY29uc29sZS52MS5HZXRNZXRyaWNzUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkdldE1ldHJpY3NSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Describes the message vertra.console.v1.GetSecurityRequest.
@@ -47,6 +47,41 @@ export const RefusalSchema = /*@__PURE__*/
  */
 export const AllowedImageSchema = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_observe, 4);
+
+/**
+ * Describes the message vertra.console.v1.GetMetricsRequest.
+ * Use `create(GetMetricsRequestSchema)` to create a new message.
+ */
+export const GetMetricsRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 5);
+
+/**
+ * Describes the message vertra.console.v1.GetMetricsResponse.
+ * Use `create(GetMetricsResponseSchema)` to create a new message.
+ */
+export const GetMetricsResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 6);
+
+/**
+ * Describes the message vertra.console.v1.HourMetrics.
+ * Use `create(HourMetricsSchema)` to create a new message.
+ */
+export const HourMetricsSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 7);
+
+/**
+ * Describes the message vertra.console.v1.FailureMetrics.
+ * Use `create(FailureMetricsSchema)` to create a new message.
+ */
+export const FailureMetricsSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 8);
+
+/**
+ * Describes the message vertra.console.v1.ProductMetrics.
+ * Use `create(ProductMetricsSchema)` to create a new message.
+ */
+export const ProductMetricsSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 9);
 
 /**
  * Observe: what this install checks, what it refused, and what everything

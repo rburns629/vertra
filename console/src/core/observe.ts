@@ -17,7 +17,9 @@ import { db } from "../db/client.js";
 import { findSubmittedExecutions, listRunnableProducts } from "../db/queries.js";
 import { imageScans } from "../db/schema.js";
 import { readImagePolicy } from "../imagePolicy.js";
-import { listRefusals } from "../kernel/client.js";
+import { getStats, listRefusals } from "../kernel/client.js";
+import { PLATFORM_ERRORS } from "../failureHelp.js";
+import { imageRepository } from "../imageRef.js";
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
   if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
@@ -149,4 +151,36 @@ export async function getSecurity(caller: AuthUser | undefined) {
     .sort((a, b) => `${a.team}/${a.product}`.localeCompare(`${b.team}/${b.product}`));
 
   return { checks: await checks(), refusals, images };
+}
+
+/**
+ * What the steps are doing, for everyone: from kernel-api's own tables, so
+ * it needs no metrics system. Each image repository and action is named by
+ * its registered product (a hidden one only for its own team).
+ */
+export async function getMetrics(caller: AuthUser | undefined) {
+  const who = signedIn(caller);
+  const stats = await getStats();
+  const products = await listRunnableProducts();
+  const named = (repository: string, action: string) =>
+    products.find((p) => p.action === action && imageRepository(p.image) === repository);
+  return {
+    hours: stats.hours,
+    failures: stats.failures.map((f) => ({ ...f, means: PLATFORM_ERRORS[f.code]?.means ?? "" })),
+    products: stats.steps.flatMap((x) => {
+      const product = named(x.repository, x.action);
+      if (product?.hidden && !who.isAdmin && !who.teamNames.includes(product.teamName)) return [];
+      return [{
+        product: product?.name ?? x.repository,
+        action: x.action,
+        team: x.team,
+        steps: x.attempts,
+        succeeded: x.succeeded,
+        p50Seconds: x.p50Seconds,
+        p95Seconds: x.p95Seconds,
+      }];
+    }),
+    ready: stats.ready,
+    running: stats.running,
+  };
 }

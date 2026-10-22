@@ -1,13 +1,41 @@
 {{/*
 When the console runs its own Postgres, only this release's Pods (the
 console and its migrations and backups) may connect to it; in particular,
-no step's Pod can. The console itself stays reachable: it's the front door.
+no step's Pod can. The console itself stays reachable: it's the front door
+(but not its metrics port).
 (When the kernel's Postgres hosts the console's database instead, the
 kernel chart's policy covers it.)
 
 Enforced only by a CNI that implements NetworkPolicy (kindnet, GKE Dataplane
 V2, Calico, Cilium, ...); elsewhere it's accepted and silently ignored.
 */}}
+{{- if .Values.networkPolicy.enabled }}
+# The console: its port from anywhere (it's the front door), its metrics
+# port only from networkPolicy.metricsFrom.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "execution-console.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "execution-console.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  policyTypes: ["Ingress"]
+  ingress:
+    - ports:
+        - {port: {{ .Values.service.port }}, protocol: TCP}
+    {{- if and .Values.monitoring.port .Values.networkPolicy.metricsFrom }}
+    - from:
+        {{- toYaml .Values.networkPolicy.metricsFrom | nindent 8 }}
+      ports:
+        - {port: {{ .Values.monitoring.port }}, protocol: TCP}
+    {{- end }}
+---
+{{- end }}
 {{- if and .Values.networkPolicy.enabled .Values.postgres.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

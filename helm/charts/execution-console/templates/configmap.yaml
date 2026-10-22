@@ -14,6 +14,7 @@ metadata:
     {{- include "execution-console.labels" . | nindent 4 }}
 data:
   PORT: {{ .Values.service.port | quote }}
+  METRICS_PORT: {{ .Values.monitoring.port | quote }}
   KERNEL_API_URL: {{ .Values.kernelApiUrl | quote }}
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}

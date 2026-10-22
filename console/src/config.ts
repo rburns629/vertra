@@ -92,6 +92,9 @@ function loadRegistryCredentials(path: string | undefined): RegistryCredentials 
 
 export const config = {
   port: Number(process.env["PORT"] ?? 8080),
+  // /metrics for Prometheus, on a port of its own so the console's Ingress
+  // never serves it (metrics.ts). 0 turns it off.
+  metricsPort: Number(process.env["METRICS_PORT"] ?? 9090),
   databaseUrl: requireEnv("DATABASE_URL"),
   // Signs and verifies session JWTs. Must be long and random in any real
   // deployment — this is not a value with a safe default.

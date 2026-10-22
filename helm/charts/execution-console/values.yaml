@@ -505,6 +505,38 @@ backup:
 # enforces NetworkPolicy; others ignore it silently.
 networkPolicy:
   enabled: true
+  # -- NetworkPolicy peers allowed to scrape /metrics (the console's and
+  # the gateway's metrics ports; nothing else may reach those), e.g.
+  #   - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+  metricsFrom: []
+
+# Prometheus, through the Prometheus Operator's resources (kube-prometheus-
+# stack, Google Managed Prometheus's operator, ...). Off by default: each
+# needs its CRDs installed. List the scraper in networkPolicy.metricsFrom.
+monitoring:
+  # -- The console's /metrics port, never served by its Ingress. 0: off.
+  port: 9090
+  podMonitor:
+    # -- A PodMonitor for the console and the gateway.
+    enabled: false
+    interval: 30s
+    # -- Labels your Prometheus selects PodMonitors by (kube-prometheus-
+    # stack: release: <its release name>).
+    labels: {}
+  alerts:
+    # -- A PrometheusRule: the console failing calls, the catalog not
+    # applying, the gateway's backends failing.
+    enabled: false
+    labels: {}
+  dashboard:
+    # -- A ConfigMap holding Vertra's Grafana dashboard (steps, the console,
+    # the gateway), for Grafana's dashboard sidecar to load.
+    enabled: false
+    # -- The label the sidecar looks for (kube-prometheus-stack's default).
+    labels:
+      grafana_dashboard: "1"
+    # -- Its namespace, when the sidecar watches only Grafana's own.
+    namespace: ""
 
 migration:
   # Generous on purpose, same reasoning as execution-kernel's chart: the

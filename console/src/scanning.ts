@@ -22,6 +22,7 @@ import { db } from "./db/client.js";
 import { imageScans } from "./db/schema.js";
 import { normalizeImage } from "./imageRef.js";
 import { createScanJob, deleteScanJob, readScanJob, readScanner, scaleScanner, updateScanPolicy } from "./k8s.js";
+import { scansFinished } from "./metrics.js";
 
 export type ScanRow = typeof imageScans.$inferSelect;
 
@@ -232,6 +233,7 @@ export async function reconcileScans(): Promise<boolean> {
       })
       .where(eq(imageScans.digest, row.digest));
     await deleteScanJob(namespace, row.jobName);
+    scansFinished.inc({ status });
     changed ||= status !== row.status;
   }
   const due = await db

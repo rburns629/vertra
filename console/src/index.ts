@@ -16,6 +16,7 @@ import { claimRegisteredImageRepositories, listAllSecretGrants } from "./db/quer
 import { deleteLegacySecretRole } from "./k8s.js";
 import { db } from "./db/client.js";
 import { registerRpc } from "./rpc/server.js";
+import { startMetricsServer } from "./metrics.js";
 
 // Built by ../frontend's own `npm run build`, copied to ../frontend/dist
 // alongside this service's own compiled dist/ in the Docker image (see
@@ -155,6 +156,7 @@ async function main(): Promise<void> {
     app.log.error({ err: error }, "could not remove the per-secret Roles secrets no longer use");
   }
   await app.listen({ host: "0.0.0.0", port: config.port });
+  startMetricsServer(config.metricsPort);
 }
 
 // Only start listening when run as the entry point (`node dist/index.js`,

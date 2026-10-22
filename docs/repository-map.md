@@ -86,6 +86,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `internal/domain/events.go` | The event types recorded for an execution. |
 | **`internal/api/`** | **kernel-api.** |
 | `internal/api/service.go` | `KernelService`: submit (idempotent by `requestId`), read an execution, its states, events and logs, cancel, retry a task. |
+| `internal/api/stats.go` | What the steps did, from the kernel's tables, for Observe's Metrics tab: started and p95 wait by hour, failures by code, step times by image and action, ready and running now. |
 | `internal/api/refusals.go` | The attempts the cluster refused to start (admission policies' codes) since a time, for Observe. |
 | `internal/api/approvals.go` | Approving or declining a task awaiting approval, and listing a team's awaiting tasks. |
 | `internal/api/auth.go` | Accepts only the console: checks its ServiceAccount token with a TokenReview. |
@@ -99,7 +100,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `internal/scheduler/tick.go` | One pass: expire undecided approvals, claim, start each task, poll running ones, save results, retry or fail, release dependents, finish executions. |
 | `internal/scheduler/claiming.go` | Takes READY tasks with `FOR UPDATE SKIP LOCKED` and a lease, within the running caps; recovers tasks whose lease expired; releases a stopping scheduler's leases. |
 | `internal/scheduler/rows.go` | The task and attempt rows, events, and compare-and-set execution transitions. |
-| `internal/scheduler/run.go` | The loop: a pass per transaction, finished Jobs released after the commit, housekeeping, the heartbeat, leases released on stop. |
+| `internal/scheduler/run.go` | The loop: a pass per transaction, finished Jobs released after the commit, housekeeping, the queue gauges (`kernel_tasks`, the oldest ready task's age), the heartbeat, leases released on stop. |
 | `internal/scheduler/retention.go` | Deletes finished executions past their retention (with everything of theirs). |
 | `internal/scheduler/orphans.go` | Every few minutes, removes attempts' Jobs no task can use any more (a pass that rolled back, a release that failed, a deleted execution). |
 | **`internal/migrate/`** | **The schema.** |
@@ -147,6 +148,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `scanning.ts` | Scanning every image before it's registered or run: a Trivy client Job per digest, verdicts in `image_scans`, daily rescans, the failed digests written into the kernel's scan policy; idling the Trivy server when no scan is wanted. |
 | `activity.ts` | Records when the console was last used (any signed-in request, once a minute at most) for the kernel's sleeper. |
 | `audit.ts` | Who changed what: every changing `/api` request, allowed or refused, recorded in `audit_log` and logged (never a secret value, password or token). |
+| `metrics.ts` | The console's Prometheus metrics (Connect calls by procedure and code, catalog syncs, image scans, the process), on a port of their own. |
 | `catalogSync.ts` | Pulls the catalog's release every few minutes (and on Sync now), verifies its signature with a cosign Job, and applies it: teams, products, SecretStores; unregisters and retires what it drops; leaves teams it didn't make alone until an admin adopts them. |
 | `jsonSchema.ts` | Checking values against the JSON Schemas teams write (ajv, draft 2020-12, nothing fetched): template parameters and products' inputs. |
 | `tokenAudiences.ts` | Which audiences a product's steps may get a projected token for: refuses the Kubernetes API's (from the console's own token) and kernel-api's, and names each token's file. |
@@ -168,7 +170,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/templates.ts` | Templates: what a person may run (templates and shared actions), running one with parameters only, each step built from its product; reruns of a template's run. |
-| `core/observe.ts` | Observe's security checks for everyone: what this install enforces (and doesn't yet), what the cluster refused this week (a run linked only for those who may see it), every image allowed to run and its scan. |
+| `core/observe.ts` | Observe for everyone: the security checks (what this install enforces and doesn't yet, what the cluster refused this week, a run linked only for those who may see it, every image allowed to run and its scan) and the metrics (from kernel-api's `GetStats`, each image named by its product, a hidden one only for its team). |
 | `core/apis.ts` | API products: who sees and may call each, whether it's live, held (its backend's host isn't allowed) or paused, and pausing one. |
 | `core/approvals.ts` | Approvals: a maintainer of a step's team, never whoever ran it, approves or declines it; the steps awaiting one. |
 | `core/retired.ts` | The shared "this team is retired, it's read-only" refusal. |
@@ -216,7 +218,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
-| `src/pages/ObservePage.tsx` | Observe: the security checks, and the tabs to come (metrics, the audit log, logs). |
+| `src/pages/ObservePage.tsx` | Observe: the security checks, the metrics (steps started and waits by hour, failures, step times by product), and the tabs to come (the audit log, logs). |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/ApiTraffic.tsx`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; for its own team its backend, traffic and Pause), and a team's APIs. The Admin page's gateway card shows its settings, what it refused, and closes it. |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
@@ -273,7 +275,8 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `apis.test.ts` | API products from releases (with their ServiceAccounts), who sees and may call them, held backends, pausing. |
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a target rule), and who may decide. |
 | `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
-| `observe.test.ts` | The security checks: what's enforced, refusals linked only for those who may see the run, images (a hidden product's for its team). |
+| `observe.test.ts` | The security checks: what's enforced, refusals linked only for those who may see the run, images (a hidden product's for its team); the metrics, named by product, a hidden one's only for its team. |
+| `metrics.test.ts` | The console's Prometheus metrics: calls counted by procedure and code, served on their own port and not on the console's. |
 | `log-levels.test.ts` | A step's log lines by level: INFO for everyone who can see the run, the rest for its team. |
 | `reset-admin.test.ts` | Resetting a lost admin password: printed once, sessions revoked, audited, admins only. |
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |
@@ -312,6 +315,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/sleeper.yaml` | Sleeping when idle: the sleeper's CronJobs, its narrow identity (replica counts of named Deployments only), and the ConfigMap of counts to wake to. |
 | `templates/step-headroom.yaml` | Warm headroom: low-priority placeholder Pods the size of a default step, and their PriorityClass. |
 | `templates/kernel-api-deployment.yaml`, `kernel-api-service.yaml` | kernel-api, reachable only inside the cluster. |
+| `templates/monitoring.yaml` | With the Prometheus Operator (`monitoring`): a PodMonitor for kernel-api and the scheduler, and alerts (scheduler down or failing, steps waiting). |
 | `templates/kernel-scheduler-deployment.yaml` | kernel-scheduler. |
 | `templates/postgres-*.yaml` | The kernel's Postgres: Deployment, storage, Service. |
 | `templates/migration-job.yaml` | Runs database migrations before an upgrade (a Helm hook). |
@@ -335,13 +339,14 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `Chart.yaml`, `values.yaml`, `.helmignore` | The chart and its defaults. |
 | `sizes/{minimal,resilient,scaled,auto}.yaml` | The size presets: copies and retention. |
 | `templates/autoscaling.yaml` | The console's HorizontalPodAutoscaler (`auto`) and its PodDisruptionBudget from two copies. |
+| `templates/monitoring.yaml`, `files/grafana-dashboard.json` | With the Prometheus Operator (`monitoring`): a PodMonitor for the console and gateway, alerts (calls failing, sign-in bursts, the catalog not applying, backends unreachable), and Vertra's Grafana dashboard as a ConfigMap. |
 | `templates/ingress.yaml` | Reaching the console from outside the cluster (HTTPS only), for the catalog's CI; with `trustProxy`, the console believes the load balancer's X-Forwarded-For. |
 | `templates/activity.yaml` | The ConfigMap the console records its last use in (for the kernel's sleeper), and the Role that lets it update that one. |
 | `templates/deployment.yaml`, `service.yaml` | The console, and how it's reached (LoadBalancer on GKE, port-forward on kind). |
 | `templates/postgres-*.yaml`, `migration-job.yaml`, `backup-cronjob.yaml` | Its own Postgres, migrations and backups. |
-| `templates/networkpolicy.yaml` | When it runs its own Postgres, only this release's Pods may reach it. |
+| `templates/networkpolicy.yaml` | The console's metrics port only from `metricsFrom`; when it runs its own Postgres, only this release's Pods may reach it. |
 | `templates/write-fence-policy.yaml` | Admission policy: the console may write Secrets, ServiceAccounts, Roles, RoleBindings and ExternalSecrets only in team namespaces. |
-| `templates/gateway.yaml` | The API gateway (`gateway.enabled`): its Deployment and Service, its signing key (generated once, kept), its one RBAC verb (ServiceAccount tokens), the admission policy limiting that to `*-api` ServiceAccounts in team namespaces, its egress (anywhere but the cloud metadata server, by default), and an Ingress for its public listener. |
+| `templates/gateway.yaml` | The API gateway (`gateway.enabled`): its Deployment and Service, its signing key (generated once, kept), its one RBAC verb (ServiceAccount tokens), the admission policy limiting that to `*-api` ServiceAccounts in team namespaces, its egress (anywhere but the cloud metadata server, by default) and ingress (its metrics port only from `metricsFrom`), and an Ingress for its public listener. |
 | `templates/namespace-policy.yaml` | Admission policy: the console may only create namespaces labelled a team's and change that one label on a team's namespace, never on kube-* or protected ones. |
 | `templates/scanner.yaml` | The Trivy server image scans run against, the scan Jobs' ServiceAccount (no token) and the Role that lets the console run them in its own namespace and idle the server (its replica count only). |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, generated secrets (kept across upgrades), the console's identity. |

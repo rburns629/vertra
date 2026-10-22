@@ -36,6 +36,18 @@ var (
 		Help: "Scheduler ticks that raised and were skipped rather than crashing the process.",
 	})
 
+	// Tasks and OldestReady are sampled from the database by every
+	// scheduler replica (take the max across them).
+	Tasks = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "kernel_tasks",
+		Help: "Unfinished tasks, by state (BLOCKED, READY, AWAITING_APPROVAL, CLAIMED, RUNNING).",
+	}, []string{"state"})
+
+	OldestReady = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "kernel_oldest_ready_task_age_seconds",
+		Help: "How long the longest-waiting READY task has been ready; 0 when none is.",
+	})
+
 	HTTPRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "kernel_http_requests_total",
 		Help: "HTTP requests handled by kernel-api.",

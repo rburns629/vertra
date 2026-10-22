@@ -38,6 +38,9 @@ const (
 	// ObserveServiceGetSecurityProcedure is the fully-qualified name of the ObserveService's
 	// GetSecurity RPC.
 	ObserveServiceGetSecurityProcedure = "/vertra.console.v1.ObserveService/GetSecurity"
+	// ObserveServiceGetMetricsProcedure is the fully-qualified name of the ObserveService's GetMetrics
+	// RPC.
+	ObserveServiceGetMetricsProcedure = "/vertra.console.v1.ObserveService/GetMetrics"
 )
 
 // ObserveServiceClient is a client for the vertra.console.v1.ObserveService service.
@@ -45,6 +48,10 @@ type ObserveServiceClient interface {
 	// What this install enforces (and what it doesn't yet), what it refused
 	// over the last week, and every image allowed to run here.
 	GetSecurity(context.Context, *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error)
+	// What the steps are doing: started and how long they waited, hour by
+	// hour over the last day; why they failed; and each product's step
+	// times over the last week.
+	GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error)
 }
 
 // NewObserveServiceClient constructs a client for the vertra.console.v1.ObserveService service. By
@@ -65,12 +72,20 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getMetrics: connect.NewClient[v1.GetMetricsRequest, v1.GetMetricsResponse](
+			httpClient,
+			baseURL+ObserveServiceGetMetricsProcedure,
+			connect.WithSchema(observeServiceMethods.ByName("GetMetrics")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // observeServiceClient implements ObserveServiceClient.
 type observeServiceClient struct {
 	getSecurity *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
+	getMetrics  *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
 }
 
 // GetSecurity calls vertra.console.v1.ObserveService.GetSecurity.
@@ -78,11 +93,20 @@ func (c *observeServiceClient) GetSecurity(ctx context.Context, req *connect.Req
 	return c.getSecurity.CallUnary(ctx, req)
 }
 
+// GetMetrics calls vertra.console.v1.ObserveService.GetMetrics.
+func (c *observeServiceClient) GetMetrics(ctx context.Context, req *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error) {
+	return c.getMetrics.CallUnary(ctx, req)
+}
+
 // ObserveServiceHandler is an implementation of the vertra.console.v1.ObserveService service.
 type ObserveServiceHandler interface {
 	// What this install enforces (and what it doesn't yet), what it refused
 	// over the last week, and every image allowed to run here.
 	GetSecurity(context.Context, *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error)
+	// What the steps are doing: started and how long they waited, hour by
+	// hour over the last day; why they failed; and each product's step
+	// times over the last week.
+	GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error)
 }
 
 // NewObserveServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -99,10 +123,19 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	observeServiceGetMetricsHandler := connect.NewUnaryHandler(
+		ObserveServiceGetMetricsProcedure,
+		svc.GetMetrics,
+		connect.WithSchema(observeServiceMethods.ByName("GetMetrics")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ObserveService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ObserveServiceGetSecurityProcedure:
 			observeServiceGetSecurityHandler.ServeHTTP(w, r)
+		case ObserveServiceGetMetricsProcedure:
+			observeServiceGetMetricsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -114,4 +147,8 @@ type UnimplementedObserveServiceHandler struct{}
 
 func (UnimplementedObserveServiceHandler) GetSecurity(context.Context, *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetSecurity is not implemented"))
+}
+
+func (UnimplementedObserveServiceHandler) GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetMetrics is not implemented"))
 }

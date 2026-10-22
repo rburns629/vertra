@@ -191,6 +191,165 @@ export declare type AllowedImage = Message<"vertra.console.v1.AllowedImage"> & {
 export declare const AllowedImageSchema: GenMessage<AllowedImage>;
 
 /**
+ * @generated from message vertra.console.v1.GetMetricsRequest
+ */
+export declare type GetMetricsRequest = Message<"vertra.console.v1.GetMetricsRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetMetricsRequest.
+ * Use `create(GetMetricsRequestSchema)` to create a new message.
+ */
+export declare const GetMetricsRequestSchema: GenMessage<GetMetricsRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetMetricsResponse
+ */
+export declare type GetMetricsResponse = Message<"vertra.console.v1.GetMetricsResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.HourMetrics hours = 1;
+   */
+  hours: HourMetrics[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.FailureMetrics failures = 2;
+   */
+  failures: FailureMetrics[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ProductMetrics products = 3;
+   */
+  products: ProductMetrics[];
+
+  /**
+   * Steps waiting to start, and running, now.
+   *
+   * @generated from field: int32 ready = 4;
+   */
+  ready: number;
+
+  /**
+   * @generated from field: int32 running = 5;
+   */
+  running: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetMetricsResponse.
+ * Use `create(GetMetricsResponseSchema)` to create a new message.
+ */
+export declare const GetMetricsResponseSchema: GenMessage<GetMetricsResponse>;
+
+/**
+ * @generated from message vertra.console.v1.HourMetrics
+ */
+export declare type HourMetrics = Message<"vertra.console.v1.HourMetrics"> & {
+  /**
+   * @generated from field: google.protobuf.Timestamp hour = 1;
+   */
+  hour?: Timestamp | undefined;
+
+  /**
+   * @generated from field: int32 started = 2;
+   */
+  started: number;
+
+  /**
+   * @generated from field: double wait_p95_seconds = 3;
+   */
+  waitP95Seconds: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.HourMetrics.
+ * Use `create(HourMetricsSchema)` to create a new message.
+ */
+export declare const HourMetricsSchema: GenMessage<HourMetrics>;
+
+/**
+ * @generated from message vertra.console.v1.FailureMetrics
+ */
+export declare type FailureMetrics = Message<"vertra.console.v1.FailureMetrics"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: int32 count = 2;
+   */
+  count: number;
+
+  /**
+   * Some were retried automatically.
+   *
+   * @generated from field: bool retried = 3;
+   */
+  retried: boolean;
+
+  /**
+   * What the code means, when the platform knows it.
+   *
+   * @generated from field: string means = 4;
+   */
+  means: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.FailureMetrics.
+ * Use `create(FailureMetricsSchema)` to create a new message.
+ */
+export declare const FailureMetricsSchema: GenMessage<FailureMetrics>;
+
+/**
+ * @generated from message vertra.console.v1.ProductMetrics
+ */
+export declare type ProductMetrics = Message<"vertra.console.v1.ProductMetrics"> & {
+  /**
+   * The registered product, or the image repository for one that isn't.
+   *
+   * @generated from field: string product = 1;
+   */
+  product: string;
+
+  /**
+   * @generated from field: string action = 2;
+   */
+  action: string;
+
+  /**
+   * @generated from field: string team = 3;
+   */
+  team: string;
+
+  /**
+   * @generated from field: int32 steps = 4;
+   */
+  steps: number;
+
+  /**
+   * @generated from field: int32 succeeded = 5;
+   */
+  succeeded: number;
+
+  /**
+   * @generated from field: double p50_seconds = 6;
+   */
+  p50Seconds: number;
+
+  /**
+   * @generated from field: double p95_seconds = 7;
+   */
+  p95Seconds: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.ProductMetrics.
+ * Use `create(ProductMetricsSchema)` to create a new message.
+ */
+export declare const ProductMetricsSchema: GenMessage<ProductMetrics>;
+
+/**
  * Observe: what this install checks, what it refused, and what everything
  * is doing. Everyone signed in sees the security checks (what's enforced,
  * what's refused, every image that may run and its scan); runs' details
@@ -209,6 +368,18 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetSecurityRequestSchema;
     output: typeof GetSecurityResponseSchema;
+  },
+  /**
+   * What the steps are doing: started and how long they waited, hour by
+   * hour over the last day; why they failed; and each product's step
+   * times over the last week.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.GetMetrics
+   */
+  getMetrics: {
+    methodKind: "unary";
+    input: typeof GetMetricsRequestSchema;
+    output: typeof GetMetricsResponseSchema;
   },
 }>;
 

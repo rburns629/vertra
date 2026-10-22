@@ -381,6 +381,342 @@ func (x *AllowedImage) GetAcceptedReason() string {
 	return ""
 }
 
+type GetMetricsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMetricsRequest) Reset() {
+	*x = GetMetricsRequest{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMetricsRequest) ProtoMessage() {}
+
+func (x *GetMetricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMetricsRequest.ProtoReflect.Descriptor instead.
+func (*GetMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{5}
+}
+
+type GetMetricsResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Hours    []*HourMetrics         `protobuf:"bytes,1,rep,name=hours,proto3" json:"hours,omitempty"`
+	Failures []*FailureMetrics      `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
+	Products []*ProductMetrics      `protobuf:"bytes,3,rep,name=products,proto3" json:"products,omitempty"`
+	// Steps waiting to start, and running, now.
+	Ready         int32 `protobuf:"varint,4,opt,name=ready,proto3" json:"ready,omitempty"`
+	Running       int32 `protobuf:"varint,5,opt,name=running,proto3" json:"running,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMetricsResponse) Reset() {
+	*x = GetMetricsResponse{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMetricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMetricsResponse) ProtoMessage() {}
+
+func (x *GetMetricsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMetricsResponse.ProtoReflect.Descriptor instead.
+func (*GetMetricsResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetMetricsResponse) GetHours() []*HourMetrics {
+	if x != nil {
+		return x.Hours
+	}
+	return nil
+}
+
+func (x *GetMetricsResponse) GetFailures() []*FailureMetrics {
+	if x != nil {
+		return x.Failures
+	}
+	return nil
+}
+
+func (x *GetMetricsResponse) GetProducts() []*ProductMetrics {
+	if x != nil {
+		return x.Products
+	}
+	return nil
+}
+
+func (x *GetMetricsResponse) GetReady() int32 {
+	if x != nil {
+		return x.Ready
+	}
+	return 0
+}
+
+func (x *GetMetricsResponse) GetRunning() int32 {
+	if x != nil {
+		return x.Running
+	}
+	return 0
+}
+
+type HourMetrics struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Hour           *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=hour,proto3" json:"hour,omitempty"`
+	Started        int32                  `protobuf:"varint,2,opt,name=started,proto3" json:"started,omitempty"`
+	WaitP95Seconds float64                `protobuf:"fixed64,3,opt,name=wait_p95_seconds,json=waitP95Seconds,proto3" json:"wait_p95_seconds,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *HourMetrics) Reset() {
+	*x = HourMetrics{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HourMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HourMetrics) ProtoMessage() {}
+
+func (x *HourMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HourMetrics.ProtoReflect.Descriptor instead.
+func (*HourMetrics) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *HourMetrics) GetHour() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Hour
+	}
+	return nil
+}
+
+func (x *HourMetrics) GetStarted() int32 {
+	if x != nil {
+		return x.Started
+	}
+	return 0
+}
+
+func (x *HourMetrics) GetWaitP95Seconds() float64 {
+	if x != nil {
+		return x.WaitP95Seconds
+	}
+	return 0
+}
+
+type FailureMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Count int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	// Some were retried automatically.
+	Retried bool `protobuf:"varint,3,opt,name=retried,proto3" json:"retried,omitempty"`
+	// What the code means, when the platform knows it.
+	Means         string `protobuf:"bytes,4,opt,name=means,proto3" json:"means,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FailureMetrics) Reset() {
+	*x = FailureMetrics{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailureMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailureMetrics) ProtoMessage() {}
+
+func (x *FailureMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailureMetrics.ProtoReflect.Descriptor instead.
+func (*FailureMetrics) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *FailureMetrics) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *FailureMetrics) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *FailureMetrics) GetRetried() bool {
+	if x != nil {
+		return x.Retried
+	}
+	return false
+}
+
+func (x *FailureMetrics) GetMeans() string {
+	if x != nil {
+		return x.Means
+	}
+	return ""
+}
+
+type ProductMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The registered product, or the image repository for one that isn't.
+	Product       string  `protobuf:"bytes,1,opt,name=product,proto3" json:"product,omitempty"`
+	Action        string  `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	Team          string  `protobuf:"bytes,3,opt,name=team,proto3" json:"team,omitempty"`
+	Steps         int32   `protobuf:"varint,4,opt,name=steps,proto3" json:"steps,omitempty"`
+	Succeeded     int32   `protobuf:"varint,5,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
+	P50Seconds    float64 `protobuf:"fixed64,6,opt,name=p50_seconds,json=p50Seconds,proto3" json:"p50_seconds,omitempty"`
+	P95Seconds    float64 `protobuf:"fixed64,7,opt,name=p95_seconds,json=p95Seconds,proto3" json:"p95_seconds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProductMetrics) Reset() {
+	*x = ProductMetrics{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProductMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProductMetrics) ProtoMessage() {}
+
+func (x *ProductMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProductMetrics.ProtoReflect.Descriptor instead.
+func (*ProductMetrics) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ProductMetrics) GetProduct() string {
+	if x != nil {
+		return x.Product
+	}
+	return ""
+}
+
+func (x *ProductMetrics) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ProductMetrics) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *ProductMetrics) GetSteps() int32 {
+	if x != nil {
+		return x.Steps
+	}
+	return 0
+}
+
+func (x *ProductMetrics) GetSucceeded() int32 {
+	if x != nil {
+		return x.Succeeded
+	}
+	return 0
+}
+
+func (x *ProductMetrics) GetP50Seconds() float64 {
+	if x != nil {
+		return x.P50Seconds
+	}
+	return 0
+}
+
+func (x *ProductMetrics) GetP95Seconds() float64 {
+	if x != nil {
+		return x.P95Seconds
+	}
+	return 0
+}
+
 var File_vertra_console_v1_observe_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_observe_proto_rawDesc = "" +
@@ -412,9 +748,37 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\afixable\x18\x06 \x01(\x05R\afixable\x12\x1c\n" +
 	"\tunfixable\x18\a \x01(\x05R\tunfixable\x12\x18\n" +
 	"\asecrets\x18\b \x01(\x05R\asecrets\x12'\n" +
-	"\x0faccepted_reason\x18\t \x01(\tR\x0eacceptedReason2s\n" +
+	"\x0faccepted_reason\x18\t \x01(\tR\x0eacceptedReason\"\x13\n" +
+	"\x11GetMetricsRequest\"\xf8\x01\n" +
+	"\x12GetMetricsResponse\x124\n" +
+	"\x05hours\x18\x01 \x03(\v2\x1e.vertra.console.v1.HourMetricsR\x05hours\x12=\n" +
+	"\bfailures\x18\x02 \x03(\v2!.vertra.console.v1.FailureMetricsR\bfailures\x12=\n" +
+	"\bproducts\x18\x03 \x03(\v2!.vertra.console.v1.ProductMetricsR\bproducts\x12\x14\n" +
+	"\x05ready\x18\x04 \x01(\x05R\x05ready\x12\x18\n" +
+	"\arunning\x18\x05 \x01(\x05R\arunning\"\x81\x01\n" +
+	"\vHourMetrics\x12.\n" +
+	"\x04hour\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04hour\x12\x18\n" +
+	"\astarted\x18\x02 \x01(\x05R\astarted\x12(\n" +
+	"\x10wait_p95_seconds\x18\x03 \x01(\x01R\x0ewaitP95Seconds\"j\n" +
+	"\x0eFailureMetrics\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x18\n" +
+	"\aretried\x18\x03 \x01(\bR\aretried\x12\x14\n" +
+	"\x05means\x18\x04 \x01(\tR\x05means\"\xcc\x01\n" +
+	"\x0eProductMetrics\x12\x18\n" +
+	"\aproduct\x18\x01 \x01(\tR\aproduct\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12\x12\n" +
+	"\x04team\x18\x03 \x01(\tR\x04team\x12\x14\n" +
+	"\x05steps\x18\x04 \x01(\x05R\x05steps\x12\x1c\n" +
+	"\tsucceeded\x18\x05 \x01(\x05R\tsucceeded\x12\x1f\n" +
+	"\vp50_seconds\x18\x06 \x01(\x01R\n" +
+	"p50Seconds\x12\x1f\n" +
+	"\vp95_seconds\x18\a \x01(\x01R\n" +
+	"p95Seconds2\xd3\x01\n" +
 	"\x0eObserveService\x12a\n" +
-	"\vGetSecurity\x12%.vertra.console.v1.GetSecurityRequest\x1a&.vertra.console.v1.GetSecurityResponse\"\x03\x90\x02\x01B\xd5\x01\n" +
+	"\vGetSecurity\x12%.vertra.console.v1.GetSecurityRequest\x1a&.vertra.console.v1.GetSecurityResponse\"\x03\x90\x02\x01\x12^\n" +
+	"\n" +
+	"GetMetrics\x12$.vertra.console.v1.GetMetricsRequest\x1a%.vertra.console.v1.GetMetricsResponse\"\x03\x90\x02\x01B\xd5\x01\n" +
 	"\x15com.vertra.console.v1B\fObserveProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -429,28 +793,39 @@ func file_vertra_console_v1_observe_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_observe_proto_rawDescData
 }
 
-var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_vertra_console_v1_observe_proto_goTypes = []any{
 	(*GetSecurityRequest)(nil),    // 0: vertra.console.v1.GetSecurityRequest
 	(*GetSecurityResponse)(nil),   // 1: vertra.console.v1.GetSecurityResponse
 	(*SecurityCheck)(nil),         // 2: vertra.console.v1.SecurityCheck
 	(*Refusal)(nil),               // 3: vertra.console.v1.Refusal
 	(*AllowedImage)(nil),          // 4: vertra.console.v1.AllowedImage
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*GetMetricsRequest)(nil),     // 5: vertra.console.v1.GetMetricsRequest
+	(*GetMetricsResponse)(nil),    // 6: vertra.console.v1.GetMetricsResponse
+	(*HourMetrics)(nil),           // 7: vertra.console.v1.HourMetrics
+	(*FailureMetrics)(nil),        // 8: vertra.console.v1.FailureMetrics
+	(*ProductMetrics)(nil),        // 9: vertra.console.v1.ProductMetrics
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_observe_proto_depIdxs = []int32{
-	2, // 0: vertra.console.v1.GetSecurityResponse.checks:type_name -> vertra.console.v1.SecurityCheck
-	3, // 1: vertra.console.v1.GetSecurityResponse.refusals:type_name -> vertra.console.v1.Refusal
-	4, // 2: vertra.console.v1.GetSecurityResponse.images:type_name -> vertra.console.v1.AllowedImage
-	5, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
-	5, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
-	0, // 5: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
-	1, // 6: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
-	6, // [6:7] is the sub-list for method output_type
-	5, // [5:6] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	2,  // 0: vertra.console.v1.GetSecurityResponse.checks:type_name -> vertra.console.v1.SecurityCheck
+	3,  // 1: vertra.console.v1.GetSecurityResponse.refusals:type_name -> vertra.console.v1.Refusal
+	4,  // 2: vertra.console.v1.GetSecurityResponse.images:type_name -> vertra.console.v1.AllowedImage
+	10, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
+	10, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
+	7,  // 5: vertra.console.v1.GetMetricsResponse.hours:type_name -> vertra.console.v1.HourMetrics
+	8,  // 6: vertra.console.v1.GetMetricsResponse.failures:type_name -> vertra.console.v1.FailureMetrics
+	9,  // 7: vertra.console.v1.GetMetricsResponse.products:type_name -> vertra.console.v1.ProductMetrics
+	10, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
+	0,  // 9: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
+	5,  // 10: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
+	1,  // 11: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
+	6,  // 12: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
+	11, // [11:13] is the sub-list for method output_type
+	9,  // [9:11] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_observe_proto_init() }
@@ -464,7 +839,7 @@ func file_vertra_console_v1_observe_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_observe_proto_rawDesc), len(file_vertra_console_v1_observe_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /** ObserveService (proto/vertra/console/v1/observe.proto): core/observe.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
-import { getSecurity } from "../../core/observe.js";
+import { getMetrics, getSecurity } from "../../core/observe.js";
 import type { ObserveService } from "../../gen/vertra/console/v1/observe_pb.js";
 import { timestamp } from "../convert.js";
 import { callerOf } from "../context.js";
@@ -16,6 +16,11 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
         refusals: s.refusals.map((r) => ({ ...r, at: timestamp(r.at) })),
         images: s.images.map((i) => ({ ...i, scannedAt: timestamp(i.scannedAt) })),
       };
+    },
+
+    async getMetrics(_req, ctx) {
+      const m = await viaKernel(ctx, () => getMetrics(callerOf(ctx)));
+      return { ...m, hours: m.hours.map((h) => ({ ...h, hour: timestamp(h.hour) })) };
     },
   };
 }

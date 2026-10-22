@@ -388,6 +388,15 @@
      "streaming": false,
      "idempotency": "read",
      "public": false
+    },
+    {
+     "name": "GetMetrics",
+     "comment": "What the steps are doing: started and how long they waited, hour by\nhour over the last day; why they failed; and each product's step\ntimes over the last week.",
+     "input": "vertra.console.v1.GetMetricsRequest",
+     "output": "vertra.console.v1.GetMetricsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
     }
    ]
   },
@@ -3798,6 +3807,171 @@
      "repeated": false,
      "optional": false,
      "comment": "An admin accepted a failed scan, and why."
+    }
+   ]
+  },
+  "vertra.console.v1.GetMetricsRequest": {
+   "name": "GetMetricsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetMetricsResponse": {
+   "name": "GetMetricsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "hours",
+     "type": "HourMetrics",
+     "ref": "vertra.console.v1.HourMetrics",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "failures",
+     "type": "FailureMetrics",
+     "ref": "vertra.console.v1.FailureMetrics",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "products",
+     "type": "ProductMetrics",
+     "ref": "vertra.console.v1.ProductMetrics",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "ready",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "Steps waiting to start, and running, now."
+    },
+    {
+     "name": "running",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.HourMetrics": {
+   "name": "HourMetrics",
+   "comment": "",
+   "fields": [
+    {
+     "name": "hour",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "started",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "waitP95Seconds",
+     "type": "number",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.FailureMetrics": {
+   "name": "FailureMetrics",
+   "comment": "",
+   "fields": [
+    {
+     "name": "code",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "count",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "retried",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Some were retried automatically."
+    },
+    {
+     "name": "means",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What the code means, when the platform knows it."
+    }
+   ]
+  },
+  "vertra.console.v1.ProductMetrics": {
+   "name": "ProductMetrics",
+   "comment": "",
+   "fields": [
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The registered product, or the image repository for one that isn't."
+    },
+    {
+     "name": "action",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "succeeded",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "p50Seconds",
+     "type": "number",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "p95Seconds",
+     "type": "number",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

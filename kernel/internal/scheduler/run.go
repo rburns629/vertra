@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/rburns629/vertra/kernel/internal/domain"
 	"github.com/rburns629/vertra/kernel/internal/executor"
 	"github.com/rburns629/vertra/kernel/internal/metrics"
 	"github.com/rburns629/vertra/kernel/internal/migrate"
@@ -23,6 +24,7 @@ const pauseAfterProgress = 50 * time.Millisecond
 const (
 	retentionInterval   = time.Hour
 	orphanSweepInterval = 5 * time.Minute
+	gaugeInterval       = 15 * time.Second
 )
 
 // Loop is what Run needs beyond a pass's Options.
@@ -65,6 +67,7 @@ func (l *Loop) Run(ctx context.Context) error {
 	work := context.WithoutCancel(ctx)
 	nextRetention := time.Now()
 	nextOrphanSweep := time.Now().Add(orphanSweepInterval)
+	var nextGauges time.Time
 	for ctx.Err() == nil {
 		started := time.Now()
 		outcome, err := l.pass(work)
@@ -79,6 +82,12 @@ func (l *Loop) Run(ctx context.Context) error {
 			// Committed: only now may what finished be removed.
 			ReleaseFinished(work, l.Executor, outcome.Finished, l.Log)
 			l.housekeeping(work, &nextRetention, &nextOrphanSweep)
+		}
+		if time.Now().After(nextGauges) {
+			nextGauges = time.Now().Add(gaugeInterval)
+			if err := SampleTasks(work, l.Pool, time.Now()); err != nil {
+				l.Log.Warn("couldn't sample the task gauges", "error", err.Error())
+			}
 		}
 		if outcome.Progressed {
 			// More is likely ready: go again after a pause too short to notice.
@@ -136,6 +145,49 @@ func (l *Loop) housekeeping(ctx context.Context, nextRetention, nextOrphanSweep 
 			l.Log.Error("couldn't sweep orphaned attempts", "error", err.Error())
 		}
 	}
+}
+
+// unfinished are the states kernel_tasks reports, each even when it's 0.
+var unfinished = []domain.TaskState{domain.TaskBlocked, domain.TaskReady, domain.TaskAwaitingApproval, domain.TaskClaimed, domain.TaskRunning}
+
+// SampleTasks sets the task gauges from the database: how many tasks are in
+// each unfinished state, and how long the oldest READY one has waited.
+func SampleTasks(ctx context.Context, db DB, now time.Time) error {
+	states := make([]string, len(unfinished))
+	for i, state := range unfinished {
+		states[i] = string(state)
+	}
+	counts := map[string]float64{}
+	rows, err := db.Query(ctx, `SELECT state, count(*) FROM execution_tasks WHERE state = ANY($1) GROUP BY state`, states)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var state string
+		var n int64
+		if err := rows.Scan(&state, &n); err != nil {
+			rows.Close()
+			return err
+		}
+		counts[state] = float64(n)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	var oldest *time.Time
+	if err := db.QueryRow(ctx, `SELECT min(available_at) FROM execution_tasks WHERE state = $1`, string(domain.TaskReady)).Scan(&oldest); err != nil {
+		return err
+	}
+	for _, state := range unfinished {
+		metrics.Tasks.WithLabelValues(string(state)).Set(counts[string(state)])
+	}
+	age := 0.0
+	if oldest != nil && now.After(*oldest) {
+		age = now.Sub(*oldest).Seconds()
+	}
+	metrics.OldestReady.Set(age)
+	return nil
 }
 
 // ReleaseFinished removes the units of tasks whose outcome a committed pass

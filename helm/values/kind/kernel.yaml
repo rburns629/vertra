@@ -38,3 +38,9 @@ imagePolicy:
 purgePolicy:
   protectedNamespaces: []
   purgers: []
+
+# A Prometheus in the monitoring namespace may scrape /metrics (none is
+# installed here; docs/operations.md, "Metrics and alerts", shows how to try one).
+networkPolicy:
+  metricsFrom:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}

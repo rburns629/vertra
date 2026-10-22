@@ -21,10 +21,17 @@ design.
     visibility to every query, since Loki and Grafana know nothing of
     Vertra's teams. Mounted Secrets' values masked before storage; kept 30
     days.
-  - Metrics: Prometheus scraping the kernel (`kernel_*`, already exported),
-    the console (`console_*`, to add) and the gateway (`gateway_*`);
-    ServiceMonitors in the charts; the console's charts for everyone,
-    Grafana with shipped dashboards and alerts for admins.
+  - Metrics (done 2026-10-22): the Observe page's Metrics tab for
+    everyone, from kernel-api's own tables (`GetStats`: steps started and
+    their p95 wait by hour, failures by code, each product's step times),
+    so it needs no metrics system. For admins: the console's `console_*`
+    metrics on a port of its own, the scheduler's queue gauges
+    (`kernel_tasks`, `kernel_oldest_ready_task_age_seconds`), PodMonitors,
+    PrometheusRules and a Grafana dashboard in the charts (`monitoring`, off
+    by default), with every metrics port open only to
+    `networkPolicy.metricsFrom`. Left: proving the PodMonitors, rules and
+    dashboard against a real Prometheus Operator and Grafana (checked
+    with promtool, and scraped by hand on kind).
   - The audit log, which only admins see today, as its fourth tab.
   Who sees a step's logs, by level (decided 2026-10-21; done 2026-10-22 for
   the step output the kernel captures: `console/src/logLevels.ts`, every

@@ -205,7 +205,8 @@ spec:
 ---
 # What the gateway may connect to: DNS, and by default anywhere but the
 # cloud metadata server, so a backend URL can't reach the node's
-# credentials through it. Its callers may reach it from anywhere.
+# credentials through it. Its callers may reach it from anywhere; its
+# metrics port, only networkPolicy.metricsFrom.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -218,7 +219,19 @@ spec:
     matchLabels:
       {{- include "execution-console.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: gateway
-  policyTypes: ["Egress"]
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - ports:
+        - {port: 8080, protocol: TCP}
+        {{- if .Values.gateway.publicListener }}
+        - {port: 8081, protocol: TCP}
+        {{- end }}
+    {{- with .Values.networkPolicy.metricsFrom }}
+    - from:
+        {{- toYaml . | nindent 8 }}
+      ports:
+        - {port: 9090, protocol: TCP}
+    {{- end }}
   egress:
     - ports:
         - {port: 53, protocol: UDP}

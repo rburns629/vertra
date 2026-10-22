@@ -64,6 +64,13 @@ service KernelService {
   rpc ListRefusals(ListRefusalsRequest) returns (ListRefusalsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // What the steps did: started and waited per hour over the last day,
+  // why they failed over the last day, and how long each image's action
+  // took over the last week. From the kernel's own tables, so it needs no
+  // metrics system.
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 enum ExecutionState {
@@ -358,4 +365,43 @@ message Refusal {
   string code = 5;
   string message = 6;
   google.protobuf.Timestamp at = 7;
+}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  // The last 24 hours, an hour at a time, oldest first.
+  repeated HourStats hours = 1;
+  // Failed attempts over the last 24 hours, by error code.
+  repeated FailureCount failures = 2;
+  // The last 7 days, by image repository (no tag or digest) and action.
+  repeated StepStats steps = 3;
+  // Now: tasks waiting to start, and running.
+  int32 ready = 4;
+  int32 running = 5;
+}
+
+message HourStats {
+  google.protobuf.Timestamp hour = 1;
+  int32 started = 2;
+  // The 95th percentile of how long a step waited, ready to start, before
+  // it started (seconds).
+  double wait_p95_seconds = 3;
+}
+
+message FailureCount {
+  string code = 1;
+  int32 count = 2;
+  // Some of them were retried automatically.
+  bool retried = 3;
+}
+
+message StepStats {
+  string repository = 1;
+  string action = 2;
+  string team = 3;
+  int32 attempts = 4;
+  int32 succeeded = 5;
+  double p50_seconds = 6;
+  double p95_seconds = 7;
 }

@@ -22,6 +22,18 @@ const executionId = randomUUID();
 
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/kernel/client.js")>()),
+  getStats: vi.fn(() =>
+    Promise.resolve({
+      hours: [{ hour: new Date().toISOString(), started: 12, waitP95Seconds: 3.5 }],
+      failures: [{ code: "TASK_TIMEOUT", count: 2, retried: true }],
+      steps: [
+        { repository: `registry.example/${owner}/${owner}-shown-run`, action: "run", team: owner, attempts: 10, succeeded: 9, p50Seconds: 4, p95Seconds: 9 },
+        { repository: `registry.example/${owner}/${owner}-secret-run`, action: "run", team: owner, attempts: 3, succeeded: 3, p50Seconds: 1, p95Seconds: 2 },
+      ],
+      ready: 1,
+      running: 2,
+    }),
+  ),
   listRefusals: vi.fn(() =>
     Promise.resolve([{ executionId, taskId: "make", team: owner, image: `registry.example/x@${digest}`, code: "IMAGE_NOT_ALLOWED", message: "m", at: new Date().toISOString() }]),
   ),
@@ -95,5 +107,19 @@ describe("security checks", () => {
     const theirs = await names("other");
     expect(theirs.map((i) => i.product)).toEqual([`${owner}-shown-run`]);
     expect(theirs[0]).toMatchObject({ scan: "failed", fixable: 2 });
+  });
+});
+
+describe("metrics", () => {
+  type Metrics = { hours: { started: number }[]; failures: { code: string; means: string; retried: boolean }[]; products: { product: string; steps: number }[]; running: number };
+  const metrics = async (who: keyof typeof tokens) => (await call<Metrics>(tokens[who], "ObserveService/GetMetrics")).body;
+
+  it("name each product's steps, a hidden one only for its team, and explain the failures", async () => {
+    const mine = await metrics("owner");
+    expect(mine.products.map((p) => p.product).sort()).toEqual([`${owner}-secret-run`, `${owner}-shown-run`]);
+    expect(mine.failures[0]).toMatchObject({ code: "TASK_TIMEOUT", retried: true });
+    expect(mine.failures[0]?.means).toContain("timeout");
+    expect(mine.running).toBe(2);
+    expect((await metrics("other")).products.map((p) => p.product)).toEqual([`${owner}-shown-run`]);
   });
 });

@@ -193,6 +193,13 @@ jobs:
             --set identityPolicy.enabled=false --set api.auth.enabled=false --set imagePolicy.enabled=false > /dev/null
           helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
             --set writeFence.enabled=false --set kernelApiToken.enabled=false > /dev/null
+          monitoring="--set monitoring.podMonitor.enabled=true --set monitoring.alerts.enabled=true"
+          # shellcheck disable=SC2086
+          helm template kernel helm/charts/execution-kernel $monitoring > /dev/null
+          # shellcheck disable=SC2086
+          helm template console helm/charts/execution-console --set kernelApiUrl=http://x $monitoring \
+            --set monitoring.dashboard.enabled=true --set gateway.enabled=true \
+            --set 'networkPolicy.metricsFrom[0].namespaceSelector.matchLabels.x=y' > /dev/null
       - name: Render every size, with sleeping and headroom on
         run: |
           for size in minimal resilient scaled auto; do

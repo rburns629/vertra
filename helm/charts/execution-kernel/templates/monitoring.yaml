@@ -1,0 +1,71 @@
+{{- /*
+Prometheus Operator resources (values: monitoring). The console chart
+ships the Grafana dashboard covering both charts and the gateway.
+*/}}
+{{- $mon := .Values.monitoring }}
+{{- if $mon.podMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    {{- with $mon.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
+    matchExpressions:
+      - {key: app.kubernetes.io/component, operator: In, values: [api, scheduler]}
+  podMetricsEndpoints:
+    # kernel-api serves /metrics beside its API; the scheduler on its own port.
+    - {port: http, path: /metrics, interval: {{ $mon.podMonitor.interval }}}
+    - {port: metrics, path: /metrics, interval: {{ $mon.podMonitor.interval }}}
+---
+{{- end }}
+{{- if $mon.alerts.enabled }}
+{{- $ns := printf "namespace=%q" .Release.Namespace }}
+{{- $scheduler := printf "namespace=%q, deployment=%q" .Release.Namespace (printf "%s-scheduler" (include "execution-kernel.fullname" .)) }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+    {{- with $mon.alerts.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: vertra-kernel
+      rules:
+        - alert: VertraSchedulerDown
+          # Only while its Deployment wants replicas: asleep (kernel sleep)
+          # isn't down. Needs kube-state-metrics.
+          expr: >-
+            (absent(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }) or sum(rate(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }[5m])) == 0)
+            and on() sum(kube_deployment_spec_replicas{ {{- $scheduler -}} }) > 0
+          for: 10m
+          labels: {severity: critical}
+          annotations:
+            summary: No scheduler has finished a pass in 10 minutes.
+            description: Nothing will start or finish. Check the scheduler's Pods and logs (docs/operations.md, Troubleshooting).
+        - alert: VertraSchedulerFailing
+          expr: sum(increase(kernel_scheduler_tick_errors_total{ {{- $ns -}} }[10m])) > 5
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: The scheduler's passes keep failing.
+            description: Each failed pass is retried from the database, so a run of them usually means Postgres or the Kubernetes API is failing. See "scheduler tick failed" in its logs.
+        - alert: VertraStepsWaiting
+          expr: max(kernel_oldest_ready_task_age_seconds{ {{- $ns -}} }) > {{ $mon.alerts.readyWaitSeconds }}
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: A step has waited {{ "{{ $value | humanizeDuration }}" }} to start.
+            description: Steps are ready but not starting. The cluster may be out of room, a team at its limit, or the scheduler behind.
+{{- end }}
