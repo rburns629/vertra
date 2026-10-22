@@ -28,6 +28,7 @@ import {
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { statusFill } from "../statusColor";
+import { duration, when } from "../time";
 
 const STATUS_OPTIONS = ["RUNNING", "AWAITING_APPROVAL", "PENDING", "FAILED", "SUCCEEDED", "CANCELLED"];
 const PAGE_SIZE = 100;
@@ -47,30 +48,11 @@ function what(run: ExecutionSummary): string {
   return `DAG · ${run.teams.join(", ")}`;
 }
 
-function duration(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 60) return `${String(s)}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${String(m)}m ${String(s % 60).padStart(2, "0")}s`;
-  return `${String(Math.floor(m / 60))}h ${String(m % 60).padStart(2, "0")}m`;
-}
-
 function took(run: ExecutionSummary, now: number): string {
   const start = Date.parse(run.createdAt);
   if (run.finishedAt) return duration(Date.parse(run.finishedAt) - start);
   if (run.state === "RUNNING" || run.state === "AWAITING_APPROVAL") return `${duration(now - start)} so far`;
   return "—";
-}
-
-function started(iso: string): string {
-  const at = new Date(iso);
-  const today = new Date();
-  const time = at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (at.toDateString() === today.toDateString()) return `today ${time}`;
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  if (at.toDateString() === yesterday.toDateString()) return `yesterday ${time}`;
-  return at.toLocaleDateString([], { month: "short", day: "numeric" }) + ` ${time}`;
 }
 
 /** A run's steps as one segment each, colored by state, and "2 of 4" done. */
@@ -199,7 +181,7 @@ export function ExecutionsListPage() {
     },
     { key: "state", header: "State", render: (e) => (e.state ? <StatusBadge status={e.state} /> : "—") },
     { key: "steps", header: "Steps", hideBelow: "sm", render: (e) => <Steps steps={e.steps} /> },
-    { key: "started", header: "Started", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{started(e.createdAt)}</Box> },
+    { key: "started", header: "Started", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{when(e.createdAt)}</Box> },
     { key: "took", header: "Took", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{took(e, now)}</Box> },
   ];
 
@@ -215,7 +197,7 @@ export function ExecutionsListPage() {
     },
     { key: "step", header: "Step", render: (a) => `${a.taskId} · ${a.team}` },
     { key: "by", header: "Asked by", hideBelow: "sm", render: (a) => a.requestedBy },
-    { key: "since", header: "Waiting since", hideBelow: "md", render: (a) => (a.awaitingSince ? started(a.awaitingSince) : "—") },
+    { key: "since", header: "Waiting since", hideBelow: "md", render: (a) => (a.awaitingSince ? when(a.awaitingSince) : "—") },
   ];
 
   const toApprove = approvals?.length ?? 0;

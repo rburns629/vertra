@@ -34,13 +34,23 @@ function connectResponse(key: string, request: Record<string, unknown>, streamin
     return new Response(JSON.stringify({ code, message, details }), { status, headers: { "content-type": "application/json" } });
   }
   if (!streaming) return new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
-  // A server stream: the end-of-stream envelope alone (no messages).
-  const end = new TextEncoder().encode("{}");
-  const envelope = new Uint8Array(5 + end.length);
-  envelope[0] = 0b10;
-  new DataView(envelope.buffer).setUint32(1, end.length);
-  envelope.set(end, 5);
-  return new Response(envelope, { status: 200, headers: { "content-type": "application/connect+json" } });
+  // A server stream: its messages (an answer that's a list), then its end.
+  const frame = (flags: number, json: unknown) => {
+    const body = new TextEncoder().encode(JSON.stringify(json));
+    const envelope = new Uint8Array(5 + body.length);
+    envelope[0] = flags;
+    new DataView(envelope.buffer).setUint32(1, body.length);
+    envelope.set(body, 5);
+    return envelope;
+  };
+  const frames = [...(Array.isArray(value) ? value.map((m) => frame(0, m)) : []), frame(0b10, {})];
+  // One byte array: jsdom's Blob isn't one Node's Response can read.
+  const body = new Uint8Array(frames.reduce((n, f) => n + f.length, 0));
+  frames.reduce((offset, f) => {
+    body.set(f, offset);
+    return offset + f.length;
+  }, 0);
+  return new Response(body, { status: 200, headers: { "content-type": "application/connect+json" } });
 }
 
 const calls: string[] = [];
@@ -113,7 +123,7 @@ const PAGES: [string, Record<string, Answer>][] = [
   ["/account", {}],
   ["/runs", {}],
   ["/runs/submit", {}],
-  ["/runs/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", {}],
+  ["/runs/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", { "ExecutionService/WatchExecution": [{ execution: { executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", name: "a run", state: "EXECUTION_STATE_SUCCEEDED", createdAt: "2026-10-21T16:20:00Z", tasks: [] } }] }],
   ["/catalog", {}],
   ["/products", {}],
   ["/apis", {}],
@@ -186,6 +196,54 @@ describe("runs", () => {
     fireEvent.click(screen.getByRole("button", { name: /to approve \(1\)/i }));
     expect(await screen.findByRole("link", { name: "orders-api prod database" })).toBeTruthy();
     expect(screen.getByText("sam@acme.com")).toBeTruthy();
+  });
+});
+
+describe("a run", () => {
+  const FAILED_RUN = {
+    executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11",
+    name: "billing-api staging",
+    state: "EXECUTION_STATE_FAILED",
+    teams: ["azure-apps"],
+    createdAt: "2026-10-21T16:20:00Z",
+    tasks: [
+      { taskId: "project", state: "TASK_STATE_SUCCEEDED", attemptCount: 1, attempts: [{ number: 1, startedAt: "2026-10-21T16:20:01Z", completedAt: "2026-10-21T16:21:00Z" }] },
+      {
+        taskId: "deploy",
+        state: "TASK_STATE_FAILED",
+        attemptCount: 1,
+        dependsOn: ["project"],
+        failure: { code: "REGION_QUOTA_EXCEEDED", message: "the region is out of quota", retryable: true },
+        help: { means: "The project has used all its CPU in us-central1.", whatToDo: "Run again in europe-west1.", retry: "safe", team: "gcp-platform" },
+        attempts: [{ number: 1, startedAt: "2026-10-21T16:21:01Z", completedAt: "2026-10-21T16:26:00Z", failure: { code: "REGION_QUOTA_EXCEEDED", message: "the region is out of quota", retryable: true } }],
+      },
+    ],
+  };
+
+  it("explains why it failed, and retries the failed step", async () => {
+    const retried: Record<string, unknown>[] = [];
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, {
+      "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }],
+      "ExecutionService/RetryTask": (request: Record<string, unknown>) => {
+        retried.push(request);
+        return {};
+      },
+    });
+    expect(await screen.findByText(/failed at step 2 of 2, deploy: the region is out of quota/i)).toBeTruthy();
+    expect(screen.getAllByText("REGION_QUOTA_EXCEEDED").length).toBeGreaterThan(0);
+    expect(screen.getByText(/run again in europe-west1/i)).toBeTruthy();
+    // The failed step is the one shown below the timeline.
+    expect(screen.getByRole("button", { name: /deploy/i, pressed: true })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry deploy" }));
+    await waitFor(() => { expect(retried).toEqual([{ executionId: FAILED_RUN.executionId, taskId: "deploy" }]); });
+  });
+
+  it("shows another step when it's picked on the timeline", async () => {
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, { "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }] });
+    fireEvent.click(await screen.findByRole("button", { name: /^project/i }));
+    expect(screen.getByRole("heading", { name: "project" })).toBeTruthy();
+    expect(screen.getByText(/attempt 1 · succeeded after 59s/i)).toBeTruthy();
   });
 });
 

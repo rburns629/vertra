@@ -214,6 +214,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/dagCheck.ts` | Checks a pasted DAG live on the Submit page (JSON or YAML) and explains what's wrong. Tested in `dagCheck.test.ts`. |
 | `vitest.config.ts`, `src/**/*.test.ts` | The frontend's tests (`npm test`); a test that renders opts into jsdom. |
 | `src/dagLayout.ts` | Arranges a DAG's tasks into columns for the execution graph. |
+| `src/time.ts` | Durations and times as people say them ("8m 05s", "today 14:02"), and a clock that ticks while something runs. |
 | `src/statusColor.ts` | Each state's color and label, shared by the status chips and the home charts. |
 | `src/auth/` | The signed-in user (`AuthContext`) and the guard that sends signed-out visitors to the login page. |
 | `src/layout/` | The sidebar (the install, the places, your account and its settings menu; a top bar opens it on a phone), and `SignInLayout`, the screens before it (signing in, registering, choosing your own password). Old addresses (`/executions`, `/run`) redirect in `App.tsx`. |
@@ -223,7 +224,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/ExecutionsListPage.tsx` | Runs (`/runs`): every run you can see, a page at a time (yours, or by team and name, filtered on the server), each with what it ran, its steps' progress and how long it took; and the steps waiting for your team to approve. |
 | `src/pages/useExecutionWatch.ts` | Follows one execution over `WatchExecution` until it finishes, with its events and logs; reopens a stream that ends or drops, backs off when it can't connect; `resume()` after a retry or cancel. Tested alongside. |
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
-| `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
+| `src/pages/ExecutionDetailPage.tsx`, `src/pages/run/` | One run: who started it and from what, its steps against time (`RunTimeline`), why it failed (`FailureCard`, `FailureHelp`), and the chosen step (`StepPanel`: its approval, attempts, outputs, inputs, logs (`StepLogs`), definition, and who acted); retry, approve, cancel, run again. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
 | `src/pages/ObservePage.tsx` | Observe: the security checks, the metrics (steps started and waits by hour, failures, step times by product), the audit log (filtered by team, mine, refused), and logs to come. |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/ApiTraffic.tsx`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; for its own team its backend, traffic and Pause), and a team's APIs. The Admin page's gateway card shows its settings, what it refused, and closes it. |
