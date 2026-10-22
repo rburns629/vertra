@@ -561,7 +561,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Security
 
-- [ ] **TLS in front of the console** in the charts. Done 2026-10-22, proven
+- [x] **TLS in front of the console** in the charts. Done 2026-10-22, proven
   on kind (`make kind-tls`): the Ingress takes a certificate from
   cert-manager (an issuer of yours, or Let's Encrypt through the chart's own
   Issuer) as well as a Secret or the cloud, and refuses plain HTTP for
@@ -569,8 +569,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   redirect from its HTTP listener. `vertra` sets it up on existing clusters
   (2026-10-22, proven on a second kind cluster treated as existing: cert-manager
   installed by vertra, the certificate reported not ready until its issuer
-  existed, then HTTPS verified through the cluster's own Traefik). Left:
-  Let's Encrypt proven on a real public host.
+  existed, then HTTPS verified through the cluster's own Traefik). Let's
+  Encrypt proven on GKE (2026-10-22): the chart's Issuer, HTTP-01 through
+  Traefik's load balancer, staging then production; a certificate for a
+  real hostname trusted by an ordinary client, plain HTTP refused.
 - [ ] **SSO/OIDC sign-in**, with groups mapped to teams. Sign-in with
   Google is in (2026-10-22: `console/src/auth/oidc.ts`, the console chart's
   `sso`): the authorization code flow with PKCE, a verified email in an
@@ -629,8 +631,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Lock; `vertra` makes it, kept by destroy, `audit.lock` for the permanent
   kind), create-only. Proven on kind (`make kind-audit-store`, SeaweedFS):
   copies written, an overwrite and a locked delete refused, a forged entry
-  stopping the copy and Observe saying where. Left: the GCS and S3 buckets
-  proven on a cloud; checking the database against the copies.
+  stopping the copy and Observe saying where. On GCS (GKE, 2026-10-22):
+  copied by the console's own identity (objectCreator only), and a delete
+  by the project's owner refused by the retention policy. Left: the S3
+  bucket proven on EKS; checking the database against the copies.
 - [x] **Decide who may read a multi-team execution** (decided and done
   2026-10-22, `console/src/core/runView.ts`): a run's owners (admins, its
   submitter, the team a template run was for; a raw DAG's every team) see
