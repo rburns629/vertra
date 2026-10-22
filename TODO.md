@@ -643,8 +643,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Makefile: `make gke-deploy VERSION=...` deploys the release's signed
   charts and images, every signature checked against the release
   workflow's identity at that tag first; the working-copy build is
-  `gke-deploy-*-from-source`). Left: making the release packages public on
-  ghcr.io and running it once.
+  `gke-deploy-*-from-source`). The packages are public, and v0.2.2's
+  images and charts verify against its release workflow (cosign v3, which
+  the release signs with). Left: running a deploy with it once.
 - [x] **One cloud identity per product in the gcp sample** (done
   2026-10-22): each gcp and aws sample product declares its own
   `serviceAccount` (`gcp-<product>`, `aws-<product>`), and the READMEs grant

@@ -535,14 +535,15 @@ _gke-confirm:
 # make gke-deploy VERSION=v0.2.3
 RELEASE_REGISTRY ?= ghcr.io/rburns629/vertra
 RELEASE_IDENTITY = https://github.com/$(subst ghcr.io/,,$(RELEASE_REGISTRY))/.github/workflows/release.yml@refs/tags/$(VERSION)
-# The console chart's own pinned cosign (catalog.signature's verify Job).
-COSIGN := $(DOCKER) run --rm ghcr.io/sigstore/cosign/cosign:v2.5.3@sha256:f1946d0f30fc8e3777b02f2201e02efdba9fe38f4918162f937052fac98e083f
+# The cosign the release signs with (install-scanners.sh's COSIGN_VERSION):
+# v3 stores signatures as OCI referrers, which v2 can't find.
+COSIGN := $(DOCKER) run --rm ghcr.io/sigstore/cosign/cosign:v3.1.3@sha256:9e5c2f2edc34351160407ca3416c61855bdf9403c3c5936e0f0be7fc261611b8
 COSIGN_VERIFY = $(COSIGN) verify --certificate-identity $(RELEASE_IDENTITY) \
 	--certificate-oidc-issuer https://token.actions.githubusercontent.com -o text
 
 gke-verify-release:
 	@test -n "$(VERSION)" || { echo "VERSION=v<x.y.z>: the release to deploy."; exit 1; }
-	@for ref in execution-kernel:$(VERSION) execution-console:$(VERSION) \
+	@for ref in execution-kernel:$(VERSION:v%=%) execution-console:$(VERSION:v%=%) \
 		charts/execution-kernel:$(VERSION:v%=%) charts/execution-console:$(VERSION:v%=%); do \
 		printf "  %-40s " "$$ref"; \
 		$(COSIGN_VERIFY) $(RELEASE_REGISTRY)/$$ref > /dev/null 2>&1 \
