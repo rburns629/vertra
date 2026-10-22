@@ -362,6 +362,30 @@ describe("admin", () => {
   });
 });
 
+describe("observe", () => {
+  it("filters what was refused by who refused it, with the gateway's counts", async () => {
+    await renderAt("/observe", MEMBER, {
+      "ObserveService/GetSecurity": {
+        refusals: [
+          { what: "local step t (registry/x)", code: "IMAGE_NOT_ALLOWED", why: "Not an allowed source.", source: "step", count: 1 },
+          { what: "azure-apps → payments/orders: POST /orders", code: "INVALID_REQUEST", why: "Didn't fit.", source: "gateway", count: 214 },
+        ],
+      },
+    });
+    expect(await screen.findByText(/payments\/orders: POST \/orders, 214 calls/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cluster" }));
+    expect(screen.queryByText(/214 calls/)).toBeNull();
+    expect(screen.getByText("local step t (registry/x)")).toBeTruthy();
+  });
+
+  it("says whether the audit log's chain held", async () => {
+    await renderAt("/observe?tab=audit", MEMBER, {
+      "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", copiedAt: "2026-10-22T14:05:00Z" },
+    });
+    expect(await screen.findByText("Chain intact")).toBeTruthy();
+  });
+});
+
 describe("pages that moved", () => {
   it.each([
     ["/executions", "Runs"],
