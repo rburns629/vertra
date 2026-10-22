@@ -9,10 +9,11 @@ design.
 
 - [ ] **Observe: security checks, logs and metrics for everyone**
   (mocked up 2026-10-21, boards 17–19). One console section with tabs:
-  - Security checks: what the cluster enforces (and what it doesn't yet),
-    every allowed image with its scan, signer and SBOM, and every refusal
-    (admission codes, unsigned or off-main releases). Images rescanned
-    daily against new advisories.
+  - Security checks (done 2026-10-22: `ObserveService.GetSecurity`, the
+    Observe page's first tab): what the cluster enforces (and what it
+    doesn't yet), every allowed image with its scan, and every refusal
+    (admission codes via kernel-api's `ListRefusals`, and a catalog release
+    that couldn't be applied). Left: each image's signer and SBOM.
   - Logs: steps, gateway and platform in one search, labelled with run,
     step, attempt, product, team and image digest. Collected from Pod
     stdout by Grafana Alloy into Loki (both in the chart, off by default on

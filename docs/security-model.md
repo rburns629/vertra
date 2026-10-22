@@ -379,7 +379,7 @@ Vertra isn't production-ready yet.
 | No TLS in the chart | The console must be put behind TLS by the operator | An optional Ingress or Gateway with certificates |
 | Password sign-in only | No single sign-on or central account control | OIDC sign-in with groups mapped to teams |
 | The audit log lives in the console's own database | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
-| Any member of one team in a multi-team execution can read all of its outputs and logs | Cross-team visibility within shared executions | Decide: filter by team, or require every team for reads |
+| Any member of one team in a multi-team execution can read all of its outputs (its steps' logs are filtered by level: other teams see INFO lines only) | Cross-team visibility of outputs within shared executions | Decide: filter outputs by team, or require every team for reads |
 
 ## Out of scope
 

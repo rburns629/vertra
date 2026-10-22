@@ -57,6 +57,13 @@ service KernelService {
   rpc ListAwaitingApproval(ListAwaitingApprovalRequest) returns (ListAwaitingApprovalResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Attempts the cluster refused to start since a time (an admission
+  // policy's code: DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_PINNED,
+  // IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
+  // first, at most 500.
+  rpc ListRefusals(ListRefusalsRequest) returns (ListRefusalsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 enum ExecutionState {
@@ -333,4 +340,22 @@ message AwaitingApproval {
   // The execution's requested_by.
   string requested_by = 7;
   google.protobuf.Timestamp awaiting_since = 8;
+}
+
+message ListRefusalsRequest {
+  google.protobuf.Timestamp since = 1;
+}
+
+message ListRefusalsResponse {
+  repeated Refusal refusals = 1;
+}
+
+message Refusal {
+  string execution_id = 1;
+  string task_id = 2;
+  string team = 3;
+  string image = 4;
+  string code = 5;
+  string message = 6;
+  google.protobuf.Timestamp at = 7;
 }

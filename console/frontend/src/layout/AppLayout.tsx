@@ -27,6 +27,7 @@ import GroupsIcon from "@mui/icons-material/GroupsOutlined";
 import InventoryIcon from "@mui/icons-material/Inventory2Outlined";
 import DocsIcon from "@mui/icons-material/MenuBookOutlined";
 import ApiIcon from "@mui/icons-material/ApiOutlined";
+import ObserveIcon from "@mui/icons-material/InsightsOutlined";
 import AdminIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import KeyIcon from "@mui/icons-material/KeyOutlined";
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { label: "Executions", to: "/executions", icon: <PlayCircleIcon /> },
   { label: "Products", to: "/products", icon: <InventoryIcon /> },
   { label: "APIs", to: "/apis", icon: <ApiIcon /> },
+  { label: "Observe", to: "/observe", icon: <ObserveIcon /> },
   { label: "Teams", to: "/teams", icon: <GroupsIcon /> },
   { label: "Docs", to: "/docs", icon: <DocsIcon /> },
 ];

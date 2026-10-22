@@ -86,6 +86,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `internal/domain/events.go` | The event types recorded for an execution. |
 | **`internal/api/`** | **kernel-api.** |
 | `internal/api/service.go` | `KernelService`: submit (idempotent by `requestId`), read an execution, its states, events and logs, cancel, retry a task. |
+| `internal/api/refusals.go` | The attempts the cluster refused to start (admission policies' codes) since a time, for Observe. |
 | `internal/api/approvals.go` | Approving or declining a task awaiting approval, and listing a team's awaiting tasks. |
 | `internal/api/auth.go` | Accepts only the console: checks its ServiceAccount token with a TokenReview. |
 | `internal/api/server.go` | The HTTP server: the service, health, metrics, and every request logged and measured. |
@@ -167,6 +168,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/secrets.ts`, `core/products.ts`, `core/images.ts` | Team secrets and their sources; the product registry, repository ownership and wiring types; the image policy and scan verdicts. |
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/templates.ts` | Templates: what a person may run (templates and shared actions), running one with parameters only, each step built from its product; reruns of a template's run. |
+| `core/observe.ts` | Observe's security checks for everyone: what this install enforces (and doesn't yet), what the cluster refused this week (a run linked only for those who may see it), every image allowed to run and its scan. |
 | `core/apis.ts` | API products: who sees and may call each, whether it's live, held (its backend's host isn't allowed) or paused, and pausing one. |
 | `core/approvals.ts` | Approvals: a maintainer of a step's team, never whoever ran it, approves or declines it; the steps awaiting one. |
 | `core/retired.ts` | The shared "this team is retired, it's read-only" refusal. |
@@ -214,6 +216,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx` | One execution: graph, tasks, outputs, logs, events, cancel, retry, rerun. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
+| `src/pages/ObservePage.tsx` | Observe: the security checks, and the tabs to come (metrics, the audit log, logs). |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/ApiTraffic.tsx`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; for its own team its backend, traffic and Pause), and a team's APIs. The Admin page's gateway card shows its settings, what it refused, and closes it. |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
@@ -270,6 +273,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `apis.test.ts` | API products from releases (with their ServiceAccounts), who sees and may call them, held backends, pausing. |
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a target rule), and who may decide. |
 | `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
+| `observe.test.ts` | The security checks: what's enforced, refusals linked only for those who may see the run, images (a hidden product's for its team). |
 | `log-levels.test.ts` | A step's log lines by level: INFO for everyone who can see the run, the rest for its team. |
 | `reset-admin.test.ts` | Resetting a lost admin password: printed once, sessions revoked, audited, admins only. |
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |

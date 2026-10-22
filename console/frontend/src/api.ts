@@ -18,6 +18,7 @@ import { timestampDate, timestampFromDate, type Timestamp } from "@bufbuild/prot
 import { AdminService } from "./gen/vertra/console/v1/admin_pb.js";
 import { AuthService } from "./gen/vertra/console/v1/auth_pb.js";
 import { ApiService, ApiState } from "./gen/vertra/console/v1/api_pb.js";
+import { ObserveService } from "./gen/vertra/console/v1/observe_pb.js";
 import {
   DagSchema,
   ExecutionService,
@@ -105,6 +106,7 @@ const session: Interceptor = (next) => async (req) => {
 const transport = createConnectTransport({ baseUrl: "/api", interceptors: [session] });
 const auth = createClient(AuthService, transport);
 const apisApi = createClient(ApiService, transport);
+const observe = createClient(ObserveService, transport);
 const admin = createClient(AdminService, transport);
 const executions = createClient(ExecutionService, transport);
 const guides = createClient(GuideService, transport);
@@ -1389,4 +1391,40 @@ export async function getGateway(): Promise<GatewayInfo> {
 /** Closes the gateway with a message, or reopens it (""). */
 export async function setGatewayClosed(message: string): Promise<void> {
   await call(() => apisApi.setGatewayClosed({ message }));
+}
+
+export interface SecurityView {
+  checks: { name: string; state: "enforced" | "off" | "not_yet" | string; text: string }[];
+  refusals: { at: string | null; what: string; team: string; code: string; why: string; executionId: string }[];
+  images: {
+    product: string;
+    team: string;
+    image: string;
+    scan: string;
+    scannedAt: string | null;
+    fixable: number;
+    unfixable: number;
+    secrets: number;
+    acceptedReason: string;
+  }[];
+}
+
+/** What this install enforces, what it refused this week, and every image allowed to run. */
+export async function getSecurity(): Promise<SecurityView> {
+  const s = await call(() => observe.getSecurity({}));
+  return {
+    checks: s.checks.map((c) => ({ name: c.name, state: c.state, text: c.text })),
+    refusals: s.refusals.map((r) => ({ at: iso(r.at), what: r.what, team: r.team, code: r.code, why: r.why, executionId: r.executionId })),
+    images: s.images.map((i) => ({
+      product: i.product,
+      team: i.team,
+      image: i.image,
+      scan: i.scan,
+      scannedAt: iso(i.scannedAt),
+      fixable: i.fixable,
+      unfixable: i.unfixable,
+      secrets: i.secrets,
+      acceptedReason: i.acceptedReason,
+    })),
+  };
 }

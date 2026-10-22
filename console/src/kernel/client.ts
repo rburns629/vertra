@@ -16,7 +16,7 @@
 import { readFile } from "node:fs/promises";
 
 import { create, type JsonObject } from "@bufbuild/protobuf";
-import { timestampDate, type Timestamp } from "@bufbuild/protobuf/wkt";
+import { timestampDate, timestampFromDate, type Timestamp } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
 
@@ -404,5 +404,29 @@ export async function listAwaitingApproval(teams: string[]): Promise<KernelAwait
     action: t.action,
     requestedBy: t.requestedBy,
     awaitingSince: iso(t.awaitingSince),
+  }));
+}
+
+export interface KernelRefusal {
+  executionId: string;
+  taskId: string;
+  team: string;
+  image: string;
+  code: string;
+  message: string;
+  at: string | null;
+}
+
+/** Attempts the cluster refused to start since `since`, newest first. */
+export async function listRefusals(since: Date): Promise<KernelRefusal[]> {
+  const response = await call(() => client().listRefusals({ since: timestampFromDate(since) }));
+  return response.refusals.map((r) => ({
+    executionId: r.executionId,
+    taskId: r.taskId,
+    team: r.team,
+    image: r.image,
+    code: r.code,
+    message: r.message,
+    at: iso(r.at),
   }));
 }

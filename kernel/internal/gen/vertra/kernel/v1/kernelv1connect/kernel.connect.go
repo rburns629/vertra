@@ -61,6 +61,9 @@ const (
 	// KernelServiceListAwaitingApprovalProcedure is the fully-qualified name of the KernelService's
 	// ListAwaitingApproval RPC.
 	KernelServiceListAwaitingApprovalProcedure = "/vertra.kernel.v1.KernelService/ListAwaitingApproval"
+	// KernelServiceListRefusalsProcedure is the fully-qualified name of the KernelService's
+	// ListRefusals RPC.
+	KernelServiceListRefusalsProcedure = "/vertra.kernel.v1.KernelService/ListRefusals"
 )
 
 // KernelServiceClient is a client for the vertra.kernel.v1.KernelService service.
@@ -95,6 +98,11 @@ type KernelServiceClient interface {
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
 	// The tasks awaiting approval in the given teams, oldest first.
 	ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error)
+	// Attempts the cluster refused to start since a time (an admission
+	// policy's code: DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_PINNED,
+	// IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
+	// first, at most 500.
+	ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error)
 }
 
 // NewKernelServiceClient constructs a client for the vertra.kernel.v1.KernelService service. By
@@ -167,6 +175,13 @@ func NewKernelServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		listRefusals: connect.NewClient[v1.ListRefusalsRequest, v1.ListRefusalsResponse](
+			httpClient,
+			baseURL+KernelServiceListRefusalsProcedure,
+			connect.WithSchema(kernelServiceMethods.ByName("ListRefusals")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -181,6 +196,7 @@ type kernelServiceClient struct {
 	retryTask            *connect.Client[v1.RetryTaskRequest, v1.RetryTaskResponse]
 	decideApproval       *connect.Client[v1.DecideApprovalRequest, v1.DecideApprovalResponse]
 	listAwaitingApproval *connect.Client[v1.ListAwaitingApprovalRequest, v1.ListAwaitingApprovalResponse]
+	listRefusals         *connect.Client[v1.ListRefusalsRequest, v1.ListRefusalsResponse]
 }
 
 // SubmitExecution calls vertra.kernel.v1.KernelService.SubmitExecution.
@@ -228,6 +244,11 @@ func (c *kernelServiceClient) ListAwaitingApproval(ctx context.Context, req *con
 	return c.listAwaitingApproval.CallUnary(ctx, req)
 }
 
+// ListRefusals calls vertra.kernel.v1.KernelService.ListRefusals.
+func (c *kernelServiceClient) ListRefusals(ctx context.Context, req *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error) {
+	return c.listRefusals.CallUnary(ctx, req)
+}
+
 // KernelServiceHandler is an implementation of the vertra.kernel.v1.KernelService service.
 type KernelServiceHandler interface {
 	// Validates a DAG (ids, dependencies, cycles, $fromTask references,
@@ -260,6 +281,11 @@ type KernelServiceHandler interface {
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
 	// The tasks awaiting approval in the given teams, oldest first.
 	ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error)
+	// Attempts the cluster refused to start since a time (an admission
+	// policy's code: DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_PINNED,
+	// IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
+	// first, at most 500.
+	ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error)
 }
 
 // NewKernelServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -328,6 +354,13 @@ func NewKernelServiceHandler(svc KernelServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	kernelServiceListRefusalsHandler := connect.NewUnaryHandler(
+		KernelServiceListRefusalsProcedure,
+		svc.ListRefusals,
+		connect.WithSchema(kernelServiceMethods.ByName("ListRefusals")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.kernel.v1.KernelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case KernelServiceSubmitExecutionProcedure:
@@ -348,6 +381,8 @@ func NewKernelServiceHandler(svc KernelServiceHandler, opts ...connect.HandlerOp
 			kernelServiceDecideApprovalHandler.ServeHTTP(w, r)
 		case KernelServiceListAwaitingApprovalProcedure:
 			kernelServiceListAwaitingApprovalHandler.ServeHTTP(w, r)
+		case KernelServiceListRefusalsProcedure:
+			kernelServiceListRefusalsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -391,4 +426,8 @@ func (UnimplementedKernelServiceHandler) DecideApproval(context.Context, *connec
 
 func (UnimplementedKernelServiceHandler) ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.ListAwaitingApproval is not implemented"))
+}
+
+func (UnimplementedKernelServiceHandler) ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.kernel.v1.KernelService.ListRefusals is not implemented"))
 }
