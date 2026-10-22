@@ -54,14 +54,14 @@ Copy the `hello` sample, rename three things, and merge: CI builds it, tests it,
 4. Open a pull request. CI checks `product.yaml`, builds the image, runs its tests (each `tests/<action>/<case>/` folder: a `request.json` and the `expected.json` its result must contain), and scans it for fixable vulnerabilities, baked-in secrets and malicious packages. Nothing is published from a pull request.
 5. Get one approval and merge. CI then pushes the image tagged with the commit, signs it, and registers each action with the console, pinned by digest.
 
-**You're done when** the console's Products page lists `team-a-hello-greet`. Its image is `<registry>/team-a/hello:latest` (CI also tags it with the commit).
+**You're done when** the console's product list (**Catalog → Every product**) lists `team-a-hello-greet`. Its image is `<registry>/team-a/hello:latest` (CI also tags it with the commit).
 
 ## Step 3: Run it
 
 Paste a one-task DAG into the console and you'll get `Hello, Anna!` back in under a minute.
 
 1. Open `templates/dags/1-hello.yaml` and replace `team-a` with your team, and the registry with yours.
-2. In the console, open **Executions → Submit**, paste it, and submit.
+2. In the console, open **Runs → Submit new**, paste it, and submit.
 3. On the execution's page, watch the task go from Pending to Succeeded.
 
 ```yaml
@@ -79,7 +79,7 @@ tasks:
 
 Every submission is a new run, so you can paste the same DAG again as often as you like. A pipeline that may retry a submission adds a `requestId`: sending the same one again returns the run it already started instead of starting a second.
 
-Templates other teams share with you don't need a DAG at all: open **Run**, pick one, fill in what it asks for, and it runs as that team's products, with their own identities and secrets. The run is yours to follow, cancel and rerun from **Executions**.
+Templates other teams share with you don't need a DAG at all: open **Catalog**, pick one, fill in what it asks for, and it runs as that team's products, with their own identities and secrets. The run is yours to follow, cancel and rerun from **Runs**.
 
 ## Step 4: Give it a secret
 

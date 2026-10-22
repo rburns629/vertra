@@ -678,7 +678,7 @@ export function ExecutionDetailPage() {
     setBusy("rerun");
     try {
       const result = await rerunExecution(id);
-      navigate(`/executions/${result.executionId}`);
+      navigate(`/runs/${result.executionId}`);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Rerun failed.");
       setBusy(null);
@@ -766,8 +766,8 @@ export function ExecutionDetailPage() {
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, mb: 2 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Link component={RouterLink} to="/executions" variant="body2">
-            ← Back to executions
+          <Link component={RouterLink} to="/runs" variant="body2">
+            ← Back to runs
           </Link>
           <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5, mt: 0.5 }}>
             <Typography variant="h4" sx={{ fontWeight: 600, fontSize: 28, overflowWrap: "anywhere" }}>

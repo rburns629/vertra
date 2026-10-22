@@ -258,10 +258,10 @@ export function HomePage() {
       header: "Reference",
       render: (e) => (
         <Link
-          href={`/executions/${encodeURIComponent(e.executionId)}`}
+          href={`/runs/${encodeURIComponent(e.executionId)}`}
           onClick={(event) => {
             event.preventDefault();
-            navigate(`/executions/${encodeURIComponent(e.executionId)}`);
+            navigate(`/runs/${encodeURIComponent(e.executionId)}`);
           }}
         >
           {e.name}
@@ -317,7 +317,7 @@ export function HomePage() {
               columns={APPROVAL_COLUMNS}
               rows={approvals}
               getRowKey={(a) => `${a.executionId}/${a.taskId}`}
-              onRowClick={(a) => { navigate(`/executions/${a.executionId}`); }}
+              onRowClick={(a) => { navigate(`/runs/${a.executionId}`); }}
             />
           </CardContent>
         </Card>
@@ -449,10 +449,10 @@ export function HomePage() {
               Recent executions
             </Typography>
             <Link
-              href="/executions"
+              href="/runs"
               onClick={(event) => {
                 event.preventDefault();
-                navigate("/executions");
+                navigate("/runs");
               }}
             >
               View all executions →
@@ -462,7 +462,7 @@ export function HomePage() {
             columns={columns}
             rows={executions ? executions.slice(0, 8) : null}
             getRowKey={(e) => e.executionId}
-            onRowClick={(e) => { navigate(`/executions/${encodeURIComponent(e.executionId)}`); }}
+            onRowClick={(e) => { navigate(`/runs/${encodeURIComponent(e.executionId)}`); }}
             emptyMessage={
               <>
                 No executions visible yet

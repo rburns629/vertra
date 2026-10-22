@@ -96,7 +96,7 @@ export function ProductsPage() {
     <Box>
       <PageHeader
         title="Products"
-        subtitle="Every team's products, as each catalog release registers them, by team. Expand a team for its products, and a product for its releases. Run one shared with you on its own, or find templates that use them on the Run page."
+        subtitle="Every team's products, as each catalog release registers them, by team. Expand a team for its products, and a product for its releases. Run one shared with you on its own, or find templates that use them in the Catalog."
       />
 
       {error && (
@@ -237,7 +237,7 @@ function ProductAccordion({ product, runnable }: { product: Product; runnable: b
         {runnable && (
           <Button
             component={RouterLink}
-            to={`/run?action=${encodeURIComponent(product.name)}`}
+            to={`/catalog?action=${encodeURIComponent(product.name)}`}
             size="small"
             variant="outlined"
             sx={{ mb: 1 }}

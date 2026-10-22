@@ -114,10 +114,10 @@ export function ExecutionsListPage() {
       header: "Reference",
       render: (e) => (
         <Link
-          href={`/executions/${encodeURIComponent(e.executionId)}`}
+          href={`/runs/${encodeURIComponent(e.executionId)}`}
           onClick={(event) => {
             event.preventDefault();
-            navigate(`/executions/${encodeURIComponent(e.executionId)}`);
+            navigate(`/runs/${encodeURIComponent(e.executionId)}`);
           }}
         >
           {e.name}
@@ -152,13 +152,13 @@ export function ExecutionsListPage() {
   return (
     <Box>
       <PageHeader
-        title="Executions"
-        subtitle="View and troubleshoot DAG runs across the platform."
+        title="Runs"
+        subtitle="Runs you started, your teams', and any that ran your teams' steps."
         action={
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => { navigate("/executions/submit"); }}
+            onClick={() => { navigate("/runs/submit"); }}
           >
             Submit new
           </Button>
@@ -220,7 +220,7 @@ export function ExecutionsListPage() {
         columns={columns}
         rows={filtered}
         getRowKey={(e) => e.executionId}
-        onRowClick={(e) => { navigate(`/executions/${encodeURIComponent(e.executionId)}`); }}
+        onRowClick={(e) => { navigate(`/runs/${encodeURIComponent(e.executionId)}`); }}
         emptyMessage={
           executions && executions.length > 0
             ? "No executions match these filters."

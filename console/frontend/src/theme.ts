@@ -38,10 +38,15 @@ declare module "@mui/material/styles" {
   }
 }
 
-const PRIMARY = "#4338ca";
-// Indigo 300: the primary's hue, light enough for both dark surfaces
-// (7.9:1 on the code surface, 8.6:1 on the sidebar).
-const PRIMARY_ON_DARK = "#a5b4fc";
+// The console's blue (the mockups' accent): 5.9:1 on white, 5.5:1 on the
+// page background, so it carries text and white text on it.
+const PRIMARY = "#2F5BD3";
+const PRIMARY_DARK = "#1E3F9A";
+// The same hue lightened for the dark surfaces (8.2:1 on the sidebar).
+const PRIMARY_ON_DARK = "#8FB0FF";
+const INK = "#16191F";
+const INK_MUTED = "#5A6170";
+const BORDER = "#E2E5EA";
 
 // One keyboard focus ring for everything focusable, instead of MUI's
 // per-component defaults (a faint background shift on list items and
@@ -49,47 +54,58 @@ const PRIMARY_ON_DARK = "#a5b4fc";
 // it clear of the control's own border.
 const FOCUS_RING = { outline: `2px solid ${PRIMARY}`, outlineOffset: 2 };
 
+const SANS = ["'IBM Plex Sans'", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"].join(",");
+const MONO = ["'IBM Plex Mono'", "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"].join(",");
+
 export const theme = createTheme({
   palette: {
     mode: "light",
-    primary: { main: PRIMARY },
-    // MUI's default warning (#ed6c02) and info (#0288d1) fail WCAG AA under
-    // white text (3.1:1 and 4.0:1), and filled chips (the environment badge,
-    // Running/Pending statuses, PUT/PATCH) put white text on them. Same hues,
-    // deep enough to pass: white on these is 5.0:1 and 5.9:1, and as text on
-    // the page background (outlined buttons) 4.7:1 and 5.6:1.
-    warning: { main: "#b45309" },
-    info: { main: "#0369a1" },
-    background: { default: "#f7f7fb" },
+    primary: { main: PRIMARY, dark: PRIMARY_DARK },
+    // A state's color is its text (and a filled chip's, under white text,
+    // each 5:1 or more); light is the tint behind it.
+    success: { main: "#1F7A4D", dark: "#17633F", light: "#E3F3EA" },
+    warning: { main: "#8A4B00", dark: "#6F3C00", light: "#FCEFD9" },
+    error: { main: "#B42318", dark: "#9F1F15", light: "#FDE8E6" },
+    info: { main: PRIMARY_DARK, dark: "#172F73", light: "#EAF0FF" },
+    text: { primary: INK, secondary: INK_MUTED },
+    divider: BORDER,
+    background: { default: "#F6F7F9", paper: "#FFFFFF" },
     sidebar: {
-      background: "#111827",
-      border: "rgba(255,255,255,0.08)",
-      text: "#cbd5e1",
-      textMuted: "#7c8aa5",
-      textStrong: "#ffffff",
+      background: INK,
+      border: "#232833",
+      text: "#C9CED8",
+      textMuted: "#A9B0BD",
+      textStrong: "#FFFFFF",
       accent: PRIMARY_ON_DARK,
-      activeBg: "rgba(99,102,241,0.18)",
-      activeText: "#c7d2fe",
-      hoverBg: "rgba(255,255,255,0.06)",
+      activeBg: "#2F3A52",
+      activeText: "#FFFFFF",
+      hoverBg: "#232833",
     },
     // One surface for every block of machine output. The success.light and
-    // error.light event colors in the log feed pass on it (5.6:1, 4.7:1).
+    // error.light event colors in the log feed pass on it.
     code: {
-      background: "#1d1f24",
-      text: "#e8e8e3",
-      textMuted: "#9e9e9e",
+      background: INK,
+      text: "#E8EAEE",
+      textMuted: "#A9B0BD",
       accent: PRIMARY_ON_DARK,
     },
   },
   shape: { borderRadius: 8 },
   typography: {
-    fontFamily: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"].join(","),
-    fontFamilyMono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"].join(","),
+    fontFamily: SANS,
+    fontFamilyMono: MONO,
+    fontWeightMedium: 500,
+    h4: { fontSize: 28, fontWeight: 600, lineHeight: 1.25 },
+    h5: { fontSize: 20, fontWeight: 600 },
+    h6: { fontSize: 16, fontWeight: 600 },
+    button: { textTransform: "none", fontWeight: 500 },
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         "::selection": { backgroundColor: alpha(PRIMARY, 0.18) },
+        // Figures in the mockups' mono: digests, ids, code.
+        "code, kbd, samp, pre": { fontFamily: MONO },
         // Native focusables MUI doesn't style: links in rendered docs, the
         // focusable scroll regions (logs, code blocks, wide tables).
         "a:focus-visible, [tabindex='0']:focus-visible": { ...FOCUS_RING, borderRadius: 2 },
@@ -114,8 +130,29 @@ export const theme = createTheme({
       defaultProps: { color: "inherit", elevation: 0 },
       styleOverrides: { root: { borderBottom: "1px solid rgba(0,0,0,0.08)" } },
     },
+    // Flat surfaces: a 1px border, no shadow (the mockups' cards). Menus and
+    // dialogs, which float, keep theirs.
     MuiPaper: {
-      styleOverrides: { root: { backgroundImage: "none" } },
+      defaultProps: { elevation: 0 },
+      styleOverrides: { root: { backgroundImage: "none" }, outlined: { borderColor: BORDER } },
+    },
+    MuiCard: {
+      defaultProps: { variant: "outlined" },
+      styleOverrides: { root: { borderRadius: 10 } },
+    },
+    MuiMenu: { defaultProps: { slotProps: { paper: { elevation: 4 } } } },
+    MuiPopover: { defaultProps: { slotProps: { paper: { elevation: 4 } } } },
+    MuiDialog: { defaultProps: { slotProps: { paper: { elevation: 8 } } } },
+    MuiAutocomplete: { defaultProps: { slotProps: { paper: { elevation: 4 } } } },
+    MuiButton: {
+      defaultProps: { disableElevation: true },
+      styleOverrides: { root: { borderRadius: 8 }, sizeMedium: { minHeight: 40 }, sizeLarge: { minHeight: 44 } },
+    },
+    MuiChip: {
+      styleOverrides: { root: { fontWeight: 500 } },
+    },
+    MuiTableCell: {
+      styleOverrides: { root: { borderColor: "#ECEEF2" }, head: { color: INK_MUTED, fontWeight: 500 } },
     },
     // Unselected toggle buttons default to action.active (54% black), which
     // lands at 4.49:1 on the page background: just under AA.

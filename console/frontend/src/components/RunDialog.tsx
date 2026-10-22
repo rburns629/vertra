@@ -59,7 +59,7 @@ export function RunDialog({ runnable, onClose }: { runnable: Runnable; onClose: 
     setRunning(true);
     try {
       const executionId = await runRunnable(runnable, parameters, team || undefined);
-      navigate(`/executions/${encodeURIComponent(executionId)}`);
+      navigate(`/runs/${encodeURIComponent(executionId)}`);
     } catch (err) {
       if (err instanceof ApiError && err.code === "INVALID_PARAMETERS") {
         const problems = serverProblems(err.problems);

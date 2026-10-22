@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
-import ButtonBase from "@mui/material/ButtonBase";
 import CircularProgress from "@mui/material/CircularProgress";
-import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
@@ -21,32 +19,73 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import HomeIcon from "@mui/icons-material/HomeOutlined";
-import PlayCircleIcon from "@mui/icons-material/PlayCircleOutlined";
-import RunIcon from "@mui/icons-material/RocketLaunchOutlined";
-import GroupsIcon from "@mui/icons-material/GroupsOutlined";
-import InventoryIcon from "@mui/icons-material/Inventory2Outlined";
-import DocsIcon from "@mui/icons-material/MenuBookOutlined";
-import ApiIcon from "@mui/icons-material/ApiOutlined";
+import CatalogIcon from "@mui/icons-material/GridViewOutlined";
+import ApiIcon from "@mui/icons-material/CodeOutlined";
+import RunsIcon from "@mui/icons-material/PlayArrowOutlined";
 import ObserveIcon from "@mui/icons-material/InsightsOutlined";
-import AdminIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
+import GroupsIcon from "@mui/icons-material/GroupsOutlined";
+import AdminIcon from "@mui/icons-material/VerifiedUserOutlined";
+import SettingsIcon from "@mui/icons-material/SettingsOutlined";
+import PersonIcon from "@mui/icons-material/PersonOutlined";
+import HelpIcon from "@mui/icons-material/HelpOutlineOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
-import KeyIcon from "@mui/icons-material/KeyOutlined";
-import ExpandMoreIcon from "@mui/icons-material/UnfoldMore";
+import { getEnvironment, type Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import { EnvironmentBadge } from "./EnvironmentBadge";
 
-const DRAWER_WIDTH = 232;
+const DRAWER_WIDTH = 248;
 
+/** Each place in the console; `also` are paths that belong to it too. */
 const NAV_ITEMS = [
-  { label: "Home", to: "/", icon: <HomeIcon /> },
-  { label: "Run", to: "/run", icon: <RunIcon /> },
-  { label: "Executions", to: "/executions", icon: <PlayCircleIcon /> },
-  { label: "Products", to: "/products", icon: <InventoryIcon /> },
-  { label: "APIs", to: "/apis", icon: <ApiIcon /> },
-  { label: "Observe", to: "/observe", icon: <ObserveIcon /> },
-  { label: "Teams", to: "/teams", icon: <GroupsIcon /> },
-  { label: "Docs", to: "/docs", icon: <DocsIcon /> },
+  { label: "Home", to: "/", icon: <HomeIcon />, also: [] as string[] },
+  { label: "Catalog", to: "/catalog", icon: <CatalogIcon />, also: ["/products"] },
+  { label: "APIs", to: "/apis", icon: <ApiIcon />, also: [] },
+  { label: "Runs", to: "/runs", icon: <RunsIcon />, also: [] },
+  { label: "Observe", to: "/observe", icon: <ObserveIcon />, also: [] },
+  { label: "Teams", to: "/teams", icon: <GroupsIcon />, also: [] },
 ];
+const ADMIN_ITEM = { label: "Admin", to: "/admin", icon: <AdminIcon />, also: [] as string[] };
+
+const isUnder = (path: string, prefix: string) => (prefix === "/" ? path === "/" : path === prefix || path.startsWith(`${prefix}/`));
+
+/** Who you are here, in a few words: "admin", "maintainer · azure-apps". */
+function roleLine(user: Me): string {
+  if (user.isAdmin) return "admin";
+  const [first] = user.maintainerOf;
+  if (first) return `maintainer · ${first}`;
+  const [team] = user.teamNames;
+  return team ? `member · ${team}` : "no team yet";
+}
+
+/** Two DAG steps feeding a third: the Vertra mark. */
+function Mark() {
+  return (
+    <Box component="svg" viewBox="0 0 24 24" sx={{ width: 22, height: 22, flexShrink: 0, color: "sidebar.accent" }} aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="5" cy="6" r="2.5" />
+        <circle cx="19" cy="6" r="2.5" />
+        <circle cx="12" cy="18" r="2.5" />
+        <path d="M7 7.5l3.5 8.5M17 7.5l-3.5 8.5" />
+      </g>
+    </Box>
+  );
+}
+
+/** Which install this tab is talking to (the chart's environmentLabel). */
+function InstallCard() {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    getEnvironment()
+      .then((env) => { setLabel(env.label); })
+      .catch(() => { /* cosmetic only: no card */ });
+  }, []);
+  if (!label) return null;
+  return (
+    <Box sx={{ mx: 1.5, px: 1.5, py: 1.25, borderRadius: 2, bgcolor: "sidebar.hoverBg", display: "flex", flexDirection: "column", gap: 0.25 }}>
+      <Typography sx={{ fontSize: 11, color: "sidebar.textMuted", textTransform: "uppercase", letterSpacing: 0.6 }}>This install</Typography>
+      <Typography sx={{ fontFamily: "fontFamilyMono", fontSize: 13, color: "sidebar.text", overflowWrap: "anywhere" }}>{label}</Typography>
+    </Box>
+  );
+}
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -54,24 +93,23 @@ export function AppLayout() {
   const location = useLocation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   // Below md the sidebar would take most of a phone's width, so it becomes
-  // a temporary drawer opened from the top bar instead of a permanent column.
+  // a temporary drawer opened from a top bar instead of a permanent column.
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [navOpen, setNavOpen] = useState(false);
 
   if (!user) return null;
 
-  const items = user.isAdmin
-    ? [...NAV_ITEMS, { label: "Admin", to: "/admin", icon: <AdminIcon /> }]
-    : NAV_ITEMS;
+  const items = user.isAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
 
   const goTo = (to: string) => {
+    setMenuAnchor(null);
     setNavOpen(false);
     navigate(to);
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
       <Drawer
         variant={isDesktop ? "permanent" : "temporary"}
         open={isDesktop || navOpen}
@@ -87,26 +125,27 @@ export function AppLayout() {
             borderRight: 1,
             borderColor: "sidebar.border",
             color: "sidebar.text",
+            pt: 2.5,
+            pb: 1.5,
+            gap: 2.5,
           },
         }}
       >
-        <Toolbar sx={{ gap: 1.25 }}>
-          <Box
-            sx={{
-              width: 28,
-              height: 28,
-              borderRadius: 1,
-              bgcolor: "primary.main",
-              flexShrink: 0,
-            }}
-          />
-          <Typography sx={{ fontWeight: 600, color: "sidebar.textStrong", fontSize: 15 }}>Vertra Console</Typography>
-        </Toolbar>
+        <Box
+          component={RouterLink}
+          to="/"
+          onClick={() => { setNavOpen(false); }}
+          sx={{ display: "flex", alignItems: "center", gap: 1.25, px: 2.25, color: "sidebar.textStrong", textDecoration: "none", fontWeight: 600, fontSize: 17 }}
+        >
+          <Mark />
+          Vertra
+        </Box>
 
-        <List component="nav" aria-label="Main" sx={{ px: 1.25, pt: 1, flexGrow: 1 }}>
+        <InstallCard />
+
+        <List component="nav" aria-label="Main" sx={{ px: 1.5, py: 0, flexGrow: 1 }}>
           {items.map((item) => {
-            const selected =
-              item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+            const selected = [item.to, ...item.also].some((p) => isUnder(location.pathname, p));
             return (
               <ListItemButton
                 key={item.to}
@@ -114,14 +153,13 @@ export function AppLayout() {
                 to={item.to}
                 selected={selected}
                 aria-current={selected ? "page" : undefined}
-                onClick={() => {
-                  setNavOpen(false);
-                }}
+                onClick={() => { setNavOpen(false); }}
                 sx={{
-                  borderRadius: 1.5,
-                  mb: 0.5,
+                  borderRadius: 2,
+                  mb: 0.25,
+                  minHeight: 40,
                   color: selected ? "sidebar.activeText" : "sidebar.text",
-                  "&:hover": { bgcolor: "sidebar.hoverBg" },
+                  "&:hover": { bgcolor: "sidebar.hoverBg", color: "sidebar.textStrong" },
                   "&.Mui-focusVisible": { outlineColor: (t) => t.palette.sidebar.accent },
                   "&.Mui-selected": {
                     bgcolor: "sidebar.activeBg",
@@ -129,65 +167,67 @@ export function AppLayout() {
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 36, color: "inherit" }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontSize: 14 } } }} />
+                <ListItemIcon sx={{ minWidth: 32, color: "inherit", "& svg": { fontSize: 19 } }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: selected ? 500 : 400 } } }} />
               </ListItemButton>
             );
           })}
         </List>
 
-        <Divider sx={{ borderColor: "sidebar.border" }} />
-        <ButtonBase
-          aria-haspopup="menu"
-          aria-expanded={Boolean(menuAnchor)}
-          sx={{
-            p: 1.5,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            textAlign: "left",
-            borderRadius: 1.5,
-            m: 1,
-            "&:hover": { bgcolor: "sidebar.hoverBg" },
-            "&.Mui-focusVisible": { bgcolor: "sidebar.hoverBg", outlineColor: (t) => t.palette.sidebar.accent },
-          }}
-          onClick={(event) => {
-            setMenuAnchor(event.currentTarget);
-          }}
-        >
-          <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 14 }}>
-            {user.email[0]?.toUpperCase()}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mx: 1.5, pt: 1.25, px: 0.75, borderTop: 1, borderColor: "sidebar.border" }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12, fontWeight: 600 }} aria-hidden="true">
+            {user.email.slice(0, 2).toUpperCase()}
           </Avatar>
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography noWrap sx={{ fontSize: 13, color: "sidebar.textStrong", lineHeight: 1.3 }}>
+            <Typography noWrap sx={{ fontSize: 13, color: "sidebar.textStrong", lineHeight: 1.35 }}>
               {user.email}
             </Typography>
-            <Typography sx={{ fontSize: 12, color: "sidebar.textMuted", lineHeight: 1.3 }}>
-              {user.isAdmin ? "admin" : "member"}
+            <Typography noWrap sx={{ fontSize: 12, color: "sidebar.textMuted", lineHeight: 1.35 }}>
+              {roleLine(user)}
             </Typography>
           </Box>
-          <ExpandMoreIcon sx={{ fontSize: 18, color: "sidebar.textMuted" }} />
-        </ButtonBase>
-        <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => { setMenuAnchor(null); }}>
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              goTo("/account");
+          <IconButton
+            aria-label="Settings"
+            aria-haspopup="menu"
+            aria-expanded={Boolean(menuAnchor)}
+            onClick={(event) => { setMenuAnchor(event.currentTarget); }}
+            sx={{
+              color: "sidebar.text",
+              borderRadius: 2,
+              "&:hover": { bgcolor: "sidebar.hoverBg", color: "sidebar.textStrong" },
+              "&.Mui-focusVisible": { outlineColor: (t) => t.palette.sidebar.accent },
             }}
           >
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={() => { setMenuAnchor(null); }}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <MenuItem onClick={() => { goTo("/account"); }}>
             <ListItemIcon>
-              <KeyIcon fontSize="small" />
+              <PersonIcon fontSize="small" />
             </ListItemIcon>
-            Change password
+            Preferences
+          </MenuItem>
+          <MenuItem onClick={() => { goTo("/docs"); }}>
+            <ListItemIcon>
+              <HelpIcon fontSize="small" />
+            </ListItemIcon>
+            Help and guides
           </MenuItem>
           <MenuItem
             onClick={() => {
-              setMenuAnchor(null);
               logout();
               goTo("/login");
             }}
+            sx={{ color: "error.main" }}
           >
-            <ListItemIcon>
+            <ListItemIcon sx={{ color: "inherit" }}>
               <LogoutIcon fontSize="small" />
             </ListItemIcon>
             Sign out
@@ -196,32 +236,21 @@ export function AppLayout() {
       </Drawer>
 
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <AppBar position="static" color="inherit" elevation={0}>
-          <Toolbar sx={{ gap: 1.5 }}>
-            {!isDesktop && (
-              <>
-                <IconButton
-                  edge="start"
-                  aria-label="Open navigation"
-                  onClick={() => { setNavOpen(true); }}
-                >
-                  <MenuIcon />
-                </IconButton>
-                <Typography sx={{ fontWeight: 600, fontSize: 15 }}>Vertra Console</Typography>
-              </>
-            )}
-            <Box sx={{ flexGrow: 1 }} />
-            <EnvironmentBadge />
-          </Toolbar>
-        </AppBar>
+        {!isDesktop && (
+          <AppBar position="sticky" color="inherit" elevation={0}>
+            <Toolbar sx={{ gap: 1 }}>
+              <IconButton edge="start" aria-label="Open navigation" onClick={() => { setNavOpen(true); }}>
+                <MenuIcon />
+              </IconButton>
+              <Typography sx={{ fontWeight: 600, fontSize: 16 }}>Vertra</Typography>
+            </Toolbar>
+          </AppBar>
+        )}
         {/* No maxWidth/centering here on purpose -- that squeezed every page,
             including ones that genuinely want the full available width,
             into the same narrow centered column regardless of what
             they're actually showing. */}
-        <Box
-          component="main"
-          sx={{ flexGrow: 1, bgcolor: "background.default", p: { xs: 2, sm: 3 }, minWidth: 0 }}
-        >
+        <Box component="main" sx={{ flexGrow: 1, px: { xs: 2, sm: 3, md: 6 }, pt: { xs: 2, sm: 3, md: 4 }, pb: 6, minWidth: 0 }}>
           <Suspense
             fallback={
               <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>

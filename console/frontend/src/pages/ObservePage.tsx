@@ -81,7 +81,7 @@ const REFUSALS: DataTableColumn<Refusal>[] = [
     header: "What",
     render: (r) =>
       r.executionId ? (
-        <Link component={RouterLink} to={`/executions/${r.executionId}`}>
+        <Link component={RouterLink} to={`/runs/${r.executionId}`}>
           {r.what}
         </Link>
       ) : (
@@ -502,7 +502,7 @@ const AUDIT: DataTableColumn<AuditEntryView>[] = [
               {key}:
             </Box>{" "}
             {key === "executionId" && typeof value === "string" ? (
-              <Link component={RouterLink} to={`/executions/${value}`}>
+              <Link component={RouterLink} to={`/runs/${value}`}>
                 <Mono>{value.slice(0, 8)}</Mono>
               </Link>
             ) : (
@@ -881,7 +881,7 @@ function LogsTab({ initialRun }: { initialRun: string }) {
                     <>
                       {l.team} · {l.task}
                       {l.attempt > 1 ? ` (attempt ${String(l.attempt)})` : ""} ·{" "}
-                      <Link component={RouterLink} to={`/executions/${l.executionId}`}>
+                      <Link component={RouterLink} to={`/runs/${l.executionId}`}>
                         {l.executionId.slice(0, 8)}
                       </Link>
                     </>

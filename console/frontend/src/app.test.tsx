@@ -103,11 +103,11 @@ const PAGES: [string, Record<string, Answer>][] = [
   ["/teams/azure-apps", {}],
   ["/admin", {}],
   ["/account", {}],
-  ["/executions", {}],
-  ["/executions/submit", {}],
-  ["/executions/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", {}],
+  ["/runs", {}],
+  ["/runs/submit", {}],
+  ["/runs/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", {}],
+  ["/catalog", {}],
   ["/products", {}],
-  ["/run", {}],
   ["/apis", {}],
   ["/apis/payments/orders", { "ApiService/GetApi": { api: { team: "payments", name: "orders", displayName: "Orders API", mayCall: true, endpoints: [] }, openapi: "{}" } }],
   ["/observe", {}],
@@ -139,6 +139,29 @@ describe("the navigation", () => {
     await renderAt("/", MEMBER);
     const memberNav = await screen.findByRole("navigation", { name: /main/i });
     expect(within(memberNav).queryByRole("link", { name: /admin/i })).toBeNull();
+  });
+});
+
+describe("pages that moved", () => {
+  it.each([
+    ["/executions", "Runs"],
+    ["/executions/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", "Runs"],
+    ["/run?action=title-case", "Catalog"],
+  ])("%s opens its new place", async (path, place) => {
+    await renderAt(path, ADMIN);
+    const nav = await screen.findByRole("navigation", { name: /main/i });
+    expect(within(nav).getByRole("link", { name: place }).getAttribute("aria-current")).toBe("page");
+  });
+});
+
+describe("the settings menu", () => {
+  it("holds Preferences, Help and guides, and Sign out; the sidebar has neither Docs nor Help", async () => {
+    await renderAt("/", MEMBER);
+    const nav = await screen.findByRole("navigation", { name: /main/i });
+    expect(within(nav).queryByRole("link", { name: /docs|help/i })).toBeNull();
+    screen.getByRole("button", { name: "Settings" }).click();
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Preferences", "Help and guides", "Sign out"]);
   });
 });
 

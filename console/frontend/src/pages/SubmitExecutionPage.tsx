@@ -72,7 +72,7 @@ export function SubmitExecutionPage() {
     setSubmitting(true);
     try {
       const result = await submitExecution(check.payload);
-      navigate(`/executions/${encodeURIComponent(result.executionId)}`);
+      navigate(`/runs/${encodeURIComponent(result.executionId)}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
@@ -84,8 +84,8 @@ export function SubmitExecutionPage() {
 
   return (
     <Box>
-      <Link component={RouterLink} to="/executions" variant="body2">
-        ← back to executions
+      <Link component={RouterLink} to="/runs" variant="body2">
+        ← Back to runs
       </Link>
       <Typography variant="h4" sx={{ fontWeight: 600, mt: 0.5, mb: 3 }}>
         Submit an execution

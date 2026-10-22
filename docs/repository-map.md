@@ -216,7 +216,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/dagLayout.ts` | Arranges a DAG's tasks into columns for the execution graph. |
 | `src/statusColor.ts` | Each state's color and label, shared by the status chips and the home charts. |
 | `src/auth/` | The signed-in user (`AuthContext`) and the guard that sends signed-out visitors to the login page. |
-| `src/layout/` | The sidebar and top bar (`AppLayout`) and the environment badge. |
+| `src/layout/` | The sidebar (the install, the places, your account and its settings menu; a top bar opens it on a phone) and the environment badge. Old addresses (`/executions`, `/run`) redirect in `App.tsx`. |
 | `src/components/` | Shared pieces: tables, page headers, status badges, metric cards, team cards, empty states, confirm dialogs, inline monospace (`Mono`). |
 | `src/pages/HomePage.tsx` | Dashboard: counts, executions over time, status breakdown, recent runs. |
 | `src/pages/ExecutionsListPage.tsx` | Every execution you can see, a page at a time; name and team filtered on the server. |
@@ -228,7 +228,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/ApiTraffic.tsx`, `src/pages/team/ApisTab.tsx` | API products: every one you may see, one's page (its spec's endpoints, how to call it through the gateway, your limit, sharing; for its own team its backend, traffic and Pause), and a team's APIs. The Admin page's gateway card shows its settings, what it refused, and closes it. |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams, and one team's page. |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
-| `src/pages/RunPage.tsx`, `src/components/RunDialog.tsx` | The Run page: the templates and actions shared with you, each run through a form from its parameter schema (`src/schemaForm.ts`, tested in `schemaForm.test.ts`), with "Run for" when sharing needs a team. |
+| `src/pages/RunPage.tsx`, `src/components/RunDialog.tsx` | The Catalog (`/catalog`): the templates and actions shared with you, each run through a form from its parameter schema (`src/schemaForm.ts`, tested in `schemaForm.test.ts`), with "Run for" when sharing needs a team. |
 | `src/pages/AdminPage.tsx` | People, admin rights, the catalog release applied (Sync now, adopting a team), automation tokens, allowed image sources. |
 | `src/pages/AccountPage.tsx` | Your account and password. |
 | `src/pages/DocsPage.tsx`, `ApiReference.tsx` | The guides from `console/docs/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos). |

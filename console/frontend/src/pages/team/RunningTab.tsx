@@ -84,8 +84,8 @@ export function RunningTab({ teamName }: { teamName: string }) {
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
         <TabIntro>
           Tasks running in {teamName} right now. Updates on its own. Finished work, with its outputs and logs, is on the{" "}
-          <Link component={RouterLink} to="/executions">
-            Executions
+          <Link component={RouterLink} to="/runs">
+            Runs
           </Link>{" "}
           page.
         </TabIntro>
@@ -233,7 +233,7 @@ export function RunningTab({ teamName }: { teamName: string }) {
                   {current.executionId && current.execution && (
                     <Button
                       component={RouterLink}
-                      to={`/executions/${current.executionId}`}
+                      to={`/runs/${current.executionId}`}
                       variant="contained"
                       sx={{ alignSelf: "flex-start" }}
                     >

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { lazy } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { AppLayout } from "./layout/AppLayout";
@@ -25,6 +25,14 @@ const SubmitExecutionPage = lazy(() => import("./pages/SubmitExecutionPage").the
 const TeamPage = lazy(() => import("./pages/TeamPage").then((m) => ({ default: m.TeamPage })));
 const TeamsPage = lazy(() => import("./pages/TeamsPage").then((m) => ({ default: m.TeamsPage })));
 
+/** A page that moved: the same id, query and anchor at its new address. */
+function Moved({ to }: { to: string }) {
+  const params = useParams();
+  const { search, hash } = useLocation();
+  const path = to.replace(/:(\w+)/g, (_, name: string) => encodeURIComponent(params[name] ?? ""));
+  return <Navigate to={path + search + hash} replace />;
+}
+
 export function App() {
   return (
     <AuthProvider>
@@ -43,17 +51,22 @@ export function App() {
           <Route path="/teams/:teamName" element={<TeamPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/executions" element={<ExecutionsListPage />} />
-          <Route path="/executions/submit" element={<SubmitExecutionPage />} />
-          <Route path="/executions/:id" element={<ExecutionDetailPage />} />
+          <Route path="/runs" element={<ExecutionsListPage />} />
+          <Route path="/runs/submit" element={<SubmitExecutionPage />} />
+          <Route path="/runs/:id" element={<ExecutionDetailPage />} />
+          <Route path="/catalog" element={<RunPage />} />
           <Route path="/products" element={<ProductsPage />} />
-          <Route path="/run" element={<RunPage />} />
           <Route path="/apis" element={<ApisPage />} />
           <Route path="/observe" element={<ObservePage />} />
           <Route path="/apis/:team/:name" element={<ApiPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/docs/:id" element={<DocsPage />} />
         </Route>
+        {/* Where pages used to be, for bookmarks and old links. */}
+        <Route path="/executions" element={<Moved to="/runs" />} />
+        <Route path="/executions/submit" element={<Moved to="/runs/submit" />} />
+        <Route path="/executions/:id" element={<Moved to="/runs/:id" />} />
+        <Route path="/run" element={<Moved to="/catalog" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

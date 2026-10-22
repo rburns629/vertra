@@ -14,6 +14,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { EmptyState } from "../components/EmptyState";
 import { Mono } from "../components/Mono";
+import { Link as RouterLink } from "react-router-dom";
 import { PageHeader } from "../components/PageHeader";
 import { RunDialog } from "../components/RunDialog";
 import { ApiError, listRunnables, type Runnable } from "../api";
@@ -82,8 +83,13 @@ export function RunPage() {
   return (
     <Box>
       <PageHeader
-        title="Run"
-        subtitle="Templates and actions teams share with you. Fill in what each asks for; its steps run as the owning team's products, with their own identities and secrets. You can follow, cancel and rerun your runs from Executions. What isn't shared with you yet is at the end: ask its team for it."
+        title="Catalog"
+        subtitle="Templates and actions teams share with you. Fill in what each asks for; its steps run as the owning team's products, with their own identities and secrets. You can follow, cancel and rerun your runs from Runs. What isn't shared with you yet is at the end: ask its team for it."
+        action={
+          <Button component={RouterLink} to="/products" variant="outlined">
+            Every product
+          </Button>
+        }
       />
 
       {error && (
