@@ -806,9 +806,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   reruns. It claims every product's repository, so another test file
   registering products in the same database at the same time can race it:
   scope it to its own products, or run that file on its own.
-- [ ] **The frontend's two low-severity advisories** (KaTeX, through
-  mermaid): `npm audit` offers only mermaid 12, a major version; take it
-  when the docs page's diagrams are checked against it.
+- [ ] **Check the docs page's diagrams under mermaid 12** (taken by a
+  Dependabot bump, which cleared the KaTeX advisories; not yet looked at).
 - [ ] **Run the older kernel tests on the database's clock**, as the newer
   ones do: `now` from this machine against `available_at` from Postgres can
   disagree in a Dockerized Postgres.
