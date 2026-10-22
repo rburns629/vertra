@@ -293,6 +293,7 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 		return err
 	}
 	fmt.Fprintf(out, "\nWrote %s. Next: vertra apply %s\n", filepath.Join(dir, config.FileName), env)
+	fmt.Fprintf(out, "What it will ask of you, and what comes after: %s\n", strings.TrimSuffix(guidesURL, "clouds/")+"setup.md")
 	return nil
 }
 

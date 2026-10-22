@@ -43,3 +43,7 @@ two that stop an install:
   allows.
 - **External IPs for VMs** (`compute.vmExternalIpAccess`): GKE's nodes then
   need private nodes and Cloud NAT, which the module doesn't make yet.
+
+## Next
+
+[Setting up Vertra](../setup.md): `vertra init`, what each question decides, and what to expect from `vertra apply`.

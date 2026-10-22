@@ -397,6 +397,10 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 | `repository-map.md` | This page. |
 | `architecture/` | draw.io diagrams (system, UML classes for both projects, a submit-to-finished sequence, state machines), their SVG exports, and `generate.py`, which writes them from the code. Rerun it after changing code. |
 
+### `docs/setup.md`
+
+Setting up Vertra with `vertra`, start to finish: the questions `init` asks and what each decides, what `apply` asks of you (DNS), the first sign-in and Google sign-in, the catalog, day-to-day commands, and what `destroy` keeps.
+
 ### `docs/clouds/`: before `vertra init`
 
 | Path | What it's for |

@@ -25,3 +25,7 @@ rules: the catalog still publishes from `main` only (its cloud federation
 refuses other branches), but its token is a repository secret and the
 reviewed purge workflow has no token. A public repository, or a paid plan,
 gets all of it.
+
+## Next
+
+[Setting up Vertra](../setup.md): `vertra init`, what each question decides, and what to expect from `vertra apply`.

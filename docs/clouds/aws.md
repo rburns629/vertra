@@ -74,3 +74,7 @@ region restriction), pick one of them, or have the organization's
 management account allow another (AWS Organizations → Policies → Service
 control policies). us-east-2 costs the same as us-east-1 for everything
 Vertra uses.
+
+## Next
+
+[Setting up Vertra](../setup.md): `vertra init`, what each question decides, and what to expect from `vertra apply`.

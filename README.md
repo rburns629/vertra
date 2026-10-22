@@ -164,6 +164,8 @@ scope, is in [`docs/security-model.md`](docs/security-model.md).
 
 ## Learn more
 
+- [`docs/setup.md`](docs/setup.md): installing it for real with `vertra`, on
+  Google Cloud, AWS or a cluster you have, start to finish
 - [`docs/architecture.md`](docs/architecture.md): how it works and why
 - [`docs/operations.md`](docs/operations.md): installing, upgrading, backups,
   troubleshooting
