@@ -18,6 +18,12 @@ name: catalog-ci
 #   vars.GCP_WORKLOAD_IDENTITY_PROVIDER + vars.PUBLISH_GCP_SERVICE_ACCOUNT
 #   vars.AWS_ROLE_ARN + vars.AWS_REGION     (ECR, through GitHub's OIDC token)
 #   vars.REGISTRY_USERNAME + secrets.REGISTRY_PASSWORD
+#
+# A secret goes in the catalog-publish Environment, never at repository
+# level: every pull request's workflows get repository secrets, and one that
+# edits a workflow can print them. Without Environments (a private repository
+# on GitHub Free), use only what needs no secret: OIDC to the registry, and
+# keyless or KMS signing. `vertra catalog create` warns about any it finds.
 
 on:
   pull_request:

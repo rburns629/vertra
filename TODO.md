@@ -646,8 +646,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (Workload Identity Federation, no Google service account or annotation),
   on AWS by Pod Identity to its own role. Left: proving the gcp grants on a
   cluster.
-- [ ] **Catalog: keep pull-request workflows away from secrets and cloud
-  identities**: every workflow that holds one in a `main`-only Environment.
+- [x] **Catalog: keep pull-request workflows away from secrets and cloud
+  identities** (checked 2026-10-22): the cloud identities trust only `main`
+  (GCP's `assertion.ref`) or the `catalog-publish` Environment (AWS's
+  `sub`), so a pull request's token never matches; the publish and purge
+  jobs run in `main`-only Environments; `vertra` sets no secrets (OIDC to
+  the registry, keyless signing). Added: `vertra catalog create` warns, by
+  name, about any repository-level secret (which every pull request's
+  workflows get), and the template says where one belongs.
 
 ## Console
 
