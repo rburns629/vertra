@@ -43,7 +43,7 @@ func (a *app) adminCmd() *cobra.Command {
 			if m == nil {
 				return fmt.Errorf("the console didn't say the new password")
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Sign in as %s with %s\nThat password is shown only this once: change it after signing in.\n", m[1], m[2])
+			fmt.Fprintf(cmd.OutOrStdout(), "Sign in as %s with %s\nThat password is shown only this once: you'll choose your own when you sign in.\n", m[1], m[2])
 			return nil
 		},
 	}

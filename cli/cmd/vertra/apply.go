@@ -225,7 +225,7 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	if installed[install.ConsoleRelease] == "" {
 		if pw := install.Password(ctx, a.runner, c); pw != "" {
 			fmt.Fprintf(out, "  Sign in as %s with %s\n", c.Admin.Email, pw)
-			fmt.Fprintln(out, "  That password is shown only this once: change it after signing in.")
+			fmt.Fprintln(out, "  That password is shown only this once: you'll choose your own when you sign in.")
 		}
 	}
 	return nil

@@ -63,7 +63,7 @@ Many DNS providers add the domain themselves: then the record's name is just
 shows both.
 
 **The admin's password** is printed once at the end of the first apply. Sign
-in and change it (account menu, Change password). If it's lost,
+in with it and choose your own: nothing else opens until you do. If it's lost,
 `vertra admin reset-password <env>` makes a new one, which then has to be
 changed at the next sign-in.
 

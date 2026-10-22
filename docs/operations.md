@@ -86,7 +86,7 @@ network policy agent or Calico; on AKS a network policy engine).
    helm install kernel ./execution-kernel -n vertra-system -f execution-kernel/sizes/$SIZE.yaml -f <values>/kernel.yaml
    helm install console ./execution-console -n vertra-system -f execution-console/sizes/$SIZE.yaml -f <values>/console.yaml
    kubectl -n vertra-system rollout status deployment -l 'app.kubernetes.io/instance in (kernel,console)'
-   kubectl -n vertra-system logs job/console-execution-console-migrate   # the first admin's password, shown once
+   kubectl -n vertra-system logs job/console-execution-console-migrate   # the first admin's password, shown once; changed at the first sign-in
    ```
 
    Upgrades (`helm upgrade`) can use `--wait`: they migrate before the

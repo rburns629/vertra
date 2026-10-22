@@ -602,7 +602,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   a password session may only GetMe and ChangePassword
   (`PASSWORD_CHANGE_REQUIRED`), the gateway refuses it, and the console
   sends them to their account page. Single sign-on and bots aren't held
-  back. The chart's bootstrap admin isn't marked (kind's fixed password).
+  back. The chart's bootstrap admin is marked too when its password was
+  generated (2026-10-22), not when the operator set one (kind's fixed
+  password).
 - [x] **Limit what steps can reach inside the cluster** (S3, done
   2026-10-21): the console writes `vertra-default-deny` into every team
   namespace (`teamNetwork.ts`; with the namespace, and on every policy
