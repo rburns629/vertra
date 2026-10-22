@@ -51,6 +51,7 @@ import {
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { ensureStillRunnable, rerunTemplate } from "./templates.js";
 import { mayDecide, taskTeams } from "./approvals.js";
+import { visibleLines } from "../logLevels.js";
 import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { scanBlocker } from "../scanning.js";
@@ -882,9 +883,22 @@ export async function executionEvents(caller: AuthUser | undefined, executionId:
   return getExecutionEvents(executionId, after);
 }
 
+/**
+ * Every step's captured output, as the caller may see it: everything for
+ * the step's team and admins, only its INFO lines for anyone else who can
+ * see the run (logLevels.ts).
+ */
 export async function executionLogs(caller: AuthUser | undefined, executionId: string) {
-  await loadExecution(executionId, caller, "any");
-  return getExecutionLogs(executionId);
+  const submitted = await loadExecution(executionId, caller, "any");
+  const teams = taskTeams(submitted.payload);
+  const logs = await getExecutionLogs(executionId);
+  return {
+    tasks: logs.tasks.map((t) => {
+      const team = teams.get(t.taskId) ?? "";
+      const seesEverything = caller?.isAdmin === true || (caller?.teamNames ?? []).includes(team);
+      return { taskId: t.taskId, ...visibleLines(t.lines, seesEverything), visibleTo: team };
+    }),
+  };
 }
 
 /** Every team, as for submitting it: cancelling stops all of its tasks, other teams' too. */

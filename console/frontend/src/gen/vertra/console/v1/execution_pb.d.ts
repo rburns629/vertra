@@ -816,9 +816,26 @@ export declare type TaskLogs = Message<"vertra.console.v1.TaskLogs"> & {
   taskId: string;
 
   /**
+   * What the caller may see: every line for the step's team (and admins);
+   * for anyone else who can see the run, only lines the step logged as
+   * JSON with "level": "info" (a plain line counts as debug).
+   *
    * @generated from field: repeated string lines = 2;
    */
   lines: string[];
+
+  /**
+   * Lines held back from the caller (debug, warn, error, plain), and the
+   * team that sees them.
+   *
+   * @generated from field: int32 hidden = 3;
+   */
+  hidden: number;
+
+  /**
+   * @generated from field: string visible_to = 4;
+   */
+  visibleTo: string;
 };
 
 /**

@@ -42,7 +42,9 @@ function main(): number {
   if (length > MAX_LENGTH) {
     return fail("TEXT_TOO_LONG", `inputs.text is ${length} characters; the limit is ${MAX_LENGTH}.`);
   }
-  console.log(`reversed ${length} characters`);
+  // A JSON line with level info: what everyone who can see the run sees.
+  // Anything else (debug, warn, error, plain) only this team sees.
+  console.log(JSON.stringify({ level: "info", msg: `reversed ${length} characters` }));
   writeResult({ status: "succeeded", outputs: { text: reverse(text), language: "TypeScript" } });
   return 0;
 }

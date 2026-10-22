@@ -25,7 +25,9 @@ design.
     ServiceMonitors in the charts; the console's charts for everyone,
     Grafana with shipped dashboards and alerts for admins.
   - The audit log, which only admins see today, as its fourth tab.
-  Who sees a step's logs, by level (decided 2026-10-21): INFO lines to
+  Who sees a step's logs, by level (decided 2026-10-21; done 2026-10-22 for
+  the step output the kernel captures: `console/src/logLevels.ts`, every
+  sample logging JSON INFO lines): INFO lines to
   everyone who can see the run, with Secrets masked; DEBUG, WARN and ERROR
   to the product's team (and admins). Steps log JSON lines with a `level`
   (plain lines count as DEBUG, so nothing is shown to consumers by

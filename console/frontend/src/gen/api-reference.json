@@ -2901,6 +2901,20 @@
      "type": "string",
      "repeated": true,
      "optional": false,
+     "comment": "What the caller may see: every line for the step's team (and admins);\nfor anyone else who can see the run, only lines the step logged as\nJSON with \"level\": \"info\" (a plain line counts as debug)."
+    },
+    {
+     "name": "hidden",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "Lines held back from the caller (debug, warn, error, plain), and the\nteam that sees them."
+    },
+    {
+     "name": "visibleTo",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
      "comment": ""
     }
    ]

@@ -150,6 +150,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `jsonSchema.ts` | Checking values against the JSON Schemas teams write (ajv, draft 2020-12, nothing fetched): template parameters and products' inputs. |
 | `tokenAudiences.ts` | Which audiences a product's steps may get a projected token for: refuses the Kubernetes API's (from the console's own token) and kernel-api's, and names each token's file. |
 | `policySync.ts` | Rewrites the identity and scan policies and the teams' pull Secrets every few minutes, so drift doesn't last; keeps each sync's outcome for admins. |
+| `logLevels.ts` | Who sees which of a step's log lines: INFO to everyone who can see the run, the rest to the step's team. |
 | `registryFederation.ts` | Reading a Google Artifact Registry from another cloud: the console's projected token exchanged at Google's STS (Workload Identity Federation), and the Docker config it hands out. |
 | `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`vertra-pull`), for steps' images in private registries. |
 | `failureHelp.ts` | What a failed step's error means, what to do, whether a retry is safe and whom to ask: the owner's words, else the platform's. |
@@ -269,6 +270,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `apis.test.ts` | API products from releases (with their ServiceAccounts), who sees and may call them, held backends, pausing. |
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a target rule), and who may decide. |
 | `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
+| `log-levels.test.ts` | A step's log lines by level: INFO for everyone who can see the run, the rest for its team. |
 | `reset-admin.test.ts` | Resetting a lost admin password: printed once, sessions revoked, audited, admins only. |
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |
 | `access.test.ts` | The authorization rules in `auth/access.ts`. |

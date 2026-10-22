@@ -301,7 +301,14 @@ message GetExecutionLogsRequest {
 
 message TaskLogs {
   string task_id = 1;
+  // What the caller may see: every line for the step's team (and admins);
+  // for anyone else who can see the run, only lines the step logged as
+  // JSON with "level": "info" (a plain line counts as debug).
   repeated string lines = 2;
+  // Lines held back from the caller (debug, warn, error, plain), and the
+  // team that sees them.
+  int32 hidden = 3;
+  string visible_to = 4;
 }
 
 message GetExecutionLogsResponse {

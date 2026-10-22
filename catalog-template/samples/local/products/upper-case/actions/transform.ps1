@@ -34,6 +34,8 @@ if ($length -gt $MaxLength) {
     Exit-Failed 'TEXT_TOO_LONG' "inputs.text is $length characters; the limit is $MaxLength."
 }
 
-Write-Output "upper-cased $length characters"
+# A JSON line with level info: what everyone who can see the run sees.
+# Anything else (debug, warn, error, plain) only this team sees.
+Write-Output (@{ level = 'info'; msg = "upper-cased $length characters" } | ConvertTo-Json -Compress)
 Write-Result @{ status = 'succeeded'; outputs = @{ text = $text.ToUpperInvariant(); language = 'PowerShell' } }
 exit 0

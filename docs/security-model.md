@@ -190,6 +190,15 @@ whoever ran it as well as to its steps' teams: they may see, cancel, retry
 and rerun it (a rerun runs the template again, as it is now; a retry is
 refused once it, or a step's action, is no longer shared).
 
+## Who sees a step's logs
+
+A step's output is stored (the kernel redacts recognizable credentials
+first) and shown by level (decided 2026-10-21, `console/src/logLevels.ts`):
+lines the step logs as JSON with `"level": "info"` to everyone who can see
+the run; every other line (debug, warn, error, and any plain line, so
+nothing reaches a consumer by accident) only to the step's team and admins.
+A consumer sees how many lines were held back and which team sees them.
+
 ## The API gateway
 
 API products (decision 20) publish a team's own backend through one

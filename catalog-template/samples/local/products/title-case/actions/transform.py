@@ -42,7 +42,10 @@ def main() -> int:
         return fail("TEXT_TOO_LONG", f"inputs.text is {len(text)} characters; the limit is {MAX_LENGTH}.")
 
     result = title_case(text)
-    print(f"title-cased {len(text)} characters")
+    # A JSON line with level info: what everyone who can see the run sees.
+    # Anything else (debug, warn, error, plain) only this team sees.
+    print(json.dumps({"level": "debug", "msg": f"{len(text.split())} words in, {len(re.findall(r'[A-Z]', text))} capitals already"}))
+    print(json.dumps({"level": "info", "msg": f"title-cased {len(text)} characters"}))
     write_result({"status": "succeeded", "outputs": {"text": result, "language": "Python"}})
     return 0
 

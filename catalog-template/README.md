@@ -330,9 +330,13 @@ the gateway reads no secrets. Your backend learns who called from the
   4 KB. Output references (IDs, names, URIs), not data.
 - Steps run at least once: an action must be safe to run again (look up
   before creating).
-- Never print or return a credential. Logs and outputs are stored and shown
-  to everyone who can see the execution; the kernel redacts recognizable
-  credentials from logs and fails a step whose outputs contain one.
+- Log JSON lines with a `level`: `{"level": "info", "msg": "Created the
+  project"}`. INFO lines are shown to everyone who can see the run, so
+  write them for the person who ran it; `debug`, `warn` and `error` lines,
+  and any plain line, only your team (and admins) sees. Every sample does.
+- Never print or return a credential. Logs and outputs are stored; the
+  kernel redacts recognizable credentials from logs and fails a step whose
+  outputs contain one.
 - The image runs as non-root with a read-only filesystem (`/tmp` is
   writable) and no Kubernetes token.
 

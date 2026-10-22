@@ -1015,13 +1015,17 @@ export async function getExecutionEvents(
  * not an error. */
 export interface TaskLogs {
   taskId: string;
+  /** What you may see: every line for the step's team, else its INFO lines. */
   lines: string[];
+  /** Lines held back from you, and the team that sees them. */
+  hidden: number;
+  visibleTo: string;
 }
 
 /** Every task's logs in one call, not one call per task. */
 export async function getExecutionLogs(executionId: string): Promise<{ tasks: TaskLogs[] }> {
   const { tasks } = await call(() => executions.getExecutionLogs({ executionId }));
-  return { tasks: tasks.map((t) => ({ taskId: t.taskId, lines: t.lines })) };
+  return { tasks: tasks.map((t) => ({ taskId: t.taskId, lines: t.lines, hidden: t.hidden, visibleTo: t.visibleTo })) };
 }
 
 /** Admin-only -- see ../../src/core/admin.ts. A non-admin's home view

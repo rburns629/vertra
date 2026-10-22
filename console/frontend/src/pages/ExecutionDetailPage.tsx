@@ -403,6 +403,13 @@ function buildMergedFeed(tasksWithLogs: TaskLogs[], events: ExecutionEvent[]): M
       createdAt: event.createdAt,
     }));
     const outputEntries: MergedEntry[] = task.lines.map((line) => ({ kind: "output", line }));
+    if (task.hidden > 0) {
+      // Only INFO lines reach people outside the step's team.
+      outputEntries.push({
+        kind: "output",
+        line: `(${String(task.hidden)} more line${task.hidden === 1 ? "" : "s"}, debug, warnings and errors: only ${task.visibleTo} sees them)`,
+      });
+    }
 
     const lastEvent = taskEvents[taskEvents.length - 1];
     const entries =

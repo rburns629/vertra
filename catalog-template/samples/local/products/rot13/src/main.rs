@@ -63,7 +63,9 @@ fn run(action: Option<String>) -> i32 {
         );
     }
 
-    println!("rotated {length} characters");
+    // A JSON line with level info: what everyone who can see the run sees.
+    // Anything else (debug, warn, error, plain) only this team sees.
+    println!("{{\"level\":\"info\",\"msg\":\"rotated {length} characters\"}}");
     write_result(&json!({
         "status": "succeeded",
         "outputs": { "text": rot13(text), "language": "Rust" }

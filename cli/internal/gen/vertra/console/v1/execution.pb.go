@@ -1696,9 +1696,16 @@ func (x *GetExecutionLogsRequest) GetExecutionId() string {
 }
 
 type TaskLogs struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Lines         []string               `protobuf:"bytes,2,rep,name=lines,proto3" json:"lines,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TaskId string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	// What the caller may see: every line for the step's team (and admins);
+	// for anyone else who can see the run, only lines the step logged as
+	// JSON with "level": "info" (a plain line counts as debug).
+	Lines []string `protobuf:"bytes,2,rep,name=lines,proto3" json:"lines,omitempty"`
+	// Lines held back from the caller (debug, warn, error, plain), and the
+	// team that sees them.
+	Hidden        int32  `protobuf:"varint,3,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	VisibleTo     string `protobuf:"bytes,4,opt,name=visible_to,json=visibleTo,proto3" json:"visible_to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1745,6 +1752,20 @@ func (x *TaskLogs) GetLines() []string {
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *TaskLogs) GetHidden() int32 {
+	if x != nil {
+		return x.Hidden
+	}
+	return 0
+}
+
+func (x *TaskLogs) GetVisibleTo() string {
+	if x != nil {
+		return x.VisibleTo
+	}
+	return ""
 }
 
 type GetExecutionLogsResponse struct {
@@ -2559,10 +2580,13 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\vnext_cursor\x18\x02 \x01(\x03R\n" +
 	"nextCursor\"<\n" +
 	"\x17GetExecutionLogsRequest\x12!\n" +
-	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"9\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"p\n" +
 	"\bTaskLogs\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x14\n" +
-	"\x05lines\x18\x02 \x03(\tR\x05lines\"M\n" +
+	"\x05lines\x18\x02 \x03(\tR\x05lines\x12\x16\n" +
+	"\x06hidden\x18\x03 \x01(\x05R\x06hidden\x12\x1d\n" +
+	"\n" +
+	"visible_to\x18\x04 \x01(\tR\tvisibleTo\"M\n" +
 	"\x18GetExecutionLogsResponse\x121\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x1b.vertra.console.v1.TaskLogsR\x05tasks\";\n" +
 	"\x16CancelExecutionRequest\x12!\n" +

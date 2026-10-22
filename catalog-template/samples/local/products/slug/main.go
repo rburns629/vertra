@@ -96,7 +96,9 @@ func run(args []string) int {
 		return fail("NOTHING_TO_SLUG", "inputs.text has no letters or digits to make a slug from.")
 	}
 
-	fmt.Printf("slugged %d characters\n", utf8.RuneCountInString(text))
+	// A JSON line with level info: what everyone who can see the run sees.
+	// Anything else (debug, warn, error, plain) only this team sees.
+	fmt.Printf("{\"level\":\"info\",\"msg\":\"slugged %d characters\"}\n", utf8.RuneCountInString(text))
 	writeResult(result{Status: "succeeded", Outputs: map[string]string{"text": slug, "language": "Go"}})
 	return 0
 }
