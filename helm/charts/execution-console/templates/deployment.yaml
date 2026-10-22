@@ -95,13 +95,7 @@ spec:
             - configMapRef:
                 name: {{ include "execution-console.fullname" . }}-config
           env:
-            {{- if .Values.sso.issuer }}
-            - name: OIDC_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.sso.clientSecret.name }}
-                  key: {{ .Values.sso.clientSecret.key }}
-            {{- end }}
+            {{- include "execution-console.ssoEnv" . | nindent 12 }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

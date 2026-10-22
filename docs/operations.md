@@ -93,9 +93,8 @@ network policy agent or Calico; on AKS a network policy engine).
    rollout.
 
 6. **Reach the console** with `kubectl port-forward svc/console-execution-console 18080:8080`,
-   or expose it. The charts don't add TLS: put the console behind TLS (an
-   Ingress or Gateway with a certificate, ideally an identity-aware proxy)
-   before anyone signs in over a network. kernel-api must stay `ClusterIP`.
+   or over HTTPS (next section) before anyone signs in over a network.
+   kernel-api must stay `ClusterIP`.
 7. **Sign in, change the password**, and on the Admin page: add admins,
    mint the catalog's automation token, and set the allowed image sources.
 
@@ -103,6 +102,44 @@ network policy agent or Calico; on AKS a network policy engine).
 `-eso`) does the build and upgrade for GKE with Cloud Build, with the
 settings in `helm/values/gke/` and the context named in the Makefile; it
 shows what's about to ship and asks you to type the cluster's name first.
+
+### HTTPS for the console
+
+The console chart reaches the console over HTTPS one of two ways, each with
+its certificate issued and renewed for you:
+
+- **An Ingress** (`ingress`: `enabled`, `host`, `className`). The certificate:
+  - cert-manager with an issuer you have: `certManager.issuer` (a
+    ClusterIssuer, or an Issuer with `issuerKind: Issuer`), e.g. your
+    internal CA;
+  - Let's Encrypt: `certManager.acme.email`, and the chart makes the Issuer,
+    proving the host over HTTP through the same Ingress class (the host must
+    resolve to the Ingress from the internet);
+  - a Secret you keep: `tlsSecretName`;
+  - or the cloud's, through `annotations` (what `vertra` does on GKE and
+    EKS).
+
+  `httpsOnly` (on) refuses plain HTTP for the controllers the chart knows:
+  Traefik (`websecure` only), NGINX (redirect) and GKE (no HTTP). For
+  another, add its own annotation.
+- **A Gateway** you run (Gateway API, `gatewayApi`): an HTTPRoute for
+  `host` on the Gateway's HTTPS listener (`parentRefs`), and optionally a
+  redirect from its HTTP listener (`redirectParentRefs`). The Gateway holds
+  the certificate; cert-manager issues it from an annotation on the Gateway
+  (`cert-manager.io/cluster-issuer`) with its Gateway API support on.
+
+Either way, the console sends Strict-Transport-Security, so a browser that
+has seen it keeps to HTTPS; set `trustProxy` to the load balancer's
+addresses so sign-in limits see real clients.
+
+On kind, `make kind-tls` installs cert-manager, Traefik (an Ingress
+controller and a Gateway at once) and a private test CA
+(`helm/values/kind/tls-test.yaml`, which no browser trusts). Then deploy with
+the console's `ingress` or `gatewayApi` in a values file under `_local/`
+(`make kind-deploy-console KIND_CONSOLE_VALUES=_local/...`), port-forward
+Traefik (`kubectl -n traefik port-forward svc/traefik 28443:443`) and check
+with `curl --cacert` (the CA is `ca.crt` in `cert-manager/vertra-test-ca`)
+and `--resolve <host>:28443:127.0.0.1`.
 
 ### Cloud identities
 

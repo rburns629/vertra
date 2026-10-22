@@ -1,30 +1,77 @@
 {{/*
 Reaching the console from outside the cluster (values.yaml's ingress). HTTPS
-only: the certificate comes from the cloud (an annotation) or tlsSecretName.
+only: the certificate comes from the cloud (an annotation), tlsSecretName, or
+cert-manager (certManager: an issuer of yours, or Let's Encrypt through the
+chart's own Issuer).
 */}}
 {{- if .Values.ingress.enabled }}
 {{- if not .Values.ingress.host }}
 {{- fail "ingress.host is needed: the hostname the console is reached at" }}
 {{- end }}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+{{- $cm := .Values.ingress.certManager }}
+{{- $acme := and (not $cm.issuer) $cm.acme.email }}
+{{- $issued := or $cm.issuer $acme }}
+{{- if and $issued .Values.ingress.tlsSecretName }}
+{{- fail "ingress: tlsSecretName or certManager, not both" }}
+{{- end }}
+{{- $name := include "execution-console.fullname" . }}
+{{- $httpsOnly := dict }}
+{{- if .Values.ingress.httpsOnly }}
+{{- $httpsOnly = get (dict
+  "traefik" (dict "traefik.ingress.kubernetes.io/router.entrypoints" "websecure" "traefik.ingress.kubernetes.io/router.tls" "true")
+  "nginx" (dict "nginx.ingress.kubernetes.io/force-ssl-redirect" "true")
+  "gce" (dict "kubernetes.io/ingress.allow-http" "false")
+) (.Values.ingress.className | default "") | default dict }}
+{{- end }}
+{{- if $acme }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
 metadata:
-  name: {{ include "execution-console.fullname" . }}
+  name: {{ $name }}-letsencrypt
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "execution-console.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+spec:
+  acme:
+    server: {{ $cm.acme.server | quote }}
+    email: {{ $cm.acme.email | quote }}
+    privateKeySecretRef:
+      name: {{ $name }}-letsencrypt-account
+    solvers:
+      - http01:
+          ingress:
+            {{- with .Values.ingress.className }}
+            ingressClassName: {{ . }}
+            {{- end }}
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+  {{- if or .Values.ingress.annotations $issued $httpsOnly }}
   annotations:
+    {{- /* Yours win over the chart's. */}}
+    {{- with (merge (deepCopy (.Values.ingress.annotations | default dict)) $httpsOnly) }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if $cm.issuer }}
+    cert-manager.io/{{ $cm.issuerKind | lower | replace "clusterissuer" "cluster-issuer" }}: {{ $cm.issuer | quote }}
+    {{- else if $acme }}
+    cert-manager.io/issuer: {{ printf "%s-letsencrypt" $name | quote }}
+    {{- end }}
   {{- end }}
 spec:
   {{- with .Values.ingress.className }}
   ingressClassName: {{ . }}
   {{- end }}
-  {{- with .Values.ingress.tlsSecretName }}
+  {{- if or .Values.ingress.tlsSecretName $issued }}
   tls:
-    - hosts: [{{ $.Values.ingress.host | quote }}]
-      secretName: {{ . }}
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ .Values.ingress.tlsSecretName | default (printf "%s-tls" $name) }}
   {{- end }}
   rules:
     - host: {{ .Values.ingress.host | quote }}
@@ -34,7 +81,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "execution-console.fullname" . }}
+                name: {{ $name }}
                 port:
                   number: {{ .Values.service.port }}
 {{- end }}

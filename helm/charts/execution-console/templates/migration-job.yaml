@@ -50,6 +50,7 @@ spec:
             - configMapRef:
                 name: {{ include "execution-console.fullname" . }}-config
           env:
+            {{- include "execution-console.ssoEnv" . | nindent 12 }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

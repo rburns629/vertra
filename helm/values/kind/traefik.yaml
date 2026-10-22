@@ -1,0 +1,18 @@
+# Traefik on kind (make kind-tls): an Ingress controller and a Gateway API
+# implementation in one, for trying the console behind either. No
+# LoadBalancer on kind: reach it by port-forward (docs/operations.md).
+service:
+  type: ClusterIP
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesGateway:
+    enabled: true
+# The console's own Gateway is made by make kind-tls, not the chart's.
+gateway:
+  enabled: false
+ingressClass:
+  enabled: true
+  isDefaultClass: false
+resources:
+  requests: {cpu: 10m, memory: 64Mi}

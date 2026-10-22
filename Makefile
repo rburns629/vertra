@@ -1,4 +1,4 @@
-.PHONY: quickstart _quickstart-prereqs kind-cluster kind-namespaces \
+.PHONY: kind-tls quickstart _quickstart-prereqs kind-cluster kind-namespaces \
 	build-products catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
 	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
@@ -231,13 +231,35 @@ kind-deploy-kernel:
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment kernel-execution-kernel-scheduler --timeout=5m
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment kernel-execution-kernel-api --timeout=5m
 
+# Optional: HTTPS for the console on kind, through cert-manager (a private
+# test CA) and Traefik (an Ingress controller and a Gateway). Then deploy the
+# console with ingress.certManager.issuer or gatewayApi (docs/operations.md).
+CERT_MANAGER_VERSION := v1.21.2
+TRAEFIK_CHART_VERSION := 41.6.1
+GATEWAY_API_VERSION := v1.6.3
+GATEWAY_API_SHA256 := 356c2b8e286a964dc20995435659ad1095386329974793af10bbfe3eff977fe5
+kind-tls:
+	@# Gateway API's resource definitions, which Traefik needs first: checked before applying.
+	curl -sSfL -o /tmp/vertra-gateway-api.yaml \
+		https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+	echo "$(GATEWAY_API_SHA256)  /tmp/vertra-gateway-api.yaml" | shasum -a 256 -c -
+	$(KUBECTL) apply --server-side -f /tmp/vertra-gateway-api.yaml
+	helm repo add jetstack https://charts.jetstack.io --force-update > /dev/null
+	helm repo add traefik https://traefik.github.io/charts --force-update > /dev/null
+	helm upgrade --install cert-manager jetstack/cert-manager --version $(CERT_MANAGER_VERSION) \
+		--kube-context $(KIND_CONTEXT) -n cert-manager --create-namespace --wait --timeout 10m -f helm/values/kind/cert-manager.yaml
+	helm upgrade --install traefik traefik/traefik --version $(TRAEFIK_CHART_VERSION) \
+		--kube-context $(KIND_CONTEXT) -n traefik --create-namespace --wait --timeout 10m -f helm/values/kind/traefik.yaml
+	$(KUBECTL) apply -f helm/values/kind/tls-test.yaml
+	$(KUBECTL) -n cert-manager wait --for=condition=Ready certificate/vertra-test-ca --timeout=2m
+
 kind-deploy-console:
 	$(DOCKER) build -t execution-console:latest console/
 	kind load docker-image execution-console:latest --name $(KIND_CLUSTER)
 	$(DOCKER) build -t execution-gateway:latest gateway/
 	kind load docker-image execution-gateway:latest --name $(KIND_CLUSTER)
 	helm upgrade console helm/charts/execution-console $(KIND_HELM_UPGRADE) -f helm/values/kind/console.yaml \
-		$(if $(KIND_CONSOLE_VALUES),-f $(KIND_CONSOLE_VALUES))
+		$(foreach file,$(KIND_CONSOLE_VALUES),-f $(file))
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout restart deployment console-execution-console console-execution-console-gateway
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console --timeout=5m
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console-gateway --timeout=5m

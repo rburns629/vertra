@@ -50,8 +50,41 @@ ingress:
   className: ""
   host: ""
   annotations: {}
-  # -- A Secret with the certificate, when it isn't managed by the cloud.
+  # -- Refuse plain HTTP, for the controllers this chart knows (className):
+  # traefik serves the console on its HTTPS entrypoint only, nginx
+  # redirects to HTTPS, gce has no HTTP at all. Another controller: set its
+  # own annotation. Browsers keep to HTTPS anyway once they've seen the
+  # console's Strict-Transport-Security.
+  httpsOnly: true
+  # -- A Secret with the certificate, when it isn't managed by the cloud
+  # or by cert-manager.
   tlsSecretName: ""
+  # cert-manager (installed separately) issues and renews the certificate
+  # into <release>-execution-console-tls.
+  certManager:
+    # -- The issuer to ask: a ClusterIssuer (issuerKind) you made, e.g. one
+    # for your internal CA. Empty, with acme.email set: the chart's own.
+    issuer: ""
+    issuerKind: ClusterIssuer
+    # -- Let's Encrypt: the chart makes an Issuer here that proves the host
+    # over HTTP through this Ingress's class (className). The host must
+    # resolve to the Ingress from the internet.
+    acme:
+      email: ""
+      server: https://acme-v02.api.letsencrypt.org/directory
+
+# -- Reaching the console through a Gateway (Gateway API) instead of an
+# Ingress: an HTTPRoute for the host, attached to a Gateway someone else
+# runs, whose HTTPS listener holds the certificate (cert-manager can issue it
+# from an annotation on the Gateway).
+gatewayApi:
+  enabled: false
+  host: ""
+  # -- The Gateway's HTTPS listener, e.g. [{name: shared, namespace: infra, sectionName: https}].
+  parentRefs: []
+  # -- The same Gateway's plain-HTTP listener, answered with a redirect to
+  # HTTPS (none when empty), e.g. [{name: shared, namespace: infra, sectionName: http}].
+  redirectParentRefs: []
 
 # -- The proxies in front of the console (addresses and CIDR ranges), whose
 # X-Forwarded-For it believes, so the sign-in throttle and rate limits see

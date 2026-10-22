@@ -1,0 +1,46 @@
+{{/*
+Reaching the console through a Gateway (values.yaml's gatewayApi): its
+HTTPS listener holds the certificate; its HTTP listener, when named, only
+redirects to HTTPS.
+*/}}
+{{- if .Values.gatewayApi.enabled }}
+{{- if not (and .Values.gatewayApi.host .Values.gatewayApi.parentRefs) }}
+{{- fail "gatewayApi needs host and parentRefs: the hostname, and the Gateway's HTTPS listener" }}
+{{- end }}
+{{- $name := include "execution-console.fullname" . }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml .Values.gatewayApi.parentRefs | nindent 4 }}
+  hostnames: [{{ .Values.gatewayApi.host | quote }}]
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /}
+      backendRefs:
+        - name: {{ $name }}
+          port: {{ .Values.service.port }}
+{{- with .Values.gatewayApi.redirectParentRefs }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}-https-redirect
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" $ | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  hostnames: [{{ $.Values.gatewayApi.host | quote }}]
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect: {scheme: https, statusCode: 301}
+{{- end }}
+{{- end }}

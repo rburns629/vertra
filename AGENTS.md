@@ -104,7 +104,7 @@ its own directory.
   `execution-kernel` (api + scheduler + Postgres) and `execution-console`
   (+ its own Postgres), with neutral defaults; `helm/values/{kind,gke}/` holds
   each cluster's settings for them and for the third-party charts (ESO,
-  policy-controller). The Helm release names are
+  policy-controller; on kind, cert-manager and Traefik for `make kind-tls`). The Helm release names are
   `kernel` and `console`, installed into the platform's own namespace
   `vertra-system`, never a team namespace.
 - **Task namespaces are allowlisted by an admission policy**

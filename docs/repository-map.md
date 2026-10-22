@@ -346,7 +346,8 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/autoscaling.yaml` | The console's HorizontalPodAutoscaler (`auto`) and its PodDisruptionBudget from two copies. |
 | `templates/logs.yaml`, `files/alloy.alloy` | Log search (`logs`): one Loki (a volume or a bucket) and Grafana Alloy collecting steps' and the platform's Pods with credentials redacted; only Alloy and the console reach Loki. |
 | `templates/monitoring.yaml`, `files/grafana-dashboard.json` | With the Prometheus Operator (`monitoring`): a PodMonitor for the console and gateway, alerts (calls failing, sign-in bursts, the catalog not applying, backends unreachable), and Vertra's Grafana dashboard as a ConfigMap. |
-| `templates/ingress.yaml` | Reaching the console from outside the cluster (HTTPS only), for the catalog's CI; with `trustProxy`, the console believes the load balancer's X-Forwarded-For. |
+| `templates/ingress.yaml` | Reaching the console from outside the cluster (HTTPS only), for the catalog's CI: the certificate from the cloud, a Secret, or cert-manager (an issuer of yours, or Let's Encrypt through the chart's own Issuer); plain HTTP refused for known controllers. With `trustProxy`, the console believes the load balancer's X-Forwarded-For. |
+| `templates/httproute.yaml` | The same through a Gateway (`gatewayApi`): an HTTPRoute on its HTTPS listener, and a redirect from its HTTP one. |
 | `templates/activity.yaml` | The ConfigMap the console records its last use in (for the kernel's sleeper), and the Role that lets it update that one. |
 | `templates/deployment.yaml`, `service.yaml` | The console, and how it's reached (LoadBalancer on GKE, port-forward on kind). |
 | `templates/postgres-*.yaml`, `migration-job.yaml`, `backup-cronjob.yaml` | Its own Postgres, migrations and backups. |
@@ -373,6 +374,7 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 | --- | --- |
 | `kind/kernel.yaml`, `kind/console.yaml` | The local kind cluster: local images, the demo admin, the local registry. |
 | `kind/external-secrets.yaml` | External Secrets Operator on kind. |
+| `kind/cert-manager.yaml`, `kind/traefik.yaml`, `kind/tls-test.yaml` | `make kind-tls`: cert-manager, Traefik (Ingress and Gateway API), and a private test CA with a Gateway, for the console over HTTPS on kind. |
 | `gke/kernel.yaml`, `gke/console.yaml` | The real GKE cluster: Artifact Registry images, Workload Identity, the LoadBalancer, image signatures. |
 | `gke/external-secrets.yaml` | External Secrets Operator on GKE, with Workload Identity. |
 | `gke/policy-controller.yaml` | Sigstore's policy-controller, which checks image signatures (GKE only). |

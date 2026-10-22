@@ -1,0 +1,11 @@
+# cert-manager on kind (make kind-tls): issues the console's certificate when
+# its ingress.certManager or a Gateway asks. Gateway API support on, so a
+# Gateway's annotation can ask too.
+crds:
+  enabled: true
+config:
+  apiVersion: controller.config.cert-manager.io/v1alpha1
+  kind: ControllerConfiguration
+  enableGatewayAPI: true
+resources:
+  requests: {cpu: 10m, memory: 64Mi}

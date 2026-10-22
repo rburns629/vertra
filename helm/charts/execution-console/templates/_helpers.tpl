@@ -109,3 +109,19 @@ Usage: include "execution-console.appImage" .
 {{- define "execution-console.appImage" -}}
 {{- include "execution-console.image" (dict "repository" .Values.image.repository "tag" (.Values.image.tag | default .Chart.AppVersion) "digest" .Values.image.digest) -}}
 {{- end }}
+
+{{/*
+Single sign-on's client secret, for every Pod that reads the console's
+settings (the console, and its migrations: the settings are checked whole at
+startup, and the ConfigMap names the provider).
+Usage: include "execution-console.ssoEnv" .
+*/}}
+{{- define "execution-console.ssoEnv" -}}
+{{- if .Values.sso.issuer }}
+- name: OIDC_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.sso.clientSecret.name }}
+      key: {{ .Values.sso.clientSecret.key }}
+{{- end }}
+{{- end }}
