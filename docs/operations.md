@@ -282,7 +282,9 @@ with a lifecycle rule moving Loki's chunks (`fake/`) to the Archive class
 (GCS) or Glacier Instant Retrieval (S3) after `searchDays`, and deleting
 everything a day after `keepDays`. Loki still reads archived chunks, so an
 admin can query older logs with Loki's own tools (`logcli`) through a
-port-forward; the console searches only `searchDays` back. Archived
+port-forward; the console searches only `searchDays` back. S3 moves only
+objects of 128 KB or more by default, so a quiet install's smallest chunks
+stay in Standard (at a negligible cost). Archived
 storage costs a fraction of a cent per GB-month, but has a minimum stay
 (GCS Archive 365 days, Glacier IR 90), billed if deleted earlier. A volume
 has no archive class: logs are kept on it until `keepDays`.

@@ -29,7 +29,10 @@ design.
     bucket and its rules, Loki writing through Workload Identity, and
     reading back chunks moved to Archive after a restart wiped its local
     copy (which also showed a restart lost the not-yet-uploaded logs: Loki
-    now always has a volume). Left: the same on EKS; API products' backends'
+    now always has a volume). And on EKS: the bucket and its rules, Loki
+    writing through Pod Identity, reading back chunks moved to Glacier
+    Instant Retrieval with its volume deleted, and a restart keeping its
+    volume losing nothing. Left: API products' backends'
     logs (in team namespaces, not steps) for their teams; Secret values
     (not just credential shapes) masked.
   - Metrics (done 2026-10-22): the Observe page's Metrics tab for
