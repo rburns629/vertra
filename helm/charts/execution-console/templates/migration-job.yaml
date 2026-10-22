@@ -56,7 +56,7 @@ spec:
           command: ["node", "dist/db/migrate.js"]
           envFrom:
             - configMapRef:
-                name: {{ include "execution-console.fullname" . }}-config
+                name: {{ include "execution-console.fullname" . }}-migrate-config
           env:
             {{- include "execution-console.ssoEnv" . | nindent 12 }}
             - name: DATABASE_URL

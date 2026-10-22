@@ -13,6 +13,27 @@ metadata:
   labels:
     {{- include "execution-console.labels" . | nindent 4 }}
 data:
+{{- include "execution-console.configData" . }}
+---
+# The migration Job's own copy, made by the same hook just before it: a
+# pre-upgrade Job reading the ConfigMap above would get the previous
+# release's settings (an upgrade turning single sign-on off would hand it
+# OIDC_ISSUER without its secret, and the upgrade would fail).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "execution-console.fullname" . }}-migrate-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+data:
+{{- include "execution-console.configData" . }}
+
+{{- define "execution-console.configData" }}
   PORT: {{ .Values.service.port | quote }}
   METRICS_PORT: {{ .Values.monitoring.port | quote }}
   {{- if .Values.writeFence.enabled }}
@@ -102,3 +123,4 @@ data:
   # server never does. Not secret by itself (an email address); the
   # matching password, if set, lives in the Secret instead.
   BOOTSTRAP_ADMIN_EMAIL: {{ .Values.bootstrapAdmin.email | quote }}
+{{- end }}
