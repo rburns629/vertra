@@ -199,6 +199,7 @@ erDiagram
   teams ||--o{ image_repositories : "owns"
   teams ||--o{ secret_grants : "has"
   teams ||--o{ templates : "owns"
+  teams ||--o{ apis : "publishes"
   users ||--o{ submitted_executions : "submitted"
   teams {
     uuid id PK
@@ -455,6 +456,33 @@ What a consumer runs, filling in only parameters: each team's `dags/*.yaml` of k
 | `hidden` | boolean | no | Only its own team (and admins) see it; it then has no `share_with`. |
 | `source_path` | text | yes | Its file in the catalog repository (`teams/<team>/dags/<name>.yaml`). |
 | `deprecated` | text | yes | What to use instead; it still runs. |
+| `updated_at` | timestamptz | no | |
+
+### apis
+
+API products (decision 20): a backend a team runs, published through the gateway, which forwards only what its OpenAPI document describes. Each team's `apis/<name>/api.yaml`, from the catalog's release (which removes them too); the gateway reads this table. Deleted with its team.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `team_id` | uuid | no | Its team (`teams.id`); unique with `name`. Callers reach it at `/<team>/<name>/` on the gateway. |
+| `name` | text | no | Its folder's name. |
+| `display_name` | text | no | |
+| `description` | text | no | |
+| `openapi` | jsonb | no | Its OpenAPI document (3.0 or 3.1, references inside it only): the allowlist the gateway enforces, and what callers are shown. |
+| `backend_url` | text | no | Where the gateway forwards. Its host must be one of the gateway's `backendHosts`, or the API is held. |
+| `backend_auth` | jsonb | yes | How the gateway signs in there: `{"serviceAccountToken": {audience}}`, `{"googleIdToken": {serviceAccount, audience}}` or `{"secret": {name, key, header, scheme?}}`. Null: it doesn't. |
+| `service_account` | text | no | The ServiceAccount, in the team's namespace, its backend credentials are minted for; the console creates it. |
+| `share_with` | text[] | no | The other teams that may call it, or `*` for every team; empty, only its own. |
+| `hidden` | boolean | no | Only its own team (and admins) see it; it then has no `share_with`. |
+| `deprecated` | text | yes | What to use instead; it still answers. |
+| `internet` | boolean | no | Asked to be reachable from the internet; published there only if the gateway's `internetTeams` includes its team. |
+| `per_minute` | jsonb | no | Requests a minute per calling team: `default`, and teams by name. |
+| `timeout_seconds` | integer | no | How long the backend has to start answering. |
+| `max_request_bytes` | integer | no | The largest request body forwarded. |
+| `source_path` | text | yes | Its `api.yaml` in the catalog repository. |
+| `paused_message` | text | yes | Set while a maintainer has it paused: every caller gets 503 with this, and nothing is forwarded. |
+| `paused_by` | uuid | yes | Who paused it (`users.id`; null if since deleted). |
 | `updated_at` | timestamptz | no | |
 
 ### submitted_executions

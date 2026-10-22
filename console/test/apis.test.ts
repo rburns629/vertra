@@ -1,0 +1,190 @@
+// SPDX-License-Identifier: MIT
+/**
+ * API products (decision 20): applied and removed with the catalog's
+ * release, each with its ServiceAccount; who sees and may call each; held
+ * when its backend's host isn't allowed; paused by its team's maintainers.
+ */
+import { randomUUID } from "node:crypto";
+import { create } from "@bufbuild/protobuf";
+import { inArray, like } from "drizzle-orm";
+import type { FastifyInstance } from "fastify";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { applyApis } from "../src/catalogSync.js";
+import { config } from "../src/config.js";
+import { backendAllowed } from "../src/core/apis.js";
+import { db } from "../src/db/client.js";
+import { addTeamMember, createTeam, findTeamByName } from "../src/db/queries.js";
+import { apis, teams } from "../src/db/schema.js";
+import { ApiSchema } from "../src/gen/vertra/catalog/v1/release_pb.js";
+import { buildApp } from "../src/index.js";
+import { ensureServiceAccount } from "../src/k8s.js";
+import { caller, rpcClient } from "./rpc.js";
+
+vi.mock("../src/k8s.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/k8s.js")>()),
+  ensureServiceAccount: vi.fn(() => Promise.resolve()),
+  ensureNamespaceExists: vi.fn(() => Promise.resolve()),
+  applySecretStoreObjects: vi.fn(() => Promise.resolve()),
+}));
+
+const prefix = `api-${randomUUID().slice(0, 6)}`;
+const owner = `${prefix}-pay`;
+const consumer = `${prefix}-web`;
+const outsider = `${prefix}-out`;
+
+const openapi = {
+  openapi: "3.1.0",
+  info: { title: "Orders", version: "2.3.0" },
+  servers: [{ url: "https://orders.example.run.app" }],
+  paths: {
+    "/orders": { post: { summary: "Create an order", requestBody: { content: { "application/json": { schema: { type: "object" } } } } } },
+    "/orders/{id}": { get: { summary: "One order", parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }] } },
+  },
+};
+
+function api(name: string, fields: Record<string, unknown> = {}) {
+  return {
+    name,
+    team: owner,
+    displayName: "Orders API",
+    description: "Orders.",
+    openapi: JSON.stringify(openapi),
+    backendUrl: "https://orders.example.run.app",
+    backendAuth: { kind: { case: "googleIdToken" as const, value: { serviceAccount: "gw@p.iam.gserviceaccount.com", audience: "https://orders.example.run.app" } } },
+    serviceAccount: `${name}-api`,
+    shareWith: [consumer],
+    perMinute: { default: 60, [consumer]: 600 },
+    timeoutSeconds: 20,
+    maxRequestBytes: BigInt(1024),
+    path: `teams/${owner}/apis/${name}/api.yaml`,
+    ...fields,
+  };
+}
+
+const problems: string[] = [];
+
+/** Applies a release's APIs, as catalogSync does, for the test's teams only. */
+async function apply(apiList: ReturnType<typeof api>[]) {
+  await applyApis(
+    apiList.map((a) => create(ApiSchema, a)),
+    new Set([owner, consumer, outsider]),
+    new Set(),
+    async (item, work) => {
+      try {
+        await work();
+      } catch (error) {
+        problems.push(`${item}: ${String(error)}`);
+      }
+    },
+  );
+}
+
+let app: FastifyInstance;
+const users = rpcClient(() => app);
+const call = caller(() => app);
+const tokens: Record<"maintainer" | "member" | "consumer" | "outsider", string> = { maintainer: "", member: "", consumer: "", outsider: "" };
+let serviceAccounts: unknown[][] = [];
+
+beforeAll(async () => {
+  app = await buildApp();
+  config.gateway.backendHosts = ["*.example.run.app"];
+  config.gateway.internetTeams = [owner];
+  config.gateway.url = "http://gateway.vertra-system.svc:8080";
+  config.gateway.publicUrl = "https://api.example.com";
+  await Promise.all([createTeam(owner), createTeam(consumer), createTeam(outsider)]);
+  await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] }), api("legacy", { backendUrl: "https://old.example.com" })]);
+  serviceAccounts = [...vi.mocked(ensureServiceAccount).mock.calls];
+  const made = { maintainer: await users.makeUser(), member: await users.makeUser(), consumer: await users.makeUser(), outsider: await users.makeUser() };
+  const [ownerTeam, consumerTeam, outsiderTeam] = await Promise.all([findTeamByName(owner), findTeamByName(consumer), findTeamByName(outsider)]);
+  await addTeamMember(made.maintainer.id, ownerTeam?.id ?? "", "maintainer");
+  await addTeamMember(made.member.id, ownerTeam?.id ?? "", "member");
+  await addTeamMember(made.consumer.id, consumerTeam?.id ?? "", "member");
+  await addTeamMember(made.outsider.id, outsiderTeam?.id ?? "", "member");
+  for (const [who, user] of Object.entries(made)) tokens[who as keyof typeof tokens] = await users.signIn(user.email);
+});
+
+afterAll(async () => {
+  Object.assign(config.gateway, { backendHosts: [], internetTeams: [], url: "", publicUrl: "" });
+  const ours = await db.select({ id: teams.id }).from(teams).where(like(teams.name, `${prefix}%`));
+  if (ours.length > 0) await db.delete(teams).where(inArray(teams.id, ours.map((t) => t.id)));
+  await users.cleanUp();
+  await app.close();
+});
+
+type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
+const listFor = async (who: keyof typeof tokens) =>
+  ((await call<Listed>(tokens[who], "ApiService/ListApis")).body.apis ?? []).filter((a) => a.team === owner);
+
+describe("from the release", () => {
+  it("stores each API with its spec, and makes its ServiceAccount", async () => {
+    const rows = await db.select().from(apis).where(inArray(apis.name, ["orders", "ledger", "legacy"]));
+    const orders = rows.find((r) => r.name === "orders" && r.backendUrl.includes("orders"));
+    expect(orders).toMatchObject({ timeoutSeconds: 20, maxRequestBytes: 1024, internet: true, serviceAccount: "orders-api" });
+    expect(orders?.backendAuth).toEqual({ googleIdToken: { serviceAccount: "gw@p.iam.gserviceaccount.com", audience: "https://orders.example.run.app" } });
+    expect(serviceAccounts).toContainEqual([owner, "orders-api"]);
+    expect(problems).toEqual([]);
+  });
+
+  it("removes what a later release drops", async () => {
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] })]);
+    expect((await listFor("maintainer")).map((a) => a.name).sort()).toEqual(["ledger", "orders"]);
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] }), api("legacy", { backendUrl: "https://old.example.com" })]);
+  });
+});
+
+describe("who sees what", () => {
+  it("shows its team everything, the backend included", async () => {
+    const listed = await listFor("member");
+    expect(listed.map((a) => a.name).sort()).toEqual(["ledger", "legacy", "orders"]);
+    const orders = listed.find((a) => a.name === "orders");
+    expect(orders).toMatchObject({ mayCall: true, backendUrl: "https://orders.example.run.app", publicUrl: `https://api.example.com/${owner}/orders` });
+    expect(orders?.endpoints?.map((e) => `${e.method} ${e.path}`)).toEqual(["POST /orders", "GET /orders/{id}"]);
+  });
+
+  it("lets a team it's shared with call it, at its own limit, without the backend's address", async () => {
+    const orders = (await listFor("consumer")).find((a) => a.name === "orders");
+    expect(orders).toMatchObject({ mayCall: true, perMinute: 600, backendUrl: "" });
+    expect((await listFor("consumer")).some((a) => a.name === "ledger")).toBe(false);
+  });
+
+  it("shows others what isn't hidden, but they may not call it", async () => {
+    const orders = (await listFor("outsider")).find((a) => a.name === "orders");
+    expect(orders?.mayCall ?? false).toBe(false);
+    expect(orders?.perMinute ?? 0).toBe(0);
+    expect((await call(tokens.outsider, "ApiService/GetApi", { team: owner, name: "ledger" })).code).toBe("not_found");
+  });
+
+  it("holds an API whose backend isn't under an allowed host", async () => {
+    const legacy = (await listFor("maintainer")).find((a) => a.name === "legacy");
+    expect(legacy?.state).toBe("API_STATE_HELD");
+    expect(legacy?.heldReason).toContain("old.example.com");
+    expect(backendAllowed("https://a.b.example.run.app", ["*.example.run.app"])).toBe(true);
+    expect(backendAllowed("https://example.run.app.evil.com", ["*.example.run.app"])).toBe(false);
+    expect(backendAllowed("https://xexample.run.app", ["*.example.run.app"])).toBe(false);
+  });
+
+  it("gives the spec to whoever may see it", async () => {
+    const got = await call<{ openapi: string }>(tokens.consumer, "ApiService/GetApi", { team: owner, name: "orders" });
+    expect((JSON.parse(got.body.openapi) as { info: { title: string } }).info.title).toBe("Orders");
+  });
+});
+
+describe("pausing", () => {
+  const pause = (who: keyof typeof tokens, message: string) => call(tokens[who], "ApiService/PauseApi", { team: owner, name: "orders", message });
+
+  it("is a maintainer's of its team, with a message for callers", async () => {
+    expect((await pause("member", "incident")).code).toBe("permission_denied");
+    expect((await pause("consumer", "incident")).code).toBe("permission_denied");
+    expect((await pause("maintainer", "  ")).code).toBe("invalid_argument");
+    expect((await pause("maintainer", "Incident 42: back by 14:00")).code).toBe("ok");
+    const orders = (await listFor("consumer")).find((a) => a.name === "orders") as { state: string; pausedMessage?: string } | undefined;
+    expect(orders).toMatchObject({ state: "API_STATE_PAUSED", pausedMessage: "Incident 42: back by 14:00" });
+  });
+
+  it("lasts across releases, until it's resumed", async () => {
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] }), api("legacy", { backendUrl: "https://old.example.com" })]);
+    expect((await listFor("maintainer")).find((a) => a.name === "orders")?.state).toBe("API_STATE_PAUSED");
+    expect((await call(tokens.maintainer, "ApiService/ResumeApi", { team: owner, name: "orders" })).code).toBe("ok");
+    expect((await listFor("maintainer")).find((a) => a.name === "orders")?.state).toBe("API_STATE_LIVE");
+  });
+});

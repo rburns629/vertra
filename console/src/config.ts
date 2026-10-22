@@ -57,6 +57,11 @@ function parseRegistryMirrors(value: string | undefined): Map<string, string> {
   return mirrors;
 }
 
+/** A comma-separated setting as a list, blanks dropped. */
+function list(value: string | undefined): string[] {
+  return (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 function loadRegistryCredentials(path: string | undefined): RegistryCredentials {
   const credentials: RegistryCredentials = new Map();
   if (!path) return credentials;
@@ -146,6 +151,17 @@ export const config = {
   // (EKS Pod Identity), for ECR registries, instead of a stored key.
   registryEcrToken: parseBoolean("REGISTRY_ECR_TOKEN"),
   registryMirrors: parseRegistryMirrors(process.env["REGISTRY_MIRRORS"]),
+  // The API gateway (decision 20; the chart's gateway values): the hosts an
+  // API's backend may be under ("orders.example.com", or "*.a.run.app" for
+  // any name below it), an API under none being held, not published; the
+  // teams whose APIs may be reachable from the internet; and where callers
+  // reach the gateway, inside the cluster and from outside.
+  gateway: {
+    backendHosts: list(process.env["GATEWAY_BACKEND_HOSTS"]),
+    internetTeams: list(process.env["GATEWAY_INTERNET_TEAMS"]),
+    url: process.env["GATEWAY_URL"] ?? "",
+    publicUrl: process.env["GATEWAY_PUBLIC_URL"] ?? "",
+  },
   // A registry on another cloud, read with no stored key
   // (registryFederation.ts): Google Artifact Registry hosts read through
   // Workload Identity Federation, exchanging the console's projected token

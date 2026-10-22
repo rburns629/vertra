@@ -116,6 +116,14 @@ spec:
               value: {{ $mirrors := list }}{{ range $host, $url := .Values.registryCheck.mirrors }}{{ $mirrors = append $mirrors (printf "%s=%s" $host $url) }}{{ end }}{{ join "," $mirrors | quote }}
             - name: IMAGE_PINNING
               value: {{ .Values.registryCheck.imagePinning | quote }}
+            - name: GATEWAY_BACKEND_HOSTS
+              value: {{ join "," .Values.gateway.backendHosts | quote }}
+            - name: GATEWAY_INTERNET_TEAMS
+              value: {{ join "," .Values.gateway.internetTeams | quote }}
+            - name: GATEWAY_URL
+              value: {{ .Values.gateway.url | quote }}
+            - name: GATEWAY_PUBLIC_URL
+              value: {{ .Values.gateway.publicUrl | quote }}
             {{- with .Values.registryCheck.gcpFederation }}
             {{- if .workloadIdentityProvider }}
             - name: REGISTRY_GCP_WIF_PROVIDER

@@ -71,6 +71,49 @@
    ]
   },
   {
+   "name": "ApiService",
+   "fullName": "vertra.console.v1.ApiService",
+   "comment": "API products (decision 20): a backend a team already runs, published\nthrough this install's gateway. Its OpenAPI file is the allowlist: the\ngateway forwards only requests whose method and path are an operation\nthere and that fit its schemas, and blocks everything else. An API comes\nfrom its team's catalog (apis/<name>/api.yaml); pausing one is the only\nchange made here.\n\nEveryone signed in sees the APIs that aren't hidden; those shared with\none of their teams they may call (may_call). The backend's address and\nhow the gateway signs in there are shown to the API's own team only.",
+   "methods": [
+    {
+     "name": "ListApis",
+     "comment": "Every API the caller may see, by team and name.",
+     "input": "vertra.console.v1.ListApisRequest",
+     "output": "vertra.console.v1.ListApisResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "GetApi",
+     "comment": "One API, with its OpenAPI document. Not found and hidden look the same.",
+     "input": "vertra.console.v1.GetApiRequest",
+     "output": "vertra.console.v1.GetApiResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "PauseApi",
+     "comment": "Stops an API for an incident: every request gets 503 with the message\nuntil it's resumed, and nothing reaches the backend. A maintainer of its\nteam, or an admin.",
+     "input": "vertra.console.v1.PauseApiRequest",
+     "output": "vertra.console.v1.PauseApiResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ResumeApi",
+     "comment": "Lets a paused API through again; as PauseApi.",
+     "input": "vertra.console.v1.ResumeApiRequest",
+     "output": "vertra.console.v1.ResumeApiResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "AuthService",
    "fullName": "vertra.console.v1.AuthService",
    "comment": "Signing in, and who you are. Bots don't sign in: they send their API\ntoken as the bearer token directly.",
@@ -1098,6 +1141,319 @@
      "comment": ""
     }
    ]
+  },
+  "vertra.console.v1.ApiProduct": {
+   "name": "ApiProduct",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "displayName",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "description",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "ApiState",
+     "ref": "vertra.console.v1.ApiState",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "heldReason",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "pausedMessage",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "mayCall",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether the caller may call it: shared with one of their teams, or\ntheir own team's."
+    },
+    {
+     "name": "shareWith",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "hidden",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "deprecated",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why it's deprecated, and what to use instead."
+    },
+    {
+     "name": "internet",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Reachable from the internet: asked for in api.yaml, and allowed for its\nteam here."
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Where to call it: the gateway's address and /<team>/<name>, inside the\ncluster and, when reachable from the internet, from outside."
+    },
+    {
+     "name": "publicUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "endpoints",
+     "type": "ApiEndpoint",
+     "ref": "vertra.console.v1.ApiEndpoint",
+     "repeated": true,
+     "optional": false,
+     "comment": "What its spec lets through."
+    },
+    {
+     "name": "perMinute",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "Requests a minute the caller's team may send (its own limit, else the\ndefault); 0 when it may not call it."
+    },
+    {
+     "name": "timeoutSeconds",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxRequestBytes",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "sourcePath",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its api.yaml in the catalog repository."
+    },
+    {
+     "name": "backendUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The API's own team only: where the gateway forwards to, and how it\nsigns in there (service_account_token, google_id_token or secret)."
+    },
+    {
+     "name": "backendAuth",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "specTitle",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The spec's title and version."
+    },
+    {
+     "name": "specVersion",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ApiEndpoint": {
+   "name": "ApiEndpoint",
+   "comment": "",
+   "fields": [
+    {
+     "name": "method",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "GET, POST and so on."
+    },
+    {
+     "name": "path",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "As the spec writes it, such as /orders/{orderId}."
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListApisRequest": {
+   "name": "ListApisRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListApisResponse": {
+   "name": "ListApisResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "apis",
+     "type": "ApiProduct",
+     "ref": "vertra.console.v1.ApiProduct",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetApiRequest": {
+   "name": "GetApiRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetApiResponse": {
+   "name": "GetApiResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "api",
+     "type": "ApiProduct",
+     "ref": "vertra.console.v1.ApiProduct",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "openapi",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its OpenAPI document, as JSON."
+    }
+   ]
+  },
+  "vertra.console.v1.PauseApiRequest": {
+   "name": "PauseApiRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What every caller is told until it's resumed. At most 500 characters."
+    }
+   ]
+  },
+  "vertra.console.v1.PauseApiResponse": {
+   "name": "PauseApiResponse",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ResumeApiRequest": {
+   "name": "ResumeApiRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ResumeApiResponse": {
+   "name": "ResumeApiResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.GetEnvironmentRequest": {
    "name": "GetEnvironmentRequest",
@@ -5105,6 +5461,28 @@
   }
  },
  "enums": {
+  "vertra.console.v1.ApiState": {
+   "name": "ApiState",
+   "comment": "",
+   "values": [
+    {
+     "name": "API_STATE_UNSPECIFIED",
+     "comment": ""
+    },
+    {
+     "name": "API_STATE_LIVE",
+     "comment": "The gateway forwards what its spec describes."
+    },
+    {
+     "name": "API_STATE_HELD",
+     "comment": "Its backend isn't under a host this install allows: the gateway\nanswers 503 and forwards nothing (held_reason says why)."
+    },
+    {
+     "name": "API_STATE_PAUSED",
+     "comment": "A maintainer paused it (paused_message)."
+    }
+   ]
+  },
   "vertra.console.v1.ExecutionState": {
    "name": "ExecutionState",
    "comment": "",

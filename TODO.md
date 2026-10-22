@@ -614,9 +614,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      parameter and body, `servers` including `backend.url`, no two paths
      alike, nothing under `/.vertra/`) and the limits; releases carry APIs
      with their OpenAPI as JSON (`release.proto`'s `Api`).
-  2. The console stores them (with the spec), applies and removes them
-     with releases, and keeps the admins' backend host allowlist (Helm
-     values); an API under no allowed host is held, not published.
+  2. ~~The console stores them~~ (done 2026-10-22): the `apis` table
+     (console migration 0012), applied and removed with releases (only the
+     named teams'), each with its ServiceAccount; the chart's `gateway`
+     values (`backendHosts`, `internetTeams`, its addresses); an API under
+     no allowed host is held. `ApiService`: ListApis, GetApi (with the
+     spec), PauseApi and ResumeApi (a maintainer of its team, with a
+     message for callers).
   3. The gateway: a process of its own (not the console, whose
      interceptors and limits are for the API), in Go, reading published
      APIs from the console's database. Per request: caller sign-in (session,

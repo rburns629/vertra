@@ -15,6 +15,7 @@ import {
   secretGrants,
   wiringTypes,
   templates,
+  apis,
   catalogSync,
   type Approval,
   type ErrorHelp,
@@ -1128,4 +1129,55 @@ export async function listRunnableProducts(): Promise<(Product & { teamName: str
 export async function catalogRepository(): Promise<string | null> {
   const [row] = await db.select({ repository: catalogSync.repository }).from(catalogSync).limit(1);
   return row?.repository ?? null;
+}
+
+export type ApiRow = typeof apis.$inferSelect;
+
+/** Stores an API as the catalog's release has it, keeping whether it's paused. */
+export async function upsertApi(
+  input: Omit<typeof apis.$inferInsert, "id" | "pausedMessage" | "pausedBy" | "updatedAt">,
+): Promise<void> {
+  const { teamId, name, ...rest } = input;
+  await db
+    .insert(apis)
+    .values({ teamId, name, ...rest })
+    .onConflictDoUpdate({ target: [apis.teamId, apis.name], set: { ...rest, updatedAt: new Date() } });
+}
+
+/** Removes every API of these teams but those kept ("<team id>/<name>"); returns how many went. */
+export async function deleteApisExcept(teamIds: string[], keep: Set<string>): Promise<number> {
+  if (teamIds.length === 0) return 0;
+  const all = await db
+    .select({ id: apis.id, teamId: apis.teamId, name: apis.name })
+    .from(apis)
+    .where(inArray(apis.teamId, teamIds));
+  const gone = all.filter((a) => !keep.has(`${a.teamId}/${a.name}`)).map((a) => a.id);
+  if (gone.length > 0) await db.delete(apis).where(inArray(apis.id, gone));
+  return gone.length;
+}
+
+/** Every API whose team isn't retired or purged, with its team's name. */
+export async function listLiveTeamApis(): Promise<(ApiRow & { teamName: string })[]> {
+  const rows = await db
+    .select({ api: apis, teamName: teams.name })
+    .from(apis)
+    .innerJoin(teams, eq(teams.id, apis.teamId))
+    .where(and(isNull(teams.retiredAt), isNull(teams.deletedAt)))
+    .orderBy(teams.name, apis.name);
+  return rows.map((r) => ({ ...r.api, teamName: r.teamName }));
+}
+
+/** One API by team and name. */
+export async function findApi(team: string, name: string): Promise<(ApiRow & { teamName: string }) | undefined> {
+  const [row] = await db
+    .select({ api: apis, teamName: teams.name })
+    .from(apis)
+    .innerJoin(teams, eq(teams.id, apis.teamId))
+    .where(and(eq(teams.name, team), eq(apis.name, name), isNull(teams.retiredAt), isNull(teams.deletedAt)));
+  return row ? { ...row.api, teamName: row.teamName } : undefined;
+}
+
+/** Pauses an API (a message) or resumes it (null). */
+export async function setApiPaused(id: string, message: string | null, by: string | null): Promise<void> {
+  await db.update(apis).set({ pausedMessage: message, pausedBy: message === null ? null : by, updatedAt: new Date() }).where(eq(apis.id, id));
 }

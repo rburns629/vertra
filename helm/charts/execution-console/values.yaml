@@ -133,6 +133,18 @@ scanning:
       requests: {cpu: 100m, memory: 512Mi}
       limits: {memory: 2Gi}
 
+# -- The API gateway's settings (decision 20), which the console shows and
+# applies: an API product whose backend isn't under one of backendHosts is
+# held, not published ("orders.example.com" exactly, or "*.a.run.app" for
+# any name below it); only internetTeams' APIs may be reachable from the
+# internet; url and publicUrl are where callers reach the gateway, inside
+# the cluster and from outside.
+gateway:
+  backendHosts: []
+  internetTeams: []
+  url: ""
+  publicUrl: ""
+
 # -- The catalog this console registers from (console/src/catalogSync.ts):
 # its release, which catalog CI pushes from main beside the images
 # (`vertra catalog release`, <registry>/catalog-release:latest). The console reads

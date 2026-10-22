@@ -15,6 +15,7 @@ import { fastifyConnectPlugin } from "@connectrpc/connect-fastify";
 import type { FastifyInstance } from "fastify";
 import { resolveCaller } from "../auth/plugin.js";
 import { AdminService } from "../gen/vertra/console/v1/admin_pb.js";
+import { ApiService } from "../gen/vertra/console/v1/api_pb.js";
 import { AuthService } from "../gen/vertra/console/v1/auth_pb.js";
 import { ExecutionService } from "../gen/vertra/console/v1/execution_pb.js";
 import { ImageService } from "../gen/vertra/console/v1/image_pb.js";
@@ -28,6 +29,7 @@ import { UserService } from "../gen/vertra/console/v1/user_pb.js";
 import { kAuthError, kAuthProblem, kCaller, kClientIp, kLog, kRequestId } from "./context.js";
 import { audit, maskErrors, requireCaller } from "./interceptors.js";
 import { adminService } from "./services/admin.js";
+import { apiService } from "./services/api.js";
 import { authService } from "./services/auth.js";
 import { executionService } from "./services/execution.js";
 import { imageService } from "./services/image.js";
@@ -77,6 +79,7 @@ export async function registerRpc(app: FastifyInstance, api: FastifyInstance): P
         router.service(ProductService, productService());
         router.service(TeamService, teamService());
         router.service(TemplateService, templateService());
+        router.service(ApiService, apiService());
         router.service(ExecutionService, executionService());
       },
       // Outermost first.

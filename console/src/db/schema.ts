@@ -488,6 +488,58 @@ export const templates = pgTable(
   (table) => [unique().on(table.teamId, table.name)],
 );
 
+/**
+ * API products (decision 20): a backend a team runs, published through the
+ * gateway, which forwards only what `openapi` describes. From the catalog's
+ * release (teams/<team>/apis/<name>/api.yaml); the gateway reads this table.
+ */
+export const apis = pgTable(
+  "apis",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    // Its folder's name: callers reach it at /<team>/<name>/ on the gateway.
+    name: text("name").notNull(),
+    displayName: text("display_name").notNull(),
+    description: text("description").notNull().default(""),
+    // The OpenAPI document (3.0 or 3.1), references inside it only: the
+    // allowlist the gateway enforces.
+    openapi: jsonb("openapi").notNull(),
+    backendUrl: text("backend_url").notNull(),
+    // How the gateway signs in to the backend; null: it doesn't.
+    // {serviceAccountToken: {audience}} | {googleIdToken: {serviceAccount,
+    // audience}} | {secret: {name, key, header, scheme?}}
+    backendAuth: jsonb("backend_auth").$type<BackendAuth>(),
+    // The Kubernetes ServiceAccount, in the team's namespace, its backend
+    // credentials are minted for (the console creates it).
+    serviceAccount: text("service_account").notNull(),
+    shareWith: text("share_with").array().notNull().default(sql`'{}'::text[]`),
+    hidden: boolean("hidden").notNull().default(false),
+    deprecated: text("deprecated"),
+    // reachable: internet, where the gateway's settings allow its team.
+    internet: boolean("internet").notNull().default(false),
+    // Requests a minute per calling team: "default" and teams by name.
+    perMinute: jsonb("per_minute").$type<Record<string, number>>().notNull().default({}),
+    timeoutSeconds: integer("timeout_seconds").notNull().default(30),
+    maxRequestBytes: integer("max_request_bytes").notNull().default(1_048_576),
+    // Its api.yaml in the catalog repository.
+    sourcePath: text("source_path"),
+    // Set by a maintainer of its team to stop it for an incident: every
+    // request gets 503 with this message, and nothing is forwarded.
+    pausedMessage: text("paused_message"),
+    pausedBy: uuid("paused_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.teamId, table.name)],
+);
+
+export type BackendAuth =
+  | { serviceAccountToken: { audience: string } }
+  | { googleIdToken: { serviceAccount: string; audience: string } }
+  | { secret: { name: string; key: string; header: string; scheme?: string } };
+
 /** One step of a template, as the catalog release carries it. */
 export interface TemplateStep {
   id: string;

@@ -20,6 +20,9 @@
  *     that this one doesn't have is unregistered;
  *   - each team's templates are stored as the release has them; one it
  *     no longer has is removed;
+ *   - each team's API products are stored with their OpenAPI documents,
+ *     each with its ServiceAccount (create-only, as a product's); one it no
+ *     longer has is removed;
  *   - each team's SecretStore documents are applied. A store's stored
  *     credential is set per install (TeamService.SetSecretStoreCredential),
  *     never carried by a release.
@@ -42,10 +45,11 @@ import { deleteProduct, registerProduct } from "./core/products.js";
 import { applySecretStore, ensureTeam, retireTeam } from "./core/teams.js";
 import { parameterSchemaProblem, templateStepProblems } from "./core/templates.js";
 import { db } from "./db/client.js";
-import { deleteTemplatesExcept, findTeamByName, upsertTemplate } from "./db/queries.js";
+import { deleteApisExcept, deleteTemplatesExcept, findTeamByName, upsertApi, upsertTemplate } from "./db/queries.js";
+import type { BackendAuth } from "./db/schema.js";
 import { catalogSync, products, teams } from "./db/schema.js";
-import { ReleaseSchema, type Release } from "./gen/vertra/catalog/v1/release_pb.js";
-import { createVerifyJob, deleteScanJob, readScanJob } from "./k8s.js";
+import { ReleaseSchema, type BackendAuth as ReleaseBackendAuth, type Release } from "./gen/vertra/catalog/v1/release_pb.js";
+import { createVerifyJob, deleteScanJob, ensureServiceAccount, readScanJob } from "./k8s.js";
 import { fetchRelease } from "./registry.js";
 
 /** The rights a release is applied with: what catalog CI's token held. */
@@ -98,6 +102,73 @@ async function record(values: Partial<typeof catalogSync.$inferInsert>): Promise
     .insert(catalogSync)
     .values({ id: 1, ...values })
     .onConflictDoUpdate({ target: catalogSync.id, set: values });
+}
+
+/**
+ * Each named team's API products, as the release has them, each with its
+ * ServiceAccount; every other API of those teams goes. One that fails to
+ * apply keeps what was stored.
+ */
+export async function applyApis(
+  released: Release["apis"],
+  named: Set<string>,
+  foreign: Set<string>,
+  attempt: (item: string, work: () => Promise<unknown>) => Promise<void>,
+): Promise<void> {
+  const keepApis = new Set<string>();
+  // Only the named teams' APIs change: a team the release drops is retired,
+  // which takes its APIs off the gateway.
+  const teamIds: string[] = [];
+  for (const name of named) {
+    const team = foreign.has(name) ? undefined : await findTeamByName(name);
+    if (team) teamIds.push(team.id);
+  }
+  for (const a of released) {
+    if (foreign.has(a.team) || !named.has(a.team)) continue;
+    const team = await findTeamByName(a.team);
+    if (!team) continue;
+    keepApis.add(`${team.id}/${a.name}`);
+    await attempt(`api ${a.team}/${a.name}`, async () => {
+      const openapi = JSON.parse(a.openapi) as unknown;
+      if (typeof openapi !== "object" || openapi === null) throw new Error("its OpenAPI document isn't an object");
+      // The identity its backend credentials are minted for (phase 4).
+      await ensureServiceAccount(a.team, a.serviceAccount);
+      await upsertApi({
+        teamId: team.id,
+        name: a.name,
+        displayName: a.displayName,
+        description: a.description,
+        openapi,
+        backendUrl: a.backendUrl,
+        backendAuth: backendAuth(a.backendAuth),
+        serviceAccount: a.serviceAccount,
+        shareWith: a.shareWith,
+        hidden: a.hidden,
+        deprecated: a.deprecated || null,
+        internet: a.internet,
+        perMinute: a.perMinute,
+        timeoutSeconds: a.timeoutSeconds || 30,
+        maxRequestBytes: Number(a.maxRequestBytes) || 1_048_576,
+        sourcePath: a.path || null,
+      });
+    });
+  }
+  await attempt("removing APIs", () => deleteApisExcept(teamIds, keepApis));
+}
+
+function backendAuth(auth: ReleaseBackendAuth | undefined): BackendAuth | null {
+  switch (auth?.kind.case) {
+    case "serviceAccountToken":
+      return { serviceAccountToken: { audience: auth.kind.value.audience } };
+    case "googleIdToken":
+      return { googleIdToken: { serviceAccount: auth.kind.value.serviceAccount, audience: auth.kind.value.audience } };
+    case "secret": {
+      const { name, key, header, scheme } = auth.kind.value;
+      return { secret: { name, key, header, ...(scheme ? { scheme } : {}) } };
+    }
+    default:
+      return null;
+  }
 }
 
 function message(error: unknown): string {
@@ -155,7 +226,7 @@ async function verified(reference: string, log: FastifyBaseLogger): Promise<bool
 }
 
 /** Applies a release; returns what it couldn't do. */
-async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogProblem[]> {
+export async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogProblem[]> {
   const problems: CatalogProblem[] = [];
   const attempt = async (item: string, work: () => Promise<unknown>) => {
     try {
@@ -280,6 +351,7 @@ async function apply(release: Release, log: FastifyBaseLogger): Promise<CatalogP
     });
   }
   await attempt("removing templates", () => deleteTemplatesExcept(keepTemplates));
+  await applyApis(release.apis, named, foreign, attempt);
   // What earlier releases made and this one no longer has.
   for (const gone of await db.select({ name: products.name }).from(products).where(eq(products.fromCatalog, true))) {
     if (!released.has(gone.name)) await attempt(`removing product ${gone.name}`, () => deleteProduct(CATALOG, gone.name));
