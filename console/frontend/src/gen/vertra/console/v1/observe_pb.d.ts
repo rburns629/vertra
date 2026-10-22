@@ -86,19 +86,23 @@ export declare const SecurityCheckSchema: GenMessage<SecurityCheck>;
  */
 export declare type Refusal = Message<"vertra.console.v1.Refusal"> & {
   /**
+   * When; for the gateway's, the last of them.
+   *
    * @generated from field: google.protobuf.Timestamp at = 1;
    */
   at?: Timestamp | undefined;
 
   /**
-   * What was refused: a step (its team and image), or the catalog's
-   * release.
+   * What was refused: a step (its team and image), the catalog's release,
+   * or calls to an API (the calling team, the API and its endpoint).
    *
    * @generated from field: string what = 2;
    */
   what: string;
 
   /**
+   * The step's team, or the API's.
+   *
    * @generated from field: string team = 3;
    */
   team: string;
@@ -119,6 +123,22 @@ export declare type Refusal = Message<"vertra.console.v1.Refusal"> & {
    * @generated from field: string execution_id = 6;
    */
   executionId: string;
+
+  /**
+   * Who refused it: step (the cluster), catalog (the console) or gateway.
+   * The gateway's are seen by the API's team, the calling team and admins.
+   *
+   * @generated from field: string source = 7;
+   */
+  source: string;
+
+  /**
+   * How many: the gateway's are grouped by API, calling team, endpoint and
+   * reason over the week; 1 otherwise.
+   *
+   * @generated from field: int32 count = 8;
+   */
+  count: number;
 };
 
 /**

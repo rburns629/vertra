@@ -9,7 +9,7 @@
  */
 import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
-import { eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
 import { ApiError } from "../apiError.js";
 import { canActForTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
@@ -17,7 +17,7 @@ import { catalogStatus } from "../catalogSync.js";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { findSubmittedExecutions, listRunnableProducts } from "../db/queries.js";
-import { auditLog, imageScans } from "../db/schema.js";
+import { apis, apiTraffic, auditLog, imageScans, teams } from "../db/schema.js";
 import { readImagePolicy } from "../imagePolicy.js";
 import { getStats, listRefusals } from "../kernel/client.js";
 import { PLATFORM_ERRORS } from "../failureHelp.js";
@@ -154,6 +154,62 @@ export async function getAuditCopy(caller: AuthUser | undefined) {
   };
 }
 
+/** What the gateway answered instead of forwarding (its api_traffic outcomes), and why. */
+const GATEWAY_REFUSALS: Record<string, { code: string; why: string }> = {
+  blocked: { code: "NOT_IN_SPEC", why: "The API's OpenAPI document has no such method and path." },
+  invalid: { code: "INVALID_REQUEST", why: "The request didn't fit the API's OpenAPI document, or was too large." },
+  unauthenticated: { code: "UNAUTHENTICATED", why: "No valid session or bot token." },
+  forbidden: { code: "NOT_SHARED", why: "The API isn't shared with the caller's team." },
+  limited: { code: "RATE_LIMITED", why: "Over the calling team's requests a minute." },
+  paused: { code: "API_PAUSED", why: "Its team paused the API." },
+  closed: { code: "GATEWAY_CLOSED", why: "The gateway was closed." },
+  held: { code: "API_HELD", why: "Its backend isn't one this install allows yet." },
+  unavailable: { code: "API_UNAVAILABLE", why: "The API's OpenAPI document couldn't be used, or the gateway couldn't check callers." },
+};
+
+/**
+ * The gateway's refusals since `since`, one per API, calling team, endpoint
+ * and reason. Seen by the API's team, the calling team, and admins; with no
+ * calling team (not signed in, not shared), by the API's team and admins.
+ */
+async function gatewayRefusals(who: AuthUser, since: Date) {
+  const apiTeam = sql<string>`${teams.name}`;
+  const visible = who.isAdmin
+    ? undefined
+    : or(inArray(teams.name, who.teamNames.length > 0 ? who.teamNames : [""]), inArray(apiTraffic.team, who.teamNames.length > 0 ? who.teamNames : [""]));
+  const rows = await db
+    .select({
+      api: apis.name,
+      apiTeam,
+      team: apiTraffic.team,
+      endpoint: apiTraffic.endpoint,
+      outcome: apiTraffic.outcome,
+      n: sql<number>`sum(${apiTraffic.count})::int`,
+      last: sql<Date>`max(${apiTraffic.minute})`.mapWith((value: string | Date) => new Date(value)),
+    })
+    .from(apiTraffic)
+    .innerJoin(apis, eq(apis.id, apiTraffic.apiId))
+    .innerJoin(teams, eq(teams.id, apis.teamId))
+    .where(and(gte(apiTraffic.minute, since), inArray(apiTraffic.outcome, Object.keys(GATEWAY_REFUSALS)), visible))
+    .groupBy(apis.name, teams.name, apiTraffic.team, apiTraffic.endpoint, apiTraffic.outcome)
+    .orderBy(desc(sql`max(${apiTraffic.minute})`))
+    .limit(200);
+  return rows.map((r) => {
+    const reason = GATEWAY_REFUSALS[r.outcome] ?? { code: r.outcome.toUpperCase(), why: "" };
+    const caller = r.team || "a caller with no team";
+    return {
+      at: r.last,
+      what: `${caller} \u2192 ${r.apiTeam}/${r.api}: ${r.endpoint}`,
+      team: r.apiTeam,
+      code: reason.code,
+      why: reason.why,
+      executionId: "",
+      source: "gateway",
+      count: r.n,
+    };
+  });
+}
+
 function mayCount(n: unknown): number {
   return typeof n === "number" ? n : 0;
 }
@@ -169,11 +225,13 @@ export async function getSecurity(caller: AuthUser | undefined) {
     const visible =
       run !== undefined &&
       (who.isAdmin || run.submittedBy === who.id || run.teams.some((team) => canActForTeam(who, team)));
-    return { at: r.at ? new Date(r.at) : null, what: `${r.team} step ${r.taskId} (${r.image})`, team: r.team, code: r.code, why: WHY[r.code] ?? r.message, executionId: visible ? r.executionId : "" };
+    return { at: r.at ? new Date(r.at) : null, what: `${r.team} step ${r.taskId} (${r.image})`, team: r.team, code: r.code, why: WHY[r.code] ?? r.message, executionId: visible ? r.executionId : "", source: "step", count: 1 };
   });
+  refusals.push(...(await gatewayRefusals(who, since)));
+  refusals.sort((a, b) => (b.at?.getTime() ?? 0) - (a.at?.getTime() ?? 0));
   const catalog = await catalogStatus();
   if (catalog.release && catalog.error && catalog.checkedAt && catalog.checkedAt >= since) {
-    refusals.unshift({ at: catalog.checkedAt, what: "The catalog's release", team: "", code: "CATALOG_NOT_APPLIED", why: catalog.error, executionId: "" });
+    refusals.unshift({ at: catalog.checkedAt, what: "The catalog's release", team: "", code: "CATALOG_NOT_APPLIED", why: catalog.error, executionId: "", source: "catalog", count: 1 });
   }
 
   const scans = new Map((await db.select().from(imageScans)).map((s) => [s.digest, s]));

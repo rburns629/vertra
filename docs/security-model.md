@@ -245,7 +245,9 @@ it can't mint the platform's or a team's other identities. It reads the
 console's database and never writes it. Requests are logged and counted by
 API, team, caller and outcome, never with bodies, header values or
 credentials; the counts kept for each API's page (`api_traffic`, a week)
-hold only the calling team, never who. Its egress excludes the cloud
+hold only the calling team, never who. What it refused there is also in
+Observe's refusals, seen by the API's team, the calling team and admins
+(by the API's team and admins alone when no calling team is known). Its egress excludes the cloud
 metadata server, so no backend URL can reach the node's credentials
 through it, and it reads no Secrets: a backend that takes only a static
 key can't be published.

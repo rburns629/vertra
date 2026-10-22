@@ -184,15 +184,23 @@ func (x *SecurityCheck) GetText() string {
 
 type Refusal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	At    *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
-	// What was refused: a step (its team and image), or the catalog's
-	// release.
+	// When; for the gateway's, the last of them.
+	At *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
+	// What was refused: a step (its team and image), the catalog's release,
+	// or calls to an API (the calling team, the API and its endpoint).
 	What string `protobuf:"bytes,2,opt,name=what,proto3" json:"what,omitempty"`
+	// The step's team, or the API's.
 	Team string `protobuf:"bytes,3,opt,name=team,proto3" json:"team,omitempty"`
 	Code string `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	Why  string `protobuf:"bytes,5,opt,name=why,proto3" json:"why,omitempty"`
 	// The run it was in, when the caller may see it; else empty.
-	ExecutionId   string `protobuf:"bytes,6,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	ExecutionId string `protobuf:"bytes,6,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	// Who refused it: step (the cluster), catalog (the console) or gateway.
+	// The gateway's are seen by the API's team, the calling team and admins.
+	Source string `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
+	// How many: the gateway's are grouped by API, calling team, endpoint and
+	// reason over the week; 1 otherwise.
+	Count         int32 `protobuf:"varint,8,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -267,6 +275,20 @@ func (x *Refusal) GetExecutionId() string {
 		return x.ExecutionId
 	}
 	return ""
+}
+
+func (x *Refusal) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *Refusal) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
 }
 
 type AllowedImage struct {
@@ -1283,14 +1305,16 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\rSecurityCheck\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text\"\xa6\x01\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\"\xd4\x01\n" +
 	"\aRefusal\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x12\n" +
 	"\x04what\x18\x02 \x01(\tR\x04what\x12\x12\n" +
 	"\x04team\x18\x03 \x01(\tR\x04team\x12\x12\n" +
 	"\x04code\x18\x04 \x01(\tR\x04code\x12\x10\n" +
 	"\x03why\x18\x05 \x01(\tR\x03why\x12!\n" +
-	"\fexecution_id\x18\x06 \x01(\tR\vexecutionId\"\x9c\x02\n" +
+	"\fexecution_id\x18\x06 \x01(\tR\vexecutionId\x12\x16\n" +
+	"\x06source\x18\a \x01(\tR\x06source\x12\x14\n" +
+	"\x05count\x18\b \x01(\x05R\x05count\"\x9c\x02\n" +
 	"\fAllowedImage\x12\x18\n" +
 	"\aproduct\x18\x01 \x01(\tR\aproduct\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x14\n" +

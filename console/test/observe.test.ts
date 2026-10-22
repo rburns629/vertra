@@ -10,7 +10,7 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSubmittedExecution, upsertProduct } from "../src/db/queries.js";
-import { imageScans, products, submittedExecutions, teams } from "../src/db/schema.js";
+import { apis, apiTraffic, imageScans, products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { caller, rpcClient } from "./rpc.js";
 
@@ -18,6 +18,7 @@ const digest = `sha256:${"e".repeat(64)}`;
 const prefix = `obs-${randomUUID().slice(0, 6)}`;
 const owner = `${prefix}-owner`;
 const other = `${prefix}-other`;
+const stranger = `${prefix}-stranger`;
 const executionId = randomUUID();
 
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
@@ -66,6 +67,18 @@ beforeAll(async () => {
   tokens.owner = await users.signIn(a.email);
   tokens.other = await users.signIn(b.email);
   await recordSubmittedExecution({ executionId, teams: [owner], submittedBy: a.id, name: "x", payload: { name: "x", tasks: [] } });
+  // owner's API, and what the gateway answered over the week.
+  const [api] = await db
+    .insert(apis)
+    .values({ teamId: ownerTeam.id, name: "orders", displayName: "Orders", openapi: {}, backendUrl: "https://orders.example", serviceAccount: "orders-api" })
+    .returning();
+  const minute = new Date(Math.floor(Date.now() / 60_000) * 60_000);
+  await db.insert(apiTraffic).values([
+    { apiId: api!.id, minute, team: other, endpoint: "DELETE /orders/1", outcome: "blocked", count: 5, durationMs: 5 },
+    { apiId: api!.id, minute, team: "", endpoint: "GET /orders", outcome: "unauthenticated", count: 2, durationMs: 1 },
+    { apiId: api!.id, minute, team: stranger, endpoint: "POST /orders", outcome: "invalid", count: 1, durationMs: 1 },
+    { apiId: api!.id, minute, team: other, endpoint: "GET /orders", outcome: "forwarded_2xx", count: 10, durationMs: 90 },
+  ]);
 });
 
 afterAll(async () => {
@@ -80,7 +93,7 @@ afterAll(async () => {
 
 type Security = {
   checks: { name: string; state: string }[];
-  refusals: { code: string; why: string; executionId: string; team: string }[];
+  refusals: { code: string; why: string; executionId: string; team: string; what: string; source: string; count: number }[];
   images: { product: string; scan: string; fixable: number }[];
 };
 const security = async (who: keyof typeof tokens) => (await call<Security>(tokens[who], "ObserveService/GetSecurity")).body;
@@ -99,6 +112,20 @@ describe("security checks", () => {
     const theirs = (await security("other")).refusals.find((r) => r.team === owner);
     expect(theirs?.code).toBe("IMAGE_NOT_ALLOWED");
     expect(theirs?.executionId ?? "").toBe("");
+  });
+
+  it("include the gateway's, for the API's team, the calling team and no one else", async () => {
+    const gateway = async (who: keyof typeof tokens) =>
+      (await security(who)).refusals.filter((r) => r.source === "gateway" && r.team === owner).map((r) => `${r.code} ${String(r.count)} ${r.what}`).sort();
+    expect(await gateway("owner")).toEqual([
+      `INVALID_REQUEST 1 ${stranger} \u2192 ${owner}/orders: POST /orders`,
+      `NOT_IN_SPEC 5 ${other} \u2192 ${owner}/orders: DELETE /orders/1`,
+      `UNAUTHENTICATED 2 a caller with no team \u2192 ${owner}/orders: GET /orders`,
+    ]);
+    // The calling team sees its own calls only; what it was forwarded isn't a refusal.
+    expect(await gateway("other")).toEqual([`NOT_IN_SPEC 5 ${other} \u2192 ${owner}/orders: DELETE /orders/1`]);
+    const step = (await security("owner")).refusals.find((r) => r.code === "IMAGE_NOT_ALLOWED");
+    expect(step).toMatchObject({ source: "step", count: 1 });
   });
 
   it("list every image allowed to run with its scan, a hidden product's for its team only", async () => {
