@@ -15,7 +15,7 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-ecr": "3.1151.0",
+    "@aws-sdk/client-ecr": "3.1152.0",
     "@bufbuild/protobuf": "2.16.0",
     "@connectrpc/connect": "2.2.0",
     "@connectrpc/connect-fastify": "2.2.0",
