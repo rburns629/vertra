@@ -301,6 +301,19 @@ console's and the gateway's) accepts only `networkPolicy.metricsFrom`, so a
 step can't read them, and no metric is labelled with a user, a team or a
 token.
 
+## The console's writes
+
+The console can't read a Secret. It creates, replaces and deletes them (and
+product ServiceAccounts, ExternalSecrets, SecretStores and each team's
+default-deny NetworkPolicy) through a cluster-wide role, which an admission
+policy, the write fence (`write-fence-policy.yaml`), confines to namespaces
+labelled as teams'. The console can't change that policy or its binding,
+and it checks both are in force (failing closed, bound to deny) before it
+starts: without them it refuses to start, since its role would otherwise
+reach every namespace. Per-namespace RoleBindings were considered and
+dropped: the console would have to create them, and only the same policy
+would keep it from binding the role elsewhere.
+
 ## Signing in
 
 People sign in with a password, or with single sign-on when the console

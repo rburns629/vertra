@@ -99,9 +99,11 @@ async function checks(): Promise<Check[]> {
         : "This install doesn't keep logs: a run's page shows its steps' output, kept with the run.",
     },
     {
-      name: "The console's Secret writes fenced per team",
-      state: "not_yet",
-      text: "The console can still create and replace Secrets in any team namespace (it can't read them).",
+      name: "The console's writes fenced to team namespaces",
+      state: config.writeFencePolicy ? "enforced" : "off",
+      text: config.writeFencePolicy
+        ? "An admission policy the console can't change confines its Secret, ServiceAccount and RBAC writes to team namespaces, and it checks the policy is in force before it starts. It never reads a Secret."
+        : "The write fence is off on this install: the console's writes aren't confined to team namespaces.",
     },
     {
       name: "Single sign-on",

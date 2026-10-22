@@ -15,6 +15,9 @@ metadata:
 data:
   PORT: {{ .Values.service.port | quote }}
   METRICS_PORT: {{ .Values.monitoring.port | quote }}
+  {{- if .Values.writeFence.enabled }}
+  WRITE_FENCE_POLICY: {{ printf "%s-write-fence" (include "execution-console.fullname" .) | quote }}
+  {{- end }}
   {{- if .Values.logs.enabled }}
   LOKI_URL: "http://{{ include "execution-console.fullname" . }}-loki.{{ .Release.Namespace }}.svc.cluster.local:3100"
   {{- end }}

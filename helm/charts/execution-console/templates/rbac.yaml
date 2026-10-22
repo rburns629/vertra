@@ -116,6 +116,14 @@ rules:
       - {{ .Values.scanning.policyName | quote }}
       {{- end }}
     verbs: ["get", "update"]
+  {{- if .Values.writeFence.enabled }}
+  # Its own write fence: read, to check it's in force before starting;
+  # never changed.
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingadmissionpolicies", "validatingadmissionpolicybindings"]
+    resourceNames: [{{ printf "%s-write-fence" (include "execution-console.fullname" .) | quote }}]
+    verbs: ["get"]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

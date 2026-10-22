@@ -169,6 +169,9 @@ export const config = {
   // console could make an account; turn it on only behind a trusted
   // network boundary.
   allowSelfRegistration: parseBoolean("ALLOW_SELF_REGISTRATION"),
+  // The console chart's write fence (write-fence-policy.yaml): the console
+  // won't start unless it's in force. Empty: off (the chart's writeFence).
+  writeFencePolicy: process.env["WRITE_FENCE_POLICY"] ?? "",
   // Single sign-on; null when off. Turning it on changes nothing else:
   // passwords still work, except for the members of a team that requires
   // single sign-on (teams.requireSso; admins are exempt).

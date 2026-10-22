@@ -283,6 +283,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `logs.test.ts` | The LogQL the log search sends (a stand-in Loki records it): each caller's visibility, names checked, typed text quoted; LOGS_OFF. |
 | `metrics.test.ts` | The console's Prometheus metrics: calls counted by procedure and code, served on their own port and not on the console's. |
 | `log-levels.test.ts` | A step's log lines by level: INFO for everyone who can see the run, the rest for its team. |
+| `write-fence.test.ts` | The write fence's check: in force only failing closed, checking something, and bound to deny. |
 | `run-view.test.ts` | Who sees what of a run across teams: the consumer and submitter everything, a provider's member their own steps in full and only codes of the rest (details, events, logs); a raw DAG all its teams. |
 | `password-change.test.ts` | A password someone else set: nothing but changing it until then (an admin's own reset and single sign-on aren't held back). |
 | `oidc.test.ts` | Signing in with single sign-on against a stand-in provider: new accounts, binding an existing one once, every refusal (domain, unverified email, signature, nonce, state); a team requiring it refusing its members' passwords and password sessions, admins exempt, nothing while it's off. |

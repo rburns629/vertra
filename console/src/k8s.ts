@@ -1255,3 +1255,38 @@ export async function recordActivity(namespace: string, name: string, at: Date):
     if (!isConflict(error)) throw error;
   }
 }
+
+/**
+ * Why the write fence (the console chart's write-fence-policy.yaml, which
+ * confines every Secret, ServiceAccount and RBAC write of this console to
+ * team namespaces) isn't in force, or null when it is: the policy exists,
+ * fails closed and checks something, and its binding denies. Without it,
+ * the console's cluster-wide rights would reach every namespace, so it
+ * refuses to start (index.ts). It can read these two, never change them.
+ */
+export async function writeFenceProblem(name: string): Promise<string | null> {
+  const { admission } = getApis();
+  let policy: k8s.V1ValidatingAdmissionPolicy;
+  let binding: k8s.V1ValidatingAdmissionPolicyBinding;
+  try {
+    policy = await admission.readValidatingAdmissionPolicy({ name });
+    binding = await admission.readValidatingAdmissionPolicyBinding({ name });
+  } catch (error) {
+    if (isNotFound(error)) return `the admission policy or binding "${name}" doesn't exist`;
+    throw error;
+  }
+  return fenceProblem(name, policy, binding);
+}
+
+/** The check itself, on what the API server returned. */
+export function fenceProblem(
+  name: string,
+  policy: k8s.V1ValidatingAdmissionPolicy,
+  binding: k8s.V1ValidatingAdmissionPolicyBinding,
+): string | null {
+  if (policy.spec?.failurePolicy !== "Fail") return `"${name}" doesn't fail closed (failurePolicy isn't Fail)`;
+  if ((policy.spec.validations ?? []).length === 0) return `"${name}" checks nothing`;
+  if (binding.spec.policyName !== name) return `the binding "${name}" binds another policy`;
+  if (!binding.spec.validationActions.includes("Deny")) return `the binding "${name}" doesn't deny`;
+  return null;
+}

@@ -13,7 +13,7 @@ import { startRetention } from "./retention.js";
 import { sql } from "drizzle-orm";
 import { config } from "./config.js";
 import { claimRegisteredImageRepositories, listAllSecretGrants } from "./db/queries.js";
-import { deleteLegacySecretRole } from "./k8s.js";
+import { deleteLegacySecretRole, writeFenceProblem } from "./k8s.js";
 import { db } from "./db/client.js";
 import { registerRpc } from "./rpc/server.js";
 import { registerOidc } from "./auth/oidc.js";
@@ -156,6 +156,13 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     app.log.error({ err: error }, "could not remove the per-secret Roles secrets no longer use");
+  }
+  // Without its write fence, the console's cluster-wide rights would reach
+  // every namespace: it doesn't start (k8s.ts's writeFenceProblem).
+  if (config.writeFencePolicy) {
+    const problem = await writeFenceProblem(config.writeFencePolicy);
+    if (problem) throw new Error(`The console's write fence isn't in force: ${problem}. Reinstall the console chart (writeFence).`);
+    app.log.info({ event: "write_fence_checked", policy: config.writeFencePolicy }, "write fence in force");
   }
   await app.listen({ host: "0.0.0.0", port: config.port });
   startMetricsServer(config.metricsPort);

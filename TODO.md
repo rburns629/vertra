@@ -608,8 +608,17 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   read-only root filesystem (`/tmp` an emptyDir), like the gateway, Loki,
   the collector and Trivy already did. Left: Postgres and the Jobs that run
   its image (backups, the console's database), whose image starts as root.
-- [ ] **Bind the console's Secret rights per team namespace** as teams are
-  created, instead of cluster-wide fenced by an admission policy.
+- [x] **Bind the console's Secret rights per team namespace** as teams are
+  created, instead of cluster-wide fenced by an admission policy. Decided
+  against (2026-10-22): the console would have to create RoleBindings (and
+  `bind` the role they grant), and only the same admission policy would
+  stop it binding that role anywhere, so nothing would be gained and the
+  console would gain RBAC rights. What stands: the write fence is the
+  boundary, and the console can't change it (it may update only the image,
+  identity and scan policies, by name). Done instead: the console checks
+  the fence is in force (fails closed, checks something, bound to deny)
+  before it starts and refuses to start without it (proven on kind by
+  deleting the binding), and Observe reports it.
 - [ ] **Ship audit log lines to a write-once store**: the audit log lives in
   the console's database, which its writers could change.
 - [x] **Decide who may read a multi-team execution** (decided and done
