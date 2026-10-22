@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: MIT
+
+package catalogtool
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+const apiYAML = `apiVersion: vertra.dev/v2
+kind: Api
+name: orders
+displayName: Orders API
+description: The order service.
+spec: openapi.yaml
+backend:
+  url: https://orders.example.com
+  auth:
+    googleIdToken:
+      serviceAccount: orders-gateway@payments-prod.iam.gserviceaccount.com
+shareWith: [web]
+limits:
+  default: 600/min
+  web: 2/s
+timeout: 20s
+maxRequest: 512KiB
+`
+
+const openapiYAML = `openapi: 3.1.0
+info: {title: Orders, version: 2.3.0}
+servers: [{url: https://orders.example.com}]
+paths:
+  /orders/{orderId}:
+    parameters:
+      - {name: orderId, in: path, required: true, schema: {type: string, pattern: "^ord_[a-z0-9]{8}$"}}
+    get:
+      responses: {"200": {description: ok}}
+  /orders:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Order"}
+      responses: {"201": {description: created}}
+components:
+  schemas:
+    Order: {type: object, required: [amount], properties: {amount: {type: integer}}}
+`
+
+func apiCatalog(t *testing.T, api, spec string) *Catalog {
+	return catalogWith(t, map[string]string{
+		"teams/payments/apis/orders/api.yaml":     api,
+		"teams/payments/apis/orders/openapi.yaml": spec,
+	})
+}
+
+// An API's api.yaml and OpenAPI file, checked: the spec is the allowlist,
+// so it must be OpenAPI 3.0 or 3.1, all in one file, aimed at the backend,
+// with a schema for everything the gateway is to check.
+func TestAPIs(t *testing.T) {
+	c := apiCatalog(t, apiYAML, openapiYAML)
+	if out := errorsOf(t, (*Catalog).ValidateAPIs, c); out != "" {
+		t.Fatalf("a good API was refused:\n%s", out)
+	}
+	apis, err := c.releaseAPIs()
+	if err != nil || len(apis) != 1 {
+		t.Fatalf("apis = %v, %v", apis, err)
+	}
+	a := apis[0]
+	if a.GetTeam() != "payments" || a.GetName() != "orders" || a.GetServiceAccount() != "orders-api" ||
+		a.GetPerMinute()["default"] != 600 || a.GetPerMinute()["web"] != 120 || a.GetTimeoutSeconds() != 20 ||
+		a.GetMaxRequestBytes() != 512<<10 || a.GetBackendAuth().GetGoogleIdToken().GetAudience() != "https://orders.example.com" ||
+		a.GetPath() != "teams/payments/apis/orders/api.yaml" {
+		t.Errorf("api = %v", a)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(a.GetOpenapi()), &doc); err != nil || doc["openapi"] != "3.1.0" {
+		t.Errorf("openapi = %.80s, %v", a.GetOpenapi(), err)
+	}
+
+	for name, tc := range map[string]struct{ api, spec, want string }{
+		"another backend":                {apiYAML, strings.Replace(openapiYAML, "https://orders.example.com", "https://elsewhere.example.com", 1), "servers don't include backend.url"},
+		"a reference outside the file":   {apiYAML, strings.Replace(openapiYAML, "#/components/schemas/Order", "orders.yaml#/Order", 1), "refers outside itself"},
+		"a parameter with no schema":     {apiYAML, strings.Replace(openapiYAML, `schema: {type: string, pattern: "^ord_[a-z0-9]{8}$"}`, "description: x", 1), "parameter 'orderId' has no schema"},
+		"the gateway's own path":         {apiYAML, strings.Replace(openapiYAML, "/orders:", "/.vertra/health:", 1), "the gateway's own"},
+		"two paths alike":                {apiYAML, strings.Replace(openapiYAML, "/orders:", "/orders/{id}:", 1), "match the same requests"},
+		"Swagger 2":                      {apiYAML, "swagger: \"2.0\"\ninfo: {title: x, version: \"1\"}\npaths: {}\n", "OpenAPI"},
+		"no spec file":                   {strings.Replace(apiYAML, "spec: openapi.yaml", "spec: missing.yaml", 1), openapiYAML, "no such file"},
+		"another name":                   {strings.Replace(apiYAML, "name: orders", "name: billing", 1), openapiYAML, "isn't its folder's"},
+		"plain http outside the cluster": {strings.Replace(apiYAML, "https://orders.example.com", "http://orders.example.com", 1), strings.Replace(openapiYAML, "https://", "http://", 1), "http only to a Service"},
+		"hidden and shared":              {apiYAML + "visibility: hidden\n", openapiYAML, "api.yaml"},
+		"a limit it can't read":          {strings.Replace(apiYAML, "600/min", "lots", 1), openapiYAML, "api.yaml"},
+		"too long a timeout":             {strings.Replace(apiYAML, "timeout: 20s", "timeout: 900s", 1), openapiYAML, "api.yaml"},
+	} {
+		if out := errorsOf(t, (*Catalog).ValidateAPIs, apiCatalog(t, tc.api, tc.spec)); !strings.Contains(out, tc.want) {
+			t.Errorf("%s: want %q in:\n%s", name, tc.want, out)
+		}
+	}
+}
+
+// An http backend is fine inside the cluster, where the gateway reaches a
+// team's Service directly.
+func TestAPIsInTheCluster(t *testing.T) {
+	url := "http://orders.payments.svc.cluster.local:8080"
+	c := apiCatalog(t, strings.Replace(apiYAML, "https://orders.example.com", url, 1), strings.Replace(openapiYAML, "https://orders.example.com", url, 1))
+	if out := errorsOf(t, (*Catalog).ValidateAPIs, c); out != "" {
+		t.Errorf("refused:\n%s", out)
+	}
+}

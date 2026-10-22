@@ -208,6 +208,15 @@ func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, reposito
 		}
 		release.Templates = templates
 	}
+	if !c.ValidateAPIs() {
+		problems = append(problems, "an apis/ file isn't valid (above)")
+	} else {
+		apis, err := c.releaseAPIs()
+		if err != nil {
+			return nil, err
+		}
+		release.Apis = apis
+	}
 	if len(problems) > 0 {
 		return nil, fmt.Errorf("the release can't be made:\n  %s", strings.Join(problems, "\n  "))
 	}

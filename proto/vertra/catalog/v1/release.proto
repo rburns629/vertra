@@ -30,6 +30,9 @@ message Release {
   // Every team's templates (teams/<team>/dags/*.yaml of kind Template), as
   // vertra catalog checked them: what consumers run, with parameters only.
   repeated Template templates = 6;
+  // Every team's API products (teams/<team>/apis/<name>/api.yaml), as vertra
+  // catalog checked them, each with its OpenAPI document.
+  repeated Api apis = 7;
 }
 
 message Team {
@@ -160,4 +163,71 @@ message Resources {
   string cpu = 1;
   string memory = 2;
   string memory_limit = 3;
+}
+
+// An API product: a backend a team already runs, published through the
+// install's gateway, which forwards only what its OpenAPI document
+// describes (decision 20).
+message Api {
+  // Its folder's name, apis/<name>/: callers reach it at /<team>/<name>/.
+  string name = 1;
+  string team = 2;
+  string display_name = 3;
+  string description = 4;
+  // Its OpenAPI document (3.0 or 3.1), as JSON, references inside it only.
+  string openapi = 5;
+  // Where requests go: https, or http to a Service in the cluster.
+  string backend_url = 6;
+  // How the gateway signs in to the backend; unset: it doesn't.
+  BackendAuth backend_auth = 7;
+  // The Kubernetes ServiceAccount, in the team's namespace, its
+  // credentials are minted for.
+  string service_account = 8;
+  // The other teams that may call it, or "*".
+  repeated string share_with = 9;
+  // visibility: hidden: only its own team sees it (it has no share_with).
+  bool hidden = 10;
+  // Why it's deprecated and what to use instead; empty when it isn't.
+  string deprecated = 11;
+  // reachable: internet: also on the gateway's public address, where the
+  // install allows its team.
+  bool internet = 12;
+  // Requests a minute per calling team: "default", and teams by name.
+  // Empty: the install's default.
+  map<string, int32> per_minute = 13;
+  // How long the backend has to start answering.
+  int32 timeout_seconds = 14;
+  // The largest request body forwarded.
+  int64 max_request_bytes = 15;
+  // Its api.yaml in the catalog repository: "teams/<team>/apis/<name>/api.yaml".
+  string path = 16;
+}
+
+message BackendAuth {
+  oneof kind {
+    ServiceAccountTokenAuth service_account_token = 1;
+    GoogleIdTokenAuth google_id_token = 2;
+    SecretAuth secret = 3;
+  }
+}
+
+// A token for the API's own ServiceAccount, for this audience.
+message ServiceAccountTokenAuth {
+  string audience = 1;
+}
+
+// A Google ID token, as service_account, for audience; minted per request
+// through the API ServiceAccount's federation.
+message GoogleIdTokenAuth {
+  string service_account = 1;
+  string audience = 2;
+}
+
+// A team secret's key, sent in header (after scheme, if set): for a
+// backend that only takes a static key.
+message SecretAuth {
+  string name = 1;
+  string key = 2;
+  string header = 3;
+  string scheme = 4;
 }

@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vertra API product (apis/<name>/api.yaml, kind: Api), format v2",
+  "description": "A backend the team already runs, published through the install's gateway. Its OpenAPI file is the allowlist: the gateway forwards only requests whose method and path it describes and whose parameters, headers and body fit its schemas, and blocks everything else.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "displayName",
+    "description",
+    "spec",
+    "backend"
+  ],
+  "if": {
+    "properties": {
+      "visibility": {
+        "const": "hidden"
+      }
+    },
+    "required": [
+      "visibility"
+    ]
+  },
+  "then": {
+    "not": {
+      "required": [
+        "shareWith"
+      ]
+    }
+  },
+  "properties": {
+    "apiVersion": {
+      "description": "The catalog format: vertra.dev/v2. A file without it is from before v2: ./vertra catalog migrate rewrites it.",
+      "const": "vertra.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: Api.",
+      "const": "Api"
+    },
+    "name": {
+      "description": "Its folder's name, apis/<name>/: callers reach it at /<team>/<name>/ on the gateway.",
+      "$ref": "#/$defs/dnsLabel"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "spec": {
+      "description": "Its OpenAPI file (3.0 or 3.1, YAML or JSON), beside api.yaml. Every operation in it is what may reach the backend; nothing else does.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+\\.(ya?ml|json)$"
+    },
+    "backend": {
+      "description": "Where the gateway forwards to, and how it signs in there. The URL's host must be one this install's admins allow, or the API is held, not published.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "description": "The backend's base URL, https (http only for a Service inside the cluster); the spec's servers must include it.",
+          "type": "string",
+          "pattern": "^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~/-]*)?$",
+          "maxLength": 500
+        },
+        "auth": {
+          "description": "The credential the gateway adds to each request, minted per request where it can be. Left out: none (the backend checks Vertra-Caller, or nothing).",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1,
+          "properties": {
+            "serviceAccountToken": {
+              "description": "A token for the API's own Kubernetes ServiceAccount, for this audience: for a backend in a cluster that checks Kubernetes tokens.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "audience"
+              ],
+              "properties": {
+                "audience": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              }
+            },
+            "googleIdToken": {
+              "description": "A Google ID token for the backend (Cloud Run, Cloud Functions, IAP), minted per request through the API ServiceAccount's federation: as serviceAccount, for audience (default: backend.url).",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "serviceAccount"
+              ],
+              "properties": {
+                "serviceAccount": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z0-9.-]+\\.iam\\.gserviceaccount\\.com$"
+                },
+                "audience": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              }
+            },
+            "secret": {
+              "description": "A fallback for a backend that only takes a static key: a team secret, read by name per request, sent in header (with scheme before it, e.g. Bearer).",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "key",
+                "header"
+              ],
+              "properties": {
+                "name": {
+                  "$ref": "#/$defs/dnsLabel"
+                },
+                "key": {
+                  "type": "string",
+                  "pattern": "^[-._a-zA-Z0-9]{1,253}$"
+                },
+                "header": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9-]{1,64}$"
+                },
+                "scheme": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9-]{1,32}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "serviceAccount": {
+      "description": "The Kubernetes ServiceAccount the API's credentials come from, in the team's namespace (the console creates it). Left out: <name>-api.",
+      "$ref": "#/$defs/dnsLabel"
+    },
+    "shareWith": {
+      "description": "The other teams that may call it, or [\"*\"] for every team. Left out, only its own team.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 200,
+      "items": {
+        "anyOf": [
+          {
+            "const": "*"
+          },
+          {
+            "$ref": "#/$defs/dnsLabel"
+          }
+        ]
+      }
+    },
+    "visibility": {
+      "description": "listed (the default): every team sees it, and those it isn't shared with can ask for access. hidden: only its own team sees it, so it can't have shareWith.",
+      "enum": [
+        "listed",
+        "hidden"
+      ]
+    },
+    "deprecated": {
+      "description": "Marks it deprecated, saying what to use instead. It keeps working; the console shows the message to everyone who uses it.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "reachable": {
+      "description": "cluster (the default): the gateway answers for it inside the cluster only. internet: also on the gateway's public address, if this install lets the team publish there.",
+      "enum": [
+        "cluster",
+        "internet"
+      ]
+    },
+    "limits": {
+      "description": "Requests per calling team, per minute or second: default for every team, and any team by name.",
+      "type": "object",
+      "maxProperties": 100,
+      "propertyNames": {
+        "anyOf": [
+          {
+            "const": "default"
+          },
+          {
+            "$ref": "#/$defs/dnsLabel"
+          }
+        ]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]{0,6}/(s|min)$"
+      }
+    },
+    "timeout": {
+      "description": "How long the gateway waits for the backend's answer to begin, 1s to 300s (default 30s).",
+      "type": "string",
+      "pattern": "^([1-9]|[1-9][0-9]|[12][0-9][0-9]|300)s$"
+    },
+    "maxRequest": {
+      "description": "The largest request body it forwards, up to 10MiB (default 1MiB).",
+      "type": "string",
+      "pattern": "^([1-9][0-9]{0,4}KiB|([1-9]|10)MiB)$"
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    }
+  }
+}

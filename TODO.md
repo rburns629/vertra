@@ -607,11 +607,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   publishes a backend it already runs: `teams/<team>/apis/<name>/api.yaml`
   (`kind: Api`) and its `openapi.yaml`; the gateway forwards exactly what
   the spec describes and blocks the rest (404, never forwarded). In order:
-  1. The format: an `Api` schema in `tools/` and the CLI's embedded copy;
-     `vertra catalog validate` checks the OpenAPI file (3.0 or 3.1, every
-     operation's parameters and body schemas), that `servers` matches
-     `backend.url`, and the limits; the release carries APIs
-     (`release.proto`).
+  1. ~~The format~~ (done 2026-10-22): `kind: Api` in
+     `teams/<team>/apis/<name>/api.yaml` (`tools/api.schema.json`, embedded
+     in vertra); `vertra catalog validate` checks the OpenAPI file (3.0 or
+     3.1 by libopenapi, `$ref`s inside it only, a schema for every
+     parameter and body, `servers` including `backend.url`, no two paths
+     alike, nothing under `/.vertra/`) and the limits; releases carry APIs
+     with their OpenAPI as JSON (`release.proto`'s `Api`).
   2. The console stores them (with the spec), applies and removes them
      with releases, and keeps the admins' backend host allowlist (Helm
      values); an API under no allowed host is held, not published.

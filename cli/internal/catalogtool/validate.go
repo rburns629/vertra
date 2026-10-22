@@ -19,6 +19,7 @@ var (
 	teamSchema     = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("team.schema.json") })
 	templateSchema = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("template.schema.json") })
 	dagSchema      = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("dag.schema.json") })
+	apiSchema      = sync.OnceValue(func() *jsonschema.Schema { return embeddedSchema("api.schema.json") })
 )
 
 // APIVersion is the catalog format this vertra reads and writes.
@@ -52,7 +53,7 @@ func formatProblem(doc any, kinds ...string) string {
 }
 
 // teamEntries are what a team folder may hold, besides team.yaml.
-var teamEntries = []string{"README.md", "dags", "products", "secret-stores", "team.yaml"}
+var teamEntries = []string{"README.md", "apis", "dags", "products", "secret-stores", "team.yaml"}
 
 // renamed is why an old catalog's names are refused.
 const renamed = "teams were called platforms until 2026-10-18"

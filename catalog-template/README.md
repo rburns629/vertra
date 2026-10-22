@@ -50,6 +50,10 @@ teams/
         tests/<action>/<case>/   request.json and expected.json
     secret-stores/*.yaml      optional: the team's SecretStores (admins approve)
     dags/                     optional: templates others run, and example DAGs
+    apis/
+      <api>/                  optional: a backend you run, published through the gateway
+        api.yaml              its backend, how the gateway signs in there, sharing, limits
+        openapi.yaml          what may reach the backend (OpenAPI 3.0 or 3.1)
 ```
 
 A team's folder name is its identity everywhere: its console team, its
@@ -261,6 +265,49 @@ holds if anything else goes wrong (samples/gcp shows both).
 A catalog from before format v2 (no `apiVersion` in its files) is
 converted in place by `./vertra catalog migrate`, comments and all; review the
 diff, then `./vertra catalog validate`.
+
+## API products (`apis/`)
+
+A backend your team already runs (a Cloud Run service, a Service in your
+namespace) can be published through the install's gateway, without
+changing it. Its OpenAPI file is the allowlist: the gateway forwards a
+request only when its method and path are an operation in the file and it
+fits that operation's schemas, exactly as sent (headers, query and body),
+with the caller's credential swapped for the backend's. Anything else gets
+404 or 400 from the gateway and never reaches your backend.
+
+```yaml
+apiVersion: vertra.dev/v2
+kind: Api
+name: orders                  # its folder; callers use /<team>/orders/ on the gateway
+displayName: Orders API
+description: Create and look up orders.
+spec: openapi.yaml
+backend:
+  url: https://orders-7xk2.a.run.app      # the spec's servers must include it
+  auth:
+    googleIdToken:                        # minted per request; nothing stored
+      serviceAccount: orders-gateway@payments-prod.iam.gserviceaccount.com
+shareWith: [web, data]        # who may call it; left out, only your team
+reachable: cluster            # or internet, where the install allows your team
+limits:
+  default: 600/min            # per calling team
+  data: 60/min
+timeout: 30s
+maxRequest: 1MiB
+```
+
+`./vertra catalog validate` checks the OpenAPI file: 3.0 or 3.1, every
+`$ref` inside the file, `servers` including `backend.url`, a schema for
+every parameter and request body, no two paths matching the same requests,
+and nothing under `/.vertra/` (the gateway's own). Every field of
+`api.yaml` is in [tools/api.schema.json](tools/api.schema.json). The
+backend's host must be one the install's admins allow, or the API is held,
+not published. `backend.auth` is `googleIdToken`, `serviceAccountToken`
+(a token for the API's own ServiceAccount, for a backend that checks
+Kubernetes tokens) or, only for a backend that takes nothing else, a team
+`secret`. Your backend learns who called from the `Vertra-Caller` header,
+which the gateway signs.
 
 ### The container contract
 

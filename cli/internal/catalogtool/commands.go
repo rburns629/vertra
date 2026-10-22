@@ -12,7 +12,8 @@ func (c *Catalog) layoutOK() bool {
 	teams := c.ValidateTeams()
 	owners := c.ValidateCodeowners()
 	dags := c.ValidateDags()
-	return teams && owners && dags
+	apis := c.ValidateAPIs()
+	return teams && owners && dags && apis
 }
 
 // Check validates, builds, tests and scans, and returns the products that

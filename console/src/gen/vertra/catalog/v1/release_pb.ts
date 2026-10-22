@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/catalog/v1/release.proto.
  */
 export const file_vertra_catalog_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSLpAQoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlIrsBCgRUZWFtEgwKBG5hbWUYASABKAkSNwoWc2VjcmV0X3N0b3JlX2RvY3VtZW50cxgCIAMoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSNgoPYWxsb3dlZF90YXJnZXRzGAMgAygLMh0udmVydHJhLmNhdGFsb2cudjEuVGFyZ2V0UnVsZRIPCgdjb250YWN0GAQgASgJEhEKCWhlbHBfY2hhdBgFIAEoCRIQCghoZWxwX3VybBgGIAEoCSJaCgpUYXJnZXRSdWxlEg0KBXRlYW1zGAEgAygJEisKB3RhcmdldHMYAiADKAsyGi52ZXJ0cmEuY2F0YWxvZy52MS5UYXJnZXRzEhAKCGFwcHJvdmFsGAMgASgIIicKB1RhcmdldHMSDAoEdHlwZRgBIAEoCRIOCgZ2YWx1ZXMYAiADKAki8gQKDVByb2R1Y3RBY3Rpb24SDAoEbmFtZRgBIAEoCRINCgVpbWFnZRgCIAEoCRIOCgZhY3Rpb24YAyABKAkSDAoEdGVhbRgEIAEoCRItCgxpbnB1dF9zY2hlbWEYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KDW91dHB1dF9zY2hlbWEYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhQKDGRpc3BsYXlfbmFtZRgHIAEoCRITCgtkZXNjcmlwdGlvbhgIIAEoCRIXCg9zZXJ2aWNlX2FjY291bnQYCSABKAkSEwoLc2VjcmV0X3JlZnMYCiADKAkSLwoJcmVzb3VyY2VzGAsgASgLMhwudmVydHJhLmNhdGFsb2cudjEuUmVzb3VyY2VzEhIKCnNoYXJlX3dpdGgYDCADKAkSEgoKZGVwcmVjYXRlZBgNIAEoCRIXCg90b2tlbl9hdWRpZW5jZXMYDiADKAkSDgoGaGlkZGVuGA8gASgIEgwKBHBhdGgYECABKAkSEgoKaWRlbXBvdGVudBgRIAEoCBIUCgxtYXhfYXR0ZW1wdHMYEiABKAUSFwoPY29uY3VycmVuY3lfa2V5GBMgAygJEjwKBmVycm9ycxgUIAMoCzIsLnZlcnRyYS5jYXRhbG9nLnYxLlByb2R1Y3RBY3Rpb24uRXJyb3JzRW50cnkSEAoIYXBwcm92YWwYFSABKAkaSwoLRXJyb3JzRW50cnkSCwoDa2V5GAEgASgJEisKBXZhbHVlGAIgASgLMhwudmVydHJhLmNhdGFsb2cudjEuRXJyb3JIZWxwOgI4ASImCglFcnJvckhlbHASDQoFbWVhbnMYASABKAkSCgoCZG8YAiABKAki9AEKCFRlbXBsYXRlEgwKBG5hbWUYASABKAkSDAoEdGVhbRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSKwoKcGFyYW1ldGVycxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoFc3RlcHMYBiADKAsyHy52ZXJ0cmEuY2F0YWxvZy52MS5UZW1wbGF0ZVN0ZXASEgoKc2hhcmVfd2l0aBgHIAMoCRISCgpkZXByZWNhdGVkGAggASgJEg4KBmhpZGRlbhgJIAEoCBIMCgRwYXRoGAogASgJIsUBCgxUZW1wbGF0ZVN0ZXASCgoCaWQYASABKAkSDgoGYWN0aW9uGAIgASgJEhIKCmRlcGVuZHNfb24YAyADKAkSJwoGaW5wdXRzGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIcCg90aW1lb3V0X3NlY29uZHMYBSABKAVIAIgBARIZCgxtYXhfYXR0ZW1wdHMYBiABKAVIAYgBAUISChBfdGltZW91dF9zZWNvbmRzQg8KDV9tYXhfYXR0ZW1wdHMiPgoJUmVzb3VyY2VzEgsKA2NwdRgBIAEoCRIOCgZtZW1vcnkYAiABKAkSFAoMbWVtb3J5X2xpbWl0GAMgASgJYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSKPAgoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlEiQKBGFwaXMYByADKAsyFi52ZXJ0cmEuY2F0YWxvZy52MS5BcGkiuwEKBFRlYW0SDAoEbmFtZRgBIAEoCRI3ChZzZWNyZXRfc3RvcmVfZG9jdW1lbnRzGAIgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBI2Cg9hbGxvd2VkX3RhcmdldHMYAyADKAsyHS52ZXJ0cmEuY2F0YWxvZy52MS5UYXJnZXRSdWxlEg8KB2NvbnRhY3QYBCABKAkSEQoJaGVscF9jaGF0GAUgASgJEhAKCGhlbHBfdXJsGAYgASgJIloKClRhcmdldFJ1bGUSDQoFdGVhbXMYASADKAkSKwoHdGFyZ2V0cxgCIAMoCzIaLnZlcnRyYS5jYXRhbG9nLnYxLlRhcmdldHMSEAoIYXBwcm92YWwYAyABKAgiJwoHVGFyZ2V0cxIMCgR0eXBlGAEgASgJEg4KBnZhbHVlcxgCIAMoCSLyBAoNUHJvZHVjdEFjdGlvbhIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIMCgR0ZWFtGAQgASgJEi0KDGlucHV0X3NjaGVtYRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNb3V0cHV0X3NjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMZGlzcGxheV9uYW1lGAcgASgJEhMKC2Rlc2NyaXB0aW9uGAggASgJEhcKD3NlcnZpY2VfYWNjb3VudBgJIAEoCRITCgtzZWNyZXRfcmVmcxgKIAMoCRIvCglyZXNvdXJjZXMYCyABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5SZXNvdXJjZXMSEgoKc2hhcmVfd2l0aBgMIAMoCRISCgpkZXByZWNhdGVkGA0gASgJEhcKD3Rva2VuX2F1ZGllbmNlcxgOIAMoCRIOCgZoaWRkZW4YDyABKAgSDAoEcGF0aBgQIAEoCRISCgppZGVtcG90ZW50GBEgASgIEhQKDG1heF9hdHRlbXB0cxgSIAEoBRIXCg9jb25jdXJyZW5jeV9rZXkYEyADKAkSPAoGZXJyb3JzGBQgAygLMiwudmVydHJhLmNhdGFsb2cudjEuUHJvZHVjdEFjdGlvbi5FcnJvcnNFbnRyeRIQCghhcHByb3ZhbBgVIAEoCRpLCgtFcnJvcnNFbnRyeRILCgNrZXkYASABKAkSKwoFdmFsdWUYAiABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5FcnJvckhlbHA6AjgBIiYKCUVycm9ySGVscBINCgVtZWFucxgBIAEoCRIKCgJkbxgCIAEoCSL0AQoIVGVtcGxhdGUSDAoEbmFtZRgBIAEoCRIMCgR0ZWFtGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIrCgpwYXJhbWV0ZXJzGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCgVzdGVwcxgGIAMoCzIfLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlU3RlcBISCgpzaGFyZV93aXRoGAcgAygJEhIKCmRlcHJlY2F0ZWQYCCABKAkSDgoGaGlkZGVuGAkgASgIEgwKBHBhdGgYCiABKAkixQEKDFRlbXBsYXRlU3RlcBIKCgJpZBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEgoKZGVwZW5kc19vbhgDIAMoCRInCgZpbnB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgFIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgGIAEoBUgBiAEBQhIKEF90aW1lb3V0X3NlY29uZHNCDwoNX21heF9hdHRlbXB0cyI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAkiugMKA0FwaRIMCgRuYW1lGAEgASgJEgwKBHRlYW0YAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEg8KB29wZW5hcGkYBSABKAkSEwoLYmFja2VuZF91cmwYBiABKAkSNAoMYmFja2VuZF9hdXRoGAcgASgLMh4udmVydHJhLmNhdGFsb2cudjEuQmFja2VuZEF1dGgSFwoPc2VydmljZV9hY2NvdW50GAggASgJEhIKCnNoYXJlX3dpdGgYCSADKAkSDgoGaGlkZGVuGAogASgIEhIKCmRlcHJlY2F0ZWQYCyABKAkSEAoIaW50ZXJuZXQYDCABKAgSOQoKcGVyX21pbnV0ZRgNIAMoCzIlLnZlcnRyYS5jYXRhbG9nLnYxLkFwaS5QZXJNaW51dGVFbnRyeRIXCg90aW1lb3V0X3NlY29uZHMYDiABKAUSGQoRbWF4X3JlcXVlc3RfYnl0ZXMYDyABKAMSDAoEcGF0aBgQIAEoCRowCg5QZXJNaW51dGVFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBItQBCgtCYWNrZW5kQXV0aBJLChVzZXJ2aWNlX2FjY291bnRfdG9rZW4YASABKAsyKi52ZXJ0cmEuY2F0YWxvZy52MS5TZXJ2aWNlQWNjb3VudFRva2VuQXV0aEgAEj8KD2dvb2dsZV9pZF90b2tlbhgCIAEoCzIkLnZlcnRyYS5jYXRhbG9nLnYxLkdvb2dsZUlkVG9rZW5BdXRoSAASLwoGc2VjcmV0GAMgASgLMh0udmVydHJhLmNhdGFsb2cudjEuU2VjcmV0QXV0aEgAQgYKBGtpbmQiKwoXU2VydmljZUFjY291bnRUb2tlbkF1dGgSEAoIYXVkaWVuY2UYASABKAkiPgoRR29vZ2xlSWRUb2tlbkF1dGgSFwoPc2VydmljZV9hY2NvdW50GAEgASgJEhAKCGF1ZGllbmNlGAIgASgJIkcKClNlY3JldEF1dGgSDAoEbmFtZRgBIAEoCRILCgNrZXkYAiABKAkSDgoGaGVhZGVyGAMgASgJEg4KBnNjaGVtZRgEIAEoCWIGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * A catalog release: everything a catalog's main branch says, as of one
@@ -70,6 +70,14 @@ export type Release = Message<"vertra.catalog.v1.Release"> & {
    * @generated from field: repeated vertra.catalog.v1.Template templates = 6;
    */
   templates: Template[];
+
+  /**
+   * Every team's API products (teams/<team>/apis/<name>/api.yaml), as vertra
+   * catalog checked them, each with its OpenAPI document.
+   *
+   * @generated from field: repeated vertra.catalog.v1.Api apis = 7;
+   */
+  apis: Api[];
 };
 
 /**
@@ -524,4 +532,243 @@ export type Resources = Message<"vertra.catalog.v1.Resources"> & {
  */
 export const ResourcesSchema: GenMessage<Resources> = /*@__PURE__*/
   messageDesc(file_vertra_catalog_v1_release, 8);
+
+/**
+ * An API product: a backend a team already runs, published through the
+ * install's gateway, which forwards only what its OpenAPI document
+ * describes (decision 20).
+ *
+ * @generated from message vertra.catalog.v1.Api
+ */
+export type Api = Message<"vertra.catalog.v1.Api"> & {
+  /**
+   * Its folder's name, apis/<name>/: callers reach it at /<team>/<name>/.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+
+  /**
+   * Its OpenAPI document (3.0 or 3.1), as JSON, references inside it only.
+   *
+   * @generated from field: string openapi = 5;
+   */
+  openapi: string;
+
+  /**
+   * Where requests go: https, or http to a Service in the cluster.
+   *
+   * @generated from field: string backend_url = 6;
+   */
+  backendUrl: string;
+
+  /**
+   * How the gateway signs in to the backend; unset: it doesn't.
+   *
+   * @generated from field: vertra.catalog.v1.BackendAuth backend_auth = 7;
+   */
+  backendAuth?: BackendAuth | undefined;
+
+  /**
+   * The Kubernetes ServiceAccount, in the team's namespace, its
+   * credentials are minted for.
+   *
+   * @generated from field: string service_account = 8;
+   */
+  serviceAccount: string;
+
+  /**
+   * The other teams that may call it, or "*".
+   *
+   * @generated from field: repeated string share_with = 9;
+   */
+  shareWith: string[];
+
+  /**
+   * visibility: hidden: only its own team sees it (it has no share_with).
+   *
+   * @generated from field: bool hidden = 10;
+   */
+  hidden: boolean;
+
+  /**
+   * Why it's deprecated and what to use instead; empty when it isn't.
+   *
+   * @generated from field: string deprecated = 11;
+   */
+  deprecated: string;
+
+  /**
+   * reachable: internet: also on the gateway's public address, where the
+   * install allows its team.
+   *
+   * @generated from field: bool internet = 12;
+   */
+  internet: boolean;
+
+  /**
+   * Requests a minute per calling team: "default", and teams by name.
+   * Empty: the install's default.
+   *
+   * @generated from field: map<string, int32> per_minute = 13;
+   */
+  perMinute: { [key: string]: number };
+
+  /**
+   * How long the backend has to start answering.
+   *
+   * @generated from field: int32 timeout_seconds = 14;
+   */
+  timeoutSeconds: number;
+
+  /**
+   * The largest request body forwarded.
+   *
+   * @generated from field: int64 max_request_bytes = 15;
+   */
+  maxRequestBytes: bigint;
+
+  /**
+   * Its api.yaml in the catalog repository: "teams/<team>/apis/<name>/api.yaml".
+   *
+   * @generated from field: string path = 16;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.Api.
+ * Use `create(ApiSchema)` to create a new message.
+ */
+export const ApiSchema: GenMessage<Api> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 9);
+
+/**
+ * @generated from message vertra.catalog.v1.BackendAuth
+ */
+export type BackendAuth = Message<"vertra.catalog.v1.BackendAuth"> & {
+  /**
+   * @generated from oneof vertra.catalog.v1.BackendAuth.kind
+   */
+  kind: {
+    /**
+     * @generated from field: vertra.catalog.v1.ServiceAccountTokenAuth service_account_token = 1;
+     */
+    value: ServiceAccountTokenAuth;
+    case: "serviceAccountToken";
+  } | {
+    /**
+     * @generated from field: vertra.catalog.v1.GoogleIdTokenAuth google_id_token = 2;
+     */
+    value: GoogleIdTokenAuth;
+    case: "googleIdToken";
+  } | {
+    /**
+     * @generated from field: vertra.catalog.v1.SecretAuth secret = 3;
+     */
+    value: SecretAuth;
+    case: "secret";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message vertra.catalog.v1.BackendAuth.
+ * Use `create(BackendAuthSchema)` to create a new message.
+ */
+export const BackendAuthSchema: GenMessage<BackendAuth> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 10);
+
+/**
+ * A token for the API's own ServiceAccount, for this audience.
+ *
+ * @generated from message vertra.catalog.v1.ServiceAccountTokenAuth
+ */
+export type ServiceAccountTokenAuth = Message<"vertra.catalog.v1.ServiceAccountTokenAuth"> & {
+  /**
+   * @generated from field: string audience = 1;
+   */
+  audience: string;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.ServiceAccountTokenAuth.
+ * Use `create(ServiceAccountTokenAuthSchema)` to create a new message.
+ */
+export const ServiceAccountTokenAuthSchema: GenMessage<ServiceAccountTokenAuth> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 11);
+
+/**
+ * A Google ID token, as service_account, for audience; minted per request
+ * through the API ServiceAccount's federation.
+ *
+ * @generated from message vertra.catalog.v1.GoogleIdTokenAuth
+ */
+export type GoogleIdTokenAuth = Message<"vertra.catalog.v1.GoogleIdTokenAuth"> & {
+  /**
+   * @generated from field: string service_account = 1;
+   */
+  serviceAccount: string;
+
+  /**
+   * @generated from field: string audience = 2;
+   */
+  audience: string;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.GoogleIdTokenAuth.
+ * Use `create(GoogleIdTokenAuthSchema)` to create a new message.
+ */
+export const GoogleIdTokenAuthSchema: GenMessage<GoogleIdTokenAuth> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 12);
+
+/**
+ * A team secret's key, sent in header (after scheme, if set): for a
+ * backend that only takes a static key.
+ *
+ * @generated from message vertra.catalog.v1.SecretAuth
+ */
+export type SecretAuth = Message<"vertra.catalog.v1.SecretAuth"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string key = 2;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string header = 3;
+   */
+  header: string;
+
+  /**
+   * @generated from field: string scheme = 4;
+   */
+  scheme: string;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.SecretAuth.
+ * Use `create(SecretAuthSchema)` to create a new message.
+ */
+export const SecretAuthSchema: GenMessage<SecretAuth> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 13);
 
