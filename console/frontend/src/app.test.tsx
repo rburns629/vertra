@@ -241,6 +241,16 @@ describe("a run", () => {
     await waitFor(() => { expect(retried).toEqual([{ executionId: FAILED_RUN.executionId, taskId: "deploy" }]); });
   });
 
+  it("says what a step waiting its turn is waiting for", async () => {
+    const waiting = {
+      ...FAILED_RUN,
+      state: "EXECUTION_STATE_RUNNING",
+      tasks: [{ taskId: "project", state: "TASK_STATE_READY", attemptCount: 0, attempts: [], waitingFor: { projectId: "orders-api" } }],
+    };
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, { "ExecutionService/WatchExecution": [{ execution: waiting }] });
+    expect(await screen.findByText(/another run is changing the same projectId \(orders-api\)/i)).toBeTruthy();
+  });
+
   it("shows another step when it's picked on the timeline", async () => {
     await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, { "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }] });
     fireEvent.click(await screen.findByRole("button", { name: /^project/i }));
@@ -445,6 +455,9 @@ describe("a run form", () => {
         ran.push(request);
         return { executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11" };
       },
+      "ExecutionService/WatchExecution": [
+        { execution: { executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", name: "orders-api run", state: "EXECUTION_STATE_SUCCEEDED", createdAt: "2026-10-21T16:20:00Z", tasks: [] } },
+      ],
     });
     expect(await screen.findByRole("heading", { name: "App on Cloud Run" })).toBeTruthy();
     expect(screen.getByText("Project")).toBeTruthy();
@@ -459,7 +472,7 @@ describe("a run form", () => {
     fireEvent.change(screen.getByLabelText("Regions, item 1"), { target: { value: "us-central1" } });
     fireEvent.click(screen.getByRole("button", { name: "Run" }));
     await waitFor(() => { expect(ran).toEqual([{ team: "gcp-platform", name: "app-on-cloud-run", parameters: { projectId: "orders-api", regions: ["us-central1"] } }]); });
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "orders-api run" })).toBeTruthy();
   });
 
   it("runs again with changes, filled in from the run, and shows itself as an API call", async () => {

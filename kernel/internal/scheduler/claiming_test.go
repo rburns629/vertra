@@ -291,6 +291,11 @@ func TestASecondTaskWithTheSameKeyWaitsUntilTheFirstIsDone(t *testing.T) {
 	equal(t, "first pass", len(first), 1)
 	equal(t, "its key", *first[0].ConcurrencyKey, `["acme-project","web-1"]`)
 	equal(t, "while it's claimed", len(claim(t, tx, "scheduler-1", time.Minute, now)), 0)
+	var waitingOn string
+	if err := tx.QueryRow(context.Background(), `SELECT concurrency_key FROM execution_tasks WHERE task_key = 'second' AND state = 'READY'`).Scan(&waitingOn); err != nil {
+		t.Fatal(err)
+	}
+	equal(t, "what the second waits on", waitingOn, `["acme-project","web-1"]`)
 
 	if _, err := tx.Exec(context.Background(), `UPDATE execution_tasks SET state = 'RUNNING' WHERE id = $1::uuid`, first[0].ID); err != nil {
 		t.Fatal(err)

@@ -560,3 +560,29 @@ func TestEveryMethodNeedsAnAllowedCaller(t *testing.T) {
 	_, err = c.SubmitExecution(ctx, connect.NewRequest(single(unique("unauthenticated"))))
 	code(t, err, connect.CodeUnauthenticated)
 }
+
+func TestAStepHeldByItsConcurrencyKeySaysWhatItsWaitingFor(t *testing.T) {
+	c := client(t)
+	scope := unique("acme-project")
+	keyedSingle := func() string {
+		req := single(unique("keyed"))
+		req.Tasks[0].ConcurrencyKey = &kernelv1.ConcurrencyKey{Scope: scope, Inputs: []string{"projectId"}}
+		return submit(t, c, req).ExecutionId
+	}
+	first, second := keyedSingle(), keyedSingle()
+	key := `["` + scope + `","web-1"]`
+	exec(t, `UPDATE execution_tasks SET state = 'RUNNING', concurrency_key = $1 WHERE execution_id = $2::uuid`, key, first)
+	exec(t, `UPDATE execution_tasks SET state = 'READY', concurrency_key = $1 WHERE execution_id = $2::uuid`, key, second)
+
+	waiting := tasksByID(get(t, c, second))["create-project"].WaitingFor.AsMap()
+	if len(waiting) != 1 || waiting["projectId"] != "web-1" {
+		t.Errorf("waiting for = %v", waiting)
+	}
+	if running := tasksByID(get(t, c, first))["create-project"]; running.WaitingFor != nil {
+		t.Errorf("the running one waits for %v", running.WaitingFor)
+	}
+	exec(t, `UPDATE execution_tasks SET state = 'SUCCEEDED' WHERE execution_id = $1::uuid`, first)
+	if task := tasksByID(get(t, c, second))["create-project"]; task.WaitingFor != nil {
+		t.Errorf("still waiting for %v once the other finished", task.WaitingFor)
+	}
+}

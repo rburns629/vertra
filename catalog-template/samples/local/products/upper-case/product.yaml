@@ -24,6 +24,10 @@ actions:
   - name: transform
     idempotent: true   # the same text in, the same text out
     maxAttempts: 2
+    # Two steps given the same text take turns: while one runs, the other
+    # waits (the run page says for what). Here only to show concurrencyKey;
+    # a real product names what it changes, such as a project.
+    concurrencyKey: [text]
     # Anyone may run it, or use it in their templates: these samples are
     # for every team to try. Left out, only this team could.
     shareWith: ["*"]

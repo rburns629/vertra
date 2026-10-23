@@ -126,6 +126,7 @@ describe("kernel-api client", () => {
           approvedBy: "",
           approvedAt: null,
           awaitingSince: null,
+          waitingFor: null,
         },
       ],
     });

@@ -335,3 +335,17 @@ func ConcurrencyKey(scope string, names []string, inputs map[string]any) string 
 	}
 	return string(key)
 }
+
+// ConcurrencyValues is a key's input values by name (ConcurrencyKey the
+// other way), or nil when the key wasn't made from these names.
+func ConcurrencyValues(key string, names []string) map[string]any {
+	var values []any
+	if json.Unmarshal([]byte(key), &values) != nil || len(values) != len(names)+1 {
+		return nil
+	}
+	out := make(map[string]any, len(names))
+	for i, name := range names {
+		out[name] = values[i+1]
+	}
+	return out
+}

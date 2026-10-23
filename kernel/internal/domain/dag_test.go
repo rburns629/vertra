@@ -129,4 +129,11 @@ func TestConcurrencyKeysNameTheScopeAndTheValuesInOrder(t *testing.T) {
 	if ConcurrencyKeyProblem("", nil) != "" || ConcurrencyKeyProblem("x", []string{"a"}) != "" {
 		t.Error("a valid key was refused")
 	}
+	values := ConcurrencyValues(ConcurrencyKey("acme-sql", []string{"projectId", "size"}, inputs), []string{"projectId", "size"})
+	if len(values) != 2 || values["projectId"] != "web-1" || values["size"] != 2.0 {
+		t.Errorf("values = %v", values)
+	}
+	if ConcurrencyValues(`["acme-sql","web-1"]`, []string{"projectId", "region"}) != nil || ConcurrencyValues("not json", nil) != nil {
+		t.Error("a key that doesn't fit its names gave values")
+	}
 }

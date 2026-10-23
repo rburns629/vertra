@@ -346,7 +346,9 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 			coalesce((SELECT array_agg(d.task_key ORDER BY d.task_key) FROM task_dependencies td
 				JOIN execution_tasks d ON d.id = td.depends_on_task_id WHERE td.task_id = t.id), '{}'),
 			a.started_at, a.completed_at, t.approval_required, coalesce(t.approved_by, ''), t.approved_at,
-			CASE WHEN t.state = 'AWAITING_APPROVAL' THEN t.available_at END
+			CASE WHEN t.state = 'AWAITING_APPROVAL' THEN t.available_at END,
+			CASE WHEN t.state = 'READY' AND EXISTS (SELECT 1 FROM execution_tasks h WHERE h.concurrency_key = t.concurrency_key
+				AND h.state IN ('CLAIMED', 'RUNNING') AND h.id <> t.id) THEN t.concurrency_key END, t.concurrency_inputs
 		FROM execution_tasks t
 		LEFT JOIN task_outputs o ON o.task_id = t.id
 		LEFT JOIN LATERAL (SELECT started_at, completed_at FROM task_attempts
@@ -362,9 +364,18 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 		var attempts int32
 		var outputs, failure []byte
 		var started, completed, approved, awaiting *time.Time
+		var waitingKey *string
+		var keyInputs []string
 		if err := rows.Scan(&task.TaskId, &taskSt, &attempts, &outputs, &failure, &task.DependsOn, &started, &completed,
-			&task.ApprovalRequired, &task.ApprovedBy, &approved, &awaiting); err != nil {
+			&task.ApprovalRequired, &task.ApprovedBy, &approved, &awaiting, &waitingKey, &keyInputs); err != nil {
 			return nil, err
+		}
+		if waitingKey != nil {
+			if values := domain.ConcurrencyValues(*waitingKey, keyInputs); values != nil {
+				if task.WaitingFor, err = structpb.NewStruct(values); err != nil {
+					return nil, err
+				}
+			}
 		}
 		task.State, task.AttemptCount = taskState(taskSt), attempts
 		if task.Outputs, err = structOf(outputs); err != nil {

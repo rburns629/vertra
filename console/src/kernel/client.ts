@@ -260,6 +260,8 @@ export interface KernelTaskStatus {
   approvedAt: string | null;
   /** While AWAITING_APPROVAL: since when. */
   awaitingSince: string | null;
+  /** While READY but held by another step with its concurrency key: the key's inputs and values. */
+  waitingFor: JsonObject | null;
 }
 
 export interface KernelExecution {
@@ -299,6 +301,7 @@ export async function getExecution(executionId: string): Promise<KernelExecution
       approvedBy: task.approvedBy,
       approvedAt: iso(task.approvedAt),
       awaitingSince: iso(task.awaitingSince),
+      waitingFor: task.waitingFor ?? null,
     })),
   };
 }

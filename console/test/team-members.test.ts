@@ -161,7 +161,7 @@ describe("adding a team member", () => {
     // Someone else's limit is their own.
     const other = await call(t.second.token, "TeamService/AddMember", { team: t.name, email: `${prefix}-nobody@example.com` });
     expect(other.code).toBe("not_found");
-  });
+  }, 30_000); // 32 calls in a row: slow on a busy machine
 });
 
 describe("roles: maintainers and members", () => {

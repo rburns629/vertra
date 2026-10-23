@@ -399,6 +399,16 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
    * @generated from field: optional vertra.console.v1.Approval approval = 11;
    */
   approval?: Approval | undefined;
+
+  /**
+   * While it's ready but waiting its turn: another step with the same
+   * concurrency key (product.yaml's concurrencyKey) is running. The key's
+   * inputs, with their values; unset for a step whose inputs the caller
+   * can't see.
+   *
+   * @generated from field: google.protobuf.Struct waiting_for = 12;
+   */
+  waitingFor?: JsonObject | undefined;
 };
 
 /**

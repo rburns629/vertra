@@ -875,7 +875,7 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
     ...detail,
     tasks: detail.tasks.map((t) => ({
       ...t,
-      ...(view.sees(t.taskId) ? {} : { outputs: null, failure: failureCodeOnly(t.failure) }),
+      ...(view.sees(t.taskId) ? {} : { outputs: null, failure: failureCodeOnly(t.failure), waitingFor: null }),
       attempts: t.attempts.map((a) => ({
         ...a,
         requestedBy: emails.get(a.requestedBy) ?? "",

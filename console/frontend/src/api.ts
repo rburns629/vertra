@@ -869,6 +869,8 @@ export interface TaskStatus {
   help: FailureHelp | null;
   /** Set when the step needs a maintainer of its team to approve it. */
   approval: TaskApproval | null;
+  /** While it's ready but waiting its turn behind another step with its concurrency key: the key's inputs and values. */
+  waitingFor: Record<string, unknown> | null;
 }
 
 export interface TaskApproval {
@@ -1036,6 +1038,7 @@ function executionDetail(execution: Execution): ExecutionDetail {
             canDecide: task.approval.canDecide,
           }
         : null,
+      waitingFor: task.waitingFor ?? null,
     })),
     teams: execution.teams,
     submittedBy: execution.submittedBy || null,

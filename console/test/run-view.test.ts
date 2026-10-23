@@ -31,8 +31,8 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => ({
       name: "run",
       state: "FAILED",
       tasks: [
-        { taskId: "theirs", state: "SUCCEEDED", attemptCount: 1, outputs: { url: "https://p.example" }, failure: null, dependsOn: [], startedAt: null, completedAt: null, attempts: [], approvalRequired: false, approvedBy: "", approvedAt: null, awaitingSince: null },
-        { taskId: "mine", state: "FAILED", attemptCount: 1, outputs: { secretish: "consumer data" }, failure, dependsOn: ["theirs"], startedAt: null, completedAt: null, attempts: [{ number: 1, startedAt: null, completedAt: null, failure, requestedBy: "", trigger: "", actedAs: "", image: "" }], approvalRequired: false, approvedBy: "", approvedAt: null, awaitingSince: null },
+        { taskId: "theirs", state: "SUCCEEDED", attemptCount: 1, outputs: { url: "https://p.example" }, failure: null, dependsOn: [], startedAt: null, completedAt: null, attempts: [], approvalRequired: false, approvedBy: "", approvedAt: null, awaitingSince: null, waitingFor: null },
+        { taskId: "mine", state: "FAILED", attemptCount: 1, outputs: { secretish: "consumer data" }, failure, dependsOn: ["theirs"], startedAt: null, completedAt: null, attempts: [{ number: 1, startedAt: null, completedAt: null, failure, requestedBy: "", trigger: "", actedAs: "", image: "" }], approvalRequired: false, approvedBy: "", approvedAt: null, awaitingSince: null, waitingFor: { projectId: "consumer data" } },
       ],
     }),
   ),
@@ -126,6 +126,7 @@ describe("a template run, seen by", () => {
     const seen = await detail(consumerMember, templateRun);
     expect(task(seen.tasks, "theirs").outputs).toEqual({ url: "https://p.example" });
     expect(task(seen.tasks, "mine").outputs).toEqual({ secretish: "consumer data" });
+    expect(task(seen.tasks, "mine").waitingFor).toEqual({ projectId: "consumer data" });
     expect(seen.dag?.tasks.find((t) => t.id === "mine")?.inputs).toEqual({ password: "consumer input" });
     expect(seen.templateParameters).toEqual({ region: "eu" });
   });

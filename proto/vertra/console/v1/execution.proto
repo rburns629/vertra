@@ -195,6 +195,11 @@ message TaskStatus {
   optional FailureHelp help = 10;
   // Set when the step needs an approval.
   optional Approval approval = 11;
+  // While it's ready but waiting its turn: another step with the same
+  // concurrency key (product.yaml's concurrencyKey) is running. The key's
+  // inputs, with their values; unset for a step whose inputs the caller
+  // can't see.
+  google.protobuf.Struct waiting_for = 12;
 }
 
 message Approval {

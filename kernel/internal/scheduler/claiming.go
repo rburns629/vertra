@@ -158,7 +158,13 @@ func (p *pass) claimReadyTasks() ([]*Task, error) {
 			return nil, err
 		}
 		if held {
-			continue // stays READY; the next pass looks again
+			// Stays READY; the next pass looks again. Its key says what
+			// it's waiting for (kernel-api's TaskStatus.waiting_for).
+			if _, err := p.db.Exec(p.ctx, `UPDATE execution_tasks SET concurrency_key = $1
+				WHERE id = $2::uuid AND concurrency_key IS DISTINCT FROM $1`, key, t.ID); err != nil {
+				return nil, err
+			}
+			continue
 		}
 		if key != "" {
 			keys[key] = true

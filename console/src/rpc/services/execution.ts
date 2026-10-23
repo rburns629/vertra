@@ -186,6 +186,7 @@ function execution(detail: Detail) {
             canDecide: task.approval.canDecide,
           }
         : undefined,
+      waitingFor: task.waitingFor ?? undefined,
     })),
     teams: detail.teams,
     submittedBy: detail.submittedBy ?? "",

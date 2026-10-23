@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { useState, type ReactNode } from "react";
 import { dump as dumpYaml } from "js-yaml";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -186,6 +187,15 @@ export function StepPanel({
           )}
         </Box>
 
+        {task.waitingFor && (
+          <Alert severity="info">
+            Waiting its turn: another run is changing the same{" "}
+            {Object.entries(task.waitingFor)
+              .map(([name, value]) => `${name} (${typeof value === "string" ? value : JSON.stringify(value)})`)
+              .join(", ")}
+            . It starts when that one finishes.
+          </Alert>
+        )}
         {task.approval && <Approval approval={task.approval} awaiting={task.state === "AWAITING_APPROVAL"} busy={busy} onDecide={onDecide} />}
 
         <Tabs value={tab} onChange={(_, value: TabId) => { setTab(value); }} variant="scrollable" allowScrollButtonsMobile sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}>

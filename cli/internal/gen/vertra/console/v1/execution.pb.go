@@ -706,7 +706,12 @@ type TaskStatus struct {
 	// safe, and whom to ask.
 	Help *FailureHelp `protobuf:"bytes,10,opt,name=help,proto3,oneof" json:"help,omitempty"`
 	// Set when the step needs an approval.
-	Approval      *Approval `protobuf:"bytes,11,opt,name=approval,proto3,oneof" json:"approval,omitempty"`
+	Approval *Approval `protobuf:"bytes,11,opt,name=approval,proto3,oneof" json:"approval,omitempty"`
+	// While it's ready but waiting its turn: another step with the same
+	// concurrency key (product.yaml's concurrencyKey) is running. The key's
+	// inputs, with their values; unset for a step whose inputs the caller
+	// can't see.
+	WaitingFor    *structpb.Struct `protobuf:"bytes,12,opt,name=waiting_for,json=waitingFor,proto3" json:"waiting_for,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -814,6 +819,13 @@ func (x *TaskStatus) GetHelp() *FailureHelp {
 func (x *TaskStatus) GetApproval() *Approval {
 	if x != nil {
 		return x.Approval
+	}
+	return nil
+}
+
+func (x *TaskStatus) GetWaitingFor() *structpb.Struct {
+	if x != nil {
+		return x.WaitingFor
 	}
 	return nil
 }
@@ -2533,7 +2545,7 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12%\n" +
 	"\x0emissing_images\x18\x03 \x03(\tR\rmissingImages\x12+\n" +
 	"\x11disallowed_images\x18\x04 \x03(\tR\x10disallowedImages\x12'\n" +
-	"\x0fallowed_sources\x18\x05 \x03(\tR\x0eallowedSources\"\xd6\x04\n" +
+	"\x0fallowed_sources\x18\x05 \x03(\tR\x0eallowedSources\"\x90\x05\n" +
 	"\n" +
 	"TaskStatus\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x122\n" +
@@ -2549,7 +2561,9 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\battempts\x18\t \x03(\v2\x1a.vertra.console.v1.AttemptR\battempts\x127\n" +
 	"\x04help\x18\n" +
 	" \x01(\v2\x1e.vertra.console.v1.FailureHelpH\x01R\x04help\x88\x01\x01\x12<\n" +
-	"\bapproval\x18\v \x01(\v2\x1b.vertra.console.v1.ApprovalH\x02R\bapproval\x88\x01\x01B\n" +
+	"\bapproval\x18\v \x01(\v2\x1b.vertra.console.v1.ApprovalH\x02R\bapproval\x88\x01\x01\x128\n" +
+	"\vwaiting_for\x18\f \x01(\v2\x17.google.protobuf.StructR\n" +
+	"waitingForB\n" +
 	"\n" +
 	"\b_failureB\a\n" +
 	"\x05_helpB\v\n" +
@@ -2786,55 +2800,56 @@ var file_vertra_console_v1_execution_proto_depIdxs = []int32{
 	10, // 18: vertra.console.v1.TaskStatus.attempts:type_name -> vertra.console.v1.Attempt
 	9,  // 19: vertra.console.v1.TaskStatus.help:type_name -> vertra.console.v1.FailureHelp
 	8,  // 20: vertra.console.v1.TaskStatus.approval:type_name -> vertra.console.v1.Approval
-	39, // 21: vertra.console.v1.Approval.approved_at:type_name -> google.protobuf.Timestamp
-	39, // 22: vertra.console.v1.Approval.awaiting_since:type_name -> google.protobuf.Timestamp
-	39, // 23: vertra.console.v1.Attempt.started_at:type_name -> google.protobuf.Timestamp
-	39, // 24: vertra.console.v1.Attempt.completed_at:type_name -> google.protobuf.Timestamp
-	40, // 25: vertra.console.v1.Attempt.failure:type_name -> vertra.console.v1.Failure
-	41, // 26: vertra.console.v1.ListExecutionsRequest.page:type_name -> vertra.console.v1.PageRequest
-	39, // 27: vertra.console.v1.ListExecutionsRequest.since:type_name -> google.protobuf.Timestamp
-	4,  // 28: vertra.console.v1.ListExecutionsResponse.executions:type_name -> vertra.console.v1.ExecutionSummary
-	2,  // 29: vertra.console.v1.SubmitExecutionRequest.dag:type_name -> vertra.console.v1.Dag
-	0,  // 30: vertra.console.v1.SubmitExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
-	5,  // 31: vertra.console.v1.GetExecutionResponse.execution:type_name -> vertra.console.v1.Execution
-	5,  // 32: vertra.console.v1.WatchExecutionResponse.execution:type_name -> vertra.console.v1.Execution
-	37, // 33: vertra.console.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
-	39, // 34: vertra.console.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
-	19, // 35: vertra.console.v1.ListExecutionEventsResponse.events:type_name -> vertra.console.v1.ExecutionEvent
-	23, // 36: vertra.console.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.console.v1.TaskLogs
-	0,  // 37: vertra.console.v1.CancelExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
-	0,  // 38: vertra.console.v1.RetryTaskResponse.state:type_name -> vertra.console.v1.ExecutionState
-	0,  // 39: vertra.console.v1.RerunExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
-	0,  // 40: vertra.console.v1.DecideApprovalResponse.state:type_name -> vertra.console.v1.ExecutionState
-	35, // 41: vertra.console.v1.ListPendingApprovalsResponse.approvals:type_name -> vertra.console.v1.PendingApproval
-	39, // 42: vertra.console.v1.PendingApproval.awaiting_since:type_name -> google.protobuf.Timestamp
-	11, // 43: vertra.console.v1.ExecutionService.ListExecutions:input_type -> vertra.console.v1.ListExecutionsRequest
-	13, // 44: vertra.console.v1.ExecutionService.SubmitExecution:input_type -> vertra.console.v1.SubmitExecutionRequest
-	15, // 45: vertra.console.v1.ExecutionService.GetExecution:input_type -> vertra.console.v1.GetExecutionRequest
-	17, // 46: vertra.console.v1.ExecutionService.WatchExecution:input_type -> vertra.console.v1.WatchExecutionRequest
-	20, // 47: vertra.console.v1.ExecutionService.ListExecutionEvents:input_type -> vertra.console.v1.ListExecutionEventsRequest
-	22, // 48: vertra.console.v1.ExecutionService.GetExecutionLogs:input_type -> vertra.console.v1.GetExecutionLogsRequest
-	25, // 49: vertra.console.v1.ExecutionService.CancelExecution:input_type -> vertra.console.v1.CancelExecutionRequest
-	27, // 50: vertra.console.v1.ExecutionService.RetryTask:input_type -> vertra.console.v1.RetryTaskRequest
-	29, // 51: vertra.console.v1.ExecutionService.RerunExecution:input_type -> vertra.console.v1.RerunExecutionRequest
-	31, // 52: vertra.console.v1.ExecutionService.DecideApproval:input_type -> vertra.console.v1.DecideApprovalRequest
-	33, // 53: vertra.console.v1.ExecutionService.ListPendingApprovals:input_type -> vertra.console.v1.ListPendingApprovalsRequest
-	12, // 54: vertra.console.v1.ExecutionService.ListExecutions:output_type -> vertra.console.v1.ListExecutionsResponse
-	14, // 55: vertra.console.v1.ExecutionService.SubmitExecution:output_type -> vertra.console.v1.SubmitExecutionResponse
-	16, // 56: vertra.console.v1.ExecutionService.GetExecution:output_type -> vertra.console.v1.GetExecutionResponse
-	18, // 57: vertra.console.v1.ExecutionService.WatchExecution:output_type -> vertra.console.v1.WatchExecutionResponse
-	21, // 58: vertra.console.v1.ExecutionService.ListExecutionEvents:output_type -> vertra.console.v1.ListExecutionEventsResponse
-	24, // 59: vertra.console.v1.ExecutionService.GetExecutionLogs:output_type -> vertra.console.v1.GetExecutionLogsResponse
-	26, // 60: vertra.console.v1.ExecutionService.CancelExecution:output_type -> vertra.console.v1.CancelExecutionResponse
-	28, // 61: vertra.console.v1.ExecutionService.RetryTask:output_type -> vertra.console.v1.RetryTaskResponse
-	30, // 62: vertra.console.v1.ExecutionService.RerunExecution:output_type -> vertra.console.v1.RerunExecutionResponse
-	32, // 63: vertra.console.v1.ExecutionService.DecideApproval:output_type -> vertra.console.v1.DecideApprovalResponse
-	34, // 64: vertra.console.v1.ExecutionService.ListPendingApprovals:output_type -> vertra.console.v1.ListPendingApprovalsResponse
-	54, // [54:65] is the sub-list for method output_type
-	43, // [43:54] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	37, // 21: vertra.console.v1.TaskStatus.waiting_for:type_name -> google.protobuf.Struct
+	39, // 22: vertra.console.v1.Approval.approved_at:type_name -> google.protobuf.Timestamp
+	39, // 23: vertra.console.v1.Approval.awaiting_since:type_name -> google.protobuf.Timestamp
+	39, // 24: vertra.console.v1.Attempt.started_at:type_name -> google.protobuf.Timestamp
+	39, // 25: vertra.console.v1.Attempt.completed_at:type_name -> google.protobuf.Timestamp
+	40, // 26: vertra.console.v1.Attempt.failure:type_name -> vertra.console.v1.Failure
+	41, // 27: vertra.console.v1.ListExecutionsRequest.page:type_name -> vertra.console.v1.PageRequest
+	39, // 28: vertra.console.v1.ListExecutionsRequest.since:type_name -> google.protobuf.Timestamp
+	4,  // 29: vertra.console.v1.ListExecutionsResponse.executions:type_name -> vertra.console.v1.ExecutionSummary
+	2,  // 30: vertra.console.v1.SubmitExecutionRequest.dag:type_name -> vertra.console.v1.Dag
+	0,  // 31: vertra.console.v1.SubmitExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
+	5,  // 32: vertra.console.v1.GetExecutionResponse.execution:type_name -> vertra.console.v1.Execution
+	5,  // 33: vertra.console.v1.WatchExecutionResponse.execution:type_name -> vertra.console.v1.Execution
+	37, // 34: vertra.console.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
+	39, // 35: vertra.console.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
+	19, // 36: vertra.console.v1.ListExecutionEventsResponse.events:type_name -> vertra.console.v1.ExecutionEvent
+	23, // 37: vertra.console.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.console.v1.TaskLogs
+	0,  // 38: vertra.console.v1.CancelExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
+	0,  // 39: vertra.console.v1.RetryTaskResponse.state:type_name -> vertra.console.v1.ExecutionState
+	0,  // 40: vertra.console.v1.RerunExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
+	0,  // 41: vertra.console.v1.DecideApprovalResponse.state:type_name -> vertra.console.v1.ExecutionState
+	35, // 42: vertra.console.v1.ListPendingApprovalsResponse.approvals:type_name -> vertra.console.v1.PendingApproval
+	39, // 43: vertra.console.v1.PendingApproval.awaiting_since:type_name -> google.protobuf.Timestamp
+	11, // 44: vertra.console.v1.ExecutionService.ListExecutions:input_type -> vertra.console.v1.ListExecutionsRequest
+	13, // 45: vertra.console.v1.ExecutionService.SubmitExecution:input_type -> vertra.console.v1.SubmitExecutionRequest
+	15, // 46: vertra.console.v1.ExecutionService.GetExecution:input_type -> vertra.console.v1.GetExecutionRequest
+	17, // 47: vertra.console.v1.ExecutionService.WatchExecution:input_type -> vertra.console.v1.WatchExecutionRequest
+	20, // 48: vertra.console.v1.ExecutionService.ListExecutionEvents:input_type -> vertra.console.v1.ListExecutionEventsRequest
+	22, // 49: vertra.console.v1.ExecutionService.GetExecutionLogs:input_type -> vertra.console.v1.GetExecutionLogsRequest
+	25, // 50: vertra.console.v1.ExecutionService.CancelExecution:input_type -> vertra.console.v1.CancelExecutionRequest
+	27, // 51: vertra.console.v1.ExecutionService.RetryTask:input_type -> vertra.console.v1.RetryTaskRequest
+	29, // 52: vertra.console.v1.ExecutionService.RerunExecution:input_type -> vertra.console.v1.RerunExecutionRequest
+	31, // 53: vertra.console.v1.ExecutionService.DecideApproval:input_type -> vertra.console.v1.DecideApprovalRequest
+	33, // 54: vertra.console.v1.ExecutionService.ListPendingApprovals:input_type -> vertra.console.v1.ListPendingApprovalsRequest
+	12, // 55: vertra.console.v1.ExecutionService.ListExecutions:output_type -> vertra.console.v1.ListExecutionsResponse
+	14, // 56: vertra.console.v1.ExecutionService.SubmitExecution:output_type -> vertra.console.v1.SubmitExecutionResponse
+	16, // 57: vertra.console.v1.ExecutionService.GetExecution:output_type -> vertra.console.v1.GetExecutionResponse
+	18, // 58: vertra.console.v1.ExecutionService.WatchExecution:output_type -> vertra.console.v1.WatchExecutionResponse
+	21, // 59: vertra.console.v1.ExecutionService.ListExecutionEvents:output_type -> vertra.console.v1.ListExecutionEventsResponse
+	24, // 60: vertra.console.v1.ExecutionService.GetExecutionLogs:output_type -> vertra.console.v1.GetExecutionLogsResponse
+	26, // 61: vertra.console.v1.ExecutionService.CancelExecution:output_type -> vertra.console.v1.CancelExecutionResponse
+	28, // 62: vertra.console.v1.ExecutionService.RetryTask:output_type -> vertra.console.v1.RetryTaskResponse
+	30, // 63: vertra.console.v1.ExecutionService.RerunExecution:output_type -> vertra.console.v1.RerunExecutionResponse
+	32, // 64: vertra.console.v1.ExecutionService.DecideApproval:output_type -> vertra.console.v1.DecideApprovalResponse
+	34, // 65: vertra.console.v1.ExecutionService.ListPendingApprovals:output_type -> vertra.console.v1.ListPendingApprovalsResponse
+	55, // [55:66] is the sub-list for method output_type
+	44, // [44:55] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_execution_proto_init() }

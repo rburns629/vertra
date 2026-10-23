@@ -14,6 +14,8 @@ export const TERMINAL_STATES = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
 /** The wait after a failed attempt to watch, doubling up to the maximum. */
 export const RETRY_MIN_MS = 2000;
 export const RETRY_MAX_MS = 30_000;
+/** A stream that delivered but ended sooner than this is reopened after this long, not at once. */
+export const REOPEN_MIN_MS = 1000;
 
 export interface ExecutionWatch {
   execution: ExecutionDetail | null;
@@ -45,7 +47,8 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  * overwritten per attempt) are fetched with each one. It stops once the
  * execution has finished, or on a 4xx, which watching again won't change.
  * A stream that ends unfinished (the server's limit per stream) or drops
- * after delivering is reopened at once; one that can't be opened, or ends
+ * after delivering is reopened at once (after REOPEN_MIN_MS if it lasted
+ * less, so something cutting streams short can't make it spin); one that can't be opened, or ends
  * without sending anything (the server always sends the execution first),
  * is tried again, less and less often, with its error shown until it works.
  */
@@ -89,6 +92,7 @@ export function useExecutionWatch(id: string): ExecutionWatch {
       while (!signal.aborted) {
         let delivered = false;
         let finished = false;
+        const opened = Date.now();
         try {
           for await (const detail of watchExecution(id, signal)) {
             delivered = true;
@@ -101,6 +105,8 @@ export function useExecutionWatch(id: string): ExecutionWatch {
           if (finished) return;
           if (delivered) {
             failures = 0;
+            const lasted = Date.now() - opened;
+            if (lasted < REOPEN_MIN_MS) await sleep(REOPEN_MIN_MS - lasted, signal);
           } else {
             // Ended at once, empty: reopening at once would only spin.
             failures += 1;
@@ -114,6 +120,8 @@ export function useExecutionWatch(id: string): ExecutionWatch {
           }
           if (delivered) {
             failures = 0;
+            const lasted = Date.now() - opened;
+            if (lasted < REOPEN_MIN_MS) await sleep(REOPEN_MIN_MS - lasted, signal);
           } else {
             failures += 1;
             setError(err instanceof ApiError ? err.message : "Couldn't reach the console. Retrying.");

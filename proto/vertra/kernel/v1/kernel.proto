@@ -221,6 +221,10 @@ message TaskStatus {
   google.protobuf.Timestamp approved_at = 12;
   // While AWAITING_APPROVAL: since when.
   google.protobuf.Timestamp awaiting_since = 13;
+  // While READY but held because another step with the same concurrency
+  // key (Task.concurrency_key) is claimed or running: the key's inputs,
+  // with their values.
+  google.protobuf.Struct waiting_for = 14;
 }
 
 message Attempt {

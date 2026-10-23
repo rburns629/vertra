@@ -2690,6 +2690,13 @@
      "repeated": false,
      "optional": true,
      "comment": "Set when the step needs an approval."
+    },
+    {
+     "name": "waitingFor",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "While it's ready but waiting its turn: another step with the same\nconcurrency key (product.yaml's concurrencyKey) is running. The key's\ninputs, with their values; unset for a step whose inputs the caller\ncan't see."
     }
    ]
   },

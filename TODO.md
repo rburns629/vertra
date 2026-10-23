@@ -542,8 +542,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   step, and holds it READY while one with the same key is claimed or
   running; a transaction-scoped advisory lock per key keeps two schedulers
   apart (kernel migration 0004). Proven on kind: two runs on the same value
-  ran one after the other, a third on another value alongside. Left:
-  showing "waiting for <key>" on the run page.
+  ran one after the other, a third on another value alongside. A held
+  step records its key, and the run page says what it waits for
+  (`TaskStatus.waiting_for`, while another with the key is claimed or
+  running; proven on kind with the local sample's upper-case, 2026-10-23).
 - [ ] **P2: the marketplace pages** (eleven mocked up 2026-10-19): Catalog
   with readiness and runnable examples, Runs list and run timeline, Compose
   (type-matched wiring, drafts, Propose as a template from the person's

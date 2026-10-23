@@ -9,7 +9,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, getExecutionEvents, getExecutionLogs, watchExecution, type ExecutionDetail } from "../api";
-import { RETRY_MAX_MS, RETRY_MIN_MS, useExecutionWatch } from "./useExecutionWatch";
+import { REOPEN_MIN_MS, RETRY_MAX_MS, RETRY_MIN_MS, useExecutionWatch } from "./useExecutionWatch";
 
 vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
@@ -67,6 +67,11 @@ describe("useExecutionWatch", () => {
     ];
     const { result } = renderHook(() => useExecutionWatch("e"));
     await advance(0);
+    // Each ended at once, so it waited a moment before the next.
+    expect(watchExecution).toHaveBeenCalledTimes(1);
+    await advance(REOPEN_MIN_MS);
+    expect(watchExecution).toHaveBeenCalledTimes(2);
+    await advance(REOPEN_MIN_MS);
     expect(result.current.execution?.state).toBe("SUCCEEDED");
     expect(result.current.error).toBeNull();
     expect(watchExecution).toHaveBeenCalledTimes(3);
