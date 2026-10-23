@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation, useParams } from "react-router-do
 import { AuthProvider } from "./auth/AuthContext";
 import { EnvironmentProvider } from "./environment";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { NotFoundPage } from "./components/ErrorPage";
 import { AppLayout } from "./layout/AppLayout";
 import { ChoosePasswordPage } from "./pages/ChoosePasswordPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -67,13 +68,13 @@ export function App() {
             <Route path="/apis/:team/:name" element={<ApiPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/docs/:id" element={<DocsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
           {/* Where pages used to be, for bookmarks and old links. */}
           <Route path="/executions" element={<Moved to="/runs" />} />
           <Route path="/executions/submit" element={<Moved to="/runs/submit" />} />
           <Route path="/executions/:id" element={<Moved to="/runs/:id" />} />
           <Route path="/run" element={<Moved to="/catalog" />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </EnvironmentProvider>

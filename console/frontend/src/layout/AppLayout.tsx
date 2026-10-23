@@ -31,6 +31,7 @@ import HelpIcon from "@mui/icons-material/HelpOutlineOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { PageErrorBoundary } from "../components/ErrorPage";
 import { useEnvironment } from "../environment";
 
 const DRAWER_WIDTH = 248;
@@ -254,7 +255,9 @@ export function AppLayout() {
               </Box>
             }
           >
-            <Outlet />
+            <PageErrorBoundary key={location.pathname}>
+              <Outlet />
+            </PageErrorBoundary>
           </Suspense>
         </Box>
       </Box>

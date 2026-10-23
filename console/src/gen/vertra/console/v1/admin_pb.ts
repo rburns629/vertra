@@ -14,7 +14,105 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/admin.proto.
  */
 export const file_vertra_console_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9hZG1pbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiGQoXR2V0Q2F0YWxvZ1N0YXR1c1JlcXVlc3QiTAoYR2V0Q2F0YWxvZ1N0YXR1c1Jlc3BvbnNlEjAKBnN0YXR1cxgBIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLkNhdGFsb2dTdGF0dXMiFAoSU3luY0NhdGFsb2dSZXF1ZXN0IkcKE1N5bmNDYXRhbG9nUmVzcG9uc2USMAoGc3RhdHVzGAEgASgLMiAudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1N0YXR1cyInChdBZG9wdENhdGFsb2dUZWFtUmVxdWVzdBIMCgRuYW1lGAEgASgJIkwKGEFkb3B0Q2F0YWxvZ1RlYW1SZXNwb25zZRIwCgZzdGF0dXMYASABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nU3RhdHVzIvgBCg1DYXRhbG9nU3RhdHVzEg8KB3JlbGVhc2UYASABKAkSDgoGZGlnZXN0GAIgASgJEg4KBmNvbW1pdBgDIAEoCRISCgpyZXBvc2l0b3J5GAQgASgJEi4KCmFwcGxpZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKCHByb2JsZW1zGAYgAygLMiEudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1Byb2JsZW0SLgoKY2hlY2tlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDQoFZXJyb3IYCCABKAkiRwoOQ2F0YWxvZ1Byb2JsZW0SDAoEaXRlbRgBIAEoCRIPCgdtZXNzYWdlGAIgASgJEhYKDmFkb3B0YWJsZV90ZWFtGAMgASgJIhEKD0dldFN0YXRzUmVxdWVzdCJWChBHZXRTdGF0c1Jlc3BvbnNlEg0KBXRlYW1zGAEgASgDEg0KBXVzZXJzGAIgASgDEhAKCHByb2R1Y3RzGAMgASgDEhIKCmV4ZWN1dGlvbnMYBCABKAMipAIKCkF1ZGl0RW50cnkSCgoCaWQYASABKAMSJgoCYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKCGFjdG9yX2lkGAMgASgJSACIAQESGAoLYWN0b3JfZW1haWwYBCABKAlIAYgBARIUCgxhY3Rvcl9pc19ib3QYBSABKAgSDgoGbWV0aG9kGAYgASgJEg0KBXJvdXRlGAcgASgJEicKBnRhcmdldBgIIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSDgoGc3RhdHVzGAkgASgFEhcKCnJlcXVlc3RfaWQYCiABKAlIAogBAUILCglfYWN0b3JfaWRCDgoMX2FjdG9yX2VtYWlsQg0KC19yZXF1ZXN0X2lkIkoKF0xpc3RBdWRpdEVudHJpZXNSZXF1ZXN0Eg4KBmJlZm9yZRgBIAEoAxIQCghhY3Rvcl9pZBgCIAEoCRINCgVsaW1pdBgDIAEoBSJfChhMaXN0QXVkaXRFbnRyaWVzUmVzcG9uc2USLgoHZW50cmllcxgBIAMoCzIdLnZlcnRyYS5jb25zb2xlLnYxLkF1ZGl0RW50cnkSEwoLbmV4dF9iZWZvcmUYAiABKAMidgoRUG9saWN5U3luY091dGNvbWUSDwoHYXBwbGllcxgBIAEoCBIKCgJvaxgCIAEoCBImCgJhdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoFZXJyb3IYBCABKAlIAIgBAUIICgZfZXJyb3IiFgoUR2V0UG9saWN5U3luY1JlcXVlc3QiuAEKFUdldFBvbGljeVN5bmNSZXNwb25zZRJICghvdXRjb21lcxgBIAMoCzI2LnZlcnRyYS5jb25zb2xlLnYxLkdldFBvbGljeVN5bmNSZXNwb25zZS5PdXRjb21lc0VudHJ5GlUKDU91dGNvbWVzRW50cnkSCwoDa2V5GAEgASgJEjMKBXZhbHVlGAIgASgLMiQudmVydHJhLmNvbnNvbGUudjEuUG9saWN5U3luY091dGNvbWU6AjgBIhUKE1N5bmNQb2xpY2llc1JlcXVlc3QitgEKFFN5bmNQb2xpY2llc1Jlc3BvbnNlEkcKCG91dGNvbWVzGAEgAygLMjUudmVydHJhLmNvbnNvbGUudjEuU3luY1BvbGljaWVzUmVzcG9uc2UuT3V0Y29tZXNFbnRyeRpVCg1PdXRjb21lc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLnZlcnRyYS5jb25zb2xlLnYxLlBvbGljeVN5bmNPdXRjb21lOgI4ATLwBQoMQWRtaW5TZXJ2aWNlElgKCEdldFN0YXRzEiIudmVydHJhLmNvbnNvbGUudjEuR2V0U3RhdHNSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuR2V0U3RhdHNSZXNwb25zZSIDkAIBEnAKEExpc3RBdWRpdEVudHJpZXMSKi52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRFbnRyaWVzUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdEVudHJpZXNSZXNwb25zZSIDkAIBEmcKDUdldFBvbGljeVN5bmMSJy52ZXJ0cmEuY29uc29sZS52MS5HZXRQb2xpY3lTeW5jUmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkdldFBvbGljeVN5bmNSZXNwb25zZSIDkAIBEmQKDFN5bmNQb2xpY2llcxImLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNQb2xpY2llc1JlcXVlc3QaJy52ZXJ0cmEuY29uc29sZS52MS5TeW5jUG9saWNpZXNSZXNwb25zZSIDkAICEnAKEEdldENhdGFsb2dTdGF0dXMSKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDYXRhbG9nU3RhdHVzUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkdldENhdGFsb2dTdGF0dXNSZXNwb25zZSIDkAIBEmEKC1N5bmNDYXRhbG9nEiUudmVydHJhLmNvbnNvbGUudjEuU3luY0NhdGFsb2dSZXF1ZXN0GiYudmVydHJhLmNvbnNvbGUudjEuU3luY0NhdGFsb2dSZXNwb25zZSIDkAICEnAKEEFkb3B0Q2F0YWxvZ1RlYW0SKi52ZXJ0cmEuY29uc29sZS52MS5BZG9wdENhdGFsb2dUZWFtUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkFkb3B0Q2F0YWxvZ1RlYW1SZXNwb25zZSIDkAICYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9hZG1pbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiEwoRR2V0SW5zdGFsbFJlcXVlc3Qi+QEKEkdldEluc3RhbGxSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJEhkKEWVudmlyb25tZW50X2xhYmVsGAIgASgJEhQKDHNzb19wcm92aWRlchgDIAEoCRIMCgRsb2dzGAQgASgIEhcKD2xvZ19zZWFyY2hfZGF5cxgFIAEoBRISCgphdWRpdF9jb3B5GAYgASgIEg8KB2dhdGV3YXkYByABKAgSDwoHY2F0YWxvZxgIIAEoCBIWCg5jYXRhbG9nX3NpZ25lZBgJIAEoCBIQCghzY2FubmluZxgKIAEoCBIaChJydW5fcmV0ZW50aW9uX2RheXMYCyABKAUiGQoXR2V0Q2F0YWxvZ1N0YXR1c1JlcXVlc3QiTAoYR2V0Q2F0YWxvZ1N0YXR1c1Jlc3BvbnNlEjAKBnN0YXR1cxgBIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLkNhdGFsb2dTdGF0dXMiFAoSU3luY0NhdGFsb2dSZXF1ZXN0IkcKE1N5bmNDYXRhbG9nUmVzcG9uc2USMAoGc3RhdHVzGAEgASgLMiAudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1N0YXR1cyInChdBZG9wdENhdGFsb2dUZWFtUmVxdWVzdBIMCgRuYW1lGAEgASgJIkwKGEFkb3B0Q2F0YWxvZ1RlYW1SZXNwb25zZRIwCgZzdGF0dXMYASABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nU3RhdHVzIvgBCg1DYXRhbG9nU3RhdHVzEg8KB3JlbGVhc2UYASABKAkSDgoGZGlnZXN0GAIgASgJEg4KBmNvbW1pdBgDIAEoCRISCgpyZXBvc2l0b3J5GAQgASgJEi4KCmFwcGxpZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKCHByb2JsZW1zGAYgAygLMiEudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1Byb2JsZW0SLgoKY2hlY2tlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDQoFZXJyb3IYCCABKAkiRwoOQ2F0YWxvZ1Byb2JsZW0SDAoEaXRlbRgBIAEoCRIPCgdtZXNzYWdlGAIgASgJEhYKDmFkb3B0YWJsZV90ZWFtGAMgASgJIhEKD0dldFN0YXRzUmVxdWVzdCJWChBHZXRTdGF0c1Jlc3BvbnNlEg0KBXRlYW1zGAEgASgDEg0KBXVzZXJzGAIgASgDEhAKCHByb2R1Y3RzGAMgASgDEhIKCmV4ZWN1dGlvbnMYBCABKAMipAIKCkF1ZGl0RW50cnkSCgoCaWQYASABKAMSJgoCYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKCGFjdG9yX2lkGAMgASgJSACIAQESGAoLYWN0b3JfZW1haWwYBCABKAlIAYgBARIUCgxhY3Rvcl9pc19ib3QYBSABKAgSDgoGbWV0aG9kGAYgASgJEg0KBXJvdXRlGAcgASgJEicKBnRhcmdldBgIIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSDgoGc3RhdHVzGAkgASgFEhcKCnJlcXVlc3RfaWQYCiABKAlIAogBAUILCglfYWN0b3JfaWRCDgoMX2FjdG9yX2VtYWlsQg0KC19yZXF1ZXN0X2lkIkoKF0xpc3RBdWRpdEVudHJpZXNSZXF1ZXN0Eg4KBmJlZm9yZRgBIAEoAxIQCghhY3Rvcl9pZBgCIAEoCRINCgVsaW1pdBgDIAEoBSJfChhMaXN0QXVkaXRFbnRyaWVzUmVzcG9uc2USLgoHZW50cmllcxgBIAMoCzIdLnZlcnRyYS5jb25zb2xlLnYxLkF1ZGl0RW50cnkSEwoLbmV4dF9iZWZvcmUYAiABKAMidgoRUG9saWN5U3luY091dGNvbWUSDwoHYXBwbGllcxgBIAEoCBIKCgJvaxgCIAEoCBImCgJhdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoFZXJyb3IYBCABKAlIAIgBAUIICgZfZXJyb3IiFgoUR2V0UG9saWN5U3luY1JlcXVlc3QiuAEKFUdldFBvbGljeVN5bmNSZXNwb25zZRJICghvdXRjb21lcxgBIAMoCzI2LnZlcnRyYS5jb25zb2xlLnYxLkdldFBvbGljeVN5bmNSZXNwb25zZS5PdXRjb21lc0VudHJ5GlUKDU91dGNvbWVzRW50cnkSCwoDa2V5GAEgASgJEjMKBXZhbHVlGAIgASgLMiQudmVydHJhLmNvbnNvbGUudjEuUG9saWN5U3luY091dGNvbWU6AjgBIhUKE1N5bmNQb2xpY2llc1JlcXVlc3QitgEKFFN5bmNQb2xpY2llc1Jlc3BvbnNlEkcKCG91dGNvbWVzGAEgAygLMjUudmVydHJhLmNvbnNvbGUudjEuU3luY1BvbGljaWVzUmVzcG9uc2UuT3V0Y29tZXNFbnRyeRpVCg1PdXRjb21lc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLnZlcnRyYS5jb25zb2xlLnYxLlBvbGljeVN5bmNPdXRjb21lOgI4ATLQBgoMQWRtaW5TZXJ2aWNlElgKCEdldFN0YXRzEiIudmVydHJhLmNvbnNvbGUudjEuR2V0U3RhdHNSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuR2V0U3RhdHNSZXNwb25zZSIDkAIBEnAKEExpc3RBdWRpdEVudHJpZXMSKi52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRFbnRyaWVzUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdEVudHJpZXNSZXNwb25zZSIDkAIBEmcKDUdldFBvbGljeVN5bmMSJy52ZXJ0cmEuY29uc29sZS52MS5HZXRQb2xpY3lTeW5jUmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkdldFBvbGljeVN5bmNSZXNwb25zZSIDkAIBEmQKDFN5bmNQb2xpY2llcxImLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNQb2xpY2llc1JlcXVlc3QaJy52ZXJ0cmEuY29uc29sZS52MS5TeW5jUG9saWNpZXNSZXNwb25zZSIDkAICEnAKEEdldENhdGFsb2dTdGF0dXMSKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDYXRhbG9nU3RhdHVzUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkdldENhdGFsb2dTdGF0dXNSZXNwb25zZSIDkAIBEmEKC1N5bmNDYXRhbG9nEiUudmVydHJhLmNvbnNvbGUudjEuU3luY0NhdGFsb2dSZXF1ZXN0GiYudmVydHJhLmNvbnNvbGUudjEuU3luY0NhdGFsb2dSZXNwb25zZSIDkAICEnAKEEFkb3B0Q2F0YWxvZ1RlYW0SKi52ZXJ0cmEuY29uc29sZS52MS5BZG9wdENhdGFsb2dUZWFtUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkFkb3B0Q2F0YWxvZ1RlYW1SZXNwb25zZSIDkAICEl4KCkdldEluc3RhbGwSJC52ZXJ0cmEuY29uc29sZS52MS5HZXRJbnN0YWxsUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkdldEluc3RhbGxSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+
+/**
+ * @generated from message vertra.console.v1.GetInstallRequest
+ */
+export type GetInstallRequest = Message<"vertra.console.v1.GetInstallRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetInstallRequest.
+ * Use `create(GetInstallRequestSchema)` to create a new message.
+ */
+export const GetInstallRequestSchema: GenMessage<GetInstallRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_admin, 0);
+
+/**
+ * @generated from message vertra.console.v1.GetInstallResponse
+ */
+export type GetInstallResponse = Message<"vertra.console.v1.GetInstallResponse"> & {
+  /**
+   * The console's image tag, such as 0.4.0; "development" when built locally.
+   *
+   * @generated from field: string version = 1;
+   */
+  version: string;
+
+  /**
+   * ENVIRONMENT_LABEL: the name the sidebar shows.
+   *
+   * @generated from field: string environment_label = 2;
+   */
+  environmentLabel: string;
+
+  /**
+   * Single sign-on's provider ("Google"), or empty when it's off.
+   *
+   * @generated from field: string sso_provider = 3;
+   */
+  ssoProvider: string;
+
+  /**
+   * Log search (Loki), and for how many days back.
+   *
+   * @generated from field: bool logs = 4;
+   */
+  logs: boolean;
+
+  /**
+   * @generated from field: int32 log_search_days = 5;
+   */
+  logSearchDays: number;
+
+  /**
+   * The audit log's write-once copy.
+   *
+   * @generated from field: bool audit_copy = 6;
+   */
+  auditCopy: boolean;
+
+  /**
+   * The API gateway.
+   *
+   * @generated from field: bool gateway = 7;
+   */
+  gateway: boolean;
+
+  /**
+   * A catalog release is read, and whether its signature is checked.
+   *
+   * @generated from field: bool catalog = 8;
+   */
+  catalog: boolean;
+
+  /**
+   * @generated from field: bool catalog_signed = 9;
+   */
+  catalogSigned: boolean;
+
+  /**
+   * Every image is scanned before it runs.
+   *
+   * @generated from field: bool scanning = 10;
+   */
+  scanning: boolean;
+
+  /**
+   * How long runs' records are kept.
+   *
+   * @generated from field: int32 run_retention_days = 11;
+   */
+  runRetentionDays: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetInstallResponse.
+ * Use `create(GetInstallResponseSchema)` to create a new message.
+ */
+export const GetInstallResponseSchema: GenMessage<GetInstallResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_admin, 1);
 
 /**
  * @generated from message vertra.console.v1.GetCatalogStatusRequest
@@ -27,7 +125,7 @@ export type GetCatalogStatusRequest = Message<"vertra.console.v1.GetCatalogStatu
  * Use `create(GetCatalogStatusRequestSchema)` to create a new message.
  */
 export const GetCatalogStatusRequestSchema: GenMessage<GetCatalogStatusRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 0);
+  messageDesc(file_vertra_console_v1_admin, 2);
 
 /**
  * @generated from message vertra.console.v1.GetCatalogStatusResponse
@@ -44,7 +142,7 @@ export type GetCatalogStatusResponse = Message<"vertra.console.v1.GetCatalogStat
  * Use `create(GetCatalogStatusResponseSchema)` to create a new message.
  */
 export const GetCatalogStatusResponseSchema: GenMessage<GetCatalogStatusResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 1);
+  messageDesc(file_vertra_console_v1_admin, 3);
 
 /**
  * @generated from message vertra.console.v1.SyncCatalogRequest
@@ -57,7 +155,7 @@ export type SyncCatalogRequest = Message<"vertra.console.v1.SyncCatalogRequest">
  * Use `create(SyncCatalogRequestSchema)` to create a new message.
  */
 export const SyncCatalogRequestSchema: GenMessage<SyncCatalogRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 2);
+  messageDesc(file_vertra_console_v1_admin, 4);
 
 /**
  * @generated from message vertra.console.v1.SyncCatalogResponse
@@ -74,7 +172,7 @@ export type SyncCatalogResponse = Message<"vertra.console.v1.SyncCatalogResponse
  * Use `create(SyncCatalogResponseSchema)` to create a new message.
  */
 export const SyncCatalogResponseSchema: GenMessage<SyncCatalogResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 3);
+  messageDesc(file_vertra_console_v1_admin, 5);
 
 /**
  * @generated from message vertra.console.v1.AdoptCatalogTeamRequest
@@ -91,7 +189,7 @@ export type AdoptCatalogTeamRequest = Message<"vertra.console.v1.AdoptCatalogTea
  * Use `create(AdoptCatalogTeamRequestSchema)` to create a new message.
  */
 export const AdoptCatalogTeamRequestSchema: GenMessage<AdoptCatalogTeamRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 4);
+  messageDesc(file_vertra_console_v1_admin, 6);
 
 /**
  * @generated from message vertra.console.v1.AdoptCatalogTeamResponse
@@ -108,7 +206,7 @@ export type AdoptCatalogTeamResponse = Message<"vertra.console.v1.AdoptCatalogTe
  * Use `create(AdoptCatalogTeamResponseSchema)` to create a new message.
  */
 export const AdoptCatalogTeamResponseSchema: GenMessage<AdoptCatalogTeamResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 5);
+  messageDesc(file_vertra_console_v1_admin, 7);
 
 /**
  * @generated from message vertra.console.v1.CatalogStatus
@@ -169,7 +267,7 @@ export type CatalogStatus = Message<"vertra.console.v1.CatalogStatus"> & {
  * Use `create(CatalogStatusSchema)` to create a new message.
  */
 export const CatalogStatusSchema: GenMessage<CatalogStatus> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 6);
+  messageDesc(file_vertra_console_v1_admin, 8);
 
 /**
  * @generated from message vertra.console.v1.CatalogProblem
@@ -201,7 +299,7 @@ export type CatalogProblem = Message<"vertra.console.v1.CatalogProblem"> & {
  * Use `create(CatalogProblemSchema)` to create a new message.
  */
 export const CatalogProblemSchema: GenMessage<CatalogProblem> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 7);
+  messageDesc(file_vertra_console_v1_admin, 9);
 
 /**
  * @generated from message vertra.console.v1.GetStatsRequest
@@ -214,7 +312,7 @@ export type GetStatsRequest = Message<"vertra.console.v1.GetStatsRequest"> & {
  * Use `create(GetStatsRequestSchema)` to create a new message.
  */
 export const GetStatsRequestSchema: GenMessage<GetStatsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 8);
+  messageDesc(file_vertra_console_v1_admin, 10);
 
 /**
  * @generated from message vertra.console.v1.GetStatsResponse
@@ -246,7 +344,7 @@ export type GetStatsResponse = Message<"vertra.console.v1.GetStatsResponse"> & {
  * Use `create(GetStatsResponseSchema)` to create a new message.
  */
 export const GetStatsResponseSchema: GenMessage<GetStatsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 9);
+  messageDesc(file_vertra_console_v1_admin, 11);
 
 /**
  * @generated from message vertra.console.v1.AuditEntry
@@ -314,7 +412,7 @@ export type AuditEntry = Message<"vertra.console.v1.AuditEntry"> & {
  * Use `create(AuditEntrySchema)` to create a new message.
  */
 export const AuditEntrySchema: GenMessage<AuditEntry> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 10);
+  messageDesc(file_vertra_console_v1_admin, 12);
 
 /**
  * @generated from message vertra.console.v1.ListAuditEntriesRequest
@@ -347,7 +445,7 @@ export type ListAuditEntriesRequest = Message<"vertra.console.v1.ListAuditEntrie
  * Use `create(ListAuditEntriesRequestSchema)` to create a new message.
  */
 export const ListAuditEntriesRequestSchema: GenMessage<ListAuditEntriesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 11);
+  messageDesc(file_vertra_console_v1_admin, 13);
 
 /**
  * @generated from message vertra.console.v1.ListAuditEntriesResponse
@@ -371,7 +469,7 @@ export type ListAuditEntriesResponse = Message<"vertra.console.v1.ListAuditEntri
  * Use `create(ListAuditEntriesResponseSchema)` to create a new message.
  */
 export const ListAuditEntriesResponseSchema: GenMessage<ListAuditEntriesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 12);
+  messageDesc(file_vertra_console_v1_admin, 14);
 
 /**
  * @generated from message vertra.console.v1.PolicySyncOutcome
@@ -405,7 +503,7 @@ export type PolicySyncOutcome = Message<"vertra.console.v1.PolicySyncOutcome"> &
  * Use `create(PolicySyncOutcomeSchema)` to create a new message.
  */
 export const PolicySyncOutcomeSchema: GenMessage<PolicySyncOutcome> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 13);
+  messageDesc(file_vertra_console_v1_admin, 15);
 
 /**
  * @generated from message vertra.console.v1.GetPolicySyncRequest
@@ -418,7 +516,7 @@ export type GetPolicySyncRequest = Message<"vertra.console.v1.GetPolicySyncReque
  * Use `create(GetPolicySyncRequestSchema)` to create a new message.
  */
 export const GetPolicySyncRequestSchema: GenMessage<GetPolicySyncRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 14);
+  messageDesc(file_vertra_console_v1_admin, 16);
 
 /**
  * @generated from message vertra.console.v1.GetPolicySyncResponse
@@ -438,7 +536,7 @@ export type GetPolicySyncResponse = Message<"vertra.console.v1.GetPolicySyncResp
  * Use `create(GetPolicySyncResponseSchema)` to create a new message.
  */
 export const GetPolicySyncResponseSchema: GenMessage<GetPolicySyncResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 15);
+  messageDesc(file_vertra_console_v1_admin, 17);
 
 /**
  * @generated from message vertra.console.v1.SyncPoliciesRequest
@@ -451,7 +549,7 @@ export type SyncPoliciesRequest = Message<"vertra.console.v1.SyncPoliciesRequest
  * Use `create(SyncPoliciesRequestSchema)` to create a new message.
  */
 export const SyncPoliciesRequestSchema: GenMessage<SyncPoliciesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 16);
+  messageDesc(file_vertra_console_v1_admin, 18);
 
 /**
  * @generated from message vertra.console.v1.SyncPoliciesResponse
@@ -468,7 +566,7 @@ export type SyncPoliciesResponse = Message<"vertra.console.v1.SyncPoliciesRespon
  * Use `create(SyncPoliciesResponseSchema)` to create a new message.
  */
 export const SyncPoliciesResponseSchema: GenMessage<SyncPoliciesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 17);
+  messageDesc(file_vertra_console_v1_admin, 19);
 
 /**
  * Running the platform: counts, the audit log, the cluster policies the
@@ -555,6 +653,17 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof AdoptCatalogTeamRequestSchema;
     output: typeof AdoptCatalogTeamResponseSchema;
+  },
+  /**
+   * This install: the console's version, and which of its optional parts
+   * are on (each set in vertra.yaml, or the console chart's values).
+   *
+   * @generated from rpc vertra.console.v1.AdminService.GetInstall
+   */
+  getInstall: {
+    methodKind: "unary";
+    input: typeof GetInstallRequestSchema;
+    output: typeof GetInstallResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_admin, 0);

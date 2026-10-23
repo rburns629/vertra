@@ -3,7 +3,7 @@
 import type { ServiceImpl } from "@connectrpc/connect";
 import type { JsonObject } from "@bufbuild/protobuf";
 import type { CatalogStatus } from "../../catalogSync.js";
-import { AuditQuery, adoptCatalogTeam, auditEntries, type auditPage, catalogState, platformStats, policySync, syncCatalogNow, syncPoliciesNow } from "../../core/admin.js";
+import { AuditQuery, adoptCatalogTeam, auditEntries, type auditPage, catalogState, install, platformStats, policySync, syncCatalogNow, syncPoliciesNow } from "../../core/admin.js";
 import type { AdminService } from "../../gen/vertra/console/v1/admin_pb.js";
 import type { SyncOutcome } from "../../policySync.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
@@ -100,6 +100,10 @@ export function adminService(): ServiceImpl<typeof AdminService> {
 
     async adoptCatalogTeam(req, ctx) {
       return { status: catalog(await adoptCatalogTeam(callerOf(ctx), req.name, logOf(ctx))) };
+    },
+
+    getInstall(_req, ctx) {
+      return install(callerOf(ctx));
     },
   };
 }

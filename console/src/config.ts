@@ -163,6 +163,8 @@ export const config = {
   // unset/wrong value is never a correctness bug, just a confusing badge
   // -- a sensible default is fine here, unlike the values above.
   environmentLabel: process.env["ENVIRONMENT_LABEL"] ?? "unlabeled environment",
+  // Its image's tag (the chart's), shown on the Admin page.
+  version: process.env["CONSOLE_VERSION"] || "development",
   // Off unless set: accounts are created by an admin (Admin page ->
   // Accounts, POST /api/users), with their teams attached. Open
   // registration has no email verification, so anyone who can reach the

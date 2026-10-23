@@ -14,6 +14,102 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 export declare const file_vertra_console_v1_admin: GenFile;
 
 /**
+ * @generated from message vertra.console.v1.GetInstallRequest
+ */
+export declare type GetInstallRequest = Message<"vertra.console.v1.GetInstallRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetInstallRequest.
+ * Use `create(GetInstallRequestSchema)` to create a new message.
+ */
+export declare const GetInstallRequestSchema: GenMessage<GetInstallRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetInstallResponse
+ */
+export declare type GetInstallResponse = Message<"vertra.console.v1.GetInstallResponse"> & {
+  /**
+   * The console's image tag, such as 0.4.0; "development" when built locally.
+   *
+   * @generated from field: string version = 1;
+   */
+  version: string;
+
+  /**
+   * ENVIRONMENT_LABEL: the name the sidebar shows.
+   *
+   * @generated from field: string environment_label = 2;
+   */
+  environmentLabel: string;
+
+  /**
+   * Single sign-on's provider ("Google"), or empty when it's off.
+   *
+   * @generated from field: string sso_provider = 3;
+   */
+  ssoProvider: string;
+
+  /**
+   * Log search (Loki), and for how many days back.
+   *
+   * @generated from field: bool logs = 4;
+   */
+  logs: boolean;
+
+  /**
+   * @generated from field: int32 log_search_days = 5;
+   */
+  logSearchDays: number;
+
+  /**
+   * The audit log's write-once copy.
+   *
+   * @generated from field: bool audit_copy = 6;
+   */
+  auditCopy: boolean;
+
+  /**
+   * The API gateway.
+   *
+   * @generated from field: bool gateway = 7;
+   */
+  gateway: boolean;
+
+  /**
+   * A catalog release is read, and whether its signature is checked.
+   *
+   * @generated from field: bool catalog = 8;
+   */
+  catalog: boolean;
+
+  /**
+   * @generated from field: bool catalog_signed = 9;
+   */
+  catalogSigned: boolean;
+
+  /**
+   * Every image is scanned before it runs.
+   *
+   * @generated from field: bool scanning = 10;
+   */
+  scanning: boolean;
+
+  /**
+   * How long runs' records are kept.
+   *
+   * @generated from field: int32 run_retention_days = 11;
+   */
+  runRetentionDays: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetInstallResponse.
+ * Use `create(GetInstallResponseSchema)` to create a new message.
+ */
+export declare const GetInstallResponseSchema: GenMessage<GetInstallResponse>;
+
+/**
  * @generated from message vertra.console.v1.GetCatalogStatusRequest
  */
 export declare type GetCatalogStatusRequest = Message<"vertra.console.v1.GetCatalogStatusRequest"> & {
@@ -534,6 +630,17 @@ export declare const AdminService: GenService<{
     methodKind: "unary";
     input: typeof AdoptCatalogTeamRequestSchema;
     output: typeof AdoptCatalogTeamResponseSchema;
+  },
+  /**
+   * This install: the console's version, and which of its optional parts
+   * are on (each set in vertra.yaml, or the console chart's values).
+   *
+   * @generated from rpc vertra.console.v1.AdminService.GetInstall
+   */
+  getInstall: {
+    methodKind: "unary";
+    input: typeof GetInstallRequestSchema;
+    output: typeof GetInstallResponseSchema;
   },
 }>;
 

@@ -10,6 +10,7 @@ import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { Code } from "@connectrpc/connect";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
+import { config } from "../config.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { db } from "../db/client.js";
 import { countProducts, countSubmittedExecutions, countTeams, countUsers } from "../db/queries.js";
@@ -32,6 +33,25 @@ export async function platformStats(caller: AuthUser | undefined) {
     countSubmittedExecutions(),
   ]);
   return { teams, users: accounts, products, executions };
+}
+
+/** This install: the console's version and which optional parts are on. Admins only. */
+export function install(caller: AuthUser | undefined) {
+  forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
+  const signature = config.catalog.signature;
+  return {
+    version: config.version,
+    environmentLabel: config.environmentLabel,
+    ssoProvider: config.oidc?.label ?? "",
+    logs: config.logs.lokiUrl !== "",
+    logSearchDays: config.logs.searchDays,
+    auditCopy: config.audit.export.bucket !== "",
+    gateway: config.gateway.url !== "",
+    catalog: config.catalog.release !== "",
+    catalogSigned: signature.publicKeys.length > 0 || signature.keylessIssuer !== "",
+    scanning: config.scanning.enabled,
+    runRetentionDays: config.retention.executionDays,
+  };
 }
 
 export const AuditQuery = Type.Object({

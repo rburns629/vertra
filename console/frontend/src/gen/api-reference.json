@@ -67,6 +67,15 @@
      "streaming": false,
      "idempotency": "idempotent",
      "public": false
+    },
+    {
+     "name": "GetInstall",
+     "comment": "This install: the console's version, and which of its optional parts\nare on (each set in vertra.yaml, or the console chart's values).",
+     "input": "vertra.console.v1.GetInstallRequest",
+     "output": "vertra.console.v1.GetInstallResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
     }
    ]
   },
@@ -840,6 +849,94 @@
   }
  ],
  "messages": {
+  "vertra.console.v1.GetInstallRequest": {
+   "name": "GetInstallRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetInstallResponse": {
+   "name": "GetInstallResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "version",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The console's image tag, such as 0.4.0; \"development\" when built locally."
+    },
+    {
+     "name": "environmentLabel",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "ENVIRONMENT_LABEL: the name the sidebar shows."
+    },
+    {
+     "name": "ssoProvider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Single sign-on's provider (\"Google\"), or empty when it's off."
+    },
+    {
+     "name": "logs",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Log search (Loki), and for how many days back."
+    },
+    {
+     "name": "logSearchDays",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "auditCopy",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "The audit log's write-once copy."
+    },
+    {
+     "name": "gateway",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "The API gateway."
+    },
+    {
+     "name": "catalog",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "A catalog release is read, and whether its signature is checked."
+    },
+    {
+     "name": "catalogSigned",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "scanning",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Every image is scanned before it runs."
+    },
+    {
+     "name": "runRetentionDays",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How long runs' records are kept."
+    }
+   ]
+  },
   "vertra.console.v1.GetCatalogStatusRequest": {
    "name": "GetCatalogStatusRequest",
    "comment": "",

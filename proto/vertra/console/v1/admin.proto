@@ -47,6 +47,36 @@ service AdminService {
   rpc AdoptCatalogTeam(AdoptCatalogTeamRequest) returns (AdoptCatalogTeamResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+  // This install: the console's version, and which of its optional parts
+  // are on (each set in vertra.yaml, or the console chart's values).
+  rpc GetInstall(GetInstallRequest) returns (GetInstallResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message GetInstallRequest {}
+
+message GetInstallResponse {
+  // The console's image tag, such as 0.4.0; "development" when built locally.
+  string version = 1;
+  // ENVIRONMENT_LABEL: the name the sidebar shows.
+  string environment_label = 2;
+  // Single sign-on's provider ("Google"), or empty when it's off.
+  string sso_provider = 3;
+  // Log search (Loki), and for how many days back.
+  bool logs = 4;
+  int32 log_search_days = 5;
+  // The audit log's write-once copy.
+  bool audit_copy = 6;
+  // The API gateway.
+  bool gateway = 7;
+  // A catalog release is read, and whether its signature is checked.
+  bool catalog = 8;
+  bool catalog_signed = 9;
+  // Every image is scanned before it runs.
+  bool scanning = 10;
+  // How long runs' records are kept.
+  int32 run_retention_days = 11;
 }
 
 message GetCatalogStatusRequest {}

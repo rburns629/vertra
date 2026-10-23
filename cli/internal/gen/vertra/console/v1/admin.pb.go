@@ -25,6 +25,175 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GetInstallRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstallRequest) Reset() {
+	*x = GetInstallRequest{}
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallRequest) ProtoMessage() {}
+
+func (x *GetInstallRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallRequest.ProtoReflect.Descriptor instead.
+func (*GetInstallRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{0}
+}
+
+type GetInstallResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The console's image tag, such as 0.4.0; "development" when built locally.
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	// ENVIRONMENT_LABEL: the name the sidebar shows.
+	EnvironmentLabel string `protobuf:"bytes,2,opt,name=environment_label,json=environmentLabel,proto3" json:"environment_label,omitempty"`
+	// Single sign-on's provider ("Google"), or empty when it's off.
+	SsoProvider string `protobuf:"bytes,3,opt,name=sso_provider,json=ssoProvider,proto3" json:"sso_provider,omitempty"`
+	// Log search (Loki), and for how many days back.
+	Logs          bool  `protobuf:"varint,4,opt,name=logs,proto3" json:"logs,omitempty"`
+	LogSearchDays int32 `protobuf:"varint,5,opt,name=log_search_days,json=logSearchDays,proto3" json:"log_search_days,omitempty"`
+	// The audit log's write-once copy.
+	AuditCopy bool `protobuf:"varint,6,opt,name=audit_copy,json=auditCopy,proto3" json:"audit_copy,omitempty"`
+	// The API gateway.
+	Gateway bool `protobuf:"varint,7,opt,name=gateway,proto3" json:"gateway,omitempty"`
+	// A catalog release is read, and whether its signature is checked.
+	Catalog       bool `protobuf:"varint,8,opt,name=catalog,proto3" json:"catalog,omitempty"`
+	CatalogSigned bool `protobuf:"varint,9,opt,name=catalog_signed,json=catalogSigned,proto3" json:"catalog_signed,omitempty"`
+	// Every image is scanned before it runs.
+	Scanning bool `protobuf:"varint,10,opt,name=scanning,proto3" json:"scanning,omitempty"`
+	// How long runs' records are kept.
+	RunRetentionDays int32 `protobuf:"varint,11,opt,name=run_retention_days,json=runRetentionDays,proto3" json:"run_retention_days,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GetInstallResponse) Reset() {
+	*x = GetInstallResponse{}
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstallResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstallResponse) ProtoMessage() {}
+
+func (x *GetInstallResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstallResponse.ProtoReflect.Descriptor instead.
+func (*GetInstallResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetInstallResponse) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetEnvironmentLabel() string {
+	if x != nil {
+		return x.EnvironmentLabel
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetSsoProvider() string {
+	if x != nil {
+		return x.SsoProvider
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetLogs() bool {
+	if x != nil {
+		return x.Logs
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetLogSearchDays() int32 {
+	if x != nil {
+		return x.LogSearchDays
+	}
+	return 0
+}
+
+func (x *GetInstallResponse) GetAuditCopy() bool {
+	if x != nil {
+		return x.AuditCopy
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetGateway() bool {
+	if x != nil {
+		return x.Gateway
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetCatalog() bool {
+	if x != nil {
+		return x.Catalog
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetCatalogSigned() bool {
+	if x != nil {
+		return x.CatalogSigned
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetScanning() bool {
+	if x != nil {
+		return x.Scanning
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetRunRetentionDays() int32 {
+	if x != nil {
+		return x.RunRetentionDays
+	}
+	return 0
+}
+
 type GetCatalogStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -33,7 +202,7 @@ type GetCatalogStatusRequest struct {
 
 func (x *GetCatalogStatusRequest) Reset() {
 	*x = GetCatalogStatusRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[0]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +214,7 @@ func (x *GetCatalogStatusRequest) String() string {
 func (*GetCatalogStatusRequest) ProtoMessage() {}
 
 func (x *GetCatalogStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[0]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +227,7 @@ func (x *GetCatalogStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCatalogStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetCatalogStatusRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{0}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{2}
 }
 
 type GetCatalogStatusResponse struct {
@@ -70,7 +239,7 @@ type GetCatalogStatusResponse struct {
 
 func (x *GetCatalogStatusResponse) Reset() {
 	*x = GetCatalogStatusResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -82,7 +251,7 @@ func (x *GetCatalogStatusResponse) String() string {
 func (*GetCatalogStatusResponse) ProtoMessage() {}
 
 func (x *GetCatalogStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -95,7 +264,7 @@ func (x *GetCatalogStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCatalogStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetCatalogStatusResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{1}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetCatalogStatusResponse) GetStatus() *CatalogStatus {
@@ -113,7 +282,7 @@ type SyncCatalogRequest struct {
 
 func (x *SyncCatalogRequest) Reset() {
 	*x = SyncCatalogRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -125,7 +294,7 @@ func (x *SyncCatalogRequest) String() string {
 func (*SyncCatalogRequest) ProtoMessage() {}
 
 func (x *SyncCatalogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -138,7 +307,7 @@ func (x *SyncCatalogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncCatalogRequest.ProtoReflect.Descriptor instead.
 func (*SyncCatalogRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{2}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{4}
 }
 
 type SyncCatalogResponse struct {
@@ -150,7 +319,7 @@ type SyncCatalogResponse struct {
 
 func (x *SyncCatalogResponse) Reset() {
 	*x = SyncCatalogResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -162,7 +331,7 @@ func (x *SyncCatalogResponse) String() string {
 func (*SyncCatalogResponse) ProtoMessage() {}
 
 func (x *SyncCatalogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -175,7 +344,7 @@ func (x *SyncCatalogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncCatalogResponse.ProtoReflect.Descriptor instead.
 func (*SyncCatalogResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SyncCatalogResponse) GetStatus() *CatalogStatus {
@@ -194,7 +363,7 @@ type AdoptCatalogTeamRequest struct {
 
 func (x *AdoptCatalogTeamRequest) Reset() {
 	*x = AdoptCatalogTeamRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -206,7 +375,7 @@ func (x *AdoptCatalogTeamRequest) String() string {
 func (*AdoptCatalogTeamRequest) ProtoMessage() {}
 
 func (x *AdoptCatalogTeamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -219,7 +388,7 @@ func (x *AdoptCatalogTeamRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdoptCatalogTeamRequest.ProtoReflect.Descriptor instead.
 func (*AdoptCatalogTeamRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AdoptCatalogTeamRequest) GetName() string {
@@ -238,7 +407,7 @@ type AdoptCatalogTeamResponse struct {
 
 func (x *AdoptCatalogTeamResponse) Reset() {
 	*x = AdoptCatalogTeamResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -250,7 +419,7 @@ func (x *AdoptCatalogTeamResponse) String() string {
 func (*AdoptCatalogTeamResponse) ProtoMessage() {}
 
 func (x *AdoptCatalogTeamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -263,7 +432,7 @@ func (x *AdoptCatalogTeamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdoptCatalogTeamResponse.ProtoReflect.Descriptor instead.
 func (*AdoptCatalogTeamResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AdoptCatalogTeamResponse) GetStatus() *CatalogStatus {
@@ -294,7 +463,7 @@ type CatalogStatus struct {
 
 func (x *CatalogStatus) Reset() {
 	*x = CatalogStatus{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +475,7 @@ func (x *CatalogStatus) String() string {
 func (*CatalogStatus) ProtoMessage() {}
 
 func (x *CatalogStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +488,7 @@ func (x *CatalogStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CatalogStatus.ProtoReflect.Descriptor instead.
 func (*CatalogStatus) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CatalogStatus) GetRelease() string {
@@ -392,7 +561,7 @@ type CatalogProblem struct {
 
 func (x *CatalogProblem) Reset() {
 	*x = CatalogProblem{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -404,7 +573,7 @@ func (x *CatalogProblem) String() string {
 func (*CatalogProblem) ProtoMessage() {}
 
 func (x *CatalogProblem) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -417,7 +586,7 @@ func (x *CatalogProblem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CatalogProblem.ProtoReflect.Descriptor instead.
 func (*CatalogProblem) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CatalogProblem) GetItem() string {
@@ -449,7 +618,7 @@ type GetStatsRequest struct {
 
 func (x *GetStatsRequest) Reset() {
 	*x = GetStatsRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -461,7 +630,7 @@ func (x *GetStatsRequest) String() string {
 func (*GetStatsRequest) ProtoMessage() {}
 
 func (x *GetStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -474,7 +643,7 @@ func (x *GetStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetStatsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{8}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{10}
 }
 
 type GetStatsResponse struct {
@@ -489,7 +658,7 @@ type GetStatsResponse struct {
 
 func (x *GetStatsResponse) Reset() {
 	*x = GetStatsResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +670,7 @@ func (x *GetStatsResponse) String() string {
 func (*GetStatsResponse) ProtoMessage() {}
 
 func (x *GetStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +683,7 @@ func (x *GetStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetStatsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{9}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetStatsResponse) GetTeams() int64 {
@@ -566,7 +735,7 @@ type AuditEntry struct {
 
 func (x *AuditEntry) Reset() {
 	*x = AuditEntry{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +747,7 @@ func (x *AuditEntry) String() string {
 func (*AuditEntry) ProtoMessage() {}
 
 func (x *AuditEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +760,7 @@ func (x *AuditEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditEntry.ProtoReflect.Descriptor instead.
 func (*AuditEntry) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{10}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AuditEntry) GetId() int64 {
@@ -678,7 +847,7 @@ type ListAuditEntriesRequest struct {
 
 func (x *ListAuditEntriesRequest) Reset() {
 	*x = ListAuditEntriesRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -690,7 +859,7 @@ func (x *ListAuditEntriesRequest) String() string {
 func (*ListAuditEntriesRequest) ProtoMessage() {}
 
 func (x *ListAuditEntriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -703,7 +872,7 @@ func (x *ListAuditEntriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditEntriesRequest.ProtoReflect.Descriptor instead.
 func (*ListAuditEntriesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{11}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListAuditEntriesRequest) GetBefore() int64 {
@@ -738,7 +907,7 @@ type ListAuditEntriesResponse struct {
 
 func (x *ListAuditEntriesResponse) Reset() {
 	*x = ListAuditEntriesResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -750,7 +919,7 @@ func (x *ListAuditEntriesResponse) String() string {
 func (*ListAuditEntriesResponse) ProtoMessage() {}
 
 func (x *ListAuditEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -763,7 +932,7 @@ func (x *ListAuditEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditEntriesResponse.ProtoReflect.Descriptor instead.
 func (*ListAuditEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{12}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListAuditEntriesResponse) GetEntries() []*AuditEntry {
@@ -793,7 +962,7 @@ type PolicySyncOutcome struct {
 
 func (x *PolicySyncOutcome) Reset() {
 	*x = PolicySyncOutcome{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -805,7 +974,7 @@ func (x *PolicySyncOutcome) String() string {
 func (*PolicySyncOutcome) ProtoMessage() {}
 
 func (x *PolicySyncOutcome) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +987,7 @@ func (x *PolicySyncOutcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicySyncOutcome.ProtoReflect.Descriptor instead.
 func (*PolicySyncOutcome) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{13}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PolicySyncOutcome) GetApplies() bool {
@@ -857,7 +1026,7 @@ type GetPolicySyncRequest struct {
 
 func (x *GetPolicySyncRequest) Reset() {
 	*x = GetPolicySyncRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -869,7 +1038,7 @@ func (x *GetPolicySyncRequest) String() string {
 func (*GetPolicySyncRequest) ProtoMessage() {}
 
 func (x *GetPolicySyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -882,7 +1051,7 @@ func (x *GetPolicySyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPolicySyncRequest.ProtoReflect.Descriptor instead.
 func (*GetPolicySyncRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{14}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{16}
 }
 
 type GetPolicySyncResponse struct {
@@ -896,7 +1065,7 @@ type GetPolicySyncResponse struct {
 
 func (x *GetPolicySyncResponse) Reset() {
 	*x = GetPolicySyncResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -908,7 +1077,7 @@ func (x *GetPolicySyncResponse) String() string {
 func (*GetPolicySyncResponse) ProtoMessage() {}
 
 func (x *GetPolicySyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -921,7 +1090,7 @@ func (x *GetPolicySyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPolicySyncResponse.ProtoReflect.Descriptor instead.
 func (*GetPolicySyncResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{15}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetPolicySyncResponse) GetOutcomes() map[string]*PolicySyncOutcome {
@@ -939,7 +1108,7 @@ type SyncPoliciesRequest struct {
 
 func (x *SyncPoliciesRequest) Reset() {
 	*x = SyncPoliciesRequest{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1120,7 @@ func (x *SyncPoliciesRequest) String() string {
 func (*SyncPoliciesRequest) ProtoMessage() {}
 
 func (x *SyncPoliciesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1133,7 @@ func (x *SyncPoliciesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncPoliciesRequest.ProtoReflect.Descriptor instead.
 func (*SyncPoliciesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{16}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{18}
 }
 
 type SyncPoliciesResponse struct {
@@ -976,7 +1145,7 @@ type SyncPoliciesResponse struct {
 
 func (x *SyncPoliciesResponse) Reset() {
 	*x = SyncPoliciesResponse{}
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -988,7 +1157,7 @@ func (x *SyncPoliciesResponse) String() string {
 func (*SyncPoliciesResponse) ProtoMessage() {}
 
 func (x *SyncPoliciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_admin_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_admin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1001,7 +1170,7 @@ func (x *SyncPoliciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncPoliciesResponse.ProtoReflect.Descriptor instead.
 func (*SyncPoliciesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{17}
+	return file_vertra_console_v1_admin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SyncPoliciesResponse) GetOutcomes() map[string]*PolicySyncOutcome {
@@ -1015,7 +1184,22 @@ var File_vertra_console_v1_admin_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/console/v1/admin.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x19\n" +
+	"\x1dvertra/console/v1/admin.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x13\n" +
+	"\x11GetInstallRequest\"\xfe\x02\n" +
+	"\x12GetInstallResponse\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\x12+\n" +
+	"\x11environment_label\x18\x02 \x01(\tR\x10environmentLabel\x12!\n" +
+	"\fsso_provider\x18\x03 \x01(\tR\vssoProvider\x12\x12\n" +
+	"\x04logs\x18\x04 \x01(\bR\x04logs\x12&\n" +
+	"\x0flog_search_days\x18\x05 \x01(\x05R\rlogSearchDays\x12\x1d\n" +
+	"\n" +
+	"audit_copy\x18\x06 \x01(\bR\tauditCopy\x12\x18\n" +
+	"\agateway\x18\a \x01(\bR\agateway\x12\x18\n" +
+	"\acatalog\x18\b \x01(\bR\acatalog\x12%\n" +
+	"\x0ecatalog_signed\x18\t \x01(\bR\rcatalogSigned\x12\x1a\n" +
+	"\bscanning\x18\n" +
+	" \x01(\bR\bscanning\x12,\n" +
+	"\x12run_retention_days\x18\v \x01(\x05R\x10runRetentionDays\"\x19\n" +
 	"\x17GetCatalogStatusRequest\"T\n" +
 	"\x18GetCatalogStatusResponse\x128\n" +
 	"\x06status\x18\x01 \x01(\v2 .vertra.console.v1.CatalogStatusR\x06status\"\x14\n" +
@@ -1095,7 +1279,7 @@ const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\boutcomes\x18\x01 \x03(\v25.vertra.console.v1.SyncPoliciesResponse.OutcomesEntryR\boutcomes\x1aa\n" +
 	"\rOutcomesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12:\n" +
-	"\x05value\x18\x02 \x01(\v2$.vertra.console.v1.PolicySyncOutcomeR\x05value:\x028\x012\xf0\x05\n" +
+	"\x05value\x18\x02 \x01(\v2$.vertra.console.v1.PolicySyncOutcomeR\x05value:\x028\x012\xd0\x06\n" +
 	"\fAdminService\x12X\n" +
 	"\bGetStats\x12\".vertra.console.v1.GetStatsRequest\x1a#.vertra.console.v1.GetStatsResponse\"\x03\x90\x02\x01\x12p\n" +
 	"\x10ListAuditEntries\x12*.vertra.console.v1.ListAuditEntriesRequest\x1a+.vertra.console.v1.ListAuditEntriesResponse\"\x03\x90\x02\x01\x12g\n" +
@@ -1103,7 +1287,9 @@ const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\fSyncPolicies\x12&.vertra.console.v1.SyncPoliciesRequest\x1a'.vertra.console.v1.SyncPoliciesResponse\"\x03\x90\x02\x02\x12p\n" +
 	"\x10GetCatalogStatus\x12*.vertra.console.v1.GetCatalogStatusRequest\x1a+.vertra.console.v1.GetCatalogStatusResponse\"\x03\x90\x02\x01\x12a\n" +
 	"\vSyncCatalog\x12%.vertra.console.v1.SyncCatalogRequest\x1a&.vertra.console.v1.SyncCatalogResponse\"\x03\x90\x02\x02\x12p\n" +
-	"\x10AdoptCatalogTeam\x12*.vertra.console.v1.AdoptCatalogTeamRequest\x1a+.vertra.console.v1.AdoptCatalogTeamResponse\"\x03\x90\x02\x02B\xd3\x01\n" +
+	"\x10AdoptCatalogTeam\x12*.vertra.console.v1.AdoptCatalogTeamRequest\x1a+.vertra.console.v1.AdoptCatalogTeamResponse\"\x03\x90\x02\x02\x12^\n" +
+	"\n" +
+	"GetInstall\x12$.vertra.console.v1.GetInstallRequest\x1a%.vertra.console.v1.GetInstallResponse\"\x03\x90\x02\x01B\xd3\x01\n" +
 	"\x15com.vertra.console.v1B\n" +
 	"AdminProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
@@ -1119,62 +1305,66 @@ func file_vertra_console_v1_admin_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_admin_proto_rawDescData
 }
 
-var file_vertra_console_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_vertra_console_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_vertra_console_v1_admin_proto_goTypes = []any{
-	(*GetCatalogStatusRequest)(nil),  // 0: vertra.console.v1.GetCatalogStatusRequest
-	(*GetCatalogStatusResponse)(nil), // 1: vertra.console.v1.GetCatalogStatusResponse
-	(*SyncCatalogRequest)(nil),       // 2: vertra.console.v1.SyncCatalogRequest
-	(*SyncCatalogResponse)(nil),      // 3: vertra.console.v1.SyncCatalogResponse
-	(*AdoptCatalogTeamRequest)(nil),  // 4: vertra.console.v1.AdoptCatalogTeamRequest
-	(*AdoptCatalogTeamResponse)(nil), // 5: vertra.console.v1.AdoptCatalogTeamResponse
-	(*CatalogStatus)(nil),            // 6: vertra.console.v1.CatalogStatus
-	(*CatalogProblem)(nil),           // 7: vertra.console.v1.CatalogProblem
-	(*GetStatsRequest)(nil),          // 8: vertra.console.v1.GetStatsRequest
-	(*GetStatsResponse)(nil),         // 9: vertra.console.v1.GetStatsResponse
-	(*AuditEntry)(nil),               // 10: vertra.console.v1.AuditEntry
-	(*ListAuditEntriesRequest)(nil),  // 11: vertra.console.v1.ListAuditEntriesRequest
-	(*ListAuditEntriesResponse)(nil), // 12: vertra.console.v1.ListAuditEntriesResponse
-	(*PolicySyncOutcome)(nil),        // 13: vertra.console.v1.PolicySyncOutcome
-	(*GetPolicySyncRequest)(nil),     // 14: vertra.console.v1.GetPolicySyncRequest
-	(*GetPolicySyncResponse)(nil),    // 15: vertra.console.v1.GetPolicySyncResponse
-	(*SyncPoliciesRequest)(nil),      // 16: vertra.console.v1.SyncPoliciesRequest
-	(*SyncPoliciesResponse)(nil),     // 17: vertra.console.v1.SyncPoliciesResponse
-	nil,                              // 18: vertra.console.v1.GetPolicySyncResponse.OutcomesEntry
-	nil,                              // 19: vertra.console.v1.SyncPoliciesResponse.OutcomesEntry
-	(*timestamppb.Timestamp)(nil),    // 20: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),          // 21: google.protobuf.Struct
+	(*GetInstallRequest)(nil),        // 0: vertra.console.v1.GetInstallRequest
+	(*GetInstallResponse)(nil),       // 1: vertra.console.v1.GetInstallResponse
+	(*GetCatalogStatusRequest)(nil),  // 2: vertra.console.v1.GetCatalogStatusRequest
+	(*GetCatalogStatusResponse)(nil), // 3: vertra.console.v1.GetCatalogStatusResponse
+	(*SyncCatalogRequest)(nil),       // 4: vertra.console.v1.SyncCatalogRequest
+	(*SyncCatalogResponse)(nil),      // 5: vertra.console.v1.SyncCatalogResponse
+	(*AdoptCatalogTeamRequest)(nil),  // 6: vertra.console.v1.AdoptCatalogTeamRequest
+	(*AdoptCatalogTeamResponse)(nil), // 7: vertra.console.v1.AdoptCatalogTeamResponse
+	(*CatalogStatus)(nil),            // 8: vertra.console.v1.CatalogStatus
+	(*CatalogProblem)(nil),           // 9: vertra.console.v1.CatalogProblem
+	(*GetStatsRequest)(nil),          // 10: vertra.console.v1.GetStatsRequest
+	(*GetStatsResponse)(nil),         // 11: vertra.console.v1.GetStatsResponse
+	(*AuditEntry)(nil),               // 12: vertra.console.v1.AuditEntry
+	(*ListAuditEntriesRequest)(nil),  // 13: vertra.console.v1.ListAuditEntriesRequest
+	(*ListAuditEntriesResponse)(nil), // 14: vertra.console.v1.ListAuditEntriesResponse
+	(*PolicySyncOutcome)(nil),        // 15: vertra.console.v1.PolicySyncOutcome
+	(*GetPolicySyncRequest)(nil),     // 16: vertra.console.v1.GetPolicySyncRequest
+	(*GetPolicySyncResponse)(nil),    // 17: vertra.console.v1.GetPolicySyncResponse
+	(*SyncPoliciesRequest)(nil),      // 18: vertra.console.v1.SyncPoliciesRequest
+	(*SyncPoliciesResponse)(nil),     // 19: vertra.console.v1.SyncPoliciesResponse
+	nil,                              // 20: vertra.console.v1.GetPolicySyncResponse.OutcomesEntry
+	nil,                              // 21: vertra.console.v1.SyncPoliciesResponse.OutcomesEntry
+	(*timestamppb.Timestamp)(nil),    // 22: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),          // 23: google.protobuf.Struct
 }
 var file_vertra_console_v1_admin_proto_depIdxs = []int32{
-	6,  // 0: vertra.console.v1.GetCatalogStatusResponse.status:type_name -> vertra.console.v1.CatalogStatus
-	6,  // 1: vertra.console.v1.SyncCatalogResponse.status:type_name -> vertra.console.v1.CatalogStatus
-	6,  // 2: vertra.console.v1.AdoptCatalogTeamResponse.status:type_name -> vertra.console.v1.CatalogStatus
-	20, // 3: vertra.console.v1.CatalogStatus.applied_at:type_name -> google.protobuf.Timestamp
-	7,  // 4: vertra.console.v1.CatalogStatus.problems:type_name -> vertra.console.v1.CatalogProblem
-	20, // 5: vertra.console.v1.CatalogStatus.checked_at:type_name -> google.protobuf.Timestamp
-	20, // 6: vertra.console.v1.AuditEntry.at:type_name -> google.protobuf.Timestamp
-	21, // 7: vertra.console.v1.AuditEntry.target:type_name -> google.protobuf.Struct
-	10, // 8: vertra.console.v1.ListAuditEntriesResponse.entries:type_name -> vertra.console.v1.AuditEntry
-	20, // 9: vertra.console.v1.PolicySyncOutcome.at:type_name -> google.protobuf.Timestamp
-	18, // 10: vertra.console.v1.GetPolicySyncResponse.outcomes:type_name -> vertra.console.v1.GetPolicySyncResponse.OutcomesEntry
-	19, // 11: vertra.console.v1.SyncPoliciesResponse.outcomes:type_name -> vertra.console.v1.SyncPoliciesResponse.OutcomesEntry
-	13, // 12: vertra.console.v1.GetPolicySyncResponse.OutcomesEntry.value:type_name -> vertra.console.v1.PolicySyncOutcome
-	13, // 13: vertra.console.v1.SyncPoliciesResponse.OutcomesEntry.value:type_name -> vertra.console.v1.PolicySyncOutcome
-	8,  // 14: vertra.console.v1.AdminService.GetStats:input_type -> vertra.console.v1.GetStatsRequest
-	11, // 15: vertra.console.v1.AdminService.ListAuditEntries:input_type -> vertra.console.v1.ListAuditEntriesRequest
-	14, // 16: vertra.console.v1.AdminService.GetPolicySync:input_type -> vertra.console.v1.GetPolicySyncRequest
-	16, // 17: vertra.console.v1.AdminService.SyncPolicies:input_type -> vertra.console.v1.SyncPoliciesRequest
-	0,  // 18: vertra.console.v1.AdminService.GetCatalogStatus:input_type -> vertra.console.v1.GetCatalogStatusRequest
-	2,  // 19: vertra.console.v1.AdminService.SyncCatalog:input_type -> vertra.console.v1.SyncCatalogRequest
-	4,  // 20: vertra.console.v1.AdminService.AdoptCatalogTeam:input_type -> vertra.console.v1.AdoptCatalogTeamRequest
-	9,  // 21: vertra.console.v1.AdminService.GetStats:output_type -> vertra.console.v1.GetStatsResponse
-	12, // 22: vertra.console.v1.AdminService.ListAuditEntries:output_type -> vertra.console.v1.ListAuditEntriesResponse
-	15, // 23: vertra.console.v1.AdminService.GetPolicySync:output_type -> vertra.console.v1.GetPolicySyncResponse
-	17, // 24: vertra.console.v1.AdminService.SyncPolicies:output_type -> vertra.console.v1.SyncPoliciesResponse
-	1,  // 25: vertra.console.v1.AdminService.GetCatalogStatus:output_type -> vertra.console.v1.GetCatalogStatusResponse
-	3,  // 26: vertra.console.v1.AdminService.SyncCatalog:output_type -> vertra.console.v1.SyncCatalogResponse
-	5,  // 27: vertra.console.v1.AdminService.AdoptCatalogTeam:output_type -> vertra.console.v1.AdoptCatalogTeamResponse
-	21, // [21:28] is the sub-list for method output_type
-	14, // [14:21] is the sub-list for method input_type
+	8,  // 0: vertra.console.v1.GetCatalogStatusResponse.status:type_name -> vertra.console.v1.CatalogStatus
+	8,  // 1: vertra.console.v1.SyncCatalogResponse.status:type_name -> vertra.console.v1.CatalogStatus
+	8,  // 2: vertra.console.v1.AdoptCatalogTeamResponse.status:type_name -> vertra.console.v1.CatalogStatus
+	22, // 3: vertra.console.v1.CatalogStatus.applied_at:type_name -> google.protobuf.Timestamp
+	9,  // 4: vertra.console.v1.CatalogStatus.problems:type_name -> vertra.console.v1.CatalogProblem
+	22, // 5: vertra.console.v1.CatalogStatus.checked_at:type_name -> google.protobuf.Timestamp
+	22, // 6: vertra.console.v1.AuditEntry.at:type_name -> google.protobuf.Timestamp
+	23, // 7: vertra.console.v1.AuditEntry.target:type_name -> google.protobuf.Struct
+	12, // 8: vertra.console.v1.ListAuditEntriesResponse.entries:type_name -> vertra.console.v1.AuditEntry
+	22, // 9: vertra.console.v1.PolicySyncOutcome.at:type_name -> google.protobuf.Timestamp
+	20, // 10: vertra.console.v1.GetPolicySyncResponse.outcomes:type_name -> vertra.console.v1.GetPolicySyncResponse.OutcomesEntry
+	21, // 11: vertra.console.v1.SyncPoliciesResponse.outcomes:type_name -> vertra.console.v1.SyncPoliciesResponse.OutcomesEntry
+	15, // 12: vertra.console.v1.GetPolicySyncResponse.OutcomesEntry.value:type_name -> vertra.console.v1.PolicySyncOutcome
+	15, // 13: vertra.console.v1.SyncPoliciesResponse.OutcomesEntry.value:type_name -> vertra.console.v1.PolicySyncOutcome
+	10, // 14: vertra.console.v1.AdminService.GetStats:input_type -> vertra.console.v1.GetStatsRequest
+	13, // 15: vertra.console.v1.AdminService.ListAuditEntries:input_type -> vertra.console.v1.ListAuditEntriesRequest
+	16, // 16: vertra.console.v1.AdminService.GetPolicySync:input_type -> vertra.console.v1.GetPolicySyncRequest
+	18, // 17: vertra.console.v1.AdminService.SyncPolicies:input_type -> vertra.console.v1.SyncPoliciesRequest
+	2,  // 18: vertra.console.v1.AdminService.GetCatalogStatus:input_type -> vertra.console.v1.GetCatalogStatusRequest
+	4,  // 19: vertra.console.v1.AdminService.SyncCatalog:input_type -> vertra.console.v1.SyncCatalogRequest
+	6,  // 20: vertra.console.v1.AdminService.AdoptCatalogTeam:input_type -> vertra.console.v1.AdoptCatalogTeamRequest
+	0,  // 21: vertra.console.v1.AdminService.GetInstall:input_type -> vertra.console.v1.GetInstallRequest
+	11, // 22: vertra.console.v1.AdminService.GetStats:output_type -> vertra.console.v1.GetStatsResponse
+	14, // 23: vertra.console.v1.AdminService.ListAuditEntries:output_type -> vertra.console.v1.ListAuditEntriesResponse
+	17, // 24: vertra.console.v1.AdminService.GetPolicySync:output_type -> vertra.console.v1.GetPolicySyncResponse
+	19, // 25: vertra.console.v1.AdminService.SyncPolicies:output_type -> vertra.console.v1.SyncPoliciesResponse
+	3,  // 26: vertra.console.v1.AdminService.GetCatalogStatus:output_type -> vertra.console.v1.GetCatalogStatusResponse
+	5,  // 27: vertra.console.v1.AdminService.SyncCatalog:output_type -> vertra.console.v1.SyncCatalogResponse
+	7,  // 28: vertra.console.v1.AdminService.AdoptCatalogTeam:output_type -> vertra.console.v1.AdoptCatalogTeamResponse
+	1,  // 29: vertra.console.v1.AdminService.GetInstall:output_type -> vertra.console.v1.GetInstallResponse
+	22, // [22:30] is the sub-list for method output_type
+	14, // [14:22] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name
 	14, // [14:14] is the sub-list for extension extendee
 	0,  // [0:14] is the sub-list for field type_name
@@ -1185,15 +1375,15 @@ func file_vertra_console_v1_admin_proto_init() {
 	if File_vertra_console_v1_admin_proto != nil {
 		return
 	}
-	file_vertra_console_v1_admin_proto_msgTypes[10].OneofWrappers = []any{}
-	file_vertra_console_v1_admin_proto_msgTypes[13].OneofWrappers = []any{}
+	file_vertra_console_v1_admin_proto_msgTypes[12].OneofWrappers = []any{}
+	file_vertra_console_v1_admin_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_admin_proto_rawDesc), len(file_vertra_console_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

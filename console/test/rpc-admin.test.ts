@@ -42,6 +42,7 @@ describe("admins only", () => {
     ["AdminService", "GetStats"],
     ["AdminService", "ListAuditEntries"],
     ["AdminService", "GetPolicySync"],
+    ["AdminService", "GetInstall"],
     ["ImageService", "ListImageScans"],
   ])("%s.%s refuses anyone else", async (service, method) => {
     const token = await signIn((await makeUser()).email);
@@ -64,6 +65,14 @@ describe("AdminService", () => {
     const page = await rpc("AdminService", "ListAuditEntries", { actorId: admin.id, limit: 5 }, { token });
     const entries = page.json<{ entries: { route: string; method: string; status: number }[] }>().entries;
     expect(entries[0]).toMatchObject({ route: "vertra.console.v1.UserService/SetAdmin", method: "RPC", status: 200 });
+  });
+
+  it("says what this install is: its version and which optional parts are on", async () => {
+    const token = await signIn((await makeUser({ admin: true })).email);
+    const install = (await rpc("AdminService", "GetInstall", {}, { token })).json<Record<string, unknown>>();
+    // The tests' settings: built locally, no catalog, no logs, no copy.
+    expect(install).toMatchObject({ version: "development", catalog: false, logs: false, auditCopy: false });
+    expect(Number(install["runRetentionDays"])).toBeGreaterThan(0);
   });
 
   it("checks the audit query", async () => {

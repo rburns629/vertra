@@ -55,6 +55,8 @@ const (
 	// AdminServiceAdoptCatalogTeamProcedure is the fully-qualified name of the AdminService's
 	// AdoptCatalogTeam RPC.
 	AdminServiceAdoptCatalogTeamProcedure = "/vertra.console.v1.AdminService/AdoptCatalogTeam"
+	// AdminServiceGetInstallProcedure is the fully-qualified name of the AdminService's GetInstall RPC.
+	AdminServiceGetInstallProcedure = "/vertra.console.v1.AdminService/GetInstall"
 )
 
 // AdminServiceClient is a client for the vertra.console.v1.AdminService service.
@@ -82,6 +84,9 @@ type AdminServiceClient interface {
 	// SecretStores alone: a new catalog folder never takes over an existing
 	// team's namespace and secrets unless an admin says so.
 	AdoptCatalogTeam(context.Context, *connect.Request[v1.AdoptCatalogTeamRequest]) (*connect.Response[v1.AdoptCatalogTeamResponse], error)
+	// This install: the console's version, and which of its optional parts
+	// are on (each set in vertra.yaml, or the console chart's values).
+	GetInstall(context.Context, *connect.Request[v1.GetInstallRequest]) (*connect.Response[v1.GetInstallResponse], error)
 }
 
 // NewAdminServiceClient constructs a client for the vertra.console.v1.AdminService service. By
@@ -144,6 +149,13 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		getInstall: connect.NewClient[v1.GetInstallRequest, v1.GetInstallResponse](
+			httpClient,
+			baseURL+AdminServiceGetInstallProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("GetInstall")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -156,6 +168,7 @@ type adminServiceClient struct {
 	getCatalogStatus *connect.Client[v1.GetCatalogStatusRequest, v1.GetCatalogStatusResponse]
 	syncCatalog      *connect.Client[v1.SyncCatalogRequest, v1.SyncCatalogResponse]
 	adoptCatalogTeam *connect.Client[v1.AdoptCatalogTeamRequest, v1.AdoptCatalogTeamResponse]
+	getInstall       *connect.Client[v1.GetInstallRequest, v1.GetInstallResponse]
 }
 
 // GetStats calls vertra.console.v1.AdminService.GetStats.
@@ -193,6 +206,11 @@ func (c *adminServiceClient) AdoptCatalogTeam(ctx context.Context, req *connect.
 	return c.adoptCatalogTeam.CallUnary(ctx, req)
 }
 
+// GetInstall calls vertra.console.v1.AdminService.GetInstall.
+func (c *adminServiceClient) GetInstall(ctx context.Context, req *connect.Request[v1.GetInstallRequest]) (*connect.Response[v1.GetInstallResponse], error) {
+	return c.getInstall.CallUnary(ctx, req)
+}
+
 // AdminServiceHandler is an implementation of the vertra.console.v1.AdminService service.
 type AdminServiceHandler interface {
 	// Platform-wide counts, for the admin home page.
@@ -218,6 +236,9 @@ type AdminServiceHandler interface {
 	// SecretStores alone: a new catalog folder never takes over an existing
 	// team's namespace and secrets unless an admin says so.
 	AdoptCatalogTeam(context.Context, *connect.Request[v1.AdoptCatalogTeamRequest]) (*connect.Response[v1.AdoptCatalogTeamResponse], error)
+	// This install: the console's version, and which of its optional parts
+	// are on (each set in vertra.yaml, or the console chart's values).
+	GetInstall(context.Context, *connect.Request[v1.GetInstallRequest]) (*connect.Response[v1.GetInstallResponse], error)
 }
 
 // NewAdminServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -276,6 +297,13 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceGetInstallHandler := connect.NewUnaryHandler(
+		AdminServiceGetInstallProcedure,
+		svc.GetInstall,
+		connect.WithSchema(adminServiceMethods.ByName("GetInstall")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminServiceGetStatsProcedure:
@@ -292,6 +320,8 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceSyncCatalogHandler.ServeHTTP(w, r)
 		case AdminServiceAdoptCatalogTeamProcedure:
 			adminServiceAdoptCatalogTeamHandler.ServeHTTP(w, r)
+		case AdminServiceGetInstallProcedure:
+			adminServiceGetInstallHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -327,4 +357,8 @@ func (UnimplementedAdminServiceHandler) SyncCatalog(context.Context, *connect.Re
 
 func (UnimplementedAdminServiceHandler) AdoptCatalogTeam(context.Context, *connect.Request[v1.AdoptCatalogTeamRequest]) (*connect.Response[v1.AdoptCatalogTeamResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.AdminService.AdoptCatalogTeam is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) GetInstall(context.Context, *connect.Request[v1.GetInstallRequest]) (*connect.Response[v1.GetInstallResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.AdminService.GetInstall is not implemented"))
 }

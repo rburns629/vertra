@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import { useAuth } from "../auth/AuthContext";
+import { ErrorPage } from "../components/ErrorPage";
 import { PageHeader } from "../components/PageHeader";
 import { GatewayTab } from "./admin/GatewayTab";
 import { OverviewTab } from "./admin/OverviewTab";
@@ -16,9 +18,14 @@ type TabId = "overview" | "people" | "gateway";
  * accounts), and the API gateway. The tab is in the address (?tab=people).
  */
 export function AdminPage() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const requested = params.get("tab");
   const tab: TabId = requested === "people" || requested === "gateway" ? requested : "overview";
+
+  if (!user?.isAdmin) {
+    return <ErrorPage title="Admins only" message="This page holds the install's settings, for its admins. Ask one if you need something changed." />;
+  }
 
   return (
     <Box>

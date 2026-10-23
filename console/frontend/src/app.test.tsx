@@ -468,6 +468,36 @@ describe("a run form", () => {
   });
 });
 
+describe("pages that can't be shown", () => {
+  it("say an address leads nowhere, inside the console", async () => {
+    await renderAt("/no/such/page", MEMBER);
+    expect(await screen.findByRole("heading", { name: "Page not found" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: /main/i })).toBeTruthy();
+  });
+
+  it("keep Admin to admins", async () => {
+    await renderAt("/admin", MEMBER);
+    expect(await screen.findByRole("heading", { name: "Admins only" })).toBeTruthy();
+  });
+});
+
+describe("a new install", () => {
+  it("shows its admin what's left to set up, and what's on", async () => {
+    await renderAt("/admin", ADMIN, {
+      "AdminService/GetCatalogStatus": { status: { release: "" } },
+      "ImageService/GetImagePolicy": { policy: { exists: true, source: "registry.example/", allowed: ["registry.example/"] } },
+      "TeamService/ListTeams": { teams: [] },
+      "UserService/ListUsers": { users: [{ email: "ana@acme.com", isAdmin: true }] },
+      "AdminService/GetInstall": { version: "0.4.0", environmentLabel: "gke-prod", scanning: true, runRetentionDays: 90 },
+    });
+    expect(await screen.findByRole("heading", { name: "Getting this install ready" })).toBeTruthy();
+    expect(screen.getByText("1 of 4 done")).toBeTruthy();
+    expect(screen.getByText("Connect the catalog")).toBeTruthy();
+    expect(await screen.findByText("0.4.0")).toBeTruthy();
+    expect(screen.getAllByText(/vertra sso google/, { selector: "span" }).length).toBe(2);
+  });
+});
+
 describe("pages that moved", () => {
   it.each([
     ["/executions", "Runs"],

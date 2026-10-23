@@ -12,6 +12,7 @@ import { Pill } from "../../components/Pill";
 import { when } from "../../time";
 import { CatalogCard } from "./CatalogCard";
 import { ImageSourcesCard } from "./ImageSourcesCard";
+import { FirstRunChecklist, InstallCard } from "./InstallCards";
 
 /** What each policy holds, as people say it. */
 const POLICY: Record<string, string> = {
@@ -175,6 +176,8 @@ function AuditCopyCard() {
 export function OverviewTab() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <FirstRunChecklist />
+      <InstallCard />
       <CatalogCard />
       <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, alignItems: "start" }}>
         <PoliciesCard />

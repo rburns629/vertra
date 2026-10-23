@@ -361,6 +361,39 @@ export async function listUsers(): Promise<UserAccount[]> {
   }));
 }
 
+/** This install: the console's version and which optional parts are on (AdminService.GetInstall). */
+export interface InstallInfo {
+  version: string;
+  environmentLabel: string;
+  /** "Google", or "" when single sign-on is off. */
+  ssoProvider: string;
+  logs: boolean;
+  logSearchDays: number;
+  auditCopy: boolean;
+  gateway: boolean;
+  catalog: boolean;
+  catalogSigned: boolean;
+  scanning: boolean;
+  runRetentionDays: number;
+}
+
+export async function getInstall(): Promise<InstallInfo> {
+  const i = await call(() => admin.getInstall({}));
+  return {
+    version: i.version,
+    environmentLabel: i.environmentLabel,
+    ssoProvider: i.ssoProvider,
+    logs: i.logs,
+    logSearchDays: i.logSearchDays,
+    auditCopy: i.auditCopy,
+    gateway: i.gateway,
+    catalog: i.catalog,
+    catalogSigned: i.catalogSigned,
+    scanning: i.scanning,
+    runRetentionDays: i.runRetentionDays,
+  };
+}
+
 /** One of the cluster's admission policies the console keeps current. */
 export interface PolicySync {
   /** identityPolicy, scanPolicy, ... */
