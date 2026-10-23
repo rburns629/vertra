@@ -144,6 +144,8 @@ describe("every page", () => {
     const main = await screen.findByRole("main");
     // The page itself, once its lazy chunk has loaded: a heading of its own.
     expect((await within(main).findAllByRole("heading", {}, { timeout: 5000 })).length).toBeGreaterThan(0);
+    // A code comment that slipped into JSX shows as text.
+    expect(main.textContent).not.toMatch(/(^|[^:])\/\/ /);
   });
 });
 

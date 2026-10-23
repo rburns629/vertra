@@ -5,7 +5,6 @@ import AccordionDetails from "@mui/material/AccordionDetails";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
 import TextField from "@mui/material/TextField";
@@ -15,7 +14,9 @@ import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { EmptyState } from "../components/EmptyState";
+import Link from "@mui/material/Link";
 import { PageHeader } from "../components/PageHeader";
+import { Pill } from "../components/Pill";
 import { Link as RouterLink } from "react-router-dom";
 import Button from "@mui/material/Button";
 import { ApiError, listProducts, listRunnables, type Product, type ProductRelease } from "../api";
@@ -94,8 +95,14 @@ export function ProductsPage() {
 
   return (
     <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+        <Link component={RouterLink} to="/catalog">
+          Catalog
+        </Link>{" "}
+        / Every product
+      </Typography>
       <PageHeader
-        title="Products"
+        title="Every product"
         subtitle="Every team's products, as each catalog release registers them, by team. Expand a team for its products, and a product for its releases. Run one shared with you on its own, or find templates that use them in the Catalog."
       />
 
@@ -202,19 +209,13 @@ function ProductAccordion({ product, runnable }: { product: Product; runnable: b
             {releaseCount} {releaseCount === 1 ? "release" : "releases"}
           </Typography>
           {product.deprecated && (
-            <Tooltip title={product.deprecated}>
-              <Chip label="deprecated" size="small" color="warning" />
-            </Tooltip>
+            <Pill tone="warning" title={product.deprecated}>
+              Deprecated
+            </Pill>
           )}
-          <Tooltip title={product.image}>
-            <Chip
-              label={`latest: ${imageVersion(product.image)}`}
-              size="small"
-              color="success"
-              variant="outlined"
-              sx={{ maxWidth: 260, fontFamily: "fontFamilyMono" }}
-            />
-          </Tooltip>
+          <Pill tone="success" title={product.image}>
+            latest: {imageVersion(product.image)}
+          </Pill>
         </Box>
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0 }}>
@@ -291,7 +292,7 @@ function ReleaseRow({ release, isLatest }: { release: ProductRelease; isLatest: 
       >
         {release.image}
       </Box>
-      {isLatest && <Chip label="latest" size="small" color="success" sx={{ flexShrink: 0 }} />}
+      {isLatest && <Pill tone="success">Latest</Pill>}
       <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, whiteSpace: "nowrap" }}>
         {new Date(release.registeredAt).toLocaleString()}
       </Typography>

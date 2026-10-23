@@ -16,6 +16,7 @@ import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import { ApiError, getDoc, listDocs, type DocSummary } from "../api";
+import { PageHeader } from "../components/PageHeader";
 import { API_REFERENCE_ID, ApiReference } from "./ApiReference";
 import Divider from "@mui/material/Divider";
 
@@ -184,116 +185,135 @@ export function DocsPage() {
       });
   }, [id]);
 
-  if (error) return <Alert severity="error">{error}</Alert>;
+  const header = (
+    <PageHeader
+      title="Help and guides"
+      subtitle="How Vertra works and how to use it: getting started, secrets, DAGs, calling the API, and the API reference."
+    />
+  );
+
+  if (error) {
+    return (
+      <Box>
+        {header}
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   if (docs && docs.length === 0) {
     return (
-      <Alert severity="info">
-        No guides are available here. They ship inside the console's image, from
-        console/docs/ in the repo.
-      </Alert>
+      <Box>
+        {header}
+        <Alert severity="info">
+          No guides are available here. They ship inside the console&apos;s image, from console/docs/ in the repo.
+        </Alert>
+      </Box>
     );
   }
 
   return (
-    // Grid, not flex, for the page-level split: a fixed sidebar column plus
-    // a content column that takes every remaining pixel (1fr), not just
-    // "grows to fit its content" the way flex's grow/shrink math does --
-    // exactly what a long-form reading pane like this needs, and why it
-    // looked narrower/more centered than it should have before.
-    // Below md there's no room for a second column: the guide list becomes
-    // a native select above the guide, so the guide itself starts on the
-    // first screen instead of after a screenful of links.
-    <Box
-      sx={{
-        display: "grid",
-        gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "260px minmax(0, 1fr)" },
-        gap: { xs: 2, md: 3 },
-        alignItems: "start",
-      }}
-    >
-      {docs && (
-        <TextField
-          select
-          label="Guide"
-          size="small"
-          value={id ?? ""}
-          onChange={(event) => {
-            navigate(`/docs/${event.target.value}`);
-          }}
-          slotProps={{ select: { native: true } }}
-          sx={{ display: { md: "none" }, bgcolor: "background.paper" }}
-        >
-          {docs.map((doc) => (
-            <option key={doc.id} value={doc.id}>
-              {doc.title}
-            </option>
-          ))}
-          <option value={API_REFERENCE_ID}>API reference</option>
-        </TextField>
-      )}
-      <Card variant="outlined" sx={{ display: { xs: "none", md: "block" } }}>
-        {docs ? (
-          <List component="nav" aria-label="Guides" dense disablePadding>
-            {docs.map((doc) => (
-              <ListItemButton
-                key={doc.id}
-                component={RouterLink}
-                to={`/docs/${doc.id}`}
-                selected={doc.id === id}
-                aria-current={doc.id === id ? "page" : undefined}
-              >
-                <ListItemText primary={doc.title} />
-              </ListItemButton>
-            ))}
-            <Divider />
-            <ListItemButton
-              component={RouterLink}
-              to={`/docs/${API_REFERENCE_ID}`}
-              selected={id === API_REFERENCE_ID}
-              aria-current={id === API_REFERENCE_ID ? "page" : undefined}
-            >
-              <ListItemText primary="API reference" />
-            </ListItemButton>
-          </List>
-        ) : (
-          <Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>
-            <CircularProgress size={24} aria-label="Loading" />
-          </Box>
-        )}
-      </Card>
-
-      <Card variant="outlined" sx={{ minWidth: 0, p: { xs: 2, sm: 4 } }}>
-        {id === API_REFERENCE_ID && <ApiReference />}
-        {id !== API_REFERENCE_ID && loadingContent && (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={24} aria-label="Loading" />
-          </Box>
-        )}
-        {id !== API_REFERENCE_ID && !loadingContent && content && (
-          <Box
-            sx={{
-              "& table": { borderCollapse: "collapse", width: "100%" },
-              "& .task-list-item": { listStyle: "none", ml: -2.5, pl: "1.45em", textIndent: "-1.45em" },
-              "& th, & td": { border: "1px solid", borderColor: "divider", p: 1, textAlign: "left" },
-              "& pre": { bgcolor: "action.hover", p: 1.5, borderRadius: 1, overflowX: "auto" },
-              "& code": { fontFamily: "fontFamilyMono", fontSize: "0.875em" },
-              "& img": { maxWidth: "100%" },
+    <Box>
+      {header}
+      {/* Grid, not flex, for the page-level split: a fixed sidebar column plus
+         a content column that takes every remaining pixel (1fr), not just
+         "grows to fit its content" the way flex's grow/shrink math does --
+         exactly what a long-form reading pane like this needs, and why it
+         looked narrower/more centered than it should have before.
+         Below md there's no room for a second column: the guide list becomes
+         a native select above the guide, so the guide itself starts on the
+         first screen instead of after a screenful of links. */}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "260px minmax(0, 1fr)" },
+          gap: { xs: 2, md: 3 },
+          alignItems: "start",
+        }}
+      >
+        {docs && (
+          <TextField
+            select
+            label="Guide"
+            size="small"
+            value={id ?? ""}
+            onChange={(event) => {
+              navigate(`/docs/${event.target.value}`);
             }}
+            slotProps={{ select: { native: true } }}
+            sx={{ display: { md: "none" }, bgcolor: "background.paper" }}
           >
-            <Markdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSlug]}
-              components={MARKDOWN_COMPONENTS}
+            {docs.map((doc) => (
+              <option key={doc.id} value={doc.id}>
+                {doc.title}
+              </option>
+            ))}
+            <option value={API_REFERENCE_ID}>API reference</option>
+          </TextField>
+        )}
+        <Card variant="outlined" sx={{ display: { xs: "none", md: "block" } }}>
+          {docs ? (
+            <List component="nav" aria-label="Guides" dense disablePadding>
+              {docs.map((doc) => (
+                <ListItemButton
+                  key={doc.id}
+                  component={RouterLink}
+                  to={`/docs/${doc.id}`}
+                  selected={doc.id === id}
+                  aria-current={doc.id === id ? "page" : undefined}
+                >
+                  <ListItemText primary={doc.title} />
+                </ListItemButton>
+              ))}
+              <Divider />
+              <ListItemButton
+                component={RouterLink}
+                to={`/docs/${API_REFERENCE_ID}`}
+                selected={id === API_REFERENCE_ID}
+                aria-current={id === API_REFERENCE_ID ? "page" : undefined}
+              >
+                <ListItemText primary="API reference" />
+              </ListItemButton>
+            </List>
+          ) : (
+            <Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>
+              <CircularProgress size={24} aria-label="Loading" />
+            </Box>
+          )}
+        </Card>
+
+        <Card variant="outlined" sx={{ minWidth: 0, p: { xs: 2, sm: 4 } }}>
+          {id === API_REFERENCE_ID && <ApiReference />}
+          {id !== API_REFERENCE_ID && loadingContent && (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress size={24} aria-label="Loading" />
+            </Box>
+          )}
+          {id !== API_REFERENCE_ID && !loadingContent && content && (
+            <Box
+              sx={{
+                "& table": { borderCollapse: "collapse", width: "100%" },
+                "& .task-list-item": { listStyle: "none", ml: -2.5, pl: "1.45em", textIndent: "-1.45em" },
+                "& th, & td": { border: "1px solid", borderColor: "divider", p: 1, textAlign: "left" },
+                "& pre": { bgcolor: "code.background", color: "code.text", p: 2, borderRadius: 2, overflowX: "auto" },
+                "& code": { fontFamily: "fontFamilyMono", fontSize: "0.875em" },
+                "& img": { maxWidth: "100%" },
+              }}
             >
-              {content}
-            </Markdown>
-          </Box>
-        )}
-        {!loadingContent && !content && !docs && (
-          <Typography color="text.secondary">Loading…</Typography>
-        )}
-      </Card>
+              <Markdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeSlug]}
+                components={MARKDOWN_COMPONENTS}
+              >
+                {content}
+              </Markdown>
+            </Box>
+          )}
+          {!loadingContent && !content && !docs && (
+            <Typography color="text.secondary">Loading…</Typography>
+          )}
+        </Card>
+      </Box>
     </Box>
   );
 }

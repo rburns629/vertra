@@ -2,7 +2,7 @@
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { dump as dumpYaml } from "js-yaml";
-import { Alert, Box, Button, Card, CardContent, Link, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, Link, TextField, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { ApiError, getImagePolicy, submitExecution } from "../api";
@@ -84,11 +84,22 @@ export function SubmitExecutionPage() {
 
   return (
     <Box>
-      <Link component={RouterLink} to="/runs" variant="body2">
-        ← Back to runs
-      </Link>
-      <Typography variant="h4" sx={{ fontWeight: 600, mt: 0.5, mb: 3 }}>
-        Submit an execution
+      <Typography variant="body2" color="text.secondary">
+        <Link component={RouterLink} to="/runs">
+          Runs
+        </Link>{" "}
+        / Submit new
+      </Typography>
+      <Typography variant="h4" component="h1" sx={{ mt: 0.75 }}>
+        Submit a DAG
+      </Typography>
+      <Typography color="text.secondary" sx={{ mt: 0.5, mb: 3, maxWidth: 840 }}>
+        For a team&apos;s maintainers: steps of your team&apos;s registered products, wired together. To run what another team
+        publishes, use the{" "}
+        <Link component={RouterLink} to="/catalog">
+          Catalog
+        </Link>
+        .
       </Typography>
       {allowedSources !== null && (
         <Alert severity={allowedSources.length === 0 ? "warning" : "info"} sx={{ mb: 2 }}>
@@ -98,131 +109,135 @@ export function SubmitExecutionPage() {
         </Alert>
       )}
 
-      <Box component="form" onSubmit={(event: FormEvent) => void handleSubmit(event)}>
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-          <Button
-            size="small"
-            onClick={() => {
+      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start" }}>
+        <Card component="form" onSubmit={(event: FormEvent) => void handleSubmit(event)} sx={{ p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+            <Typography variant="h6" component="h2">
+              Your DAG
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => {
+                setError(null);
+                setText(exampleFor(exampleTeam, exampleSource));
+              }}
+            >
+              Start from an example
+            </Button>
+          </Box>
+          <TextField
+            label="DAG (JSON or YAML)"
+            required
+            fullWidth
+            multiline
+            minRows={16}
+            value={text}
+            error={check.status === "invalid"}
+            color={check.status === "valid" ? "success" : "primary"}
+            onChange={(event) => {
+              setText(event.target.value);
               setError(null);
-              setText(exampleFor(exampleTeam, exampleSource));
             }}
-          >
-            Start from an example
-          </Button>
-        </Box>
-        <TextField
-          label="DAG (JSON or YAML)"
-          required
-          fullWidth
-          multiline
-          minRows={16}
-          value={text}
-          error={check.status === "invalid"}
-          color={check.status === "valid" ? "success" : "primary"}
-          onChange={(event) => {
-            setText(event.target.value);
-            setError(null);
-          }}
-          sx={{
-            "& textarea": { fontFamily: "fontFamilyMono", fontSize: 13 },
-            ...(borderColor && {
-              "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor,
-                borderWidth: 2,
+            sx={{
+              "& textarea": { fontFamily: "fontFamilyMono", fontSize: 13 },
+              ...(borderColor && {
+                "& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor,
+                  borderWidth: 2,
+                },
+              }),
+            }}
+            slotProps={{
+              htmlInput: {
+                spellCheck: false,
+                "aria-invalid": check.status === "invalid",
               },
-            }),
-          }}
-          slotProps={{
-            htmlInput: {
-              spellCheck: false,
-              "aria-invalid": check.status === "invalid",
-            },
-          }}
-        />
+            }}
+          />
 
-        {check.status === "valid" && (
-          <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mt: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Valid DAG ({check.format}): {check.taskCount} {check.taskCount === 1 ? "task" : "tasks"}
-            </Typography>
-            {check.stages.length > 1 && (
-              <Typography variant="body2" sx={{ mt: 0.5, fontFamily: "fontFamilyMono" }}>
-                Runs in order: {check.stages.map((stage) => stage.join(" + ")).join("  →  ")}
+          {check.status === "valid" && (
+            <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Valid DAG ({check.format}): {check.taskCount} {check.taskCount === 1 ? "task" : "tasks"}
               </Typography>
-            )}
-          </Alert>
-        )}
-        {check.status === "invalid" && (
-          <Alert severity="error" icon={<ErrorOutlineIcon />} sx={{ mt: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-              {check.issues.length === 1 ? "1 thing to fix" : `${String(check.issues.length)} things to fix`} before
-              this can be submitted:
-            </Typography>
-            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-              {check.issues.slice(0, MAX_ISSUES_SHOWN).map((issue, i) => (
-                <li key={i}>
-                  <Typography variant="body2">
-                    {issue.where && (
-                      <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontWeight: 600 }}>
-                        {issue.where}:{" "}
-                      </Box>
-                    )}
-                    {issue.message}
-                  </Typography>
-                </li>
-              ))}
-            </Box>
-            {check.issues.length > MAX_ISSUES_SHOWN && (
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                …and {check.issues.length - MAX_ISSUES_SHOWN} more.
+              {check.stages.length > 1 && (
+                <Typography variant="body2" sx={{ mt: 0.5, fontFamily: "fontFamilyMono" }}>
+                  Runs in order: {check.stages.map((stage) => stage.join(" + ")).join("  →  ")}
+                </Typography>
+              )}
+            </Alert>
+          )}
+          {check.status === "invalid" && (
+            <Alert severity="error" icon={<ErrorOutlineIcon />} sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                {check.issues.length === 1 ? "1 thing to fix" : `${String(check.issues.length)} things to fix`} before
+                this can be submitted:
               </Typography>
-            )}
-            {check.whitespaceFix && (
-              <Button
-                size="small"
-                variant="outlined"
-                color="error"
-                sx={{ mt: 1 }}
-                onClick={() => {
-                  if (check.whitespaceFix) setText(check.whitespaceFix.text);
-                }}
-              >
-                Remove the whitespace
-              </Button>
-            )}
-          </Alert>
-        )}
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            The server refused it: {error}
-          </Alert>
-        )}
-        <Button type="submit" variant="contained" size="large" disabled={!valid || submitting} sx={{ mt: 2 }}>
-          {submitting ? "Submitting…" : "Submit"}
-        </Button>
-      </Box>
+              <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                {check.issues.slice(0, MAX_ISSUES_SHOWN).map((issue, i) => (
+                  <li key={i}>
+                    <Typography variant="body2">
+                      {issue.where && (
+                        <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontWeight: 600 }}>
+                          {issue.where}:{" "}
+                        </Box>
+                      )}
+                      {issue.message}
+                    </Typography>
+                  </li>
+                ))}
+              </Box>
+              {check.issues.length > MAX_ISSUES_SHOWN && (
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  …and {check.issues.length - MAX_ISSUES_SHOWN} more.
+                </Typography>
+              )}
+              {check.whitespaceFix && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  sx={{ mt: 1 }}
+                  onClick={() => {
+                    if (check.whitespaceFix) setText(check.whitespaceFix.text);
+                  }}
+                >
+                  Remove the whitespace
+                </Button>
+              )}
+            </Alert>
+          )}
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              The server refused it: {error}
+            </Alert>
+          )}
+          <Button type="submit" variant="contained" size="large" disabled={!valid || submitting} sx={{ mt: 2 }}>
+            {submitting ? "Submitting…" : "Submit"}
+          </Button>
+        </Card>
 
-      <Typography variant="h6" sx={{ fontWeight: 600, mt: 4, mb: 1 }}>
-        What a DAG looks like
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Each task needs an <code>id</code>, <code>image</code>, <code>action</code> and <code>team</code> (one you're a
-        member of). Optional: <code>dependsOn</code> (task ids that must finish first), <code>inputs</code>,{" "}
-        <code>secretRefs</code> (your team's secrets, for a registered product), <code>timeoutSeconds</code>,{" "}
-        <code>maxAttempts</code>, and <code>serviceAccount</code> (left out, a product runs as its own).
-        A task can use an earlier task's output with <code>{"{ $fromTask: <id>, $output: <name> }"}</code>, as long as
-        that task is in its <code>dependsOn</code>.
-      </Typography>
-      <Card variant="outlined">
-        <CardContent>
+        <Card sx={{ p: 3 }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
+            What a DAG looks like
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Each task needs an <code>id</code>, <code>image</code>, <code>action</code> and <code>team</code> (one you're a
+            member of). Optional: <code>dependsOn</code> (task ids that must finish first), <code>inputs</code>,{" "}
+            <code>secretRefs</code> (your team's secrets, for a registered product), <code>timeoutSeconds</code>,{" "}
+            <code>maxAttempts</code>, and <code>serviceAccount</code> (left out, a product runs as its own).
+            A task can use an earlier task's output with <code>{"{ $fromTask: <id>, $output: <name> }"}</code>, as long as
+            that task is in its <code>dependsOn</code>.
+          </Typography>
           <Box
             component="pre"
-            sx={{ m: 0, fontFamily: "fontFamilyMono", fontSize: 13, whiteSpace: "pre-wrap" }}
+            tabIndex={0}
+            sx={{ m: 0, p: 2, borderRadius: 2, bgcolor: "code.background", color: "code.text", fontFamily: "fontFamilyMono", fontSize: 12.5, whiteSpace: "pre-wrap", overflowX: "auto" }}
           >
             {example}
           </Box>
-        </CardContent>
-      </Card>
+        </Card>
+      </Box>
     </Box>
   );
 }
