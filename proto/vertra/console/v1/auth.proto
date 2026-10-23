@@ -72,6 +72,10 @@ message GetMeResponse {
   // admin's reset): nothing but ChangePassword works until it's changed
   // (permission_denied, PASSWORD_CHANGE_REQUIRED).
   bool must_change_password = 6;
+  // How they sign in: a password of their own, single sign-on (bound at
+  // its first), or both.
+  bool has_password = 7;
+  bool uses_sso = 8;
 }
 
 message ChangePasswordRequest {

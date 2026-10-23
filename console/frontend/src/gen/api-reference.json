@@ -2033,6 +2033,20 @@
      "repeated": false,
      "optional": false,
      "comment": "Signed in with a password someone else set (a new account's, an\nadmin's reset): nothing but ChangePassword works until it's changed\n(permission_denied, PASSWORD_CHANGE_REQUIRED)."
+    },
+    {
+     "name": "hasPassword",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "How they sign in: a password of their own, single sign-on (bound at\nits first), or both."
+    },
+    {
+     "name": "usesSso",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

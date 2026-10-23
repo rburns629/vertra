@@ -11,7 +11,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 
 // Each signed-in page is its own chunk, fetched the first time it's opened
 // (AppLayout shows a spinner meanwhile): the Docs page alone brings mermaid,
-// and the home page recharts, which nobody should download just to log in.
+// and Observe's metrics recharts, which nobody should download just to log in.
 const AccountPage = lazy(() => import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })));
 const ObservePage = lazy(() => import("./pages/ObservePage").then((m) => ({ default: m.ObservePage })));
 const ApiPage = lazy(() => import("./pages/ApiPage").then((m) => ({ default: m.ApiPage })));

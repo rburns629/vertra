@@ -106,6 +106,8 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
         maintainerOf: caller.maintainerOf,
         isAdmin: user.isAdmin,
         mustChangePassword: caller.mustChangePassword ?? false,
+        hasPassword: user.passwordHash !== null,
+        usesSso: user.oidcSubject !== null,
       };
     },
 

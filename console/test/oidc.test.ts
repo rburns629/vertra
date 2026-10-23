@@ -135,7 +135,7 @@ const person = (name: string, extra: Record<string, unknown> = {}) => ({
 
 async function me(token: string) {
   const response = await rpc("AuthService", "GetMe", {}, { token });
-  return response.json<{ email?: string; teamNames?: string[]; isAdmin?: boolean }>();
+  return response.json<{ email?: string; teamNames?: string[]; isAdmin?: boolean; hasPassword?: boolean; usesSso?: boolean }>();
 }
 
 describe("single sign-on", () => {
@@ -146,6 +146,8 @@ describe("single sign-on", () => {
     const [row] = await db.select().from(users).where(eq(users.email, emailOf("new")));
     expect(row).toMatchObject({ passwordHash: null, isAdmin: false, oidcSubject: `${issuer} sub-new` });
     expect((await me(token)).teamNames ?? []).toEqual([]);
+    // And says how it signs in.
+    expect(await me(token)).toMatchObject({ hasPassword: false, usesSso: true });
   });
 
   it("binds an existing account to its identity once, and never to another", async () => {

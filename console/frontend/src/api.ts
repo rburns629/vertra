@@ -163,6 +163,9 @@ export interface Me {
   isAdmin: boolean;
   /** Signed in with a password someone else set: nothing works until it's changed. */
   mustChangePassword: boolean;
+  /** How they sign in: a password of their own, single sign-on, or both. */
+  hasPassword: boolean;
+  usesSso: boolean;
 }
 
 export interface Team {
@@ -198,6 +201,8 @@ export async function getMe(): Promise<Me> {
     maintainerOf: me.maintainerOf,
     isAdmin: me.isAdmin,
     mustChangePassword: me.mustChangePassword,
+    hasPassword: me.hasPassword,
+    usesSso: me.usesSso,
   };
 }
 

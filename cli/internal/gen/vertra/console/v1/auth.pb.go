@@ -372,8 +372,12 @@ type GetMeResponse struct {
 	// admin's reset): nothing but ChangePassword works until it's changed
 	// (permission_denied, PASSWORD_CHANGE_REQUIRED).
 	MustChangePassword bool `protobuf:"varint,6,opt,name=must_change_password,json=mustChangePassword,proto3" json:"must_change_password,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// How they sign in: a password of their own, single sign-on (bound at
+	// its first), or both.
+	HasPassword   bool `protobuf:"varint,7,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
+	UsesSso       bool `protobuf:"varint,8,opt,name=uses_sso,json=usesSso,proto3" json:"uses_sso,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMeResponse) Reset() {
@@ -444,6 +448,20 @@ func (x *GetMeResponse) GetMaintainerOf() []string {
 func (x *GetMeResponse) GetMustChangePassword() bool {
 	if x != nil {
 		return x.MustChangePassword
+	}
+	return false
+}
+
+func (x *GetMeResponse) GetHasPassword() bool {
+	if x != nil {
+		return x.HasPassword
+	}
+	return false
+}
+
+func (x *GetMeResponse) GetUsesSso() bool {
+	if x != nil {
+		return x.UsesSso
 	}
 	return false
 }
@@ -565,7 +583,7 @@ const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
 	"\rLoginResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"\x0e\n" +
-	"\fGetMeRequest\"\xcf\x01\n" +
+	"\fGetMeRequest\"\x8d\x02\n" +
 	"\rGetMeResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1d\n" +
@@ -573,7 +591,9 @@ const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"team_names\x18\x03 \x03(\tR\tteamNames\x12\x19\n" +
 	"\bis_admin\x18\x04 \x01(\bR\aisAdmin\x12#\n" +
 	"\rmaintainer_of\x18\x05 \x03(\tR\fmaintainerOf\x120\n" +
-	"\x14must_change_password\x18\x06 \x01(\bR\x12mustChangePassword\"e\n" +
+	"\x14must_change_password\x18\x06 \x01(\bR\x12mustChangePassword\x12!\n" +
+	"\fhas_password\x18\a \x01(\bR\vhasPassword\x12\x19\n" +
+	"\buses_sso\x18\b \x01(\bR\ausesSso\"e\n" +
 	"\x15ChangePasswordRequest\x12)\n" +
 	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\".\n" +

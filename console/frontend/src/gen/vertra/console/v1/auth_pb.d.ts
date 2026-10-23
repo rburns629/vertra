@@ -188,6 +188,19 @@ export declare type GetMeResponse = Message<"vertra.console.v1.GetMeResponse"> &
    * @generated from field: bool must_change_password = 6;
    */
   mustChangePassword: boolean;
+
+  /**
+   * How they sign in: a password of their own, single sign-on (bound at
+   * its first), or both.
+   *
+   * @generated from field: bool has_password = 7;
+   */
+  hasPassword: boolean;
+
+  /**
+   * @generated from field: bool uses_sso = 8;
+   */
+  usesSso: boolean;
 };
 
 /**

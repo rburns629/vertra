@@ -220,7 +220,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/layout/` | The sidebar (the install, the places, your account and its settings menu; a top bar opens it on a phone), and `SignInLayout`, the screens before it (signing in, registering, choosing your own password). Old addresses (`/executions`, `/run`) redirect in `App.tsx`. |
 | `src/environment.tsx` | The install's public settings (its label, open registration, single sign-on), fetched once for the whole app. |
 | `src/components/` | Shared pieces (`Pill`, the tinted label every state and status uses): tables, page headers, status badges, metric cards, team cards, empty states, confirm dialogs, inline monospace (`Mono`). |
-| `src/pages/HomePage.tsx` | Dashboard: counts, executions over time, status breakdown, recent runs. |
+| `src/pages/HomePage.tsx` | Home: your runs that are going, how your last two weeks went, the steps waiting for you to approve, and your teams. |
 | `src/pages/ExecutionsListPage.tsx` | Runs (`/runs`): every run you can see, a page at a time (yours, or by team and name, filtered on the server), each with what it ran, its steps' progress and how long it took; and the steps waiting for your team to approve. |
 | `src/pages/useExecutionWatch.ts` | Follows one execution over `WatchExecution` until it finishes, with its events and logs; reopens a stream that ends or drops, backs off when it can't connect; `resume()` after a retry or cancel. Tested alongside. |
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
@@ -233,7 +233,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/team/SettingsTab.tsx` | A team's Settings: requiring single sign-on (and who it would lock out), where the team comes from, and for an admin retiring, restoring and purging it. |
 | `src/pages/CatalogPage.tsx`, `src/components/RunDialog.tsx` | The Catalog (`/catalog`): every template and action, as cards: what each asks for, Run (a form from its parameters) or, when it isn't shared with you, Ask for access; by team, and only what you can run. |
 | `src/pages/AdminPage.tsx`, `src/pages/admin/` | Admin, in tabs (`?tab=`): Overview (the catalog, the cluster's policies, the audit log's copy, image sources), People (how people sign in, adding them, everyone with how they sign in and when they last did, admin rights, password resets, deletes; automation tokens), and the API gateway (its settings, closing it). |
-| `src/pages/AccountPage.tsx`, `ChoosePasswordPage.tsx`, `src/components/PasswordChangeForm.tsx` | Your account and password; the screen a password someone else set holds you on until you choose your own. |
+| `src/pages/AccountPage.tsx`, `ChoosePasswordPage.tsx`, `src/components/PasswordChangeForm.tsx` | Preferences (`/account`): who you are, how you sign in (a password to change, or single sign-on), your teams; and the screen a password someone else set holds you on until you choose your own. |
 | `src/pages/DocsPage.tsx`, `ApiReference.tsx` | The guides from `console/docs/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos). |
 | `src/pages/LoginPage.tsx`, `RegisterPage.tsx` | Sign-in and registration. |
 | `public/favicon.svg` | The browser tab icon. |

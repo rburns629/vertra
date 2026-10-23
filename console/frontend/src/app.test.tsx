@@ -96,7 +96,7 @@ afterEach(() => {
   calls.length = 0;
 });
 
-const ADMIN = { userId: "u1", email: "ana@acme.com", teamNames: ["azure-apps"], maintainerOf: ["azure-apps"], isAdmin: true, mustChangePassword: false };
+const ADMIN = { userId: "u1", email: "ana@acme.com", teamNames: ["azure-apps"], maintainerOf: ["azure-apps"], isAdmin: true, mustChangePassword: false, hasPassword: true, usesSso: false };
 const MEMBER = { ...ADMIN, isAdmin: false, maintainerOf: [] };
 
 let App: ComponentType;
@@ -383,6 +383,37 @@ describe("observe", () => {
       "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", copiedAt: "2026-10-22T14:05:00Z" },
     });
     expect(await screen.findByText("Chain intact")).toBeTruthy();
+  });
+});
+
+describe("home", () => {
+  it("shows your runs that are going, and what waits for you", async () => {
+    await renderAt("/", MEMBER, {
+      "ExecutionService/ListExecutions": {
+        executions: [
+          { executionId: "r1", name: "orders-api first deploy", createdAt: new Date(Date.now() - 300_000).toISOString(), state: "EXECUTION_STATE_RUNNING", steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 } },
+          { executionId: "r2", name: "yesterday's", createdAt: new Date(Date.now() - 86_400_000).toISOString(), state: "EXECUTION_STATE_SUCCEEDED", steps: { SUCCEEDED: 1 } },
+        ],
+      },
+      "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "orders-api prod database", taskId: "database", team: "azure-apps", requestedBy: "sam@acme.com", canDecide: true }] },
+    });
+    expect(await screen.findByRole("link", { name: "orders-api first deploy" })).toBeTruthy();
+    expect(screen.getByText("2 of 4 steps done")).toBeTruthy();
+    expect(screen.getByText(/1 of your runs is going\. 1 step waits for you to approve\./)).toBeTruthy();
+    expect(screen.getByText(/sam@acme.com asked to run database in orders-api prod database/)).toBeTruthy();
+  });
+});
+
+describe("preferences", () => {
+  it("say a single sign-on account has no password to change", async () => {
+    await renderAt("/account", { ...MEMBER, hasPassword: false, usesSso: true }, { "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" } });
+    expect(await screen.findByText(/you sign in with google, as ana@acme.com/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/current password/i)).toBeNull();
+  });
+
+  it("let someone with a password change it", async () => {
+    await renderAt("/account", MEMBER);
+    expect(await screen.findByLabelText(/current password/i)).toBeTruthy();
   });
 });
 
