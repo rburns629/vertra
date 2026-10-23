@@ -22,6 +22,7 @@ const ExecutionDetailPage = lazy(() => import("./pages/ExecutionDetailPage").the
 const ExecutionsListPage = lazy(() => import("./pages/ExecutionsListPage").then((m) => ({ default: m.ExecutionsListPage })));
 const HomePage = lazy(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
 const ProductsPage = lazy(() => import("./pages/ProductsPage").then((m) => ({ default: m.ProductsPage })));
+const RunFormPage = lazy(() => import("./pages/RunFormPage").then((m) => ({ default: m.RunFormPage })));
 const CatalogPage = lazy(() => import("./pages/CatalogPage").then((m) => ({ default: m.CatalogPage })));
 const SubmitExecutionPage = lazy(() => import("./pages/SubmitExecutionPage").then((m) => ({ default: m.SubmitExecutionPage })));
 const TeamPage = lazy(() => import("./pages/TeamPage").then((m) => ({ default: m.TeamPage })));
@@ -59,6 +60,7 @@ export function App() {
             <Route path="/runs/submit" element={<SubmitExecutionPage />} />
             <Route path="/runs/:id" element={<ExecutionDetailPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/catalog/run" element={<RunFormPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/apis" element={<ApisPage />} />
             <Route path="/observe" element={<ObservePage />} />

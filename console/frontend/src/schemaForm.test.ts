@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { fieldsOf, initialValues, serverProblems, toParameters, withTargets } from "./schemaForm";
+import { fieldsOf, groupsOf, initialValues, serverProblems, toParameters, withTargets } from "./schemaForm";
 
 const schema = {
   type: "object",
@@ -57,6 +57,68 @@ describe("a run form from a schema", () => {
         { field: "parameters", message: "must have required property 'count'" },
       ]),
     ).toEqual({ fields: { text: "must NOT have more than 10 characters" }, general: ["must have required property 'count'"] });
+  });
+});
+
+describe("a richer form", () => {
+  const rich = {
+    type: "object",
+    required: ["projectId", "regions"],
+    properties: {
+      note: { type: "string", "x-vertra-widget": "textarea" },
+      labels: { type: "object", additionalProperties: { type: "string" } },
+      regions: { type: "array", items: { type: "string", pattern: "^[a-z]+-[a-z]+[0-9]$" }, minItems: 1, maxItems: 3, "x-vertra-group": "Where" },
+      projectId: {
+        type: "string",
+        minLength: 6,
+        maxLength: 30,
+        pattern: "^[a-z][a-z0-9-]*$",
+        "x-vertra-pattern-message": "Lowercase letters, digits and hyphens, starting with a letter.",
+        "x-vertra-order": 1,
+        "x-vertra-group": "Project",
+      },
+      replicas: { type: "integer", minimum: 1, maximum: 10, "x-vertra-group": "Where" },
+    },
+  };
+  const fields = fieldsOf(rich) ?? [];
+
+  it("orders fields by x-vertra-order, then as written, under their groups", () => {
+    expect(fields.map((f) => f.name)).toEqual(["projectId", "note", "labels", "regions", "replicas"]);
+    expect(groupsOf(fields).map((g) => [g.group, g.fields.map((f) => f.name)])).toEqual([
+      ["Project", ["projectId"]],
+      [undefined, ["note", "labels"]],
+      ["Where", ["regions", "replicas"]],
+    ]);
+  });
+
+  it("makes lists of arrays, name/value pairs of string maps, and a big box when asked", () => {
+    expect(fields.map((f) => f.kind)).toEqual(["text", "text", "map", "list", "integer"]);
+    expect(fields.find((f) => f.name === "note")?.multiline).toBe(true);
+    expect(fields.find((f) => f.name === "projectId")?.multiline).toBe(false);
+    expect(initialValues(rich, fields)).toMatchObject({ regions: [], labels: [] });
+  });
+
+  it("says what's wrong before sending: a length, a pattern (in the team's words), a limit, an item", () => {
+    const errors = toParameters(fields, {
+      projectId: "My_Project",
+      note: "",
+      labels: [["team", "a"], ["team", "b"]],
+      regions: ["us-central1", "Europe"],
+      replicas: "11",
+    }).errors;
+    expect(errors).toEqual({
+      projectId: "Lowercase letters, digits and hyphens, starting with a letter.",
+      labels: "Each name once.",
+      regions: "Item 2: Doesn't match ^[a-z]+-[a-z]+[0-9]$.",
+      replicas: "At most 10.",
+    });
+    expect(toParameters(fields, { projectId: "abc", regions: [] }).errors).toMatchObject({ projectId: "At least 6 characters.", regions: "Required." });
+  });
+
+  it("sends lists and maps as their types, leaving blank rows out", () => {
+    expect(
+      toParameters(fields, { projectId: "orders-api", note: "", labels: [["team", "orders"], ["", ""]], regions: ["us-central1", ""], replicas: "2" }),
+    ).toEqual({ parameters: { projectId: "orders-api", labels: { team: "orders" }, regions: ["us-central1"], replicas: 2 }, errors: {} });
   });
 });
 

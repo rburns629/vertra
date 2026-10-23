@@ -281,7 +281,7 @@ describe("the catalog", () => {
     expect(await screen.findByRole("heading", { name: "App on Cloud Run" })).toBeTruthy();
     expect(screen.getByText("projectId, region")).toBeTruthy();
     expect(screen.getByText("gcp-platform · template · 2 steps")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Run" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Run" }).getAttribute("href")).toBe("/catalog/run?template=gcp-platform%2Fapp-on-cloud-run");
     expect(screen.getByRole("link", { name: /ask for access/i }).getAttribute("href")).toContain("issues/new");
     expect(screen.getByRole("link", { name: /catalog repository/i }).getAttribute("href")).toBe("https://github.com/acme/vertra-catalog");
 
@@ -416,6 +416,55 @@ describe("preferences", () => {
   it("let someone with a password change it", async () => {
     await renderAt("/account", MEMBER);
     expect(await screen.findByLabelText(/current password/i)).toBeTruthy();
+  });
+});
+
+describe("a run form", () => {
+  const TEMPLATE = {
+    kind: "KIND_TEMPLATE",
+    team: "gcp-platform",
+    name: "app-on-cloud-run",
+    displayName: "App on Cloud Run",
+    shared: true,
+    actions: ["gcp-platform/project.create", "gcp-platform/app-hosting.create"],
+    parameters: {
+      type: "object",
+      required: ["projectId"],
+      properties: {
+        projectId: { type: "string", title: "Project ID", minLength: 6, pattern: "^[a-z][a-z0-9-]*$", "x-vertra-pattern-message": "Lowercase letters, digits and hyphens.", "x-vertra-group": "Project" },
+        regions: { type: "array", title: "Regions", items: { type: "string" } },
+      },
+    },
+  };
+
+  it("checks what's typed on its field, then runs it with typed values and opens the run", async () => {
+    const ran: Record<string, unknown>[] = [];
+    await renderAt("/catalog/run?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, {
+      "TemplateService/ListTemplates": { runnables: [TEMPLATE] },
+      "TemplateService/RunTemplate": (request: Record<string, unknown>) => {
+        ran.push(request);
+        return { executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11" };
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "App on Cloud Run" })).toBeTruthy();
+    expect(screen.getByText("Project")).toBeTruthy();
+    expect(screen.getByText("app-hosting · create")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText(/project id/i), { target: { value: "Orders_API" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(await screen.findByText("Lowercase letters, digits and hyphens.")).toBeTruthy();
+    expect(ran).toEqual([]);
+
+    fireEvent.change(screen.getByLabelText(/project id/i), { target: { value: "orders-api" } });
+    fireEvent.change(screen.getByLabelText("Regions, item 1"), { target: { value: "us-central1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    await waitFor(() => { expect(ran).toEqual([{ team: "gcp-platform", name: "app-on-cloud-run", parameters: { projectId: "orders-api", regions: ["us-central1"] } }]); });
+    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
+  });
+
+  it("opens from an old catalog link", async () => {
+    await renderAt("/catalog?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, { "TemplateService/ListTemplates": { runnables: [TEMPLATE] } });
+    expect(await screen.findByLabelText(/project id/i)).toBeTruthy();
   });
 });
 

@@ -238,7 +238,7 @@ function ProductAccordion({ product, runnable }: { product: Product; runnable: b
         {runnable && (
           <Button
             component={RouterLink}
-            to={`/catalog?action=${encodeURIComponent(product.name)}`}
+            to={`/catalog/run?action=${encodeURIComponent(product.name)}`}
             size="small"
             variant="outlined"
             sx={{ mb: 1 }}

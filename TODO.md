@@ -686,22 +686,20 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   managed on the team's page, separately from the catalog's CODEOWNERS.
 - [ ] **Set the catalog repository on the Admin page** instead of the
   `secretSources.catalogRepo` Helm setting, for the secret-setup guides.
-- [ ] **Run forms generated from each action's input schema** (agreed
-  2026-10-19). `product.yaml` already declares an input and output JSON
-  Schema per action, and the console stores them, but no page builds a
-  form from them and no submission is checked against them. Render them
-  with `@rjsf/mui` (react-jsonschema-form, MUI theme): labels from
-  `title`, help from `description`, `default`, `enum` as selects,
-  `pattern`/limits as inline validation, `required`, key/value lists for
-  string maps, repeatable rows for arrays. Template parameters use the
-  same schema shape, so one renderer serves products and templates. A
-  short, validated `x-vertra` hint vocabulary in `product.schema.json`
-  for what JSON Schema can't say: `patternMessage`, `options: targets`
-  (the owning team's allowed projects or folders for the caller's team),
-  `order`, `group`, `widget: textarea`. Never render a secret field
-  (secrets come from `secretRefs`); hide inputs a template binds itself.
-  The same schema then validates the submission in the console and the
-  resolved inputs before a step starts.
+- [x] **Run forms generated from each action's input schema** (done
+  2026-10-23). The Catalog's Run opens a page (`/catalog/run`) whose form
+  comes from the template's parameters or the action's input schema
+  (`console/frontend/src/schemaForm.ts`): labels from `title`, help from
+  `description`, defaults, `enum` as a choice, `required`, `pattern`,
+  lengths and limits checked on the field before sending, lists for arrays
+  of text or numbers, name/value rows for string maps, JSON for the rest;
+  targets (`x-vertra-needs`) offered from what the owning team allows. Form
+  hints, checked by `./vertra catalog validate`: `x-vertra-order`,
+  `x-vertra-group`, `x-vertra-widget: textarea`, `x-vertra-pattern-message`.
+  Our own small renderer rather than `@rjsf/mui`, which would have been a
+  large dependency to restyle. Secrets were never inputs (they come from
+  `secretRefs`); the console and kernel already check inputs against the
+  schema.
 - [ ] **Show a product's latest tag** where people build DAGs.
 - [ ] **Stop reading `externalReference` and `idempotencyKey`** (now
   `name` and `requestId`; submissions over Connect can't send them) once

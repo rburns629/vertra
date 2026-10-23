@@ -404,3 +404,25 @@ func TestErrorHelp(t *testing.T) {
 		}
 	}
 }
+
+// An input schema's form hints (x-vertra-order, -group, -widget,
+// -pattern-message) are checked: a misspelt widget or a non-number order is
+// named, so a form doesn't silently ignore it.
+func TestFormHintsAreChecked(t *testing.T) {
+	withHints := func(hints string) string {
+		return strings.Replace(productFile("mine", "a", "[]"), "        text: {type: string}\n", "        text: {type: string, "+hints+"}\n", 1)
+	}
+	validate := func(c *Catalog) bool { return c.ValidateProduct(c.AllProducts()[0]) }
+	good := catalogWith(t, map[string]string{"teams/a/products/mine/product.yaml": withHints(
+		`x-vertra-order: 1, x-vertra-group: Project, x-vertra-widget: textarea, pattern: "^[a-z]+$", x-vertra-pattern-message: lowercase letters`)})
+	if out := errorsOf(t, validate, good); strings.Contains(out, "x-vertra") {
+		t.Errorf("good hints refused:\n%s", out)
+	}
+	bad := catalogWith(t, map[string]string{"teams/a/products/mine/product.yaml": withHints(`x-vertra-widget: bigbox, x-vertra-order: first`)})
+	out := errorsOf(t, validate, bad)
+	for _, want := range []string{"x-vertra-widget", "x-vertra-order"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("no %q in:\n%s", want, out)
+		}
+	}
+}

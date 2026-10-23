@@ -131,6 +131,27 @@ them to what the action really takes and returns, and self-contained (no
 [tools/product.schema.json](tools/product.schema.json); `./vertra catalog validate`
 checks against it. There's no image field: the image comes from the folder.
 
+The console builds the form someone fills in to run an action (or a
+template, from its `parameters`) from the same schema: `title` and
+`description` label and explain each field, `default` fills it, `enum`
+makes a choice, an array of text or numbers a list, an object of strings
+name/value rows, and `required`, `pattern`, lengths and limits are checked
+on the field before anything is sent. Four hints shape the form, and
+`./vertra catalog validate` checks them:
+
+```yaml
+properties:
+  projectId:
+    type: string
+    pattern: "^[a-z][a-z0-9-]{5,29}$"
+    x-vertra-pattern-message: 6 to 30 lowercase letters, digits or hyphens, starting with a letter
+    x-vertra-order: 1          # lower first; the rest follow as written
+    x-vertra-group: Project    # a heading, shared by the fields that name it
+  notes:
+    type: string
+    x-vertra-widget: textarea  # a big box
+```
+
 An action's `secretRefs` are its bindings, reviewed with the code that
 reads them: the team secrets it uses, each mounted at
 `/platform/secrets/<name>/<key>`. Today a DAG still lists the secrets a step
@@ -221,7 +242,7 @@ A team's `dags/` folder holds two kinds of file:
   takes (images, teams, inputs): examples and walkthroughs.
 
 Each install runs your templates from the catalog's release: anyone they're
-shared with fills in the parameters on the console's **Run** page
+shared with fills in the parameters from the console's **Catalog** (its Run)
 (or `TemplateService/RunTemplate`), and nothing else. Each step runs its product as its
 ServiceAccount, with its action's own `secretRefs`, in its team's
 namespace, whoever runs it; the person running it can see, cancel, retry

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, Navigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -15,8 +15,8 @@ import Typography from "@mui/material/Typography";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { Pill } from "../components/Pill";
-import { RunDialog } from "../components/RunDialog";
 import { ApiError, listRunnables, type Runnable } from "../api";
+import { runLink } from "./RunFormPage";
 
 /** How a runnable is named in links: ?template=<team>/<name> or ?action=<product>. */
 function linkKey(r: Runnable): string {
@@ -49,7 +49,7 @@ function State({ r }: { r: Runnable }) {
   return <Pill tone="success">Ready</Pill>;
 }
 
-function CatalogCard({ r, onRun }: { r: Runnable; onRun: (r: Runnable) => void }) {
+function CatalogCard({ r }: { r: Runnable }) {
   const inputs = inputsOf(r);
   const steps = r.actions.length;
   return (
@@ -93,7 +93,7 @@ function CatalogCard({ r, onRun }: { r: Runnable; onRun: (r: Runnable) => void }
               : `Only ${r.team} runs it.`}
         </Typography>
         {r.shared ? (
-          <Button variant="contained" onClick={() => { onRun(r); }}>
+          <Button variant="contained" component={RouterLink} to={runLink(r)}>
             Run
           </Button>
         ) : r.askForAccessUrl ? (
@@ -120,8 +120,8 @@ function CatalogCard({ r, onRun }: { r: Runnable; onRun: (r: Runnable) => void }
  * parameters; its steps' images, identities and secrets are its products'
  * (../../../src/core/templates.ts).
  *
- * ?template=<team>/<name> or ?action=<product> opens one straight away (the
- * product list links here that way).
+ * Run opens its form (RunFormPage); an old link here with ?template= or
+ * ?action= goes there.
  */
 export function CatalogPage() {
   const [runnables, setRunnables] = useState<Runnable[] | null>(null);
@@ -129,8 +129,7 @@ export function CatalogPage() {
   const [search, setSearch] = useState("");
   const [team, setTeam] = useState<string | null>(null);
   const [runnableOnly, setRunnableOnly] = useState(false);
-  const [params, setParams] = useSearchParams();
-  const [open, setOpen] = useState<Runnable | null>(null);
+  const [params] = useSearchParams();
 
   useEffect(() => {
     listRunnables()
@@ -139,24 +138,6 @@ export function CatalogPage() {
         setError(err instanceof ApiError ? err.message : "Couldn't load the catalog.");
       });
   }, []);
-
-  // A link to one opens it once the list is in.
-  useEffect(() => {
-    if (!runnables) return;
-    const template = params.get("template");
-    const action = params.get("action");
-    const wanted = template ? `template:${template}` : action ? `action:${action}` : null;
-    if (!wanted) return;
-    const found = runnables.find((r) => linkKey(r) === wanted);
-    if (found?.shared) setOpen(found);
-    else if (found) setError(`"${found.displayName}" isn't shared with you: ask its team for access.`);
-    else setError(`Nothing called "${template ?? action ?? ""}" is shared with you.`);
-  }, [runnables, params]);
-
-  const close = () => {
-    setOpen(null);
-    if (params.has("template") || params.has("action")) setParams({}, { replace: true });
-  };
 
   const teams = useMemo(() => [...new Set((runnables ?? []).map((r) => r.team))].sort(), [runnables]);
   const query = search.trim().toLowerCase();
@@ -169,6 +150,9 @@ export function CatalogPage() {
     [runnables, team, runnableOnly, query],
   );
   const repository = runnables ? repositoryOf(runnables) : null;
+
+  // Links from before the run page (?template=, ?action=) open it.
+  if (params.has("template") || params.has("action")) return <Navigate to={`/catalog/run?${params.toString()}`} replace />;
 
   return (
     <Box>
@@ -245,11 +229,10 @@ export function CatalogPage() {
 
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 2 }}>
         {shown.map((r) => (
-          <CatalogCard key={linkKey(r)} r={r} onRun={setOpen} />
+          <CatalogCard key={linkKey(r)} r={r} />
         ))}
       </Box>
 
-      {open && <RunDialog runnable={open} onClose={close} />}
     </Box>
   );
 }

@@ -153,6 +153,13 @@
       "properties": {
         "type": {
           "const": "object"
+        },
+        "properties": {
+          "description": "Its fields: each becomes one in the console's form.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/formField"
+          }
         }
       }
     },
@@ -314,6 +321,34 @@
           }
         }
       ]
+    },
+    "formField": {
+      "description": "One field of the form the console builds from this schema. Any JSON Schema keyword; these hints only shape the form.",
+      "type": "object",
+      "properties": {
+        "x-vertra-order": {
+          "type": "integer",
+          "description": "Where the field comes in the form: lower first; fields without one follow, in the order written."
+        },
+        "x-vertra-group": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "A heading the field is shown under, with the others that name it."
+        },
+        "x-vertra-widget": {
+          "enum": [
+            "textarea"
+          ],
+          "description": "textarea: a big box, for long text."
+        },
+        "x-vertra-pattern-message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "What the field's pattern means, said when a value doesn't match it (instead of the pattern itself)."
+        }
+      }
     }
   }
 }
