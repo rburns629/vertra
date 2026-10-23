@@ -14,6 +14,7 @@ import { useAuth } from "../auth/AuthContext";
 import { StatusBadge } from "../components/StatusBadge";
 import { computeStages } from "../dagLayout";
 import { duration, useNow, when } from "../time";
+import type { RunFrom } from "./RunFormPage";
 import { FailureCard } from "./run/FailureCard";
 import { RunTimeline } from "./run/RunTimeline";
 import { StepPanel } from "./run/StepPanel";
@@ -50,6 +51,18 @@ function source(execution: ExecutionDetail): string {
   const slash = template?.indexOf("/") ?? -1;
   if (!template || slash < 0) return "a DAG";
   return `${template.slice(slash + 1)} by ${template.slice(0, slash)}`;
+}
+
+/**
+ * The run form for what this run ran, when it was a template or an action run
+ * alone. It runs the catalog's current version, so an image this run used
+ * being gone doesn't stop it.
+ */
+function formFor(execution: ExecutionDetail): string | null {
+  const ref = execution.template;
+  if (!ref || execution.templateParameters === null) return null;
+  const kind = /^[a-z0-9-]+\/[a-z0-9-]+\.[a-z0-9-]+$/.test(ref) ? "action" : "template";
+  return `/catalog/run?${kind}=${encodeURIComponent(ref)}`;
 }
 
 /**
@@ -124,6 +137,7 @@ export function ExecutionDetailPage() {
   const took = duration((live ? now : lastChange) - Date.parse(execution.createdAt));
   const startedBy = execution.submittedBy && execution.submittedBy === user?.email ? "you" : (execution.submittedBy ?? "someone since removed");
   const rerunBlocked = execution.runBlocked?.message ?? (execution.payload === null ? "This run predates stored submissions, so there's nothing to replay." : null);
+  const form = formFor(execution);
   const retry = (taskId: string) => act(taskId, () => retryTask(id, taskId), "Couldn't retry it.");
 
   return (
@@ -148,7 +162,7 @@ export function ExecutionDetailPage() {
             {execution.onBehalfOf && ` (${execution.onBehalfOf})`} {when(execution.createdAt)} · {source(execution)}
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Tooltip title={rerunBlocked ?? ""}>
             <span>
               <Button variant="outlined" disabled={busy === "rerun" || rerunBlocked !== null} onClick={() => void rerun()}>
@@ -156,6 +170,17 @@ export function ExecutionDetailPage() {
               </Button>
             </span>
           </Tooltip>
+          {form && (
+            <Button
+              variant="outlined"
+              onClick={() => {
+                const from: RunFrom = { name: execution.name, parameters: execution.templateParameters ?? {}, onBehalfOf: execution.onBehalfOf };
+                navigate(form, { state: { from } });
+              }}
+            >
+              Run with changes
+            </Button>
+          )}
           {live && (
             <Button variant="outlined" color="error" disabled={busy === "cancel"} onClick={() => void act("cancel", () => cancelExecution(id), "Couldn't cancel it.")}>
               {busy === "cancel" ? "Cancelling…" : "Cancel run"}

@@ -462,6 +462,33 @@ describe("a run form", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
   });
 
+  it("runs again with changes, filled in from the run, and shows itself as an API call", async () => {
+    const run = {
+      executionId: "5a1d9c0e-2f4b-4e7a-9c3d-1b2a3c4d5e6f",
+      name: "orders-api on Cloud Run",
+      state: "EXECUTION_STATE_SUCCEEDED",
+      teams: ["gcp-platform"],
+      createdAt: "2026-10-21T16:20:00Z",
+      tasks: [{ taskId: "project", state: "TASK_STATE_SUCCEEDED", attemptCount: 1, attempts: [{ number: 1, startedAt: "2026-10-21T16:20:01Z", completedAt: "2026-10-21T16:21:00Z" }] }],
+      dag: { name: "orders-api on Cloud Run", tasks: [{ id: "project", image: "registry.example/project@sha256:aa", action: "create", team: "gcp-platform" }] },
+      template: "gcp-platform/app-on-cloud-run",
+      templateParameters: { projectId: "orders-api", regions: ["us-central1"] },
+    };
+    await renderAt(`/runs/${run.executionId}`, MEMBER, {
+      "ExecutionService/WatchExecution": [{ execution: run }],
+      "TemplateService/ListTemplates": { runnables: [TEMPLATE] },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Run with changes" }));
+    expect(await screen.findByText(/filled in from orders-api on cloud run/i)).toBeTruthy();
+    expect((screen.getByLabelText(/project id/i) as HTMLInputElement).value).toBe("orders-api");
+    expect((screen.getByLabelText("Regions, item 1") as HTMLInputElement).value).toBe("us-central1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show as an API call" }));
+    const call = screen.getByText(/TemplateService\/RunTemplate/).textContent ?? "";
+    expect(call).toContain('"projectId": "orders-api"');
+    expect(call).toContain("Bearer $VERTRA_TOKEN");
+  });
+
   it("opens from an old catalog link", async () => {
     await renderAt("/catalog?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, { "TemplateService/ListTemplates": { runnables: [TEMPLATE] } });
     expect(await screen.findByLabelText(/project id/i)).toBeTruthy();

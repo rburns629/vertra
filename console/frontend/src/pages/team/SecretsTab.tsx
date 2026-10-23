@@ -14,7 +14,8 @@ import { AddSecretFlow, type AddSecretPrefill } from "./AddSecretFlow";
 import { ConnectSource } from "./ConnectSource";
 import { StoredCredential } from "./StoredCredential";
 import { gcpAccessFix } from "./providers";
-import {CodeBlock, Facts, SectionHeader, TabIntro, errorMessage, relativeTime, shortDuration } from "./shared";
+import { CodeBlock } from "../../components/CodeBlock";
+import { Facts, SectionHeader, TabIntro, errorMessage, relativeTime, shortDuration } from "./shared";
 import { Mono } from "../../components/Mono";
 
 type View = { kind: "overview" } | { kind: "add"; prefill?: AddSecretPrefill } | { kind: "connect" };

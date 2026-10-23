@@ -12,7 +12,8 @@ import {
 } from "../../api";
 import { secretStatus } from "./SecretsTab";
 import { gcpAccessFix, providerGuide } from "./providers";
-import {ChoiceCard, CodeBlock, Steps, errorMessage } from "./shared";
+import { CodeBlock } from "../../components/CodeBlock";
+import { ChoiceCard, Steps, errorMessage } from "./shared";
 import { Mono } from "../../components/Mono";
 
 /** Pre-filled fields, e.g. when registering an ExternalSecret that was

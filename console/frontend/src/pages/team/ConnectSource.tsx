@@ -4,7 +4,8 @@ import { Alert, Box, Button, Card, CardContent, Chip, Link, Stack, TextField, Ty
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { getPlatform, type PlatformInfo } from "../../api";
 import { PROVIDERS, newFileUrl, type ProviderId } from "./providers";
-import {ChoiceCard, CodeBlock, Facts, NotYetTested, Steps, errorMessage } from "./shared";
+import { CodeBlock } from "../../components/CodeBlock";
+import { ChoiceCard, Facts, NotYetTested, Steps, errorMessage } from "./shared";
 import { Mono } from "../../components/Mono";
 
 /**

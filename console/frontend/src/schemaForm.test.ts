@@ -37,6 +37,11 @@ describe("a run form from a schema", () => {
     expect(initialValues(schema, fields)).toEqual({ text: "", count: "2", loud: false, colour: "", labels: "" });
   });
 
+  it("starts from an earlier run's values over the defaults", () => {
+    const fields = fieldsOf(schema) ?? [];
+    expect(initialValues(schema, fields, { text: "hi", count: 5, loud: true })).toEqual({ text: "hi", count: "5", loud: true, colour: "", labels: "" });
+  });
+
   it("sends each value as its type, leaves empty ones out, and says what can't be read", () => {
     const fields = fieldsOf(schema) ?? [];
     expect(toParameters(fields, { text: "hi", count: "3", loud: true, colour: "3", labels: '{"a":1}' })).toEqual({

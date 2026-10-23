@@ -555,7 +555,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   id, link), shown per run and searchable; cleanup runs products' `delete`
   actions in reverse.
 - [ ] **P2: notifications** (failure, finish, a product not ready, the
-  catalog not pulled), **copy as API call**, **run again with changes**.
+  catalog not pulled).
+- [x] **P2: copy as API call, run again with changes** (done 2026-10-23):
+  the run form's **Show as an API call** (the same run as `curl`, proven
+  against kind), and a run's **Run with changes** (its form, filled in from
+  the run; the catalog's current version, so a gone image doesn't stop it).
 - [ ] **Scale-down for development installs only**: say so in
   `vertra init`, and let schedules wake a sleeping install.
 - [ ] **Trace what a retired team's running executions do** (not checked in

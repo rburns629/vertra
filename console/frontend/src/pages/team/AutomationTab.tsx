@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, TextField, Typography } from "@mui/material";
 import { createBot, listBots, revokeToken, type Bot } from "../../api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import {CodeBlock, TabIntro, errorMessage, relativeTime } from "./shared";
+import { CodeBlock } from "../../components/CodeBlock";
+import { TabIntro, errorMessage, relativeTime } from "./shared";
 import { Mono } from "../../components/Mono";
 
 /** A bot's email is just its identity here, never mailed: derived from

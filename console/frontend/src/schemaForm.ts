@@ -143,13 +143,13 @@ export function groupsOf(fields: Field[]): { group: string | undefined; fields: 
   return groups;
 }
 
-/** The form's starting values: each property's default, else empty. */
-export function initialValues(schema: Record<string, unknown>, fields: Field[]): Values {
+/** The form's starting values: what's given (an earlier run's), else each property's default, else empty. */
+export function initialValues(schema: Record<string, unknown>, fields: Field[], given: Record<string, unknown> = {}): Values {
   const properties = isRecord(schema["properties"]) ? schema["properties"] : {};
   const values: Values = {};
   for (const field of fields) {
     const property = properties[field.name];
-    const fallback = isRecord(property) ? property["default"] : undefined;
+    const fallback = field.name in given ? given[field.name] : isRecord(property) ? property["default"] : undefined;
     if (field.kind === "boolean") values[field.name] = fallback === true;
     else if (field.kind === "list") values[field.name] = Array.isArray(fallback) ? fallback.map(String) : [];
     else if (field.kind === "map") values[field.name] = isRecord(fallback) ? Object.entries(fallback).map(([k, v]): [string, string] => [k, String(v)]) : [];

@@ -64,6 +64,11 @@ anything runs. A template shared with specific teams runs on behalf of one
 of yours (`onBehalfOf`). `TemplateService/RunAction` runs one shared action
 the same way, its inputs as the parameters.
 
+The quickest way to get one right: fill in its form in the console
+(**Catalog**, then **Run**) and choose **Show as an API call**, which gives
+the same run as a `curl` command to copy. A run's page has **Run with
+changes**, which opens that form filled in with what the run was given.
+
 ## 3. Wait for it to finish
 
 Ask for the execution until its `state` is `EXECUTION_STATE_SUCCEEDED`, `_FAILED` or `_CANCELLED`:

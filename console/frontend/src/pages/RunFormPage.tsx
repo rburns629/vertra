@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -11,6 +11,7 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ApiError, listRunnables, runRunnable, type Runnable } from "../api";
+import { CodeBlock } from "../components/CodeBlock";
 import { Pill } from "../components/Pill";
 import { fieldsOf, groupsOf, initialValues, serverProblems, toParameters, withTargets, type FieldValue, type Values } from "../schemaForm";
 import { FieldInput } from "./catalog/FieldInput";
@@ -18,6 +19,39 @@ import { FieldInput } from "./catalog/FieldInput";
 /** How a runnable is named in this page's address: ?template=<team>/<name> or ?action=<product>. */
 export function runLink(r: Pick<Runnable, "kind" | "team" | "name">): string {
   return r.kind === "template" ? `/catalog/run?template=${encodeURIComponent(`${r.team}/${r.name}`)}` : `/catalog/run?action=${encodeURIComponent(r.name)}`;
+}
+
+/** An earlier run to start from ("Run again with changes" on a run's page), passed as the page's state. */
+export interface RunFrom {
+  name: string;
+  parameters: Record<string, unknown>;
+  onBehalfOf: string | null;
+}
+
+function runFromState(state: unknown): RunFrom | undefined {
+  if (typeof state !== "object" || state === null || !("from" in state)) return undefined;
+  const from = state.from as Partial<RunFrom> | null;
+  if (typeof from?.name !== "string" || typeof from.parameters !== "object" || from.parameters === null) return undefined;
+  return { name: from.name, parameters: from.parameters, onBehalfOf: typeof from.onBehalfOf === "string" ? from.onBehalfOf : null };
+}
+
+/**
+ * The same run as a curl command against the console's API
+ * (console/docs/05-calling-the-api.md), for a pipeline with a bot's token.
+ */
+export function apiCall(runnable: Pick<Runnable, "kind" | "team" | "name">, parameters: Record<string, unknown>, onBehalfOf: string, origin: string): string {
+  const forTeam = onBehalfOf ? { onBehalfOf } : {};
+  const [method, body] =
+    runnable.kind === "template"
+      ? ["RunTemplate", { team: runnable.team, name: runnable.name, parameters, ...forTeam }]
+      : ["RunAction", { product: runnable.name, inputs: parameters, ...forTeam }];
+  const json = JSON.stringify(body, null, 2).replaceAll("'", "'\\''");
+  return [
+    `curl -s -X POST "${origin}/api/vertra.console.v1.TemplateService/${method}" \\`,
+    `  -H "Authorization: Bearer $VERTRA_TOKEN" \\`,
+    `  -H "Content-Type: application/json" \\`,
+    `  -d '${json}'`,
+  ].join("\n");
 }
 
 /** "gcp-platform/project.create" → its parts, for "What will run". */
@@ -28,12 +62,19 @@ function stepOf(action: string): { team: string; product: string; action: string
 }
 
 /** The form for one runnable, once it's found. */
-function RunForm({ runnable }: { runnable: Runnable }) {
+function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undefined }) {
   const navigate = useNavigate();
   const fields = useMemo(() => withTargets(fieldsOf(runnable.parameters), runnable.targets), [runnable]);
-  const [values, setValues] = useState<Values>(() => (fields ? initialValues(runnable.parameters, fields) : {}));
-  const [json, setJson] = useState("{}");
-  const [team, setTeam] = useState(runnable.onBehalfOfRequired && runnable.onBehalfOf.length === 1 ? (runnable.onBehalfOf[0] ?? "") : "");
+  const [values, setValues] = useState<Values>(() => (fields ? initialValues(runnable.parameters, fields, from?.parameters) : {}));
+  const [json, setJson] = useState(() => JSON.stringify(from?.parameters ?? {}, null, 2));
+  const [team, setTeam] = useState(
+    from?.onBehalfOf && runnable.onBehalfOf.includes(from.onBehalfOf)
+      ? from.onBehalfOf
+      : runnable.onBehalfOfRequired && runnable.onBehalfOf.length === 1
+        ? (runnable.onBehalfOf[0] ?? "")
+        : "",
+  );
+  const [showCall, setShowCall] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
@@ -81,6 +122,21 @@ function RunForm({ runnable }: { runnable: Runnable }) {
     setFieldErrors(({ [name]: _cleared, ...rest }) => rest);
   };
 
+  /** What the form would send now, for the API call; null while something can't be read. */
+  function current(): Record<string, unknown> | null {
+    if (fields) {
+      const typed = toParameters(fields, values);
+      return Object.keys(typed.errors).length > 0 ? null : typed.parameters;
+    }
+    try {
+      const parsed: unknown = JSON.parse(json);
+      return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  const parameters = showCall ? current() : null;
+
   const steps = runnable.actions.map(stepOf);
   return (
     <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start" }}>
@@ -88,6 +144,7 @@ function RunForm({ runnable }: { runnable: Runnable }) {
         <Typography variant="h6" component="h2">
           Inputs
         </Typography>
+        {from && <Alert severity="info">Filled in from {from.name}. Change what you need, then run it.</Alert>}
         {fields ? (
           groupsOf(fields).map(({ group, fields: shown }) => (
             <Box key={group ?? "-"} component={group ? "fieldset" : "div"} sx={{ border: 0, m: 0, p: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: 2.5 }}>
@@ -181,6 +238,25 @@ function RunForm({ runnable }: { runnable: Runnable }) {
             </Link>
           )}
         </Card>
+        <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5, alignItems: "flex-start" }}>
+          <Typography variant="h6" component="h2">
+            From a pipeline
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            The same run with these inputs, as a call to the console&apos;s API with a bot&apos;s token (your team&apos;s Automation tab).
+          </Typography>
+          {!showCall ? (
+            <Button variant="outlined" size="small" onClick={() => { setShowCall(true); }}>
+              Show as an API call
+            </Button>
+          ) : parameters ? (
+            <CodeBlock code={apiCall(runnable, parameters, team, window.location.origin)} copyLabel="Copy the call" />
+          ) : (
+            <Typography variant="body2" color="error">
+              Fix the inputs to see the call.
+            </Typography>
+          )}
+        </Card>
       </Box>
     </Box>
   );
@@ -188,13 +264,15 @@ function RunForm({ runnable }: { runnable: Runnable }) {
 
 /**
  * Running a template, or an action on its own (?template=<team>/<name> or
- * ?action=<product>): a form from its schema, which of your teams it runs
+ * ?action=<product>, or the <team>/<product>.<action> a run records): a
+ * form from its schema, filled in from an earlier run when there is one, which of your teams it runs
  * for when its sharing needs one, and what will run. Nothing else is chosen
  * here: each step's image, identity, secrets and namespace are its
  * product's (../../src/core/templates.ts). On success it opens the run.
  */
 export function RunFormPage() {
   const [params] = useSearchParams();
+  const from = runFromState(useLocation().state);
   const [runnables, setRunnables] = useState<Runnable[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const template = params.get("template");
@@ -206,7 +284,7 @@ export function RunFormPage() {
       .catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't load the catalog."); });
   }, []);
 
-  const runnable = runnables?.find((r) => (template ? r.kind === "template" && `${r.team}/${r.name}` === template : r.kind === "action" && r.name === action));
+  const runnable = runnables?.find((r) => (template ? r.kind === "template" && `${r.team}/${r.name}` === template : r.kind === "action" && (r.name === action || r.actions[0] === action)));
   const problem =
     error ??
     (runnables && !runnable ? `Nothing called "${template ?? action ?? ""}" is in the catalog for you.` : null) ??
@@ -253,7 +331,7 @@ export function RunFormPage() {
           <CircularProgress size={28} aria-label="Loading" />
         </Box>
       )}
-      {runnable?.shared && <RunForm key={`${runnable.kind}:${runnable.team}/${runnable.name}`} runnable={runnable} />}
+      {runnable?.shared && <RunForm key={`${runnable.kind}:${runnable.team}/${runnable.name}`} runnable={runnable} from={from} />}
     </Box>
   );
 }
