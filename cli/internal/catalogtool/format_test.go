@@ -426,3 +426,44 @@ func TestFormHintsAreChecked(t *testing.T) {
 		}
 	}
 }
+
+// An action's cleanup names another action of its product and, when it maps
+// inputs, things the action has; a release carries it.
+func TestCleanupIsChecked(t *testing.T) {
+	deleteAction := "  - name: delete\n    input: {type: object}\n    output: {type: object}\n"
+	check := func(cleanup string) (string, *Product) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    shareWith: []\n"+cleanup, 1) + deleteAction
+		files["teams/a/products/mine/tests/delete/gone/request.json"] = `{"inputs": {}}`
+		files["teams/a/products/mine/tests/delete/gone/expected.json"] = `{"status": "succeeded"}`
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p
+	}
+	out, p := check("    cleanup:\n      action: delete\n      inputs: {project: {$input: text}, said: {$output: text}, id: {$resource: id}, force: true}\n")
+	if out != "" {
+		t.Fatalf("a good cleanup was refused:\n%s", out)
+	}
+	actions, err := p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || actions[0].GetCleanup().GetAction() != "delete" || actions[0].GetCleanup().GetInputs().AsMap()["force"] != true {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	if out, p := check("    cleanup: {action: delete}\n"); out != "" {
+		t.Errorf("a cleanup with no inputs was refused:\n%s", out)
+	} else if actions, _ := p.ReleaseActions("r@sha256:abc"); actions[0].GetCleanup().GetInputs() != nil {
+		t.Errorf("no inputs became %v", actions[0].GetCleanup().GetInputs())
+	}
+	for cleanup, want := range map[string]string{
+		"    cleanup: {action: remove}\n":                                             "cleanup names 'remove', which this product doesn't have",
+		"    cleanup: {action: run}\n":                                                "cleanup names the action itself",
+		"    cleanup: {action: delete, inputs: {a: {$input: colour}}}\n":              "cleanup input 'a' names 'colour', which its input doesn't have",
+		"    cleanup: {action: delete, inputs: {a: {$output: size}}}\n":               "cleanup input 'a' names 'size', which its output doesn't have",
+		"    cleanup: {action: delete, inputs: {a: {$resource: owner}}}\n":            "$resource is type, id, name or link, not 'owner'",
+		"    cleanup: {action: delete, inputs: {a: {$step: x}}}\n":                    "$step isn't $input, $output or $resource",
+		"    cleanup: {action: delete, inputs: {a: {$input: text, $output: text}}}\n": "refers to more than one thing",
+	} {
+		if out, _ := check(cleanup); !strings.Contains(out, want) {
+			t.Errorf("%q: no %q in:\n%s", cleanup, want, out)
+		}
+	}
+}

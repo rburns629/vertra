@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -359,6 +360,9 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 				}
 			}
 		}
+		for _, action := range p.Actions() {
+			problems = append(problems, cleanupProblems(action, names)...)
+		}
 		problems = append(problems, c.testLayoutProblems(p, names)...)
 	}
 	dockerfile := filepath.Join(p.Dir, "Dockerfile")
@@ -395,4 +399,65 @@ func (c *Catalog) testLayoutProblems(p *Product, actions map[string]bool) []stri
 		problems = append(problems, "no tests: add tests/<action>/<case>/{request.json,expected.json} (see templates/hello)")
 	}
 	return problems
+}
+
+// cleanupProblems is what's wrong with an action's cleanup: it names
+// another action of its product, and each mapped input that refers to
+// something ({$input: ...}, {$output: ...}, {$resource: ...}) names
+// something the action has.
+func cleanupProblems(action map[string]any, actions map[string]bool) []string {
+	cleanup, ok := action["cleanup"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	name, _ := action["name"].(string)
+	var problems []string
+	switch target, _ := cleanup["action"].(string); {
+	case target == name:
+		problems = append(problems, fmt.Sprintf("action %s: cleanup names the action itself", name))
+	case !actions[target]:
+		problems = append(problems, fmt.Sprintf("action %s: cleanup names %s, which this product doesn't have", name, quote(target)))
+	}
+	propsOf := func(side string) map[string]any {
+		schema, _ := action[side].(map[string]any)
+		props, _ := schema["properties"].(map[string]any)
+		return props
+	}
+	inputs, _ := cleanup["inputs"].(map[string]any)
+	for key, value := range inputs {
+		ref, ok := value.(map[string]any)
+		if !ok || !hasDollarKey(ref) {
+			continue
+		}
+		if len(ref) != 1 {
+			problems = append(problems, fmt.Sprintf("action %s: cleanup input %s refers to more than one thing", name, quote(key)))
+			continue
+		}
+		for kind, raw := range ref {
+			field, _ := raw.(string)
+			switch kind {
+			case "$input", "$output":
+				if _, ok := propsOf(kind[1:])[field]; !ok {
+					problems = append(problems, fmt.Sprintf("action %s: cleanup input %s names %s, which its %s doesn't have", name, quote(key), quote(field), kind[1:]))
+				}
+			case "$resource":
+				if !slices.Contains([]string{"type", "id", "name", "link"}, field) {
+					problems = append(problems, fmt.Sprintf("action %s: cleanup input %s: $resource is type, id, name or link, not %s", name, quote(key), quote(field)))
+				}
+			default:
+				problems = append(problems, fmt.Sprintf("action %s: cleanup input %s: %s isn't $input, $output or $resource", name, quote(key), kind))
+			}
+		}
+	}
+	sort.Strings(problems)
+	return problems
+}
+
+func hasDollarKey(m map[string]any) bool {
+	for k := range m {
+		if strings.HasPrefix(k, "$") {
+			return true
+		}
+	}
+	return false
 }

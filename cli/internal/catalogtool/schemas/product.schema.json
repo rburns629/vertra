@@ -276,6 +276,25 @@
             "always",
             "otherTeams"
           ]
+        },
+        "cleanup": {
+          "description": "What removes what this action makes or changes, for the resources its steps report in their output's resources ([{type, id, name, link}]). The console records those with the step's inputs and outputs, so they can be deleted months later, after the run itself is gone: deleting one runs action, of this product, as a run of its own. Left out, the console can show what a step made but not delete it.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action"
+          ],
+          "properties": {
+            "action": {
+              "description": "The action of this product that removes a resource, such as delete. It must say what it does when the resource is already gone: succeed.",
+              "$ref": "#/$defs/dnsLabel"
+            },
+            "inputs": {
+              "description": "That action's inputs. Left out: {\"resource\": {...}}, the one resource as reported. Given, exactly these: each a value, or {$input: <name>} (this step's input), {$output: <name>} (its output) or {$resource: type|id|name|link} (the resource's field).",
+              "type": "object",
+              "maxProperties": 32
+            }
+          }
         }
       },
       "allOf": [

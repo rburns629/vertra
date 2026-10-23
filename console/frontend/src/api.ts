@@ -36,6 +36,7 @@ import { TokenService } from "./gen/vertra/console/v1/token_pb.js";
 import { UserService } from "./gen/vertra/console/v1/user_pb.js";
 import { FailureSchema, ProblemSchema } from "./gen/vertra/console/v1/common_pb.js";
 import { Runnable_Kind, TemplateService } from "./gen/vertra/console/v1/template_pb.js";
+import { ResourceService } from "./gen/vertra/console/v1/resource_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
@@ -117,6 +118,7 @@ const teams = createClient(TeamService, transport);
 const tokens = createClient(TokenService, transport);
 const users = createClient(UserService, transport);
 const templates = createClient(TemplateService, transport);
+const resourcesApi = createClient(ResourceService, transport);
 
 function apiError(error: unknown): ApiError {
   const connect = ConnectError.from(error);
@@ -1709,4 +1711,57 @@ export async function searchLogs(search: LogSearch): Promise<{ lines: LogLineVie
     truncated: found.truncated,
     searchDays: found.searchDays,
   };
+}
+
+/** Something a run made, as its step reported it (proto/vertra/console/v1/resource.proto). */
+export interface MadeResource {
+  id: string;
+  type: string;
+  externalId: string;
+  name: string | null;
+  link: string | null;
+  product: string;
+  productTeam: string;
+  /** The team it was made for; null when for whoever ran it alone. */
+  ownerTeam: string | null;
+  ownerEmail: string | null;
+  executionId: string;
+  taskId: string;
+  firstReportedAt: string;
+  state: "exists" | "deleting" | "delete_failed" | "deleted";
+  deletingExecutionId: string | null;
+  deletedAt: string | null;
+  canDelete: boolean;
+}
+
+export async function listResources(filter: { executionId?: string; team?: string; query?: string; includeDeleted?: boolean }): Promise<MadeResource[]> {
+  const { resources } = await call(() => resourcesApi.listResources(filter));
+  return resources.map((r) => ({
+    id: r.id,
+    type: r.type,
+    externalId: r.externalId,
+    name: r.name || null,
+    link: r.link || null,
+    product: r.product,
+    productTeam: r.productTeam,
+    ownerTeam: r.ownerTeam || null,
+    ownerEmail: r.ownerEmail || null,
+    executionId: r.executionId,
+    taskId: r.taskId,
+    firstReportedAt: iso(r.firstReportedAt) ?? "",
+    state: r.state as MadeResource["state"],
+    deletingExecutionId: r.deletingExecutionId || null,
+    deletedAt: iso(r.deletedAt),
+    canDelete: r.canDelete,
+  }));
+}
+
+/** Deletes resources made for one team; returns the cleanup run. */
+export async function deleteResources(resourceIds: string[]): Promise<string> {
+  return (await call(() => resourcesApi.deleteResources({ resourceIds }))).executionId;
+}
+
+/** Deletes what a run made that's still there, newest first; returns the cleanup run. */
+export async function deleteRunResources(executionId: string): Promise<string> {
+  return (await call(() => resourcesApi.deleteRunResources({ executionId }))).executionId;
 }

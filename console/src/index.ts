@@ -8,6 +8,7 @@ import authPlugin from "./auth/plugin.js";
 import { registerActivity } from "./activity.js";
 import { startCatalogSync } from "./catalogSync.js";
 import { startAuditExport } from "./auditExport.js";
+import { startResourceRecorder } from "./resourceRecorder.js";
 import { reconcileScans } from "./scanning.js";
 import { startPolicySync } from "./policySync.js";
 import { startRetention } from "./retention.js";
@@ -139,6 +140,8 @@ async function main(): Promise<void> {
   // The catalog's release (catalogSync.ts): now, then every few minutes.
   startCatalogSync(app.log);
   startAuditExport(app.log);
+  // What finished runs made (resourceRecorder.ts): now, then every 30 seconds.
+  startResourceRecorder(app.log);
   // Image scans (scanning.ts): the cluster's list of failed digests now,
   // then finished scans read, and due rescans started, every 15 seconds.
   // A failure is logged and tried again on the next round.

@@ -175,6 +175,13 @@ export const apiTokens = pgTable("api_tokens", {
  * image a team is willing to have run as their ServiceAccount, not just
  * who can read their secret once it's running.
  */
+/** An action's cleanup: which action of its product removes a resource it reported, with what inputs. */
+export interface ProductCleanup {
+  action: string;
+  /** Null: {"resource": <the resource>}. Else exactly these, with {$input}, {$output} and {$resource} filled in. */
+  inputs: Record<string, unknown> | null;
+}
+
 export const products = pgTable(
   "products",
   {
@@ -221,6 +228,10 @@ export const products = pgTable(
     // The inputs naming what a step of it changes (product.yaml's
     // concurrencyKey): the kernel runs one step per set of values at a time.
     concurrencyKey: text("concurrency_key").array().notNull().default(sql`'{}'::text[]`),
+    // What removes the resources its steps report (product.yaml's cleanup):
+    // another action of the product, and its inputs (null: {"resource":
+    // ...}). Null: nothing does (core/resources.ts).
+    cleanup: jsonb("cleanup").$type<ProductCleanup>(),
     // When a step of it waits for a maintainer of its team to approve it
     // (product.yaml's approval): always, or only when another team runs it.
     // Null: never, unless an allowedTargets rule asks (core/approvals.ts).
@@ -454,6 +465,9 @@ export const submittedExecutions = pgTable("submitted_executions", {
   templateParameters: jsonb("template_parameters"),
   onBehalfOf: text("on_behalf_of"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // When the resources its steps reported were copied into resources
+  // (resourceRecorder.ts), once it finished; null until then.
+  resourcesRecordedAt: timestamp("resources_recorded_at", { withTimezone: true }),
 }, (table) => [
   // The execution list's order and cursor (listSubmittedExecutionsPage).
   // Ascending, scanned backwards: the same order as ORDER BY ... DESC.
@@ -461,6 +475,55 @@ export const submittedExecutions = pgTable("submitted_executions", {
   // Which executions a team is part of (teams && ..., teams @> ...).
   index("submitted_executions_teams_idx").using("gin", table.teams),
 ]);
+
+/**
+ * What runs made or changed: each resource a step reported in its outputs
+ * (`resources: [{type, id, name, link}]`), copied when its run finished
+ * with that step's resolved inputs and outputs, so it can be deleted long
+ * after the run is gone (decision 21, docs/assessment.md). References only:
+ * whether it still exists is its product's cloud's to know. A later step
+ * reporting the same one (its product's team, type and id) updates it.
+ */
+export const resources = pgTable(
+  "resources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // The registered product (<team>-<product>-<action>) whose step reported
+    // it, and that product's team: its cleanup is that product's current one.
+    product: text("product").notNull(),
+    productTeam: text("product_team").notNull(),
+    type: text("type").notNull(),
+    externalId: text("external_id").notNull(),
+    name: text("name"),
+    link: text("link"),
+    // Whose it is: the team the run was for (a template's or action's run:
+    // its onBehalfOf, null for its person alone; a DAG: the step's team),
+    // and who ran it. Either may see and delete it.
+    ownerTeam: text("owner_team"),
+    ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+    // The step that last reported it, and what that step was given and gave.
+    executionId: uuid("execution_id").notNull(),
+    taskId: text("task_id").notNull(),
+    inputs: jsonb("inputs").$type<Record<string, unknown>>().notNull().default({}),
+    outputs: jsonb("outputs").$type<Record<string, unknown>>().notNull().default({}),
+    // Its step's place in its run, for deleting a run's in reverse.
+    position: integer("position").notNull().default(0),
+    firstReportedAt: timestamp("first_reported_at", { withTimezone: true }).notNull().defaultNow(),
+    reportedAt: timestamp("reported_at", { withTimezone: true }).notNull().defaultNow(),
+    // A delete in progress: the run of its cleanup action, and who asked.
+    deletingExecutionId: uuid("deleting_execution_id"),
+    deletingTaskId: text("deleting_task_id"),
+    deleteRequestedBy: uuid("delete_requested_by").references(() => users.id, { onDelete: "set null" }),
+    // Once its cleanup step succeeded.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("resources_product_team_type_external_id").on(table.productTeam, table.type, table.externalId),
+    index("resources_execution_id_idx").on(table.executionId),
+    index("resources_deleting_execution_id_idx").on(table.deletingExecutionId),
+    index("resources_owner_team_idx").on(table.ownerTeam),
+  ],
+);
 
 export const teamMemberships = pgTable(
   "team_memberships",

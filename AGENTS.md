@@ -190,7 +190,8 @@ its own directory.
 - **`catalog-template/`**: what a new catalog repository starts as
   (the `./vertra` wrapper, its workflows, the starter `templates/`, an empty `teams/`
   for the adopter's first team, and `samples/`: `local`, one no-cloud
-  product in five languages that new teams copy starters from, and `gcp`,
+  product in five languages that new teams copy starters from (and
+  `ticket`, a sample of resources and cleanup), and `gcp`,
   `aws`, `azure`, billed cloud examples; azure unproven). It's
   versioned with the platform because its release format and schemas must
   match the console's; `.github/scripts/catalog-template.sh` runs `vertra catalog`

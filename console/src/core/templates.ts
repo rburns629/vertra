@@ -46,7 +46,7 @@ import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { allowedValues, targetInputs, targetProblems } from "../targets.js";
 import { submitChecked } from "./executions.js";
 
-type TeamProduct = Product & { teamName: string };
+export type TeamProduct = Product & { teamName: string };
 
 /** Why a parameter schema can't be used, or null. */
 export const parameterSchemaProblem = schemaProblem;
@@ -431,6 +431,51 @@ export async function runTemplate(
   });
 }
 
+/** What submitted_executions.template says for a cleanup run (core/resources.ts): never a template's <team>/<name>. */
+export const CLEANUP_RUN = "cleanup";
+
+/** One step of a cleanup: a product's cleanup action, with its inputs. */
+export interface CleanupStep {
+  product: TeamProduct;
+  inputs: Record<string, unknown>;
+  label: string;
+}
+
+/**
+ * Runs cleanup steps one after another, in the order given, for a team of
+ * the caller's (or the caller alone), as a template's run is: each action
+ * must be shared with them, its inputs fit its schema, and its targets be
+ * ones they may use. Returns the run and each step's id.
+ */
+export async function runCleanup(
+  who: AuthUser,
+  name: string,
+  cleanups: CleanupStep[],
+  forTeam: string | undefined,
+  resourceIds: string[],
+  log: FastifyBaseLogger,
+): Promise<{ executionId: string; stepIds: string[] }> {
+  const steps: ResolvedStep[] = cleanups.map((c, i) => ({
+    step: { id: `delete-${String(i + 1)}`, action: actionRef(c.product), ...(i > 0 ? { dependsOn: [`delete-${String(i)}`] } : {}) },
+    product: c.product,
+    inputs: c.inputs,
+  }));
+  for (const [i, c] of cleanups.entries()) {
+    const allowed = access(who, c.product.teamName, c.product.shareWith);
+    if (!allowed.allowed || (allowed.required && (!forTeam || !allowed.onBehalfOf.includes(forTeam)))) {
+      throw new ApiError(403, "FORBIDDEN", `${c.label}: its cleanup, ${actionRef(c.product)}, isn't shared with you${forTeam ? ` for team "${forTeam}"` : ""}.`);
+    }
+    checkParameters(c.product.inputSchema, steps[i]?.inputs ?? {}, `${c.label}: its cleanup, ${actionRef(c.product)},`);
+  }
+  await ensureTargetsAllowed(who, forTeam, steps, name);
+  const result = await submitChecked(who, dagOf(name, steps, undefined), log, {
+    template: CLEANUP_RUN,
+    parameters: { resources: resourceIds },
+    onBehalfOf: forTeam,
+  });
+  return { executionId: result.executionId, stepIds: steps.map((s) => s.step.id) };
+}
+
 /** Runs one action with these inputs, as a one-step template. */
 export async function runAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger) {
   const who = signedIn(caller);
@@ -500,6 +545,9 @@ export async function templateStepProblems(
 export async function ensureStillRunnable(caller: AuthUser | undefined, submitted: SubmittedExecution): Promise<void> {
   const who = signedIn(caller);
   const ref = submitted.template ?? "";
+  // A cleanup's steps were allowed when it was asked for; retrying one
+  // deletes the same thing again, which cleanup actions must allow.
+  if (ref === CLEANUP_RUN) return;
   const refused = (why: string) =>
     new ApiError(403, "FORBIDDEN", `${ref} ${why}, so this run can't be retried. Its team can share it again.`);
   if (ACTION_REF.test(ref)) {
@@ -517,6 +565,9 @@ export async function ensureStillRunnable(caller: AuthUser | undefined, submitte
 export async function rerunTemplate(caller: AuthUser | undefined, submitted: SubmittedExecution, log: FastifyBaseLogger) {
   const who = signedIn(caller);
   const ref = submitted.template ?? "";
+  if (ref === CLEANUP_RUN) {
+    throw new ApiError(409, "CLEANUP_RUN", "A cleanup run isn't run again: delete what's still there from the resources it was for.");
+  }
   const request: RunRequest = {
     parameters: isRecord(submitted.templateParameters) ? submitted.templateParameters : {},
     onBehalfOf: submitted.onBehalfOf ?? undefined,

@@ -553,9 +553,17 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Schedules, Admin.
 - [ ] **P2: preview.** An optional `plan` action; the form offers Preview
   and approvers see it.
-- [ ] **P2: what a run created.** A `resources` output convention (type,
-  id, link), shown per run and searchable; cleanup runs products' `delete`
-  actions in reverse.
+- [x] **P2: what a run created** (done 2026-10-23; decision 21). A step
+  reports `resources` (type, id, name, link) in its outputs; the console
+  keeps them with the step's inputs and outputs once the run finishes
+  (`resourceRecorder.ts`, console migration 0020), so they outlive the run.
+  product.yaml's `cleanup` names the action that deletes one (given
+  `{"resource": ...}`, or inputs mapped with `$input`, `$output`,
+  `$resource`). The run page's **What it made** and Runs' **What runs
+  made** (searchable) show them; Delete runs the cleanup for the team it was
+  made for, newest first, with sharing and approvals. Proven on kind with
+  the local `ticket` sample. Left: cleanup for the cloud samples (gcp, aws,
+  azure: delete actions, proven on a billed project).
 - [ ] **P2: notifications** (failure, finish, a product not ready, the
   catalog not pulled).
 - [x] **P2: copy as API call, run again with changes** (done 2026-10-23):

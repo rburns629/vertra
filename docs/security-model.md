@@ -202,6 +202,20 @@ state, timing and failure code: never its inputs, outputs, failure message,
 the run's template parameters or its logs (`console/src/core/runView.ts`,
 in the run's details, its events and logs, and Observe's log search).
 
+## What a run made, and deleting it
+
+A step lists what it made in its outputs' `resources`; the console keeps
+each one (`resources`), with that step's inputs and outputs, after the run
+is gone (`console/src/core/resources.ts`). Its type, id, name and link are
+seen by the team it was made for, whoever ran it, the team whose product
+made it, and admins; the stored inputs and outputs are never shown, only
+used to fill in its cleanup's inputs. Deleting one (the team it was made
+for, whoever ran it, admins) runs that product's current `cleanup` action
+as a run of its own, with every check a run of that action gets: it must
+be shared with the person, its inputs fit its schema, its targets be
+allowed, and its approval waits for a maintainer. Asking for a delete is in
+the audit log, and so is the run.
+
 ## Who sees a step's logs
 
 A step's output is stored (the kernel redacts recognizable credentials
@@ -413,7 +427,7 @@ And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in bot
 
 | Where | What | Notes |
 | --- | --- | --- |
-| Console database | Users (argon2id password hashes), teams, memberships, bots (hashed API tokens), registered secrets (names and key names, no values), products, a record of submitted executions including their DAG | Sessions are signed tokens that expire (8 hours by default) |
+| Console database | Users (argon2id password hashes), teams, memberships, bots (hashed API tokens), registered secrets (names and key names, no values), products, a record of submitted executions including their DAG, and what runs made (each resource with its step's resolved inputs and outputs) | Sessions are signed tokens that expire (8 hours by default). What runs made is kept past run retention, until it's deleted |
 | Kernel database | Each execution's DAG, step inputs (as submitted and as resolved), outputs, logs and events | Never put a secret in a step's `inputs`: inputs are stored and shown to the execution's viewers. When the console's database shares this Postgres instance (`postgres.consoleDatabase`), the console signs in as its own role, which owns only its database and is refused a connection to the kernel's |
 | Team namespace | A ConfigMap per step attempt holding its `request.json` (its resolved inputs), deleted with the step's Job | Readable by anyone with ConfigMap access in that namespace |
 

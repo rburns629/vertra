@@ -1,0 +1,88 @@
+# What a run made, and deleting it later: open reports the ticket it opens
+# as a resource, and cleanup names close as what removes one. The console
+# keeps the ticket after the run is gone, and its Delete runs close. Nothing
+# is really created here (a no-cloud sample): the ticket's id comes from its
+# title, so opening the same one twice gives the same ticket.
+apiVersion: vertra.dev/v2
+kind: Product
+name: ticket
+team: local
+displayName: Ticket (Python)
+description: >-
+  Opens a pretend ticket and reports it as a resource, which the console
+  can later delete by running close. A sample of resources and cleanup.
+owner: local
+runtime: python3.12
+errors:
+  MISSING_INPUT:
+    means: It wasn't given what it needs.
+    do: Fill in the missing input and run it again.
+actions:
+  - name: open
+    idempotent: true   # the same title, the same ticket
+    maxAttempts: 2
+    shareWith: ["*"]
+    script: actions/open.py
+    # Close removes what open reports, given {"resource": {type, id, name}}.
+    cleanup:
+      action: close
+    input:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          title: Title
+          description: What the ticket is about, up to 200 characters.
+          maxLength: 200
+    output:
+      type: object
+      additionalProperties: false
+      required: [ticket, resources]
+      properties:
+        ticket:
+          type: string
+          title: Ticket
+          description: Its id, such as T-1a2b3c4d.
+        resources:
+          type: array
+          title: Resources
+          description: What it opened, for the console to keep.
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: {type: string}
+              id: {type: string}
+              name: {type: string}
+              link: {type: string}
+  - name: close
+    idempotent: true   # closing a closed ticket closes nothing
+    maxAttempts: 2
+    shareWith: ["*"]
+    script: actions/close.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [resource]
+      properties:
+        resource:
+          type: object
+          title: Resource
+          description: The ticket, as open reported it.
+          required: [type, id]
+          properties:
+            type: {type: string}
+            id: {type: string}
+            name: {type: string}
+            link: {type: string}
+    output:
+      type: object
+      additionalProperties: false
+      required: [closed]
+      properties:
+        closed:
+          type: string
+          title: Closed
+          description: The ticket it closed.

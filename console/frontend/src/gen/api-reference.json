@@ -507,6 +507,40 @@
    ]
   },
   {
+   "name": "ResourceService",
+   "fullName": "vertra.console.v1.ResourceService",
+   "comment": "What runs made, and deleting it (decision 21, docs/assessment.md). A step\nreports what it made or changed as `resources` in its outputs, each\n{type, id, name, link}; the console keeps them, with the step's inputs\nand outputs, once its run finishes, so they can be deleted after the\nrun is gone. You see what was made for your teams, by your teams'\nproducts, or by you; you delete what was made for your teams or by you.",
+   "methods": [
+    {
+     "name": "ListResources",
+     "comment": "What you may see, newest first, at most 200: a run's, a team's, or\nthose matching a search.",
+     "input": "vertra.console.v1.ListResourcesRequest",
+     "output": "vertra.console.v1.ListResourcesResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "DeleteResources",
+     "comment": "Deletes resources made for one team: a run of their products' cleanup\nactions (product.yaml's cleanup), newest first, for that team. Each is\ndeleted once its step succeeds.",
+     "input": "vertra.console.v1.DeleteResourcesRequest",
+     "output": "vertra.console.v1.DeleteResourcesResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "DeleteRunResources",
+     "comment": "Deletes what a run made that's still there, in the reverse of the\norder it was made.",
+     "input": "vertra.console.v1.DeleteRunResourcesRequest",
+     "output": "vertra.console.v1.DeleteRunResourcesResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "SecretService",
    "fullName": "vertra.console.v1.SecretService",
    "comment": "A team's secrets: registered by name, their values written straight into\nthe team's namespace (pasted) or synced from its vault (External Secrets\nOperator). Values are never stored by the console or returned by it.\nAny of the team's registered products may mount any of them, when a task\nlists it in secret_refs.",
@@ -4973,6 +5007,231 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.Resource": {
+   "name": "Resource",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "type",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What the product said: such as \"gcp/project\", its id there, a name for\npeople, and a link to it."
+    },
+    {
+     "name": "externalId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "link",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The registered product that made it (<team>-<product>-<action>), and\nits team."
+    },
+    {
+     "name": "productTeam",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "ownerTeam",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team it was made for; empty when it was for whoever ran it alone."
+    },
+    {
+     "name": "ownerEmail",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who ran it; empty once their account is gone."
+    },
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The run and step that last reported it."
+    },
+    {
+     "name": "taskId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "firstReportedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "reportedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"exists\", \"deleting\", \"delete_failed\" (its last delete's run finished\nwithout deleting it) or \"deleted\"."
+    },
+    {
+     "name": "deletingExecutionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The last delete's run, if one was asked for."
+    },
+    {
+     "name": "deletedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "canDelete",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether you may delete it now."
+    }
+   ]
+  },
+  "vertra.console.v1.ListResourcesRequest": {
+   "name": "ListResourcesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "query",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Matched against type, id and name."
+    },
+    {
+     "name": "includeDeleted",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListResourcesResponse": {
+   "name": "ListResourcesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "resources",
+     "type": "Resource",
+     "ref": "vertra.console.v1.Resource",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteResourcesRequest": {
+   "name": "DeleteResourcesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "resourceIds",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "1 to 50."
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteResourcesResponse": {
+   "name": "DeleteResourcesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The cleanup run."
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteRunResourcesRequest": {
+   "name": "DeleteRunResourcesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteRunResourcesResponse": {
+   "name": "DeleteRunResourcesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The cleanup run."
     }
    ]
   },

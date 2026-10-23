@@ -19,6 +19,7 @@ import {
   catalogSync,
   type Approval,
   type ErrorHelp,
+  type ProductCleanup,
   type ProductResources,
   type TargetRule,
   type TeamRole,
@@ -501,6 +502,7 @@ export interface Product {
   idempotent: boolean;
   maxAttempts: number;
   concurrencyKey: string[];
+  cleanup: ProductCleanup | null;
   approval: Approval | null;
   errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
@@ -542,6 +544,7 @@ export interface ProductInput {
   idempotent?: boolean | undefined;
   maxAttempts?: number | undefined;
   concurrencyKey?: string[] | undefined;
+  cleanup?: ProductCleanup | null | undefined;
   approval?: Approval | null | undefined;
   errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
@@ -590,6 +593,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
+      cleanup: input.cleanup,
       approval: input.approval,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated,
@@ -1238,4 +1242,9 @@ export async function findApi(team: string, name: string): Promise<(ApiRow & { t
 /** Pauses an API (a message) or resumes it (null). */
 export async function setApiPaused(id: string, message: string | null, by: string | null): Promise<void> {
   await db.update(apis).set({ pausedMessage: message, pausedBy: message === null ? null : by, updatedAt: new Date() }).where(eq(apis.id, id));
+}
+
+/** A run to look at again for what it made or deleted (resourceRecorder.ts), once it finishes. */
+export async function markResourcesUnrecorded(executionId: string): Promise<void> {
+  await db.update(submittedExecutions).set({ resourcesRecordedAt: null }).where(eq(submittedExecutions.executionId, executionId));
 }

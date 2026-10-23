@@ -17,6 +17,7 @@ import { duration, useNow, when } from "../time";
 import type { RunFrom } from "./RunFormPage";
 import { FailureCard } from "./run/FailureCard";
 import { RunTimeline } from "./run/RunTimeline";
+import { WhatItMade } from "./run/WhatItMade";
 import { StepPanel } from "./run/StepPanel";
 import { TERMINAL_STATES, useExecutionWatch } from "./useExecutionWatch";
 
@@ -45,9 +46,10 @@ function retryBlockedFor(execution: ExecutionDetail, taskId: string): string | n
   return blocked.message;
 }
 
-/** "app-on-cloud-run by gcp-platform", or "a DAG". */
+/** "app-on-cloud-run by gcp-platform", "a cleanup", or "a DAG". */
 function source(execution: ExecutionDetail): string {
   const template = execution.template;
+  if (template === "cleanup") return "a cleanup of what runs made";
   const slash = template?.indexOf("/") ?? -1;
   if (!template || slash < 0) return "a DAG";
   return `${template.slice(slash + 1)} by ${template.slice(0, slash)}`;
@@ -60,7 +62,7 @@ function source(execution: ExecutionDetail): string {
  */
 function formFor(execution: ExecutionDetail): string | null {
   const ref = execution.template;
-  if (!ref || execution.templateParameters === null) return null;
+  if (!ref || ref === "cleanup" || execution.templateParameters === null) return null;
   const kind = /^[a-z0-9-]+\/[a-z0-9-]+\.[a-z0-9-]+$/.test(ref) ? "action" : "template";
   return `/catalog/run?${kind}=${encodeURIComponent(ref)}`;
 }
@@ -207,6 +209,8 @@ export function ExecutionDetailPage() {
           onShow={() => { setChosen(failed.taskId); }}
         />
       )}
+
+      <WhatItMade executionId={execution.executionId} watching={live || now - lastChange < 120_000} />
 
       <Card sx={{ p: { xs: 1.5, sm: 2 } }}>
         <RunTimeline tasks={tasks} definitions={definitions} startedAt={execution.createdAt} now={now} selected={selectedId} onSelect={setChosen} />

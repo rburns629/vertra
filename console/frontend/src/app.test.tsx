@@ -123,6 +123,7 @@ const PAGES: [string, Record<string, Answer>][] = [
   ["/account", {}],
   ["/runs", {}],
   ["/runs/submit", {}],
+  ["/runs/made", {}],
   ["/runs/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", { "ExecutionService/WatchExecution": [{ execution: { executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", name: "a run", state: "EXECUTION_STATE_SUCCEEDED", createdAt: "2026-10-21T16:20:00Z", tasks: [] } }] }],
   ["/catalog", {}],
   ["/products", {}],
@@ -239,6 +240,38 @@ describe("a run", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry deploy" }));
     await waitFor(() => { expect(retried).toEqual([{ executionId: FAILED_RUN.executionId, taskId: "deploy" }]); });
+  });
+
+  it("shows what it made, and deletes it all as a cleanup run", async () => {
+    const made = (id: string, name: string) => ({
+      id,
+      type: "gcp/project",
+      externalId: `${name}-7f3`,
+      name,
+      link: "https://console.cloud.google.com/home?project=x",
+      product: "gcp-platform-project-create",
+      productTeam: "gcp-platform",
+      ownerTeam: "azure-apps",
+      executionId: FAILED_RUN.executionId,
+      taskId: "project",
+      firstReportedAt: "2026-10-21T16:21:00Z",
+      state: "exists",
+      canDelete: true,
+    });
+    const asked: Record<string, unknown>[] = [];
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, {
+      "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }],
+      "ResourceService/ListResources": { resources: [made("a1b2c3d4-0000-4000-8000-000000000001", "billing-api"), made("a1b2c3d4-0000-4000-8000-000000000002", "billing-db")] },
+      "ResourceService/DeleteRunResources": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "What it made" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /billing-db/ }).getAttribute("href")).toBe("https://console.cloud.google.com/home?project=x");
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete all", hidden: false }));
+    await waitFor(() => { expect(asked).toEqual([{ executionId: FAILED_RUN.executionId }]); });
   });
 
   it("says what a step waiting its turn is waiting for", async () => {

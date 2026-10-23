@@ -1,0 +1,9 @@
+{
+  "inputs": {
+    "resource": {
+      "type": "local/ticket",
+      "id": "T-d3f3719d",
+      "name": "Printer on fire"
+    }
+  }
+}

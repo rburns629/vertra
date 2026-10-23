@@ -263,6 +263,13 @@ erDiagram
     text_array teams
     uuid submitted_by FK
   }
+  submitted_executions ||--o{ resources : "made"
+  resources {
+    uuid id PK
+    text product_team UK
+    text type UK
+    text external_id UK
+  }
 ```
 
 A team's name is also its Kubernetes namespace; there is no separate column for it. `submitted_executions.teams` holds team *names*, which is why a purged team's row is kept: a new team reusing the name would otherwise see the old team's executions.
@@ -349,6 +356,7 @@ What a DAG step can run: one row per image and action.
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
+| `cleanup` | jsonb | yes | product.yaml's `cleanup`: `{ action, inputs }`, the action of the same product that removes a resource its steps report, and its inputs (null: `{"resource": ...}`). Null: nothing removes them. |
 | `approval` | text | yes | product.yaml's `approval`: `always`, or `otherTeams` (only when another team runs it). A step of it then waits for a maintainer of its team to approve it. Null: never, unless an `allowedTargets` rule asks. |
 | `error_help` | jsonb | no | product.yaml's `errors`: `{ CODE: { means, do } }`, shown when a step fails with that code. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
@@ -547,9 +555,37 @@ The console's record of every execution submitted through it, and who may see it
 | `submitted_by` | uuid | yes | The user or bot. Emptied if that account is deleted; the record stays. |
 | `external_reference` | text | no | The DAG's `name`. |
 | `payload` | jsonb | yes | The DAG as sent to the kernel, so **Rerun** can resubmit it. Empty for rows from before this column existed. |
-| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone. Whoever ran it can see, cancel, retry and rerun it; a rerun runs the template again. Empty for a DAG submitted as such. |
+| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone, or `cleanup` for a run deleting resources (`ResourceService`). Whoever ran it can see, cancel, retry and rerun it (not a cleanup's: it's asked for again from the resources); a rerun runs the template again. Empty for a DAG submitted as such. |
 | `template_parameters` | jsonb | yes | The parameters it ran with. |
 | `on_behalf_of` | text | yes | Which of the submitter's teams it ran for, when the template is shared with specific teams (or the submitter named one). |
 | `created_at` | timestamptz | no | |
+| `resources_recorded_at` | timestamptz | yes | When what it made, and deleted, was recorded in `resources`, once it finished. Emptied when it's retried, to be recorded again. |
+
+### resources
+
+What runs made: each resource a step reported in its outputs (`resources: [{type, id, name, link}]`), copied when its run finished with that step's resolved inputs and outputs, so it can be deleted after the run itself is gone. References only: whether it still exists is for its product's cloud to say. A later step reporting the same one updates it.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `product` | text | no | The registered product whose step reported it (`<team>-<product>-<action>`). Its current `cleanup` deletes it. |
+| `product_team` | text | no | That product's team. With `type` and `external_id`, unique. |
+| `type` | text | no | What it is, as the product says: such as `gcp/project`. |
+| `external_id` | text | no | Its id there. |
+| `name` | text | yes | A name for people. |
+| `link` | text | yes | An http(s) link to it. |
+| `owner_team` | text | yes | The team the run was for: a template's or action's run's `on_behalf_of` (null when it was for the person alone), a DAG's step's team. Its members may delete it. |
+| `owner_user_id` | uuid | yes | Who ran it; they may delete it too. Emptied if the account is deleted. |
+| `execution_id` | uuid | no | The run whose step last reported it. |
+| `task_id` | text | no | That step. |
+| `inputs` | jsonb | no | What that step was given, resolved. |
+| `outputs` | jsonb | no | What it gave. |
+| `position` | integer | no | The step's place in its run, for deleting a run's resources in reverse. |
+| `first_reported_at` | timestamptz | no | |
+| `reported_at` | timestamptz | no | |
+| `deleting_execution_id` | uuid | yes | The last delete asked for: the cleanup run. Deleting while that run is unfinished; failed once it finished without deleting it. |
+| `deleting_task_id` | text | yes | Its step for this resource. |
+| `delete_requested_by` | uuid | yes | Who asked. |
+| `deleted_at` | timestamptz | yes | When its cleanup step succeeded. |
 
 The console's migrations are tracked in the `drizzle` schema, outside `public`.

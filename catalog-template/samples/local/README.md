@@ -18,6 +18,12 @@ characters, since `result.json` is limited to 4 KB) and the outputs `text`
 and `language`. They fail the same way too: `MISSING_INPUT` without text,
 `TEXT_TOO_LONG` over the limit.
 
+One more, [`ticket`](products/ticket/) (Python), shows what a run made and
+deleting it later: `open` reports the ticket it opens in its outputs'
+`resources`, and its `cleanup` names `close`, which the console runs when
+someone deletes that ticket from **What runs made**. Nothing is really
+created; the ticket's id comes from its title.
+
 ## Tests
 
 Each product's tests are contract tests in `tests/transform/<case>/`: a

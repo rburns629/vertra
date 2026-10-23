@@ -84,6 +84,14 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 				a.Errors[code] = &catalogv1.ErrorHelp{Means: text(help, "means"), Do: text(help, "do")}
 			}
 		}
+		if cleanup, ok := action["cleanup"].(map[string]any); ok {
+			a.Cleanup = &catalogv1.Cleanup{Action: text(cleanup, "action")}
+			if inputs, ok := cleanup["inputs"]; ok {
+				if a.Cleanup.Inputs, err = structOf(inputs); err != nil {
+					return nil, fmt.Errorf("action %s's cleanup inputs: %w", actionName, err)
+				}
+			}
+		}
 		if n, ok := whole(action["maxAttempts"]); ok {
 			a.MaxAttempts = n
 		}

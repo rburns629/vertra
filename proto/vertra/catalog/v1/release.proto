@@ -111,6 +111,19 @@ message ProductAction {
   // "always", "otherTeams" (only when another team runs it), or empty
   // (never, unless an allowedTargets rule asks).
   string approval = 21;
+  // What removes the resources its steps report (product.yaml's cleanup):
+  // unset when nothing does.
+  Cleanup cleanup = 22;
+}
+
+// An action's cleanup: which action of the same product removes one
+// resource a step of it reported, and with what inputs.
+message Cleanup {
+  string action = 1;
+  // Unset: {"resource": <the resource>}. Set: exactly these, with
+  // {"$input": name}, {"$output": name} and {"$resource": field} filled in
+  // from what was recorded.
+  google.protobuf.Struct inputs = 2;
 }
 
 message ErrorHelp {

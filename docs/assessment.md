@@ -720,6 +720,24 @@ second way to run things, with rollouts and scaling; not needed to
 publish an existing backend). This replaces the earlier Invoke idea of
 calling an action as a run.
 
+**21. What a run created, and deleting it later** (decided 2026-10-23). A
+step reports what it made or changed as `resources` in its outputs: each
+`{type, id, name?, link?}`. The console copies them, with the step's
+resolved inputs and outputs, into its own table when the run finishes, so
+a delete never depends on the run still existing: it may come months
+later, after run retention has dropped the run. Vertra keeps references,
+not infrastructure state. An action that creates things names the action
+that removes them, `cleanup` in product.yaml: by default that action is
+given `{"resource": {...}}`, the one resource as reported; `cleanup.inputs`
+can map more from what was recorded (`$input`, `$output`, `$resource`). Anyone
+who may see the team's runs may delete one of its resources at any time:
+it runs as an ordinary run of the product's current cleanup action, so
+sharing, approvals and the audit log apply, and the resource is marked
+deleted when that step succeeds. Cleaning up a whole run deletes its
+resources in the reverse of the order they were made. Rejected: the
+delete reading the old run's outputs (gone after retention); tracking
+resources' live state (each product's own cloud knows that).
+
 ## 18. Roadmap
 
 None of these needs a new service. All contract changes are additive.

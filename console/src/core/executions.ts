@@ -29,6 +29,7 @@ import {
   listSubmittedExecutionsPage,
   recordSubmittedExecution,
   type Product,
+  markResourcesUnrecorded,
 } from "../db/queries.js";
 import {
   allowedPrefixes,
@@ -362,7 +363,7 @@ function identityRefusal(task: TaskAuthInfo, matching: Product[]): string | null
  * tag) and its action, among its team's products and the platform's. Caches
  * each team's lookups for the length of one request.
  */
-function productLookup() {
+export function productLookup() {
   const teamIds = new Map<string, string | null>();
   const usableByTeamId = new Map<string | null, Product[]>();
 
@@ -384,6 +385,18 @@ function productLookup() {
   }
 
   return { teamId, matching };
+}
+
+/**
+ * The registered product a task as submitted ran, if it ran one: by its
+ * team, image repository, action and identity.
+ */
+export async function productOfTask(products: ReturnType<typeof productLookup>, task: Record<string, unknown> | undefined): Promise<Product | undefined> {
+  const teamName = optionalString(task?.["team"]);
+  if (!teamName) return undefined;
+  const matching = await products.matching(teamName, optionalString(task?.["image"]), optionalString(task?.["action"]));
+  const serviceAccount = optionalString(task?.["serviceAccount"]) ?? UNREGISTERED_SERVICE_ACCOUNT;
+  return matching.find((p) => runsAs(p) === serviceAccount);
 }
 
 /**
@@ -601,10 +614,8 @@ async function failuresExplained(
     const code = typeof t.failure?.["code"] === "string" ? t.failure["code"] : undefined;
     if (!code) continue;
     const task = submitted.get(t.taskId);
+    const product = await productOfTask(products, task);
     const teamName = optionalString(task?.["team"]);
-    const matching = teamName ? await products.matching(teamName, optionalString(task?.["image"]), optionalString(task?.["action"])) : [];
-    const serviceAccount = optionalString(task?.["serviceAccount"]) ?? UNREGISTERED_SERVICE_ACCOUNT;
-    const product = matching.find((p) => runsAs(p) === serviceAccount);
     const team = teamName ? await findTeamByName(teamName) : undefined;
     out.set(t.taskId, failureHelp(code, product, team));
   }
@@ -966,7 +977,10 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
   await refuseBlockedImages(images, context);
   await refuseUnscanned(images, context);
   await ensureServiceAccounts(tasksInfo);
-  return retryTask(executionId, taskId, requester(caller));
+  const retried = await retryTask(executionId, taskId, requester(caller));
+  // Live again: what it makes, or deletes, is recorded once it finishes again.
+  await markResourcesUnrecorded(executionId);
+  return retried;
 }
 
 /**

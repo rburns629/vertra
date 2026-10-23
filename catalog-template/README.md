@@ -119,6 +119,8 @@ actions:
     maxAttempts: 3            # optional: attempts in all (default 1); more than 1 needs idempotent
     concurrencyKey: [projectId]   # optional: one step per projectId at a time
     approval: otherTeams      # optional: a maintainer approves each step first: always, or otherTeams
+    cleanup:                  # optional: what removes the resources its steps report (below)
+      action: delete
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
@@ -170,6 +172,33 @@ sample does) before you declare it. `concurrencyKey` names the inputs that
 say what a step changes: while one step with the same values is starting
 or running, another waits its turn, so two runs never change the same
 project at once (a value an earlier step produced counts too).
+
+An action that makes or changes something lists it in its outputs as
+`resources`, each a `type`, an `id`, and optionally a `name` and an http(s)
+`link`. The console keeps them once the run finishes, with the step's
+inputs and outputs, so people find them later (Runs, **What runs made**)
+and can delete them at any time, long after the run itself is gone.
+`cleanup` names the action of the same product that deletes one: it's given
+`{"resource": {type, id, name, link}}`, the resource as reported, unless
+`cleanup.inputs` says otherwise, each input a value or `{$input: <name>}`
+(what the step was given), `{$output: <name>}` (what it gave) or
+`{$resource: type|id|name|link}`. Deleting runs your cleanup as a run of
+its own, for the team the resource was made for, so `shareWith` and
+`approval` apply to it too, and it must succeed when what it deletes is
+already gone. The local `ticket` sample does all of this.
+
+```yaml
+  - name: create
+    output:
+      properties:
+        projectId: {type: string}
+        resources: {type: array}   # [{type: gcp/project, id: acme-web, link: https://...}]
+    cleanup:
+      action: delete
+      inputs:                      # optional; left out, {"resource": ...}
+        projectId: {$resource: id}
+        force: true
+```
 
 `approval` makes a step wait for a person before it runs: `always`, or
 `otherTeams` (only when another team runs the action). A maintainer of your
@@ -348,7 +377,8 @@ the gateway reads no secrets. Your backend learns who called from the
 - The action writes `/platform/output/result.json`:
   `{"status": "succeeded", "outputs": {...}}` or
   `{"status": "failed", "error": {"code", "message", "retryable"}}`, at most
-  4 KB. Output references (IDs, names, URIs), not data.
+  4 KB. Output references (IDs, names, URIs), not data. What a step made
+  goes in `outputs.resources` (see `cleanup` above).
 - Steps run at least once: an action must be safe to run again (look up
   before creating).
 - Log JSON lines with a `level`: `{"level": "info", "msg": "Created the
