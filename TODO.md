@@ -706,7 +706,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   large dependency to restyle. Secrets were never inputs (they come from
   `secretRefs`); the console and kernel already check inputs against the
   schema.
-- [ ] **Show a product's latest tag** where people build DAGs.
+- [x] **Show a product's latest tag** where people build DAGs (done
+  2026-10-23): Submit a DAG's **Add a step** appends a step of one of your
+  teams' products with its latest image, action, team and identity, and its
+  required inputs to fill in (Every product already marks the latest).
 - [ ] **Stop reading `externalReference` and `idempotencyKey`** (now
   `name` and `requestId`; submissions over Connect can't send them) once
   no stored execution has them: `submissionRequest` in

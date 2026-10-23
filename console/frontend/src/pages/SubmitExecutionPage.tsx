@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { dump as dumpYaml } from "js-yaml";
-import { Alert, Box, Button, Card, Link, TextField, Typography } from "@mui/material";
+import { dump as dumpYaml, load as parseYaml } from "js-yaml";
+import { Alert, Autocomplete, Box, Button, Card, Link, TextField, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import { ApiError, getImagePolicy, submitExecution } from "../api";
+import { ApiError, getImagePolicy, listProducts, submitExecution, type Product } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { checkDag } from "../dagCheck";
 
@@ -32,6 +32,39 @@ function exampleFor(team: string, source: string | undefined): string {
   });
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * The DAG with a step of this product added: its latest image, its action,
+ * team and identity, and its required inputs left to fill in. Null when the
+ * text isn't a DAG to add to. Written back as YAML.
+ */
+export function withStep(text: string, product: Product): string | null {
+  let dag: unknown;
+  try {
+    dag = text.trim() === "" ? { name: "my-run", tasks: [] } : parseYaml(text);
+  } catch {
+    return null;
+  }
+  if (!isRecord(dag)) return null;
+  const tasks: unknown = dag["tasks"] ?? [];
+  if (!Array.isArray(tasks)) return null;
+  const taken = new Set(tasks.map((t) => (isRecord(t) ? t["id"] : undefined)));
+  const base = product.teamName && product.name.startsWith(`${product.teamName}-`) ? product.name.slice(product.teamName.length + 1) : product.name;
+  let id = base;
+  for (let n = 2; taken.has(id); n++) id = `${base}-${String(n)}`;
+  const properties = isRecord(product.inputSchema["properties"]) ? product.inputSchema["properties"] : {};
+  const required = Array.isArray(product.inputSchema["required"]) ? product.inputSchema["required"].filter((r): r is string => typeof r === "string") : [];
+  const inputs = Object.fromEntries(required.map((name) => {
+    const property = properties[name];
+    return [name, isRecord(property) && "default" in property ? property["default"] : ""];
+  }));
+  const step: Record<string, unknown> = { id, image: product.image, action: product.action, team: product.teamName ?? "" };
+  if (product.serviceAccount) step["serviceAccount"] = product.serviceAccount;
+  if (required.length > 0) step["inputs"] = inputs;
+  return dumpYaml({ ...dag, tasks: [...tasks, step] });
+}
+
 export function SubmitExecutionPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,7 +79,15 @@ export function SubmitExecutionPage() {
       })
       .catch(() => undefined);
   }, []);
+  // Your teams' products, for "Add a step" (admins: every team's).
+  const [products, setProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    listProducts()
+      .then(setProducts)
+      .catch(() => undefined);
+  }, []);
   const [text, setText] = useState("");
+  const [addProblem, setAddProblem] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -80,6 +121,7 @@ export function SubmitExecutionPage() {
     }
   }
 
+  const yours = products.filter((p) => p.teamName !== null && (teamNames === null || teamNames.includes(p.teamName)));
   const borderColor = check.status === "valid" ? "success.main" : check.status === "invalid" ? "error.main" : undefined;
 
   return (
@@ -125,6 +167,25 @@ export function SubmitExecutionPage() {
               Start from an example
             </Button>
           </Box>
+          {yours.length > 0 && (
+            <Autocomplete
+              options={yours}
+              value={null}
+              blurOnSelect
+              groupBy={(p) => p.teamName ?? ""}
+              getOptionLabel={(p) => `${p.displayName ?? p.name} · ${p.action}`}
+              onChange={(_e, product) => {
+                if (!product) return;
+                const next = withStep(text, product);
+                setAddProblem(next === null ? "Fix the DAG first: a step is added to its tasks." : null);
+                if (next !== null) setText(next);
+              }}
+              renderInput={(params) => (
+                <TextField {...params} size="small" label="Add a step" helperText={addProblem ?? "With its product's latest image, team and identity; fill in its inputs."} error={addProblem !== null} />
+              )}
+              sx={{ mb: 2 }}
+            />
+          )}
           <TextField
             label="DAG (JSON or YAML)"
             required
