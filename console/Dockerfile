@@ -10,7 +10,7 @@
 # on Apple silicon has miscomputed floating-point and broken npm). The one
 # native dependency, argon2, ships prebuilt binaries for every platform and
 # loads the right one at run time.
-FROM --platform=$BUILDPLATFORM node:25-slim AS frontend-build
+FROM --platform=$BUILDPLATFORM node:26-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -19,7 +19,7 @@ COPY frontend/public ./public
 COPY frontend/src ./src
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM node:25-slim AS build
+FROM --platform=$BUILDPLATFORM node:26-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -27,12 +27,12 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM node:25-slim AS deps
+FROM --platform=$BUILDPLATFORM node:26-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-FROM node:25-slim
+FROM node:26-slim
 # Security fixes released since the base image was published; CI's image
 # scan fails on any high or critical one that has a fix.
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
