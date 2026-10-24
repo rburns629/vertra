@@ -31,6 +31,14 @@ service NotificationService {
   rpc DeleteTeamWebhook(DeleteTeamWebhookRequest) returns (DeleteTeamWebhookResponse);
   // Posts a test message to it (its maintainers), and says whether it went.
   rpc TestTeamWebhook(TestTeamWebhookRequest) returns (TestTeamWebhookResponse);
+  // Which of your notifications are emailed to you too, and whether this
+  // install sends email at all.
+  rpc GetEmailPreferences(GetEmailPreferencesRequest) returns (GetEmailPreferencesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Chooses which kinds are emailed to you (any of run_failed,
+  // run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+  rpc SetEmailPreferences(SetEmailPreferencesRequest) returns (SetEmailPreferencesResponse);
 }
 
 message Notification {
@@ -110,4 +118,20 @@ message TestTeamWebhookResponse {
   bool sent = 1;
   // Why not, when it wasn't.
   string error = 2;
+}
+
+message GetEmailPreferencesRequest {}
+
+message GetEmailPreferencesResponse {
+  // Whether this install sends email (its SMTP server is set).
+  bool available = 1;
+  repeated string kinds = 2;
+}
+
+message SetEmailPreferencesRequest {
+  repeated string kinds = 1;
+}
+
+message SetEmailPreferencesResponse {
+  repeated string kinds = 1;
 }

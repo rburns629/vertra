@@ -2025,3 +2025,12 @@ export async function getTeamProfile(name: string): Promise<TeamProfile> {
   const r = await call(() => teams.getTeamProfile({ name }));
   return { name: r.name, fromCatalog: r.fromCatalog, retired: r.retired, contact: r.contact || null, helpChat: r.helpChat || null, helpUrl: r.helpUrl || null, people: r.people };
 }
+
+export async function getEmailPreferences(): Promise<{ available: boolean; kinds: string[] }> {
+  const r = await call(() => notificationsApi.getEmailPreferences({}));
+  return { available: r.available, kinds: r.kinds };
+}
+
+export async function setEmailPreferences(kinds: string[]): Promise<string[]> {
+  return (await call(() => notificationsApi.setEmailPreferences({ kinds }))).kinds;
+}

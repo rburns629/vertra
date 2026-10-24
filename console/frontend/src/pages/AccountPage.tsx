@@ -13,6 +13,7 @@ import { PageHeader } from "../components/PageHeader";
 import { PasswordChangeForm } from "../components/PasswordChangeForm";
 import { Pill } from "../components/Pill";
 import { useEnvironment } from "../environment";
+import { EmailSection } from "./account/EmailSection";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -81,6 +82,8 @@ export function AccountPage() {
               Each team&apos;s maintainers set roles, on its Members tab.
             </Typography>
           </Section>
+
+          <EmailSection />
         </Box>
 
         <Section title="Signing in">

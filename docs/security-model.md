@@ -232,6 +232,15 @@ happened and links to the console; it carries no outputs or logs.
 Rotating `JWT_SECRET` makes the stored URLs unreadable, and teams set
 theirs again.
 
+## Email
+
+When an install sends email (the console chart's `notifications.email`),
+the console sends notifications through its SMTP server, to each person
+for the kinds they choose, to their account's address. The server's
+password is a Secret the console mounts as a file and reads itself; it's
+never in an environment variable, the database or a log. Emails say what
+happened and link to the console, as the inbox does: no outputs or logs.
+
 ## Keyless bots
 
 A bot can sign in with its CI job's own OIDC identity instead of a stored

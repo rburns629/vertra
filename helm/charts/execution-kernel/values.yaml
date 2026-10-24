@@ -301,6 +301,9 @@ scheduler:
 # scale them up yourself: the copies to wake to are in the
 # <release>-execution-kernel-sleep ConfigMap). While asleep the console and
 # kernel-api don't answer: catalog CI and automation fail until it's woken.
+# Schedules wake it: the <release>-execution-kernel-wake CronJob fires five
+# minutes before the console's next schedule (scaleDown.wakeLeadMinutes isn't
+# a setting yet), and a schedule due within idleAfterMinutes keeps it awake.
 scaleDown:
   enabled: false
   idleAfterMinutes: 120

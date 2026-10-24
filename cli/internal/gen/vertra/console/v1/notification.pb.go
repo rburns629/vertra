@@ -770,6 +770,183 @@ func (x *TestTeamWebhookResponse) GetError() string {
 	return ""
 }
 
+type GetEmailPreferencesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEmailPreferencesRequest) Reset() {
+	*x = GetEmailPreferencesRequest{}
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEmailPreferencesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEmailPreferencesRequest) ProtoMessage() {}
+
+func (x *GetEmailPreferencesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEmailPreferencesRequest.ProtoReflect.Descriptor instead.
+func (*GetEmailPreferencesRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_notification_proto_rawDescGZIP(), []int{14}
+}
+
+type GetEmailPreferencesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether this install sends email (its SMTP server is set).
+	Available     bool     `protobuf:"varint,1,opt,name=available,proto3" json:"available,omitempty"`
+	Kinds         []string `protobuf:"bytes,2,rep,name=kinds,proto3" json:"kinds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEmailPreferencesResponse) Reset() {
+	*x = GetEmailPreferencesResponse{}
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEmailPreferencesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEmailPreferencesResponse) ProtoMessage() {}
+
+func (x *GetEmailPreferencesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEmailPreferencesResponse.ProtoReflect.Descriptor instead.
+func (*GetEmailPreferencesResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_notification_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetEmailPreferencesResponse) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *GetEmailPreferencesResponse) GetKinds() []string {
+	if x != nil {
+		return x.Kinds
+	}
+	return nil
+}
+
+type SetEmailPreferencesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kinds         []string               `protobuf:"bytes,1,rep,name=kinds,proto3" json:"kinds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEmailPreferencesRequest) Reset() {
+	*x = SetEmailPreferencesRequest{}
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEmailPreferencesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEmailPreferencesRequest) ProtoMessage() {}
+
+func (x *SetEmailPreferencesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEmailPreferencesRequest.ProtoReflect.Descriptor instead.
+func (*SetEmailPreferencesRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_notification_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SetEmailPreferencesRequest) GetKinds() []string {
+	if x != nil {
+		return x.Kinds
+	}
+	return nil
+}
+
+type SetEmailPreferencesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kinds         []string               `protobuf:"bytes,1,rep,name=kinds,proto3" json:"kinds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEmailPreferencesResponse) Reset() {
+	*x = SetEmailPreferencesResponse{}
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEmailPreferencesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEmailPreferencesResponse) ProtoMessage() {}
+
+func (x *SetEmailPreferencesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_notification_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEmailPreferencesResponse.ProtoReflect.Descriptor instead.
+func (*SetEmailPreferencesResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_notification_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SetEmailPreferencesResponse) GetKinds() []string {
+	if x != nil {
+		return x.Kinds
+	}
+	return nil
+}
+
 var File_vertra_console_v1_notification_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_notification_proto_rawDesc = "" +
@@ -824,14 +1001,24 @@ const file_vertra_console_v1_notification_proto_rawDesc = "" +
 	"\x04team\x18\x01 \x01(\tR\x04team\"C\n" +
 	"\x17TestTeamWebhookResponse\x12\x12\n" +
 	"\x04sent\x18\x01 \x01(\bR\x04sent\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error2\xb3\x05\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\x1c\n" +
+	"\x1aGetEmailPreferencesRequest\"Q\n" +
+	"\x1bGetEmailPreferencesResponse\x12\x1c\n" +
+	"\tavailable\x18\x01 \x01(\bR\tavailable\x12\x14\n" +
+	"\x05kinds\x18\x02 \x03(\tR\x05kinds\"2\n" +
+	"\x1aSetEmailPreferencesRequest\x12\x14\n" +
+	"\x05kinds\x18\x01 \x03(\tR\x05kinds\"3\n" +
+	"\x1bSetEmailPreferencesResponse\x12\x14\n" +
+	"\x05kinds\x18\x01 \x03(\tR\x05kinds2\xa4\a\n" +
 	"\x13NotificationService\x12s\n" +
 	"\x11ListNotifications\x12+.vertra.console.v1.ListNotificationsRequest\x1a,.vertra.console.v1.ListNotificationsResponse\"\x03\x90\x02\x01\x12z\n" +
 	"\x15MarkNotificationsRead\x12/.vertra.console.v1.MarkNotificationsReadRequest\x1a0.vertra.console.v1.MarkNotificationsReadResponse\x12j\n" +
 	"\x0eGetTeamWebhook\x12(.vertra.console.v1.GetTeamWebhookRequest\x1a).vertra.console.v1.GetTeamWebhookResponse\"\x03\x90\x02\x01\x12e\n" +
 	"\x0eSetTeamWebhook\x12(.vertra.console.v1.SetTeamWebhookRequest\x1a).vertra.console.v1.SetTeamWebhookResponse\x12n\n" +
 	"\x11DeleteTeamWebhook\x12+.vertra.console.v1.DeleteTeamWebhookRequest\x1a,.vertra.console.v1.DeleteTeamWebhookResponse\x12h\n" +
-	"\x0fTestTeamWebhook\x12).vertra.console.v1.TestTeamWebhookRequest\x1a*.vertra.console.v1.TestTeamWebhookResponseB\xda\x01\n" +
+	"\x0fTestTeamWebhook\x12).vertra.console.v1.TestTeamWebhookRequest\x1a*.vertra.console.v1.TestTeamWebhookResponse\x12y\n" +
+	"\x13GetEmailPreferences\x12-.vertra.console.v1.GetEmailPreferencesRequest\x1a..vertra.console.v1.GetEmailPreferencesResponse\"\x03\x90\x02\x01\x12t\n" +
+	"\x13SetEmailPreferences\x12-.vertra.console.v1.SetEmailPreferencesRequest\x1a..vertra.console.v1.SetEmailPreferencesResponseB\xda\x01\n" +
 	"\x15com.vertra.console.v1B\x11NotificationProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -846,7 +1033,7 @@ func file_vertra_console_v1_notification_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_notification_proto_rawDescData
 }
 
-var file_vertra_console_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_vertra_console_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_vertra_console_v1_notification_proto_goTypes = []any{
 	(*Notification)(nil),                  // 0: vertra.console.v1.Notification
 	(*ListNotificationsRequest)(nil),      // 1: vertra.console.v1.ListNotificationsRequest
@@ -862,13 +1049,17 @@ var file_vertra_console_v1_notification_proto_goTypes = []any{
 	(*DeleteTeamWebhookResponse)(nil),     // 11: vertra.console.v1.DeleteTeamWebhookResponse
 	(*TestTeamWebhookRequest)(nil),        // 12: vertra.console.v1.TestTeamWebhookRequest
 	(*TestTeamWebhookResponse)(nil),       // 13: vertra.console.v1.TestTeamWebhookResponse
-	(*timestamppb.Timestamp)(nil),         // 14: google.protobuf.Timestamp
+	(*GetEmailPreferencesRequest)(nil),    // 14: vertra.console.v1.GetEmailPreferencesRequest
+	(*GetEmailPreferencesResponse)(nil),   // 15: vertra.console.v1.GetEmailPreferencesResponse
+	(*SetEmailPreferencesRequest)(nil),    // 16: vertra.console.v1.SetEmailPreferencesRequest
+	(*SetEmailPreferencesResponse)(nil),   // 17: vertra.console.v1.SetEmailPreferencesResponse
+	(*timestamppb.Timestamp)(nil),         // 18: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_notification_proto_depIdxs = []int32{
-	14, // 0: vertra.console.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
+	18, // 0: vertra.console.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: vertra.console.v1.ListNotificationsResponse.notifications:type_name -> vertra.console.v1.Notification
-	14, // 2: vertra.console.v1.TeamWebhook.last_sent_at:type_name -> google.protobuf.Timestamp
-	14, // 3: vertra.console.v1.TeamWebhook.updated_at:type_name -> google.protobuf.Timestamp
+	18, // 2: vertra.console.v1.TeamWebhook.last_sent_at:type_name -> google.protobuf.Timestamp
+	18, // 3: vertra.console.v1.TeamWebhook.updated_at:type_name -> google.protobuf.Timestamp
 	5,  // 4: vertra.console.v1.GetTeamWebhookResponse.webhook:type_name -> vertra.console.v1.TeamWebhook
 	5,  // 5: vertra.console.v1.SetTeamWebhookResponse.webhook:type_name -> vertra.console.v1.TeamWebhook
 	1,  // 6: vertra.console.v1.NotificationService.ListNotifications:input_type -> vertra.console.v1.ListNotificationsRequest
@@ -877,14 +1068,18 @@ var file_vertra_console_v1_notification_proto_depIdxs = []int32{
 	8,  // 9: vertra.console.v1.NotificationService.SetTeamWebhook:input_type -> vertra.console.v1.SetTeamWebhookRequest
 	10, // 10: vertra.console.v1.NotificationService.DeleteTeamWebhook:input_type -> vertra.console.v1.DeleteTeamWebhookRequest
 	12, // 11: vertra.console.v1.NotificationService.TestTeamWebhook:input_type -> vertra.console.v1.TestTeamWebhookRequest
-	2,  // 12: vertra.console.v1.NotificationService.ListNotifications:output_type -> vertra.console.v1.ListNotificationsResponse
-	4,  // 13: vertra.console.v1.NotificationService.MarkNotificationsRead:output_type -> vertra.console.v1.MarkNotificationsReadResponse
-	7,  // 14: vertra.console.v1.NotificationService.GetTeamWebhook:output_type -> vertra.console.v1.GetTeamWebhookResponse
-	9,  // 15: vertra.console.v1.NotificationService.SetTeamWebhook:output_type -> vertra.console.v1.SetTeamWebhookResponse
-	11, // 16: vertra.console.v1.NotificationService.DeleteTeamWebhook:output_type -> vertra.console.v1.DeleteTeamWebhookResponse
-	13, // 17: vertra.console.v1.NotificationService.TestTeamWebhook:output_type -> vertra.console.v1.TestTeamWebhookResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
+	14, // 12: vertra.console.v1.NotificationService.GetEmailPreferences:input_type -> vertra.console.v1.GetEmailPreferencesRequest
+	16, // 13: vertra.console.v1.NotificationService.SetEmailPreferences:input_type -> vertra.console.v1.SetEmailPreferencesRequest
+	2,  // 14: vertra.console.v1.NotificationService.ListNotifications:output_type -> vertra.console.v1.ListNotificationsResponse
+	4,  // 15: vertra.console.v1.NotificationService.MarkNotificationsRead:output_type -> vertra.console.v1.MarkNotificationsReadResponse
+	7,  // 16: vertra.console.v1.NotificationService.GetTeamWebhook:output_type -> vertra.console.v1.GetTeamWebhookResponse
+	9,  // 17: vertra.console.v1.NotificationService.SetTeamWebhook:output_type -> vertra.console.v1.SetTeamWebhookResponse
+	11, // 18: vertra.console.v1.NotificationService.DeleteTeamWebhook:output_type -> vertra.console.v1.DeleteTeamWebhookResponse
+	13, // 19: vertra.console.v1.NotificationService.TestTeamWebhook:output_type -> vertra.console.v1.TestTeamWebhookResponse
+	15, // 20: vertra.console.v1.NotificationService.GetEmailPreferences:output_type -> vertra.console.v1.GetEmailPreferencesResponse
+	17, // 21: vertra.console.v1.NotificationService.SetEmailPreferences:output_type -> vertra.console.v1.SetEmailPreferencesResponse
+	14, // [14:22] is the sub-list for method output_type
+	6,  // [6:14] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -901,7 +1096,7 @@ func file_vertra_console_v1_notification_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_notification_proto_rawDesc), len(file_vertra_console_v1_notification_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -377,8 +377,12 @@ New chart features, so Helm users get them too:
   only one the console may update. Reads count, not only the audited
   changes.
 - **`vertra sleep|wake`** scale the platform down or up (wake waits until
-  it's ready), whatever the setting. Waking is always explicit: a sleeping
-  console can't wake itself.
+  it's ready), whatever the setting. A sleeping console can't wake itself,
+  but its schedules can: the console keeps its next schedule's time in its
+  activity ConfigMap; the sleeper stays awake for one due within the idle
+  window, and otherwise arms a one-off wake CronJob (`kernel wake`, under
+  the sleeper's Role) for five minutes before it, which restores the
+  platform and stands itself down.
 - **The image scanner idles to zero** on its own (console chart,
   `scanning.idleMinutes`): the console scales the Trivy server up for
   pending scans (which wait for it) and down after a quiet period.

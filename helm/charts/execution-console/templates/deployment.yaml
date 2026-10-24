@@ -187,6 +187,11 @@ spec:
               mountPath: /etc/vertra/registry
               readOnly: true
             {{- end }}
+            {{- if and .Values.notifications.email.host .Values.notifications.email.passwordSecret.name }}
+            - name: smtp-password
+              mountPath: /var/run/secrets/vertra/smtp
+              readOnly: true
+            {{- end }}
             {{- if .Values.registryCheck.gcpFederation.workloadIdentityProvider }}
             - name: registry-federation-token
               mountPath: /var/run/secrets/vertra/registry
@@ -217,6 +222,17 @@ spec:
                   audience: {{ printf "https://iam.googleapis.com/%s" . | quote }}
                   expirationSeconds: 3600
                   path: token
+        {{- end }}
+        {{- with .Values.notifications.email }}
+        {{- if and .host .passwordSecret.name }}
+        # The SMTP server's password, as a file only the console reads.
+        - name: smtp-password
+          secret:
+            secretName: {{ .passwordSecret.name }}
+            items:
+              - key: {{ .passwordSecret.key }}
+                path: password
+        {{- end }}
         {{- end }}
         {{- if .Values.registryCheck.pullSecretName }}
         # Not optional: a configured but missing credential should fail

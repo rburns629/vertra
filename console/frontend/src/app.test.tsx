@@ -760,6 +760,21 @@ describe("a team's settings", () => {
   });
 });
 
+describe("email", () => {
+  it("lets you choose what's emailed, when the install sends email", async () => {
+    const saved: Record<string, unknown>[] = [];
+    await renderAt("/account", MEMBER, {
+      "NotificationService/GetEmailPreferences": { available: true, kinds: ["run_failed"] },
+      "NotificationService/SetEmailPreferences": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return request;
+      },
+    });
+    fireEvent.click(await screen.findByRole("checkbox", { name: "A run of mine finished" }));
+    await waitFor(() => { expect(saved).toEqual([{ kinds: ["run_failed", "run_succeeded"] }]); });
+  });
+});
+
 describe("another team's page", () => {
   it("says where to ask it, and what it offers you", async () => {
     await renderAt("/teams/gcp-platform", MEMBER, {

@@ -190,6 +190,13 @@
       "when": 1792875416217,
       "tag": "0026_examples",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792876480643,
+      "tag": "0027_email",
+      "breakpoints": true
     }
   ]
 }

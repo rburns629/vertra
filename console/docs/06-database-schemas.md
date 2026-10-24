@@ -303,6 +303,7 @@ People and bots alike.
 | `must_change_password` | boolean | no | Its password was set by someone else (an admin's new account or reset, `vertra admin reset-password`): a session it signs in may only change it. |
 | `oidc_subject` | text, unique | yes | The single sign-on account bound at the first sign-in through it (`<issuer> <sub>`): from then on only that account signs in as this person. |
 | `last_signed_in_at` | timestamptz | yes | Its last sign-in, with a password or single sign-on; empty if it never has. Shown on the Admin page's list of people. |
+| `email_kinds` | text[] | no | Which of their notifications are emailed to them too, when the install sends email: `run_failed`, `approval_waiting`, `product_not_ready` and `catalog_failing` by default. |
 | `created_at` | timestamptz | no | |
 
 ### team_memberships
@@ -685,6 +686,17 @@ A team's chat webhook (Slack, Google Chat, Teams), set by its maintainers.
 | `updated_at` | timestamptz | no | |
 | `last_sent_at` | timestamptz | yes | The last post that went. |
 | `last_error` | text | yes | Why the last one didn't, if it didn't. |
+
+### email_deliveries
+
+An event to email to a person: tried up to five times.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `event_id` | uuid | no | |
+| `user_id` | uuid | no | |
+| `attempts` | integer | no | |
+| `sent_at` | timestamptz | yes | When it went. |
 
 ### webhook_deliveries
 

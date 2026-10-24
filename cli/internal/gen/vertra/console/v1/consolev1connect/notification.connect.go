@@ -53,6 +53,12 @@ const (
 	// NotificationServiceTestTeamWebhookProcedure is the fully-qualified name of the
 	// NotificationService's TestTeamWebhook RPC.
 	NotificationServiceTestTeamWebhookProcedure = "/vertra.console.v1.NotificationService/TestTeamWebhook"
+	// NotificationServiceGetEmailPreferencesProcedure is the fully-qualified name of the
+	// NotificationService's GetEmailPreferences RPC.
+	NotificationServiceGetEmailPreferencesProcedure = "/vertra.console.v1.NotificationService/GetEmailPreferences"
+	// NotificationServiceSetEmailPreferencesProcedure is the fully-qualified name of the
+	// NotificationService's SetEmailPreferences RPC.
+	NotificationServiceSetEmailPreferencesProcedure = "/vertra.console.v1.NotificationService/SetEmailPreferences"
 )
 
 // NotificationServiceClient is a client for the vertra.console.v1.NotificationService service.
@@ -72,6 +78,12 @@ type NotificationServiceClient interface {
 	DeleteTeamWebhook(context.Context, *connect.Request[v1.DeleteTeamWebhookRequest]) (*connect.Response[v1.DeleteTeamWebhookResponse], error)
 	// Posts a test message to it (its maintainers), and says whether it went.
 	TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error)
+	// Which of your notifications are emailed to you too, and whether this
+	// install sends email at all.
+	GetEmailPreferences(context.Context, *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error)
+	// Chooses which kinds are emailed to you (any of run_failed,
+	// run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+	SetEmailPreferences(context.Context, *connect.Request[v1.SetEmailPreferencesRequest]) (*connect.Response[v1.SetEmailPreferencesResponse], error)
 }
 
 // NewNotificationServiceClient constructs a client for the vertra.console.v1.NotificationService
@@ -123,6 +135,19 @@ func NewNotificationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(notificationServiceMethods.ByName("TestTeamWebhook")),
 			connect.WithClientOptions(opts...),
 		),
+		getEmailPreferences: connect.NewClient[v1.GetEmailPreferencesRequest, v1.GetEmailPreferencesResponse](
+			httpClient,
+			baseURL+NotificationServiceGetEmailPreferencesProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("GetEmailPreferences")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setEmailPreferences: connect.NewClient[v1.SetEmailPreferencesRequest, v1.SetEmailPreferencesResponse](
+			httpClient,
+			baseURL+NotificationServiceSetEmailPreferencesProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("SetEmailPreferences")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -134,6 +159,8 @@ type notificationServiceClient struct {
 	setTeamWebhook        *connect.Client[v1.SetTeamWebhookRequest, v1.SetTeamWebhookResponse]
 	deleteTeamWebhook     *connect.Client[v1.DeleteTeamWebhookRequest, v1.DeleteTeamWebhookResponse]
 	testTeamWebhook       *connect.Client[v1.TestTeamWebhookRequest, v1.TestTeamWebhookResponse]
+	getEmailPreferences   *connect.Client[v1.GetEmailPreferencesRequest, v1.GetEmailPreferencesResponse]
+	setEmailPreferences   *connect.Client[v1.SetEmailPreferencesRequest, v1.SetEmailPreferencesResponse]
 }
 
 // ListNotifications calls vertra.console.v1.NotificationService.ListNotifications.
@@ -166,6 +193,16 @@ func (c *notificationServiceClient) TestTeamWebhook(ctx context.Context, req *co
 	return c.testTeamWebhook.CallUnary(ctx, req)
 }
 
+// GetEmailPreferences calls vertra.console.v1.NotificationService.GetEmailPreferences.
+func (c *notificationServiceClient) GetEmailPreferences(ctx context.Context, req *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error) {
+	return c.getEmailPreferences.CallUnary(ctx, req)
+}
+
+// SetEmailPreferences calls vertra.console.v1.NotificationService.SetEmailPreferences.
+func (c *notificationServiceClient) SetEmailPreferences(ctx context.Context, req *connect.Request[v1.SetEmailPreferencesRequest]) (*connect.Response[v1.SetEmailPreferencesResponse], error) {
+	return c.setEmailPreferences.CallUnary(ctx, req)
+}
+
 // NotificationServiceHandler is an implementation of the vertra.console.v1.NotificationService
 // service.
 type NotificationServiceHandler interface {
@@ -184,6 +221,12 @@ type NotificationServiceHandler interface {
 	DeleteTeamWebhook(context.Context, *connect.Request[v1.DeleteTeamWebhookRequest]) (*connect.Response[v1.DeleteTeamWebhookResponse], error)
 	// Posts a test message to it (its maintainers), and says whether it went.
 	TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error)
+	// Which of your notifications are emailed to you too, and whether this
+	// install sends email at all.
+	GetEmailPreferences(context.Context, *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error)
+	// Chooses which kinds are emailed to you (any of run_failed,
+	// run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+	SetEmailPreferences(context.Context, *connect.Request[v1.SetEmailPreferencesRequest]) (*connect.Response[v1.SetEmailPreferencesResponse], error)
 }
 
 // NewNotificationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -231,6 +274,19 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 		connect.WithSchema(notificationServiceMethods.ByName("TestTeamWebhook")),
 		connect.WithHandlerOptions(opts...),
 	)
+	notificationServiceGetEmailPreferencesHandler := connect.NewUnaryHandler(
+		NotificationServiceGetEmailPreferencesProcedure,
+		svc.GetEmailPreferences,
+		connect.WithSchema(notificationServiceMethods.ByName("GetEmailPreferences")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceSetEmailPreferencesHandler := connect.NewUnaryHandler(
+		NotificationServiceSetEmailPreferencesProcedure,
+		svc.SetEmailPreferences,
+		connect.WithSchema(notificationServiceMethods.ByName("SetEmailPreferences")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.NotificationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NotificationServiceListNotificationsProcedure:
@@ -245,6 +301,10 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 			notificationServiceDeleteTeamWebhookHandler.ServeHTTP(w, r)
 		case NotificationServiceTestTeamWebhookProcedure:
 			notificationServiceTestTeamWebhookHandler.ServeHTTP(w, r)
+		case NotificationServiceGetEmailPreferencesProcedure:
+			notificationServiceGetEmailPreferencesHandler.ServeHTTP(w, r)
+		case NotificationServiceSetEmailPreferencesProcedure:
+			notificationServiceSetEmailPreferencesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -276,4 +336,12 @@ func (UnimplementedNotificationServiceHandler) DeleteTeamWebhook(context.Context
 
 func (UnimplementedNotificationServiceHandler) TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.TestTeamWebhook is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) GetEmailPreferences(context.Context, *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.GetEmailPreferences is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) SetEmailPreferences(context.Context, *connect.Request[v1.SetEmailPreferencesRequest]) (*connect.Response[v1.SetEmailPreferencesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.SetEmailPreferences is not implemented"))
 }

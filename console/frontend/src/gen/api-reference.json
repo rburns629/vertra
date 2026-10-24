@@ -460,6 +460,24 @@
      "streaming": false,
      "idempotency": "",
      "public": false
+    },
+    {
+     "name": "GetEmailPreferences",
+     "comment": "Which of your notifications are emailed to you too, and whether this\ninstall sends email at all.",
+     "input": "vertra.console.v1.GetEmailPreferencesRequest",
+     "output": "vertra.console.v1.GetEmailPreferencesResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetEmailPreferences",
+     "comment": "Chooses which kinds are emailed to you (any of run_failed,\nrun_succeeded, approval_waiting, product_not_ready, catalog_failing).",
+     "input": "vertra.console.v1.SetEmailPreferencesRequest",
+     "output": "vertra.console.v1.SetEmailPreferencesResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
     }
    ]
   },
@@ -4411,6 +4429,57 @@
      "repeated": false,
      "optional": false,
      "comment": "Why not, when it wasn't."
+    }
+   ]
+  },
+  "vertra.console.v1.GetEmailPreferencesRequest": {
+   "name": "GetEmailPreferencesRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetEmailPreferencesResponse": {
+   "name": "GetEmailPreferencesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "available",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether this install sends email (its SMTP server is set)."
+    },
+    {
+     "name": "kinds",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetEmailPreferencesRequest": {
+   "name": "SetEmailPreferencesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "kinds",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetEmailPreferencesResponse": {
+   "name": "SetEmailPreferencesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "kinds",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

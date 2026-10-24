@@ -5,6 +5,7 @@ package sleeper
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"reflect"
@@ -205,4 +206,90 @@ func TestAScheduledSleepWaitsForUnfinishedExecutions(t *testing.T) {
 
 func newNotFound(gvr schema.GroupVersionResource, name string) error {
 	return apierrors.NewNotFound(gvr.GroupResource(), name)
+}
+
+// withNextSchedule has the console's activity ConfigMap say its next
+// schedule runs at next, and records what the wake CronJob is patched with.
+func withNextSchedule(t *testing.T, p *platform, next time.Time) map[string]string {
+	t.Helper()
+	cm, err := p.client.CoreV1().ConfigMaps("vertra-system").Get(context.Background(), "console-activity", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cm.Data[NextScheduleKey] = next.UTC().Format(time.RFC3339)
+	if _, err := p.client.CoreV1().ConfigMaps("vertra-system").Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	patches := map[string]string{}
+	p.client.PrependReactor("patch", "cronjobs", func(a k8stesting.Action) (bool, runtime.Object, error) {
+		patches[a.(k8stesting.PatchAction).GetName()] = string(a.(k8stesting.PatchAction).GetPatch())
+		return false, nil, nil
+	})
+	return patches
+}
+
+func waking() config.Settings {
+	s := settings
+	s.SleeperWakeCronJob = "kernel-wake"
+	s.SleeperWakeLead = 5 * time.Minute
+	return s
+}
+
+func TestASleepArmsTheWakeForTheNextSchedule(t *testing.T) {
+	p := newPlatform(map[string]int32{"api": 1, "postgres": 1}, at(-3*twoHours))
+	next := time.Now().Add(5 * time.Hour).Truncate(time.Minute)
+	patches := withNextSchedule(t, p, next)
+	activity := func(context.Context) (bool, *time.Time, error) { return false, at(-3 * twoHours), nil }
+	if err := Run(context.Background(), waking(), p.Platform, activity, false, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(p.scaled, []string{"api", "postgres"}) {
+		t.Fatalf("scaled %v", p.scaled)
+	}
+	wake := next.Add(-5 * time.Minute).UTC()
+	want := fmt.Sprintf(`{"spec":{"schedule":"%d %d %d %d *","suspend":false,"timeZone":"Etc/UTC"}}`, wake.Minute(), wake.Hour(), wake.Day(), int(wake.Month()))
+	if patches["kernel-wake"] != want {
+		t.Errorf("wake patched with %s, want %s", patches["kernel-wake"], want)
+	}
+}
+
+func TestAScheduleSoonKeepsItAwake(t *testing.T) {
+	p := newPlatform(map[string]int32{"api": 1, "postgres": 1}, at(-3*twoHours))
+	withNextSchedule(t, p, time.Now().Add(30*time.Minute))
+	activity := func(context.Context) (bool, *time.Time, error) { return false, at(-3 * twoHours), nil }
+	if err := Run(context.Background(), waking(), p.Platform, activity, false, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatal(err)
+	}
+	if p.scaled != nil {
+		t.Errorf("slept with a schedule due in 30 minutes: %v", p.scaled)
+	}
+}
+
+func TestWakeRestoresWhatWasAsleepDatabasesFirst(t *testing.T) {
+	p := newPlatform(map[string]int32{"api": 0, "console": 0, "postgres": 0}, nil)
+	cm, _ := p.client.CoreV1().ConfigMaps("vertra-system").Get(context.Background(), "kernel-sleep", metav1.GetOptions{})
+	cm.Data = map[string]string{AwakeReplicasKey: `{"api":2,"console":1,"postgres":1}`}
+	if _, err := p.client.CoreV1().ConfigMaps("vertra-system").Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	var woke []string
+	p.client.PrependReactor("update", "deployments", func(a k8stesting.Action) (bool, runtime.Object, error) {
+		scale := a.(k8stesting.UpdateAction).GetObject().(*autoscalingv1.Scale)
+		woke = append(woke, fmt.Sprintf("%s=%d", scale.Name, scale.Spec.Replicas))
+		return true, scale, nil
+	})
+	patches := map[string]string{}
+	p.client.PrependReactor("patch", "cronjobs", func(a k8stesting.Action) (bool, runtime.Object, error) {
+		patches[a.(k8stesting.PatchAction).GetName()] = string(a.(k8stesting.PatchAction).GetPatch())
+		return true, nil, nil
+	})
+	if err := Wake(context.Background(), waking(), p.Platform, slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(woke, []string{"postgres=1", "api=2", "console=1"}) {
+		t.Errorf("woke %v", woke)
+	}
+	if patches["kernel-sleeper"] != `{"spec":{"suspend":false}}` || patches["kernel-wake"] != `{"spec":{"suspend":true}}` {
+		t.Errorf("cron jobs patched with %v", patches)
+	}
 }

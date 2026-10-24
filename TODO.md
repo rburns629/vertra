@@ -599,13 +599,20 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   failure posts to its team's webhook; a step waiting for approval tells
   its team's maintainers (not whoever ran it) and webhook; the catalog not
   pulled for 30 minutes tells admins (`notifier.ts`, console migration
-  0021); a product not ready too (with readiness). Left: notifying by email.
+  0021); a product not ready too (with readiness); by email (2026-10-24:
+  SMTP, `notifications.email` in the console chart, each person choosing
+  the kinds in Preferences; console migration 0027).
 - [x] **P2: copy as API call, run again with changes** (done 2026-10-23):
   the run form's **Show as an API call** (the same run as `curl`, proven
   against kind), and a run's **Run with changes** (its form, filled in from
   the run; the catalog's current version, so a gone image doesn't stop it).
 - [ ] **Scale-down for development installs only**: say so in
-  `vertra init`, and let schedules wake a sleeping install.
+  `vertra init`. Schedules wake a sleeping install (done 2026-10-24: the
+  console publishes its next schedule; the sleeper stays awake for one due
+  soon and otherwise arms the kernel chart's `-wake` CronJob, `kernel
+  wake`, five minutes before it. Proven on kind: slept at 21:13, woke at
+  21:20, the 21:25 schedule ran as its bot, slept again at 21:27, re-armed
+  for the next day).
 - [ ] **Trace what a retired team's running executions do** (not checked in
   the assessment).
 

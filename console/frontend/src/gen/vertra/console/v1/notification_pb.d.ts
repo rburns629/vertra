@@ -335,6 +335,73 @@ export declare type TestTeamWebhookResponse = Message<"vertra.console.v1.TestTea
 export declare const TestTeamWebhookResponseSchema: GenMessage<TestTeamWebhookResponse>;
 
 /**
+ * @generated from message vertra.console.v1.GetEmailPreferencesRequest
+ */
+export declare type GetEmailPreferencesRequest = Message<"vertra.console.v1.GetEmailPreferencesRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetEmailPreferencesRequest.
+ * Use `create(GetEmailPreferencesRequestSchema)` to create a new message.
+ */
+export declare const GetEmailPreferencesRequestSchema: GenMessage<GetEmailPreferencesRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetEmailPreferencesResponse
+ */
+export declare type GetEmailPreferencesResponse = Message<"vertra.console.v1.GetEmailPreferencesResponse"> & {
+  /**
+   * Whether this install sends email (its SMTP server is set).
+   *
+   * @generated from field: bool available = 1;
+   */
+  available: boolean;
+
+  /**
+   * @generated from field: repeated string kinds = 2;
+   */
+  kinds: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetEmailPreferencesResponse.
+ * Use `create(GetEmailPreferencesResponseSchema)` to create a new message.
+ */
+export declare const GetEmailPreferencesResponseSchema: GenMessage<GetEmailPreferencesResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetEmailPreferencesRequest
+ */
+export declare type SetEmailPreferencesRequest = Message<"vertra.console.v1.SetEmailPreferencesRequest"> & {
+  /**
+   * @generated from field: repeated string kinds = 1;
+   */
+  kinds: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SetEmailPreferencesRequest.
+ * Use `create(SetEmailPreferencesRequestSchema)` to create a new message.
+ */
+export declare const SetEmailPreferencesRequestSchema: GenMessage<SetEmailPreferencesRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetEmailPreferencesResponse
+ */
+export declare type SetEmailPreferencesResponse = Message<"vertra.console.v1.SetEmailPreferencesResponse"> & {
+  /**
+   * @generated from field: repeated string kinds = 1;
+   */
+  kinds: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SetEmailPreferencesResponse.
+ * Use `create(SetEmailPreferencesResponseSchema)` to create a new message.
+ */
+export declare const SetEmailPreferencesResponseSchema: GenMessage<SetEmailPreferencesResponse>;
+
+/**
  * What happened that you'd want to know (the console's notifier.ts): a run
  * of yours failed or finished, a step waits for your team's approval, the
  * catalog isn't being pulled (admins). Each is in your inbox, and a team's
@@ -406,6 +473,28 @@ export declare const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof TestTeamWebhookRequestSchema;
     output: typeof TestTeamWebhookResponseSchema;
+  },
+  /**
+   * Which of your notifications are emailed to you too, and whether this
+   * install sends email at all.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.GetEmailPreferences
+   */
+  getEmailPreferences: {
+    methodKind: "unary";
+    input: typeof GetEmailPreferencesRequestSchema;
+    output: typeof GetEmailPreferencesResponseSchema;
+  },
+  /**
+   * Chooses which kinds are emailed to you (any of run_failed,
+   * run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.SetEmailPreferences
+   */
+  setEmailPreferences: {
+    methodKind: "unary";
+    input: typeof SetEmailPreferencesRequestSchema;
+    output: typeof SetEmailPreferencesResponseSchema;
   },
 }>;
 

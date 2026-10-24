@@ -13,7 +13,7 @@ import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { findTeamByName } from "../db/queries.js";
-import { notificationEvents, teamWebhooks, userNotifications, type NotificationKind } from "../db/schema.js";
+import { notificationEvents, teamWebhooks, userNotifications, users, type NotificationKind } from "../db/schema.js";
 import { decryptUrl, encryptUrl, postToWebhook, webhookUrlProblem } from "../notifier.js";
 import { ensureNotRetired } from "./retired.js";
 
@@ -123,4 +123,21 @@ export async function testTeamWebhook(caller: AuthUser | undefined, teamName: st
     await db.update(teamWebhooks).set({ lastError: why }).where(eq(teamWebhooks.teamId, team.id));
     return { sent: false, error: why };
   }
+}
+
+const EMAIL_KINDS: NotificationKind[] = ["run_failed", "run_succeeded", "approval_waiting", "product_not_ready", "catalog_failing"];
+
+export async function emailPreferences(caller: AuthUser | undefined) {
+  const who = signedIn(caller);
+  const [row] = await db.select({ kinds: users.emailKinds }).from(users).where(eq(users.id, who.id));
+  return { available: config.notifications.email.host !== "", kinds: row?.kinds ?? [] };
+}
+
+export async function setEmailPreferences(caller: AuthUser | undefined, kinds: string[]) {
+  const who = signedIn(caller);
+  const wanted = [...new Set(kinds)];
+  const unknown = wanted.filter((k) => !(EMAIL_KINDS as string[]).includes(k));
+  if (unknown.length > 0) throw new ApiError(400, "BAD_REQUEST", `Not a kind of notification: ${unknown.join(", ")}.`);
+  const [row] = await db.update(users).set({ emailKinds: wanted as NotificationKind[] }).where(eq(users.id, who.id)).returning({ kinds: users.emailKinds });
+  return { kinds: row?.kinds ?? [] };
 }

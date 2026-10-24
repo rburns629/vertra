@@ -420,6 +420,19 @@ keyless:
 
 # -- Notifications (the inbox, and teams' chat webhooks).
 notifications:
+  # -- Email: an SMTP server the console sends notifications through, to
+  # each person for the kinds they choose in Preferences. Empty host: no
+  # email. tls: starttls (587, required), tls (465), or none (a local test
+  # server only). The password comes from a Secret's key, mounted as a file.
+  email:
+    host: ""
+    port: 587
+    tls: starttls
+    from: ""
+    username: ""
+    passwordSecret:
+      name: ""
+      key: password
   # -- Where people reach the console, for links in what's posted to chat
   # webhooks. Empty: https://<ingress.host or gatewayApi.host>, or none.
   consoleUrl: ""

@@ -1245,6 +1245,21 @@ export async function scaleScanner(namespace: string, name: string, replicas: nu
  * (the only one its Role may update), for the kernel's sleeper. Another
  * copy's write landing first (a conflict) is as good as this one.
  */
+/**
+ * When the console's next schedule runs (null: none), in the same
+ * ConfigMap: a sleeping install's sleeper sets its wake for it
+ * (kernel/internal/sleeper).
+ */
+export async function recordNextSchedule(namespace: string, name: string, at: Date | null): Promise<void> {
+  const { core } = getApis();
+  const configMap = await core.readNamespacedConfigMap({ name, namespace });
+  const data = { ...configMap.data };
+  if (at) data["nextScheduleAt"] = at.toISOString();
+  else delete data["nextScheduleAt"];
+  configMap.data = data;
+  await core.replaceNamespacedConfigMap({ name, namespace, body: configMap });
+}
+
 export async function recordActivity(namespace: string, name: string, at: Date): Promise<void> {
   const { core } = getApis();
   const configMap = await core.readNamespacedConfigMap({ name, namespace });

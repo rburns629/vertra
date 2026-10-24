@@ -17,6 +17,8 @@ import { nextFor } from "./core/schedules.js";
 import { runAction, runTemplate } from "./core/templates.js";
 import { db } from "./db/client.js";
 import { schedules, teamMemberships, teams, users } from "./db/schema.js";
+import { config } from "./config.js";
+import { recordNextSchedule } from "./k8s.js";
 import { notify } from "./notifier.js";
 
 type Schedule = typeof schedules.$inferSelect;
@@ -77,6 +79,26 @@ async function start(schedule: Schedule, team: string, due: Date, log: FastifyBa
   }
 }
 
+let nextRecorded: string | undefined;
+
+/**
+ * The earliest enabled schedule's next run, kept in the activity ConfigMap
+ * for the kernel's sleeper: it stays awake for one due soon, and wakes a
+ * sleeping install a little before one. Written only when it changes.
+ */
+async function publishNextSchedule(): Promise<void> {
+  if (!config.activityConfigMap || !config.platformNamespace) return;
+  const [row] = await db
+    .select({ next: sql<Date | null>`min(${schedules.nextRunAt})` })
+    .from(schedules)
+    .where(and(eq(schedules.enabled, true), isNotNull(schedules.nextRunAt)));
+  const next = row?.next ? new Date(row.next) : null;
+  const key = next?.toISOString() ?? "";
+  if (key === nextRecorded) return;
+  await recordNextSchedule(config.platformNamespace, config.activityConfigMap, next);
+  nextRecorded = key;
+}
+
 /** One pass: every enabled schedule that's due. */
 export async function startDueSchedules(log: FastifyBaseLogger): Promise<number> {
   const due = await db
@@ -92,6 +114,7 @@ export async function startDueSchedules(log: FastifyBaseLogger): Promise<number>
     await start(schedule, team, at, log);
     started += 1;
   }
+  await publishNextSchedule();
   return started;
 }
 

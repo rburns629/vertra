@@ -44,7 +44,7 @@ import (
 	"github.com/rburns629/vertra/kernel/internal/sleeper"
 )
 
-const usage = `usage: kernel api | scheduler | migrate | sleep [--now] | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`
+const usage = `usage: kernel api | scheduler | migrate | sleep [--now] | wake | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -68,6 +68,7 @@ func main() {
 		"scheduler": {"kernel-scheduler", "app.scheduler"},
 		"migrate":   {"kernel-migrate", "app.migrate"},
 		"sleep":     {"kernel-sleeper", "app.sleeper"},
+		"wake":      {"kernel-sleeper", "app.sleeper"},
 	}[command]
 	if !ok {
 		fail(usage)
@@ -87,6 +88,8 @@ func main() {
 			err = runMigrate(ctx, settings, log)
 		case "sleep":
 			err = runSleep(ctx, settings, len(args) == 1 && args[0] == "--now", log)
+		case "wake":
+			err = runWake(ctx, settings, log)
 		}
 	}
 	if err != nil {
@@ -286,6 +289,15 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 	loop := &scheduler.Loop{Pool: pool, Executor: exec, Options: opts, PollInterval: s.PollInterval,
 		ReleaseAfter: s.ReleaseFinishedAfter, RetentionDays: s.ExecutionRetentionDays, HeartbeatFile: s.HeartbeatFile, Log: log}
 	return loop.Run(ctx)
+}
+
+// runWake wakes a sleeping install for its next schedule (the wake CronJob).
+func runWake(ctx context.Context, s config.Settings, log *slog.Logger) error {
+	client, err := kubeClient()
+	if err != nil {
+		return err
+	}
+	return sleeper.Wake(ctx, s, &sleeper.Platform{Client: client, Namespace: s.SleeperNamespace, Timeout: s.KubernetesTimeout}, log)
 }
 
 func runSleep(ctx context.Context, s config.Settings, now bool, log *slog.Logger) error {

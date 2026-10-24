@@ -69,6 +69,11 @@ type Settings struct {
 	SleeperCronJob string
 	// A scheduled sleep (--now) waits this long for unfinished executions.
 	SleeperScheduledWait time.Duration
+	// The CronJob that wakes a sleeping install for its next schedule (the
+	// console's, which it writes to its activity ConfigMap): set to fire
+	// SleeperWakeLead before it, once. Empty: schedules don't wake it.
+	SleeperWakeCronJob string
+	SleeperWakeLead    time.Duration
 
 	// kernel-scheduler, below.
 
@@ -257,6 +262,8 @@ func Load(getenv func(string) string) (Settings, error) {
 		SleeperAPIPodSelector:           r.str("SLEEPER_API_POD_SELECTOR", ""),
 		SleeperCronJob:                  r.str("SLEEPER_CRONJOB", ""),
 		SleeperScheduledWait:            r.seconds("SLEEPER_SCHEDULED_WAIT_SECONDS", 6*3600, true),
+		SleeperWakeCronJob:              r.str("SLEEPER_WAKE_CRONJOB", ""),
+		SleeperWakeLead:                 r.seconds("SLEEPER_WAKE_LEAD_SECONDS", 300, true),
 		PollInterval:                    r.seconds("SCHEDULER_POLL_INTERVAL_SECONDS", 1, true),
 		LeaseDuration:                   r.seconds("LEASE_DURATION_SECONDS", 60, true),
 		ClaimLimit:                      r.integer("SCHEDULER_CLAIM_LIMIT", 50, true),

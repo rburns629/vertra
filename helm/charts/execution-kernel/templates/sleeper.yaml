@@ -22,6 +22,7 @@ metadata:
 {{- $databases := list (printf "%s-postgres" $fullname) (printf "%s-postgres" $console) }}
 {{- $activity := printf "%s-activity" $console }}
 {{- $name := printf "%s-sleeper" $fullname }}
+{{- $wake := printf "%s-wake" $fullname }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -57,9 +58,11 @@ rules:
     verbs: ["list"]
   # Its own CronJob, suspended while asleep (no Pod, on EKS Auto Mode no
   # node, every few minutes to find nothing to do); waking resumes it.
+  # And the wake CronJob: armed for the console's next schedule when it
+  # sleeps, stood down once it's woken (kernel wake).
   - apiGroups: ["batch"]
     resources: ["cronjobs"]
-    resourceNames: [{{ $name | quote }}]
+    resourceNames: [{{ $name | quote }}, {{ $wake | quote }}]
     verbs: ["get", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -77,26 +80,32 @@ subjects:
   - kind: ServiceAccount
     name: {{ $name }}
     namespace: {{ .Release.Namespace }}
-{{- range $job := list (dict "suffix" "" "schedule" $s.checkSchedule "args" (list)) (dict "suffix" "-scheduled" "schedule" $s.schedule "args" (list "--now")) }}
+{{- range $job := list (dict "name" $name "schedule" $s.checkSchedule "command" (list "sleep")) (dict "name" (printf "%s-scheduled" $name) "schedule" $s.schedule "command" (list "sleep" "--now")) (dict "name" $wake "schedule" "0 0 1 1 *" "command" (list "wake") "suspend" true) }}
 {{- if $job.schedule }}
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ $name }}{{ $job.suffix }}
+  name: {{ $job.name }}
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "execution-kernel.labels" $ | nindent 4 }}
     app.kubernetes.io/component: sleeper
 spec:
   schedule: {{ $job.schedule | quote }}
+  {{- if $job.suspend }}
+  # Waking for a schedule: the sleeper sets its time and un-suspends it as it
+  # sleeps, and it stands itself down once it has woken the install.
+  suspend: true
+  timeZone: Etc/UTC
+  {{- end }}
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       backoffLimit: 0
-      activeDeadlineSeconds: {{ ternary 22500 300 (gt (len $job.args) 0) }}
+      activeDeadlineSeconds: {{ ternary 22500 300 (has "--now" $job.command) }}
       ttlSecondsAfterFinished: 3600
       template:
         metadata:
@@ -114,7 +123,7 @@ spec:
             - name: sleeper
               image: {{ include "execution-kernel.appImage" $ | quote }}
               imagePullPolicy: {{ $.Values.image.pullPolicy }}
-              command: ["/usr/local/bin/kernel", "sleep"{{ range $job.args }}, {{ . | quote }}{{ end }}]
+              command: ["/usr/local/bin/kernel"{{ range $job.command }}, {{ . | quote }}{{ end }}]
               resources:
                 {{- toYaml $s.resources | nindent 16 }}
               securityContext:
@@ -144,6 +153,8 @@ spec:
                   value: {{ printf "app.kubernetes.io/name=%s,app.kubernetes.io/instance=%s,app.kubernetes.io/component=api" (include "execution-kernel.name" $) $.Release.Name | quote }}
                 - name: SLEEPER_CRONJOB
                   value: {{ $name | quote }}
+                - name: SLEEPER_WAKE_CRONJOB
+                  value: {{ $wake | quote }}
                 - name: KUBERNETES_REQUEST_TIMEOUT_SECONDS
                   value: {{ $.Values.scheduler.kubernetesRequestTimeoutSeconds | quote }}
 {{- end }}

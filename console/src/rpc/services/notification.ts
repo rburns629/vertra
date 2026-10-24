@@ -4,7 +4,9 @@ import type { ServiceImpl } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import {
   deleteTeamWebhook,
+  emailPreferences,
   getTeamWebhook,
+  setEmailPreferences,
   listNotifications,
   markNotificationsRead,
   setTeamWebhook,
@@ -62,6 +64,15 @@ export function notificationService(): ServiceImpl<typeof NotificationService> {
       const { team } = check({ team: Team }, req);
       await deleteTeamWebhook(callerOf(ctx), team);
       return {};
+    },
+
+    async getEmailPreferences(_req, ctx) {
+      return emailPreferences(callerOf(ctx));
+    },
+
+    async setEmailPreferences(req, ctx) {
+      const { kinds } = check({ kinds: Type.Array(Type.String({ maxLength: 64 }), { maxItems: 10 }) }, { kinds: req.kinds });
+      return setEmailPreferences(callerOf(ctx), kinds);
     },
 
     async testTeamWebhook(req, ctx) {

@@ -16,11 +16,14 @@ import { addTeamMember, createTeam, upsertProduct } from "../src/db/queries.js";
 import { notificationEvents, products, schedules, submittedExecutions, teamMemberships, teams, users as usersTable } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { submitExecution } from "../src/kernel/client.js";
+import { config } from "../src/config.js";
+import { recordNextSchedule } from "../src/k8s.js";
 import { startDueSchedules } from "../src/scheduleRunner.js";
 import { caller, rpcClient } from "./rpc.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
+  recordNextSchedule: vi.fn(() => Promise.resolve()),
   ensureServiceAccount: vi.fn(() => Promise.resolve()),
   updateIdentityPolicy: vi.fn(() => Promise.resolve(true)),
 }));
@@ -149,6 +152,25 @@ describe("a due schedule", () => {
     expect(after?.lastError).toMatch(/aren't a member of team/);
     const [event] = await db.select().from(notificationEvents).where(like(notificationEvents.key, `schedule:${row?.id ?? ""}%`));
     expect(event?.title).toBe("Schedule nightly couldn't start");
+  });
+
+  it("tells the sleeper when the next one runs, once each time it changes", async () => {
+    Object.assign(config, { activityConfigMap: "console-activity", platformNamespace: "vertra-system" });
+    try {
+      const [row] = await db.select().from(schedules).where(eq(schedules.teamId, ownTeamId));
+      const soon = new Date(Date.now() + 3_600_000);
+      await db.update(schedules).set({ nextRunAt: soon }).where(eq(schedules.id, row?.id ?? ""));
+      vi.mocked(recordNextSchedule).mockClear();
+      await startDueSchedules(silent);
+      await startDueSchedules(silent);
+      const calls = vi.mocked(recordNextSchedule).mock.calls;
+      expect(calls).toHaveLength(1);
+      // The earliest of every enabled schedule here: ours, unless another test's comes first.
+      expect(calls[0]?.slice(0, 2)).toEqual(["vertra-system", "console-activity"]);
+      expect((calls[0]?.[2] as Date).getTime()).toBeLessThanOrEqual(soon.getTime());
+    } finally {
+      Object.assign(config, { activityConfigMap: "", platformNamespace: "" });
+    }
   });
 
   it("paused, doesn't run", async () => {

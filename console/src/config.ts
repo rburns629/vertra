@@ -125,6 +125,28 @@ function loadRegistryCredentials(path: string | undefined): RegistryCredentials 
   return credentials;
 }
 
+/** Email for notifications (notifier.ts); host empty: none. Checked here so a half-set one fails at startup. */
+function loadEmail() {
+  const email = {
+    host: process.env["SMTP_HOST"] ?? "",
+    port: Number(process.env["SMTP_PORT"] ?? "587"),
+    // "tls" (implicit, port 465), "starttls" (upgraded, 587, required), or
+    // "none" (a local test server only).
+    tls: (process.env["SMTP_TLS"] ?? "starttls") as "tls" | "starttls" | "none",
+    from: process.env["SMTP_FROM"] ?? "",
+    username: process.env["SMTP_USERNAME"] ?? "",
+    // The password is read from a file (the chart mounts its Secret), never
+    // an environment variable.
+    passwordFile: process.env["SMTP_PASSWORD_FILE"] ?? "",
+  };
+  if (!email.host) return email;
+  if (!["tls", "starttls", "none"].includes(email.tls)) throw new Error(`SMTP_TLS is tls, starttls or none, not "${email.tls}".`);
+  if (!/^[^@\s]+@[^@\s]+$/.test(email.from.replace(/^.*<(.+)>$/, "$1"))) throw new Error("SMTP_HOST is set, so SMTP_FROM needs an email address.");
+  if (!Number.isInteger(email.port) || email.port < 1 || email.port > 65535) throw new Error("SMTP_PORT isn't a port.");
+  if (email.username && !email.passwordFile) throw new Error("SMTP_USERNAME is set, so SMTP_PASSWORD_FILE is needed too.");
+  return email;
+}
+
 export const config = {
   port: Number(process.env["PORT"] ?? 8080),
   // /metrics for Prometheus, on a port of its own so the console's Ingress
@@ -179,6 +201,12 @@ export const config = {
   // under ("hooks.slack.com", or "*.webhook.office.com" for any name below
   // it), so a webhook can't point the console at anything else.
   notifications: {
+    // Email (notifier.ts): an SMTP server to send through. Empty host: no
+    // email. tls: "tls" (implicit, port 465), "starttls" (upgraded, 587,
+    // required), or "none" (local test servers only). The password is read
+    // from a file (the chart mounts its Secret), never an environment
+    // variable.
+    email: loadEmail(),
     webhookHosts: list(process.env["NOTIFY_WEBHOOK_HOSTS"] ?? "hooks.slack.com,chat.googleapis.com,*.webhook.office.com,*.logic.azure.com"),
   },
   // Off unless set: accounts are created by an admin (Admin page ->

@@ -61,6 +61,21 @@ data:
   # Where people reach it, for links in chat webhook posts.
   CONSOLE_URL: {{ .Values.notifications.consoleUrl | default (ternary (printf "https://%s" $host) "" (ne $host "")) | quote }}
   NOTIFY_WEBHOOK_HOSTS: {{ join "," .Values.notifications.webhookHosts | quote }}
+  {{- with .Values.notifications.email }}
+  {{- if .host }}
+  {{- if not .from }}
+  {{- fail "notifications.email.host is set, so notifications.email.from is needed too." }}
+  {{- end }}
+  SMTP_HOST: {{ .host | quote }}
+  SMTP_PORT: {{ .port | quote }}
+  SMTP_TLS: {{ .tls | quote }}
+  SMTP_FROM: {{ .from | quote }}
+  SMTP_USERNAME: {{ .username | quote }}
+  {{- if .passwordSecret.name }}
+  SMTP_PASSWORD_FILE: /var/run/secrets/vertra/smtp/password
+  {{- end }}
+  {{- end }}
+  {{- end }}
   KEYLESS_ISSUERS: {{ join "," .Values.keyless.issuers | quote }}
   KEYLESS_AUDIENCE: {{ .Values.keyless.audience | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}

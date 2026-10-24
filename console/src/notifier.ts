@@ -9,7 +9,9 @@
  *     ran it, who can't decide) and its team's webhook;
  *   - the catalog not pulled: admins.
  *
- * Each is an event made once (notification_events.key), so a second
+ * Each is shown in its people's inbox, emailed to those who want its kind
+ * (users.email_kinds) when the install sends email (SMTP_*), and posted to
+ * its teams' webhooks. Each is an event made once (notification_events.key), so a second
  * console or a second pass never says it twice. A finished run is reported
  * by resourceRecorder.ts as it records it; the rest are looked for every 30
  * seconds, when webhooks are posted too, each up to five times.
@@ -23,11 +25,13 @@
  */
 import type { FastifyBaseLogger } from "fastify";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { createTransport, type Transporter } from "nodemailer";
 import { and, asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { config } from "./config.js";
 import { backendAllowed } from "./core/apis.js";
 import { db } from "./db/client.js";
-import { catalogSync, notificationEvents, teamMemberships, teams, teamWebhooks, userNotifications, users, webhookDeliveries, type NotificationKind } from "./db/schema.js";
+import { catalogSync, emailDeliveries, notificationEvents, teamMemberships, teams, teamWebhooks, userNotifications, users, webhookDeliveries, type NotificationKind } from "./db/schema.js";
 import { listAwaitingApproval } from "./kernel/client.js";
 
 const MAX_ATTEMPTS = 5;
@@ -106,6 +110,16 @@ export async function notify(event: NewEvent): Promise<boolean> {
     const userIds = [...new Set(event.userIds)];
     if (userIds.length > 0) {
       await tx.insert(userNotifications).values(userIds.map((userId) => ({ eventId: made.id, userId }))).onConflictDoNothing();
+      // By email too, to those who want this kind, when the install sends email.
+      if (config.notifications.email.host) {
+        const wanting = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(and(inArray(users.id, userIds), sql`${event.kind} = any(${users.emailKinds})`));
+        if (wanting.length > 0) {
+          await tx.insert(emailDeliveries).values(wanting.map((u) => ({ eventId: made.id, userId: u.id }))).onConflictDoNothing();
+        }
+      }
     }
     if (event.teams.length > 0) {
       const hooked = await tx
@@ -264,12 +278,74 @@ export async function deliverWebhooks(log: FastifyBaseLogger): Promise<number> {
   return sent;
 }
 
+// --- email ---
+
+let transport: Transporter | undefined;
+
+/** The SMTP connection, made once, with the password read from its file. */
+async function mailer(): Promise<Transporter> {
+  if (transport) return transport;
+  const { host, port, tls, username, passwordFile } = config.notifications.email;
+  const password = passwordFile ? (await readFile(passwordFile, "utf8")).trim() : "";
+  transport = createTransport({
+    host,
+    port,
+    secure: tls === "tls",
+    requireTLS: tls === "starttls",
+    ignoreTLS: tls === "none",
+    ...(username ? { auth: { user: username, pass: password } } : {}),
+    connectionTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+  return transport;
+}
+
+/** Emails what's waiting to be sent, oldest first. */
+export async function deliverEmails(log: FastifyBaseLogger): Promise<number> {
+  if (!config.notifications.email.host) return 0;
+  const pending = await db
+    .select({
+      eventId: emailDeliveries.eventId,
+      userId: emailDeliveries.userId,
+      attempts: emailDeliveries.attempts,
+      email: users.email,
+      title: notificationEvents.title,
+      body: notificationEvents.body,
+      link: notificationEvents.link,
+    })
+    .from(emailDeliveries)
+    .innerJoin(notificationEvents, eq(notificationEvents.id, emailDeliveries.eventId))
+    .innerJoin(users, eq(users.id, emailDeliveries.userId))
+    .where(and(isNull(emailDeliveries.sentAt), lt(emailDeliveries.attempts, MAX_ATTEMPTS)))
+    .orderBy(asc(notificationEvents.createdAt))
+    .limit(50);
+  let sent = 0;
+  for (const d of pending) {
+    const where = and(eq(emailDeliveries.eventId, d.eventId), eq(emailDeliveries.userId, d.userId));
+    try {
+      await (await mailer()).sendMail({
+        from: config.notifications.email.from,
+        to: d.email,
+        subject: d.title,
+        text: `${message(d)}\n\nYou get these for your runs and your teams'. Choose which in Vertra: Preferences.`,
+      });
+      await db.update(emailDeliveries).set({ sentAt: sql`now()`, attempts: d.attempts + 1 }).where(where);
+      sent += 1;
+    } catch (error) {
+      await db.update(emailDeliveries).set({ attempts: d.attempts + 1 }).where(where);
+      log.warn({ event: "email_failed", userId: d.userId, err: error instanceof Error ? error.message : String(error) }, "couldn't send a notification email");
+    }
+  }
+  return sent;
+}
+
 export function startNotifier(log: FastifyBaseLogger): void {
   let running = false;
   const pass = async () => {
     await notifyApprovals();
     await notifyCatalog();
     await deliverWebhooks(log);
+    await deliverEmails(log);
   };
   const run = () => {
     if (running) return;

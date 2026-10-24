@@ -124,6 +124,10 @@ export const users = pgTable("users", {
   // Its last sign-in, with a password or single sign-on, for the admins'
   // list of people. Null means never.
   lastSignedInAt: timestamp("last_signed_in_at", { withTimezone: true }),
+  // Which notifications reach them by email too, when the install sends
+  // email (notifier.ts): failures, approvals and readiness by default, not
+  // every finished run.
+  emailKinds: text("email_kinds").array().$type<NotificationKind[]>().notNull().default(sql`'{run_failed,approval_waiting,product_not_ready,catalog_failing}'::text[]`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -601,6 +605,22 @@ export const teamWebhooks = pgTable("team_webhooks", {
   lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
   lastError: text("last_error"),
 });
+
+/** An event to email to a person, until it's sent or given up on. */
+export const emailDeliveries = pgTable(
+  "email_deliveries",
+  {
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => notificationEvents.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    attempts: integer("attempts").notNull().default(0),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [primaryKey({ columns: [table.eventId, table.userId] })],
+);
 
 /** An event to post to a team's webhook, until it's posted or given up on. */
 export const webhookDeliveries = pgTable(

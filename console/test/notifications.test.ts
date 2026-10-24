@@ -16,9 +16,14 @@ import { addTeamMember, createTeam } from "../src/db/queries.js";
 import { notificationEvents, teams, teamWebhooks, userNotifications, users as usersTable, webhookDeliveries } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { listAwaitingApproval } from "../src/kernel/client.js";
-import { decryptUrl, deliverWebhooks, encryptUrl, notifyApprovals, runFinished, webhookUrlProblem } from "../src/notifier.js";
+import { config } from "../src/config.js";
+import { decryptUrl, deliverEmails, deliverWebhooks, encryptUrl, notifyApprovals, runFinished, webhookUrlProblem } from "../src/notifier.js";
 import { caller, rpcClient } from "./rpc.js";
 
+const sent: { to: string; subject: string; text: string }[] = [];
+vi.mock("nodemailer", () => ({
+  createTransport: vi.fn(() => ({ sendMail: vi.fn((mail: { to: string; subject: string; text: string }) => { sent.push(mail); return Promise.resolve({}); }) })),
+}));
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/kernel/client.js")>()),
   listAwaitingApproval: vi.fn(() => Promise.resolve([])),
@@ -185,5 +190,33 @@ describe("the inbox", () => {
     expect((await call<{ unreadCount?: number }>(memberToken, "NotificationService/ListNotifications")).body.unreadCount ?? 0).toBe(0);
     expect(await inbox(member.id)).not.toHaveLength(0);
     expect(await db.select().from(userNotifications).where(inArray(userNotifications.userId, [member.id]))).not.toHaveLength(0);
+  });
+});
+
+describe("email", () => {
+  it("sends what each person wants of theirs, once, when the install sends email", async () => {
+    Object.assign(config.notifications.email, { host: "smtp.example.test", from: "Vertra <vertra@example.test>" });
+    const consoleUrl = config.consoleUrl;
+    Object.assign(config, { consoleUrl: "https://vertra.example.test" });
+    try {
+      // The member keeps the defaults (failures among them); the maintainer wants none.
+      expect((await call(maintainerToken, "NotificationService/SetEmailPreferences", { kinds: [] })).code).toBe("ok");
+      expect((await call(maintainerToken, "NotificationService/SetEmailPreferences", { kinds: ["everything"] })).code).toBe("invalid_argument");
+      const prefs = await call<{ available?: boolean; kinds?: string[] }>(memberToken, "NotificationService/GetEmailPreferences");
+      expect(prefs.body).toEqual({ available: true, kinds: ["run_failed", "approval_waiting", "product_not_ready", "catalog_failing"] });
+
+      const executionId = randomUUID();
+      await runFinished({ executionId, name: `${prefix} mailed`, state: "FAILED", submittedBy: member.id, teams: [], finishedAt: new Date().toISOString() });
+      await runFinished({ executionId: randomUUID(), name: `${prefix} unmailed`, state: "FAILED", submittedBy: maintainer.id, teams: [], finishedAt: new Date().toISOString() });
+      sent.length = 0;
+      await deliverEmails(silent);
+      await deliverEmails(silent);
+      const ours = sent.filter((m) => m.subject.startsWith(prefix));
+      expect(ours.map((m) => [m.to, m.subject])).toEqual([[member.email, `${prefix} mailed failed`]]);
+      expect(ours[0]?.text).toContain(`https://vertra.example.test/runs/${executionId}`);
+    } finally {
+      Object.assign(config, { consoleUrl });
+      Object.assign(config.notifications.email, { host: "", from: "" });
+    }
   });
 });

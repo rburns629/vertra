@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/notification.proto.
  */
 export const file_vertra_console_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiR2ZXJ0cmEvY29uc29sZS92MS9ub3RpZmljYXRpb24ucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIpEBCgxOb3RpZmljYXRpb24SCgoCaWQYASABKAkSDAoEa2luZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIMCgRib2R5GAQgASgJEgwKBGxpbmsYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEcmVhZBgHIAEoCCIvChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSEwoLdW5yZWFkX29ubHkYASABKAgiaQoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRI2Cg1ub3RpZmljYXRpb25zGAEgAygLMh8udmVydHJhLmNvbnNvbGUudjEuTm90aWZpY2F0aW9uEhQKDHVucmVhZF9jb3VudBgCIAEoBSI4ChxNYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0EgsKA2lkcxgBIAMoCRILCgNhbGwYAiABKAgiHwodTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2UitAEKC1RlYW1XZWJob29rEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEaG9zdBgCIAEoCRINCgVraW5kcxgDIAMoCRIwCgxsYXN0X3NlbnRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmxhc3RfZXJyb3IYBSABKAkSLgoKdXBkYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJQoVR2V0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiYAoWR2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2sSFQoNYWxsb3dlZF9ob3N0cxgCIAMoCSJBChVTZXRUZWFtV2ViaG9va1JlcXVlc3QSDAoEdGVhbRgBIAEoCRILCgN1cmwYAiABKAkSDQoFa2luZHMYAyADKAkiSQoWU2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2siKAoYRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiGwoZRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZSImChZUZXN0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiNgoXVGVzdFRlYW1XZWJob29rUmVzcG9uc2USDAoEc2VudBgBIAEoCBINCgVlcnJvchgCIAEoCTKzBQoTTm90aWZpY2F0aW9uU2VydmljZRJzChFMaXN0Tm90aWZpY2F0aW9ucxIrLnZlcnRyYS5jb25zb2xlLnYxLkxpc3ROb3RpZmljYXRpb25zUmVxdWVzdBosLnZlcnRyYS5jb25zb2xlLnYxLkxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2UiA5ACARJ6ChVNYXJrTm90aWZpY2F0aW9uc1JlYWQSLy52ZXJ0cmEuY29uc29sZS52MS5NYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0GjAudmVydHJhLmNvbnNvbGUudjEuTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2USagoOR2V0VGVhbVdlYmhvb2sSKC52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtV2ViaG9va1JlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtV2ViaG9va1Jlc3BvbnNlIgOQAgESZQoOU2V0VGVhbVdlYmhvb2sSKC52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtV2ViaG9va1JlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtV2ViaG9va1Jlc3BvbnNlEm4KEURlbGV0ZVRlYW1XZWJob29rEisudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0GiwudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZRJoCg9UZXN0VGVhbVdlYmhvb2sSKS52ZXJ0cmEuY29uc29sZS52MS5UZXN0VGVhbVdlYmhvb2tSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuVGVzdFRlYW1XZWJob29rUmVzcG9uc2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("CiR2ZXJ0cmEvY29uc29sZS92MS9ub3RpZmljYXRpb24ucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIpEBCgxOb3RpZmljYXRpb24SCgoCaWQYASABKAkSDAoEa2luZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIMCgRib2R5GAQgASgJEgwKBGxpbmsYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEcmVhZBgHIAEoCCIvChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSEwoLdW5yZWFkX29ubHkYASABKAgiaQoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRI2Cg1ub3RpZmljYXRpb25zGAEgAygLMh8udmVydHJhLmNvbnNvbGUudjEuTm90aWZpY2F0aW9uEhQKDHVucmVhZF9jb3VudBgCIAEoBSI4ChxNYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0EgsKA2lkcxgBIAMoCRILCgNhbGwYAiABKAgiHwodTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2UitAEKC1RlYW1XZWJob29rEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEaG9zdBgCIAEoCRINCgVraW5kcxgDIAMoCRIwCgxsYXN0X3NlbnRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmxhc3RfZXJyb3IYBSABKAkSLgoKdXBkYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJQoVR2V0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiYAoWR2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2sSFQoNYWxsb3dlZF9ob3N0cxgCIAMoCSJBChVTZXRUZWFtV2ViaG9va1JlcXVlc3QSDAoEdGVhbRgBIAEoCRILCgN1cmwYAiABKAkSDQoFa2luZHMYAyADKAkiSQoWU2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2siKAoYRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiGwoZRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZSImChZUZXN0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiNgoXVGVzdFRlYW1XZWJob29rUmVzcG9uc2USDAoEc2VudBgBIAEoCBINCgVlcnJvchgCIAEoCSIcChpHZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdCI/ChtHZXRFbWFpbFByZWZlcmVuY2VzUmVzcG9uc2USEQoJYXZhaWxhYmxlGAEgASgIEg0KBWtpbmRzGAIgAygJIisKGlNldEVtYWlsUHJlZmVyZW5jZXNSZXF1ZXN0Eg0KBWtpbmRzGAEgAygJIiwKG1NldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZRINCgVraW5kcxgBIAMoCTKkBwoTTm90aWZpY2F0aW9uU2VydmljZRJzChFMaXN0Tm90aWZpY2F0aW9ucxIrLnZlcnRyYS5jb25zb2xlLnYxLkxpc3ROb3RpZmljYXRpb25zUmVxdWVzdBosLnZlcnRyYS5jb25zb2xlLnYxLkxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2UiA5ACARJ6ChVNYXJrTm90aWZpY2F0aW9uc1JlYWQSLy52ZXJ0cmEuY29uc29sZS52MS5NYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0GjAudmVydHJhLmNvbnNvbGUudjEuTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2USagoOR2V0VGVhbVdlYmhvb2sSKC52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtV2ViaG9va1JlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtV2ViaG9va1Jlc3BvbnNlIgOQAgESZQoOU2V0VGVhbVdlYmhvb2sSKC52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtV2ViaG9va1JlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtV2ViaG9va1Jlc3BvbnNlEm4KEURlbGV0ZVRlYW1XZWJob29rEisudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0GiwudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZRJoCg9UZXN0VGVhbVdlYmhvb2sSKS52ZXJ0cmEuY29uc29sZS52MS5UZXN0VGVhbVdlYmhvb2tSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuVGVzdFRlYW1XZWJob29rUmVzcG9uc2USeQoTR2V0RW1haWxQcmVmZXJlbmNlcxItLnZlcnRyYS5jb25zb2xlLnYxLkdldEVtYWlsUHJlZmVyZW5jZXNSZXF1ZXN0Gi4udmVydHJhLmNvbnNvbGUudjEuR2V0RW1haWxQcmVmZXJlbmNlc1Jlc3BvbnNlIgOQAgESdAoTU2V0RW1haWxQcmVmZXJlbmNlcxItLnZlcnRyYS5jb25zb2xlLnYxLlNldEVtYWlsUHJlZmVyZW5jZXNSZXF1ZXN0Gi4udmVydHJhLmNvbnNvbGUudjEuU2V0RW1haWxQcmVmZXJlbmNlc1Jlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.Notification
@@ -352,6 +352,77 @@ export const TestTeamWebhookResponseSchema: GenMessage<TestTeamWebhookResponse> 
   messageDesc(file_vertra_console_v1_notification, 13);
 
 /**
+ * @generated from message vertra.console.v1.GetEmailPreferencesRequest
+ */
+export type GetEmailPreferencesRequest = Message<"vertra.console.v1.GetEmailPreferencesRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetEmailPreferencesRequest.
+ * Use `create(GetEmailPreferencesRequestSchema)` to create a new message.
+ */
+export const GetEmailPreferencesRequestSchema: GenMessage<GetEmailPreferencesRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 14);
+
+/**
+ * @generated from message vertra.console.v1.GetEmailPreferencesResponse
+ */
+export type GetEmailPreferencesResponse = Message<"vertra.console.v1.GetEmailPreferencesResponse"> & {
+  /**
+   * Whether this install sends email (its SMTP server is set).
+   *
+   * @generated from field: bool available = 1;
+   */
+  available: boolean;
+
+  /**
+   * @generated from field: repeated string kinds = 2;
+   */
+  kinds: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetEmailPreferencesResponse.
+ * Use `create(GetEmailPreferencesResponseSchema)` to create a new message.
+ */
+export const GetEmailPreferencesResponseSchema: GenMessage<GetEmailPreferencesResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 15);
+
+/**
+ * @generated from message vertra.console.v1.SetEmailPreferencesRequest
+ */
+export type SetEmailPreferencesRequest = Message<"vertra.console.v1.SetEmailPreferencesRequest"> & {
+  /**
+   * @generated from field: repeated string kinds = 1;
+   */
+  kinds: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SetEmailPreferencesRequest.
+ * Use `create(SetEmailPreferencesRequestSchema)` to create a new message.
+ */
+export const SetEmailPreferencesRequestSchema: GenMessage<SetEmailPreferencesRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 16);
+
+/**
+ * @generated from message vertra.console.v1.SetEmailPreferencesResponse
+ */
+export type SetEmailPreferencesResponse = Message<"vertra.console.v1.SetEmailPreferencesResponse"> & {
+  /**
+   * @generated from field: repeated string kinds = 1;
+   */
+  kinds: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SetEmailPreferencesResponse.
+ * Use `create(SetEmailPreferencesResponseSchema)` to create a new message.
+ */
+export const SetEmailPreferencesResponseSchema: GenMessage<SetEmailPreferencesResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 17);
+
+/**
  * What happened that you'd want to know (the console's notifier.ts): a run
  * of yours failed or finished, a step waits for your team's approval, the
  * catalog isn't being pulled (admins). Each is in your inbox, and a team's
@@ -423,6 +494,28 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof TestTeamWebhookRequestSchema;
     output: typeof TestTeamWebhookResponseSchema;
+  },
+  /**
+   * Which of your notifications are emailed to you too, and whether this
+   * install sends email at all.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.GetEmailPreferences
+   */
+  getEmailPreferences: {
+    methodKind: "unary";
+    input: typeof GetEmailPreferencesRequestSchema;
+    output: typeof GetEmailPreferencesResponseSchema;
+  },
+  /**
+   * Chooses which kinds are emailed to you (any of run_failed,
+   * run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.SetEmailPreferences
+   */
+  setEmailPreferences: {
+    methodKind: "unary";
+    input: typeof SetEmailPreferencesRequestSchema;
+    output: typeof SetEmailPreferencesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_notification, 0);
