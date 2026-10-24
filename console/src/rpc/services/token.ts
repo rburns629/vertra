@@ -15,6 +15,7 @@ import {
   TokenId,
   TokenLabel,
 } from "../../core/tokens.js";
+import { addBotIdentity, listBotIdentities, removeBotIdentity } from "../../core/botIdentities.js";
 import type { TokenService } from "../../gen/vertra/console/v1/token_pb.js";
 import { callerOf, logOf } from "../context.js";
 import { check } from "../validate.js";
@@ -22,8 +23,39 @@ import { check } from "../validate.js";
 const TeamName = Type.String({ minLength: 1 });
 const optionalTime = (date: Date | null) => (date ? timestampFromDate(date) : undefined);
 
+type IdentityRow = Awaited<ReturnType<typeof addBotIdentity>>;
+const identity = (r: IdentityRow) => ({
+  id: r.id,
+  botId: r.botId,
+  botEmail: r.botEmail,
+  issuer: r.issuer,
+  claims: r.claims,
+  createdAt: timestampFromDate(r.createdAt),
+  lastUsedAt: optionalTime(r.lastUsedAt),
+});
+
 export function tokenService(): ServiceImpl<typeof TokenService> {
   return {
+    async listBotIdentities(req, ctx) {
+      const { team } = check({ team: TeamName }, req);
+      const found = await listBotIdentities(callerOf(ctx), team);
+      return { identities: found.identities.map(identity), issuers: found.issuers, audience: found.audience };
+    },
+
+    async addBotIdentity(req, ctx) {
+      const { team, botId, issuer } = check(
+        { team: TeamName, botId: Type.String({ format: "uuid" }), issuer: Type.String({ minLength: 1, maxLength: 300 }) },
+        { team: req.team, botId: req.botId, issuer: req.issuer },
+      );
+      return { identity: identity(await addBotIdentity(callerOf(ctx), team, botId, issuer, { ...req.claims })) };
+    },
+
+    async removeBotIdentity(req, ctx) {
+      const { id } = check({ id: Type.String({ format: "uuid" }) }, req);
+      await removeBotIdentity(callerOf(ctx), id);
+      return {};
+    },
+
     async listBots(req, ctx) {
       const { team } = check({ team: TeamName }, req);
       const bots = await listBots(callerOf(ctx), team);

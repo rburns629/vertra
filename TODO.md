@@ -502,6 +502,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   a refused start is kept and told to the maintainers (`scheduleRunner.ts`,
   console migration 0024). Left: schedules waking a sleeping install.
 - [ ] **P2: caps per product** (how many of its steps run at once).
+- [x] **Keyless bots** (done 2026-10-24): a bot signs in with its CI job's
+  OIDC identity (GitHub Actions, GitLab) instead of a stored token. Its
+  team's maintainers bind it to exact claims (`TokenService.AddBotIdentity`;
+  console migration 0025); `AuthService/ExchangeToken` verifies the token
+  (the issuer's keys, an allowed issuer, the install's audience, expiry)
+  and returns an hour's session for the one bot it matches, which the
+  gateway takes as is. Proven with a test issuer's real signed tokens; not
+  yet from a real GitHub Actions job (that needs a console it can reach).
 - [x] **P1: roles** (done 2026-10-21): a team's people are maintainers or
   members (`team_memberships.role`; memberships from before are
   maintainers). Members see the team's runs, logs, Pods and secrets'
@@ -780,8 +788,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      answer streamed back. `Vertra-Answered-By` on every answer; logs and
      metrics without bodies or credentials. Proven on kind with an echo
      backend: forwarded, blocked, invalid, limited, not shared, paused, and
-     its token fence. Left: keyless bots (with them in the console);
-     a read-only database role for it.
+     its token fence. Keyless bots' sessions are ordinary console
+     sessions, so it takes them as is (2026-10-24). Left: a read-only
+     database role for it.
   4. Backend credentials, minted per request (done and proven
      2026-10-22: a GKE install's gateway called a Cloud Run service that
      requires Google sign-in with an ID token for its invoker account, and
@@ -807,13 +816,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      them into `api_traffic`, kept a week), a team's APIs tab, and the
      admin's gateway card (done 2026-10-22).
   Proven on kind with a backend in a team namespace, then on GKE with a
-  Cloud Run backend and a Lambda function URL (2026-10-22). Left:
-  keyless bots; a read-only database role for the gateway (it only
-  writes api_traffic).
+  Cloud Run backend and a Lambda function URL (2026-10-22). Left: a
+  read-only database role for the gateway (it only writes api_traffic).
 
 - [ ] **Submit orders from outside the cluster** (a storefront, an event
   bus): a public HTTPS front door for the console's `/api`, keyless sign-in
-  for services (OIDC tokens from trusted issuers, mapped to a bot), orders
+  for services (done for CI, 2026-10-24: OIDC tokens from allowed issuers,
+  mapped to a bot; other issuers are a setting away), orders
   rather than raw DAGs, and a decision on who an order is for. kernel-api
   stays private.
 - [ ] **Order builder (exploratory):** turn a cart of products into a DAG

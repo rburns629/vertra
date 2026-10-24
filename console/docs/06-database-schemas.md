@@ -591,6 +591,20 @@ What runs made: each resource a step reported in its outputs (`resources: [{type
 | `delete_requested_by` | uuid | yes | Who asked. |
 | `deleted_at` | timestamptz | yes | When its cleanup step succeeded. |
 
+### bot_identities
+
+Who a bot is when it signs in without a stored token (`auth/keyless.ts`): a CI's OIDC issuer and the exact claims its ID token must carry.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `bot_id` | uuid | no | The bot. |
+| `issuer` | text | no | An issuer the install allows (`keyless.issuers`): GitHub Actions', GitLab's. With `claims`, unique. |
+| `claims` | jsonb | no | Each claim the token must carry, with exactly this value: `repository` (or `project_path`, `sub`), and perhaps `ref` or `environment`. |
+| `created_by` | uuid | yes | |
+| `created_at` | timestamptz | no | |
+| `last_used_at` | timestamptz | yes | When a token last signed in with it. |
+
 ### schedules
 
 A team's schedules: a template or action run on a cron, with set parameters, for the team, as one of its bots (`scheduleRunner.ts`). The bot's rights are checked when it's made or changed, and on every run.

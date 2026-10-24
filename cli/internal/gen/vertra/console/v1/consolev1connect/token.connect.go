@@ -40,6 +40,15 @@ const (
 	// TokenServiceCreateBotTokenProcedure is the fully-qualified name of the TokenService's
 	// CreateBotToken RPC.
 	TokenServiceCreateBotTokenProcedure = "/vertra.console.v1.TokenService/CreateBotToken"
+	// TokenServiceListBotIdentitiesProcedure is the fully-qualified name of the TokenService's
+	// ListBotIdentities RPC.
+	TokenServiceListBotIdentitiesProcedure = "/vertra.console.v1.TokenService/ListBotIdentities"
+	// TokenServiceAddBotIdentityProcedure is the fully-qualified name of the TokenService's
+	// AddBotIdentity RPC.
+	TokenServiceAddBotIdentityProcedure = "/vertra.console.v1.TokenService/AddBotIdentity"
+	// TokenServiceRemoveBotIdentityProcedure is the fully-qualified name of the TokenService's
+	// RemoveBotIdentity RPC.
+	TokenServiceRemoveBotIdentityProcedure = "/vertra.console.v1.TokenService/RemoveBotIdentity"
 	// TokenServiceRevokeTokenProcedure is the fully-qualified name of the TokenService's RevokeToken
 	// RPC.
 	TokenServiceRevokeTokenProcedure = "/vertra.console.v1.TokenService/RevokeToken"
@@ -57,6 +66,16 @@ type TokenServiceClient interface {
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	// Creates a bot, or a new token for an existing one.
 	CreateBotToken(context.Context, *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error)
+	// A team's bots' keyless identities (its members), and what this install
+	// accepts: its issuers and audience.
+	ListBotIdentities(context.Context, *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error)
+	// Lets a bot sign in with a CI's ID token carrying these exact claims, from
+	// an issuer the install allows (its team's maintainers). The claims name
+	// what the token is for (GitHub: repository; GitLab: project_path), and
+	// may narrow it (ref, environment). No patterns.
+	AddBotIdentity(context.Context, *connect.Request[v1.AddBotIdentityRequest]) (*connect.Response[v1.AddBotIdentityResponse], error)
+	// Stops a keyless identity signing in (its team's maintainers).
+	RemoveBotIdentity(context.Context, *connect.Request[v1.RemoveBotIdentityRequest]) (*connect.Response[v1.RemoveBotIdentityResponse], error)
 	// Revokes any token: a team's bot's (by a member) or any (by an admin).
 	RevokeToken(context.Context, *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error)
 	// Automation tokens. Admins only.
@@ -89,6 +108,25 @@ func NewTokenServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tokenServiceMethods.ByName("CreateBotToken")),
 			connect.WithClientOptions(opts...),
 		),
+		listBotIdentities: connect.NewClient[v1.ListBotIdentitiesRequest, v1.ListBotIdentitiesResponse](
+			httpClient,
+			baseURL+TokenServiceListBotIdentitiesProcedure,
+			connect.WithSchema(tokenServiceMethods.ByName("ListBotIdentities")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		addBotIdentity: connect.NewClient[v1.AddBotIdentityRequest, v1.AddBotIdentityResponse](
+			httpClient,
+			baseURL+TokenServiceAddBotIdentityProcedure,
+			connect.WithSchema(tokenServiceMethods.ByName("AddBotIdentity")),
+			connect.WithClientOptions(opts...),
+		),
+		removeBotIdentity: connect.NewClient[v1.RemoveBotIdentityRequest, v1.RemoveBotIdentityResponse](
+			httpClient,
+			baseURL+TokenServiceRemoveBotIdentityProcedure,
+			connect.WithSchema(tokenServiceMethods.ByName("RemoveBotIdentity")),
+			connect.WithClientOptions(opts...),
+		),
 		revokeToken: connect.NewClient[v1.RevokeTokenRequest, v1.RevokeTokenResponse](
 			httpClient,
 			baseURL+TokenServiceRevokeTokenProcedure,
@@ -116,6 +154,9 @@ func NewTokenServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type tokenServiceClient struct {
 	listBots              *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBotToken        *connect.Client[v1.CreateBotTokenRequest, v1.CreateBotTokenResponse]
+	listBotIdentities     *connect.Client[v1.ListBotIdentitiesRequest, v1.ListBotIdentitiesResponse]
+	addBotIdentity        *connect.Client[v1.AddBotIdentityRequest, v1.AddBotIdentityResponse]
+	removeBotIdentity     *connect.Client[v1.RemoveBotIdentityRequest, v1.RemoveBotIdentityResponse]
 	revokeToken           *connect.Client[v1.RevokeTokenRequest, v1.RevokeTokenResponse]
 	listAutomationTokens  *connect.Client[v1.ListAutomationTokensRequest, v1.ListAutomationTokensResponse]
 	createAutomationToken *connect.Client[v1.CreateAutomationTokenRequest, v1.CreateAutomationTokenResponse]
@@ -129,6 +170,21 @@ func (c *tokenServiceClient) ListBots(ctx context.Context, req *connect.Request[
 // CreateBotToken calls vertra.console.v1.TokenService.CreateBotToken.
 func (c *tokenServiceClient) CreateBotToken(ctx context.Context, req *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error) {
 	return c.createBotToken.CallUnary(ctx, req)
+}
+
+// ListBotIdentities calls vertra.console.v1.TokenService.ListBotIdentities.
+func (c *tokenServiceClient) ListBotIdentities(ctx context.Context, req *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error) {
+	return c.listBotIdentities.CallUnary(ctx, req)
+}
+
+// AddBotIdentity calls vertra.console.v1.TokenService.AddBotIdentity.
+func (c *tokenServiceClient) AddBotIdentity(ctx context.Context, req *connect.Request[v1.AddBotIdentityRequest]) (*connect.Response[v1.AddBotIdentityResponse], error) {
+	return c.addBotIdentity.CallUnary(ctx, req)
+}
+
+// RemoveBotIdentity calls vertra.console.v1.TokenService.RemoveBotIdentity.
+func (c *tokenServiceClient) RemoveBotIdentity(ctx context.Context, req *connect.Request[v1.RemoveBotIdentityRequest]) (*connect.Response[v1.RemoveBotIdentityResponse], error) {
+	return c.removeBotIdentity.CallUnary(ctx, req)
 }
 
 // RevokeToken calls vertra.console.v1.TokenService.RevokeToken.
@@ -152,6 +208,16 @@ type TokenServiceHandler interface {
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	// Creates a bot, or a new token for an existing one.
 	CreateBotToken(context.Context, *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error)
+	// A team's bots' keyless identities (its members), and what this install
+	// accepts: its issuers and audience.
+	ListBotIdentities(context.Context, *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error)
+	// Lets a bot sign in with a CI's ID token carrying these exact claims, from
+	// an issuer the install allows (its team's maintainers). The claims name
+	// what the token is for (GitHub: repository; GitLab: project_path), and
+	// may narrow it (ref, environment). No patterns.
+	AddBotIdentity(context.Context, *connect.Request[v1.AddBotIdentityRequest]) (*connect.Response[v1.AddBotIdentityResponse], error)
+	// Stops a keyless identity signing in (its team's maintainers).
+	RemoveBotIdentity(context.Context, *connect.Request[v1.RemoveBotIdentityRequest]) (*connect.Response[v1.RemoveBotIdentityResponse], error)
 	// Revokes any token: a team's bot's (by a member) or any (by an admin).
 	RevokeToken(context.Context, *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error)
 	// Automation tokens. Admins only.
@@ -180,6 +246,25 @@ func NewTokenServiceHandler(svc TokenServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tokenServiceMethods.ByName("CreateBotToken")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tokenServiceListBotIdentitiesHandler := connect.NewUnaryHandler(
+		TokenServiceListBotIdentitiesProcedure,
+		svc.ListBotIdentities,
+		connect.WithSchema(tokenServiceMethods.ByName("ListBotIdentities")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	tokenServiceAddBotIdentityHandler := connect.NewUnaryHandler(
+		TokenServiceAddBotIdentityProcedure,
+		svc.AddBotIdentity,
+		connect.WithSchema(tokenServiceMethods.ByName("AddBotIdentity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tokenServiceRemoveBotIdentityHandler := connect.NewUnaryHandler(
+		TokenServiceRemoveBotIdentityProcedure,
+		svc.RemoveBotIdentity,
+		connect.WithSchema(tokenServiceMethods.ByName("RemoveBotIdentity")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tokenServiceRevokeTokenHandler := connect.NewUnaryHandler(
 		TokenServiceRevokeTokenProcedure,
 		svc.RevokeToken,
@@ -206,6 +291,12 @@ func NewTokenServiceHandler(svc TokenServiceHandler, opts ...connect.HandlerOpti
 			tokenServiceListBotsHandler.ServeHTTP(w, r)
 		case TokenServiceCreateBotTokenProcedure:
 			tokenServiceCreateBotTokenHandler.ServeHTTP(w, r)
+		case TokenServiceListBotIdentitiesProcedure:
+			tokenServiceListBotIdentitiesHandler.ServeHTTP(w, r)
+		case TokenServiceAddBotIdentityProcedure:
+			tokenServiceAddBotIdentityHandler.ServeHTTP(w, r)
+		case TokenServiceRemoveBotIdentityProcedure:
+			tokenServiceRemoveBotIdentityHandler.ServeHTTP(w, r)
 		case TokenServiceRevokeTokenProcedure:
 			tokenServiceRevokeTokenHandler.ServeHTTP(w, r)
 		case TokenServiceListAutomationTokensProcedure:
@@ -227,6 +318,18 @@ func (UnimplementedTokenServiceHandler) ListBots(context.Context, *connect.Reque
 
 func (UnimplementedTokenServiceHandler) CreateBotToken(context.Context, *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TokenService.CreateBotToken is not implemented"))
+}
+
+func (UnimplementedTokenServiceHandler) ListBotIdentities(context.Context, *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TokenService.ListBotIdentities is not implemented"))
+}
+
+func (UnimplementedTokenServiceHandler) AddBotIdentity(context.Context, *connect.Request[v1.AddBotIdentityRequest]) (*connect.Response[v1.AddBotIdentityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TokenService.AddBotIdentity is not implemented"))
+}
+
+func (UnimplementedTokenServiceHandler) RemoveBotIdentity(context.Context, *connect.Request[v1.RemoveBotIdentityRequest]) (*connect.Response[v1.RemoveBotIdentityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TokenService.RemoveBotIdentity is not implemented"))
 }
 
 func (UnimplementedTokenServiceHandler) RevokeToken(context.Context, *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error) {

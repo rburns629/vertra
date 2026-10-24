@@ -79,8 +79,7 @@ export function scheduleService(): ServiceImpl<typeof ScheduleService> {
         },
         { enabled: req.enabled, cron: req.cron, timeZone: req.timeZone, botId: req.botId },
       );
-      const set = Object.fromEntries(Object.entries(change).filter(([, v]) => v !== undefined));
-      const updated = await updateSchedule(callerOf(ctx), id, { ...set, ...(req.parameters ? { parameters: req.parameters } : {}) });
+      const updated = await updateSchedule(callerOf(ctx), id, { ...change, ...(req.parameters ? { parameters: req.parameters } : {}) });
       return { schedule: schedule(updated) };
     },
 

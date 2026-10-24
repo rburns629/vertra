@@ -1979,3 +1979,30 @@ export async function updateSchedule(id: string, change: { enabled?: boolean; cr
 export async function deleteSchedule(id: string): Promise<void> {
   await call(() => schedulesApi.deleteSchedule({ id }));
 }
+
+/** A CI identity a bot signs in with, instead of a stored token. */
+export interface BotIdentity {
+  id: string;
+  botId: string;
+  botEmail: string;
+  issuer: string;
+  claims: Record<string, string>;
+  lastUsedAt: string | null;
+}
+
+export async function listBotIdentities(team: string): Promise<{ identities: BotIdentity[]; issuers: string[]; audience: string }> {
+  const r = await call(() => tokens.listBotIdentities({ team }));
+  return {
+    identities: r.identities.map((i) => ({ id: i.id, botId: i.botId, botEmail: i.botEmail, issuer: i.issuer, claims: { ...i.claims }, lastUsedAt: iso(i.lastUsedAt) })),
+    issuers: r.issuers,
+    audience: r.audience,
+  };
+}
+
+export async function addBotIdentity(team: string, botId: string, issuer: string, claims: Record<string, string>): Promise<void> {
+  await call(() => tokens.addBotIdentity({ team, botId, issuer, claims }));
+}
+
+export async function removeBotIdentity(id: string): Promise<void> {
+  await call(() => tokens.removeBotIdentity({ id }));
+}

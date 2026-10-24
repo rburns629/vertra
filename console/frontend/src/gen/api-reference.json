@@ -182,6 +182,15 @@
      "public": true
     },
     {
+     "name": "ExchangeToken",
+     "comment": "Signs a bot in with its CI's own OIDC identity instead of a stored\ntoken (keyless): a GitHub Actions or GitLab job's ID token, for this\ninstall's audience, matching exactly one bot's identity\n(TokenService.AddBotIdentity). Returns an hour's session as that bot.\nRefused (unauthenticated, KEYLESS_REFUSED) otherwise.",
+     "input": "vertra.console.v1.ExchangeTokenRequest",
+     "output": "vertra.console.v1.ExchangeTokenResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": true
+    },
+    {
      "name": "GetMe",
      "comment": "Who you are, and your teams.",
      "input": "vertra.console.v1.GetMeRequest",
@@ -936,6 +945,33 @@
      "comment": "Creates a bot, or a new token for an existing one.",
      "input": "vertra.console.v1.CreateBotTokenRequest",
      "output": "vertra.console.v1.CreateBotTokenResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ListBotIdentities",
+     "comment": "A team's bots' keyless identities (its members), and what this install\naccepts: its issuers and audience.",
+     "input": "vertra.console.v1.ListBotIdentitiesRequest",
+     "output": "vertra.console.v1.ListBotIdentitiesResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "AddBotIdentity",
+     "comment": "Lets a bot sign in with a CI's ID token carrying these exact claims, from\nan issuer the install allows (its team's maintainers). The claims name\nwhat the token is for (GitHub: repository; GitLab: project_path), and\nmay narrow it (ref, environment). No patterns.",
+     "input": "vertra.console.v1.AddBotIdentityRequest",
+     "output": "vertra.console.v1.AddBotIdentityResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "RemoveBotIdentity",
+     "comment": "Stops a keyless identity signing in (its team's maintainers).",
+     "input": "vertra.console.v1.RemoveBotIdentityRequest",
+     "output": "vertra.console.v1.RemoveBotIdentityResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -2348,6 +2384,46 @@
     {
      "name": "token",
      "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ExchangeTokenRequest": {
+   "name": "ExchangeTokenRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "idToken",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The CI's ID token (a JWT), for the install's keyless audience."
+    }
+   ]
+  },
+  "vertra.console.v1.ExchangeTokenResponse": {
+   "name": "ExchangeTokenResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "token",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Send as Authorization: Bearer <token>, for an hour."
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The bot it signed in as."
+    },
+    {
+     "name": "expiresAt",
+     "type": "timestamp (RFC 3339 string)",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -7812,6 +7888,168 @@
      "comment": "Shown once, never again."
     }
    ]
+  },
+  "vertra.console.v1.BotIdentity": {
+   "name": "BotIdentity",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "botId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "botEmail",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "issuer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "claims",
+     "type": "map of string to string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "createdAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "lastUsedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListBotIdentitiesRequest": {
+   "name": "ListBotIdentitiesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListBotIdentitiesResponse": {
+   "name": "ListBotIdentitiesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "identities",
+     "type": "BotIdentity",
+     "ref": "vertra.console.v1.BotIdentity",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "issuers",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "What this install accepts."
+    },
+    {
+     "name": "audience",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AddBotIdentityRequest": {
+   "name": "AddBotIdentityRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "botId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "issuer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "claims",
+     "type": "map of string to string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AddBotIdentityResponse": {
+   "name": "AddBotIdentityResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "identity",
+     "type": "BotIdentity",
+     "ref": "vertra.console.v1.BotIdentity",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.RemoveBotIdentityRequest": {
+   "name": "RemoveBotIdentityRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.RemoveBotIdentityResponse": {
+   "name": "RemoveBotIdentityResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.User": {
    "name": "User",

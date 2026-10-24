@@ -314,6 +314,171 @@ export declare type CreateAutomationTokenResponse = Message<"vertra.console.v1.C
 export declare const CreateAutomationTokenResponseSchema: GenMessage<CreateAutomationTokenResponse>;
 
 /**
+ * @generated from message vertra.console.v1.BotIdentity
+ */
+export declare type BotIdentity = Message<"vertra.console.v1.BotIdentity"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string bot_id = 2;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string bot_email = 3;
+   */
+  botEmail: string;
+
+  /**
+   * @generated from field: string issuer = 4;
+   */
+  issuer: string;
+
+  /**
+   * @generated from field: map<string, string> claims = 5;
+   */
+  claims: { [key: string]: string };
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 6;
+   */
+  createdAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_used_at = 7;
+   */
+  lastUsedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.BotIdentity.
+ * Use `create(BotIdentitySchema)` to create a new message.
+ */
+export declare const BotIdentitySchema: GenMessage<BotIdentity>;
+
+/**
+ * @generated from message vertra.console.v1.ListBotIdentitiesRequest
+ */
+export declare type ListBotIdentitiesRequest = Message<"vertra.console.v1.ListBotIdentitiesRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListBotIdentitiesRequest.
+ * Use `create(ListBotIdentitiesRequestSchema)` to create a new message.
+ */
+export declare const ListBotIdentitiesRequestSchema: GenMessage<ListBotIdentitiesRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ListBotIdentitiesResponse
+ */
+export declare type ListBotIdentitiesResponse = Message<"vertra.console.v1.ListBotIdentitiesResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.BotIdentity identities = 1;
+   */
+  identities: BotIdentity[];
+
+  /**
+   * What this install accepts.
+   *
+   * @generated from field: repeated string issuers = 2;
+   */
+  issuers: string[];
+
+  /**
+   * @generated from field: string audience = 3;
+   */
+  audience: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListBotIdentitiesResponse.
+ * Use `create(ListBotIdentitiesResponseSchema)` to create a new message.
+ */
+export declare const ListBotIdentitiesResponseSchema: GenMessage<ListBotIdentitiesResponse>;
+
+/**
+ * @generated from message vertra.console.v1.AddBotIdentityRequest
+ */
+export declare type AddBotIdentityRequest = Message<"vertra.console.v1.AddBotIdentityRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string bot_id = 2;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string issuer = 3;
+   */
+  issuer: string;
+
+  /**
+   * @generated from field: map<string, string> claims = 4;
+   */
+  claims: { [key: string]: string };
+};
+
+/**
+ * Describes the message vertra.console.v1.AddBotIdentityRequest.
+ * Use `create(AddBotIdentityRequestSchema)` to create a new message.
+ */
+export declare const AddBotIdentityRequestSchema: GenMessage<AddBotIdentityRequest>;
+
+/**
+ * @generated from message vertra.console.v1.AddBotIdentityResponse
+ */
+export declare type AddBotIdentityResponse = Message<"vertra.console.v1.AddBotIdentityResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.BotIdentity identity = 1;
+   */
+  identity?: BotIdentity | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.AddBotIdentityResponse.
+ * Use `create(AddBotIdentityResponseSchema)` to create a new message.
+ */
+export declare const AddBotIdentityResponseSchema: GenMessage<AddBotIdentityResponse>;
+
+/**
+ * @generated from message vertra.console.v1.RemoveBotIdentityRequest
+ */
+export declare type RemoveBotIdentityRequest = Message<"vertra.console.v1.RemoveBotIdentityRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RemoveBotIdentityRequest.
+ * Use `create(RemoveBotIdentityRequestSchema)` to create a new message.
+ */
+export declare const RemoveBotIdentityRequestSchema: GenMessage<RemoveBotIdentityRequest>;
+
+/**
+ * @generated from message vertra.console.v1.RemoveBotIdentityResponse
+ */
+export declare type RemoveBotIdentityResponse = Message<"vertra.console.v1.RemoveBotIdentityResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.RemoveBotIdentityResponse.
+ * Use `create(RemoveBotIdentityResponseSchema)` to create a new message.
+ */
+export declare const RemoveBotIdentityResponseSchema: GenMessage<RemoveBotIdentityResponse>;
+
+/**
  * Bots and their API tokens. A team's bot acts as a member of that team;
  * an automation token belongs to no team and can do exactly what its scopes
  * say. A token is shown once, when it's made, and only its hash is kept.
@@ -340,6 +505,40 @@ export declare const TokenService: GenService<{
     methodKind: "unary";
     input: typeof CreateBotTokenRequestSchema;
     output: typeof CreateBotTokenResponseSchema;
+  },
+  /**
+   * A team's bots' keyless identities (its members), and what this install
+   * accepts: its issuers and audience.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.ListBotIdentities
+   */
+  listBotIdentities: {
+    methodKind: "unary";
+    input: typeof ListBotIdentitiesRequestSchema;
+    output: typeof ListBotIdentitiesResponseSchema;
+  },
+  /**
+   * Lets a bot sign in with a CI's ID token carrying these exact claims, from
+   * an issuer the install allows (its team's maintainers). The claims name
+   * what the token is for (GitHub: repository; GitLab: project_path), and
+   * may narrow it (ref, environment). No patterns.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.AddBotIdentity
+   */
+  addBotIdentity: {
+    methodKind: "unary";
+    input: typeof AddBotIdentityRequestSchema;
+    output: typeof AddBotIdentityResponseSchema;
+  },
+  /**
+   * Stops a keyless identity signing in (its team's maintainers).
+   *
+   * @generated from rpc vertra.console.v1.TokenService.RemoveBotIdentity
+   */
+  removeBotIdentity: {
+    methodKind: "unary";
+    input: typeof RemoveBotIdentityRequestSchema;
+    output: typeof RemoveBotIdentityResponseSchema;
   },
   /**
    * Revokes any token: a team's bot's (by a member) or any (by an admin).

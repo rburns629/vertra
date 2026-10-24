@@ -42,6 +42,9 @@ const (
 	AuthServiceRegisterProcedure = "/vertra.console.v1.AuthService/Register"
 	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
 	AuthServiceLoginProcedure = "/vertra.console.v1.AuthService/Login"
+	// AuthServiceExchangeTokenProcedure is the fully-qualified name of the AuthService's ExchangeToken
+	// RPC.
+	AuthServiceExchangeTokenProcedure = "/vertra.console.v1.AuthService/ExchangeToken"
 	// AuthServiceGetMeProcedure is the fully-qualified name of the AuthService's GetMe RPC.
 	AuthServiceGetMeProcedure = "/vertra.console.v1.AuthService/GetMe"
 	// AuthServiceChangePasswordProcedure is the fully-qualified name of the AuthService's
@@ -60,6 +63,12 @@ type AuthServiceClient interface {
 	// spaced out after repeated failures on one account (resource_exhausted,
 	// with a Retry-After).
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	// Signs a bot in with its CI's own OIDC identity instead of a stored
+	// token (keyless): a GitHub Actions or GitLab job's ID token, for this
+	// install's audience, matching exactly one bot's identity
+	// (TokenService.AddBotIdentity). Returns an hour's session as that bot.
+	// Refused (unauthenticated, KEYLESS_REFUSED) otherwise.
+	ExchangeToken(context.Context, *connect.Request[v1.ExchangeTokenRequest]) (*connect.Response[v1.ExchangeTokenResponse], error)
 	// Who you are, and your teams.
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// Changes your password (people only), signing out your other sessions;
@@ -97,6 +106,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
+		exchangeToken: connect.NewClient[v1.ExchangeTokenRequest, v1.ExchangeTokenResponse](
+			httpClient,
+			baseURL+AuthServiceExchangeTokenProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ExchangeToken")),
+			connect.WithClientOptions(opts...),
+		),
 		getMe: connect.NewClient[v1.GetMeRequest, v1.GetMeResponse](
 			httpClient,
 			baseURL+AuthServiceGetMeProcedure,
@@ -118,6 +133,7 @@ type authServiceClient struct {
 	getEnvironment *connect.Client[v1.GetEnvironmentRequest, v1.GetEnvironmentResponse]
 	register       *connect.Client[v1.RegisterRequest, v1.RegisterResponse]
 	login          *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	exchangeToken  *connect.Client[v1.ExchangeTokenRequest, v1.ExchangeTokenResponse]
 	getMe          *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 	changePassword *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
 }
@@ -135,6 +151,11 @@ func (c *authServiceClient) Register(ctx context.Context, req *connect.Request[v
 // Login calls vertra.console.v1.AuthService.Login.
 func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return c.login.CallUnary(ctx, req)
+}
+
+// ExchangeToken calls vertra.console.v1.AuthService.ExchangeToken.
+func (c *authServiceClient) ExchangeToken(ctx context.Context, req *connect.Request[v1.ExchangeTokenRequest]) (*connect.Response[v1.ExchangeTokenResponse], error) {
+	return c.exchangeToken.CallUnary(ctx, req)
 }
 
 // GetMe calls vertra.console.v1.AuthService.GetMe.
@@ -158,6 +179,12 @@ type AuthServiceHandler interface {
 	// spaced out after repeated failures on one account (resource_exhausted,
 	// with a Retry-After).
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	// Signs a bot in with its CI's own OIDC identity instead of a stored
+	// token (keyless): a GitHub Actions or GitLab job's ID token, for this
+	// install's audience, matching exactly one bot's identity
+	// (TokenService.AddBotIdentity). Returns an hour's session as that bot.
+	// Refused (unauthenticated, KEYLESS_REFUSED) otherwise.
+	ExchangeToken(context.Context, *connect.Request[v1.ExchangeTokenRequest]) (*connect.Response[v1.ExchangeTokenResponse], error)
 	// Who you are, and your teams.
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// Changes your password (people only), signing out your other sessions;
@@ -191,6 +218,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("Login")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceExchangeTokenHandler := connect.NewUnaryHandler(
+		AuthServiceExchangeTokenProcedure,
+		svc.ExchangeToken,
+		connect.WithSchema(authServiceMethods.ByName("ExchangeToken")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceGetMeHandler := connect.NewUnaryHandler(
 		AuthServiceGetMeProcedure,
 		svc.GetMe,
@@ -212,6 +245,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceRegisterHandler.ServeHTTP(w, r)
 		case AuthServiceLoginProcedure:
 			authServiceLoginHandler.ServeHTTP(w, r)
+		case AuthServiceExchangeTokenProcedure:
+			authServiceExchangeTokenHandler.ServeHTTP(w, r)
 		case AuthServiceGetMeProcedure:
 			authServiceGetMeHandler.ServeHTTP(w, r)
 		case AuthServiceChangePasswordProcedure:
@@ -235,6 +270,10 @@ func (UnimplementedAuthServiceHandler) Register(context.Context, *connect.Reques
 
 func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.AuthService.Login is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ExchangeToken(context.Context, *connect.Request[v1.ExchangeTokenRequest]) (*connect.Response[v1.ExchangeTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.AuthService.ExchangeToken is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {

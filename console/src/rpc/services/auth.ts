@@ -19,6 +19,8 @@ import type { AuthService } from "../../gen/vertra/console/v1/auth_pb.js";
 import { callerOf, kClientIp, logOf } from "../context.js";
 import { badRequest, forbidden, rpcError, unauthenticated } from "../errors.js";
 import { FixedWindowLimit } from "../rateLimit.js";
+import { botForToken } from "../../auth/keyless.js";
+import { timestamp } from "../convert.js";
 import { check } from "../validate.js";
 
 const Email = Type.String({ format: "email" });
@@ -29,6 +31,9 @@ const MINUTE = 60 * 1000;
 // global limit behind a load balancer that hides clients; per email alone
 // would let anyone lock a known account out (rpc/services/auth.ts has the rest).
 const loginLimit = new FixedWindowLimit(10, 15 * MINUTE);
+const exchangeLimit = new FixedWindowLimit(60, 15 * MINUTE);
+/** How long a keyless bot's session lasts: about a CI job. */
+const KEYLESS_SESSION_SECONDS = 3600;
 const registerLimit = new FixedWindowLimit(20, 60 * MINUTE);
 const passwordChangeLimit = new FixedWindowLimit(10, 15 * MINUTE);
 
@@ -53,6 +58,16 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       }
       const user = await createUser(email, await hashPassword(password));
       return { userId: user.id, email: user.email };
+    },
+
+    async exchangeToken(req, ctx) {
+      const { idToken } = check({ idToken: Type.String({ minLength: 1, maxLength: 8192 }) }, req);
+      exchangeLimit.take(`exchange:${ctx.values.get(kClientIp)}`, ctx);
+      const bot = await botForToken(idToken);
+      logOf(ctx).info({ event: "keyless_sign_in", userId: bot.botId, issuer: bot.issuer, subject: bot.subject }, "a bot signed in with its CI's identity");
+      // Not a password's session: signed in by an identity provider, as single sign-on is.
+      const token = app.jwt.sign({ userId: bot.botId, sso: true }, { expiresIn: KEYLESS_SESSION_SECONDS });
+      return { token, email: bot.email, expiresAt: timestamp(new Date(Date.now() + KEYLESS_SESSION_SECONDS * 1000)) };
     },
 
     async login(req, ctx) {

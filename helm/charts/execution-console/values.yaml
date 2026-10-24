@@ -408,6 +408,16 @@ kernelApiToken:
 # the specific cluster.
 environmentLabel: "Kubernetes"
 
+# -- Keyless bots: the OIDC issuers whose ID tokens a team's bot may sign in
+# with instead of a stored token (a CI job's own identity), and the audience
+# those tokens must name. Empty audience: the console's URL (see
+# notifications.consoleUrl), else "vertra".
+keyless:
+  issuers:
+    - https://token.actions.githubusercontent.com
+    - https://gitlab.com
+  audience: ""
+
 # -- Notifications (the inbox, and teams' chat webhooks).
 notifications:
   # -- Where people reach the console, for links in what's posted to chat

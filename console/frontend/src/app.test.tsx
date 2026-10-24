@@ -751,6 +751,31 @@ describe("a team's settings", () => {
   });
 });
 
+describe("keyless bots", () => {
+  it("let a maintainer have a bot sign in from a repository's CI jobs, with the job's snippet", async () => {
+    const added: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": { bots: [{ id: "b0b0b0b0-0000-4000-8000-000000000001", email: "payments-release@bots.vertra.local" }] },
+      "TokenService/ListBotIdentities": { identities: [], issuers: ["https://token.actions.githubusercontent.com"], audience: "https://vertra.acme.dev" },
+      "TokenService/AddBotIdentity": (request: Record<string, unknown>) => {
+        added.push(request);
+        return { identity: {} };
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in from CI…" }));
+    fireEvent.change(screen.getByLabelText("Repository (owner/name)"), { target: { value: "acme/release" } });
+    fireEvent.change(screen.getByLabelText(/only from this branch/i), { target: { value: "refs/heads/main" } });
+    expect(screen.getByText(/audience=https:\/\/vertra\.acme\.dev/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    await waitFor(() => {
+      expect(added).toEqual([
+        { team: "payments", botId: "b0b0b0b0-0000-4000-8000-000000000001", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/release", ref: "refs/heads/main" } },
+      ]);
+    });
+  });
+});
+
 describe("schedules", () => {
   it("are listed on the team's tab, and paused there", async () => {
     const changed: Record<string, unknown>[] = [];

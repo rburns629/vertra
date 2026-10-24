@@ -14,7 +14,23 @@ In the console, open your team → **Automation → Add a bot**, say what will u
 $ gh secret set VERTRA_TOKEN --repo <your-org>/<your-repo>
 ```
 
-Every call sends it as a bearer token. A small helper keeps the examples short:
+### Or no token at all: sign in from CI
+
+A pipeline on GitHub Actions or GitLab can sign in with its job's own
+identity instead of a stored token. On the bot's card (**Automation**),
+choose **Sign in from CI…** and give the repository (and, if you like, the
+only branch it may run from). Then, in the job, ask the CI for an ID token
+for this install's audience (shown there) and exchange it:
+
+```console
+$ curl -s -X POST "$VERTRA/api/vertra.console.v1.AuthService/ExchangeToken" -H "Content-Type: application/json" -d "{\"idToken\":\"$ID_TOKEN\"}"
+{"token":"eyJ…","email":"team-a-release-pipeline@bots.vertra.local","expiresAt":"…"}
+```
+
+The token it gives back is good for an hour, as that bot; nothing is stored
+in your pipeline. A token from any other repository or branch is refused.
+
+Every call sends its token as a bearer token. A small helper keeps the examples short:
 
 ```console
 $ export VERTRA=https://vertra.example.com

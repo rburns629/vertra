@@ -168,6 +168,13 @@ export const config = {
   // Where people reach the console (https://<host>), for links in what's
   // posted to chat webhooks; empty: posted without one.
   consoleUrl: (process.env["CONSOLE_URL"] ?? "").replace(/\/+$/, ""),
+  // Keyless bots (auth/keyless.ts): the OIDC issuers whose ID tokens a
+  // bot may sign in with instead of a stored token (a CI's own identity,
+  // such as GitHub Actions'), and the audience those tokens must be for.
+  keyless: {
+    issuers: list(process.env["KEYLESS_ISSUERS"] ?? "https://token.actions.githubusercontent.com,https://gitlab.com"),
+    audience: process.env["KEYLESS_AUDIENCE"] || (process.env["CONSOLE_URL"] ?? "").replace(/\/+$/, "") || "vertra",
+  },
   // Notifications (notifier.ts): the hosts a team's chat webhook may be
   // under ("hooks.slack.com", or "*.webhook.office.com" for any name below
   // it), so a webhook can't point the console at anything else.

@@ -61,6 +61,8 @@ data:
   # Where people reach it, for links in chat webhook posts.
   CONSOLE_URL: {{ .Values.notifications.consoleUrl | default (ternary (printf "https://%s" $host) "" (ne $host "")) | quote }}
   NOTIFY_WEBHOOK_HOSTS: {{ join "," .Values.notifications.webhookHosts | quote }}
+  KEYLESS_ISSUERS: {{ join "," .Values.keyless.issuers | quote }}
+  KEYLESS_AUDIENCE: {{ .Values.keyless.audience | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}
   ALLOW_SELF_REGISTRATION: {{ .Values.allowSelfRegistration | quote }}
   {{- with .Values.sso }}

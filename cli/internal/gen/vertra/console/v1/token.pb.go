@@ -729,6 +729,395 @@ func (x *CreateAutomationTokenResponse) GetToken() string {
 	return ""
 }
 
+type BotIdentity struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BotId         string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	BotEmail      string                 `protobuf:"bytes,3,opt,name=bot_email,json=botEmail,proto3" json:"bot_email,omitempty"`
+	Issuer        string                 `protobuf:"bytes,4,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Claims        map[string]string      `protobuf:"bytes,5,rep,name=claims,proto3" json:"claims,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastUsedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BotIdentity) Reset() {
+	*x = BotIdentity{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BotIdentity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BotIdentity) ProtoMessage() {}
+
+func (x *BotIdentity) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BotIdentity.ProtoReflect.Descriptor instead.
+func (*BotIdentity) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *BotIdentity) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *BotIdentity) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *BotIdentity) GetBotEmail() string {
+	if x != nil {
+		return x.BotEmail
+	}
+	return ""
+}
+
+func (x *BotIdentity) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *BotIdentity) GetClaims() map[string]string {
+	if x != nil {
+		return x.Claims
+	}
+	return nil
+}
+
+func (x *BotIdentity) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *BotIdentity) GetLastUsedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUsedAt
+	}
+	return nil
+}
+
+type ListBotIdentitiesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Team          string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBotIdentitiesRequest) Reset() {
+	*x = ListBotIdentitiesRequest{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBotIdentitiesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBotIdentitiesRequest) ProtoMessage() {}
+
+func (x *ListBotIdentitiesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBotIdentitiesRequest.ProtoReflect.Descriptor instead.
+func (*ListBotIdentitiesRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListBotIdentitiesRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+type ListBotIdentitiesResponse struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Identities []*BotIdentity         `protobuf:"bytes,1,rep,name=identities,proto3" json:"identities,omitempty"`
+	// What this install accepts.
+	Issuers       []string `protobuf:"bytes,2,rep,name=issuers,proto3" json:"issuers,omitempty"`
+	Audience      string   `protobuf:"bytes,3,opt,name=audience,proto3" json:"audience,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBotIdentitiesResponse) Reset() {
+	*x = ListBotIdentitiesResponse{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBotIdentitiesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBotIdentitiesResponse) ProtoMessage() {}
+
+func (x *ListBotIdentitiesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBotIdentitiesResponse.ProtoReflect.Descriptor instead.
+func (*ListBotIdentitiesResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListBotIdentitiesResponse) GetIdentities() []*BotIdentity {
+	if x != nil {
+		return x.Identities
+	}
+	return nil
+}
+
+func (x *ListBotIdentitiesResponse) GetIssuers() []string {
+	if x != nil {
+		return x.Issuers
+	}
+	return nil
+}
+
+func (x *ListBotIdentitiesResponse) GetAudience() string {
+	if x != nil {
+		return x.Audience
+	}
+	return ""
+}
+
+type AddBotIdentityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Team          string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	BotId         string                 `protobuf:"bytes,2,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"`
+	Issuer        string                 `protobuf:"bytes,3,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Claims        map[string]string      `protobuf:"bytes,4,rep,name=claims,proto3" json:"claims,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddBotIdentityRequest) Reset() {
+	*x = AddBotIdentityRequest{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddBotIdentityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddBotIdentityRequest) ProtoMessage() {}
+
+func (x *AddBotIdentityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddBotIdentityRequest.ProtoReflect.Descriptor instead.
+func (*AddBotIdentityRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AddBotIdentityRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *AddBotIdentityRequest) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+func (x *AddBotIdentityRequest) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *AddBotIdentityRequest) GetClaims() map[string]string {
+	if x != nil {
+		return x.Claims
+	}
+	return nil
+}
+
+type AddBotIdentityResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Identity      *BotIdentity           `protobuf:"bytes,1,opt,name=identity,proto3" json:"identity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddBotIdentityResponse) Reset() {
+	*x = AddBotIdentityResponse{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddBotIdentityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddBotIdentityResponse) ProtoMessage() {}
+
+func (x *AddBotIdentityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddBotIdentityResponse.ProtoReflect.Descriptor instead.
+func (*AddBotIdentityResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AddBotIdentityResponse) GetIdentity() *BotIdentity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
+type RemoveBotIdentityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveBotIdentityRequest) Reset() {
+	*x = RemoveBotIdentityRequest{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveBotIdentityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveBotIdentityRequest) ProtoMessage() {}
+
+func (x *RemoveBotIdentityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveBotIdentityRequest.ProtoReflect.Descriptor instead.
+func (*RemoveBotIdentityRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RemoveBotIdentityRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type RemoveBotIdentityResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveBotIdentityResponse) Reset() {
+	*x = RemoveBotIdentityResponse{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveBotIdentityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveBotIdentityResponse) ProtoMessage() {}
+
+func (x *RemoveBotIdentityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveBotIdentityResponse.ProtoReflect.Descriptor instead.
+func (*RemoveBotIdentityResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{19}
+}
+
 var File_vertra_console_v1_token_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_token_proto_rawDesc = "" +
@@ -779,10 +1168,47 @@ const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\btoken_id\x18\x01 \x01(\tR\atokenId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x16\n" +
 	"\x06scopes\x18\x03 \x03(\tR\x06scopes\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token2\xac\x04\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\"\xe1\x02\n" +
+	"\vBotIdentity\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x1b\n" +
+	"\tbot_email\x18\x03 \x01(\tR\bbotEmail\x12\x16\n" +
+	"\x06issuer\x18\x04 \x01(\tR\x06issuer\x12B\n" +
+	"\x06claims\x18\x05 \x03(\v2*.vertra.console.v1.BotIdentity.ClaimsEntryR\x06claims\x129\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12<\n" +
+	"\flast_used_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastUsedAt\x1a9\n" +
+	"\vClaimsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\".\n" +
+	"\x18ListBotIdentitiesRequest\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\"\x91\x01\n" +
+	"\x19ListBotIdentitiesResponse\x12>\n" +
+	"\n" +
+	"identities\x18\x01 \x03(\v2\x1e.vertra.console.v1.BotIdentityR\n" +
+	"identities\x12\x18\n" +
+	"\aissuers\x18\x02 \x03(\tR\aissuers\x12\x1a\n" +
+	"\baudience\x18\x03 \x01(\tR\baudience\"\xe3\x01\n" +
+	"\x15AddBotIdentityRequest\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\x12\x15\n" +
+	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x16\n" +
+	"\x06issuer\x18\x03 \x01(\tR\x06issuer\x12L\n" +
+	"\x06claims\x18\x04 \x03(\v24.vertra.console.v1.AddBotIdentityRequest.ClaimsEntryR\x06claims\x1a9\n" +
+	"\vClaimsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"T\n" +
+	"\x16AddBotIdentityResponse\x12:\n" +
+	"\bidentity\x18\x01 \x01(\v2\x1e.vertra.console.v1.BotIdentityR\bidentity\"*\n" +
+	"\x18RemoveBotIdentityRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x1b\n" +
+	"\x19RemoveBotIdentityResponse2\xf8\x06\n" +
 	"\fTokenService\x12X\n" +
 	"\bListBots\x12\".vertra.console.v1.ListBotsRequest\x1a#.vertra.console.v1.ListBotsResponse\"\x03\x90\x02\x01\x12e\n" +
-	"\x0eCreateBotToken\x12(.vertra.console.v1.CreateBotTokenRequest\x1a).vertra.console.v1.CreateBotTokenResponse\x12a\n" +
+	"\x0eCreateBotToken\x12(.vertra.console.v1.CreateBotTokenRequest\x1a).vertra.console.v1.CreateBotTokenResponse\x12s\n" +
+	"\x11ListBotIdentities\x12+.vertra.console.v1.ListBotIdentitiesRequest\x1a,.vertra.console.v1.ListBotIdentitiesResponse\"\x03\x90\x02\x01\x12e\n" +
+	"\x0eAddBotIdentity\x12(.vertra.console.v1.AddBotIdentityRequest\x1a).vertra.console.v1.AddBotIdentityResponse\x12n\n" +
+	"\x11RemoveBotIdentity\x12+.vertra.console.v1.RemoveBotIdentityRequest\x1a,.vertra.console.v1.RemoveBotIdentityResponse\x12a\n" +
 	"\vRevokeToken\x12%.vertra.console.v1.RevokeTokenRequest\x1a&.vertra.console.v1.RevokeTokenResponse\"\x03\x90\x02\x02\x12|\n" +
 	"\x14ListAutomationTokens\x12..vertra.console.v1.ListAutomationTokensRequest\x1a/.vertra.console.v1.ListAutomationTokensResponse\"\x03\x90\x02\x01\x12z\n" +
 	"\x15CreateAutomationToken\x12/.vertra.console.v1.CreateAutomationTokenRequest\x1a0.vertra.console.v1.CreateAutomationTokenResponseB\xd3\x01\n" +
@@ -801,7 +1227,7 @@ func file_vertra_console_v1_token_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_token_proto_rawDescData
 }
 
-var file_vertra_console_v1_token_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_vertra_console_v1_token_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_vertra_console_v1_token_proto_goTypes = []any{
 	(*TokenInfo)(nil),                     // 0: vertra.console.v1.TokenInfo
 	(*Bot)(nil),                           // 1: vertra.console.v1.Bot
@@ -816,31 +1242,52 @@ var file_vertra_console_v1_token_proto_goTypes = []any{
 	(*ListAutomationTokensResponse)(nil),  // 10: vertra.console.v1.ListAutomationTokensResponse
 	(*CreateAutomationTokenRequest)(nil),  // 11: vertra.console.v1.CreateAutomationTokenRequest
 	(*CreateAutomationTokenResponse)(nil), // 12: vertra.console.v1.CreateAutomationTokenResponse
-	(*timestamppb.Timestamp)(nil),         // 13: google.protobuf.Timestamp
+	(*BotIdentity)(nil),                   // 13: vertra.console.v1.BotIdentity
+	(*ListBotIdentitiesRequest)(nil),      // 14: vertra.console.v1.ListBotIdentitiesRequest
+	(*ListBotIdentitiesResponse)(nil),     // 15: vertra.console.v1.ListBotIdentitiesResponse
+	(*AddBotIdentityRequest)(nil),         // 16: vertra.console.v1.AddBotIdentityRequest
+	(*AddBotIdentityResponse)(nil),        // 17: vertra.console.v1.AddBotIdentityResponse
+	(*RemoveBotIdentityRequest)(nil),      // 18: vertra.console.v1.RemoveBotIdentityRequest
+	(*RemoveBotIdentityResponse)(nil),     // 19: vertra.console.v1.RemoveBotIdentityResponse
+	nil,                                   // 20: vertra.console.v1.BotIdentity.ClaimsEntry
+	nil,                                   // 21: vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
+	(*timestamppb.Timestamp)(nil),         // 22: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_token_proto_depIdxs = []int32{
-	13, // 0: vertra.console.v1.TokenInfo.created_at:type_name -> google.protobuf.Timestamp
-	13, // 1: vertra.console.v1.TokenInfo.last_used_at:type_name -> google.protobuf.Timestamp
+	22, // 0: vertra.console.v1.TokenInfo.created_at:type_name -> google.protobuf.Timestamp
+	22, // 1: vertra.console.v1.TokenInfo.last_used_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: vertra.console.v1.Bot.tokens:type_name -> vertra.console.v1.TokenInfo
-	13, // 3: vertra.console.v1.AutomationToken.created_at:type_name -> google.protobuf.Timestamp
-	13, // 4: vertra.console.v1.AutomationToken.last_used_at:type_name -> google.protobuf.Timestamp
+	22, // 3: vertra.console.v1.AutomationToken.created_at:type_name -> google.protobuf.Timestamp
+	22, // 4: vertra.console.v1.AutomationToken.last_used_at:type_name -> google.protobuf.Timestamp
 	1,  // 5: vertra.console.v1.ListBotsResponse.bots:type_name -> vertra.console.v1.Bot
 	2,  // 6: vertra.console.v1.ListAutomationTokensResponse.tokens:type_name -> vertra.console.v1.AutomationToken
-	3,  // 7: vertra.console.v1.TokenService.ListBots:input_type -> vertra.console.v1.ListBotsRequest
-	5,  // 8: vertra.console.v1.TokenService.CreateBotToken:input_type -> vertra.console.v1.CreateBotTokenRequest
-	7,  // 9: vertra.console.v1.TokenService.RevokeToken:input_type -> vertra.console.v1.RevokeTokenRequest
-	9,  // 10: vertra.console.v1.TokenService.ListAutomationTokens:input_type -> vertra.console.v1.ListAutomationTokensRequest
-	11, // 11: vertra.console.v1.TokenService.CreateAutomationToken:input_type -> vertra.console.v1.CreateAutomationTokenRequest
-	4,  // 12: vertra.console.v1.TokenService.ListBots:output_type -> vertra.console.v1.ListBotsResponse
-	6,  // 13: vertra.console.v1.TokenService.CreateBotToken:output_type -> vertra.console.v1.CreateBotTokenResponse
-	8,  // 14: vertra.console.v1.TokenService.RevokeToken:output_type -> vertra.console.v1.RevokeTokenResponse
-	10, // 15: vertra.console.v1.TokenService.ListAutomationTokens:output_type -> vertra.console.v1.ListAutomationTokensResponse
-	12, // 16: vertra.console.v1.TokenService.CreateAutomationToken:output_type -> vertra.console.v1.CreateAutomationTokenResponse
-	12, // [12:17] is the sub-list for method output_type
-	7,  // [7:12] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	20, // 7: vertra.console.v1.BotIdentity.claims:type_name -> vertra.console.v1.BotIdentity.ClaimsEntry
+	22, // 8: vertra.console.v1.BotIdentity.created_at:type_name -> google.protobuf.Timestamp
+	22, // 9: vertra.console.v1.BotIdentity.last_used_at:type_name -> google.protobuf.Timestamp
+	13, // 10: vertra.console.v1.ListBotIdentitiesResponse.identities:type_name -> vertra.console.v1.BotIdentity
+	21, // 11: vertra.console.v1.AddBotIdentityRequest.claims:type_name -> vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
+	13, // 12: vertra.console.v1.AddBotIdentityResponse.identity:type_name -> vertra.console.v1.BotIdentity
+	3,  // 13: vertra.console.v1.TokenService.ListBots:input_type -> vertra.console.v1.ListBotsRequest
+	5,  // 14: vertra.console.v1.TokenService.CreateBotToken:input_type -> vertra.console.v1.CreateBotTokenRequest
+	14, // 15: vertra.console.v1.TokenService.ListBotIdentities:input_type -> vertra.console.v1.ListBotIdentitiesRequest
+	16, // 16: vertra.console.v1.TokenService.AddBotIdentity:input_type -> vertra.console.v1.AddBotIdentityRequest
+	18, // 17: vertra.console.v1.TokenService.RemoveBotIdentity:input_type -> vertra.console.v1.RemoveBotIdentityRequest
+	7,  // 18: vertra.console.v1.TokenService.RevokeToken:input_type -> vertra.console.v1.RevokeTokenRequest
+	9,  // 19: vertra.console.v1.TokenService.ListAutomationTokens:input_type -> vertra.console.v1.ListAutomationTokensRequest
+	11, // 20: vertra.console.v1.TokenService.CreateAutomationToken:input_type -> vertra.console.v1.CreateAutomationTokenRequest
+	4,  // 21: vertra.console.v1.TokenService.ListBots:output_type -> vertra.console.v1.ListBotsResponse
+	6,  // 22: vertra.console.v1.TokenService.CreateBotToken:output_type -> vertra.console.v1.CreateBotTokenResponse
+	15, // 23: vertra.console.v1.TokenService.ListBotIdentities:output_type -> vertra.console.v1.ListBotIdentitiesResponse
+	17, // 24: vertra.console.v1.TokenService.AddBotIdentity:output_type -> vertra.console.v1.AddBotIdentityResponse
+	19, // 25: vertra.console.v1.TokenService.RemoveBotIdentity:output_type -> vertra.console.v1.RemoveBotIdentityResponse
+	8,  // 26: vertra.console.v1.TokenService.RevokeToken:output_type -> vertra.console.v1.RevokeTokenResponse
+	10, // 27: vertra.console.v1.TokenService.ListAutomationTokens:output_type -> vertra.console.v1.ListAutomationTokensResponse
+	12, // 28: vertra.console.v1.TokenService.CreateAutomationToken:output_type -> vertra.console.v1.CreateAutomationTokenResponse
+	21, // [21:29] is the sub-list for method output_type
+	13, // [13:21] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_token_proto_init() }
@@ -854,7 +1301,7 @@ func file_vertra_console_v1_token_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_token_proto_rawDesc), len(file_vertra_console_v1_token_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

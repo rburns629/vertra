@@ -16,6 +16,18 @@ service TokenService {
   }
   // Creates a bot, or a new token for an existing one.
   rpc CreateBotToken(CreateBotTokenRequest) returns (CreateBotTokenResponse);
+  // A team's bots' keyless identities (its members), and what this install
+  // accepts: its issuers and audience.
+  rpc ListBotIdentities(ListBotIdentitiesRequest) returns (ListBotIdentitiesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Lets a bot sign in with a CI's ID token carrying these exact claims, from
+  // an issuer the install allows (its team's maintainers). The claims name
+  // what the token is for (GitHub: repository; GitLab: project_path), and
+  // may narrow it (ref, environment). No patterns.
+  rpc AddBotIdentity(AddBotIdentityRequest) returns (AddBotIdentityResponse);
+  // Stops a keyless identity signing in (its team's maintainers).
+  rpc RemoveBotIdentity(RemoveBotIdentityRequest) returns (RemoveBotIdentityResponse);
   // Revokes any token: a team's bot's (by a member) or any (by an admin).
   rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse) {
     option idempotency_level = IDEMPOTENT;
@@ -98,3 +110,41 @@ message CreateAutomationTokenResponse {
   // Shown once, never again.
   string token = 4;
 }
+
+message BotIdentity {
+  string id = 1;
+  string bot_id = 2;
+  string bot_email = 3;
+  string issuer = 4;
+  map<string, string> claims = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_used_at = 7;
+}
+
+message ListBotIdentitiesRequest {
+  string team = 1;
+}
+
+message ListBotIdentitiesResponse {
+  repeated BotIdentity identities = 1;
+  // What this install accepts.
+  repeated string issuers = 2;
+  string audience = 3;
+}
+
+message AddBotIdentityRequest {
+  string team = 1;
+  string bot_id = 2;
+  string issuer = 3;
+  map<string, string> claims = 4;
+}
+
+message AddBotIdentityResponse {
+  BotIdentity identity = 1;
+}
+
+message RemoveBotIdentityRequest {
+  string id = 1;
+}
+
+message RemoveBotIdentityResponse {}

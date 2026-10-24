@@ -6,13 +6,15 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file vertra/console/v1/auth.proto.
  */
 export const file_vertra_console_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9hdXRoLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIXChVHZXRFbnZpcm9ubWVudFJlcXVlc3QiVQoWR2V0RW52aXJvbm1lbnRSZXNwb25zZRINCgVsYWJlbBgBIAEoCRIZChFzZWxmX3JlZ2lzdHJhdGlvbhgCIAEoCBIRCglzc29fbGFiZWwYAyABKAkiMgoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIjIKEFJlZ2lzdGVyUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIvCgxMb2dpblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiHgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCSIOCgxHZXRNZVJlcXVlc3QisgEKDUdldE1lUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCRISCgp0ZWFtX25hbWVzGAMgAygJEhAKCGlzX2FkbWluGAQgASgIEhUKDW1haW50YWluZXJfb2YYBSADKAkSHAoUbXVzdF9jaGFuZ2VfcGFzc3dvcmQYBiABKAgSFAoMaGFzX3Bhc3N3b3JkGAcgASgIEhAKCHVzZXNfc3NvGAggASgIIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSInChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlEg0KBXRva2VuGAEgASgJMtIDCgtBdXRoU2VydmljZRJqCg5HZXRFbnZpcm9ubWVudBIoLnZlcnRyYS5jb25zb2xlLnYxLkdldEVudmlyb25tZW50UmVxdWVzdBopLnZlcnRyYS5jb25zb2xlLnYxLkdldEVudmlyb25tZW50UmVzcG9uc2UiA5ACARJTCghSZWdpc3RlchIiLnZlcnRyYS5jb25zb2xlLnYxLlJlZ2lzdGVyUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLlJlZ2lzdGVyUmVzcG9uc2USSgoFTG9naW4SHy52ZXJ0cmEuY29uc29sZS52MS5Mb2dpblJlcXVlc3QaIC52ZXJ0cmEuY29uc29sZS52MS5Mb2dpblJlc3BvbnNlEk8KBUdldE1lEh8udmVydHJhLmNvbnNvbGUudjEuR2V0TWVSZXF1ZXN0GiAudmVydHJhLmNvbnNvbGUudjEuR2V0TWVSZXNwb25zZSIDkAIBEmUKDkNoYW5nZVBhc3N3b3JkEigudmVydHJhLmNvbnNvbGUudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GikudmVydHJhLmNvbnNvbGUudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZWIGcHJvdG8z");
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9hdXRoLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIXChVHZXRFbnZpcm9ubWVudFJlcXVlc3QiVQoWR2V0RW52aXJvbm1lbnRSZXNwb25zZRINCgVsYWJlbBgBIAEoCRIZChFzZWxmX3JlZ2lzdHJhdGlvbhgCIAEoCBIRCglzc29fbGFiZWwYAyABKAkiMgoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIjIKEFJlZ2lzdGVyUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIvCgxMb2dpblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiHgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCSIOCgxHZXRNZVJlcXVlc3QisgEKDUdldE1lUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCRISCgp0ZWFtX25hbWVzGAMgAygJEhAKCGlzX2FkbWluGAQgASgIEhUKDW1haW50YWluZXJfb2YYBSADKAkSHAoUbXVzdF9jaGFuZ2VfcGFzc3dvcmQYBiABKAgSFAoMaGFzX3Bhc3N3b3JkGAcgASgIEhAKCHVzZXNfc3NvGAggASgIIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSInChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlEg0KBXRva2VuGAEgASgJIigKFEV4Y2hhbmdlVG9rZW5SZXF1ZXN0EhAKCGlkX3Rva2VuGAEgASgJImUKFUV4Y2hhbmdlVG9rZW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCRINCgVlbWFpbBgCIAEoCRIuCgpleHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcDK2BAoLQXV0aFNlcnZpY2USagoOR2V0RW52aXJvbm1lbnQSKC52ZXJ0cmEuY29uc29sZS52MS5HZXRFbnZpcm9ubWVudFJlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5HZXRFbnZpcm9ubWVudFJlc3BvbnNlIgOQAgESUwoIUmVnaXN0ZXISIi52ZXJ0cmEuY29uc29sZS52MS5SZWdpc3RlclJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5SZWdpc3RlclJlc3BvbnNlEkoKBUxvZ2luEh8udmVydHJhLmNvbnNvbGUudjEuTG9naW5SZXF1ZXN0GiAudmVydHJhLmNvbnNvbGUudjEuTG9naW5SZXNwb25zZRJiCg1FeGNoYW5nZVRva2VuEicudmVydHJhLmNvbnNvbGUudjEuRXhjaGFuZ2VUb2tlblJlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5FeGNoYW5nZVRva2VuUmVzcG9uc2USTwoFR2V0TWUSHy52ZXJ0cmEuY29uc29sZS52MS5HZXRNZVJlcXVlc3QaIC52ZXJ0cmEuY29uc29sZS52MS5HZXRNZVJlc3BvbnNlIgOQAgESZQoOQ2hhbmdlUGFzc3dvcmQSKC52ZXJ0cmEuY29uc29sZS52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.GetEnvironmentRequest
@@ -259,6 +261,56 @@ export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = 
   messageDesc(file_vertra_console_v1_auth, 9);
 
 /**
+ * @generated from message vertra.console.v1.ExchangeTokenRequest
+ */
+export type ExchangeTokenRequest = Message<"vertra.console.v1.ExchangeTokenRequest"> & {
+  /**
+   * The CI's ID token (a JWT), for the install's keyless audience.
+   *
+   * @generated from field: string id_token = 1;
+   */
+  idToken: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ExchangeTokenRequest.
+ * Use `create(ExchangeTokenRequestSchema)` to create a new message.
+ */
+export const ExchangeTokenRequestSchema: GenMessage<ExchangeTokenRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_auth, 10);
+
+/**
+ * @generated from message vertra.console.v1.ExchangeTokenResponse
+ */
+export type ExchangeTokenResponse = Message<"vertra.console.v1.ExchangeTokenResponse"> & {
+  /**
+   * Send as Authorization: Bearer <token>, for an hour.
+   *
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * The bot it signed in as.
+   *
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 3;
+   */
+  expiresAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ExchangeTokenResponse.
+ * Use `create(ExchangeTokenResponseSchema)` to create a new message.
+ */
+export const ExchangeTokenResponseSchema: GenMessage<ExchangeTokenResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_auth, 11);
+
+/**
  * Signing in, and who you are. Bots don't sign in: they send their API
  * token as the bearer token directly.
  *
@@ -297,6 +349,20 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof LoginRequestSchema;
     output: typeof LoginResponseSchema;
+  },
+  /**
+   * Signs a bot in with its CI's own OIDC identity instead of a stored
+   * token (keyless): a GitHub Actions or GitLab job's ID token, for this
+   * install's audience, matching exactly one bot's identity
+   * (TokenService.AddBotIdentity). Returns an hour's session as that bot.
+   * Refused (unauthenticated, KEYLESS_REFUSED) otherwise.
+   *
+   * @generated from rpc vertra.console.v1.AuthService.ExchangeToken
+   */
+  exchangeToken: {
+    methodKind: "unary";
+    input: typeof ExchangeTokenRequestSchema;
+    output: typeof ExchangeTokenResponseSchema;
   },
   /**
    * Who you are, and your teams.

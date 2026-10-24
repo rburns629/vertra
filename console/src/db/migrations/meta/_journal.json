@@ -176,6 +176,13 @@
       "when": 1792871432908,
       "tag": "0024_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792872682089,
+      "tag": "0025_bot_identities",
+      "breakpoints": true
     }
   ]
 }

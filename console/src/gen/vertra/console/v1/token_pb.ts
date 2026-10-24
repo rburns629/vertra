@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/token.proto.
  */
 export const file_vertra_console_v1_token: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS90b2tlbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiiAEKCVRva2VuSW5mbxIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3VzZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk4KA0JvdBIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIsCgZ0b2tlbnMYAyADKAsyHC52ZXJ0cmEuY29uc29sZS52MS5Ub2tlbkluZm8isQEKD0F1dG9tYXRpb25Ub2tlbhIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3VzZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBnNjb3BlcxgFIAMoCRIRCglib3RfZW1haWwYBiABKAkiHwoPTGlzdEJvdHNSZXF1ZXN0EgwKBHRlYW0YASABKAkiOAoQTGlzdEJvdHNSZXNwb25zZRIkCgRib3RzGAEgAygLMhYudmVydHJhLmNvbnNvbGUudjEuQm90IkMKFUNyZWF0ZUJvdFRva2VuUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg0KBWVtYWlsGAIgASgJEg0KBWxhYmVsGAMgASgJIkgKFkNyZWF0ZUJvdFRva2VuUmVzcG9uc2USDQoFZW1haWwYASABKAkSDQoFdG9rZW4YAiABKAkSEAoIdG9rZW5faWQYAyABKAkiJgoSUmV2b2tlVG9rZW5SZXF1ZXN0EhAKCHRva2VuX2lkGAEgASgJIhUKE1Jldm9rZVRva2VuUmVzcG9uc2UiHQobTGlzdEF1dG9tYXRpb25Ub2tlbnNSZXF1ZXN0IlIKHExpc3RBdXRvbWF0aW9uVG9rZW5zUmVzcG9uc2USMgoGdG9rZW5zGAEgAygLMiIudmVydHJhLmNvbnNvbGUudjEuQXV0b21hdGlvblRva2VuIj0KHENyZWF0ZUF1dG9tYXRpb25Ub2tlblJlcXVlc3QSDQoFbGFiZWwYASABKAkSDgoGc2NvcGVzGAIgAygJIl8KHUNyZWF0ZUF1dG9tYXRpb25Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEg0KBWxhYmVsGAIgASgJEg4KBnNjb3BlcxgDIAMoCRINCgV0b2tlbhgEIAEoCTKsBAoMVG9rZW5TZXJ2aWNlElgKCExpc3RCb3RzEiIudmVydHJhLmNvbnNvbGUudjEuTGlzdEJvdHNSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuTGlzdEJvdHNSZXNwb25zZSIDkAIBEmUKDkNyZWF0ZUJvdFRva2VuEigudmVydHJhLmNvbnNvbGUudjEuQ3JlYXRlQm90VG9rZW5SZXF1ZXN0GikudmVydHJhLmNvbnNvbGUudjEuQ3JlYXRlQm90VG9rZW5SZXNwb25zZRJhCgtSZXZva2VUb2tlbhIlLnZlcnRyYS5jb25zb2xlLnYxLlJldm9rZVRva2VuUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLlJldm9rZVRva2VuUmVzcG9uc2UiA5ACAhJ8ChRMaXN0QXV0b21hdGlvblRva2VucxIuLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdXRvbWF0aW9uVG9rZW5zUmVxdWVzdBovLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdXRvbWF0aW9uVG9rZW5zUmVzcG9uc2UiA5ACARJ6ChVDcmVhdGVBdXRvbWF0aW9uVG9rZW4SLy52ZXJ0cmEuY29uc29sZS52MS5DcmVhdGVBdXRvbWF0aW9uVG9rZW5SZXF1ZXN0GjAudmVydHJhLmNvbnNvbGUudjEuQ3JlYXRlQXV0b21hdGlvblRva2VuUmVzcG9uc2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS90b2tlbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiiAEKCVRva2VuSW5mbxIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3VzZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk4KA0JvdBIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIsCgZ0b2tlbnMYAyADKAsyHC52ZXJ0cmEuY29uc29sZS52MS5Ub2tlbkluZm8isQEKD0F1dG9tYXRpb25Ub2tlbhIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3VzZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg4KBnNjb3BlcxgFIAMoCRIRCglib3RfZW1haWwYBiABKAkiHwoPTGlzdEJvdHNSZXF1ZXN0EgwKBHRlYW0YASABKAkiOAoQTGlzdEJvdHNSZXNwb25zZRIkCgRib3RzGAEgAygLMhYudmVydHJhLmNvbnNvbGUudjEuQm90IkMKFUNyZWF0ZUJvdFRva2VuUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg0KBWVtYWlsGAIgASgJEg0KBWxhYmVsGAMgASgJIkgKFkNyZWF0ZUJvdFRva2VuUmVzcG9uc2USDQoFZW1haWwYASABKAkSDQoFdG9rZW4YAiABKAkSEAoIdG9rZW5faWQYAyABKAkiJgoSUmV2b2tlVG9rZW5SZXF1ZXN0EhAKCHRva2VuX2lkGAEgASgJIhUKE1Jldm9rZVRva2VuUmVzcG9uc2UiHQobTGlzdEF1dG9tYXRpb25Ub2tlbnNSZXF1ZXN0IlIKHExpc3RBdXRvbWF0aW9uVG9rZW5zUmVzcG9uc2USMgoGdG9rZW5zGAEgAygLMiIudmVydHJhLmNvbnNvbGUudjEuQXV0b21hdGlvblRva2VuIj0KHENyZWF0ZUF1dG9tYXRpb25Ub2tlblJlcXVlc3QSDQoFbGFiZWwYASABKAkSDgoGc2NvcGVzGAIgAygJIl8KHUNyZWF0ZUF1dG9tYXRpb25Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEg0KBWxhYmVsGAIgASgJEg4KBnNjb3BlcxgDIAMoCRINCgV0b2tlbhgEIAEoCSKZAgoLQm90SWRlbnRpdHkSCgoCaWQYASABKAkSDgoGYm90X2lkGAIgASgJEhEKCWJvdF9lbWFpbBgDIAEoCRIOCgZpc3N1ZXIYBCABKAkSOgoGY2xhaW1zGAUgAygLMioudmVydHJhLmNvbnNvbGUudjEuQm90SWRlbnRpdHkuQ2xhaW1zRW50cnkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBotCgtDbGFpbXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIigKGExpc3RCb3RJZGVudGl0aWVzUmVxdWVzdBIMCgR0ZWFtGAEgASgJInIKGUxpc3RCb3RJZGVudGl0aWVzUmVzcG9uc2USMgoKaWRlbnRpdGllcxgBIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLkJvdElkZW50aXR5Eg8KB2lzc3VlcnMYAiADKAkSEAoIYXVkaWVuY2UYAyABKAkiugEKFUFkZEJvdElkZW50aXR5UmVxdWVzdBIMCgR0ZWFtGAEgASgJEg4KBmJvdF9pZBgCIAEoCRIOCgZpc3N1ZXIYAyABKAkSRAoGY2xhaW1zGAQgAygLMjQudmVydHJhLmNvbnNvbGUudjEuQWRkQm90SWRlbnRpdHlSZXF1ZXN0LkNsYWltc0VudHJ5Gi0KC0NsYWltc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiSgoWQWRkQm90SWRlbnRpdHlSZXNwb25zZRIwCghpZGVudGl0eRgBIAEoCzIeLnZlcnRyYS5jb25zb2xlLnYxLkJvdElkZW50aXR5IiYKGFJlbW92ZUJvdElkZW50aXR5UmVxdWVzdBIKCgJpZBgBIAEoCSIbChlSZW1vdmVCb3RJZGVudGl0eVJlc3BvbnNlMvgGCgxUb2tlblNlcnZpY2USWAoITGlzdEJvdHMSIi52ZXJ0cmEuY29uc29sZS52MS5MaXN0Qm90c1JlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5MaXN0Qm90c1Jlc3BvbnNlIgOQAgESZQoOQ3JlYXRlQm90VG9rZW4SKC52ZXJ0cmEuY29uc29sZS52MS5DcmVhdGVCb3RUb2tlblJlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5DcmVhdGVCb3RUb2tlblJlc3BvbnNlEnMKEUxpc3RCb3RJZGVudGl0aWVzEisudmVydHJhLmNvbnNvbGUudjEuTGlzdEJvdElkZW50aXRpZXNSZXF1ZXN0GiwudmVydHJhLmNvbnNvbGUudjEuTGlzdEJvdElkZW50aXRpZXNSZXNwb25zZSIDkAIBEmUKDkFkZEJvdElkZW50aXR5EigudmVydHJhLmNvbnNvbGUudjEuQWRkQm90SWRlbnRpdHlSZXF1ZXN0GikudmVydHJhLmNvbnNvbGUudjEuQWRkQm90SWRlbnRpdHlSZXNwb25zZRJuChFSZW1vdmVCb3RJZGVudGl0eRIrLnZlcnRyYS5jb25zb2xlLnYxLlJlbW92ZUJvdElkZW50aXR5UmVxdWVzdBosLnZlcnRyYS5jb25zb2xlLnYxLlJlbW92ZUJvdElkZW50aXR5UmVzcG9uc2USYQoLUmV2b2tlVG9rZW4SJS52ZXJ0cmEuY29uc29sZS52MS5SZXZva2VUb2tlblJlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5SZXZva2VUb2tlblJlc3BvbnNlIgOQAgISfAoUTGlzdEF1dG9tYXRpb25Ub2tlbnMSLi52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXV0b21hdGlvblRva2Vuc1JlcXVlc3QaLy52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXV0b21hdGlvblRva2Vuc1Jlc3BvbnNlIgOQAgESegoVQ3JlYXRlQXV0b21hdGlvblRva2VuEi8udmVydHJhLmNvbnNvbGUudjEuQ3JlYXRlQXV0b21hdGlvblRva2VuUmVxdWVzdBowLnZlcnRyYS5jb25zb2xlLnYxLkNyZWF0ZUF1dG9tYXRpb25Ub2tlblJlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.TokenInfo
@@ -330,6 +330,178 @@ export const CreateAutomationTokenResponseSchema: GenMessage<CreateAutomationTok
   messageDesc(file_vertra_console_v1_token, 12);
 
 /**
+ * @generated from message vertra.console.v1.BotIdentity
+ */
+export type BotIdentity = Message<"vertra.console.v1.BotIdentity"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string bot_id = 2;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string bot_email = 3;
+   */
+  botEmail: string;
+
+  /**
+   * @generated from field: string issuer = 4;
+   */
+  issuer: string;
+
+  /**
+   * @generated from field: map<string, string> claims = 5;
+   */
+  claims: { [key: string]: string };
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 6;
+   */
+  createdAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_used_at = 7;
+   */
+  lastUsedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.BotIdentity.
+ * Use `create(BotIdentitySchema)` to create a new message.
+ */
+export const BotIdentitySchema: GenMessage<BotIdentity> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 13);
+
+/**
+ * @generated from message vertra.console.v1.ListBotIdentitiesRequest
+ */
+export type ListBotIdentitiesRequest = Message<"vertra.console.v1.ListBotIdentitiesRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListBotIdentitiesRequest.
+ * Use `create(ListBotIdentitiesRequestSchema)` to create a new message.
+ */
+export const ListBotIdentitiesRequestSchema: GenMessage<ListBotIdentitiesRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 14);
+
+/**
+ * @generated from message vertra.console.v1.ListBotIdentitiesResponse
+ */
+export type ListBotIdentitiesResponse = Message<"vertra.console.v1.ListBotIdentitiesResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.BotIdentity identities = 1;
+   */
+  identities: BotIdentity[];
+
+  /**
+   * What this install accepts.
+   *
+   * @generated from field: repeated string issuers = 2;
+   */
+  issuers: string[];
+
+  /**
+   * @generated from field: string audience = 3;
+   */
+  audience: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListBotIdentitiesResponse.
+ * Use `create(ListBotIdentitiesResponseSchema)` to create a new message.
+ */
+export const ListBotIdentitiesResponseSchema: GenMessage<ListBotIdentitiesResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 15);
+
+/**
+ * @generated from message vertra.console.v1.AddBotIdentityRequest
+ */
+export type AddBotIdentityRequest = Message<"vertra.console.v1.AddBotIdentityRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string bot_id = 2;
+   */
+  botId: string;
+
+  /**
+   * @generated from field: string issuer = 3;
+   */
+  issuer: string;
+
+  /**
+   * @generated from field: map<string, string> claims = 4;
+   */
+  claims: { [key: string]: string };
+};
+
+/**
+ * Describes the message vertra.console.v1.AddBotIdentityRequest.
+ * Use `create(AddBotIdentityRequestSchema)` to create a new message.
+ */
+export const AddBotIdentityRequestSchema: GenMessage<AddBotIdentityRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 16);
+
+/**
+ * @generated from message vertra.console.v1.AddBotIdentityResponse
+ */
+export type AddBotIdentityResponse = Message<"vertra.console.v1.AddBotIdentityResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.BotIdentity identity = 1;
+   */
+  identity?: BotIdentity | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.AddBotIdentityResponse.
+ * Use `create(AddBotIdentityResponseSchema)` to create a new message.
+ */
+export const AddBotIdentityResponseSchema: GenMessage<AddBotIdentityResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 17);
+
+/**
+ * @generated from message vertra.console.v1.RemoveBotIdentityRequest
+ */
+export type RemoveBotIdentityRequest = Message<"vertra.console.v1.RemoveBotIdentityRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RemoveBotIdentityRequest.
+ * Use `create(RemoveBotIdentityRequestSchema)` to create a new message.
+ */
+export const RemoveBotIdentityRequestSchema: GenMessage<RemoveBotIdentityRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 18);
+
+/**
+ * @generated from message vertra.console.v1.RemoveBotIdentityResponse
+ */
+export type RemoveBotIdentityResponse = Message<"vertra.console.v1.RemoveBotIdentityResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.RemoveBotIdentityResponse.
+ * Use `create(RemoveBotIdentityResponseSchema)` to create a new message.
+ */
+export const RemoveBotIdentityResponseSchema: GenMessage<RemoveBotIdentityResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_token, 19);
+
+/**
  * Bots and their API tokens. A team's bot acts as a member of that team;
  * an automation token belongs to no team and can do exactly what its scopes
  * say. A token is shown once, when it's made, and only its hash is kept.
@@ -356,6 +528,40 @@ export const TokenService: GenService<{
     methodKind: "unary";
     input: typeof CreateBotTokenRequestSchema;
     output: typeof CreateBotTokenResponseSchema;
+  },
+  /**
+   * A team's bots' keyless identities (its members), and what this install
+   * accepts: its issuers and audience.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.ListBotIdentities
+   */
+  listBotIdentities: {
+    methodKind: "unary";
+    input: typeof ListBotIdentitiesRequestSchema;
+    output: typeof ListBotIdentitiesResponseSchema;
+  },
+  /**
+   * Lets a bot sign in with a CI's ID token carrying these exact claims, from
+   * an issuer the install allows (its team's maintainers). The claims name
+   * what the token is for (GitHub: repository; GitLab: project_path), and
+   * may narrow it (ref, environment). No patterns.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.AddBotIdentity
+   */
+  addBotIdentity: {
+    methodKind: "unary";
+    input: typeof AddBotIdentityRequestSchema;
+    output: typeof AddBotIdentityResponseSchema;
+  },
+  /**
+   * Stops a keyless identity signing in (its team's maintainers).
+   *
+   * @generated from rpc vertra.console.v1.TokenService.RemoveBotIdentity
+   */
+  removeBotIdentity: {
+    methodKind: "unary";
+    input: typeof RemoveBotIdentityRequestSchema;
+    output: typeof RemoveBotIdentityResponseSchema;
   },
   /**
    * Revokes any token: a team's bot's (by a member) or any (by an admin).

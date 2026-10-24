@@ -26,6 +26,7 @@ export const PUBLIC_METHODS = [
   "vertra.console.v1.AuthService/GetEnvironment",
   "vertra.console.v1.AuthService/Register",
   "vertra.console.v1.AuthService/Login",
+  "vertra.console.v1.AuthService/ExchangeToken",
 ];
 
 interface Field {

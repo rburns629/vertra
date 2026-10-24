@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, TextField, Typography } from "@mui/material";
-import { createBot, listBots, revokeToken, type Bot } from "../../api";
+import { createBot, listBotIdentities, listBots, revokeToken, type Bot, type BotIdentity } from "../../api";
+import { KeylessSection } from "./KeylessSection";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CodeBlock } from "../../components/CodeBlock";
 import { TabIntro, errorMessage, relativeTime } from "./shared";
@@ -24,6 +25,7 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
   const [revoking, setRevoking] = useState<{ tokenId: string; label: string; email: string } | null>(null);
   const [revokeBusy, setRevokeBusy] = useState(false);
   const [issued, setIssued] = useState<{ email: string; token: string } | null>(null);
+  const [keyless, setKeyless] = useState<{ identities: BotIdentity[]; issuers: string[]; audience: string } | null>(null);
 
   const reload = useCallback(() => {
     listBots(teamName)
@@ -31,6 +33,8 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
       .catch((err: unknown) => {
         setLoadError(errorMessage(err, "Couldn't load this team's bots."));
       });
+    // Display only: without it, bots just don't offer keyless sign-in.
+    listBotIdentities(teamName).then(setKeyless).catch(() => undefined);
   }, [teamName]);
 
   useEffect(reload, [reload]);
@@ -78,7 +82,9 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
               </CardContent>
             </Card>
           )}
-          {(bots ?? []).map((bot) => (
+          {(bots ?? []).map((bot) => {
+            const keylessOnly = bot.tokens.length === 0 && (keyless?.identities.some((i) => i.botId === bot.id) ?? false);
+            return (
             <Card key={bot.id} variant="outlined">
               <CardContent>
                 <Stack spacing={1.5}>
@@ -87,16 +93,27 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                       <Mono>{bot.email}</Mono>
                     </Typography>
                     <Chip
-                      label={bot.tokens.length > 0 ? "Active" : "No token"}
+                      label={bot.tokens.length > 0 ? "Active" : keylessOnly ? "Keyless" : "No token"}
                       size="small"
-                      color={bot.tokens.length > 0 ? "success" : "default"}
+                      color={bot.tokens.length > 0 || keylessOnly ? "success" : "default"}
                       variant="outlined"
                     />
                   </Box>
-                  {bot.tokens.length === 0 && (
+                  {bot.tokens.length === 0 && !keylessOnly && (
                     <Typography variant="body2" color="text.secondary">
                       No working token. Anything still using an old one fails to sign in.
                     </Typography>
+                  )}
+                  {keyless && (
+                    <KeylessSection
+                      teamName={teamName}
+                      botId={bot.id}
+                      identities={keyless.identities.filter((i) => i.botId === bot.id)}
+                      issuers={keyless.issuers}
+                      audience={keyless.audience}
+                      readOnly={readOnly}
+                      onChanged={reload}
+                    />
                   )}
                   {bot.tokens.map((token) => (
                     <Box
@@ -135,7 +152,8 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                 </Stack>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
           <Card variant="outlined" sx={{ bgcolor: "action.hover" }}>
             <CardContent>
               <Typography sx={{ fontWeight: 600, mb: 0.5 }}>What a bot can do</Typography>

@@ -4,6 +4,8 @@ syntax = "proto3";
 
 package vertra.console.v1;
 
+import "google/protobuf/timestamp.proto";
+
 // Signing in, and who you are. Bots don't sign in: they send their API
 // token as the bearer token directly.
 service AuthService {
@@ -18,6 +20,12 @@ service AuthService {
   // spaced out after repeated failures on one account (resource_exhausted,
   // with a Retry-After).
   rpc Login(LoginRequest) returns (LoginResponse);
+  // Signs a bot in with its CI's own OIDC identity instead of a stored
+  // token (keyless): a GitHub Actions or GitLab job's ID token, for this
+  // install's audience, matching exactly one bot's identity
+  // (TokenService.AddBotIdentity). Returns an hour's session as that bot.
+  // Refused (unauthenticated, KEYLESS_REFUSED) otherwise.
+  rpc ExchangeToken(ExchangeTokenRequest) returns (ExchangeTokenResponse);
   // Who you are, and your teams.
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -85,4 +93,17 @@ message ChangePasswordRequest {
 
 message ChangePasswordResponse {
   string token = 1;
+}
+
+message ExchangeTokenRequest {
+  // The CI's ID token (a JWT), for the install's keyless audience.
+  string id_token = 1;
+}
+
+message ExchangeTokenResponse {
+  // Send as Authorization: Bearer <token>, for an hour.
+  string token = 1;
+  // The bot it signed in as.
+  string email = 2;
+  google.protobuf.Timestamp expires_at = 3;
 }

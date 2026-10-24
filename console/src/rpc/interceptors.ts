@@ -28,7 +28,7 @@ const procedure = (service: { typeName: string }, method: { name: string }) => `
 
 /** Methods anyone may call, signed in or not. */
 export const PUBLIC = new Set(
-  [AuthService.method.getEnvironment, AuthService.method.register, AuthService.method.login].map((m) =>
+  [AuthService.method.getEnvironment, AuthService.method.register, AuthService.method.login, AuthService.method.exchangeToken].map((m) =>
     procedure(m.parent, m),
   ),
 );
@@ -41,7 +41,7 @@ const WHILE_CHANGING_PASSWORD = new Set(
 
 /** Changes nothing worth recording, or carries secrets: never audited. */
 const UNAUDITED = new Set(
-  [AuthService.method.register, AuthService.method.login, AuthService.method.changePassword].map((m) =>
+  [AuthService.method.register, AuthService.method.login, AuthService.method.changePassword, AuthService.method.exchangeToken].map((m) =>
     procedure(m.parent, m),
   ),
 );

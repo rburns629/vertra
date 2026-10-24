@@ -6,6 +6,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file vertra/console/v1/auth.proto.
@@ -247,6 +248,54 @@ export declare type ChangePasswordResponse = Message<"vertra.console.v1.ChangePa
 export declare const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse>;
 
 /**
+ * @generated from message vertra.console.v1.ExchangeTokenRequest
+ */
+export declare type ExchangeTokenRequest = Message<"vertra.console.v1.ExchangeTokenRequest"> & {
+  /**
+   * The CI's ID token (a JWT), for the install's keyless audience.
+   *
+   * @generated from field: string id_token = 1;
+   */
+  idToken: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ExchangeTokenRequest.
+ * Use `create(ExchangeTokenRequestSchema)` to create a new message.
+ */
+export declare const ExchangeTokenRequestSchema: GenMessage<ExchangeTokenRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ExchangeTokenResponse
+ */
+export declare type ExchangeTokenResponse = Message<"vertra.console.v1.ExchangeTokenResponse"> & {
+  /**
+   * Send as Authorization: Bearer <token>, for an hour.
+   *
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * The bot it signed in as.
+   *
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 3;
+   */
+  expiresAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ExchangeTokenResponse.
+ * Use `create(ExchangeTokenResponseSchema)` to create a new message.
+ */
+export declare const ExchangeTokenResponseSchema: GenMessage<ExchangeTokenResponse>;
+
+/**
  * Signing in, and who you are. Bots don't sign in: they send their API
  * token as the bearer token directly.
  *
@@ -285,6 +334,20 @@ export declare const AuthService: GenService<{
     methodKind: "unary";
     input: typeof LoginRequestSchema;
     output: typeof LoginResponseSchema;
+  },
+  /**
+   * Signs a bot in with its CI's own OIDC identity instead of a stored
+   * token (keyless): a GitHub Actions or GitLab job's ID token, for this
+   * install's audience, matching exactly one bot's identity
+   * (TokenService.AddBotIdentity). Returns an hour's session as that bot.
+   * Refused (unauthenticated, KEYLESS_REFUSED) otherwise.
+   *
+   * @generated from rpc vertra.console.v1.AuthService.ExchangeToken
+   */
+  exchangeToken: {
+    methodKind: "unary";
+    input: typeof ExchangeTokenRequestSchema;
+    output: typeof ExchangeTokenResponseSchema;
   },
   /**
    * Who you are, and your teams.

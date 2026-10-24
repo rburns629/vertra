@@ -672,6 +672,30 @@ export const schedules = pgTable(
   (table) => [unique("schedules_team_id_name").on(table.teamId, table.name), index("schedules_next_run_at_idx").on(table.nextRunAt)],
 );
 
+/**
+ * Who a bot is when it signs in without a stored token (auth/keyless.ts):
+ * an OIDC issuer (a CI's, such as GitHub Actions') and the exact claims its
+ * ID token must carry (repository, and perhaps ref or environment). A token
+ * from that issuer with those claims signs in as the bot.
+ */
+export const botIdentities = pgTable(
+  "bot_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    botId: uuid("bot_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    issuer: text("issuer").notNull(),
+    // Each claim the token must carry, with exactly this value.
+    claims: jsonb("claims").$type<Record<string, string>>().notNull(),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  // The same issuer and claims can't name two bots: a token would be ambiguous.
+  (table) => [unique("bot_identities_issuer_claims").on(table.issuer, table.claims)],
+);
+
 export const teamMemberships = pgTable(
   "team_memberships",
   {
