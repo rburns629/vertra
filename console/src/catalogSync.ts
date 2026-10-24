@@ -299,6 +299,7 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
         cleanup: p.cleanup ? { action: p.cleanup.action, inputs: p.cleanup.inputs ?? null } : null,
         plan: p.plan || null,
         check: p.check || null,
+        examples: p.examples.map((e) => ({ name: e.name, inputs: e.inputs ?? {}, outputs: e.outputs ?? {} })),
         approval: p.approval === "always" || p.approval === "otherTeams" ? p.approval : "",
         errorHelp: Object.fromEntries(
           Object.entries(p.errors).map(([code, help]) => [code, { means: help.means, ...(help.do ? { do: help.do } : {}) }]),

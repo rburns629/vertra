@@ -777,6 +777,70 @@ export declare type PodExecution = Message<"vertra.console.v1.PodExecution"> & {
 export declare const PodExecutionSchema: GenMessage<PodExecution>;
 
 /**
+ * @generated from message vertra.console.v1.GetTeamProfileRequest
+ */
+export declare type GetTeamProfileRequest = Message<"vertra.console.v1.GetTeamProfileRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetTeamProfileRequest.
+ * Use `create(GetTeamProfileRequestSchema)` to create a new message.
+ */
+export declare const GetTeamProfileRequestSchema: GenMessage<GetTeamProfileRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetTeamProfileResponse
+ */
+export declare type GetTeamProfileResponse = Message<"vertra.console.v1.GetTeamProfileResponse"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: bool from_catalog = 2;
+   */
+  fromCatalog: boolean;
+
+  /**
+   * @generated from field: bool retired = 3;
+   */
+  retired: boolean;
+
+  /**
+   * team.yaml's contact (who to ask), and its help: a chat and a page.
+   *
+   * @generated from field: string contact = 4;
+   */
+  contact: string;
+
+  /**
+   * @generated from field: string help_chat = 5;
+   */
+  helpChat: string;
+
+  /**
+   * @generated from field: string help_url = 6;
+   */
+  helpUrl: string;
+
+  /**
+   * @generated from field: int32 people = 7;
+   */
+  people: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetTeamProfileResponse.
+ * Use `create(GetTeamProfileResponseSchema)` to create a new message.
+ */
+export declare const GetTeamProfileResponseSchema: GenMessage<GetTeamProfileResponse>;
+
+/**
  * What someone may do in a team. Any member sees the team's executions,
  * logs and Pods, and runs its actions; a maintainer also manages its
  * members and roles, secrets and bots, and submits raw DAGs for it.
@@ -874,6 +938,19 @@ export declare const TeamService: GenService<{
     methodKind: "unary";
     input: typeof GetTeamRequestSchema;
     output: typeof GetTeamResponseSchema;
+  },
+  /**
+   * What anyone signed in may know of a team (its page, for those not in
+   * it): where to ask it (team.yaml's contact and help), whether it's
+   * retired, and how many people are in it. Never its members, secrets or
+   * runs. not_found for no such team, or a purged one.
+   *
+   * @generated from rpc vertra.console.v1.TeamService.GetTeamProfile
+   */
+  getTeamProfile: {
+    methodKind: "unary";
+    input: typeof GetTeamProfileRequestSchema;
+    output: typeof GetTeamProfileResponseSchema;
   },
   /**
    * Creates a team and its namespace. Admins, or a token with teams:create.

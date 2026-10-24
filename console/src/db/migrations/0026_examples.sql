@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "examples" jsonb DEFAULT '[]'::jsonb NOT NULL;

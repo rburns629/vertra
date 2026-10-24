@@ -756,6 +756,15 @@
      "public": false
     },
     {
+     "name": "GetTeamProfile",
+     "comment": "What anyone signed in may know of a team (its page, for those not in\nit): where to ask it (team.yaml's contact and help), whether it's\nretired, and how many people are in it. Never its members, secrets or\nruns. not_found for no such team, or a purged one.",
+     "input": "vertra.console.v1.GetTeamProfileRequest",
+     "output": "vertra.console.v1.GetTeamProfileResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
      "name": "CreateTeam",
      "comment": "Creates a team and its namespace. Admins, or a token with teams:create.",
      "input": "vertra.console.v1.CreateTeamRequest",
@@ -7201,6 +7210,74 @@
     }
    ]
   },
+  "vertra.console.v1.GetTeamProfileRequest": {
+   "name": "GetTeamProfileRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetTeamProfileResponse": {
+   "name": "GetTeamProfileResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "fromCatalog",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "retired",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "contact",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "team.yaml's contact (who to ask), and its help: a chat and a page."
+    },
+    {
+     "name": "helpChat",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "helpUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "people",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
   "vertra.console.v1.ListTemplatesRequest": {
    "name": "ListTemplatesRequest",
    "comment": "",
@@ -7345,6 +7422,41 @@
      "repeated": false,
      "optional": false,
      "comment": "Whether it's ready on this install: the action's product's check, or\nfor a template its steps' together (not ready when any isn't). Unset\nwhen nothing in it has a check."
+    },
+    {
+     "name": "examples",
+     "type": "RunExample",
+     "ref": "vertra.console.v1.RunExample",
+     "repeated": true,
+     "optional": false,
+     "comment": "Examples of running it, from its product's passing contract tests (an\naction's; a template has none yet): a name, inputs to fill the form\nwith, and what it gave."
+    }
+   ]
+  },
+  "vertra.console.v1.RunExample": {
+   "name": "RunExample",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "inputs",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "outputs",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

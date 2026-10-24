@@ -20,6 +20,7 @@ import {
   setSecretStoreCredential,
   setTeamSignIn,
   teamPods,
+  teamProfile,
   teamRecord,
   TeamName,
   unretireTeam,
@@ -77,6 +78,11 @@ export function teamService(): ServiceImpl<typeof TeamService> {
     async getTeam(req, ctx) {
       const { name } = check({ name: AnyTeam }, req);
       return { team: team(await teamRecord(callerOf(ctx), name)) };
+    },
+
+    async getTeamProfile(req, ctx) {
+      const { name } = check({ name: AnyTeam }, req);
+      return teamProfile(callerOf(ctx), name);
     },
 
     async createTeam(req, ctx) {

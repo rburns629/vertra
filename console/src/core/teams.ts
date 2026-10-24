@@ -40,7 +40,9 @@ import {
   setTeamRetired,
   type TeamMember,
 } from "../db/queries.js";
-import type { TeamRole } from "../db/schema.js";
+import { teamMemberships, teams, type TeamRole } from "../db/schema.js";
+import { db } from "../db/client.js";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   applySecretStoreObjects,
   deleteTeamNamespace,
@@ -430,4 +432,21 @@ export async function teamPods(caller: AuthUser | undefined, teamName: string) {
         : null,
     };
   });
+}
+
+/** What anyone signed in may know of a team: where to ask it, whether it's retired, its size. */
+export async function teamProfile(caller: AuthUser | undefined, name: string) {
+  if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
+  const [team] = await db.select().from(teams).where(and(eq(teams.name, name), isNull(teams.deletedAt)));
+  if (!team) throw noSuchTeam();
+  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(teamMemberships).where(eq(teamMemberships.teamId, team.id));
+  return {
+    name: team.name,
+    fromCatalog: team.fromCatalog,
+    retired: team.retiredAt !== null,
+    contact: team.contact ?? "",
+    helpChat: team.helpChat ?? "",
+    helpUrl: team.helpUrl ?? "",
+    people: counted?.n ?? 0,
+  };
 }

@@ -175,6 +175,13 @@ export const apiTokens = pgTable("api_tokens", {
  * image a team is willing to have run as their ServiceAccount, not just
  * who can read their secret once it's running.
  */
+/** An example of running an action, from one of its passing contract tests. */
+export interface ProductExample {
+  name: string;
+  inputs: Record<string, unknown>;
+  outputs: Record<string, unknown>;
+}
+
 /** An action's cleanup: which action of its product removes a resource it reported, with what inputs. */
 export interface ProductCleanup {
   action: string;
@@ -239,6 +246,9 @@ export const products = pgTable(
     // install (product.yaml's check, the product's): readiness.ts runs it.
     // Null: none.
     check: text("check"),
+    // Examples of running it, from its passing contract tests: a name, the
+    // inputs, and what it gave. Offered on its run form.
+    examples: jsonb("examples").$type<ProductExample[]>().notNull().default([]),
     // When a step of it waits for a maintainer of its team to approve it
     // (product.yaml's approval): always, or only when another team runs it.
     // Null: never, unless an allowedTargets rule asks (core/approvals.ts).

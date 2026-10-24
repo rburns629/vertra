@@ -568,9 +568,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Catalog with readiness, Runs list and run timeline, Schedules, Admin,
   Compose (2026-10-24: type-matched wiring by `x-vertra-needs` and
   `x-vertra-provides`, drafts in the browser, Propose as a template on
-  GitHub's new-file page, Run now when it's all your team's). Left:
-  runnable examples (from products' test cases), another team's page,
-  drafts kept by the console (shared, across devices).
+  GitHub's new-file page, Run now when it's all your team's), runnable
+  examples (2026-10-24: an action's passing contract tests, carried by
+  releases, offered on its run form as Use this), another team's page
+  (2026-10-24: `TeamService.GetTeamProfile`, where to ask it and its size,
+  and what it offers you, with sharing and readiness). Left: drafts kept by
+  the console (shared, across devices), templates' own examples.
 - [x] **P2: preview** (done 2026-10-24). product.yaml's `plan` names the
   action that says what this one would do (`summary`, `changes`); the run
   form's **Preview** runs it as a preview run (a template: each step with a

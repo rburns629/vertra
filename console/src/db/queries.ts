@@ -20,6 +20,7 @@ import {
   type Approval,
   type ErrorHelp,
   type ProductCleanup,
+  type ProductExample,
   type ProductResources,
   type TargetRule,
   type TeamRole,
@@ -505,6 +506,7 @@ export interface Product {
   cleanup: ProductCleanup | null;
   plan: string | null;
   check: string | null;
+  examples: ProductExample[];
   approval: Approval | null;
   errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
@@ -549,6 +551,7 @@ export interface ProductInput {
   cleanup?: ProductCleanup | null | undefined;
   plan?: string | null | undefined;
   check?: string | null | undefined;
+  examples?: ProductExample[] | undefined;
   approval?: Approval | null | undefined;
   errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
@@ -600,6 +603,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       cleanup: input.cleanup,
       plan: input.plan,
       check: input.check,
+      examples: input.examples,
       approval: input.approval,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated,

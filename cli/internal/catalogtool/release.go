@@ -86,6 +86,9 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 				a.Errors[code] = &catalogv1.ErrorHelp{Means: text(help, "means"), Do: text(help, "do")}
 			}
 		}
+		if a.Examples, err = examplesOf(p, actionName); err != nil {
+			return nil, err
+		}
 		if cleanup, ok := action["cleanup"].(map[string]any); ok {
 			a.Cleanup = &catalogv1.Cleanup{Action: text(cleanup, "action")}
 			if inputs, ok := cleanup["inputs"]; ok {
@@ -446,4 +449,50 @@ func targetRulesOf(spec map[string]any) []*catalogv1.TargetRule {
 		rules = append(rules, rule)
 	}
 	return rules
+}
+
+// maxExamples and maxExampleBytes bound what a release carries per action.
+const (
+	maxExamples     = 10
+	maxExampleBytes = 8 << 10
+)
+
+// examplesOf is an action's passing contract tests, as examples of running
+// it: their inputs and what they gave. Failing cases (refusals) aren't
+// examples to follow; large ones are left out.
+func examplesOf(p *Product, action string) ([]*catalogv1.Example, error) {
+	var out []*catalogv1.Example
+	for _, c := range contractCases(p) {
+		if c.action() != action || len(out) == maxExamples {
+			continue
+		}
+		request, err := os.ReadFile(filepath.Join(c.dir, "request.json"))
+		if err != nil {
+			continue
+		}
+		expected, err := os.ReadFile(filepath.Join(c.dir, "expected.json"))
+		if err != nil || len(request)+len(expected) > maxExampleBytes {
+			continue
+		}
+		var req struct {
+			Inputs map[string]any `json:"inputs"`
+		}
+		var exp struct {
+			Status  string         `json:"status"`
+			Outputs map[string]any `json:"outputs"`
+		}
+		if json.Unmarshal(request, &req) != nil || json.Unmarshal(expected, &exp) != nil || exp.Status != "succeeded" {
+			continue
+		}
+		inputs, err := structpb.NewStruct(req.Inputs)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", c.label(), err)
+		}
+		outputs, err := structpb.NewStruct(exp.Outputs)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", c.label(), err)
+		}
+		out = append(out, &catalogv1.Example{Name: strings.ReplaceAll(filepath.Base(c.dir), "-", " "), Inputs: inputs, Outputs: outputs})
+	}
+	return out, nil
 }

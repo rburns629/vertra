@@ -21,6 +21,13 @@ service TeamService {
   rpc GetTeam(GetTeamRequest) returns (GetTeamResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // What anyone signed in may know of a team (its page, for those not in
+  // it): where to ask it (team.yaml's contact and help), whether it's
+  // retired, and how many people are in it. Never its members, secrets or
+  // runs. not_found for no such team, or a purged one.
+  rpc GetTeamProfile(GetTeamProfileRequest) returns (GetTeamProfileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Creates a team and its namespace. Admins, or a token with teams:create.
   rpc CreateTeam(CreateTeamRequest) returns (CreateTeamResponse);
   // Makes sure a team exists and is active, with its namespace: creates
@@ -288,4 +295,19 @@ message PodExecution {
   // Its task's position in the DAG, from 1, when known.
   optional int32 task_number = 2;
   optional int32 task_count = 3;
+}
+
+message GetTeamProfileRequest {
+  string name = 1;
+}
+
+message GetTeamProfileResponse {
+  string name = 1;
+  bool from_catalog = 2;
+  bool retired = 3;
+  // team.yaml's contact (who to ask), and its help: a chat and a page.
+  string contact = 4;
+  string help_chat = 5;
+  string help_url = 6;
+  int32 people = 7;
 }

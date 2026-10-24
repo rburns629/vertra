@@ -40,7 +40,7 @@ import {
   findTeamByName,
   listAllTeams,
 } from "../db/queries.js";
-import type { TargetRule, TemplateStep } from "../db/schema.js";
+import type { ProductExample, TargetRule, TemplateStep } from "../db/schema.js";
 import { errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { allowedValues, targetInputs, targetProblems } from "../targets.js";
@@ -290,6 +290,8 @@ export interface Runnable {
   previewable: boolean;
   /** Whether it's ready here: its product's check, or its steps' together; null when none has one. */
   readiness: ReadinessView | null;
+  /** Examples of running it: an action's passing contract tests. */
+  examples: ProductExample[];
 }
 
 const READINESS_ORDER: (ReadinessView["state"])[] = ["not_ready", "failed", "checking", "unchecked", "ready"];
@@ -392,6 +394,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
         rulesOf,
       ),
       previewable: t.steps.some((step) => hasPlan(byRef.get(step.action))),
+      examples: [],
       readiness: together(t.steps.flatMap((step) => {
         const view = ready.get(byRef.get(step.action)?.name ?? "");
         return view ? [view] : [];
@@ -418,6 +421,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       targets: targetChoices(who, [{ product: p }], rulesOf),
       previewable: hasPlan(p),
       readiness: ready.get(p.name) ?? null,
+      examples: p.examples,
     });
   }
   return out;

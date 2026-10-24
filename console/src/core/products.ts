@@ -16,7 +16,7 @@ import { canMaintainTeam, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
 import { config } from "../config.js";
-import type { Approval, ProductCleanup } from "../db/schema.js";
+import type { Approval, ProductCleanup, ProductExample } from "../db/schema.js";
 import { tokenAudienceProblems } from "../tokenAudiences.js";
 import {
   deleteProductByName,
@@ -107,6 +107,13 @@ export const RegisterProductBody = Type.Object({
   plan: Type.Optional(Type.Union([Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), Type.Null()])),
   // The action of the same product that says whether it's ready here; null: none.
   check: Type.Optional(Type.Union([Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), Type.Null()])),
+  // Examples of running it: its passing contract tests.
+  examples: Type.Optional(
+    Type.Array(
+      Type.Object({ name: Type.String({ minLength: 1, maxLength: 200 }), inputs: Type.Record(Type.String(), Type.Unknown()), outputs: Type.Record(Type.String(), Type.Unknown()) }),
+      { maxItems: 10 },
+    ),
+  ),
   // When a step waits for a maintainer of its team to approve it; "": never.
   approval: Type.Optional(Type.Union([Type.Literal("always"), Type.Literal("otherTeams"), Type.Literal("")])),
   // What its error codes mean, and what to do about each.
@@ -149,6 +156,8 @@ export type RegisterProductInput = {
   plan?: string | null;
   /** The action of the same product that says whether it's ready here; null: none. */
   check?: string | null;
+  /** Examples of running it, from its passing contract tests. */
+  examples?: ProductExample[];
   /** When a step waits for a maintainer of its team to approve it; "": never. */
   approval?: Approval | "";
   /** What its error codes mean, and what to do about each. */
@@ -294,6 +303,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       cleanup: input.cleanup,
       plan: input.plan,
       check: input.check,
+      examples: input.examples,
       approval: input.approval === undefined ? undefined : input.approval || null,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,

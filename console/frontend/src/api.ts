@@ -1403,6 +1403,8 @@ export interface Runnable {
   previewable: boolean;
   /** Whether it's ready here; null when nothing in it has a check. */
   readiness: Readiness | null;
+  /** Examples of running it: an action's passing contract tests. */
+  examples: { name: string; inputs: Record<string, unknown>; outputs: Record<string, unknown> }[];
 }
 
 export async function listRunnables(): Promise<Runnable[]> {
@@ -1425,6 +1427,7 @@ export async function listRunnables(): Promise<Runnable[]> {
     targets: r.targets.map((t) => ({ parameter: t.parameter, type: t.type, allowed: t.allowed })),
     previewable: r.previewable,
     readiness: readinessOf(r.readiness),
+    examples: r.examples.map((e) => ({ name: e.name, inputs: (e.inputs ?? {}) as Record<string, unknown>, outputs: (e.outputs ?? {}) as Record<string, unknown> })),
   }));
 }
 
@@ -2005,4 +2008,20 @@ export async function addBotIdentity(team: string, botId: string, issuer: string
 
 export async function removeBotIdentity(id: string): Promise<void> {
   await call(() => tokens.removeBotIdentity({ id }));
+}
+
+/** What anyone signed in may know of a team (TeamService.GetTeamProfile). */
+export interface TeamProfile {
+  name: string;
+  fromCatalog: boolean;
+  retired: boolean;
+  contact: string | null;
+  helpChat: string | null;
+  helpUrl: string | null;
+  people: number;
+}
+
+export async function getTeamProfile(name: string): Promise<TeamProfile> {
+  const r = await call(() => teams.getTeamProfile({ name }));
+  return { name: r.name, fromCatalog: r.fromCatalog, retired: r.retired, contact: r.contact || null, helpChat: r.helpChat || null, helpUrl: r.helpUrl || null, people: r.people };
 }

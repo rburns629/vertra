@@ -527,3 +527,25 @@ func TestCheckIsChecked(t *testing.T) {
 		t.Errorf("a check needing inputs was accepted:\n%s", out)
 	}
 }
+
+// A release carries an action's passing contract tests as its examples, and
+// leaves out the failing ones.
+func TestExamplesComeFromPassingTests(t *testing.T) {
+	files := product("mine", "[]")
+	files["teams/a/products/mine/tests/run/says-hi/expected.json"] = `{"status": "succeeded", "outputs": {"text": "HI"}}`
+	files["teams/a/products/mine/tests/run/needs-text/request.json"] = `{"inputs": {}}`
+	files["teams/a/products/mine/tests/run/needs-text/expected.json"] = `{"status": "failed", "error": {"code": "MISSING_INPUT"}}`
+	c := catalogWith(t, files)
+	p := c.AllProducts()[0]
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c); out != "" {
+		t.Fatal(out)
+	}
+	actions, err := p.ReleaseActions("r@sha256:abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	examples := actions[0].GetExamples()
+	if len(examples) != 1 || examples[0].GetName() != "says hi" || examples[0].GetInputs().AsMap()["text"] != "hi" || examples[0].GetOutputs().AsMap()["text"] != "HI" {
+		t.Errorf("examples = %v", examples)
+	}
+}

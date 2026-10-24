@@ -356,6 +356,7 @@ What a DAG step can run: one row per image and action.
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
+| `examples` | jsonb | no | Examples of running it, from its passing contract tests: `[{ name, inputs, outputs }]`, up to ten. The run form offers them. |
 | `check` | text | yes | product.yaml's `check` (the product's): the action that says whether it's ready on this install. Null: none. |
 | `plan` | text | yes | product.yaml's `plan`: the action of the same product that says what a step of this one would do. **Preview** runs it. Null: none. |
 | `cleanup` | jsonb | yes | product.yaml's `cleanup`: `{ action, inputs }`, the action of the same product that removes a resource its steps report, and its inputs (null: `{"resource": ...}`). Null: nothing removes them. |

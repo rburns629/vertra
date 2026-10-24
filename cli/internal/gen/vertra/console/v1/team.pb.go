@@ -1946,6 +1946,143 @@ func (x *PodExecution) GetTaskCount() int32 {
 	return 0
 }
 
+type GetTeamProfileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTeamProfileRequest) Reset() {
+	*x = GetTeamProfileRequest{}
+	mi := &file_vertra_console_v1_team_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTeamProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTeamProfileRequest) ProtoMessage() {}
+
+func (x *GetTeamProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_team_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTeamProfileRequest.ProtoReflect.Descriptor instead.
+func (*GetTeamProfileRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_team_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GetTeamProfileRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type GetTeamProfileResponse struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	FromCatalog bool                   `protobuf:"varint,2,opt,name=from_catalog,json=fromCatalog,proto3" json:"from_catalog,omitempty"`
+	Retired     bool                   `protobuf:"varint,3,opt,name=retired,proto3" json:"retired,omitempty"`
+	// team.yaml's contact (who to ask), and its help: a chat and a page.
+	Contact       string `protobuf:"bytes,4,opt,name=contact,proto3" json:"contact,omitempty"`
+	HelpChat      string `protobuf:"bytes,5,opt,name=help_chat,json=helpChat,proto3" json:"help_chat,omitempty"`
+	HelpUrl       string `protobuf:"bytes,6,opt,name=help_url,json=helpUrl,proto3" json:"help_url,omitempty"`
+	People        int32  `protobuf:"varint,7,opt,name=people,proto3" json:"people,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTeamProfileResponse) Reset() {
+	*x = GetTeamProfileResponse{}
+	mi := &file_vertra_console_v1_team_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTeamProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTeamProfileResponse) ProtoMessage() {}
+
+func (x *GetTeamProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_team_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTeamProfileResponse.ProtoReflect.Descriptor instead.
+func (*GetTeamProfileResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_team_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *GetTeamProfileResponse) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GetTeamProfileResponse) GetFromCatalog() bool {
+	if x != nil {
+		return x.FromCatalog
+	}
+	return false
+}
+
+func (x *GetTeamProfileResponse) GetRetired() bool {
+	if x != nil {
+		return x.Retired
+	}
+	return false
+}
+
+func (x *GetTeamProfileResponse) GetContact() string {
+	if x != nil {
+		return x.Contact
+	}
+	return ""
+}
+
+func (x *GetTeamProfileResponse) GetHelpChat() string {
+	if x != nil {
+		return x.HelpChat
+	}
+	return ""
+}
+
+func (x *GetTeamProfileResponse) GetHelpUrl() string {
+	if x != nil {
+		return x.HelpUrl
+	}
+	return ""
+}
+
+func (x *GetTeamProfileResponse) GetPeople() int32 {
+	if x != nil {
+		return x.People
+	}
+	return 0
+}
+
 var File_vertra_console_v1_team_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_team_proto_rawDesc = "" +
@@ -2080,7 +2217,17 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"task_count\x18\x03 \x01(\x05H\x01R\ttaskCount\x88\x01\x01B\x0e\n" +
 	"\f_task_numberB\r\n" +
-	"\v_task_count*U\n" +
+	"\v_task_count\"+\n" +
+	"\x15GetTeamProfileRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\xd3\x01\n" +
+	"\x16GetTeamProfileResponse\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
+	"\ffrom_catalog\x18\x02 \x01(\bR\vfromCatalog\x12\x18\n" +
+	"\aretired\x18\x03 \x01(\bR\aretired\x12\x18\n" +
+	"\acontact\x18\x04 \x01(\tR\acontact\x12\x1b\n" +
+	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
+	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\x12\x16\n" +
+	"\x06people\x18\a \x01(\x05R\x06people*U\n" +
 	"\bTeamRole\x12\x19\n" +
 	"\x15TEAM_ROLE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14TEAM_ROLE_MAINTAINER\x10\x01\x12\x14\n" +
@@ -2091,10 +2238,11 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\x16TASK_POD_STATE_RUNNING\x10\x02\x12\x1d\n" +
 	"\x19TASK_POD_STATE_CANT_START\x10\x03\x12\x1b\n" +
 	"\x17TASK_POD_STATE_FINISHED\x10\x04\x12\x19\n" +
-	"\x15TASK_POD_STATE_FAILED\x10\x052\xe9\v\n" +
+	"\x15TASK_POD_STATE_FAILED\x10\x052\xd5\f\n" +
 	"\vTeamService\x12[\n" +
 	"\tListTeams\x12#.vertra.console.v1.ListTeamsRequest\x1a$.vertra.console.v1.ListTeamsResponse\"\x03\x90\x02\x01\x12U\n" +
-	"\aGetTeam\x12!.vertra.console.v1.GetTeamRequest\x1a\".vertra.console.v1.GetTeamResponse\"\x03\x90\x02\x01\x12Y\n" +
+	"\aGetTeam\x12!.vertra.console.v1.GetTeamRequest\x1a\".vertra.console.v1.GetTeamResponse\"\x03\x90\x02\x01\x12j\n" +
+	"\x0eGetTeamProfile\x12(.vertra.console.v1.GetTeamProfileRequest\x1a).vertra.console.v1.GetTeamProfileResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\n" +
 	"CreateTeam\x12$.vertra.console.v1.CreateTeamRequest\x1a%.vertra.console.v1.CreateTeamResponse\x12^\n" +
 	"\n" +
@@ -2126,7 +2274,7 @@ func file_vertra_console_v1_team_proto_rawDescGZIP() []byte {
 }
 
 var file_vertra_console_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_vertra_console_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_vertra_console_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_vertra_console_v1_team_proto_goTypes = []any{
 	(TeamRole)(0),                            // 0: vertra.console.v1.TeamRole
 	(TaskPodState)(0),                        // 1: vertra.console.v1.TaskPodState
@@ -2165,14 +2313,16 @@ var file_vertra_console_v1_team_proto_goTypes = []any{
 	(*TaskPod)(nil),                          // 34: vertra.console.v1.TaskPod
 	(*PodProblem)(nil),                       // 35: vertra.console.v1.PodProblem
 	(*PodExecution)(nil),                     // 36: vertra.console.v1.PodExecution
-	(*timestamppb.Timestamp)(nil),            // 37: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),                  // 38: google.protobuf.Struct
+	(*GetTeamProfileRequest)(nil),            // 37: vertra.console.v1.GetTeamProfileRequest
+	(*GetTeamProfileResponse)(nil),           // 38: vertra.console.v1.GetTeamProfileResponse
+	(*timestamppb.Timestamp)(nil),            // 39: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                  // 40: google.protobuf.Struct
 }
 var file_vertra_console_v1_team_proto_depIdxs = []int32{
-	37, // 0: vertra.console.v1.Team.created_at:type_name -> google.protobuf.Timestamp
-	37, // 1: vertra.console.v1.Team.retired_at:type_name -> google.protobuf.Timestamp
-	37, // 2: vertra.console.v1.Team.deleted_at:type_name -> google.protobuf.Timestamp
-	37, // 3: vertra.console.v1.Member.added_at:type_name -> google.protobuf.Timestamp
+	39, // 0: vertra.console.v1.Team.created_at:type_name -> google.protobuf.Timestamp
+	39, // 1: vertra.console.v1.Team.retired_at:type_name -> google.protobuf.Timestamp
+	39, // 2: vertra.console.v1.Team.deleted_at:type_name -> google.protobuf.Timestamp
+	39, // 3: vertra.console.v1.Member.added_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: vertra.console.v1.Member.role:type_name -> vertra.console.v1.TeamRole
 	2,  // 5: vertra.console.v1.ListTeamsResponse.teams:type_name -> vertra.console.v1.Team
 	2,  // 6: vertra.console.v1.GetTeamResponse.team:type_name -> vertra.console.v1.Team
@@ -2181,45 +2331,47 @@ var file_vertra_console_v1_team_proto_depIdxs = []int32{
 	3,  // 9: vertra.console.v1.ListMembersResponse.members:type_name -> vertra.console.v1.Member
 	0,  // 10: vertra.console.v1.AddMemberRequest.role:type_name -> vertra.console.v1.TeamRole
 	0,  // 11: vertra.console.v1.SetMemberRoleRequest.role:type_name -> vertra.console.v1.TeamRole
-	38, // 12: vertra.console.v1.ApplySecretStoreRequest.documents:type_name -> google.protobuf.Struct
+	40, // 12: vertra.console.v1.ApplySecretStoreRequest.documents:type_name -> google.protobuf.Struct
 	34, // 13: vertra.console.v1.ListPodsResponse.pods:type_name -> vertra.console.v1.TaskPod
 	1,  // 14: vertra.console.v1.TaskPod.state:type_name -> vertra.console.v1.TaskPodState
 	35, // 15: vertra.console.v1.TaskPod.problem:type_name -> vertra.console.v1.PodProblem
-	37, // 16: vertra.console.v1.TaskPod.started_at:type_name -> google.protobuf.Timestamp
-	37, // 17: vertra.console.v1.TaskPod.finished_at:type_name -> google.protobuf.Timestamp
+	39, // 16: vertra.console.v1.TaskPod.started_at:type_name -> google.protobuf.Timestamp
+	39, // 17: vertra.console.v1.TaskPod.finished_at:type_name -> google.protobuf.Timestamp
 	36, // 18: vertra.console.v1.TaskPod.execution:type_name -> vertra.console.v1.PodExecution
 	4,  // 19: vertra.console.v1.TeamService.ListTeams:input_type -> vertra.console.v1.ListTeamsRequest
 	6,  // 20: vertra.console.v1.TeamService.GetTeam:input_type -> vertra.console.v1.GetTeamRequest
-	8,  // 21: vertra.console.v1.TeamService.CreateTeam:input_type -> vertra.console.v1.CreateTeamRequest
-	10, // 22: vertra.console.v1.TeamService.EnsureTeam:input_type -> vertra.console.v1.EnsureTeamRequest
-	12, // 23: vertra.console.v1.TeamService.RetireTeam:input_type -> vertra.console.v1.RetireTeamRequest
-	14, // 24: vertra.console.v1.TeamService.UnretireTeam:input_type -> vertra.console.v1.UnretireTeamRequest
-	16, // 25: vertra.console.v1.TeamService.PurgeTeam:input_type -> vertra.console.v1.PurgeTeamRequest
-	18, // 26: vertra.console.v1.TeamService.ListMembers:input_type -> vertra.console.v1.ListMembersRequest
-	20, // 27: vertra.console.v1.TeamService.AddMember:input_type -> vertra.console.v1.AddMemberRequest
-	22, // 28: vertra.console.v1.TeamService.RemoveMember:input_type -> vertra.console.v1.RemoveMemberRequest
-	24, // 29: vertra.console.v1.TeamService.SetMemberRole:input_type -> vertra.console.v1.SetMemberRoleRequest
-	26, // 30: vertra.console.v1.TeamService.SetTeamSignIn:input_type -> vertra.console.v1.SetTeamSignInRequest
-	28, // 31: vertra.console.v1.TeamService.ApplySecretStore:input_type -> vertra.console.v1.ApplySecretStoreRequest
-	30, // 32: vertra.console.v1.TeamService.SetSecretStoreCredential:input_type -> vertra.console.v1.SetSecretStoreCredentialRequest
-	32, // 33: vertra.console.v1.TeamService.ListPods:input_type -> vertra.console.v1.ListPodsRequest
-	5,  // 34: vertra.console.v1.TeamService.ListTeams:output_type -> vertra.console.v1.ListTeamsResponse
-	7,  // 35: vertra.console.v1.TeamService.GetTeam:output_type -> vertra.console.v1.GetTeamResponse
-	9,  // 36: vertra.console.v1.TeamService.CreateTeam:output_type -> vertra.console.v1.CreateTeamResponse
-	11, // 37: vertra.console.v1.TeamService.EnsureTeam:output_type -> vertra.console.v1.EnsureTeamResponse
-	13, // 38: vertra.console.v1.TeamService.RetireTeam:output_type -> vertra.console.v1.RetireTeamResponse
-	15, // 39: vertra.console.v1.TeamService.UnretireTeam:output_type -> vertra.console.v1.UnretireTeamResponse
-	17, // 40: vertra.console.v1.TeamService.PurgeTeam:output_type -> vertra.console.v1.PurgeTeamResponse
-	19, // 41: vertra.console.v1.TeamService.ListMembers:output_type -> vertra.console.v1.ListMembersResponse
-	21, // 42: vertra.console.v1.TeamService.AddMember:output_type -> vertra.console.v1.AddMemberResponse
-	23, // 43: vertra.console.v1.TeamService.RemoveMember:output_type -> vertra.console.v1.RemoveMemberResponse
-	25, // 44: vertra.console.v1.TeamService.SetMemberRole:output_type -> vertra.console.v1.SetMemberRoleResponse
-	27, // 45: vertra.console.v1.TeamService.SetTeamSignIn:output_type -> vertra.console.v1.SetTeamSignInResponse
-	29, // 46: vertra.console.v1.TeamService.ApplySecretStore:output_type -> vertra.console.v1.ApplySecretStoreResponse
-	31, // 47: vertra.console.v1.TeamService.SetSecretStoreCredential:output_type -> vertra.console.v1.SetSecretStoreCredentialResponse
-	33, // 48: vertra.console.v1.TeamService.ListPods:output_type -> vertra.console.v1.ListPodsResponse
-	34, // [34:49] is the sub-list for method output_type
-	19, // [19:34] is the sub-list for method input_type
+	37, // 21: vertra.console.v1.TeamService.GetTeamProfile:input_type -> vertra.console.v1.GetTeamProfileRequest
+	8,  // 22: vertra.console.v1.TeamService.CreateTeam:input_type -> vertra.console.v1.CreateTeamRequest
+	10, // 23: vertra.console.v1.TeamService.EnsureTeam:input_type -> vertra.console.v1.EnsureTeamRequest
+	12, // 24: vertra.console.v1.TeamService.RetireTeam:input_type -> vertra.console.v1.RetireTeamRequest
+	14, // 25: vertra.console.v1.TeamService.UnretireTeam:input_type -> vertra.console.v1.UnretireTeamRequest
+	16, // 26: vertra.console.v1.TeamService.PurgeTeam:input_type -> vertra.console.v1.PurgeTeamRequest
+	18, // 27: vertra.console.v1.TeamService.ListMembers:input_type -> vertra.console.v1.ListMembersRequest
+	20, // 28: vertra.console.v1.TeamService.AddMember:input_type -> vertra.console.v1.AddMemberRequest
+	22, // 29: vertra.console.v1.TeamService.RemoveMember:input_type -> vertra.console.v1.RemoveMemberRequest
+	24, // 30: vertra.console.v1.TeamService.SetMemberRole:input_type -> vertra.console.v1.SetMemberRoleRequest
+	26, // 31: vertra.console.v1.TeamService.SetTeamSignIn:input_type -> vertra.console.v1.SetTeamSignInRequest
+	28, // 32: vertra.console.v1.TeamService.ApplySecretStore:input_type -> vertra.console.v1.ApplySecretStoreRequest
+	30, // 33: vertra.console.v1.TeamService.SetSecretStoreCredential:input_type -> vertra.console.v1.SetSecretStoreCredentialRequest
+	32, // 34: vertra.console.v1.TeamService.ListPods:input_type -> vertra.console.v1.ListPodsRequest
+	5,  // 35: vertra.console.v1.TeamService.ListTeams:output_type -> vertra.console.v1.ListTeamsResponse
+	7,  // 36: vertra.console.v1.TeamService.GetTeam:output_type -> vertra.console.v1.GetTeamResponse
+	38, // 37: vertra.console.v1.TeamService.GetTeamProfile:output_type -> vertra.console.v1.GetTeamProfileResponse
+	9,  // 38: vertra.console.v1.TeamService.CreateTeam:output_type -> vertra.console.v1.CreateTeamResponse
+	11, // 39: vertra.console.v1.TeamService.EnsureTeam:output_type -> vertra.console.v1.EnsureTeamResponse
+	13, // 40: vertra.console.v1.TeamService.RetireTeam:output_type -> vertra.console.v1.RetireTeamResponse
+	15, // 41: vertra.console.v1.TeamService.UnretireTeam:output_type -> vertra.console.v1.UnretireTeamResponse
+	17, // 42: vertra.console.v1.TeamService.PurgeTeam:output_type -> vertra.console.v1.PurgeTeamResponse
+	19, // 43: vertra.console.v1.TeamService.ListMembers:output_type -> vertra.console.v1.ListMembersResponse
+	21, // 44: vertra.console.v1.TeamService.AddMember:output_type -> vertra.console.v1.AddMemberResponse
+	23, // 45: vertra.console.v1.TeamService.RemoveMember:output_type -> vertra.console.v1.RemoveMemberResponse
+	25, // 46: vertra.console.v1.TeamService.SetMemberRole:output_type -> vertra.console.v1.SetMemberRoleResponse
+	27, // 47: vertra.console.v1.TeamService.SetTeamSignIn:output_type -> vertra.console.v1.SetTeamSignInResponse
+	29, // 48: vertra.console.v1.TeamService.ApplySecretStore:output_type -> vertra.console.v1.ApplySecretStoreResponse
+	31, // 49: vertra.console.v1.TeamService.SetSecretStoreCredential:output_type -> vertra.console.v1.SetSecretStoreCredentialResponse
+	33, // 50: vertra.console.v1.TeamService.ListPods:output_type -> vertra.console.v1.ListPodsResponse
+	35, // [35:51] is the sub-list for method output_type
+	19, // [19:35] is the sub-list for method input_type
 	19, // [19:19] is the sub-list for extension type_name
 	19, // [19:19] is the sub-list for extension extendee
 	0,  // [0:19] is the sub-list for field type_name
@@ -2239,7 +2391,7 @@ func file_vertra_console_v1_team_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_team_proto_rawDesc), len(file_vertra_console_v1_team_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   35,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

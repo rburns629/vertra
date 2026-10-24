@@ -429,6 +429,13 @@ case fails if the result contains it). Logic that calls a cloud API is tested
 in the image with the client mocked, as `actions/test_<action>.py`. Every
 product needs at least one test.
 
+Your passing cases are also your examples: a release carries up to ten per
+action (each under 8 KB), named after the case's folder, and the run form
+offers them (**Use this** fills the form with the case's inputs, beside
+what it gave). Name cases for the people reading them (`tests/create/
+a-new-project/`), and keep their inputs realistic and free of anything
+private.
+
 ## What CI blocks
 
 Per product (`./vertra catalog check`, in `ci.yml`):

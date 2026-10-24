@@ -168,6 +168,15 @@ export declare type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: vertra.console.v1.Readiness readiness = 17;
    */
   readiness?: Readiness | undefined;
+
+  /**
+   * Examples of running it, from its product's passing contract tests (an
+   * action's; a template has none yet): a name, inputs to fill the form
+   * with, and what it gave.
+   *
+   * @generated from field: repeated vertra.console.v1.RunExample examples = 18;
+   */
+  examples: RunExample[];
 };
 
 /**
@@ -200,6 +209,32 @@ export enum Runnable_Kind {
  * Describes the enum vertra.console.v1.Runnable.Kind.
  */
 export declare const Runnable_KindSchema: GenEnum<Runnable_Kind>;
+
+/**
+ * @generated from message vertra.console.v1.RunExample
+ */
+export declare type RunExample = Message<"vertra.console.v1.RunExample"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct inputs = 2;
+   */
+  inputs?: JsonObject | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Struct outputs = 3;
+   */
+  outputs?: JsonObject | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.RunExample.
+ * Use `create(RunExampleSchema)` to create a new message.
+ */
+export declare const RunExampleSchema: GenMessage<RunExample>;
 
 /**
  * A step a preview left out, and why: it has no plan, or its inputs come

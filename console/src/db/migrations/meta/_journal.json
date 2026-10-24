@@ -183,6 +183,13 @@
       "when": 1792872682089,
       "tag": "0025_bot_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792875416217,
+      "tag": "0026_examples",
+      "breakpoints": true
     }
   ]
 }

@@ -39,6 +39,9 @@ const (
 	TeamServiceListTeamsProcedure = "/vertra.console.v1.TeamService/ListTeams"
 	// TeamServiceGetTeamProcedure is the fully-qualified name of the TeamService's GetTeam RPC.
 	TeamServiceGetTeamProcedure = "/vertra.console.v1.TeamService/GetTeam"
+	// TeamServiceGetTeamProfileProcedure is the fully-qualified name of the TeamService's
+	// GetTeamProfile RPC.
+	TeamServiceGetTeamProfileProcedure = "/vertra.console.v1.TeamService/GetTeamProfile"
 	// TeamServiceCreateTeamProcedure is the fully-qualified name of the TeamService's CreateTeam RPC.
 	TeamServiceCreateTeamProcedure = "/vertra.console.v1.TeamService/CreateTeam"
 	// TeamServiceEnsureTeamProcedure is the fully-qualified name of the TeamService's EnsureTeam RPC.
@@ -81,6 +84,11 @@ type TeamServiceClient interface {
 	// not_found, as for a team that doesn't exist. A purged team is still
 	// returned, with deleted_at: its name stays reserved.
 	GetTeam(context.Context, *connect.Request[v1.GetTeamRequest]) (*connect.Response[v1.GetTeamResponse], error)
+	// What anyone signed in may know of a team (its page, for those not in
+	// it): where to ask it (team.yaml's contact and help), whether it's
+	// retired, and how many people are in it. Never its members, secrets or
+	// runs. not_found for no such team, or a purged one.
+	GetTeamProfile(context.Context, *connect.Request[v1.GetTeamProfileRequest]) (*connect.Response[v1.GetTeamProfileResponse], error)
 	// Creates a team and its namespace. Admins, or a token with teams:create.
 	CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error)
 	// Makes sure a team exists and is active, with its namespace: creates
@@ -146,6 +154,13 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+TeamServiceGetTeamProcedure,
 			connect.WithSchema(teamServiceMethods.ByName("GetTeam")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getTeamProfile: connect.NewClient[v1.GetTeamProfileRequest, v1.GetTeamProfileResponse](
+			httpClient,
+			baseURL+TeamServiceGetTeamProfileProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("GetTeamProfile")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -245,6 +260,7 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type teamServiceClient struct {
 	listTeams                *connect.Client[v1.ListTeamsRequest, v1.ListTeamsResponse]
 	getTeam                  *connect.Client[v1.GetTeamRequest, v1.GetTeamResponse]
+	getTeamProfile           *connect.Client[v1.GetTeamProfileRequest, v1.GetTeamProfileResponse]
 	createTeam               *connect.Client[v1.CreateTeamRequest, v1.CreateTeamResponse]
 	ensureTeam               *connect.Client[v1.EnsureTeamRequest, v1.EnsureTeamResponse]
 	retireTeam               *connect.Client[v1.RetireTeamRequest, v1.RetireTeamResponse]
@@ -268,6 +284,11 @@ func (c *teamServiceClient) ListTeams(ctx context.Context, req *connect.Request[
 // GetTeam calls vertra.console.v1.TeamService.GetTeam.
 func (c *teamServiceClient) GetTeam(ctx context.Context, req *connect.Request[v1.GetTeamRequest]) (*connect.Response[v1.GetTeamResponse], error) {
 	return c.getTeam.CallUnary(ctx, req)
+}
+
+// GetTeamProfile calls vertra.console.v1.TeamService.GetTeamProfile.
+func (c *teamServiceClient) GetTeamProfile(ctx context.Context, req *connect.Request[v1.GetTeamProfileRequest]) (*connect.Response[v1.GetTeamProfileResponse], error) {
+	return c.getTeamProfile.CallUnary(ctx, req)
 }
 
 // CreateTeam calls vertra.console.v1.TeamService.CreateTeam.
@@ -343,6 +364,11 @@ type TeamServiceHandler interface {
 	// not_found, as for a team that doesn't exist. A purged team is still
 	// returned, with deleted_at: its name stays reserved.
 	GetTeam(context.Context, *connect.Request[v1.GetTeamRequest]) (*connect.Response[v1.GetTeamResponse], error)
+	// What anyone signed in may know of a team (its page, for those not in
+	// it): where to ask it (team.yaml's contact and help), whether it's
+	// retired, and how many people are in it. Never its members, secrets or
+	// runs. not_found for no such team, or a purged one.
+	GetTeamProfile(context.Context, *connect.Request[v1.GetTeamProfileRequest]) (*connect.Response[v1.GetTeamProfileResponse], error)
 	// Creates a team and its namespace. Admins, or a token with teams:create.
 	CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error)
 	// Makes sure a team exists and is active, with its namespace: creates
@@ -404,6 +430,13 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 		TeamServiceGetTeamProcedure,
 		svc.GetTeam,
 		connect.WithSchema(teamServiceMethods.ByName("GetTeam")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceGetTeamProfileHandler := connect.NewUnaryHandler(
+		TeamServiceGetTeamProfileProcedure,
+		svc.GetTeamProfile,
+		connect.WithSchema(teamServiceMethods.ByName("GetTeamProfile")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -502,6 +535,8 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 			teamServiceListTeamsHandler.ServeHTTP(w, r)
 		case TeamServiceGetTeamProcedure:
 			teamServiceGetTeamHandler.ServeHTTP(w, r)
+		case TeamServiceGetTeamProfileProcedure:
+			teamServiceGetTeamProfileHandler.ServeHTTP(w, r)
 		case TeamServiceCreateTeamProcedure:
 			teamServiceCreateTeamHandler.ServeHTTP(w, r)
 		case TeamServiceEnsureTeamProcedure:
@@ -543,6 +578,10 @@ func (UnimplementedTeamServiceHandler) ListTeams(context.Context, *connect.Reque
 
 func (UnimplementedTeamServiceHandler) GetTeam(context.Context, *connect.Request[v1.GetTeamRequest]) (*connect.Response[v1.GetTeamResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.GetTeam is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) GetTeamProfile(context.Context, *connect.Request[v1.GetTeamProfileRequest]) (*connect.Response[v1.GetTeamProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.GetTeamProfile is not implemented"))
 }
 
 func (UnimplementedTeamServiceHandler) CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error) {

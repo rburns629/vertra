@@ -151,6 +151,14 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
     }
   }
 
+  /** Fills the form with an example's inputs. */
+  function fillWith(inputs: Record<string, unknown>): void {
+    if (fields) setValues(initialValues(runnable.parameters, fields, inputs));
+    setJson(JSON.stringify(inputs, null, 2));
+    setFieldErrors({});
+    setErrors([]);
+  }
+
   const set = (name: string, value: FieldValue) => {
     setValues((current) => ({ ...current, [name]: value }));
     setFieldErrors(({ [name]: _cleared, ...rest }) => rest);
@@ -280,6 +288,31 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
             ))}
           </Box>
         </Card>
+        {runnable.examples.length > 0 && (
+          <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Typography variant="h6" component="h2">
+              Examples
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              From {runnable.team}&apos;s tests: inputs it&apos;s known to work with, and what it gave.
+            </Typography>
+            {runnable.examples.map((example) => (
+              <Box key={example.name} sx={{ display: "flex", flexDirection: "column", gap: 0.5, borderTop: 1, borderColor: "divider", pt: 1.25 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {example.name}
+                  </Typography>
+                  <Button size="small" onClick={() => { fillWith(example.inputs); }}>
+                    Use this
+                  </Button>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "fontFamilyMono", overflowWrap: "anywhere" }}>
+                  {JSON.stringify(example.inputs)} → {JSON.stringify(example.outputs)}
+                </Typography>
+              </Box>
+            ))}
+          </Card>
+        )}
         <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1 }}>
           <Typography variant="h6" component="h2">
             Good to know

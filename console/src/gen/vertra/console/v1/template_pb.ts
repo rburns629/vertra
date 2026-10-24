@@ -17,7 +17,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/template.proto.
  */
 export const file_vertra_console_v1_template: GenFile = /*@__PURE__*/
-  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS90ZW1wbGF0ZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiFgoUTGlzdFRlbXBsYXRlc1JlcXVlc3QiRwoVTGlzdFRlbXBsYXRlc1Jlc3BvbnNlEi4KCXJ1bm5hYmxlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJ1bm5hYmxlIpYECghSdW5uYWJsZRIuCgRraW5kGAEgASgOMiAudmVydHJhLmNvbnNvbGUudjEuUnVubmFibGUuS2luZBIMCgR0ZWFtGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMZGlzcGxheV9uYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEisKCnBhcmFtZXRlcnMYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg8KB2FjdGlvbnMYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIUCgxvbl9iZWhhbGZfb2YYCSADKAkSHQoVb25fYmVoYWxmX29mX3JlcXVpcmVkGAogASgIEg4KBnNoYXJlZBgLIAEoCBISCgpzaGFyZV93aXRoGAwgAygJEhIKCnNvdXJjZV91cmwYDSABKAkSGgoSYXNrX2Zvcl9hY2Nlc3NfdXJsGA4gASgJEjAKB3RhcmdldHMYDyADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5UYXJnZXRDaG9pY2USEwoLcHJldmlld2FibGUYECABKAgSLwoJcmVhZGluZXNzGBEgASgLMhwudmVydHJhLmNvbnNvbGUudjEuUmVhZGluZXNzIkAKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEhEKDUtJTkRfVEVNUExBVEUQARIPCgtLSU5EX0FDVElPThACIikKDE5vdFByZXZpZXdlZBIMCgRzdGVwGAEgASgJEgsKA3doeRgCIAEoCSKNAQoWUHJldmlld1RlbXBsYXRlUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgwKBG5hbWUYAiABKAkSKwoKcGFyYW1ldGVycxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGQoMb25fYmVoYWxmX29mGAQgASgJSACIAQFCDwoNX29uX2JlaGFsZl9vZiJnChdQcmV2aWV3VGVtcGxhdGVSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSNgoNbm90X3ByZXZpZXdlZBgCIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLk5vdFByZXZpZXdlZCJ8ChRQcmV2aWV3QWN0aW9uUmVxdWVzdBIPCgdwcm9kdWN0GAEgASgJEicKBmlucHV0cxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGQoMb25fYmVoYWxmX29mGAMgASgJSACIAQFCDwoNX29uX2JlaGFsZl9vZiItChVQcmV2aWV3QWN0aW9uUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJIkAKDFRhcmdldENob2ljZRIRCglwYXJhbWV0ZXIYASABKAkSDAoEdHlwZRgCIAEoCRIPCgdhbGxvd2VkGAMgAygJIrEBChJSdW5UZW1wbGF0ZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgEIAEoCUgAiAEBEhcKCnJlcXVlc3RfaWQYBSABKAlIAYgBAUIPCg1fb25fYmVoYWxmX29mQg0KC19yZXF1ZXN0X2lkIl0KE1J1blRlbXBsYXRlUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEjAKBXN0YXRlGAIgASgOMiEudmVydHJhLmNvbnNvbGUudjEuRXhlY3V0aW9uU3RhdGUioAEKEFJ1bkFjdGlvblJlcXVlc3QSDwoHcHJvZHVjdBgBIAEoCRInCgZpbnB1dHMYAiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgDIAEoCUgAiAEBEhcKCnJlcXVlc3RfaWQYBCABKAlIAYgBAUIPCg1fb25fYmVoYWxmX29mQg0KC19yZXF1ZXN0X2lkIlsKEVJ1bkFjdGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIwCgVzdGF0ZRgCIAEoDjIhLnZlcnRyYS5jb25zb2xlLnYxLkV4ZWN1dGlvblN0YXRlMv4DCg9UZW1wbGF0ZVNlcnZpY2USZwoNTGlzdFRlbXBsYXRlcxInLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RUZW1wbGF0ZXNSZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuTGlzdFRlbXBsYXRlc1Jlc3BvbnNlIgOQAgESXAoLUnVuVGVtcGxhdGUSJS52ZXJ0cmEuY29uc29sZS52MS5SdW5UZW1wbGF0ZVJlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5SdW5UZW1wbGF0ZVJlc3BvbnNlElYKCVJ1bkFjdGlvbhIjLnZlcnRyYS5jb25zb2xlLnYxLlJ1bkFjdGlvblJlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5SdW5BY3Rpb25SZXNwb25zZRJoCg9QcmV2aWV3VGVtcGxhdGUSKS52ZXJ0cmEuY29uc29sZS52MS5QcmV2aWV3VGVtcGxhdGVSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuUHJldmlld1RlbXBsYXRlUmVzcG9uc2USYgoNUHJldmlld0FjdGlvbhInLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdBY3Rpb25SZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuUHJldmlld0FjdGlvblJlc3BvbnNlYgZwcm90bzM", [file_vertra_console_v1_execution, file_google_protobuf_struct, file_vertra_console_v1_product]);
+  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS90ZW1wbGF0ZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiFgoUTGlzdFRlbXBsYXRlc1JlcXVlc3QiRwoVTGlzdFRlbXBsYXRlc1Jlc3BvbnNlEi4KCXJ1bm5hYmxlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJ1bm5hYmxlIscECghSdW5uYWJsZRIuCgRraW5kGAEgASgOMiAudmVydHJhLmNvbnNvbGUudjEuUnVubmFibGUuS2luZBIMCgR0ZWFtGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMZGlzcGxheV9uYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEisKCnBhcmFtZXRlcnMYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg8KB2FjdGlvbnMYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIUCgxvbl9iZWhhbGZfb2YYCSADKAkSHQoVb25fYmVoYWxmX29mX3JlcXVpcmVkGAogASgIEg4KBnNoYXJlZBgLIAEoCBISCgpzaGFyZV93aXRoGAwgAygJEhIKCnNvdXJjZV91cmwYDSABKAkSGgoSYXNrX2Zvcl9hY2Nlc3NfdXJsGA4gASgJEjAKB3RhcmdldHMYDyADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5UYXJnZXRDaG9pY2USEwoLcHJldmlld2FibGUYECABKAgSLwoJcmVhZGluZXNzGBEgASgLMhwudmVydHJhLmNvbnNvbGUudjEuUmVhZGluZXNzEi8KCGV4YW1wbGVzGBIgAygLMh0udmVydHJhLmNvbnNvbGUudjEuUnVuRXhhbXBsZSJACgRLaW5kEhQKEEtJTkRfVU5TUEVDSUZJRUQQABIRCg1LSU5EX1RFTVBMQVRFEAESDwoLS0lORF9BQ1RJT04QAiJtCgpSdW5FeGFtcGxlEgwKBG5hbWUYASABKAkSJwoGaW5wdXRzGAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIoCgdvdXRwdXRzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCIpCgxOb3RQcmV2aWV3ZWQSDAoEc3RlcBgBIAEoCRILCgN3aHkYAiABKAkijQEKFlByZXZpZXdUZW1wbGF0ZVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgEIAEoCUgAiAEBQg8KDV9vbl9iZWhhbGZfb2YiZwoXUHJldmlld1RlbXBsYXRlUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEjYKDW5vdF9wcmV2aWV3ZWQYAiADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5Ob3RQcmV2aWV3ZWQifAoUUHJldmlld0FjdGlvblJlcXVlc3QSDwoHcHJvZHVjdBgBIAEoCRInCgZpbnB1dHMYAiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDG9uX2JlaGFsZl9vZhgDIAEoCUgAiAEBQg8KDV9vbl9iZWhhbGZfb2YiLQoVUHJldmlld0FjdGlvblJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSJACgxUYXJnZXRDaG9pY2USEQoJcGFyYW1ldGVyGAEgASgJEgwKBHR5cGUYAiABKAkSDwoHYWxsb3dlZBgDIAMoCSKxAQoSUnVuVGVtcGxhdGVSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIrCgpwYXJhbWV0ZXJzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxvbl9iZWhhbGZfb2YYBCABKAlIAIgBARIXCgpyZXF1ZXN0X2lkGAUgASgJSAGIAQFCDwoNX29uX2JlaGFsZl9vZkINCgtfcmVxdWVzdF9pZCJdChNSdW5UZW1wbGF0ZVJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRIwCgVzdGF0ZRgCIAEoDjIhLnZlcnRyYS5jb25zb2xlLnYxLkV4ZWN1dGlvblN0YXRlIqABChBSdW5BY3Rpb25SZXF1ZXN0Eg8KB3Byb2R1Y3QYASABKAkSJwoGaW5wdXRzGAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxvbl9iZWhhbGZfb2YYAyABKAlIAIgBARIXCgpyZXF1ZXN0X2lkGAQgASgJSAGIAQFCDwoNX29uX2JlaGFsZl9vZkINCgtfcmVxdWVzdF9pZCJbChFSdW5BY3Rpb25SZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSMAoFc3RhdGUYAiABKA4yIS52ZXJ0cmEuY29uc29sZS52MS5FeGVjdXRpb25TdGF0ZTL+AwoPVGVtcGxhdGVTZXJ2aWNlEmcKDUxpc3RUZW1wbGF0ZXMSJy52ZXJ0cmEuY29uc29sZS52MS5MaXN0VGVtcGxhdGVzUmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RUZW1wbGF0ZXNSZXNwb25zZSIDkAIBElwKC1J1blRlbXBsYXRlEiUudmVydHJhLmNvbnNvbGUudjEuUnVuVGVtcGxhdGVSZXF1ZXN0GiYudmVydHJhLmNvbnNvbGUudjEuUnVuVGVtcGxhdGVSZXNwb25zZRJWCglSdW5BY3Rpb24SIy52ZXJ0cmEuY29uc29sZS52MS5SdW5BY3Rpb25SZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuUnVuQWN0aW9uUmVzcG9uc2USaAoPUHJldmlld1RlbXBsYXRlEikudmVydHJhLmNvbnNvbGUudjEuUHJldmlld1RlbXBsYXRlUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdUZW1wbGF0ZVJlc3BvbnNlEmIKDVByZXZpZXdBY3Rpb24SJy52ZXJ0cmEuY29uc29sZS52MS5QcmV2aWV3QWN0aW9uUmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdBY3Rpb25SZXNwb25zZWIGcHJvdG8z", [file_vertra_console_v1_execution, file_google_protobuf_struct, file_vertra_console_v1_product]);
 
 /**
  * @generated from message vertra.console.v1.ListTemplatesRequest
@@ -175,6 +175,15 @@ export type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: vertra.console.v1.Readiness readiness = 17;
    */
   readiness?: Readiness | undefined;
+
+  /**
+   * Examples of running it, from its product's passing contract tests (an
+   * action's; a template has none yet): a name, inputs to fill the form
+   * with, and what it gave.
+   *
+   * @generated from field: repeated vertra.console.v1.RunExample examples = 18;
+   */
+  examples: RunExample[];
 };
 
 /**
@@ -211,6 +220,33 @@ export const Runnable_KindSchema: GenEnum<Runnable_Kind> = /*@__PURE__*/
   enumDesc(file_vertra_console_v1_template, 2, 0);
 
 /**
+ * @generated from message vertra.console.v1.RunExample
+ */
+export type RunExample = Message<"vertra.console.v1.RunExample"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct inputs = 2;
+   */
+  inputs?: JsonObject | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Struct outputs = 3;
+   */
+  outputs?: JsonObject | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.RunExample.
+ * Use `create(RunExampleSchema)` to create a new message.
+ */
+export const RunExampleSchema: GenMessage<RunExample> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_template, 3);
+
+/**
  * A step a preview left out, and why: it has no plan, or its inputs come
  * from an earlier step.
  *
@@ -233,7 +269,7 @@ export type NotPreviewed = Message<"vertra.console.v1.NotPreviewed"> & {
  * Use `create(NotPreviewedSchema)` to create a new message.
  */
 export const NotPreviewedSchema: GenMessage<NotPreviewed> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 3);
+  messageDesc(file_vertra_console_v1_template, 4);
 
 /**
  * @generated from message vertra.console.v1.PreviewTemplateRequest
@@ -265,7 +301,7 @@ export type PreviewTemplateRequest = Message<"vertra.console.v1.PreviewTemplateR
  * Use `create(PreviewTemplateRequestSchema)` to create a new message.
  */
 export const PreviewTemplateRequestSchema: GenMessage<PreviewTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 4);
+  messageDesc(file_vertra_console_v1_template, 5);
 
 /**
  * @generated from message vertra.console.v1.PreviewTemplateResponse
@@ -289,7 +325,7 @@ export type PreviewTemplateResponse = Message<"vertra.console.v1.PreviewTemplate
  * Use `create(PreviewTemplateResponseSchema)` to create a new message.
  */
 export const PreviewTemplateResponseSchema: GenMessage<PreviewTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 5);
+  messageDesc(file_vertra_console_v1_template, 6);
 
 /**
  * @generated from message vertra.console.v1.PreviewActionRequest
@@ -316,7 +352,7 @@ export type PreviewActionRequest = Message<"vertra.console.v1.PreviewActionReque
  * Use `create(PreviewActionRequestSchema)` to create a new message.
  */
 export const PreviewActionRequestSchema: GenMessage<PreviewActionRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 6);
+  messageDesc(file_vertra_console_v1_template, 7);
 
 /**
  * @generated from message vertra.console.v1.PreviewActionResponse
@@ -333,7 +369,7 @@ export type PreviewActionResponse = Message<"vertra.console.v1.PreviewActionResp
  * Use `create(PreviewActionResponseSchema)` to create a new message.
  */
 export const PreviewActionResponseSchema: GenMessage<PreviewActionResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 7);
+  messageDesc(file_vertra_console_v1_template, 8);
 
 /**
  * @generated from message vertra.console.v1.TargetChoice
@@ -365,7 +401,7 @@ export type TargetChoice = Message<"vertra.console.v1.TargetChoice"> & {
  * Use `create(TargetChoiceSchema)` to create a new message.
  */
 export const TargetChoiceSchema: GenMessage<TargetChoice> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 8);
+  messageDesc(file_vertra_console_v1_template, 9);
 
 /**
  * @generated from message vertra.console.v1.RunTemplateRequest
@@ -409,7 +445,7 @@ export type RunTemplateRequest = Message<"vertra.console.v1.RunTemplateRequest">
  * Use `create(RunTemplateRequestSchema)` to create a new message.
  */
 export const RunTemplateRequestSchema: GenMessage<RunTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 9);
+  messageDesc(file_vertra_console_v1_template, 10);
 
 /**
  * @generated from message vertra.console.v1.RunTemplateResponse
@@ -431,7 +467,7 @@ export type RunTemplateResponse = Message<"vertra.console.v1.RunTemplateResponse
  * Use `create(RunTemplateResponseSchema)` to create a new message.
  */
 export const RunTemplateResponseSchema: GenMessage<RunTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 10);
+  messageDesc(file_vertra_console_v1_template, 11);
 
 /**
  * @generated from message vertra.console.v1.RunActionRequest
@@ -466,7 +502,7 @@ export type RunActionRequest = Message<"vertra.console.v1.RunActionRequest"> & {
  * Use `create(RunActionRequestSchema)` to create a new message.
  */
 export const RunActionRequestSchema: GenMessage<RunActionRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 11);
+  messageDesc(file_vertra_console_v1_template, 12);
 
 /**
  * @generated from message vertra.console.v1.RunActionResponse
@@ -488,7 +524,7 @@ export type RunActionResponse = Message<"vertra.console.v1.RunActionResponse"> &
  * Use `create(RunActionResponseSchema)` to create a new message.
  */
 export const RunActionResponseSchema: GenMessage<RunActionResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 12);
+  messageDesc(file_vertra_console_v1_template, 13);
 
 /**
  * Templates: what a consumer runs, filling in only parameters. A template

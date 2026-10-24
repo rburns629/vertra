@@ -93,6 +93,7 @@ beforeAll(async () => {
     secretRefs: ["hello-key"],
     // What the action takes: the template's parameter plus a value it fixes.
     inputSchema: { type: "object", additionalProperties: false, properties: { text: { type: "string" }, fixed: { type: "integer" } } },
+    examples: [{ name: "says hello", inputs: { text: "hi" }, outputs: { text: "HELLO" } }],
   });
   await upsertProduct({
     name: `${db_}-store-put`,
@@ -187,6 +188,13 @@ const listed = async (token: string) =>
   ((await call<Runnables>(token, "TemplateService/ListTemplates")).body.runnables ?? []).filter((r) => r.team.startsWith(prefix));
 
 describe("what a consumer may run", () => {
+  it("offers an action's examples, from its passing tests", async () => {
+    const listed = (await call<{ runnables?: { name: string; examples?: unknown[] }[] }>(outsiderToken, "TemplateService/ListTemplates")).body.runnables ?? [];
+    const hello = (await call<{ runnables?: { name: string; examples?: unknown[] }[] }>(ownMemberToken, "TemplateService/ListTemplates")).body.runnables?.find((r) => r.name === `${own}-hello-run`);
+    expect(hello?.examples).toEqual([{ name: "says hello", inputs: { text: "hi" }, outputs: { text: "HELLO" } }]);
+    expect(listed.find((r) => r.name === "chain")?.examples ?? []).toEqual([]);
+  });
+
   it("lists templates shared with everyone, or with one of their teams, and actions shared with them", async () => {
     const outsider = await listed(outsiderToken);
     expect(outsider.filter((r) => r.shared).map((r) => `${r.kind}:${r.name}`).sort()).toEqual(["KIND_TEMPLATE:bad-share", "KIND_TEMPLATE:chain"]);

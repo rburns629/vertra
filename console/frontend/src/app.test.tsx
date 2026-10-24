@@ -582,6 +582,15 @@ describe("a run form", () => {
     });
   });
 
+  it("fills itself from an example", async () => {
+    await renderAt("/catalog/run?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, {
+      "TemplateService/ListTemplates": { runnables: [{ ...TEMPLATE, examples: [{ name: "orders api", inputs: { projectId: "orders-api", regions: ["us-central1"] }, outputs: { url: "https://orders" } }] }] },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Use this" }));
+    expect((screen.getByLabelText(/project id/i) as HTMLInputElement).value).toBe("orders-api");
+    expect((screen.getByLabelText("Regions, item 1") as HTMLInputElement).value).toBe("us-central1");
+  });
+
   it("opens from an old catalog link", async () => {
     await renderAt("/catalog?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, { "TemplateService/ListTemplates": { runnables: [TEMPLATE] } });
     expect(await screen.findByLabelText(/project id/i)).toBeTruthy();
@@ -748,6 +757,27 @@ describe("a team's settings", () => {
     await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed", "product_not_ready"] }]); });
     expect(await screen.findByText("hooks.slack.com")).toBeTruthy();
     expect((screen.getByLabelText(/new webhook url/i) as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("another team's page", () => {
+  it("says where to ask it, and what it offers you", async () => {
+    await renderAt("/teams/gcp-platform", MEMBER, {
+      "TeamService/GetTeamProfile": { name: "gcp-platform", fromCatalog: true, contact: "#gcp-platform", helpUrl: "https://wiki.example/gcp", people: 4 },
+      "TemplateService/ListTemplates": {
+        runnables: [
+          { kind: "KIND_TEMPLATE", team: "gcp-platform", name: "app-on-cloud-run", displayName: "App on Cloud Run", shared: true, readiness: { state: "ready" } },
+          { kind: "KIND_ACTION", team: "gcp-platform", name: "gcp-platform-sql-create", displayName: "Cloud SQL", shared: false, askForAccessUrl: "https://github.com/acme/catalog/issues/new" },
+          { kind: "KIND_ACTION", team: "web", name: "web-site-deploy", displayName: "Site", shared: true },
+        ],
+      },
+    });
+    expect(await screen.findByText(/4 people, from the catalog\. Contact: #gcp-platform\./)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /its help page/i }).getAttribute("href")).toBe("https://wiki.example/gcp");
+    expect(await screen.findByText("App on Cloud Run")).toBeTruthy();
+    expect(screen.getByText("Ready")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /ask for access/i }).getAttribute("href")).toBe("https://github.com/acme/catalog/issues/new");
+    expect(screen.queryByText("Site")).toBeNull();
   });
 });
 

@@ -18,15 +18,17 @@ import { Pill } from "../components/Pill";
 import { useEnvironment } from "../environment";
 import { AutomationTab } from "./team/AutomationTab";
 import { SchedulesTab } from "./team/SchedulesTab";
+import { TeamOffers } from "./team/TeamOffers";
 import { MembersTab } from "./team/MembersTab";
 import { ApisTab } from "./team/ApisTab";
 import { RunningTab } from "./team/RunningTab";
 import { SecretsTab } from "./team/SecretsTab";
 import { SettingsTab } from "./team/SettingsTab";
 
-type TabId = "members" | "secrets" | "automation" | "schedules" | "apis" | "running" | "settings";
+type TabId = "members" | "offers" | "secrets" | "automation" | "schedules" | "apis" | "running" | "settings";
 const TABS: [TabId, string][] = [
   ["members", "Members"],
+  ["offers", "What it offers"],
   ["secrets", "Secrets"],
   ["automation", "Automation"],
   ["schedules", "Schedules"],
@@ -154,9 +156,7 @@ export function TeamPage() {
       )}
 
       {!canSee ? (
-        <Alert severity="info">
-          You&apos;re not a member of &quot;{teamName}&quot;. Its maintainers (or an admin) can add you.
-        </Alert>
+        <TeamOffers teamName={teamName} showProfile />
       ) : (
         <>
           <Tabs
@@ -187,6 +187,7 @@ export function TeamPage() {
               onShowAutomation={canMaintain ? () => { setTab("automation"); } : undefined}
             />
           )}
+          {tab === "offers" && <TeamOffers teamName={teamName} showProfile={false} />}
           {tab === "secrets" && <SecretsTab teamName={teamName} readOnly={retired || !canMaintain} />}
           {tab === "automation" && canMaintain && <AutomationTab teamName={teamName} readOnly={retired} />}
           {tab === "schedules" && <SchedulesTab teamName={teamName} readOnly={retired || !canMaintain} />}

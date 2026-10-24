@@ -95,6 +95,16 @@ message Runnable {
   // for a template its steps' together (not ready when any isn't). Unset
   // when nothing in it has a check.
   Readiness readiness = 17;
+  // Examples of running it, from its product's passing contract tests (an
+  // action's; a template has none yet): a name, inputs to fill the form
+  // with, and what it gave.
+  repeated RunExample examples = 18;
+}
+
+message RunExample {
+  string name = 1;
+  google.protobuf.Struct inputs = 2;
+  google.protobuf.Struct outputs = 3;
 }
 
 // A step a preview left out, and why: it has no plan, or its inputs come
