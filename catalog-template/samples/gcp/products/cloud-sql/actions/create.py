@@ -37,6 +37,11 @@ from google.auth import impersonated_credentials
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
 
+# What this product made, so it reports (and its delete removes) only
+# those, never an instance made some other way; and how a retry that finds
+# the instance it made a moment ago still reports it.
+MADE_BY_LABEL = ("vertra-made", "true")
+
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
@@ -110,10 +115,23 @@ def _wait_for_operation(service, project_id: str, operation_name: str) -> str | 
 
 def _outputs_from_instance(instance: dict[str, Any]) -> dict[str, Any]:
     ip_addresses = instance.get("ipAddresses") or []
-    return {
+    outputs: dict[str, Any] = {
         "instanceConnectionName": instance["connectionName"],
         "ipAddress": ip_addresses[0]["ipAddress"] if ip_addresses else "",
     }
+    labels = (instance.get("settings") or {}).get("userLabels") or {}
+    if labels.get(MADE_BY_LABEL[0]) == MADE_BY_LABEL[1]:
+        project = instance["connectionName"].split(":")[0]
+        name = instance.get("name", "")
+        outputs["resources"] = [
+            {
+                "type": "gcp/cloud-sql-instance",
+                "id": instance["connectionName"],
+                "name": name,
+                "link": f"https://console.cloud.google.com/sql/instances/{name}/overview?project={project}",
+            }
+        ]
+    return outputs
 
 
 def main() -> int:
@@ -165,6 +183,7 @@ def main() -> int:
             # concretely), real complexity this demo doesn't need just to
             # satisfy the policy.
             "ipConfiguration": {"sslMode": "ENCRYPTED_ONLY"},
+            "userLabels": dict([MADE_BY_LABEL]),
         },
     }
     try:

@@ -497,7 +497,7 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | `teams/` | Empty but for its README: a new catalog's teams go here. |
 | `samples/local/` | A sample team with no cloud or secrets: one product in Python, TypeScript, Go, PowerShell and Rust, shared with every team, and a template chaining two of them (`dags/shout-backwards.yaml`); and `ticket`, which reports what it opens as `resources` and names `close` as its `cleanup`. New teams copy starters from it by language; published whole, it proves an install end to end. |
 | `docs/onboarding-with-ai.md` | For catalog teams using an AI assistant to add a team or product. |
-| `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up. |
+| `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up; `project`, `app-hosting` and `cloud-sql` label what they make and delete it as their `cleanup` (`actions/delete.py`). |
 | `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Proven on EKS (its SecretStore not yet). |
 | `samples/azure/` | The same for Azure: a resource group, a Container App, a PostgreSQL flexible server with Entra sign-in only, keyless through AKS Workload Identity. Not yet proven, and needs a step Pod label the kernel can't set yet. |
 

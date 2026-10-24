@@ -11,6 +11,20 @@ product has to. Running them costs money.
 | [`cloud-sql`](products/cloud-sql/) | Finds a Cloud SQL instance by name, or creates it (several minutes; set `timeoutSeconds` to 900 or more, and delete it after) |
 
 Every action looks before it creates, so a retried step is harmless.
+
+## Deleting what they made
+
+`project`, `app-hosting` and `cloud-sql` label what they create
+`vertra-made=true` and report it as `resources`, with a `delete` action as
+their `cleanup`: Delete on the run page (or **What runs made**) runs it. A
+delete refuses anything without the label (`NOT_MADE_BY_VERTRA`), so a
+project or service that was only found, never made, is never deleted, and
+one already gone counts as deleted. The console lets only the team it was
+made for, whoever ran it, and admins delete it. A deleted project is shut
+down and can be restored for 30 days. Cloud SQL can take longer than a
+step's five minutes to delete an instance: the step then succeeds with
+`finishing: true`, since an accepted delete can't be stopped. `build-image`
+has no cleanup: the repository's own cleanup policies age images out.
 [dags/gcp-hello-world-dag.yaml](dags/gcp-hello-world-dag.yaml) chains the
 first three.
 
@@ -33,6 +47,8 @@ member() { echo "principal://iam.googleapis.com/projects/$NUMBER/locations/globa
 gcloud resource-manager folders add-iam-policy-binding $FOLDER --role roles/browser --member "$(member project)"
 gcloud resource-manager folders add-iam-policy-binding $FOLDER --role roles/resourcemanager.projectCreator --member "$(member project)"
 gcloud billing accounts add-iam-policy-binding $BILLING --role roles/billing.user --member "$(member project)"
+# ...and delete the projects it made (only those, by their label).
+gcloud resource-manager folders add-iam-policy-binding $FOLDER --role roles/resourcemanager.projectDeleter --member "$(member project)"
 # build-image: run Cloud Build, read the source bucket, look tags up.
 gcloud projects add-iam-policy-binding $TARGET --role roles/cloudbuild.builds.editor --member "$(member build-image)"
 gcloud storage buckets add-iam-policy-binding gs://$SOURCES --role roles/storage.objectViewer --member "$(member build-image)"

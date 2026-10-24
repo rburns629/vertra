@@ -21,6 +21,11 @@ actions:
     idempotent: true
     maxAttempts: 3
     script: actions/create.py
+    # Deleting the project it made (only one it made: create labels it
+    # vertra-made, and delete refuses any other). The console offers it to
+    # whoever the run was for, and admins.
+    cleanup:
+      action: delete
     input:
       type: object
       additionalProperties: false
@@ -51,3 +56,40 @@ actions:
           description: >-
             Echoed back either way, for downstream tasks to reference via
             $fromTask/$output.
+        resources:
+          type: array
+          description: >-
+            The project, when this product made it (now, or on an earlier
+            attempt): what the console keeps, to delete later.
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: {type: string}
+              id: {type: string}
+              link: {type: string}
+  - name: delete
+    # Shutting down a project already gone or going is a no-op.
+    idempotent: true
+    maxAttempts: 3
+    script: actions/delete.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [resource]
+      properties:
+        resource:
+          type: object
+          description: The project, as create reported it.
+          required: [type, id]
+          properties:
+            type: {type: string, const: gcp/project}
+            id: {type: string}
+            link: {type: string}
+    output:
+      type: object
+      required: [deleted]
+      properties:
+        deleted:
+          type: string
+          description: The project shut down (Google keeps it 30 days, restorable).

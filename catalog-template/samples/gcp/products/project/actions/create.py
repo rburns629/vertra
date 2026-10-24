@@ -31,6 +31,11 @@ from google.cloud import resourcemanager_v3
 from google.cloud.billing_v1 import CloudBillingClient
 from google.cloud.billing_v1.types import ProjectBillingInfo
 
+# What this product made, so it reports (and its delete removes) only
+# those: never a project someone made some other way. Also how a retry
+# that finds the project it made a moment ago still reports it.
+MADE_BY_LABEL = ("vertra-made", "true")
+
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
@@ -69,6 +74,20 @@ def _build_credentials() -> google.auth.credentials.Credentials | None:
     )
 
 
+def _outputs(project_id: str, made_here: bool) -> dict[str, Any]:
+    """The projectId, and the project as a resource when this product made it."""
+    outputs: dict[str, Any] = {"projectId": project_id}
+    if made_here:
+        outputs["resources"] = [
+            {
+                "type": "gcp/project",
+                "id": project_id,
+                "link": f"https://console.cloud.google.com/home/dashboard?project={project_id}",
+            }
+        ]
+    return outputs
+
+
 def main() -> int:
     request = json.loads(INPUT_PATH.read_text())
     inputs = request.get("inputs", {})
@@ -83,9 +102,10 @@ def main() -> int:
     # Existing-user path: a project with this id already exists, so this
     # action is a no-op other than reporting it back.
     try:
-        projects.get_project(name=f"projects/{project_id}")
+        existing = projects.get_project(name=f"projects/{project_id}")
         print(f"project '{project_id}' already exists, skipping creation")
-        _write_result({"status": "succeeded", "outputs": {"projectId": project_id}})
+        made_here = dict(existing.labels).get(MADE_BY_LABEL[0]) == MADE_BY_LABEL[1]
+        _write_result({"status": "succeeded", "outputs": _outputs(project_id, made_here)})
         return 0
     except NotFound:
         pass
@@ -97,7 +117,9 @@ def main() -> int:
     # Cloud Run, which is exactly what gcp/app-hosting needs next.
     try:
         operation = projects.create_project(
-            project=resourcemanager_v3.Project(project_id=project_id, display_name=project_id)
+            project=resourcemanager_v3.Project(
+                project_id=project_id, display_name=project_id, labels=dict([MADE_BY_LABEL])
+            )
         )
         operation.result()  # blocks until the long-running create completes
 
@@ -113,7 +135,7 @@ def main() -> int:
         return _failure("GCP_API_ERROR", str(error), retryable=True)
 
     print(f"created project '{project_id}'")
-    _write_result({"status": "succeeded", "outputs": {"projectId": project_id}})
+    _write_result({"status": "succeeded", "outputs": _outputs(project_id, True)})
     return 0
 
 

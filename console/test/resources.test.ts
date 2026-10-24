@@ -267,6 +267,18 @@ describe("what runs made", () => {
     expect((await list(providerToken, { executionId })).map((r) => r.canDelete)).toEqual([false]);
   });
 
+  it("stays its first owner's when someone else's run reports it too", async () => {
+    const id = `${prefix}-shared`;
+    const first = await ranAndFinished(`${prov}-thing-create`, {}, { resources: [{ type: "demo/thing", id }] });
+    // The product's own team runs it for itself: the same thing, found existing.
+    const run = await call<{ executionId: string }>(providerToken, "TemplateService/RunAction", { product: `${prov}-thing-create`, inputs: {} });
+    kernelRuns.set(run.body.executionId, { executionId: run.body.executionId, name: "x", state: "SUCCEEDED", tasks: [step("create", "SUCCEEDED", { resources: [{ type: "demo/thing", id }] })] });
+    await recorded(run.body.executionId);
+    const [kept] = await db.select().from(resources).where(eq(resources.externalId, id));
+    expect(kept).toMatchObject({ ownerTeam: cons, executionId: first });
+    expect((await list(providerToken, { query: id })).map((r) => r.canDelete)).toEqual([false]);
+  });
+
   it("can't be deleted when its product says nothing about how", async () => {
     const executionId = await ranAndFinished(`${prov}-note-create`, {}, { resources: [{ type: "demo/note", id: `${prefix}-n` }] });
     const [note] = await list(consumerToken, { executionId });

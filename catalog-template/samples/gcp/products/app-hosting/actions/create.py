@@ -30,6 +30,11 @@ from google.api_core.exceptions import GoogleAPIError, NotFound
 from google.auth import impersonated_credentials
 from google.cloud import run_v2
 
+# What this product made, so it reports (and its delete removes) only
+# those, never a service deployed some other way; and how a retry that finds
+# the service it made a moment ago still reports it.
+MADE_BY_LABEL = ("vertra-made", "true")
+
 INPUT_PATH = Path("/platform/input/request.json")
 OUTPUT_PATH = Path("/platform/output/result.json")
 
@@ -69,6 +74,21 @@ def _build_credentials() -> google.auth.credentials.Credentials | None:
     )
 
 
+def _outputs(service: Any, project_id: str, region: str, service_name: str, made_here: bool) -> dict[str, Any]:
+    """Its URL, and the service as a resource when this product made it."""
+    outputs: dict[str, Any] = {"serviceUrl": service.uri}
+    if made_here:
+        outputs["resources"] = [
+            {
+                "type": "gcp/cloud-run-service",
+                "id": f"projects/{project_id}/locations/{region}/services/{service_name}",
+                "name": service_name,
+                "link": f"https://console.cloud.google.com/run/detail/{region}/{service_name}?project={project_id}",
+            }
+        ]
+    return outputs
+
+
 def main() -> int:
     request = json.loads(INPUT_PATH.read_text())
     inputs = request.get("inputs", {})
@@ -91,7 +111,8 @@ def main() -> int:
     try:
         existing = services.get_service(name=service_path)
         print(f"service '{service_name}' already exists, skipping deployment")
-        _write_result({"status": "succeeded", "outputs": {"serviceUrl": existing.uri}})
+        made_here = dict(existing.labels).get(MADE_BY_LABEL[0]) == MADE_BY_LABEL[1]
+        _write_result({"status": "succeeded", "outputs": _outputs(existing, project_id, region, service_name, made_here)})
         return 0
     except NotFound:
         pass
@@ -123,14 +144,14 @@ def main() -> int:
         operation = services.create_service(
             parent=f"projects/{project_id}/locations/{region}",
             service_id=service_name,
-            service=run_v2.Service(template=template),
+            service=run_v2.Service(template=template, labels=dict([MADE_BY_LABEL])),
         )
         service = operation.result()
     except GoogleAPIError as error:
         return _failure("GCP_API_ERROR", str(error), retryable=True)
 
     print(f"deployed service '{service_name}' -> {service.uri}")
-    _write_result({"status": "succeeded", "outputs": {"serviceUrl": service.uri}})
+    _write_result({"status": "succeeded", "outputs": _outputs(service, project_id, region, service_name, True)})
     return 0
 
 

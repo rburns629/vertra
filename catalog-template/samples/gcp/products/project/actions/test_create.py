@@ -59,15 +59,24 @@ class CreateActionTest(unittest.TestCase):
         self._write_request({"projectId": "already-exists"})
         with patch.object(self.module.resourcemanager_v3, "ProjectsClient") as client_cls:
             client = client_cls.return_value
-            client.get_project.return_value = MagicMock()  # found -- no NotFound raised
+            client.get_project.return_value = MagicMock(labels={})  # found, made some other way
             exit_code = self.module.main()
 
         client.get_project.assert_called_once_with(name="projects/already-exists")
         client.create_project.assert_not_called()
         self.assertEqual(exit_code, 0)
+        # Not reported: its cleanup mustn't delete a project it didn't make.
         self.assertEqual(
             self._result(), {"status": "succeeded", "outputs": {"projectId": "already-exists"}}
         )
+
+    def test_a_project_it_made_is_reported_when_found_again(self) -> None:
+        # A retry that finds the project the first attempt made.
+        self._write_request({"projectId": "made-before"})
+        with patch.object(self.module.resourcemanager_v3, "ProjectsClient") as client_cls:
+            client_cls.return_value.get_project.return_value = MagicMock(labels={"vertra-made": "true"})
+            self.assertEqual(self.module.main(), 0)
+        self.assertEqual(self._result()["outputs"]["resources"][0]["id"], "made-before")
 
     def test_new_project_is_created_and_billing_linked(self) -> None:
         self._write_request(
@@ -87,6 +96,11 @@ class CreateActionTest(unittest.TestCase):
         client.create_project.assert_called_once()
         created_project = client.create_project.call_args.kwargs["project"]
         self.assertEqual(created_project.project_id, "brand-new")
+        self.assertEqual(dict(created_project.labels), {"vertra-made": "true"})
+        self.assertEqual(
+            self._result()["outputs"]["resources"],
+            [{"type": "gcp/project", "id": "brand-new", "link": "https://console.cloud.google.com/home/dashboard?project=brand-new"}],
+        )
 
         billing_client.update_project_billing_info.assert_called_once()
         billing_kwargs = billing_client.update_project_billing_info.call_args.kwargs
@@ -96,9 +110,7 @@ class CreateActionTest(unittest.TestCase):
             "billingAccounts/AAAAAA-BBBBBB-CCCCCC",
         )
         self.assertEqual(exit_code, 0)
-        self.assertEqual(
-            self._result(), {"status": "succeeded", "outputs": {"projectId": "brand-new"}}
-        )
+        self.assertEqual(self._result()["outputs"]["projectId"], "brand-new")
 
     def test_new_project_without_billing_account_skips_billing_call(self) -> None:
         self._write_request({"projectId": "brand-new-no-billing"})

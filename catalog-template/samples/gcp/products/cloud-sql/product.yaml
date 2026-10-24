@@ -23,6 +23,10 @@ actions:
     idempotent: true
     maxAttempts: 3
     script: actions/create.py
+    # Deleting the instance it made (only one it made: create labels it
+    # vertra-made, and delete refuses any other), its databases with it.
+    cleanup:
+      action: delete
     input:
       type: object
       additionalProperties: false
@@ -70,3 +74,45 @@ actions:
         ipAddress:
           type: string
           description: The instance's assigned (typically public) IP address.
+        resources:
+          type: array
+          description: >-
+            The instance, when this product made it (now, or on an earlier
+            attempt): what the console keeps, to delete later.
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: {type: string}
+              id: {type: string}
+              name: {type: string}
+              link: {type: string}
+  - name: delete
+    # Deleting an instance that's already gone is a no-op.
+    idempotent: true
+    maxAttempts: 3
+    script: actions/delete.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [resource]
+      properties:
+        resource:
+          type: object
+          description: The instance, as create reported it.
+          required: [type, id]
+          properties:
+            type: {type: string, const: gcp/cloud-sql-instance}
+            id: {type: string}
+            name: {type: string}
+            link: {type: string}
+    output:
+      type: object
+      required: [deleted]
+      properties:
+        deleted:
+          type: string
+          description: The instance deleted, by its connection name.
+        finishing:
+          type: boolean
+          description: Google was still finishing the delete when the step ended (it can't be stopped once accepted).

@@ -128,6 +128,20 @@ class CreateActionTest(unittest.TestCase):
             },
         )
 
+    def test_an_instance_it_made_is_labelled_and_reported(self) -> None:
+        self._write_request({"projectId": "demo-project", "instanceName": "made"})
+        self.service.instances.return_value.get.return_value.execute.side_effect = [
+            _http_error(404),
+            {"name": "made", "connectionName": "demo-project:us-central1:made", "settings": {"userLabels": {"vertra-made": "true"}}},
+        ]
+        self.service.instances.return_value.insert.return_value.execute.return_value = {"name": "operation-1"}
+        self.service.operations.return_value.get.return_value.execute.return_value = {"status": "DONE"}
+        with patch.object(self.module.time, "sleep"):
+            self.assertEqual(self.module.main(), 0)
+        body = self.service.instances.return_value.insert.call_args.kwargs["body"]
+        self.assertEqual(body["settings"]["userLabels"], {"vertra-made": "true"})
+        self.assertEqual(self._result()["outputs"]["resources"][0]["id"], "demo-project:us-central1:made")
+
     def test_operation_failure_is_a_retryable_failure(self) -> None:
         self._write_request({"projectId": "demo-project", "instanceName": "will-fail"})
         self.service.instances.return_value.get.return_value.execute.side_effect = _http_error(404)

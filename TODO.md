@@ -590,8 +590,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `$resource`). The run page's **What it made** and Runs' **What runs
   made** (searchable) show them; Delete runs the cleanup for the team it was
   made for, newest first, with sharing and approvals. Proven on kind with
-  the local `ticket` sample. Left: cleanup for the cloud samples (gcp, aws,
-  azure: delete actions, proven on a billed project).
+  the local `ticket` sample. The gcp samples' `project`, `app-hosting` and
+  `cloud-sql` delete what they made (labelled `vertra-made`; done
+  2026-10-24, decided: only the team it was made for, whoever ran it, and
+  admins; a resource keeps its first owner). Left: prove them on a billed
+  project (acyclix-dev); aws and azure cleanups.
 - [x] **P2: notifications** (done 2026-10-24): an inbox (the bell) and
   each team's chat webhook (Slack, Google Chat, Teams; decided 2026-10-24:
   the URL kept encrypted in the console's database, write-only, allowed

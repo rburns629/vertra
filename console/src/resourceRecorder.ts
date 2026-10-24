@@ -132,14 +132,20 @@ export async function recordRun(run: Run, detail: KernelExecution): Promise<numb
         .values(row)
         .onConflictDoUpdate({
           target: [resources.productTeam, resources.type, resources.externalId],
-          // A later step reporting it again: the newest record wins, and a
-          // deleted one made again exists again.
+          // A later step reporting it again: its owner's (the same team, or
+          // the same person when it's nobody's team's) updates it; anyone
+          // else's report leaves it the first owner's, so only who made it
+          // (and admins) may delete it. One deleted and made again is the
+          // new maker's.
+          setWhere: sql`${resources.deletedAt} IS NOT NULL
+            OR (${resources.ownerTeam} IS NOT NULL AND ${resources.ownerTeam} = excluded.owner_team)
+            OR (${resources.ownerTeam} IS NULL AND excluded.owner_team IS NULL AND ${resources.ownerUserId} = excluded.owner_user_id)`,
           set: {
             product: row.product,
             name: row.name,
             link: row.link,
-            ownerTeam: row.ownerTeam,
-            ownerUserId: row.ownerUserId,
+            ownerTeam: sql`CASE WHEN ${resources.deletedAt} IS NOT NULL THEN excluded.owner_team ELSE ${resources.ownerTeam} END`,
+            ownerUserId: sql`CASE WHEN ${resources.deletedAt} IS NOT NULL THEN excluded.owner_user_id ELSE ${resources.ownerUserId} END`,
             executionId: row.executionId,
             taskId: row.taskId,
             inputs: row.inputs,

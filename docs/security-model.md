@@ -209,8 +209,10 @@ each one (`resources`), with that step's inputs and outputs, after the run
 is gone (`console/src/core/resources.ts`). Its type, id, name and link are
 seen by the team it was made for, whoever ran it, the team whose product
 made it, and admins; the stored inputs and outputs are never shown, only
-used to fill in its cleanup's inputs. Deleting one (the team it was made
-for, whoever ran it, admins) runs that product's current `cleanup` action
+used to fill in its cleanup's inputs. A resource keeps the team and person
+it was first made for: another run reporting the same one (say, a create
+that only found it) doesn't make it theirs, unless it had been deleted.
+Deleting one (the team it was made for, whoever ran it, admins) runs that product's current `cleanup` action
 as a run of its own, with every check a run of that action gets: it must
 be shared with the person, its inputs fit its schema, its targets be
 allowed, and its approval waits for a maintainer. Asking for a delete is in

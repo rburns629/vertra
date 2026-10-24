@@ -20,6 +20,10 @@ actions:
     idempotent: true
     maxAttempts: 3
     script: actions/create.py
+    # Deleting the service it deployed (only one it deployed: create labels
+    # it vertra-made, and delete refuses any other).
+    cleanup:
+      action: delete
     input:
       type: object
       additionalProperties: false
@@ -74,3 +78,42 @@ actions:
           description: >-
             The Cloud Run service's HTTPS URL, whether newly created or
             pre-existing.
+        resources:
+          type: array
+          description: >-
+            The service, when this product deployed it (now, or on an earlier
+            attempt): what the console keeps, to delete later.
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: {type: string}
+              id: {type: string}
+              name: {type: string}
+              link: {type: string}
+  - name: delete
+    # Deleting a service that's already gone is a no-op.
+    idempotent: true
+    maxAttempts: 3
+    script: actions/delete.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [resource]
+      properties:
+        resource:
+          type: object
+          description: The service, as create reported it.
+          required: [type, id]
+          properties:
+            type: {type: string, const: gcp/cloud-run-service}
+            id: {type: string}
+            name: {type: string}
+            link: {type: string}
+    output:
+      type: object
+      required: [deleted]
+      properties:
+        deleted:
+          type: string
+          description: The service deleted (its projects/.../services/... path).

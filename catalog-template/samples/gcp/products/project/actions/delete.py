@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""gcp/project's "delete" action: shuts down a project create made (its
+cleanup). Given {"resource": {"type": "gcp/project", "id": ...}} as the
+console recorded it.
+
+Only a project carrying create's vertra-made label is deleted: a project
+made some other way is refused, whoever asks. One already gone, or already
+shutting down, succeeds: a cleanup must, when there's nothing left to do.
+Google keeps a shut-down project for 30 days, when it can be restored.
+"""
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import google.auth
+import google.auth.credentials
+from google.api_core.exceptions import GoogleAPIError, NotFound, PermissionDenied
+from google.auth import impersonated_credentials
+from google.cloud import resourcemanager_v3
+
+MADE_BY_LABEL = ("vertra-made", "true")
+
+INPUT_PATH = Path("/platform/input/request.json")
+OUTPUT_PATH = Path("/platform/output/result.json")
+
+TARGET_SERVICE_ACCOUNT_FILE = Path("/platform/secrets/gcp-target/service-account")
+IMPERSONATION_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+
+
+def _write_result(result: dict[str, Any]) -> None:
+    OUTPUT_PATH.write_text(json.dumps(result))
+
+
+def _failure(code: str, message: str, *, retryable: bool = False) -> int:
+    _write_result({"status": "failed", "error": {"code": code, "message": message, "retryable": retryable}})
+    return 1
+
+
+def _build_credentials() -> google.auth.credentials.Credentials | None:
+    """As create's: the gcp-target service account if the team registered one, else ADC."""
+    target = TARGET_SERVICE_ACCOUNT_FILE.read_text().strip() if TARGET_SERVICE_ACCOUNT_FILE.exists() else ""
+    if not target:
+        return None
+    source_credentials, _ = google.auth.default()
+    return impersonated_credentials.Credentials(
+        source_credentials=source_credentials, target_principal=target, target_scopes=IMPERSONATION_SCOPES
+    )
+
+
+def main() -> int:
+    resource = json.loads(INPUT_PATH.read_text()).get("inputs", {}).get("resource") or {}
+    project_id = resource.get("id") if isinstance(resource, dict) else None
+    if not project_id or resource.get("type") != "gcp/project":
+        return _failure("MISSING_INPUT", "inputs.resource is the gcp/project to delete, as create reported it")
+
+    projects = resourcemanager_v3.ProjectsClient(credentials=_build_credentials())
+    try:
+        project = projects.get_project(name=f"projects/{project_id}")
+    except (NotFound, PermissionDenied):
+        # Gone (or, once deleted, no longer visible to this identity).
+        print(f"project '{project_id}' is already gone")
+        _write_result({"status": "succeeded", "outputs": {"deleted": project_id}})
+        return 0
+    except GoogleAPIError as error:
+        return _failure("GCP_API_ERROR", str(error), retryable=True)
+
+    if project.state == resourcemanager_v3.Project.State.DELETE_REQUESTED:
+        print(f"project '{project_id}' is already shutting down")
+        _write_result({"status": "succeeded", "outputs": {"deleted": project_id}})
+        return 0
+    if dict(project.labels).get(MADE_BY_LABEL[0]) != MADE_BY_LABEL[1]:
+        return _failure(
+            "NOT_MADE_BY_VERTRA",
+            f"project '{project_id}' wasn't made by this product (it has no {MADE_BY_LABEL[0]} label), so it isn't deleted",
+        )
+
+    try:
+        projects.delete_project(name=f"projects/{project_id}").result()
+    except NotFound:
+        pass
+    except GoogleAPIError as error:
+        return _failure("GCP_API_ERROR", str(error), retryable=True)
+
+    print(f"shut down project '{project_id}'")
+    _write_result({"status": "succeeded", "outputs": {"deleted": project_id}})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -68,7 +68,7 @@ class CreateActionTest(unittest.TestCase):
             client.service_path.return_value = (
                 "projects/my-project/locations/us-central1/services/hello-world"
             )
-            existing = MagicMock()
+            existing = MagicMock(labels={})  # deployed some other way: not reported
             existing.uri = "https://hello-world-abc123-uc.a.run.app"
             client.get_service.return_value = existing
 
@@ -106,14 +106,11 @@ class CreateActionTest(unittest.TestCase):
         self.assertEqual(call_kwargs["service_id"], "hello-world")
         submitted_image = call_kwargs["service"].template.containers[0].image
         self.assertEqual(submitted_image, _VALID_INPUTS["image"])
+        self.assertEqual(dict(call_kwargs["service"].labels), {"vertra-made": "true"})
         self.assertEqual(exit_code, 0)
-        self.assertEqual(
-            self._result(),
-            {
-                "status": "succeeded",
-                "outputs": {"serviceUrl": "https://hello-world-xyz789-uc.a.run.app"},
-            },
-        )
+        outputs = self._result()["outputs"]
+        self.assertEqual(outputs["serviceUrl"], "https://hello-world-xyz789-uc.a.run.app")
+        self.assertEqual(outputs["resources"][0]["id"], "projects/my-project/locations/us-central1/services/hello-world")
 
     def test_region_input_is_honored(self) -> None:
         self._write_request(dict(_VALID_INPUTS, region="europe-west1"))
@@ -223,7 +220,7 @@ class BuildCredentialsTest(unittest.TestCase):
             patch.object(self.module.run_v2, "ServicesClient") as client_cls,
         ):
             default_mock.return_value = (MagicMock(), "some-project")
-            client_cls.return_value.get_service.return_value = MagicMock(uri="https://x")
+            client_cls.return_value.get_service.return_value = MagicMock(uri="https://x", labels={})
 
             self.module.INPUT_PATH = Path(tempfile.mkstemp()[1])
             self.module.OUTPUT_PATH = Path(tempfile.mkstemp()[1])
