@@ -14,6 +14,7 @@ import { when } from "../../time";
 const KINDS = [
   { kind: "run_failed", label: "A run for the team failed" },
   { kind: "approval_waiting", label: "A step waits for the team's approval" },
+  { kind: "product_not_ready", label: "A product of the team isn't ready on this install" },
 ] as const;
 
 /**

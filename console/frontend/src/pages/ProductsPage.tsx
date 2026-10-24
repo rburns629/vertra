@@ -19,7 +19,10 @@ import { PageHeader } from "../components/PageHeader";
 import { Pill } from "../components/Pill";
 import { Link as RouterLink } from "react-router-dom";
 import Button from "@mui/material/Button";
-import { ApiError, listProducts, listRunnables, type Product, type ProductRelease } from "../api";
+import { ApiError, checkProduct, listProducts, listRunnables, type Product, type ProductRelease } from "../api";
+import { useAuth } from "../auth/AuthContext";
+import { ReadinessPill } from "../components/ReadinessPill";
+import { when } from "../time";
 import { imageName, imageVersion } from "../imageRef";
 
 /** How many releases one product shows. A long-lived product's full
@@ -189,6 +192,66 @@ function PlatformAccordion({
   );
 }
 
+/** What its check said here: who it acts as, what it lacks, when; and Check now for its team. */
+function ReadinessDetail({ product }: { product: Product }) {
+  const { user } = useAuth();
+  const [asked, setAsked] = useState<string | null>(null);
+  const r = product.readiness;
+  if (!r) return null;
+  const mine = Boolean(user?.isAdmin || (product.teamName && user?.teamNames.includes(product.teamName)));
+  return (
+    <Box sx={{ mb: 1.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+      <Typography variant="body2">
+        {r.state === "ready" && "Ready on this install"}
+        {r.state === "not_ready" && "Not ready on this install"}
+        {r.state === "failed" && "Its check couldn't say"}
+        {r.state === "checking" && "Being checked"}
+        {r.state === "unchecked" && "Not checked yet"}
+        {r.principal && <>, acting as <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 13 }}>{r.principal}</Box></>}
+        {r.checkedAt && ` (checked ${when(r.checkedAt)})`}.
+      </Typography>
+      {r.missing.length > 0 && (
+        <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+          {r.missing.map((m) => (
+            <Typography component="li" variant="body2" key={m}>
+              {m}
+            </Typography>
+          ))}
+        </Box>
+      )}
+      {r.detail && (
+        <Typography variant="caption" color="text.secondary">
+          {r.detail}
+        </Typography>
+      )}
+      <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
+        {r.executionId && (
+          <Link component={RouterLink} to={`/runs/${r.executionId}`} variant="caption">
+            The check run
+          </Link>
+        )}
+        {mine && r.state !== "checking" && (
+          <Button
+            size="small"
+            onClick={() => {
+              checkProduct(product.name)
+                .then((started) => { setAsked(started ? "Checking now: refresh in a minute." : "A check is already under way."); })
+                .catch((err: unknown) => { setAsked(err instanceof ApiError ? err.message : "Couldn't start it."); });
+            }}
+          >
+            Check now
+          </Button>
+        )}
+        {asked && (
+          <Typography variant="caption" color="text.secondary">
+            {asked}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 function ProductAccordion({ product, runnable }: { product: Product; runnable: boolean }) {
   const releaseCount = product.releases.length;
   const shown = product.releases.slice(0, MAX_RELEASES_SHOWN);
@@ -216,6 +279,7 @@ function ProductAccordion({ product, runnable }: { product: Product; runnable: b
           <Pill tone="success" title={product.image}>
             latest: {imageVersion(product.image)}
           </Pill>
+          {product.readiness && <ReadinessPill readiness={product.readiness} />}
         </Box>
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0 }}>
@@ -235,6 +299,7 @@ function ProductAccordion({ product, runnable }: { product: Product; runnable: b
           {product.secretRefs.length > 0 && <> · uses {product.secretRefs.join(", ")}</>}
           {product.tokenAudiences.length > 0 && <> · tokens for {product.tokenAudiences.join(", ")}</>}
         </Typography>
+        {product.readiness && <ReadinessDetail product={product} />}
         {runnable && (
           <Button
             component={RouterLink}

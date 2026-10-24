@@ -6,6 +6,7 @@ package vertra.console.v1;
 
 import "vertra/console/v1/execution.proto";
 import "google/protobuf/struct.proto";
+import "vertra/console/v1/product.proto";
 
 // Templates: what a consumer runs, filling in only parameters. A template
 // comes from a team's catalog (dags/*.yaml of kind Template); each step
@@ -90,6 +91,10 @@ message Runnable {
   // Whether Preview says what it would do: the action, or one of the
   // template's steps, has a plan.
   bool previewable = 16;
+  // Whether it's ready on this install: the action's product's check, or
+  // for a template its steps' together (not ready when any isn't). Unset
+  // when nothing in it has a check.
+  Readiness readiness = 17;
 }
 
 // A step a preview left out, and why: it has no plan, or its inputs come

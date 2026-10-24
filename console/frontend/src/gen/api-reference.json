@@ -530,6 +530,15 @@
      "public": false
     },
     {
+     "name": "CheckProduct",
+     "comment": "Runs a product's check now (product.yaml's check): its team's members,\nand admins. started is false when one is already under way.",
+     "input": "vertra.console.v1.CheckProductRequest",
+     "output": "vertra.console.v1.CheckProductResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "DeleteProduct",
      "comment": "Unregisters a product. Its name and image repository stay its team's.",
      "input": "vertra.console.v1.DeleteProductRequest",
@@ -5047,6 +5056,62 @@
      "repeated": true,
      "optional": false,
      "comment": "Audiences its tasks get a projected ServiceAccount token for, at\n/platform/tokens/<audience> (product.yaml's tokenAudiences)."
+    },
+    {
+     "name": "readiness",
+     "type": "Readiness",
+     "ref": "vertra.console.v1.Readiness",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether it's ready on this install, by its check (product.yaml's\ncheck); unset when it has none."
+    }
+   ]
+  },
+  "vertra.console.v1.Readiness": {
+   "name": "Readiness",
+   "comment": "A product's check's last answer on this install.",
+   "fields": [
+    {
+     "name": "state",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "ready, not_ready, failed (its check couldn't say), checking, or\nunchecked (not yet)."
+    },
+    {
+     "name": "principal",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What it acts as here: an identity, an account."
+    },
+    {
+     "name": "missing",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "What it lacks to work here."
+    },
+    {
+     "name": "detail",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "checkedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The check run."
     }
    ]
   },
@@ -5421,6 +5486,32 @@
      "type": "WiringType",
      "ref": "vertra.console.v1.WiringType",
      "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.CheckProductRequest": {
+   "name": "CheckProductRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Any of its actions' registered names."
+    }
+   ]
+  },
+  "vertra.console.v1.CheckProductResponse": {
+   "name": "CheckProductResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "started",
+     "type": "boolean",
+     "repeated": false,
      "optional": false,
      "comment": ""
     }
@@ -6819,6 +6910,14 @@
      "repeated": false,
      "optional": false,
      "comment": "Whether Preview says what it would do: the action, or one of the\ntemplate's steps, has a plan."
+    },
+    {
+     "name": "readiness",
+     "type": "Readiness",
+     "ref": "vertra.console.v1.Readiness",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether it's ready on this install: the action's product's check, or\nfor a template its steps' together (not ready when any isn't). Unset\nwhen nothing in it has a check."
     }
    ]
   },

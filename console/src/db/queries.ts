@@ -504,6 +504,7 @@ export interface Product {
   concurrencyKey: string[];
   cleanup: ProductCleanup | null;
   plan: string | null;
+  check: string | null;
   approval: Approval | null;
   errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
@@ -547,6 +548,7 @@ export interface ProductInput {
   concurrencyKey?: string[] | undefined;
   cleanup?: ProductCleanup | null | undefined;
   plan?: string | null | undefined;
+  check?: string | null | undefined;
   approval?: Approval | null | undefined;
   errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
@@ -597,6 +599,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       concurrencyKey: input.concurrencyKey,
       cleanup: input.cleanup,
       plan: input.plan,
+      check: input.check,
       approval: input.approval,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated,
@@ -843,7 +846,8 @@ export interface SubmittedExecution {
 export async function recordSubmittedExecution(input: {
   executionId: string;
   teams: string[];
-  submittedBy: string;
+  /** Null: the console itself (readiness checks). */
+  submittedBy: string | null;
   name: string;
   payload: unknown;
   template?: string | undefined;

@@ -4,6 +4,7 @@ import type { ServiceImpl } from "@connectrpc/connect";
 import type { JsonObject } from "@bufbuild/protobuf";
 import { Type } from "@sinclair/typebox";
 import {
+  checkProductNow,
   deleteProduct,
   imageRepositories,
   products,
@@ -17,7 +18,8 @@ import {
 import type { ProductWithReleases } from "../../db/queries.js";
 import type { ProductService } from "../../gen/vertra/console/v1/product_pb.js";
 import { timestamp } from "../convert.js";
-import { callerOf } from "../context.js";
+import { readinessOf, type ReadinessView } from "../../readiness.js";
+import { callerOf, logOf } from "../context.js";
 import { check } from "../validate.js";
 
 function product(row: Omit<ProductWithReleases, "teamName" | "releases"> & Partial<Pick<ProductWithReleases, "teamName" | "releases">>) {
@@ -46,6 +48,20 @@ function product(row: Omit<ProductWithReleases, "teamName" | "releases"> & Parti
   };
 }
 
+/** A product's readiness as the API gives it. */
+export function readiness(view: ReadinessView | undefined) {
+  return view
+    ? {
+        state: view.state,
+        principal: view.principal ?? "",
+        missing: view.missing,
+        detail: view.detail ?? "",
+        checkedAt: timestamp(view.checkedAt),
+        executionId: view.executionId ?? "",
+      }
+    : undefined;
+}
+
 /** Only the fields a request set, as a REST body would carry them. */
 function defined<T extends object>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
@@ -54,7 +70,14 @@ function defined<T extends object>(value: T): T {
 export function productService(): ServiceImpl<typeof ProductService> {
   return {
     async listProducts(_req, ctx) {
-      return { products: (await products(callerOf(ctx))).map(product) };
+      const all = await products(callerOf(ctx));
+      const ready = await readinessOf(all);
+      return { products: all.map((p) => ({ ...product(p), readiness: readiness(ready.get(p.name)) })) };
+    },
+
+    async checkProduct(req, ctx) {
+      const { name } = check({ name: Type.String({ minLength: 1, maxLength: 253 }) }, req);
+      return checkProductNow(callerOf(ctx), name, logOf(ctx));
     },
 
     async registerProduct(req, ctx) {

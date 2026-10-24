@@ -8,6 +8,7 @@ import { Runnable_Kind, type TemplateService } from "../../gen/vertra/console/v1
 import { callerOf, logOf } from "../context.js";
 import { check } from "../validate.js";
 import { executionState, viaKernel } from "./execution.js";
+import { readiness } from "./product.js";
 
 const Name = Type.String({ minLength: 1, maxLength: 253 });
 const OptionalText = Type.Optional(Type.String({ minLength: 1, maxLength: 253 }));
@@ -33,6 +34,7 @@ export function templateService(): ServiceImpl<typeof TemplateService> {
           askForAccessUrl: r.askForAccessUrl ?? "",
           targets: r.targets,
           previewable: r.previewable,
+          readiness: readiness(r.readiness ?? undefined),
         })),
       };
     },

@@ -22,7 +22,8 @@ One more, [`ticket`](products/ticket/) (Python), shows what a run made and
 deleting it later: `open` reports the ticket it opens in its outputs'
 `resources`, and its `cleanup` names `close`, which the console runs when
 someone deletes that ticket from **What runs made**; and its `plan` names
-`plan`, which says what `open` would do, for **Preview**. Nothing is really
+`plan`, which says what `open` would do, for **Preview**; and its `check`
+says it's ready, as every install asks. Nothing is really
 created; the ticket's id comes from its title.
 
 ## Tests

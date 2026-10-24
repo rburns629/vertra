@@ -1,0 +1,8 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": true,
+    "principal": "this namespace's default ServiceAccount",
+    "missing": []
+  }
+}

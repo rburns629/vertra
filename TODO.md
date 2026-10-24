@@ -487,9 +487,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   catalog's Node samples (reverse) still build under emulation when
   published from a Mac for amd64: publish from CI, or give their
   Dockerfiles the same split.
-- [ ] **P2: readiness per install.** Each product may ship a `check` action
-  (who am I, may I do this); the console runs it per install on
-  registration and daily, records the principal, and shows what's missing.
+- [x] **P2: readiness per install** (done 2026-10-24). product.yaml's
+  `check` names the action that says whether it's ready here (`ready`,
+  `principal`, `missing`); the console runs it itself (a check run, no
+  submitter) when a product is new or changed, daily, and on **Check now**
+  (`readiness.ts`, console migration 0023), shows it in the catalog, on
+  Every product and the run form, and tells the team's maintainers and
+  webhook when it isn't ready. Left: the cloud samples' checks.
 - [ ] **P2: caps per product, and schedules** (a template on a cron, run as
   a bot).
 - [x] **P1: roles** (done 2026-10-21): a team's people are maintainers or
@@ -576,7 +580,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   failure posts to its team's webhook; a step waiting for approval tells
   its team's maintainers (not whoever ran it) and webhook; the catalog not
   pulled for 30 minutes tells admins (`notifier.ts`, console migration
-  0021). Left: a product not ready (with readiness); notifying by email.
+  0021); a product not ready too (with readiness). Left: notifying by email.
 - [x] **P2: copy as API call, run again with changes** (done 2026-10-23):
   the run form's **Show as an API call** (the same run as `curl`, proven
   against kind), and a run's **Run with changes** (its form, filled in from

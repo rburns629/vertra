@@ -44,6 +44,7 @@ import type { TargetRule, TemplateStep } from "../db/schema.js";
 import { errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { allowedValues, targetInputs, targetProblems } from "../targets.js";
+import { readinessOf, type ReadinessView } from "../readiness.js";
 import { submitChecked } from "./executions.js";
 
 export type TeamProduct = Product & { teamName: string };
@@ -287,6 +288,18 @@ export interface Runnable {
   targets: TargetChoice[];
   /** Preview says what it would do: it (or a step of it) has a plan. */
   previewable: boolean;
+  /** Whether it's ready here: its product's check, or its steps' together; null when none has one. */
+  readiness: ReadinessView | null;
+}
+
+const READINESS_ORDER: (ReadinessView["state"])[] = ["not_ready", "failed", "checking", "unchecked", "ready"];
+
+/** Several products' readiness as one: the worst of them, with everything missing. */
+function together(views: ReadinessView[]): ReadinessView | null {
+  if (views.length === 0) return null;
+  const worst = [...views].sort((a, b) => READINESS_ORDER.indexOf(a.state) - READINESS_ORDER.indexOf(b.state))[0] ?? null;
+  if (!worst || views.length === 1) return worst;
+  return { ...worst, missing: [...new Set(views.flatMap((v) => v.missing))] };
 }
 
 /** https://github.com/<owner>/<repo> for a release's repository, or null for
@@ -348,6 +361,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
   const products = await listRunnableProducts();
   const byRef = new Map(products.map((p) => [actionRef(p), p]));
   const names = new Set(products.map((p) => p.name));
+  const ready = await readinessOf(products);
   // Its plan action is registered: <team>-<product>-<plan>.
   const hasPlan = (p: TeamProduct | undefined) =>
     Boolean(p?.plan && names.has(`${p.name.endsWith(`-${p.action}`) ? p.name.slice(0, -p.action.length - 1) : p.name}-${p.plan}`));
@@ -378,6 +392,10 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
         rulesOf,
       ),
       previewable: t.steps.some((step) => hasPlan(byRef.get(step.action))),
+      readiness: together(t.steps.flatMap((step) => {
+        const view = ready.get(byRef.get(step.action)?.name ?? "");
+        return view ? [view] : [];
+      })),
     });
   }
   for (const p of products) {
@@ -399,6 +417,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       ...catalogLinks(base, p.sourcePath, "the action", actionRef(p), who, a.allowed),
       targets: targetChoices(who, [{ product: p }], rulesOf),
       previewable: hasPlan(p),
+      readiness: ready.get(p.name) ?? null,
     });
   }
   return out;

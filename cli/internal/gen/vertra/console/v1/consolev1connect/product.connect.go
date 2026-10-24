@@ -41,6 +41,9 @@ const (
 	// ProductServiceRegisterProductProcedure is the fully-qualified name of the ProductService's
 	// RegisterProduct RPC.
 	ProductServiceRegisterProductProcedure = "/vertra.console.v1.ProductService/RegisterProduct"
+	// ProductServiceCheckProductProcedure is the fully-qualified name of the ProductService's
+	// CheckProduct RPC.
+	ProductServiceCheckProductProcedure = "/vertra.console.v1.ProductService/CheckProduct"
 	// ProductServiceDeleteProductProcedure is the fully-qualified name of the ProductService's
 	// DeleteProduct RPC.
 	ProductServiceDeleteProductProcedure = "/vertra.console.v1.ProductService/DeleteProduct"
@@ -67,6 +70,9 @@ type ProductServiceClient interface {
 	// admins only. Refused (already_exists) when another team owns its name
 	// or its image repository.
 	RegisterProduct(context.Context, *connect.Request[v1.RegisterProductRequest]) (*connect.Response[v1.RegisterProductResponse], error)
+	// Runs a product's check now (product.yaml's check): its team's members,
+	// and admins. started is false when one is already under way.
+	CheckProduct(context.Context, *connect.Request[v1.CheckProductRequest]) (*connect.Response[v1.CheckProductResponse], error)
 	// Unregisters a product. Its name and image repository stay its team's.
 	DeleteProduct(context.Context, *connect.Request[v1.DeleteProductRequest]) (*connect.Response[v1.DeleteProductResponse], error)
 	// Which team owns each image repository. Admins only.
@@ -104,6 +110,12 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			baseURL+ProductServiceRegisterProductProcedure,
 			connect.WithSchema(productServiceMethods.ByName("RegisterProduct")),
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		checkProduct: connect.NewClient[v1.CheckProductRequest, v1.CheckProductResponse](
+			httpClient,
+			baseURL+ProductServiceCheckProductProcedure,
+			connect.WithSchema(productServiceMethods.ByName("CheckProduct")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteProduct: connect.NewClient[v1.DeleteProductRequest, v1.DeleteProductResponse](
@@ -148,6 +160,7 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type productServiceClient struct {
 	listProducts           *connect.Client[v1.ListProductsRequest, v1.ListProductsResponse]
 	registerProduct        *connect.Client[v1.RegisterProductRequest, v1.RegisterProductResponse]
+	checkProduct           *connect.Client[v1.CheckProductRequest, v1.CheckProductResponse]
 	deleteProduct          *connect.Client[v1.DeleteProductRequest, v1.DeleteProductResponse]
 	listImageRepositories  *connect.Client[v1.ListImageRepositoriesRequest, v1.ListImageRepositoriesResponse]
 	releaseImageRepository *connect.Client[v1.ReleaseImageRepositoryRequest, v1.ReleaseImageRepositoryResponse]
@@ -163,6 +176,11 @@ func (c *productServiceClient) ListProducts(ctx context.Context, req *connect.Re
 // RegisterProduct calls vertra.console.v1.ProductService.RegisterProduct.
 func (c *productServiceClient) RegisterProduct(ctx context.Context, req *connect.Request[v1.RegisterProductRequest]) (*connect.Response[v1.RegisterProductResponse], error) {
 	return c.registerProduct.CallUnary(ctx, req)
+}
+
+// CheckProduct calls vertra.console.v1.ProductService.CheckProduct.
+func (c *productServiceClient) CheckProduct(ctx context.Context, req *connect.Request[v1.CheckProductRequest]) (*connect.Response[v1.CheckProductResponse], error) {
+	return c.checkProduct.CallUnary(ctx, req)
 }
 
 // DeleteProduct calls vertra.console.v1.ProductService.DeleteProduct.
@@ -199,6 +217,9 @@ type ProductServiceHandler interface {
 	// admins only. Refused (already_exists) when another team owns its name
 	// or its image repository.
 	RegisterProduct(context.Context, *connect.Request[v1.RegisterProductRequest]) (*connect.Response[v1.RegisterProductResponse], error)
+	// Runs a product's check now (product.yaml's check): its team's members,
+	// and admins. started is false when one is already under way.
+	CheckProduct(context.Context, *connect.Request[v1.CheckProductRequest]) (*connect.Response[v1.CheckProductResponse], error)
 	// Unregisters a product. Its name and image repository stay its team's.
 	DeleteProduct(context.Context, *connect.Request[v1.DeleteProductRequest]) (*connect.Response[v1.DeleteProductResponse], error)
 	// Which team owns each image repository. Admins only.
@@ -232,6 +253,12 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		svc.RegisterProduct,
 		connect.WithSchema(productServiceMethods.ByName("RegisterProduct")),
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceCheckProductHandler := connect.NewUnaryHandler(
+		ProductServiceCheckProductProcedure,
+		svc.CheckProduct,
+		connect.WithSchema(productServiceMethods.ByName("CheckProduct")),
 		connect.WithHandlerOptions(opts...),
 	)
 	productServiceDeleteProductHandler := connect.NewUnaryHandler(
@@ -275,6 +302,8 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceListProductsHandler.ServeHTTP(w, r)
 		case ProductServiceRegisterProductProcedure:
 			productServiceRegisterProductHandler.ServeHTTP(w, r)
+		case ProductServiceCheckProductProcedure:
+			productServiceCheckProductHandler.ServeHTTP(w, r)
 		case ProductServiceDeleteProductProcedure:
 			productServiceDeleteProductHandler.ServeHTTP(w, r)
 		case ProductServiceListImageRepositoriesProcedure:
@@ -300,6 +329,10 @@ func (UnimplementedProductServiceHandler) ListProducts(context.Context, *connect
 
 func (UnimplementedProductServiceHandler) RegisterProduct(context.Context, *connect.Request[v1.RegisterProductRequest]) (*connect.Response[v1.RegisterProductResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ProductService.RegisterProduct is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) CheckProduct(context.Context, *connect.Request[v1.CheckProductRequest]) (*connect.Response[v1.CheckProductResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ProductService.CheckProduct is not implemented"))
 }
 
 func (UnimplementedProductServiceHandler) DeleteProduct(context.Context, *connect.Request[v1.DeleteProductRequest]) (*connect.Response[v1.DeleteProductResponse], error) {

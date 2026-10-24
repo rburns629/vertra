@@ -16,7 +16,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/product.proto.
  */
 export const file_vertra_console_v1_product: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9wcm9kdWN0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSL0BAoHUHJvZHVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWltYWdlGAMgASgJEg4KBmFjdGlvbhgEIAEoCRIUCgd0ZWFtX2lkGAUgASgJSACIAQESFgoJdGVhbV9uYW1lGAYgASgJSAGIAQESLQoMaW5wdXRfc2NoZW1hGAcgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1vdXRwdXRfc2NoZW1hGAggASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxkaXNwbGF5X25hbWUYCSABKAlIAogBARIYCgtkZXNjcmlwdGlvbhgKIAEoCUgDiAEBEhwKD3NlcnZpY2VfYWNjb3VudBgLIAEoCUgEiAEBEhMKC3NlY3JldF9yZWZzGAwgAygJEjgKCXJlc291cmNlcxgNIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLlRhc2tSZXNvdXJjZXNIBYgBARIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCghyZWxlYXNlcxgPIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RSZWxlYXNlEhIKCnNoYXJlX3dpdGgYECADKAkSEgoKZGVwcmVjYXRlZBgRIAEoCRIXCg90b2tlbl9hdWRpZW5jZXMYEiADKAlCCgoIX3RlYW1faWRCDAoKX3RlYW1fbmFtZUIPCg1fZGlzcGxheV9uYW1lQg4KDF9kZXNjcmlwdGlvbkISChBfc2VydmljZV9hY2NvdW50QgwKCl9yZXNvdXJjZXMiUgoOUHJvZHVjdFJlbGVhc2USDQoFaW1hZ2UYASABKAkSMQoNcmVnaXN0ZXJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAijQEKD0ltYWdlUmVwb3NpdG9yeRISCgpyZXBvc2l0b3J5GAEgASgJEhYKCXRlYW1fbmFtZRgCIAEoCUgAiAEBEi4KCmNyZWF0ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCHByb2R1Y3RzGAQgASgFQgwKCl90ZWFtX25hbWUitgEKCldpcmluZ1R5cGUSDAoEbmFtZRgBIAEoCRIRCglqc29uX3R5cGUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDgoGc2hhcmVkGAQgASgIEh0KEGRlZmF1bHRfcHJvdmlkZXIYBSABKAlIAIgBARIuCgp1cGRhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEITChFfZGVmYXVsdF9wcm92aWRlciIVChNMaXN0UHJvZHVjdHNSZXF1ZXN0IkQKFExpc3RQcm9kdWN0c1Jlc3BvbnNlEiwKCHByb2R1Y3RzGAEgAygLMhoudmVydHJhLmNvbnNvbGUudjEuUHJvZHVjdCLmAwoWUmVnaXN0ZXJQcm9kdWN0UmVxdWVzdBIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIRCgR0ZWFtGAQgASgJSACIAQESLQoMaW5wdXRfc2NoZW1hGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1vdXRwdXRfc2NoZW1hGAYgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxkaXNwbGF5X25hbWUYByABKAlIAYgBARIYCgtkZXNjcmlwdGlvbhgIIAEoCUgCiAEBEhwKD3NlcnZpY2VfYWNjb3VudBgJIAEoCUgDiAEBEhMKC3NlY3JldF9yZWZzGAogAygJEjgKCXJlc291cmNlcxgLIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLlRhc2tSZXNvdXJjZXNIBIgBARISCgpzaGFyZV93aXRoGAwgAygJEhIKCmRlcHJlY2F0ZWQYDSABKAkSFwoPdG9rZW5fYXVkaWVuY2VzGA4gAygJQgcKBV90ZWFtQg8KDV9kaXNwbGF5X25hbWVCDgoMX2Rlc2NyaXB0aW9uQhIKEF9zZXJ2aWNlX2FjY291bnRCDAoKX3Jlc291cmNlcyJGChdSZWdpc3RlclByb2R1Y3RSZXNwb25zZRIrCgdwcm9kdWN0GAEgASgLMhoudmVydHJhLmNvbnNvbGUudjEuUHJvZHVjdCIkChREZWxldGVQcm9kdWN0UmVxdWVzdBIMCgRuYW1lGAEgASgJIhcKFURlbGV0ZVByb2R1Y3RSZXNwb25zZSIeChxMaXN0SW1hZ2VSZXBvc2l0b3JpZXNSZXF1ZXN0IlkKHUxpc3RJbWFnZVJlcG9zaXRvcmllc1Jlc3BvbnNlEjgKDHJlcG9zaXRvcmllcxgBIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLkltYWdlUmVwb3NpdG9yeSIzCh1SZWxlYXNlSW1hZ2VSZXBvc2l0b3J5UmVxdWVzdBISCgpyZXBvc2l0b3J5GAEgASgJIiAKHlJlbGVhc2VJbWFnZVJlcG9zaXRvcnlSZXNwb25zZSIYChZMaXN0V2lyaW5nVHlwZXNSZXF1ZXN0IkcKF0xpc3RXaXJpbmdUeXBlc1Jlc3BvbnNlEiwKBXR5cGVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuV2lyaW5nVHlwZSK0AQoZUmVwbGFjZVdpcmluZ1R5cGVzUmVxdWVzdBJGCgV0eXBlcxgBIAMoCzI3LnZlcnRyYS5jb25zb2xlLnYxLlJlcGxhY2VXaXJpbmdUeXBlc1JlcXVlc3QuVHlwZXNFbnRyeRpPCgpUeXBlc0VudHJ5EgsKA2tleRgBIAEoCRIwCgV2YWx1ZRgCIAEoCzIhLnZlcnRyYS5jb25zb2xlLnYxLldpcmluZ1R5cGVTcGVjOgI4ASJ8Cg5XaXJpbmdUeXBlU3BlYxIRCglqc29uX3R5cGUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSDgoGc2hhcmVkGAMgASgIEh0KEGRlZmF1bHRfcHJvdmlkZXIYBCABKAlIAIgBAUITChFfZGVmYXVsdF9wcm92aWRlciJKChpSZXBsYWNlV2lyaW5nVHlwZXNSZXNwb25zZRIsCgV0eXBlcxgBIAMoCzIdLnZlcnRyYS5jb25zb2xlLnYxLldpcmluZ1R5cGUyuwYKDlByb2R1Y3RTZXJ2aWNlEmQKDExpc3RQcm9kdWN0cxImLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RQcm9kdWN0c1JlcXVlc3QaJy52ZXJ0cmEuY29uc29sZS52MS5MaXN0UHJvZHVjdHNSZXNwb25zZSIDkAIBEm0KD1JlZ2lzdGVyUHJvZHVjdBIpLnZlcnRyYS5jb25zb2xlLnYxLlJlZ2lzdGVyUHJvZHVjdFJlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5SZWdpc3RlclByb2R1Y3RSZXNwb25zZSIDkAICEmcKDURlbGV0ZVByb2R1Y3QSJy52ZXJ0cmEuY29uc29sZS52MS5EZWxldGVQcm9kdWN0UmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkRlbGV0ZVByb2R1Y3RSZXNwb25zZSIDkAICEn8KFUxpc3RJbWFnZVJlcG9zaXRvcmllcxIvLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RJbWFnZVJlcG9zaXRvcmllc1JlcXVlc3QaMC52ZXJ0cmEuY29uc29sZS52MS5MaXN0SW1hZ2VSZXBvc2l0b3JpZXNSZXNwb25zZSIDkAIBEoIBChZSZWxlYXNlSW1hZ2VSZXBvc2l0b3J5EjAudmVydHJhLmNvbnNvbGUudjEuUmVsZWFzZUltYWdlUmVwb3NpdG9yeVJlcXVlc3QaMS52ZXJ0cmEuY29uc29sZS52MS5SZWxlYXNlSW1hZ2VSZXBvc2l0b3J5UmVzcG9uc2UiA5ACAhJtCg9MaXN0V2lyaW5nVHlwZXMSKS52ZXJ0cmEuY29uc29sZS52MS5MaXN0V2lyaW5nVHlwZXNSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuTGlzdFdpcmluZ1R5cGVzUmVzcG9uc2UiA5ACARJ2ChJSZXBsYWNlV2lyaW5nVHlwZXMSLC52ZXJ0cmEuY29uc29sZS52MS5SZXBsYWNlV2lyaW5nVHlwZXNSZXF1ZXN0Gi0udmVydHJhLmNvbnNvbGUudjEuUmVwbGFjZVdpcmluZ1R5cGVzUmVzcG9uc2UiA5ACAmIGcHJvdG8z", [file_vertra_console_v1_common, file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9wcm9kdWN0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSKlBQoHUHJvZHVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWltYWdlGAMgASgJEg4KBmFjdGlvbhgEIAEoCRIUCgd0ZWFtX2lkGAUgASgJSACIAQESFgoJdGVhbV9uYW1lGAYgASgJSAGIAQESLQoMaW5wdXRfc2NoZW1hGAcgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1vdXRwdXRfc2NoZW1hGAggASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxkaXNwbGF5X25hbWUYCSABKAlIAogBARIYCgtkZXNjcmlwdGlvbhgKIAEoCUgDiAEBEhwKD3NlcnZpY2VfYWNjb3VudBgLIAEoCUgEiAEBEhMKC3NlY3JldF9yZWZzGAwgAygJEjgKCXJlc291cmNlcxgNIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLlRhc2tSZXNvdXJjZXNIBYgBARIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCghyZWxlYXNlcxgPIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RSZWxlYXNlEhIKCnNoYXJlX3dpdGgYECADKAkSEgoKZGVwcmVjYXRlZBgRIAEoCRIXCg90b2tlbl9hdWRpZW5jZXMYEiADKAkSLwoJcmVhZGluZXNzGBMgASgLMhwudmVydHJhLmNvbnNvbGUudjEuUmVhZGluZXNzQgoKCF90ZWFtX2lkQgwKCl90ZWFtX25hbWVCDwoNX2Rpc3BsYXlfbmFtZUIOCgxfZGVzY3JpcHRpb25CEgoQX3NlcnZpY2VfYWNjb3VudEIMCgpfcmVzb3VyY2VzIpQBCglSZWFkaW5lc3MSDQoFc3RhdGUYASABKAkSEQoJcHJpbmNpcGFsGAIgASgJEg8KB21pc3NpbmcYAyADKAkSDgoGZGV0YWlsGAQgASgJEi4KCmNoZWNrZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGV4ZWN1dGlvbl9pZBgGIAEoCSJSCg5Qcm9kdWN0UmVsZWFzZRINCgVpbWFnZRgBIAEoCRIxCg1yZWdpc3RlcmVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKNAQoPSW1hZ2VSZXBvc2l0b3J5EhIKCnJlcG9zaXRvcnkYASABKAkSFgoJdGVhbV9uYW1lGAIgASgJSACIAQESLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIcHJvZHVjdHMYBCABKAVCDAoKX3RlYW1fbmFtZSK2AQoKV2lyaW5nVHlwZRIMCgRuYW1lGAEgASgJEhEKCWpzb25fdHlwZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIOCgZzaGFyZWQYBCABKAgSHQoQZGVmYXVsdF9wcm92aWRlchgFIAEoCUgAiAEBEi4KCnVwZGF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQhMKEV9kZWZhdWx0X3Byb3ZpZGVyIhUKE0xpc3RQcm9kdWN0c1JlcXVlc3QiRAoUTGlzdFByb2R1Y3RzUmVzcG9uc2USLAoIcHJvZHVjdHMYASADKAsyGi52ZXJ0cmEuY29uc29sZS52MS5Qcm9kdWN0IuYDChZSZWdpc3RlclByb2R1Y3RSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFaW1hZ2UYAiABKAkSDgoGYWN0aW9uGAMgASgJEhEKBHRlYW0YBCABKAlIAIgBARItCgxpbnB1dF9zY2hlbWEYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KDW91dHB1dF9zY2hlbWEYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhkKDGRpc3BsYXlfbmFtZRgHIAEoCUgBiAEBEhgKC2Rlc2NyaXB0aW9uGAggASgJSAKIAQESHAoPc2VydmljZV9hY2NvdW50GAkgASgJSAOIAQESEwoLc2VjcmV0X3JlZnMYCiADKAkSOAoJcmVzb3VyY2VzGAsgASgLMiAudmVydHJhLmNvbnNvbGUudjEuVGFza1Jlc291cmNlc0gEiAEBEhIKCnNoYXJlX3dpdGgYDCADKAkSEgoKZGVwcmVjYXRlZBgNIAEoCRIXCg90b2tlbl9hdWRpZW5jZXMYDiADKAlCBwoFX3RlYW1CDwoNX2Rpc3BsYXlfbmFtZUIOCgxfZGVzY3JpcHRpb25CEgoQX3NlcnZpY2VfYWNjb3VudEIMCgpfcmVzb3VyY2VzIkYKF1JlZ2lzdGVyUHJvZHVjdFJlc3BvbnNlEisKB3Byb2R1Y3QYASABKAsyGi52ZXJ0cmEuY29uc29sZS52MS5Qcm9kdWN0IiQKFERlbGV0ZVByb2R1Y3RSZXF1ZXN0EgwKBG5hbWUYASABKAkiFwoVRGVsZXRlUHJvZHVjdFJlc3BvbnNlIh4KHExpc3RJbWFnZVJlcG9zaXRvcmllc1JlcXVlc3QiWQodTGlzdEltYWdlUmVwb3NpdG9yaWVzUmVzcG9uc2USOAoMcmVwb3NpdG9yaWVzGAEgAygLMiIudmVydHJhLmNvbnNvbGUudjEuSW1hZ2VSZXBvc2l0b3J5IjMKHVJlbGVhc2VJbWFnZVJlcG9zaXRvcnlSZXF1ZXN0EhIKCnJlcG9zaXRvcnkYASABKAkiIAoeUmVsZWFzZUltYWdlUmVwb3NpdG9yeVJlc3BvbnNlIhgKFkxpc3RXaXJpbmdUeXBlc1JlcXVlc3QiRwoXTGlzdFdpcmluZ1R5cGVzUmVzcG9uc2USLAoFdHlwZXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5XaXJpbmdUeXBlIrQBChlSZXBsYWNlV2lyaW5nVHlwZXNSZXF1ZXN0EkYKBXR5cGVzGAEgAygLMjcudmVydHJhLmNvbnNvbGUudjEuUmVwbGFjZVdpcmluZ1R5cGVzUmVxdWVzdC5UeXBlc0VudHJ5Gk8KClR5cGVzRW50cnkSCwoDa2V5GAEgASgJEjAKBXZhbHVlGAIgASgLMiEudmVydHJhLmNvbnNvbGUudjEuV2lyaW5nVHlwZVNwZWM6AjgBInwKDldpcmluZ1R5cGVTcGVjEhEKCWpzb25fdHlwZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIOCgZzaGFyZWQYAyABKAgSHQoQZGVmYXVsdF9wcm92aWRlchgEIAEoCUgAiAEBQhMKEV9kZWZhdWx0X3Byb3ZpZGVyIkoKGlJlcGxhY2VXaXJpbmdUeXBlc1Jlc3BvbnNlEiwKBXR5cGVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuV2lyaW5nVHlwZSIjChNDaGVja1Byb2R1Y3RSZXF1ZXN0EgwKBG5hbWUYASABKAkiJwoUQ2hlY2tQcm9kdWN0UmVzcG9uc2USDwoHc3RhcnRlZBgBIAEoCDKcBwoOUHJvZHVjdFNlcnZpY2USZAoMTGlzdFByb2R1Y3RzEiYudmVydHJhLmNvbnNvbGUudjEuTGlzdFByb2R1Y3RzUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RQcm9kdWN0c1Jlc3BvbnNlIgOQAgESbQoPUmVnaXN0ZXJQcm9kdWN0EikudmVydHJhLmNvbnNvbGUudjEuUmVnaXN0ZXJQcm9kdWN0UmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLlJlZ2lzdGVyUHJvZHVjdFJlc3BvbnNlIgOQAgISXwoMQ2hlY2tQcm9kdWN0EiYudmVydHJhLmNvbnNvbGUudjEuQ2hlY2tQcm9kdWN0UmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLkNoZWNrUHJvZHVjdFJlc3BvbnNlEmcKDURlbGV0ZVByb2R1Y3QSJy52ZXJ0cmEuY29uc29sZS52MS5EZWxldGVQcm9kdWN0UmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkRlbGV0ZVByb2R1Y3RSZXNwb25zZSIDkAICEn8KFUxpc3RJbWFnZVJlcG9zaXRvcmllcxIvLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RJbWFnZVJlcG9zaXRvcmllc1JlcXVlc3QaMC52ZXJ0cmEuY29uc29sZS52MS5MaXN0SW1hZ2VSZXBvc2l0b3JpZXNSZXNwb25zZSIDkAIBEoIBChZSZWxlYXNlSW1hZ2VSZXBvc2l0b3J5EjAudmVydHJhLmNvbnNvbGUudjEuUmVsZWFzZUltYWdlUmVwb3NpdG9yeVJlcXVlc3QaMS52ZXJ0cmEuY29uc29sZS52MS5SZWxlYXNlSW1hZ2VSZXBvc2l0b3J5UmVzcG9uc2UiA5ACAhJtCg9MaXN0V2lyaW5nVHlwZXMSKS52ZXJ0cmEuY29uc29sZS52MS5MaXN0V2lyaW5nVHlwZXNSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuTGlzdFdpcmluZ1R5cGVzUmVzcG9uc2UiA5ACARJ2ChJSZXBsYWNlV2lyaW5nVHlwZXMSLC52ZXJ0cmEuY29uc29sZS52MS5SZXBsYWNlV2lyaW5nVHlwZXNSZXF1ZXN0Gi0udmVydHJhLmNvbnNvbGUudjEuUmVwbGFjZVdpcmluZ1R5cGVzUmVzcG9uc2UiA5ACAmIGcHJvdG8z", [file_vertra_console_v1_common, file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.Product
@@ -129,6 +129,14 @@ export type Product = Message<"vertra.console.v1.Product"> & {
    * @generated from field: repeated string token_audiences = 18;
    */
   tokenAudiences: string[];
+
+  /**
+   * Whether it's ready on this install, by its check (product.yaml's
+   * check); unset when it has none.
+   *
+   * @generated from field: vertra.console.v1.Readiness readiness = 19;
+   */
+  readiness?: Readiness | undefined;
 };
 
 /**
@@ -137,6 +145,59 @@ export type Product = Message<"vertra.console.v1.Product"> & {
  */
 export const ProductSchema: GenMessage<Product> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_product, 0);
+
+/**
+ * A product's check's last answer on this install.
+ *
+ * @generated from message vertra.console.v1.Readiness
+ */
+export type Readiness = Message<"vertra.console.v1.Readiness"> & {
+  /**
+   * ready, not_ready, failed (its check couldn't say), checking, or
+   * unchecked (not yet).
+   *
+   * @generated from field: string state = 1;
+   */
+  state: string;
+
+  /**
+   * What it acts as here: an identity, an account.
+   *
+   * @generated from field: string principal = 2;
+   */
+  principal: string;
+
+  /**
+   * What it lacks to work here.
+   *
+   * @generated from field: repeated string missing = 3;
+   */
+  missing: string[];
+
+  /**
+   * @generated from field: string detail = 4;
+   */
+  detail: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp checked_at = 5;
+   */
+  checkedAt?: Timestamp | undefined;
+
+  /**
+   * The check run.
+   *
+   * @generated from field: string execution_id = 6;
+   */
+  executionId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.Readiness.
+ * Use `create(ReadinessSchema)` to create a new message.
+ */
+export const ReadinessSchema: GenMessage<Readiness> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_product, 1);
 
 /**
  * @generated from message vertra.console.v1.ProductRelease
@@ -158,7 +219,7 @@ export type ProductRelease = Message<"vertra.console.v1.ProductRelease"> & {
  * Use `create(ProductReleaseSchema)` to create a new message.
  */
 export const ProductReleaseSchema: GenMessage<ProductRelease> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 1);
+  messageDesc(file_vertra_console_v1_product, 2);
 
 /**
  * @generated from message vertra.console.v1.ImageRepository
@@ -192,7 +253,7 @@ export type ImageRepository = Message<"vertra.console.v1.ImageRepository"> & {
  * Use `create(ImageRepositorySchema)` to create a new message.
  */
 export const ImageRepositorySchema: GenMessage<ImageRepository> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 2);
+  messageDesc(file_vertra_console_v1_product, 3);
 
 /**
  * @generated from message vertra.console.v1.WiringType
@@ -243,7 +304,7 @@ export type WiringType = Message<"vertra.console.v1.WiringType"> & {
  * Use `create(WiringTypeSchema)` to create a new message.
  */
 export const WiringTypeSchema: GenMessage<WiringType> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 3);
+  messageDesc(file_vertra_console_v1_product, 4);
 
 /**
  * @generated from message vertra.console.v1.ListProductsRequest
@@ -256,7 +317,7 @@ export type ListProductsRequest = Message<"vertra.console.v1.ListProductsRequest
  * Use `create(ListProductsRequestSchema)` to create a new message.
  */
 export const ListProductsRequestSchema: GenMessage<ListProductsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 4);
+  messageDesc(file_vertra_console_v1_product, 5);
 
 /**
  * @generated from message vertra.console.v1.ListProductsResponse
@@ -273,7 +334,7 @@ export type ListProductsResponse = Message<"vertra.console.v1.ListProductsRespon
  * Use `create(ListProductsResponseSchema)` to create a new message.
  */
 export const ListProductsResponseSchema: GenMessage<ListProductsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 5);
+  messageDesc(file_vertra_console_v1_product, 6);
 
 /**
  * @generated from message vertra.console.v1.RegisterProductRequest
@@ -365,7 +426,7 @@ export type RegisterProductRequest = Message<"vertra.console.v1.RegisterProductR
  * Use `create(RegisterProductRequestSchema)` to create a new message.
  */
 export const RegisterProductRequestSchema: GenMessage<RegisterProductRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 6);
+  messageDesc(file_vertra_console_v1_product, 7);
 
 /**
  * @generated from message vertra.console.v1.RegisterProductResponse
@@ -382,7 +443,7 @@ export type RegisterProductResponse = Message<"vertra.console.v1.RegisterProduct
  * Use `create(RegisterProductResponseSchema)` to create a new message.
  */
 export const RegisterProductResponseSchema: GenMessage<RegisterProductResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 7);
+  messageDesc(file_vertra_console_v1_product, 8);
 
 /**
  * @generated from message vertra.console.v1.DeleteProductRequest
@@ -399,7 +460,7 @@ export type DeleteProductRequest = Message<"vertra.console.v1.DeleteProductReque
  * Use `create(DeleteProductRequestSchema)` to create a new message.
  */
 export const DeleteProductRequestSchema: GenMessage<DeleteProductRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 8);
+  messageDesc(file_vertra_console_v1_product, 9);
 
 /**
  * @generated from message vertra.console.v1.DeleteProductResponse
@@ -412,7 +473,7 @@ export type DeleteProductResponse = Message<"vertra.console.v1.DeleteProductResp
  * Use `create(DeleteProductResponseSchema)` to create a new message.
  */
 export const DeleteProductResponseSchema: GenMessage<DeleteProductResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 9);
+  messageDesc(file_vertra_console_v1_product, 10);
 
 /**
  * @generated from message vertra.console.v1.ListImageRepositoriesRequest
@@ -425,7 +486,7 @@ export type ListImageRepositoriesRequest = Message<"vertra.console.v1.ListImageR
  * Use `create(ListImageRepositoriesRequestSchema)` to create a new message.
  */
 export const ListImageRepositoriesRequestSchema: GenMessage<ListImageRepositoriesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 10);
+  messageDesc(file_vertra_console_v1_product, 11);
 
 /**
  * @generated from message vertra.console.v1.ListImageRepositoriesResponse
@@ -442,7 +503,7 @@ export type ListImageRepositoriesResponse = Message<"vertra.console.v1.ListImage
  * Use `create(ListImageRepositoriesResponseSchema)` to create a new message.
  */
 export const ListImageRepositoriesResponseSchema: GenMessage<ListImageRepositoriesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 11);
+  messageDesc(file_vertra_console_v1_product, 12);
 
 /**
  * @generated from message vertra.console.v1.ReleaseImageRepositoryRequest
@@ -459,7 +520,7 @@ export type ReleaseImageRepositoryRequest = Message<"vertra.console.v1.ReleaseIm
  * Use `create(ReleaseImageRepositoryRequestSchema)` to create a new message.
  */
 export const ReleaseImageRepositoryRequestSchema: GenMessage<ReleaseImageRepositoryRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 12);
+  messageDesc(file_vertra_console_v1_product, 13);
 
 /**
  * @generated from message vertra.console.v1.ReleaseImageRepositoryResponse
@@ -472,7 +533,7 @@ export type ReleaseImageRepositoryResponse = Message<"vertra.console.v1.ReleaseI
  * Use `create(ReleaseImageRepositoryResponseSchema)` to create a new message.
  */
 export const ReleaseImageRepositoryResponseSchema: GenMessage<ReleaseImageRepositoryResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 13);
+  messageDesc(file_vertra_console_v1_product, 14);
 
 /**
  * @generated from message vertra.console.v1.ListWiringTypesRequest
@@ -485,7 +546,7 @@ export type ListWiringTypesRequest = Message<"vertra.console.v1.ListWiringTypesR
  * Use `create(ListWiringTypesRequestSchema)` to create a new message.
  */
 export const ListWiringTypesRequestSchema: GenMessage<ListWiringTypesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 14);
+  messageDesc(file_vertra_console_v1_product, 15);
 
 /**
  * @generated from message vertra.console.v1.ListWiringTypesResponse
@@ -502,7 +563,7 @@ export type ListWiringTypesResponse = Message<"vertra.console.v1.ListWiringTypes
  * Use `create(ListWiringTypesResponseSchema)` to create a new message.
  */
 export const ListWiringTypesResponseSchema: GenMessage<ListWiringTypesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 15);
+  messageDesc(file_vertra_console_v1_product, 16);
 
 /**
  * @generated from message vertra.console.v1.ReplaceWiringTypesRequest
@@ -521,7 +582,7 @@ export type ReplaceWiringTypesRequest = Message<"vertra.console.v1.ReplaceWiring
  * Use `create(ReplaceWiringTypesRequestSchema)` to create a new message.
  */
 export const ReplaceWiringTypesRequestSchema: GenMessage<ReplaceWiringTypesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 16);
+  messageDesc(file_vertra_console_v1_product, 17);
 
 /**
  * @generated from message vertra.console.v1.WiringTypeSpec
@@ -553,7 +614,7 @@ export type WiringTypeSpec = Message<"vertra.console.v1.WiringTypeSpec"> & {
  * Use `create(WiringTypeSpecSchema)` to create a new message.
  */
 export const WiringTypeSpecSchema: GenMessage<WiringTypeSpec> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 17);
+  messageDesc(file_vertra_console_v1_product, 18);
 
 /**
  * @generated from message vertra.console.v1.ReplaceWiringTypesResponse
@@ -570,7 +631,43 @@ export type ReplaceWiringTypesResponse = Message<"vertra.console.v1.ReplaceWirin
  * Use `create(ReplaceWiringTypesResponseSchema)` to create a new message.
  */
 export const ReplaceWiringTypesResponseSchema: GenMessage<ReplaceWiringTypesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_product, 18);
+  messageDesc(file_vertra_console_v1_product, 19);
+
+/**
+ * @generated from message vertra.console.v1.CheckProductRequest
+ */
+export type CheckProductRequest = Message<"vertra.console.v1.CheckProductRequest"> & {
+  /**
+   * Any of its actions' registered names.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.CheckProductRequest.
+ * Use `create(CheckProductRequestSchema)` to create a new message.
+ */
+export const CheckProductRequestSchema: GenMessage<CheckProductRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_product, 20);
+
+/**
+ * @generated from message vertra.console.v1.CheckProductResponse
+ */
+export type CheckProductResponse = Message<"vertra.console.v1.CheckProductResponse"> & {
+  /**
+   * @generated from field: bool started = 1;
+   */
+  started: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.CheckProductResponse.
+ * Use `create(CheckProductResponseSchema)` to create a new message.
+ */
+export const CheckProductResponseSchema: GenMessage<CheckProductResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_product, 21);
 
 /**
  * Products: reviewed images and their actions, registered from the catalog.
@@ -602,6 +699,17 @@ export const ProductService: GenService<{
     methodKind: "unary";
     input: typeof RegisterProductRequestSchema;
     output: typeof RegisterProductResponseSchema;
+  },
+  /**
+   * Runs a product's check now (product.yaml's check): its team's members,
+   * and admins. started is false when one is already under way.
+   *
+   * @generated from rpc vertra.console.v1.ProductService.CheckProduct
+   */
+  checkProduct: {
+    methodKind: "unary";
+    input: typeof CheckProductRequestSchema;
+    output: typeof CheckProductResponseSchema;
   },
   /**
    * Unregisters a product. Its name and image repository stay its team's.

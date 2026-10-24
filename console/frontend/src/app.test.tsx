@@ -722,9 +722,42 @@ describe("a team's settings", () => {
     fireEvent.change(await screen.findByLabelText(/webhook url/i), { target: { value: "https://hooks.slack.com/services/T/B/x" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /waits for the team's approval/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed"] }]); });
+    await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed", "product_not_ready"] }]); });
     expect(await screen.findByText("hooks.slack.com")).toBeTruthy();
     expect((screen.getByLabelText(/new webhook url/i) as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("a product's readiness", () => {
+  it("says what it lacks here, and lets its team check it again", async () => {
+    const checked: Record<string, unknown>[] = [];
+    await renderAt("/products", { ...MEMBER, teamNames: ["gcp-platform"] }, {
+      "ProductService/ListProducts": {
+        products: [
+          {
+            id: "p1",
+            name: "gcp-platform-project-create",
+            image: "registry.example/gcp-platform/project@sha256:aa",
+            action: "create",
+            teamName: "gcp-platform",
+            releases: [{ image: "registry.example/gcp-platform/project@sha256:aa" }],
+            readiness: { state: "not_ready", principal: "project-sa@acme.iam", missing: ["roles/resourcemanager.projectCreator on folder 12"] },
+          },
+        ],
+      },
+      "ProductService/CheckProduct": (request: Record<string, unknown>) => {
+        checked.push(request);
+        return { started: true };
+      },
+    });
+    // Its team's section, then the product.
+    fireEvent.click(await screen.findByText("gcp-platform"));
+    fireEvent.click(await screen.findByText("Not ready"));
+    expect(await screen.findByText("roles/resourcemanager.projectCreator on folder 12")).toBeTruthy();
+    expect(screen.getByText("project-sa@acme.iam")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+    await waitFor(() => { expect(checked).toEqual([{ name: "gcp-platform-project-create" }]); });
+    expect(await screen.findByText(/checking now/i)).toBeTruthy();
   });
 });
 

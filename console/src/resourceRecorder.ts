@@ -18,6 +18,7 @@ import { db } from "./db/client.js";
 import { resources, submittedExecutions } from "./db/schema.js";
 import { getExecution, getExecutionStates, type KernelExecution } from "./kernel/client.js";
 import { runFinished } from "./notifier.js";
+import { recordCheck } from "./readiness.js";
 
 const FINISHED = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
 /** Runs looked at, and finished ones read in full, per pass. */
@@ -194,6 +195,13 @@ export async function recordFinishedRuns(): Promise<{ runs: number; resources: n
       continue;
     }
     if (!FINISHED.has(state) || runs === READ_PER_PASS) continue;
+    if (run.template === "check") {
+      // A readiness check: its answer is the product's (readiness.ts).
+      await recordCheck(run.executionId, await getExecution(run.executionId));
+      await db.update(submittedExecutions).set({ resourcesRecordedAt: sql`now()` }).where(eq(submittedExecutions.executionId, run.executionId));
+      runs += 1;
+      continue;
+    }
     if (run.template === "preview") {
       // A preview changes nothing and says so itself: no resources, no news.
       await db.update(submittedExecutions).set({ resourcesRecordedAt: sql`now()` }).where(eq(submittedExecutions.executionId, run.executionId));

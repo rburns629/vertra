@@ -15,6 +15,7 @@ import Typography from "@mui/material/Typography";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { Pill } from "../components/Pill";
+import { ReadinessPill } from "../components/ReadinessPill";
 import { ApiError, listRunnables, type Runnable } from "../api";
 import { runLink } from "./RunFormPage";
 
@@ -42,10 +43,11 @@ function repositoryOf(runnables: Runnable[]): string | null {
   return null;
 }
 
-/** Ready, Deprecated (why, on hover), or not shared with you. */
+/** Not shared with you, Deprecated (why, on hover), its readiness here when it has a check, or Ready. */
 function State({ r }: { r: Runnable }) {
   if (!r.shared) return <Pill tone="neutral">Not shared with you</Pill>;
   if (r.deprecated) return <Pill tone="warning" title={r.deprecated}>Deprecated</Pill>;
+  if (r.readiness) return <ReadinessPill readiness={r.readiness} />;
   return <Pill tone="success">Ready</Pill>;
 }
 

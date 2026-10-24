@@ -6,6 +6,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { JsonObject, Message } from "@bufbuild/protobuf";
+import type { Readiness } from "./product_pb";
 import type { ExecutionState } from "./execution_pb";
 
 /**
@@ -158,6 +159,15 @@ export declare type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: bool previewable = 16;
    */
   previewable: boolean;
+
+  /**
+   * Whether it's ready on this install: the action's product's check, or
+   * for a template its steps' together (not ready when any isn't). Unset
+   * when nothing in it has a check.
+   *
+   * @generated from field: vertra.console.v1.Readiness readiness = 17;
+   */
+  readiness?: Readiness | undefined;
 };
 
 /**

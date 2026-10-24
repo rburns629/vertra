@@ -393,7 +393,10 @@ type ProductAction struct {
 	Cleanup *Cleanup `protobuf:"bytes,22,opt,name=cleanup,proto3" json:"cleanup,omitempty"`
 	// The action of the same product that says what a step of this one would
 	// do, without doing it (product.yaml's plan); empty when none does.
-	Plan          string `protobuf:"bytes,23,opt,name=plan,proto3" json:"plan,omitempty"`
+	Plan string `protobuf:"bytes,23,opt,name=plan,proto3" json:"plan,omitempty"`
+	// The action of the same product that says whether it's ready on an
+	// install (product.yaml's check, the product's): empty when none does.
+	Check         string `protobuf:"bytes,24,opt,name=check,proto3" json:"check,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -585,6 +588,13 @@ func (x *ProductAction) GetCleanup() *Cleanup {
 func (x *ProductAction) GetPlan() string {
 	if x != nil {
 		return x.Plan
+	}
+	return ""
+}
+
+func (x *ProductAction) GetCheck() string {
+	if x != nil {
+		return x.Check
 	}
 	return ""
 }
@@ -1449,7 +1459,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\bapproval\x18\x03 \x01(\bR\bapproval\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xaf\a\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xc5\a\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1480,7 +1490,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x06errors\x18\x14 \x03(\v2,.vertra.catalog.v1.ProductAction.ErrorsEntryR\x06errors\x12\x1a\n" +
 	"\bapproval\x18\x15 \x01(\tR\bapproval\x124\n" +
 	"\acleanup\x18\x16 \x01(\v2\x1a.vertra.catalog.v1.CleanupR\acleanup\x12\x12\n" +
-	"\x04plan\x18\x17 \x01(\tR\x04plan\x1aW\n" +
+	"\x04plan\x18\x17 \x01(\tR\x04plan\x12\x14\n" +
+	"\x05check\x18\x18 \x01(\tR\x05check\x1aW\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
 	"\x05value\x18\x02 \x01(\v2\x1c.vertra.catalog.v1.ErrorHelpR\x05value:\x028\x01\"R\n" +

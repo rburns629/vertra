@@ -117,6 +117,9 @@ message ProductAction {
   // The action of the same product that says what a step of this one would
   // do, without doing it (product.yaml's plan); empty when none does.
   string plan = 23;
+  // The action of the same product that says whether it's ready on an
+  // install (product.yaml's check, the product's): empty when none does.
+  string check = 24;
 }
 
 // An action's cleanup: which action of the same product removes one

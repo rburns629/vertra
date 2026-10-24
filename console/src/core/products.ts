@@ -11,7 +11,8 @@
  */
 import { Type } from "@sinclair/typebox";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
-import { canMaintainTeam } from "../auth/access.js";
+import type { FastifyBaseLogger } from "fastify";
+import { canMaintainTeam, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
 import { config } from "../config.js";
@@ -20,6 +21,7 @@ import { tokenAudienceProblems } from "../tokenAudiences.js";
 import {
   deleteProductByName,
   findProductByName,
+  findRunnableProduct,
   findTeamById,
   findTeamByIdIncludingDeleted,
   findTeamByName,
@@ -34,6 +36,7 @@ import {
 import { allowedPrefixes, readImagePolicy } from "../imagePolicy.js";
 import { ensureServiceAccount, NamespaceNotFoundError } from "../k8s.js";
 import { syncIdentityPolicy } from "../productPolicy.js";
+import { checkNow } from "../readiness.js";
 import { pinImages } from "../registry.js";
 import { ensureNotRetired } from "./retired.js";
 import { digestOf, requestScan } from "../scanning.js";
@@ -102,6 +105,8 @@ export const RegisterProductBody = Type.Object({
   ),
   // The action of the same product that previews this one; null: none.
   plan: Type.Optional(Type.Union([Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), Type.Null()])),
+  // The action of the same product that says whether it's ready here; null: none.
+  check: Type.Optional(Type.Union([Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), Type.Null()])),
   // When a step waits for a maintainer of its team to approve it; "": never.
   approval: Type.Optional(Type.Union([Type.Literal("always"), Type.Literal("otherTeams"), Type.Literal("")])),
   // What its error codes mean, and what to do about each.
@@ -142,6 +147,8 @@ export type RegisterProductInput = {
   cleanup?: ProductCleanup | null;
   /** The action of the same product that previews this one; null: none. */
   plan?: string | null;
+  /** The action of the same product that says whether it's ready here; null: none. */
+  check?: string | null;
   /** When a step waits for a maintainer of its team to approve it; "": never. */
   approval?: Approval | "";
   /** What its error codes mean, and what to do about each. */
@@ -286,6 +293,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       concurrencyKey: input.concurrencyKey,
       cleanup: input.cleanup,
       plan: input.plan,
+      check: input.check,
       approval: input.approval === undefined ? undefined : input.approval || null,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
@@ -368,4 +376,13 @@ export async function setWiringTypes(
     defaultProvider: type.defaultProvider ?? null,
   }));
   return replaceWiringTypes(types);
+}
+
+/** Runs a product's readiness check now (Check now): its team's members, and admins. */
+export async function checkProductNow(caller: AuthUser | undefined, name: string, log: FastifyBaseLogger): Promise<{ started: boolean }> {
+  const product = await findRunnableProduct(name);
+  if (!product) throw new ApiError(404, "NOT_FOUND", `No product "${name}".`);
+  ensureTeamMember(caller, product.teamName);
+  if (!product.check) throw new ApiError(409, "NO_CHECK", `${name} has no check: its product.yaml names none.`);
+  return { started: await checkNow(product, log) };
 }

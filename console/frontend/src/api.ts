@@ -652,6 +652,36 @@ export interface Product {
   /** Every image this product has been registered with, newest first.
    * `image` above is the current one, which the UI marks "latest". */
   releases: ProductRelease[];
+  /** Whether it's ready on this install, by its check; null when it has none. */
+  readiness: Readiness | null;
+}
+
+/** A product's check's last answer on this install (proto/vertra/console/v1/product.proto). */
+export interface Readiness {
+  state: "ready" | "not_ready" | "failed" | "checking" | "unchecked";
+  principal: string | null;
+  missing: string[];
+  detail: string | null;
+  checkedAt: string | null;
+  executionId: string | null;
+}
+
+function readinessOf(r: { state: string; principal: string; missing: string[]; detail: string; checkedAt?: Parameters<typeof iso>[0]; executionId: string } | undefined): Readiness | null {
+  return r
+    ? {
+        state: r.state as Readiness["state"],
+        principal: r.principal || null,
+        missing: r.missing,
+        detail: r.detail || null,
+        checkedAt: iso(r.checkedAt),
+        executionId: r.executionId || null,
+      }
+    : null;
+}
+
+/** Runs a product's check now; false when one is already under way. */
+export async function checkProduct(name: string): Promise<boolean> {
+  return (await call(() => productsApi.checkProduct({ name }))).started;
 }
 
 export interface ProductRelease {
@@ -682,6 +712,7 @@ export async function listProducts(): Promise<Product[]> {
     deprecated: p.deprecated || null,
     createdAt: iso(p.createdAt) ?? "",
     releases: p.releases.map((r) => ({ image: r.image, registeredAt: iso(r.registeredAt) ?? "" })),
+    readiness: readinessOf(p.readiness),
   }));
 }
 
@@ -1368,6 +1399,8 @@ export interface Runnable {
   targets: { parameter: string; type: string; allowed: string[] }[];
   /** Preview says what it would do: it (or a step of it) has a plan. */
   previewable: boolean;
+  /** Whether it's ready here; null when nothing in it has a check. */
+  readiness: Readiness | null;
 }
 
 export async function listRunnables(): Promise<Runnable[]> {
@@ -1389,6 +1422,7 @@ export async function listRunnables(): Promise<Runnable[]> {
     askForAccessUrl: r.askForAccessUrl || null,
     targets: r.targets.map((t) => ({ parameter: t.parameter, type: t.type, allowed: t.allowed })),
     previewable: r.previewable,
+    readiness: readinessOf(r.readiness),
   }));
 }
 
@@ -1777,7 +1811,7 @@ export async function deleteRunResources(executionId: string): Promise<string> {
 /** Something you'd want to know (proto/vertra/console/v1/notification.proto). */
 export interface Notification {
   id: string;
-  kind: "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing";
+  kind: "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing" | "product_not_ready";
   title: string;
   body: string;
   /** The console page it's about; null when it's about nothing in particular. */

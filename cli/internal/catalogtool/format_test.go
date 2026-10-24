@@ -499,3 +499,31 @@ func TestPlanIsChecked(t *testing.T) {
 		}
 	}
 }
+
+// A product's check names one of its actions, run with no inputs, that only
+// reports; a release carries it on each action.
+func TestCheckIsChecked(t *testing.T) {
+	check := func(top, checkAction string) (string, *Product) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = strings.Replace(productFile("mine", "a", "[]"), "actions:\n", top+"actions:\n", 1) +
+			"  - name: ready\n    input: {type: object" + checkAction + "}\n    output: {type: object}\n"
+		files["teams/a/products/mine/tests/ready/says/request.json"] = `{"inputs": {}}`
+		files["teams/a/products/mine/tests/ready/says/expected.json"] = `{"status": "succeeded"}`
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p
+	}
+	out, p := check("check: ready\n", "")
+	if out != "" {
+		t.Fatalf("a good check was refused:\n%s", out)
+	}
+	if actions, err := p.ReleaseActions("r@sha256:abc"); err != nil || actions[0].GetCheck() != "ready" || actions[1].GetCheck() != "ready" {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	if out, _ := check("check: health\n", ""); !strings.Contains(out, "check names 'health', which this product doesn't have") {
+		t.Errorf("a missing check was accepted:\n%s", out)
+	}
+	if out, _ := check("check: ready\n", ", required: [x], properties: {x: {type: string}}"); !strings.Contains(out, "requires inputs") {
+		t.Errorf("a check needing inputs was accepted:\n%s", out)
+	}
+}

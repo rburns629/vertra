@@ -19,6 +19,7 @@ const TONE: Record<Notification["kind"], string> = {
   run_succeeded: "success.main",
   approval_waiting: "warning.main",
   catalog_failing: "error.main",
+  product_not_ready: "warning.main",
 };
 
 /**

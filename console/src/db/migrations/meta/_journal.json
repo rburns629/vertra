@@ -162,6 +162,13 @@
       "when": 1792869514857,
       "tag": "0022_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792870398995,
+      "tag": "0023_readiness",
+      "breakpoints": true
     }
   ]
 }

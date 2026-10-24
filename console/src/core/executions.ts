@@ -851,7 +851,7 @@ export async function submitChecked(
     {
       executionId: result.executionId,
       teams,
-      submittedBy: caller?.id ?? "",
+      submittedBy: caller?.id ?? null,
       name: typeof submission["name"] === "string" ? submission["name"] : "",
       payload: recordable(submission),
       template: run?.template,

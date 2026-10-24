@@ -10,6 +10,7 @@ import { startCatalogSync } from "./catalogSync.js";
 import { startAuditExport } from "./auditExport.js";
 import { startResourceRecorder } from "./resourceRecorder.js";
 import { startNotifier } from "./notifier.js";
+import { startReadiness } from "./readiness.js";
 import { reconcileScans } from "./scanning.js";
 import { startPolicySync } from "./policySync.js";
 import { startRetention } from "./retention.js";
@@ -145,6 +146,8 @@ async function main(): Promise<void> {
   startResourceRecorder(app.log);
   // Steps waiting for approval and the catalog, then chat webhooks (notifier.ts): every 30 seconds.
   startNotifier(app.log);
+  // Products' readiness checks that are due (readiness.ts): now, then every five minutes.
+  startReadiness(app.log);
   // Image scans (scanning.ts): the cluster's list of failed digests now,
   // then finished scans read, and due rescans started, every 15 seconds.
   // A failure is logged and tried again on the next round.

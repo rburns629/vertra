@@ -360,6 +360,12 @@ export function RunFormPage() {
               Deprecated: {runnable.deprecated}
             </Alert>
           )}
+          {(runnable.readiness?.state === "not_ready" || runnable.readiness?.state === "failed") && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {runnable.readiness.state === "not_ready" ? `${runnable.team} says it isn't ready on this install` : "Its readiness check couldn't say whether it's ready here"}
+              {runnable.readiness.missing.length > 0 && `: missing ${runnable.readiness.missing.join("; ")}`}. A run may fail until {runnable.team} fixes it.
+            </Alert>
+          )}
         </>
       )}
       {problem && (

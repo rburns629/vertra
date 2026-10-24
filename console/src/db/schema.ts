@@ -235,6 +235,10 @@ export const products = pgTable(
     // The action of the same product that says what a step of this one
     // would do (product.yaml's plan): Preview runs it. Null: none.
     plan: text("plan"),
+    // The action of the same product that says whether it's ready on this
+    // install (product.yaml's check, the product's): readiness.ts runs it.
+    // Null: none.
+    check: text("check"),
     // When a step of it waits for a maintainer of its team to approve it
     // (product.yaml's approval): always, or only when another team runs it.
     // Null: never, unless an allowedTargets rule asks (core/approvals.ts).
@@ -550,7 +554,7 @@ export const notificationEvents = pgTable(
   (table) => [index("notification_events_created_at_idx").on(table.createdAt)],
 );
 
-export type NotificationKind = "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing";
+export type NotificationKind = "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing" | "product_not_ready";
 
 /** A person's copy of an event, until they've read it. */
 export const userNotifications = pgTable(
@@ -601,6 +605,31 @@ export const webhookDeliveries = pgTable(
   },
   (table) => [primaryKey({ columns: [table.eventId, table.teamId] })],
 );
+
+/**
+ * Whether a product is ready on this install (readiness.ts): its check
+ * action's last answer, run as the product with its secrets. One row per
+ * check action (<team>-<product>-<check>), for its whole product.
+ */
+export const productReadiness = pgTable("product_readiness", {
+  // The check action's registered name.
+  product: text("product").primaryKey(),
+  productTeam: text("product_team").notNull(),
+  // The image checked, so a new one is checked again.
+  image: text("image").notNull(),
+  // checking (a run is under way), ready, not_ready, or failed (the check
+  // couldn't say: its run failed).
+  state: text("state").$type<ReadinessState>().notNull(),
+  executionId: uuid("execution_id"),
+  // What it acts as there (an identity, an account), and what it lacks.
+  principal: text("principal"),
+  missing: text("missing").array().notNull().default(sql`'{}'::text[]`),
+  detail: text("detail"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+});
+
+export type ReadinessState = "checking" | "ready" | "not_ready" | "failed";
 
 export const teamMemberships = pgTable(
   "team_memberships",

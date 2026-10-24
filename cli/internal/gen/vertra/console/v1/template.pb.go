@@ -192,7 +192,11 @@ type Runnable struct {
 	Targets []*TargetChoice `protobuf:"bytes,15,rep,name=targets,proto3" json:"targets,omitempty"`
 	// Whether Preview says what it would do: the action, or one of the
 	// template's steps, has a plan.
-	Previewable   bool `protobuf:"varint,16,opt,name=previewable,proto3" json:"previewable,omitempty"`
+	Previewable bool `protobuf:"varint,16,opt,name=previewable,proto3" json:"previewable,omitempty"`
+	// Whether it's ready on this install: the action's product's check, or
+	// for a template its steps' together (not ready when any isn't). Unset
+	// when nothing in it has a check.
+	Readiness     *Readiness `protobuf:"bytes,17,opt,name=readiness,proto3" json:"readiness,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -337,6 +341,13 @@ func (x *Runnable) GetPreviewable() bool {
 		return x.Previewable
 	}
 	return false
+}
+
+func (x *Runnable) GetReadiness() *Readiness {
+	if x != nil {
+		return x.Readiness
+	}
+	return nil
 }
 
 // A step a preview left out, and why: it has no plan, or its inputs come
@@ -939,10 +950,10 @@ var File_vertra_console_v1_template_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_template_proto_rawDesc = "" +
 	"\n" +
-	" vertra/console/v1/template.proto\x12\x11vertra.console.v1\x1a!vertra/console/v1/execution.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x16\n" +
+	" vertra/console/v1/template.proto\x12\x11vertra.console.v1\x1a!vertra/console/v1/execution.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fvertra/console/v1/product.proto\"\x16\n" +
 	"\x14ListTemplatesRequest\"R\n" +
 	"\x15ListTemplatesResponse\x129\n" +
-	"\trunnables\x18\x01 \x03(\v2\x1b.vertra.console.v1.RunnableR\trunnables\"\x97\x05\n" +
+	"\trunnables\x18\x01 \x03(\v2\x1b.vertra.console.v1.RunnableR\trunnables\"\xd3\x05\n" +
 	"\bRunnable\x124\n" +
 	"\x04kind\x18\x01 \x01(\x0e2 .vertra.console.v1.Runnable.KindR\x04kind\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x12\n" +
@@ -967,7 +978,8 @@ const file_vertra_console_v1_template_proto_rawDesc = "" +
 	"source_url\x18\r \x01(\tR\tsourceUrl\x12+\n" +
 	"\x12ask_for_access_url\x18\x0e \x01(\tR\x0faskForAccessUrl\x129\n" +
 	"\atargets\x18\x0f \x03(\v2\x1f.vertra.console.v1.TargetChoiceR\atargets\x12 \n" +
-	"\vpreviewable\x18\x10 \x01(\bR\vpreviewable\"@\n" +
+	"\vpreviewable\x18\x10 \x01(\bR\vpreviewable\x12:\n" +
+	"\treadiness\x18\x11 \x01(\v2\x1c.vertra.console.v1.ReadinessR\treadiness\"@\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rKIND_TEMPLATE\x10\x01\x12\x0f\n" +
@@ -1064,35 +1076,37 @@ var file_vertra_console_v1_template_proto_goTypes = []any{
 	(*RunActionRequest)(nil),        // 12: vertra.console.v1.RunActionRequest
 	(*RunActionResponse)(nil),       // 13: vertra.console.v1.RunActionResponse
 	(*structpb.Struct)(nil),         // 14: google.protobuf.Struct
-	(ExecutionState)(0),             // 15: vertra.console.v1.ExecutionState
+	(*Readiness)(nil),               // 15: vertra.console.v1.Readiness
+	(ExecutionState)(0),             // 16: vertra.console.v1.ExecutionState
 }
 var file_vertra_console_v1_template_proto_depIdxs = []int32{
 	3,  // 0: vertra.console.v1.ListTemplatesResponse.runnables:type_name -> vertra.console.v1.Runnable
 	0,  // 1: vertra.console.v1.Runnable.kind:type_name -> vertra.console.v1.Runnable.Kind
 	14, // 2: vertra.console.v1.Runnable.parameters:type_name -> google.protobuf.Struct
 	9,  // 3: vertra.console.v1.Runnable.targets:type_name -> vertra.console.v1.TargetChoice
-	14, // 4: vertra.console.v1.PreviewTemplateRequest.parameters:type_name -> google.protobuf.Struct
-	4,  // 5: vertra.console.v1.PreviewTemplateResponse.not_previewed:type_name -> vertra.console.v1.NotPreviewed
-	14, // 6: vertra.console.v1.PreviewActionRequest.inputs:type_name -> google.protobuf.Struct
-	14, // 7: vertra.console.v1.RunTemplateRequest.parameters:type_name -> google.protobuf.Struct
-	15, // 8: vertra.console.v1.RunTemplateResponse.state:type_name -> vertra.console.v1.ExecutionState
-	14, // 9: vertra.console.v1.RunActionRequest.inputs:type_name -> google.protobuf.Struct
-	15, // 10: vertra.console.v1.RunActionResponse.state:type_name -> vertra.console.v1.ExecutionState
-	1,  // 11: vertra.console.v1.TemplateService.ListTemplates:input_type -> vertra.console.v1.ListTemplatesRequest
-	10, // 12: vertra.console.v1.TemplateService.RunTemplate:input_type -> vertra.console.v1.RunTemplateRequest
-	12, // 13: vertra.console.v1.TemplateService.RunAction:input_type -> vertra.console.v1.RunActionRequest
-	5,  // 14: vertra.console.v1.TemplateService.PreviewTemplate:input_type -> vertra.console.v1.PreviewTemplateRequest
-	7,  // 15: vertra.console.v1.TemplateService.PreviewAction:input_type -> vertra.console.v1.PreviewActionRequest
-	2,  // 16: vertra.console.v1.TemplateService.ListTemplates:output_type -> vertra.console.v1.ListTemplatesResponse
-	11, // 17: vertra.console.v1.TemplateService.RunTemplate:output_type -> vertra.console.v1.RunTemplateResponse
-	13, // 18: vertra.console.v1.TemplateService.RunAction:output_type -> vertra.console.v1.RunActionResponse
-	6,  // 19: vertra.console.v1.TemplateService.PreviewTemplate:output_type -> vertra.console.v1.PreviewTemplateResponse
-	8,  // 20: vertra.console.v1.TemplateService.PreviewAction:output_type -> vertra.console.v1.PreviewActionResponse
-	16, // [16:21] is the sub-list for method output_type
-	11, // [11:16] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	15, // 4: vertra.console.v1.Runnable.readiness:type_name -> vertra.console.v1.Readiness
+	14, // 5: vertra.console.v1.PreviewTemplateRequest.parameters:type_name -> google.protobuf.Struct
+	4,  // 6: vertra.console.v1.PreviewTemplateResponse.not_previewed:type_name -> vertra.console.v1.NotPreviewed
+	14, // 7: vertra.console.v1.PreviewActionRequest.inputs:type_name -> google.protobuf.Struct
+	14, // 8: vertra.console.v1.RunTemplateRequest.parameters:type_name -> google.protobuf.Struct
+	16, // 9: vertra.console.v1.RunTemplateResponse.state:type_name -> vertra.console.v1.ExecutionState
+	14, // 10: vertra.console.v1.RunActionRequest.inputs:type_name -> google.protobuf.Struct
+	16, // 11: vertra.console.v1.RunActionResponse.state:type_name -> vertra.console.v1.ExecutionState
+	1,  // 12: vertra.console.v1.TemplateService.ListTemplates:input_type -> vertra.console.v1.ListTemplatesRequest
+	10, // 13: vertra.console.v1.TemplateService.RunTemplate:input_type -> vertra.console.v1.RunTemplateRequest
+	12, // 14: vertra.console.v1.TemplateService.RunAction:input_type -> vertra.console.v1.RunActionRequest
+	5,  // 15: vertra.console.v1.TemplateService.PreviewTemplate:input_type -> vertra.console.v1.PreviewTemplateRequest
+	7,  // 16: vertra.console.v1.TemplateService.PreviewAction:input_type -> vertra.console.v1.PreviewActionRequest
+	2,  // 17: vertra.console.v1.TemplateService.ListTemplates:output_type -> vertra.console.v1.ListTemplatesResponse
+	11, // 18: vertra.console.v1.TemplateService.RunTemplate:output_type -> vertra.console.v1.RunTemplateResponse
+	13, // 19: vertra.console.v1.TemplateService.RunAction:output_type -> vertra.console.v1.RunActionResponse
+	6,  // 20: vertra.console.v1.TemplateService.PreviewTemplate:output_type -> vertra.console.v1.PreviewTemplateResponse
+	8,  // 21: vertra.console.v1.TemplateService.PreviewAction:output_type -> vertra.console.v1.PreviewActionResponse
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_template_proto_init() }
@@ -1101,6 +1115,7 @@ func file_vertra_console_v1_template_proto_init() {
 		return
 	}
 	file_vertra_console_v1_execution_proto_init()
+	file_vertra_console_v1_product_proto_init()
 	file_vertra_console_v1_template_proto_msgTypes[4].OneofWrappers = []any{}
 	file_vertra_console_v1_template_proto_msgTypes[6].OneofWrappers = []any{}
 	file_vertra_console_v1_template_proto_msgTypes[9].OneofWrappers = []any{}

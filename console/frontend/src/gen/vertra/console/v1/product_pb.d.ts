@@ -125,6 +125,14 @@ export declare type Product = Message<"vertra.console.v1.Product"> & {
    * @generated from field: repeated string token_audiences = 18;
    */
   tokenAudiences: string[];
+
+  /**
+   * Whether it's ready on this install, by its check (product.yaml's
+   * check); unset when it has none.
+   *
+   * @generated from field: vertra.console.v1.Readiness readiness = 19;
+   */
+  readiness?: Readiness | undefined;
 };
 
 /**
@@ -132,6 +140,58 @@ export declare type Product = Message<"vertra.console.v1.Product"> & {
  * Use `create(ProductSchema)` to create a new message.
  */
 export declare const ProductSchema: GenMessage<Product>;
+
+/**
+ * A product's check's last answer on this install.
+ *
+ * @generated from message vertra.console.v1.Readiness
+ */
+export declare type Readiness = Message<"vertra.console.v1.Readiness"> & {
+  /**
+   * ready, not_ready, failed (its check couldn't say), checking, or
+   * unchecked (not yet).
+   *
+   * @generated from field: string state = 1;
+   */
+  state: string;
+
+  /**
+   * What it acts as here: an identity, an account.
+   *
+   * @generated from field: string principal = 2;
+   */
+  principal: string;
+
+  /**
+   * What it lacks to work here.
+   *
+   * @generated from field: repeated string missing = 3;
+   */
+  missing: string[];
+
+  /**
+   * @generated from field: string detail = 4;
+   */
+  detail: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp checked_at = 5;
+   */
+  checkedAt?: Timestamp | undefined;
+
+  /**
+   * The check run.
+   *
+   * @generated from field: string execution_id = 6;
+   */
+  executionId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.Readiness.
+ * Use `create(ReadinessSchema)` to create a new message.
+ */
+export declare const ReadinessSchema: GenMessage<Readiness>;
 
 /**
  * @generated from message vertra.console.v1.ProductRelease
@@ -550,6 +610,40 @@ export declare type ReplaceWiringTypesResponse = Message<"vertra.console.v1.Repl
 export declare const ReplaceWiringTypesResponseSchema: GenMessage<ReplaceWiringTypesResponse>;
 
 /**
+ * @generated from message vertra.console.v1.CheckProductRequest
+ */
+export declare type CheckProductRequest = Message<"vertra.console.v1.CheckProductRequest"> & {
+  /**
+   * Any of its actions' registered names.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.CheckProductRequest.
+ * Use `create(CheckProductRequestSchema)` to create a new message.
+ */
+export declare const CheckProductRequestSchema: GenMessage<CheckProductRequest>;
+
+/**
+ * @generated from message vertra.console.v1.CheckProductResponse
+ */
+export declare type CheckProductResponse = Message<"vertra.console.v1.CheckProductResponse"> & {
+  /**
+   * @generated from field: bool started = 1;
+   */
+  started: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.CheckProductResponse.
+ * Use `create(CheckProductResponseSchema)` to create a new message.
+ */
+export declare const CheckProductResponseSchema: GenMessage<CheckProductResponse>;
+
+/**
  * Products: reviewed images and their actions, registered from the catalog.
  * A product name and an image repository belong to the first team that
  * registers them, the repository even after its products are deleted.
@@ -579,6 +673,17 @@ export declare const ProductService: GenService<{
     methodKind: "unary";
     input: typeof RegisterProductRequestSchema;
     output: typeof RegisterProductResponseSchema;
+  },
+  /**
+   * Runs a product's check now (product.yaml's check): its team's members,
+   * and admins. started is false when one is already under way.
+   *
+   * @generated from rpc vertra.console.v1.ProductService.CheckProduct
+   */
+  checkProduct: {
+    methodKind: "unary";
+    input: typeof CheckProductRequestSchema;
+    output: typeof CheckProductResponseSchema;
   },
   /**
    * Unregisters a product. Its name and image repository stay its team's.

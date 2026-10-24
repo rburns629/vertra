@@ -105,6 +105,7 @@ version: 1                  # optional: raise it for a breaking change (see belo
 runtime: python3.12         # what the Dockerfile installs (for readers)
 serviceAccount: project     # optional: the identity it runs as (otherwise default)
 tokenAudiences: [sts.amazonaws.com]  # optional: tokens for another cloud (below)
+check: check                # optional: the action that says whether it's ready on an install (below)
 actions:
   - name: create
     script: actions/create.py
@@ -210,6 +211,15 @@ each step that has a plan and whose inputs are known before anything runs.
 Whoever approves a step (`approval`) can preview it too, with the inputs it
 will really get. A plan action must change nothing, and can't itself need
 an approval, clean up, or have a plan. The local `ticket` sample has one.
+
+`check` names the action that says whether the product is ready on an
+install: run with no inputs, as the product's identity with its secrets, it
+outputs `ready` (true or false), the `principal` it acts as there, and what
+it's `missing` (["roles/browser on folder 12"]). Each install runs it when
+the product is registered or its image changes, and daily; the console
+shows the answer with the product and in the catalog, and tells your team's
+maintainers (and its chat webhook) when it isn't ready. Ask your cloud who
+you are and whether you may do what your actions do; change nothing.
 
 `approval` makes a step wait for a person before it runs: `always`, or
 `otherTeams` (only when another team runs the action). A maintainer of your

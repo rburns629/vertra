@@ -364,6 +364,7 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 			problems = append(problems, cleanupProblems(action, names)...)
 			problems = append(problems, planProblems(action, p.Actions())...)
 		}
+		problems = append(problems, checkProblems(p.Spec, p.Actions())...)
 		problems = append(problems, c.testLayoutProblems(p, names)...)
 	}
 	dockerfile := filepath.Join(p.Dir, "Dockerfile")
@@ -488,4 +489,30 @@ func planProblems(action map[string]any, actions []map[string]any) []string {
 		return problems
 	}
 	return []string{fmt.Sprintf("action %s: plan names %s, which this product doesn't have", name, quote(plan))}
+}
+
+// checkProblems is what's wrong with a product's check: it names one of its
+// actions, which takes no inputs it requires and only reports.
+func checkProblems(spec map[string]any, actions []map[string]any) []string {
+	check, ok := spec["check"].(string)
+	if !ok {
+		return nil
+	}
+	for _, action := range actions {
+		if action["name"] != check {
+			continue
+		}
+		var problems []string
+		input, _ := action["input"].(map[string]any)
+		if required, _ := input["required"].([]any); len(required) > 0 {
+			problems = append(problems, fmt.Sprintf("check names %s, which requires inputs: a check is run with none", quote(check)))
+		}
+		for _, field := range []string{"approval", "cleanup", "plan"} {
+			if _, has := action[field]; has {
+				problems = append(problems, fmt.Sprintf("check names %s, which has %s: a check only reports", quote(check), field))
+			}
+		}
+		return problems
+	}
+	return []string{fmt.Sprintf("check names %s, which this product doesn't have", quote(check))}
 }

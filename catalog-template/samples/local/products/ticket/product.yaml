@@ -14,6 +14,9 @@ description: >-
   can later delete by running close. A sample of resources and cleanup.
 owner: local
 runtime: python3.12
+# Each install runs check (no inputs) when this is registered and daily, and
+# shows whether it's ready there.
+check: check
 errors:
   MISSING_INPUT:
     means: It wasn't given what it needs.
@@ -125,3 +128,24 @@ actions:
               id: {type: string}
               name: {type: string}
               detail: {type: string}
+  - name: check
+    idempotent: true   # it only reports
+    maxAttempts: 2
+    shareWith: ["*"]
+    script: actions/check.py
+    input:
+      type: object
+      additionalProperties: false
+    output:
+      type: object
+      additionalProperties: false
+      required: [ready]
+      properties:
+        ready: {type: boolean, title: Ready}
+        principal: {type: string, title: Principal, description: What it acts as here.}
+        missing:
+          type: array
+          title: Missing
+          description: What it lacks to work here.
+          items: {type: string}
+        detail: {type: string, title: Detail}

@@ -356,6 +356,7 @@ What a DAG step can run: one row per image and action.
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
+| `check` | text | yes | product.yaml's `check` (the product's): the action that says whether it's ready on this install. Null: none. |
 | `plan` | text | yes | product.yaml's `plan`: the action of the same product that says what a step of this one would do. **Preview** runs it. Null: none. |
 | `cleanup` | jsonb | yes | product.yaml's `cleanup`: `{ action, inputs }`, the action of the same product that removes a resource its steps report, and its inputs (null: `{"resource": ...}`). Null: nothing removes them. |
 | `approval` | text | yes | product.yaml's `approval`: `always`, or `otherTeams` (only when another team runs it). A step of it then waits for a maintainer of its team to approve it. Null: never, unless an `allowedTargets` rule asks. |
@@ -556,7 +557,7 @@ The console's record of every execution submitted through it, and who may see it
 | `submitted_by` | uuid | yes | The user or bot. Emptied if that account is deleted; the record stays. |
 | `external_reference` | text | no | The DAG's `name`. |
 | `payload` | jsonb | yes | The DAG as sent to the kernel, so **Rerun** can resubmit it. Empty for rows from before this column existed. |
-| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone, or `cleanup` for a run deleting resources (`ResourceService`), or `preview` for a run of plan actions (Preview). Whoever ran it can see, cancel, retry and rerun it (not a cleanup's: it's asked for again from the resources); a rerun runs the template again. Empty for a DAG submitted as such. |
+| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone, or `cleanup` for a run deleting resources (`ResourceService`), or `preview` for a run of plan actions (Preview), or `check` for a product's readiness check (run by the console: no `submitted_by`). Whoever ran it can see, cancel, retry and rerun it (not a cleanup's: it's asked for again from the resources); a rerun runs the template again. Empty for a DAG submitted as such. |
 | `template_parameters` | jsonb | yes | The parameters it ran with. |
 | `on_behalf_of` | text | yes | Which of the submitter's teams it ran for, when the template is shared with specific teams (or the submitter named one). |
 | `created_at` | timestamptz | no | |
@@ -589,6 +590,23 @@ What runs made: each resource a step reported in its outputs (`resources: [{type
 | `delete_requested_by` | uuid | yes | Who asked. |
 | `deleted_at` | timestamptz | yes | When its cleanup step succeeded. |
 
+### product_readiness
+
+Whether each product is ready on this install: its check action's last answer (`readiness.ts`).
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `product` | text | no | The check action's registered name (`<team>-<product>-<check>`), for its whole product. |
+| `product_team` | text | no | |
+| `image` | text | no | The image checked: a new one is checked again. |
+| `state` | text | no | `checking`, `ready`, `not_ready`, or `failed` (the check couldn't say). |
+| `execution_id` | uuid | yes | The check run. |
+| `principal` | text | yes | What it acts as here. |
+| `missing` | text[] | no | What it lacks. |
+| `detail` | text | yes | |
+| `requested_at` | timestamptz | no | When the check was asked for. |
+| `checked_at` | timestamptz | yes | When it answered. |
+
 ### notification_events
 
 Something worth telling people: a run that failed or finished, a step waiting for an approval, the catalog not being pulled. Made once, then shown in people's inboxes and posted to teams' chat webhooks. Kept 90 days.
@@ -597,7 +615,7 @@ Something worth telling people: a run that failed or finished, a step waiting fo
 | --- | --- | --- | --- |
 | `id` | uuid | no | |
 | `key` | text | no | What makes it the same event (`run:<id>:<state>:<finished at>`, `approval:<run>:<step>:<since>`, `catalog:<last applied>`). Unique, so it's only ever made once. |
-| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting` or `catalog_failing`. |
+| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing` or `product_not_ready`. |
 | `title` | text | no | |
 | `body` | text | no | |
 | `link` | text | yes | The console page it's about, such as `/runs/<id>`. |
@@ -622,7 +640,7 @@ A team's chat webhook (Slack, Google Chat, Teams), set by its maintainers.
 | `team_id` | uuid | no | |
 | `url_encrypted` | text | no | The webhook URL, a credential: AES-256-GCM with a key derived from the console's `JWT_SECRET`. Never sent back by the API. |
 | `host` | text | no | Its host, which is what people see. |
-| `kinds` | text[] | no | What it gets: `run_failed`, `approval_waiting`. |
+| `kinds` | text[] | no | What it gets: `run_failed`, `approval_waiting`, `product_not_ready`. |
 | `updated_by` | uuid | yes | Who set it last. |
 | `updated_at` | timestamptz | no | |
 | `last_sent_at` | timestamptz | yes | The last post that went. |

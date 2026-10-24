@@ -55,8 +55,11 @@ type Product struct {
 	// Audiences its tasks get a projected ServiceAccount token for, at
 	// /platform/tokens/<audience> (product.yaml's tokenAudiences).
 	TokenAudiences []string `protobuf:"bytes,18,rep,name=token_audiences,json=tokenAudiences,proto3" json:"token_audiences,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Whether it's ready on this install, by its check (product.yaml's
+	// check); unset when it has none.
+	Readiness     *Readiness `protobuf:"bytes,19,opt,name=readiness,proto3" json:"readiness,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Product) Reset() {
@@ -215,6 +218,103 @@ func (x *Product) GetTokenAudiences() []string {
 	return nil
 }
 
+func (x *Product) GetReadiness() *Readiness {
+	if x != nil {
+		return x.Readiness
+	}
+	return nil
+}
+
+// A product's check's last answer on this install.
+type Readiness struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ready, not_ready, failed (its check couldn't say), checking, or
+	// unchecked (not yet).
+	State string `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	// What it acts as here: an identity, an account.
+	Principal string `protobuf:"bytes,2,opt,name=principal,proto3" json:"principal,omitempty"`
+	// What it lacks to work here.
+	Missing   []string               `protobuf:"bytes,3,rep,name=missing,proto3" json:"missing,omitempty"`
+	Detail    string                 `protobuf:"bytes,4,opt,name=detail,proto3" json:"detail,omitempty"`
+	CheckedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=checked_at,json=checkedAt,proto3" json:"checked_at,omitempty"`
+	// The check run.
+	ExecutionId   string `protobuf:"bytes,6,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Readiness) Reset() {
+	*x = Readiness{}
+	mi := &file_vertra_console_v1_product_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Readiness) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Readiness) ProtoMessage() {}
+
+func (x *Readiness) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_product_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Readiness.ProtoReflect.Descriptor instead.
+func (*Readiness) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Readiness) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *Readiness) GetPrincipal() string {
+	if x != nil {
+		return x.Principal
+	}
+	return ""
+}
+
+func (x *Readiness) GetMissing() []string {
+	if x != nil {
+		return x.Missing
+	}
+	return nil
+}
+
+func (x *Readiness) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
+func (x *Readiness) GetCheckedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CheckedAt
+	}
+	return nil
+}
+
+func (x *Readiness) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
 type ProductRelease struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Image         string                 `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
@@ -225,7 +325,7 @@ type ProductRelease struct {
 
 func (x *ProductRelease) Reset() {
 	*x = ProductRelease{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +337,7 @@ func (x *ProductRelease) String() string {
 func (*ProductRelease) ProtoMessage() {}
 
 func (x *ProductRelease) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +350,7 @@ func (x *ProductRelease) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProductRelease.ProtoReflect.Descriptor instead.
 func (*ProductRelease) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{1}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ProductRelease) GetImage() string {
@@ -280,7 +380,7 @@ type ImageRepository struct {
 
 func (x *ImageRepository) Reset() {
 	*x = ImageRepository{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -292,7 +392,7 @@ func (x *ImageRepository) String() string {
 func (*ImageRepository) ProtoMessage() {}
 
 func (x *ImageRepository) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -305,7 +405,7 @@ func (x *ImageRepository) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImageRepository.ProtoReflect.Descriptor instead.
 func (*ImageRepository) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{2}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ImageRepository) GetRepository() string {
@@ -355,7 +455,7 @@ type WiringType struct {
 
 func (x *WiringType) Reset() {
 	*x = WiringType{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -367,7 +467,7 @@ func (x *WiringType) String() string {
 func (*WiringType) ProtoMessage() {}
 
 func (x *WiringType) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -380,7 +480,7 @@ func (x *WiringType) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WiringType.ProtoReflect.Descriptor instead.
 func (*WiringType) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *WiringType) GetName() string {
@@ -433,7 +533,7 @@ type ListProductsRequest struct {
 
 func (x *ListProductsRequest) Reset() {
 	*x = ListProductsRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -445,7 +545,7 @@ func (x *ListProductsRequest) String() string {
 func (*ListProductsRequest) ProtoMessage() {}
 
 func (x *ListProductsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -458,7 +558,7 @@ func (x *ListProductsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProductsRequest.ProtoReflect.Descriptor instead.
 func (*ListProductsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{5}
 }
 
 type ListProductsResponse struct {
@@ -470,7 +570,7 @@ type ListProductsResponse struct {
 
 func (x *ListProductsResponse) Reset() {
 	*x = ListProductsResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -482,7 +582,7 @@ func (x *ListProductsResponse) String() string {
 func (*ListProductsResponse) ProtoMessage() {}
 
 func (x *ListProductsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -495,7 +595,7 @@ func (x *ListProductsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProductsResponse.ProtoReflect.Descriptor instead.
 func (*ListProductsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListProductsResponse) GetProducts() []*Product {
@@ -534,7 +634,7 @@ type RegisterProductRequest struct {
 
 func (x *RegisterProductRequest) Reset() {
 	*x = RegisterProductRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -546,7 +646,7 @@ func (x *RegisterProductRequest) String() string {
 func (*RegisterProductRequest) ProtoMessage() {}
 
 func (x *RegisterProductRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -559,7 +659,7 @@ func (x *RegisterProductRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterProductRequest.ProtoReflect.Descriptor instead.
 func (*RegisterProductRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RegisterProductRequest) GetName() string {
@@ -669,7 +769,7 @@ type RegisterProductResponse struct {
 
 func (x *RegisterProductResponse) Reset() {
 	*x = RegisterProductResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -681,7 +781,7 @@ func (x *RegisterProductResponse) String() string {
 func (*RegisterProductResponse) ProtoMessage() {}
 
 func (x *RegisterProductResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -694,7 +794,7 @@ func (x *RegisterProductResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterProductResponse.ProtoReflect.Descriptor instead.
 func (*RegisterProductResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RegisterProductResponse) GetProduct() *Product {
@@ -713,7 +813,7 @@ type DeleteProductRequest struct {
 
 func (x *DeleteProductRequest) Reset() {
 	*x = DeleteProductRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -725,7 +825,7 @@ func (x *DeleteProductRequest) String() string {
 func (*DeleteProductRequest) ProtoMessage() {}
 
 func (x *DeleteProductRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -738,7 +838,7 @@ func (x *DeleteProductRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProductRequest.ProtoReflect.Descriptor instead.
 func (*DeleteProductRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{8}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteProductRequest) GetName() string {
@@ -756,7 +856,7 @@ type DeleteProductResponse struct {
 
 func (x *DeleteProductResponse) Reset() {
 	*x = DeleteProductResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -768,7 +868,7 @@ func (x *DeleteProductResponse) String() string {
 func (*DeleteProductResponse) ProtoMessage() {}
 
 func (x *DeleteProductResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -781,7 +881,7 @@ func (x *DeleteProductResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProductResponse.ProtoReflect.Descriptor instead.
 func (*DeleteProductResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{9}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{10}
 }
 
 type ListImageRepositoriesRequest struct {
@@ -792,7 +892,7 @@ type ListImageRepositoriesRequest struct {
 
 func (x *ListImageRepositoriesRequest) Reset() {
 	*x = ListImageRepositoriesRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +904,7 @@ func (x *ListImageRepositoriesRequest) String() string {
 func (*ListImageRepositoriesRequest) ProtoMessage() {}
 
 func (x *ListImageRepositoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +917,7 @@ func (x *ListImageRepositoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListImageRepositoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListImageRepositoriesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{10}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{11}
 }
 
 type ListImageRepositoriesResponse struct {
@@ -829,7 +929,7 @@ type ListImageRepositoriesResponse struct {
 
 func (x *ListImageRepositoriesResponse) Reset() {
 	*x = ListImageRepositoriesResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -841,7 +941,7 @@ func (x *ListImageRepositoriesResponse) String() string {
 func (*ListImageRepositoriesResponse) ProtoMessage() {}
 
 func (x *ListImageRepositoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +954,7 @@ func (x *ListImageRepositoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListImageRepositoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListImageRepositoriesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{11}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListImageRepositoriesResponse) GetRepositories() []*ImageRepository {
@@ -873,7 +973,7 @@ type ReleaseImageRepositoryRequest struct {
 
 func (x *ReleaseImageRepositoryRequest) Reset() {
 	*x = ReleaseImageRepositoryRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -885,7 +985,7 @@ func (x *ReleaseImageRepositoryRequest) String() string {
 func (*ReleaseImageRepositoryRequest) ProtoMessage() {}
 
 func (x *ReleaseImageRepositoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -898,7 +998,7 @@ func (x *ReleaseImageRepositoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseImageRepositoryRequest.ProtoReflect.Descriptor instead.
 func (*ReleaseImageRepositoryRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{12}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ReleaseImageRepositoryRequest) GetRepository() string {
@@ -916,7 +1016,7 @@ type ReleaseImageRepositoryResponse struct {
 
 func (x *ReleaseImageRepositoryResponse) Reset() {
 	*x = ReleaseImageRepositoryResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -928,7 +1028,7 @@ func (x *ReleaseImageRepositoryResponse) String() string {
 func (*ReleaseImageRepositoryResponse) ProtoMessage() {}
 
 func (x *ReleaseImageRepositoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +1041,7 @@ func (x *ReleaseImageRepositoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleaseImageRepositoryResponse.ProtoReflect.Descriptor instead.
 func (*ReleaseImageRepositoryResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{13}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{14}
 }
 
 type ListWiringTypesRequest struct {
@@ -952,7 +1052,7 @@ type ListWiringTypesRequest struct {
 
 func (x *ListWiringTypesRequest) Reset() {
 	*x = ListWiringTypesRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -964,7 +1064,7 @@ func (x *ListWiringTypesRequest) String() string {
 func (*ListWiringTypesRequest) ProtoMessage() {}
 
 func (x *ListWiringTypesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -977,7 +1077,7 @@ func (x *ListWiringTypesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWiringTypesRequest.ProtoReflect.Descriptor instead.
 func (*ListWiringTypesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{14}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{15}
 }
 
 type ListWiringTypesResponse struct {
@@ -989,7 +1089,7 @@ type ListWiringTypesResponse struct {
 
 func (x *ListWiringTypesResponse) Reset() {
 	*x = ListWiringTypesResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1001,7 +1101,7 @@ func (x *ListWiringTypesResponse) String() string {
 func (*ListWiringTypesResponse) ProtoMessage() {}
 
 func (x *ListWiringTypesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1014,7 +1114,7 @@ func (x *ListWiringTypesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWiringTypesResponse.ProtoReflect.Descriptor instead.
 func (*ListWiringTypesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{15}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListWiringTypesResponse) GetTypes() []*WiringType {
@@ -1034,7 +1134,7 @@ type ReplaceWiringTypesRequest struct {
 
 func (x *ReplaceWiringTypesRequest) Reset() {
 	*x = ReplaceWiringTypesRequest{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1046,7 +1146,7 @@ func (x *ReplaceWiringTypesRequest) String() string {
 func (*ReplaceWiringTypesRequest) ProtoMessage() {}
 
 func (x *ReplaceWiringTypesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1059,7 +1159,7 @@ func (x *ReplaceWiringTypesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplaceWiringTypesRequest.ProtoReflect.Descriptor instead.
 func (*ReplaceWiringTypesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{16}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReplaceWiringTypesRequest) GetTypes() map[string]*WiringTypeSpec {
@@ -1081,7 +1181,7 @@ type WiringTypeSpec struct {
 
 func (x *WiringTypeSpec) Reset() {
 	*x = WiringTypeSpec{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1093,7 +1193,7 @@ func (x *WiringTypeSpec) String() string {
 func (*WiringTypeSpec) ProtoMessage() {}
 
 func (x *WiringTypeSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1106,7 +1206,7 @@ func (x *WiringTypeSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WiringTypeSpec.ProtoReflect.Descriptor instead.
 func (*WiringTypeSpec) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{17}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *WiringTypeSpec) GetJsonType() string {
@@ -1146,7 +1246,7 @@ type ReplaceWiringTypesResponse struct {
 
 func (x *ReplaceWiringTypesResponse) Reset() {
 	*x = ReplaceWiringTypesResponse{}
-	mi := &file_vertra_console_v1_product_proto_msgTypes[18]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1158,7 +1258,7 @@ func (x *ReplaceWiringTypesResponse) String() string {
 func (*ReplaceWiringTypesResponse) ProtoMessage() {}
 
 func (x *ReplaceWiringTypesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_product_proto_msgTypes[18]
+	mi := &file_vertra_console_v1_product_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1171,7 +1271,7 @@ func (x *ReplaceWiringTypesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplaceWiringTypesResponse.ProtoReflect.Descriptor instead.
 func (*ReplaceWiringTypesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{18}
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ReplaceWiringTypesResponse) GetTypes() []*WiringType {
@@ -1181,11 +1281,100 @@ func (x *ReplaceWiringTypesResponse) GetTypes() []*WiringType {
 	return nil
 }
 
+type CheckProductRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Any of its actions' registered names.
+	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckProductRequest) Reset() {
+	*x = CheckProductRequest{}
+	mi := &file_vertra_console_v1_product_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckProductRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckProductRequest) ProtoMessage() {}
+
+func (x *CheckProductRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_product_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckProductRequest.ProtoReflect.Descriptor instead.
+func (*CheckProductRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *CheckProductRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type CheckProductResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Started       bool                   `protobuf:"varint,1,opt,name=started,proto3" json:"started,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckProductResponse) Reset() {
+	*x = CheckProductResponse{}
+	mi := &file_vertra_console_v1_product_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckProductResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckProductResponse) ProtoMessage() {}
+
+func (x *CheckProductResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_product_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckProductResponse.ProtoReflect.Descriptor instead.
+func (*CheckProductResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_product_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CheckProductResponse) GetStarted() bool {
+	if x != nil {
+		return x.Started
+	}
+	return false
+}
+
 var File_vertra_console_v1_product_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\n" +
-	"\x1fvertra/console/v1/product.proto\x12\x11vertra.console.v1\x1a\x1evertra/console/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb7\x06\n" +
+	"\x1fvertra/console/v1/product.proto\x12\x11vertra.console.v1\x1a\x1evertra/console/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x06\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1210,7 +1399,8 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\n" +
 	"deprecated\x18\x11 \x01(\tR\n" +
 	"deprecated\x12'\n" +
-	"\x0ftoken_audiences\x18\x12 \x03(\tR\x0etokenAudiencesB\n" +
+	"\x0ftoken_audiences\x18\x12 \x03(\tR\x0etokenAudiences\x12:\n" +
+	"\treadiness\x18\x13 \x01(\v2\x1c.vertra.console.v1.ReadinessR\treadinessB\n" +
 	"\n" +
 	"\b_team_idB\f\n" +
 	"\n" +
@@ -1219,7 +1409,15 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\f_descriptionB\x12\n" +
 	"\x10_service_accountB\f\n" +
 	"\n" +
-	"_resources\"g\n" +
+	"_resources\"\xcf\x01\n" +
+	"\tReadiness\x12\x14\n" +
+	"\x05state\x18\x01 \x01(\tR\x05state\x12\x1c\n" +
+	"\tprincipal\x18\x02 \x01(\tR\tprincipal\x12\x18\n" +
+	"\amissing\x18\x03 \x03(\tR\amissing\x12\x16\n" +
+	"\x06detail\x18\x04 \x01(\tR\x06detail\x129\n" +
+	"\n" +
+	"checked_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt\x12!\n" +
+	"\fexecution_id\x18\x06 \x01(\tR\vexecutionId\"g\n" +
 	"\x0eProductRelease\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12?\n" +
 	"\rregistered_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\fregisteredAt\"\xb8\x01\n" +
@@ -1301,10 +1499,15 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\x10default_provider\x18\x04 \x01(\tH\x00R\x0fdefaultProvider\x88\x01\x01B\x13\n" +
 	"\x11_default_provider\"Q\n" +
 	"\x1aReplaceWiringTypesResponse\x123\n" +
-	"\x05types\x18\x01 \x03(\v2\x1d.vertra.console.v1.WiringTypeR\x05types2\xbb\x06\n" +
+	"\x05types\x18\x01 \x03(\v2\x1d.vertra.console.v1.WiringTypeR\x05types\")\n" +
+	"\x13CheckProductRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"0\n" +
+	"\x14CheckProductResponse\x12\x18\n" +
+	"\astarted\x18\x01 \x01(\bR\astarted2\x9c\a\n" +
 	"\x0eProductService\x12d\n" +
 	"\fListProducts\x12&.vertra.console.v1.ListProductsRequest\x1a'.vertra.console.v1.ListProductsResponse\"\x03\x90\x02\x01\x12m\n" +
-	"\x0fRegisterProduct\x12).vertra.console.v1.RegisterProductRequest\x1a*.vertra.console.v1.RegisterProductResponse\"\x03\x90\x02\x02\x12g\n" +
+	"\x0fRegisterProduct\x12).vertra.console.v1.RegisterProductRequest\x1a*.vertra.console.v1.RegisterProductResponse\"\x03\x90\x02\x02\x12_\n" +
+	"\fCheckProduct\x12&.vertra.console.v1.CheckProductRequest\x1a'.vertra.console.v1.CheckProductResponse\x12g\n" +
 	"\rDeleteProduct\x12'.vertra.console.v1.DeleteProductRequest\x1a(.vertra.console.v1.DeleteProductResponse\"\x03\x90\x02\x02\x12\x7f\n" +
 	"\x15ListImageRepositories\x12/.vertra.console.v1.ListImageRepositoriesRequest\x1a0.vertra.console.v1.ListImageRepositoriesResponse\"\x03\x90\x02\x01\x12\x82\x01\n" +
 	"\x16ReleaseImageRepository\x120.vertra.console.v1.ReleaseImageRepositoryRequest\x1a1.vertra.console.v1.ReleaseImageRepositoryResponse\"\x03\x90\x02\x02\x12m\n" +
@@ -1324,70 +1527,77 @@ func file_vertra_console_v1_product_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_product_proto_rawDescData
 }
 
-var file_vertra_console_v1_product_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_vertra_console_v1_product_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_vertra_console_v1_product_proto_goTypes = []any{
 	(*Product)(nil),                        // 0: vertra.console.v1.Product
-	(*ProductRelease)(nil),                 // 1: vertra.console.v1.ProductRelease
-	(*ImageRepository)(nil),                // 2: vertra.console.v1.ImageRepository
-	(*WiringType)(nil),                     // 3: vertra.console.v1.WiringType
-	(*ListProductsRequest)(nil),            // 4: vertra.console.v1.ListProductsRequest
-	(*ListProductsResponse)(nil),           // 5: vertra.console.v1.ListProductsResponse
-	(*RegisterProductRequest)(nil),         // 6: vertra.console.v1.RegisterProductRequest
-	(*RegisterProductResponse)(nil),        // 7: vertra.console.v1.RegisterProductResponse
-	(*DeleteProductRequest)(nil),           // 8: vertra.console.v1.DeleteProductRequest
-	(*DeleteProductResponse)(nil),          // 9: vertra.console.v1.DeleteProductResponse
-	(*ListImageRepositoriesRequest)(nil),   // 10: vertra.console.v1.ListImageRepositoriesRequest
-	(*ListImageRepositoriesResponse)(nil),  // 11: vertra.console.v1.ListImageRepositoriesResponse
-	(*ReleaseImageRepositoryRequest)(nil),  // 12: vertra.console.v1.ReleaseImageRepositoryRequest
-	(*ReleaseImageRepositoryResponse)(nil), // 13: vertra.console.v1.ReleaseImageRepositoryResponse
-	(*ListWiringTypesRequest)(nil),         // 14: vertra.console.v1.ListWiringTypesRequest
-	(*ListWiringTypesResponse)(nil),        // 15: vertra.console.v1.ListWiringTypesResponse
-	(*ReplaceWiringTypesRequest)(nil),      // 16: vertra.console.v1.ReplaceWiringTypesRequest
-	(*WiringTypeSpec)(nil),                 // 17: vertra.console.v1.WiringTypeSpec
-	(*ReplaceWiringTypesResponse)(nil),     // 18: vertra.console.v1.ReplaceWiringTypesResponse
-	nil,                                    // 19: vertra.console.v1.ReplaceWiringTypesRequest.TypesEntry
-	(*structpb.Struct)(nil),                // 20: google.protobuf.Struct
-	(*TaskResources)(nil),                  // 21: vertra.console.v1.TaskResources
-	(*timestamppb.Timestamp)(nil),          // 22: google.protobuf.Timestamp
+	(*Readiness)(nil),                      // 1: vertra.console.v1.Readiness
+	(*ProductRelease)(nil),                 // 2: vertra.console.v1.ProductRelease
+	(*ImageRepository)(nil),                // 3: vertra.console.v1.ImageRepository
+	(*WiringType)(nil),                     // 4: vertra.console.v1.WiringType
+	(*ListProductsRequest)(nil),            // 5: vertra.console.v1.ListProductsRequest
+	(*ListProductsResponse)(nil),           // 6: vertra.console.v1.ListProductsResponse
+	(*RegisterProductRequest)(nil),         // 7: vertra.console.v1.RegisterProductRequest
+	(*RegisterProductResponse)(nil),        // 8: vertra.console.v1.RegisterProductResponse
+	(*DeleteProductRequest)(nil),           // 9: vertra.console.v1.DeleteProductRequest
+	(*DeleteProductResponse)(nil),          // 10: vertra.console.v1.DeleteProductResponse
+	(*ListImageRepositoriesRequest)(nil),   // 11: vertra.console.v1.ListImageRepositoriesRequest
+	(*ListImageRepositoriesResponse)(nil),  // 12: vertra.console.v1.ListImageRepositoriesResponse
+	(*ReleaseImageRepositoryRequest)(nil),  // 13: vertra.console.v1.ReleaseImageRepositoryRequest
+	(*ReleaseImageRepositoryResponse)(nil), // 14: vertra.console.v1.ReleaseImageRepositoryResponse
+	(*ListWiringTypesRequest)(nil),         // 15: vertra.console.v1.ListWiringTypesRequest
+	(*ListWiringTypesResponse)(nil),        // 16: vertra.console.v1.ListWiringTypesResponse
+	(*ReplaceWiringTypesRequest)(nil),      // 17: vertra.console.v1.ReplaceWiringTypesRequest
+	(*WiringTypeSpec)(nil),                 // 18: vertra.console.v1.WiringTypeSpec
+	(*ReplaceWiringTypesResponse)(nil),     // 19: vertra.console.v1.ReplaceWiringTypesResponse
+	(*CheckProductRequest)(nil),            // 20: vertra.console.v1.CheckProductRequest
+	(*CheckProductResponse)(nil),           // 21: vertra.console.v1.CheckProductResponse
+	nil,                                    // 22: vertra.console.v1.ReplaceWiringTypesRequest.TypesEntry
+	(*structpb.Struct)(nil),                // 23: google.protobuf.Struct
+	(*TaskResources)(nil),                  // 24: vertra.console.v1.TaskResources
+	(*timestamppb.Timestamp)(nil),          // 25: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_product_proto_depIdxs = []int32{
-	20, // 0: vertra.console.v1.Product.input_schema:type_name -> google.protobuf.Struct
-	20, // 1: vertra.console.v1.Product.output_schema:type_name -> google.protobuf.Struct
-	21, // 2: vertra.console.v1.Product.resources:type_name -> vertra.console.v1.TaskResources
-	22, // 3: vertra.console.v1.Product.created_at:type_name -> google.protobuf.Timestamp
-	1,  // 4: vertra.console.v1.Product.releases:type_name -> vertra.console.v1.ProductRelease
-	22, // 5: vertra.console.v1.ProductRelease.registered_at:type_name -> google.protobuf.Timestamp
-	22, // 6: vertra.console.v1.ImageRepository.created_at:type_name -> google.protobuf.Timestamp
-	22, // 7: vertra.console.v1.WiringType.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 8: vertra.console.v1.ListProductsResponse.products:type_name -> vertra.console.v1.Product
-	20, // 9: vertra.console.v1.RegisterProductRequest.input_schema:type_name -> google.protobuf.Struct
-	20, // 10: vertra.console.v1.RegisterProductRequest.output_schema:type_name -> google.protobuf.Struct
-	21, // 11: vertra.console.v1.RegisterProductRequest.resources:type_name -> vertra.console.v1.TaskResources
-	0,  // 12: vertra.console.v1.RegisterProductResponse.product:type_name -> vertra.console.v1.Product
-	2,  // 13: vertra.console.v1.ListImageRepositoriesResponse.repositories:type_name -> vertra.console.v1.ImageRepository
-	3,  // 14: vertra.console.v1.ListWiringTypesResponse.types:type_name -> vertra.console.v1.WiringType
-	19, // 15: vertra.console.v1.ReplaceWiringTypesRequest.types:type_name -> vertra.console.v1.ReplaceWiringTypesRequest.TypesEntry
-	3,  // 16: vertra.console.v1.ReplaceWiringTypesResponse.types:type_name -> vertra.console.v1.WiringType
-	17, // 17: vertra.console.v1.ReplaceWiringTypesRequest.TypesEntry.value:type_name -> vertra.console.v1.WiringTypeSpec
-	4,  // 18: vertra.console.v1.ProductService.ListProducts:input_type -> vertra.console.v1.ListProductsRequest
-	6,  // 19: vertra.console.v1.ProductService.RegisterProduct:input_type -> vertra.console.v1.RegisterProductRequest
-	8,  // 20: vertra.console.v1.ProductService.DeleteProduct:input_type -> vertra.console.v1.DeleteProductRequest
-	10, // 21: vertra.console.v1.ProductService.ListImageRepositories:input_type -> vertra.console.v1.ListImageRepositoriesRequest
-	12, // 22: vertra.console.v1.ProductService.ReleaseImageRepository:input_type -> vertra.console.v1.ReleaseImageRepositoryRequest
-	14, // 23: vertra.console.v1.ProductService.ListWiringTypes:input_type -> vertra.console.v1.ListWiringTypesRequest
-	16, // 24: vertra.console.v1.ProductService.ReplaceWiringTypes:input_type -> vertra.console.v1.ReplaceWiringTypesRequest
-	5,  // 25: vertra.console.v1.ProductService.ListProducts:output_type -> vertra.console.v1.ListProductsResponse
-	7,  // 26: vertra.console.v1.ProductService.RegisterProduct:output_type -> vertra.console.v1.RegisterProductResponse
-	9,  // 27: vertra.console.v1.ProductService.DeleteProduct:output_type -> vertra.console.v1.DeleteProductResponse
-	11, // 28: vertra.console.v1.ProductService.ListImageRepositories:output_type -> vertra.console.v1.ListImageRepositoriesResponse
-	13, // 29: vertra.console.v1.ProductService.ReleaseImageRepository:output_type -> vertra.console.v1.ReleaseImageRepositoryResponse
-	15, // 30: vertra.console.v1.ProductService.ListWiringTypes:output_type -> vertra.console.v1.ListWiringTypesResponse
-	18, // 31: vertra.console.v1.ProductService.ReplaceWiringTypes:output_type -> vertra.console.v1.ReplaceWiringTypesResponse
-	25, // [25:32] is the sub-list for method output_type
-	18, // [18:25] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	23, // 0: vertra.console.v1.Product.input_schema:type_name -> google.protobuf.Struct
+	23, // 1: vertra.console.v1.Product.output_schema:type_name -> google.protobuf.Struct
+	24, // 2: vertra.console.v1.Product.resources:type_name -> vertra.console.v1.TaskResources
+	25, // 3: vertra.console.v1.Product.created_at:type_name -> google.protobuf.Timestamp
+	2,  // 4: vertra.console.v1.Product.releases:type_name -> vertra.console.v1.ProductRelease
+	1,  // 5: vertra.console.v1.Product.readiness:type_name -> vertra.console.v1.Readiness
+	25, // 6: vertra.console.v1.Readiness.checked_at:type_name -> google.protobuf.Timestamp
+	25, // 7: vertra.console.v1.ProductRelease.registered_at:type_name -> google.protobuf.Timestamp
+	25, // 8: vertra.console.v1.ImageRepository.created_at:type_name -> google.protobuf.Timestamp
+	25, // 9: vertra.console.v1.WiringType.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 10: vertra.console.v1.ListProductsResponse.products:type_name -> vertra.console.v1.Product
+	23, // 11: vertra.console.v1.RegisterProductRequest.input_schema:type_name -> google.protobuf.Struct
+	23, // 12: vertra.console.v1.RegisterProductRequest.output_schema:type_name -> google.protobuf.Struct
+	24, // 13: vertra.console.v1.RegisterProductRequest.resources:type_name -> vertra.console.v1.TaskResources
+	0,  // 14: vertra.console.v1.RegisterProductResponse.product:type_name -> vertra.console.v1.Product
+	3,  // 15: vertra.console.v1.ListImageRepositoriesResponse.repositories:type_name -> vertra.console.v1.ImageRepository
+	4,  // 16: vertra.console.v1.ListWiringTypesResponse.types:type_name -> vertra.console.v1.WiringType
+	22, // 17: vertra.console.v1.ReplaceWiringTypesRequest.types:type_name -> vertra.console.v1.ReplaceWiringTypesRequest.TypesEntry
+	4,  // 18: vertra.console.v1.ReplaceWiringTypesResponse.types:type_name -> vertra.console.v1.WiringType
+	18, // 19: vertra.console.v1.ReplaceWiringTypesRequest.TypesEntry.value:type_name -> vertra.console.v1.WiringTypeSpec
+	5,  // 20: vertra.console.v1.ProductService.ListProducts:input_type -> vertra.console.v1.ListProductsRequest
+	7,  // 21: vertra.console.v1.ProductService.RegisterProduct:input_type -> vertra.console.v1.RegisterProductRequest
+	20, // 22: vertra.console.v1.ProductService.CheckProduct:input_type -> vertra.console.v1.CheckProductRequest
+	9,  // 23: vertra.console.v1.ProductService.DeleteProduct:input_type -> vertra.console.v1.DeleteProductRequest
+	11, // 24: vertra.console.v1.ProductService.ListImageRepositories:input_type -> vertra.console.v1.ListImageRepositoriesRequest
+	13, // 25: vertra.console.v1.ProductService.ReleaseImageRepository:input_type -> vertra.console.v1.ReleaseImageRepositoryRequest
+	15, // 26: vertra.console.v1.ProductService.ListWiringTypes:input_type -> vertra.console.v1.ListWiringTypesRequest
+	17, // 27: vertra.console.v1.ProductService.ReplaceWiringTypes:input_type -> vertra.console.v1.ReplaceWiringTypesRequest
+	6,  // 28: vertra.console.v1.ProductService.ListProducts:output_type -> vertra.console.v1.ListProductsResponse
+	8,  // 29: vertra.console.v1.ProductService.RegisterProduct:output_type -> vertra.console.v1.RegisterProductResponse
+	21, // 30: vertra.console.v1.ProductService.CheckProduct:output_type -> vertra.console.v1.CheckProductResponse
+	10, // 31: vertra.console.v1.ProductService.DeleteProduct:output_type -> vertra.console.v1.DeleteProductResponse
+	12, // 32: vertra.console.v1.ProductService.ListImageRepositories:output_type -> vertra.console.v1.ListImageRepositoriesResponse
+	14, // 33: vertra.console.v1.ProductService.ReleaseImageRepository:output_type -> vertra.console.v1.ReleaseImageRepositoryResponse
+	16, // 34: vertra.console.v1.ProductService.ListWiringTypes:output_type -> vertra.console.v1.ListWiringTypesResponse
+	19, // 35: vertra.console.v1.ProductService.ReplaceWiringTypes:output_type -> vertra.console.v1.ReplaceWiringTypesResponse
+	28, // [28:36] is the sub-list for method output_type
+	20, // [20:28] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_product_proto_init() }
@@ -1397,17 +1607,17 @@ func file_vertra_console_v1_product_proto_init() {
 	}
 	file_vertra_console_v1_common_proto_init()
 	file_vertra_console_v1_product_proto_msgTypes[0].OneofWrappers = []any{}
-	file_vertra_console_v1_product_proto_msgTypes[2].OneofWrappers = []any{}
 	file_vertra_console_v1_product_proto_msgTypes[3].OneofWrappers = []any{}
-	file_vertra_console_v1_product_proto_msgTypes[6].OneofWrappers = []any{}
-	file_vertra_console_v1_product_proto_msgTypes[17].OneofWrappers = []any{}
+	file_vertra_console_v1_product_proto_msgTypes[4].OneofWrappers = []any{}
+	file_vertra_console_v1_product_proto_msgTypes[7].OneofWrappers = []any{}
+	file_vertra_console_v1_product_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_product_proto_rawDesc), len(file_vertra_console_v1_product_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

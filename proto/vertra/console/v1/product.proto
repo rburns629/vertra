@@ -23,6 +23,9 @@ service ProductService {
   rpc RegisterProduct(RegisterProductRequest) returns (RegisterProductResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+  // Runs a product's check now (product.yaml's check): its team's members,
+  // and admins. started is false when one is already under way.
+  rpc CheckProduct(CheckProductRequest) returns (CheckProductResponse);
   // Unregisters a product. Its name and image repository stay its team's.
   rpc DeleteProduct(DeleteProductRequest) returns (DeleteProductResponse) {
     option idempotency_level = IDEMPOTENT;
@@ -76,6 +79,24 @@ message Product {
   // Audiences its tasks get a projected ServiceAccount token for, at
   // /platform/tokens/<audience> (product.yaml's tokenAudiences).
   repeated string token_audiences = 18;
+  // Whether it's ready on this install, by its check (product.yaml's
+  // check); unset when it has none.
+  Readiness readiness = 19;
+}
+
+// A product's check's last answer on this install.
+message Readiness {
+  // ready, not_ready, failed (its check couldn't say), checking, or
+  // unchecked (not yet).
+  string state = 1;
+  // What it acts as here: an identity, an account.
+  string principal = 2;
+  // What it lacks to work here.
+  repeated string missing = 3;
+  string detail = 4;
+  google.protobuf.Timestamp checked_at = 5;
+  // The check run.
+  string execution_id = 6;
 }
 
 message ProductRelease {
@@ -177,4 +198,13 @@ message WiringTypeSpec {
 
 message ReplaceWiringTypesResponse {
   repeated WiringType types = 1;
+}
+
+message CheckProductRequest {
+  // Any of its actions' registered names.
+  string name = 1;
+}
+
+message CheckProductResponse {
+  bool started = 1;
 }
