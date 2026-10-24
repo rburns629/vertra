@@ -408,6 +408,19 @@ kernelApiToken:
 # the specific cluster.
 environmentLabel: "Kubernetes"
 
+# -- Notifications (the inbox, and teams' chat webhooks).
+notifications:
+  # -- Where people reach the console, for links in what's posted to chat
+  # webhooks. Empty: https://<ingress.host or gatewayApi.host>, or none.
+  consoleUrl: ""
+  # -- The hosts a team's chat webhook may be under ("*." for any name
+  # below one), so a webhook can't point the console anywhere else.
+  webhookHosts:
+    - hooks.slack.com
+    - chat.googleapis.com
+    - "*.webhook.office.com"
+    - "*.logic.azure.com"
+
 # -- Facts the Team page's "Connect a source" wizard shows a platform owner
 # setting up secret syncing (External Secrets Operator). Display only; an
 # empty value makes the wizard say that option isn't available here.

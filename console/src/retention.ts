@@ -9,7 +9,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { and, isNull, lt, ne, sql } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
-import { apiTraffic, auditLog, imageScans, submittedExecutions } from "./db/schema.js";
+import { apiTraffic, auditLog, imageScans, notificationEvents, submittedExecutions } from "./db/schema.js";
 
 const daysAgo = (days: number) => sql`now() - make_interval(days => ${days})`;
 
@@ -36,8 +36,9 @@ export async function deleteExpired(): Promise<{ executions: number; audit: numb
           .returning({ digest: imageScans.digest })
       ).length
     : 0;
-  // The gateway's traffic counts: a week.
+  // The gateway's traffic counts: a week. Notifications: 90 days.
   await db.delete(apiTraffic).where(lt(apiTraffic.minute, daysAgo(7)));
+  await db.delete(notificationEvents).where(lt(notificationEvents.createdAt, daysAgo(90)));
   return { executions, audit, scans };
 }
 

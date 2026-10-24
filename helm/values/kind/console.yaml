@@ -4,6 +4,9 @@
 #     --kube-context kind-vertra-local -f helm/values/kind/console.yaml
 kernelApiUrl: http://kernel-execution-kernel-api.vertra-system.svc.cluster.local:8000
 environmentLabel: Kubernetes
+# Links in chat webhook posts: `make up`'s port-forward.
+notifications:
+  consoleUrl: http://localhost:18080
 replicaCount: 1
 image:
   repository: execution-console

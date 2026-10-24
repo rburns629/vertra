@@ -564,8 +564,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   made for, newest first, with sharing and approvals. Proven on kind with
   the local `ticket` sample. Left: cleanup for the cloud samples (gcp, aws,
   azure: delete actions, proven on a billed project).
-- [ ] **P2: notifications** (failure, finish, a product not ready, the
-  catalog not pulled).
+- [x] **P2: notifications** (done 2026-10-24): an inbox (the bell) and
+  each team's chat webhook (Slack, Google Chat, Teams; decided 2026-10-24:
+  the URL kept encrypted in the console's database, write-only, allowed
+  hosts only). A run that failed or finished tells whoever ran it, a
+  failure posts to its team's webhook; a step waiting for approval tells
+  its team's maintainers (not whoever ran it) and webhook; the catalog not
+  pulled for 30 minutes tells admins (`notifier.ts`, console migration
+  0021). Left: a product not ready (with readiness); notifying by email.
 - [x] **P2: copy as API call, run again with changes** (done 2026-10-23):
   the run form's **Show as an API call** (the same run as `curl`, proven
   against kind), and a run's **Run with changes** (its form, filled in from
@@ -694,8 +700,6 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **A page for image scans** (`ImageService/ListImageScans`), which
   has an API only (Observe's security checks show each image's latest
   verdict). The audit log's is Observe's Audit log tab (2026-10-22).
-- [ ] **Usable on a phone:** the sidebar is a permanent drawer
-  (`layout/AppLayout.tsx`); collapse it into a menu below `md`.
 - [ ] **Connect a team's `owner` to its console team**: membership is
   managed on the team's page, separately from the catalog's CODEOWNERS.
 - [ ] **Set the catalog repository on the Admin page** instead of the

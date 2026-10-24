@@ -165,6 +165,15 @@ export const config = {
   environmentLabel: process.env["ENVIRONMENT_LABEL"] ?? "unlabeled environment",
   // Its image's tag (the chart's), shown on the Admin page.
   version: process.env["CONSOLE_VERSION"] || "development",
+  // Where people reach the console (https://<host>), for links in what's
+  // posted to chat webhooks; empty: posted without one.
+  consoleUrl: (process.env["CONSOLE_URL"] ?? "").replace(/\/+$/, ""),
+  // Notifications (notifier.ts): the hosts a team's chat webhook may be
+  // under ("hooks.slack.com", or "*.webhook.office.com" for any name below
+  // it), so a webhook can't point the console at anything else.
+  notifications: {
+    webhookHosts: list(process.env["NOTIFY_WEBHOOK_HOSTS"] ?? "hooks.slack.com,chat.googleapis.com,*.webhook.office.com,*.logic.azure.com"),
+  },
   // Off unless set: accounts are created by an admin (Admin page ->
   // Accounts, POST /api/users), with their teams attached. Open
   // registration has no email verification, so anyone who can reach the

@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.console.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// What happened that you'd want to know (the console's notifier.ts): a run
+// of yours failed or finished, a step waits for your team's approval, the
+// catalog isn't being pulled (admins). Each is in your inbox, and a team's
+// are posted to its chat webhook (Slack, Google Chat, Teams) when it has
+// one.
+service NotificationService {
+  // Your notifications, newest first (at most 50), and how many are unread.
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Marks some of yours read, or all of them.
+  rpc MarkNotificationsRead(MarkNotificationsReadRequest) returns (MarkNotificationsReadResponse);
+  // A team's webhook, for its members: its host and what it's sent; never
+  // its URL.
+  rpc GetTeamWebhook(GetTeamWebhookRequest) returns (GetTeamWebhookResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Sets a team's webhook (its maintainers): the URL, kept encrypted and
+  // never shown again, under a host the install allows, and which kinds it
+  // gets.
+  rpc SetTeamWebhook(SetTeamWebhookRequest) returns (SetTeamWebhookResponse);
+  // Removes a team's webhook (its maintainers): nothing more is posted.
+  rpc DeleteTeamWebhook(DeleteTeamWebhookRequest) returns (DeleteTeamWebhookResponse);
+  // Posts a test message to it (its maintainers), and says whether it went.
+  rpc TestTeamWebhook(TestTeamWebhookRequest) returns (TestTeamWebhookResponse);
+}
+
+message Notification {
+  string id = 1;
+  // run_failed, run_succeeded, approval_waiting or catalog_failing.
+  string kind = 2;
+  string title = 3;
+  string body = 4;
+  // The console page it's about, such as /runs/<id>.
+  string link = 5;
+  google.protobuf.Timestamp created_at = 6;
+  bool read = 7;
+}
+
+message ListNotificationsRequest {
+  bool unread_only = 1;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  int32 unread_count = 2;
+}
+
+message MarkNotificationsReadRequest {
+  repeated string ids = 1;
+  // Every one of yours, instead.
+  bool all = 2;
+}
+
+message MarkNotificationsReadResponse {}
+
+message TeamWebhook {
+  // Whether the team has one.
+  bool configured = 1;
+  // Its host, such as hooks.slack.com.
+  string host = 2;
+  // The kinds it's sent: run_failed, approval_waiting.
+  repeated string kinds = 3;
+  google.protobuf.Timestamp last_sent_at = 4;
+  // Why the last post failed, if it did.
+  string last_error = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message GetTeamWebhookRequest {
+  string team = 1;
+}
+
+message GetTeamWebhookResponse {
+  TeamWebhook webhook = 1;
+  // The hosts this install allows.
+  repeated string allowed_hosts = 2;
+}
+
+message SetTeamWebhookRequest {
+  string team = 1;
+  // Empty: keep the one set, and change only the kinds.
+  string url = 2;
+  repeated string kinds = 3;
+}
+
+message SetTeamWebhookResponse {
+  TeamWebhook webhook = 1;
+}
+
+message DeleteTeamWebhookRequest {
+  string team = 1;
+}
+
+message DeleteTeamWebhookResponse {}
+
+message TestTeamWebhookRequest {
+  string team = 1;
+}
+
+message TestTeamWebhookResponse {
+  bool sent = 1;
+  // Why not, when it wasn't.
+  string error = 2;
+}

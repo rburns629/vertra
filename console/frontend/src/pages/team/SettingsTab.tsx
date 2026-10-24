@@ -9,7 +9,9 @@ import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 import { ApiError, listTeamMembers, setTeamSignIn, type Team, type TeamMember } from "../../api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useAuth } from "../../auth/AuthContext";
 import { useEnvironment } from "../../environment";
+import { WebhookSection } from "./WebhookSection";
 
 function Section({ title, children, tone }: { title: string; children: ReactNode; tone?: "danger" }) {
   return (
@@ -25,7 +27,7 @@ function Section({ title, children, tone }: { title: string; children: ReactNode
 const mono = { fontFamily: "fontFamilyMono", fontSize: 13 } as const;
 
 /**
- * How a team signs in, where it comes from, and (for an admin) retiring,
+ * How a team signs in, its chat notifications, where it comes from, and (for an admin) retiring,
  * restoring and purging it. Members see the same, without the controls.
  */
 export function SettingsTab({
@@ -47,6 +49,8 @@ export function SettingsTab({
   busy: boolean;
 }) {
   const sso = useEnvironment()?.ssoLabel ?? "";
+  const { user } = useAuth();
+  const canManage = isAdmin || (user?.maintainerOf.includes(team.name) ?? false);
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -118,6 +122,8 @@ export function SettingsTab({
           </Typography>
         )}
       </Section>
+
+      <WebhookSection team={team.name} canManage={canManage} retired={retired} />
 
       <Section title="Where it comes from">
         <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 2, rowGap: 1 }}>

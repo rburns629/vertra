@@ -57,6 +57,10 @@ data:
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   # The console's own version: its image's tag, for the Admin page.
   CONSOLE_VERSION: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+  {{- $host := .Values.ingress.host | default .Values.gatewayApi.host }}
+  # Where people reach it, for links in chat webhook posts.
+  CONSOLE_URL: {{ .Values.notifications.consoleUrl | default (ternary (printf "https://%s" $host) "" (ne $host "")) | quote }}
+  NOTIFY_WEBHOOK_HOSTS: {{ join "," .Values.notifications.webhookHosts | quote }}
   JWT_TTL: {{ .Values.jwtTtl | quote }}
   ALLOW_SELF_REGISTRATION: {{ .Values.allowSelfRegistration | quote }}
   {{- with .Values.sso }}

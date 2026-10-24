@@ -37,6 +37,7 @@ import { UserService } from "./gen/vertra/console/v1/user_pb.js";
 import { FailureSchema, ProblemSchema } from "./gen/vertra/console/v1/common_pb.js";
 import { Runnable_Kind, TemplateService } from "./gen/vertra/console/v1/template_pb.js";
 import { ResourceService } from "./gen/vertra/console/v1/resource_pb.js";
+import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
@@ -119,6 +120,7 @@ const tokens = createClient(TokenService, transport);
 const users = createClient(UserService, transport);
 const templates = createClient(TemplateService, transport);
 const resourcesApi = createClient(ResourceService, transport);
+const notificationsApi = createClient(NotificationService, transport);
 
 function apiError(error: unknown): ApiError {
   const connect = ConnectError.from(error);
@@ -1764,4 +1766,68 @@ export async function deleteResources(resourceIds: string[]): Promise<string> {
 /** Deletes what a run made that's still there, newest first; returns the cleanup run. */
 export async function deleteRunResources(executionId: string): Promise<string> {
   return (await call(() => resourcesApi.deleteRunResources({ executionId }))).executionId;
+}
+
+/** Something you'd want to know (proto/vertra/console/v1/notification.proto). */
+export interface Notification {
+  id: string;
+  kind: "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing";
+  title: string;
+  body: string;
+  /** The console page it's about; null when it's about nothing in particular. */
+  link: string | null;
+  createdAt: string;
+  read: boolean;
+}
+
+export async function listNotifications(): Promise<{ notifications: Notification[]; unreadCount: number }> {
+  const response = await call(() => notificationsApi.listNotifications({}));
+  return {
+    notifications: response.notifications.map((n) => ({
+      id: n.id,
+      kind: n.kind as Notification["kind"],
+      title: n.title,
+      body: n.body,
+      link: n.link || null,
+      createdAt: iso(n.createdAt) ?? "",
+      read: n.read,
+    })),
+    unreadCount: response.unreadCount,
+  };
+}
+
+export async function markNotificationsRead(ids: string[] | "all"): Promise<void> {
+  await call(() => notificationsApi.markNotificationsRead(ids === "all" ? { all: true } : { ids }));
+}
+
+/** A team's chat webhook, as its members see it: never its URL. */
+export interface TeamWebhook {
+  configured: boolean;
+  host: string;
+  kinds: string[];
+  lastSentAt: string | null;
+  lastError: string | null;
+}
+
+function webhookOf(w: { configured: boolean; host: string; kinds: string[]; lastSentAt?: Parameters<typeof iso>[0]; lastError: string } | undefined): TeamWebhook {
+  return { configured: w?.configured ?? false, host: w?.host ?? "", kinds: w?.kinds ?? [], lastSentAt: iso(w?.lastSentAt), lastError: w?.lastError || null };
+}
+
+export async function getTeamWebhook(team: string): Promise<{ webhook: TeamWebhook; allowedHosts: string[] }> {
+  const response = await call(() => notificationsApi.getTeamWebhook({ team }));
+  return { webhook: webhookOf(response.webhook), allowedHosts: response.allowedHosts };
+}
+
+/** Sets it: a new URL, or (url "") only the kinds. */
+export async function setTeamWebhook(team: string, url: string, kinds: string[]): Promise<TeamWebhook> {
+  return webhookOf((await call(() => notificationsApi.setTeamWebhook({ team, url, kinds }))).webhook);
+}
+
+export async function deleteTeamWebhook(team: string): Promise<void> {
+  await call(() => notificationsApi.deleteTeamWebhook({ team }));
+}
+
+export async function testTeamWebhook(team: string): Promise<{ sent: boolean; error: string }> {
+  const { sent, error } = await call(() => notificationsApi.testTeamWebhook({ team }));
+  return { sent, error };
 }

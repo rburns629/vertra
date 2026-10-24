@@ -8,7 +8,8 @@
  * its run is gone. A run that ran a delete (core/resources.ts) marks what it
  * deleted. A retried run is recorded again once it finishes. A run the kernel no longer has
  * is passed over. A failed pass is logged and the next one tries again:
- * nothing is marked recorded until it is.
+ * nothing is marked recorded until it is. Each finished run is also told to
+ * notifier.ts, which says so to whoever ran it.
  */
 import type { FastifyBaseLogger } from "fastify";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
@@ -16,6 +17,7 @@ import { productLookup, productOfTask } from "./core/executions.js";
 import { db } from "./db/client.js";
 import { resources, submittedExecutions } from "./db/schema.js";
 import { getExecution, getExecutionStates, type KernelExecution } from "./kernel/client.js";
+import { runFinished } from "./notifier.js";
 
 const FINISHED = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
 /** Runs looked at, and finished ones read in full, per pass. */
@@ -166,6 +168,8 @@ export async function recordFinishedRuns(): Promise<{ runs: number; resources: n
   const pending = await db
     .select({
       executionId: submittedExecutions.executionId,
+      name: submittedExecutions.name,
+      teams: submittedExecutions.teams,
       submittedBy: submittedExecutions.submittedBy,
       payload: submittedExecutions.payload,
       template: submittedExecutions.template,
@@ -176,11 +180,11 @@ export async function recordFinishedRuns(): Promise<{ runs: number; resources: n
     .orderBy(asc(submittedExecutions.createdAt))
     .limit(PER_PASS);
   if (pending.length === 0) return { runs: 0, resources: 0 };
-  const states = new Map((await getExecutionStates(pending.map((r) => r.executionId))).map((s) => [s.executionId, s.state]));
+  const states = new Map((await getExecutionStates(pending.map((r) => r.executionId))).map((s) => [s.executionId, s]));
   let runs = 0;
   let recorded = 0;
   for (const run of pending) {
-    const state = states.get(run.executionId);
+    const { state, updatedAt } = states.get(run.executionId) ?? {};
     if (state === undefined) {
       // The kernel no longer has it (past its retention): nothing to read.
       await db
@@ -190,7 +194,19 @@ export async function recordFinishedRuns(): Promise<{ runs: number; resources: n
       continue;
     }
     if (!FINISHED.has(state) || runs === READ_PER_PASS) continue;
-    recorded += await recordRun(run, await getExecution(run.executionId));
+    const detail = await getExecution(run.executionId);
+    // Told first: if recording fails, the next pass tells again, which its key makes a no-op.
+    const failed = detail.tasks.find((t) => t.state === "FAILED");
+    await runFinished({
+      executionId: run.executionId,
+      name: run.name,
+      state,
+      submittedBy: run.submittedBy,
+      teams: run.template !== null ? (run.onBehalfOf ? [run.onBehalfOf] : []) : run.teams,
+      finishedAt: updatedAt ?? null,
+      failedStep: failed ? { taskId: failed.taskId, code: typeof failed.failure?.["code"] === "string" ? failed.failure["code"] : "an error" } : undefined,
+    });
+    recorded += await recordRun(run, detail);
     runs += 1;
   }
   return { runs, resources: recorded };

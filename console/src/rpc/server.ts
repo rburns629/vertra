@@ -28,6 +28,7 @@ import { GuideService } from "../gen/vertra/console/v1/guide_pb.js";
 import { TokenService } from "../gen/vertra/console/v1/token_pb.js";
 import { UserService } from "../gen/vertra/console/v1/user_pb.js";
 import { ResourceService } from "../gen/vertra/console/v1/resource_pb.js";
+import { NotificationService } from "../gen/vertra/console/v1/notification_pb.js";
 import { kAuthError, kAuthProblem, kCaller, kClientIp, kLog, kRequestId } from "./context.js";
 import { audit, maskErrors, requireCaller } from "./interceptors.js";
 import { countCalls } from "../metrics.js";
@@ -45,6 +46,7 @@ import { guideService } from "./services/guide.js";
 import { tokenService } from "./services/token.js";
 import { userService } from "./services/user.js";
 import { resourceService } from "./services/resource.js";
+import { notificationService } from "./services/notification.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -88,6 +90,7 @@ export async function registerRpc(app: FastifyInstance, api: FastifyInstance): P
         router.service(ObserveService, observeService());
         router.service(ExecutionService, executionService());
         router.service(ResourceService, resourceService());
+        router.service(NotificationService, notificationService());
       },
       // Outermost first.
       interceptors: [countCalls, maskErrors, audit, requireCaller],

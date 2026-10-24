@@ -525,6 +525,80 @@ export const resources = pgTable(
   ],
 );
 
+/**
+ * Something worth telling people (notifier.ts): a run that failed or
+ * finished, a step waiting for an approval, the catalog not being pulled.
+ * Made once (its key), then shown to each of its people (user_notifications)
+ * and posted to the chat webhooks of its teams (webhook_deliveries).
+ */
+export const notificationEvents = pgTable(
+  "notification_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What makes it the same event: "run:<id>:<finished at>", say.
+    key: text("key").notNull().unique(),
+    kind: text("kind").$type<NotificationKind>().notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    // The console page it's about: "/runs/<id>".
+    link: text("link"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("notification_events_created_at_idx").on(table.createdAt)],
+);
+
+export type NotificationKind = "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing";
+
+/** A person's copy of an event, until they've read it. */
+export const userNotifications = pgTable(
+  "user_notifications",
+  {
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => notificationEvents.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+  },
+  (table) => [primaryKey({ columns: [table.eventId, table.userId] }), index("user_notifications_user_id_idx").on(table.userId)],
+);
+
+/**
+ * A team's chat webhook (Slack, Google Chat, Teams): where its events are
+ * posted, and which. The URL is a credential, so it's kept encrypted
+ * (notifier.ts) and never sent back; only its host is shown.
+ */
+export const teamWebhooks = pgTable("team_webhooks", {
+  teamId: uuid("team_id")
+    .primaryKey()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  urlEncrypted: text("url_encrypted").notNull(),
+  host: text("host").notNull(),
+  kinds: text("kinds").array().$type<NotificationKind[]>().notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  // The last post: when it worked, and why the last one didn't.
+  lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  lastError: text("last_error"),
+});
+
+/** An event to post to a team's webhook, until it's posted or given up on. */
+export const webhookDeliveries = pgTable(
+  "webhook_deliveries",
+  {
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => notificationEvents.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    attempts: integer("attempts").notNull().default(0),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [primaryKey({ columns: [table.eventId, table.teamId] })],
+);
+
 export const teamMemberships = pgTable(
   "team_memberships",
   {

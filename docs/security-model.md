@@ -216,6 +216,22 @@ be shared with the person, its inputs fit its schema, its targets be
 allowed, and its approval waits for a maintainer. Asking for a delete is in
 the audit log, and so is the run.
 
+## Notifications and chat webhooks
+
+People see their own notifications only. A team's chat webhook URL (Slack,
+Google Chat, Teams) is a credential the console has to use, so it's the
+one third-party credential the console keeps itself, by decision: encrypted
+in its database (AES-256-GCM, with a key derived from its `JWT_SECRET`, so
+a copy of the database alone doesn't give it away), never sent back by the
+API (members see its host), set only by the team's maintainers (audited,
+without the URL), and only under the hosts the install allows
+(`notifications.webhookHosts`: Slack's, Google Chat's and Teams' by
+default), over HTTPS, without following redirects, so a webhook can't
+point the console at anything inside the cluster. A post says what
+happened and links to the console; it carries no outputs or logs.
+Rotating `JWT_SECRET` makes the stored URLs unreadable, and teams set
+theirs again.
+
 ## Who sees a step's logs
 
 A step's output is stored (the kernel redacts recognizable credentials

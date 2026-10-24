@@ -588,4 +588,54 @@ What runs made: each resource a step reported in its outputs (`resources: [{type
 | `delete_requested_by` | uuid | yes | Who asked. |
 | `deleted_at` | timestamptz | yes | When its cleanup step succeeded. |
 
+### notification_events
+
+Something worth telling people: a run that failed or finished, a step waiting for an approval, the catalog not being pulled. Made once, then shown in people's inboxes and posted to teams' chat webhooks. Kept 90 days.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `key` | text | no | What makes it the same event (`run:<id>:<state>:<finished at>`, `approval:<run>:<step>:<since>`, `catalog:<last applied>`). Unique, so it's only ever made once. |
+| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting` or `catalog_failing`. |
+| `title` | text | no | |
+| `body` | text | no | |
+| `link` | text | yes | The console page it's about, such as `/runs/<id>`. |
+| `created_at` | timestamptz | no | |
+
+### user_notifications
+
+A person's copy of an event: their inbox.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `event_id` | uuid | no | The event. |
+| `user_id` | uuid | no | Whose. |
+| `read_at` | timestamptz | yes | When they read it; empty while unread. |
+
+### team_webhooks
+
+A team's chat webhook (Slack, Google Chat, Teams), set by its maintainers.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `team_id` | uuid | no | |
+| `url_encrypted` | text | no | The webhook URL, a credential: AES-256-GCM with a key derived from the console's `JWT_SECRET`. Never sent back by the API. |
+| `host` | text | no | Its host, which is what people see. |
+| `kinds` | text[] | no | What it gets: `run_failed`, `approval_waiting`. |
+| `updated_by` | uuid | yes | Who set it last. |
+| `updated_at` | timestamptz | no | |
+| `last_sent_at` | timestamptz | yes | The last post that went. |
+| `last_error` | text | yes | Why the last one didn't, if it didn't. |
+
+### webhook_deliveries
+
+An event to post to a team's webhook: tried up to five times.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `event_id` | uuid | no | |
+| `team_id` | uuid | no | |
+| `attempts` | integer | no | |
+| `sent_at` | timestamptz | yes | When it went. |
+
 The console's migrations are tracked in the `drizzle` schema, outside `public`.

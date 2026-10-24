@@ -33,6 +33,7 @@ import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { PageErrorBoundary } from "../components/ErrorPage";
 import { useEnvironment } from "../environment";
+import { NotificationBell } from "./NotificationBell";
 
 const DRAWER_WIDTH = 248;
 
@@ -183,6 +184,7 @@ export function AppLayout() {
               {roleLine(user)}
             </Typography>
           </Box>
+          {isDesktop && <NotificationBell onDark />}
           <IconButton
             aria-label="Settings"
             aria-haspopup="menu"
@@ -239,7 +241,8 @@ export function AppLayout() {
               <IconButton edge="start" aria-label="Open navigation" onClick={() => { setNavOpen(true); }}>
                 <MenuIcon />
               </IconButton>
-              <Typography sx={{ fontWeight: 600, fontSize: 16 }}>Vertra</Typography>
+              <Typography sx={{ fontWeight: 600, fontSize: 16, flexGrow: 1 }}>Vertra</Typography>
+              <NotificationBell />
             </Toolbar>
           </AppBar>
         )}

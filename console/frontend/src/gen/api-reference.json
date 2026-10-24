@@ -385,6 +385,67 @@
    ]
   },
   {
+   "name": "NotificationService",
+   "fullName": "vertra.console.v1.NotificationService",
+   "comment": "What happened that you'd want to know (the console's notifier.ts): a run\nof yours failed or finished, a step waits for your team's approval, the\ncatalog isn't being pulled (admins). Each is in your inbox, and a team's\nare posted to its chat webhook (Slack, Google Chat, Teams) when it has\none.",
+   "methods": [
+    {
+     "name": "ListNotifications",
+     "comment": "Your notifications, newest first (at most 50), and how many are unread.",
+     "input": "vertra.console.v1.ListNotificationsRequest",
+     "output": "vertra.console.v1.ListNotificationsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "MarkNotificationsRead",
+     "comment": "Marks some of yours read, or all of them.",
+     "input": "vertra.console.v1.MarkNotificationsReadRequest",
+     "output": "vertra.console.v1.MarkNotificationsReadResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "GetTeamWebhook",
+     "comment": "A team's webhook, for its members: its host and what it's sent; never\nits URL.",
+     "input": "vertra.console.v1.GetTeamWebhookRequest",
+     "output": "vertra.console.v1.GetTeamWebhookResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetTeamWebhook",
+     "comment": "Sets a team's webhook (its maintainers): the URL, kept encrypted and\nnever shown again, under a host the install allows, and which kinds it\ngets.",
+     "input": "vertra.console.v1.SetTeamWebhookRequest",
+     "output": "vertra.console.v1.SetTeamWebhookResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "DeleteTeamWebhook",
+     "comment": "Removes a team's webhook (its maintainers): nothing more is posted.",
+     "input": "vertra.console.v1.DeleteTeamWebhookRequest",
+     "output": "vertra.console.v1.DeleteTeamWebhookResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "TestTeamWebhook",
+     "comment": "Posts a test message to it (its maintainers), and says whether it went.",
+     "input": "vertra.console.v1.TestTeamWebhookRequest",
+     "output": "vertra.console.v1.TestTeamWebhookResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "ObserveService",
    "fullName": "vertra.console.v1.ObserveService",
    "comment": "Observe: what this install checks, what it refused, and what everything\nis doing. Everyone signed in sees the security checks (what's enforced,\nwhat's refused, every image that may run and its scan); runs' details\nfollow who may see each run.",
@@ -3858,6 +3919,294 @@
      "repeated": false,
      "optional": true,
      "comment": "Unset when scanning is off."
+    }
+   ]
+  },
+  "vertra.console.v1.Notification": {
+   "name": "Notification",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "run_failed, run_succeeded, approval_waiting or catalog_failing."
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "body",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "link",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The console page it's about, such as /runs/<id>."
+    },
+    {
+     "name": "createdAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "read",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListNotificationsRequest": {
+   "name": "ListNotificationsRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "unreadOnly",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListNotificationsResponse": {
+   "name": "ListNotificationsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "notifications",
+     "type": "Notification",
+     "ref": "vertra.console.v1.Notification",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "unreadCount",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.MarkNotificationsReadRequest": {
+   "name": "MarkNotificationsReadRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "ids",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "all",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Every one of yours, instead."
+    }
+   ]
+  },
+  "vertra.console.v1.MarkNotificationsReadResponse": {
+   "name": "MarkNotificationsReadResponse",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.TeamWebhook": {
+   "name": "TeamWebhook",
+   "comment": "",
+   "fields": [
+    {
+     "name": "configured",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether the team has one."
+    },
+    {
+     "name": "host",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its host, such as hooks.slack.com."
+    },
+    {
+     "name": "kinds",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The kinds it's sent: run_failed, approval_waiting."
+    },
+    {
+     "name": "lastSentAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "lastError",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why the last post failed, if it did."
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetTeamWebhookRequest": {
+   "name": "GetTeamWebhookRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetTeamWebhookResponse": {
+   "name": "GetTeamWebhookResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "webhook",
+     "type": "TeamWebhook",
+     "ref": "vertra.console.v1.TeamWebhook",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "allowedHosts",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The hosts this install allows."
+    }
+   ]
+  },
+  "vertra.console.v1.SetTeamWebhookRequest": {
+   "name": "SetTeamWebhookRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: keep the one set, and change only the kinds."
+    },
+    {
+     "name": "kinds",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetTeamWebhookResponse": {
+   "name": "SetTeamWebhookResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "webhook",
+     "type": "TeamWebhook",
+     "ref": "vertra.console.v1.TeamWebhook",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteTeamWebhookRequest": {
+   "name": "DeleteTeamWebhookRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteTeamWebhookResponse": {
+   "name": "DeleteTeamWebhookResponse",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.TestTeamWebhookRequest": {
+   "name": "TestTeamWebhookRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TestTeamWebhookResponse": {
+   "name": "TestTeamWebhookResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "sent",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "error",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why not, when it wasn't."
     }
    ]
   },

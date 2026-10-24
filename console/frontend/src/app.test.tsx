@@ -684,5 +684,47 @@ describe("a team's settings", () => {
     expect(screen.getByRole("switch", { name: /require google sign-in/i })).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: /retire payments/i })).toBeNull();
   });
+
+  it("let a maintainer set the team's chat webhook, which is never shown back", async () => {
+    const saved: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=settings", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "NotificationService/GetTeamWebhook": { webhook: { configured: false }, allowedHosts: ["hooks.slack.com"] },
+      "NotificationService/SetTeamWebhook": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return { webhook: { configured: true, host: "hooks.slack.com", kinds: request["kinds"] } };
+      },
+    });
+    fireEvent.change(await screen.findByLabelText(/webhook url/i), { target: { value: "https://hooks.slack.com/services/T/B/x" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /waits for the team's approval/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed"] }]); });
+    expect(await screen.findByText("hooks.slack.com")).toBeTruthy();
+    expect((screen.getByLabelText(/new webhook url/i) as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("notifications", () => {
+  it("show how many are unread, and open what one is about", async () => {
+    const read: Record<string, unknown>[] = [];
+    await renderAt("/", MEMBER, {
+      "NotificationService/ListNotifications": {
+        notifications: [
+          { id: "n1", kind: "run_failed", title: "billing-api staging failed", body: "Step deploy failed: QUOTA.", link: "/runs/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", createdAt: "2026-10-21T16:26:00Z", read: false },
+          { id: "n2", kind: "run_succeeded", title: "orders finished", link: "/runs/x", createdAt: "2026-10-21T16:00:00Z", read: true },
+        ],
+        unreadCount: 1,
+      },
+      "NotificationService/MarkNotificationsRead": (request: Record<string, unknown>) => {
+        read.push(request);
+        return {};
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+    fireEvent.click(await screen.findByText("billing-api staging failed"));
+    await waitFor(() => { expect(read).toEqual([{ ids: ["n1"] }]); });
+    // On the run's page now.
+    expect(await screen.findByLabelText("Loading the run")).toBeTruthy();
+  });
 });
 
