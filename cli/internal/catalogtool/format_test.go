@@ -467,3 +467,35 @@ func TestCleanupIsChecked(t *testing.T) {
 		}
 	}
 }
+
+// An action's plan names another action of its product that only reports;
+// a release carries it.
+func TestPlanIsChecked(t *testing.T) {
+	check := func(plan, planAction string) (string, *Product) {
+		files := product("mine", "[]")
+		files["teams/a/products/mine/product.yaml"] = strings.Replace(productFile("mine", "a", "[]"), "    shareWith: []\n", "    shareWith: []\n"+plan, 1) +
+			"  - name: preview\n    input: {type: object}\n    output: {type: object}\n" + planAction
+		files["teams/a/products/mine/tests/preview/says/request.json"] = `{"inputs": {}}`
+		files["teams/a/products/mine/tests/preview/says/expected.json"] = `{"status": "succeeded"}`
+		c := catalogWith(t, files)
+		p := c.AllProducts()[0]
+		return errorsOf(t, func(c *Catalog) bool { return c.ValidateProduct(p) }, c), p
+	}
+	out, p := check("    plan: preview\n", "")
+	if out != "" {
+		t.Fatalf("a good plan was refused:\n%s", out)
+	}
+	if actions, err := p.ReleaseActions("r@sha256:abc"); err != nil || actions[0].GetPlan() != "preview" {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	for plan, want := range map[string][2]string{
+		"missing": {"    plan: dryrun\n", ""},
+		"itself":  {"    plan: run\n", ""},
+		"acts":    {"    plan: preview\n", "    approval: always\n"},
+	} {
+		message := map[string]string{"missing": "plan names 'dryrun', which this product doesn't have", "itself": "plan names the action itself", "acts": "its plan, 'preview', has approval"}[plan]
+		if out, _ := check(want[0], want[1]); !strings.Contains(out, message) {
+			t.Errorf("%s: no %q in:\n%s", plan, message, out)
+		}
+	}
+}

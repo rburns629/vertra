@@ -3,7 +3,7 @@
 import type { ServiceImpl } from "@connectrpc/connect";
 import type { JsonObject } from "@bufbuild/protobuf";
 import { Type } from "@sinclair/typebox";
-import { runAction, runnables, runTemplate } from "../../core/templates.js";
+import { previewAction, previewTemplate, runAction, runnables, runTemplate } from "../../core/templates.js";
 import { Runnable_Kind, type TemplateService } from "../../gen/vertra/console/v1/template_pb.js";
 import { callerOf, logOf } from "../context.js";
 import { check } from "../validate.js";
@@ -32,6 +32,7 @@ export function templateService(): ServiceImpl<typeof TemplateService> {
           sourceUrl: r.sourceUrl ?? "",
           askForAccessUrl: r.askForAccessUrl ?? "",
           targets: r.targets,
+          previewable: r.previewable,
         })),
       };
     },
@@ -56,6 +57,20 @@ export function templateService(): ServiceImpl<typeof TemplateService> {
         runAction(callerOf(ctx), product, { parameters: req.inputs ?? {}, onBehalfOf, requestId }, logOf(ctx)),
       );
       return { executionId: result.executionId, state: executionState(result.state) };
+    },
+
+    async previewTemplate(req, ctx) {
+      const { team, name, onBehalfOf } = check(
+        { team: Name, name: Name, onBehalfOf: OptionalText },
+        { team: req.team, name: req.name, onBehalfOf: req.onBehalfOf },
+      );
+      return viaKernel(ctx, () => previewTemplate(callerOf(ctx), team, name, { parameters: req.parameters ?? {}, onBehalfOf }, logOf(ctx)));
+    },
+
+    async previewAction(req, ctx) {
+      const { product, onBehalfOf } = check({ product: Name, onBehalfOf: OptionalText }, { product: req.product, onBehalfOf: req.onBehalfOf });
+      const { executionId } = await viaKernel(ctx, () => previewAction(callerOf(ctx), product, { parameters: req.inputs ?? {}, onBehalfOf }, logOf(ctx)));
+      return { executionId };
     },
   };
 }

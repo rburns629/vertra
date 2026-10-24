@@ -885,6 +885,8 @@ export interface TaskApproval {
   awaitingSince: string | null;
   /** Whether the signed-in user may approve or decline it now. */
   canDecide: boolean;
+  /** Whether they can preview what it would do first (previewStep). */
+  canPreview: boolean;
 }
 
 export interface FailureHelp {
@@ -1040,6 +1042,7 @@ function executionDetail(execution: Execution): ExecutionDetail {
             approvedAt: iso(task.approval.approvedAt),
             awaitingSince: iso(task.approval.awaitingSince),
             canDecide: task.approval.canDecide,
+            canPreview: task.approval.canPreview,
           }
         : null,
       waitingFor: task.waitingFor ?? null,
@@ -1363,6 +1366,8 @@ export interface Runnable {
   askForAccessUrl: string | null;
   /** Its parameters that name another team's targets, with what yours may give. */
   targets: { parameter: string; type: string; allowed: string[] }[];
+  /** Preview says what it would do: it (or a step of it) has a plan. */
+  previewable: boolean;
 }
 
 export async function listRunnables(): Promise<Runnable[]> {
@@ -1383,6 +1388,7 @@ export async function listRunnables(): Promise<Runnable[]> {
     sourceUrl: r.sourceUrl || null,
     askForAccessUrl: r.askForAccessUrl || null,
     targets: r.targets.map((t) => ({ parameter: t.parameter, type: t.type, allowed: t.allowed })),
+    previewable: r.previewable,
   }));
 }
 
@@ -1830,4 +1836,30 @@ export async function deleteTeamWebhook(team: string): Promise<void> {
 export async function testTeamWebhook(team: string): Promise<{ sent: boolean; error: string }> {
   const { sent, error } = await call(() => notificationsApi.testTeamWebhook({ team }));
   return { sent, error };
+}
+
+/** Steps a preview left out, and why. */
+export interface NotPreviewed {
+  step: string;
+  why: string;
+}
+
+/** Previews a runnable with these inputs: a run of its plan actions. */
+export async function previewRunnable(
+  runnable: Pick<Runnable, "kind" | "team" | "name">,
+  parameters: Record<string, unknown>,
+  onBehalfOf?: string,
+): Promise<{ executionId: string; notPreviewed: NotPreviewed[] }> {
+  const values = parameters as JsonObject;
+  if (runnable.kind === "template") {
+    const { executionId, notPreviewed } = await call(() => templates.previewTemplate({ team: runnable.team, name: runnable.name, parameters: values, onBehalfOf }));
+    return { executionId, notPreviewed: notPreviewed.map((n) => ({ step: n.step, why: n.why })) };
+  }
+  const { executionId } = await call(() => templates.previewAction({ product: runnable.name, inputs: values, onBehalfOf }));
+  return { executionId, notPreviewed: [] };
+}
+
+/** Previews a step waiting for an approval; returns the preview run. */
+export async function previewStep(executionId: string, taskId: string): Promise<string> {
+  return (await call(() => executions.previewStep({ executionId, taskId }))).executionId;
 }

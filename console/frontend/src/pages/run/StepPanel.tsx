@@ -196,7 +196,7 @@ export function StepPanel({
             . It starts when that one finishes.
           </Alert>
         )}
-        {task.approval && <Approval approval={task.approval} awaiting={task.state === "AWAITING_APPROVAL"} busy={busy} onDecide={onDecide} />}
+        {task.approval && <Approval executionId={executionId} taskId={task.taskId} approval={task.approval} awaiting={task.state === "AWAITING_APPROVAL"} busy={busy} onDecide={onDecide} />}
 
         <Tabs value={tab} onChange={(_, value: TabId) => { setTab(value); }} variant="scrollable" allowScrollButtonsMobile sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}>
           <Tab value="attempts" label="Attempts" />

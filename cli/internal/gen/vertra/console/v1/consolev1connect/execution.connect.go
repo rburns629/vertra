@@ -65,6 +65,9 @@ const (
 	// ExecutionServiceDecideApprovalProcedure is the fully-qualified name of the ExecutionService's
 	// DecideApproval RPC.
 	ExecutionServiceDecideApprovalProcedure = "/vertra.console.v1.ExecutionService/DecideApproval"
+	// ExecutionServicePreviewStepProcedure is the fully-qualified name of the ExecutionService's
+	// PreviewStep RPC.
+	ExecutionServicePreviewStepProcedure = "/vertra.console.v1.ExecutionService/PreviewStep"
 	// ExecutionServiceListPendingApprovalsProcedure is the fully-qualified name of the
 	// ExecutionService's ListPendingApprovals RPC.
 	ExecutionServiceListPendingApprovalsProcedure = "/vertra.console.v1.ExecutionService/ListPendingApprovals"
@@ -102,6 +105,10 @@ type ExecutionServiceClient interface {
 	// fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
 	// and stays approved if it's retried.
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
+	// What a step waiting for an approval would do, for whoever may decide on
+	// it: a run (a preview) of its product's plan action with the inputs it
+	// will get.
+	PreviewStep(context.Context, *connect.Request[v1.PreviewStepRequest]) (*connect.Response[v1.PreviewStepResponse], error)
 	// The steps awaiting approval in the teams the caller maintains (every
 	// team, for an admin), the longest waiting first.
 	ListPendingApprovals(context.Context, *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error)
@@ -184,6 +191,12 @@ func NewExecutionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(executionServiceMethods.ByName("DecideApproval")),
 			connect.WithClientOptions(opts...),
 		),
+		previewStep: connect.NewClient[v1.PreviewStepRequest, v1.PreviewStepResponse](
+			httpClient,
+			baseURL+ExecutionServicePreviewStepProcedure,
+			connect.WithSchema(executionServiceMethods.ByName("PreviewStep")),
+			connect.WithClientOptions(opts...),
+		),
 		listPendingApprovals: connect.NewClient[v1.ListPendingApprovalsRequest, v1.ListPendingApprovalsResponse](
 			httpClient,
 			baseURL+ExecutionServiceListPendingApprovalsProcedure,
@@ -206,6 +219,7 @@ type executionServiceClient struct {
 	retryTask            *connect.Client[v1.RetryTaskRequest, v1.RetryTaskResponse]
 	rerunExecution       *connect.Client[v1.RerunExecutionRequest, v1.RerunExecutionResponse]
 	decideApproval       *connect.Client[v1.DecideApprovalRequest, v1.DecideApprovalResponse]
+	previewStep          *connect.Client[v1.PreviewStepRequest, v1.PreviewStepResponse]
 	listPendingApprovals *connect.Client[v1.ListPendingApprovalsRequest, v1.ListPendingApprovalsResponse]
 }
 
@@ -259,6 +273,11 @@ func (c *executionServiceClient) DecideApproval(ctx context.Context, req *connec
 	return c.decideApproval.CallUnary(ctx, req)
 }
 
+// PreviewStep calls vertra.console.v1.ExecutionService.PreviewStep.
+func (c *executionServiceClient) PreviewStep(ctx context.Context, req *connect.Request[v1.PreviewStepRequest]) (*connect.Response[v1.PreviewStepResponse], error) {
+	return c.previewStep.CallUnary(ctx, req)
+}
+
 // ListPendingApprovals calls vertra.console.v1.ExecutionService.ListPendingApprovals.
 func (c *executionServiceClient) ListPendingApprovals(ctx context.Context, req *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error) {
 	return c.listPendingApprovals.CallUnary(ctx, req)
@@ -296,6 +315,10 @@ type ExecutionServiceHandler interface {
 	// fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
 	// and stays approved if it's retried.
 	DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error)
+	// What a step waiting for an approval would do, for whoever may decide on
+	// it: a run (a preview) of its product's plan action with the inputs it
+	// will get.
+	PreviewStep(context.Context, *connect.Request[v1.PreviewStepRequest]) (*connect.Response[v1.PreviewStepResponse], error)
 	// The steps awaiting approval in the teams the caller maintains (every
 	// team, for an admin), the longest waiting first.
 	ListPendingApprovals(context.Context, *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error)
@@ -374,6 +397,12 @@ func NewExecutionServiceHandler(svc ExecutionServiceHandler, opts ...connect.Han
 		connect.WithSchema(executionServiceMethods.ByName("DecideApproval")),
 		connect.WithHandlerOptions(opts...),
 	)
+	executionServicePreviewStepHandler := connect.NewUnaryHandler(
+		ExecutionServicePreviewStepProcedure,
+		svc.PreviewStep,
+		connect.WithSchema(executionServiceMethods.ByName("PreviewStep")),
+		connect.WithHandlerOptions(opts...),
+	)
 	executionServiceListPendingApprovalsHandler := connect.NewUnaryHandler(
 		ExecutionServiceListPendingApprovalsProcedure,
 		svc.ListPendingApprovals,
@@ -403,6 +432,8 @@ func NewExecutionServiceHandler(svc ExecutionServiceHandler, opts ...connect.Han
 			executionServiceRerunExecutionHandler.ServeHTTP(w, r)
 		case ExecutionServiceDecideApprovalProcedure:
 			executionServiceDecideApprovalHandler.ServeHTTP(w, r)
+		case ExecutionServicePreviewStepProcedure:
+			executionServicePreviewStepHandler.ServeHTTP(w, r)
 		case ExecutionServiceListPendingApprovalsProcedure:
 			executionServiceListPendingApprovalsHandler.ServeHTTP(w, r)
 		default:
@@ -452,6 +483,10 @@ func (UnimplementedExecutionServiceHandler) RerunExecution(context.Context, *con
 
 func (UnimplementedExecutionServiceHandler) DecideApproval(context.Context, *connect.Request[v1.DecideApprovalRequest]) (*connect.Response[v1.DecideApprovalResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ExecutionService.DecideApproval is not implemented"))
+}
+
+func (UnimplementedExecutionServiceHandler) PreviewStep(context.Context, *connect.Request[v1.PreviewStepRequest]) (*connect.Response[v1.PreviewStepResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ExecutionService.PreviewStep is not implemented"))
 }
 
 func (UnimplementedExecutionServiceHandler) ListPendingApprovals(context.Context, *connect.Request[v1.ListPendingApprovalsRequest]) (*connect.Response[v1.ListPendingApprovalsResponse], error) {

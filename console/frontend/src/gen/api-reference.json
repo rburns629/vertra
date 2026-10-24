@@ -297,6 +297,15 @@
      "public": false
     },
     {
+     "name": "PreviewStep",
+     "comment": "What a step waiting for an approval would do, for whoever may decide on\nit: a run (a preview) of its product's plan action with the inputs it\nwill get.",
+     "input": "vertra.console.v1.PreviewStepRequest",
+     "output": "vertra.console.v1.PreviewStepResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "ListPendingApprovals",
      "comment": "The steps awaiting approval in the teams the caller maintains (every\nteam, for an admin), the longest waiting first.",
      "input": "vertra.console.v1.ListPendingApprovalsRequest",
@@ -832,6 +841,24 @@
      "comment": "Runs one shared action with these inputs, as a one-step template.",
      "input": "vertra.console.v1.RunActionRequest",
      "output": "vertra.console.v1.RunActionResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "PreviewTemplate",
+     "comment": "What running a template with these parameters would do, without doing\nit: a run (a preview) of its steps' plan actions (product.yaml's plan),\nside by side, for the steps that have one and whose inputs are known\nbefore anything runs. Each step's outputs say what it would change.",
+     "input": "vertra.console.v1.PreviewTemplateRequest",
+     "output": "vertra.console.v1.PreviewTemplateResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "PreviewAction",
+     "comment": "What running one action with these inputs would do: a run of its plan action.",
+     "input": "vertra.console.v1.PreviewActionRequest",
+     "output": "vertra.console.v1.PreviewActionResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -2826,6 +2853,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Whether the caller may approve or decline it now."
+    },
+    {
+     "name": "canPreview",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether they can preview what it would do first (PreviewStep)."
     }
    ]
   },
@@ -3410,6 +3444,39 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewStepRequest": {
+   "name": "PreviewStepRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "taskId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewStepResponse": {
+   "name": "PreviewStepResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The preview run."
     }
    ]
   },
@@ -6745,6 +6812,128 @@
      "repeated": true,
      "optional": false,
      "comment": "Its parameters that name a target (a project, folder, account or\nsubscription another team's product acts on), with what the caller's\nteams may give each. A run with any other value is refused\n(permission_denied, TARGET_NOT_ALLOWED). Empty for the owning team's\nown people and admins, who aren't limited."
+    },
+    {
+     "name": "previewable",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether Preview says what it would do: the action, or one of the\ntemplate's steps, has a plan."
+    }
+   ]
+  },
+  "vertra.console.v1.NotPreviewed": {
+   "name": "NotPreviewed",
+   "comment": "A step a preview left out, and why: it has no plan, or its inputs come\nfrom an earlier step.",
+   "fields": [
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "why",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewTemplateRequest": {
+   "name": "PreviewTemplateRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "onBehalfOf",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewTemplateResponse": {
+   "name": "PreviewTemplateResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The preview run."
+    },
+    {
+     "name": "notPreviewed",
+     "type": "NotPreviewed",
+     "ref": "vertra.console.v1.NotPreviewed",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewActionRequest": {
+   "name": "PreviewActionRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "inputs",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "onBehalfOf",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewActionResponse": {
+   "name": "PreviewActionResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

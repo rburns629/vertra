@@ -387,6 +387,12 @@ export function productLookup() {
   return { teamId, matching };
 }
 
+/** A task as submitted, by its id. */
+function payloadTask(payload: unknown, taskId: string): Record<string, unknown> | undefined {
+  const tasks = isRecord(payload) && Array.isArray(payload["tasks"]) ? payload["tasks"] : [];
+  return tasks.find((t): t is Record<string, unknown> => isRecord(t) && t["id"] === taskId);
+}
+
 /**
  * The registered product a task as submitted ran, if it ran one: by its
  * team, image repository, action and identity.
@@ -880,6 +886,15 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
   }
   const helped = await failuresExplained(detail.tasks, submitted.payload);
   const teamOf = taskTeams(submitted.payload);
+  const deciding = (t: { taskId: string; state: string }) =>
+    t.state === "AWAITING_APPROVAL" && caller !== undefined && mayDecide(caller, teamOf.get(t.taskId) ?? "", submitted.submittedBy);
+  // Who may decide on a waiting step can preview it, when its product has a plan.
+  const previewable = new Set<string>();
+  const products = productLookup();
+  for (const t of detail.tasks.filter(deciding)) {
+    const task = payloadTask(submitted.payload, t.taskId);
+    if ((await productOfTask(products, task))?.plan) previewable.add(t.taskId);
+  }
   // A provider's member sees only their own steps in full (runView.ts).
   const view = runView(caller, submitted);
   return {
@@ -898,8 +913,8 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
             approvedBy: emails.get(t.approvedBy) ?? "",
             approvedAt: t.approvedAt,
             awaitingSince: t.awaitingSince,
-            canDecide:
-              t.state === "AWAITING_APPROVAL" && caller !== undefined && mayDecide(caller, teamOf.get(t.taskId) ?? "", submitted.submittedBy),
+            canDecide: deciding(t),
+            canPreview: previewable.has(t.taskId),
           }
         : null,
     })),

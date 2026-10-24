@@ -21,7 +21,8 @@ and `language`. They fail the same way too: `MISSING_INPUT` without text,
 One more, [`ticket`](products/ticket/) (Python), shows what a run made and
 deleting it later: `open` reports the ticket it opens in its outputs'
 `resources`, and its `cleanup` names `close`, which the console runs when
-someone deletes that ticket from **What runs made**. Nothing is really
+someone deletes that ticket from **What runs made**; and its `plan` names
+`plan`, which says what `open` would do, for **Preview**. Nothing is really
 created; the ticket's id comes from its title.
 
 ## Tests

@@ -76,6 +76,7 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 			Idempotent:     action["idempotent"] == true,
 			ConcurrencyKey: stringList(action["concurrencyKey"]),
 			Approval:       text(action, "approval"),
+			Plan:           text(action, "plan"),
 		}
 		if errs, ok := p.Spec["errors"].(map[string]any); ok && len(errs) > 0 {
 			a.Errors = map[string]*catalogv1.ErrorHelp{}

@@ -114,6 +114,9 @@ message ProductAction {
   // What removes the resources its steps report (product.yaml's cleanup):
   // unset when nothing does.
   Cleanup cleanup = 22;
+  // The action of the same product that says what a step of this one would
+  // do, without doing it (product.yaml's plan); empty when none does.
+  string plan = 23;
 }
 
 // An action's cleanup: which action of the same product removes one

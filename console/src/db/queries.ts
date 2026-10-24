@@ -503,6 +503,7 @@ export interface Product {
   maxAttempts: number;
   concurrencyKey: string[];
   cleanup: ProductCleanup | null;
+  plan: string | null;
   approval: Approval | null;
   errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
@@ -545,6 +546,7 @@ export interface ProductInput {
   maxAttempts?: number | undefined;
   concurrencyKey?: string[] | undefined;
   cleanup?: ProductCleanup | null | undefined;
+  plan?: string | null | undefined;
   approval?: Approval | null | undefined;
   errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
@@ -594,6 +596,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
       cleanup: input.cleanup,
+      plan: input.plan,
       approval: input.approval,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated,

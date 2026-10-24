@@ -14,9 +14,13 @@ import { Code } from "@connectrpc/connect";
 import { ApiError } from "../apiError.js";
 import { canMaintainTeam, loadExecution } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
-import { findTeamByName, findUserById, listAllTeams } from "../db/queries.js";
+import type { FastifyBaseLogger } from "fastify";
+import { findRunnableProduct, findTeamByName, findUserById, listAllTeams } from "../db/queries.js";
 import { decideApproval, getExecution, listAwaitingApproval } from "../kernel/client.js";
+import { resolvedInputs } from "../resourceRecorder.js";
+import { productLookup, productOfTask } from "./executions.js";
 import { ensureNotRetired } from "./retired.js";
+import { PREVIEW_RUN, runProductSteps, siblingAction } from "./templates.js";
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
   if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
@@ -82,4 +86,42 @@ export async function pendingApprovals(caller: AuthUser | undefined) {
     requestedBy: emails.get(a.requestedBy) ?? "",
     canDecide: a.requestedBy !== `user:${who.id}`,
   }));
+}
+
+/**
+ * Previews a step waiting for an approval, for whoever may decide on it: a
+ * run of its product's plan action (product.yaml's plan) with the inputs
+ * the step will get, its upstream steps having finished.
+ */
+export async function previewStep(caller: AuthUser | undefined, executionId: string, taskId: string, log: FastifyBaseLogger) {
+  const who = signedIn(caller);
+  const submitted = await loadExecution(executionId, who, "any");
+  const team = taskTeams(submitted.payload).get(taskId);
+  if (!team) throw new ApiError(404, "NOT_FOUND", `No step "${taskId}" in this run.`);
+  if (!mayDecide(who, team, submitted.submittedBy)) {
+    throw new ApiError(403, "FORBIDDEN", `Only who may approve step "${taskId}" (a maintainer of team "${team}", not whoever ran it) previews it.`);
+  }
+  const detail = await getExecution(executionId);
+  if (detail.tasks.find((t) => t.taskId === taskId)?.state !== "AWAITING_APPROVAL") {
+    throw new ApiError(409, "NOT_WAITING", `Step "${taskId}" isn't waiting for an approval.`);
+  }
+  const tasks = typeof submitted.payload === "object" && submitted.payload !== null && Array.isArray((submitted.payload as { tasks?: unknown }).tasks)
+    ? ((submitted.payload as { tasks: unknown[] }).tasks as Record<string, unknown>[])
+    : [];
+  const task = tasks.find((t) => t["id"] === taskId);
+  const registered = await productOfTask(productLookup(), task);
+  const product = registered ? await findRunnableProduct(registered.name) : undefined;
+  const plan = product?.plan ? await siblingAction(product, product.plan) : undefined;
+  if (!plan) throw new ApiError(409, "NO_PREVIEW", `Step "${taskId}" has no preview: its product.yaml names no plan for it.`);
+  const outputs = new Map(detail.tasks.flatMap((t) => (t.outputs ? [[t.taskId, t.outputs as Record<string, unknown>] as const] : [])));
+  const inputs = resolvedInputs(task?.["inputs"], outputs);
+  return runProductSteps(
+    who,
+    `Preview: ${detail.name} · ${taskId}`,
+    [{ id: taskId, product: plan, inputs, label: `Step "${taskId}"` }],
+    who.teamNames.includes(team) ? team : undefined,
+    { template: PREVIEW_RUN, parameters: { of: `${executionId}/${taskId}`, parameters: inputs } },
+    { chained: false, eachShared: true },
+    log,
+  );
 }

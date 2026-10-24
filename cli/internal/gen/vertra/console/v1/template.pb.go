@@ -189,7 +189,10 @@ type Runnable struct {
 	// teams may give each. A run with any other value is refused
 	// (permission_denied, TARGET_NOT_ALLOWED). Empty for the owning team's
 	// own people and admins, who aren't limited.
-	Targets       []*TargetChoice `protobuf:"bytes,15,rep,name=targets,proto3" json:"targets,omitempty"`
+	Targets []*TargetChoice `protobuf:"bytes,15,rep,name=targets,proto3" json:"targets,omitempty"`
+	// Whether Preview says what it would do: the action, or one of the
+	// template's steps, has a plan.
+	Previewable   bool `protobuf:"varint,16,opt,name=previewable,proto3" json:"previewable,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -329,6 +332,292 @@ func (x *Runnable) GetTargets() []*TargetChoice {
 	return nil
 }
 
+func (x *Runnable) GetPreviewable() bool {
+	if x != nil {
+		return x.Previewable
+	}
+	return false
+}
+
+// A step a preview left out, and why: it has no plan, or its inputs come
+// from an earlier step.
+type NotPreviewed struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Step          string                 `protobuf:"bytes,1,opt,name=step,proto3" json:"step,omitempty"`
+	Why           string                 `protobuf:"bytes,2,opt,name=why,proto3" json:"why,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotPreviewed) Reset() {
+	*x = NotPreviewed{}
+	mi := &file_vertra_console_v1_template_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotPreviewed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotPreviewed) ProtoMessage() {}
+
+func (x *NotPreviewed) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_template_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotPreviewed.ProtoReflect.Descriptor instead.
+func (*NotPreviewed) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *NotPreviewed) GetStep() string {
+	if x != nil {
+		return x.Step
+	}
+	return ""
+}
+
+func (x *NotPreviewed) GetWhy() string {
+	if x != nil {
+		return x.Why
+	}
+	return ""
+}
+
+type PreviewTemplateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Team          string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Parameters    *structpb.Struct       `protobuf:"bytes,3,opt,name=parameters,proto3" json:"parameters,omitempty"`
+	OnBehalfOf    *string                `protobuf:"bytes,4,opt,name=on_behalf_of,json=onBehalfOf,proto3,oneof" json:"on_behalf_of,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewTemplateRequest) Reset() {
+	*x = PreviewTemplateRequest{}
+	mi := &file_vertra_console_v1_template_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewTemplateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewTemplateRequest) ProtoMessage() {}
+
+func (x *PreviewTemplateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_template_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewTemplateRequest.ProtoReflect.Descriptor instead.
+func (*PreviewTemplateRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *PreviewTemplateRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *PreviewTemplateRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PreviewTemplateRequest) GetParameters() *structpb.Struct {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *PreviewTemplateRequest) GetOnBehalfOf() string {
+	if x != nil && x.OnBehalfOf != nil {
+		return *x.OnBehalfOf
+	}
+	return ""
+}
+
+type PreviewTemplateResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The preview run.
+	ExecutionId   string          `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	NotPreviewed  []*NotPreviewed `protobuf:"bytes,2,rep,name=not_previewed,json=notPreviewed,proto3" json:"not_previewed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewTemplateResponse) Reset() {
+	*x = PreviewTemplateResponse{}
+	mi := &file_vertra_console_v1_template_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewTemplateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewTemplateResponse) ProtoMessage() {}
+
+func (x *PreviewTemplateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_template_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewTemplateResponse.ProtoReflect.Descriptor instead.
+func (*PreviewTemplateResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *PreviewTemplateResponse) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *PreviewTemplateResponse) GetNotPreviewed() []*NotPreviewed {
+	if x != nil {
+		return x.NotPreviewed
+	}
+	return nil
+}
+
+type PreviewActionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Product       string                 `protobuf:"bytes,1,opt,name=product,proto3" json:"product,omitempty"`
+	Inputs        *structpb.Struct       `protobuf:"bytes,2,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	OnBehalfOf    *string                `protobuf:"bytes,3,opt,name=on_behalf_of,json=onBehalfOf,proto3,oneof" json:"on_behalf_of,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewActionRequest) Reset() {
+	*x = PreviewActionRequest{}
+	mi := &file_vertra_console_v1_template_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewActionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewActionRequest) ProtoMessage() {}
+
+func (x *PreviewActionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_template_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewActionRequest.ProtoReflect.Descriptor instead.
+func (*PreviewActionRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PreviewActionRequest) GetProduct() string {
+	if x != nil {
+		return x.Product
+	}
+	return ""
+}
+
+func (x *PreviewActionRequest) GetInputs() *structpb.Struct {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
+func (x *PreviewActionRequest) GetOnBehalfOf() string {
+	if x != nil && x.OnBehalfOf != nil {
+		return *x.OnBehalfOf
+	}
+	return ""
+}
+
+type PreviewActionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewActionResponse) Reset() {
+	*x = PreviewActionResponse{}
+	mi := &file_vertra_console_v1_template_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewActionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewActionResponse) ProtoMessage() {}
+
+func (x *PreviewActionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_template_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewActionResponse.ProtoReflect.Descriptor instead.
+func (*PreviewActionResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *PreviewActionResponse) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
 type TargetChoice struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Parameter string                 `protobuf:"bytes,1,opt,name=parameter,proto3" json:"parameter,omitempty"`
@@ -343,7 +632,7 @@ type TargetChoice struct {
 
 func (x *TargetChoice) Reset() {
 	*x = TargetChoice{}
-	mi := &file_vertra_console_v1_template_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -355,7 +644,7 @@ func (x *TargetChoice) String() string {
 func (*TargetChoice) ProtoMessage() {}
 
 func (x *TargetChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_template_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,7 +657,7 @@ func (x *TargetChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TargetChoice.ProtoReflect.Descriptor instead.
 func (*TargetChoice) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TargetChoice) GetParameter() string {
@@ -409,7 +698,7 @@ type RunTemplateRequest struct {
 
 func (x *RunTemplateRequest) Reset() {
 	*x = RunTemplateRequest{}
-	mi := &file_vertra_console_v1_template_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -421,7 +710,7 @@ func (x *RunTemplateRequest) String() string {
 func (*RunTemplateRequest) ProtoMessage() {}
 
 func (x *RunTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_template_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -434,7 +723,7 @@ func (x *RunTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunTemplateRequest.ProtoReflect.Descriptor instead.
 func (*RunTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RunTemplateRequest) GetTeam() string {
@@ -482,7 +771,7 @@ type RunTemplateResponse struct {
 
 func (x *RunTemplateResponse) Reset() {
 	*x = RunTemplateResponse{}
-	mi := &file_vertra_console_v1_template_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -494,7 +783,7 @@ func (x *RunTemplateResponse) String() string {
 func (*RunTemplateResponse) ProtoMessage() {}
 
 func (x *RunTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_template_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -507,7 +796,7 @@ func (x *RunTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunTemplateResponse.ProtoReflect.Descriptor instead.
 func (*RunTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RunTemplateResponse) GetExecutionId() string {
@@ -538,7 +827,7 @@ type RunActionRequest struct {
 
 func (x *RunActionRequest) Reset() {
 	*x = RunActionRequest{}
-	mi := &file_vertra_console_v1_template_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -550,7 +839,7 @@ func (x *RunActionRequest) String() string {
 func (*RunActionRequest) ProtoMessage() {}
 
 func (x *RunActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_template_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -563,7 +852,7 @@ func (x *RunActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunActionRequest.ProtoReflect.Descriptor instead.
 func (*RunActionRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RunActionRequest) GetProduct() string {
@@ -604,7 +893,7 @@ type RunActionResponse struct {
 
 func (x *RunActionResponse) Reset() {
 	*x = RunActionResponse{}
-	mi := &file_vertra_console_v1_template_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -616,7 +905,7 @@ func (x *RunActionResponse) String() string {
 func (*RunActionResponse) ProtoMessage() {}
 
 func (x *RunActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_template_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_template_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -629,7 +918,7 @@ func (x *RunActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunActionResponse.ProtoReflect.Descriptor instead.
 func (*RunActionResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_template_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RunActionResponse) GetExecutionId() string {
@@ -653,7 +942,7 @@ const file_vertra_console_v1_template_proto_rawDesc = "" +
 	" vertra/console/v1/template.proto\x12\x11vertra.console.v1\x1a!vertra/console/v1/execution.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x16\n" +
 	"\x14ListTemplatesRequest\"R\n" +
 	"\x15ListTemplatesResponse\x129\n" +
-	"\trunnables\x18\x01 \x03(\v2\x1b.vertra.console.v1.RunnableR\trunnables\"\xf5\x04\n" +
+	"\trunnables\x18\x01 \x03(\v2\x1b.vertra.console.v1.RunnableR\trunnables\"\x97\x05\n" +
 	"\bRunnable\x124\n" +
 	"\x04kind\x18\x01 \x01(\x0e2 .vertra.console.v1.Runnable.KindR\x04kind\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x12\n" +
@@ -677,11 +966,35 @@ const file_vertra_console_v1_template_proto_rawDesc = "" +
 	"\n" +
 	"source_url\x18\r \x01(\tR\tsourceUrl\x12+\n" +
 	"\x12ask_for_access_url\x18\x0e \x01(\tR\x0faskForAccessUrl\x129\n" +
-	"\atargets\x18\x0f \x03(\v2\x1f.vertra.console.v1.TargetChoiceR\atargets\"@\n" +
+	"\atargets\x18\x0f \x03(\v2\x1f.vertra.console.v1.TargetChoiceR\atargets\x12 \n" +
+	"\vpreviewable\x18\x10 \x01(\bR\vpreviewable\"@\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rKIND_TEMPLATE\x10\x01\x12\x0f\n" +
-	"\vKIND_ACTION\x10\x02\"Z\n" +
+	"\vKIND_ACTION\x10\x02\"4\n" +
+	"\fNotPreviewed\x12\x12\n" +
+	"\x04step\x18\x01 \x01(\tR\x04step\x12\x10\n" +
+	"\x03why\x18\x02 \x01(\tR\x03why\"\xb1\x01\n" +
+	"\x16PreviewTemplateRequest\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x127\n" +
+	"\n" +
+	"parameters\x18\x03 \x01(\v2\x17.google.protobuf.StructR\n" +
+	"parameters\x12%\n" +
+	"\fon_behalf_of\x18\x04 \x01(\tH\x00R\n" +
+	"onBehalfOf\x88\x01\x01B\x0f\n" +
+	"\r_on_behalf_of\"\x82\x01\n" +
+	"\x17PreviewTemplateResponse\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12D\n" +
+	"\rnot_previewed\x18\x02 \x03(\v2\x1f.vertra.console.v1.NotPreviewedR\fnotPreviewed\"\x99\x01\n" +
+	"\x14PreviewActionRequest\x12\x18\n" +
+	"\aproduct\x18\x01 \x01(\tR\aproduct\x12/\n" +
+	"\x06inputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x12%\n" +
+	"\fon_behalf_of\x18\x03 \x01(\tH\x00R\n" +
+	"onBehalfOf\x88\x01\x01B\x0f\n" +
+	"\r_on_behalf_of\":\n" +
+	"\x15PreviewActionResponse\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"Z\n" +
 	"\fTargetChoice\x12\x1c\n" +
 	"\tparameter\x18\x01 \x01(\tR\tparameter\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
@@ -712,11 +1025,13 @@ const file_vertra_console_v1_template_proto_rawDesc = "" +
 	"\v_request_id\"o\n" +
 	"\x11RunActionResponse\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x127\n" +
-	"\x05state\x18\x02 \x01(\x0e2!.vertra.console.v1.ExecutionStateR\x05state2\xb0\x02\n" +
+	"\x05state\x18\x02 \x01(\x0e2!.vertra.console.v1.ExecutionStateR\x05state2\xfe\x03\n" +
 	"\x0fTemplateService\x12g\n" +
 	"\rListTemplates\x12'.vertra.console.v1.ListTemplatesRequest\x1a(.vertra.console.v1.ListTemplatesResponse\"\x03\x90\x02\x01\x12\\\n" +
 	"\vRunTemplate\x12%.vertra.console.v1.RunTemplateRequest\x1a&.vertra.console.v1.RunTemplateResponse\x12V\n" +
-	"\tRunAction\x12#.vertra.console.v1.RunActionRequest\x1a$.vertra.console.v1.RunActionResponseB\xd6\x01\n" +
+	"\tRunAction\x12#.vertra.console.v1.RunActionRequest\x1a$.vertra.console.v1.RunActionResponse\x12h\n" +
+	"\x0fPreviewTemplate\x12).vertra.console.v1.PreviewTemplateRequest\x1a*.vertra.console.v1.PreviewTemplateResponse\x12b\n" +
+	"\rPreviewAction\x12'.vertra.console.v1.PreviewActionRequest\x1a(.vertra.console.v1.PreviewActionResponseB\xd6\x01\n" +
 	"\x15com.vertra.console.v1B\rTemplateProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -732,40 +1047,52 @@ func file_vertra_console_v1_template_proto_rawDescGZIP() []byte {
 }
 
 var file_vertra_console_v1_template_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_vertra_console_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_vertra_console_v1_template_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_vertra_console_v1_template_proto_goTypes = []any{
-	(Runnable_Kind)(0),            // 0: vertra.console.v1.Runnable.Kind
-	(*ListTemplatesRequest)(nil),  // 1: vertra.console.v1.ListTemplatesRequest
-	(*ListTemplatesResponse)(nil), // 2: vertra.console.v1.ListTemplatesResponse
-	(*Runnable)(nil),              // 3: vertra.console.v1.Runnable
-	(*TargetChoice)(nil),          // 4: vertra.console.v1.TargetChoice
-	(*RunTemplateRequest)(nil),    // 5: vertra.console.v1.RunTemplateRequest
-	(*RunTemplateResponse)(nil),   // 6: vertra.console.v1.RunTemplateResponse
-	(*RunActionRequest)(nil),      // 7: vertra.console.v1.RunActionRequest
-	(*RunActionResponse)(nil),     // 8: vertra.console.v1.RunActionResponse
-	(*structpb.Struct)(nil),       // 9: google.protobuf.Struct
-	(ExecutionState)(0),           // 10: vertra.console.v1.ExecutionState
+	(Runnable_Kind)(0),              // 0: vertra.console.v1.Runnable.Kind
+	(*ListTemplatesRequest)(nil),    // 1: vertra.console.v1.ListTemplatesRequest
+	(*ListTemplatesResponse)(nil),   // 2: vertra.console.v1.ListTemplatesResponse
+	(*Runnable)(nil),                // 3: vertra.console.v1.Runnable
+	(*NotPreviewed)(nil),            // 4: vertra.console.v1.NotPreviewed
+	(*PreviewTemplateRequest)(nil),  // 5: vertra.console.v1.PreviewTemplateRequest
+	(*PreviewTemplateResponse)(nil), // 6: vertra.console.v1.PreviewTemplateResponse
+	(*PreviewActionRequest)(nil),    // 7: vertra.console.v1.PreviewActionRequest
+	(*PreviewActionResponse)(nil),   // 8: vertra.console.v1.PreviewActionResponse
+	(*TargetChoice)(nil),            // 9: vertra.console.v1.TargetChoice
+	(*RunTemplateRequest)(nil),      // 10: vertra.console.v1.RunTemplateRequest
+	(*RunTemplateResponse)(nil),     // 11: vertra.console.v1.RunTemplateResponse
+	(*RunActionRequest)(nil),        // 12: vertra.console.v1.RunActionRequest
+	(*RunActionResponse)(nil),       // 13: vertra.console.v1.RunActionResponse
+	(*structpb.Struct)(nil),         // 14: google.protobuf.Struct
+	(ExecutionState)(0),             // 15: vertra.console.v1.ExecutionState
 }
 var file_vertra_console_v1_template_proto_depIdxs = []int32{
 	3,  // 0: vertra.console.v1.ListTemplatesResponse.runnables:type_name -> vertra.console.v1.Runnable
 	0,  // 1: vertra.console.v1.Runnable.kind:type_name -> vertra.console.v1.Runnable.Kind
-	9,  // 2: vertra.console.v1.Runnable.parameters:type_name -> google.protobuf.Struct
-	4,  // 3: vertra.console.v1.Runnable.targets:type_name -> vertra.console.v1.TargetChoice
-	9,  // 4: vertra.console.v1.RunTemplateRequest.parameters:type_name -> google.protobuf.Struct
-	10, // 5: vertra.console.v1.RunTemplateResponse.state:type_name -> vertra.console.v1.ExecutionState
-	9,  // 6: vertra.console.v1.RunActionRequest.inputs:type_name -> google.protobuf.Struct
-	10, // 7: vertra.console.v1.RunActionResponse.state:type_name -> vertra.console.v1.ExecutionState
-	1,  // 8: vertra.console.v1.TemplateService.ListTemplates:input_type -> vertra.console.v1.ListTemplatesRequest
-	5,  // 9: vertra.console.v1.TemplateService.RunTemplate:input_type -> vertra.console.v1.RunTemplateRequest
-	7,  // 10: vertra.console.v1.TemplateService.RunAction:input_type -> vertra.console.v1.RunActionRequest
-	2,  // 11: vertra.console.v1.TemplateService.ListTemplates:output_type -> vertra.console.v1.ListTemplatesResponse
-	6,  // 12: vertra.console.v1.TemplateService.RunTemplate:output_type -> vertra.console.v1.RunTemplateResponse
-	8,  // 13: vertra.console.v1.TemplateService.RunAction:output_type -> vertra.console.v1.RunActionResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	14, // 2: vertra.console.v1.Runnable.parameters:type_name -> google.protobuf.Struct
+	9,  // 3: vertra.console.v1.Runnable.targets:type_name -> vertra.console.v1.TargetChoice
+	14, // 4: vertra.console.v1.PreviewTemplateRequest.parameters:type_name -> google.protobuf.Struct
+	4,  // 5: vertra.console.v1.PreviewTemplateResponse.not_previewed:type_name -> vertra.console.v1.NotPreviewed
+	14, // 6: vertra.console.v1.PreviewActionRequest.inputs:type_name -> google.protobuf.Struct
+	14, // 7: vertra.console.v1.RunTemplateRequest.parameters:type_name -> google.protobuf.Struct
+	15, // 8: vertra.console.v1.RunTemplateResponse.state:type_name -> vertra.console.v1.ExecutionState
+	14, // 9: vertra.console.v1.RunActionRequest.inputs:type_name -> google.protobuf.Struct
+	15, // 10: vertra.console.v1.RunActionResponse.state:type_name -> vertra.console.v1.ExecutionState
+	1,  // 11: vertra.console.v1.TemplateService.ListTemplates:input_type -> vertra.console.v1.ListTemplatesRequest
+	10, // 12: vertra.console.v1.TemplateService.RunTemplate:input_type -> vertra.console.v1.RunTemplateRequest
+	12, // 13: vertra.console.v1.TemplateService.RunAction:input_type -> vertra.console.v1.RunActionRequest
+	5,  // 14: vertra.console.v1.TemplateService.PreviewTemplate:input_type -> vertra.console.v1.PreviewTemplateRequest
+	7,  // 15: vertra.console.v1.TemplateService.PreviewAction:input_type -> vertra.console.v1.PreviewActionRequest
+	2,  // 16: vertra.console.v1.TemplateService.ListTemplates:output_type -> vertra.console.v1.ListTemplatesResponse
+	11, // 17: vertra.console.v1.TemplateService.RunTemplate:output_type -> vertra.console.v1.RunTemplateResponse
+	13, // 18: vertra.console.v1.TemplateService.RunAction:output_type -> vertra.console.v1.RunActionResponse
+	6,  // 19: vertra.console.v1.TemplateService.PreviewTemplate:output_type -> vertra.console.v1.PreviewTemplateResponse
+	8,  // 20: vertra.console.v1.TemplateService.PreviewAction:output_type -> vertra.console.v1.PreviewActionResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_template_proto_init() }
@@ -776,13 +1103,15 @@ func file_vertra_console_v1_template_proto_init() {
 	file_vertra_console_v1_execution_proto_init()
 	file_vertra_console_v1_template_proto_msgTypes[4].OneofWrappers = []any{}
 	file_vertra_console_v1_template_proto_msgTypes[6].OneofWrappers = []any{}
+	file_vertra_console_v1_template_proto_msgTypes[9].OneofWrappers = []any{}
+	file_vertra_console_v1_template_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_template_proto_rawDesc), len(file_vertra_console_v1_template_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -100,6 +100,8 @@ export const RegisterProductBody = Type.Object({
       Type.Null(),
     ]),
   ),
+  // The action of the same product that previews this one; null: none.
+  plan: Type.Optional(Type.Union([Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), Type.Null()])),
   // When a step waits for a maintainer of its team to approve it; "": never.
   approval: Type.Optional(Type.Union([Type.Literal("always"), Type.Literal("otherTeams"), Type.Literal("")])),
   // What its error codes mean, and what to do about each.
@@ -138,6 +140,8 @@ export type RegisterProductInput = {
   concurrencyKey?: string[];
   /** What removes the resources its steps report; null: nothing does. */
   cleanup?: ProductCleanup | null;
+  /** The action of the same product that previews this one; null: none. */
+  plan?: string | null;
   /** When a step waits for a maintainer of its team to approve it; "": never. */
   approval?: Approval | "";
   /** What its error codes mean, and what to do about each. */
@@ -281,6 +285,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
       cleanup: input.cleanup,
+      plan: input.plan,
       approval: input.approval === undefined ? undefined : input.approval || null,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,

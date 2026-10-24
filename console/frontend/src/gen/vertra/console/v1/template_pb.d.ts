@@ -150,6 +150,14 @@ export declare type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: repeated vertra.console.v1.TargetChoice targets = 15;
    */
   targets: TargetChoice[];
+
+  /**
+   * Whether Preview says what it would do: the action, or one of the
+   * template's steps, has a plan.
+   *
+   * @generated from field: bool previewable = 16;
+   */
+  previewable: boolean;
 };
 
 /**
@@ -182,6 +190,126 @@ export enum Runnable_Kind {
  * Describes the enum vertra.console.v1.Runnable.Kind.
  */
 export declare const Runnable_KindSchema: GenEnum<Runnable_Kind>;
+
+/**
+ * A step a preview left out, and why: it has no plan, or its inputs come
+ * from an earlier step.
+ *
+ * @generated from message vertra.console.v1.NotPreviewed
+ */
+export declare type NotPreviewed = Message<"vertra.console.v1.NotPreviewed"> & {
+  /**
+   * @generated from field: string step = 1;
+   */
+  step: string;
+
+  /**
+   * @generated from field: string why = 2;
+   */
+  why: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.NotPreviewed.
+ * Use `create(NotPreviewedSchema)` to create a new message.
+ */
+export declare const NotPreviewedSchema: GenMessage<NotPreviewed>;
+
+/**
+ * @generated from message vertra.console.v1.PreviewTemplateRequest
+ */
+export declare type PreviewTemplateRequest = Message<"vertra.console.v1.PreviewTemplateRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct parameters = 3;
+   */
+  parameters?: JsonObject | undefined;
+
+  /**
+   * @generated from field: optional string on_behalf_of = 4;
+   */
+  onBehalfOf?: string | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewTemplateRequest.
+ * Use `create(PreviewTemplateRequestSchema)` to create a new message.
+ */
+export declare const PreviewTemplateRequestSchema: GenMessage<PreviewTemplateRequest>;
+
+/**
+ * @generated from message vertra.console.v1.PreviewTemplateResponse
+ */
+export declare type PreviewTemplateResponse = Message<"vertra.console.v1.PreviewTemplateResponse"> & {
+  /**
+   * The preview run.
+   *
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.NotPreviewed not_previewed = 2;
+   */
+  notPreviewed: NotPreviewed[];
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewTemplateResponse.
+ * Use `create(PreviewTemplateResponseSchema)` to create a new message.
+ */
+export declare const PreviewTemplateResponseSchema: GenMessage<PreviewTemplateResponse>;
+
+/**
+ * @generated from message vertra.console.v1.PreviewActionRequest
+ */
+export declare type PreviewActionRequest = Message<"vertra.console.v1.PreviewActionRequest"> & {
+  /**
+   * @generated from field: string product = 1;
+   */
+  product: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct inputs = 2;
+   */
+  inputs?: JsonObject | undefined;
+
+  /**
+   * @generated from field: optional string on_behalf_of = 3;
+   */
+  onBehalfOf?: string | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewActionRequest.
+ * Use `create(PreviewActionRequestSchema)` to create a new message.
+ */
+export declare const PreviewActionRequestSchema: GenMessage<PreviewActionRequest>;
+
+/**
+ * @generated from message vertra.console.v1.PreviewActionResponse
+ */
+export declare type PreviewActionResponse = Message<"vertra.console.v1.PreviewActionResponse"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewActionResponse.
+ * Use `create(PreviewActionResponseSchema)` to create a new message.
+ */
+export declare const PreviewActionResponseSchema: GenMessage<PreviewActionResponse>;
 
 /**
  * @generated from message vertra.console.v1.TargetChoice
@@ -382,6 +510,29 @@ export declare const TemplateService: GenService<{
     methodKind: "unary";
     input: typeof RunActionRequestSchema;
     output: typeof RunActionResponseSchema;
+  },
+  /**
+   * What running a template with these parameters would do, without doing
+   * it: a run (a preview) of its steps' plan actions (product.yaml's plan),
+   * side by side, for the steps that have one and whose inputs are known
+   * before anything runs. Each step's outputs say what it would change.
+   *
+   * @generated from rpc vertra.console.v1.TemplateService.PreviewTemplate
+   */
+  previewTemplate: {
+    methodKind: "unary";
+    input: typeof PreviewTemplateRequestSchema;
+    output: typeof PreviewTemplateResponseSchema;
+  },
+  /**
+   * What running one action with these inputs would do: a run of its plan action.
+   *
+   * @generated from rpc vertra.console.v1.TemplateService.PreviewAction
+   */
+  previewAction: {
+    methodKind: "unary";
+    input: typeof PreviewActionRequestSchema;
+    output: typeof PreviewActionResponseSchema;
   },
 }>;
 

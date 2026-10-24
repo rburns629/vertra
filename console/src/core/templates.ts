@@ -285,6 +285,8 @@ export interface Runnable {
   askForAccessUrl: string | null;
   /** Its parameters that name targets, and what the caller's teams may give them. */
   targets: TargetChoice[];
+  /** Preview says what it would do: it (or a step of it) has a plan. */
+  previewable: boolean;
 }
 
 /** https://github.com/<owner>/<repo> for a release's repository, or null for
@@ -345,6 +347,10 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
   const rulesOf = (team: string) => rules.get(team) ?? [];
   const products = await listRunnableProducts();
   const byRef = new Map(products.map((p) => [actionRef(p), p]));
+  const names = new Set(products.map((p) => p.name));
+  // Its plan action is registered: <team>-<product>-<plan>.
+  const hasPlan = (p: TeamProduct | undefined) =>
+    Boolean(p?.plan && names.has(`${p.name.endsWith(`-${p.action}`) ? p.name.slice(0, -p.action.length - 1) : p.name}-${p.plan}`));
   const out: Runnable[] = [];
   for (const t of await listRunnableTemplates()) {
     if (!sees(who, t.teamName, t.hidden)) continue;
@@ -371,6 +377,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
         }),
         rulesOf,
       ),
+      previewable: t.steps.some((step) => hasPlan(byRef.get(step.action))),
     });
   }
   for (const p of products) {
@@ -391,6 +398,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
       shareWith: p.shareWith,
       ...catalogLinks(base, p.sourcePath, "the action", actionRef(p), who, a.allowed),
       targets: targetChoices(who, [{ product: p }], rulesOf),
+      previewable: hasPlan(p),
     });
   }
   return out;
@@ -434,46 +442,153 @@ export async function runTemplate(
 /** What submitted_executions.template says for a cleanup run (core/resources.ts): never a template's <team>/<name>. */
 export const CLEANUP_RUN = "cleanup";
 
-/** One step of a cleanup: a product's cleanup action, with its inputs. */
-export interface CleanupStep {
+/** What submitted_executions.template says for a preview run: never a template's <team>/<name>. */
+export const PREVIEW_RUN = "preview";
+
+/** One step of a run the console makes itself (a cleanup, a preview): a product's action, with its inputs. */
+export interface ProductStep {
+  id: string;
   product: TeamProduct;
   inputs: Record<string, unknown>;
+  /** What it's for, in a refusal: "local/ticket T-1", "step deploy". */
   label: string;
 }
 
 /**
- * Runs cleanup steps one after another, in the order given, for a team of
- * the caller's (or the caller alone), as a template's run is: each action
- * must be shared with them, its inputs fit its schema, and its targets be
- * ones they may use. Returns the run and each step's id.
+ * Runs product steps for a team of the caller's (or the caller alone), as a
+ * template's run is: their inputs fit their schemas and their targets are
+ * ones the caller may use; and, with `eachShared`, each action is shared
+ * with the caller (a template's previews are allowed as the template is
+ * instead). `chained`: one after another, in the order given; else side by
+ * side.
  */
+export async function runProductSteps(
+  who: AuthUser,
+  name: string,
+  list: ProductStep[],
+  forTeam: string | undefined,
+  run: { template: string; parameters: Record<string, unknown> },
+  options: { chained: boolean; eachShared: boolean },
+  log: FastifyBaseLogger,
+): Promise<{ executionId: string }> {
+  const steps: ResolvedStep[] = list.map((s, i) => ({
+    step: { id: s.id, action: actionRef(s.product), ...(options.chained && i > 0 ? { dependsOn: [list[i - 1]?.id ?? ""] } : {}) },
+    product: s.product,
+    inputs: s.inputs,
+  }));
+  for (const s of list) {
+    if (options.eachShared) {
+      const allowed = access(who, s.product.teamName, s.product.shareWith);
+      if (!allowed.allowed || (allowed.required && (!forTeam || !allowed.onBehalfOf.includes(forTeam)))) {
+        throw new ApiError(403, "FORBIDDEN", `${s.label}: ${actionRef(s.product)} isn't shared with you${forTeam ? ` for team "${forTeam}"` : ""}.`);
+      }
+    }
+    checkParameters(s.product.inputSchema, s.inputs, `${s.label}: ${actionRef(s.product)}`);
+  }
+  await ensureTargetsAllowed(who, forTeam, steps, name);
+  const result = await submitChecked(who, dagOf(name, steps, undefined), log, { ...run, onBehalfOf: forTeam });
+  return { executionId: result.executionId };
+}
+
+/** Another action of the same product, as registered now (<team>-<product>-<action>). */
+export async function siblingAction(product: TeamProduct, action: string): Promise<TeamProduct | undefined> {
+  const suffix = `-${product.action}`;
+  const base = product.name.endsWith(suffix) ? product.name.slice(0, -suffix.length) : product.name;
+  const sibling = await findRunnableProduct(`${base}-${action}`);
+  return sibling && sibling.teamName === product.teamName ? sibling : undefined;
+}
+
+/** Steps a preview couldn't include, and why. */
+export interface NotPreviewed {
+  step: string;
+  why: string;
+}
+
+const noPreview = (label: string) =>
+  new ApiError(409, "NO_PREVIEW", `${label} has no preview: its product.yaml names no plan for it.`);
+
+/** Previews one action with these inputs: a run of its plan action. */
+export async function previewAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger) {
+  const who = signedIn(caller);
+  const product = await findRunnableProduct(productName);
+  const allowed = product ? access(who, product.teamName, product.shareWith) : undefined;
+  if (!product || !allowed?.allowed) throw new ApiError(404, "NOT_FOUND", `No action "${productName}" that's shared with you.`);
+  const ref = actionRef(product);
+  const forTeam = onBehalfOf(allowed, request.onBehalfOf, `Action ${ref}`);
+  checkParameters(product.inputSchema, request.parameters, `Action ${ref}`);
+  const plan = product.plan ? await siblingAction(product, product.plan) : undefined;
+  if (!plan) throw noPreview(`Action ${ref}`);
+  const { executionId } = await runProductSteps(
+    who,
+    `Preview: ${product.displayName ?? product.name}`,
+    [{ id: product.action, product: plan, inputs: request.parameters, label: `Action ${ref}` }],
+    forTeam,
+    { template: PREVIEW_RUN, parameters: { of: ref, parameters: request.parameters } },
+    { chained: false, eachShared: true },
+    log,
+  );
+  return { executionId, notPreviewed: [] as NotPreviewed[] };
+}
+
+/**
+ * Previews a template with these parameters: its steps' plan actions, side
+ * by side, for the steps that have one and whose inputs are known now (not
+ * an earlier step's output). Allowed as running the template is.
+ */
+export async function previewTemplate(caller: AuthUser | undefined, team: string, name: string, request: RunRequest, log: FastifyBaseLogger) {
+  const who = signedIn(caller);
+  const template = await findRunnableTemplate(team, name);
+  const allowed = template ? access(who, template.teamName, template.shareWith) : undefined;
+  if (!template || !allowed?.allowed) throw new ApiError(404, "NOT_FOUND", `No template "${team}/${name}" that's shared with you.`);
+  const label = `Template ${template.teamName}/${template.name}`;
+  const forTeam = onBehalfOf(allowed, request.onBehalfOf, label);
+  checkParameters(template.parameters, request.parameters, label);
+  const planned: ProductStep[] = [];
+  const notPreviewed: NotPreviewed[] = [];
+  for (const step of template.steps) {
+    const product = await stepProduct(step, template.teamName, label);
+    const inputs = bind(step.inputs, request.parameters);
+    const plan = product.plan ? await siblingAction(product, product.plan) : undefined;
+    const upstream = Object.values(inputs).find((v): v is { $fromTask: string } => isRecord(v) && typeof v["$fromTask"] === "string");
+    if (!plan) notPreviewed.push({ step: step.id, why: `${step.action} has no preview.` });
+    else if (plan.teamName !== template.teamName && !plan.shareWith.includes("*") && !plan.shareWith.includes(template.teamName)) {
+      notPreviewed.push({ step: step.id, why: `Its preview isn't shared with team "${template.teamName}".` });
+    } else if (upstream) notPreviewed.push({ step: step.id, why: `It uses ${upstream.$fromTask}'s output, known only once that runs.` });
+    else planned.push({ id: step.id, product: plan, inputs, label: `${label}: step "${step.id}"` });
+  }
+  if (planned.length === 0) throw new ApiError(409, "NO_PREVIEW", `${label}: none of its steps can be previewed. ${notPreviewed.map((n) => `${n.step}: ${n.why}`).join(" ")}`);
+  const { executionId } = await runProductSteps(
+    who,
+    `Preview: ${template.displayName}`,
+    planned,
+    forTeam,
+    { template: PREVIEW_RUN, parameters: { of: `${template.teamName}/${template.name}`, parameters: request.parameters } },
+    { chained: false, eachShared: false },
+    log,
+  );
+  return { executionId, notPreviewed };
+}
+
+/** Runs cleanup steps one after another, newest first (core/resources.ts). */
 export async function runCleanup(
   who: AuthUser,
   name: string,
-  cleanups: CleanupStep[],
+  cleanups: Omit<ProductStep, "id">[],
   forTeam: string | undefined,
   resourceIds: string[],
   log: FastifyBaseLogger,
 ): Promise<{ executionId: string; stepIds: string[] }> {
-  const steps: ResolvedStep[] = cleanups.map((c, i) => ({
-    step: { id: `delete-${String(i + 1)}`, action: actionRef(c.product), ...(i > 0 ? { dependsOn: [`delete-${String(i)}`] } : {}) },
-    product: c.product,
-    inputs: c.inputs,
-  }));
-  for (const [i, c] of cleanups.entries()) {
-    const allowed = access(who, c.product.teamName, c.product.shareWith);
-    if (!allowed.allowed || (allowed.required && (!forTeam || !allowed.onBehalfOf.includes(forTeam)))) {
-      throw new ApiError(403, "FORBIDDEN", `${c.label}: its cleanup, ${actionRef(c.product)}, isn't shared with you${forTeam ? ` for team "${forTeam}"` : ""}.`);
-    }
-    checkParameters(c.product.inputSchema, steps[i]?.inputs ?? {}, `${c.label}: its cleanup, ${actionRef(c.product)},`);
-  }
-  await ensureTargetsAllowed(who, forTeam, steps, name);
-  const result = await submitChecked(who, dagOf(name, steps, undefined), log, {
-    template: CLEANUP_RUN,
-    parameters: { resources: resourceIds },
-    onBehalfOf: forTeam,
-  });
-  return { executionId: result.executionId, stepIds: steps.map((s) => s.step.id) };
+  const list = cleanups.map((c, i) => ({ ...c, id: `delete-${String(i + 1)}` }));
+  const { executionId } = await runProductSteps(
+    who,
+    name,
+    list,
+    forTeam,
+    { template: CLEANUP_RUN, parameters: { resources: resourceIds } },
+    { chained: true, eachShared: true },
+    log,
+  );
+  return { executionId, stepIds: list.map((s) => s.id) };
 }
 
 /** Runs one action with these inputs, as a one-step template. */
@@ -547,7 +662,7 @@ export async function ensureStillRunnable(caller: AuthUser | undefined, submitte
   const ref = submitted.template ?? "";
   // A cleanup's steps were allowed when it was asked for; retrying one
   // deletes the same thing again, which cleanup actions must allow.
-  if (ref === CLEANUP_RUN) return;
+  if (ref === CLEANUP_RUN || ref === PREVIEW_RUN) return;
   const refused = (why: string) =>
     new ApiError(403, "FORBIDDEN", `${ref} ${why}, so this run can't be retried. Its team can share it again.`);
   if (ACTION_REF.test(ref)) {
@@ -568,6 +683,7 @@ export async function rerunTemplate(caller: AuthUser | undefined, submitted: Sub
   if (ref === CLEANUP_RUN) {
     throw new ApiError(409, "CLEANUP_RUN", "A cleanup run isn't run again: delete what's still there from the resources it was for.");
   }
+  if (ref === PREVIEW_RUN) throw new ApiError(409, "PREVIEW_RUN", "A preview isn't run again: preview from the form.");
   const request: RunRequest = {
     parameters: isRecord(submitted.templateParameters) ? submitted.templateParameters : {},
     onBehalfOf: submitted.onBehalfOf ?? undefined,

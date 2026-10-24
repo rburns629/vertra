@@ -1,0 +1,14 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "summary": "Opens ticket T-d3f3719d.",
+    "changes": [
+      {
+        "action": "create",
+        "type": "local/ticket",
+        "id": "T-d3f3719d",
+        "name": "Printer on fire"
+      }
+    ]
+  }
+}

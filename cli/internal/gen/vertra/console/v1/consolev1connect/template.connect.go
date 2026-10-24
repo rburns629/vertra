@@ -44,6 +44,12 @@ const (
 	// TemplateServiceRunActionProcedure is the fully-qualified name of the TemplateService's RunAction
 	// RPC.
 	TemplateServiceRunActionProcedure = "/vertra.console.v1.TemplateService/RunAction"
+	// TemplateServicePreviewTemplateProcedure is the fully-qualified name of the TemplateService's
+	// PreviewTemplate RPC.
+	TemplateServicePreviewTemplateProcedure = "/vertra.console.v1.TemplateService/PreviewTemplate"
+	// TemplateServicePreviewActionProcedure is the fully-qualified name of the TemplateService's
+	// PreviewAction RPC.
+	TemplateServicePreviewActionProcedure = "/vertra.console.v1.TemplateService/PreviewAction"
 )
 
 // TemplateServiceClient is a client for the vertra.console.v1.TemplateService service.
@@ -58,6 +64,13 @@ type TemplateServiceClient interface {
 	RunTemplate(context.Context, *connect.Request[v1.RunTemplateRequest]) (*connect.Response[v1.RunTemplateResponse], error)
 	// Runs one shared action with these inputs, as a one-step template.
 	RunAction(context.Context, *connect.Request[v1.RunActionRequest]) (*connect.Response[v1.RunActionResponse], error)
+	// What running a template with these parameters would do, without doing
+	// it: a run (a preview) of its steps' plan actions (product.yaml's plan),
+	// side by side, for the steps that have one and whose inputs are known
+	// before anything runs. Each step's outputs say what it would change.
+	PreviewTemplate(context.Context, *connect.Request[v1.PreviewTemplateRequest]) (*connect.Response[v1.PreviewTemplateResponse], error)
+	// What running one action with these inputs would do: a run of its plan action.
+	PreviewAction(context.Context, *connect.Request[v1.PreviewActionRequest]) (*connect.Response[v1.PreviewActionResponse], error)
 }
 
 // NewTemplateServiceClient constructs a client for the vertra.console.v1.TemplateService service.
@@ -90,14 +103,28 @@ func NewTemplateServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(templateServiceMethods.ByName("RunAction")),
 			connect.WithClientOptions(opts...),
 		),
+		previewTemplate: connect.NewClient[v1.PreviewTemplateRequest, v1.PreviewTemplateResponse](
+			httpClient,
+			baseURL+TemplateServicePreviewTemplateProcedure,
+			connect.WithSchema(templateServiceMethods.ByName("PreviewTemplate")),
+			connect.WithClientOptions(opts...),
+		),
+		previewAction: connect.NewClient[v1.PreviewActionRequest, v1.PreviewActionResponse](
+			httpClient,
+			baseURL+TemplateServicePreviewActionProcedure,
+			connect.WithSchema(templateServiceMethods.ByName("PreviewAction")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // templateServiceClient implements TemplateServiceClient.
 type templateServiceClient struct {
-	listTemplates *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
-	runTemplate   *connect.Client[v1.RunTemplateRequest, v1.RunTemplateResponse]
-	runAction     *connect.Client[v1.RunActionRequest, v1.RunActionResponse]
+	listTemplates   *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
+	runTemplate     *connect.Client[v1.RunTemplateRequest, v1.RunTemplateResponse]
+	runAction       *connect.Client[v1.RunActionRequest, v1.RunActionResponse]
+	previewTemplate *connect.Client[v1.PreviewTemplateRequest, v1.PreviewTemplateResponse]
+	previewAction   *connect.Client[v1.PreviewActionRequest, v1.PreviewActionResponse]
 }
 
 // ListTemplates calls vertra.console.v1.TemplateService.ListTemplates.
@@ -115,6 +142,16 @@ func (c *templateServiceClient) RunAction(ctx context.Context, req *connect.Requ
 	return c.runAction.CallUnary(ctx, req)
 }
 
+// PreviewTemplate calls vertra.console.v1.TemplateService.PreviewTemplate.
+func (c *templateServiceClient) PreviewTemplate(ctx context.Context, req *connect.Request[v1.PreviewTemplateRequest]) (*connect.Response[v1.PreviewTemplateResponse], error) {
+	return c.previewTemplate.CallUnary(ctx, req)
+}
+
+// PreviewAction calls vertra.console.v1.TemplateService.PreviewAction.
+func (c *templateServiceClient) PreviewAction(ctx context.Context, req *connect.Request[v1.PreviewActionRequest]) (*connect.Response[v1.PreviewActionResponse], error) {
+	return c.previewAction.CallUnary(ctx, req)
+}
+
 // TemplateServiceHandler is an implementation of the vertra.console.v1.TemplateService service.
 type TemplateServiceHandler interface {
 	// Every template and action the caller may see: those shared with them,
@@ -127,6 +164,13 @@ type TemplateServiceHandler interface {
 	RunTemplate(context.Context, *connect.Request[v1.RunTemplateRequest]) (*connect.Response[v1.RunTemplateResponse], error)
 	// Runs one shared action with these inputs, as a one-step template.
 	RunAction(context.Context, *connect.Request[v1.RunActionRequest]) (*connect.Response[v1.RunActionResponse], error)
+	// What running a template with these parameters would do, without doing
+	// it: a run (a preview) of its steps' plan actions (product.yaml's plan),
+	// side by side, for the steps that have one and whose inputs are known
+	// before anything runs. Each step's outputs say what it would change.
+	PreviewTemplate(context.Context, *connect.Request[v1.PreviewTemplateRequest]) (*connect.Response[v1.PreviewTemplateResponse], error)
+	// What running one action with these inputs would do: a run of its plan action.
+	PreviewAction(context.Context, *connect.Request[v1.PreviewActionRequest]) (*connect.Response[v1.PreviewActionResponse], error)
 }
 
 // NewTemplateServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -155,6 +199,18 @@ func NewTemplateServiceHandler(svc TemplateServiceHandler, opts ...connect.Handl
 		connect.WithSchema(templateServiceMethods.ByName("RunAction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	templateServicePreviewTemplateHandler := connect.NewUnaryHandler(
+		TemplateServicePreviewTemplateProcedure,
+		svc.PreviewTemplate,
+		connect.WithSchema(templateServiceMethods.ByName("PreviewTemplate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	templateServicePreviewActionHandler := connect.NewUnaryHandler(
+		TemplateServicePreviewActionProcedure,
+		svc.PreviewAction,
+		connect.WithSchema(templateServiceMethods.ByName("PreviewAction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.TemplateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TemplateServiceListTemplatesProcedure:
@@ -163,6 +219,10 @@ func NewTemplateServiceHandler(svc TemplateServiceHandler, opts ...connect.Handl
 			templateServiceRunTemplateHandler.ServeHTTP(w, r)
 		case TemplateServiceRunActionProcedure:
 			templateServiceRunActionHandler.ServeHTTP(w, r)
+		case TemplateServicePreviewTemplateProcedure:
+			templateServicePreviewTemplateHandler.ServeHTTP(w, r)
+		case TemplateServicePreviewActionProcedure:
+			templateServicePreviewActionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -182,4 +242,12 @@ func (UnimplementedTemplateServiceHandler) RunTemplate(context.Context, *connect
 
 func (UnimplementedTemplateServiceHandler) RunAction(context.Context, *connect.Request[v1.RunActionRequest]) (*connect.Response[v1.RunActionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TemplateService.RunAction is not implemented"))
+}
+
+func (UnimplementedTemplateServiceHandler) PreviewTemplate(context.Context, *connect.Request[v1.PreviewTemplateRequest]) (*connect.Response[v1.PreviewTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TemplateService.PreviewTemplate is not implemented"))
+}
+
+func (UnimplementedTemplateServiceHandler) PreviewAction(context.Context, *connect.Request[v1.PreviewActionRequest]) (*connect.Response[v1.PreviewActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TemplateService.PreviewAction is not implemented"))
 }

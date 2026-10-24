@@ -15,7 +15,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/template.proto.
  */
 export const file_vertra_console_v1_template: GenFile = /*@__PURE__*/
-  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS90ZW1wbGF0ZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiFgoUTGlzdFRlbXBsYXRlc1JlcXVlc3QiRwoVTGlzdFRlbXBsYXRlc1Jlc3BvbnNlEi4KCXJ1bm5hYmxlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJ1bm5hYmxlItADCghSdW5uYWJsZRIuCgRraW5kGAEgASgOMiAudmVydHJhLmNvbnNvbGUudjEuUnVubmFibGUuS2luZBIMCgR0ZWFtGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMZGlzcGxheV9uYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEisKCnBhcmFtZXRlcnMYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg8KB2FjdGlvbnMYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIUCgxvbl9iZWhhbGZfb2YYCSADKAkSHQoVb25fYmVoYWxmX29mX3JlcXVpcmVkGAogASgIEg4KBnNoYXJlZBgLIAEoCBISCgpzaGFyZV93aXRoGAwgAygJEhIKCnNvdXJjZV91cmwYDSABKAkSGgoSYXNrX2Zvcl9hY2Nlc3NfdXJsGA4gASgJEjAKB3RhcmdldHMYDyADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5UYXJnZXRDaG9pY2UiQAoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASEQoNS0lORF9URU1QTEFURRABEg8KC0tJTkRfQUNUSU9OEAIiQAoMVGFyZ2V0Q2hvaWNlEhEKCXBhcmFtZXRlchgBIAEoCRIMCgR0eXBlGAIgASgJEg8KB2FsbG93ZWQYAyADKAkisQEKElJ1blRlbXBsYXRlUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgwKBG5hbWUYAiABKAkSKwoKcGFyYW1ldGVycxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGQoMb25fYmVoYWxmX29mGAQgASgJSACIAQESFwoKcmVxdWVzdF9pZBgFIAEoCUgBiAEBQg8KDV9vbl9iZWhhbGZfb2ZCDQoLX3JlcXVlc3RfaWQiXQoTUnVuVGVtcGxhdGVSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSMAoFc3RhdGUYAiABKA4yIS52ZXJ0cmEuY29uc29sZS52MS5FeGVjdXRpb25TdGF0ZSKgAQoQUnVuQWN0aW9uUmVxdWVzdBIPCgdwcm9kdWN0GAEgASgJEicKBmlucHV0cxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGQoMb25fYmVoYWxmX29mGAMgASgJSACIAQESFwoKcmVxdWVzdF9pZBgEIAEoCUgBiAEBQg8KDV9vbl9iZWhhbGZfb2ZCDQoLX3JlcXVlc3RfaWQiWwoRUnVuQWN0aW9uUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEjAKBXN0YXRlGAIgASgOMiEudmVydHJhLmNvbnNvbGUudjEuRXhlY3V0aW9uU3RhdGUysAIKD1RlbXBsYXRlU2VydmljZRJnCg1MaXN0VGVtcGxhdGVzEicudmVydHJhLmNvbnNvbGUudjEuTGlzdFRlbXBsYXRlc1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5MaXN0VGVtcGxhdGVzUmVzcG9uc2UiA5ACARJcCgtSdW5UZW1wbGF0ZRIlLnZlcnRyYS5jb25zb2xlLnYxLlJ1blRlbXBsYXRlUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLlJ1blRlbXBsYXRlUmVzcG9uc2USVgoJUnVuQWN0aW9uEiMudmVydHJhLmNvbnNvbGUudjEuUnVuQWN0aW9uUmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLlJ1bkFjdGlvblJlc3BvbnNlYgZwcm90bzM", [file_vertra_console_v1_execution, file_google_protobuf_struct]);
+  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS90ZW1wbGF0ZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiFgoUTGlzdFRlbXBsYXRlc1JlcXVlc3QiRwoVTGlzdFRlbXBsYXRlc1Jlc3BvbnNlEi4KCXJ1bm5hYmxlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJ1bm5hYmxlIuUDCghSdW5uYWJsZRIuCgRraW5kGAEgASgOMiAudmVydHJhLmNvbnNvbGUudjEuUnVubmFibGUuS2luZBIMCgR0ZWFtGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMZGlzcGxheV9uYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEisKCnBhcmFtZXRlcnMYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg8KB2FjdGlvbnMYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIUCgxvbl9iZWhhbGZfb2YYCSADKAkSHQoVb25fYmVoYWxmX29mX3JlcXVpcmVkGAogASgIEg4KBnNoYXJlZBgLIAEoCBISCgpzaGFyZV93aXRoGAwgAygJEhIKCnNvdXJjZV91cmwYDSABKAkSGgoSYXNrX2Zvcl9hY2Nlc3NfdXJsGA4gASgJEjAKB3RhcmdldHMYDyADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5UYXJnZXRDaG9pY2USEwoLcHJldmlld2FibGUYECABKAgiQAoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASEQoNS0lORF9URU1QTEFURRABEg8KC0tJTkRfQUNUSU9OEAIiKQoMTm90UHJldmlld2VkEgwKBHN0ZXAYASABKAkSCwoDd2h5GAIgASgJIo0BChZQcmV2aWV3VGVtcGxhdGVSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIrCgpwYXJhbWV0ZXJzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxvbl9iZWhhbGZfb2YYBCABKAlIAIgBAUIPCg1fb25fYmVoYWxmX29mImcKF1ByZXZpZXdUZW1wbGF0ZVJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCRI2Cg1ub3RfcHJldmlld2VkGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuTm90UHJldmlld2VkInwKFFByZXZpZXdBY3Rpb25SZXF1ZXN0Eg8KB3Byb2R1Y3QYASABKAkSJwoGaW5wdXRzGAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIZCgxvbl9iZWhhbGZfb2YYAyABKAlIAIgBAUIPCg1fb25fYmVoYWxmX29mIi0KFVByZXZpZXdBY3Rpb25SZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkiQAoMVGFyZ2V0Q2hvaWNlEhEKCXBhcmFtZXRlchgBIAEoCRIMCgR0eXBlGAIgASgJEg8KB2FsbG93ZWQYAyADKAkisQEKElJ1blRlbXBsYXRlUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgwKBG5hbWUYAiABKAkSKwoKcGFyYW1ldGVycxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGQoMb25fYmVoYWxmX29mGAQgASgJSACIAQESFwoKcmVxdWVzdF9pZBgFIAEoCUgBiAEBQg8KDV9vbl9iZWhhbGZfb2ZCDQoLX3JlcXVlc3RfaWQiXQoTUnVuVGVtcGxhdGVSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSMAoFc3RhdGUYAiABKA4yIS52ZXJ0cmEuY29uc29sZS52MS5FeGVjdXRpb25TdGF0ZSKgAQoQUnVuQWN0aW9uUmVxdWVzdBIPCgdwcm9kdWN0GAEgASgJEicKBmlucHV0cxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSGQoMb25fYmVoYWxmX29mGAMgASgJSACIAQESFwoKcmVxdWVzdF9pZBgEIAEoCUgBiAEBQg8KDV9vbl9iZWhhbGZfb2ZCDQoLX3JlcXVlc3RfaWQiWwoRUnVuQWN0aW9uUmVzcG9uc2USFAoMZXhlY3V0aW9uX2lkGAEgASgJEjAKBXN0YXRlGAIgASgOMiEudmVydHJhLmNvbnNvbGUudjEuRXhlY3V0aW9uU3RhdGUy/gMKD1RlbXBsYXRlU2VydmljZRJnCg1MaXN0VGVtcGxhdGVzEicudmVydHJhLmNvbnNvbGUudjEuTGlzdFRlbXBsYXRlc1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5MaXN0VGVtcGxhdGVzUmVzcG9uc2UiA5ACARJcCgtSdW5UZW1wbGF0ZRIlLnZlcnRyYS5jb25zb2xlLnYxLlJ1blRlbXBsYXRlUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLlJ1blRlbXBsYXRlUmVzcG9uc2USVgoJUnVuQWN0aW9uEiMudmVydHJhLmNvbnNvbGUudjEuUnVuQWN0aW9uUmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLlJ1bkFjdGlvblJlc3BvbnNlEmgKD1ByZXZpZXdUZW1wbGF0ZRIpLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdUZW1wbGF0ZVJlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5QcmV2aWV3VGVtcGxhdGVSZXNwb25zZRJiCg1QcmV2aWV3QWN0aW9uEicudmVydHJhLmNvbnNvbGUudjEuUHJldmlld0FjdGlvblJlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5QcmV2aWV3QWN0aW9uUmVzcG9uc2ViBnByb3RvMw", [file_vertra_console_v1_execution, file_google_protobuf_struct]);
 
 /**
  * @generated from message vertra.console.v1.ListTemplatesRequest
@@ -156,6 +156,14 @@ export type Runnable = Message<"vertra.console.v1.Runnable"> & {
    * @generated from field: repeated vertra.console.v1.TargetChoice targets = 15;
    */
   targets: TargetChoice[];
+
+  /**
+   * Whether Preview says what it would do: the action, or one of the
+   * template's steps, has a plan.
+   *
+   * @generated from field: bool previewable = 16;
+   */
+  previewable: boolean;
 };
 
 /**
@@ -192,6 +200,131 @@ export const Runnable_KindSchema: GenEnum<Runnable_Kind> = /*@__PURE__*/
   enumDesc(file_vertra_console_v1_template, 2, 0);
 
 /**
+ * A step a preview left out, and why: it has no plan, or its inputs come
+ * from an earlier step.
+ *
+ * @generated from message vertra.console.v1.NotPreviewed
+ */
+export type NotPreviewed = Message<"vertra.console.v1.NotPreviewed"> & {
+  /**
+   * @generated from field: string step = 1;
+   */
+  step: string;
+
+  /**
+   * @generated from field: string why = 2;
+   */
+  why: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.NotPreviewed.
+ * Use `create(NotPreviewedSchema)` to create a new message.
+ */
+export const NotPreviewedSchema: GenMessage<NotPreviewed> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_template, 3);
+
+/**
+ * @generated from message vertra.console.v1.PreviewTemplateRequest
+ */
+export type PreviewTemplateRequest = Message<"vertra.console.v1.PreviewTemplateRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct parameters = 3;
+   */
+  parameters?: JsonObject | undefined;
+
+  /**
+   * @generated from field: optional string on_behalf_of = 4;
+   */
+  onBehalfOf?: string | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewTemplateRequest.
+ * Use `create(PreviewTemplateRequestSchema)` to create a new message.
+ */
+export const PreviewTemplateRequestSchema: GenMessage<PreviewTemplateRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_template, 4);
+
+/**
+ * @generated from message vertra.console.v1.PreviewTemplateResponse
+ */
+export type PreviewTemplateResponse = Message<"vertra.console.v1.PreviewTemplateResponse"> & {
+  /**
+   * The preview run.
+   *
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.NotPreviewed not_previewed = 2;
+   */
+  notPreviewed: NotPreviewed[];
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewTemplateResponse.
+ * Use `create(PreviewTemplateResponseSchema)` to create a new message.
+ */
+export const PreviewTemplateResponseSchema: GenMessage<PreviewTemplateResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_template, 5);
+
+/**
+ * @generated from message vertra.console.v1.PreviewActionRequest
+ */
+export type PreviewActionRequest = Message<"vertra.console.v1.PreviewActionRequest"> & {
+  /**
+   * @generated from field: string product = 1;
+   */
+  product: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct inputs = 2;
+   */
+  inputs?: JsonObject | undefined;
+
+  /**
+   * @generated from field: optional string on_behalf_of = 3;
+   */
+  onBehalfOf?: string | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewActionRequest.
+ * Use `create(PreviewActionRequestSchema)` to create a new message.
+ */
+export const PreviewActionRequestSchema: GenMessage<PreviewActionRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_template, 6);
+
+/**
+ * @generated from message vertra.console.v1.PreviewActionResponse
+ */
+export type PreviewActionResponse = Message<"vertra.console.v1.PreviewActionResponse"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewActionResponse.
+ * Use `create(PreviewActionResponseSchema)` to create a new message.
+ */
+export const PreviewActionResponseSchema: GenMessage<PreviewActionResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_template, 7);
+
+/**
  * @generated from message vertra.console.v1.TargetChoice
  */
 export type TargetChoice = Message<"vertra.console.v1.TargetChoice"> & {
@@ -221,7 +354,7 @@ export type TargetChoice = Message<"vertra.console.v1.TargetChoice"> & {
  * Use `create(TargetChoiceSchema)` to create a new message.
  */
 export const TargetChoiceSchema: GenMessage<TargetChoice> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 3);
+  messageDesc(file_vertra_console_v1_template, 8);
 
 /**
  * @generated from message vertra.console.v1.RunTemplateRequest
@@ -265,7 +398,7 @@ export type RunTemplateRequest = Message<"vertra.console.v1.RunTemplateRequest">
  * Use `create(RunTemplateRequestSchema)` to create a new message.
  */
 export const RunTemplateRequestSchema: GenMessage<RunTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 4);
+  messageDesc(file_vertra_console_v1_template, 9);
 
 /**
  * @generated from message vertra.console.v1.RunTemplateResponse
@@ -287,7 +420,7 @@ export type RunTemplateResponse = Message<"vertra.console.v1.RunTemplateResponse
  * Use `create(RunTemplateResponseSchema)` to create a new message.
  */
 export const RunTemplateResponseSchema: GenMessage<RunTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 5);
+  messageDesc(file_vertra_console_v1_template, 10);
 
 /**
  * @generated from message vertra.console.v1.RunActionRequest
@@ -322,7 +455,7 @@ export type RunActionRequest = Message<"vertra.console.v1.RunActionRequest"> & {
  * Use `create(RunActionRequestSchema)` to create a new message.
  */
 export const RunActionRequestSchema: GenMessage<RunActionRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 6);
+  messageDesc(file_vertra_console_v1_template, 11);
 
 /**
  * @generated from message vertra.console.v1.RunActionResponse
@@ -344,7 +477,7 @@ export type RunActionResponse = Message<"vertra.console.v1.RunActionResponse"> &
  * Use `create(RunActionResponseSchema)` to create a new message.
  */
 export const RunActionResponseSchema: GenMessage<RunActionResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_template, 7);
+  messageDesc(file_vertra_console_v1_template, 12);
 
 /**
  * Templates: what a consumer runs, filling in only parameters. A template
@@ -395,6 +528,29 @@ export const TemplateService: GenService<{
     methodKind: "unary";
     input: typeof RunActionRequestSchema;
     output: typeof RunActionResponseSchema;
+  },
+  /**
+   * What running a template with these parameters would do, without doing
+   * it: a run (a preview) of its steps' plan actions (product.yaml's plan),
+   * side by side, for the steps that have one and whose inputs are known
+   * before anything runs. Each step's outputs say what it would change.
+   *
+   * @generated from rpc vertra.console.v1.TemplateService.PreviewTemplate
+   */
+  previewTemplate: {
+    methodKind: "unary";
+    input: typeof PreviewTemplateRequestSchema;
+    output: typeof PreviewTemplateResponseSchema;
+  },
+  /**
+   * What running one action with these inputs would do: a run of its plan action.
+   *
+   * @generated from rpc vertra.console.v1.TemplateService.PreviewAction
+   */
+  previewAction: {
+    methodKind: "unary";
+    input: typeof PreviewActionRequestSchema;
+    output: typeof PreviewActionResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_template, 0);

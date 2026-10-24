@@ -56,6 +56,10 @@ service ExecutionService {
   // fails with APPROVAL_DECLINED, failing its execution; approved, it runs,
   // and stays approved if it's retried.
   rpc DecideApproval(DecideApprovalRequest) returns (DecideApprovalResponse);
+  // What a step waiting for an approval would do, for whoever may decide on
+  // it: a run (a preview) of its product's plan action with the inputs it
+  // will get.
+  rpc PreviewStep(PreviewStepRequest) returns (PreviewStepResponse);
   // The steps awaiting approval in the teams the caller maintains (every
   // team, for an admin), the longest waiting first.
   rpc ListPendingApprovals(ListPendingApprovalsRequest) returns (ListPendingApprovalsResponse) {
@@ -210,6 +214,8 @@ message Approval {
   google.protobuf.Timestamp awaiting_since = 3;
   // Whether the caller may approve or decline it now.
   bool can_decide = 4;
+  // Whether they can preview what it would do first (PreviewStep).
+  bool can_preview = 5;
 }
 
 message FailureHelp {
@@ -371,6 +377,16 @@ message DecideApprovalRequest {
 message DecideApprovalResponse {
   string execution_id = 1;
   ExecutionState state = 2;
+}
+
+message PreviewStepRequest {
+  string execution_id = 1;
+  string task_id = 2;
+}
+
+message PreviewStepResponse {
+  // The preview run.
+  string execution_id = 1;
 }
 
 message ListPendingApprovalsRequest {}

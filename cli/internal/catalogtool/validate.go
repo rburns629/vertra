@@ -362,6 +362,7 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 		}
 		for _, action := range p.Actions() {
 			problems = append(problems, cleanupProblems(action, names)...)
+			problems = append(problems, planProblems(action, p.Actions())...)
 		}
 		problems = append(problems, c.testLayoutProblems(p, names)...)
 	}
@@ -460,4 +461,31 @@ func hasDollarKey(m map[string]any) bool {
 		}
 	}
 	return false
+}
+
+// planProblems is what's wrong with an action's plan: it names another
+// action of its product, one that only reports (no approval, cleanup or
+// plan of its own).
+func planProblems(action map[string]any, actions []map[string]any) []string {
+	plan, ok := action["plan"].(string)
+	if !ok {
+		return nil
+	}
+	name, _ := action["name"].(string)
+	if plan == name {
+		return []string{fmt.Sprintf("action %s: plan names the action itself", name)}
+	}
+	for _, other := range actions {
+		if other["name"] != plan {
+			continue
+		}
+		var problems []string
+		for _, field := range []string{"approval", "cleanup", "plan"} {
+			if _, has := other[field]; has {
+				problems = append(problems, fmt.Sprintf("action %s: its plan, %s, has %s: a plan only reports", name, quote(plan), field))
+			}
+		}
+		return problems
+	}
+	return []string{fmt.Sprintf("action %s: plan names %s, which this product doesn't have", name, quote(plan))}
 }

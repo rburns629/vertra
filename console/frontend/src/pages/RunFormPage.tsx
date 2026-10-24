@@ -10,9 +10,10 @@ import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { ApiError, listRunnables, runRunnable, type Runnable } from "../api";
+import { ApiError, listRunnables, previewRunnable, runRunnable, type NotPreviewed, type Runnable } from "../api";
 import { CodeBlock } from "../components/CodeBlock";
 import { Pill } from "../components/Pill";
+import { PreviewResult } from "../components/PreviewResult";
 import { fieldsOf, groupsOf, initialValues, serverProblems, toParameters, withTargets, type FieldValue, type Values } from "../schemaForm";
 import { FieldInput } from "./catalog/FieldInput";
 
@@ -75,18 +76,20 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
         : "",
   );
   const [showCall, setShowCall] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewed, setPreviewed] = useState<{ executionId: string; notPreviewed: NotPreviewed[] } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
 
-  async function run(event: FormEvent): Promise<void> {
-    event.preventDefault();
+  /** The inputs as they'd be sent, or null (saying why, on the form) when they can't be. */
+  function checkedParameters(): Record<string, unknown> | null {
     setErrors([]);
     let parameters: Record<string, unknown>;
     if (fields) {
       const typed = toParameters(fields, values);
       setFieldErrors(typed.errors);
-      if (Object.keys(typed.errors).length > 0) return;
+      if (Object.keys(typed.errors).length > 0) return null;
       parameters = typed.parameters;
     } else {
       try {
@@ -95,25 +98,50 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
         parameters = parsed as Record<string, unknown>;
       } catch {
         setErrors(["The inputs must be a JSON object."]);
-        return;
+        return null;
       }
     }
     if (runnable.onBehalfOfRequired && !team) {
       setErrors(["Choose which of your teams it runs for."]);
-      return;
+      return null;
     }
+    return parameters;
+  }
+
+  /** A refusal, on its fields where it names them. */
+  function refused(err: unknown): void {
+    if (err instanceof ApiError && err.code === "INVALID_PARAMETERS") {
+      const problems = serverProblems(err.problems);
+      setFieldErrors(problems.fields);
+      setErrors(problems.general.length > 0 || !fields ? [err.message] : []);
+    } else {
+      setErrors([err instanceof ApiError ? err.message : "Something went wrong. Try again."]);
+    }
+  }
+
+  async function run(event: FormEvent): Promise<void> {
+    event.preventDefault();
+    const parameters = checkedParameters();
+    if (!parameters) return;
     setRunning(true);
     try {
       navigate(`/runs/${encodeURIComponent(await runRunnable(runnable, parameters, team || undefined))}`);
     } catch (err) {
-      if (err instanceof ApiError && err.code === "INVALID_PARAMETERS") {
-        const problems = serverProblems(err.problems);
-        setFieldErrors(problems.fields);
-        setErrors(problems.general.length > 0 || !fields ? [err.message] : []);
-      } else {
-        setErrors([err instanceof ApiError ? err.message : "Something went wrong. Try again."]);
-      }
+      refused(err);
       setRunning(false);
+    }
+  }
+
+  async function preview(): Promise<void> {
+    const parameters = checkedParameters();
+    if (!parameters) return;
+    setPreviewing(true);
+    try {
+      setPreviewed(await previewRunnable(runnable, parameters, team || undefined));
+    } catch (err) {
+      refused(err);
+    } finally {
+      setPreviewing(false);
     }
   }
 
@@ -195,10 +223,23 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
           <Button type="submit" variant="contained" size="large" disabled={running}>
             {running ? "Starting…" : "Run"}
           </Button>
+          {runnable.previewable && (
+            <Button variant="outlined" size="large" disabled={previewing || running} onClick={() => void preview()}>
+              {previewing ? "Asking…" : "Preview"}
+            </Button>
+          )}
           <Typography variant="body2" color="text.secondary">
-            Checked against its schema before anything runs.
+            Checked against its schema before anything runs.{runnable.previewable && " Preview says what it would change, first."}
           </Typography>
         </Box>
+        {previewed && (
+          <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
+            <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600, mb: 1 }}>
+              What it would do
+            </Typography>
+            <PreviewResult key={previewed.executionId} executionId={previewed.executionId} notPreviewed={previewed.notPreviewed} />
+          </Box>
+        )}
       </Card>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>

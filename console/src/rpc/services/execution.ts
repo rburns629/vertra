@@ -15,7 +15,7 @@ import {
   retry,
   submit,
 } from "../../core/executions.js";
-import { decide, pendingApprovals } from "../../core/approvals.js";
+import { decide, pendingApprovals, previewStep } from "../../core/approvals.js";
 import {
   DagSchema,
   ExecutionState,
@@ -184,6 +184,7 @@ function execution(detail: Detail) {
             approvedAt: timestamp(task.approval.approvedAt),
             awaitingSince: timestamp(task.approval.awaitingSince),
             canDecide: task.approval.canDecide,
+            canPreview: task.approval.canPreview,
           }
         : undefined,
       waitingFor: task.waitingFor ?? undefined,
@@ -337,6 +338,11 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
       );
       const result = await viaKernel(ctx, () => decide(callerOf(ctx), executionId, taskId, approve, reason));
       return { executionId: result.executionId, state: executionState(result.state) };
+    },
+
+    async previewStep(req, ctx) {
+      const { executionId, taskId } = check({ executionId: ExecutionId, taskId: Type.String({ minLength: 1, maxLength: 253 }) }, req);
+      return viaKernel(ctx, () => previewStep(callerOf(ctx), executionId, taskId, logOf(ctx)));
     },
 
     async listPendingApprovals(_req, ctx) {

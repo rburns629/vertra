@@ -5,20 +5,26 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import type { TaskApproval } from "../../api";
+import { ApiError, previewStep, type TaskApproval } from "../../api";
+import { PreviewResult } from "../../components/PreviewResult";
 import { when } from "../../time";
 
 /**
  * A step that needs an approval: who approved it, or that it's waiting,
  * and for a maintainer of its team who didn't start the run, Approve and
- * Decline (with an optional reason, shown with the failure).
+ * Decline (with an optional reason, shown with the failure), and, when its
+ * product has a plan, a preview of what it would do first.
  */
 export function Approval({
+  executionId,
+  taskId,
   approval,
   awaiting,
   busy,
   onDecide,
 }: {
+  executionId: string;
+  taskId: string;
   approval: TaskApproval;
   awaiting: boolean;
   busy: boolean;
@@ -26,6 +32,21 @@ export function Approval({
 }) {
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+
+  async function askPreview(): Promise<void> {
+    setAsking(true);
+    setPreviewError(null);
+    try {
+      setPreview(await previewStep(executionId, taskId));
+    } catch (err) {
+      setPreviewError(err instanceof ApiError ? err.message : "Couldn't preview it.");
+    } finally {
+      setAsking(false);
+    }
+  }
 
   if (!awaiting) {
     return approval.approvedBy ? (
@@ -72,8 +93,19 @@ export function Approval({
                 <Button color="error" disabled={busy} onClick={() => { setDeclining(true); }}>
                   Decline…
                 </Button>
+                {approval.canPreview && (
+                  <Button disabled={asking} onClick={() => void askPreview()}>
+                    {asking ? "Asking…" : preview ? "Preview again" : "Preview what it would do"}
+                  </Button>
+                )}
               </>
             )}
+          </Box>
+        )}
+        {previewError && <Alert severity="error">{previewError}</Alert>}
+        {preview && (
+          <Box sx={{ bgcolor: "background.paper", borderRadius: 1, p: 1.5 }}>
+            <PreviewResult key={preview} executionId={preview} />
           </Box>
         )}
       </Box>

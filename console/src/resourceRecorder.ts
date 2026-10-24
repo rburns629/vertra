@@ -194,6 +194,12 @@ export async function recordFinishedRuns(): Promise<{ runs: number; resources: n
       continue;
     }
     if (!FINISHED.has(state) || runs === READ_PER_PASS) continue;
+    if (run.template === "preview") {
+      // A preview changes nothing and says so itself: no resources, no news.
+      await db.update(submittedExecutions).set({ resourcesRecordedAt: sql`now()` }).where(eq(submittedExecutions.executionId, run.executionId));
+      runs += 1;
+      continue;
+    }
     const detail = await getExecution(run.executionId);
     // Told first: if recording fails, the next pass tells again, which its key makes a no-op.
     const failed = detail.tasks.find((t) => t.state === "FAILED");

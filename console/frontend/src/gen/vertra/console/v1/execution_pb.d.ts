@@ -446,6 +446,13 @@ export declare type Approval = Message<"vertra.console.v1.Approval"> & {
    * @generated from field: bool can_decide = 4;
    */
   canDecide: boolean;
+
+  /**
+   * Whether they can preview what it would do first (PreviewStep).
+   *
+   * @generated from field: bool can_preview = 5;
+   */
+  canPreview: boolean;
 };
 
 /**
@@ -1075,6 +1082,45 @@ export declare type DecideApprovalResponse = Message<"vertra.console.v1.DecideAp
 export declare const DecideApprovalResponseSchema: GenMessage<DecideApprovalResponse>;
 
 /**
+ * @generated from message vertra.console.v1.PreviewStepRequest
+ */
+export declare type PreviewStepRequest = Message<"vertra.console.v1.PreviewStepRequest"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewStepRequest.
+ * Use `create(PreviewStepRequestSchema)` to create a new message.
+ */
+export declare const PreviewStepRequestSchema: GenMessage<PreviewStepRequest>;
+
+/**
+ * @generated from message vertra.console.v1.PreviewStepResponse
+ */
+export declare type PreviewStepResponse = Message<"vertra.console.v1.PreviewStepResponse"> & {
+  /**
+   * The preview run.
+   *
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.PreviewStepResponse.
+ * Use `create(PreviewStepResponseSchema)` to create a new message.
+ */
+export declare const PreviewStepResponseSchema: GenMessage<PreviewStepResponse>;
+
+/**
  * @generated from message vertra.console.v1.ListPendingApprovalsRequest
  */
 export declare type ListPendingApprovalsRequest = Message<"vertra.console.v1.ListPendingApprovalsRequest"> & {
@@ -1383,6 +1429,18 @@ export declare const ExecutionService: GenService<{
     methodKind: "unary";
     input: typeof DecideApprovalRequestSchema;
     output: typeof DecideApprovalResponseSchema;
+  },
+  /**
+   * What a step waiting for an approval would do, for whoever may decide on
+   * it: a run (a preview) of its product's plan action with the inputs it
+   * will get.
+   *
+   * @generated from rpc vertra.console.v1.ExecutionService.PreviewStep
+   */
+  previewStep: {
+    methodKind: "unary";
+    input: typeof PreviewStepRequestSchema;
+    output: typeof PreviewStepResponseSchema;
   },
   /**
    * The steps awaiting approval in the teams the caller maintains (every

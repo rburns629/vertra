@@ -535,6 +535,30 @@ describe("a run form", () => {
     expect(call).toContain("Bearer $VERTRA_TOKEN");
   });
 
+  it("previews what it would do, from each step's plan", async () => {
+    const previewed: Record<string, unknown>[] = [];
+    await renderAt("/catalog/run?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, {
+      "TemplateService/ListTemplates": { runnables: [{ ...TEMPLATE, previewable: true }] },
+      "TemplateService/PreviewTemplate": (request: Record<string, unknown>) => {
+        previewed.push(request);
+        return { executionId: "7a7a7a7a-0000-4000-8000-000000000007", notPreviewed: [{ step: "deploy", why: "It uses project's output, known only once that runs." }] };
+      },
+      "ExecutionService/GetExecution": {
+        execution: {
+          executionId: "7a7a7a7a-0000-4000-8000-000000000007",
+          state: "EXECUTION_STATE_SUCCEEDED",
+          tasks: [{ taskId: "project", state: "TASK_STATE_SUCCEEDED", outputs: { summary: "Creates one project.", changes: [{ action: "create", type: "gcp/project", id: "orders-api" }] } }],
+        },
+      },
+    });
+    fireEvent.change(await screen.findByLabelText(/project id/i), { target: { value: "orders-api" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await waitFor(() => { expect(previewed).toEqual([{ team: "gcp-platform", name: "app-on-cloud-run", parameters: { projectId: "orders-api" } }]); });
+    expect(await screen.findByText("Creates one project.")).toBeTruthy();
+    expect(screen.getByText("gcp/project · orders-api")).toBeTruthy();
+    expect(screen.getByText(/not previewed\. It uses project's output/)).toBeTruthy();
+  });
+
   it("opens from an old catalog link", async () => {
     await renderAt("/catalog?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, { "TemplateService/ListTemplates": { runnables: [TEMPLATE] } });
     expect(await screen.findByLabelText(/project id/i)).toBeTruthy();

@@ -390,7 +390,10 @@ type ProductAction struct {
 	Approval string `protobuf:"bytes,21,opt,name=approval,proto3" json:"approval,omitempty"`
 	// What removes the resources its steps report (product.yaml's cleanup):
 	// unset when nothing does.
-	Cleanup       *Cleanup `protobuf:"bytes,22,opt,name=cleanup,proto3" json:"cleanup,omitempty"`
+	Cleanup *Cleanup `protobuf:"bytes,22,opt,name=cleanup,proto3" json:"cleanup,omitempty"`
+	// The action of the same product that says what a step of this one would
+	// do, without doing it (product.yaml's plan); empty when none does.
+	Plan          string `protobuf:"bytes,23,opt,name=plan,proto3" json:"plan,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -577,6 +580,13 @@ func (x *ProductAction) GetCleanup() *Cleanup {
 		return x.Cleanup
 	}
 	return nil
+}
+
+func (x *ProductAction) GetPlan() string {
+	if x != nil {
+		return x.Plan
+	}
+	return ""
 }
 
 // An action's cleanup: which action of the same product removes one
@@ -1439,7 +1449,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\bapproval\x18\x03 \x01(\bR\bapproval\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\x9b\a\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xaf\a\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1469,7 +1479,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x0fconcurrency_key\x18\x13 \x03(\tR\x0econcurrencyKey\x12D\n" +
 	"\x06errors\x18\x14 \x03(\v2,.vertra.catalog.v1.ProductAction.ErrorsEntryR\x06errors\x12\x1a\n" +
 	"\bapproval\x18\x15 \x01(\tR\bapproval\x124\n" +
-	"\acleanup\x18\x16 \x01(\v2\x1a.vertra.catalog.v1.CleanupR\acleanup\x1aW\n" +
+	"\acleanup\x18\x16 \x01(\v2\x1a.vertra.catalog.v1.CleanupR\acleanup\x12\x12\n" +
+	"\x04plan\x18\x17 \x01(\tR\x04plan\x1aW\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
 	"\x05value\x18\x02 \x01(\v2\x1c.vertra.catalog.v1.ErrorHelpR\x05value:\x028\x01\"R\n" +

@@ -232,6 +232,9 @@ export const products = pgTable(
     // another action of the product, and its inputs (null: {"resource":
     // ...}). Null: nothing does (core/resources.ts).
     cleanup: jsonb("cleanup").$type<ProductCleanup>(),
+    // The action of the same product that says what a step of this one
+    // would do (product.yaml's plan): Preview runs it. Null: none.
+    plan: text("plan"),
     // When a step of it waits for a maintainer of its team to approve it
     // (product.yaml's approval): always, or only when another team runs it.
     // Null: never, unless an allowedTargets rule asks (core/approvals.ts).

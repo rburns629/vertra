@@ -50,6 +50,7 @@ function retryBlockedFor(execution: ExecutionDetail, taskId: string): string | n
 function source(execution: ExecutionDetail): string {
   const template = execution.template;
   if (template === "cleanup") return "a cleanup of what runs made";
+  if (template === "preview") return "a preview: it changes nothing";
   const slash = template?.indexOf("/") ?? -1;
   if (!template || slash < 0) return "a DAG";
   return `${template.slice(slash + 1)} by ${template.slice(0, slash)}`;
@@ -62,7 +63,7 @@ function source(execution: ExecutionDetail): string {
  */
 function formFor(execution: ExecutionDetail): string | null {
   const ref = execution.template;
-  if (!ref || ref === "cleanup" || execution.templateParameters === null) return null;
+  if (!ref || ref === "cleanup" || ref === "preview" || execution.templateParameters === null) return null;
   const kind = /^[a-z0-9-]+\/[a-z0-9-]+\.[a-z0-9-]+$/.test(ref) ? "action" : "template";
   return `/catalog/run?${kind}=${encodeURIComponent(ref)}`;
 }

@@ -297,6 +297,7 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
         maxAttempts: p.maxAttempts > 0 ? p.maxAttempts : 1,
         concurrencyKey: p.concurrencyKey,
         cleanup: p.cleanup ? { action: p.cleanup.action, inputs: p.cleanup.inputs ?? null } : null,
+        plan: p.plan || null,
         approval: p.approval === "always" || p.approval === "otherTeams" ? p.approval : "",
         errorHelp: Object.fromEntries(
           Object.entries(p.errors).map(([code, help]) => [code, { means: help.means, ...(help.do ? { do: help.do } : {}) }]),

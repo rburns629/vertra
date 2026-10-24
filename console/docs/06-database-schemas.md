@@ -356,6 +356,7 @@ What a DAG step can run: one row per image and action.
 | `idempotent` | boolean | no | product.yaml's `idempotent`: running it again with the same inputs does no harm. Needed for more than one attempt. |
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
+| `plan` | text | yes | product.yaml's `plan`: the action of the same product that says what a step of this one would do. **Preview** runs it. Null: none. |
 | `cleanup` | jsonb | yes | product.yaml's `cleanup`: `{ action, inputs }`, the action of the same product that removes a resource its steps report, and its inputs (null: `{"resource": ...}`). Null: nothing removes them. |
 | `approval` | text | yes | product.yaml's `approval`: `always`, or `otherTeams` (only when another team runs it). A step of it then waits for a maintainer of its team to approve it. Null: never, unless an `allowedTargets` rule asks. |
 | `error_help` | jsonb | no | product.yaml's `errors`: `{ CODE: { means, do } }`, shown when a step fails with that code. |
@@ -555,7 +556,7 @@ The console's record of every execution submitted through it, and who may see it
 | `submitted_by` | uuid | yes | The user or bot. Emptied if that account is deleted; the record stays. |
 | `external_reference` | text | no | The DAG's `name`. |
 | `payload` | jsonb | yes | The DAG as sent to the kernel, so **Rerun** can resubmit it. Empty for rows from before this column existed. |
-| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone, or `cleanup` for a run deleting resources (`ResourceService`). Whoever ran it can see, cancel, retry and rerun it (not a cleanup's: it's asked for again from the resources); a rerun runs the template again. Empty for a DAG submitted as such. |
+| `template` | text | yes | Run from a template (`TemplateService`): `<team>/<template>`, or `<team>/<product>.<action>` for an action run alone, or `cleanup` for a run deleting resources (`ResourceService`), or `preview` for a run of plan actions (Preview). Whoever ran it can see, cancel, retry and rerun it (not a cleanup's: it's asked for again from the resources); a rerun runs the template again. Empty for a DAG submitted as such. |
 | `template_parameters` | jsonb | yes | The parameters it ran with. |
 | `on_behalf_of` | text | yes | Which of the submitter's teams it ran for, when the template is shared with specific teams (or the submitter named one). |
 | `created_at` | timestamptz | no | |

@@ -838,7 +838,9 @@ type Approval struct {
 	// While it awaits approval: since when.
 	AwaitingSince *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=awaiting_since,json=awaitingSince,proto3" json:"awaiting_since,omitempty"`
 	// Whether the caller may approve or decline it now.
-	CanDecide     bool `protobuf:"varint,4,opt,name=can_decide,json=canDecide,proto3" json:"can_decide,omitempty"`
+	CanDecide bool `protobuf:"varint,4,opt,name=can_decide,json=canDecide,proto3" json:"can_decide,omitempty"`
+	// Whether they can preview what it would do first (PreviewStep).
+	CanPreview    bool `protobuf:"varint,5,opt,name=can_preview,json=canPreview,proto3" json:"can_preview,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -897,6 +899,13 @@ func (x *Approval) GetAwaitingSince() *timestamppb.Timestamp {
 func (x *Approval) GetCanDecide() bool {
 	if x != nil {
 		return x.CanDecide
+	}
+	return false
+}
+
+func (x *Approval) GetCanPreview() bool {
+	if x != nil {
+		return x.CanPreview
 	}
 	return false
 }
@@ -2281,6 +2290,103 @@ func (x *DecideApprovalResponse) GetState() ExecutionState {
 	return ExecutionState_EXECUTION_STATE_UNSPECIFIED
 }
 
+type PreviewStepRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewStepRequest) Reset() {
+	*x = PreviewStepRequest{}
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewStepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewStepRequest) ProtoMessage() {}
+
+func (x *PreviewStepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewStepRequest.ProtoReflect.Descriptor instead.
+func (*PreviewStepRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *PreviewStepRequest) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *PreviewStepRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+type PreviewStepResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The preview run.
+	ExecutionId   string `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewStepResponse) Reset() {
+	*x = PreviewStepResponse{}
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewStepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewStepResponse) ProtoMessage() {}
+
+func (x *PreviewStepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewStepResponse.ProtoReflect.Descriptor instead.
+func (*PreviewStepResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *PreviewStepResponse) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
 type ListPendingApprovalsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2289,7 +2395,7 @@ type ListPendingApprovalsRequest struct {
 
 func (x *ListPendingApprovalsRequest) Reset() {
 	*x = ListPendingApprovalsRequest{}
-	mi := &file_vertra_console_v1_execution_proto_msgTypes[31]
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2301,7 +2407,7 @@ func (x *ListPendingApprovalsRequest) String() string {
 func (*ListPendingApprovalsRequest) ProtoMessage() {}
 
 func (x *ListPendingApprovalsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_execution_proto_msgTypes[31]
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2314,7 +2420,7 @@ func (x *ListPendingApprovalsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPendingApprovalsRequest.ProtoReflect.Descriptor instead.
 func (*ListPendingApprovalsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{31}
+	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{33}
 }
 
 type ListPendingApprovalsResponse struct {
@@ -2326,7 +2432,7 @@ type ListPendingApprovalsResponse struct {
 
 func (x *ListPendingApprovalsResponse) Reset() {
 	*x = ListPendingApprovalsResponse{}
-	mi := &file_vertra_console_v1_execution_proto_msgTypes[32]
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2338,7 +2444,7 @@ func (x *ListPendingApprovalsResponse) String() string {
 func (*ListPendingApprovalsResponse) ProtoMessage() {}
 
 func (x *ListPendingApprovalsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_execution_proto_msgTypes[32]
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2351,7 +2457,7 @@ func (x *ListPendingApprovalsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPendingApprovalsResponse.ProtoReflect.Descriptor instead.
 func (*ListPendingApprovalsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{32}
+	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListPendingApprovalsResponse) GetApprovals() []*PendingApproval {
@@ -2380,7 +2486,7 @@ type PendingApproval struct {
 
 func (x *PendingApproval) Reset() {
 	*x = PendingApproval{}
-	mi := &file_vertra_console_v1_execution_proto_msgTypes[33]
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2392,7 +2498,7 @@ func (x *PendingApproval) String() string {
 func (*PendingApproval) ProtoMessage() {}
 
 func (x *PendingApproval) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_execution_proto_msgTypes[33]
+	mi := &file_vertra_console_v1_execution_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2405,7 +2511,7 @@ func (x *PendingApproval) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PendingApproval.ProtoReflect.Descriptor instead.
 func (*PendingApproval) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{33}
+	return file_vertra_console_v1_execution_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *PendingApproval) GetExecutionId() string {
@@ -2567,7 +2673,7 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\n" +
 	"\b_failureB\a\n" +
 	"\x05_helpB\v\n" +
-	"\t_approval\"\xca\x01\n" +
+	"\t_approval\"\xeb\x01\n" +
 	"\bApproval\x12\x1f\n" +
 	"\vapproved_by\x18\x01 \x01(\tR\n" +
 	"approvedBy\x12;\n" +
@@ -2575,7 +2681,9 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"approvedAt\x12A\n" +
 	"\x0eawaiting_since\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\rawaitingSince\x12\x1d\n" +
 	"\n" +
-	"can_decide\x18\x04 \x01(\bR\tcanDecide\"\xca\x01\n" +
+	"can_decide\x18\x04 \x01(\bR\tcanDecide\x12\x1f\n" +
+	"\vcan_preview\x18\x05 \x01(\bR\n" +
+	"canPreview\"\xca\x01\n" +
 	"\vFailureHelp\x12\x14\n" +
 	"\x05means\x18\x01 \x01(\tR\x05means\x12\x1c\n" +
 	"\n" +
@@ -2674,7 +2782,12 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\"t\n" +
 	"\x16DecideApprovalResponse\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x127\n" +
-	"\x05state\x18\x02 \x01(\x0e2!.vertra.console.v1.ExecutionStateR\x05state\"\x1d\n" +
+	"\x05state\x18\x02 \x01(\x0e2!.vertra.console.v1.ExecutionStateR\x05state\"P\n" +
+	"\x12PreviewStepRequest\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\"8\n" +
+	"\x13PreviewStepResponse\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"\x1d\n" +
 	"\x1bListPendingApprovalsRequest\"`\n" +
 	"\x1cListPendingApprovalsResponse\x12@\n" +
 	"\tapprovals\x18\x01 \x03(\v2\".vertra.console.v1.PendingApprovalR\tapprovals\"\xbb\x02\n" +
@@ -2705,7 +2818,8 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\x14TASK_STATE_SUCCEEDED\x10\x05\x12\x15\n" +
 	"\x11TASK_STATE_FAILED\x10\x06\x12\x18\n" +
 	"\x14TASK_STATE_CANCELLED\x10\a\x12 \n" +
-	"\x1cTASK_STATE_AWAITING_APPROVAL\x10\b2\xbc\t\n" +
+	"\x1cTASK_STATE_AWAITING_APPROVAL\x10\b2\x9a\n" +
+	"\n" +
 	"\x10ExecutionService\x12j\n" +
 	"\x0eListExecutions\x12(.vertra.console.v1.ListExecutionsRequest\x1a).vertra.console.v1.ListExecutionsResponse\"\x03\x90\x02\x01\x12h\n" +
 	"\x0fSubmitExecution\x12).vertra.console.v1.SubmitExecutionRequest\x1a*.vertra.console.v1.SubmitExecutionResponse\x12d\n" +
@@ -2716,7 +2830,8 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\x0fCancelExecution\x12).vertra.console.v1.CancelExecutionRequest\x1a*.vertra.console.v1.CancelExecutionResponse\"\x03\x90\x02\x02\x12V\n" +
 	"\tRetryTask\x12#.vertra.console.v1.RetryTaskRequest\x1a$.vertra.console.v1.RetryTaskResponse\x12e\n" +
 	"\x0eRerunExecution\x12(.vertra.console.v1.RerunExecutionRequest\x1a).vertra.console.v1.RerunExecutionResponse\x12e\n" +
-	"\x0eDecideApproval\x12(.vertra.console.v1.DecideApprovalRequest\x1a).vertra.console.v1.DecideApprovalResponse\x12|\n" +
+	"\x0eDecideApproval\x12(.vertra.console.v1.DecideApprovalRequest\x1a).vertra.console.v1.DecideApprovalResponse\x12\\\n" +
+	"\vPreviewStep\x12%.vertra.console.v1.PreviewStepRequest\x1a&.vertra.console.v1.PreviewStepResponse\x12|\n" +
 	"\x14ListPendingApprovals\x12..vertra.console.v1.ListPendingApprovalsRequest\x1a/.vertra.console.v1.ListPendingApprovalsResponse\"\x03\x90\x02\x01B\xd7\x01\n" +
 	"\x15com.vertra.console.v1B\x0eExecutionProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
@@ -2733,7 +2848,7 @@ func file_vertra_console_v1_execution_proto_rawDescGZIP() []byte {
 }
 
 var file_vertra_console_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_vertra_console_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_vertra_console_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_vertra_console_v1_execution_proto_goTypes = []any{
 	(ExecutionState)(0),                  // 0: vertra.console.v1.ExecutionState
 	(TaskState)(0),                       // 1: vertra.console.v1.TaskState
@@ -2768,61 +2883,63 @@ var file_vertra_console_v1_execution_proto_goTypes = []any{
 	(*RerunExecutionResponse)(nil),       // 30: vertra.console.v1.RerunExecutionResponse
 	(*DecideApprovalRequest)(nil),        // 31: vertra.console.v1.DecideApprovalRequest
 	(*DecideApprovalResponse)(nil),       // 32: vertra.console.v1.DecideApprovalResponse
-	(*ListPendingApprovalsRequest)(nil),  // 33: vertra.console.v1.ListPendingApprovalsRequest
-	(*ListPendingApprovalsResponse)(nil), // 34: vertra.console.v1.ListPendingApprovalsResponse
-	(*PendingApproval)(nil),              // 35: vertra.console.v1.PendingApproval
-	nil,                                  // 36: vertra.console.v1.ExecutionSummary.StepsEntry
-	(*structpb.Struct)(nil),              // 37: google.protobuf.Struct
-	(*TaskResources)(nil),                // 38: vertra.console.v1.TaskResources
-	(*timestamppb.Timestamp)(nil),        // 39: google.protobuf.Timestamp
-	(*Failure)(nil),                      // 40: vertra.console.v1.Failure
-	(*PageRequest)(nil),                  // 41: vertra.console.v1.PageRequest
+	(*PreviewStepRequest)(nil),           // 33: vertra.console.v1.PreviewStepRequest
+	(*PreviewStepResponse)(nil),          // 34: vertra.console.v1.PreviewStepResponse
+	(*ListPendingApprovalsRequest)(nil),  // 35: vertra.console.v1.ListPendingApprovalsRequest
+	(*ListPendingApprovalsResponse)(nil), // 36: vertra.console.v1.ListPendingApprovalsResponse
+	(*PendingApproval)(nil),              // 37: vertra.console.v1.PendingApproval
+	nil,                                  // 38: vertra.console.v1.ExecutionSummary.StepsEntry
+	(*structpb.Struct)(nil),              // 39: google.protobuf.Struct
+	(*TaskResources)(nil),                // 40: vertra.console.v1.TaskResources
+	(*timestamppb.Timestamp)(nil),        // 41: google.protobuf.Timestamp
+	(*Failure)(nil),                      // 42: vertra.console.v1.Failure
+	(*PageRequest)(nil),                  // 43: vertra.console.v1.PageRequest
 }
 var file_vertra_console_v1_execution_proto_depIdxs = []int32{
 	3,  // 0: vertra.console.v1.Dag.tasks:type_name -> vertra.console.v1.TaskDefinition
-	37, // 1: vertra.console.v1.TaskDefinition.inputs:type_name -> google.protobuf.Struct
-	38, // 2: vertra.console.v1.TaskDefinition.resources:type_name -> vertra.console.v1.TaskResources
-	39, // 3: vertra.console.v1.ExecutionSummary.created_at:type_name -> google.protobuf.Timestamp
+	39, // 1: vertra.console.v1.TaskDefinition.inputs:type_name -> google.protobuf.Struct
+	40, // 2: vertra.console.v1.TaskDefinition.resources:type_name -> vertra.console.v1.TaskResources
+	41, // 3: vertra.console.v1.ExecutionSummary.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: vertra.console.v1.ExecutionSummary.state:type_name -> vertra.console.v1.ExecutionState
-	36, // 5: vertra.console.v1.ExecutionSummary.steps:type_name -> vertra.console.v1.ExecutionSummary.StepsEntry
-	39, // 6: vertra.console.v1.ExecutionSummary.finished_at:type_name -> google.protobuf.Timestamp
+	38, // 5: vertra.console.v1.ExecutionSummary.steps:type_name -> vertra.console.v1.ExecutionSummary.StepsEntry
+	41, // 6: vertra.console.v1.ExecutionSummary.finished_at:type_name -> google.protobuf.Timestamp
 	0,  // 7: vertra.console.v1.Execution.state:type_name -> vertra.console.v1.ExecutionState
 	7,  // 8: vertra.console.v1.Execution.tasks:type_name -> vertra.console.v1.TaskStatus
-	39, // 9: vertra.console.v1.Execution.created_at:type_name -> google.protobuf.Timestamp
+	41, // 9: vertra.console.v1.Execution.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 10: vertra.console.v1.Execution.dag:type_name -> vertra.console.v1.Dag
 	6,  // 11: vertra.console.v1.Execution.run_blocked:type_name -> vertra.console.v1.RunBlocked
-	37, // 12: vertra.console.v1.Execution.template_parameters:type_name -> google.protobuf.Struct
+	39, // 12: vertra.console.v1.Execution.template_parameters:type_name -> google.protobuf.Struct
 	1,  // 13: vertra.console.v1.TaskStatus.state:type_name -> vertra.console.v1.TaskState
-	37, // 14: vertra.console.v1.TaskStatus.outputs:type_name -> google.protobuf.Struct
-	40, // 15: vertra.console.v1.TaskStatus.failure:type_name -> vertra.console.v1.Failure
-	39, // 16: vertra.console.v1.TaskStatus.started_at:type_name -> google.protobuf.Timestamp
-	39, // 17: vertra.console.v1.TaskStatus.completed_at:type_name -> google.protobuf.Timestamp
+	39, // 14: vertra.console.v1.TaskStatus.outputs:type_name -> google.protobuf.Struct
+	42, // 15: vertra.console.v1.TaskStatus.failure:type_name -> vertra.console.v1.Failure
+	41, // 16: vertra.console.v1.TaskStatus.started_at:type_name -> google.protobuf.Timestamp
+	41, // 17: vertra.console.v1.TaskStatus.completed_at:type_name -> google.protobuf.Timestamp
 	10, // 18: vertra.console.v1.TaskStatus.attempts:type_name -> vertra.console.v1.Attempt
 	9,  // 19: vertra.console.v1.TaskStatus.help:type_name -> vertra.console.v1.FailureHelp
 	8,  // 20: vertra.console.v1.TaskStatus.approval:type_name -> vertra.console.v1.Approval
-	37, // 21: vertra.console.v1.TaskStatus.waiting_for:type_name -> google.protobuf.Struct
-	39, // 22: vertra.console.v1.Approval.approved_at:type_name -> google.protobuf.Timestamp
-	39, // 23: vertra.console.v1.Approval.awaiting_since:type_name -> google.protobuf.Timestamp
-	39, // 24: vertra.console.v1.Attempt.started_at:type_name -> google.protobuf.Timestamp
-	39, // 25: vertra.console.v1.Attempt.completed_at:type_name -> google.protobuf.Timestamp
-	40, // 26: vertra.console.v1.Attempt.failure:type_name -> vertra.console.v1.Failure
-	41, // 27: vertra.console.v1.ListExecutionsRequest.page:type_name -> vertra.console.v1.PageRequest
-	39, // 28: vertra.console.v1.ListExecutionsRequest.since:type_name -> google.protobuf.Timestamp
+	39, // 21: vertra.console.v1.TaskStatus.waiting_for:type_name -> google.protobuf.Struct
+	41, // 22: vertra.console.v1.Approval.approved_at:type_name -> google.protobuf.Timestamp
+	41, // 23: vertra.console.v1.Approval.awaiting_since:type_name -> google.protobuf.Timestamp
+	41, // 24: vertra.console.v1.Attempt.started_at:type_name -> google.protobuf.Timestamp
+	41, // 25: vertra.console.v1.Attempt.completed_at:type_name -> google.protobuf.Timestamp
+	42, // 26: vertra.console.v1.Attempt.failure:type_name -> vertra.console.v1.Failure
+	43, // 27: vertra.console.v1.ListExecutionsRequest.page:type_name -> vertra.console.v1.PageRequest
+	41, // 28: vertra.console.v1.ListExecutionsRequest.since:type_name -> google.protobuf.Timestamp
 	4,  // 29: vertra.console.v1.ListExecutionsResponse.executions:type_name -> vertra.console.v1.ExecutionSummary
 	2,  // 30: vertra.console.v1.SubmitExecutionRequest.dag:type_name -> vertra.console.v1.Dag
 	0,  // 31: vertra.console.v1.SubmitExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
 	5,  // 32: vertra.console.v1.GetExecutionResponse.execution:type_name -> vertra.console.v1.Execution
 	5,  // 33: vertra.console.v1.WatchExecutionResponse.execution:type_name -> vertra.console.v1.Execution
-	37, // 34: vertra.console.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
-	39, // 35: vertra.console.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
+	39, // 34: vertra.console.v1.ExecutionEvent.payload:type_name -> google.protobuf.Struct
+	41, // 35: vertra.console.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
 	19, // 36: vertra.console.v1.ListExecutionEventsResponse.events:type_name -> vertra.console.v1.ExecutionEvent
 	23, // 37: vertra.console.v1.GetExecutionLogsResponse.tasks:type_name -> vertra.console.v1.TaskLogs
 	0,  // 38: vertra.console.v1.CancelExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
 	0,  // 39: vertra.console.v1.RetryTaskResponse.state:type_name -> vertra.console.v1.ExecutionState
 	0,  // 40: vertra.console.v1.RerunExecutionResponse.state:type_name -> vertra.console.v1.ExecutionState
 	0,  // 41: vertra.console.v1.DecideApprovalResponse.state:type_name -> vertra.console.v1.ExecutionState
-	35, // 42: vertra.console.v1.ListPendingApprovalsResponse.approvals:type_name -> vertra.console.v1.PendingApproval
-	39, // 43: vertra.console.v1.PendingApproval.awaiting_since:type_name -> google.protobuf.Timestamp
+	37, // 42: vertra.console.v1.ListPendingApprovalsResponse.approvals:type_name -> vertra.console.v1.PendingApproval
+	41, // 43: vertra.console.v1.PendingApproval.awaiting_since:type_name -> google.protobuf.Timestamp
 	11, // 44: vertra.console.v1.ExecutionService.ListExecutions:input_type -> vertra.console.v1.ListExecutionsRequest
 	13, // 45: vertra.console.v1.ExecutionService.SubmitExecution:input_type -> vertra.console.v1.SubmitExecutionRequest
 	15, // 46: vertra.console.v1.ExecutionService.GetExecution:input_type -> vertra.console.v1.GetExecutionRequest
@@ -2833,20 +2950,22 @@ var file_vertra_console_v1_execution_proto_depIdxs = []int32{
 	27, // 51: vertra.console.v1.ExecutionService.RetryTask:input_type -> vertra.console.v1.RetryTaskRequest
 	29, // 52: vertra.console.v1.ExecutionService.RerunExecution:input_type -> vertra.console.v1.RerunExecutionRequest
 	31, // 53: vertra.console.v1.ExecutionService.DecideApproval:input_type -> vertra.console.v1.DecideApprovalRequest
-	33, // 54: vertra.console.v1.ExecutionService.ListPendingApprovals:input_type -> vertra.console.v1.ListPendingApprovalsRequest
-	12, // 55: vertra.console.v1.ExecutionService.ListExecutions:output_type -> vertra.console.v1.ListExecutionsResponse
-	14, // 56: vertra.console.v1.ExecutionService.SubmitExecution:output_type -> vertra.console.v1.SubmitExecutionResponse
-	16, // 57: vertra.console.v1.ExecutionService.GetExecution:output_type -> vertra.console.v1.GetExecutionResponse
-	18, // 58: vertra.console.v1.ExecutionService.WatchExecution:output_type -> vertra.console.v1.WatchExecutionResponse
-	21, // 59: vertra.console.v1.ExecutionService.ListExecutionEvents:output_type -> vertra.console.v1.ListExecutionEventsResponse
-	24, // 60: vertra.console.v1.ExecutionService.GetExecutionLogs:output_type -> vertra.console.v1.GetExecutionLogsResponse
-	26, // 61: vertra.console.v1.ExecutionService.CancelExecution:output_type -> vertra.console.v1.CancelExecutionResponse
-	28, // 62: vertra.console.v1.ExecutionService.RetryTask:output_type -> vertra.console.v1.RetryTaskResponse
-	30, // 63: vertra.console.v1.ExecutionService.RerunExecution:output_type -> vertra.console.v1.RerunExecutionResponse
-	32, // 64: vertra.console.v1.ExecutionService.DecideApproval:output_type -> vertra.console.v1.DecideApprovalResponse
-	34, // 65: vertra.console.v1.ExecutionService.ListPendingApprovals:output_type -> vertra.console.v1.ListPendingApprovalsResponse
-	55, // [55:66] is the sub-list for method output_type
-	44, // [44:55] is the sub-list for method input_type
+	33, // 54: vertra.console.v1.ExecutionService.PreviewStep:input_type -> vertra.console.v1.PreviewStepRequest
+	35, // 55: vertra.console.v1.ExecutionService.ListPendingApprovals:input_type -> vertra.console.v1.ListPendingApprovalsRequest
+	12, // 56: vertra.console.v1.ExecutionService.ListExecutions:output_type -> vertra.console.v1.ListExecutionsResponse
+	14, // 57: vertra.console.v1.ExecutionService.SubmitExecution:output_type -> vertra.console.v1.SubmitExecutionResponse
+	16, // 58: vertra.console.v1.ExecutionService.GetExecution:output_type -> vertra.console.v1.GetExecutionResponse
+	18, // 59: vertra.console.v1.ExecutionService.WatchExecution:output_type -> vertra.console.v1.WatchExecutionResponse
+	21, // 60: vertra.console.v1.ExecutionService.ListExecutionEvents:output_type -> vertra.console.v1.ListExecutionEventsResponse
+	24, // 61: vertra.console.v1.ExecutionService.GetExecutionLogs:output_type -> vertra.console.v1.GetExecutionLogsResponse
+	26, // 62: vertra.console.v1.ExecutionService.CancelExecution:output_type -> vertra.console.v1.CancelExecutionResponse
+	28, // 63: vertra.console.v1.ExecutionService.RetryTask:output_type -> vertra.console.v1.RetryTaskResponse
+	30, // 64: vertra.console.v1.ExecutionService.RerunExecution:output_type -> vertra.console.v1.RerunExecutionResponse
+	32, // 65: vertra.console.v1.ExecutionService.DecideApproval:output_type -> vertra.console.v1.DecideApprovalResponse
+	34, // 66: vertra.console.v1.ExecutionService.PreviewStep:output_type -> vertra.console.v1.PreviewStepResponse
+	36, // 67: vertra.console.v1.ExecutionService.ListPendingApprovals:output_type -> vertra.console.v1.ListPendingApprovalsResponse
+	56, // [56:68] is the sub-list for method output_type
+	44, // [44:56] is the sub-list for method input_type
 	44, // [44:44] is the sub-list for extension type_name
 	44, // [44:44] is the sub-list for extension extendee
 	0,  // [0:44] is the sub-list for field type_name
@@ -2870,7 +2989,7 @@ func file_vertra_console_v1_execution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_execution_proto_rawDesc), len(file_vertra_console_v1_execution_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   35,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

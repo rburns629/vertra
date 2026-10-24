@@ -1,5 +1,6 @@
 # What a run made, and deleting it later: open reports the ticket it opens
-# as a resource, and cleanup names close as what removes one. The console
+# as a resource, and cleanup names close as what removes one; plan says what
+# open would do, for Preview. The console
 # keeps the ticket after the run is gone, and its Delete runs close. Nothing
 # is really created here (a no-cloud sample): the ticket's id comes from its
 # title, so opening the same one twice gives the same ticket.
@@ -26,6 +27,8 @@ actions:
     # Close removes what open reports, given {"resource": {type, id, name}}.
     cleanup:
       action: close
+    # Preview runs plan first: what open would do, changing nothing.
+    plan: plan
     input:
       type: object
       additionalProperties: false
@@ -86,3 +89,39 @@ actions:
           type: string
           title: Closed
           description: The ticket it closed.
+  - name: plan
+    idempotent: true   # it only reports
+    maxAttempts: 2
+    shareWith: ["*"]
+    script: actions/plan.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          type: string
+          title: Title
+          maxLength: 200
+    output:
+      type: object
+      additionalProperties: false
+      required: [changes, summary]
+      properties:
+        summary:
+          type: string
+          title: Summary
+          description: What open would do, in a sentence.
+        changes:
+          type: array
+          title: Changes
+          description: What open would create, change or delete.
+          items:
+            type: object
+            required: [action, type, id]
+            properties:
+              action: {type: string, enum: [create, update, delete, none]}
+              type: {type: string}
+              id: {type: string}
+              name: {type: string}
+              detail: {type: string}

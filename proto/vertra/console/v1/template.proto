@@ -31,6 +31,13 @@ service TemplateService {
   rpc RunTemplate(RunTemplateRequest) returns (RunTemplateResponse);
   // Runs one shared action with these inputs, as a one-step template.
   rpc RunAction(RunActionRequest) returns (RunActionResponse);
+  // What running a template with these parameters would do, without doing
+  // it: a run (a preview) of its steps' plan actions (product.yaml's plan),
+  // side by side, for the steps that have one and whose inputs are known
+  // before anything runs. Each step's outputs say what it would change.
+  rpc PreviewTemplate(PreviewTemplateRequest) returns (PreviewTemplateResponse);
+  // What running one action with these inputs would do: a run of its plan action.
+  rpc PreviewAction(PreviewActionRequest) returns (PreviewActionResponse);
 }
 
 message ListTemplatesRequest {}
@@ -80,6 +87,39 @@ message Runnable {
   // (permission_denied, TARGET_NOT_ALLOWED). Empty for the owning team's
   // own people and admins, who aren't limited.
   repeated TargetChoice targets = 15;
+  // Whether Preview says what it would do: the action, or one of the
+  // template's steps, has a plan.
+  bool previewable = 16;
+}
+
+// A step a preview left out, and why: it has no plan, or its inputs come
+// from an earlier step.
+message NotPreviewed {
+  string step = 1;
+  string why = 2;
+}
+
+message PreviewTemplateRequest {
+  string team = 1;
+  string name = 2;
+  google.protobuf.Struct parameters = 3;
+  optional string on_behalf_of = 4;
+}
+
+message PreviewTemplateResponse {
+  // The preview run.
+  string execution_id = 1;
+  repeated NotPreviewed not_previewed = 2;
+}
+
+message PreviewActionRequest {
+  string product = 1;
+  google.protobuf.Struct inputs = 2;
+  optional string on_behalf_of = 3;
+}
+
+message PreviewActionResponse {
+  string execution_id = 1;
 }
 
 message TargetChoice {

@@ -524,9 +524,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   undecided for `scheduler.approvalTimeoutSeconds` (3 days):
   `APPROVAL_EXPIRED`. An approval lasts across retries; a declined step
   asks again. Proven on kind with the local sample's rot13
-  (`approval: otherTeams`). Left: approval for one consumer team and not
-  another without a target rule; notifying approvers (P2 notifications);
-  showing an action's Preview to the approver (with Preview).
+  (`approval: otherTeams`). Approvers are notified, and can preview the
+  step (both 2026-10-24). Left: approval for one consumer team and not
+  another without a target rule.
 - [x] **P1: failure help from the owner** (done 2026-10-21): product.yaml's
   `errors` (CODE: means, do) and team.yaml's `help` (chat, url) beside
   `contact`, carried by releases (console migration 0010). A failed step's
@@ -551,8 +551,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (type-matched wiring, drafts, Propose as a template from the person's
   browser), Teams (another team's page; own team with readiness),
   Schedules, Admin.
-- [ ] **P2: preview.** An optional `plan` action; the form offers Preview
-  and approvers see it.
+- [x] **P2: preview** (done 2026-10-24). product.yaml's `plan` names the
+  action that says what this one would do (`summary`, `changes`); the run
+  form's **Preview** runs it as a preview run (a template: each step with a
+  plan whose inputs are known up front), and whoever may approve a waiting
+  step previews it with its real inputs (`ExecutionService/PreviewStep`).
+  Previews notify nobody and record nothing. Console migration 0022; the
+  local `ticket` sample has one.
 - [x] **P2: what a run created** (done 2026-10-23; decision 21). A step
   reports `resources` (type, id, name, link) in its outputs; the console
   keeps them with the step's inputs and outputs once the run finishes

@@ -121,6 +121,7 @@ actions:
     approval: otherTeams      # optional: a maintainer approves each step first: always, or otherTeams
     cleanup:                  # optional: what removes the resources its steps report (below)
       action: delete
+    plan: preview             # optional: the action that says what this one would do (below)
     # deprecated: Use project.ensure instead.   # optional, here or for the whole product
 ```
 
@@ -199,6 +200,16 @@ already gone. The local `ticket` sample does all of this.
         projectId: {$resource: id}
         force: true
 ```
+
+`plan` names the action of the same product that says what this one would
+do, without doing it: given the same inputs, it outputs a `summary` and
+`changes`, each `{action: create|update|delete|none, type, id, name,
+detail}`. The run form then offers **Preview**, which runs your plan action
+as a run of its own (a preview) and shows its answer; a template previews
+each step that has a plan and whose inputs are known before anything runs.
+Whoever approves a step (`approval`) can preview it too, with the inputs it
+will really get. A plan action must change nothing, and can't itself need
+an approval, clean up, or have a plan. The local `ticket` sample has one.
 
 `approval` makes a step wait for a person before it runs: `always`, or
 `otherTeams` (only when another team runs the action). A maintainer of your

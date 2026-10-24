@@ -21,7 +21,7 @@ import type { AuthUser } from "../auth/plugin.js";
 import { db } from "../db/client.js";
 import { findRunnableProduct } from "../db/queries.js";
 import { resources, submittedExecutions, users } from "../db/schema.js";
-import { runCleanup, type CleanupStep, type TeamProduct } from "./templates.js";
+import { runCleanup, siblingAction, type ProductStep, type TeamProduct } from "./templates.js";
 
 export type ResourceState = "exists" | "deleting" | "delete_failed" | "deleted";
 
@@ -200,10 +200,8 @@ async function cleanupOf(productName: string, label: string): Promise<{ product:
   if (!reporter.cleanup) {
     throw new ApiError(409, "NO_CLEANUP", `${label}: ${productName} doesn't say how to delete what it makes (its product.yaml has no cleanup).`);
   }
-  const suffix = `-${reporter.action}`;
-  const base = reporter.name.endsWith(suffix) ? reporter.name.slice(0, -suffix.length) : reporter.name;
-  const product = await findRunnableProduct(`${base}-${reporter.cleanup.action}`);
-  if (!product || product.teamName !== reporter.teamName) {
+  const product = await siblingAction(reporter, reporter.cleanup.action);
+  if (!product) {
     throw new ApiError(409, "CLEANUP_UNAVAILABLE", `${label}: ${productName}'s cleanup action, ${reporter.cleanup.action}, isn't registered here.`);
   }
   return { product, mapping: reporter.cleanup.inputs };
@@ -224,7 +222,7 @@ export async function deleteResources(caller: AuthUser | undefined, ids: string[
   if (rows.length !== unique.length) throw new ApiError(404, "NOT_FOUND", "A resource to delete wasn't found.");
   const owners = new Set(rows.map((row) => row.resource.ownerTeam));
   if (owners.size > 1) throw new ApiError(422, "MIXED_OWNERS", "These were made for different teams: delete each team's separately.");
-  const steps: CleanupStep[] = [];
+  const steps: Omit<ProductStep, "id">[] = [];
   for (const row of rows) {
     const r = row.resource;
     const label = `${r.type} ${r.externalId}`;

@@ -295,6 +295,10 @@
               "maxProperties": 32
             }
           }
+        },
+        "plan": {
+          "description": "The action of this product that says what this one would do, without doing it: given the same inputs, it outputs changes ([{action: create|update|delete|none, type, id, name, detail}]) and an optional summary. The run form offers Preview, and approvers see it. It must change nothing, and can't itself need an approval, clean up or have a plan.",
+          "$ref": "#/$defs/dnsLabel"
         }
       },
       "allOf": [
