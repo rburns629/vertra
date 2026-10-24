@@ -436,8 +436,20 @@ export async function runTemplate(
   name: string,
   request: RunRequest,
   log: FastifyBaseLogger,
+  scheduleId?: string,
 ) {
   const who = signedIn(caller);
+  const { template, forTeam, steps } = await prepareTemplate(who, team, name, request);
+  return submitChecked(who, dagOf(template.displayName, steps, request.requestId), log, {
+    template: `${template.teamName}/${template.name}`,
+    parameters: request.parameters,
+    onBehalfOf: forTeam,
+    scheduleId,
+  });
+}
+
+/** Everything running a template checks, short of running it: its steps, for whom. Throws the refusal. */
+async function prepareTemplate(who: AuthUser, team: string, name: string, request: RunRequest) {
   const template = await findRunnableTemplate(team, name);
   const allowed = template ? access(who, template.teamName, template.shareWith) : undefined;
   if (!template || !allowed?.allowed) {
@@ -451,11 +463,17 @@ export async function runTemplate(
     steps.push({ step, product: await stepProduct(step, template.teamName, label), inputs: bind(step.inputs, request.parameters) });
   }
   await ensureTargetsAllowed(who, forTeam, steps, label);
-  return submitChecked(who, dagOf(template.displayName, steps, request.requestId), log, {
-    template: `${template.teamName}/${template.name}`,
-    parameters: request.parameters,
-    onBehalfOf: forTeam,
-  });
+  return { template, forTeam, steps };
+}
+
+/**
+ * Throws what running this template or action would refuse (not shared, a
+ * parameter that doesn't fit, a target not allowed), without running it:
+ * for a schedule, checked as its bot when it's made.
+ */
+export async function ensureRunnable(who: AuthUser, kind: "template" | "action", team: string, name: string, request: RunRequest): Promise<void> {
+  if (kind === "template") await prepareTemplate(who, team, name, request);
+  else await prepareAction(who, await findRunnableProduct(name), request, name);
 }
 
 /** What submitted_executions.template says for a cleanup run (core/resources.ts): never a template's <team>/<name>. */
@@ -611,10 +629,10 @@ export async function runCleanup(
 }
 
 /** Runs one action with these inputs, as a one-step template. */
-export async function runAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger) {
+export async function runAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger, scheduleId?: string) {
   const who = signedIn(caller);
   const product = await findRunnableProduct(productName);
-  return runProduct(who, product, request, log, productName);
+  return runProduct(who, product, request, log, productName, scheduleId);
 }
 
 async function runProduct(
@@ -623,7 +641,19 @@ async function runProduct(
   request: RunRequest,
   log: FastifyBaseLogger,
   label: string,
+  scheduleId?: string,
 ) {
+  const { found, ref, forTeam, step } = await prepareAction(who, product, request, label);
+  return submitChecked(
+    who,
+    dagOf(found.displayName ?? found.name, [{ step, product: found, inputs: request.parameters }], request.requestId),
+    log,
+    { template: ref, parameters: request.parameters, onBehalfOf: forTeam, scheduleId },
+  );
+}
+
+/** Everything running an action alone checks, short of running it. Throws the refusal. */
+async function prepareAction(who: AuthUser, product: TeamProduct | undefined, request: RunRequest, label: string) {
   const allowed = product ? access(who, product.teamName, product.shareWith) : undefined;
   if (!product || !allowed?.allowed) {
     throw new ApiError(404, "NOT_FOUND", `No action "${label}" that's shared with you.`);
@@ -633,12 +663,7 @@ async function runProduct(
   checkParameters(product.inputSchema, request.parameters, `Action ${ref}`);
   const step: TemplateStep = { id: product.action, action: ref };
   await ensureTargetsAllowed(who, forTeam, [{ step, product, inputs: request.parameters }], `Action ${ref}`);
-  return submitChecked(
-    who,
-    dagOf(product.displayName ?? product.name, [{ step, product, inputs: request.parameters }], request.requestId),
-    log,
-    { template: ref, parameters: request.parameters, onBehalfOf: forTeam },
-  );
+  return { found: product, ref, forTeam, step };
 }
 
 /**

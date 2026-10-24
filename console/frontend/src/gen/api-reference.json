@@ -620,6 +620,49 @@
    ]
   },
   {
+   "name": "ScheduleService",
+   "fullName": "vertra.console.v1.ScheduleService",
+   "comment": "A team's schedules: a template or action run on a cron, with set\nparameters, for the team, as one of its bots. Checked as that bot when\nmade or changed, and again on every run. The team's members see them;\nits maintainers (and admins) make, change and delete them. At most one\nrun every five minutes.",
+   "methods": [
+    {
+     "name": "ListSchedules",
+     "comment": "A team's schedules, by name.",
+     "input": "vertra.console.v1.ListSchedulesRequest",
+     "output": "vertra.console.v1.ListSchedulesResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "CreateSchedule",
+     "comment": "Makes a schedule: refused (invalid_argument, BAD_SCHEDULE) for a cron or\ntime zone that can't be read, one more often than every five minutes, a\nbot that isn't the team's, or what the bot couldn't run.",
+     "input": "vertra.console.v1.CreateScheduleRequest",
+     "output": "vertra.console.v1.CreateScheduleResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "UpdateSchedule",
+     "comment": "Changes a schedule: pausing or resuming it, its times, its parameters\nor its bot.",
+     "input": "vertra.console.v1.UpdateScheduleRequest",
+     "output": "vertra.console.v1.UpdateScheduleResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "DeleteSchedule",
+     "comment": "Deletes a schedule. Its runs stay.",
+     "input": "vertra.console.v1.DeleteScheduleRequest",
+     "output": "vertra.console.v1.DeleteScheduleResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "SecretService",
    "fullName": "vertra.console.v1.SecretService",
    "comment": "A team's secrets: registered by name, their values written straight into\nthe team's namespace (pasted) or synced from its vault (External Secrets\nOperator). Values are never stored by the console or returned by it.\nAny of the team's registered products may mount any of them, when a task\nlists it in secret_refs.",
@@ -5741,6 +5784,314 @@
      "comment": "The cleanup run."
     }
    ]
+  },
+  "vertra.console.v1.Schedule": {
+   "name": "Schedule",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"template\" or \"action\"."
+    },
+    {
+     "name": "runnableTeam",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What it runs: a template's team and name, or an action's team and\nregistered product name."
+    },
+    {
+     "name": "runnableName",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "cron",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Five fields: minute, hour, day of the month, month, day of the week."
+    },
+    {
+     "name": "timeZone",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "An IANA time zone, such as Europe/Berlin."
+    },
+    {
+     "name": "botId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "botEmail",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "nextRunAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "lastRunAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "lastExecutionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its last run, when it started one."
+    },
+    {
+     "name": "lastError",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why its last start was refused, if it was."
+    }
+   ]
+  },
+  "vertra.console.v1.ListSchedulesRequest": {
+   "name": "ListSchedulesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListSchedulesResponse": {
+   "name": "ListSchedulesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "schedules",
+     "type": "Schedule",
+     "ref": "vertra.console.v1.Schedule",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.CreateScheduleRequest": {
+   "name": "CreateScheduleRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "runnableTeam",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "runnableName",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "cron",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "timeZone",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: UTC."
+    },
+    {
+     "name": "botId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.CreateScheduleResponse": {
+   "name": "CreateScheduleResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "schedule",
+     "type": "Schedule",
+     "ref": "vertra.console.v1.Schedule",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.UpdateScheduleRequest": {
+   "name": "UpdateScheduleRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "cron",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "timeZone",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "botId",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.UpdateScheduleResponse": {
+   "name": "UpdateScheduleResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "schedule",
+     "type": "Schedule",
+     "ref": "vertra.console.v1.Schedule",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteScheduleRequest": {
+   "name": "DeleteScheduleRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteScheduleResponse": {
+   "name": "DeleteScheduleResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.TeamSecret": {
    "name": "TeamSecret",

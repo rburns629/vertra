@@ -11,6 +11,7 @@ import { startAuditExport } from "./auditExport.js";
 import { startResourceRecorder } from "./resourceRecorder.js";
 import { startNotifier } from "./notifier.js";
 import { startReadiness } from "./readiness.js";
+import { startScheduleRunner } from "./scheduleRunner.js";
 import { reconcileScans } from "./scanning.js";
 import { startPolicySync } from "./policySync.js";
 import { startRetention } from "./retention.js";
@@ -148,6 +149,8 @@ async function main(): Promise<void> {
   startNotifier(app.log);
   // Products' readiness checks that are due (readiness.ts): now, then every five minutes.
   startReadiness(app.log);
+  // Teams' schedules that are due (scheduleRunner.ts): now, then every 30 seconds.
+  startScheduleRunner(app.log);
   // Image scans (scanning.ts): the cluster's list of failed digests now,
   // then finished scans read, and due rescans started, every 15 seconds.
   // A failure is logged and tried again on the next round.

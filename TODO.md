@@ -494,8 +494,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (`readiness.ts`, console migration 0023), shows it in the catalog, on
   Every product and the run form, and tells the team's maintainers and
   webhook when it isn't ready. Left: the cloud samples' checks.
-- [ ] **P2: caps per product, and schedules** (a template on a cron, run as
-  a bot).
+- [x] **P2: schedules** (done 2026-10-24): a template or action on a cron
+  (five fields, an IANA time zone, at most every five minutes), with set
+  parameters, for a team, as one of its bots, made from the run form
+  (Schedule…) and kept on the team's Schedules tab. Each run is started as
+  the bot, through the same checks, by whichever console claims it first;
+  a refused start is kept and told to the maintainers (`scheduleRunner.ts`,
+  console migration 0024). Left: schedules waking a sleeping install.
+- [ ] **P2: caps per product** (how many of its steps run at once).
 - [x] **P1: roles** (done 2026-10-21): a team's people are maintainers or
   members (`team_memberships.role`; memberships from before are
   maintainers). Members see the team's runs, logs, Pods and secrets'

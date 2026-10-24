@@ -169,6 +169,13 @@
       "when": 1792870398995,
       "tag": "0023_readiness",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792871432908,
+      "tag": "0024_schedules",
+      "breakpoints": true
     }
   ]
 }

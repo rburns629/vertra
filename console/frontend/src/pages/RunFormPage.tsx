@@ -15,7 +15,9 @@ import { CodeBlock } from "../components/CodeBlock";
 import { Pill } from "../components/Pill";
 import { PreviewResult } from "../components/PreviewResult";
 import { fieldsOf, groupsOf, initialValues, serverProblems, toParameters, withTargets, type FieldValue, type Values } from "../schemaForm";
+import { useAuth } from "../auth/AuthContext";
 import { FieldInput } from "./catalog/FieldInput";
+import { ScheduleDialog } from "./catalog/ScheduleDialog";
 
 /** How a runnable is named in this page's address: ?template=<team>/<name> or ?action=<product>. */
 export function runLink(r: Pick<Runnable, "kind" | "team" | "name">): string {
@@ -77,13 +79,17 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
   );
   const [showCall, setShowCall] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const { user } = useAuth();
+  // The teams it can be scheduled for: theirs to maintain, which it may run for.
+  const scheduleTeams = (user?.maintainerOf ?? []).filter((t) => !runnable.onBehalfOfRequired || runnable.onBehalfOf.includes(t));
   const [previewed, setPreviewed] = useState<{ executionId: string; notPreviewed: NotPreviewed[] } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
 
   /** The inputs as they'd be sent, or null (saying why, on the form) when they can't be. */
-  function checkedParameters(): Record<string, unknown> | null {
+  function checkedParameters(needTeam = true): Record<string, unknown> | null {
     setErrors([]);
     let parameters: Record<string, unknown>;
     if (fields) {
@@ -101,7 +107,7 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
         return null;
       }
     }
-    if (runnable.onBehalfOfRequired && !team) {
+    if (needTeam && runnable.onBehalfOfRequired && !team) {
       setErrors(["Choose which of your teams it runs for."]);
       return null;
     }
@@ -228,10 +234,18 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
               {previewing ? "Asking…" : "Preview"}
             </Button>
           )}
+          {scheduleTeams.length > 0 && (
+            <Button size="large" onClick={() => { setScheduling(true); }}>
+              Schedule…
+            </Button>
+          )}
           <Typography variant="body2" color="text.secondary">
             Checked against its schema before anything runs.{runnable.previewable && " Preview says what it would change, first."}
           </Typography>
         </Box>
+        {scheduling && (
+          <ScheduleDialog open onClose={() => { setScheduling(false); }} runnable={runnable} teams={scheduleTeams} parameters={() => checkedParameters(false)} />
+        )}
         {previewed && (
           <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
             <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600, mb: 1 }}>

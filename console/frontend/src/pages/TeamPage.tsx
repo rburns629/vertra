@@ -17,17 +17,19 @@ import { useAuth } from "../auth/AuthContext";
 import { Pill } from "../components/Pill";
 import { useEnvironment } from "../environment";
 import { AutomationTab } from "./team/AutomationTab";
+import { SchedulesTab } from "./team/SchedulesTab";
 import { MembersTab } from "./team/MembersTab";
 import { ApisTab } from "./team/ApisTab";
 import { RunningTab } from "./team/RunningTab";
 import { SecretsTab } from "./team/SecretsTab";
 import { SettingsTab } from "./team/SettingsTab";
 
-type TabId = "members" | "secrets" | "automation" | "apis" | "running" | "settings";
+type TabId = "members" | "secrets" | "automation" | "schedules" | "apis" | "running" | "settings";
 const TABS: [TabId, string][] = [
   ["members", "Members"],
   ["secrets", "Secrets"],
   ["automation", "Automation"],
+  ["schedules", "Schedules"],
   ["apis", "APIs"],
   ["running", "Running now"],
   ["settings", "Settings"],
@@ -187,6 +189,7 @@ export function TeamPage() {
           )}
           {tab === "secrets" && <SecretsTab teamName={teamName} readOnly={retired || !canMaintain} />}
           {tab === "automation" && canMaintain && <AutomationTab teamName={teamName} readOnly={retired} />}
+          {tab === "schedules" && <SchedulesTab teamName={teamName} readOnly={retired || !canMaintain} />}
           {tab === "apis" && <ApisTab teamName={teamName} />}
           {tab === "running" && <RunningTab teamName={teamName} />}
           {tab === "settings" && team && (

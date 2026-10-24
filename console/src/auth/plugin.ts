@@ -120,6 +120,25 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
   return { authUser: { id: user.id, teamNames, maintainerOf, isAdmin: user.isAdmin, scopes, mustChangePassword } };
 }
 
+/**
+ * A user as a caller, for what the console does as them (a schedule's bot):
+ * their teams and roles as they are now, and no token scopes. Undefined
+ * once the account is gone.
+ */
+export async function callerForUser(userId: string): Promise<AuthUser | undefined> {
+  const user = await findUserById(userId);
+  if (!user) return undefined;
+  const roles = await teamRolesForUser(user.id);
+  return {
+    id: user.id,
+    teamNames: roles.map((row) => row.name),
+    maintainerOf: roles.filter((row) => row.role === "maintainer").map((row) => row.name),
+    isAdmin: user.isAdmin,
+    scopes: [],
+    mustChangePassword: false,
+  };
+}
+
 const authPlugin: FastifyPluginAsync = async (app) => {
   // jwtVerify() rejects an expired token on its own once `exp` is set.
   await app.register(fastifyJwt, { secret: config.jwtSecret, sign: { expiresIn: config.jwtTtl } });

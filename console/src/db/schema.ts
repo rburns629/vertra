@@ -472,6 +472,8 @@ export const submittedExecutions = pgTable("submitted_executions", {
   templateParameters: jsonb("template_parameters"),
   onBehalfOf: text("on_behalf_of"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // The schedule that started it, if one did (scheduler.ts).
+  scheduleId: uuid("schedule_id"),
   // When the resources its steps reported were copied into resources
   // (resourceRecorder.ts), once it finished; null until then.
   resourcesRecordedAt: timestamp("resources_recorded_at", { withTimezone: true }),
@@ -630,6 +632,45 @@ export const productReadiness = pgTable("product_readiness", {
 });
 
 export type ReadinessState = "checking" | "ready" | "not_ready" | "failed";
+
+/**
+ * A team's schedule: a template or action run on a cron, with set
+ * parameters, for the team, as one of its bots (scheduler.ts). The bot's
+ * rights are checked on every run, as they'd be if it ran it itself.
+ */
+export const schedules = pgTable(
+  "schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // What it runs: a template (<team>/<name>) or an action (its registered
+    // product name), with these parameters.
+    kind: text("kind").$type<"template" | "action">().notNull(),
+    runnableTeam: text("runnable_team").notNull(),
+    runnableName: text("runnable_name").notNull(),
+    parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull().default({}),
+    // Five-field cron, read in an IANA time zone (cron.ts).
+    cron: text("cron").notNull(),
+    timeZone: text("time_zone").notNull().default("UTC"),
+    // The team's bot it runs as; deleting the bot deletes the schedule.
+    botId: uuid("bot_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    // When it runs next; null while paused or never again.
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastExecutionId: uuid("last_execution_id"),
+    // Why its last start was refused, if it was.
+    lastError: text("last_error"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("schedules_team_id_name").on(table.teamId, table.name), index("schedules_next_run_at_idx").on(table.nextRunAt)],
+);
 
 export const teamMemberships = pgTable(
   "team_memberships",

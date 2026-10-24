@@ -232,6 +232,16 @@ happened and links to the console; it carries no outputs or logs.
 Rotating `JWT_SECRET` makes the stored URLs unreadable, and teams set
 theirs again.
 
+## Schedules
+
+A schedule runs as one of its team's bots, never as the person who made it:
+a maintainer picks the bot, and the console starts each run as that bot,
+with the bot's teams and roles as they are then, through the same checks
+as the bot running it itself (sharing, the parameters' schema, targets,
+approvals). A bot that loses access stops the schedule at its next run,
+which is refused, kept on the schedule and told to the team's maintainers.
+Deleting the bot deletes its schedules.
+
 ## Who sees a step's logs
 
 A step's output is stored (the kernel redacts recognizable credentials

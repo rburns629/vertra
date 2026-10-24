@@ -809,6 +809,8 @@ export interface TemplateRun {
   template: string;
   parameters: Record<string, unknown>;
   onBehalfOf: string | undefined;
+  /** The schedule that started it (scheduler.ts). */
+  scheduleId?: string | undefined;
 }
 
 /**
@@ -857,6 +859,7 @@ export async function submitChecked(
       template: run?.template,
       templateParameters: run?.parameters,
       onBehalfOf: run?.onBehalfOf,
+      scheduleId: run?.scheduleId,
     },
     result.created,
     log,

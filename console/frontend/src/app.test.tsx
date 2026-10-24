@@ -559,6 +559,28 @@ describe("a run form", () => {
     expect(screen.getByText(/not previewed\. It uses project's output/)).toBeTruthy();
   });
 
+  it("schedules it for a team the person maintains, as its bot", async () => {
+    const made: Record<string, unknown>[] = [];
+    await renderAt("/catalog/run?template=gcp-platform%2Fapp-on-cloud-run", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TemplateService/ListTemplates": { runnables: [TEMPLATE] },
+      "TokenService/ListBots": { bots: [{ id: "b0b0b0b0-0000-4000-8000-000000000001", email: "payments-nightly@bots.vertra.local" }] },
+      "ScheduleService/CreateSchedule": (request: Record<string, unknown>) => {
+        made.push(request);
+        return { schedule: { id: "s1", team: "payments", name: request["name"] } };
+      },
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+    });
+    fireEvent.change(await screen.findByLabelText(/project id/i), { target: { value: "orders-api" } });
+    fireEvent.click(screen.getByRole("button", { name: "Schedule…" }));
+    expect(await screen.findByText("payments-nightly@bots.vertra.local")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Schedule it" }));
+    await waitFor(() => {
+      expect(made).toEqual([
+        expect.objectContaining({ team: "payments", name: "app-on-cloud-run", kind: "template", runnableTeam: "gcp-platform", runnableName: "app-on-cloud-run", parameters: { projectId: "orders-api" }, cron: "0 2 * * *", botId: "b0b0b0b0-0000-4000-8000-000000000001" }),
+      ]);
+    });
+  });
+
   it("opens from an old catalog link", async () => {
     await renderAt("/catalog?template=gcp-platform%2Fapp-on-cloud-run", MEMBER, { "TemplateService/ListTemplates": { runnables: [TEMPLATE] } });
     expect(await screen.findByLabelText(/project id/i)).toBeTruthy();
@@ -725,6 +747,26 @@ describe("a team's settings", () => {
     await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed", "product_not_ready"] }]); });
     expect(await screen.findByText("hooks.slack.com")).toBeTruthy();
     expect((screen.getByLabelText(/new webhook url/i) as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("schedules", () => {
+  it("are listed on the team's tab, and paused there", async () => {
+    const changed: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=schedules", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "ScheduleService/ListSchedules": {
+        schedules: [{ id: "s1", team: "payments", name: "nightly", kind: "template", runnableTeam: "gcp-platform", runnableName: "app-on-cloud-run", cron: "0 2 * * *", timeZone: "Europe/Berlin", botEmail: "payments-nightly@bots.vertra.local", enabled: true, nextRunAt: "2026-10-26T01:00:00Z", lastError: "Template gcp-platform/app-on-cloud-run isn't shared with you." }],
+      },
+      "ScheduleService/UpdateSchedule": (request: Record<string, unknown>) => {
+        changed.push(request);
+        return { schedule: {} };
+      },
+    });
+    expect(await screen.findByText("Every day at 02:00")).toBeTruthy();
+    expect(screen.getByText(/isn't shared with you/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("switch", { name: "nightly on" }));
+    await waitFor(() => { expect(changed).toEqual([{ id: "s1", enabled: false }]); });
   });
 });
 

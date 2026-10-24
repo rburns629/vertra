@@ -561,6 +561,7 @@ The console's record of every execution submitted through it, and who may see it
 | `template_parameters` | jsonb | yes | The parameters it ran with. |
 | `on_behalf_of` | text | yes | Which of the submitter's teams it ran for, when the template is shared with specific teams (or the submitter named one). |
 | `created_at` | timestamptz | no | |
+| `schedule_id` | uuid | yes | The schedule that started it, if one did. |
 | `resources_recorded_at` | timestamptz | yes | When what it made, and deleted, was recorded in `resources`, once it finished. Emptied when it's retried, to be recorded again. |
 
 ### resources
@@ -589,6 +590,30 @@ What runs made: each resource a step reported in its outputs (`resources: [{type
 | `deleting_task_id` | text | yes | Its step for this resource. |
 | `delete_requested_by` | uuid | yes | Who asked. |
 | `deleted_at` | timestamptz | yes | When its cleanup step succeeded. |
+
+### schedules
+
+A team's schedules: a template or action run on a cron, with set parameters, for the team, as one of its bots (`scheduleRunner.ts`). The bot's rights are checked when it's made or changed, and on every run.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `team_id` | uuid | no | Whose. With `name`, unique. |
+| `name` | text | no | |
+| `kind` | text | no | `template` or `action`. |
+| `runnable_team` | text | no | The template's or action's team. |
+| `runnable_name` | text | no | The template's name, or the action's registered product name. |
+| `parameters` | jsonb | no | What it runs with. |
+| `cron` | text | no | Five fields: minute, hour, day of the month, month, day of the week. At most every five minutes. |
+| `time_zone` | text | no | An IANA time zone the cron is read in. |
+| `bot_id` | uuid | no | The team's bot it runs as; deleting the bot deletes the schedule. |
+| `enabled` | boolean | no | False while paused. |
+| `next_run_at` | timestamptz | yes | When it runs next; null while paused. A console starting it moves this on first, so only one does. |
+| `last_run_at` | timestamptz | yes | |
+| `last_execution_id` | uuid | yes | Its last run. |
+| `last_error` | text | yes | Why its last start was refused. |
+| `created_by` | uuid | yes | |
+| `created_at` | timestamptz | no | |
 
 ### product_readiness
 

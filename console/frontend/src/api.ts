@@ -38,6 +38,7 @@ import { FailureSchema, ProblemSchema } from "./gen/vertra/console/v1/common_pb.
 import { Runnable_Kind, TemplateService } from "./gen/vertra/console/v1/template_pb.js";
 import { ResourceService } from "./gen/vertra/console/v1/resource_pb.js";
 import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js";
+import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
@@ -121,6 +122,7 @@ const users = createClient(UserService, transport);
 const templates = createClient(TemplateService, transport);
 const resourcesApi = createClient(ResourceService, transport);
 const notificationsApi = createClient(NotificationService, transport);
+const schedulesApi = createClient(ScheduleService, transport);
 
 function apiError(error: unknown): ApiError {
   const connect = ConnectError.from(error);
@@ -1896,4 +1898,84 @@ export async function previewRunnable(
 /** Previews a step waiting for an approval; returns the preview run. */
 export async function previewStep(executionId: string, taskId: string): Promise<string> {
   return (await call(() => executions.previewStep({ executionId, taskId }))).executionId;
+}
+
+/** A team's schedule (proto/vertra/console/v1/schedule.proto). */
+export interface Schedule {
+  id: string;
+  team: string;
+  name: string;
+  kind: "template" | "action";
+  runnableTeam: string;
+  runnableName: string;
+  parameters: Record<string, unknown>;
+  cron: string;
+  timeZone: string;
+  botId: string;
+  botEmail: string;
+  enabled: boolean;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  lastExecutionId: string | null;
+  lastError: string | null;
+}
+
+type ScheduleMessage = Awaited<ReturnType<typeof schedulesApi.listSchedules>>["schedules"][number];
+
+function scheduleOf(s: ScheduleMessage | undefined): Schedule {
+  return {
+    id: s?.id ?? "",
+    team: s?.team ?? "",
+    name: s?.name ?? "",
+    kind: s?.kind === "template" ? "template" : "action",
+    runnableTeam: s?.runnableTeam ?? "",
+    runnableName: s?.runnableName ?? "",
+    parameters: (s?.parameters ?? {}) as Record<string, unknown>,
+    cron: s?.cron ?? "",
+    timeZone: s?.timeZone ?? "UTC",
+    botId: s?.botId ?? "",
+    botEmail: s?.botEmail ?? "",
+    enabled: s?.enabled ?? false,
+    nextRunAt: iso(s?.nextRunAt),
+    lastRunAt: iso(s?.lastRunAt),
+    lastExecutionId: s?.lastExecutionId || null,
+    lastError: s?.lastError || null,
+  };
+}
+
+export async function listSchedules(team: string): Promise<Schedule[]> {
+  return (await call(() => schedulesApi.listSchedules({ team }))).schedules.map(scheduleOf);
+}
+
+export async function createSchedule(input: {
+  team: string;
+  name: string;
+  runnable: Pick<Runnable, "kind" | "team" | "name">;
+  parameters: Record<string, unknown>;
+  cron: string;
+  timeZone: string;
+  botId: string;
+}): Promise<Schedule> {
+  const { schedule } = await call(() =>
+    schedulesApi.createSchedule({
+      team: input.team,
+      name: input.name,
+      kind: input.runnable.kind,
+      runnableTeam: input.runnable.team,
+      runnableName: input.runnable.name,
+      parameters: input.parameters as JsonObject,
+      cron: input.cron,
+      timeZone: input.timeZone,
+      botId: input.botId,
+    }),
+  );
+  return scheduleOf(schedule);
+}
+
+export async function updateSchedule(id: string, change: { enabled?: boolean; cron?: string; timeZone?: string }): Promise<Schedule> {
+  return scheduleOf((await call(() => schedulesApi.updateSchedule({ id, ...change }))).schedule);
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  await call(() => schedulesApi.deleteSchedule({ id }));
 }

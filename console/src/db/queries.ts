@@ -848,6 +848,7 @@ export async function recordSubmittedExecution(input: {
   teams: string[];
   /** Null: the console itself (readiness checks). */
   submittedBy: string | null;
+  scheduleId?: string | undefined;
   name: string;
   payload: unknown;
   template?: string | undefined;
