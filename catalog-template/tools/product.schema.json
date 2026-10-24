@@ -374,6 +374,16 @@
           "minLength": 1,
           "maxLength": 200,
           "description": "What the field's pattern means, said when a value doesn't match it (instead of the pattern itself)."
+        },
+        "x-vertra-needs": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+          "description": "On an input: the kind of thing it names (a wiring type from schema/types.yaml, such as gcp.project). A target type is checked against allowedTargets for other teams; Compose offers earlier steps' outputs that provide it."
+        },
+        "x-vertra-provides": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+          "description": "On an output: the kind of thing it is (a wiring type, such as gcp.project), so Compose can wire it into a later step's input that needs it."
         }
       }
     }

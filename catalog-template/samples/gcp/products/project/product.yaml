@@ -47,6 +47,7 @@ actions:
       properties:
         projectId:
           type: string
+          x-vertra-provides: gcp.project  # Compose wires it into inputs that need one
           description: >-
             Echoed back either way, for downstream tasks to reference via
             $fromTask/$output.

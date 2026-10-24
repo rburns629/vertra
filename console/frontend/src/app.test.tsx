@@ -124,6 +124,7 @@ const PAGES: [string, Record<string, Answer>][] = [
   ["/runs", {}],
   ["/runs/submit", {}],
   ["/runs/made", {}],
+  ["/catalog/compose", {}],
   ["/runs/0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", { "ExecutionService/WatchExecution": [{ execution: { executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11", name: "a run", state: "EXECUTION_STATE_SUCCEEDED", createdAt: "2026-10-21T16:20:00Z", tasks: [] } }] }],
   ["/catalog", {}],
   ["/products", {}],

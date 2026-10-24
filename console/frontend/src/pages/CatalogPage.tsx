@@ -171,6 +171,9 @@ export function CatalogPage() {
             <Button component={RouterLink} to="/products" variant="outlined">
               Every product
             </Button>
+            <Button component={RouterLink} to="/catalog/compose" variant="outlined">
+              Compose
+            </Button>
           </Box>
         }
       />

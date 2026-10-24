@@ -556,11 +556,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   step records its key, and the run page says what it waits for
   (`TaskStatus.waiting_for`, while another with the key is claimed or
   running; proven on kind with the local sample's upper-case, 2026-10-23).
-- [ ] **P2: the marketplace pages** (eleven mocked up 2026-10-19): Catalog
-  with readiness and runnable examples, Runs list and run timeline, Compose
-  (type-matched wiring, drafts, Propose as a template from the person's
-  browser), Teams (another team's page; own team with readiness),
-  Schedules, Admin.
+- [ ] **P2: the marketplace pages** (eleven mocked up 2026-10-19). Done:
+  Catalog with readiness, Runs list and run timeline, Schedules, Admin,
+  Compose (2026-10-24: type-matched wiring by `x-vertra-needs` and
+  `x-vertra-provides`, drafts in the browser, Propose as a template on
+  GitHub's new-file page, Run now when it's all your team's). Left:
+  runnable examples (from products' test cases), another team's page,
+  drafts kept by the console (shared, across devices).
 - [x] **P2: preview** (done 2026-10-24). product.yaml's `plan` names the
   action that says what this one would do (`summary`, `changes`); the run
   form's **Preview** runs it as a preview run (a template: each step with a

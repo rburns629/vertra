@@ -306,6 +306,12 @@ browser saying what to add to `shareWith` and where. Mark one
 `visibility: hidden` (an action in product.yaml, or a template) and only
 your team sees it; it can't be shared then.
 
+Type outputs too: an output that is a project, a database, a URL of some
+kind, says so with `x-vertra-provides` (a wiring type from
+`schema/types.yaml`, such as `gcp.project`). The console's **Compose**, where
+people build templates from your actions, then wires it into later steps'
+inputs that `x-vertra-needs` the same type.
+
 When another team runs your product, it chooses the inputs, so it could aim
 your identity at something that isn't theirs. Type each input that names a
 project, folder, account or subscription with `x-vertra-needs` (`gcp.project`,
