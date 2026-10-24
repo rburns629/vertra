@@ -38,11 +38,12 @@ const CATALOG_GRACE_MS = 30 * 60_000;
 
 // --- the webhook URL, encrypted ---
 
+const TAG_LENGTH = 16;
 const key = () => Buffer.from(hkdfSync("sha256", config.jwtSecret, "vertra", "notification webhook urls", 32));
 
 export function encryptUrl(url: string): string {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key(), iv);
+  const cipher = createCipheriv("aes-256-gcm", key(), iv, { authTagLength: TAG_LENGTH });
   const data = Buffer.concat([cipher.update(url, "utf8"), cipher.final()]);
   return ["v1", iv.toString("base64"), cipher.getAuthTag().toString("base64"), data.toString("base64")].join(".");
 }
@@ -51,9 +52,12 @@ export function encryptUrl(url: string): string {
 export function decryptUrl(stored: string): string | null {
   const [version, iv, tag, data] = stored.split(".");
   if (version !== "v1" || !iv || !tag || !data) return null;
+  const authTag = Buffer.from(tag, "base64");
+  // The whole tag, always: a shorter one would be easier to forge.
+  if (authTag.length !== TAG_LENGTH) return null;
   try {
-    const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64"));
-    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64"), { authTagLength: TAG_LENGTH });
+    decipher.setAuthTag(authTag);
     return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
   } catch {
     return null;
