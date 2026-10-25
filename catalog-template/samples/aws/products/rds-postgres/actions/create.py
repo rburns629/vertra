@@ -6,6 +6,8 @@ No password ever passes through the step: RDS generates the master password
 and keeps it in AWS Secrets Manager (ManageMasterUserPassword), and the
 output is that secret's ARN, a reference an app's own identity may be
 granted to read. New instances are encrypted and not publicly accessible.
+One it creates is tagged vertra-made=true and reported as a resource, which
+delete (its cleanup) removes; one it only found is neither.
 Credentials as in the aws team's README.md: boto3's default chain (EKS Pod
 Identity or IRSA), optionally assuming the aws-target role.
 """
@@ -26,6 +28,8 @@ OUTPUT_PATH = Path("/platform/output/result.json")
 # role-arn), mounted when the action lists it in secretRefs. See the aws
 # team's README.md.
 TARGET_ROLE_FILE = Path("/platform/secrets/aws-target/role-arn")
+# What marks an instance this product made: delete removes no other.
+MADE_BY_TAG = ("vertra-made", "true")
 RETRYABLE_CODES = {
     "Throttling", "ThrottlingException", "RequestLimitExceeded", "TooManyRequestsException",
     "ServiceUnavailable", "InternalError", "InternalFailure",
@@ -87,9 +91,9 @@ def _describe(rds: Any, instance_id: str) -> dict[str, Any] | None:
         raise
 
 
-def _outputs(instance: dict[str, Any]) -> dict[str, Any]:
+def _outputs(instance: dict[str, Any], region: str, made_here: bool) -> dict[str, Any]:
     endpoint = instance.get("Endpoint") or {}
-    outputs = {
+    outputs: dict[str, Any] = {
         "instanceId": instance["DBInstanceIdentifier"],
         "endpoint": endpoint.get("Address", ""),
         "port": endpoint.get("Port", 5432),
@@ -97,6 +101,16 @@ def _outputs(instance: dict[str, Any]) -> dict[str, Any]:
     secret = (instance.get("MasterUserSecret") or {}).get("SecretArn")
     if secret:
         outputs["masterUserSecretArn"] = secret
+    made = made_here or {"Key": MADE_BY_TAG[0], "Value": MADE_BY_TAG[1]} in instance.get("TagList", [])
+    if made and instance.get("DBInstanceArn"):
+        outputs["resources"] = [
+            {
+                "type": "aws/rds-instance",
+                "id": instance["DBInstanceArn"],
+                "name": instance["DBInstanceIdentifier"],
+                "link": f"https://{region}.console.aws.amazon.com/rds/home?region={region}#database:id={instance['DBInstanceIdentifier']}",
+            }
+        ]
     return outputs
 
 
@@ -114,6 +128,7 @@ def main() -> int:
     try:
         rds = _session(region).client("rds")
         instance = _describe(rds, instance_id)
+        created = instance is None
         if instance is None:
             create: dict[str, Any] = {
                 "DBInstanceIdentifier": instance_id,
@@ -126,7 +141,7 @@ def main() -> int:
                 "PubliclyAccessible": False,
                 "BackupRetentionPeriod": 7,
                 "CopyTagsToSnapshot": True,
-                "Tags": [{"Key": "managed-by", "Value": "vertra"}],
+                "Tags": [{"Key": "managed-by", "Value": "vertra"}, {"Key": MADE_BY_TAG[0], "Value": MADE_BY_TAG[1]}],
             }
             if inputs.get("engineVersion"):
                 create["EngineVersion"] = inputs["engineVersion"]
@@ -134,7 +149,7 @@ def main() -> int:
             print(f"creating instance '{instance_id}'; this takes several minutes")
         elif instance.get("DBInstanceStatus") == "available":
             print(f"instance '{instance_id}' already exists")
-            _write_result({"status": "succeeded", "outputs": _outputs(instance)})
+            _write_result({"status": "succeeded", "outputs": _outputs(instance, region, False)})
             return 0
         else:
             print(f"instance '{instance_id}' exists ({instance.get('DBInstanceStatus')}); waiting")
@@ -153,7 +168,7 @@ def main() -> int:
         return _aws_failure(error)
 
     print(f"instance '{instance_id}' is available")
-    _write_result({"status": "succeeded", "outputs": _outputs(instance)})
+    _write_result({"status": "succeeded", "outputs": _outputs(instance, region, created)})
     return 0
 
 

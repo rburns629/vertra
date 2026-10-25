@@ -20,6 +20,10 @@ actions:
   idempotent: true
   maxAttempts: 3
   script: actions/create.py
+  # A service it creates is tagged vertra-made=true and reported as a
+  # resource; delete removes it (and refuses any service without the tag).
+  cleanup:
+    action: delete
   input:
     type: object
     additionalProperties: false
@@ -68,3 +72,42 @@ actions:
       serviceArn:
         type: string
         description: Its ARN.
+      resources:
+        type: array
+        description: The service, when this product made it (now, or on an earlier attempt).
+        items:
+          type: object
+          required: [type, id]
+          properties:
+            type: {type: string}
+            id: {type: string}
+            name: {type: string}
+            link: {type: string}
+- name: delete
+  # Deleting a service that's already gone or going is a no-op.
+  idempotent: true
+  maxAttempts: 3
+  script: actions/delete.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - resource
+    properties:
+      resource:
+        type: object
+        description: The service, as create reported it.
+        required: [type, id]
+        properties:
+          type: {type: string, const: aws/app-runner-service}
+          id: {type: string, description: Its ARN.}
+          name: {type: string}
+          link: {type: string}
+  output:
+    type: object
+    required:
+    - deleted
+    properties:
+      deleted:
+        type: string
+        description: The service's ARN.

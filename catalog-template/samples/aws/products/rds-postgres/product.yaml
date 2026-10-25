@@ -21,6 +21,11 @@ actions:
   idempotent: true
   maxAttempts: 3
   script: actions/create.py
+  # An instance it creates is tagged vertra-made=true and reported as a
+  # resource; delete removes it, keeping a final snapshot (and refuses any
+  # instance without the tag).
+  cleanup:
+    action: delete
   input:
     type: object
     additionalProperties: false
@@ -70,3 +75,46 @@ actions:
         type: string
         description: 'The Secrets Manager secret holding the master password: grant an app''s
           own role access to it, never pass the password on.'
+      resources:
+        type: array
+        description: The instance, when this product made it (now, or on an earlier attempt).
+        items:
+          type: object
+          required: [type, id]
+          properties:
+            type: {type: string}
+            id: {type: string}
+            name: {type: string}
+            link: {type: string}
+- name: delete
+  # Deleting an instance that's already gone or going is a no-op.
+  idempotent: true
+  maxAttempts: 3
+  script: actions/delete.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - resource
+    properties:
+      resource:
+        type: object
+        description: The instance, as create reported it.
+        required: [type, id]
+        properties:
+          type: {type: string, const: aws/rds-instance}
+          id: {type: string, description: Its ARN.}
+          name: {type: string}
+          link: {type: string}
+  output:
+    type: object
+    required:
+    - deleted
+    properties:
+      deleted:
+        type: string
+        description: The instance's ARN.
+      finalSnapshot:
+        type: string
+        description: 'The snapshot kept of it: delete it once nobody needs the data (it''s billed
+          as storage).'

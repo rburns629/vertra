@@ -19,6 +19,13 @@ actions:
   idempotent: true
   maxAttempts: 3
   script: actions/create.py
+  # A bucket it creates is tagged vertra-made=true and reported as a
+  # resource; delete removes it (and refuses any bucket without the tag).
+  cleanup:
+    action: delete
+    inputs:
+      bucketName: {$resource: id}
+      region: {$input: region}
   input:
     type: object
     additionalProperties: false
@@ -50,3 +57,41 @@ actions:
       arn:
         type: string
         description: Its ARN, for IAM policies.
+      resources:
+        type: array
+        description: The bucket, when this product made it (now, or on an earlier attempt).
+        items:
+          type: object
+          required: [type, id]
+          properties:
+            type: {type: string}
+            id: {type: string}
+            link: {type: string}
+- name: delete
+  # Deleting a bucket that's already gone is a no-op.
+  idempotent: true
+  maxAttempts: 3
+  script: actions/delete.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - bucketName
+    - region
+    properties:
+      bucketName:
+        type: string
+        description: The bucket create made.
+        pattern: ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$
+      region:
+        type: string
+        description: Its region.
+        pattern: ^[a-z]{2}(-[a-z]+)+-[0-9]$
+  output:
+    type: object
+    required:
+    - deleted
+    properties:
+      deleted:
+        type: string
+        description: The bucket deleted.

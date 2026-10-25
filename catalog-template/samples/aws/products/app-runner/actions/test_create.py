@@ -55,8 +55,16 @@ class CreateActionTest(unittest.TestCase):
             configure,
         )
         self.assertEqual(exit_code, 0)
+        # Not reported: its cleanup mustn't delete a service it didn't make.
         self.assertEqual(result["outputs"], {"serviceUrl": "https://abc.awsapprunner.com", "serviceArn": "arn:svc"})
         client.create_service.assert_not_called()
+
+    def test_a_service_it_made_is_reported_when_found_again(self) -> None:
+        def configure(client):
+            client.list_services.return_value = {"ServiceSummaryList": [RUNNING]}
+            client.list_tags_for_resource.return_value = {"Tags": [{"Key": "vertra-made", "Value": "true"}]}
+        _, result, _ = self._run({"serviceName": "web", "image": "i", "region": "eu-west-1"}, configure)
+        self.assertEqual(result["outputs"]["resources"][0]["id"], "arn:svc")
 
     def test_a_new_service_is_private_by_default_and_waited_for(self) -> None:
         def configure(client):
@@ -75,6 +83,11 @@ class CreateActionTest(unittest.TestCase):
         self.assertEqual(repository["ImageRepositoryType"], "ECR_PUBLIC")
         self.assertEqual(repository["ImageConfiguration"]["RuntimeEnvironmentVariables"], {"BUCKET": "b"})
         self.assertEqual(result["outputs"]["serviceUrl"], "https://abc.awsapprunner.com")
+        self.assertEqual(kwargs["Tags"], [{"Key": "vertra-made", "Value": "true"}])
+        self.assertEqual(result["outputs"]["resources"][0], {
+            "type": "aws/app-runner-service", "id": "arn:svc", "name": "web",
+            "link": "https://eu-west-1.console.aws.amazon.com/apprunner/home?region=eu-west-1#/services",
+        })
 
     def test_a_service_that_fails_to_start_fails_the_step(self) -> None:
         def configure(client):

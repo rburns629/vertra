@@ -60,8 +60,17 @@ class CreateActionTest(unittest.TestCase):
         self.configure = lambda s3: setattr(s3.head_bucket, "return_value", {"BucketRegion": "eu-west-1"})
         exit_code, result, s3 = self._run({"bucketName": "b", "region": "eu-west-1"})
         self.assertEqual(exit_code, 0)
+        # Not reported: its cleanup mustn't delete a bucket it didn't make.
         self.assertEqual(result["outputs"], {"bucketName": "b", "region": "eu-west-1", "arn": "arn:aws:s3:::b"})
         s3.create_bucket.assert_not_called()
+
+    def test_a_bucket_it_made_is_reported_when_found_again(self) -> None:
+        def configure(s3):
+            s3.head_bucket.return_value = {"BucketRegion": "eu-west-1"}
+            s3.get_bucket_tagging.return_value = {"TagSet": [{"Key": "vertra-made", "Value": "true"}]}
+        self.configure = configure
+        _, result, _ = self._run({"bucketName": "b", "region": "eu-west-1"})
+        self.assertEqual(result["outputs"]["resources"][0]["id"], "b")
 
     def test_a_missing_bucket_is_created_private(self) -> None:
         self.configure = lambda s3: setattr(s3.head_bucket, "side_effect", _client_error("404", 404))
@@ -72,6 +81,11 @@ class CreateActionTest(unittest.TestCase):
         )
         block = s3.put_public_access_block.call_args.kwargs["PublicAccessBlockConfiguration"]
         self.assertTrue(all(block.values()))
+        s3.put_bucket_tagging.assert_called_once_with(Bucket="b", Tagging={"TagSet": [{"Key": "vertra-made", "Value": "true"}]})
+        self.assertEqual(
+            result["outputs"]["resources"],
+            [{"type": "aws/s3-bucket", "id": "b", "link": "https://eu-west-1.console.aws.amazon.com/s3/buckets/b?region=eu-west-1"}],
+        )
 
     def test_us_east_1_gets_no_location_constraint(self) -> None:
         self.configure = lambda s3: setattr(s3.head_bucket, "side_effect", _client_error("404", 404))

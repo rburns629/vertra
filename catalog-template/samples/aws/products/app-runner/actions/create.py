@@ -5,8 +5,10 @@ exists. Never builds an image: `image` is an ECR (or ECR Public) reference.
 
 The service is reachable only through a VPC interface endpoint unless
 `public` is true. Waits for a new service to be running, so later steps can
-use its URL. Credentials as in the aws team's README.md: boto3's default
-chain (EKS Pod Identity or IRSA), optionally assuming the aws-target role.
+use its URL. One it creates is tagged vertra-made=true and reported as a
+resource, which delete (its cleanup) removes; one it only found is neither.
+Credentials as in the aws team's README.md: boto3's default chain (EKS Pod
+Identity or IRSA), optionally assuming the aws-target role.
 """
 
 import json
@@ -25,6 +27,8 @@ OUTPUT_PATH = Path("/platform/output/result.json")
 # role-arn), mounted when the action lists it in secretRefs. See the aws
 # team's README.md.
 TARGET_ROLE_FILE = Path("/platform/secrets/aws-target/role-arn")
+# What marks a service this product made: delete removes no other.
+MADE_BY_TAG = ("vertra-made", "true")
 RETRYABLE_CODES = {
     "Throttling", "ThrottlingException", "RequestLimitExceeded", "TooManyRequestsException",
     "ServiceUnavailable", "InternalError", "InternalFailure", "InternalServiceErrorException",
@@ -86,8 +90,24 @@ def _find_service(apprunner: Any, name: str) -> dict[str, Any] | None:
             return None
 
 
-def _outputs(service: dict[str, Any]) -> dict[str, Any]:
-    return {"serviceUrl": f"https://{service['ServiceUrl']}", "serviceArn": service["ServiceArn"]}
+def _made_here(apprunner: Any, arn: str) -> bool:
+    """Whether the service carries this product's tag."""
+    tags = apprunner.list_tags_for_resource(ResourceArn=arn).get("Tags", [])
+    return {"Key": MADE_BY_TAG[0], "Value": MADE_BY_TAG[1]} in tags
+
+
+def _outputs(service: dict[str, Any], region: str, made_here: bool) -> dict[str, Any]:
+    outputs: dict[str, Any] = {"serviceUrl": f"https://{service['ServiceUrl']}", "serviceArn": service["ServiceArn"]}
+    if made_here:
+        outputs["resources"] = [
+            {
+                "type": "aws/app-runner-service",
+                "id": service["ServiceArn"],
+                "name": service["ServiceName"],
+                "link": f"https://{region}.console.aws.amazon.com/apprunner/home?region={region}#/services",
+            }
+        ]
+    return outputs
 
 
 def main() -> int:
@@ -104,7 +124,7 @@ def main() -> int:
         existing = _find_service(apprunner, name)
         if existing:
             print(f"service '{name}' already exists ({existing.get('Status')}), leaving it as it is")
-            _write_result({"status": "succeeded", "outputs": _outputs(existing)})
+            _write_result({"status": "succeeded", "outputs": _outputs(existing, region, _made_here(apprunner, existing["ServiceArn"]))})
             return 0
 
         repository: dict[str, Any] = {
@@ -124,6 +144,7 @@ def main() -> int:
             NetworkConfiguration={
                 "IngressConfiguration": {"IsPubliclyAccessible": bool(inputs.get("public", False))}
             },
+            Tags=[{"Key": MADE_BY_TAG[0], "Value": MADE_BY_TAG[1]}],
         )["Service"]
         print(f"creating service '{name}'")
 
@@ -141,7 +162,7 @@ def main() -> int:
         return _aws_failure(error)
 
     print(f"service '{name}' is running")
-    _write_result({"status": "succeeded", "outputs": _outputs(service)})
+    _write_result({"status": "succeeded", "outputs": _outputs(service, region, True)})
     return 0
 
 

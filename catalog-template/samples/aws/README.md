@@ -13,6 +13,24 @@ SecretStore isn't proven yet.
 | [`rds-postgres`](products/rds-postgres/) | Finds an RDS for PostgreSQL instance, or creates it (encrypted, not public) and waits until it's available, several minutes: set `timeoutSeconds` to 1500 or more, and delete it after |
 
 Every action looks before it creates, so a retried step is harmless.
+
+## Deleting what they made
+
+Each `create` tags what it makes `vertra-made=true` and reports it as
+`resources`, with a `delete` action as its `cleanup`: Delete on the run page
+(or **What runs made**) runs it. A delete refuses anything without the tag
+(`NOT_MADE_BY_VERTRA`), so a bucket, service or database that was only
+found, never made, is never deleted, and one already gone counts as deleted.
+The console lets only the team it was made for, whoever ran it, and admins
+delete it. Some deletes are careful on purpose:
+
+- `s3-bucket` refuses a bucket that still holds objects
+  (`BUCKET_NOT_EMPTY`) rather than emptying it.
+- `rds-postgres` keeps a final snapshot, named in its output
+  (`finalSnapshot`): delete the snapshot once nobody needs the data, since
+  it's billed as storage.
+- App Runner and RDS finish a delete on their own once it's accepted, so
+  the step doesn't wait for it.
 [dags/aws-hello-world-dag.yaml](dags/aws-hello-world-dag.yaml) chains the
 first two.
 
@@ -43,9 +61,9 @@ Grant each product's role only what it calls:
 
 | Product | IAM actions |
 |---|---|
-| `s3-bucket` | `s3:ListBucket` (for HeadBucket), `s3:CreateBucket`, `s3:PutBucketPublicAccessBlock` on `arn:aws:s3:::<prefix>*` |
-| `app-runner` | `apprunner:ListServices`, `apprunner:DescribeService`, `apprunner:CreateService`, and `iam:PassRole` on the ECR access role if you use one |
-| `rds-postgres` | `rds:DescribeDBInstances`, `rds:CreateDBInstance`, `rds:AddTagsToResource`, plus `secretsmanager:CreateSecret`, `secretsmanager:TagResource` and `kms:DescribeKey` for the managed password |
+| `s3-bucket` | `s3:ListBucket` (for HeadBucket), `s3:CreateBucket`, `s3:PutBucketPublicAccessBlock`, `s3:PutBucketTagging`, `s3:GetBucketTagging`, and for delete `s3:DeleteBucket`, on `arn:aws:s3:::<prefix>*` |
+| `app-runner` | `apprunner:ListServices`, `apprunner:DescribeService`, `apprunner:CreateService`, `apprunner:TagResource`, `apprunner:ListTagsForResource`, and for delete `apprunner:DeleteService`; `iam:PassRole` on the ECR access role if you use one |
+| `rds-postgres` | `rds:DescribeDBInstances`, `rds:CreateDBInstance`, `rds:AddTagsToResource`, and for delete `rds:DeleteDBInstance` and `rds:CreateDBSnapshot` (its final snapshot), plus `secretsmanager:CreateSecret`, `secretsmanager:TagResource` and `kms:DescribeKey` for the managed password (and `secretsmanager:DeleteSecret`, which RDS uses to remove it) |
 
 The first App Runner service or RDS instance in an account also makes that
 service's service-linked role. Either create it once yourself (`aws iam

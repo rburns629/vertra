@@ -19,6 +19,7 @@ AVAILABLE = {
     "DBInstanceStatus": "available",
     "Endpoint": {"Address": "orders-db.abc.eu-west-1.rds.amazonaws.com", "Port": 5432},
     "MasterUserSecret": {"SecretArn": "arn:aws:secretsmanager:eu-west-1:123456789012:secret:rds-x"},
+    "DBInstanceArn": "arn:aws:rds:eu-west-1:123456789012:db:orders-db",
 }
 NOT_FOUND = ClientError({"Error": {"Code": "DBInstanceNotFound", "Message": "no"}}, "DescribeDBInstances")
 
@@ -62,6 +63,13 @@ class CreateActionTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(result["outputs"]["endpoint"], "orders-db.abc.eu-west-1.rds.amazonaws.com")
         rds.create_db_instance.assert_not_called()
+        self.assertNotIn("resources", result["outputs"])  # not made here: never deleted by its cleanup
+
+    def test_an_instance_it_made_is_reported_when_found_again(self) -> None:
+        def configure(rds):
+            rds.describe_db_instances.return_value = {"DBInstances": [{**AVAILABLE, "TagList": [{"Key": "vertra-made", "Value": "true"}]}]}
+        _, result, _ = self._run({"instanceId": "orders-db", "region": "eu-west-1"}, configure)
+        self.assertEqual(result["outputs"]["resources"][0]["id"], AVAILABLE["DBInstanceArn"])
 
     def test_a_new_instance_has_no_password_in_the_step_and_is_private(self) -> None:
         def configure(rds):
@@ -74,6 +82,11 @@ class CreateActionTest(unittest.TestCase):
         self.assertFalse(create["PubliclyAccessible"])
         self.assertTrue(create["StorageEncrypted"])
         self.assertEqual(result["outputs"]["masterUserSecretArn"], AVAILABLE["MasterUserSecret"]["SecretArn"])
+        self.assertIn({"Key": "vertra-made", "Value": "true"}, create["Tags"])
+        self.assertEqual(result["outputs"]["resources"][0], {
+            "type": "aws/rds-instance", "id": AVAILABLE["DBInstanceArn"], "name": "orders-db",
+            "link": "https://eu-west-1.console.aws.amazon.com/rds/home?region=eu-west-1#database:id=orders-db",
+        })
 
     def test_the_accounts_first_use_is_retried(self) -> None:
         not_ready = ClientError({"Error": {"Code": "InvalidParameterValue", "Message": (

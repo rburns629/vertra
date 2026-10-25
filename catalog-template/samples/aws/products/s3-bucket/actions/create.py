@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """aws/s3-bucket's "create" action: finds an S3 bucket by name, creating it
-(with every kind of public access blocked) only if it doesn't exist.
+(with every kind of public access blocked) only if it doesn't exist. One it
+creates is tagged vertra-made=true and reported as a resource, which delete
+(its cleanup) removes; one it only found is neither.
 
 Credentials come from boto3's default chain: on EKS, Pod Identity or IRSA
 supplies short-lived ones for the step's ServiceAccount, so nothing is
@@ -23,6 +25,8 @@ OUTPUT_PATH = Path("/platform/output/result.json")
 # role-arn), mounted when the action lists it in secretRefs. See the aws
 # team's README.md.
 TARGET_ROLE_FILE = Path("/platform/secrets/aws-target/role-arn")
+# What marks a bucket this product made: delete removes no other.
+MADE_BY_TAG = ("vertra-made", "true")
 RETRYABLE_CODES = {
     "Throttling", "ThrottlingException", "RequestLimitExceeded", "TooManyRequestsException",
     "SlowDown", "ServiceUnavailable", "InternalError", "InternalFailure", "OperationAborted",
@@ -70,8 +74,28 @@ def _session(region: str) -> boto3.session.Session:
     )
 
 
-def _outputs(bucket: str, region: str) -> dict[str, Any]:
-    return {"bucketName": bucket, "region": region, "arn": f"arn:aws:s3:::{bucket}"}
+def _made_here(s3: Any, bucket: str) -> bool:
+    """Whether the bucket carries this product's tag."""
+    try:
+        tags = s3.get_bucket_tagging(Bucket=bucket).get("TagSet", [])
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") == "NoSuchTagSet":
+            return False
+        raise
+    return {"Key": MADE_BY_TAG[0], "Value": MADE_BY_TAG[1]} in tags
+
+
+def _outputs(bucket: str, region: str, made_here: bool) -> dict[str, Any]:
+    outputs: dict[str, Any] = {"bucketName": bucket, "region": region, "arn": f"arn:aws:s3:::{bucket}"}
+    if made_here:
+        outputs["resources"] = [
+            {
+                "type": "aws/s3-bucket",
+                "id": bucket,
+                "link": f"https://{region}.console.aws.amazon.com/s3/buckets/{bucket}?region={region}",
+            }
+        ]
+    return outputs
 
 
 def main() -> int:
@@ -87,7 +111,7 @@ def main() -> int:
             found = s3.head_bucket(Bucket=bucket)
             actual = found.get("BucketRegion") or region
             print(f"bucket '{bucket}' already exists, in {actual}")
-            _write_result({"status": "succeeded", "outputs": _outputs(bucket, actual)})
+            _write_result({"status": "succeeded", "outputs": _outputs(bucket, actual, _made_here(s3, bucket))})
             return 0
         except ClientError as error:
             code = error.response.get("Error", {}).get("Code")
@@ -120,11 +144,12 @@ def main() -> int:
                 "RestrictPublicBuckets": True,
             },
         )
+        s3.put_bucket_tagging(Bucket=bucket, Tagging={"TagSet": [{"Key": MADE_BY_TAG[0], "Value": MADE_BY_TAG[1]}]})
     except (ClientError, BotoCoreError) as error:
         return _aws_failure(error)
 
     print(f"created bucket '{bucket}' in {region}")
-    _write_result({"status": "succeeded", "outputs": _outputs(bucket, region)})
+    _write_result({"status": "succeeded", "outputs": _outputs(bucket, region, True)})
     return 0
 
 
