@@ -678,8 +678,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   and in tests against a stand-in provider. `vertra sso google-groups`
   (gcp) enables Cloud Identity's API and names the console's own service
   account for a Workspace admin to make a Groups Reader (no key, no other
-  account: the console reads groups as itself). Left: a real Google
-  Workspace group read on GKE, and Entra ID or Okta tried for real.
+  account: the console reads groups as itself). Proven on GKE (2026-10-25):
+  a real Google sign-in of a Workspace account in a mapped group made it
+  that team's maintainer; the console asks about each mapped group
+  (checkTransitiveMembership), since a Groups Reader can't search all of a
+  person's groups at once. Left: Entra ID or Okta tried for real.
 - [x] **Force a password change on first sign-in** for admin-created
   accounts (done 2026-10-22): a password someone else set (a new account's,
   an admin's reset of someone else's, `vertra admin reset-password`) marks

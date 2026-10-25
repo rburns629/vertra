@@ -158,9 +158,13 @@ describe("signing in", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = String(input instanceof Request ? input.url : input);
       if (url.startsWith("http://metadata.google.internal/")) return Promise.resolve(Response.json({ access_token: "t" }));
-      if (url.startsWith("https://cloudidentity.googleapis.com/")) {
+      if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups:lookup")) {
+        const group = new URL(url).searchParams.get("groupKey.id") ?? "";
+        return Promise.resolve(group === `ops@${domain}` ? Response.json({ name: "groups/ops1" }) : new Response("{}", { status: 404 }));
+      }
+      if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups/ops1/memberships:checkTransitiveMembership")) {
         seen.push(new URL(url).searchParams.get("query") ?? "");
-        return Promise.resolve(Response.json({ memberships: [{ groupKey: { id: `OPS@${domain}` } }] }));
+        return Promise.resolve(Response.json({ hasMembership: true }));
       }
       return real(input, init);
     });

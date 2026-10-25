@@ -9,7 +9,8 @@
  * synchronous for the many places that only ask whether it's on.
  *
  * Groups come from the ID token's groups claim and/or Google Workspace
- * (Cloud Identity's Groups API, as this console's own Google identity). At
+ * (Cloud Identity's Groups API, as this console's own Google identity,
+ * asking about each mapped Google group). At
  * each sign-in, every team a group is mapped to follows them for that
  * person: added with the best role their groups give, changed, or removed.
  * A lookup that fails refuses the sign-in rather than counting as no
@@ -24,7 +25,7 @@ import { unseal } from "./sealed.js";
 
 export const SECRET_PURPOSE = "sso client secret";
 const REFRESH_MS = 10_000;
-const CLOUD_IDENTITY = "https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchTransitiveGroups";
+const CLOUD_IDENTITY = "https://cloudidentity.googleapis.com/v1/";
 const METADATA_TOKEN = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 const METADATA_EMAIL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email";
 const GROUPS_SCOPE = "https://www.googleapis.com/auth/cloud-identity.groups.readonly";
@@ -111,24 +112,30 @@ export function googleIdentity(): Promise<string> {
   return identity;
 }
 
-/** Every Google group the person is in, directly or through another group, by email. */
-async function googleGroupsOf(email: string): Promise<string[]> {
+/**
+ * Which of these Google groups (by email) the person is in, directly or
+ * through another group. Asked group by group (checkTransitiveMembership),
+ * which a Groups Reader may do; searching all of a person's groups at once
+ * (searchTransitiveGroups) needs more than that role (found on GKE,
+ * 2026-10-25). A group that doesn't exist has nobody in it.
+ */
+async function googleGroupsOf(email: string, candidates: string[]): Promise<string[]> {
+  if (candidates.length === 0) return [];
   const token = await googleToken();
-  const query = `member_key_id == '${email.replace(/'/g, "")}' && 'cloudidentity.googleapis.com/groups.discussion_forum' in labels`;
+  // Joined as text: as a relative URL, "groups:lookup" would read as a scheme.
+  const get = (path: string) => fetch(CLOUD_IDENTITY + path, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+  const query = `member_key_id == '${email.replace(/'/g, "")}'`;
   const found: string[] = [];
-  let pageToken = "";
-  for (let page = 0; page < 20; page++) {
-    const url = new URL(CLOUD_IDENTITY);
-    url.searchParams.set("query", query);
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const response = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) throw new Error(`Cloud Identity answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
-    const body = (await response.json()) as { memberships?: { groupKey?: { id?: string } }[]; nextPageToken?: string };
-    for (const m of body.memberships ?? []) if (m.groupKey?.id) found.push(m.groupKey.id);
-    pageToken = body.nextPageToken ?? "";
-    if (!pageToken) return found;
+  for (const group of candidates) {
+    const looked = await get(`groups:lookup?${new URLSearchParams({ "groupKey.id": group }).toString()}`);
+    if (looked.status === 404) continue;
+    if (!looked.ok) throw new Error(`Cloud Identity answered ${String(looked.status)} looking up ${group}: ${(await looked.text()).slice(0, 300)}`);
+    const { name } = (await looked.json()) as { name: string };
+    const checked = await get(`${name}/memberships:checkTransitiveMembership?${new URLSearchParams({ query }).toString()}`);
+    if (!checked.ok) throw new Error(`Cloud Identity answered ${String(checked.status)} checking ${group}: ${(await checked.text()).slice(0, 300)}`);
+    if (((await checked.json()) as { hasMembership?: boolean }).hasMembership === true) found.push(group);
   }
-  throw new Error("over 20 pages of groups");
+  return found;
 }
 
 /**
@@ -153,8 +160,10 @@ export async function groupsOf(claims: Record<string, unknown>, email: string): 
     groups.push(...value.filter((g): g is string => typeof g === "string"));
   }
   if (sources.google) {
+    // Only the mapped groups that are Google groups (by email) matter.
+    const mapped = await db.selectDistinct({ group: ssoGroupMappings.groupName }).from(ssoGroupMappings);
     try {
-      groups.push(...(await googleGroupsOf(email)));
+      groups.push(...(await googleGroupsOf(email, mapped.map((m) => m.group).filter((g) => g.includes("@")))));
     } catch (error) {
       throw new GroupsUnavailable(`Couldn't read Google Workspace groups: ${error instanceof Error ? error.message : String(error)}`);
     }

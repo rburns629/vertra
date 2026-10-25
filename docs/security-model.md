@@ -413,8 +413,9 @@ way in if the provider fails. While single sign-on is off the setting has
 no effect, so nobody is locked out. Bots keep their tokens.
 
 Groups, from the ID token's groups claim and/or Google Workspace (Cloud
-Identity's Groups API, read as the console's own Google identity, which
-needs the Groups Reader role), can be mapped to teams by admins. At each
+Identity's Groups API, read as the console's own Google service account,
+which a Workspace admin makes a Groups Reader; it asks only whether the
+person is in each mapped Google group), can be mapped to teams by admins. At each
 single sign-on, every mapped team's membership follows the person's groups:
 added with the best role their groups give, changed, or removed. Teams
 nothing maps to are left alone. Groups that can't be read (a missing claim,
