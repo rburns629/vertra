@@ -667,11 +667,11 @@ export async function claimRegisteredImageRepositories(): Promise<void> {
       await db.insert(imageRepositories).values({ repository: imageRepository(image), teamId }).onConflictDoNothing();
       continue;
     }
-    // The team read in the same statement: one deleted since the products
-    // were read claims nothing.
+    // The team read and locked in the same statement: one deleted since the
+    // products were read (or while this runs) claims nothing.
     await db.execute(sql`
       INSERT INTO ${imageRepositories} (repository, team_id)
-      SELECT ${imageRepository(image)}, ${teams.id} FROM ${teams} WHERE ${teams.id} = ${teamId}
+      SELECT ${imageRepository(image)}, ${teams.id} FROM ${teams} WHERE ${teams.id} = ${teamId} FOR KEY SHARE
       ON CONFLICT DO NOTHING`);
   }
 }

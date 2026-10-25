@@ -19,6 +19,7 @@ import { Pill, type PillTone } from "../../components/Pill";
 import { MetricCard } from "../../components/MetricCard";
 import { Mono } from "../../components/Mono";
 import { ApiError, getSecurity, type SecurityView } from "../../api";
+import { useAuth } from "../../auth/AuthContext";
 
 const STATE: Record<string, { label: string; tone: PillTone }> = {
   enforced: { label: "Enforced", tone: "success" },
@@ -114,6 +115,7 @@ const IMAGES: DataTableColumn<Image>[] = [
 ];
 
 export function SecurityTab() {
+  const { user } = useAuth();
   const [view, setView] = useState<SecurityView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -219,6 +221,15 @@ export function SecurityTab() {
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Pinned to a digest, scanned before it may run, and rescanned against new advisories while it&apos;s in use.
+            {user?.isAdmin && (
+              <>
+                {" "}
+                <Link component={RouterLink} to="/admin?tab=scans">
+                  Every scan, its findings, and accepting one
+                </Link>
+                .
+              </>
+            )}
           </Typography>
           <TextField
             size="small"

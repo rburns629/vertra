@@ -24,7 +24,8 @@ function scan(row: ScanRow) {
     status: STATUS[row.status] ?? ScanStatus.UNSPECIFIED,
     findings: findings ?? undefined,
     requestedAt: timestamp(row.requestedAt),
-    scannedAt: timestamp(row.scannedAt),
+    // The epoch is a rescan's "due now" (core/images.ts), not a time it was scanned.
+    scannedAt: row.scannedAt?.getTime() === 0 ? undefined : timestamp(row.scannedAt),
     lastUsedAt: timestamp(row.lastUsedAt),
     acceptedBy: row.acceptedBy ?? undefined,
     acceptedReason: row.acceptedReason ?? undefined,

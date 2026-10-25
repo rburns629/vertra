@@ -120,6 +120,7 @@ const PAGES: [string, Record<string, Answer>][] = [
   ["/teams", {}],
   ["/teams/azure-apps", {}],
   ["/admin", {}],
+  ["/admin?tab=scans", {}],
   ["/account", {}],
   ["/runs", {}],
   ["/runs/submit", {}],
@@ -161,6 +162,29 @@ describe("the navigation", () => {
     await renderAt("/", MEMBER);
     const memberNav = await screen.findByRole("navigation", { name: /main/i });
     expect(within(memberNav).queryByRole("link", { name: /admin/i })).toBeNull();
+  });
+});
+
+describe("image scans", () => {
+  const FAILED = {
+    digest: "sha256:" + "a".repeat(64),
+    image: "registry.example/web/site@sha256:" + "a".repeat(64),
+    status: "SCAN_STATUS_FAILED",
+    findings: { fixable: 1, unfixable: 0, secrets: 0, findings: [{ kind: "vulnerability", id: "CVE-2026-1", severity: "HIGH", package: "openssl", installed: "3.0.1", fixedIn: "3.0.2" }] },
+  };
+  const PASSED = { digest: "sha256:" + "b".repeat(64), image: "registry.example/web/api@sha256:" + "b".repeat(64), status: "SCAN_STATUS_PASSED" };
+
+  it("filters by verdict, and opens a failed one to accept it only with a reason", async () => {
+    await renderAt("/admin?tab=scans", ADMIN, { "ImageService/ListImageScans": { scans: [FAILED, PASSED] } });
+    fireEvent.click(await screen.findByRole("button", { name: /^Failed 1/ }));
+    expect(screen.queryByText("registry.example/web/api")).toBeNull();
+    fireEvent.click(screen.getByText("registry.example/web/site"));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("CVE-2026-1")).toBeTruthy();
+    const accept = within(dialog).getByRole("button", { name: "Accept" });
+    expect(accept.hasAttribute("disabled")).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText("Why it may run anyway"), { target: { value: "No fix upstream; not reachable here." } });
+    expect(accept.hasAttribute("disabled")).toBe(false);
   });
 });
 

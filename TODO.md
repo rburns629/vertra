@@ -744,9 +744,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Console
 
-- [ ] **A page for image scans** (`ImageService/ListImageScans`), which
-  has an API only (Observe's security checks show each image's latest
-  verdict). The audit log's is Observe's Audit log tab (2026-10-22).
+- [x] **A page for image scans** (done 2026-10-25): Admin's **Image scans**
+  tab, every digest's verdict by state, its findings, Rescan now, and
+  Accept with a reason; Observe's Security tab links to it for admins. The
+  audit log's is Observe's Audit log tab (2026-10-22).
 - [ ] **Connect a team's `owner` to its console team**: membership is
   managed on the team's page, separately from the catalog's CODEOWNERS.
 - [ ] **Set the catalog repository on the Admin page** instead of the
@@ -871,7 +872,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [x] **An intermittent console test** (fixed 2026-10-25):
   `product-ownership.test.ts`'s startup claim read every product, then
   inserted for a team another file had deleted meanwhile. The claim now
-  reads the team in the same statement as its insert.
+  reads the team, locked (`FOR KEY SHARE`), in the same statement as its
+  insert (reading it unlocked still raced, once).
 - [ ] **Check the docs page's diagrams under mermaid 12** (taken by a
   Dependabot bump, which cleared the KaTeX advisories; not yet looked at).
 - [ ] **Run the older kernel tests on the database's clock**, as the newer

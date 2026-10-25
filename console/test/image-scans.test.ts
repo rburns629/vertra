@@ -173,6 +173,16 @@ describe("what a verdict allows", () => {
     expect(await scanBlocker([img])).toBeNull();
     expect(JSON.parse(policyWritten ?? "[]")).not.toContain(digest);
   });
+
+  it("rescans an image now, its time unset until the new scan finishes", async () => {
+    const img = image();
+    const digest = img.split("@")[1] ?? "";
+    await scanned(img, CLEAN);
+    const again = await call<{ scan?: { scannedAt?: string } }>(admin, "ImageService/RescanImage", { digest });
+    expect(again.code).toBe("ok");
+    const listed = await call<{ scans?: { digest: string; scannedAt?: string }[] }>(admin, "ImageService/ListImageScans");
+    expect(listed.body.scans?.find((x) => x.digest === digest)?.scannedAt).toBeUndefined();
+  });
 });
 
 describe("an idle scanner", () => {

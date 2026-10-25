@@ -28,7 +28,7 @@ import {
   type Execution,
 } from "./gen/vertra/console/v1/execution_pb.js";
 import { GuideService } from "./gen/vertra/console/v1/guide_pb.js";
-import { ImageService, type ImagePolicy as ImagePolicyMessage } from "./gen/vertra/console/v1/image_pb.js";
+import { ImageService, ScanStatus, type ImagePolicy as ImagePolicyMessage, type ImageScan as ImageScanMessage } from "./gen/vertra/console/v1/image_pb.js";
 import { ProductService } from "./gen/vertra/console/v1/product_pb.js";
 import { SecretService, SecretSource } from "./gen/vertra/console/v1/secret_pb.js";
 import { TaskPodState, TeamRole, TeamService, type Team as TeamMessage } from "./gen/vertra/console/v1/team_pb.js";
@@ -326,6 +326,76 @@ function imagePolicy(policy: ImagePolicyMessage | undefined): ImagePolicy {
     allowed: policy?.allowed ?? [],
     version: policy?.version ?? "",
   };
+}
+
+/** One image digest's scan: its verdict, what it found, and whether an admin accepted a failure. */
+export interface ImageScan {
+  digest: string;
+  image: string;
+  status: "pending" | "passed" | "failed" | "error";
+  fixable: number;
+  unfixable: number;
+  secrets: number;
+  /** At most 25. */
+  findings: { kind: string; id: string; severity: string; package: string; installed: string; fixedIn: string; title: string }[];
+  /** Why it couldn't scan. */
+  error: string | null;
+  requestedAt: string | null;
+  scannedAt: string | null;
+  lastUsedAt: string | null;
+  acceptedBy: string | null;
+  acceptedReason: string | null;
+  acceptedAt: string | null;
+}
+
+const SCAN_STATUS: Partial<Record<ScanStatus, ImageScan["status"]>> = {
+  [ScanStatus.PENDING]: "pending",
+  [ScanStatus.PASSED]: "passed",
+  [ScanStatus.FAILED]: "failed",
+  [ScanStatus.ERROR]: "error",
+};
+
+function imageScanOf(s: ImageScanMessage | undefined): ImageScan {
+  return {
+    digest: s?.digest ?? "",
+    image: s?.image ?? "",
+    status: SCAN_STATUS[s?.status ?? ScanStatus.UNSPECIFIED] ?? "pending",
+    fixable: s?.findings?.fixable ?? 0,
+    unfixable: s?.findings?.unfixable ?? 0,
+    secrets: s?.findings?.secrets ?? 0,
+    findings: (s?.findings?.findings ?? []).map((f) => ({
+      kind: f.kind,
+      id: f.id,
+      severity: f.severity,
+      package: f.package ?? "",
+      installed: f.installed ?? "",
+      fixedIn: f.fixedIn ?? "",
+      title: f.title ?? "",
+    })),
+    error: s?.findings?.error ?? null,
+    requestedAt: iso(s?.requestedAt),
+    scannedAt: iso(s?.scannedAt),
+    lastUsedAt: iso(s?.lastUsedAt),
+    acceptedBy: s?.acceptedBy ?? null,
+    acceptedReason: s?.acceptedReason ?? null,
+    acceptedAt: iso(s?.acceptedAt),
+  };
+}
+
+/** Every image digest's scan. Admins only. */
+export async function listImageScans(): Promise<ImageScan[]> {
+  return (await call(() => images.listImageScans({}))).scans.map(imageScanOf);
+}
+
+/** Accepts a failed scan, with why (10 to 2,000 characters): the image may run until a rescan finds something new. Admins only. */
+export async function acceptImageScan(digest: string, reason: string): Promise<ImageScan> {
+  return imageScanOf((await call(() => images.acceptImageScan({ digest, reason }))).scan);
+}
+
+/** Scans an image again now; null when scanning is off. Admins only. */
+export async function rescanImage(digest: string): Promise<ImageScan | null> {
+  const { scan } = await call(() => images.rescanImage({ digest }));
+  return scan ? imageScanOf(scan) : null;
 }
 
 /** Admin only. `version` is the one loaded, so a concurrent change is
