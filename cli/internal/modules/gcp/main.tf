@@ -27,7 +27,7 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "storage.googleapis.com",
-  ], var.google_groups ? ["cloudidentity.googleapis.com"] : [])
+  ], var.google_groups ? ["cloudidentity.googleapis.com"] : []))
   service = each.value
   # Other things in the project may use them.
   disable_on_destroy = false
