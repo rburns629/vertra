@@ -5,7 +5,7 @@
  * where the chain broke, for everyone signed in; where it goes, for admins.
  */
 import { randomUUID } from "node:crypto";
-import { desc, eq, like, max } from "drizzle-orm";
+import { desc, eq, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { exportAudit } from "../src/auditExport.js";
@@ -53,8 +53,12 @@ describe("the audit log's copy", () => {
 
   it("shows how far it has gone to everyone, and where it goes to admins only", async () => {
     Object.assign(config.audit.export, { bucket: "acme-audit", provider: "gcs", prefix: "vertra-audit/" });
-    const [newest] = await db.select({ id: max(auditLog.id) }).from(auditLog);
-    const through = (newest?.id ?? 1) - 1;
+    // An entry of its own to wait: the newest of all may be another file's, which it deletes.
+    const [own] = await db
+      .insert(auditLog)
+      .values({ actorId: null, method: "RPC", route: "waiting", target: {}, status: 200, requestId: `${prefix}-waiting` })
+      .returning({ id: auditLog.id });
+    const through = (own?.id ?? 1) - 1;
     await db.delete(auditExport);
     await db.insert(auditExport).values({ id: 1, lastId: through, lastHash: "", exportedAt: new Date(), checkedAt: new Date() });
 
