@@ -5,6 +5,7 @@ package catalogtool
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -16,6 +17,26 @@ type Settings struct {
 	Registry    string
 	SigningMode string
 	SigningKey  string
+	// Platform the images are built for, such as linux/amd64; empty: see
+	// BuildPlatform.
+	Platform string
+}
+
+var platformPattern = regexp.MustCompile(`^[a-z0-9]+/[a-z0-9]+(/[a-z0-9]+)?$`)
+
+// BuildPlatform is what docker builds for: the setting, else this
+// machine's own for a local registry (kind runs on this machine), else
+// linux/amd64, what cloud clusters' nodes run unless told otherwise (a
+// Mac's arm64 images wouldn't run there). Empty: Docker's default.
+func (s Settings) BuildPlatform() string {
+	if s.Platform != "" || s.Registry == "" {
+		return s.Platform
+	}
+	host := strings.SplitN(s.Registry, "/", 2)[0]
+	if name := strings.SplitN(host, ":", 2)[0]; name == "localhost" || name == "127.0.0.1" || name == "kind-registry" {
+		return ""
+	}
+	return "linux/amd64"
 }
 
 // FormerSettingsFile is vertra.yaml's name until the platform was renamed
@@ -30,6 +51,7 @@ func (c *Catalog) Settings() (Settings, error) {
 			Mode string `yaml:"mode"`
 			Key  string `yaml:"key"`
 		} `yaml:"signing"`
+		Platform string `yaml:"platform"`
 	}
 	data, err := os.ReadFile(c.path("vertra.yaml"))
 	if err == nil {
@@ -56,6 +78,7 @@ func (c *Catalog) Settings() (Settings, error) {
 		Registry:    or("VERTRA_REGISTRY", file.Registry),
 		SigningMode: or("VERTRA_SIGNING_MODE", mode),
 		SigningKey:  or("VERTRA_SIGNING_KEY", file.Signing.Key),
+		Platform:    or("VERTRA_PLATFORM", file.Platform),
 	}, nil
 }
 
@@ -70,6 +93,9 @@ func (s Settings) Problems() []string {
 	}
 	if s.SigningMode != "none" && s.SigningMode != "key" && s.SigningMode != "keyless" {
 		found = append(found, fmt.Sprintf("signing mode %s: one of none, key, keyless", quote(s.SigningMode)))
+	}
+	if s.Platform != "" && !platformPattern.MatchString(s.Platform) {
+		found = append(found, fmt.Sprintf("platform %s: os/arch, such as linux/amd64", quote(s.Platform)))
 	}
 	if s.SigningMode == "key" && s.SigningKey == "" {
 		found = append(found, "signing mode key needs a key: signing.key or VERTRA_SIGNING_KEY")

@@ -211,12 +211,6 @@ design.
   (Step sizes, Spot placement and running-step caps exist already.)
 - [ ] **Let a product choose its own capacity** (Spot or on-demand) in its
   `product.yaml`; placement is deployment-wide today.
-- [ ] **Publishing a catalog from Apple silicon builds arm64-only images**
-  (`docker build` in `catalogtool/docker.go`), which a GKE (amd64) install
-  can't scan or run: found 2026-10-25, worked around with
-  `DOCKER_DEFAULT_PLATFORM=linux/amd64`. Catalog CI (amd64 runners) is
-  unaffected. Build for the install's platform, or say so in
-  `publish`'s output.
 - [ ] **The console's liveness probe killed it once while it started** on a
   minimal GKE install (2026-10-25, exit 137 a minute after start, fine
   after): give it a startup probe.
@@ -861,10 +855,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Testing and housekeeping
 
-- [ ] **`vertra catalog publish` from a laptop builds for the laptop's
-  platform** (arm64 on a Mac), which an amd64 cluster can't run;
-  `DOCKER_DEFAULT_PLATFORM=linux/amd64` works around it. Build for the
-  target's platforms (a setting in vertra.yaml, multi-platform with buildx).
+- [x] **`vertra catalog publish` from a laptop builds for the laptop's
+  platform** (done 2026-10-25): a catalog's `platform` (`VERTRA_PLATFORM`)
+  says what to build for; unset, a local registry gets this machine's, any
+  other `linux/amd64`, so a Mac's publish runs on a cloud cluster (found
+  proving the gcp cleanups on GKE). One platform per catalog, not
+  multi-platform images.
 - [ ] **`vertra` can't set up a signed catalog yet**: `vertra catalog create` sets
   signing mode none, and nothing puts a public key in the console's
   `catalog.signature` (the GKE proof set it with Helm). Generate or take a

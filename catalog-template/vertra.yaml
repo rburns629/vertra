@@ -10,6 +10,11 @@
 # VERTRA_REGISTRY. On kind: the local registry from `make kind-registry`.
 registry: localhost:5001
 
+# VERTRA_PLATFORM: what images are built for, such as linux/arm64 for a
+# cluster of Arm nodes. Empty: this machine's own for a local registry,
+# linux/amd64 for any other (so a Mac's builds run on a cloud cluster).
+platform: ""
+
 signing:
   # VERTRA_SIGNING_MODE:
   #   none     not signed (local installs, which don't verify signatures)

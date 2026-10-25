@@ -92,9 +92,18 @@ func lastChars(s string, n int) string {
 // Build builds a product's image, on its base's current patch level.
 func (c *Catalog) Build(p *Product) bool {
 	binary, err := c.dockerBinary()
+	var s Settings
 	if err == nil {
+		s, err = c.Settings()
+	}
+	if err == nil {
+		args := []string{"build", "--pull"}
+		if platform := s.BuildPlatform(); platform != "" {
+			c.info("  building for %s", platform)
+			args = append(args, "--platform", platform)
+		}
 		var result runResult
-		result, err = c.run(0, false, binary, "build", "--pull", "-t", p.LocalImage(), p.Dir)
+		result, err = c.run(0, false, binary, append(args, "-t", p.LocalImage(), p.Dir)...)
 		if err == nil && result.code != 0 {
 			err = errors.New("docker build failed")
 		}

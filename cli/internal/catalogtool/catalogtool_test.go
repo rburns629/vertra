@@ -186,8 +186,26 @@ func TestSettingsProblems(t *testing.T) {
 	if p := ok.Problems(); len(p) != 0 {
 		t.Fatal(p)
 	}
-	bad := Settings{Registry: "https://registry/", SigningMode: "key"}
-	if p := bad.Problems(); len(p) != 2 {
+	bad := Settings{Registry: "https://registry/", SigningMode: "key", Platform: "amd64"}
+	if p := bad.Problems(); len(p) != 3 {
 		t.Fatal(p)
+	}
+}
+
+func TestBuildPlatform(t *testing.T) {
+	for _, c := range []struct {
+		settings Settings
+		want     string
+	}{
+		{Settings{}, ""},
+		{Settings{Registry: "localhost:5001"}, ""},
+		{Settings{Registry: "kind-registry:5000/catalog"}, ""},
+		{Settings{Registry: "us-docker.pkg.dev/p/catalog"}, "linux/amd64"},
+		{Settings{Registry: "us-docker.pkg.dev/p/catalog", Platform: "linux/arm64"}, "linux/arm64"},
+		{Settings{Registry: "localhost:5001", Platform: "linux/amd64"}, "linux/amd64"},
+	} {
+		if got := c.settings.BuildPlatform(); got != c.want {
+			t.Errorf("%+v: %q, want %q", c.settings, got, c.want)
+		}
 	}
 }
