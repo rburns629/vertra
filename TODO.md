@@ -682,7 +682,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   a real Google sign-in of a Workspace account in a mapped group made it
   that team's maintainer; the console asks about each mapped group
   (checkTransitiveMembership), since a Groups Reader can't search all of a
-  person's groups at once. Left: Entra ID or Okta tried for real.
+  person's groups at once. Entra ID and Okta untried for real, skipped for
+  now (decided 2026-10-25): the flow and the groups claim are generic, and
+  tested against a stand-in provider.
 - [x] **Force a password change on first sign-in** for admin-created
   accounts (done 2026-10-22): a password someone else set (a new account's,
   an admin's reset of someone else's, `vertra admin reset-password`) marks
