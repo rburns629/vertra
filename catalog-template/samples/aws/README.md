@@ -31,6 +31,11 @@ delete it. Some deletes are careful on purpose:
   it's billed as storage.
 - App Runner and RDS finish a delete on their own once it's accepted, so
   the step doesn't wait for it.
+
+Proven on EKS Auto Mode (2026-10-25): each made by one team's member,
+refused to another team's, the bucket refused while it held an object, and
+all three deleted by an admin's cleanup run (the database's final snapshot
+kept).
 [dags/aws-hello-world-dag.yaml](dags/aws-hello-world-dag.yaml) chains the
 first two.
 

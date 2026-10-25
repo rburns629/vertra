@@ -27,6 +27,8 @@ down and can be restored for 30 days. Cloud SQL can take longer than a
 step's five minutes to delete an instance: the step then succeeds with
 `finishing: true`, since an accepted delete can't be stopped. `build-image`
 has no cleanup: the repository's own cleanup policies age images out.
+Proven on GKE Autopilot (2026-10-25): a project, a Cloud Run service and a
+Cloud SQL instance made and deleted through Vertra.
 [dags/gcp-hello-world-dag.yaml](dags/gcp-hello-world-dag.yaml) chains the
 first three.
 

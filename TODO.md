@@ -611,8 +611,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   admins; a resource keeps its first owner). Proven 2026-10-25 on GKE in
   acyclix-dev: a gcp member made a project (in a folder) and a Cloud Run
   service, another team's member was refused their Delete, an admin's
-  cleanup run shut both down. Left: aws and azure cleanups; Cloud SQL's
-  delete proven on a real instance.
+  cleanup run shut both down. The aws samples' (s3-bucket, app-runner,
+  rds-postgres) and Cloud SQL's proven 2026-10-25 on EKS and GKE. Left:
+  azure's cleanups, once its samples run against a real subscription.
 - [x] **P2: notifications** (done 2026-10-24): an inbox (the bell) and
   each team's chat webhook (Slack, Google Chat, Teams; decided 2026-10-24:
   the URL kept encrypted in the console's database, write-only, allowed
