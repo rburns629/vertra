@@ -869,14 +869,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   signing mode none, and nothing puts a public key in the console's
   `catalog.signature` (the GKE proof set it with Helm). Generate or take a
   key (or keyless with the repository's identity) and set both sides.
-- [ ] **An intermittent console test:** `product-ownership.test.ts`'s "is
-  claimed at startup for products registered before repositories had
-  owners" failed once in a full run (2026-10-20) and once on 2026-10-22,
-  and passes alone. Not seen in 20 full runs since `retention.test.ts` and
-  `observe.test.ts` stopped sharing fixed image digests (2026-10-22,
-  which fixed retention's); the cause isn't known. If it fails again,
-  keep the run's output: which assertion failed says whether another
-  file's startup claim or registration is involved.
+- [x] **An intermittent console test** (fixed 2026-10-25):
+  `product-ownership.test.ts`'s startup claim read every product, then
+  inserted for a team another file had deleted meanwhile. The claim now
+  reads the team in the same statement as its insert.
 - [ ] **Check the docs page's diagrams under mermaid 12** (taken by a
   Dependabot bump, which cleared the KaTeX advisories; not yet looked at).
 - [ ] **Run the older kernel tests on the database's clock**, as the newer

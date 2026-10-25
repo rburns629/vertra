@@ -663,10 +663,16 @@ export async function claimRegisteredImageRepositories(): Promise<void> {
     .from(products)
     .orderBy(products.createdAt);
   for (const { image, teamId } of registered) {
-    await db
-      .insert(imageRepositories)
-      .values({ repository: imageRepository(image), teamId })
-      .onConflictDoNothing();
+    if (teamId === null) {
+      await db.insert(imageRepositories).values({ repository: imageRepository(image), teamId }).onConflictDoNothing();
+      continue;
+    }
+    // The team read in the same statement: one deleted since the products
+    // were read claims nothing.
+    await db.execute(sql`
+      INSERT INTO ${imageRepositories} (repository, team_id)
+      SELECT ${imageRepository(image)}, ${teams.id} FROM ${teams} WHERE ${teams.id} = ${teamId}
+      ON CONFLICT DO NOTHING`);
   }
 }
 
