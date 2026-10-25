@@ -65,7 +65,7 @@ function serviceAccountYaml(team: string, name: string, annotations: Record<stri
 
 const issuerHost = (facts: Facts) => facts.clusterIssuer.replace(/^https:\/\//, "");
 
-export const PROVIDERS: ProviderGuide[] = [
+const ALL_PROVIDERS: ProviderGuide[] = [
   {
     id: "gcpsm",
     title: "GCP Secret Manager",
@@ -380,3 +380,6 @@ export function gcpAccessFix(
     `  --member=serviceAccount:${identity}`,
   ].join("\n");
 }
+
+/** The sources offered: Azure Key Vault waits until Azure is proven (after the MVP, decided 2026-10-25). */
+export const PROVIDERS: ProviderGuide[] = ALL_PROVIDERS.filter((p) => p.id !== "azurekv");

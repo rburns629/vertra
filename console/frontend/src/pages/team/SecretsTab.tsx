@@ -159,7 +159,7 @@ export function SecretsTab({ teamName, readOnly }: { teamName: string; readOnly:
               <AddIcon fontSize="small" /> Connect a source
             </Box>
             <Typography variant="body2" color="text.secondary">
-              GCP Secret Manager, Azure Key Vault, AWS Secrets Manager or 1Password.
+              GCP Secret Manager, AWS Secrets Manager or 1Password.
             </Typography>
           </ButtonBase>
         )}

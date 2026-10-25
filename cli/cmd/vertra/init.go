@@ -51,7 +51,7 @@ func (a *app) initCmd() *cobra.Command {
 	}
 	fl := cmd.Flags()
 	fl.BoolVar(&f.force, "force", false, "replace an existing environment's settings")
-	fl.StringVar(&f.target, "target", "", "kind (local), gcp or existing (aws and azure come later)")
+	fl.StringVar(&f.target, "target", "", "kind (local), gcp, aws or existing")
 	fl.StringVar(&f.release, "release", "", "install a released version (e.g. 0.1.0) instead of from source")
 	fl.StringVar(&f.source, "source", "", "a Vertra checkout to install from (charts, and images built from it)")
 	fl.StringVar(&f.clusterName, "cluster-name", "", "kind or gcp: the cluster's name (default vertra)")
@@ -110,7 +110,6 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "  (azure comes with its OpenTofu module.)")
 	c := config.Default(target)
 
 	// 2. Source or release.

@@ -43,6 +43,11 @@ func Assemble(o Options, dst string) ([]string, error) {
 	if err := copyTree(o.Template, dst); err != nil {
 		return nil, err
 	}
+	// Not offered until Azure is proven (after the MVP, decided 2026-10-25);
+	// this repository's CI still checks it.
+	if err := os.RemoveAll(filepath.Join(dst, "samples", "azure")); err != nil {
+		return nil, err
+	}
 	teamDir := filepath.Join(dst, "teams", o.Team)
 
 	// The team, from the template's team.yaml.

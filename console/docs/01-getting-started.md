@@ -132,7 +132,6 @@ If your secrets already live in a vault, connect it once and add them from there
 | Provider | What Vertra stores | Status |
 | --- | --- | --- |
 | GCP Secret Manager | Nothing: it signs in with Workload Identity | Tested ([step by step](02-sync-secrets-gcp.md)) |
-| Azure Key Vault | Nothing: Azure trusts the cluster's identity | Guide only, not yet tested |
 | AWS Secrets Manager | Nothing: AWS trusts the cluster's identity | Guide only, not yet tested |
 | 1Password | One read-only service-account token, set on your team's **Secrets** tab (**Stored credential**) in each install | Guide only, not yet tested |
 
@@ -222,7 +221,7 @@ Ask the Vertra team; for an account, or the first member of a new team, ask a Ve
 
 Known gaps today:
 
-- **Azure, AWS and 1Password syncing** have guides in the console but haven't been tested end to end. Expect rough edges and tell us what you hit.
+- **AWS and 1Password syncing** have guides in the console but haven't been tested end to end. Expect rough edges and tell us what you hit.
 - **No "sync now".** A secret changed in your vault reaches Vertra within an hour.
 - **One namespace per team.** Separate environments by secret name for now, for example `db-password-prod`.
 - **The console is served over plain HTTP** while HTTPS is set up. Don't reuse a password you use elsewhere.

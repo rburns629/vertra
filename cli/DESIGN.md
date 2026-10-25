@@ -27,7 +27,7 @@ releases, multi-cluster installs, or a hosted service.
 | Concept | Values | Meaning |
 | --- | --- | --- |
 | **Environment** | any name (`dev`, `prod`) | One install. Its settings live in `./deploy/<env>/` |
-| **Target** | `kind (local)` (`kind` in config), `gcp`, `aws`, `azure`, `existing` | Where it runs |
+| **Target** | `kind (local)` (`kind` in config), `gcp`, `aws`, `azure` (not offered: after the MVP, decided 2026-10-25), `existing` | Where it runs |
 | **Cluster mode** | `auto`, `standard`, `existing` | Only when the CLI creates the cluster: `auto` is GKE Autopilot, EKS Auto Mode or AKS Automatic; `standard` is node pools the CLI sizes; `existing` uses one you have |
 | **Size** | `minimal`, `resilient`, `scaled`, `auto` | The compute floor and guardrails: replicas, step caps, the default step size, Spot. `minimal` is the absolute minimum; `auto` scales between `minimal` and `scaled` on load |
 | **Database** | `in-cluster`, `managed` | Any size: the bundled Postgres Pod with daily backups to a bucket, or Cloud SQL, RDS or Azure Flexible Server (high availability optional) |

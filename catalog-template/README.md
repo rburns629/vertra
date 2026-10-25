@@ -21,11 +21,9 @@ example teams, never published from there:
   TypeScript, Go, PowerShell and Rust. Copy the products in your languages
   into your team as starters, or the whole folder to `teams/local/` to
   prove an install end to end.
-- `samples/gcp`, `samples/aws`, `samples/azure`: products that call real,
-  billed cloud APIs (a bucket or resource group, a container service, a
-  PostgreSQL database), keyless. Copy one into a team once its cloud
-  identity is set up. The AWS and Azure ones aren't yet proven against a
-  real account.
+- `samples/gcp`, `samples/aws`: products that call real, billed cloud APIs
+  (a project or bucket, a container service, a PostgreSQL database),
+  keyless. Copy one into a team once its cloud identity is set up.
 
 A copied product's `team:` must be changed to its new team's name.
 
@@ -36,7 +34,7 @@ vertra.yaml                  where products publish: registry, signing
 vertra                        runs the pinned vertra (downloaded into .vertra/)
 tools/                        the schemas of every catalog file (format v2), for editors
 templates/                    starters to copy (checked by CI, never published)
-samples/<team>/               example teams: local (five languages); gcp, aws, azure (billed)
+samples/<team>/               example teams: local (five languages); gcp, aws (billed)
 teams/
   <team>/                    one team = one console team = one Kubernetes namespace
     team.yaml                 who the team is: name, description, owner, contact, help; allowedTargets

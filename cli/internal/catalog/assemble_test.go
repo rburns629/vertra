@@ -65,6 +65,9 @@ func TestAssemble(t *testing.T) {
 	}
 	// The samples stay, to copy from later; a second team's worth of them
 	// isn't added.
+	if _, err := os.Stat(filepath.Join(dst, "samples/azure")); !os.IsNotExist(err) {
+		t.Error("samples/azure isn't offered until Azure is proven")
+	}
 	if _, err := os.Stat(filepath.Join(dst, "samples/local/products/reverse")); err != nil {
 		t.Error("samples/ should stay")
 	}
