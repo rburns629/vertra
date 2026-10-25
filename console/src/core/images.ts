@@ -126,7 +126,7 @@ export async function rescan(caller: AuthUser | undefined, digest: string) {
   forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
   const [row] = await db.select().from(imageScans).where(eq(imageScans.digest, digest));
   if (!row) throw new ApiError(404, "NOT_FOUND", "No scan for that digest.");
-  // Due now: requestScan starts it.
+  // Stale from now on, so a rescan that can't start yet is still due; started now if it can.
   await db.update(imageScans).set({ scannedAt: new Date(0) }).where(eq(imageScans.digest, row.digest));
-  return requestScan(`${row.image.split("@")[0] ?? row.image}@${row.digest}`);
+  return requestScan(`${row.image.split("@")[0] ?? row.image}@${row.digest}`, { force: true });
 }

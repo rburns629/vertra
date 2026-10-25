@@ -16,7 +16,7 @@
  * kernel chart's scan policy holds the failed digests (syncScanPolicy), so
  * the cluster refuses them however a Job reaches it.
  */
-import { and, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
 import { imageScans } from "./db/schema.js";
@@ -175,12 +175,30 @@ async function startScan(row: { digest: string; image: string }): Promise<void> 
   });
 }
 
+/** How long an attempt that couldn't scan (its image gone from the registry, say) waits before the next. */
+export const RETRY_ERRORED_MINUTES = 15;
+
 /**
- * Makes sure `image` (pinned) has a scan: starts one if it has never been
- * scanned, its last scan errored, or its verdict is older than the rescan
- * interval; marks it used either way. Returns its row.
+ * Whether a scan is due: never scanned, or its last attempt errored and
+ * has waited RETRY_ERRORED_MINUTES, or its verdict is older than the
+ * rescan interval and no rescan has failed in the last RETRY_ERRORED_MINUTES
+ * (a rescan that errors keeps the old verdict, so without that it'd be
+ * started again on every pass). The same rule as reconcileScans' query.
  */
-export async function requestScan(image: string): Promise<ScanRow | null> {
+function isDue(row: ScanRow, now: Date): boolean {
+  const waited = now.getTime() - row.requestedAt.getTime() > RETRY_ERRORED_MINUTES * 60_000;
+  if (row.status === "pending") return true;
+  if (row.status === "error") return waited;
+  const stale = row.scannedAt !== null && now.getTime() - row.scannedAt.getTime() > config.scanning.rescanHours * 3_600_000;
+  return stale && (row.scannedAt === null || row.requestedAt <= row.scannedAt || waited);
+}
+
+/**
+ * Makes sure `image` (pinned) has a scan: starts one if it's due (isDue),
+ * or now with `force` (an admin's rescan); marks it used either way.
+ * Returns its row.
+ */
+export async function requestScan(image: string, { force = false } = {}): Promise<ScanRow | null> {
   const digest = digestOf(image);
   if (!digest || !config.scanning.enabled) return null;
   const now = new Date();
@@ -190,8 +208,7 @@ export async function requestScan(image: string): Promise<ScanRow | null> {
     .onConflictDoUpdate({ target: imageScans.digest, set: { lastUsedAt: now } });
   const [row] = await db.select().from(imageScans).where(eq(imageScans.digest, digest));
   if (!row) return null;
-  const stale = row.scannedAt !== null && now.getTime() - row.scannedAt.getTime() > config.scanning.rescanHours * 3_600_000;
-  if (row.jobName === null && (row.status === "pending" || row.status === "error" || stale) && (await scannerReady())) {
+  if (row.jobName === null && (force || isDue(row, now)) && (await scannerReady())) {
     await startScan(row);
   }
   return row;
@@ -245,8 +262,14 @@ export async function reconcileScans(): Promise<boolean> {
         gt(imageScans.lastUsedAt, sql`now() - interval '30 days'`),
         or(
           eq(imageScans.status, "pending"),
-          eq(imageScans.status, "error"),
-          lt(imageScans.scannedAt, sql`now() - make_interval(hours => ${config.scanning.rescanHours})`),
+          and(eq(imageScans.status, "error"), lt(imageScans.requestedAt, sql`now() - make_interval(mins => ${RETRY_ERRORED_MINUTES})`)),
+          and(
+            lt(imageScans.scannedAt, sql`now() - make_interval(hours => ${config.scanning.rescanHours})`),
+            or(
+              lte(imageScans.requestedAt, imageScans.scannedAt),
+              lt(imageScans.requestedAt, sql`now() - make_interval(mins => ${RETRY_ERRORED_MINUTES})`),
+            ),
+          ),
         ),
       ),
     )

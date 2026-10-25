@@ -7,7 +7,7 @@
  * proven on kind.
  */
 import { randomUUID } from "node:crypto";
-import { inArray, like } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
@@ -20,7 +20,7 @@ import { caller } from "./rpc.js";
 
 const call = caller(() => app);
 import { createScanJob, readScanJob, scaleScanner, updateScanPolicy } from "../src/k8s.js";
-import { parseScanOutput, reconcileScans, scanBlocker, scanTarget, verdictOf } from "../src/scanning.js";
+import { parseScanOutput, reconcileScans, RETRY_ERRORED_MINUTES, scanBlocker, scanTarget, verdictOf } from "../src/scanning.js";
 
 /** What each scan Job (by target) prints when it finishes. */
 const outputs = new Map<string, string>();
@@ -172,6 +172,38 @@ describe("what a verdict allows", () => {
     expect((await accept(admin, "Not reachable: the binary never parses untrusted input.")).code).toBe("ok");
     expect(await scanBlocker([img])).toBeNull();
     expect(JSON.parse(policyWritten ?? "[]")).not.toContain(digest);
+  });
+
+  it("waits before trying again a rescan that couldn't scan, keeping the last verdict meanwhile", async () => {
+    const img = image();
+    const { target } = scanTarget(img);
+    const digest = img.split("@")[1] ?? "";
+    await scanned(img, CLEAN);
+    const startsOfThis = () => vi.mocked(createScanJob).mock.calls.filter(([spec]) => spec.target === target).length;
+    const longAgo = new Date(Date.now() - 48 * 3_600_000);
+    await db.update(imageScans).set({ scannedAt: longAgo, requestedAt: longAgo }).where(eq(imageScans.digest, digest));
+    vi.mocked(createScanJob).mockClear();
+
+    await reconcileScans(); // due: started
+    expect(startsOfThis()).toBe(1);
+    // The image is gone from the registry: every attempt fails.
+    vi.mocked(readScanJob).mockImplementation(() => Promise.resolve({ state: "failed", output: "MANIFEST_UNKNOWN: manifest unknown" }));
+    try {
+      await reconcileScans();
+      await reconcileScans();
+      expect(startsOfThis()).toBe(1);
+      const [row] = await db.select().from(imageScans).where(eq(imageScans.digest, digest));
+      expect(row?.status).toBe("passed");
+
+      await db.update(imageScans).set({ requestedAt: new Date(Date.now() - (RETRY_ERRORED_MINUTES + 1) * 60_000) }).where(eq(imageScans.digest, digest));
+      await reconcileScans();
+      expect(startsOfThis()).toBe(2);
+    } finally {
+      vi.mocked(readScanJob).mockImplementation((_namespace: string, name: string) => {
+        const output = outputs.get(jobs.get(name) ?? "");
+        return Promise.resolve(output === undefined ? { state: "running" } : { state: "succeeded", output });
+      });
+    }
   });
 
   it("rescans an image now, its time unset until the new scan finishes", async () => {
