@@ -1123,6 +1123,8 @@ export interface TemplateRow {
   hidden: boolean;
   sourcePath: string | null;
   deprecated: string | null;
+  /** Ways to run it, from its file: a name and its parameters (as inputs). */
+  examples: ProductExample[];
 }
 
 const templateColumns = {
@@ -1138,6 +1140,7 @@ const templateColumns = {
   hidden: templates.hidden,
   sourcePath: templates.sourcePath,
   deprecated: templates.deprecated,
+  examples: templates.examples,
 };
 
 /** Every template of a team that's neither retired nor purged: what can run. */
@@ -1162,7 +1165,7 @@ export async function findRunnableTemplate(teamName: string, name: string): Prom
 /** Stores a template as a catalog release has it, keyed on its team and name.
  * Left out, it's listed and its file isn't known. */
 export async function upsertTemplate(
-  input: Omit<TemplateRow, "id" | "teamName" | "hidden" | "sourcePath"> & Partial<Pick<TemplateRow, "hidden" | "sourcePath">>,
+  input: Omit<TemplateRow, "id" | "teamName" | "hidden" | "sourcePath" | "examples"> & Partial<Pick<TemplateRow, "hidden" | "sourcePath" | "examples">>,
 ): Promise<void> {
   const { teamId, name, ...rest } = input;
   await db

@@ -17,26 +17,7 @@ import { useAuth } from "../auth/AuthContext";
 import { CodeBlock } from "../components/CodeBlock";
 import { Pill } from "../components/Pill";
 import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, templateYaml, type ComposeStep, type Draft, type InputSource } from "../compose";
-
-const DRAFTS_KEY = "vertra.compose.drafts";
-
-/** Drafts are kept in this browser, by name. */
-function readDrafts(): Record<string, Draft> {
-  try {
-    const raw = localStorage.getItem(DRAFTS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Draft>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeDrafts(drafts: Record<string, Draft>): void {
-  try {
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
-  } catch {
-    // A browser that won't keep them: the page still works, without drafts.
-  }
-}
+import { draftOf, useComposeDrafts } from "./useComposeDrafts";
 
 /** "value", "parameter", "unset", or "<step>/<output>", for the source select. */
 const sourceKey = (s: InputSource) => (s.kind === "step" ? `${s.step}/${s.output}` : s.kind);
@@ -134,7 +115,7 @@ function StepCard({
  * earlier step's output (matched by its wiring type). It's proposed to the
  * catalog as a file (GitHub's new-file page, in your browser, for review),
  * or run now when every step is your team's and nothing's asked. Drafts
- * are kept in this browser.
+ * are kept by the console for their team (useComposeDrafts).
  */
 export function ComposePage() {
   const navigate = useNavigate();
@@ -143,8 +124,10 @@ export function ComposePage() {
   const [usable, setUsable] = useState<Set<string>>(new Set());
   const [repository, setRepository] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, Draft>>(readDrafts);
-  const [draft, setDraft] = useState<Draft>(() => ({ name: "my-template", displayName: "", description: "", team: user?.teamNames[0] ?? "", steps: [] }));
+  const blank = (name: string): Draft => ({ name, displayName: "", description: "", team: user?.teamNames[0] ?? "", steps: [] });
+  const [draft, setDraft] = useState<Draft>(() => blank("my-template"));
+  const stored = useComposeDrafts(draft);
+  const [moved, setMoved] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // The teams it can be for: yours, or any for an admin.
   const [teams, setTeams] = useState<string[]>(user?.teamNames ?? []);
@@ -174,11 +157,17 @@ export function ComposePage() {
   const propose = proposeUrl(repository, draft, yaml);
 
   const update = (next: Draft) => {
+    stored.edited();
     setDraft(next);
-    const saved = { ...drafts, [next.name]: next };
-    setDrafts(saved);
-    writeDrafts(saved);
   };
+  const open = (next: Draft | null) => {
+    stored.opened(next);
+    setDraft(next ?? blank(`draft-${String((stored.drafts?.length ?? 0) + 1)}`));
+  };
+  async function loadTheirs(): Promise<void> {
+    const theirs = (await stored.reload()).find((d) => d.team === draft.team && d.name === draft.name);
+    open(theirs ? draftOf(theirs) : null);
+  }
 
   async function run(): Promise<void> {
     if (!dag) return;
@@ -289,29 +278,77 @@ export function ComposePage() {
               Drafts
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Kept in this browser as you go, by name.
+              Kept for their team as you go: its members see and change them, from any device.{" "}
+              {stored.status === "saving" ? "Saving…" : stored.status === "saved" ? "Saved." : ""}
             </Typography>
-            {Object.values(drafts).map((d) => (
-              <Box key={d.name} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Button size="small" onClick={() => { setDraft(d); }} sx={{ flexGrow: 1, justifyContent: "flex-start", fontWeight: d.name === draft.name ? 600 : 400 }}>
-                  {d.name} · {d.steps.length} {d.steps.length === 1 ? "step" : "steps"}
-                </Button>
-                <IconButton
-                  size="small"
-                  aria-label={`Delete draft ${d.name}`}
-                  onClick={() => {
-                    const { [d.name]: _gone, ...rest } = drafts;
-                    setDrafts(rest);
-                    writeDrafts(rest);
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            ))}
-            <Button size="small" onClick={() => { setDraft({ name: `draft-${String(Object.keys(drafts).length + 1)}`, displayName: "", description: "", team: user?.teamNames[0] ?? "", steps: [] }); }}>
+            {stored.status === "conflict" && (
+              <Alert
+                severity="warning"
+                action={
+                  <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <Button size="small" color="inherit" onClick={() => void loadTheirs()}>
+                      Load theirs
+                    </Button>
+                    <Button size="small" color="inherit" onClick={stored.keepMine}>
+                      Keep mine
+                    </Button>
+                  </Box>
+                }
+              >
+                {stored.problem}
+              </Alert>
+            )}
+            {stored.status !== "conflict" && stored.problem && <Alert severity="error">{stored.problem}</Alert>}
+            {stored.drafts?.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                None yet: give this one a name and it&apos;s kept.
+              </Typography>
+            )}
+            {stored.drafts?.map((d) => {
+              const isOpen = d.team === draft.team && d.name === draft.name;
+              const steps = draftOf(d).steps.length;
+              return (
+                <Box key={`${d.team}/${d.name}`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Button size="small" onClick={() => { open(draftOf(d)); }} sx={{ flexGrow: 1, justifyContent: "flex-start", textAlign: "left", fontWeight: isOpen ? 600 : 400 }}>
+                    {d.team} / {d.name} · {steps} {steps === 1 ? "step" : "steps"}
+                    {d.updatedBy && ` · ${d.updatedBy}`}
+                  </Button>
+                  <IconButton
+                    size="small"
+                    aria-label={`Delete draft ${d.team}/${d.name}`}
+                    onClick={() => {
+                      stored.remove(d).catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't delete it."); });
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              );
+            })}
+            <Button size="small" onClick={() => { open(null); }}>
               New
             </Button>
+            {stored.inBrowser.length > 0 && (
+              <Alert
+                severity="info"
+                action={
+                  <Button
+                    size="small"
+                    color="inherit"
+                    onClick={() => {
+                      stored
+                        .moveFromBrowser(teams)
+                        .then((n) => { setMoved(`${String(n)} moved.`); })
+                        .catch(() => { setMoved("Couldn't move them."); });
+                    }}
+                  >
+                    Move them
+                  </Button>
+                }
+              >
+                {stored.inBrowser.length} {stored.inBrowser.length === 1 ? "draft is" : "drafts are"} kept only in this browser. {moved}
+              </Alert>
+            )}
           </Card>
         </Box>
       </Box>

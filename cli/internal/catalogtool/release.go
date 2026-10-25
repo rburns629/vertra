@@ -264,6 +264,15 @@ func (c *Catalog) releaseTemplates() ([]*catalogv1.Template, error) {
 			Description: text(spec, "description"), Parameters: parameters, ShareWith: stringList(spec["shareWith"]),
 			Deprecated: text(spec, "deprecated"), Hidden: text(spec, "visibility") == "hidden", Path: c.rel(path),
 		}
+		examples, _ := spec["examples"].([]any)
+		for _, raw := range examples {
+			example, _ := raw.(map[string]any)
+			parameters, err := structOf(example["parameters"])
+			if err != nil {
+				return nil, fmt.Errorf("%s: example %s: %w", c.rel(path), text(example, "name"), err)
+			}
+			t.Examples = append(t.Examples, &catalogv1.Example{Name: text(example, "name"), Inputs: parameters})
+		}
 		steps, _ := spec["steps"].([]any)
 		for _, raw := range steps {
 			step, _ := raw.(map[string]any)

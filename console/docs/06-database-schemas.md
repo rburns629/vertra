@@ -494,6 +494,21 @@ What a consumer runs, filling in only parameters: each team's `dags/*.yaml` of k
 | `hidden` | boolean | no | Only its own team (and admins) see it; it then has no `share_with`. |
 | `source_path` | text | yes | Its file in the catalog repository (`teams/<team>/dags/<name>.yaml`). |
 | `deprecated` | text | yes | What to use instead; it still runs. |
+| `examples` | jsonb | no | Ways to run it, from its file: each a `name` and its parameters as `inputs`. The run form offers them. |
+| `updated_at` | timestamptz | no | |
+
+### compose_drafts
+
+Compose's drafts: a template being built, for a team, which its members (and admins) see and change from any device. Deleted with its team.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `team_id` | uuid | no | The team it's for; unique with `name`. |
+| `name` | text | no | The template's name, as it would be filed. |
+| `body` | jsonb | no | The Compose page's own state (at most 64 KiB), kept as it is. |
+| `version` | bigint | no | Counts its saves: a save made on an older version is refused, not applied. |
+| `updated_by` | uuid | yes | Who saved it last. |
 | `updated_at` | timestamptz | no | |
 
 ### apis

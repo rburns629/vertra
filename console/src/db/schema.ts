@@ -786,9 +786,33 @@ export const templates = pgTable(
     // Its file in the catalog repository (teams/<team>/dags/<name>.yaml).
     sourcePath: text("source_path"),
     deprecated: text("deprecated"),
+    // Ways to run it, from its file: a name and its parameters (as inputs).
+    examples: jsonb("examples").$type<ProductExample[]>().notNull().default([]),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.teamId, table.name)],
+);
+
+/**
+ * Compose's drafts (core/drafts.ts): a template being built, for a team,
+ * which its members and admins see and change from any device. The body is
+ * the page's own state, kept as it is; version counts its saves, so an edit
+ * made on an older one is refused rather than overwriting.
+ */
+export const composeDrafts = pgTable(
+  "compose_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    body: jsonb("body").$type<Record<string, unknown>>().notNull(),
+    version: bigint("version", { mode: "number" }).notNull().default(1),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("compose_drafts_team_id_name").on(table.teamId, table.name)],
 );
 
 /**

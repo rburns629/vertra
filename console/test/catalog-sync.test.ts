@@ -334,7 +334,7 @@ describe("a release's templates", () => {
   it("are stored as the release has them, and removed when a release drops them", async () => {
     const stored = () =>
       db
-        .select({ name: templates.name, steps: templates.steps, shareWith: templates.shareWith })
+        .select({ name: templates.name, steps: templates.steps, shareWith: templates.shareWith, examples: templates.examples })
         .from(templates)
         .innerJoin(teams, eq(teams.id, templates.teamId))
         .where(eq(teams.name, teamA));
@@ -351,6 +351,7 @@ describe("a release's templates", () => {
             parameters: { type: "object" },
             steps: [{ id: "s", action: `${teamA}/site.run`, inputs: { n: 1 } }],
             shareWith: ["*"],
+            examples: [{ name: "quick", inputs: { n: 2 } }],
           },
         ],
       }),
@@ -358,7 +359,9 @@ describe("a release's templates", () => {
     );
     await syncCatalog(log);
     expect((await status())?.problems).toEqual([]);
-    expect(await stored()).toEqual([{ name: "go", steps: [{ id: "s", action: `${teamA}/site.run`, inputs: { n: 1 } }], shareWith: ["*"] }]);
+    expect(await stored()).toEqual([
+      { name: "go", steps: [{ id: "s", action: `${teamA}/site.run`, inputs: { n: 1 } }], shareWith: ["*"], examples: [{ name: "quick", inputs: { n: 2 }, outputs: {} }] },
+    ]);
 
     publish(release({ commit: "no-templates", teams: [{ name: teamA }], products: [product(teamA, "site")] }), digestOf(51));
     await syncCatalog(log);

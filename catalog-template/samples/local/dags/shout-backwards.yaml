@@ -20,6 +20,12 @@ parameters:
       title: Text
       description: What to shout backwards, up to 1,000 characters.
       maxLength: 1000
+# Ways to run it, offered on its run form (each must fit parameters).
+examples:
+  - name: a greeting
+    parameters: {text: hello world}
+  - name: a palindrome
+    parameters: {text: never odd or even}
 steps:
   - id: shout
     action: upper-case.transform

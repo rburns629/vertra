@@ -290,7 +290,7 @@ export interface Runnable {
   previewable: boolean;
   /** Whether it's ready here: its product's check, or its steps' together; null when none has one. */
   readiness: ReadinessView | null;
-  /** Examples of running it: an action's passing contract tests. */
+  /** Examples of running it: an action's passing contract tests, a template's own. */
   examples: ProductExample[];
 }
 
@@ -394,7 +394,7 @@ export async function runnables(caller: AuthUser | undefined): Promise<Runnable[
         rulesOf,
       ),
       previewable: t.steps.some((step) => hasPlan(byRef.get(step.action))),
-      examples: [],
+      examples: t.examples,
       readiness: together(t.steps.flatMap((step) => {
         const view = ready.get(byRef.get(step.action)?.name ?? "");
         return view ? [view] : [];

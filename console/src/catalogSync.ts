@@ -352,6 +352,7 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
         hidden: t.hidden,
         sourcePath: t.path || null,
         deprecated: t.deprecated || null,
+        examples: t.examples.slice(0, 10).map((e) => ({ name: e.name, inputs: e.inputs ?? {}, outputs: {} })),
       });
     });
   }

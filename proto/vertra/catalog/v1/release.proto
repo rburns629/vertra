@@ -172,6 +172,9 @@ message Template {
   bool hidden = 9;
   // Its file in the catalog repository: "teams/<team>/dags/<name>.yaml".
   string path = 10;
+  // Ways to run it, from its file: each a name, and its parameters as
+  // inputs (no outputs).
+  repeated Example examples = 11;
 }
 
 message TemplateStep {

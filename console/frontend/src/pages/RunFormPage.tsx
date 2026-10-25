@@ -294,7 +294,9 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
               Examples
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              From {runnable.team}&apos;s tests: inputs it&apos;s known to work with, and what it gave.
+              {runnable.kind === "template"
+                ? <>From {runnable.team}: ways it&apos;s meant to be run.</>
+                : <>From {runnable.team}&apos;s tests: inputs it&apos;s known to work with, and what it gave.</>}
             </Typography>
             {runnable.examples.map((example) => (
               <Box key={example.name} sx={{ display: "flex", flexDirection: "column", gap: 0.5, borderTop: 1, borderColor: "divider", pt: 1.25 }}>
@@ -307,7 +309,8 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
                   </Button>
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "fontFamilyMono", overflowWrap: "anywhere" }}>
-                  {JSON.stringify(example.inputs)} → {JSON.stringify(example.outputs)}
+                  {JSON.stringify(example.inputs)}
+                  {runnable.kind === "action" && <> → {JSON.stringify(example.outputs)}</>}
                 </Typography>
               </Box>
             ))}

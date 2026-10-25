@@ -101,6 +101,8 @@ parameters:
   required: [text]
   properties:
     text: {type: string}
+examples:
+  - {name: a greeting, parameters: {text: hi}}
 steps:
   - id: one
     action: mine.run
@@ -135,6 +137,9 @@ steps:
 		step.GetInputs().GetFields()["text"].GetStructValue().GetFields()["$param"].GetStringValue() != "text" ||
 		tpl.GetPath() != "teams/a/dags/hello.yaml" || tpl.GetHidden() {
 		t.Errorf("template = %v", tpl)
+	}
+	if e := tpl.GetExamples(); len(e) != 1 || e[0].GetName() != "a greeting" || e[0].GetInputs().GetFields()["text"].GetStringValue() != "hi" {
+		t.Errorf("examples = %v", e)
 	}
 
 	files = product("mine", "[]")

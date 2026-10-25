@@ -804,7 +804,10 @@ type Template struct {
 	// visibility: hidden: only its own team sees it (it has no share_with).
 	Hidden bool `protobuf:"varint,9,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	// Its file in the catalog repository: "teams/<team>/dags/<name>.yaml".
-	Path          string `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty"`
+	Path string `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty"`
+	// Ways to run it, from its file: each a name, and its parameters as
+	// inputs (no outputs).
+	Examples      []*Example `protobuf:"bytes,11,rep,name=examples,proto3" json:"examples,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -907,6 +910,13 @@ func (x *Template) GetPath() string {
 		return x.Path
 	}
 	return ""
+}
+
+func (x *Template) GetExamples() []*Example {
+	if x != nil {
+		return x.Examples
+	}
+	return nil
 }
 
 type TemplateStep struct {
@@ -1577,7 +1587,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x06inputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x06inputs\"1\n" +
 	"\tErrorHelp\x12\x14\n" +
 	"\x05means\x18\x01 \x01(\tR\x05means\x12\x0e\n" +
-	"\x02do\x18\x02 \x01(\tR\x02do\"\xd2\x02\n" +
+	"\x02do\x18\x02 \x01(\tR\x02do\"\x8a\x03\n" +
 	"\bTemplate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
@@ -1594,7 +1604,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"deprecated\x12\x16\n" +
 	"\x06hidden\x18\t \x01(\bR\x06hidden\x12\x12\n" +
 	"\x04path\x18\n" +
-	" \x01(\tR\x04path\"\x81\x02\n" +
+	" \x01(\tR\x04path\x126\n" +
+	"\bexamples\x18\v \x03(\v2\x1a.vertra.catalog.v1.ExampleR\bexamples\"\x81\x02\n" +
 	"\fTemplateStep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1d\n" +
@@ -1707,18 +1718,19 @@ var file_vertra_catalog_v1_release_proto_depIdxs = []int32{
 	19, // 16: vertra.catalog.v1.Cleanup.inputs:type_name -> google.protobuf.Struct
 	19, // 17: vertra.catalog.v1.Template.parameters:type_name -> google.protobuf.Struct
 	9,  // 18: vertra.catalog.v1.Template.steps:type_name -> vertra.catalog.v1.TemplateStep
-	19, // 19: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
-	12, // 20: vertra.catalog.v1.Api.backend_auth:type_name -> vertra.catalog.v1.BackendAuth
-	17, // 21: vertra.catalog.v1.Api.per_minute:type_name -> vertra.catalog.v1.Api.PerMinuteEntry
-	13, // 22: vertra.catalog.v1.BackendAuth.service_account_token:type_name -> vertra.catalog.v1.ServiceAccountTokenAuth
-	14, // 23: vertra.catalog.v1.BackendAuth.google_id_token:type_name -> vertra.catalog.v1.GoogleIdTokenAuth
-	15, // 24: vertra.catalog.v1.BackendAuth.aws_sig_v4:type_name -> vertra.catalog.v1.AwsSigV4Auth
-	7,  // 25: vertra.catalog.v1.ProductAction.ErrorsEntry.value:type_name -> vertra.catalog.v1.ErrorHelp
-	26, // [26:26] is the sub-list for method output_type
-	26, // [26:26] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	5,  // 19: vertra.catalog.v1.Template.examples:type_name -> vertra.catalog.v1.Example
+	19, // 20: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
+	12, // 21: vertra.catalog.v1.Api.backend_auth:type_name -> vertra.catalog.v1.BackendAuth
+	17, // 22: vertra.catalog.v1.Api.per_minute:type_name -> vertra.catalog.v1.Api.PerMinuteEntry
+	13, // 23: vertra.catalog.v1.BackendAuth.service_account_token:type_name -> vertra.catalog.v1.ServiceAccountTokenAuth
+	14, // 24: vertra.catalog.v1.BackendAuth.google_id_token:type_name -> vertra.catalog.v1.GoogleIdTokenAuth
+	15, // 25: vertra.catalog.v1.BackendAuth.aws_sig_v4:type_name -> vertra.catalog.v1.AwsSigV4Auth
+	7,  // 26: vertra.catalog.v1.ProductAction.ErrorsEntry.value:type_name -> vertra.catalog.v1.ErrorHelp
+	27, // [27:27] is the sub-list for method output_type
+	27, // [27:27] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_vertra_catalog_v1_release_proto_init() }

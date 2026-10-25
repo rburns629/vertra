@@ -90,6 +90,8 @@ parameters:
   type: object
   properties:
     text: {type: string}
+examples:
+  - {name: a greeting, parameters: {text: hello}}
 steps:
   - id: first
     action: mine.run
@@ -116,15 +118,17 @@ func TestTemplateChecks(t *testing.T) {
 		t.Fatalf("a good template was refused:\n%s", out)
 	}
 	for change, want := range map[[2]string]string{
-		{"action: b/theirs.run", "action: b/missing.run"}:                              "step second: no action b/missing.run in this catalog",
-		{"action: b/theirs.run", "action: c/private.run"}:                              "step second: c/private.run isn't shared with team a",
-		{"{$param: text}", "{$param: words}"}:                                          "uses parameter 'words', which parameters doesn't declare",
-		{"    dependsOn: [first]\n", ""}:                                               "uses step 'first''s output, but doesn't depend on it",
-		{"$output: text}", "$output: colour}"}:                                         "uses output 'colour', which step first's action doesn't declare",
-		{"      text: {$param: text}\n", "      loud: true\n"}:                         "step first: its action needs input 'text'",
-		{"      text: {$param: text}", "      text: {$param: text}\n      volume: 11"}: "step first: input 'volume' isn't one its action takes",
-		{"    action: mine.run\n", "    action: mine.run\n    dependsOn: [second]\n"}:  "steps first, second depend on each other in a cycle",
-		{"name: chain", "name: other"}:                                                 "name 'other' isn't the file's name, 'chain'",
+		{"action: b/theirs.run", "action: b/missing.run"}:                                          "step second: no action b/missing.run in this catalog",
+		{"action: b/theirs.run", "action: c/private.run"}:                                          "step second: c/private.run isn't shared with team a",
+		{"{$param: text}", "{$param: words}"}:                                                      "uses parameter 'words', which parameters doesn't declare",
+		{"    dependsOn: [first]\n", ""}:                                                           "uses step 'first''s output, but doesn't depend on it",
+		{"$output: text}", "$output: colour}"}:                                                     "uses output 'colour', which step first's action doesn't declare",
+		{"      text: {$param: text}\n", "      loud: true\n"}:                                     "step first: its action needs input 'text'",
+		{"      text: {$param: text}", "      text: {$param: text}\n      volume: 11"}:             "step first: input 'volume' isn't one its action takes",
+		{"    action: mine.run\n", "    action: mine.run\n    dependsOn: [second]\n"}:              "steps first, second depend on each other in a cycle",
+		{"name: chain", "name: other"}:                                                             "name 'other' isn't the file's name, 'chain'",
+		{"{text: hello}", "{text: 5}"}:                                                             "example 'a greeting': text: got number, want string",
+		{"  - {name: a greeting", "  - {name: a greeting, parameters: {}}\n  - {name: a greeting"}: "example 'a greeting': another example has this name",
 	} {
 		broken := strings.Replace(goodTemplate, change[0], change[1], 1)
 		if broken == goodTemplate {

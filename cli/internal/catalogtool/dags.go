@@ -3,6 +3,7 @@
 package catalogtool
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -187,6 +188,8 @@ func templateProblems(team, stem string, doc any, index map[string]map[string]an
 	}
 	if why := schemaProblem(t["parameters"]); why != "" {
 		problems = append(problems, "parameters isn't a valid JSON Schema: "+why)
+	} else {
+		problems = append(problems, exampleProblems(t)...)
 	}
 	params, _ := schemaKeys(t["parameters"])
 
@@ -266,6 +269,36 @@ func templateProblems(team, stem string, doc any, index map[string]map[string]an
 					}
 				}
 			}
+		}
+	}
+	return problems
+}
+
+// exampleProblems: each of a template's examples has a name of its own and
+// parameters its parameters take, and is small enough for a release.
+func exampleProblems(t map[string]any) []string {
+	examples, _ := t["examples"].([]any)
+	if len(examples) == 0 {
+		return nil
+	}
+	parameters, err := compile("embedded:///parameters.json", t["parameters"])
+	if err != nil {
+		return nil // reported as the parameters' own problem
+	}
+	var problems []string
+	seen := map[string]bool{}
+	for _, raw := range examples {
+		example := raw.(map[string]any)
+		name := text(example, "name")
+		if seen[name] {
+			problems = append(problems, fmt.Sprintf("example %s: another example has this name", quote(name)))
+		}
+		seen[name] = true
+		for _, why := range schemaErrors(parameters, example["parameters"]) {
+			problems = append(problems, fmt.Sprintf("example %s: %s", quote(name), why))
+		}
+		if data, _ := json.Marshal(example["parameters"]); len(data) > maxExampleBytes {
+			problems = append(problems, fmt.Sprintf("example %s: over %d bytes", quote(name), maxExampleBytes))
 		}
 	}
 	return problems

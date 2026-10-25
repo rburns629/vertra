@@ -287,7 +287,9 @@ A team's `dags/` folder holds two kinds of file:
   `{$param: <name>}`, or `{$fromStep: <id>, $output: <name>}` from a step
   in `dependsOn`. `./vertra catalog validate` checks every action exists and is
   shared with your team, and that each step gets the inputs its action
-  needs. See [samples/local/dags/shout-backwards.yaml](samples/local/dags/shout-backwards.yaml).
+  needs. `examples` (up to ten, each a `name` and its `parameters`) are
+  ways to run it, which must fit `parameters`; the run form offers them
+  under **Use this**. See [samples/local/dags/shout-backwards.yaml](samples/local/dags/shout-backwards.yaml).
 - **`kind: Dag`**: a concrete DAG, exactly what the console's Submit page
   takes (images, teams, inputs): examples and walkthroughs.
 

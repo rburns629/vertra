@@ -39,6 +39,7 @@ import { Runnable_Kind, TemplateService } from "./gen/vertra/console/v1/template
 import { ResourceService } from "./gen/vertra/console/v1/resource_pb.js";
 import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js";
 import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
+import { DraftService, type Draft as DraftMessage } from "./gen/vertra/console/v1/draft_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
@@ -123,6 +124,7 @@ const templates = createClient(TemplateService, transport);
 const resourcesApi = createClient(ResourceService, transport);
 const notificationsApi = createClient(NotificationService, transport);
 const schedulesApi = createClient(ScheduleService, transport);
+const draftsApi = createClient(DraftService, transport);
 
 function apiError(error: unknown): ApiError {
   const connect = ConnectError.from(error);
@@ -2033,4 +2035,41 @@ export async function getEmailPreferences(): Promise<{ available: boolean; kinds
 
 export async function setEmailPreferences(kinds: string[]): Promise<string[]> {
   return (await call(() => notificationsApi.setEmailPreferences({ kinds }))).kinds;
+}
+
+/** One of Compose's drafts, as the console keeps it for its team. */
+export interface StoredDraft {
+  team: string;
+  name: string;
+  /** The Compose page's own state. */
+  body: Record<string, unknown>;
+  /** Counts its saves: a save names the one it changed. */
+  version: number;
+  updatedBy: string;
+  updatedAt: string | null;
+}
+
+function storedDraftOf(d: DraftMessage | undefined): StoredDraft {
+  return {
+    team: d?.team ?? "",
+    name: d?.name ?? "",
+    body: (d?.body ?? {}) as Record<string, unknown>,
+    version: Number(d?.version ?? 0),
+    updatedBy: d?.updatedBy ?? "",
+    updatedAt: iso(d?.updatedAt),
+  };
+}
+
+/** The drafts of every team you're in (every team, for an admin), newest first. */
+export async function listDrafts(): Promise<StoredDraft[]> {
+  return (await call(() => draftsApi.listDrafts({}))).drafts.map(storedDraftOf);
+}
+
+/** Saves a draft: version 0 for a new one, else the version it changed (DRAFT_CHANGED if someone saved since). */
+export async function saveDraft(input: { team: string; name: string; body: Record<string, unknown>; version: number }): Promise<StoredDraft> {
+  return storedDraftOf((await call(() => draftsApi.saveDraft({ ...input, body: input.body as JsonObject, version: BigInt(input.version) }))).draft);
+}
+
+export async function deleteDraft(team: string, name: string): Promise<void> {
+  await call(() => draftsApi.deleteDraft({ team, name }));
 }

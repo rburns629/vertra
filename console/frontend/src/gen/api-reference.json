@@ -211,6 +211,40 @@
    ]
   },
   {
+   "name": "DraftService",
+   "fullName": "vertra.console.v1.DraftService",
+   "comment": "Compose's drafts: templates being built, kept by the console for the team\neach is for, so its members (and admins) see and change them from any\ndevice. A draft is the page's own state, which the console keeps as it\nis (at most 64 KiB, 100 a team). Each save names the version it changed,\nso two people's edits never silently overwrite each other.",
+   "methods": [
+    {
+     "name": "ListDrafts",
+     "comment": "The drafts of a team, or of every team you're in (every team, for an\nadmin), newest first.",
+     "input": "vertra.console.v1.ListDraftsRequest",
+     "output": "vertra.console.v1.ListDraftsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SaveDraft",
+     "comment": "Saves a draft: a new one with version 0, else the version it changed.\nRefused (failed_precondition, DRAFT_CHANGED) when someone saved it\nsince, or a new one's name is taken; the Failure carries the current\nversion.",
+     "input": "vertra.console.v1.SaveDraftRequest",
+     "output": "vertra.console.v1.SaveDraftResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "DeleteDraft",
+     "comment": "Deletes a draft.",
+     "input": "vertra.console.v1.DeleteDraftRequest",
+     "output": "vertra.console.v1.DeleteDraftResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "ExecutionService",
    "fullName": "vertra.console.v1.ExecutionService",
    "comment": "Executions: DAGs submitted to run, their tasks, events and logs.\nEverything here is checked against the caller's teams first: an\nexecution is visible to a member of any team it names, and changed only\nby a member of every one, or by whoever submitted it (a consumer's run of\nanother team's template, TemplateService).",
@@ -2564,6 +2598,154 @@
      "comment": ""
     }
    ]
+  },
+  "vertra.console.v1.Draft": {
+   "name": "Draft",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its template's name, and so its file's: lowercase letters, digits and\ndashes."
+    },
+    {
+     "name": "body",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "The page's own state, kept as it is."
+    },
+    {
+     "name": "version",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Counts up with each save."
+    },
+    {
+     "name": "updatedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who saved it last; empty once their account is gone."
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListDraftsRequest": {
+   "name": "ListDraftsRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: every team you're in."
+    }
+   ]
+  },
+  "vertra.console.v1.ListDraftsResponse": {
+   "name": "ListDraftsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "drafts",
+     "type": "Draft",
+     "ref": "vertra.console.v1.Draft",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SaveDraftRequest": {
+   "name": "SaveDraftRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "body",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "version",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The version this changes; 0 for a new draft."
+    }
+   ]
+  },
+  "vertra.console.v1.SaveDraftResponse": {
+   "name": "SaveDraftResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "draft",
+     "type": "Draft",
+     "ref": "vertra.console.v1.Draft",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteDraftRequest": {
+   "name": "DeleteDraftRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteDraftResponse": {
+   "name": "DeleteDraftResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.Dag": {
    "name": "Dag",

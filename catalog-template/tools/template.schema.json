@@ -83,6 +83,29 @@
         }
       }
     },
+    "examples": {
+      "description": "Ways to run it, each a name and its parameters, which must fit parameters. The console offers them on its run form as a starting point.",
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "parameters"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "parameters": {
+            "type": "object"
+          }
+        }
+      }
+    },
     "steps": {
       "type": "array",
       "minItems": 1,
