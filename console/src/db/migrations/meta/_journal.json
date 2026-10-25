@@ -204,6 +204,13 @@
       "when": 1792934662186,
       "tag": "0028_drafts_and_template_examples",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792957331113,
+      "tag": "0029_sso_settings",
+      "breakpoints": true
     }
   ]
 }

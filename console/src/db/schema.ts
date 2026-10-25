@@ -934,3 +934,47 @@ export const catalogSync = pgTable("catalog_sync", {
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   error: text("error"),
 });
+
+/**
+ * Single sign-on as admins set it up (sso.ts, core/sso.ts): one row. The
+ * provider here is used only when the install set none (OIDC_ISSUER); the
+ * groups settings always. The client secret is kept encrypted (sealed.ts),
+ * so a copy of the database alone doesn't give it away.
+ */
+export const ssoSettings = pgTable(
+  "sso_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    enabled: boolean("enabled").notNull().default(false),
+    issuer: text("issuer").notNull().default(""),
+    clientId: text("client_id").notNull().default(""),
+    clientSecretEncrypted: text("client_secret_encrypted"),
+    redirectUrl: text("redirect_url").notNull().default(""),
+    allowedDomains: text("allowed_domains").array().notNull().default(sql`'{}'::text[]`),
+    label: text("label").notNull().default(""),
+    // The ID token claim listing a person's groups; "": none.
+    groupsClaim: text("groups_claim").notNull().default(""),
+    // Groups from Google Workspace too (Cloud Identity's Groups API).
+    googleGroups: boolean("google_groups").notNull().default(false),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("sso_settings_one_row", sql`${table.id} = 1`)],
+);
+
+/** A provider group that makes its members a team's, at each single sign-on (sso.ts). */
+export const ssoGroupMappings = pgTable(
+  "sso_group_mappings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // As the provider names it: a groups claim value, or a Google group's email.
+    groupName: text("group_name").notNull(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    role: text("role").$type<TeamRole>().notNull().default("member"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("sso_group_mappings_group_team").on(table.groupName, table.teamId)],
+);

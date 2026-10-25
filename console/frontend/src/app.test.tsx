@@ -647,7 +647,9 @@ describe("a new install", () => {
     expect(screen.getByText("1 of 4 done")).toBeTruthy();
     expect(screen.getByText("Connect the catalog")).toBeTruthy();
     expect(await screen.findByText("0.4.0")).toBeTruthy();
-    expect(screen.getAllByText(/vertra sso google/, { selector: "span" }).length).toBe(2);
+    // Single sign-on: set on the People tab, or with vertra.
+    expect(screen.getAllByText(/vertra sso google/, { selector: "span" }).length).toBe(1);
+    expect(screen.getByText("Admin, People: Single sign-on")).toBeTruthy();
   });
 });
 

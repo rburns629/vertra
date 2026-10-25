@@ -785,6 +785,58 @@
    ]
   },
   {
+   "name": "SsoService",
+   "fullName": "vertra.console.v1.SsoService",
+   "comment": "Single sign-on, as admins set it up: the OpenID Connect provider people\nmay sign in with (optional: passwords keep working), where their groups\ncome from, and which groups make whom a member of which team. A provider\nthe install set (the console chart's sso) is used as it is and shown\nread-only here; the groups and their mappings are always admins'. A\nmapped team's members who sign in with single sign-on follow their\ngroups at each sign-in: added, given the mapping's role, or removed.\nAdmins only.",
+   "methods": [
+    {
+     "name": "GetSsoSettings",
+     "comment": "The provider in effect (the install's, or the saved one) and where\ngroups come from; never the client secret.",
+     "input": "vertra.console.v1.GetSsoSettingsRequest",
+     "output": "vertra.console.v1.GetSsoSettingsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetSsoSettings",
+     "comment": "Sets the provider (refused, failed_precondition SSO_SET_BY_INSTALL, when\nthe install set one) and where groups come from. The issuer's discovery\ndocument must be readable; a client secret left empty keeps the stored\none.",
+     "input": "vertra.console.v1.SetSsoSettingsRequest",
+     "output": "vertra.console.v1.SetSsoSettingsResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ListSsoGroupMappings",
+     "comment": "Which groups make whom a member of which team, by group.",
+     "input": "vertra.console.v1.ListSsoGroupMappingsRequest",
+     "output": "vertra.console.v1.ListSsoGroupMappingsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetSsoGroupMapping",
+     "comment": "Maps a group to a team, as member or maintainer; the same group and\nteam again changes its role.",
+     "input": "vertra.console.v1.SetSsoGroupMappingRequest",
+     "output": "vertra.console.v1.SetSsoGroupMappingResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "DeleteSsoGroupMapping",
+     "comment": "Unmaps it. Memberships it gave change at each person's next sign-in.",
+     "input": "vertra.console.v1.DeleteSsoGroupMappingRequest",
+     "output": "vertra.console.v1.DeleteSsoGroupMappingResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "TeamService",
    "fullName": "vertra.console.v1.TeamService",
    "comment": "Teams: the unit of tenancy. A team is a console team, a Kubernetes\nnamespace and a catalog folder, all one name. Its lifecycle: created,\nretired (reversible, read-only), purged (its name stays reserved).",
@@ -7528,6 +7580,312 @@
      "comment": ""
     }
    ]
+  },
+  "vertra.console.v1.SsoSettings": {
+   "name": "SsoSettings",
+   "comment": "",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether people may sign in with the provider."
+    },
+    {
+     "name": "setByInstall",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "True when the install set the provider: issuer to label are read-only."
+    },
+    {
+     "name": "issuer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "clientId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "clientSecretSet",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether a client secret is stored; it's never sent back."
+    },
+    {
+     "name": "redirectUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "<console URL>/api/auth/oidc/callback, registered with the provider."
+    },
+    {
+     "name": "allowedDomains",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Email domains (a Google Workspace account's hd) that may sign in."
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The sign-in button's name for the provider, such as Google or Okta."
+    },
+    {
+     "name": "groupsClaim",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The ID token claim listing a person's groups (usually \"groups\": Entra\nID, Okta, Keycloak); empty: none."
+    },
+    {
+     "name": "googleGroups",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether groups also come from Google Workspace (Cloud Identity's Groups\nAPI, as the console's own Google identity, which needs the Groups Reader\nrole)."
+    },
+    {
+     "name": "updatedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SsoGroupMapping": {
+   "name": "SsoGroupMapping",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "group",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "As the provider names it: a groups claim value, or a Google group's email."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "role",
+     "type": "TeamRole",
+     "ref": "vertra.console.v1.TeamRole",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetSsoSettingsRequest": {
+   "name": "GetSsoSettingsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetSsoSettingsResponse": {
+   "name": "GetSsoSettingsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "settings",
+     "type": "SsoSettings",
+     "ref": "vertra.console.v1.SsoSettings",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetSsoSettingsRequest": {
+   "name": "SetSsoSettingsRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "issuer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "clientId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "clientSecret",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: keep the stored one."
+    },
+    {
+     "name": "redirectUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "allowedDomains",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "groupsClaim",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "googleGroups",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetSsoSettingsResponse": {
+   "name": "SetSsoSettingsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "settings",
+     "type": "SsoSettings",
+     "ref": "vertra.console.v1.SsoSettings",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListSsoGroupMappingsRequest": {
+   "name": "ListSsoGroupMappingsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListSsoGroupMappingsResponse": {
+   "name": "ListSsoGroupMappingsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "mappings",
+     "type": "SsoGroupMapping",
+     "ref": "vertra.console.v1.SsoGroupMapping",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetSsoGroupMappingRequest": {
+   "name": "SetSsoGroupMappingRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "group",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "role",
+     "type": "TeamRole",
+     "ref": "vertra.console.v1.TeamRole",
+     "repeated": false,
+     "optional": false,
+     "comment": "Unspecified: a member."
+    }
+   ]
+  },
+  "vertra.console.v1.SetSsoGroupMappingResponse": {
+   "name": "SetSsoGroupMappingResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "mapping",
+     "type": "SsoGroupMapping",
+     "ref": "vertra.console.v1.SsoGroupMapping",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteSsoGroupMappingRequest": {
+   "name": "DeleteSsoGroupMappingRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteSsoGroupMappingResponse": {
+   "name": "DeleteSsoGroupMappingResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.ListTemplatesRequest": {
    "name": "ListTemplatesRequest",

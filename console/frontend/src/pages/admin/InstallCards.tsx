@@ -46,7 +46,7 @@ export function InstallCard() {
           {install.environmentLabel} · {code(install.version)}
         </Typography>
       </Box>
-      <Part name="Signing in with single sign-on" on={install.ssoProvider !== ""} detail={install.ssoProvider} howTo={<>{code("vertra sso google")}, then {code("vertra apply")}</>} />
+      <Part name="Signing in with single sign-on" on={install.ssoProvider !== ""} detail={install.ssoProvider} howTo={<>Admin, People: Single sign-on</>} />
       <Part name="The catalog" on={install.catalog} detail={install.catalogSigned ? "Releases' signatures checked" : "Releases read, signatures not checked"} howTo={<>{code("vertra catalog create")}</>} />
       <Part name="Images scanned before they run" on={install.scanning} detail="Fixable high and critical findings block a run" howTo="The console chart's scanning.enabled" />
       <Part name="Log search" on={install.logs} detail={`The last ${String(install.logSearchDays)} days, in Observe`} howTo={<>{code("logs.enabled")} in vertra.yaml</>} />
@@ -103,8 +103,8 @@ export function FirstRunChecklist() {
         },
         {
           done: Boolean(i?.ssoProvider),
-          title: "Optional: sign in with Google",
-          how: <>{code("vertra sso google")}, then {code("vertra apply")}. Passwords keep working.</>,
+          title: "Optional: single sign-on",
+          how: <>On the <Link component={RouterLink} to="/admin?tab=people">People</Link> tab (Google, Entra ID, Okta…), or {code("vertra sso google")}. Passwords keep working.</>,
         },
       ]);
     });

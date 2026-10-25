@@ -7,6 +7,7 @@
  * run here with its scan. A refusal links its run only for those who may
  * see that run; a hidden product's image only for its own team.
  */
+import { currentSso } from "../sso.js";
 import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import { and, desc, eq, gte, inArray, or, sql, type SQL } from "drizzle-orm";
@@ -46,6 +47,7 @@ type Check = { name: string; state: "enforced" | "off" | "not_yet"; text: string
 
 /** What this install enforces, from its own settings, and the known gaps. */
 async function checks(): Promise<Check[]> {
+  const sso = currentSso();
   const policy = await readImagePolicy().catch(() => null);
   const sources = policy?.exists ? [policy.source, ...policy.additional].filter(Boolean) : [];
   const { publicKeys, keylessIssuer } = config.catalog.signature;
@@ -108,9 +110,9 @@ async function checks(): Promise<Check[]> {
     },
     {
       name: "Single sign-on",
-      state: config.oidc ? "enforced" : "off",
-      text: config.oidc
-        ? `People may sign in with ${config.oidc.label}, from ${config.oidc.allowedDomains.join(", ")} only. A team can require it: then its members' passwords don't work (admins' do).`
+      state: sso ? "enforced" : "off",
+      text: sso
+        ? `People may sign in with ${sso.label}, from ${sso.allowedDomains.join(", ")} only. A team can require it: then its members' passwords don't work (admins' do).`
         : "Sign-in is by password.",
     },
     {

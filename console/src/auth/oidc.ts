@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 /**
- * Single sign-on with an OpenID Connect provider (config.oidc; Google's
- * for now): the authorization code flow with PKCE, as two routes under
- * /api/auth/oidc.
+ * Single sign-on with an OpenID Connect provider (the one in effect:
+ * sso.ts, the install's or admins'): the authorization code flow with PKCE,
+ * as two routes under /api/auth/oidc, which read the settings at each
+ * request, so turning it on or off needs no restart.
  *
  * - start: makes a state, a nonce and a PKCE verifier, keeps them in a
  *   signed, HttpOnly cookie scoped to these routes for ten minutes, and
@@ -14,8 +15,10 @@
  *   the person's account: the one bound to this provider identity; else the
  *   one with this email, bound now (once: never over another identity); else
  *   a new one, with no password and no teams (admins and maintainers add
- *   them, as for anyone). It answers with a redirect to /login carrying the
- *   session in the URL's fragment, which browsers never send to a server.
+ *   them, as for anyone). Then, when groups are set up, every team a group
+ *   is mapped to follows the person's groups (sso.ts); groups that can't be
+ *   read refuse the sign-in. It answers with a redirect to /login carrying
+ *   the session in the URL's fragment, which browsers never send to a server.
  *
  * Every failure redirects to /login#error=<CODE> and is logged in full.
  */
@@ -24,6 +27,7 @@ import fastifyCookie from "@fastify/cookie";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply } from "fastify";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "../config.js";
+import { currentSso, groupsOf, GroupsUnavailable, syncMappedTeams, type Sso } from "../sso.js";
 import { bindOidcSubject, createSsoUser, findUserByEmail, findUserByOidcSubject, recordSignIn } from "../db/queries.js";
 
 const COOKIE = "vertra_oidc";
@@ -31,7 +35,7 @@ const COOKIE_PATH = "/api/auth/oidc";
 const COOKIE_SECONDS = 600;
 const GOOGLE = "https://accounts.google.com";
 
-type Oidc = NonNullable<typeof config.oidc>;
+type Oidc = Sso;
 
 interface Discovery {
   issuer: string;
@@ -91,7 +95,7 @@ async function verifiedClaims(oidc: Oidc, idToken: string, nonce: string) {
     throw new SignInRefused("DOMAIN_NOT_ALLOWED", `Accounts from ${domain || "outside a Workspace domain"} can't sign in here.`);
   }
   if (!payload.sub) throw new SignInRefused("SIGN_IN_FAILED", "The ID token names nobody.");
-  return { email, subject: `${discovery.issuer} ${payload.sub}` };
+  return { email, subject: `${discovery.issuer} ${payload.sub}`, claims: payload as Record<string, unknown> };
 }
 
 /** The account this identity signs in as: bound, matched by email and bound, or new. */
@@ -118,21 +122,26 @@ function refuse(reply: FastifyReply, log: FastifyBaseLogger, error: unknown) {
   return reply.redirect(`/login#error=${code}`);
 }
 
-/** The two routes, under /api; nothing when single sign-on is off. */
+/** The provider in effect, or the refusal while single sign-on is off. */
+function inEffect(): Oidc {
+  const oidc = currentSso();
+  if (!oidc) throw new SignInRefused("SSO_OFF", "Single sign-on isn't on here.");
+  return oidc;
+}
+
+/** The two routes, under /api. */
 export async function registerOidc(api: FastifyInstance): Promise<void> {
-  const oidc = config.oidc;
-  if (!oidc) return;
-  const secure = oidc.redirectUrl.startsWith("https://");
   await api.register(fastifyCookie, { secret: config.jwtSecret });
 
   api.get("/auth/oidc/start", async (request, reply) => {
     try {
+      const oidc = inEffect();
       const { discovery } = await provider(oidc);
       const flow = { state: random(), nonce: random(), verifier: random() };
       reply.setCookie(COOKIE, JSON.stringify(flow), {
         signed: true,
         httpOnly: true,
-        secure,
+        secure: oidc.redirectUrl.startsWith("https://"),
         sameSite: "lax",
         path: COOKIE_PATH,
         maxAge: COOKIE_SECONDS,
@@ -168,6 +177,7 @@ export async function registerOidc(api: FastifyInstance): Promise<void> {
       if (error) throw new SignInRefused("SIGN_IN_CANCELLED", `The provider answered ${error}.`);
       if (!state || state !== flow.state || !code) throw new SignInRefused("SIGN_IN_EXPIRED", "The provider's answer isn't for this sign-in.");
 
+      const oidc = inEffect();
       const { discovery } = await provider(oidc);
       const response = await fetch(discovery.token_endpoint, {
         method: "POST",
@@ -186,8 +196,16 @@ export async function registerOidc(api: FastifyInstance): Promise<void> {
       const { id_token: idToken } = (await response.json()) as { id_token?: string };
       if (!idToken) throw new Error("the provider sent no ID token");
 
-      const { email, subject } = await verifiedClaims(oidc, idToken, flow.nonce);
+      const { email, subject, claims } = await verifiedClaims(oidc, idToken, flow.nonce);
+      let groups: string[] | null;
+      try {
+        groups = await groupsOf(claims, email);
+      } catch (error) {
+        if (error instanceof GroupsUnavailable) throw new SignInRefused("GROUPS_UNAVAILABLE", error.message);
+        throw error;
+      }
       const user = await accountFor(email, subject, request.log);
+      if (groups !== null) await syncMappedTeams(user.id, groups, request.log);
       await recordSignIn(user.id);
       request.log.info({ event: "sso_sign_in", userId: user.id }, "signed in with single sign-on");
       return await reply.redirect(`/login#token=${encodeURIComponent(api.jwt.sign({ userId: user.id, sso: true }))}`);

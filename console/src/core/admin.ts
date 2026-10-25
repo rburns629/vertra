@@ -5,6 +5,7 @@
  * current (policySync.ts), and the catalog release applied
  * (catalogSync.ts). The logic behind AdminService.
  */
+import { currentSso } from "../sso.js";
 import { and, desc, eq, lt, type SQL } from "drizzle-orm";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
@@ -42,7 +43,7 @@ export function install(caller: AuthUser | undefined) {
   return {
     version: config.version,
     environmentLabel: config.environmentLabel,
-    ssoProvider: config.oidc?.label ?? "",
+    ssoProvider: currentSso()?.label ?? "",
     logs: config.logs.lokiUrl !== "",
     logSearchDays: config.logs.searchDays,
     auditCopy: config.audit.export.bucket !== "",

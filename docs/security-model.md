@@ -385,9 +385,14 @@ would keep it from binding the role elsewhere.
 
 ## Signing in
 
-People sign in with a password, or with single sign-on when the console
-chart's `sso` is set (Google, through OpenID Connect:
-`console/src/auth/oidc.ts`). The sign-in uses the authorization code flow
+People sign in with a password, or with single sign-on when it's on: an
+OpenID Connect provider (Google, Entra ID, Okta, Keycloak) that either the
+console chart's `sso` sets (then it's read-only in the console) or admins
+set on Admin, People (`console/src/core/sso.ts`; its client secret sealed
+in the database with a key derived from `JWT_SECRET`, write-only). Saving
+a provider reads its discovery document first. Every console reads the
+saved settings every few seconds, so turning it on or off needs no restart
+(`console/src/sso.ts`, `console/src/auth/oidc.ts`). The sign-in uses the authorization code flow
 with PKCE; its state, nonce and verifier live in a signed, HttpOnly cookie
 for ten minutes. The ID token must carry the provider's signature, this
 console as its audience, this sign-in's nonce, a verified email, and a
@@ -406,6 +411,18 @@ several teams must use single sign-on if any requires it, since a password
 would open the strict team's runs and secrets too. Admins are exempt, as the
 way in if the provider fails. While single sign-on is off the setting has
 no effect, so nobody is locked out. Bots keep their tokens.
+
+Groups, from the ID token's groups claim and/or Google Workspace (Cloud
+Identity's Groups API, read as the console's own Google identity, which
+needs the Groups Reader role), can be mapped to teams by admins. At each
+single sign-on, every mapped team's membership follows the person's groups:
+added with the best role their groups give, changed, or removed. Teams
+nothing maps to are left alone. Groups that can't be read (a missing claim,
+too many groups for the token, Google's API failing) refuse the sign-in
+(`GROUPS_UNAVAILABLE`) rather than count as none, which would take people
+out of their teams. On a mapped team, a single sign-on member's membership
+can't be changed by hand (`TEAM_FOLLOWS_SSO_GROUPS`); bots and password
+accounts are managed there as ever.
 
 A password someone else set (a new account's temporary one, an admin's
 reset of someone else's, `vertra admin reset-password`) has to be changed

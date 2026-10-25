@@ -17,6 +17,7 @@
 import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
+import { groupSources, teamIsMapped } from "../sso.js";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import { canActForTeam, ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
@@ -179,6 +180,21 @@ async function maintainedTeam(caller: AuthUser | undefined, name: string) {
   return team;
 }
 
+/**
+ * Refused for someone who signs in with single sign-on on a team a group is
+ * mapped to: their groups decide it at each sign-in (sso.ts), so a change
+ * here wouldn't last. Bots and password accounts are managed here as ever.
+ */
+async function ensureNotFollowingGroups(team: { id: string; name: string }, person: { email: string; usesSso: boolean }): Promise<void> {
+  const sources = groupSources();
+  if (!person.usesSso || (!sources.claim && !sources.google) || !(await teamIsMapped(team.id))) return;
+  throw new ApiError(
+    409,
+    "TEAM_FOLLOWS_SSO_GROUPS",
+    `${person.email}'s membership of "${team.name}" follows their single sign-on groups: change their groups, or the team's mappings (Admin, People).`,
+  );
+}
+
 /** Adds someone with an account, as a member unless a maintainer is asked
  * for. A maintainer's job; TeamService limits how often. */
 export async function addMember(
@@ -191,6 +207,7 @@ export async function addMember(
   ensureNotRetired(team);
   const user = await findUserByEmail(email);
   if (!user) throw new ApiError(404, "NOT_FOUND", "No such user.");
+  await ensureNotFollowingGroups(team, { email: user.email, usesSso: user.oidcSubject !== null });
   await addTeamMember(user.id, team.id, role);
 }
 
@@ -228,6 +245,7 @@ export async function removeMember(
   const all = await listMembersForTeam(team.id);
   const target = all.find((m) => m.id === userId);
   if (!target) throw new ApiError(404, "NOT_FOUND", "Not a member of this team.");
+  await ensureNotFollowingGroups(team, target);
   ensureAMaintainerStays(team, all, target);
   await removeTeamMember(target.id, team.id);
   log.info({ team: team.name, removed: target.email, removedBy: caller?.id }, "team member removed");
@@ -248,6 +266,7 @@ export async function setMemberRole(
   const target = all.find((m) => m.id === userId);
   if (!target) throw new ApiError(404, "NOT_FOUND", "Not a member of this team.");
   if (target.role === role) return;
+  await ensureNotFollowingGroups(team, target);
   if (role === "member") ensureAMaintainerStays(team, all, target);
   await setTeamMemberRole(target.id, team.id, role);
   log.info({ team: team.name, member: target.email, role, by: caller?.id }, "team member's role changed");

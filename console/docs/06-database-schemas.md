@@ -724,4 +724,36 @@ An event to post to a team's webhook: tried up to five times.
 | `attempts` | integer | no | |
 | `sent_at` | timestamptz | yes | When it went. |
 
+### sso_settings
+
+Single sign-on as admins set it up: one row (`id` 1). Its provider is used only when the install set none (the console chart's `sso`); its groups settings always. Every console reads it again every few seconds.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | no | Always 1. |
+| `enabled` | boolean | no | Whether people may sign in with this provider. |
+| `issuer` | text | no | The OpenID Connect provider's issuer URL. |
+| `client_id` | text | no | |
+| `client_secret_encrypted` | text | yes | The client's secret, sealed (AES-256-GCM, a key derived from `JWT_SECRET`); never sent back. |
+| `redirect_url` | text | no | `<console URL>/api/auth/oidc/callback`, as registered with the provider. |
+| `allowed_domains` | text[] | no | Email domains whose accounts may sign in. |
+| `label` | text | no | The sign-in button's name for the provider. |
+| `groups_claim` | text | no | The ID token claim listing a person's groups; empty: none. |
+| `google_groups` | boolean | no | Groups from Google Workspace too (Cloud Identity's Groups API, as the console's own Google identity). |
+| `updated_by` | uuid | yes | |
+| `updated_at` | timestamptz | no | |
+
+### sso_group_mappings
+
+A provider group that makes its members a team's: at each single sign-on, a mapped team's membership follows the person's groups (the best role among them, or none). Deleted with its team.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `group_name` | text | no | As the provider names it (a groups claim value, or a Google group's email), lowercased. With `team_id`, unique. |
+| `team_id` | uuid | no | |
+| `role` | text | no | `member` or `maintainer`. |
+| `created_by` | uuid | yes | |
+| `created_at` | timestamptz | no | |
+
 The console's migrations are tracked in the `drizzle` schema, outside `public`.

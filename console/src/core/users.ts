@@ -6,11 +6,11 @@
  * since admin is a platform-wide capability, not something scoped to what
  * the granter already owns.
  */
+import { currentSso } from "../sso.js";
 import { Code } from "@connectrpc/connect";
 import { randomBytes } from "node:crypto";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
-import { config } from "../config.js";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hashPassword } from "../auth/password.js";
@@ -68,7 +68,7 @@ export async function createAccount(
 
   // No password for someone whose team requires single sign-on: they sign in
   // with the provider as this email, which binds the account to them then.
-  const ssoOnly = config.oidc && !input.admin && teamsRequireSso;
+  const ssoOnly = currentSso() && !input.admin && teamsRequireSso;
   const temporaryPassword = ssoOnly ? "" : randomBytes(18).toString("base64url");
   // Whoever receives a temporary password must change it first.
   const user = await createUser(email, temporaryPassword ? await hashPassword(temporaryPassword) : null, temporaryPassword !== "");

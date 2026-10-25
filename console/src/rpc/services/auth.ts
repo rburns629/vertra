@@ -7,6 +7,7 @@
  * timing) whether an email has an account or the password is wrong, and a
  * password change that signs out every other session.
  */
+import { currentSso } from "../../sso.js";
 import { Code, type ServiceImpl } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
@@ -43,7 +44,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       return {
         label: config.environmentLabel,
         selfRegistration: config.allowSelfRegistration,
-        ssoLabel: config.oidc?.label ?? "",
+        ssoLabel: currentSso()?.label ?? "",
       };
     },
 
@@ -100,7 +101,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       const requiring = ssoRequiredBy(user, await teamRolesForUser(user.id));
       if (requiring.length > 0) {
         throw forbidden(
-          `${requiring.join(", ")} sign${requiring.length === 1 ? "s" : ""} in with ${config.oidc?.label ?? "single sign-on"}: use that instead of a password.`,
+          `${requiring.join(", ")} sign${requiring.length === 1 ? "s" : ""} in with ${currentSso()?.label ?? "single sign-on"}: use that instead of a password.`,
           "SSO_REQUIRED",
         );
       }

@@ -40,6 +40,7 @@ import { ResourceService } from "./gen/vertra/console/v1/resource_pb.js";
 import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js";
 import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
 import { DraftService, type Draft as DraftMessage } from "./gen/vertra/console/v1/draft_pb.js";
+import { SsoService, type SsoSettings as SsoSettingsMessage } from "./gen/vertra/console/v1/sso_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
 export class ApiError extends Error {
@@ -125,6 +126,7 @@ const resourcesApi = createClient(ResourceService, transport);
 const notificationsApi = createClient(NotificationService, transport);
 const schedulesApi = createClient(ScheduleService, transport);
 const draftsApi = createClient(DraftService, transport);
+const ssoApi = createClient(SsoService, transport);
 
 function apiError(error: unknown): ApiError {
   const connect = ConnectError.from(error);
@@ -2142,4 +2144,72 @@ export async function saveDraft(input: { team: string; name: string; body: Recor
 
 export async function deleteDraft(team: string, name: string): Promise<void> {
   await call(() => draftsApi.deleteDraft({ team, name }));
+}
+
+/** Single sign-on as admins set it up: the provider, and where groups come from. */
+export interface SsoSettings {
+  enabled: boolean;
+  /** The install set the provider (the console chart's sso): issuer to label are read-only. */
+  setByInstall: boolean;
+  issuer: string;
+  clientId: string;
+  /** Whether a client secret is stored; it's never sent back. */
+  clientSecretSet: boolean;
+  redirectUrl: string;
+  allowedDomains: string[];
+  label: string;
+  groupsClaim: string;
+  googleGroups: boolean;
+  updatedBy: string;
+  updatedAt: string | null;
+}
+
+function ssoSettingsOf(s: SsoSettingsMessage | undefined): SsoSettings {
+  return {
+    enabled: s?.enabled ?? false,
+    setByInstall: s?.setByInstall ?? false,
+    issuer: s?.issuer ?? "",
+    clientId: s?.clientId ?? "",
+    clientSecretSet: s?.clientSecretSet ?? false,
+    redirectUrl: s?.redirectUrl ?? "",
+    allowedDomains: s?.allowedDomains ?? [],
+    label: s?.label ?? "",
+    groupsClaim: s?.groupsClaim ?? "",
+    googleGroups: s?.googleGroups ?? false,
+    updatedBy: s?.updatedBy ?? "",
+    updatedAt: iso(s?.updatedAt),
+  };
+}
+
+export async function getSsoSettings(): Promise<SsoSettings> {
+  return ssoSettingsOf((await call(() => ssoApi.getSsoSettings({}))).settings);
+}
+
+/** Saves them; an empty clientSecret keeps the stored one. Admins only. */
+export async function setSsoSettings(input: Omit<SsoSettings, "setByInstall" | "clientSecretSet" | "updatedBy" | "updatedAt"> & { clientSecret: string }): Promise<SsoSettings> {
+  return ssoSettingsOf((await call(() => ssoApi.setSsoSettings(input))).settings);
+}
+
+export interface SsoGroupMapping {
+  id: string;
+  group: string;
+  team: string;
+  role: "maintainer" | "member";
+}
+
+export async function listSsoGroupMappings(): Promise<SsoGroupMapping[]> {
+  return (await call(() => ssoApi.listSsoGroupMappings({}))).mappings.map((m) => ({
+    id: m.id,
+    group: m.group,
+    team: m.team,
+    role: m.role === TeamRole.MAINTAINER ? "maintainer" : "member",
+  }));
+}
+
+export async function setSsoGroupMapping(group: string, team: string, role: "maintainer" | "member"): Promise<void> {
+  await call(() => ssoApi.setSsoGroupMapping({ group, team, role: toTeamRole[role] }));
+}
+
+export async function deleteSsoGroupMapping(id: string): Promise<void> {
+  await call(() => ssoApi.deleteSsoGroupMapping({ id }));
 }

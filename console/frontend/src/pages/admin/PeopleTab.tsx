@@ -37,6 +37,7 @@ import { Pill } from "../../components/Pill";
 import { useEnvironment } from "../../environment";
 import { when } from "../../time";
 import { AutomationTokensCard } from "./AutomationTokensCard";
+import { SsoCard } from "./SsoCard";
 
 const mono = { fontFamily: "fontFamilyMono", fontSize: 13 } as const;
 
@@ -302,6 +303,8 @@ export function PeopleTab() {
         {error && <Alert severity="error">{error}</Alert>}
         <DataTable columns={columns} rows={shown} getRowKey={(p) => p.email} emptyMessage={query ? "Nobody matches." : "No accounts yet."} />
       </Card>
+
+      <SsoCard />
 
       <AutomationTokensCard />
 

@@ -24,6 +24,8 @@ const SSO_ERRORS: Record<string, string> = {
   SIGN_IN_EXPIRED: "That sign-in took too long or was started elsewhere. Try again.",
   SIGN_IN_CANCELLED: "Sign-in was cancelled.",
   SIGN_IN_FAILED: "Sign-in didn't work. Try again, or ask an admin.",
+  SSO_OFF: "Single sign-on isn't on here any more: sign in with your password, or ask an admin.",
+  GROUPS_UNAVAILABLE: "Your groups couldn't be read, so your teams can't be checked. Try again shortly, or ask an admin.",
 };
 
 export function LoginPage() {

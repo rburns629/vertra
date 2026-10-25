@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+import { currentSso } from "../sso.js";
 import fp from "fastify-plugin";
 import fastifyJwt from "@fastify/jwt";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
@@ -48,7 +49,7 @@ declare module "fastify" {
  * while it's off (nobody is locked out).
  */
 export function ssoRequiredBy(user: { isAdmin: boolean }, roles: { name: string; requireSso: boolean }[]): string[] {
-  if (!config.oidc || user.isAdmin) return [];
+  if (!currentSso() || user.isAdmin) return [];
   return roles.filter((r) => r.requireSso).map((r) => r.name);
 }
 

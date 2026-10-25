@@ -24,11 +24,11 @@
  * theirs again.
  */
 import type { FastifyBaseLogger } from "fastify";
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createTransport, type Transporter } from "nodemailer";
 import { and, asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { config } from "./config.js";
+import { seal, unseal } from "./sealed.js";
 import { backendAllowed } from "./core/apis.js";
 import { db } from "./db/client.js";
 import { catalogSync, emailDeliveries, notificationEvents, teamMemberships, teams, teamWebhooks, userNotifications, users, webhookDeliveries, type NotificationKind } from "./db/schema.js";
@@ -42,30 +42,15 @@ const CATALOG_GRACE_MS = 30 * 60_000;
 
 // --- the webhook URL, encrypted ---
 
-const TAG_LENGTH = 16;
-const key = () => Buffer.from(hkdfSync("sha256", config.jwtSecret, "vertra", "notification webhook urls", 32));
+const PURPOSE = "notification webhook urls";
 
 export function encryptUrl(url: string): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key(), iv, { authTagLength: TAG_LENGTH });
-  const data = Buffer.concat([cipher.update(url, "utf8"), cipher.final()]);
-  return ["v1", iv.toString("base64"), cipher.getAuthTag().toString("base64"), data.toString("base64")].join(".");
+  return seal(url, PURPOSE);
 }
 
 /** The URL, or null when it can't be read (JWT_SECRET changed since). */
 export function decryptUrl(stored: string): string | null {
-  const [version, iv, tag, data] = stored.split(".");
-  if (version !== "v1" || !iv || !tag || !data) return null;
-  const authTag = Buffer.from(tag, "base64");
-  // The whole tag, always: a shorter one would be easier to forge.
-  if (authTag.length !== TAG_LENGTH) return null;
-  try {
-    const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64"), { authTagLength: TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-    return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
-  } catch {
-    return null;
-  }
+  return unseal(stored, PURPOSE);
 }
 
 /** Why a webhook URL can't be used, or null. */
