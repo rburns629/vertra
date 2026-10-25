@@ -186,11 +186,11 @@ design.
     `github.md`: account, root MFA, Identity Center, budgets), linked from
     the CLI when it recognises a case: a Builder ID that isn't an account,
     an Identity Center account instance, an organization a sign-up made.
-- [ ] **Prove the AWS and Azure samples** (`catalog-template/samples/aws`,
-  `azure`): they build and their tests pass with the SDKs mocked, but they
-  haven't called a real account. On EKS and AKS: bind each product's
-  ServiceAccount, run each DAG, check the resources and the password-free
-  databases, delete them; and their SecretStores through ESO.
+- [ ] **Prove the AWS sample's SecretStore** through ESO on EKS: its
+  products, DAG, password-free database and cleanups are proven (2026-10-19
+  and 2026-10-25). The Azure samples are after the MVP (decided 2026-10-25):
+  they build and pass their tests with the SDK mocked, but have never called
+  a real subscription.
 - [x] **Let a deployment label step Pods** (I2, done 2026-10-21):
   `scheduler.taskPodLabels` (`TASK_POD_LABELS`), on the step Pod only; the
   scheduler refuses to start with `app` or a `vertra.dev/*` key. Proven on
@@ -239,7 +239,8 @@ design.
 From the assessment of 2026-10-19 ([docs/assessment.md](docs/assessment.md);
 IDs refer to its findings). P0 first; none of it needs a new service.
 This comes before Azure and GitLab, which are deferred (the Azure items
-elsewhere in this file wait until then).
+elsewhere in this file wait until then; Azure is after the MVP, decided
+2026-10-25).
 
 Order of work (decided 2026-10-20): **0** R1, R2 and R4 in the Python
 scheduler (done 2026-10-20). **1** The contracts: the console's API on Connect (protos,
@@ -612,8 +613,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   acyclix-dev: a gcp member made a project (in a folder) and a Cloud Run
   service, another team's member was refused their Delete, an admin's
   cleanup run shut both down. The aws samples' (s3-bucket, app-runner,
-  rds-postgres) and Cloud SQL's proven 2026-10-25 on EKS and GKE. Left:
-  azure's cleanups, once its samples run against a real subscription.
+  rds-postgres) and Cloud SQL's proven 2026-10-25 on EKS and GKE. Azure's
+  cleanups are after the MVP (decided 2026-10-25).
 - [x] **P2: notifications** (done 2026-10-24): an inbox (the bell) and
   each team's chat webhook (Slack, Google Chat, Teams; decided 2026-10-24:
   the URL kept encrypted in the console's database, write-only, allowed
