@@ -46,11 +46,15 @@ type SsoSettings struct {
 	// Whether groups also come from Google Workspace (Cloud Identity's Groups
 	// API, as the console's own Google identity, which needs the Groups Reader
 	// role).
-	GoogleGroups  bool                   `protobuf:"varint,10,opt,name=google_groups,json=googleGroups,proto3" json:"google_groups,omitempty"`
-	UpdatedBy     string                 `protobuf:"bytes,11,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	GoogleGroups bool                   `protobuf:"varint,10,opt,name=google_groups,json=googleGroups,proto3" json:"google_groups,omitempty"`
+	UpdatedBy    string                 `protobuf:"bytes,11,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdatedAt    *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// The Google account this console reads groups as (its own service
+	// account, which a Workspace admin makes a Groups Reader); empty when it
+	// has none (not on Google Cloud).
+	GoogleIdentity string `protobuf:"bytes,13,opt,name=google_identity,json=googleIdentity,proto3" json:"google_identity,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SsoSettings) Reset() {
@@ -165,6 +169,13 @@ func (x *SsoSettings) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *SsoSettings) GetGoogleIdentity() string {
+	if x != nil {
+		return x.GoogleIdentity
+	}
+	return ""
 }
 
 type SsoGroupMapping struct {
@@ -738,7 +749,7 @@ var File_vertra_console_v1_sso_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_sso_proto_rawDesc = "" +
 	"\n" +
-	"\x1bvertra/console/v1/sso.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cvertra/console/v1/team.proto\"\xb2\x03\n" +
+	"\x1bvertra/console/v1/sso.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cvertra/console/v1/team.proto\"\xdb\x03\n" +
 	"\vSsoSettings\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12$\n" +
 	"\x0eset_by_install\x18\x02 \x01(\bR\fsetByInstall\x12\x16\n" +
@@ -754,7 +765,8 @@ const file_vertra_console_v1_sso_proto_rawDesc = "" +
 	"\n" +
 	"updated_by\x18\v \x01(\tR\tupdatedBy\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"|\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12'\n" +
+	"\x0fgoogle_identity\x18\r \x01(\tR\x0egoogleIdentity\"|\n" +
 	"\x0fSsoGroupMapping\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05group\x18\x02 \x01(\tR\x05group\x12\x12\n" +

@@ -213,6 +213,12 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 		}
 		fmt.Fprintf(out, "  Public:  https://%s (certificate %s; %s)\n", c.Console.Hostname, install.ConsoleCertificate(ctx, a.runner, c), how)
 	}
+	if made != nil && made.Provider == "gcp" && c.SSO.GoogleGroups {
+		fmt.Fprintln(out, "\nThe console reads Google Workspace groups as", made.ConsoleServiceAccount+".")
+		fmt.Fprintln(out, "A Workspace admin makes it a Groups Reader, once:")
+		fmt.Fprintln(out, "  https://admin.google.com/ac/roles: Groups Reader, Admins, Assign service accounts:", made.ConsoleServiceAccount)
+		fmt.Fprintln(out, "Then, on the console's Admin page (People, Single sign-on): Google Workspace groups, and map groups to teams.")
+	}
 	if made != nil && made.Provider == "aws" && c.ExternalCatalog.Registry != "" && c.ExternalCatalog.GCPWorkloadIdentityProvider == "" {
 		if steps := install.FederationSteps(c, made.ClusterIssuer); steps != nil {
 			fmt.Fprintln(out, "\nThis install reads the catalog in", c.ExternalCatalog.Registry, "but can't sign in to it yet.")

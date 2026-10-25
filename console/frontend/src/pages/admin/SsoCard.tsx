@@ -225,8 +225,10 @@ export function SsoCard() {
         />
         {form.googleGroups && (
           <Typography variant="caption" color="text.secondary">
-            Read with Cloud Identity&apos;s Groups API as this console&apos;s own Google identity (GKE Workload Identity), which needs
-            the Groups Reader admin role in your Workspace. A sign-in whose groups can&apos;t be read is refused, never counted as no groups.
+            Read with Cloud Identity&apos;s Groups API as this console&apos;s own Google account
+            {form.googleIdentity ? <>, <Mono>{form.googleIdentity}</Mono>,</> : " (it has none here: not on Google Cloud)"} which a
+            Workspace admin makes a Groups Reader (admin.google.com, Admin roles; <Mono>vertra sso google-groups</Mono> says how). A
+            sign-in whose groups can&apos;t be read is refused, never counted as no groups.
           </Typography>
         )}
       </Box>

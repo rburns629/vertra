@@ -2162,6 +2162,8 @@ export interface SsoSettings {
   googleGroups: boolean;
   updatedBy: string;
   updatedAt: string | null;
+  /** The Google account this console reads groups as; "" off Google Cloud. */
+  googleIdentity: string;
 }
 
 function ssoSettingsOf(s: SsoSettingsMessage | undefined): SsoSettings {
@@ -2178,6 +2180,7 @@ function ssoSettingsOf(s: SsoSettingsMessage | undefined): SsoSettings {
     googleGroups: s?.googleGroups ?? false,
     updatedBy: s?.updatedBy ?? "",
     updatedAt: iso(s?.updatedAt),
+    googleIdentity: s?.googleIdentity ?? "",
   };
 }
 
@@ -2186,7 +2189,7 @@ export async function getSsoSettings(): Promise<SsoSettings> {
 }
 
 /** Saves them; an empty clientSecret keeps the stored one. Admins only. */
-export async function setSsoSettings(input: Omit<SsoSettings, "setByInstall" | "clientSecretSet" | "updatedBy" | "updatedAt"> & { clientSecret: string }): Promise<SsoSettings> {
+export async function setSsoSettings(input: Omit<SsoSettings, "setByInstall" | "clientSecretSet" | "updatedBy" | "updatedAt" | "googleIdentity"> & { clientSecret: string }): Promise<SsoSettings> {
   return ssoSettingsOf((await call(() => ssoApi.setSsoSettings(input))).settings);
 }
 

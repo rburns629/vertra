@@ -118,7 +118,8 @@ func (a *app) ssoCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			c.SSO = config.SSO{}
+			// Reading groups is its own setting (vertra sso google-groups).
+			c.SSO = config.SSO{GoogleGroups: c.SSO.GoogleGroups}
 			if err := c.Save(dir); err != nil {
 				return err
 			}
@@ -126,6 +127,35 @@ func (a *app) ssoCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.AddCommand(google, off)
+	var groupsOff bool
+	groups := &cobra.Command{
+		Use:   "google-groups [env]",
+		Short: "Let the console read people's Google Workspace groups, to map them to teams (gcp)",
+		Long: "The console reads each person's Google Workspace groups as its own service account, at each\n" +
+			"single sign-on, so admins can map groups to teams in the console. `vertra apply` enables Cloud\n" +
+			"Identity's API and says which account a Workspace admin makes a Groups Reader. No key is made.",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dir, c, err := a.load(args)
+			if err != nil {
+				return err
+			}
+			c.SSO.GoogleGroups = !groupsOff
+			if err := c.Validate(); err != nil {
+				return err
+			}
+			if err := c.Save(dir); err != nil {
+				return err
+			}
+			if groupsOff {
+				fmt.Fprintf(cmd.OutOrStdout(), "Saved. After `vertra apply %s`, untick Google Workspace groups on the console's Admin page too.\n", envName(dir))
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "Saved. `vertra apply %s` enables it and says which account to make a Groups Reader.\n", envName(dir))
+			}
+			return nil
+		},
+	}
+	groups.Flags().BoolVar(&groupsOff, "off", false, "stop reading Google Workspace groups")
+	cmd.AddCommand(google, off, groups)
 	return cmd
 }

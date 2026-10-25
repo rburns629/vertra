@@ -180,6 +180,10 @@ type SSO struct {
 	AllowedDomains []string `yaml:"allowedDomains,omitempty"`
 	// RedirectURL: the console's sign-in callback, as registered with the client.
 	RedirectURL string `yaml:"redirectUrl,omitempty"`
+	// GoogleGroups: the console reads people's Google Workspace groups, as
+	// its own service account (which a Workspace admin makes a Groups
+	// Reader), for mapping groups to teams. gcp only; whatever the provider.
+	GoogleGroups bool `yaml:"googleGroups,omitempty"`
 }
 
 // Monitoring is for a cluster's Prometheus Operator, as vertra init found
@@ -495,6 +499,9 @@ func (c *Config) Validate() error {
 		if e := c.Console.TLS.LetsEncryptEmail; e != "" && !strings.Contains(e, "@") {
 			add("console.tls.letsEncryptEmail: %q isn't an email address", e)
 		}
+	}
+	if c.SSO.GoogleGroups && c.Target != "gcp" {
+		add("sso.googleGroups: gcp only (the console reads groups as its own Google service account)")
 	}
 	if c.SSO.Provider != "" {
 		if c.SSO.Provider != "google" {

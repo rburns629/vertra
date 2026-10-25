@@ -132,3 +132,9 @@ variable "catalog_repository" {
   type        = string
   default     = ""
 }
+
+variable "google_groups" {
+  description = "The console reads people's Google Workspace groups (Cloud Identity's API), as its own service account, for mapping groups to teams."
+  type        = bool
+  default     = false
+}

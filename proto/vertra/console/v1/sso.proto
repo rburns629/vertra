@@ -61,6 +61,10 @@ message SsoSettings {
   bool google_groups = 10;
   string updated_by = 11;
   google.protobuf.Timestamp updated_at = 12;
+  // The Google account this console reads groups as (its own service
+  // account, which a Workspace admin makes a Groups Reader); empty when it
+  // has none (not on Google Cloud).
+  string google_identity = 13;
 }
 
 message SsoGroupMapping {

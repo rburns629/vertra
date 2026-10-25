@@ -18,7 +18,8 @@ locals {
 }
 
 resource "google_project_service" "apis" {
-  for_each = toset([
+  # Cloud Identity: the console reads people's Workspace groups (sso.googleGroups).
+  for_each = toset(concat([
     "artifactregistry.googleapis.com",
     "cloudbilling.googleapis.com", # prices on the approval screen
     "compute.googleapis.com",
@@ -26,7 +27,7 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "storage.googleapis.com",
-  ])
+  ], var.google_groups ? ["cloudidentity.googleapis.com"] : [])
   service = each.value
   # Other things in the project may use them.
   disable_on_destroy = false

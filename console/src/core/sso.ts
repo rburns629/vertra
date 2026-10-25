@@ -17,7 +17,7 @@ import { db } from "../db/client.js";
 import { findTeamByName } from "../db/queries.js";
 import { ssoGroupMappings, ssoSettings, teams, users, type TeamRole } from "../db/schema.js";
 import { seal } from "../sealed.js";
-import { refreshSso, SECRET_PURPOSE } from "../sso.js";
+import { googleIdentity, refreshSso, SECRET_PURPOSE } from "../sso.js";
 
 const REQUIRES_ADMIN = "Requires admin access.";
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
@@ -36,6 +36,7 @@ export interface SsoSettingsView {
   googleGroups: boolean;
   updatedBy: string;
   updatedAt: Date | null;
+  googleIdentity: string;
 }
 
 export interface SsoSettingsInput {
@@ -75,6 +76,7 @@ export async function getSsoSettings(caller: AuthUser | undefined): Promise<SsoS
     googleGroups: s?.googleGroups ?? false,
     updatedBy: row?.updatedBy ?? "",
     updatedAt: s?.updatedAt ?? null,
+    googleIdentity: await googleIdentity(),
   };
 }
 

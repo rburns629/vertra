@@ -96,6 +96,15 @@ export declare type SsoSettings = Message<"vertra.console.v1.SsoSettings"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 12;
    */
   updatedAt?: Timestamp | undefined;
+
+  /**
+   * The Google account this console reads groups as (its own service
+   * account, which a Workspace admin makes a Groups Reader); empty when it
+   * has none (not on Google Cloud).
+   *
+   * @generated from field: string google_identity = 13;
+   */
+  googleIdentity: string;
 };
 
 /**

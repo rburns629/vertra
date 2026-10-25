@@ -142,5 +142,6 @@ func Vars(c *config.Config, deleteData bool) map[string]any {
 		"delete_data":           deleteData,
 		"console_public":        c.Console.Public,
 		"catalog_repository":    c.Catalog.Repo(),
+		"google_groups":         c.SSO.GoogleGroups,
 	}
 }

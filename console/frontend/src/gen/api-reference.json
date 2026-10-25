@@ -7668,6 +7668,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "googleIdentity",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The Google account this console reads groups as (its own service\naccount, which a Workspace admin makes a Groups Reader); empty when it\nhas none (not on Google Cloud)."
     }
    ]
   },

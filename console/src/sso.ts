@@ -26,6 +26,7 @@ export const SECRET_PURPOSE = "sso client secret";
 const REFRESH_MS = 10_000;
 const CLOUD_IDENTITY = "https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchTransitiveGroups";
 const METADATA_TOKEN = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+const METADATA_EMAIL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email";
 const GROUPS_SCOPE = "https://www.googleapis.com/auth/cloud-identity.groups.readonly";
 
 export interface Sso {
@@ -98,6 +99,16 @@ async function googleToken(): Promise<string> {
   const response = await fetch(url, { headers: { "Metadata-Flavor": "Google" }, signal: AbortSignal.timeout(5_000) });
   if (!response.ok) throw new Error(`the metadata server answered ${String(response.status)}`);
   return ((await response.json()) as { access_token: string }).access_token;
+}
+
+let identity: Promise<string> | undefined;
+
+/** The Google account this console acts as (GKE Workload Identity), or "" off Google Cloud: asked once. */
+export function googleIdentity(): Promise<string> {
+  identity ??= fetch(METADATA_EMAIL, { headers: { "Metadata-Flavor": "Google" }, signal: AbortSignal.timeout(2_000) })
+    .then(async (response) => (response.ok ? (await response.text()).trim() : ""))
+    .catch(() => "");
+  return identity;
 }
 
 /** Every Google group the person is in, directly or through another group, by email. */

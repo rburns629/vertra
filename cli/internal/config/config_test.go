@@ -71,6 +71,14 @@ func TestValidateKindRegistryName(t *testing.T) {
 	}
 }
 
+func TestValidateGoogleGroupsIsGCPOnly(t *testing.T) {
+	c := validKind(t)
+	c.SSO.GoogleGroups = true
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "sso.googleGroups: gcp only") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestValidateManagedDatabaseNeedsCloud(t *testing.T) {
 	c := validKind(t)
 	c.Database.Type = "managed"
