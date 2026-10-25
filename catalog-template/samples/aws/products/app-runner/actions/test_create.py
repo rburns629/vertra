@@ -66,6 +66,18 @@ class CreateActionTest(unittest.TestCase):
         _, result, _ = self._run({"serviceName": "web", "image": "i", "region": "eu-west-1"}, configure)
         self.assertEqual(result["outputs"]["resources"][0]["id"], "arn:svc")
 
+    def test_a_private_service_has_no_url(self) -> None:
+        # App Runner gives a private service no ServiceUrl (found on EKS, 2026-10-25).
+        private = {k: v for k, v in RUNNING.items() if k != "ServiceUrl"}
+        def configure(client):
+            client.list_services.return_value = {"ServiceSummaryList": []}
+            client.create_service.return_value = {"Service": {**private, "Status": "OPERATION_IN_PROGRESS"}}
+            client.describe_service.return_value = {"Service": private}
+        exit_code, result, _ = self._run({"serviceName": "web", "image": "i", "region": "eu-west-1"}, configure)
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("serviceUrl", result["outputs"])
+        self.assertEqual(result["outputs"]["serviceArn"], "arn:svc")
+
     def test_a_new_service_is_private_by_default_and_waited_for(self) -> None:
         def configure(client):
             client.list_services.return_value = {"ServiceSummaryList": []}

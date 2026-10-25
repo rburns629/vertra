@@ -97,7 +97,9 @@ def _made_here(apprunner: Any, arn: str) -> bool:
 
 
 def _outputs(service: dict[str, Any], region: str, made_here: bool) -> dict[str, Any]:
-    outputs: dict[str, Any] = {"serviceUrl": f"https://{service['ServiceUrl']}", "serviceArn": service["ServiceArn"]}
+    outputs: dict[str, Any] = {"serviceArn": service["ServiceArn"]}
+    if service.get("ServiceUrl"):  # a private service has none: it's reached through a VPC ingress connection
+        outputs["serviceUrl"] = f"https://{service['ServiceUrl']}"
     if made_here:
         outputs["resources"] = [
             {

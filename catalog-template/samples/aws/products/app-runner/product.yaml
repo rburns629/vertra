@@ -63,12 +63,12 @@ actions:
   output:
     type: object
     required:
-    - serviceUrl
     - serviceArn
     properties:
       serviceUrl:
         type: string
-        description: The service's HTTPS URL.
+        description: 'The service''s HTTPS URL, for a public one: a private one has none, and
+          is reached through a VPC ingress connection.'
       serviceArn:
         type: string
         description: Its ARN.

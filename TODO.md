@@ -214,6 +214,15 @@ design.
 - [x] **The console's liveness probe killed it once while it started** on a
   minimal GKE install (2026-10-25, exit 137 a minute after start): it has a
   startup probe now, five minutes long (done 2026-10-25).
+- [ ] **`vertra check` could warn about GCE's SSD quota** (found
+  2026-10-25): a new project's 500 GB `SSD_TOTAL_GB` in a region holds about
+  three GKE Autopilot nodes' boot disks (about 140 GB each, counted but not
+  listed), so a step's Spot node can't be added ("GCE quota exceeded") while
+  three are up, and the step waits until one is scaled down.
+- [ ] **A resource whose cleanup run just failed shows "being deleted"**
+  for up to 30 seconds (until `resourceRecorder.ts` next looks at the run),
+  so asking again at once is refused (`DELETE_IN_PROGRESS`). Read the run's
+  own state when it's finished but not yet recorded.
 - [ ] **Alerts** on `IMAGE_NOT_ALLOWED`, `IMAGE_NOT_FOUND`,
   `IMAGE_NOT_SIGNED`, `IMAGE_SCAN_FAILED`, dispatch rejections, purges,
   policy sync failures, and changes to the image policy.
