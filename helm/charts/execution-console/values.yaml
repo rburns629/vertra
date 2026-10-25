@@ -162,9 +162,11 @@ scanning:
   # Secret, registryCheck.pullSecretName is used.
   serviceAccountAnnotations: {}
   server:
+    # Ephemeral storage for its vulnerability database (over 1Gi once
+    # unpacked): GKE Autopilot otherwise allows 1Gi and evicts it.
     resources:
-      requests: {cpu: 100m, memory: 512Mi}
-      limits: {memory: 2Gi}
+      requests: {cpu: 100m, memory: 512Mi, ephemeral-storage: 4Gi}
+      limits: {memory: 2Gi, ephemeral-storage: 4Gi}
 
 # -- The API gateway's settings (decision 20), which the console shows and
 # applies: an API product whose backend isn't under one of backendHosts is

@@ -25,7 +25,7 @@ from typing import Any
 
 import google.auth
 import google.auth.credentials
-from google.api_core.exceptions import GoogleAPIError, NotFound
+from google.api_core.exceptions import AlreadyExists, GoogleAPIError, NotFound, PermissionDenied
 from google.auth import impersonated_credentials
 from google.cloud import resourcemanager_v3
 from google.cloud.billing_v1 import CloudBillingClient
@@ -107,7 +107,9 @@ def main() -> int:
         made_here = dict(existing.labels).get(MADE_BY_LABEL[0]) == MADE_BY_LABEL[1]
         _write_result({"status": "succeeded", "outputs": _outputs(project_id, made_here)})
         return 0
-    except NotFound:
+    except (NotFound, PermissionDenied):
+        # A project that doesn't exist is a 403 too, unless this identity
+        # may see wherever it would be: creating it tells them apart.
         pass
     except GoogleAPIError as error:
         return _failure("GCP_API_ERROR", str(error), retryable=True)
@@ -118,7 +120,10 @@ def main() -> int:
     try:
         operation = projects.create_project(
             project=resourcemanager_v3.Project(
-                project_id=project_id, display_name=project_id, labels=dict([MADE_BY_LABEL])
+                project_id=project_id,
+                display_name=project_id,
+                labels=dict([MADE_BY_LABEL]),
+                parent=inputs.get("parent", ""),
             )
         )
         operation.result()  # blocks until the long-running create completes
@@ -131,6 +136,8 @@ def main() -> int:
                     billing_account_name=f"billingAccounts/{billing_account_id}"
                 ),
             )
+    except AlreadyExists:
+        return _failure("PROJECT_ID_TAKEN", f"project id '{project_id}' is already taken, somewhere this product can't see")
     except GoogleAPIError as error:
         return _failure("GCP_API_ERROR", str(error), retryable=True)
 

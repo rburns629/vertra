@@ -60,6 +60,10 @@ class DeleteActionTest(unittest.TestCase):
         code, _, client = self._run({"type": "gcp/project", "id": "gone"}, get_error=self.module.NotFound("gone"))
         self.assertEqual(code, 0)
         client.delete_project.assert_not_called()
+        # Purged, or not this product's to see: may still exist, so not done.
+        code, result, client = self._run({"type": "gcp/project", "id": "hidden"}, get_error=self.module.PermissionDenied("denied"))
+        self.assertEqual((code, result["error"]["code"]), (1, "PROJECT_NOT_VISIBLE"))
+        client.delete_project.assert_not_called()
         code, _, client = self._run({"type": "gcp/project", "id": "going"}, self.made(self.module.resourcemanager_v3.Project.State.DELETE_REQUESTED))
         self.assertEqual(code, 0)
         client.delete_project.assert_not_called()

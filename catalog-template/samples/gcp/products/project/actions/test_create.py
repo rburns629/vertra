@@ -112,6 +112,35 @@ class CreateActionTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(self._result()["outputs"]["projectId"], "brand-new")
 
+    def test_a_new_project_goes_under_its_parent(self) -> None:
+        self._write_request({"projectId": "brand-new", "parent": "folders/123"})
+        with (
+            patch.object(self.module.resourcemanager_v3, "ProjectsClient") as client_cls,
+            patch.object(self.module, "CloudBillingClient"),
+        ):
+            client = client_cls.return_value
+            client.get_project.side_effect = self.module.NotFound("no such project")
+            self.assertEqual(self.module.main(), 0)
+        self.assertEqual(client.create_project.call_args.kwargs["project"].parent, "folders/123")
+
+    def test_a_project_it_may_not_see_is_created(self) -> None:
+        # Google's answer for a project that doesn't exist, outside the folder.
+        self._write_request({"projectId": "brand-new", "parent": "folders/123"})
+        with patch.object(self.module.resourcemanager_v3, "ProjectsClient") as client_cls:
+            client = client_cls.return_value
+            client.get_project.side_effect = self.module.PermissionDenied("denied, or it may not exist")
+            self.assertEqual(self.module.main(), 0)
+        client.create_project.assert_called_once()
+
+    def test_an_id_taken_elsewhere_fails_for_good(self) -> None:
+        self._write_request({"projectId": "taken"})
+        with patch.object(self.module.resourcemanager_v3, "ProjectsClient") as client_cls:
+            client = client_cls.return_value
+            client.get_project.side_effect = self.module.PermissionDenied("denied")
+            client.create_project.return_value.result.side_effect = self.module.AlreadyExists("taken")
+            self.assertEqual(self.module.main(), 1)
+        self.assertEqual(self._result()["error"], {**self._result()["error"], "code": "PROJECT_ID_TAKEN", "retryable": False})
+
     def test_new_project_without_billing_account_skips_billing_call(self) -> None:
         self._write_request({"projectId": "brand-new-no-billing"})
         with (

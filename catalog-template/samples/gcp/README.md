@@ -5,7 +5,7 @@ product has to. Running them costs money.
 
 | Product | What `create` does |
 |---|---|
-| [`project`](products/project/) | Finds a project by id, or creates it (linking billing) |
+| [`project`](products/project/) | Finds a project by id, or creates it under `parent` (a folder: a workload identity has no default), linking billing |
 | [`build-image`](products/build-image/) | Builds an image with Cloud Build from a source archive in GCS (with a Dockerfile at its root), unless that image already exists |
 | [`app-hosting`](products/app-hosting/) | Deploys an image to Cloud Run, or returns the existing service's URL; optionally connects a Cloud SQL instance |
 | [`cloud-sql`](products/cloud-sql/) | Finds a Cloud SQL instance by name, or creates it (several minutes; set `timeoutSeconds` to 900 or more, and delete it after) |
@@ -19,7 +19,9 @@ Every action looks before it creates, so a retried step is harmless.
 their `cleanup`: Delete on the run page (or **What runs made**) runs it. A
 delete refuses anything without the label (`NOT_MADE_BY_VERTRA`), so a
 project or service that was only found, never made, is never deleted, and
-one already gone counts as deleted. The console lets only the team it was
+one already gone counts as deleted. A project this product can't see fails
+(`PROJECT_NOT_VISIBLE`) rather than being reported deleted: Google answers
+403 alike for a purged project and a missing permission. The console lets only the team it was
 made for, whoever ran it, and admins delete it. A deleted project is shut
 down and can be restored for 30 days. Cloud SQL can take longer than a
 step's five minutes to delete an instance: the step then succeeds with

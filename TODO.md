@@ -211,6 +211,15 @@ design.
   (Step sizes, Spot placement and running-step caps exist already.)
 - [ ] **Let a product choose its own capacity** (Spot or on-demand) in its
   `product.yaml`; placement is deployment-wide today.
+- [ ] **Publishing a catalog from Apple silicon builds arm64-only images**
+  (`docker build` in `catalogtool/docker.go`), which a GKE (amd64) install
+  can't scan or run: found 2026-10-25, worked around with
+  `DOCKER_DEFAULT_PLATFORM=linux/amd64`. Catalog CI (amd64 runners) is
+  unaffected. Build for the install's platform, or say so in
+  `publish`'s output.
+- [ ] **The console's liveness probe killed it once while it started** on a
+  minimal GKE install (2026-10-25, exit 137 a minute after start, fine
+  after): give it a startup probe.
 - [ ] **Alerts** on `IMAGE_NOT_ALLOWED`, `IMAGE_NOT_FOUND`,
   `IMAGE_NOT_SIGNED`, `IMAGE_SCAN_FAILED`, dispatch rejections, purges,
   policy sync failures, and changes to the image policy.
@@ -593,8 +602,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the local `ticket` sample. The gcp samples' `project`, `app-hosting` and
   `cloud-sql` delete what they made (labelled `vertra-made`; done
   2026-10-24, decided: only the team it was made for, whoever ran it, and
-  admins; a resource keeps its first owner). Left: prove them on a billed
-  project (acyclix-dev); aws and azure cleanups.
+  admins; a resource keeps its first owner). Proven 2026-10-25 on GKE in
+  acyclix-dev: a gcp member made a project (in a folder) and a Cloud Run
+  service, another team's member was refused their Delete, an admin's
+  cleanup run shut both down. Left: aws and azure cleanups; Cloud SQL's
+  delete proven on a real instance.
 - [x] **P2: notifications** (done 2026-10-24): an inbox (the bell) and
   each team's chat webhook (Slack, Google Chat, Teams; decided 2026-10-24:
   the URL kept encrypted in the console's database, write-only, allowed

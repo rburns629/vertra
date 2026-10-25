@@ -46,6 +46,13 @@ actions:
             Billing account linked ONLY when a new project is created;
             ignored if the project already exists. Required before the
             project can run billable services like Cloud Run.
+        parent:
+          type: string
+          pattern: "^(folders|organizations)/[0-9]{1,20}$"
+          description: >-
+            Where a new project goes, such as folders/123: needed when this
+            product runs as a workload identity (GKE's), which has no
+            default. Ignored if the project already exists.
     output:
       type: object
       required: [projectId]

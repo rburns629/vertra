@@ -14,6 +14,7 @@ tasks:
     inputs:
       projectId: my-project-id            # CHANGE
       # billingAccountId: only used when the project is created.
+      # parent: folders/123     # where it's created; a workload identity needs one
 
   - id: build-image-from-source
     image: <registry>/gcp/build-image:latest

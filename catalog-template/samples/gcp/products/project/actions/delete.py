@@ -58,11 +58,18 @@ def main() -> int:
     projects = resourcemanager_v3.ProjectsClient(credentials=_build_credentials())
     try:
         project = projects.get_project(name=f"projects/{project_id}")
-    except (NotFound, PermissionDenied):
-        # Gone (or, once deleted, no longer visible to this identity).
+    except NotFound:
         print(f"project '{project_id}' is already gone")
         _write_result({"status": "succeeded", "outputs": {"deleted": project_id}})
         return 0
+    except PermissionDenied as error:
+        # Google says this both for a project purged (30 days after its
+        # delete) and for one this identity may not see: never reported as
+        # deleted, since it may well still be there.
+        return _failure(
+            "PROJECT_NOT_VISIBLE",
+            f"project '{project_id}' can't be seen: purged already, or this product may no longer read it ({error})",
+        )
     except GoogleAPIError as error:
         return _failure("GCP_API_ERROR", str(error), retryable=True)
 
