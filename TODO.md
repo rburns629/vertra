@@ -211,9 +211,9 @@ design.
   (Step sizes, Spot placement and running-step caps exist already.)
 - [ ] **Let a product choose its own capacity** (Spot or on-demand) in its
   `product.yaml`; placement is deployment-wide today.
-- [ ] **The console's liveness probe killed it once while it started** on a
-  minimal GKE install (2026-10-25, exit 137 a minute after start, fine
-  after): give it a startup probe.
+- [x] **The console's liveness probe killed it once while it started** on a
+  minimal GKE install (2026-10-25, exit 137 a minute after start): it has a
+  startup probe now, five minutes long (done 2026-10-25).
 - [ ] **Alerts** on `IMAGE_NOT_ALLOWED`, `IMAGE_NOT_FOUND`,
   `IMAGE_NOT_SIGNED`, `IMAGE_SCAN_FAILED`, dispatch rejections, purges,
   policy sync failures, and changes to the image policy.

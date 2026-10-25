@@ -161,17 +161,24 @@ spec:
             - name: KERNEL_API_TOKEN_FILE
               value: /var/run/secrets/vertra/kernel-api/token
             {{- end }}
+          # Up to five minutes to start (its startup work, on a minimal
+          # install's quarter of a CPU, took over a minute) before liveness,
+          # which would otherwise restart it mid-start.
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.service.port }}
+            periodSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /health/ready
               port: {{ .Values.service.port }}
-            initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health/live
               port: {{ .Values.service.port }}
-            initialDelaySeconds: 5
             periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
