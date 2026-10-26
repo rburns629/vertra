@@ -674,7 +674,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      (its verifier role reads only its own task registry).
   3. `vertra catalog create` refuses a repository that already publishes
      to another install's registry (its VERTRA_REGISTRY), unless told to
-     move it.
+     move it (`--take-over`). Done 2026-10-26.
   Prove: kind for versions; a GKE owner and a reader for the signer.
 
 ## Security

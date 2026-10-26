@@ -246,7 +246,9 @@ it and allows backends in the `vertra-samples` namespace.
 ### Reading another install's catalog
 
 One catalog serves many installs. One install owns its repository (its
-`catalog` block: its registry, its `signing`); an install that reads it
+`catalog` block: its registry, its `signing`; `vertra catalog create`
+refuses a repository that already publishes to another install's registry
+unless `--take-over`, which moves it); an install that reads it
 sets `externalCatalog.registry` in its vertra.yaml (the image source, and
 where its release lives) and the owner's signer in `catalogSignature`:
 `publicKeyFile` (a generated key's or the owner's KMS key's public half,

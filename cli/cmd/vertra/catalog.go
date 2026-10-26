@@ -58,7 +58,7 @@ func (a *app) catalogCmd() *cobra.Command {
 }
 
 func (a *app) catalogCreateCmd() *cobra.Command {
-	var yes, planOnly, noSmoke bool
+	var yes, planOnly, noSmoke, takeOver bool
 	cmd := &cobra.Command{
 		Use:   "create [env]",
 		Short: "Create the catalog repository on GitHub, its first team and starters, and smoke-test it",
@@ -72,13 +72,27 @@ func (a *app) catalogCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return a.catalog(cmd.Context(), cmd.OutOrStdout(), dir, c, yes, planOnly, noSmoke)
+			return a.catalog(cmd.Context(), cmd.OutOrStdout(), dir, c, yes, planOnly, noSmoke, takeOver)
 		},
 	}
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "approve without asking")
 	cmd.Flags().BoolVar(&planOnly, "plan-only", false, "show what it would do and stop")
 	cmd.Flags().BoolVar(&noSmoke, "no-smoke-test", false, "don't wait for CI or run a starter")
+	cmd.Flags().BoolVar(&takeOver, "take-over", false, "publish to this install even though the repository publishes to another's (that install stops getting releases)")
 	return cmd
+}
+
+// ownedElsewhere refuses a repository whose CI publishes to another
+// install's registry (its VERTRA_REGISTRY): one repository has one owner,
+// whose variables say where it publishes and how it signs, and every other
+// install reads it. Taking it over is a deliberate move.
+func ownedElsewhere(repo, current, ours string, takeOver bool) error {
+	if current == "" || current == ours || takeOver {
+		return nil
+	}
+	return fmt.Errorf("github.com/%s already publishes to %s, another install's registry.\n"+
+		"An install reads it there instead: `vertra config set externalCatalog.registry %s` and its signer in catalogSignature (docs/operations.md).\n"+
+		"To move the catalog to this install, `vertra catalog create --take-over`: the other stops getting releases", repo, current, current)
 }
 
 // catalogSetup is what the catalog needs from the install.
@@ -104,7 +118,7 @@ func signingVariables(c *config.Config, key string) [][2]string {
 	return [][2]string{{"VERTRA_SIGNING_MODE", "none"}}
 }
 
-func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.Config, yes, planOnly, noSmoke bool) error {
+func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.Config, yes, planOnly, noSmoke, takeOver bool) error {
 	cat := c.Catalog
 	if cat.Repo() == "" {
 		return errors.New("no catalog in the config: `vertra config set catalog.owner <owner>` (and catalog.repository, catalog.team), or `vertra init --force`")
@@ -157,6 +171,13 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 		push = !push
 		if !push && !cat.UseExisting {
 			return fmt.Errorf("github.com/%s already exists and isn't the one this install chose: `vertra config set catalog.useExisting true` to use it (its contents stay), or another catalog.repository", cat.Repo())
+		}
+		current, _, err := gh.Variable(ctx, cat.Repo(), "VERTRA_REGISTRY")
+		if err != nil {
+			return err
+		}
+		if err := ownedElsewhere(cat.Repo(), current, setup.registry, takeOver); err != nil {
+			return err
 		}
 	}
 	// Environments (the publish job's main-only gate, the reviewed image deletion)

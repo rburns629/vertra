@@ -356,6 +356,24 @@ func (g *GitHub) Rerun(ctx context.Context, repo string, id int64) error {
 	return g.r.Run(ctx, "gh", "run", "rerun", fmt.Sprint(id), "--failed", "--repo", repo)
 }
 
+// Variable is a repository variable's value, and whether it's set.
+func (g *GitHub) Variable(ctx context.Context, repo, name string) (string, bool, error) {
+	body, err := g.api(ctx, "GET", "/repos/"+repo+"/actions/variables/"+name, "")
+	if err != nil && (strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "Not Found")) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	var v struct {
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal([]byte(body), &v); err != nil {
+		return "", false, fmt.Errorf("GitHub's variable %s: %w", name, err)
+	}
+	return v.Value, true, nil
+}
+
 // DeleteVariable removes a repository variable; one that isn't there is fine.
 func (g *GitHub) DeleteVariable(ctx context.Context, repo, name string) error {
 	_, err := g.api(ctx, "DELETE", "/repos/"+repo+"/actions/variables/"+name, "")
