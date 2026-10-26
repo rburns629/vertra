@@ -69,6 +69,13 @@ type Config struct {
 	ExternalCatalog ExternalCatalog `yaml:"externalCatalog,omitempty"`
 	// CatalogSignature: who may sign the catalog's releases.
 	CatalogSignature CatalogSignature `yaml:"catalogSignature,omitempty"`
+	// Signing: how this install's catalog CI signs its images and releases,
+	// which the install then requires (policy-controller refuses unsigned
+	// images; the console, unsigned releases). none (the default); kms: a
+	// key apply makes in the cloud's KMS, which only the catalog
+	// repository's CI may sign with; keyless: CI's own GitHub identity,
+	// through Sigstore (recorded in its public transparency log).
+	Signing string `yaml:"signing,omitempty"`
 	// Gateway: the API gateway, which serves the catalog's API products.
 	Gateway Gateway `yaml:"gateway,omitempty"`
 	// Logs: log search in Observe (Loki), and how long logs are kept.
@@ -500,6 +507,18 @@ func (c *Config) Validate() error {
 			add("console.tls.letsEncryptEmail: %q isn't an email address", e)
 		}
 	}
+	switch c.Signing {
+	case "", "none":
+	case "kms", "keyless":
+		if c.Target != "gcp" && c.Target != "aws" {
+			add("signing: %s needs a cloud target (gcp, aws): policy-controller checks images in the cloud's registry", c.Signing)
+		}
+		if c.Catalog.Repo() == "" {
+			add("signing: %s is for this install's own catalog (catalog.owner and catalog.repository), whose CI signs", c.Signing)
+		}
+	default:
+		add("signing: %q: none, kms or keyless", c.Signing)
+	}
 	if c.SSO.GoogleGroups && c.Target != "gcp" {
 		add("sso.googleGroups: gcp only (the console reads groups as its own Google service account)")
 	}
@@ -760,7 +779,7 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"kind.registryName": true, "kind.registryPort": true,
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
 		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
-		"catalogSignature.publicKeyFile": true, "gateway.enabled": true,
+		"catalogSignature.publicKeyFile": true, "gateway.enabled": true, "signing": true,
 		"console.ingressClass": true, "console.tls.issuer": true, "console.tls.letsEncryptEmail": true, "console.tls.installCertManager": true,
 		"logs.enabled": true, "logs.searchDays": true, "logs.keepDays": true,
 		"audit.export": true, "audit.keepDays": true, "audit.lock": true,
@@ -839,4 +858,9 @@ func Dir(base, env string) (string, error) {
 	default:
 		return "", fmt.Errorf("%s has several environments (%s): name one", base, strings.Join(envs, ", "))
 	}
+}
+
+// Signs is whether this install's catalog is signed, and so required to be.
+func (c *Config) Signs() bool {
+	return c.Signing == "kms" || c.Signing == "keyless"
 }

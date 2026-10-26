@@ -69,3 +69,11 @@ output "console_address" {
     vpc_cidr        = aws_vpc.this.cidr_block
   } : null
 }
+
+output "signing" {
+  description = "The catalog's signing key as cosign names it (kms)."
+  value = {
+    key = var.signing == "kms" && var.catalog_repository != "" ? "awskms:///${aws_kms_key.signing[0].arn}" : ""
+  }
+}
+

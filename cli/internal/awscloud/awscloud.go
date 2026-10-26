@@ -8,6 +8,7 @@ package awscloud
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -156,6 +157,7 @@ func Vars(c *config.Config, deleteData bool, githubProvider string) map[string]a
 		"audit_lock":               c.Audit.Lock,
 		"delete_data":              deleteData,
 		"catalog_repository":       c.Catalog.Repo(),
+		"signing":                  signingOrNone(c.Signing),
 		"kubernetes_version":       KubernetesVersion,
 		"console_zone":             consoleZone(c),
 		"console_hostname":         c.Console.Hostname,
@@ -382,4 +384,36 @@ func LoadBalancersIn(ctx context.Context, r *run.Runner, c *config.Config, vpcCI
 	var names []string
 	_ = json.Unmarshal([]byte(out), &names)
 	return names, nil
+}
+
+func signingOrNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
+}
+
+// SigningPublicKey is the catalog signing key's public half as PEM (KMS
+// gives it as base64 DER), read as you: only it is needed to verify.
+func SigningPublicKey(ctx context.Context, r *run.Runner, c *config.Config, key string) (string, error) {
+	arn := strings.TrimPrefix(key, "awskms:///")
+	if arn == key || !strings.HasPrefix(arn, "arn:") {
+		return "", fmt.Errorf("%q isn't an AWS KMS key", key)
+	}
+	der, err := r.Output(ctx, "aws", args(c, "kms", "get-public-key", "--key-id", arn, "--query", "PublicKey", "--output", "text")...)
+	if err != nil {
+		return "", err
+	}
+	der = strings.TrimSpace(der)
+	if _, err := base64.StdEncoding.DecodeString(der); err != nil || der == "" {
+		return "", fmt.Errorf("AWS KMS gave no public key for %s", key)
+	}
+	var b strings.Builder
+	b.WriteString("-----BEGIN PUBLIC KEY-----\n")
+	for len(der) > 64 {
+		b.WriteString(der[:64] + "\n")
+		der = der[64:]
+	}
+	b.WriteString(der + "\n-----END PUBLIC KEY-----\n")
+	return b.String(), nil
 }

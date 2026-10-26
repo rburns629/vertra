@@ -168,6 +168,13 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	if err != nil {
 		return err
 	}
+	if c.Signs() {
+		// Before the kernel chart, whose image policy is its kind.
+		fmt.Fprintln(out, "Installing policy-controller", install.PolicyControllerChart, "(only images catalog CI signed run)...")
+		if err := install.PolicyController(ctx, a.runner, c, made); err != nil {
+			return err
+		}
+	}
 	fmt.Fprintln(out, "Installing execution-kernel...")
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.KernelRelease, kernelChart, kernelValues); err != nil {
 		return err
@@ -315,6 +322,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		{Label: "Steps", Text: floor.Steps},
 		{Label: "Scale down", Text: scale},
 		{Label: "Task images", Text: taskImages},
+		{Label: "Signing", Text: signingLine(c)},
 		{Label: "Database", Text: database},
 		{Label: "Logs", Text: logsLine(c)},
 		{Label: "Audit", Text: auditLine(c)},
@@ -397,6 +405,9 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 			"part of your cluster's own bill: Vertra requests %s and %s awake, plus up to its step cap while steps run", floor.CPU, floor.Memory)}}
 	}
 
+	if c.Signs() {
+		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "policy-controller " + install.PolicyControllerChart + " into cosign-system: in team namespaces, only images catalog CI signed run"})
+	}
 	if c.Target == "kind" && c.Size == "auto" {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "metrics-server " + install.MetricsServerChart + " into kube-system, for the auto size's autoscalers"})
 	}
@@ -451,4 +462,16 @@ func auditLine(c *config.Config) string {
 // certificate from cert-manager.
 func certManagerNeeded(c *config.Config) bool {
 	return c.Target == "existing" && c.Console.Public
+}
+
+// signingLine says how the catalog is signed, and so what this install
+// refuses.
+func signingLine(c *config.Config) string {
+	switch c.Signing {
+	case "kms":
+		return "a KMS key only " + c.Catalog.Repo() + "'s CI (main) signs with; unsigned images and releases are refused"
+	case "keyless":
+		return "keyless, by " + c.Catalog.Repo() + "'s CI (main) through Sigstore's public log; unsigned images and releases are refused"
+	}
+	return "off: images and releases aren't signed (`vertra config set signing kms` or keyless)"
 }

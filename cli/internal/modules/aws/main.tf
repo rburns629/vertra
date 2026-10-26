@@ -683,3 +683,78 @@ resource "aws_route53_record" "console_validation" {
   ttl             = 300
   allow_overwrite = true
 }
+
+# --- catalog signing (signing): a KMS key only the catalog's CI signs with,
+# and policy-controller's identity, which reads signatures from the task
+# registry and nothing else ----------------------------------------------------
+
+data "aws_iam_policy_document" "signing_key" {
+  count = var.signing == "kms" && var.catalog_repository != "" ? 1 : 0
+  # The account administers the key (as any KMS key needs); it signs nothing.
+  statement {
+    sid = "Administer"
+    actions = [
+      "kms:Create*", "kms:Describe*", "kms:Enable*", "kms:List*", "kms:Put*", "kms:Update*", "kms:Revoke*",
+      "kms:Disable*", "kms:Get*", "kms:Delete*", "kms:TagResource", "kms:UntagResource", "kms:ScheduleKeyDeletion",
+      "kms:CancelKeyDeletion",
+    ]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:${local.partition}:iam::${local.account}:root"]
+    }
+  }
+  # Only the catalog's CI (its publish role, main only) signs.
+  statement {
+    sid       = "CatalogCISigns"
+    actions   = ["kms:Sign", "kms:GetPublicKey", "kms:DescribeKey"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.publish[0].arn]
+    }
+  }
+}
+
+resource "aws_kms_key" "signing" {
+  count                    = var.signing == "kms" && var.catalog_repository != "" ? 1 : 0
+  description              = "Vertra ${var.name}: signs the catalog's images and releases"
+  key_usage                = "SIGN_VERIFY"
+  customer_master_key_spec = "ECC_NIST_P256"
+  deletion_window_in_days  = 7
+  policy                   = data.aws_iam_policy_document.signing_key[0].json
+}
+
+resource "aws_iam_role" "verifier" {
+  count              = var.signing != "none" ? 1 : 0
+  name               = "${var.name}-verifier"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+data "aws_iam_policy_document" "verifier" {
+  count = var.signing != "none" ? 1 : 0
+  statement {
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+  statement {
+    actions   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability", "ecr:DescribeImages"]
+    resources = ["arn:${local.partition}:ecr:${var.region}:${local.account}:repository/${var.task_registry}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "verifier" {
+  count  = var.signing != "none" ? 1 : 0
+  name   = "read-task-registry"
+  role   = aws_iam_role.verifier[0].id
+  policy = data.aws_iam_policy_document.verifier[0].json
+}
+
+resource "aws_eks_pod_identity_association" "verifier" {
+  count           = var.signing != "none" ? 1 : 0
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = "cosign-system"
+  service_account = "policy-controller-webhook"
+  role_arn        = aws_iam_role.verifier[0].arn
+}
+

@@ -86,6 +86,22 @@ type catalogSetup struct {
 	registry string
 	// variables are the repository's cloud sign-in variables.
 	variables [][2]string
+	// signing are its signing variables (VERTRA_SIGNING_MODE, and _KEY for
+	// a KMS key), from config.Signing and the install.
+	signing [][2]string
+}
+
+// signingVariables tell the catalog's CI how to sign: catalog-template's
+// modes are none, key (a cosign key reference, here the install's KMS key)
+// and keyless.
+func signingVariables(c *config.Config, key string) [][2]string {
+	switch c.Signing {
+	case "kms":
+		return [][2]string{{"VERTRA_SIGNING_MODE", "key"}, {"VERTRA_SIGNING_KEY", key}}
+	case "keyless":
+		return [][2]string{{"VERTRA_SIGNING_MODE", "keyless"}}
+	}
+	return [][2]string{{"VERTRA_SIGNING_MODE", "none"}}
 }
 
 func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.Config, yes, planOnly, noSmoke bool) error {
@@ -176,7 +192,7 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 			plan.Line{Label: "Will push", Text: fmt.Sprintf("main: the template, teams/%s and its starters", cat.Team)})
 	}
 	p.Changes = append(p.Changes,
-		plan.Line{Label: "Will set", Text: "variables VERTRA_REGISTRY, VERTRA_SIGNING_MODE (none), " + variableNames(setup.variables)},
+		plan.Line{Label: "Will set", Text: "variables VERTRA_REGISTRY, " + variableNames(setup.signing) + " (" + setup.signing[0][1] + "), " + variableNames(setup.variables)},
 		plan.Line{Label: "Will remove", Text: "a console URL and tokens an earlier vertra gave the repository, if any (and revoke those tokens)"})
 	if environments {
 		p.Changes = append(p.Changes, plan.Line{Label: "Environments", Text: "catalog-publish (main only), purge (main only, you review: deleting a removed team's images)"})
@@ -266,10 +282,14 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 			}
 		}
 	}
-	for _, v := range append([][2]string{
-		{"VERTRA_REGISTRY", setup.registry}, {"VERTRA_SIGNING_MODE", "none"},
-	}, setup.variables...) {
+	for _, v := range append(append([][2]string{{"VERTRA_REGISTRY", setup.registry}}, setup.signing...), setup.variables...) {
 		if err := gh.SetVariable(ctx, repo, v[0], v[1]); err != nil {
+			return err
+		}
+	}
+	if !hasVariable(setup.signing, "VERTRA_SIGNING_KEY") {
+		// A key from an earlier signing mode would make CI try it.
+		if err := gh.DeleteVariable(ctx, repo, "VERTRA_SIGNING_KEY"); err != nil {
 			return err
 		}
 	}
@@ -348,11 +368,15 @@ func (a *app) catalogSetup(ctx context.Context, dir string, c *config.Config) (*
 	if err := gcp.Credentials(ctx, a.runner, c); err != nil {
 		return nil, err
 	}
+	if c.Signing == "kms" && cloud.SigningKey == "" {
+		return nil, errors.New("the install has no signing key yet: run `vertra apply` (it makes it, as signing is kms)")
+	}
 	return &catalogSetup{
 		registry: cloud.TaskRegistry,
 		variables: [][2]string{
 			{"GCP_WORKLOAD_IDENTITY_PROVIDER", cloud.CatalogProvider}, {"PUBLISH_GCP_SERVICE_ACCOUNT", cloud.CatalogServiceAccount},
 		},
+		signing: signingVariables(c, cloud.SigningKey),
 	}, nil
 }
 
@@ -368,9 +392,13 @@ func (a *app) catalogSetupAWS(ctx context.Context, c *config.Config, outputs map
 	if err := awscloud.Credentials(ctx, a.runner, c); err != nil {
 		return nil, err
 	}
+	if c.Signing == "kms" && cloud.SigningKey == "" {
+		return nil, errors.New("the install has no signing key yet: run `vertra apply` (it makes it, as signing is kms)")
+	}
 	return &catalogSetup{
 		registry:  cloud.TaskRegistry,
 		variables: [][2]string{{"AWS_ROLE_ARN", cloud.CatalogServiceAccount}, {"AWS_REGION", c.AWS.Region}},
+		signing:   signingVariables(c, cloud.SigningKey),
 	}, nil
 }
 

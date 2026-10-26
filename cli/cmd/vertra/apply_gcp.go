@@ -127,7 +127,7 @@ func sameIdentity(recorded, now string) error {
 
 // optionalOutputs are the modules' outputs that are null when not used
 // (no backups, no catalog, no public console), which `tofu output` omits.
-var optionalOutputs = map[string]bool{"backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true}
+var optionalOutputs = map[string]bool{"backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true}
 
 // cloudFromGCP reads the module's outputs.
 func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
@@ -158,11 +158,15 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 			Provider       string `json:"workload_identity_provider"`
 			ServiceAccount string `json:"service_account"`
 		}
+		Signing *struct {
+			Key      string `json:"key"`
+			Verifier string `json:"verifier"`
+		}
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "workload_identity_pool": &v.WorkloadPool, "task_registry": &v.TaskRegistry,
 		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement,
-		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog,
+		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog, "signing": &v.Signing,
 	} {
 		raw, ok := outputs[name]
 		if !ok {
@@ -201,6 +205,9 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	if v.Catalog != nil {
 		cloud.CatalogProvider, cloud.CatalogServiceAccount = v.Catalog.Provider, v.Catalog.ServiceAccount
 	}
+	if v.Signing != nil {
+		cloud.SigningKey, cloud.SigningVerifier = v.Signing.Key, v.Signing.Verifier
+	}
 	return cloud, nil
 }
 
@@ -222,6 +229,11 @@ func (a *app) applyGCP(ctx context.Context, out io.Writer, c *config.Config, p *
 	}
 	if cloud.ConsoleIP != "" {
 		cloud.ConsoleHost = install.ConsoleHostname(c, cloud.ConsoleIP)
+	}
+	if cloud.SigningKey != "" {
+		if cloud.SigningPublicKey, err = gcp.SigningPublicKey(ctx, a.runner, cloud.SigningKey); err != nil {
+			return nil, err
+		}
 	}
 	if err := gcp.Credentials(ctx, a.runner, c); err != nil {
 		return nil, err

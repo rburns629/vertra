@@ -27,7 +27,7 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "storage.googleapis.com",
-  ], var.google_groups ? ["cloudidentity.googleapis.com"] : []))
+  ], var.google_groups ? ["cloudidentity.googleapis.com"] : [], var.signing == "kms" ? ["cloudkms.googleapis.com"] : []))
   service = each.value
   # Other things in the project may use them.
   disable_on_destroy = false
@@ -419,3 +419,64 @@ resource "google_service_account_iam_member" "publish_federation" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github[0].name}/attribute.repository/${var.catalog_repository}"
 }
+
+# --- catalog signing (signing): a KMS key only the catalog's CI signs with,
+# and policy-controller's identity, which reads signatures from the task
+# registry and nothing else ----------------------------------------------------
+
+# Key rings can't be deleted, so each install's gets a fresh suffix.
+resource "random_id" "keyring" {
+  count       = var.signing == "kms" ? 1 : 0
+  byte_length = 3
+}
+
+resource "google_kms_key_ring" "catalog" {
+  count      = var.signing == "kms" ? 1 : 0
+  name       = "${var.name}-catalog-${random_id.keyring[0].hex}"
+  location   = var.region
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_kms_crypto_key" "signing" {
+  count    = var.signing == "kms" ? 1 : 0
+  name     = "catalog-signing"
+  key_ring = google_kms_key_ring.catalog[0].id
+  purpose  = "ASYMMETRIC_SIGN"
+  version_template {
+    algorithm = "EC_SIGN_P256_SHA256"
+  }
+}
+
+# The catalog's CI (its publish account, main only) signs, and reads the
+# key's metadata as cosign does; nobody else is granted anything.
+resource "google_kms_crypto_key_iam_member" "publish_signs" {
+  for_each      = var.signing == "kms" && var.catalog_repository != "" ? toset(["roles/cloudkms.signerVerifier", "roles/cloudkms.viewer"]) : toset([])
+  crypto_key_id = google_kms_crypto_key.signing[0].id
+  role          = each.value
+  member        = google_service_account.publish[0].member
+}
+
+resource "google_service_account" "verifier" {
+  count        = var.signing != "none" ? 1 : 0
+  account_id   = "${var.name}-verifier"
+  display_name = "Vertra ${var.name}: policy-controller (reads signatures from the task registry)"
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_artifact_registry_repository_iam_member" "verifier_read" {
+  count      = var.signing != "none" ? 1 : 0
+  location   = var.region
+  repository = var.task_registry
+  role       = "roles/artifactregistry.reader"
+  member     = google_service_account.verifier[0].member
+  depends_on = [google_artifact_registry_repository.tasks]
+}
+
+resource "google_service_account_iam_member" "verifier_workload_identity" {
+  count              = var.signing != "none" ? 1 : 0
+  service_account_id = google_service_account.verifier[0].name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project}.svc.id.goog[cosign-system/policy-controller-webhook]"
+  depends_on         = [google_container_cluster.this]
+}
+

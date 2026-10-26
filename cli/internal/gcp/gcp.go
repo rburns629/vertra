@@ -9,6 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"regexp"
 	"strings"
 
 	"github.com/rburns629/vertra/cli/internal/cluster"
@@ -193,5 +195,44 @@ func Vars(c *config.Config, deleteData bool) map[string]any {
 		"console_public":        c.Console.Public,
 		"catalog_repository":    c.Catalog.Repo(),
 		"google_groups":         c.SSO.GoogleGroups,
+		"signing":               orNone(c.Signing),
 	}
+}
+
+// orNone is a setting that's "none" when unset.
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
+}
+
+// gcpKMSKey reads gcpkms://projects/P/locations/L/keyRings/R/cryptoKeys/K.
+var gcpKMSKey = regexp.MustCompile(`^gcpkms://projects/([^/]+)/locations/([^/]+)/keyRings/([^/]+)/cryptoKeys/([^/]+)$`)
+
+// SigningPublicKey is the catalog signing key's public half (PEM), read as
+// you: only it is needed to verify, never the key itself.
+func SigningPublicKey(ctx context.Context, r *run.Runner, key string) (string, error) {
+	m := gcpKMSKey.FindStringSubmatch(key)
+	if m == nil {
+		return "", fmt.Errorf("%q isn't a Cloud KMS key", key)
+	}
+	file, err := os.CreateTemp("", "vertra-signing-*.pem")
+	if err != nil {
+		return "", err
+	}
+	file.Close()
+	defer os.Remove(file.Name())
+	if err := r.Run(ctx, "gcloud", "kms", "keys", "versions", "get-public-key", "1", "--project", m[1], "--location", m[2],
+		"--keyring", m[3], "--key", m[4], "--output-file", file.Name()); err != nil {
+		return "", err
+	}
+	pem, err := os.ReadFile(file.Name())
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(string(pem), "BEGIN PUBLIC KEY") {
+		return "", fmt.Errorf("Cloud KMS gave no PEM public key for %s", key)
+	}
+	return string(pem), nil
 }

@@ -152,3 +152,14 @@ variable "catalog_subject_prefix" {
   type        = string
   default     = ""
 }
+
+variable "signing" {
+  description = "How the catalog is signed: none, kms (a key here only its CI signs with) or keyless."
+  type        = string
+  default     = "none"
+  validation {
+    condition     = contains(["none", "kms", "keyless"], var.signing)
+    error_message = "none, kms or keyless."
+  }
+}
+

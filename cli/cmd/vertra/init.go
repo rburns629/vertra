@@ -22,6 +22,7 @@ import (
 )
 
 type initFlags struct {
+	signing                                string
 	force                                  bool
 	target, release, source, clusterName   string
 	kubeContext, namespace, size           string
@@ -71,6 +72,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.auditExport, "audit-export", "", "gcp, aws: true or false: copy the audit log to a bucket that refuses deletes")
 	fl.StringVar(&f.auditLock, "audit-lock", "", "gcp, aws: true or false: lock that bucket's retention for good (permanent)")
 	fl.StringVar(&f.gateway, "gateway", "", "true or false: serve the catalog's API products through the API gateway")
+	fl.StringVar(&f.signing, "signing", "", "gcp, aws, with a catalog: none, kms (a key in the cloud's KMS) or keyless (Sigstore, public log)")
 	fl.StringVar(&f.monitoring, "monitoring", "", "kind, existing: true or false: PodMonitors, alerts and a Grafana dashboard for the cluster's Prometheus Operator")
 	fl.StringVar(&f.idleAfter, "idle-after", "", "with scale-down: how long idle before sleeping (default 2h)")
 	fl.IntVar(&f.minReplicas, "min-replicas", 0, "without scale-down: always-on copies of the console and API")
@@ -418,6 +420,16 @@ func (a *app) askCatalog(ctx context.Context, out io.Writer, c *config.Config, f
 	for _, l := range strings.Split(langs, ",") {
 		if l = strings.ToLower(strings.TrimSpace(l)); l != "" {
 			cat.Languages = append(cat.Languages, l)
+		}
+	}
+	if c.Target == "gcp" || c.Target == "aws" {
+		kms := map[string]string{"gcp": "Cloud KMS", "aws": "AWS KMS"}[c.Target]
+		if c.Signing, err = a.ask.Choose("Image signing: only images and releases the catalog's CI signed run here", []prompt.Option{
+			{Value: "kms", Label: "kms", Note: "a " + kms + " key apply makes, which only the catalog's CI (main) may sign with; nothing published outside your cloud"},
+			{Value: "keyless", Label: "keyless", Note: "the CI's own GitHub identity through Sigstore, no key; each signature is in its public log, which names the repository"},
+			{Value: "none", Label: "none", Note: "not signed: anyone who can push to the registry can publish what runs"},
+		}, orDefault(f.signing, "kms")); err != nil {
+			return err
 		}
 	}
 	return nil

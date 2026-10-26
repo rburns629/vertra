@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -256,5 +257,47 @@ func TestSSOValues(t *testing.T) {
 	}
 	if secret := sso["clientSecret"].(map[string]any); secret["name"] != SSOSecretName {
 		t.Errorf("the secret's reference: %v", secret)
+	}
+}
+
+// A signed catalog: both charts trust the same signer, the kernel's
+// imageSignature on (policy-controller enforces it), the console's
+// catalog.signature set; nothing while signing is off.
+func TestASignedCatalogIsRequiredByBothCharts(t *testing.T) {
+	c := kindConfig()
+	c.Target = "gcp"
+	c.Catalog.Owner, c.Catalog.Repository = "octocat", "vertra-catalog"
+	cloud := &Cloud{Provider: "gcp", TaskRegistry: "us-central1-docker.pkg.dev/p/vertra-products", SigningPublicKey: "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----\n"}
+	if _, on := KernelValues(c, Images{}, "", cloud)["imageSignature"]; on {
+		t.Error("signing off: no imageSignature")
+	}
+
+	c.Signing = "kms"
+	kernel := KernelValues(c, Images{}, "", cloud)["imageSignature"].(map[string]any)
+	if kernel["enabled"] != true || fmt.Sprint(kernel["publicKeys"]) != fmt.Sprint([]string{cloud.SigningPublicKey}) {
+		t.Errorf("kms, kernel: %v", kernel)
+	}
+	console := ConsoleValues(c, "dev", Images{}, cloud)["catalog"].(map[string]any)["signature"].(map[string]any)
+	if fmt.Sprint(console["publicKeys"]) != fmt.Sprint([]string{cloud.SigningPublicKey}) {
+		t.Errorf("kms, console: %v", console)
+	}
+
+	c.Signing = "keyless"
+	keyless := KernelValues(c, Images{}, "", cloud)["imageSignature"].(map[string]any)["keyless"].(map[string]any)
+	if keyless["issuer"] != GitHubActionsIssuer {
+		t.Errorf("keyless issuer: %v", keyless)
+	}
+	subject := regexp.MustCompile(keyless["subjectRegExp"].(string))
+	for name, want := range map[string]bool{
+		"https://github.com/octocat/vertra-catalog/.github/workflows/ci.yml@refs/heads/main":       true,
+		"https://github.com/octocat/vertra-catalog/.github/workflows/ci.yml@refs/heads/feature":    false,
+		"https://github.com/octocat/vertra-catalog/.github/workflows/other.yml@refs/heads/main":    false,
+		"https://github.com/octocat/vertra-catalogs/.github/workflows/ci.yml@refs/heads/main":      false,
+		"https://github.com/someone/vertra-catalog/.github/workflows/ci.yml@refs/heads/main":       false,
+		"https://github.com/octocat/vertra-catalog/.github/workflows/ci.yml@refs/heads/main/extra": false,
+	} {
+		if subject.MatchString(name) != want {
+			t.Errorf("keyless subject %q: match %v", name, !want)
+		}
 	}
 }

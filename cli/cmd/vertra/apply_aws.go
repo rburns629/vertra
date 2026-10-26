@@ -94,6 +94,9 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		Catalog       *struct {
 			RoleArn string `json:"role_arn"`
 		}
+		Signing *struct {
+			Key string `json:"key"`
+		}
 		ConsoleAddress *struct {
 			Host           string   `json:"host"`
 			ZoneID         string   `json:"zone_id"`
@@ -105,7 +108,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit,
 		"step_placement": &v.StepPlacement, "spot": &v.Spot, "catalog": &v.Catalog,
-		"console_address": &v.ConsoleAddress,
+		"console_address": &v.ConsoleAddress, "signing": &v.Signing,
 	} {
 		raw, ok := outputs[name]
 		if !ok {
@@ -139,6 +142,9 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	if v.Catalog != nil {
 		cloud.CatalogServiceAccount = v.Catalog.RoleArn
 	}
+	if v.Signing != nil {
+		cloud.SigningKey = v.Signing.Key
+	}
 	if a := v.ConsoleAddress; a != nil {
 		cloud.ConsoleHost, cloud.ConsoleZoneID, cloud.ConsoleNameServers = a.Host, a.ZoneID, a.NameServers
 		cloud.ConsoleCertificate, cloud.VPCCIDR = a.CertificateArn, a.VPCCIDR
@@ -164,6 +170,11 @@ func (a *app) applyAWS(ctx context.Context, out io.Writer, c *config.Config, p *
 	}
 	if err := awscloud.Credentials(ctx, a.runner, c); err != nil {
 		return nil, err
+	}
+	if cloud.SigningKey != "" {
+		if cloud.SigningPublicKey, err = awscloud.SigningPublicKey(ctx, a.runner, c, cloud.SigningKey); err != nil {
+			return nil, err
+		}
 	}
 	if err := a.runner.RunInput(ctx, awscloud.InCluster(c.Cluster.Mode, spot), "kubectl", "--context", cluster.Context(c), "apply", "-f", "-"); err != nil {
 		return nil, err

@@ -71,6 +71,19 @@ func TestValidateKindRegistryName(t *testing.T) {
 	}
 }
 
+func TestValidateSigning(t *testing.T) {
+	c := validKind(t)
+	c.Signing = "kms"
+	err := c.Validate()
+	if err == nil || !strings.Contains(err.Error(), "signing: kms needs a cloud target") || !strings.Contains(err.Error(), "this install's own catalog") {
+		t.Fatalf("got %v", err)
+	}
+	c.Signing = "sometimes"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), `signing: "sometimes": none, kms or keyless`) {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestValidateGoogleGroupsIsGCPOnly(t *testing.T) {
 	c := validKind(t)
 	c.SSO.GoogleGroups = true

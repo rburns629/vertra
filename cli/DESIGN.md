@@ -121,7 +121,7 @@ scaleDown:
 minReplicas: 1               # console and kernel-api, when scaleDown is off
 stepHeadroom: 0
 registry: {create: true, name: vertra-products}
-signing: kms                 # none | kms | keyless
+signing: kms                 # none (the default) | kms | keyless: with a catalog, on gcp or aws
 database:
   type: in-cluster           # in-cluster | managed
   highAvailability: false    # managed only

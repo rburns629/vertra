@@ -56,6 +56,13 @@ type Cloud struct {
 	// The catalog's federation: its CI's provider and identity.
 	CatalogProvider       string
 	CatalogServiceAccount string
+	// Signing (config.Signing): the KMS key catalog CI signs with, as
+	// cosign names it (kms), its public half (PEM, read at apply), and the
+	// identity policy-controller reads signatures as (gcp: a service
+	// account; aws: Pod Identity binds it by ServiceAccount name).
+	SigningKey       string
+	SigningPublicKey string
+	SigningVerifier  string
 	// aws: the console's certificate, its zone, and the VPC's range (where
 	// the load balancer connects from).
 	ConsoleCertificate string
@@ -343,6 +350,11 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 	if len(scheduler) > 0 {
 		v["scheduler"] = scheduler
 	}
+	if trust := SignatureTrust(c, cloud); trust != nil {
+		// Images from the task registry run only if catalog CI signed them
+		// (policy-controller, installed first, enforces it).
+		v["imageSignature"] = map[string]any{"enabled": true, "publicKeys": trust["publicKeys"], "keyless": trust["keyless"]}
+	}
 	if c.Monitoring.Enabled {
 		monitoring, metricsFrom := monitoringValues(c, false)
 		v["monitoring"] = monitoring
@@ -446,7 +458,10 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 			v["registryCheck"] = check
 		}
 	}
-	if key := c.CatalogSignature.PublicKey; key != "" {
+	if trust := SignatureTrust(c, cloud); trust != nil {
+		// Only releases catalog CI signed are applied.
+		catalog["signature"] = trust
+	} else if key := c.CatalogSignature.PublicKey; key != "" {
 		// Only releases this key signed are applied.
 		catalog["signature"] = map[string]any{"publicKeys": []string{key}}
 	}
@@ -866,4 +881,58 @@ func envProviderName(c *config.Config) string {
 		name = strings.TrimRight(name[:25], "-")
 	}
 	return name
+}
+
+// GitHubActionsIssuer is the issuer of GitHub Actions' OIDC tokens, which
+// keyless signatures carry.
+const GitHubActionsIssuer = "https://token.actions.githubusercontent.com"
+
+// KeylessSubject is the identity keyless signatures must name: the
+// catalog repository's ci.yml (catalog-template's), on main.
+func KeylessSubject(repo string) string {
+	return `^https://github\.com/` + regexp.QuoteMeta(repo) + `/\.github/workflows/ci\.yml@refs/heads/main$`
+}
+
+// SignatureTrust is who may sign this install's catalog, as both charts take
+// it (publicKeys, keyless), or nil when it isn't signed.
+func SignatureTrust(c *config.Config, cloud *Cloud) map[string]any {
+	if !c.Signs() {
+		return nil
+	}
+	trust := map[string]any{"publicKeys": []string{}, "keyless": map[string]any{"issuer": "", "subjectRegExp": ""}}
+	switch c.Signing {
+	case "kms":
+		if cloud == nil || cloud.SigningPublicKey == "" {
+			return nil
+		}
+		trust["publicKeys"] = []string{cloud.SigningPublicKey}
+	case "keyless":
+		trust["keyless"] = map[string]any{"issuer": GitHubActionsIssuer, "subjectRegExp": KeylessSubject(c.Catalog.Repo())}
+	}
+	return trust
+}
+
+// PolicyControllerChart is Sigstore's policy-controller chart vertra
+// installs when the catalog is signed; it enforces the kernel chart's
+// imageSignature.
+const PolicyControllerChart = "0.10.8"
+
+// PolicyControllerServiceAccount is its webhook's ServiceAccount, which the
+// cloud binds to an identity that may read the task registry.
+const PolicyControllerServiceAccount = "policy-controller-webhook"
+
+// PolicyController installs policy-controller, pinned, its webhook covering
+// team namespaces only: in every namespace it covers it refuses any image it
+// can't resolve, so never the platform's own.
+func PolicyController(ctx context.Context, r *run.Runner, c *config.Config, cloud *Cloud) error {
+	args := []string{"upgrade", "--install", "policy-controller", "policy-controller",
+		"--repo", "https://sigstore.github.io/helm-charts", "--version", PolicyControllerChart,
+		"--kube-context", cluster.Context(c), "--namespace", "cosign-system", "--create-namespace",
+		"--set", "webhook.serviceAccount.name=" + PolicyControllerServiceAccount,
+		"--set-json", `webhook.namespaceSelector={"matchExpressions":[{"key":"vertra/team","operator":"Exists"}]}`,
+		"--wait", "--timeout", "10m"}
+	if cloud != nil && cloud.Provider == "gcp" && cloud.SigningVerifier != "" {
+		args = append(args, "--set-string", `webhook.serviceAccount.annotations.iam\.gke\.io/gcp-service-account=`+cloud.SigningVerifier)
+	}
+	return r.Run(ctx, "helm", args...)
 }

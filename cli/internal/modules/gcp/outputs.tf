@@ -70,3 +70,12 @@ output "catalog" {
     service_account            = google_service_account.publish[0].email
   } : null
 }
+
+output "signing" {
+  description = "The catalog's signing key as cosign names it (kms), and the account policy-controller reads signatures as."
+  value = {
+    key      = var.signing == "kms" ? "gcpkms://${google_kms_crypto_key.signing[0].id}" : ""
+    verifier = var.signing != "none" ? google_service_account.verifier[0].email : ""
+  }
+}
+
