@@ -502,6 +502,14 @@ was refused (`IMAGE_NOT_SIGNED`). Proven on EKS too (2026-10-26), `kms`:
 an AWS KMS key, with policy-controller reading ECR through Pod Identity; the
 same four results.
 
+An install reading another's catalog (`externalCatalog`) holds no signing
+right: it trusts the owner's signer (`catalogSignature`: its public key, or
+its repository's keyless identity) and, on gcp and aws, enforces it on
+releases and images the same way, its policy-controller reading the
+owner's registry. A catalog version (decision 22) is a tag on a release
+main already signed, so it needs no signature of its own, and the tag's
+own CI run holds no credential: it asks main to make it.
+
 Two platform identities only change replica counts, through the scale
 subresource (which can't change what a Deployment runs), on Deployments
 named in their Roles: the kernel's sleeper (`scaleDown`, the platform's

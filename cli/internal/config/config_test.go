@@ -84,6 +84,23 @@ func TestValidateSigning(t *testing.T) {
 	}
 }
 
+func TestValidateCatalogSignature(t *testing.T) {
+	c := validKind(t)
+	c.CatalogSignature.Repository = "my-org/vertra-catalog"
+	if err := c.Validate(); err != nil {
+		t.Errorf("owner/name: %v", err)
+	}
+	c.CatalogSignature.Repository = "https://github.com/my-org/vertra-catalog"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "isn't owner/name") {
+		t.Errorf("a URL: %v", err)
+	}
+	c.CatalogSignature.Repository = "my-org/vertra-catalog"
+	c.Signing = "keyless"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "this install signs its own") {
+		t.Errorf("signing too: %v", err)
+	}
+}
+
 func TestValidateCatalogVersion(t *testing.T) {
 	c := validKind(t)
 	for _, ok := range []string{"", "latest", "newest", "v1.4.0", "v0.0.1"} {

@@ -686,7 +686,8 @@ resource "aws_route53_record" "console_validation" {
 
 # --- catalog signing (signing): a KMS key only the catalog's CI signs with,
 # and policy-controller's identity, which reads signatures from the task
-# registry and nothing else ----------------------------------------------------
+# registry and nothing else (verify: only the identity; another install's
+# registry grants it read, as apply prints) ------------------------------------
 
 data "aws_iam_policy_document" "signing_key" {
   count = var.signing == "kms" && var.catalog_repository != "" ? 1 : 0

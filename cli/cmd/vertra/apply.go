@@ -168,7 +168,7 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	if err != nil {
 		return err
 	}
-	if c.Signs() {
+	if c.ChecksSignatures() {
 		// Before the kernel chart, whose image policy is its kind.
 		fmt.Fprintln(out, "Installing policy-controller", install.PolicyControllerChart, "(only images catalog CI signed run)...")
 		if err := install.PolicyController(ctx, a.runner, c, made); err != nil {
@@ -233,6 +233,13 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			for _, step := range steps {
 				fmt.Fprintln(out, "  "+step)
 			}
+		}
+	}
+	if made != nil && made.Provider == "gcp" {
+		if grant := install.VerifierGrant(c, made.SigningVerifier); grant != "" {
+			fmt.Fprintln(out, "\npolicy-controller checks the catalog's signatures in", c.ExternalCatalog.Registry, "as", made.SigningVerifier+".")
+			fmt.Fprintln(out, "Until its owner lets it read them, steps there are refused:")
+			fmt.Fprintln(out, "  "+grant)
 		}
 	}
 	if installed[install.ConsoleRelease] == "" {
@@ -405,7 +412,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 			"part of your cluster's own bill: Vertra requests %s and %s awake, plus up to its step cap while steps run", floor.CPU, floor.Memory)}}
 	}
 
-	if c.Signs() {
+	if c.ChecksSignatures() {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "policy-controller " + install.PolicyControllerChart + " into cosign-system: in team namespaces, only images catalog CI signed run"})
 	}
 	if c.Target == "kind" && c.Size == "auto" {
@@ -467,6 +474,19 @@ func certManagerNeeded(c *config.Config) bool {
 // signingLine says how the catalog is signed, and so what this install
 // refuses.
 func signingLine(c *config.Config) string {
+	if sig := c.CatalogSignature; c.ExternalCatalog.Registry != "" && (sig.PublicKeyFile != "" || sig.Repository != "") {
+		signer := sig.PublicKeyFile
+		if sig.Repository != "" {
+			signer = "keyless, " + sig.Repository + "'s CI (main)"
+			if sig.PublicKeyFile != "" {
+				signer = sig.PublicKeyFile + ", or " + signer
+			}
+		}
+		if c.VerifiesCatalog() {
+			return "the catalog's signer (" + signer + "); unsigned images and releases are refused"
+		}
+		return "the catalog's signer (" + signer + "); unsigned releases are refused"
+	}
 	switch c.Signing {
 	case "kms":
 		return "a KMS key only " + c.Catalog.Repo() + "'s CI (main) signs with; unsigned images and releases are refused"

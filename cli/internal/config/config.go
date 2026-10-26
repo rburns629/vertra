@@ -281,13 +281,19 @@ type Gateway struct {
 	InternetTeams []string `yaml:"internetTeams,omitempty"`
 }
 
-// CatalogSignature trusts a key to sign the catalog's releases.
+// CatalogSignature is who signs a catalog another install publishes
+// (externalCatalog): its key, or its repository's CI signing keyless. On
+// gcp and aws this install then refuses releases and images it didn't
+// sign, as the owner does (signing); elsewhere, releases.
 type CatalogSignature struct {
 	// PublicKeyFile is the catalog's cosign public key (PEM), relative to
-	// this directory.
+	// this directory: a generated key's, or the owner's KMS key's.
 	PublicKeyFile string `yaml:"publicKeyFile,omitempty"`
 	// PublicKey is its contents, read by Load.
 	PublicKey string `yaml:"-"`
+	// Repository is the catalog repository (owner/name) whose ci.yml on
+	// main signs keyless.
+	Repository string `yaml:"repository,omitempty"`
 }
 
 // Languages are the starters a catalog can begin with: the language, and
@@ -401,7 +407,9 @@ var (
 	ecrPrefix    = regexp.MustCompile(`^[a-z0-9]+([._-][a-z0-9]+)*$`)
 	hostname     = regexp.MustCompile(`^([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`)
 	githubName   = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9._-]{0,98})$`)
-	version      = regexp.MustCompile(`^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
+	// owner/name, a GitHub repository.
+	repoPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,98}/[A-Za-z0-9][A-Za-z0-9._-]{0,98}$`)
+	version     = regexp.MustCompile(`^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
 )
 
 // Validate returns every problem with the config, not just the first.
@@ -511,6 +519,12 @@ func (c *Config) Validate() error {
 		if e := c.Console.TLS.LetsEncryptEmail; e != "" && !strings.Contains(e, "@") {
 			add("console.tls.letsEncryptEmail: %q isn't an email address", e)
 		}
+	}
+	if r := c.CatalogSignature.Repository; r != "" && !repoPattern.MatchString(r) {
+		add("catalogSignature.repository: %q isn't owner/name, such as my-org/vertra-catalog", r)
+	}
+	if c.Signs() && (c.CatalogSignature.PublicKeyFile != "" || c.CatalogSignature.Repository != "") {
+		add("catalogSignature: for a catalog another install publishes; this install signs its own (signing: %s)", c.Signing)
 	}
 	if v := c.CatalogVersion; v != "" && v != "latest" && v != "newest" && !CatalogVersionPattern.MatchString(v) {
 		add("catalogVersion: %q: latest, newest, or a version such as v1.4.0", v)
@@ -787,7 +801,7 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"kind.registryName": true, "kind.registryPort": true,
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
 		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
-		"catalogSignature.publicKeyFile": true, "catalogVersion": true, "gateway.enabled": true, "signing": true,
+		"catalogSignature.publicKeyFile": true, "catalogSignature.repository": true, "catalogVersion": true, "gateway.enabled": true, "signing": true,
 		"console.ingressClass": true, "console.tls.issuer": true, "console.tls.letsEncryptEmail": true, "console.tls.installCertManager": true,
 		"logs.enabled": true, "logs.searchDays": true, "logs.keepDays": true,
 		"audit.export": true, "audit.keepDays": true, "audit.lock": true,
@@ -875,4 +889,28 @@ var CatalogVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]
 
 func (c *Config) Signs() bool {
 	return c.Signing == "kms" || c.Signing == "keyless"
+}
+
+// VerifiesCatalog says whether this install reads another's catalog and
+// enforces its signer on images too (policy-controller), not only on
+// releases: on a cloud, whose registry policy-controller can read.
+func (c *Config) VerifiesCatalog() bool {
+	return c.ExternalCatalog.Registry != "" && (c.Target == "gcp" || c.Target == "aws") &&
+		(c.CatalogSignature.PublicKeyFile != "" || c.CatalogSignature.Repository != "")
+}
+
+// ModuleSigning is signing as the cloud modules take it: verify for an
+// install that only checks another's catalog (policy-controller's identity,
+// no key), else signing.
+func (c *Config) ModuleSigning() string {
+	if c.VerifiesCatalog() {
+		return "verify"
+	}
+	return c.Signing
+}
+
+// ChecksSignatures says whether policy-controller refuses unsigned images
+// here: its own catalog signed, or another's verified.
+func (c *Config) ChecksSignatures() bool {
+	return c.Signs() || c.VerifiesCatalog()
 }

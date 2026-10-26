@@ -199,6 +199,56 @@ func TestAnExternalCatalogIsReadByFederation(t *testing.T) {
 	}
 }
 
+// An install reading another's signed catalog enforces its signer as the
+// owner does: on images (policy-controller) and releases; off a cloud, on
+// releases only.
+func TestAReaderTrustsTheCatalogsSigner(t *testing.T) {
+	c := kindConfig()
+	c.ExternalCatalog.Registry = "us-central1-docker.pkg.dev/acyclix-dev/vertra-products"
+	c.CatalogSignature.Repository = "my-org/vertra-catalog"
+	subject := `^https://github\.com/my-org/vertra-catalog/\.github/workflows/ci\.yml@refs/heads/main$`
+
+	// kind: releases only.
+	if c.ChecksSignatures() || KernelValues(c, Images{}, "", nil)["imageSignature"] != nil {
+		t.Error("kind can't check images")
+	}
+	catalog, _ := ConsoleValues(c, "dev", Images{}, nil)["catalog"].(map[string]any)
+	if !strings.Contains(fmt.Sprint(catalog["signature"]), subject) {
+		t.Errorf("kind's console: %v", catalog)
+	}
+
+	c.Target = "gcp"
+	cloud := &Cloud{Provider: "gcp", SigningVerifier: "vertra-r-verifier@p.iam.gserviceaccount.com"}
+	if !c.ChecksSignatures() || c.ModuleSigning() != "verify" {
+		t.Errorf("gcp: checks %v, module %q", c.ChecksSignatures(), c.ModuleSigning())
+	}
+	images := fmt.Sprint(KernelValues(c, Images{}, "", cloud)["imageSignature"])
+	if !strings.Contains(images, "enabled:true") || !strings.Contains(images, subject) || !strings.Contains(images, GitHubActionsIssuer) {
+		t.Errorf("imageSignature: %v", images)
+	}
+	catalog, _ = ConsoleValues(c, "dev", Images{}, cloud)["catalog"].(map[string]any)
+	if !strings.Contains(fmt.Sprint(catalog["signature"]), subject) {
+		t.Errorf("console: %v", catalog)
+	}
+	grant := VerifierGrant(c, cloud.SigningVerifier)
+	if grant != "gcloud artifacts repositories add-iam-policy-binding vertra-products --location=us-central1 --project=acyclix-dev "+
+		"--role=roles/artifactregistry.reader --member=serviceAccount:vertra-r-verifier@p.iam.gserviceaccount.com" {
+		t.Errorf("grant: %q", grant)
+	}
+	// Across clouds it reads with the steps' pull Secret: nothing to grant.
+	c.ExternalCatalog.GCPWorkloadIdentityProvider = "projects/1/locations/global/workloadIdentityPools/vertra-installs/providers/r"
+	if g := VerifierGrant(c, cloud.SigningVerifier); g != "" {
+		t.Errorf("federated: %q", g)
+	}
+
+	// A key as well: either signer passes.
+	c.CatalogSignature.PublicKeyFile, c.CatalogSignature.PublicKey = "cosign.pub", "-----BEGIN PUBLIC KEY-----\nk\n-----END PUBLIC KEY-----\n"
+	images = fmt.Sprint(KernelValues(c, Images{}, "", cloud)["imageSignature"])
+	if !strings.Contains(images, "BEGIN PUBLIC KEY") || !strings.Contains(images, subject) {
+		t.Errorf("both: %v", images)
+	}
+}
+
 // The gateway, when it's on: its image built from source, and on GKE the
 // cluster's Workload Identity pool for minting Google ID tokens.
 func TestTheGatewaysValues(t *testing.T) {

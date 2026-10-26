@@ -351,7 +351,8 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 		v["scheduler"] = scheduler
 	}
 	if trust := SignatureTrust(c, cloud); trust != nil {
-		// Images from the task registry run only if catalog CI signed them
+		// Images from the task registry (or the catalog's, read from
+		// another install) run only if catalog CI signed them
 		// (policy-controller, installed first, enforces it).
 		v["imageSignature"] = map[string]any{"enabled": true, "publicKeys": trust["publicKeys"], "keyless": trust["keyless"]}
 	}
@@ -464,9 +465,10 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	if trust := SignatureTrust(c, cloud); trust != nil {
 		// Only releases catalog CI signed are applied.
 		catalog["signature"] = trust
-	} else if key := c.CatalogSignature.PublicKey; key != "" {
-		// Only releases this key signed are applied.
-		catalog["signature"] = map[string]any{"publicKeys": []string{key}}
+	} else if trust := CatalogSignerTrust(c); trust != nil {
+		// Only releases the catalog's signer signed are applied (images
+		// aren't checked: off a cloud, policy-controller can't read them).
+		catalog["signature"] = trust
 	}
 	if len(catalog) > 0 {
 		v["catalog"] = catalog
@@ -842,6 +844,24 @@ func Uninstall(ctx context.Context, r *run.Runner, c *config.Config, release str
 	return r.Run(ctx, "helm", "uninstall", release, "--kube-context", cluster.Context(c), "--namespace", c.Namespace, "--wait")
 }
 
+// VerifierGrant is what the catalog registry's owner runs to let this
+// install's policy-controller (as verifier, a Google service account) read
+// signatures from it, when it reads an Artifact Registry on its own cloud:
+// across clouds it signs in with the steps' pull Secret instead. Empty when
+// there's nothing to grant.
+func VerifierGrant(c *config.Config, verifier string) string {
+	e := c.ExternalCatalog
+	host, path, _ := strings.Cut(e.Registry, "/")
+	project, repository, _ := strings.Cut(path, "/")
+	repository, _, _ = strings.Cut(repository, "/")
+	region, isAR := strings.CutSuffix(host, "-docker.pkg.dev")
+	if !c.VerifiesCatalog() || verifier == "" || !isAR || e.GCPWorkloadIdentityProvider != "" || repository == "" {
+		return ""
+	}
+	return fmt.Sprintf("gcloud artifacts repositories add-iam-policy-binding %s --location=%s --project=%s --role=roles/artifactregistry.reader --member=serviceAccount:%s",
+		repository, region, project, verifier)
+}
+
 // FederationSteps is what the catalog registry's owner runs, in its Google
 // Cloud project, to let this install read it with no stored key: a pool,
 // a provider trusting this cluster's OIDC issuer for the console's
@@ -909,6 +929,10 @@ func KeylessSubject(repo string) string {
 // SignatureTrust is who may sign this install's catalog, as both charts take
 // it (publicKeys, keyless), or nil when it isn't signed.
 func SignatureTrust(c *config.Config, cloud *Cloud) map[string]any {
+	if c.VerifiesCatalog() {
+		// Another install's catalog: its signer, given here.
+		return CatalogSignerTrust(c)
+	}
 	if !c.Signs() {
 		return nil
 	}
@@ -921,6 +945,23 @@ func SignatureTrust(c *config.Config, cloud *Cloud) map[string]any {
 		trust["publicKeys"] = []string{cloud.SigningPublicKey}
 	case "keyless":
 		trust["keyless"] = map[string]any{"issuer": GitHubActionsIssuer, "subjectRegExp": KeylessSubject(c.Catalog.Repo())}
+	}
+	return trust
+}
+
+// CatalogSignerTrust is the signer catalogSignature names (another
+// install's catalog), as both charts take it, or nil when it names none.
+func CatalogSignerTrust(c *config.Config) map[string]any {
+	sig := c.CatalogSignature
+	if sig.PublicKey == "" && sig.Repository == "" {
+		return nil
+	}
+	trust := map[string]any{"publicKeys": []string{}, "keyless": map[string]any{"issuer": "", "subjectRegExp": ""}}
+	if sig.PublicKey != "" {
+		trust["publicKeys"] = []string{sig.PublicKey}
+	}
+	if sig.Repository != "" {
+		trust["keyless"] = map[string]any{"issuer": GitHubActionsIssuer, "subjectRegExp": KeylessSubject(sig.Repository)}
 	}
 	return trust
 }

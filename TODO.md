@@ -668,6 +668,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      `catalogSignature` (a public key, or the repository for keyless)
      reaches the kernel's imageSignature as well as the console, and
      `vertra` installs policy-controller, reading the owner's registry.
+     Done 2026-10-26 (the modules' `verify`: policy-controller's identity
+     with no key; apply prints the owner's grant on the same cloud), not
+     yet proven on a cloud. Left: an aws reader of another account's ECR
+     (its verifier role reads only its own task registry).
   3. `vertra catalog create` refuses a repository that already publishes
      to another install's registry (its VERTRA_REGISTRY), unless told to
      move it.

@@ -245,11 +245,19 @@ it and allows backends in the `vertra-samples` namespace.
 
 ### Reading another install's catalog
 
-One catalog serves many installs. An install that reads another's sets
-`externalCatalog.registry` in its vertra.yaml (the image source, and where
-its release lives) and `catalogSignature.publicKeyFile` (the catalog's
-cosign public key: only releases it signed are applied). On the same cloud,
-grant the install's console and scanner identities read on that registry.
+One catalog serves many installs. One install owns its repository (its
+`catalog` block: its registry, its `signing`); an install that reads it
+sets `externalCatalog.registry` in its vertra.yaml (the image source, and
+where its release lives) and the owner's signer in `catalogSignature`:
+`publicKeyFile` (a generated key's or the owner's KMS key's public half,
+`cosign public-key --key <kms uri>`), and/or `repository` (the catalog
+repository, `owner/name`, whose `ci.yml` on main signs keyless). On gcp and
+aws the reader then refuses what that signer didn't sign as the owner does,
+releases and images: `vertra apply` installs policy-controller, and on the
+same cloud prints the grant the registry's owner runs for its identity
+(across clouds it reads with the steps' pull Secret). Elsewhere (kind, an
+existing cluster) only releases are checked. On the same cloud, also grant
+the install's console and scanner identities read on that registry.
 
 For a Google Artifact Registry read from another cloud (EKS, AKS, any
 cluster with an OIDC issuer), nothing is stored: the console exchanges its

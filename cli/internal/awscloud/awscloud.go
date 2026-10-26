@@ -157,7 +157,7 @@ func Vars(c *config.Config, deleteData bool, githubProvider string) map[string]a
 		"audit_lock":               c.Audit.Lock,
 		"delete_data":              deleteData,
 		"catalog_repository":       c.Catalog.Repo(),
-		"signing":                  signingOrNone(c.Signing),
+		"signing":                  signingOrNone(c.ModuleSigning()),
 		"kubernetes_version":       KubernetesVersion,
 		"console_zone":             consoleZone(c),
 		"console_hostname":         c.Console.Hostname,

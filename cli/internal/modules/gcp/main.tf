@@ -422,7 +422,8 @@ resource "google_service_account_iam_member" "publish_federation" {
 
 # --- catalog signing (signing): a KMS key only the catalog's CI signs with,
 # and policy-controller's identity, which reads signatures from the task
-# registry and nothing else ----------------------------------------------------
+# registry and nothing else (verify: only the identity; another install's
+# registry grants it read, as apply prints) ------------------------------------
 
 # Key rings can't be deleted, so each install's gets a fresh suffix.
 resource "random_id" "keyring" {
