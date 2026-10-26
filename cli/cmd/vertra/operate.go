@@ -51,6 +51,9 @@ func (a *app) checkCmd() *cobra.Command {
 					problems++
 					fmt.Fprintln(out, "  problem:", p)
 				}
+				for _, w := range gs.Warnings {
+					fmt.Fprintln(out, "  warning:", w)
+				}
 				if gs.ClusterStatus == "RUNNING" {
 					_ = gcp.Credentials(ctx, a.runner, c)
 				}

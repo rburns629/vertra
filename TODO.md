@@ -202,9 +202,9 @@ design.
   installs made by `vertra` with `database.backups` on, a backup run by hand
   copied both databases' dumps to the bucket `vertra` made; each downloaded
   dump restored cleanly into a throwaway database with every table. Azure
-  Blob is after the MVP. Left: the GCS backup image
-  (`google/cloud-sdk:*-slim`) is amd64 only, so Arm nodes need another
-  image.
+  Blob is after the MVP. The GCS backup image is Google's
+  `google-cloud-cli:*-slim` from gcr.io (amd64 and arm64; Docker Hub's
+  `google/cloud-sdk` is amd64 only), done 2026-10-26.
 - [ ] **Example values for EKS and AKS** next to `helm/values/gke/`, and a
   per-cloud guide to binding identities (console scanning and registry
   checks, ESO, products).
@@ -224,12 +224,15 @@ design.
 - [x] **The console's liveness probe killed it once while it started** on a
   minimal GKE install (2026-10-25, exit 137 a minute after start): it has a
   startup probe now, five minutes long (done 2026-10-25).
-- [ ] **`vertra check` could warn about GCE's SSD quota** (found
+- [x] **`vertra check` could warn about GCE's SSD quota** (done 2026-10-26:
+  `vertra check` and `apply` warn when the region has room for fewer than
+  four Autopilot nodes' disks; found
   2026-10-25): a new project's 500 GB `SSD_TOTAL_GB` in a region holds about
   three GKE Autopilot nodes' boot disks (about 140 GB each, counted but not
   listed), so a step's Spot node can't be added ("GCE quota exceeded") while
   three are up, and the step waits until one is scaled down.
-- [ ] **A resource whose cleanup run just failed shows "being deleted"**
+- [x] **A resource whose cleanup run just failed shows "being deleted"**
+  (done 2026-10-26: a delete asked for again checks the run with the kernel)
   for up to 30 seconds (until `resourceRecorder.ts` next looks at the run),
   so asking again at once is refused (`DELETE_IN_PROGRESS`). Read the run's
   own state when it's finished but not yet recorded.
@@ -919,7 +922,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **An end-to-end secret test** with a product registered by catalog CI.
 - [ ] **actionlint in the catalog template's own CI.**
 - [ ] **Move `docker` to the kernel's dev dependencies** (tests only).
-- [ ] **`make up` mistakes any console port-forward for its own:** include
-  the port in its `pgrep`/`pkill` patterns.
+- [x] **`make up` mistakes any console port-forward for its own** (done:
+  `PORT_FORWARD` names the context and port, which `pgrep`/`pkill` match).
 - [ ] **Switch to Sigstore's newer signature format** once policy-controller
   reads it (catalog CI signs with `--new-bundle-format=false`).

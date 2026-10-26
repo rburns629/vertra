@@ -249,6 +249,18 @@ describe("what runs made", () => {
     expect(await list(consumerToken, { executionId })).toHaveLength(1);
   });
 
+  it("can be deleted again as soon as a failed delete's run has finished, not before", async () => {
+    const executionId = await ranAndFinished(`${prov}-project-create`, { project: "acme-retry" }, { zone: "eu-west", resources: [{ type: "demo/project", id: `${prefix}-retry` }] });
+    const [made] = await list(consumerToken, { executionId });
+    const first = await call<{ executionId: string }>(consumerToken, "ResourceService/DeleteResources", { resourceIds: [made?.id] });
+    expect(first.code).toBe("ok");
+    kernelRuns.set(first.body.executionId, { executionId: first.body.executionId, name: "x", state: "RUNNING", tasks: [step("delete-1", "RUNNING")] });
+    expect((await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [made?.id] })).failure).toBe("DELETE_IN_PROGRESS");
+    // Failed, but not yet recorded (the recorder looks every 30 seconds).
+    kernelRuns.set(first.body.executionId, { executionId: first.body.executionId, name: "x", state: "FAILED", tasks: [step("delete-1", "FAILED")] });
+    expect((await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [made?.id] })).code).toBe("ok");
+  });
+
   it("gives a cleanup the inputs its product.yaml maps, from what the step was given and gave", async () => {
     const executionId = await ranAndFinished(`${prov}-project-create`, { project: "acme-web" }, { zone: "eu-west", resources: [{ type: "demo/project", id: `${prefix}-p` }] });
     const [made] = await list(consumerToken, { executionId });

@@ -21,6 +21,7 @@ import type { AuthUser } from "../auth/plugin.js";
 import { db } from "../db/client.js";
 import { findRunnableProduct } from "../db/queries.js";
 import { resources, submittedExecutions, users } from "../db/schema.js";
+import { getExecutionStates } from "../kernel/client.js";
 import { runCleanup, siblingAction, type ProductStep, type TeamProduct } from "./templates.js";
 
 export type ResourceState = "exists" | "deleting" | "delete_failed" | "deleted";
@@ -207,6 +208,8 @@ async function cleanupOf(productName: string, label: string): Promise<{ product:
   return { product, mapping: reporter.cleanup.inputs };
 }
 
+const FINISHED = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
+
 /**
  * Deletes resources: one run of their products' cleanup actions, newest
  * first, for the team they were made for. All must be the caller's to
@@ -222,6 +225,13 @@ export async function deleteResources(caller: AuthUser | undefined, ids: string[
   if (rows.length !== unique.length) throw new ApiError(404, "NOT_FOUND", "A resource to delete wasn't found.");
   const owners = new Set(rows.map((row) => row.resource.ownerTeam));
   if (owners.size > 1) throw new ApiError(422, "MIXED_OWNERS", "These were made for different teams: delete each team's separately.");
+  // A delete whose run has finished, but which the recorder (every 30s)
+  // hasn't looked at yet, isn't in progress: asked of the kernel, so a
+  // failed one can be tried again at once.
+  const pending = rows.filter((row) => stateOf(row) === "deleting").map((row) => row.resource.deletingExecutionId ?? "");
+  const finishedRuns = new Set(
+    pending.length === 0 ? [] : (await getExecutionStates([...new Set(pending)])).filter((e) => FINISHED.has(e.state)).map((e) => e.executionId),
+  );
   const steps: Omit<ProductStep, "id">[] = [];
   for (const row of rows) {
     const r = row.resource;
@@ -231,7 +241,9 @@ export async function deleteResources(caller: AuthUser | undefined, ids: string[
     }
     const state = stateOf(row);
     if (state === "deleted") throw new ApiError(409, "ALREADY_DELETED", `${label} is already deleted.`);
-    if (state === "deleting") throw new ApiError(409, "DELETE_IN_PROGRESS", `${label} is being deleted already.`);
+    if (state === "deleting" && !finishedRuns.has(r.deletingExecutionId ?? "")) {
+      throw new ApiError(409, "DELETE_IN_PROGRESS", `${label} is being deleted already.`);
+    }
     const { product, mapping } = await cleanupOf(r.product, label);
     steps.push({ product, inputs: cleanupInputs(mapping, r), label });
   }

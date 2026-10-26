@@ -7,6 +7,7 @@ package gcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -23,6 +24,47 @@ type State struct {
 	// "" if it doesn't exist yet.
 	ClusterStatus string
 	Problems      []string
+	// Warnings don't stop an install, but say what may go wrong in it.
+	Warnings []string
+}
+
+// autopilotNodeDiskGB is about what each GKE Autopilot node's boot disk
+// counts against the region's SSD quota (counted, though not listed among
+// the project's disks); roomForNodes is how many an install wants room for
+// (the platform's, and a step's).
+const (
+	autopilotNodeDiskGB = 140
+	roomForNodes        = 4
+)
+
+// SSDQuotaWarning says when the region's SSD quota has room for fewer
+// Autopilot nodes than an install wants, from `gcloud compute regions
+// describe --format=json(quotas)`; "" otherwise. A new project's 500 GB
+// holds about three, so a step's node can't be added while three are up
+// (found on GKE, 2026-10-25: the step waited until one scaled down).
+func SSDQuotaWarning(regionJSON, region string) string {
+	var described struct {
+		Quotas []struct {
+			Metric string  `json:"metric"`
+			Limit  float64 `json:"limit"`
+			Usage  float64 `json:"usage"`
+		} `json:"quotas"`
+	}
+	if json.Unmarshal([]byte(regionJSON), &described) != nil {
+		return ""
+	}
+	for _, q := range described.Quotas {
+		if q.Metric != "SSD_TOTAL_GB" {
+			continue
+		}
+		free := q.Limit - q.Usage
+		if free >= autopilotNodeDiskGB*roomForNodes {
+			return ""
+		}
+		return fmt.Sprintf("region %s's SSD quota has %.0f of %.0f GB free: room for about %d Autopilot nodes' boot disks, so a step may wait for a node until another scales down. Ask for more (SSD_TOTAL_GB, Compute Engine): https://console.cloud.google.com/iam-admin/quotas",
+			region, free, q.Limit, int(free/autopilotNodeDiskGB))
+	}
+	return ""
 }
 
 // Inspect checks the project can take an install: it exists, you can see
@@ -41,6 +83,14 @@ func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 		s.Problems = append(s.Problems, fmt.Sprintf("can't read project %s's billing (you need billing.resourceAssociations.list, e.g. Project Billing Manager or Viewer): %v", project, err))
 	case !strings.EqualFold(billing, "true"):
 		s.Problems = append(s.Problems, fmt.Sprintf("project %s has no billing account: link one (`gcloud billing projects link %s --billing-account=...`)", project, project))
+	}
+	// Only once Compute Engine's API is on (a new project's isn't): apply enables it.
+	if c.Cluster.Mode == "auto" {
+		if regionJSON, err := r.Output(ctx, "gcloud", "compute", "regions", "describe", c.GCP.Region, "--project", project, "--format=json(quotas)"); err == nil {
+			if w := SSDQuotaWarning(regionJSON, c.GCP.Region); w != "" {
+				s.Warnings = append(s.Warnings, w)
+			}
+		}
 	}
 	s.ClusterStatus, _ = r.Output(ctx, "gcloud", "container", "clusters", "list", "--project", project,
 		"--filter=name="+c.Cluster.Name+" AND location="+cluster.GKELocation(c), "--format=value(status)")

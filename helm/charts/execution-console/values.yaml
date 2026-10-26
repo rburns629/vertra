@@ -639,7 +639,7 @@ backup:
     # -- Bucket name, no gs://. The identity needs roles/storage.objectCreator
     # and roles/storage.objectViewer on it (gsutil reads before writing).
     bucket: ""
-    image: "google/cloud-sdk:586.0.0-slim"
+    image: "gcr.io/google.com/cloudsdktool/google-cloud-cli:586.0.0-slim"  # amd64 and arm64
   s3:
     # -- Bucket name, no s3://. The identity needs s3:PutObject on it.
     bucket: ""

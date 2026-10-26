@@ -186,8 +186,8 @@ describe("what a verdict allows", () => {
 
     await reconcileScans(); // due: started
     expect(startsOfThis()).toBe(1);
-    // The image is gone from the registry: every attempt fails.
-    vi.mocked(readScanJob).mockImplementation(() => Promise.resolve({ state: "failed", output: "MANIFEST_UNKNOWN: manifest unknown" }));
+    // The registry can't be reached: every attempt fails.
+    vi.mocked(readScanJob).mockImplementation(() => Promise.resolve({ state: "failed", output: "dial tcp 10.0.0.9:5000: i/o timeout" }));
     try {
       await reconcileScans();
       await reconcileScans();
@@ -198,6 +198,27 @@ describe("what a verdict allows", () => {
       await db.update(imageScans).set({ requestedAt: new Date(Date.now() - (RETRY_ERRORED_MINUTES + 1) * 60_000) }).where(eq(imageScans.digest, digest));
       await reconcileScans();
       expect(startsOfThis()).toBe(2);
+    } finally {
+      vi.mocked(readScanJob).mockImplementation((_namespace: string, name: string) => {
+        const output = outputs.get(jobs.get(name) ?? "");
+        return Promise.resolve(output === undefined ? { state: "running" } : { state: "succeeded", output });
+      });
+    }
+  });
+
+  it("forgets an image the registry no longer has, rather than trying it again", async () => {
+    const img = image();
+    const digest = img.split("@")[1] ?? "";
+    await scanned(img, CLEAN);
+    const longAgo = new Date(Date.now() - 48 * 3_600_000);
+    await db.update(imageScans).set({ scannedAt: longAgo, requestedAt: longAgo }).where(eq(imageScans.digest, digest));
+    await reconcileScans(); // due: started
+    vi.mocked(readScanJob).mockImplementation(() =>
+      Promise.resolve({ state: "failed", output: `remote error: GET https://registry.example/v2/app/manifests/${digest}: MANIFEST_UNKNOWN: manifest unknown` }),
+    );
+    try {
+      await reconcileScans();
+      expect(await db.select().from(imageScans).where(eq(imageScans.digest, digest))).toEqual([]);
     } finally {
       vi.mocked(readScanJob).mockImplementation((_namespace: string, name: string) => {
         const output = outputs.get(jobs.get(name) ?? "");

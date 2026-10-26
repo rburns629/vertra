@@ -175,6 +175,9 @@ async function startScan(row: { digest: string; image: string }): Promise<void> 
   });
 }
 
+/** The registry's answer for a digest it doesn't have (Trivy passes it on). */
+const IMAGE_GONE = /MANIFEST_UNKNOWN|manifest unknown/i;
+
 /** How long an attempt that couldn't scan (its image gone from the registry, say) waits before the next. */
 export const RETRY_ERRORED_MINUTES = 15;
 
@@ -225,6 +228,15 @@ export async function reconcileScans(): Promise<boolean> {
     if (!row.jobName) continue;
     const job = await readScanJob(namespace, row.jobName);
     if (job.state === "running") continue;
+    if (job.state === "failed" && IMAGE_GONE.test(job.output)) {
+      // The registry no longer has it: scanning again can never work. It
+      // can't run either; if it's ever pushed again, its next use scans it.
+      await db.delete(imageScans).where(eq(imageScans.digest, row.digest));
+      await deleteScanJob(namespace, row.jobName);
+      scansFinished.inc({ status: "gone" });
+      changed = true;
+      continue;
+    }
     const findings = job.state === "succeeded" ? parseScanOutput(job.output) : null;
     const status = findings ? verdictOf(findings) : "error";
     const recorded: ScanFindings = findings ?? {

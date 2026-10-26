@@ -42,6 +42,9 @@ func (a *app) planGCP(ctx context.Context, out io.Writer, dir string, c *config.
 	if len(state.Problems) > 0 {
 		return nil, fmt.Errorf("the project isn't ready:\n  - %s", strings.Join(state.Problems, "\n  - "))
 	}
+	for _, w := range state.Warnings {
+		fmt.Fprintln(out, "Warning:", w)
+	}
 	check := access.CheckGCP(ctx, a.runner.Exec, access.GoogleTokenEmail, c.GCP.Project, c.GCP.Region)
 	if err := sameIdentity(c.Access.Cloud, check.Identity); err != nil {
 		return nil, err
