@@ -498,7 +498,9 @@ VERTRA_SIGNING_* variables. Proven on GKE (2026-10-26), both modes: CI
 signed images and releases; the console applied only signed releases ("no
 trusted signer signed the catalog release … nothing was applied" for one
 pushed unsigned); a signed starter ran and an image pushed by hand, unsigned,
-was refused (`IMAGE_NOT_SIGNED`).
+was refused (`IMAGE_NOT_SIGNED`). Proven on EKS too (2026-10-26), `kms`:
+an AWS KMS key, with policy-controller reading ECR through Pod Identity; the
+same four results.
 
 Two platform identities only change replica counts, through the scale
 subresource (which can't change what a Deployment runs), on Deployments

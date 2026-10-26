@@ -906,11 +906,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   only the catalog's CI may sign with, installs policy-controller bound to a
   registry reader, and gives both charts the signer; `vertra catalog create`
   sets the repository's VERTRA_SIGNING_* variables. Proven on GKE, kms then
-  keyless (see docs/security-model.md). AWS KMS and policy-controller reading
-  ECR through Pod Identity aren't proven yet. Found on the way, and fixed:
+  keyless, and on EKS, AWS KMS with policy-controller reading ECR through
+  Pod Identity (see docs/security-model.md). Found on the way, and fixed:
   the template pinned a vertra too old for its own samples (released 0.3.0
   and pinned it; CI now validates the template with its pinned vertra), and
-  keyless signing failed with cosign 3 (0.3.1).
+  keyless signing failed with cosign 3 (0.3.1), and an AWS kms apply read
+  no public key (the CLI's `--output json` won over `--output text`).
 - [x] **An intermittent console test** (fixed 2026-10-25):
   `product-ownership.test.ts`'s startup claim read every product, then
   inserted for a team another file had deleted meanwhile. The claim now

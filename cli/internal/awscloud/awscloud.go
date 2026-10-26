@@ -400,13 +400,26 @@ func SigningPublicKey(ctx context.Context, r *run.Runner, c *config.Config, key 
 	if arn == key || !strings.HasPrefix(arn, "arn:") {
 		return "", fmt.Errorf("%q isn't an AWS KMS key", key)
 	}
-	der, err := r.Output(ctx, "aws", args(c, "kms", "get-public-key", "--key-id", arn, "--query", "PublicKey", "--output", "text")...)
+	out, err := r.Output(ctx, "aws", args(c, "kms", "get-public-key", "--key-id", arn, "--query", "PublicKey")...)
 	if err != nil {
 		return "", err
 	}
-	der = strings.TrimSpace(der)
+	pem, err := publicKeyPEM(out)
+	if err != nil {
+		return "", fmt.Errorf("AWS KMS's public key for %s: %w", key, err)
+	}
+	return pem, nil
+}
+
+// publicKeyPEM turns `aws kms get-public-key --query PublicKey` (JSON: a
+// quoted base64 DER string) into PEM.
+func publicKeyPEM(out string) (string, error) {
+	var der string
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &der); err != nil {
+		return "", err
+	}
 	if _, err := base64.StdEncoding.DecodeString(der); err != nil || der == "" {
-		return "", fmt.Errorf("AWS KMS gave no public key for %s", key)
+		return "", fmt.Errorf("not base64 DER")
 	}
 	var b strings.Builder
 	b.WriteString("-----BEGIN PUBLIC KEY-----\n")
