@@ -11,6 +11,9 @@
 #   ... publish -- release                     then the catalog's release, in
 #                                              the same catalog (commands are
 #                                              separated by --)
+#   VERTRA_PINNED=1 catalog-template.sh validate   with the vertra the template
+#                                              pins, as a new catalog's CI
+#                                              runs it
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -21,8 +24,11 @@ trap 'rm -rf "$work"' EXIT
 
 cp -R "$template/." "$work"
 rm -rf "$work/.vertra"
-# This checkout's vertra, not the template's pinned release.
-if [ -z "${VERTRA_BIN:-}" ]; then
+# This checkout's vertra, not the template's pinned release; or, with
+# VERTRA_PINNED=1, the pinned release, as a new catalog's CI runs it.
+if [ "${VERTRA_PINNED:-}" = 1 ]; then
+  unset VERTRA_BIN
+elif [ -z "${VERTRA_BIN:-}" ]; then
   VERTRA_BIN=$(bash "$root/.github/scripts/build-vertra.sh")
   export VERTRA_BIN
 fi

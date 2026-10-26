@@ -341,6 +341,13 @@ jobs:
         with:
           fetch-depth: 0   # to see whether the template changed
       - run: bash .github/scripts/catalog-template.sh validate
+      # As a new catalog's CI runs it: a template needing a newer vertra than
+      # it pins fails here (release one, then .github/scripts/pin-vertra.sh),
+      # not in every catalog made from it.
+      - name: Validate with the vertra the template pins
+        env:
+          VERTRA_PINNED: "1"
+        run: bash .github/scripts/catalog-template.sh validate
       - name: Did the template change?
         id: changed
         env:
