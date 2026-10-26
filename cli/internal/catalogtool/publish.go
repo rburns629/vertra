@@ -65,7 +65,10 @@ func (c *Catalog) sign(reference string, s Settings) error {
 		// legacy signature format, which policy-controller reads.
 		args = []string{"--key", s.SigningKey, "--use-signing-config=false", "--tlog-upload=false", "--new-bundle-format=false"}
 	} else {
-		args = []string{"--new-bundle-format=false"} // keyless: CI's OIDC identity, logged publicly
+		// keyless: CI's OIDC identity, logged publicly; Sigstore's public
+		// instances as cosign's flags default to (its signing config would
+		// need the new bundle format, which policy-controller doesn't read).
+		args = []string{"--use-signing-config=false", "--new-bundle-format=false"}
 	}
 	result, err := c.run(0, false, cosign, append(append([]string{"sign", "--yes"}, args...), reference)...)
 	if err == nil && result.code != 0 {

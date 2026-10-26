@@ -930,6 +930,9 @@ func PolicyController(ctx context.Context, r *run.Runner, c *config.Config, clou
 		"--kube-context", cluster.Context(c), "--namespace", "cosign-system", "--create-namespace",
 		"--set", "webhook.serviceAccount.name=" + PolicyControllerServiceAccount,
 		"--set-json", `webhook.namespaceSelector={"matchExpressions":[{"key":"vertra/team","operator":"Exists"}]}`,
+		// Its webhook rewrites its own namespaceSelector, so Helm's server-side
+		// apply would conflict with it on every upgrade after the first.
+		"--force-conflicts",
 		"--wait", "--timeout", "10m"}
 	if cloud != nil && cloud.Provider == "gcp" && cloud.SigningVerifier != "" {
 		args = append(args, "--set-string", `webhook.serviceAccount.annotations.iam\.gke\.io/gcp-service-account=`+cloud.SigningVerifier)
