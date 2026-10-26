@@ -652,6 +652,23 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **Trace what a retired team's running executions do** (not checked in
   the assessment).
 
+- [ ] **Catalog versions, and installs reading another's catalog**
+  (decision 22, `docs/assessment.md`). In order:
+  1. Versions: a `vX.Y.Z` tag in the catalog repository asks CI on main to
+     tag that commit's release `catalog-release:vX.Y.Z` (`vertra catalog
+     promote`; immutable; only a commit main published). The console
+     follows its release's tag, or the newest version
+     (`catalog.newestVersion`); `vertra` sets either from `catalogVersion`
+     (`latest`, `newest`, `vX.Y.Z`).
+  2. A reading install (`externalCatalog`) trusts the owner's signer:
+     `catalogSignature` (a public key, or the repository for keyless)
+     reaches the kernel's imageSignature as well as the console, and
+     `vertra` installs policy-controller, reading the owner's registry.
+  3. `vertra catalog create` refuses a repository that already publishes
+     to another install's registry (its VERTRA_REGISTRY), unless told to
+     move it.
+  Prove: kind for versions; a GKE owner and a reader for the signer.
+
 ## Security
 
 - [x] **TLS in front of the console** in the charts. Done 2026-10-22, proven

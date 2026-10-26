@@ -738,6 +738,32 @@ resources in the reverse of the order they were made. Rejected: the
 delete reading the old run's outputs (gone after retention); tracking
 resources' live state (each product's own cloud knows that).
 
+**22. Catalog versions, and installs that read another's catalog**
+(decided 2026-10-26). One repository is published by one install (its
+owner: its registry, its signer); every other install reads it
+(`externalCatalog`), and each install chooses what it follows: `latest`,
+every release main publishes, or versions. A version is a Git tag
+`vX.Y.Z` in the catalog repository: it doesn't rebuild or re-sign
+anything, it tags the release main already published and signed for that
+commit, `catalog-release:vX.Y.Z`, so an install on a version runs exactly
+the digests an install on `latest` ran, verified against the same signer.
+Pushing the tag only asks CI on main to do it (the tag's run holds no
+credential, since signing and the registry are main-only), and a version
+never moves once made. An install follows a pinned version or the newest
+one, so promoting test's catalog to prod is cutting a tag. A reading
+install trusts the owner's signer (its public key, or its repository's
+keyless identity) and enforces it on releases and images as the owner
+does, holding no signing rights. `vertra` refuses to make a second
+install the owner of a repository that already publishes elsewhere.
+Rejected: channel tags such as `:prod` (unfamiliar, and they move);
+branches per environment (two histories to merge and sign); signing on a
+tag's run (anyone who may push a tag could sign); per-install signers for
+one catalog (several roots of trust); approval in each console (no shared
+record of what was promoted). An install's cloud is where Vertra runs, not
+what its steps may deploy to (federation reaches other clouds), so a second
+install is for a real boundary (prod and non-prod, residency, separate
+units), not each engineer's cloud.
+
 ## 18. Roadmap
 
 None of these needs a new service. All contract changes are additive.
@@ -793,7 +819,7 @@ for what consumers may do to runs (cancel and retry their own).
 
 - Golden-path rules; runtime-dependency metadata.
 - Azure; GitLab; several catalog repositories.
-- Environments and promotion; saved inputs; live updates; cost hints.
+- Environments and promotion (catalog versions: decision 22); saved inputs; live updates; cost hints.
 - Discovering targets; build provenance.
 
 ## 19. The smallest architecture that does it
