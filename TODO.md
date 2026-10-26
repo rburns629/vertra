@@ -653,29 +653,34 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the assessment).
 
 - [ ] **Catalog versions, and installs reading another's catalog**
-  (decision 22, `docs/assessment.md`). In order:
-  1. Versions: a `vX.Y.Z` tag in the catalog repository asks CI on main to
-     tag that commit's release `catalog-release:vX.Y.Z` (`vertra catalog
-     promote`; immutable; only a commit main published). The console
-     follows its release's tag, or the newest version
-     (`catalog.newestVersion`); `vertra` sets either from `catalogVersion`
-     (`latest`, `newest`, `vX.Y.Z`). Done 2026-10-26, proven on kind
-     (a version made, moving it refused, the console on `newest` applying
-     v1.0.0 then v1.1.0 while `latest` was newer). Left: the tag's run
-     asking main (`version.yml`) proven in a real repository, which needs a
-     vertra release with `promote` pinned in the template.
-  2. A reading install (`externalCatalog`) trusts the owner's signer:
-     `catalogSignature` (a public key, or the repository for keyless)
-     reaches the kernel's imageSignature as well as the console, and
-     `vertra` installs policy-controller, reading the owner's registry.
-     Done 2026-10-26 (the modules' `verify`: policy-controller's identity
-     with no key; apply prints the owner's grant on the same cloud), not
-     yet proven on a cloud. Left: an aws reader of another account's ECR
-     (its verifier role reads only its own task registry).
-  3. `vertra catalog create` refuses a repository that already publishes
-     to another install's registry (its VERTRA_REGISTRY), unless told to
-     move it (`--take-over`). Done 2026-10-26.
-  Prove: kind for versions; a GKE owner and a reader for the signer.
+  (decision 22, `docs/assessment.md`; vertra 0.4.0). Done 2026-10-26:
+  - Versions: a `vX.Y.Z` tag in the catalog repository asks CI on main
+    (`version.yml`) to tag that commit's release `catalog-release:vX.Y.Z`
+    (`vertra catalog promote`; immutable; only a commit main published).
+    The console follows its release's tag, or the newest version
+    (`catalog.newestVersion`); `vertra` sets either from `catalogVersion`.
+  - A reading install (`externalCatalog`) trusts the owner's signer
+    (`catalogSignature`: a public key, or the repository for keyless) on
+    releases and, on gcp and aws, images (policy-controller, the modules'
+    `verify` identity; apply prints the owner's grant on the same cloud).
+  - `vertra catalog create` refuses a repository that already publishes to
+    another install's registry, unless `--take-over`.
+  Proven on kind (versions) and GKE, an owner signing keyless and a reader
+  on `newest` in acyclix-dev: the tag's run started CI on main, which made
+  the version; the reader applied nothing before a version, then v1.0.0,
+  held there while a merge moved the owner's `latest`, then v1.1.0, each the
+  owner's digest, verified against the owner's keyless identity; the owner
+  ran a signed image and the reader refused an unsigned one pushed by hand
+  (`IMAGE_NOT_SIGNED`). Left:
+  - A signed image running on a reader: not seen (the project's 500 GB SSD
+    quota held two installs' nodes back, then the reader's control plane
+    stopped answering while it slept, TLS handshake timeouts, cause unknown).
+  - An aws reader of another account's ECR (its verifier role reads only its
+    own task registry).
+  - `vertra destroy` stops when the cluster's API doesn't answer (it
+    checks the database volume's disk is gone first): the reader's was torn
+    down with `tofu destroy` on its state. Destroy should go on to the cloud
+    side, warning about any disk it couldn't confirm deleted.
 
 ## Security
 
