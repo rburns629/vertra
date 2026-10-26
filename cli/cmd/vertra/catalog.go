@@ -493,11 +493,23 @@ func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh
 	fmt.Fprintf(out, "The console applied the release (commit %.7s).\n", applied.Commit)
 
 	product := config.Languages[cat.Languages[0]]
-	id, err := api.Submit(ctx, "vertra smoke test", fmt.Sprintf("vertra-smoke-%d", time.Now().Unix()), []consoleapi.Task{{
+	task := []consoleapi.Task{{
 		ID: "smoke", Image: fmt.Sprintf("%s/%s/%s:latest", setup.registry, cat.Team, product),
 		Action: "transform", Team: cat.Team,
 		Inputs: map[string]any{"text": "hello from vertra"},
-	}})
+	}}
+	id, err := api.Submit(ctx, "vertra smoke test", fmt.Sprintf("vertra-smoke-%d", time.Now().Unix()), task)
+	// A new image's first scan takes a few minutes; the console asks to
+	// try again until it's done.
+	for deadline := time.Now().Add(10 * time.Minute); scanning(err) && time.Now().Before(deadline); {
+		fmt.Fprintln(out, "Waiting for the console's first scan of the starter...")
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(30 * time.Second):
+		}
+		id, err = api.Submit(ctx, "vertra smoke test", fmt.Sprintf("vertra-smoke-%d", time.Now().Unix()), task)
+	}
 	if err != nil {
 		return err
 	}
@@ -514,6 +526,13 @@ func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh
 	}
 	fmt.Fprintln(out, "The catalog works: a merge publishes and releases, the console applies it, and its products run.")
 	return nil
+}
+
+// scanning says whether the console refused a run only until its scan of
+// the image finishes.
+func scanning(err error) bool {
+	var r *consoleapi.Refusal
+	return errors.As(err, &r) && (r.Failure == "IMAGE_SCAN_PENDING" || r.Failure == "IMAGE_SCAN_ERROR")
 }
 
 // waitForRuns waits until every run on commit has completed.

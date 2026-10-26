@@ -3,11 +3,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/rburns629/vertra/cli/internal/config"
+	"github.com/rburns629/vertra/cli/internal/consoleapi"
 )
 
 // The catalog repository's CI is told catalog-template's modes: key (with
@@ -42,5 +44,19 @@ func TestOwnedElsewhere(t *testing.T) {
 	}
 	if err := ownedElsewhere("my-org/catalog", prod, ours, true); err != nil {
 		t.Errorf("taken over: %v", err)
+	}
+}
+
+// The smoke test waits out the console's first scan of a new image, and
+// nothing else.
+func TestScanningIsWaitedOut(t *testing.T) {
+	for failure, want := range map[string]bool{"IMAGE_SCAN_PENDING": true, "IMAGE_SCAN_ERROR": true, "IMAGE_SCAN_FAILED": false, "": false} {
+		err := fmt.Errorf("submit: %w", &consoleapi.Refusal{Failure: failure})
+		if scanning(err) != want {
+			t.Errorf("%q: %v", failure, !want)
+		}
+	}
+	if scanning(errors.New("reaching the console")) {
+		t.Error("a network error isn't a scan")
 	}
 }

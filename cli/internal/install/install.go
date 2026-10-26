@@ -991,5 +991,30 @@ func PolicyController(ctx context.Context, r *run.Runner, c *config.Config, clou
 	if cloud != nil && cloud.Provider == "gcp" && cloud.SigningVerifier != "" {
 		args = append(args, "--set-string", `webhook.serviceAccount.annotations.iam\.gke\.io/gcp-service-account=`+cloud.SigningVerifier)
 	}
-	return r.Run(ctx, "helm", args...)
+	if err := r.Run(ctx, "helm", args...); err != nil {
+		return err
+	}
+	// --wait sees its Pods ready, but on a new cluster the API server may not
+	// reach its webhook yet (GKE: "No agent available"), and the kernel
+	// chart's policy would fail. A server-side dry run goes through the
+	// webhook and stores nothing: wait until it answers.
+	var err error
+	for deadline := time.Now().Add(5 * time.Minute); ; {
+		if _, err = r.OutputInput(ctx, policyControllerProbe, "kubectl", "--context", cluster.Context(c), "apply", "--dry-run=server", "-f", "-"); err == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("policy-controller's webhook doesn't answer: %w", err)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+	}
 }
+
+// policyControllerProbe is a policy for no image, only ever dry-run.
+const policyControllerProbe = `{"apiVersion":"policy.sigstore.dev/v1beta1","kind":"ClusterImagePolicy",` +
+	`"metadata":{"name":"vertra-webhook-probe"},` +
+	`"spec":{"images":[{"glob":"vertra.invalid/**"}],"authorities":[{"static":{"action":"pass"}}]}}`

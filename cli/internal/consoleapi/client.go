@@ -82,8 +82,10 @@ func (sessionInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 // Refusal is the console saying no: its Connect code, its message and,
 // for a refused document, each problem it found.
 type Refusal struct {
-	Code     connect.Code
-	Message  string
+	Code    connect.Code
+	Message string
+	// Failure is the console's stable code for it (IMAGE_SCAN_PENDING, ...).
+	Failure  string
 	Problems []string
 }
 
@@ -100,6 +102,9 @@ func refused(err error) error {
 	r := &Refusal{Code: ce.Code(), Message: ce.Message()}
 	for _, d := range ce.Details() {
 		if v, err := d.Value(); err == nil {
+			if f, ok := v.(*consolev1.Failure); ok {
+				r.Failure = f.GetCode()
+			}
 			if p, ok := v.(*consolev1.Problem); ok {
 				where := ""
 				if p.GetField() != "" {
