@@ -455,8 +455,12 @@ type CatalogStatus struct {
 	// What applying it couldn't do, one item at a time.
 	Problems []*CatalogProblem `protobuf:"bytes,6,rep,name=problems,proto3" json:"problems,omitempty"`
 	// The last look, and why it failed (nothing was applied then).
-	CheckedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=checked_at,json=checkedAt,proto3" json:"checked_at,omitempty"`
-	Error         string                 `protobuf:"bytes,8,opt,name=error,proto3" json:"error,omitempty"`
+	CheckedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=checked_at,json=checkedAt,proto3" json:"checked_at,omitempty"`
+	Error     string                 `protobuf:"bytes,8,opt,name=error,proto3" json:"error,omitempty"`
+	// Whether it follows the newest version (a vX.Y.Z tag) instead of
+	// release's own tag, and the version applied, when it was one.
+	NewestVersion bool   `protobuf:"varint,9,opt,name=newest_version,json=newestVersion,proto3" json:"newest_version,omitempty"`
+	Version       string `protobuf:"bytes,10,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -543,6 +547,20 @@ func (x *CatalogStatus) GetCheckedAt() *timestamppb.Timestamp {
 func (x *CatalogStatus) GetError() string {
 	if x != nil {
 		return x.Error
+	}
+	return ""
+}
+
+func (x *CatalogStatus) GetNewestVersion() bool {
+	if x != nil {
+		return x.NewestVersion
+	}
+	return false
+}
+
+func (x *CatalogStatus) GetVersion() string {
+	if x != nil {
+		return x.Version
 	}
 	return ""
 }
@@ -1209,7 +1227,7 @@ const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\x17AdoptCatalogTeamRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"T\n" +
 	"\x18AdoptCatalogTeamResponse\x128\n" +
-	"\x06status\x18\x01 \x01(\v2 .vertra.console.v1.CatalogStatusR\x06status\"\xc4\x02\n" +
+	"\x06status\x18\x01 \x01(\v2 .vertra.console.v1.CatalogStatusR\x06status\"\x85\x03\n" +
 	"\rCatalogStatus\x12\x18\n" +
 	"\arelease\x18\x01 \x01(\tR\arelease\x12\x16\n" +
 	"\x06digest\x18\x02 \x01(\tR\x06digest\x12\x16\n" +
@@ -1222,7 +1240,10 @@ const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\bproblems\x18\x06 \x03(\v2!.vertra.console.v1.CatalogProblemR\bproblems\x129\n" +
 	"\n" +
 	"checked_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt\x12\x14\n" +
-	"\x05error\x18\b \x01(\tR\x05error\"e\n" +
+	"\x05error\x18\b \x01(\tR\x05error\x12%\n" +
+	"\x0enewest_version\x18\t \x01(\bR\rnewestVersion\x12\x18\n" +
+	"\aversion\x18\n" +
+	" \x01(\tR\aversion\"e\n" +
 	"\x0eCatalogProblem\x12\x12\n" +
 	"\x04item\x18\x01 \x01(\tR\x04item\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12%\n" +

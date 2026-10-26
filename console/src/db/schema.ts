@@ -927,6 +927,8 @@ export const catalogSync = pgTable("catalog_sync", {
   id: integer("id").primaryKey().default(1),
   // The release artifact's manifest digest, its commit and repository.
   digest: text("digest"),
+  // The version it is (vX.Y.Z), when the release read was one.
+  version: text("version"),
   commit: text("commit"),
   repository: text("repository"),
   appliedAt: timestamp("applied_at", { withTimezone: true }),

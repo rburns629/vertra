@@ -300,6 +300,11 @@ gateway:
 # Empty: no catalog; teams and products are an admin's to make.
 catalog:
   release: ""
+  # -- Follow the newest version (a vX.Y.Z tag of release's repository, which
+  # a vX.Y.Z Git tag in the catalog repository makes: `vertra catalog
+  # promote`) instead of release's own tag. Or pin one: release
+  # <registry>/catalog-release:v1.4.0.
+  newestVersion: false
   pollSeconds: 300
   # -- Who may sign a release: any of these cosign public keys (PEM), and/or
   # a keyless identity (both issuer and subjectRegExp). Usually the same as

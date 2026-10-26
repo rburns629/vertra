@@ -439,10 +439,10 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	if cloud != nil && c.Catalog.Repo() != "" {
 		// The catalog's release, which its CI pushes beside the images and
 		// the console reads.
-		catalog["release"] = cloud.TaskRegistry + "/catalog-release:latest"
+		catalog["release"] = cloud.TaskRegistry + "/catalog-release:" + releaseTag(c)
 	}
 	if e := c.ExternalCatalog; e.Registry != "" {
-		catalog["release"] = e.Registry + "/catalog-release:latest"
+		catalog["release"] = e.Registry + "/catalog-release:" + releaseTag(c)
 		if e.GCPWorkloadIdentityProvider != "" {
 			// Another cloud's Artifact Registry, read by federation
 			// (console/src/registryFederation.ts).
@@ -457,6 +457,9 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 			}
 			v["registryCheck"] = check
 		}
+	}
+	if catalog["release"] != nil && c.CatalogVersion == "newest" {
+		catalog["newestVersion"] = true
 	}
 	if trust := SignatureTrust(c, cloud); trust != nil {
 		// Only releases catalog CI signed are applied.
@@ -881,6 +884,16 @@ func envProviderName(c *config.Config) string {
 		name = strings.TrimRight(name[:25], "-")
 	}
 	return name
+}
+
+// releaseTag is the tag of the catalog's release the console reads: a
+// pinned version, or latest (which newest ignores, reading the newest
+// version instead).
+func releaseTag(c *config.Config) string {
+	if config.CatalogVersionPattern.MatchString(c.CatalogVersion) {
+		return c.CatalogVersion
+	}
+	return "latest"
 }
 
 // GitHubActionsIssuer is the issuer of GitHub Actions' OIDC tokens, which

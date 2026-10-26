@@ -380,6 +380,9 @@ export const config = {
   // SecretStores are only what admins make by hand.
   catalog: {
     release: process.env["CATALOG_RELEASE"] ?? "",
+    // Follow the newest version (a vX.Y.Z tag of release's repository,
+    // `vertra catalog promote`) instead of release's own tag.
+    newestVersion: process.env["CATALOG_NEWEST_VERSION"] === "true",
     pollSeconds: Number(process.env["CATALOG_POLL_SECONDS"] ?? "300"),
     // Who may sign a release: the same as the kernel chart's imageSignature
     // (PEM public keys, a JSON list; and/or a keyless identity). None: the

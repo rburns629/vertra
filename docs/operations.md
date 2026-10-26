@@ -276,6 +276,20 @@ and applies again. The provider trusts only that cluster's issuer, and only
 the console's ServiceAccount from it. Revoke the install by deleting its
 provider.
 
+### Catalog versions
+
+An install applies every release its catalog's `main` publishes (`latest`)
+unless it follows versions: `vertra config set -e <env> catalogVersion
+newest` (the newest `vX.Y.Z`; the console chart's `catalog.newestVersion`)
+or `catalogVersion v1.4.0` (pinned: `catalog.release` ends `:v1.4.0`), then
+`vertra apply`. A version is made by a `vX.Y.Z` Git tag in the catalog
+repository, which tags the release `main` already published for that commit
+(`vertra catalog promote`, catalog-template's `version.yml`): the same
+digests and signature, so a production install following `newest` gets
+what a test install on `latest` already ran, when someone cuts the tag. To
+roll back, pin the previous version; versions never move. The Admin page's
+Catalog card shows the version applied.
+
 ### Sizes, sleeping and headroom
 
 Each chart ships four presets in `sizes/` (`minimal`, `resilient`,

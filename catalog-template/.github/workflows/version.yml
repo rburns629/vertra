@@ -1,0 +1,28 @@
+name: catalog-version
+
+# A vX.Y.Z tag makes that version of the catalog, which installs following
+# versions apply. This run is the tag's own, which may not use the
+# catalog-publish Environment or the registry (both main-only), so it only
+# asks ci.yml on main to make it: main tags the release it published for the
+# tagged commit (`vertra catalog promote`); nothing is rebuilt or re-signed.
+# A version never moves once made. A tag on a commit from before this file
+# existed runs nothing: run ci.yml on main by hand, with the version and
+# commit, instead. Protect v* tags (a ruleset) as you protect main.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  actions: write   # to start ci.yml on main; nothing else
+
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask CI on main to make the version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref main -f version="$VERSION" -f commit="$COMMIT"

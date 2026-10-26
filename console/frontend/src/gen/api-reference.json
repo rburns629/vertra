@@ -1394,6 +1394,20 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "newestVersion",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether it follows the newest version (a vX.Y.Z tag) instead of\nrelease's own tag, and the version applied, when it was one."
+    },
+    {
+     "name": "version",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

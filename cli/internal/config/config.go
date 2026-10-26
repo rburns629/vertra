@@ -69,6 +69,11 @@ type Config struct {
 	ExternalCatalog ExternalCatalog `yaml:"externalCatalog,omitempty"`
 	// CatalogSignature: who may sign the catalog's releases.
 	CatalogSignature CatalogSignature `yaml:"catalogSignature,omitempty"`
+	// CatalogVersion: which of the catalog's releases this install applies.
+	// latest (the default): each one main publishes; newest: the newest
+	// version (a vX.Y.Z tag in the catalog repository); or one version,
+	// such as v1.4.0, pinned.
+	CatalogVersion string `yaml:"catalogVersion,omitempty"`
 	// Signing: how this install's catalog CI signs its images and releases,
 	// which the install then requires (policy-controller refuses unsigned
 	// images; the console, unsigned releases). none (the default); kms: a
@@ -507,6 +512,9 @@ func (c *Config) Validate() error {
 			add("console.tls.letsEncryptEmail: %q isn't an email address", e)
 		}
 	}
+	if v := c.CatalogVersion; v != "" && v != "latest" && v != "newest" && !CatalogVersionPattern.MatchString(v) {
+		add("catalogVersion: %q: latest, newest, or a version such as v1.4.0", v)
+	}
 	switch c.Signing {
 	case "", "none":
 	case "kms", "keyless":
@@ -779,7 +787,7 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"kind.registryName": true, "kind.registryPort": true,
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
 		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
-		"catalogSignature.publicKeyFile": true, "gateway.enabled": true, "signing": true,
+		"catalogSignature.publicKeyFile": true, "catalogVersion": true, "gateway.enabled": true, "signing": true,
 		"console.ingressClass": true, "console.tls.issuer": true, "console.tls.letsEncryptEmail": true, "console.tls.installCertManager": true,
 		"logs.enabled": true, "logs.searchDays": true, "logs.keepDays": true,
 		"audit.export": true, "audit.keepDays": true, "audit.lock": true,
@@ -861,6 +869,10 @@ func Dir(base, env string) (string, error) {
 }
 
 // Signs is whether this install's catalog is signed, and so required to be.
+// CatalogVersionPattern is a catalog version: vX.Y.Z, as `vertra catalog
+// promote` makes them.
+var CatalogVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+
 func (c *Config) Signs() bool {
 	return c.Signing == "kms" || c.Signing == "keyless"
 }

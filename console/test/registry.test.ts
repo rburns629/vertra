@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { config } from "../src/config.js";
-import { cachedImageCount, checkImage, parseImageRef, pinImages } from "../src/registry.js";
+import { cachedImageCount, checkImage, listTags, parseImageRef, pinImages } from "../src/registry.js";
 
 // A fake registry behind a stubbed fetch: GAR-style token auth, where an
 // anonymous HEAD gets a Bearer challenge, the token service takes Basic
@@ -160,5 +160,25 @@ describe("pinImages", () => {
     } finally {
       config.registryMirrors.clear();
     }
+  });
+});
+
+describe("listTags", () => {
+  it("reads every page of a repository's tags, signed in as for manifests", async () => {
+    const pages: Record<string, string[]> = { "": ["c1", "latest"], latest: ["v1.0.0", "v1.1.0"], "v1.1.0": [] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+        if (url.pathname !== "/v2/proj/catalog-products/catalog-release/tags/list") return fakeRegistry(input, init);
+        const authorization = (init?.headers as Record<string, string> | undefined)?.["authorization"];
+        if (authorization !== "Bearer registry-token") return fakeRegistry(input, init);
+        const last = url.searchParams.get("last") ?? "";
+        const tags = pages[last] ?? [];
+        const more = tags.length > 0 && last !== "latest";
+        return Promise.resolve(Response.json({ tags }, { headers: more ? { link: "</v2/...>; rel=\"next\"" } : {} }));
+      }),
+    );
+    expect(await listTags(`${HOST}/proj/catalog-products/catalog-release:latest`)).toEqual(["c1", "latest", "v1.0.0", "v1.1.0"]);
   });
 });

@@ -24,6 +24,8 @@ function outcomes(byPolicy: Record<string, SyncOutcome | null>) {
 function catalog(status: CatalogStatus) {
   return {
     release: status.release,
+    newestVersion: status.newestVersion,
+    version: status.version ?? "",
     digest: status.digest ?? "",
     commit: status.commit ?? "",
     repository: status.repository ?? "",

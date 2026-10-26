@@ -14,6 +14,7 @@ package main
 //	vertra catalog publish  [PRODUCT ...]   check, then push and sign
 //	vertra catalog release                  push and sign the catalog's release: every team,
 //	                                        SecretStore, product and template, as of this commit
+//	vertra catalog promote  VERSION [--from COMMIT]   tag a commit's release vX.Y.Z (a Git tag's CI does)
 //	vertra catalog changed  --base REF      the products changed since REF, as JSON
 //	vertra catalog secret-stores check [TEAM ...]
 //	vertra catalog bases [--update]         pin every Dockerfile's FROM to its digest
@@ -24,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -40,7 +42,7 @@ func catalogCommands() []*cobra.Command {
 	for _, name := range []string{"validate", "check", "publish"} {
 		cmds = append(cmds, catalogProductsCmd(name))
 	}
-	return append(cmds, catalogChangedCmd(), catalogSecretStoresCmd(), catalogReleaseCmd(), catalogBasesCmd(), catalogMigrateCmd())
+	return append(cmds, catalogChangedCmd(), catalogSecretStoresCmd(), catalogReleaseCmd(), catalogPromoteCmd(), catalogBasesCmd(), catalogMigrateCmd())
 }
 
 func openCatalog() (*catalogtool.Catalog, error) {
@@ -152,6 +154,26 @@ func catalogReleaseCmd() *cobra.Command {
 			return catalogResult(c.Release(cmd.Context()))
 		},
 	}
+}
+
+func catalogPromoteCmd() *cobra.Command {
+	var from string
+	var wait time.Duration
+	cmd := &cobra.Command{
+		Use:   "promote VERSION",
+		Short: "Make a version (vX.Y.Z) of the release main published for a commit, for installs following versions",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := openCatalog()
+			if err != nil {
+				return err
+			}
+			return catalogResult(c.Promote(cmd.Context(), args[0], from, wait))
+		},
+	}
+	cmd.Flags().StringVar(&from, "from", "", "the commit (or local mode's release tag) whose release it is (default HEAD)")
+	cmd.Flags().DurationVar(&wait, "wait", 0, "wait this long for main to publish that commit's release")
+	return cmd
 }
 
 func catalogBasesCmd() *cobra.Command {

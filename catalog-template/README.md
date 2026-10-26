@@ -504,6 +504,29 @@ install points its console at the release (the console chart's
 From a laptop: `./vertra catalog publish [teams/<team>/products/<product> ...]`,
 then `./vertra catalog release`, signed in to the registry with `docker login`.
 
+### Versions
+
+Every release `main` publishes is `latest`, and an install following
+`latest` applies it within minutes. An install can follow versions
+instead (`catalogVersion` in its vertra.yaml: `newest`, or one such as
+`v1.4.0`), so a catalog can reach a test install first and a production one
+when you choose. A version is a Git tag:
+
+```
+git tag v1.4.0 <commit test ran>   # a commit main published
+git push origin v1.4.0
+```
+
+`version.yml` then asks CI on `main` to tag that commit's release
+`<registry>/catalog-release:v1.4.0` (`./vertra catalog promote`). Nothing is
+rebuilt or re-signed: a version is the same digests, under the same
+signature, as the release test already applied. A version never moves:
+tagging it again on another commit is refused, so make a new one, or pin
+an install to an older one to roll back. Protect `v*` tags with a ruleset
+as you protect `main`, since cutting one ships to every install following
+the newest. A tag on a commit from before `version.yml` existed starts
+nothing; run `ci.yml` on `main` by hand with the version and commit.
+
 ## A team's SecretStore
 
 A team that keeps secrets in a vault syncs them through External Secrets

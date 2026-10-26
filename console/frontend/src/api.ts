@@ -1342,7 +1342,11 @@ export async function getStats(): Promise<PlatformStats> {
 export interface CatalogStatus {
   /** Where the release is read from; "" when no catalog is configured. */
   release: string;
+  /** Whether it follows the newest version instead of release's tag. */
+  newestVersion: boolean;
   digest: string;
+  /** The version applied (vX.Y.Z), "" when it wasn't one. */
+  version: string;
   commit: string;
   repository: string;
   appliedAt: string | null;
@@ -1355,6 +1359,8 @@ export interface CatalogStatus {
 
 function catalogStatus(status: {
   release: string;
+  newestVersion: boolean;
+  version: string;
   digest: string;
   commit: string;
   repository: string;
@@ -1365,7 +1371,9 @@ function catalogStatus(status: {
 } | undefined): CatalogStatus {
   return {
     release: status?.release ?? "",
+    newestVersion: status?.newestVersion ?? false,
     digest: status?.digest ?? "",
+    version: status?.version ?? "",
     commit: status?.commit ?? "",
     repository: status?.repository ?? "",
     appliedAt: iso(status?.appliedAt),

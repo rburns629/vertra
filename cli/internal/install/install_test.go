@@ -146,6 +146,20 @@ func TestConsoleReadsTheCatalogsRelease(t *testing.T) {
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("catalog: %v, want %v", got, want)
 	}
+
+	// Following versions: one pinned, or the newest.
+	c.CatalogVersion = "v1.4.0"
+	got = ConsoleValues(c, "dev", Images{}, cloud)["catalog"]
+	want = map[string]any{"release": "us-central1-docker.pkg.dev/p/vertra-products/catalog-release:v1.4.0"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("pinned: %v, want %v", got, want)
+	}
+	c.CatalogVersion = "newest"
+	got = ConsoleValues(c, "dev", Images{}, cloud)["catalog"]
+	want = map[string]any{"release": "us-central1-docker.pkg.dev/p/vertra-products/catalog-release:latest", "newestVersion": true}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("newest: %v, want %v", got, want)
+	}
 }
 
 // An install reading another cloud's catalog: its registry is the image

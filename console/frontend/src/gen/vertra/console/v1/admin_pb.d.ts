@@ -249,6 +249,19 @@ export declare type CatalogStatus = Message<"vertra.console.v1.CatalogStatus"> &
    * @generated from field: string error = 8;
    */
   error: string;
+
+  /**
+   * Whether it follows the newest version (a vX.Y.Z tag) instead of
+   * release's own tag, and the version applied, when it was one.
+   *
+   * @generated from field: bool newest_version = 9;
+   */
+  newestVersion: boolean;
+
+  /**
+   * @generated from field: string version = 10;
+   */
+  version: string;
 };
 
 /**

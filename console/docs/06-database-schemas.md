@@ -471,6 +471,7 @@ The catalog release this console last applied (its teams, products and SecretSto
 | --- | --- | --- | --- |
 | `id` | integer | no | Always 1. |
 | `digest` | text | yes | The release applied: its artifact's digest. |
+| `version` | text | yes | The version it is (`vX.Y.Z`), when the console follows versions; null for `latest`. |
 | `commit` | text | yes | The catalog commit it describes. |
 | `repository` | text | yes | The catalog repository, for people. |
 | `applied_at` | timestamptz | yes | When it was applied. |

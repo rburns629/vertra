@@ -659,7 +659,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      promote`; immutable; only a commit main published). The console
      follows its release's tag, or the newest version
      (`catalog.newestVersion`); `vertra` sets either from `catalogVersion`
-     (`latest`, `newest`, `vX.Y.Z`).
+     (`latest`, `newest`, `vX.Y.Z`). Done 2026-10-26, proven on kind
+     (a version made, moving it refused, the console on `newest` applying
+     v1.0.0 then v1.1.0 while `latest` was newer). Left: the tag's run
+     asking main (`version.yml`) proven in a real repository, which needs a
+     vertra release with `promote` pinned in the template.
   2. A reading install (`externalCatalog`) trusts the owner's signer:
      `catalogSignature` (a public key, or the repository for keyless)
      reaches the kernel's imageSignature as well as the console, and

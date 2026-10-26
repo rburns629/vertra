@@ -4,7 +4,8 @@
  * the registry is applied as catalog CI's old token would have, an item that
  * fails doesn't stop the rest, a release applied isn't applied again, what a
  * later release drops is unregistered or retired (never purged), a release
- * no trusted signer signed is refused whole, a team the catalog didn't make
+ * no trusted signer signed is refused whole, an install following versions
+ * applies the newest (or the one it pins), a team the catalog didn't make
  * is left alone until an admin adopts it, and only admins see or start a
  * sync. The registry read and the cluster writes are stubbed; the rest is
  * the real console on the real test database.
@@ -15,7 +16,7 @@ import { eq, inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { syncCatalog } from "../src/catalogSync.js";
+import { newestVersion, syncCatalog } from "../src/catalogSync.js";
 import { config } from "../src/config.js";
 import { db } from "../src/db/client.js";
 import { createTeam } from "../src/db/queries.js";
@@ -23,12 +24,13 @@ import { auditLog, catalogSync, products, teams, templates } from "../src/db/sch
 import { ReleaseSchema, type Release } from "../src/gen/vertra/catalog/v1/release_pb.js";
 import { buildApp } from "../src/index.js";
 import { applySecretStoreObjects, createVerifyJob, readScanJob } from "../src/k8s.js";
-import { fetchRelease } from "../src/registry.js";
+import { fetchRelease, listTags } from "../src/registry.js";
 import { caller, rpcClient } from "./rpc.js";
 
 vi.mock("../src/registry.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/registry.js")>()),
   fetchRelease: vi.fn(),
+  listTags: vi.fn(),
 }));
 vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
@@ -404,5 +406,55 @@ describe("a release's templates", () => {
     await syncCatalog(log);
     expect((await status())?.problems).toEqual([]);
     expect(await stored()).toContain("uses-b");
+  });
+});
+
+describe("catalog versions", () => {
+  it("are vX.Y.Z tags, the newest by number", () => {
+    expect(newestVersion(["latest", "c1", "v1.2.0", "v1.10.0", "v1.9.9", "v2.0.0-rc.1", "v01.0.0", "v0.9.0"])).toBe("v1.10.0");
+    expect(newestVersion(["v2.0.0", "v10.0.0", "v9.99.99"])).toBe("v10.0.0");
+    expect(newestVersion(["latest", "c1"])).toBeNull();
+  });
+
+  it("are followed: the newest one applied, and its version recorded", async () => {
+    config.catalog.newestVersion = true;
+    try {
+      vi.mocked(listTags).mockResolvedValueOnce(["latest", "c7", "v1.0.0", "v1.1.0"]);
+      publish(release({ commit: "c7", teams: [{ name: teamA }] }), digestOf(70));
+      await syncCatalog(log);
+      expect(listTags).toHaveBeenLastCalledWith(`${registry}/catalog-release`);
+      expect(fetchRelease).toHaveBeenLastCalledWith(`${registry}/catalog-release:v1.1.0`);
+      expect(await status()).toMatchObject({ digest: digestOf(70), version: "v1.1.0", commit: "c7", error: null });
+
+      // The same release as a new version: nothing to apply, the version noted.
+      vi.mocked(listTags).mockResolvedValueOnce(["v1.1.0", "v1.1.1"]);
+      const applied = (await status())?.appliedAt;
+      await syncCatalog(log);
+      expect(await status()).toMatchObject({ version: "v1.1.1", appliedAt: applied });
+
+      // No version yet: nothing read, nothing applied.
+      vi.mocked(listTags).mockResolvedValueOnce(["latest", "c8"]);
+      vi.mocked(fetchRelease).mockClear();
+      await syncCatalog(log);
+      expect(fetchRelease).not.toHaveBeenCalled();
+      expect(await status()).toMatchObject({ commit: "c7", error: expect.stringContaining("has no version yet") as unknown });
+    } finally {
+      config.catalog.newestVersion = false;
+    }
+  });
+
+  it("can be pinned, and latest is no version", async () => {
+    config.catalog.release = `${registry}/catalog-release:v1.0.0`;
+    try {
+      publish(release({ commit: "c6", teams: [{ name: teamA }] }), digestOf(60));
+      await syncCatalog(log);
+      expect(fetchRelease).toHaveBeenLastCalledWith(`${registry}/catalog-release:v1.0.0`);
+      expect(await status()).toMatchObject({ digest: digestOf(60), version: "v1.0.0" });
+    } finally {
+      config.catalog.release = `${registry}/catalog-release:latest`;
+    }
+    publish(release({ commit: "c9", teams: [{ name: teamA }] }), digestOf(90));
+    await syncCatalog(log);
+    expect(await status()).toMatchObject({ digest: digestOf(90), version: null });
   });
 });

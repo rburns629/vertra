@@ -84,6 +84,22 @@ func TestValidateSigning(t *testing.T) {
 	}
 }
 
+func TestValidateCatalogVersion(t *testing.T) {
+	c := validKind(t)
+	for _, ok := range []string{"", "latest", "newest", "v1.4.0", "v0.0.1"} {
+		c.CatalogVersion = ok
+		if err := c.Validate(); err != nil {
+			t.Errorf("%q: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"1.4.0", "v1.4", "prod", "v1.4.0-rc.1"} {
+		c.CatalogVersion = bad
+		if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "catalogVersion") {
+			t.Errorf("%q: %v", bad, err)
+		}
+	}
+}
+
 func TestValidateGoogleGroupsIsGCPOnly(t *testing.T) {
 	c := validKind(t)
 	c.SSO.GoogleGroups = true

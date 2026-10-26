@@ -4,6 +4,7 @@ package catalogtool
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http/httptest"
 	"strings"
@@ -149,5 +150,49 @@ steps:
 	c = catalogWith(t, files)
 	if _, err := c.BuildRelease(context.Background(), s, "c1", ""); err == nil || !strings.Contains(err.Error(), "teams/a/products/never: no published image") {
 		t.Errorf("an unpublished product: %v", err)
+	}
+}
+
+// A version tags the release a commit published, the same digest; it
+// stays put once made, needs a release to name, and is vX.Y.Z.
+func TestAVersionNamesACommitsReleaseAndNeverMoves(t *testing.T) {
+	server := httptest.NewServer(registry.New())
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "http://")
+	s := Settings{Registry: host + "/catalog-products"}
+	ctx := context.Background()
+	first, err := pushRelease(ctx, s, &catalogv1.Release{Commit: "c1"}, "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := pushRelease(ctx, s, &catalogv1.Release{Commit: "c2"}, "c2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reference, made, err := promoteRelease(ctx, s, "v1.0.0", "c1")
+	if err != nil || !made || reference != first {
+		t.Fatalf("promote c1 = %s, %v, %v; want %s", reference, made, err, first)
+	}
+	ref, _ := name.ParseReference(s.ReleaseRepository()+":v1.0.0", name.Insecure)
+	if desc, err := remote.Head(ref); err != nil || s.ReleaseRepository()+"@"+desc.Digest.String() != first {
+		t.Errorf("v1.0.0 names %v (%v), not %s", desc, err, first)
+	}
+	if _, made, err := promoteRelease(ctx, s, "v1.0.0", "c1"); err != nil || made {
+		t.Errorf("again: made %v, %v", made, err)
+	}
+	if _, _, err := promoteRelease(ctx, s, "v1.0.0", "c2"); err == nil || !strings.Contains(err.Error(), "never moves") {
+		t.Errorf("moving it: %v", err)
+	}
+	if _, _, err := promoteRelease(ctx, s, "v1.1.0", "c3"); !errors.Is(err, errNoRelease) {
+		t.Errorf("an unpublished commit: %v", err)
+	}
+	for _, bad := range []string{"1.0.0", "v1.0", "v1.0.0-rc.1", "v01.0.0", "latest"} {
+		if _, _, err := promoteRelease(ctx, s, bad, "c2"); err == nil || !strings.Contains(err.Error(), "vX.Y.Z") {
+			t.Errorf("%s: %v", bad, err)
+		}
+	}
+	if reference, _, err := promoteRelease(ctx, s, "v1.1.0", "c2"); err != nil || reference != second {
+		t.Errorf("v1.1.0 = %s, %v", reference, err)
 	}
 }

@@ -124,6 +124,7 @@ data:
   {{- end }}
   # The catalog release (values.yaml's catalog).
   CATALOG_RELEASE: {{ .Values.catalog.release | quote }}
+  CATALOG_NEWEST_VERSION: {{ .Values.catalog.newestVersion | quote }}
   CATALOG_POLL_SECONDS: {{ .Values.catalog.pollSeconds | quote }}
   CATALOG_SIGNATURE_PUBLIC_KEYS: {{ .Values.catalog.signature.publicKeys | toJson | quote }}
   CATALOG_SIGNATURE_KEYLESS_ISSUER: {{ .Values.catalog.signature.keyless.issuer | quote }}

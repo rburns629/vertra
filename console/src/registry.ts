@@ -378,3 +378,29 @@ export async function fetchRelease(reference: string): Promise<{ digest: string;
   if (sha256(blob) !== layer.digest) throw new Error("the release's content doesn't match its digest");
   return { digest, json: new TextDecoder().decode(blob) };
 }
+
+/** The most pages of tags read: far more than any catalog's releases. */
+const MAX_TAG_PAGES = 50;
+
+/**
+ * Every tag of the repository `reference` names (its tag or digest is
+ * ignored), following the registry's pages. The catalog's release
+ * repository, to find its newest version (catalogSync.ts).
+ */
+export async function listTags(reference: string): Promise<string[]> {
+  const ref = parseImageRef(reference);
+  if (!ref) throw new Error(`${reference}: not a registry reference`);
+  const tags: string[] = [];
+  let last = "";
+  for (let page = 0; page < MAX_TAG_PAGES; page++) {
+    const path = `tags/list?n=1000${last ? `&last=${encodeURIComponent(last)}` : ""}`;
+    const response = await registryGet(ref, path, "application/json");
+    const listed = JSON.parse(new TextDecoder().decode(await body(response, "the release's tags"))) as { tags?: string[] | null };
+    const batch = listed.tags ?? [];
+    tags.push(...batch);
+    // A registry with more to give says so in a Link header.
+    if (!response.headers.get("link") || batch.length === 0) return tags;
+    last = batch[batch.length - 1] ?? "";
+  }
+  throw new Error(`the release's tags: more than ${String(MAX_TAG_PAGES)} pages`);
+}

@@ -51,7 +51,7 @@ import { catalogSync, products, teams } from "./db/schema.js";
 import { ReleaseSchema, type BackendAuth as ReleaseBackendAuth, type Release } from "./gen/vertra/catalog/v1/release_pb.js";
 import { createVerifyJob, deleteScanJob, ensureServiceAccount, readScanJob } from "./k8s.js";
 import { catalogSyncs } from "./metrics.js";
-import { fetchRelease } from "./registry.js";
+import { fetchRelease, listTags } from "./registry.js";
 
 /** The rights a release is applied with: what catalog CI's token held. */
 const CATALOG: AuthUser = {
@@ -75,7 +75,11 @@ export interface CatalogProblem {
 export interface CatalogStatus {
   /** Where the release is read from; empty: no catalog configured. */
   release: string;
+  /** Whether it follows the newest version rather than release's tag. */
+  newestVersion: boolean;
   digest: string | null;
+  /** The version applied (vX.Y.Z), when the release read was one. */
+  version: string | null;
   commit: string | null;
   repository: string | null;
   appliedAt: Date | null;
@@ -88,7 +92,9 @@ export async function catalogStatus(): Promise<CatalogStatus> {
   const [row] = await db.select().from(catalogSync).where(eq(catalogSync.id, 1));
   return {
     release: config.catalog.release,
+    newestVersion: config.catalog.newestVersion,
     digest: row?.digest ?? null,
+    version: row?.version ?? null,
     commit: row?.commit ?? null,
     repository: row?.repository ?? null,
     appliedAt: row?.appliedAt ?? null,
@@ -379,6 +385,38 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
   return problems;
 }
 
+/** A catalog version: a Git tag vX.Y.Z, as `vertra catalog promote` makes. */
+const VERSION = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
+/** The newest of `tags` that's a version, or null when none is. */
+export function newestVersion(tags: string[]): string | null {
+  const parts = (tag: string) => tag.slice(1).split(".").map(Number);
+  let newest: string | null = null;
+  for (const tag of tags.filter((t) => VERSION.test(t))) {
+    if (newest === null) {
+      newest = tag;
+      continue;
+    }
+    const [a, b] = [parts(tag), parts(newest)];
+    const i = a.findIndex((n, k) => n !== b[k]);
+    if (i >= 0 && (a[i] ?? 0) > (b[i] ?? 0)) newest = tag;
+  }
+  return newest;
+}
+
+/** The release this console follows now: the one its setting names, or
+ * (newestVersion) its repository's newest version. */
+async function followed(): Promise<{ reference: string; version: string | null }> {
+  const repository = config.catalog.release.replace(/[:@][^/]*$/, "");
+  if (config.catalog.newestVersion) {
+    const version = newestVersion(await listTags(repository));
+    if (!version) throw new Error(`${repository} has no version yet (a vX.Y.Z tag in the catalog repository makes one); nothing was applied`);
+    return { reference: `${repository}:${version}`, version };
+  }
+  const tag = /:([^/@]+)$/.exec(config.catalog.release)?.[1] ?? "";
+  return { reference: config.catalog.release, version: VERSION.test(tag) ? tag : null };
+}
+
 /**
  * One look: fetch the release, and if it's new (or `force`), verify and
  * apply it. Never throws: the outcome is recorded (catalogStatus) and
@@ -392,10 +430,12 @@ export async function syncCatalog(log: FastifyBaseLogger, force = false): Promis
     if (!locked.rows[0]?.locked) return false;
     const now = new Date();
     try {
-      const { digest, json } = await fetchRelease(config.catalog.release);
+      const { reference, version } = await followed();
+      const { digest, json } = await fetchRelease(reference);
       const [current] = await db.select().from(catalogSync).where(eq(catalogSync.id, 1));
       if (!force && current?.digest === digest) {
-        await record({ checkedAt: now, error: null });
+        // The same release may be a new version of it.
+        await record({ version, checkedAt: now, error: null });
         catalogSyncs.inc({ outcome: "unchanged" });
         return true;
       }
@@ -405,18 +445,18 @@ export async function syncCatalog(log: FastifyBaseLogger, force = false): Promis
       }
       const release = fromJson(ReleaseSchema, JSON.parse(json) as JsonValue, { ignoreUnknownFields: true });
       const problems = await apply(release, log);
-      await record({ digest, commit: release.commit, repository: release.repository, appliedAt: now, problems, checkedAt: now, error: null });
+      await record({ digest, version, commit: release.commit, repository: release.repository, appliedAt: now, problems, checkedAt: now, error: null });
       await writeAuditEntry(log, {
         actorId: null,
         method: "CATALOG",
         route: "catalog-sync",
-        target: { commit: release.commit, teams: release.teams.length, products: release.products.length, problems: problems.length },
+        target: { commit: release.commit, version, teams: release.teams.length, products: release.products.length, problems: problems.length },
         status: problems.length === 0 ? 200 : 207,
         requestId: digest,
       });
       catalogSyncs.inc({ outcome: problems.length === 0 ? "applied" : "applied_with_problems" });
       log.info(
-        { event: "catalog_release_applied", commit: release.commit, digest, teams: release.teams.length, products: release.products.length, problems: problems.length },
+        { event: "catalog_release_applied", commit: release.commit, version, digest, teams: release.teams.length, products: release.products.length, problems: problems.length },
         "catalog release applied",
       );
     } catch (error) {

@@ -35,8 +35,19 @@ on:
   # vulnerability database new findings, without anything here changing.
   schedule:
     - cron: "17 5 * * 1"
-  # Rebuilds (and on main republishes) every product.
-  workflow_dispatch: {}
+  # Rebuilds (and on main republishes) every product; with a version,
+  # makes that version instead (version.yml asks for it when a vX.Y.Z tag
+  # is pushed).
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Make this version (vX.Y.Z) of a commit's release, instead of publishing"
+        required: false
+        default: ""
+      commit:
+        description: "With a version: the commit whose release it is (default: main's)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -63,12 +74,15 @@ jobs:
   # the release. Runs in the catalog-publish Environment, which only main may
   # use, so a workflow edited in a pull request never gets its credentials.
   # One run at a time, in order: a release names the images as of its commit.
+  # With a version it only tags a release main already published and signed
+  # (`vertra catalog promote`), so it signs nothing; it queues apart, so a
+  # later push can't cancel it while it waits.
   publish:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment: catalog-publish
     concurrency:
-      group: catalog-publish
+      group: ${{ inputs.version != '' && 'catalog-version' || 'catalog-publish' }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -82,6 +96,7 @@ jobs:
         with:
           fetch-depth: 0   # to diff against the push's previous commit
       - name: Install scanners and cosign
+        if: inputs.version == ''
         run: bash .github/scripts/install-scanners.sh trivy osv-scanner cosign
 
       - name: Sign in to Google Cloud
@@ -114,6 +129,7 @@ jobs:
         run: echo "$REGISTRY_PASSWORD" | docker login "${VERTRA_REGISTRY%%/*}" -u "$REGISTRY_USERNAME" --password-stdin
 
       - name: Check, push and sign the changed products, then release the catalog
+        if: inputs.version == ''
         env:
           # Empty (a manual run) publishes everything.
           BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
@@ -122,3 +138,10 @@ jobs:
         run: |
           ./vertra catalog publish --changed "$BASE"
           ./vertra catalog release
+
+      - name: Make the version
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+        run: ./vertra catalog promote "$VERSION" --from "${COMMIT:-HEAD}" --wait 30m

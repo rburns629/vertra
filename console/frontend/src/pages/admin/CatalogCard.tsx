@@ -77,12 +77,24 @@ export function CatalogCard() {
         {status?.release && (
           <Stack spacing={1}>
             <Typography variant="body2">
-              <strong>Release:</strong> <code>{status.release}</code>
+              <strong>Release:</strong>{" "}
+              {status.newestVersion ? (
+                <>
+                  the newest version of <code>{status.release.replace(/[:@][^/]*$/, "")}</code>
+                </>
+              ) : (
+                <code>{status.release}</code>
+              )}
             </Typography>
             <Typography variant="body2">
               <strong>Applied:</strong>{" "}
               {status.commit ? (
                 <>
+                  {status.version && (
+                    <>
+                      version <code>{status.version}</code>,{" "}
+                    </>
+                  )}
                   commit <code>{/^[0-9a-f]{40}$/.test(status.commit) ? status.commit.slice(0, 12) : status.commit}</code>
                   {status.repository && <> of {status.repository}</>}, {when(status.appliedAt)}
                 </>
