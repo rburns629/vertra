@@ -21,14 +21,13 @@ import { and, eq, inArray } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
 import { ssoGroupMappings, ssoSettings, teamMemberships, teams, type TeamRole } from "./db/schema.js";
+import { gcpMetadataToken } from "./registry.js";
 import { unseal } from "./sealed.js";
 
 export const SECRET_PURPOSE = "sso client secret";
 const REFRESH_MS = 10_000;
 const CLOUD_IDENTITY = "https://cloudidentity.googleapis.com/v1/";
-const METADATA_TOKEN = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 const METADATA_EMAIL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email";
-const GROUPS_SCOPE = "https://www.googleapis.com/auth/cloud-identity.groups.readonly";
 
 export interface Sso {
   issuer: string;
@@ -93,19 +92,12 @@ export function startSsoRefresh(log: FastifyBaseLogger): void {
 /** Why a person's groups couldn't be read: their sign-in is refused. */
 export class GroupsUnavailable extends Error {}
 
-/** This console's own Google access token, from the metadata server (GKE Workload Identity). */
-async function googleToken(): Promise<string> {
-  const url = new URL(METADATA_TOKEN);
-  url.searchParams.set("scopes", GROUPS_SCOPE);
-  const response = await fetch(url, { headers: { "Metadata-Flavor": "Google" }, signal: AbortSignal.timeout(5_000) });
-  if (!response.ok) throw new Error(`the metadata server answered ${String(response.status)}`);
-  return ((await response.json()) as { access_token: string }).access_token;
-}
-
 let identity: Promise<string> | undefined;
 
 /** The Google account this console acts as (GKE Workload Identity), or "" off Google Cloud: asked once. */
 export function googleIdentity(): Promise<string> {
+  // GCE's metadata server answers only plain HTTP, on the node itself (link-local).
+  // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request
   identity ??= fetch(METADATA_EMAIL, { headers: { "Metadata-Flavor": "Google" }, signal: AbortSignal.timeout(2_000) })
     .then(async (response) => (response.ok ? (await response.text()).trim() : ""))
     .catch(() => "");
@@ -121,7 +113,7 @@ export function googleIdentity(): Promise<string> {
  */
 async function googleGroupsOf(email: string, candidates: string[]): Promise<string[]> {
   if (candidates.length === 0) return [];
-  const token = await googleToken();
+  const token = await gcpMetadataToken();
   // Joined as text: as a relative URL, "groups:lookup" would read as a scheme.
   const get = (path: string) => fetch(CLOUD_IDENTITY + path, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
   const query = `member_key_id == '${email.replace(/'/g, "")}'`;
