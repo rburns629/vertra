@@ -197,12 +197,14 @@ design.
   kind (a step's Pod carried them). The identity policy checks Jobs, not
   Pods, so the volume AKS's webhook adds to the Pod isn't checked by it.
   Left: the Azure sample signing in, when Azure is proven.
-- [ ] **Prove backups on each cloud.** `backup.destination` takes `gcs`,
-  `s3`, `azure` or `pvc`; `pvc` and S3-compatible storage are proven on
-  kind, GCS, S3 on AWS (Pod Identity or IRSA) and Azure Blob aren't. On each:
-  run one, download it, restore it into a throwaway database. Also: the GCS
-  backup image (`google/cloud-sdk:*-slim`) is amd64 only, so Arm nodes need
-  another image.
+- [x] **Prove backups on each cloud** (done 2026-10-26 for GCS and S3):
+  on GKE Autopilot (Workload Identity) and EKS Auto Mode (Pod Identity),
+  installs made by `vertra` with `database.backups` on, a backup run by hand
+  copied both databases' dumps to the bucket `vertra` made; each downloaded
+  dump restored cleanly into a throwaway database with every table. Azure
+  Blob is after the MVP. Left: the GCS backup image
+  (`google/cloud-sdk:*-slim`) is amd64 only, so Arm nodes need another
+  image.
 - [ ] **Example values for EKS and AKS** next to `helm/values/gke/`, and a
   per-cloud guide to binding identities (console scanning and registry
   checks, ESO, products).

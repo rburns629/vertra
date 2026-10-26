@@ -491,8 +491,8 @@ to `backup.destination`:
 
 | `destination` | Copies with | Signs in with | Proven |
 | --- | --- | --- | --- |
-| `gcs` | `gsutil cp` | GKE Workload Identity | Not since a template fix; see TODO.md |
-| `s3` | `aws s3 cp` | EKS Pod Identity or IRSA; a key in `s3.credentialsSecret` for an S3-compatible service without one | On kind, against an S3-compatible service |
+| `gcs` | `gsutil cp` | GKE Workload Identity | On GKE Autopilot (2026-10-26): dumped, downloaded, restored |
+| `s3` | `aws s3 cp` | EKS Pod Identity or IRSA; a key in `s3.credentialsSecret` for an S3-compatible service without one | On EKS Auto Mode with Pod Identity (2026-10-26), and on kind against an S3-compatible service |
 | `azure` | `az storage blob upload --auth-mode login` | AKS Workload Identity | Not yet |
 | `pvc` | `cp`, deleting dumps older than `pvc.keepDays` | Nothing | On kind |
 
