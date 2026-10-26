@@ -39,6 +39,7 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
   applySecretStoreObjects: vi.fn(() => Promise.resolve()),
   writeTeamPullSecret: vi.fn(() => Promise.resolve(true)),
   writeTeamNetworkPolicy: vi.fn(() => Promise.resolve(true)),
+  writeTeamQuota: vi.fn(() => Promise.resolve(true)),
 }));
 // Purging asks kernel-api about unfinished executions; these teams have none.
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({

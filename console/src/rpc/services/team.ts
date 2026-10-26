@@ -19,6 +19,7 @@ import {
   setMemberRole,
   setSecretStoreCredential,
   setTeamSignIn,
+  setTeamQuota,
   teamPods,
   teamProfile,
   teamRecord,
@@ -32,6 +33,8 @@ import { callerOf, logOf } from "../context.js";
 import { badRequest } from "../errors.js";
 import { FixedWindowLimit } from "../rateLimit.js";
 import { check } from "../validate.js";
+import type { TeamQuota } from "../../k8s.js";
+import { effectiveQuota } from "../../teamQuota.js";
 
 const AnyTeam = Type.String({ minLength: 1 });
 
@@ -57,7 +60,17 @@ const POD_STATE: Record<string, TaskPodState> = {
   failed: TaskPodState.FAILED,
 };
 
-function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date | null; deletedAt?: Date | null; requireSso?: boolean; fromCatalog?: boolean }) {
+function team(row: {
+  id: string;
+  name: string;
+  createdAt: Date;
+  retiredAt: Date | null;
+  deletedAt?: Date | null;
+  requireSso?: boolean;
+  fromCatalog?: boolean;
+  quota?: TeamQuota | null;
+}) {
+  const quota = effectiveQuota({ quota: row.quota ?? null });
   return {
     id: row.id,
     name: row.name,
@@ -66,6 +79,8 @@ function team(row: { id: string; name: string; createdAt: Date; retiredAt: Date 
     deletedAt: timestamp(row.deletedAt),
     requireSso: row.requireSso ?? false,
     fromCatalog: row.fromCatalog ?? false,
+    quota,
+    quotaIsDefault: (row.quota ?? null) === null,
   };
 }
 
@@ -153,6 +168,13 @@ export function teamService(): ServiceImpl<typeof TeamService> {
       const { team: name, userId } = check({ team: AnyTeam, userId: MemberId }, req);
       await setMemberRole(callerOf(ctx), name, userId, roleOf(req.role), logOf(ctx));
       return {};
+    },
+
+    async setTeamQuota(req, ctx) {
+      const { team: name } = check({ team: AnyTeam }, req);
+      const q = req.quota;
+      const quota = req.useDefault ? null : { cpu: q?.cpu ?? "", memory: q?.memory ?? "", pods: q?.pods ?? "", stepMemory: q?.stepMemory ?? "" };
+      return { team: team(await setTeamQuota(callerOf(ctx), name, quota, logOf(ctx))) };
     },
 
     async setTeamSignIn(req, ctx) {

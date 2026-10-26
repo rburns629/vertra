@@ -537,6 +537,78 @@ export async function writeTeamNetworkPolicy(namespace: string): Promise<boolean
   return true;
 }
 
+/** The ResourceQuota and LimitRange every team namespace holds when limits
+ * are set (teamQuota.ts). The console's write fence accepts no other names. */
+export const TEAM_QUOTA = "vertra-team-quota";
+export const TEAM_LIMITS = "vertra-team-limits";
+
+export interface TeamQuota {
+  /** What all its steps may request together: CPU, memory, and Pods at once. */
+  cpu: string;
+  memory: string;
+  pods: string;
+  /** The most memory one step may ask for. */
+  stepMemory: string;
+}
+
+/** What a Pod that asks for nothing is given, so a quota doesn't refuse it. */
+const DEFAULT_REQUEST = { cpu: "100m", memory: "128Mi" };
+
+/**
+ * Writes a team namespace's ResourceQuota and LimitRange, replacing the
+ * copies there, or deletes them when the team has no limits. A step over
+ * them is refused by the cluster itself (the kernel fails one that can
+ * never fit: RESOURCES_NOT_ALLOWED). CPU is never capped per step, only
+ * in total, so a step may use spare CPU. Returns false when the namespace
+ * doesn't exist (yet).
+ */
+export async function writeTeamQuota(namespace: string, quota: TeamQuota): Promise<boolean> {
+  const { core } = getApis();
+  const hard: Record<string, string> = {};
+  if (quota.cpu) hard["requests.cpu"] = quota.cpu;
+  if (quota.memory) hard["requests.memory"] = quota.memory;
+  if (quota.pods) hard["pods"] = quota.pods;
+  const limits: k8s.V1LimitRangeItem = { type: "Container" };
+  if (quota.cpu || quota.memory) limits.defaultRequest = { ...(quota.cpu ? { cpu: DEFAULT_REQUEST.cpu } : {}), ...(quota.memory ? { memory: DEFAULT_REQUEST.memory } : {}) };
+  if (quota.stepMemory) limits.max = { memory: quota.stepMemory };
+  try {
+    await apply(
+      Object.keys(hard).length > 0,
+      () => core.createNamespacedResourceQuota({ namespace, body: { metadata: { name: TEAM_QUOTA, namespace, labels: MANAGED_LABELS }, spec: { hard } } }),
+      () => core.replaceNamespacedResourceQuota({ name: TEAM_QUOTA, namespace, body: { metadata: { name: TEAM_QUOTA, namespace, labels: MANAGED_LABELS }, spec: { hard } } }),
+      () => core.deleteNamespacedResourceQuota({ name: TEAM_QUOTA, namespace }),
+    );
+    await apply(
+      limits.defaultRequest !== undefined || limits.max !== undefined,
+      () => core.createNamespacedLimitRange({ namespace, body: { metadata: { name: TEAM_LIMITS, namespace, labels: MANAGED_LABELS }, spec: { limits: [limits] } } }),
+      () => core.replaceNamespacedLimitRange({ name: TEAM_LIMITS, namespace, body: { metadata: { name: TEAM_LIMITS, namespace, labels: MANAGED_LABELS }, spec: { limits: [limits] } } }),
+      () => core.deleteNamespacedLimitRange({ name: TEAM_LIMITS, namespace }),
+    );
+    return true;
+  } catch (error) {
+    if (isNotFound(error)) return false;
+    throw error;
+  }
+}
+
+/** Creates, else replaces (a reserved name: always the console's), or deletes when not wanted. */
+async function apply(wanted: boolean, create: () => Promise<unknown>, replace: () => Promise<unknown>, remove: () => Promise<unknown>): Promise<void> {
+  if (!wanted) {
+    try {
+      await remove();
+    } catch (error) {
+      if (!isNotFound(error)) throw error;
+    }
+    return;
+  }
+  try {
+    await create();
+  } catch (error) {
+    if (!isConflict(error)) throw error;
+    await replace();
+  }
+}
+
 /** The one Secret a team's SecretStore may take a stored credential from
  * (secretStores.ts). Never registered as a team secret, so never mountable. */
 export const SECRET_STORE_CREDENTIAL = "eso-auth";

@@ -58,6 +58,21 @@ export declare type Team = Message<"vertra.console.v1.Team"> & {
    * @generated from field: bool from_catalog = 7;
    */
   fromCatalog: boolean;
+
+  /**
+   * What its steps may use together, as its namespace's ResourceQuota and
+   * LimitRange hold it: its own, else the install's.
+   *
+   * @generated from field: vertra.console.v1.TeamQuota quota = 8;
+   */
+  quota?: TeamQuota | undefined;
+
+  /**
+   * True when the quota is the install's, not one an admin set for it.
+   *
+   * @generated from field: bool quota_is_default = 9;
+   */
+  quotaIsDefault: boolean;
 };
 
 /**
@@ -65,6 +80,50 @@ export declare type Team = Message<"vertra.console.v1.Team"> & {
  * Use `create(TeamSchema)` to create a new message.
  */
 export declare const TeamSchema: GenMessage<Team>;
+
+/**
+ * A team's resource limits, as Kubernetes quantities ("4", "500m",
+ * "16Gi"); empty: no limit. The cluster refuses a step over them: one that
+ * can never fit fails (RESOURCES_NOT_ALLOWED), one waiting for the team's
+ * other steps to finish waits.
+ *
+ * @generated from message vertra.console.v1.TeamQuota
+ */
+export declare type TeamQuota = Message<"vertra.console.v1.TeamQuota"> & {
+  /**
+   * CPU all its steps may request together.
+   *
+   * @generated from field: string cpu = 1;
+   */
+  cpu: string;
+
+  /**
+   * Memory all its steps may request together.
+   *
+   * @generated from field: string memory = 2;
+   */
+  memory: string;
+
+  /**
+   * How many of its Pods may exist at once.
+   *
+   * @generated from field: string pods = 3;
+   */
+  pods: string;
+
+  /**
+   * The most memory one step may ask for.
+   *
+   * @generated from field: string step_memory = 4;
+   */
+  stepMemory: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamQuota.
+ * Use `create(TeamQuotaSchema)` to create a new message.
+ */
+export declare const TeamQuotaSchema: GenMessage<TeamQuota>;
 
 /**
  * @generated from message vertra.console.v1.Member
@@ -540,6 +599,50 @@ export declare type SetTeamSignInResponse = Message<"vertra.console.v1.SetTeamSi
  * Use `create(SetTeamSignInResponseSchema)` to create a new message.
  */
 export declare const SetTeamSignInResponseSchema: GenMessage<SetTeamSignInResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetTeamQuotaRequest
+ */
+export declare type SetTeamQuotaRequest = Message<"vertra.console.v1.SetTeamQuotaRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: vertra.console.v1.TeamQuota quota = 2;
+   */
+  quota?: TeamQuota | undefined;
+
+  /**
+   * The install's limits again: quota is ignored.
+   *
+   * @generated from field: bool use_default = 3;
+   */
+  useDefault: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamQuotaRequest.
+ * Use `create(SetTeamQuotaRequestSchema)` to create a new message.
+ */
+export declare const SetTeamQuotaRequestSchema: GenMessage<SetTeamQuotaRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetTeamQuotaResponse
+ */
+export declare type SetTeamQuotaResponse = Message<"vertra.console.v1.SetTeamQuotaResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.Team team = 1;
+   */
+  team?: Team | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamQuotaResponse.
+ * Use `create(SetTeamQuotaResponseSchema)` to create a new message.
+ */
+export declare const SetTeamQuotaResponseSchema: GenMessage<SetTeamQuotaResponse>;
 
 /**
  * @generated from message vertra.console.v1.ApplySecretStoreRequest
@@ -1061,6 +1164,17 @@ export declare const TeamService: GenService<{
     methodKind: "unary";
     input: typeof SetTeamSignInRequestSchema;
     output: typeof SetTeamSignInResponseSchema;
+  },
+  /**
+   * Sets what the team's steps may use together (written to its namespace
+   * at once), or with use_default the install's limits again. Admins only.
+   *
+   * @generated from rpc vertra.console.v1.TeamService.SetTeamQuota
+   */
+  setTeamQuota: {
+    methodKind: "unary";
+    input: typeof SetTeamQuotaRequestSchema;
+    output: typeof SetTeamQuotaResponseSchema;
   },
   /**
    * Applies the team's reviewed SecretStore file: only SecretStores in its

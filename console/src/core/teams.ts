@@ -22,7 +22,8 @@ import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import { canActForTeam, ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
-import { config } from "../config.js";
+import { config, QUANTITY } from "../config.js";
+import type { TeamQuota } from "../k8s.js";
 import {
   addTeamMember,
   createTeam,
@@ -57,6 +58,7 @@ import { getExecutionStates } from "../kernel/client.js";
 import { syncIdentityPolicy } from "../productPolicy.js";
 import { copyPullSecret } from "../pullSecret.js";
 import { ensureTeamNetworkPolicy } from "../teamNetwork.js";
+import { ensureTeamQuota } from "../teamQuota.js";
 import { ensureNotRetired } from "./retired.js";
 import { checkSecretStoreObjects } from "../secretStores.js";
 
@@ -81,6 +83,7 @@ async function setTeamNamespaceState(name: string, state: TeamNamespaceState, cr
     await setTeamNamespace(name, state, { ...config.teamNamespaces, createIfMissing });
     if (state === "true") {
       await ensureTeamNetworkPolicy(name);
+      await ensureTeamQuota(name);
       await copyPullSecret(name);
     }
   } catch (error) {
@@ -285,6 +288,27 @@ export async function setTeamSignIn(caller: AuthUser | undefined, teamName: stri
   if (team.requireSso === requireSso) return;
   await setTeamRequireSso(team.id, requireSso);
   log.warn({ event: "team_sign_in_changed", team: team.name, requireSso, by: caller?.id }, "team's sign-in changed");
+}
+
+/**
+ * Sets what a team's steps may use together, or (null) the install's
+ * limits again, and writes them into its namespace at once. Admins only.
+ */
+export async function setTeamQuota(caller: AuthUser | undefined, teamName: string, quota: TeamQuota | null, log: FastifyBaseLogger) {
+  forbiddenUnlessAdmin(caller, "Only an admin sets a team's resource limits.");
+  const team = await findTeamByName(teamName);
+  if (!team) throw new ApiError(404, "NOT_FOUND", `No team named "${teamName}".`, Code.NotFound);
+  if (quota) {
+    for (const [key, value] of Object.entries(quota) as [string, string][]) {
+      if (value && !(key === "pods" ? /^[0-9]+$/ : QUANTITY).test(value)) {
+        throw new ApiError(400, "BAD_QUOTA", `${key}: "${value}" isn't a Kubernetes quantity, such as 4, 500m or 16Gi${key === "pods" ? " (a whole number for pods)" : ""}.`);
+      }
+    }
+  }
+  await db.update(teams).set({ quota }).where(eq(teams.id, team.id));
+  await ensureTeamQuota(team.name);
+  log.warn({ event: "team_quota_changed", team: team.name, quota, by: caller?.id }, "team's resource limits changed");
+  return { ...team, quota };
 }
 
 function requireRetireRight(caller: AuthUser | undefined): void {

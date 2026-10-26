@@ -74,6 +74,11 @@ service TeamService {
   rpc SetTeamSignIn(SetTeamSignInRequest) returns (SetTeamSignInResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+  // Sets what the team's steps may use together (written to its namespace
+  // at once), or with use_default the install's limits again. Admins only.
+  rpc SetTeamQuota(SetTeamQuotaRequest) returns (SetTeamQuotaResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
   // Applies the team's reviewed SecretStore file: only SecretStores in its
   // namespace, credentials only from eso-auth, and ESO's own
   // ServiceAccounts; anything else is refused with every problem listed.
@@ -105,6 +110,26 @@ message Team {
   // Made by the catalog (a release adds, retires and restores it); else
   // made here, and the catalog leaves it alone until an admin adopts it.
   bool from_catalog = 7;
+  // What its steps may use together, as its namespace's ResourceQuota and
+  // LimitRange hold it: its own, else the install's.
+  TeamQuota quota = 8;
+  // True when the quota is the install's, not one an admin set for it.
+  bool quota_is_default = 9;
+}
+
+// A team's resource limits, as Kubernetes quantities ("4", "500m",
+// "16Gi"); empty: no limit. The cluster refuses a step over them: one that
+// can never fit fails (RESOURCES_NOT_ALLOWED), one waiting for the team's
+// other steps to finish waits.
+message TeamQuota {
+  // CPU all its steps may request together.
+  string cpu = 1;
+  // Memory all its steps may request together.
+  string memory = 2;
+  // How many of its Pods may exist at once.
+  string pods = 3;
+  // The most memory one step may ask for.
+  string step_memory = 4;
 }
 
 // What someone may do in a team. Any member sees the team's executions,
@@ -230,6 +255,17 @@ message SetTeamSignInRequest {
 }
 
 message SetTeamSignInResponse {}
+
+message SetTeamQuotaRequest {
+  string team = 1;
+  TeamQuota quota = 2;
+  // The install's limits again: quota is ignored.
+  bool use_default = 3;
+}
+
+message SetTeamQuotaResponse {
+  Team team = 1;
+}
 
 message ApplySecretStoreRequest {
   string team = 1;

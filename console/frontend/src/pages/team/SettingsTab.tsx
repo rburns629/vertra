@@ -11,6 +11,7 @@ import { ApiError, listTeamMembers, setTeamSignIn, type Team, type TeamMember } 
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { useEnvironment } from "../../environment";
+import { QuotaSection } from "./QuotaSection";
 import { WebhookSection } from "./WebhookSection";
 
 function Section({ title, children, tone }: { title: string; children: ReactNode; tone?: "danger" }) {
@@ -116,12 +117,14 @@ export function SettingsTab({
             {isAdmin && (
               <>
                 {" "}
-                To set it up: <Box component="span" sx={mono}>vertra sso google</Box>.
+                To set it up: Admin, People, Single sign-on (or <Box component="span" sx={mono}>vertra sso google</Box>).
               </>
             )}
           </Typography>
         )}
       </Section>
+
+      <QuotaSection team={team} isAdmin={isAdmin} onChanged={onChanged} />
 
       <WebhookSection team={team.name} canManage={canManage} retired={retired} />
 

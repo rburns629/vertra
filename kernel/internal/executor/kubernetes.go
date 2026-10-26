@@ -469,16 +469,22 @@ func (k *Kubernetes) Status(ctx context.Context, handle Handle) (Status, error) 
 			k.mu.Unlock()
 			return Status{State: Running}, nil
 		}
-		pullError, err := k.imagePullError(ctx, namespace, name)
+		failure, podless, err := k.imagePullError(ctx, namespace, name)
 		if err != nil {
 			return Status{}, err
 		}
-		if pullError == nil {
+		if failure == nil && podless {
+			// No Pod yet: refused one that can never fit its team's limits?
+			if failure, err = k.createRefusal(ctx, namespace, name); err != nil {
+				return Status{}, err
+			}
+		}
+		if failure == nil {
 			return Status{State: Running}, nil
 		}
-		k.log.Warn("task image can't be pulled", "namespace", namespace, "job", name, "code", pullError.Code)
+		k.log.Warn("task can't start", "namespace", namespace, "job", name, "code", failure.Code)
 		// Left in place until the failure is committed (Release).
-		record := terminalRecord{status: Status{State: Failed, Error: pullError}}
+		record := terminalRecord{status: Status{State: Failed, Error: failure}}
 		k.remember(name, record)
 		return record.status, nil
 	}
@@ -500,10 +506,12 @@ func (k *Kubernetes) pods(ctx context.Context, namespace, job string) ([]corev1.
 	return list.Items, nil
 }
 
-func (k *Kubernetes) imagePullError(ctx context.Context, namespace, job string) (*domain.StructuredError, error) {
+// imagePullError is the failure of a Pod stuck on its image, if any, and
+// whether the Job has no Pod at all.
+func (k *Kubernetes) imagePullError(ctx context.Context, namespace, job string) (*domain.StructuredError, bool, error) {
 	pods, err := k.pods(ctx, namespace, job)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	for _, pod := range pods {
 		age := time.Since(pod.CreationTimestamp.Time)
@@ -512,11 +520,68 @@ func (k *Kubernetes) imagePullError(ctx context.Context, namespace, job string) 
 				continue
 			}
 			if e := ImagePullFailure(cs.State.Waiting.Reason, cs.State.Waiting.Message, cs.Image, age, k.opts.ImagePullGrace); e != nil {
-				return e, nil
+				return e, false, nil
 			}
 		}
 	}
+	return nil, len(pods) == 0, nil
+}
+
+// createRefusal is the failure for a Job whose Pod the cluster refuses and
+// always will: a step bigger than its team's LimitRange allows, or than its
+// whole ResourceQuota. A Pod refused only because the quota is in use waits
+// (nil), as for any capacity, until the team's other steps finish.
+func (k *Kubernetes) createRefusal(ctx context.Context, namespace, job string) (*domain.StructuredError, error) {
+	callCtx, cancel := k.call(ctx)
+	defer cancel()
+	events, err := k.client.CoreV1().Events(namespace).List(callCtx, metav1.ListOptions{
+		FieldSelector: "involvedObject.kind=Job,involvedObject.name=" + job + ",reason=FailedCreate",
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, event := range events.Items {
+		if event.InvolvedObject.Name != job || event.Reason != "FailedCreate" {
+			continue
+		}
+		if never := NeverFits(event.Message); never != "" {
+			return &domain.StructuredError{Code: "RESOURCES_NOT_ALLOWED", Message: "The step asks for more than its team may ever use: " + never}, nil
+		}
+	}
 	return nil, nil
+}
+
+var (
+	limitRangeRefusal = regexp.MustCompile(`maximum (cpu|memory|ephemeral-storage) usage per (Container|Pod) is [^,]+, but (limit|request) is [^,.]+`)
+	quotaRefusal      = regexp.MustCompile(`exceeded quota: [^,]+, requested: ([^ ]+), used: ([^ ]+), limited: ([^ ]+)`)
+)
+
+// NeverFits says why a Pod refused with this message can never be created,
+// or "" when it can once room frees up (or it's another refusal).
+func NeverFits(message string) string {
+	if m := limitRangeRefusal.FindString(message); m != "" {
+		return m
+	}
+	m := quotaRefusal.FindStringSubmatch(message)
+	if m == nil {
+		return ""
+	}
+	limited := map[string]resource.Quantity{}
+	for _, pair := range strings.Split(m[3], ",") {
+		if name, value, ok := strings.Cut(pair, "="); ok {
+			if q, err := resource.ParseQuantity(value); err == nil {
+				limited[name] = q
+			}
+		}
+	}
+	for _, pair := range strings.Split(m[1], ",") {
+		name, value, ok := strings.Cut(pair, "=")
+		q, err := resource.ParseQuantity(value)
+		if limit, known := limited[name]; ok && err == nil && known && q.Cmp(limit) > 0 {
+			return fmt.Sprintf("%s=%s, but the team's quota is %s", name, q.String(), limit.String())
+		}
+	}
+	return ""
 }
 
 var imageNotFound = regexp.MustCompile(`(?i)\bnot found\b|manifest unknown|NotFound`)

@@ -98,6 +98,8 @@ export interface Team {
   helpUrl: string | null;
   /** Its members sign in with single sign-on only (auth/plugin.ts's ssoRequiredBy). */
   requireSso: boolean;
+  /** Its own resource limits (teamQuota.ts); null: the install's. */
+  quota: { cpu: string; memory: string; pods: string; stepMemory: string } | null;
 }
 
 /** A live team: purged (deleted) teams are invisible to every route. A

@@ -211,6 +211,13 @@
       "when": 1792957331113,
       "tag": "0029_sso_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793020675793,
+      "tag": "0030_team_quota",
+      "breakpoints": true
     }
   ]
 }

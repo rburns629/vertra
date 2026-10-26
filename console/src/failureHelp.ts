@@ -20,6 +20,7 @@ export const PLATFORM_ERRORS: Record<string, ErrorHelp> = {
   JOB_NOT_FOUND: { means: "Its Job disappeared from the cluster before it reported a result." },
   IMAGE_NOT_FOUND: { means: "Its image isn't in the registry.", do: "Ask the product's team to publish it." },
   IMAGE_PULL_FAILED: { means: "The cluster couldn't download its image." },
+  RESOURCES_NOT_ALLOWED: { means: "The step asks for more memory or CPU than its team may ever use.", do: "Ask an admin to raise the team's resource limits (its Settings tab), or ask the product's team for a smaller size." },
   IMAGE_NOT_ALLOWED: { means: "Its image isn't from a source this install allows.", do: "An admin can allow the source on the Admin page." },
   IMAGE_NOT_PINNED: { means: "Its image wasn't pinned to a digest, so the cluster refused it." },
   IMAGE_SCAN_FAILED: { means: "Its image failed the security scan.", do: "Ask the product's team to rebuild it with the fixes." },

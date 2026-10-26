@@ -40,6 +40,10 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
         resources: ["networkpolicies"]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["resourcequotas", "limitranges"]
   matchConditions:
     - name: from-the-console
       expression: request.userInfo.username == {{ $console | quote }}
@@ -84,6 +88,15 @@ spec:
       message: >-
         The console's only NetworkPolicy is a team namespace's vertra-default-deny, selecting every
         Pod and letting in nothing from outside the namespace; it never deletes one.
+      reason: Forbidden
+    # Its only quota and limits are each team's (teamQuota.ts). (Deleting
+    # one is checked by its name in the request: there's no object then.)
+    - expression: >-
+        (request.resource.resource != "resourcequotas" || request.name == "vertra-team-quota") &&
+        (request.resource.resource != "limitranges" || request.name == "vertra-team-limits")
+      message: >-
+        The console's only ResourceQuota and LimitRange are a team namespace's vertra-team-quota
+        and vertra-team-limits.
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1

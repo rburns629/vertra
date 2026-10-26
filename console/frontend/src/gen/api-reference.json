@@ -959,6 +959,15 @@
      "public": false
     },
     {
+     "name": "SetTeamQuota",
+     "comment": "Sets what the team's steps may use together (written to its namespace\nat once), or with use_default the install's limits again. Admins only.",
+     "input": "vertra.console.v1.SetTeamQuotaRequest",
+     "output": "vertra.console.v1.SetTeamQuotaResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
+    },
+    {
      "name": "ApplySecretStore",
      "comment": "Applies the team's reviewed SecretStore file: only SecretStores in its\nnamespace, credentials only from eso-auth, and ESO's own\nServiceAccounts; anything else is refused with every problem listed.",
      "input": "vertra.console.v1.ApplySecretStoreRequest",
@@ -6889,6 +6898,55 @@
      "repeated": false,
      "optional": false,
      "comment": "Made by the catalog (a release adds, retires and restores it); else\nmade here, and the catalog leaves it alone until an admin adopts it."
+    },
+    {
+     "name": "quota",
+     "type": "TeamQuota",
+     "ref": "vertra.console.v1.TeamQuota",
+     "repeated": false,
+     "optional": false,
+     "comment": "What its steps may use together, as its namespace's ResourceQuota and\nLimitRange hold it: its own, else the install's."
+    },
+    {
+     "name": "quotaIsDefault",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "True when the quota is the install's, not one an admin set for it."
+    }
+   ]
+  },
+  "vertra.console.v1.TeamQuota": {
+   "name": "TeamQuota",
+   "comment": "A team's resource limits, as Kubernetes quantities (\"4\", \"500m\",\n\"16Gi\"); empty: no limit. The cluster refuses a step over them: one that\ncan never fit fails (RESOURCES_NOT_ALLOWED), one waiting for the team's\nother steps to finish waits.",
+   "fields": [
+    {
+     "name": "cpu",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "CPU all its steps may request together."
+    },
+    {
+     "name": "memory",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Memory all its steps may request together."
+    },
+    {
+     "name": "pods",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "How many of its Pods may exist at once."
+    },
+    {
+     "name": "stepMemory",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The most memory one step may ask for."
     }
    ]
   },
@@ -7288,6 +7346,48 @@
    "name": "SetTeamSignInResponse",
    "comment": "",
    "fields": []
+  },
+  "vertra.console.v1.SetTeamQuotaRequest": {
+   "name": "SetTeamQuotaRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "quota",
+     "type": "TeamQuota",
+     "ref": "vertra.console.v1.TeamQuota",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "useDefault",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "The install's limits again: quota is ignored."
+    }
+   ]
+  },
+  "vertra.console.v1.SetTeamQuotaResponse": {
+   "name": "SetTeamQuotaResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "Team",
+     "ref": "vertra.console.v1.Team",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
   },
   "vertra.console.v1.ApplySecretStoreRequest": {
    "name": "ApplySecretStoreRequest",

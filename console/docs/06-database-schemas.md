@@ -285,6 +285,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
 | `from_catalog` | boolean | no | Made by a catalog release: retired when a release no longer names it. A team an admin made isn't touched. |
 | `require_sso` | boolean | no | Its members sign in with single sign-on only: their passwords, and sessions a password made, are refused (admins' aren't). No effect while single sign-on is off. |
+| `quota` | jsonb | yes | Its own resource limits, set by an admin: `cpu`, `memory` (all its steps' requests together), `pods`, `stepMemory` (one step's most), Kubernetes quantities, `""` for none. Null: the install's (`teamNamespaces.quota`). Kept in its namespace as a ResourceQuota and LimitRange. |
 | `allowed_targets` | jsonb | no | team.yaml's `allowedTargets` from the release: `[{ teams, targets: { "gcp.project": [values or patterns], ... }, approval? }]`, where other teams may aim this team's products; a rule with `approval: true` lets its targets through only with a maintainer's approval. Empty: nowhere. |
 | `contact`, `help_chat`, `help_url` | text | yes | team.yaml's `contact` and `help` (`chat`, `url`), from the release: whom to ask when one of its steps fails. |
 

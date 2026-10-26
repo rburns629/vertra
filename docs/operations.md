@@ -606,7 +606,11 @@ console clears it.
 and `kubectl describe pod` name the real problem. A first pull on a cloud
 cluster can take a minute while a node scales up. `IMAGE_NOT_FOUND` fails
 at once; other pull errors (registry auth, network) fail as
-`IMAGE_PULL_FAILED` after two minutes.
+`IMAGE_PULL_FAILED` after two minutes. A step over its team's resource
+limits (`teamNamespaces.quota`, or the team's own on its Settings tab)
+waits while the team's other steps use the quota (`kubectl get events -n
+<team>` says "exceeded quota"), and fails at once as `RESOURCES_NOT_ALLOWED`
+when it could never fit.
 
 **A task stays `AWAITING_APPROVAL`.** Its product (or its team's
 `allowedTargets`) asks a maintainer of its team to approve it, on the run's

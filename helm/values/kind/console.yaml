@@ -60,3 +60,12 @@ logs:
   storage:
     type: filesystem
     size: 5Gi
+
+# What each team's steps may use together (teamNamespaces.quota in the
+# chart); an admin can set a team's own on its Settings tab.
+teamNamespaces:
+  quota:
+    cpu: "4"
+    memory: "8Gi"
+    pods: "20"
+    stepMemory: "2Gi"

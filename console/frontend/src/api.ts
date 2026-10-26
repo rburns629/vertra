@@ -191,6 +191,18 @@ export interface Team {
   requireSso: boolean;
   /** Made by the catalog; else made here, and left alone by it until adopted. */
   fromCatalog: boolean;
+  /** What its steps may use together: its own, else the install's. */
+  quota: TeamQuota;
+  /** True when the quota is the install's, not one an admin set for it. */
+  quotaIsDefault: boolean;
+}
+
+/** A team's resource limits, as Kubernetes quantities; "" for no limit. */
+export interface TeamQuota {
+  cpu: string;
+  memory: string;
+  pods: string;
+  stepMemory: string;
 }
 
 export async function register(email: string, password: string): Promise<{ id: string; email: string }> {
@@ -229,7 +241,14 @@ function team(message: TeamMessage | undefined): Team {
     deletedAt: iso(message?.deletedAt),
     requireSso: message?.requireSso ?? false,
     fromCatalog: message?.fromCatalog ?? false,
+    quota: { cpu: message?.quota?.cpu ?? "", memory: message?.quota?.memory ?? "", pods: message?.quota?.pods ?? "", stepMemory: message?.quota?.stepMemory ?? "" },
+    quotaIsDefault: message?.quotaIsDefault ?? true,
   };
+}
+
+/** Admins: a team's own resource limits, or (null) the install's again. */
+export async function setTeamQuota(teamName: string, quota: TeamQuota | null): Promise<Team> {
+  return team((await call(() => teams.setTeamQuota({ team: teamName, quota: quota ?? undefined, useDefault: quota === null }))).team);
 }
 
 /** Admins: whether a team's members must sign in with single sign-on. */

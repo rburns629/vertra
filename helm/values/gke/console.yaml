@@ -55,3 +55,12 @@ secretSources:
   gcpWorkloadIdentityPool: my-gcp-project.svc.id.goog
   gkeClusterName: vertra-gke
   gkeClusterLocation: us-central1
+
+# What each team's steps may use together (teamNamespaces.quota in the
+# chart); an admin can set a team's own on its Settings tab.
+teamNamespaces:
+  quota:
+    cpu: "16"
+    memory: "64Gi"
+    pods: "50"
+    stepMemory: "16Gi"

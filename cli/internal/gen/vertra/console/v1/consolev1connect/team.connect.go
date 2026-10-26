@@ -66,6 +66,9 @@ const (
 	// TeamServiceSetTeamSignInProcedure is the fully-qualified name of the TeamService's SetTeamSignIn
 	// RPC.
 	TeamServiceSetTeamSignInProcedure = "/vertra.console.v1.TeamService/SetTeamSignIn"
+	// TeamServiceSetTeamQuotaProcedure is the fully-qualified name of the TeamService's SetTeamQuota
+	// RPC.
+	TeamServiceSetTeamQuotaProcedure = "/vertra.console.v1.TeamService/SetTeamQuota"
 	// TeamServiceApplySecretStoreProcedure is the fully-qualified name of the TeamService's
 	// ApplySecretStore RPC.
 	TeamServiceApplySecretStoreProcedure = "/vertra.console.v1.TeamService/ApplySecretStore"
@@ -119,6 +122,9 @@ type TeamServiceClient interface {
 	// password signs them in, and their password sessions end. Admins only;
 	// admins themselves are exempt. Has no effect while single sign-on is off.
 	SetTeamSignIn(context.Context, *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error)
+	// Sets what the team's steps may use together (written to its namespace
+	// at once), or with use_default the install's limits again. Admins only.
+	SetTeamQuota(context.Context, *connect.Request[v1.SetTeamQuotaRequest]) (*connect.Response[v1.SetTeamQuotaResponse], error)
 	// Applies the team's reviewed SecretStore file: only SecretStores in its
 	// namespace, credentials only from eso-auth, and ESO's own
 	// ServiceAccounts; anything else is refused with every problem listed.
@@ -232,6 +238,13 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		setTeamQuota: connect.NewClient[v1.SetTeamQuotaRequest, v1.SetTeamQuotaResponse](
+			httpClient,
+			baseURL+TeamServiceSetTeamQuotaProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("SetTeamQuota")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		applySecretStore: connect.NewClient[v1.ApplySecretStoreRequest, v1.ApplySecretStoreResponse](
 			httpClient,
 			baseURL+TeamServiceApplySecretStoreProcedure,
@@ -271,6 +284,7 @@ type teamServiceClient struct {
 	removeMember             *connect.Client[v1.RemoveMemberRequest, v1.RemoveMemberResponse]
 	setMemberRole            *connect.Client[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse]
 	setTeamSignIn            *connect.Client[v1.SetTeamSignInRequest, v1.SetTeamSignInResponse]
+	setTeamQuota             *connect.Client[v1.SetTeamQuotaRequest, v1.SetTeamQuotaResponse]
 	applySecretStore         *connect.Client[v1.ApplySecretStoreRequest, v1.ApplySecretStoreResponse]
 	setSecretStoreCredential *connect.Client[v1.SetSecretStoreCredentialRequest, v1.SetSecretStoreCredentialResponse]
 	listPods                 *connect.Client[v1.ListPodsRequest, v1.ListPodsResponse]
@@ -341,6 +355,11 @@ func (c *teamServiceClient) SetTeamSignIn(ctx context.Context, req *connect.Requ
 	return c.setTeamSignIn.CallUnary(ctx, req)
 }
 
+// SetTeamQuota calls vertra.console.v1.TeamService.SetTeamQuota.
+func (c *teamServiceClient) SetTeamQuota(ctx context.Context, req *connect.Request[v1.SetTeamQuotaRequest]) (*connect.Response[v1.SetTeamQuotaResponse], error) {
+	return c.setTeamQuota.CallUnary(ctx, req)
+}
+
 // ApplySecretStore calls vertra.console.v1.TeamService.ApplySecretStore.
 func (c *teamServiceClient) ApplySecretStore(ctx context.Context, req *connect.Request[v1.ApplySecretStoreRequest]) (*connect.Response[v1.ApplySecretStoreResponse], error) {
 	return c.applySecretStore.CallUnary(ctx, req)
@@ -399,6 +418,9 @@ type TeamServiceHandler interface {
 	// password signs them in, and their password sessions end. Admins only;
 	// admins themselves are exempt. Has no effect while single sign-on is off.
 	SetTeamSignIn(context.Context, *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error)
+	// Sets what the team's steps may use together (written to its namespace
+	// at once), or with use_default the install's limits again. Admins only.
+	SetTeamQuota(context.Context, *connect.Request[v1.SetTeamQuotaRequest]) (*connect.Response[v1.SetTeamQuotaResponse], error)
 	// Applies the team's reviewed SecretStore file: only SecretStores in its
 	// namespace, credentials only from eso-auth, and ESO's own
 	// ServiceAccounts; anything else is refused with every problem listed.
@@ -508,6 +530,13 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	teamServiceSetTeamQuotaHandler := connect.NewUnaryHandler(
+		TeamServiceSetTeamQuotaProcedure,
+		svc.SetTeamQuota,
+		connect.WithSchema(teamServiceMethods.ByName("SetTeamQuota")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	teamServiceApplySecretStoreHandler := connect.NewUnaryHandler(
 		TeamServiceApplySecretStoreProcedure,
 		svc.ApplySecretStore,
@@ -557,6 +586,8 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 			teamServiceSetMemberRoleHandler.ServeHTTP(w, r)
 		case TeamServiceSetTeamSignInProcedure:
 			teamServiceSetTeamSignInHandler.ServeHTTP(w, r)
+		case TeamServiceSetTeamQuotaProcedure:
+			teamServiceSetTeamQuotaHandler.ServeHTTP(w, r)
 		case TeamServiceApplySecretStoreProcedure:
 			teamServiceApplySecretStoreHandler.ServeHTTP(w, r)
 		case TeamServiceSetSecretStoreCredentialProcedure:
@@ -622,6 +653,10 @@ func (UnimplementedTeamServiceHandler) SetMemberRole(context.Context, *connect.R
 
 func (UnimplementedTeamServiceHandler) SetTeamSignIn(context.Context, *connect.Request[v1.SetTeamSignInRequest]) (*connect.Response[v1.SetTeamSignInResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.SetTeamSignIn is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) SetTeamQuota(context.Context, *connect.Request[v1.SetTeamQuotaRequest]) (*connect.Response[v1.SetTeamQuotaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TeamService.SetTeamQuota is not implemented"))
 }
 
 func (UnimplementedTeamServiceHandler) ApplySecretStore(context.Context, *connect.Request[v1.ApplySecretStoreRequest]) (*connect.Response[v1.ApplySecretStoreResponse], error) {

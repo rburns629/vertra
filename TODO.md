@@ -206,9 +206,17 @@ design.
 - [ ] **Example values for EKS and AKS** next to `helm/values/gke/`, and a
   per-cloud guide to binding identities (console scanning and registry
   checks, ESO, products).
-- [ ] **Per-team ResourceQuota and LimitRange**, created with the team's
-  namespace: a hard ceiling the cluster enforces, and a maximum step size.
-  (Step sizes, Spot placement and running-step caps exist already.)
+- [x] **Per-team ResourceQuota and LimitRange** (done 2026-10-26): written
+  with each team namespace and on every policy resync (`teamQuota.ts`), from
+  the console chart's `teamNamespaces.quota` or a team's own, which an admin
+  sets on its Settings tab (`TeamService/SetTeamQuota`, console migration
+  0030): CPU, memory and Pods together, and memory per step (CPU only in
+  total, so a step may use spare CPU). The write fence accepts only those
+  two names. A step that can never fit fails at once
+  (`RESOURCES_NOT_ALLOWED`, read by the kernel from its Job's FailedCreate
+  events); one waiting for room waits. Proven on kind: two runs with one Pod
+  allowed both ran, one after the other; a 4Gi step against a 2Gi maximum
+  failed in seconds; the fence refused another name and another namespace.
 - [ ] **Let a product choose its own capacity** (Spot or on-demand) in its
   `product.yaml`; placement is deployment-wide today.
 - [x] **The console's liveness probe killed it once while it started** on a
@@ -656,7 +664,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `vertra apply` names the DNS record a hostname of yours needs and waits
   for it; `vertra status` shows it and the certificate (2026-10-22; not yet
   run against a cluster whose Ingress has a public address).
-- [ ] **SSO/OIDC sign-in**, with groups mapped to teams. Sign-in with
+- [x] **SSO/OIDC sign-in**, with groups mapped to teams (done 2026-10-25). Sign-in with
   Google is in (2026-10-22: `console/src/auth/oidc.ts`, the console chart's
   `sso`): the authorization code flow with PKCE, a verified email in an
   allowed Workspace domain, each account bound to its Google identity at the

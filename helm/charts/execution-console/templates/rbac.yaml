@@ -66,6 +66,13 @@ rules:
     resources: ["networkpolicies"]
     verbs: ["create", "update"]
   {{- end }}
+  # Each team namespace's ResourceQuota and LimitRange (teamQuota.ts); the
+  # write fence accepts only vertra-team-quota and vertra-team-limits.
+  {{- if .Values.teamNamespaces.manage }}
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["create", "update", "delete"]
+  {{- end }}
   # listTaskPods -- read-only visibility into a team's own
   # running work (core/teams.ts, teamPods), no different in kind from `kubectl
   # get pods -n <team>`. Deliberately no "watch" -- this is a plain,

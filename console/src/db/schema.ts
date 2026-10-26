@@ -60,6 +60,9 @@ export const teams = pgTable("teams", {
   // Ignored while it's off, so nobody is locked out. Admins are exempt (a
   // way in if the provider fails).
   requireSso: boolean("require_sso").notNull().default(false),
+  // What its steps may use together, set by an admin (teamQuota.ts); null:
+  // the install's defaults. Kubernetes quantities, "" for no limit.
+  quota: jsonb("quota").$type<{ cpu: string; memory: string; pods: string; stepMemory: string }>(),
   // team.yaml's allowedTargets, from the catalog's release: where other
   // teams may aim this team's products (targets.ts). Empty: nowhere.
   allowedTargets: jsonb("allowed_targets").$type<TargetRule[]>().notNull().default([]),

@@ -772,3 +772,42 @@ func TestWithoutPlacementThePodSpecSaysNothingAboutIt(t *testing.T) {
 		}
 	}
 }
+
+// The Job controller's messages when a team's limits refuse a step's Pod.
+func TestAStepThatCanNeverFitItsTeamFailsAndOneWaitingForRoomDoesnt(t *testing.T) {
+	const prefix = `pods "ek-big-1-abcde" is forbidden: `
+	never := map[string]string{
+		"over the LimitRange":  prefix + "maximum memory usage per Container is 4Gi, but limit is 8Gi",
+		"over the whole quota": prefix + "exceeded quota: vertra-team-quota, requested: requests.cpu=8,requests.memory=1Gi, used: requests.cpu=0,requests.memory=0, limited: requests.cpu=4,requests.memory=16Gi",
+	}
+	for what, message := range never {
+		if NeverFits(message) == "" {
+			t.Errorf("%s: should never fit", what)
+		}
+	}
+	waits := prefix + "exceeded quota: vertra-team-quota, requested: requests.cpu=1, used: requests.cpu=4, limited: requests.cpu=4"
+	check(t, "quota in use", NeverFits(waits), "")
+	check(t, "another refusal", NeverFits(prefix+"error looking up service account"), "")
+
+	ns, name := "demo-3", "ek-big-1"
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
+	event := func(message string) *corev1.Event {
+		return &corev1.Event{ObjectMeta: metav1.ObjectMeta{Name: name + ".1", Namespace: ns}, Reason: "FailedCreate", Message: message,
+			InvolvedObject: corev1.ObjectReference{Kind: "Job", Name: name, Namespace: ns}}
+	}
+	c := newCluster(options(), job, event(waits))
+	s, err := c.k.Status(context.Background(), Handle{"namespace": ns, "jobName": name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(t, "waiting for room", s.State, Running)
+
+	c = newCluster(options(), job, event(never["over the LimitRange"]))
+	s, err = c.k.Status(context.Background(), Handle{"namespace": ns, "jobName": name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(t, "too big", s.State, Failed)
+	check(t, "code", s.Error.Code, "RESOURCES_NOT_ALLOWED")
+	check(t, "retryable", s.Error.Retryable, false)
+}

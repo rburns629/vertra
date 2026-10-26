@@ -68,6 +68,25 @@ function list(value: string | undefined): string[] {
  * and at least one allowed domain: a provider anyone can sign up to
  * (Google is one) must never let just anyone in.
  */
+/** A Kubernetes quantity (2, 500m, 8Gi), or a whole number for pods. */
+export const QUANTITY = /^[0-9]+(\.[0-9]+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$/;
+
+/** Each team's default ceiling (TEAM_QUOTA_*), checked at startup. */
+function loadQuota() {
+  const quota = {
+    cpu: process.env["TEAM_QUOTA_CPU"] ?? "",
+    memory: process.env["TEAM_QUOTA_MEMORY"] ?? "",
+    pods: process.env["TEAM_QUOTA_PODS"] ?? "",
+    stepMemory: process.env["TEAM_QUOTA_STEP_MEMORY"] ?? "",
+  };
+  for (const [key, value] of Object.entries(quota)) {
+    if (value && !(key === "pods" ? /^[0-9]+$/ : QUANTITY).test(value)) {
+      throw new Error(`teamNamespaces.quota.${key}: "${value}" isn't a Kubernetes quantity (2, 500m, 8Gi)`);
+    }
+  }
+  return quota;
+}
+
 function loadOidc() {
   const issuer = process.env["OIDC_ISSUER"] ?? "";
   if (!issuer) return null;
@@ -392,6 +411,9 @@ export const config = {
     // A NetworkPolicy in each one refusing connections from outside it
     // (teamNetwork.ts).
     defaultDenyIngress: process.env["TEAM_NAMESPACE_DEFAULT_DENY_INGRESS"] === "true",
+    // What each team's steps may use together, unless an admin set the
+    // team's own (teamQuota.ts): Kubernetes quantities, "" for no limit.
+    quota: loadQuota(),
     // Never a team's, whatever a team is called: the platform's own, and
     // any the operator lists. (kube-* always.)
     protected: [

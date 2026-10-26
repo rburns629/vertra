@@ -549,6 +549,18 @@ teamNamespaces:
   # rewritten on every policy resync; the write fence accepts no other
   # policy from the console. Needs a CNI that enforces NetworkPolicy.
   defaultDenyIngress: true
+  # -- What each team's steps may use together, as a ResourceQuota
+  # (vertra-team-quota) and LimitRange (vertra-team-limits) in its
+  # namespace, unless an admin sets the team's own on its Settings tab.
+  # Kubernetes quantities; empty: no limit. The cluster refuses a step over
+  # them: one that can never fit fails (RESOURCES_NOT_ALLOWED), one waiting
+  # for the team's other steps waits. CPU is capped only in total, never per
+  # step, so a step may use spare CPU.
+  quota:
+    cpu: ""          # all its steps' CPU requests together, such as "8"
+    memory: ""       # all their memory requests together, such as "32Gi"
+    pods: ""         # its Pods at once, such as "20"
+    stepMemory: ""   # the most one step may ask for, such as "8Gi"
 
 # -- Fences the console's writes (Secrets, ServiceAccounts, Roles,
 # RoleBindings, ExternalSecrets, SecretStores) to team namespaces: those carrying

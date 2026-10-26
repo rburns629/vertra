@@ -14,6 +14,7 @@ import { syncIdentityPolicy } from "./productPolicy.js";
 import { syncPullSecrets } from "./pullSecret.js";
 import { syncScanPolicy } from "./scanning.js";
 import { syncTeamNetworkPolicies } from "./teamNetwork.js";
+import { syncTeamQuotas } from "./teamQuota.js";
 
 export interface SyncOutcome {
   /** False: there's nothing to write to (not configured, or not installed). */
@@ -29,6 +30,7 @@ const SYNCS: Record<string, () => Promise<boolean>> = {
   scanPolicy: syncScanPolicy,
   pullSecrets: syncPullSecrets,
   teamNetworkPolicies: syncTeamNetworkPolicies,
+  teamQuotas: syncTeamQuotas,
 };
 
 export function policySyncOutcomes(): Record<string, SyncOutcome | null> {

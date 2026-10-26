@@ -17,7 +17,8 @@ metadata:
 # Exactly the calls kernel/internal/executor makes: Jobs created, read
 # (status included), listed for the orphan sweep, watched, deleted; their
 # Pods listed and watched, and their logs read; the request ConfigMap
-# created and deleted.
+# created and deleted; events listed, to tell a Pod the team's limits refuse
+# for good from one waiting for room in its quota.
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
@@ -31,6 +32,9 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["create", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
