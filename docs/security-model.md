@@ -484,6 +484,22 @@ without going through the console:
 | Console namespaces | The console creating a namespace that isn't labelled a team's, adopting one that isn't a team's, changing anything about a team namespace but its team label, or touching kube-* or the platform's own | console chart, `templates/namespace-policy.yaml` |
 | Console write fence | The console's ServiceAccount creating, changing or deleting Secrets, ServiceAccounts, Roles, RoleBindings or ExternalSecrets outside team namespaces (kube-system, the platform's own) | console chart, `templates/write-fence-policy.yaml` |
 
+An install `vertra` makes sets up signing itself when its catalog is signed
+(`signing` in vertra.yaml, asked at `vertra init`): `kms`, a key in the
+cloud's KMS (a GCP key ring with a fresh suffix, or an AWS ECC P-256 key)
+that only the catalog repository's CI, through its main-only federation, may
+sign with, its public half read at apply; or `keyless`, the repository's
+`ci.yml` on main by GitHub's OIDC issuer, through Sigstore's public log
+(which names the repository). Either way it installs policy-controller,
+scoped to team namespaces and bound to an identity that may only read the
+task registry, gives the kernel's imageSignature and the console's
+catalog.signature the same signer, and sets the repository's
+VERTRA_SIGNING_* variables. Proven on GKE (2026-10-26), both modes: CI
+signed images and releases; the console applied only signed releases ("no
+trusted signer signed the catalog release … nothing was applied" for one
+pushed unsigned); a signed starter ran and an image pushed by hand, unsigned,
+was refused (`IMAGE_NOT_SIGNED`).
+
 Two platform identities only change replica counts, through the scale
 subresource (which can't change what a Deployment runs), on Deployments
 named in their Roles: the kernel's sleeper (`scaleDown`, the platform's

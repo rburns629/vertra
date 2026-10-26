@@ -901,10 +901,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   other `linux/amd64`, so a Mac's publish runs on a cloud cluster (found
   proving the gcp cleanups on GKE). One platform per catalog, not
   multi-platform images.
-- [ ] **`vertra` can't set up a signed catalog yet**: `vertra catalog create` sets
-  signing mode none, and nothing puts a public key in the console's
-  `catalog.signature` (the GKE proof set it with Helm). Generate or take a
-  key (or keyless with the repository's identity) and set both sides.
+- [x] **`vertra` sets up a signed catalog** (done 2026-10-26): `signing`
+  (none, kms, keyless), asked at init; apply makes the KMS key (gcp, aws)
+  only the catalog's CI may sign with, installs policy-controller bound to a
+  registry reader, and gives both charts the signer; `vertra catalog create`
+  sets the repository's VERTRA_SIGNING_* variables. Proven on GKE, kms then
+  keyless (see docs/security-model.md). AWS KMS and policy-controller reading
+  ECR through Pod Identity aren't proven yet. Found on the way, and fixed:
+  the template pinned a vertra too old for its own samples (released 0.3.0
+  and pinned it; CI now validates the template with its pinned vertra), and
+  keyless signing failed with cosign 3 (0.3.1).
 - [x] **An intermittent console test** (fixed 2026-10-25):
   `product-ownership.test.ts`'s startup claim read every product, then
   inserted for a team another file had deleted meanwhile. The claim now
