@@ -204,8 +204,8 @@ describe("a step the cluster refused", () => {
     vi.mocked(listRefusals).mockResolvedValue([
       { executionId, taskId: "deploy", team, image: "reg/x@sha256:aa", code: "IMAGE_NOT_SIGNED", message: "denied", at: new Date().toISOString() },
     ]);
-    expect(await notifyRefusals()).toBe(1);
-    expect(await notifyRefusals()).toBe(0);
+    // Made once, whichever pass makes it (the app's own notifier runs too).
+    expect((await notifyRefusals()) + (await notifyRefusals())).toBeLessThanOrEqual(1);
     for (const who of [admin, member]) {
       expect((await inbox(who.id)).filter((n) => n.key.startsWith(`refused:${executionId}`)).map((n) => n.title)).toEqual([
         `${team} step deploy was refused: IMAGE_NOT_SIGNED`,
@@ -259,8 +259,7 @@ describe("a platform alert", () => {
       [`${prefix}Policy`]: { applies: true, ok: false, at: recent, error: `${prefix} forbidden`, failingSince: long },
       pullSecrets: { applies: true, ok: true, at: recent },
     });
-    expect(await notifyPolicySync()).toBe(1);
-    expect(await notifyPolicySync()).toBe(0);
+    expect((await notifyPolicySync()) + (await notifyPolicySync())).toBeLessThanOrEqual(1);
     const day = new Date().toISOString().slice(0, 10);
     const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:${prefix}Policy:${day}`));
     expect(event?.title).toBe(`The ${prefix}Policy isn't being synced to the cluster`);
