@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the security scanners CI uses, at pinned versions, refusing any
+# Installs the security scanners and linters CI uses, at pinned versions, refusing any
 # download whose SHA-256 doesn't match the one recorded here. Release
 # binaries rather than third-party GitHub Actions: a scanner is exactly what
 # an attacker would want to tamper with, and pinning the bytes themselves
@@ -7,9 +7,10 @@
 #
 # To upgrade one: bump its version, then take the new linux/amd64 sum from
 # that release's own checksums file (trivy_<v>_checksums.txt,
-# gitleaks_<v>_checksums.txt, osv-scanner_SHA256SUMS, cosign_checksums.txt).
+# gitleaks_<v>_checksums.txt, osv-scanner_SHA256SUMS,
+# actionlint_<v>_checksums.txt, cosign_checksums.txt).
 #
-# Usage: install-scanners.sh trivy osv-scanner gitleaks cosign   (any subset)
+# Usage: install-scanners.sh trivy osv-scanner gitleaks actionlint cosign   (any subset)
 set -euo pipefail
 
 TRIVY_VERSION=0.74.0
@@ -18,6 +19,8 @@ OSV_SCANNER_VERSION=2.6.0
 OSV_SCANNER_SHA256=ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
 GITLEAKS_VERSION=8.30.1
 GITLEAKS_SHA256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+ACTIONLINT_VERSION=1.7.12
+ACTIONLINT_SHA256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 COSIGN_VERSION=3.1.3
 COSIGN_SHA256=4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
 
@@ -54,6 +57,11 @@ for tool in "$@"; do
       fetch "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
         "$COSIGN_SHA256" "$bin/cosign"
       chmod +x "$bin/cosign"
+      ;;
+    actionlint)
+      fetch "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+        "$ACTIONLINT_SHA256" "$work/actionlint.tar.gz"
+      tar -xzf "$work/actionlint.tar.gz" -C "$bin" actionlint
       ;;
     *)
       echo "::error::Unknown scanner: $tool"

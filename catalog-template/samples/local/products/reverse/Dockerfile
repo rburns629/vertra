@@ -1,5 +1,8 @@
-# Build: compile the TypeScript. The compiler stays in this stage.
-FROM node:26-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec AS build
+# Build: compile the TypeScript. The compiler stays in this stage. It runs
+# on the machine building (its output is plain JavaScript, the same for any
+# platform), so publishing for amd64 from Apple silicon doesn't run npm under
+# emulation, where it breaks.
+FROM --platform=$BUILDPLATFORM node:26-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund

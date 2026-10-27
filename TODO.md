@@ -541,12 +541,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `vertra admin reset-password` runs the console's `dist/db/resetAdmin.js`
   in its Pod (cluster access required): a new random password for an
   admin, printed once, every session revoked, audited. Proven on kind.
-- [ ] **Cross-building the console on Apple silicon** broke under amd64
-  emulation (npm's cache size computed as 0: emulated floating-point); the
-  console's Dockerfile now runs its npm stages on the build platform. The
-  catalog's Node samples (reverse) still build under emulation when
-  published from a Mac for amd64: publish from CI, or give their
-  Dockerfiles the same split.
+- [x] **Cross-building on Apple silicon** (done 2026-10-27): the console's
+  npm stages, and now the Node sample's (reverse) build stage, run on the
+  build platform, so publishing for amd64 from a Mac doesn't run npm under
+  emulation, where it broke.
 - [x] **P2: readiness per install** (done 2026-10-24). product.yaml's
   `check` names the action that says whether it's ready here (`ready`,
   `principal`, `missing`); the console runs it itself (a check run, no
@@ -997,20 +995,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   insert (reading it unlocked still raced, once).
 - [ ] **Check the docs page's diagrams under mermaid 12** (taken by a
   Dependabot bump, which cleared the KaTeX advisories; not yet looked at).
-- [ ] **Run the older kernel tests on the database's clock**, as the newer
-  ones do: `now` from this machine against `available_at` from Postgres can
-  disagree in a Dockerized Postgres.
-- [ ] **Push the Kubernetes tests' fixture images to the local registry**
-  instead of `kind load` (`_load_image_into_kind` in
-  `kernel/tests/conftest.py`): on Kubernetes 1.37, a side-loaded image can
-  stop being usable after it's pulled under a second name.
 - [ ] **An end-to-end secret test** with a product registered by catalog CI.
 - [ ] **Re-pin `rot13`'s distroless base** once Google rebuilds
   `cc-debian12` with Debian's libssl3 fix (CVE-2026-84782), and delete its
   `.trivyignore` line (it expires 2026-11-27 by itself, failing the check
   again if the base still has it).
-- [ ] **actionlint in the catalog template's own CI.**
-- [ ] **Move `docker` to the kernel's dev dependencies** (tests only).
+- [x] **actionlint in the catalog template's own CI** (done 2026-10-27):
+  its pull-request check lints the workflows, with actionlint installed
+  pinned as the scanners are.
 - [x] **`make up` mistakes any console port-forward for its own** (done:
   `PORT_FORWARD` names the context and port, which `pgrep`/`pkill` match).
 - [ ] **Switch to Sigstore's newer signature format** once policy-controller

@@ -27,7 +27,7 @@ name: catalog-ci
 
 on:
   pull_request:
-    paths: ["teams/**", "templates/**", "tools/**", "vertra.yaml", "vertra", ".github/CODEOWNERS"]
+    paths: ["teams/**", "templates/**", "tools/**", "vertra.yaml", "vertra", ".github/CODEOWNERS", ".github/workflows/**"]
   push:
     branches: [main]
     paths: ["teams/**", "tools/**", "vertra.yaml", "vertra"]
@@ -63,7 +63,10 @@ jobs:
         with:
           fetch-depth: 0   # to diff against the pull request's base
       - name: Install scanners
-        run: bash .github/scripts/install-scanners.sh trivy osv-scanner
+        run: bash .github/scripts/install-scanners.sh trivy osv-scanner actionlint
+      - name: Lint the workflows
+        if: github.event_name == 'pull_request'
+        run: actionlint
       - name: Check the changed products
         env:
           # Empty (the weekly run) checks everything.
