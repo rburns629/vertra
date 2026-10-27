@@ -818,6 +818,85 @@ signed, `console/src/callbacks.ts`), a rate per bot (`core/orderRate.ts`,
 429), and the order builder (`core/orders.ts`, Compose's "Build from a
 cart"). As proposed, an order from outside names a template, not a cart.
 
+**24. An MCP server for agents** (proposed 2026-10-27). An agent (a chat
+assistant on the install's cloud, Vertex AI on GCP or Amazon Bedrock on AWS,
+or a person's own) works with Vertra through the Model Context Protocol: it
+reads what's deployed, who deployed it and what depends on what, and acts
+as the bot or person it's for, never more. Nothing in it is
+provider-specific: each provider's agent runtime connects as an MCP client.
+Proposed:
+
+1. *Where:* in the console, at `/mcp` (MCP's Streamable HTTP transport,
+   stateless), on by `mcp.enabled` in the console chart, off by default.
+   Each tool calls the same `core/` function as its Connect method, with
+   the caller resolved as for the API (`resolveCaller`), so an agent sees
+   and does exactly what its caller may, and each change is audited as the
+   caller's, noting that it came through an agent (and which client).
+2. *What it exposes,* as the caller may see it:
+   - *the catalog:* templates and actions shared with them, their input and
+     output schemas, and the wiring types;
+   - *runs:* who ran each, for which team, its template and inputs, each
+     step's state, outputs and failure code, and what depends on what (each
+     step's `dependsOn` and the outputs wired between steps);
+   - *what's deployed:* `resources` (the product and step that reported
+     each, when, by whom, for which team, with that step's inputs and
+     outputs) and, worked out from its run when it's read (no new table),
+     the resources its step took inputs from;
+   - *previews:* `PreviewTemplate`, `PreviewAction`, `PreviewOrder`;
+   - *changes:* place an order (`RunTemplate` with a `requestId`, decision
+     23's path), cancel a run or retry a step, delete a resource (its
+     cleanup action).
+
+   Not exposed: logs (a step's logs can hold anything; open), anything
+   admin-only (audit, users, policies, single sign-on), teams, members,
+   secrets and bots, raw DAGs.
+3. *Signing in,* two ways, each an existing credential narrowed:
+   - *As a bot:* an agent of a team's own (its support assistant, its
+     storefront's) is one of that team's bots, ordering or not. It signs in
+     keylessly where it can: its cloud identity's ID token (on Vertex AI,
+     its service account's Google ID token) exchanged at
+     `AuthService/ExchangeToken` as CI does, with that issuer allowed
+     (`KEYLESS_ISSUERS`). An ordering bot's template list still limits what
+     it orders.
+   - *As a person, through the agent:* MCP's own authorization (OAuth 2.1:
+     the console is the authorization server, its sign-in or single sign-on
+     behind it). The person signs in and grants the agent a token for `/mcp`
+     alone: short-lived, refreshable, revocable on their profile, and
+     narrower than they are (*read*, or *read and order*). The agent never
+     holds the person's session or an API token.
+4. *What needs a person:* reads and previews, never. A change by an agent
+   signed in as a bot is that bot's, within what its team gave it (an
+   ordering bot's templates), as its CI's would be. A change by an agent
+   for a person (an order, a cancel, a retry) waits until the person
+   confirms it in the console: the tool answers with the preview and a
+   link, and the run starts once they confirm. Deleting a resource always
+   waits for a person, whoever the agent is. Confirming happens outside the
+   agent, so nothing it's told can confirm for them.
+5. *Text is data:* outputs, failure messages, names and inputs are written
+   by products and people, and may hold instructions meant for an agent.
+   The answers mark them as data, but what protects a change is 4, not the
+   marking: nothing an agent reads lets it make a change its bot wasn't
+   given or its person didn't confirm.
+6. *Where answers go:* whatever a tool answers reaches the agent's model
+   provider. On the install's own cloud (Vertex AI, Bedrock) it stays in
+   that cloud; an install lists which agent clients may sign people in
+   (their redirect hosts, as with callback hosts), and none by default.
+
+Rejected: a separate MCP service (it would need the console's sign-in,
+authorization and audit, or a privileged credential to the console: decision
+23's reasoning); MCP over kernel-api (it has no users, teams or audit); one
+identity for every agent (it would see every team); each provider's own
+integration (Vertex AI extensions, Bedrock action groups) instead of MCP
+(one copy each, kept in step).
+
+Open, for review: logs for agents (proposed: not in the first version);
+whether a person may let their agent order without confirming, up to a
+limit they set (proposed: not in the first version); dependencies across
+runs (a VM in one run on a network another made is only an input value
+today; proposed: later, record when a step's input names a resource Vertra
+knows); which issuer an agent on AWS signs in with; and the order to build
+it (proposed: bots first, reads then orders; people through OAuth after).
+
 ## 18. Roadmap
 
 None of these needs a new service. All contract changes are additive.

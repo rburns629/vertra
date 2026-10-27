@@ -995,9 +995,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   is audited as theirs. The groundwork for chat and agent support on each
   install's cloud: Vertex AI on GCP, Amazon Bedrock (Bedrock Agents) on AWS,
   Azure AI Foundry later; the MCP server stays provider-neutral and each
-  provider's agent connects to it. Start with a design note in
-  docs/assessment.md: what's exposed, sign-in for an agent (a bot, or the
-  person through it), and what an agent may do without a person approving.
+  provider's agent connects to it. Design proposed 2026-10-27 (decision 24,
+  docs/assessment.md): in the console at `/mcp`, the same `core/` functions
+  and checks; agents sign in as a team's bot (keylessly, its cloud
+  identity) or for a person (OAuth 2.1, a narrowed token); a person's
+  agent's changes, and every resource delete, wait for a person to confirm
+  in the console. Waiting on review of its open points before building.
 - [x] **Order builder** (done 2026-10-27, decision 23, `console/src/core/
   orders.ts`): `OrderService/PreviewOrder` wires a cart of actions by wiring
   type (each input to the one output of its type), puts the steps in an order
