@@ -58,6 +58,8 @@ type Task struct {
 	// running at once; nil scope, no cap.
 	CapScope *string
 	CapLimit int
+	// The capacity its product asks for; nil, the install's own.
+	Capacity *string
 	// Who asked for its next attempt, by retrying it; nil when nobody did
 	// (its first attempt is whoever submitted it, a later one automatic).
 	NextAttemptRequestedBy *string
@@ -66,7 +68,7 @@ type Task struct {
 const taskColumns = `id::text, execution_id::text, task_key, image, action, team, service_account, secret_refs,
 	token_audiences, resources, state, original_inputs, resolved_inputs, timeout_seconds, max_attempts, attempt_count,
 	dispatch_failures, lease_owner, lease_expires_at, available_at, executor_handle, failure, input_schema, output_schema,
-	concurrency_scope, concurrency_inputs, concurrency_key, next_attempt_requested_by, cap_scope, cap_limit`
+	concurrency_scope, concurrency_inputs, concurrency_key, next_attempt_requested_by, cap_scope, cap_limit, capacity`
 
 // taskColumnsOf is taskColumns qualified with a table alias.
 func taskColumnsOf(alias string) string {
@@ -75,7 +77,7 @@ func taskColumnsOf(alias string) string {
 	%[1]s.resolved_inputs, %[1]s.timeout_seconds, %[1]s.max_attempts, %[1]s.attempt_count, %[1]s.dispatch_failures,
 	%[1]s.lease_owner, %[1]s.lease_expires_at, %[1]s.available_at, %[1]s.executor_handle, %[1]s.failure,
 	%[1]s.input_schema, %[1]s.output_schema, %[1]s.concurrency_scope, %[1]s.concurrency_inputs, %[1]s.concurrency_key,
-	%[1]s.next_attempt_requested_by, %[1]s.cap_scope, %[1]s.cap_limit`, alias)
+	%[1]s.next_attempt_requested_by, %[1]s.cap_scope, %[1]s.cap_limit, %[1]s.capacity`, alias)
 }
 
 func scanTasks(rows pgx.Rows) ([]*Task, error) {
@@ -89,7 +91,7 @@ func scanTasks(rows pgx.Rows) ([]*Task, error) {
 			&t.SecretRefs, &t.TokenAudiences, &resources, &state, &original, &resolved, &t.TimeoutSeconds, &t.MaxAttempts,
 			&t.AttemptCount, &t.DispatchFailures, &t.LeaseOwner, &t.LeaseExpiresAt, &t.AvailableAt, &handle,
 			&failure, &inputSchema, &outputSchema, &t.ConcurrencyScope, &t.ConcurrencyInputs, &t.ConcurrencyKey,
-			&t.NextAttemptRequestedBy, &t.CapScope, &t.CapLimit); err != nil {
+			&t.NextAttemptRequestedBy, &t.CapScope, &t.CapLimit, &t.Capacity); err != nil {
 			return nil, err
 		}
 		t.State = domain.TaskState(state)

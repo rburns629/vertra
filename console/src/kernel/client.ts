@@ -114,6 +114,7 @@ const TASK_FIELDS = new Set([
   "outputSchema",
   "concurrencyKey",
   "productCap",
+  "capacity",
   "approvalRequired",
   "inputs",
   "timeoutSeconds",
@@ -193,6 +194,7 @@ function task(value: unknown, index: number): Task {
           maxRunning: whole(value.productCap.maxRunning, `${where}.productCap.maxRunning`) ?? 0,
         })
       : undefined,
+    capacity: typeof value.capacity === "string" ? value.capacity : "",
     approvalRequired: value.approvalRequired === true,
     inputs: inputs as JsonObject,
     timeoutSeconds: whole(value.timeoutSeconds, `${where}.timeoutSeconds`),

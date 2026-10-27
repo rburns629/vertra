@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,12 @@ import (
 )
 
 // Toleration is one Pod toleration, as the Pod spec spells it.
+// Placement is a node selector and tolerations, in the Pod spec's shape.
+type Placement struct {
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	Tolerations  []Toleration      `json:"tolerations,omitempty"`
+}
+
 type Toleration struct {
 	Key               string `json:"key,omitempty"`
 	Operator          string `json:"operator,omitempty"`
@@ -119,6 +126,10 @@ type Settings struct {
 	TaskNodeSelector map[string]string
 	TaskTolerations  []Toleration
 	TaskAffinity     map[string]any
+	// Where a step whose product asks for a kind of capacity (spot,
+	// onDemand) runs instead: each a node selector and tolerations. A kind
+	// with none here runs where any step does.
+	TaskCapacityPlacements map[string]Placement
 	// Labels added to every step Pod, for webhooks that act on a label
 	// (AKS Workload Identity's azure.workload.identity/use). Never the
 	// kernel's own: app and vertra.dev/* are refused.
@@ -306,6 +317,12 @@ func Load(getenv func(string) string) (Settings, error) {
 	r.jsonValue("TASK_NODE_SELECTOR", &s.TaskNodeSelector)
 	r.jsonValue("TASK_TOLERATIONS", &s.TaskTolerations)
 	r.jsonValue("TASK_AFFINITY", &s.TaskAffinity)
+	r.jsonValue("TASK_CAPACITY_PLACEMENTS", &s.TaskCapacityPlacements)
+	for kind := range s.TaskCapacityPlacements {
+		if !slices.Contains(domain.Capacities, kind) {
+			r.problems = append(r.problems, fmt.Sprintf("TASK_CAPACITY_PLACEMENTS: %q isn't a kind of capacity (%s)", kind, strings.Join(domain.Capacities, ", ")))
+		}
+	}
 	r.jsonValue("TASK_POD_LABELS", &s.TaskPodLabels)
 	for key, value := range s.TaskPodLabels {
 		if problem := podLabelProblem(key, value); problem != "" {

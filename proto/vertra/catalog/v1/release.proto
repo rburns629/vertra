@@ -127,6 +127,8 @@ message ProductAction {
   // product.yaml's maxRunning: at most this many of the product's steps (all
   // its actions share it) claimed or running at once; 0: no cap of its own.
   int32 max_running = 26;
+  // product.yaml's capacity: "spot" or "onDemand"; empty, the install's own.
+  string capacity = 27;
 }
 
 message Example {

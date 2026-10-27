@@ -127,7 +127,7 @@ func sameIdentity(recorded, now string) error {
 
 // optionalOutputs are the modules' outputs that are null when not used
 // (no backups, no catalog, no public console), which `tofu output` omits.
-var optionalOutputs = map[string]bool{"backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true}
+var optionalOutputs = map[string]bool{"backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true, "capacity_placements": true}
 
 // cloudFromGCP reads the module's outputs.
 func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
@@ -150,6 +150,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 			Bucket string `json:"bucket"`
 		}
 		StepPlacement  map[string]any
+		Capacities     map[string]any
 		ConsoleAddress *struct {
 			Name string `json:"name"`
 			IP   string `json:"ip"`
@@ -165,7 +166,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "workload_identity_pool": &v.WorkloadPool, "task_registry": &v.TaskRegistry,
-		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement,
+		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities,
 		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog, "signing": &v.Signing,
 	} {
 		raw, ok := outputs[name]
@@ -185,6 +186,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 		TaskRegistry:          v.TaskRegistry,
 		ConsoleServiceAccount: v.ConsoleAccount,
 		StepPlacement:         v.StepPlacement,
+		CapacityPlacements:    v.Capacities,
 		ClusterName:           v.Cluster.Name,
 		ClusterLocation:       v.Cluster.Location,
 		ClusterIssuer:         v.Cluster.Issuer,

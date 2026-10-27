@@ -142,6 +142,11 @@ message Task {
   // claimed or running (product.yaml's maxRunning): all of the product's
   // actions share the scope.
   ProductCap product_cap = 17;
+  // The capacity its product asks for (product.yaml's capacity): "spot" or
+  // "onDemand", each a placement the install sets
+  // (scheduler.capacityPlacements); empty, or one the install has none for:
+  // the install's own (scheduler.taskPlacement).
+  string capacity = 18;
 }
 
 message ProductCap {

@@ -295,6 +295,9 @@ func TestMalformedSubmissionsAreRefused(t *testing.T) {
 		"a product cap with no scope": func(r *kernelv1.SubmitExecutionRequest) {
 			r.Tasks[0].ProductCap = &kernelv1.ProductCap{MaxRunning: 2}
 		},
+		"a capacity that isn't one": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].Capacity = "preemptible"
+		},
 	} {
 		req := single(unique("malformed"))
 		change(req)

@@ -490,7 +490,7 @@ async function withProductResources(submission: Record<string, unknown>): Promis
 }
 
 /** The fields a task gets from its product, never from whoever submits it. */
-const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey", "productCap", "approvalRequired"] as const;
+const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey", "productCap", "capacity", "approvalRequired"] as const;
 
 /** What a product's actions share, for its cap: its catalog folder, or (registered by hand) its image's repository. */
 function productScope(product: { sourcePath: string | null; image: string }): string {
@@ -590,6 +590,8 @@ async function withProductContract(submission: Record<string, unknown>, runner: 
       // At most so many of the product's steps at once, all its actions
       // sharing it: scoped to its folder in the catalog, else its image.
       ...(product.maxRunning > 0 ? { productCap: { scope: productScope(product), maxRunning: product.maxRunning } } : {}),
+      // Spot or on-demand, the product's own; the install places it.
+      ...(product.capacity ? { capacity: product.capacity } : {}),
       ...((await approvalRequired(product, team ?? "", isRecord(task["inputs"]) ? task["inputs"] : {}, runner))
         ? { approvalRequired: true }
         : {}),

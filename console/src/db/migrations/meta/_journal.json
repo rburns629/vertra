@@ -253,6 +253,13 @@
       "when": 1793122377847,
       "tag": "0035_product_caps",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793123069143,
+      "tag": "0036_product_capacity",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ const gcpOutputs = `{
  "console_service_account": "vertra-console@p.iam.gserviceaccount.com",
  "backup": {"bucket":"p-vertra-backups","service_account":"vertra-backup@p.iam.gserviceaccount.com"},
  "step_placement": {"nodeSelector":{"cloud.google.com/gke-spot":"true"},"tolerations":[]},
+ "capacity_placements": {"spot":{"nodeSelector":{"cloud.google.com/gke-spot":"true"},"tolerations":[]},"onDemand":{"nodeSelector":{},"tolerations":[]}},
  "console_address": {"name":"vertra-console","ip":"34.1.2.3"},
  "catalog": null
 }`
@@ -34,6 +35,9 @@ func TestCloudFromGCPOutputs(t *testing.T) {
 		cloud.BackupServiceAccount != "vertra-backup@p.iam.gserviceaccount.com" ||
 		cloud.StepPlacement["nodeSelector"].(map[string]any)["cloud.google.com/gke-spot"] != "true" {
 		t.Errorf("got %+v", cloud)
+	}
+	if _, ok := cloud.CapacityPlacements["onDemand"]; !ok {
+		t.Errorf("capacities: %+v", cloud.CapacityPlacements)
 	}
 	if cloud.ConsoleIP != "34.1.2.3" || cloud.CatalogProvider != "" {
 		t.Errorf("address and catalog: %+v", cloud)

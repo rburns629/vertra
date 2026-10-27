@@ -43,11 +43,14 @@ type Cloud struct {
 	AuditBucket string
 	AuditRegion string
 	// The chart's scheduler.taskPlacement: where steps run (Spot, a pool).
-	StepPlacement   map[string]any
-	ClusterName     string
-	ClusterLocation string
-	ClusterIssuer   string
-	WorkloadPool    string
+	StepPlacement map[string]any
+	// The chart's scheduler.capacityPlacements: where a step whose product
+	// asks for spot or onDemand runs instead.
+	CapacityPlacements map[string]any
+	ClusterName        string
+	ClusterLocation    string
+	ClusterIssuer      string
+	WorkloadPool       string
 	// The console's public address (its global address's name and IP) and
 	// hostname, when it's reached over HTTPS.
 	ConsoleAddressName string
@@ -325,6 +328,9 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 		v["imagePolicy"] = map[string]any{"sourceRegistry": cloud.TaskRegistry}
 		if cloud.StepPlacement != nil {
 			scheduler["taskPlacement"] = cloud.StepPlacement
+		}
+		if len(cloud.CapacityPlacements) > 0 {
+			scheduler["capacityPlacements"] = cloud.CapacityPlacements
 		}
 		switch {
 		case cloud.BackupBucket != "" && cloud.Provider == "aws":

@@ -54,6 +54,22 @@ output "spot" {
   value = local.spot
 }
 
+# Where a step whose product asks for a kind of capacity runs (the chart's
+# scheduler.capacityPlacements): the steps pool takes both kinds when it
+# uses Spot, and Karpenter's label picks one; otherwise it's on-demand only.
+output "capacity_placements" {
+  value = local.spot ? {
+    spot = {
+      nodeSelector = { "vertra.dev/pool" = "steps", "karpenter.sh/capacity-type" = "spot" }
+      tolerations  = [{ key = "vertra.dev/steps", operator = "Equal", value = "true", effect = "NoSchedule" }]
+    }
+    onDemand = {
+      nodeSelector = { "vertra.dev/pool" = "steps", "karpenter.sh/capacity-type" = "on-demand" }
+      tolerations  = [{ key = "vertra.dev/steps", operator = "Equal", value = "true", effect = "NoSchedule" }]
+    }
+  } : {}
+}
+
 output "catalog" {
   value = var.catalog_repository != "" ? {
     role_arn = aws_iam_role.publish[0].arn

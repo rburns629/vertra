@@ -235,8 +235,14 @@ design.
   events); one waiting for room waits. Proven on kind: two runs with one Pod
   allowed both ran, one after the other; a 4Gi step against a 2Gi maximum
   failed in seconds; the fence refused another name and another namespace.
-- [ ] **Let a product choose its own capacity** (Spot or on-demand) in its
-  `product.yaml`; placement is deployment-wide today.
+- [x] **Let a product choose its own capacity** (done 2026-10-27, proven
+  on kind): product.yaml's `capacity` (spot or onDemand) reaches the kernel
+  with each step, which runs it on the placement the install sets for that
+  kind (`scheduler.capacityPlacements`) instead of its default; `vertra`
+  sets them on GKE Autopilot (the gke-spot selector, or none) and EKS
+  (Karpenter's capacity-type, the steps pool taking both when it uses
+  Spot). GKE standard mode has one steps pool, so no choice. Not yet seen
+  on a cloud.
 - [x] **The console's liveness probe killed it once while it started** on a
   minimal GKE install (2026-10-25, exit 137 a minute after start): it has a
   startup probe now, five minutes long (done 2026-10-25).

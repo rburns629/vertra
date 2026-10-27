@@ -90,6 +90,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 			Region string `json:"region"`
 		}
 		StepPlacement map[string]any
+		Capacities    map[string]any
 		Spot          bool
 		Catalog       *struct {
 			RoleArn string `json:"role_arn"`
@@ -107,7 +108,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit,
-		"step_placement": &v.StepPlacement, "spot": &v.Spot, "catalog": &v.Catalog,
+		"step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities, "spot": &v.Spot, "catalog": &v.Catalog,
 		"console_address": &v.ConsoleAddress, "signing": &v.Signing,
 	} {
 		raw, ok := outputs[name]
@@ -123,12 +124,13 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		}
 	}
 	cloud := &install.Cloud{
-		Provider:        "aws",
-		TaskRegistry:    v.TaskRegistry,
-		StepPlacement:   v.StepPlacement,
-		ClusterName:     v.Cluster.Name,
-		ClusterLocation: v.Cluster.Region,
-		ClusterIssuer:   v.Cluster.Issuer,
+		Provider:           "aws",
+		TaskRegistry:       v.TaskRegistry,
+		StepPlacement:      v.StepPlacement,
+		CapacityPlacements: v.Capacities,
+		ClusterName:        v.Cluster.Name,
+		ClusterLocation:    v.Cluster.Region,
+		ClusterIssuer:      v.Cluster.Issuer,
 	}
 	if v.Backup != nil {
 		cloud.BackupBucket, cloud.BackupRegion = v.Backup.Bucket, v.Backup.Region

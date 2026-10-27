@@ -65,11 +65,15 @@ type KubernetesOptions struct {
 	NodeSelector     map[string]string
 	Tolerations      []corev1.Toleration
 	Affinity         *corev1.Affinity
-	PodLabels        map[string]string
-	PodHardening     bool
-	ImagePullSecret  string
-	LogMaxLines      int
-	LogMaxBytes      int
+	// CapacityPlacements are where a step whose product asks for a kind of
+	// capacity runs instead (domain.Capacities); one with no entry here
+	// runs where any step does.
+	CapacityPlacements map[string]Placement
+	PodLabels          map[string]string
+	PodHardening       bool
+	ImagePullSecret    string
+	LogMaxLines        int
+	LogMaxBytes        int
 }
 
 type terminalRecord struct {
@@ -280,11 +284,28 @@ func (k *Kubernetes) resources(task ResolvedTask) (corev1.ResourceRequirements, 
 	return requirements, parse(corev1.ResourceMemory, limit, &requirements.Limits)
 }
 
+// Placement is where step Pods run: a node selector and tolerations, in
+// the Pod spec's own shape.
+type Placement struct {
+	NodeSelector map[string]string
+	Tolerations  []corev1.Toleration
+}
+
+// placementFor is where a task runs: the placement for the capacity its
+// product asks for, when the deployment has one, else the deployment's.
+func (k *Kubernetes) placementFor(task ResolvedTask) Placement {
+	if p, ok := k.opts.CapacityPlacements[task.Capacity]; ok && task.Capacity != "" {
+		return p
+	}
+	return Placement{NodeSelector: k.opts.NodeSelector, Tolerations: k.opts.Tolerations}
+}
+
 func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error) {
 	resources, err := k.resources(task)
 	if err != nil {
 		return nil, err
 	}
+	placement := k.placementFor(task)
 	// One volume per Secret, mounted at /platform/secrets/<name>/ (one file
 	// per key). Named by position: a Secret name may be longer than a
 	// volume name may be. A missing Secret fails the Pod's mount visibly.
@@ -389,8 +410,8 @@ func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error
 					SecurityContext:              podSecurity,
 					ServiceAccountName:           task.ServiceAccount,
 					Volumes:                      volumes,
-					NodeSelector:                 k.opts.NodeSelector,
-					Tolerations:                  k.opts.Tolerations,
+					NodeSelector:                 placement.NodeSelector,
+					Tolerations:                  placement.Tolerations,
 					Affinity:                     k.opts.Affinity,
 					ImagePullSecrets:             pullSecrets,
 				},

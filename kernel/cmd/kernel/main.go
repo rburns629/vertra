@@ -253,10 +253,10 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 	if err != nil {
 		return err
 	}
-	tolerations := make([]corev1.Toleration, 0, len(s.TaskTolerations))
-	for _, t := range s.TaskTolerations {
-		tolerations = append(tolerations, corev1.Toleration{Key: t.Key, Operator: corev1.TolerationOperator(t.Operator),
-			Value: t.Value, Effect: corev1.TaintEffect(t.Effect), TolerationSeconds: t.TolerationSeconds})
+	tolerations := podTolerations(s.TaskTolerations)
+	capacities := map[string]executor.Placement{}
+	for kind, p := range s.TaskCapacityPlacements {
+		capacities[kind] = executor.Placement{NodeSelector: p.NodeSelector, Tolerations: podTolerations(p.Tolerations)}
 	}
 	var affinity *corev1.Affinity
 	if len(s.TaskAffinity) > 0 {
@@ -270,7 +270,8 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		JobTTL: s.JobTTL, ImagePullGrace: s.ImagePullGrace, JobDeadlineGrace: s.JobDeadlineGrace, StartTimeout: s.TaskStartTimeout,
 		RequestTimeout: s.KubernetesTimeout, WatchResync: s.WatchResync,
 		ExtraEnvironment: s.TaskExtraEnvironment, DefaultResources: s.TaskDefaultResources,
-		NodeSelector: s.TaskNodeSelector, Tolerations: tolerations, Affinity: affinity, PodLabels: s.TaskPodLabels,
+		NodeSelector: s.TaskNodeSelector, Tolerations: tolerations, Affinity: affinity, CapacityPlacements: capacities,
+		PodLabels:    s.TaskPodLabels,
 		PodHardening: s.TaskPodHardening, ImagePullSecret: s.TaskImagePullSecret,
 		LogMaxLines: s.TaskLogMaxLines, LogMaxBytes: s.TaskLogMaxBytes,
 	}, logging.New("kernel-scheduler", "app.executors.kubernetes"))
@@ -313,4 +314,14 @@ func runSleep(ctx context.Context, s config.Settings, now bool, log *slog.Logger
 	platform := &sleeper.Platform{Client: client, Namespace: s.SleeperNamespace, Timeout: s.KubernetesTimeout}
 	activity := func(ctx context.Context) (bool, *time.Time, error) { return sleeper.KernelActivity(ctx, pool) }
 	return sleeper.Run(ctx, s, platform, activity, now, log)
+}
+
+// podTolerations are the settings' tolerations in the Pod spec's types.
+func podTolerations(from []config.Toleration) []corev1.Toleration {
+	out := make([]corev1.Toleration, 0, len(from))
+	for _, t := range from {
+		out = append(out, corev1.Toleration{Key: t.Key, Operator: corev1.TolerationOperator(t.Operator),
+			Value: t.Value, Effect: corev1.TaintEffect(t.Effect), TolerationSeconds: t.TolerationSeconds})
+	}
+	return out
 }

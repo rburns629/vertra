@@ -39,6 +39,9 @@ type ResolvedTask struct {
 	TokenAudiences []string
 	// Resources are the task's own, before the deployment's defaults.
 	Resources *domain.TaskResources
+	// Capacity is the kind its product asks for (domain.Capacities); "":
+	// the deployment's placement.
+	Capacity string
 }
 
 // ProductRequest is the request.json the step reads.

@@ -55,6 +55,16 @@ output "step_placement" {
   }
 }
 
+# Where a step whose product asks for a kind of capacity runs (the chart's
+# scheduler.capacityPlacements): Autopilot has both; standard mode's one
+# steps pool has one kind, so none.
+output "capacity_placements" {
+  value = local.standard ? {} : {
+    spot     = { nodeSelector = { "cloud.google.com/gke-spot" = "true" }, tolerations = [] }
+    onDemand = { nodeSelector = {}, tolerations = [] }
+  }
+}
+
 output "console_address" {
   value = var.console_public ? {
     name = google_compute_global_address.console[0].name

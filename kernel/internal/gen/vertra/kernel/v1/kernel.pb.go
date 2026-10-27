@@ -198,7 +198,12 @@ type Task struct {
 	// Holds this step while its product already has max_running steps
 	// claimed or running (product.yaml's maxRunning): all of the product's
 	// actions share the scope.
-	ProductCap    *ProductCap `protobuf:"bytes,17,opt,name=product_cap,json=productCap,proto3" json:"product_cap,omitempty"`
+	ProductCap *ProductCap `protobuf:"bytes,17,opt,name=product_cap,json=productCap,proto3" json:"product_cap,omitempty"`
+	// The capacity its product asks for (product.yaml's capacity): "spot" or
+	// "onDemand", each a placement the install sets
+	// (scheduler.capacityPlacements); empty, or one the install has none for:
+	// the install's own (scheduler.taskPlacement).
+	Capacity      string `protobuf:"bytes,18,opt,name=capacity,proto3" json:"capacity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -350,6 +355,13 @@ func (x *Task) GetProductCap() *ProductCap {
 		return x.ProductCap
 	}
 	return nil
+}
+
+func (x *Task) GetCapacity() string {
+	if x != nil {
+		return x.Capacity
+	}
+	return ""
 }
 
 type ProductCap struct {
@@ -2737,7 +2749,7 @@ var File_vertra_kernel_v1_kernel_proto protoreflect.FileDescriptor
 
 const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/kernel/v1/kernel.proto\x12\x10vertra.kernel.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\x06\n" +
+	"\x1dvertra/kernel/v1/kernel.proto\x12\x10vertra.kernel.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9e\x06\n" +
 	"\x04Task\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -2759,7 +2771,8 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\x0fconcurrency_key\x18\x0f \x01(\v2 .vertra.kernel.v1.ConcurrencyKeyR\x0econcurrencyKey\x12+\n" +
 	"\x11approval_required\x18\x10 \x01(\bR\x10approvalRequired\x12=\n" +
 	"\vproduct_cap\x18\x11 \x01(\v2\x1c.vertra.kernel.v1.ProductCapR\n" +
-	"productCapB\x12\n" +
+	"productCap\x12\x1a\n" +
+	"\bcapacity\x18\x12 \x01(\tR\bcapacityB\x12\n" +
 	"\x10_timeout_secondsB\x0f\n" +
 	"\r_max_attempts\"C\n" +
 	"\n" +

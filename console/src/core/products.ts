@@ -95,6 +95,8 @@ export const RegisterProductBody = Type.Object({
   concurrencyKey: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 8, uniqueItems: true })),
   // At most this many of the product's steps at once (0: no cap of its own).
   maxRunning: Type.Optional(Type.Integer({ minimum: 0, maximum: 100 })),
+  // The capacity its steps run on; null, the install's own.
+  capacity: Type.Optional(Type.Union([Type.Literal("spot"), Type.Literal("onDemand"), Type.Null()])),
   // What removes the resources its steps report: another action of it, and its inputs.
   cleanup: Type.Optional(
     Type.Union([
@@ -154,6 +156,8 @@ export type RegisterProductInput = {
   concurrencyKey?: string[];
   /** At most this many of the product's steps at once; 0, no cap of its own. */
   maxRunning?: number;
+  /** The capacity its steps run on (spot, onDemand); null, the install's own. */
+  capacity?: "spot" | "onDemand" | null;
   /** What removes the resources its steps report; null: nothing does. */
   cleanup?: ProductCleanup | null;
   /** The action of the same product that previews this one; null: none. */
@@ -305,6 +309,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
       maxRunning: input.maxRunning,
+      capacity: input.capacity,
       cleanup: input.cleanup,
       plan: input.plan,
       check: input.check,

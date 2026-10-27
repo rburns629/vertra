@@ -103,6 +103,7 @@ One row per task in a DAG, and the scheduler's work queue: it claims rows from h
 | `concurrency_key` | text | yes | Its key, worked out from its resolved inputs when it's claimed: while a task with this key is claimed or running, another with it waits, READY. |
 | `cap_scope` | text | yes | Its product's cap (product.yaml's `maxRunning`): the product, whose tasks share it; null: no cap. |
 | `cap_limit` | integer | no | How many of the product's tasks may be claimed or running at once; the rest wait, READY. 0 with no cap. |
+| `capacity` | text | yes | The capacity its product asks for (product.yaml's `capacity`): `spot` or `onDemand`, each a placement the install sets; null, the install's own. |
 | `next_attempt_requested_by` | text | yes | Who retried it, for its next attempt; cleared when that attempt is claimed. |
 | `approval_required` | boolean | no | It waits in `AWAITING_APPROVAL`, instead of becoming `READY`, until a maintainer of its team approves it. The console sets it from product.yaml's `approval` and the owning team's `allowedTargets`. |
 | `approved_by`, `approved_at` | text, timestamptz | yes | Who approved it (`user:<id>`) and when. Kept across retries, so an approved step isn't asked about again. |
@@ -361,6 +362,7 @@ What a DAG step can run: one row per image and action.
 | `max_attempts` | integer | no | product.yaml's `maxAttempts`: how many times a step of it may run in all. A step gets this, or fewer if its template or DAG asks; one if the product isn't idempotent. |
 | `concurrency_key` | text[] | no | product.yaml's `concurrencyKey`: the inputs naming what a step of it changes. The kernel runs one step per set of their values at a time. |
 | `max_running` | integer | no | product.yaml's `maxRunning`: at most this many of the product's steps (all its actions, sharing its catalog folder) claimed or running at once; 0, no cap of its own. |
+| `capacity` | text | yes | product.yaml's `capacity`: `spot` or `onDemand`, where the install offers a choice; null, the install's own placement. |
 | `examples` | jsonb | no | Examples of running it, from its passing contract tests: `[{ name, inputs, outputs }]`, up to ten. The run form offers them. |
 | `check` | text | yes | product.yaml's `check` (the product's): the action that says whether it's ready on this install. Null: none. |
 | `plan` | text | yes | product.yaml's `plan`: the action of the same product that says what a step of this one would do. **Preview** runs it. Null: none. |

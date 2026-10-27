@@ -77,6 +77,7 @@ func TestAMisconfigurationStopsTheSchedulerAtStartup(t *testing.T) {
 		"app label":           {"TASK_POD_LABELS": `{"app": "other"}`},
 		"bad label key":       {"TASK_POD_LABELS": `{"has space": "true"}`},
 		"bad label value":     {"TASK_POD_LABELS": `{"team": "not/valid"}`},
+		"unknown capacity":    {"TASK_CAPACITY_PLACEMENTS": `{"preemptible": {"nodeSelector": {"a": "b"}}}`},
 	} {
 		_, err := load(t, env)
 		if err == nil {

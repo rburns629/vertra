@@ -559,6 +559,7 @@ describe("SubmitExecution: a product's own retry policy (R3)", () => {
       maxAttempts: 3,
       concurrencyKey: ["projectId"],
       maxRunning: 2,
+      capacity: "onDemand",
       sourcePath: "teams/web/products/retrying/product.yaml",
     });
   });
@@ -567,9 +568,10 @@ describe("SubmitExecution: a product's own retry policy (R3)", () => {
     const run = (image: string, extra: Record<string, unknown> = {}) =>
       submit({ image, action: "ensure", serviceAccount: "default", inputs: { projectId: "web-1" }, ...extra });
     expect((await run("retry-image:latest")).code).toBe("ok");
-    expect(sent()).toMatchObject({ productCap: { scope: "teams/web/products/retrying", maxRunning: 2 } });
-    expect((await run("unregistered-image:1", { productCap: { scope: "mine", maxRunning: 100 } })).code).toBe("ok");
+    expect(sent()).toMatchObject({ productCap: { scope: "teams/web/products/retrying", maxRunning: 2 }, capacity: "onDemand" });
+    expect((await run("unregistered-image:1", { productCap: { scope: "mine", maxRunning: 100 }, capacity: "onDemand" })).code).toBe("ok");
     expect(sent()).not.toHaveProperty("productCap");
+    expect(sent()).not.toHaveProperty("capacity");
   });
 
   it("sends its product's concurrency key, and drops one a submitter wrote themselves", async () => {

@@ -289,6 +289,13 @@ scheduler:
     nodeSelector: {}
     tolerations: []
     affinity: {}
+  # -- Where a step whose product asks for a kind of capacity
+  # (product.yaml's capacity: spot or onDemand) runs instead of
+  # taskPlacement: each its own nodeSelector and tolerations, which replace
+  # taskPlacement's. A kind with none here runs where any step does. GKE
+  # Autopilot: {spot: {nodeSelector: {cloud.google.com/gke-spot: "true"}},
+  # onDemand: {nodeSelector: {}}}. vertra sets these per cloud.
+  capacityPlacements: {}
   resources:
     requests:
       cpu: 100m

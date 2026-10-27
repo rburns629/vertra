@@ -43,6 +43,9 @@ type TaskDef struct {
 	// scope (its product) are claimed or running; no scope: no cap.
 	CapScope string
 	CapLimit int
+	// Capacity is the kind its product asks for (Capacities); "": the
+	// install's own placement.
+	Capacity string
 }
 
 // MaxTokenAudiences is how many a task may ask for.
@@ -321,6 +324,10 @@ func ConcurrencyKeyProblem(scope string, inputs []string) string {
 	}
 	return ""
 }
+
+// Capacities are the kinds of capacity a product may ask for, each a
+// placement the install may set.
+var Capacities = []string{"spot", "onDemand"}
 
 // MaxProductCap is the most a product's cap may be.
 const MaxProductCap = 100

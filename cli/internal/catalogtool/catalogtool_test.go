@@ -154,7 +154,7 @@ func TestSecretStoreProblems(t *testing.T) {
 func TestReleaseActions(t *testing.T) {
 	p := &Product{Dir: "/catalog/teams/web/products/site", Spec: map[string]any{
 		"displayName": "Site", "description": "A site.", "serviceAccount": "site-sa", "deprecated": "Use site2.",
-		"resources": map[string]any{"cpu": "100m", "memory": "64Mi"}, "maxRunning": 3,
+		"resources": map[string]any{"cpu": "100m", "memory": "64Mi"}, "maxRunning": 3, "capacity": "onDemand",
 		"actions": []any{
 			map[string]any{"name": "deploy", "input": map[string]any{"type": "object"}, "output": map[string]any{"type": "object"},
 				"secretRefs": []any{map[string]any{"name": "creds"}}, "shareWith": []any{"data", "*"}},
@@ -171,7 +171,7 @@ func TestReleaseActions(t *testing.T) {
 		deploy.GetDisplayName() != "Site" || deploy.GetServiceAccount() != "site-sa" ||
 		len(deploy.GetSecretRefs()) != 1 || strings.Join(deploy.GetShareWith(), ",") != "data,*" ||
 		deploy.GetDeprecated() != "Use site2." || deploy.GetResources().GetCpu() != "100m" || deploy.GetResources().GetMemoryLimit() != "" ||
-		deploy.GetInputSchema().AsMap()["type"] != "object" || deploy.GetMaxRunning() != 3 {
+		deploy.GetInputSchema().AsMap()["type"] != "object" || deploy.GetMaxRunning() != 3 || deploy.GetCapacity() != "onDemand" {
 		t.Errorf("deploy = %v", deploy)
 	}
 	// An action's own deprecation wins over its product's.

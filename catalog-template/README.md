@@ -105,6 +105,7 @@ serviceAccount: project     # optional: the identity it runs as (otherwise defau
 tokenAudiences: [sts.amazonaws.com]  # optional: tokens for another cloud (below)
 check: check                # optional: the action that says whether it's ready on an install (below)
 maxRunning: 5               # optional: at most 5 of its steps (all its actions) at once, per install
+capacity: onDemand          # optional: spot or onDemand, where the install offers both (below)
 actions:
   - name: create
     script: actions/create.py
@@ -176,7 +177,11 @@ project at once (a value an earlier step produced counts too). `maxRunning`
 is for the product as a whole: at most that many of its steps, of any of
 its actions in any run, start or run at once on an install, and the rest
 wait their turn (the run page says so). Use it for a backend or an API quota
-that can't take more.
+that can't take more. `capacity` picks what its steps run on, where the
+install offers a choice (GKE Autopilot, EKS): `spot` is cheaper but may be
+reclaimed (the step fails as retryable, so make the actions idempotent);
+`onDemand` isn't reclaimed, for a step that mustn't be cut short. Left out,
+the install's own, usually Spot.
 
 An action that makes or changes something lists it in its outputs as
 `resources`, each a `type`, an `id`, and optionally a `name` and an http(s)

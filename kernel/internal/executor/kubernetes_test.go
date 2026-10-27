@@ -235,6 +235,30 @@ func TestEveryJobHasADeadlinePastItsTasksTimeout(t *testing.T) {
 	check(t, "backoff", *c.job(t).Spec.BackoffLimit, int32(0))
 }
 
+// A step whose product asks for a kind of capacity runs where the install
+// put it; one asking for a kind the install has no placement for, or for
+// none, where any step does.
+func TestAStepRunsOnTheCapacityItsProductAsksFor(t *testing.T) {
+	opts := options()
+	opts.NodeSelector = map[string]string{"cloud.google.com/gke-spot": "true"}
+	opts.CapacityPlacements = map[string]Placement{"onDemand": {NodeSelector: map[string]string{}}}
+	for capacity, want := range map[string]map[string]string{
+		"onDemand": {},
+		"spot":     {"cloud.google.com/gke-spot": "true"},
+		"":         {"cloud.google.com/gke-spot": "true"},
+	} {
+		c := newCluster(opts)
+		task := stepTask()
+		task.Capacity = capacity
+		if _, err := c.k.Start(context.Background(), task); err != nil {
+			t.Fatal(err)
+		}
+		if got := c.job(t).Spec.Template.Spec.NodeSelector; len(got) != len(want) || got["cloud.google.com/gke-spot"] != want["cloud.google.com/gke-spot"] {
+			t.Errorf("%q: node selector = %v, want %v", capacity, got, want)
+		}
+	}
+}
+
 func TestAStepPodMeetsPodSecurityRestricted(t *testing.T) {
 	c := newCluster(options())
 	_, _ = c.k.Start(context.Background(), stepTask())
