@@ -418,7 +418,8 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 | `kind/cert-manager.yaml`, `kind/traefik.yaml`, `kind/tls-test.yaml` | `make kind-tls`: cert-manager, Traefik (Ingress and Gateway API), and a private test CA with a Gateway, for the console over HTTPS on kind. |
 | `gke/kernel.yaml`, `gke/console.yaml` | The real GKE cluster: Artifact Registry images, Workload Identity, the LoadBalancer, image signatures. |
 | `gke/external-secrets.yaml` | External Secrets Operator on GKE, with Workload Identity. |
-| `gke/policy-controller.yaml` | Sigstore's policy-controller, which checks image signatures (GKE only). |
+| `gke/policy-controller.yaml` | Sigstore's policy-controller, which checks image signatures on GKE. |
+| `eks/kernel.yaml`, `eks/console.yaml`, `eks/policy-controller.yaml`, `eks/external-secrets.yaml` | An example for EKS (Auto Mode), as `vertra apply` writes it: ECR, Pod Identity (no annotations), the steps NodePool and its Spot or on-demand placements, a KMS signer, IRSA for teams' stores. Not a live cluster's; placeholders in angle brackets. |
 
 ## `docs/`: maintainer documentation
 

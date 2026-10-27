@@ -1,0 +1,34 @@
+# execution-console on EKS, as `vertra apply` writes it (see kernel.yaml):
+#   helm upgrade --install console oci://ghcr.io/rburns629/vertra/charts/execution-console --version <x.y.z> \
+#     -n vertra-system --kube-context <context> -f helm/values/eks/console.yaml
+# Its ServiceAccount gets its AWS identity from an EKS Pod Identity
+# association (made outside the chart: no annotation), a role that may read
+# the products' ECR repositories; see docs/operations.md, Cloud identities.
+environmentLabel: eks-prod
+bootstrapAdmin:
+  email: admin@example.com
+kernelApiUrl: http://kernel-execution-kernel-api.vertra-system.svc.cluster.local:8000
+# Both databases on the kernel release's Postgres.
+postgres:
+  enabled: false
+existingSecret: kernel-execution-kernel-console-db
+existingSecretKey: database-url
+# ECR sign-in from the Pod's own identity (Pod Identity), for pinning and
+# checking images; the scanner's Jobs use the same.
+registryCheck:
+  ecrToken: true
+# The catalog's release, beside its images, and who may sign it (the same
+# signer as the kernel's imageSignature).
+catalog:
+  release: 123456789012.dkr.ecr.us-east-2.amazonaws.com/vertra-products/catalog-release:latest
+  signature:
+    publicKeys:
+      - |
+        -----BEGIN PUBLIC KEY-----
+        <the KMS key's public half>
+        -----END PUBLIC KEY-----
+# The cluster's issuer, which IAM trusts for a team's AWS SecretStore (IRSA;
+# register it with `aws iam create-open-id-connect-provider`, once per
+# cluster: vertra does for a cluster it makes).
+secretSources:
+  clusterIssuer: https://oidc.eks.us-east-2.amazonaws.com/id/<id>

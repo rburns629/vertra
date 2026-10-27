@@ -1,0 +1,19 @@
+# Sigstore's policy-controller on EKS, which enforces the kernel chart's
+# imageSignature:
+#   helm upgrade --install policy-controller sigstore/policy-controller \
+#     --version 0.10.8 -n cosign-system --create-namespace --force-conflicts \
+#     -f helm/values/eks/policy-controller.yaml
+# Its webhook's ServiceAccount (policy-controller-webhook) reads signatures
+# from ECR as a role bound by an EKS Pod Identity association (no
+# annotation): ecr:GetAuthorizationToken, and ecr:BatchGetImage,
+# GetDownloadUrlForLayer, BatchCheckLayerAvailability and DescribeImages on
+# the products' repositories. It covers team namespaces only: in every
+# namespace it covers it refuses any image it can't resolve, so never the
+# platform's own. --force-conflicts: it rewrites its own namespaceSelector.
+webhook:
+  serviceAccount:
+    name: policy-controller-webhook
+  namespaceSelector:
+    matchExpressions:
+      - key: vertra/team
+        operator: Exists

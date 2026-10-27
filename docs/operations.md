@@ -187,6 +187,18 @@ it in `registryCheck.pullSecretName`; with `registryCheck.copyToTeams`, the
 console copies it into every team namespace as `vertra-pull` and the
 kernel's `scheduler.taskImagePullSecret` names it on step Pods.
 
+How each binding is made, per cloud (`vertra` makes all of them for an
+install of its own; `helm/values/gke/` and `helm/values/eks/` are examples
+of the values it writes):
+
+| | GKE (Workload Identity) | EKS |
+| --- | --- | --- |
+| The console, the scanner | A Google service account with `roles/artifactregistry.reader` on the registry, bound to the ServiceAccount (`roles/iam.workloadIdentityUser`), named by its `iam.gke.io/gcp-service-account` annotation | A role that may read the ECR repositories, bound by an EKS Pod Identity association (no annotation); `registryCheck.ecrToken: true` |
+| policy-controller (`policy-controller-webhook`) | The same, read-only on the products' registry | The same, by Pod Identity |
+| A team's `eso-<cloud>` (its SecretStore) | Its Google service account, by the annotation in the store file | IRSA: the `eks.amazonaws.com/role-arn` annotation, a role trusting the cluster's OIDC issuer (registered in IAM once per cluster) for `system:serviceaccount:<team>:eso-aws` only. Pod Identity doesn't work for a store |
+| A product's own | Its Google service account, by the annotation an admin adds | A Pod Identity association for `<team>/<serviceAccount>`, which an admin adds |
+| Catalog CI (GitHub Actions) | Workload Identity Federation, main only | An IAM OIDC provider for GitHub's issuer, a role trusting the repository's main only |
+
 ### Signing in with Google
 
 With `vertra`: `vertra sso google <env>` says which two pages of the Google

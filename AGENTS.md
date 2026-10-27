@@ -35,7 +35,7 @@ already exist — check them before re-deriving anything:
 - `catalog-template/`: what a new catalog repository starts as. Its docs
   (including `docs/onboarding-with-ai.md`) are for catalog teams, **not**
   instructions for this repo.
-- `helm/values/{kind,gke}/*.yaml`: each environment's Helm settings, the whole
+- `helm/values/{kind,gke,eks}/*.yaml`: each environment's Helm settings, the whole
   of them (`make kind-deploy` and `make gke-deploy` use `--reset-values`). A
   setting that isn't in these files isn't deployed.
 
@@ -102,7 +102,7 @@ its own directory.
   database (`TEST_DATABASE_URL`).
 - **`helm/`**: everything Helm. `helm/charts/` holds the two charts,
   `execution-kernel` (api + scheduler + Postgres) and `execution-console`
-  (+ its own Postgres), with neutral defaults; `helm/values/{kind,gke}/` holds
+  (+ its own Postgres), with neutral defaults; `helm/values/{kind,gke,eks}/` holds
   each cluster's settings for them and for the third-party charts (ESO,
   policy-controller; on kind, cert-manager and Traefik for `make kind-tls`). The Helm release names are
   `kernel` and `console`, installed into the platform's own namespace

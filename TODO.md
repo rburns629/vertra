@@ -225,9 +225,9 @@ design.
   Blob is after the MVP. The GCS backup image is Google's
   `google-cloud-cli:*-slim` from gcr.io (amd64 and arm64; Docker Hub's
   `google/cloud-sdk` is amd64 only), done 2026-10-26.
-- [ ] **Example values for EKS and AKS** next to `helm/values/gke/`, and a
-  per-cloud guide to binding identities (console scanning and registry
-  checks, ESO, products).
+- [x] **Example values for EKS** (done 2026-10-27), `helm/values/eks/`, as
+  `vertra apply` writes them, and a per-cloud guide to binding identities
+  (docs/operations.md, Cloud identities). AKS is after the MVP, with Azure.
 - [x] **Per-team ResourceQuota and LimitRange** (done 2026-10-26): written
   with each team namespace and on every policy resync (`teamQuota.ts`), from
   the console chart's `teamNamespaces.quota` or a team's own, which an admin
