@@ -332,17 +332,17 @@ describe("failure help in a release", () => {
     publish(
       release({
         commit: "help",
-        teams: [{ name: teamA, contact: "a@acme.com", helpChat: "#a-help", helpUrl: "https://runbooks.acme.com/a" }],
+        teams: [{ name: teamA, contact: "a@acme.com", owner: "@acme/team-a", helpChat: "#a-help", helpUrl: "https://runbooks.acme.com/a" }],
         products: [{ ...product(teamA, "site"), errors: { QUOTA_EXCEEDED: { means: "No quota left.", do: "Ask for more." } } }],
       }),
       digestOf(60),
     );
     await syncCatalog(log);
     const [team] = await db
-      .select({ contact: teams.contact, helpChat: teams.helpChat, helpUrl: teams.helpUrl })
+      .select({ contact: teams.contact, owner: teams.owner, helpChat: teams.helpChat, helpUrl: teams.helpUrl })
       .from(teams)
       .where(eq(teams.name, teamA));
-    expect(team).toEqual({ contact: "a@acme.com", helpChat: "#a-help", helpUrl: "https://runbooks.acme.com/a" });
+    expect(team).toEqual({ contact: "a@acme.com", owner: "@acme/team-a", helpChat: "#a-help", helpUrl: "https://runbooks.acme.com/a" });
     const [site] = await db.select({ errorHelp: products.errorHelp }).from(products).where(eq(products.name, `${teamA}-site-run`));
     expect(site?.errorHelp).toEqual({ QUOTA_EXCEEDED: { means: "No quota left.", do: "Ask for more." } });
   });

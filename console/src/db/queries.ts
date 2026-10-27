@@ -94,6 +94,8 @@ export interface Team {
   allowedTargets: TargetRule[];
   /** Where people ask when its steps fail (failureHelp.ts). */
   contact: string | null;
+  /** team.yaml's owner, from the release: shown, never a grant. */
+  owner: string | null;
   helpChat: string | null;
   helpUrl: string | null;
   /** Its members sign in with single sign-on only (auth/plugin.ts's ssoRequiredBy). */

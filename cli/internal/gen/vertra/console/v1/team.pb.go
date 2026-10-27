@@ -2196,10 +2196,13 @@ type GetTeamProfileResponse struct {
 	FromCatalog bool                   `protobuf:"varint,2,opt,name=from_catalog,json=fromCatalog,proto3" json:"from_catalog,omitempty"`
 	Retired     bool                   `protobuf:"varint,3,opt,name=retired,proto3" json:"retired,omitempty"`
 	// team.yaml's contact (who to ask), and its help: a chat and a page.
-	Contact       string `protobuf:"bytes,4,opt,name=contact,proto3" json:"contact,omitempty"`
-	HelpChat      string `protobuf:"bytes,5,opt,name=help_chat,json=helpChat,proto3" json:"help_chat,omitempty"`
-	HelpUrl       string `protobuf:"bytes,6,opt,name=help_url,json=helpUrl,proto3" json:"help_url,omitempty"`
-	People        int32  `protobuf:"varint,7,opt,name=people,proto3" json:"people,omitempty"`
+	Contact  string `protobuf:"bytes,4,opt,name=contact,proto3" json:"contact,omitempty"`
+	HelpChat string `protobuf:"bytes,5,opt,name=help_chat,json=helpChat,proto3" json:"help_chat,omitempty"`
+	HelpUrl  string `protobuf:"bytes,6,opt,name=help_url,json=helpUrl,proto3" json:"help_url,omitempty"`
+	People   int32  `protobuf:"varint,7,opt,name=people,proto3" json:"people,omitempty"`
+	// team.yaml's owner in the catalog (a GitHub user or team); membership
+	// here is the console's, not the catalog's.
+	Owner         string `protobuf:"bytes,8,opt,name=owner,proto3" json:"owner,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2281,6 +2284,13 @@ func (x *GetTeamProfileResponse) GetPeople() int32 {
 		return x.People
 	}
 	return 0
+}
+
+func (x *GetTeamProfileResponse) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
 }
 
 var File_vertra_console_v1_team_proto protoreflect.FileDescriptor
@@ -2434,7 +2444,7 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\f_task_numberB\r\n" +
 	"\v_task_count\"+\n" +
 	"\x15GetTeamProfileRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\xd3\x01\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\xe9\x01\n" +
 	"\x16GetTeamProfileResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\ffrom_catalog\x18\x02 \x01(\bR\vfromCatalog\x12\x18\n" +
@@ -2442,7 +2452,8 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\acontact\x18\x04 \x01(\tR\acontact\x12\x1b\n" +
 	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
 	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\x12\x16\n" +
-	"\x06people\x18\a \x01(\x05R\x06people*U\n" +
+	"\x06people\x18\a \x01(\x05R\x06people\x12\x14\n" +
+	"\x05owner\x18\b \x01(\tR\x05owner*U\n" +
 	"\bTeamRole\x12\x19\n" +
 	"\x15TEAM_ROLE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14TEAM_ROLE_MAINTAINER\x10\x01\x12\x14\n" +

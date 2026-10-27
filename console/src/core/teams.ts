@@ -521,6 +521,7 @@ export async function teamProfile(caller: AuthUser | undefined, name: string) {
     fromCatalog: team.fromCatalog,
     retired: team.retiredAt !== null,
     contact: team.contact ?? "",
+    owner: team.owner ?? "",
     helpChat: team.helpChat ?? "",
     helpUrl: team.helpUrl ?? "",
     people: counted?.n ?? 0,

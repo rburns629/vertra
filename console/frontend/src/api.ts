@@ -2134,6 +2134,8 @@ export interface TeamProfile {
   fromCatalog: boolean;
   retired: boolean;
   contact: string | null;
+  /** team.yaml's owner in the catalog (a GitHub user or team). */
+  owner: string | null;
   helpChat: string | null;
   helpUrl: string | null;
   people: number;
@@ -2141,7 +2143,7 @@ export interface TeamProfile {
 
 export async function getTeamProfile(name: string): Promise<TeamProfile> {
   const r = await call(() => teams.getTeamProfile({ name }));
-  return { name: r.name, fromCatalog: r.fromCatalog, retired: r.retired, contact: r.contact || null, helpChat: r.helpChat || null, helpUrl: r.helpUrl || null, people: r.people };
+  return { name: r.name, fromCatalog: r.fromCatalog, retired: r.retired, contact: r.contact || null, owner: r.owner || null, helpChat: r.helpChat || null, helpUrl: r.helpUrl || null, people: r.people };
 }
 
 export async function getEmailPreferences(): Promise<{ available: boolean; kinds: string[] }> {

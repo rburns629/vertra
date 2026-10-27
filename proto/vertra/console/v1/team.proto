@@ -346,4 +346,7 @@ message GetTeamProfileResponse {
   string help_chat = 5;
   string help_url = 6;
   int32 people = 7;
+  // team.yaml's owner in the catalog (a GitHub user or team); membership
+  // here is the console's, not the catalog's.
+  string owner = 8;
 }

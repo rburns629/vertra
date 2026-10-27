@@ -147,9 +147,13 @@ type Team struct {
 	// team.yaml's allowedTargets: where other teams may aim its products.
 	AllowedTargets []*TargetRule `protobuf:"bytes,3,rep,name=allowed_targets,json=allowedTargets,proto3" json:"allowed_targets,omitempty"`
 	// team.yaml's contact and help: where people ask when its steps fail.
-	Contact       string `protobuf:"bytes,4,opt,name=contact,proto3" json:"contact,omitempty"`
-	HelpChat      string `protobuf:"bytes,5,opt,name=help_chat,json=helpChat,proto3" json:"help_chat,omitempty"`
-	HelpUrl       string `protobuf:"bytes,6,opt,name=help_url,json=helpUrl,proto3" json:"help_url,omitempty"`
+	Contact  string `protobuf:"bytes,4,opt,name=contact,proto3" json:"contact,omitempty"`
+	HelpChat string `protobuf:"bytes,5,opt,name=help_chat,json=helpChat,proto3" json:"help_chat,omitempty"`
+	HelpUrl  string `protobuf:"bytes,6,opt,name=help_url,json=helpUrl,proto3" json:"help_url,omitempty"`
+	// team.yaml's owner: who owns the team in the catalog (usually a GitHub
+	// user or team, as its CODEOWNERS names it). Shown, never a grant:
+	// membership is the console's (and single sign-on's).
+	Owner         string `protobuf:"bytes,7,opt,name=owner,proto3" json:"owner,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -222,6 +226,13 @@ func (x *Team) GetHelpChat() string {
 func (x *Team) GetHelpUrl() string {
 	if x != nil {
 		return x.HelpUrl
+	}
+	return ""
+}
+
+func (x *Team) GetOwner() string {
+	if x != nil {
+		return x.Owner
 	}
 	return ""
 }
@@ -1545,14 +1556,15 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x05teams\x18\x04 \x03(\v2\x17.vertra.catalog.v1.TeamR\x05teams\x12<\n" +
 	"\bproducts\x18\x05 \x03(\v2 .vertra.catalog.v1.ProductActionR\bproducts\x129\n" +
 	"\ttemplates\x18\x06 \x03(\v2\x1b.vertra.catalog.v1.TemplateR\ttemplates\x12*\n" +
-	"\x04apis\x18\a \x03(\v2\x16.vertra.catalog.v1.ApiR\x04apis\"\x83\x02\n" +
+	"\x04apis\x18\a \x03(\v2\x16.vertra.catalog.v1.ApiR\x04apis\"\x99\x02\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12M\n" +
 	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\x12F\n" +
 	"\x0fallowed_targets\x18\x03 \x03(\v2\x1d.vertra.catalog.v1.TargetRuleR\x0eallowedTargets\x12\x18\n" +
 	"\acontact\x18\x04 \x01(\tR\acontact\x12\x1b\n" +
 	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
-	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\"t\n" +
+	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\x12\x14\n" +
+	"\x05owner\x18\a \x01(\tR\x05owner\"t\n" +
 	"\n" +
 	"TargetRule\x12\x14\n" +
 	"\x05teams\x18\x01 \x03(\tR\x05teams\x124\n" +

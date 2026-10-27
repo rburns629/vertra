@@ -935,6 +935,14 @@ export declare type GetTeamProfileResponse = Message<"vertra.console.v1.GetTeamP
    * @generated from field: int32 people = 7;
    */
   people: number;
+
+  /**
+   * team.yaml's owner in the catalog (a GitHub user or team); membership
+   * here is the console's, not the catalog's.
+   *
+   * @generated from field: string owner = 8;
+   */
+  owner: string;
 };
 
 /**

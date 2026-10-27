@@ -856,8 +856,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   tab, every digest's verdict by state, its findings, Rescan now, and
   Accept with a reason; Observe's Security tab links to it for admins. The
   audit log's is Observe's Audit log tab (2026-10-22).
-- [ ] **Connect a team's `owner` to its console team**: membership is
-  managed on the team's page, separately from the catalog's CODEOWNERS.
+- [x] **A team's `owner` on its console page** (done 2026-10-27, decided:
+  shown, never a grant): team.yaml's owner travels in the release and the
+  Team page says who owns the team in the catalog; membership stays the
+  console's and single sign-on's.
 - [x] **The catalog repository for the secret-setup guides** (done
   2026-10-27): the repository the applied release came from, unless the
   console chart's `secretSources.catalogRepo` names another; no Admin
@@ -999,6 +1001,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   every one parses under 12.2.0, and a frontend test
   (`src/docsDiagrams.test.ts`) keeps it so for the next bump. How they look
   hasn't been checked by eye.
+- [ ] **Rare console test failures in a full parallel run** (2026-10-27):
+  one at a time, in different files (apis, team-lifecycle, readiness), each
+  passing alone and in most full runs; likely two files sharing database
+  state. Find which.
 - [ ] **An end-to-end secret test** with a product registered by catalog CI:
   proven by hand on EKS (2026-10-27: a catalog-registered product mounting
   a secret ESO synced); an automated one, on kind, remains.

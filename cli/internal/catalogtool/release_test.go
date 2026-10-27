@@ -91,6 +91,7 @@ func TestBuildReleasePinsEachPublishedProduct(t *testing.T) {
 	files := product("mine", "[b]")
 	files["teams/a/products/mine/product.yaml"] = strings.Replace(files["teams/a/products/mine/product.yaml"],
 		"owner: x\n", "owner: x\ntokenAudiences: [sts.amazonaws.com]\n", 1)
+	files["teams/a/team.yaml"] = "apiVersion: vertra.dev/v2\nkind: Team\nname: a\ndisplayName: A\ndescription: A\nowner: \"@acme/team-a\"\ncontact: a@acme.com\n"
 	files["teams/a/dags/hello.yaml"] = `apiVersion: vertra.dev/v2
 kind: Template
 name: hello
@@ -118,7 +119,7 @@ steps:
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
-	if len(release.GetTeams()) != 1 || release.GetTeams()[0].GetName() != "a" || len(release.GetProducts()) != 1 {
+	if len(release.GetTeams()) != 1 || release.GetTeams()[0].GetName() != "a" || release.GetTeams()[0].GetOwner() != "@acme/team-a" || len(release.GetProducts()) != 1 {
 		t.Fatalf("release = %v", release)
 	}
 	got := release.GetProducts()[0]

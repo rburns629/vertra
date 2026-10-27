@@ -69,6 +69,8 @@ export const teams = pgTable("teams", {
   // team.yaml's contact and help, from the release: where people ask when
   // one of its steps fails (failureHelp.ts). Null: not said.
   contact: text("contact"),
+  // team.yaml's owner (a GitHub user or team): shown, never a grant.
+  owner: text("owner"),
   helpChat: text("help_chat"),
   helpUrl: text("help_url"),
 });

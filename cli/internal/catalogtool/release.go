@@ -171,6 +171,7 @@ func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, reposito
 		t.AllowedTargets = targetRulesOf(spec)
 		help, _ := spec["help"].(map[string]any)
 		t.Contact, t.HelpChat, t.HelpUrl = text(spec, "contact"), text(help, "chat"), text(help, "url")
+		t.Owner = text(spec, "owner")
 		if len(c.secretStoreFiles(team)) > 0 {
 			documents, found := c.secretStoreDocuments(team)
 			if len(found) == 0 {

@@ -7803,6 +7803,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "owner",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "team.yaml's owner in the catalog (a GitHub user or team); membership\nhere is the console's, not the catalog's."
     }
    ]
   },

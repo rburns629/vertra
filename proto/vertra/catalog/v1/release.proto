@@ -49,6 +49,10 @@ message Team {
   string contact = 4;
   string help_chat = 5;
   string help_url = 6;
+  // team.yaml's owner: who owns the team in the catalog (usually a GitHub
+  // user or team, as its CODEOWNERS names it). Shown, never a grant:
+  // membership is the console's (and single sign-on's).
+  string owner = 7;
 }
 
 // One rule of a team's allowedTargets: the teams it covers ("*" for every

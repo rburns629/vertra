@@ -90,6 +90,7 @@ export function TeamOffers({ teamName, showProfile }: { teamName: string; showPr
           <Typography variant="body2">
             {profile.people} {profile.people === 1 ? "person" : "people"}
             {profile.fromCatalog ? ", from the catalog" : ""}.
+            {profile.owner && <> Owned in the catalog by {profile.owner}.</>}
             {profile.contact && <> Contact: {profile.contact}.</>}
           </Typography>
           {(profile.helpChat ?? profile.helpUrl) && (
