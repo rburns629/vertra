@@ -6,8 +6,10 @@ import {
   deleteTeamWebhook,
   emailPreferences,
   getAdminChannel,
+  getTeamCallback,
   getTeamWebhook,
   setAdminChannel,
+  setTeamCallback,
   setEmailPreferences,
   listNotifications,
   markNotificationsRead,
@@ -23,6 +25,8 @@ const Team = Type.String({ minLength: 1, maxLength: 63 });
 
 type WebhookView = Awaited<ReturnType<typeof getTeamWebhook>>["webhook"];
 const webhook = (w: WebhookView) => ({ ...w, lastSentAt: timestamp(w.lastSentAt), updatedAt: timestamp(w.updatedAt) });
+type CallbackView = Awaited<ReturnType<typeof getTeamCallback>>["callback"];
+const callback = (c: CallbackView) => ({ ...c, lastSentAt: timestamp(c.lastSentAt), updatedAt: timestamp(c.updatedAt) });
 
 export function notificationService(): ServiceImpl<typeof NotificationService> {
   return {
@@ -89,6 +93,18 @@ export function notificationService(): ServiceImpl<typeof NotificationService> {
     async testTeamWebhook(req, ctx) {
       const { team } = check({ team: Team }, req);
       return testTeamWebhook(callerOf(ctx), team);
+    },
+
+    async getTeamCallback(req, ctx) {
+      const { team } = check({ team: Team }, req);
+      const found = await getTeamCallback(callerOf(ctx), team);
+      return { callback: callback(found.callback), allowedHosts: found.allowedHosts };
+    },
+
+    async setTeamCallback(req, ctx) {
+      const { team } = check({ team: Team }, { team: req.team });
+      const result = await setTeamCallback(callerOf(ctx), team, req.url.trim(), req.rotateSecret);
+      return { callback: callback(result.callback), signingSecret: result.signingSecret };
     },
   };
 }

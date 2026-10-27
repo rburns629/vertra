@@ -9,8 +9,8 @@
  * deleted. A retried run is recorded again once it finishes. A run the kernel no longer has
  * is passed over. A failed pass is logged and the next one tries again:
  * nothing is marked recorded until it is. Each finished run is also told to
- * notifier.ts, which says so to whoever ran it, and to orderCallbacks.ts,
- * which posts an ordering bot's outcome to its callback.
+ * notifier.ts, which says so to whoever ran it, and to callbacks.ts, which
+ * posts it to its ordering bot's callback and its teams' outcome webhooks.
  */
 import type { FastifyBaseLogger } from "fastify";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
@@ -19,7 +19,7 @@ import { db } from "./db/client.js";
 import { resources, submittedExecutions } from "./db/schema.js";
 import { getExecution, getExecutionStates, type KernelExecution } from "./kernel/client.js";
 import { runFinished } from "./notifier.js";
-import { orderFinished } from "./orderCallbacks.js";
+import { runFinishedCallbacks } from "./callbacks.js";
 import { recordCheck } from "./readiness.js";
 
 const FINISHED = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
@@ -228,7 +228,7 @@ export async function recordFinishedRuns(): Promise<{ runs: number; resources: n
       finishedAt: updatedAt ?? null,
       failedStep: failed ? { taskId: failed.taskId, code: typeof failed.failure?.["code"] === "string" ? failed.failure["code"] : "an error" } : undefined,
     });
-    await orderFinished({ ...run, state, finishedAt: updatedAt ?? null });
+    await runFinishedCallbacks({ ...run, state, finishedAt: updatedAt ?? null, tasks: detail.tasks });
     recorded += await recordRun(run, detail);
     runs += 1;
   }

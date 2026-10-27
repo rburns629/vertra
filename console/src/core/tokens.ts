@@ -34,7 +34,7 @@ import {
 } from "../db/queries.js";
 import { db } from "../db/client.js";
 import { botCallbacks } from "../db/schema.js";
-import { callbackUrlProblem, newCallbackSecret, sealCallback, unsealSecret } from "../orderCallbacks.js";
+import { newCallback } from "../callbacks.js";
 import { ensureNotRetired } from "./retired.js";
 
 export const BotEmail = Type.String({ format: "email" });
@@ -121,18 +121,14 @@ export async function setBotCallback(
     await db.delete(botCallbacks).where(eq(botCallbacks.botId, bot.id));
     return { host: "", signingSecret: "" };
   }
-  const problem = callbackUrlProblem(input.url);
-  if (problem) throw new ApiError(400, "BAD_CALLBACK", problem);
   const [existing] = await db.select({ secretEncrypted: botCallbacks.secretEncrypted }).from(botCallbacks).where(eq(botCallbacks.botId, bot.id));
-  const kept = existing && !input.rotateSecret ? unsealSecret(existing.secretEncrypted) : null;
-  const secret = kept ?? newCallbackSecret();
-  const host = new URL(input.url).host;
-  const row = { ...sealCallback(input.url, secret), host, updatedBy: caller?.id ?? null, updatedAt: new Date(), lastError: null };
+  const { signingSecret, ...stored } = newCallback(input.url, input.rotateSecret, existing?.secretEncrypted);
+  const row = { ...stored, updatedBy: caller?.id ?? null, updatedAt: new Date(), lastError: null };
   await db
     .insert(botCallbacks)
     .values({ botId: bot.id, ...row })
     .onConflictDoUpdate({ target: botCallbacks.botId, set: row });
-  return { host, signingSecret: kept ? "" : secret };
+  return { host: stored.host, signingSecret };
 }
 
 export async function listBots(caller: AuthUser | undefined, teamName: string) {

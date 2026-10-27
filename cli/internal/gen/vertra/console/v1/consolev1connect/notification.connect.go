@@ -53,6 +53,12 @@ const (
 	// NotificationServiceTestTeamWebhookProcedure is the fully-qualified name of the
 	// NotificationService's TestTeamWebhook RPC.
 	NotificationServiceTestTeamWebhookProcedure = "/vertra.console.v1.NotificationService/TestTeamWebhook"
+	// NotificationServiceGetTeamCallbackProcedure is the fully-qualified name of the
+	// NotificationService's GetTeamCallback RPC.
+	NotificationServiceGetTeamCallbackProcedure = "/vertra.console.v1.NotificationService/GetTeamCallback"
+	// NotificationServiceSetTeamCallbackProcedure is the fully-qualified name of the
+	// NotificationService's SetTeamCallback RPC.
+	NotificationServiceSetTeamCallbackProcedure = "/vertra.console.v1.NotificationService/SetTeamCallback"
 	// NotificationServiceGetAdminChannelProcedure is the fully-qualified name of the
 	// NotificationService's GetAdminChannel RPC.
 	NotificationServiceGetAdminChannelProcedure = "/vertra.console.v1.NotificationService/GetAdminChannel"
@@ -84,6 +90,14 @@ type NotificationServiceClient interface {
 	DeleteTeamWebhook(context.Context, *connect.Request[v1.DeleteTeamWebhookRequest]) (*connect.Response[v1.DeleteTeamWebhookResponse], error)
 	// Posts a test message to it (its maintainers), and says whether it went.
 	TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error)
+	// A team's outcome webhook (its members): where each of its runs'
+	// outcomes is posted as signed JSON, for its own systems; its host and
+	// last post, never the URL.
+	GetTeamCallback(context.Context, *connect.Request[v1.GetTeamCallbackRequest]) (*connect.Response[v1.GetTeamCallbackResponse], error)
+	// Sets it (its maintainers), under the install's allowed hosts; an empty
+	// url removes it. Its signing secret is returned when it's first set or
+	// rotated, and never again.
+	SetTeamCallback(context.Context, *connect.Request[v1.SetTeamCallbackRequest]) (*connect.Response[v1.SetTeamCallbackResponse], error)
 	// The admins' chat channel: the team whose webhook may also get admins'
 	// alerts (platform_alert, catalog_failing, and every team's step_refused).
 	// Admins only.
@@ -148,6 +162,19 @@ func NewNotificationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(notificationServiceMethods.ByName("TestTeamWebhook")),
 			connect.WithClientOptions(opts...),
 		),
+		getTeamCallback: connect.NewClient[v1.GetTeamCallbackRequest, v1.GetTeamCallbackResponse](
+			httpClient,
+			baseURL+NotificationServiceGetTeamCallbackProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("GetTeamCallback")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setTeamCallback: connect.NewClient[v1.SetTeamCallbackRequest, v1.SetTeamCallbackResponse](
+			httpClient,
+			baseURL+NotificationServiceSetTeamCallbackProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("SetTeamCallback")),
+			connect.WithClientOptions(opts...),
+		),
 		getAdminChannel: connect.NewClient[v1.GetAdminChannelRequest, v1.GetAdminChannelResponse](
 			httpClient,
 			baseURL+NotificationServiceGetAdminChannelProcedure,
@@ -185,6 +212,8 @@ type notificationServiceClient struct {
 	setTeamWebhook        *connect.Client[v1.SetTeamWebhookRequest, v1.SetTeamWebhookResponse]
 	deleteTeamWebhook     *connect.Client[v1.DeleteTeamWebhookRequest, v1.DeleteTeamWebhookResponse]
 	testTeamWebhook       *connect.Client[v1.TestTeamWebhookRequest, v1.TestTeamWebhookResponse]
+	getTeamCallback       *connect.Client[v1.GetTeamCallbackRequest, v1.GetTeamCallbackResponse]
+	setTeamCallback       *connect.Client[v1.SetTeamCallbackRequest, v1.SetTeamCallbackResponse]
 	getAdminChannel       *connect.Client[v1.GetAdminChannelRequest, v1.GetAdminChannelResponse]
 	setAdminChannel       *connect.Client[v1.SetAdminChannelRequest, v1.SetAdminChannelResponse]
 	getEmailPreferences   *connect.Client[v1.GetEmailPreferencesRequest, v1.GetEmailPreferencesResponse]
@@ -219,6 +248,16 @@ func (c *notificationServiceClient) DeleteTeamWebhook(ctx context.Context, req *
 // TestTeamWebhook calls vertra.console.v1.NotificationService.TestTeamWebhook.
 func (c *notificationServiceClient) TestTeamWebhook(ctx context.Context, req *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error) {
 	return c.testTeamWebhook.CallUnary(ctx, req)
+}
+
+// GetTeamCallback calls vertra.console.v1.NotificationService.GetTeamCallback.
+func (c *notificationServiceClient) GetTeamCallback(ctx context.Context, req *connect.Request[v1.GetTeamCallbackRequest]) (*connect.Response[v1.GetTeamCallbackResponse], error) {
+	return c.getTeamCallback.CallUnary(ctx, req)
+}
+
+// SetTeamCallback calls vertra.console.v1.NotificationService.SetTeamCallback.
+func (c *notificationServiceClient) SetTeamCallback(ctx context.Context, req *connect.Request[v1.SetTeamCallbackRequest]) (*connect.Response[v1.SetTeamCallbackResponse], error) {
+	return c.setTeamCallback.CallUnary(ctx, req)
 }
 
 // GetAdminChannel calls vertra.console.v1.NotificationService.GetAdminChannel.
@@ -259,6 +298,14 @@ type NotificationServiceHandler interface {
 	DeleteTeamWebhook(context.Context, *connect.Request[v1.DeleteTeamWebhookRequest]) (*connect.Response[v1.DeleteTeamWebhookResponse], error)
 	// Posts a test message to it (its maintainers), and says whether it went.
 	TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error)
+	// A team's outcome webhook (its members): where each of its runs'
+	// outcomes is posted as signed JSON, for its own systems; its host and
+	// last post, never the URL.
+	GetTeamCallback(context.Context, *connect.Request[v1.GetTeamCallbackRequest]) (*connect.Response[v1.GetTeamCallbackResponse], error)
+	// Sets it (its maintainers), under the install's allowed hosts; an empty
+	// url removes it. Its signing secret is returned when it's first set or
+	// rotated, and never again.
+	SetTeamCallback(context.Context, *connect.Request[v1.SetTeamCallbackRequest]) (*connect.Response[v1.SetTeamCallbackResponse], error)
 	// The admins' chat channel: the team whose webhook may also get admins'
 	// alerts (platform_alert, catalog_failing, and every team's step_refused).
 	// Admins only.
@@ -319,6 +366,19 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 		connect.WithSchema(notificationServiceMethods.ByName("TestTeamWebhook")),
 		connect.WithHandlerOptions(opts...),
 	)
+	notificationServiceGetTeamCallbackHandler := connect.NewUnaryHandler(
+		NotificationServiceGetTeamCallbackProcedure,
+		svc.GetTeamCallback,
+		connect.WithSchema(notificationServiceMethods.ByName("GetTeamCallback")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceSetTeamCallbackHandler := connect.NewUnaryHandler(
+		NotificationServiceSetTeamCallbackProcedure,
+		svc.SetTeamCallback,
+		connect.WithSchema(notificationServiceMethods.ByName("SetTeamCallback")),
+		connect.WithHandlerOptions(opts...),
+	)
 	notificationServiceGetAdminChannelHandler := connect.NewUnaryHandler(
 		NotificationServiceGetAdminChannelProcedure,
 		svc.GetAdminChannel,
@@ -359,6 +419,10 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 			notificationServiceDeleteTeamWebhookHandler.ServeHTTP(w, r)
 		case NotificationServiceTestTeamWebhookProcedure:
 			notificationServiceTestTeamWebhookHandler.ServeHTTP(w, r)
+		case NotificationServiceGetTeamCallbackProcedure:
+			notificationServiceGetTeamCallbackHandler.ServeHTTP(w, r)
+		case NotificationServiceSetTeamCallbackProcedure:
+			notificationServiceSetTeamCallbackHandler.ServeHTTP(w, r)
 		case NotificationServiceGetAdminChannelProcedure:
 			notificationServiceGetAdminChannelHandler.ServeHTTP(w, r)
 		case NotificationServiceSetAdminChannelProcedure:
@@ -398,6 +462,14 @@ func (UnimplementedNotificationServiceHandler) DeleteTeamWebhook(context.Context
 
 func (UnimplementedNotificationServiceHandler) TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.TestTeamWebhook is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) GetTeamCallback(context.Context, *connect.Request[v1.GetTeamCallbackRequest]) (*connect.Response[v1.GetTeamCallbackResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.GetTeamCallback is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) SetTeamCallback(context.Context, *connect.Request[v1.SetTeamCallbackRequest]) (*connect.Response[v1.SetTeamCallbackResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.SetTeamCallback is not implemented"))
 }
 
 func (UnimplementedNotificationServiceHandler) GetAdminChannel(context.Context, *connect.Request[v1.GetAdminChannelRequest]) (*connect.Response[v1.GetAdminChannelResponse], error) {

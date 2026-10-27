@@ -2015,6 +2015,28 @@ export async function setTeamWebhook(team: string, url: string, kinds: string[])
   return webhookOf((await call(() => notificationsApi.setTeamWebhook({ team, url, kinds }))).webhook);
 }
 
+export interface TeamCallback {
+  configured: boolean;
+  host: string;
+  lastSentAt: string | null;
+  lastError: string | null;
+}
+
+function teamCallbackOf(c: { configured: boolean; host: string; lastSentAt?: Parameters<typeof iso>[0]; lastError: string } | undefined): TeamCallback {
+  return { configured: c?.configured ?? false, host: c?.host ?? "", lastSentAt: iso(c?.lastSentAt), lastError: c?.lastError || null };
+}
+
+/** A team's outcome webhook (for its systems), and the hosts this install allows. */
+export async function getTeamCallback(team: string): Promise<{ callback: TeamCallback; allowedHosts: string[] }> {
+  const response = await call(() => notificationsApi.getTeamCallback({ team }));
+  return { callback: teamCallbackOf(response.callback), allowedHosts: response.allowedHosts };
+}
+
+/** Sets (or, with an empty url, removes) it; the signing secret only when it's new. */
+export async function setTeamCallback(team: string, url: string, rotateSecret: boolean): Promise<string> {
+  return (await call(() => notificationsApi.setTeamCallback({ team, url, rotateSecret }))).signingSecret;
+}
+
 export async function deleteTeamWebhook(team: string): Promise<void> {
   await call(() => notificationsApi.deleteTeamWebhook({ team }));
 }

@@ -968,7 +968,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      only those (`TEMPLATE_NOT_ORDERABLE`) and nothing else (`ORDERS_ONLY`:
      raw DAGs, single actions, reruns). Schedules aren't limited.
   3. Hearing back: polling (`GetExecution`) and a per-bot callback (done
-     2026-10-27, `console/src/orderCallbacks.ts`): `TokenService/
+     2026-10-27, `console/src/callbacks.ts`): `TokenService/
      SetBotCallback` (its team's maintainers), only under the console
      chart's `orders.callbackHosts` (none by default); each finished order
      posts `order.finished` signed (`Vertra-Signature`, HMAC-SHA256 with the
@@ -979,8 +979,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      orderRate.ts`): the console chart's `orders.ratePerMinute` (60) orders
      a minute for each ordering bot, counted from its runs in the database,
      then `RATE_LIMITED` (429, `Retry-After`).
-  5. Possibly: an outcome webhook a team subscribes to (JSON for systems,
-     beside its chat webhook).
+  5. A team's outcome webhook (done 2026-10-27, `console/src/callbacks.ts`):
+     `NotificationService/SetTeamCallback` (its maintainers; on its Settings
+     tab, beside its chat webhook), under the same hosts; each run it owns
+     posts `run.finished` signed, with each step's state, outputs and failure
+     code (outputs left out past 256 KiB, `outputsOmitted`).
 - [ ] **An MCP server for agents (design first)**: a Model Context Protocol
   service over the console's API, so a chatbot or agent works with what's
   deployed in context: what each run made (resources), who ran it and for

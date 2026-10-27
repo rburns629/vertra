@@ -475,6 +475,138 @@ export declare type SetEmailPreferencesResponse = Message<"vertra.console.v1.Set
 export declare const SetEmailPreferencesResponseSchema: GenMessage<SetEmailPreferencesResponse>;
 
 /**
+ * @generated from message vertra.console.v1.TeamCallback
+ */
+export declare type TeamCallback = Message<"vertra.console.v1.TeamCallback"> & {
+  /**
+   * Whether the team has one.
+   *
+   * @generated from field: bool configured = 1;
+   */
+  configured: boolean;
+
+  /**
+   * @generated from field: string host = 2;
+   */
+  host: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_sent_at = 3;
+   */
+  lastSentAt?: Timestamp | undefined;
+
+  /**
+   * Why the last post failed, if it did.
+   *
+   * @generated from field: string last_error = 4;
+   */
+  lastError: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 5;
+   */
+  updatedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamCallback.
+ * Use `create(TeamCallbackSchema)` to create a new message.
+ */
+export declare const TeamCallbackSchema: GenMessage<TeamCallback>;
+
+/**
+ * @generated from message vertra.console.v1.GetTeamCallbackRequest
+ */
+export declare type GetTeamCallbackRequest = Message<"vertra.console.v1.GetTeamCallbackRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetTeamCallbackRequest.
+ * Use `create(GetTeamCallbackRequestSchema)` to create a new message.
+ */
+export declare const GetTeamCallbackRequestSchema: GenMessage<GetTeamCallbackRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetTeamCallbackResponse
+ */
+export declare type GetTeamCallbackResponse = Message<"vertra.console.v1.GetTeamCallbackResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.TeamCallback callback = 1;
+   */
+  callback?: TeamCallback | undefined;
+
+  /**
+   * The hosts this install allows; empty: none, so it can't have one.
+   *
+   * @generated from field: repeated string allowed_hosts = 2;
+   */
+  allowedHosts: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetTeamCallbackResponse.
+ * Use `create(GetTeamCallbackResponseSchema)` to create a new message.
+ */
+export declare const GetTeamCallbackResponseSchema: GenMessage<GetTeamCallbackResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetTeamCallbackRequest
+ */
+export declare type SetTeamCallbackRequest = Message<"vertra.console.v1.SetTeamCallbackRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * https://, under the install's allowed hosts; empty: remove it.
+   *
+   * @generated from field: string url = 2;
+   */
+  url: string;
+
+  /**
+   * A new signing secret, the old one no longer valid.
+   *
+   * @generated from field: bool rotate_secret = 3;
+   */
+  rotateSecret: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamCallbackRequest.
+ * Use `create(SetTeamCallbackRequestSchema)` to create a new message.
+ */
+export declare const SetTeamCallbackRequestSchema: GenMessage<SetTeamCallbackRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetTeamCallbackResponse
+ */
+export declare type SetTeamCallbackResponse = Message<"vertra.console.v1.SetTeamCallbackResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.TeamCallback callback = 1;
+   */
+  callback?: TeamCallback | undefined;
+
+  /**
+   * Set only when it's new (first set, or rotated): shown once.
+   *
+   * @generated from field: string signing_secret = 2;
+   */
+  signingSecret: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamCallbackResponse.
+ * Use `create(SetTeamCallbackResponseSchema)` to create a new message.
+ */
+export declare const SetTeamCallbackResponseSchema: GenMessage<SetTeamCallbackResponse>;
+
+/**
  * What happened that you'd want to know (the console's notifier.ts): a run
  * of yours failed or finished, a step waits for your team's approval, the
  * catalog isn't being pulled (admins). Each is in your inbox, and a team's
@@ -546,6 +678,30 @@ export declare const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof TestTeamWebhookRequestSchema;
     output: typeof TestTeamWebhookResponseSchema;
+  },
+  /**
+   * A team's outcome webhook (its members): where each of its runs'
+   * outcomes is posted as signed JSON, for its own systems; its host and
+   * last post, never the URL.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.GetTeamCallback
+   */
+  getTeamCallback: {
+    methodKind: "unary";
+    input: typeof GetTeamCallbackRequestSchema;
+    output: typeof GetTeamCallbackResponseSchema;
+  },
+  /**
+   * Sets it (its maintainers), under the install's allowed hosts; an empty
+   * url removes it. Its signing secret is returned when it's first set or
+   * rotated, and never again.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.SetTeamCallback
+   */
+  setTeamCallback: {
+    methodKind: "unary";
+    input: typeof SetTeamCallbackRequestSchema;
+    output: typeof SetTeamCallbackResponseSchema;
   },
   /**
    * The admins' chat channel: the team whose webhook may also get admins'

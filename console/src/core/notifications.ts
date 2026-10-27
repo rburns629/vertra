@@ -5,7 +5,9 @@
  * and clears their own; a team's members see its webhook's host and state,
  * and its maintainers set, test and remove it. The URL is never sent back.
  * An admin may choose one team as the admins' channel: its webhook may then
- * also get admins' alerts.
+ * also get admins' alerts. A team may also have an outcome webhook, for its
+ * systems rather than chat (callbacks.ts): each of its runs' outcomes as
+ * signed JSON.
  */
 import { Code } from "@connectrpc/connect";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -15,7 +17,8 @@ import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { findTeamByName } from "../db/queries.js";
-import { notificationEvents, notificationSettings, teamWebhooks, userNotifications, users, type NotificationKind } from "../db/schema.js";
+import { notificationEvents, notificationSettings, teamCallbacks, teamWebhooks, userNotifications, users, type NotificationKind } from "../db/schema.js";
+import { newCallback } from "../callbacks.js";
 import { adminChannel, decryptUrl, encryptUrl, postToWebhook, webhookUrlProblem } from "../notifier.js";
 import { ensureNotRetired } from "./retired.js";
 
@@ -131,6 +134,41 @@ export async function testTeamWebhook(caller: AuthUser | undefined, teamName: st
 }
 
 /** The admins' chat channel: which team's webhook also gets admins' alerts. */
+function callbackView(row: typeof teamCallbacks.$inferSelect | undefined) {
+  return row
+    ? { configured: true, host: row.host, lastSentAt: row.lastSentAt, lastError: row.lastError ?? "", updatedAt: row.updatedAt }
+    : { configured: false, host: "", lastSentAt: null, lastError: "", updatedAt: null };
+}
+
+export async function getTeamCallback(caller: AuthUser | undefined, teamName: string) {
+  const who = signedIn(caller);
+  ensureTeamMember(who, teamName);
+  const team = await teamNamed(teamName);
+  const [row] = await db.select().from(teamCallbacks).where(eq(teamCallbacks.teamId, team.id));
+  return { callback: callbackView(row), allowedHosts: config.orders.callbackHosts };
+}
+
+/** Sets, changes or removes (empty url) a team's outcome webhook; its secret only when new. */
+export async function setTeamCallback(caller: AuthUser | undefined, teamName: string, url: string, rotateSecret: boolean) {
+  const who = signedIn(caller);
+  ensureTeamMaintainer(who, teamName);
+  const team = await teamNamed(teamName);
+  if (url === "") {
+    await db.delete(teamCallbacks).where(eq(teamCallbacks.teamId, team.id));
+    return { callback: callbackView(undefined), signingSecret: "" };
+  }
+  ensureNotRetired(team);
+  const [existing] = await db.select({ secretEncrypted: teamCallbacks.secretEncrypted }).from(teamCallbacks).where(eq(teamCallbacks.teamId, team.id));
+  const { signingSecret, ...stored } = newCallback(url, rotateSecret, existing?.secretEncrypted);
+  const fields = { ...stored, updatedBy: who.id, updatedAt: new Date(), lastError: null };
+  const [row] = await db
+    .insert(teamCallbacks)
+    .values({ teamId: team.id, ...fields })
+    .onConflictDoUpdate({ target: teamCallbacks.teamId, set: fields })
+    .returning();
+  return { callback: callbackView(row), signingSecret };
+}
+
 export async function getAdminChannel(caller: AuthUser | undefined) {
   forbiddenUnlessAdmin(signedIn(caller), "Only admins choose where admins' alerts are posted.");
   return { team: (await adminChannel())[0] ?? "" };

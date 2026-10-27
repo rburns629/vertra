@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/notification.proto.
  */
 export const file_vertra_console_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiR2ZXJ0cmEvY29uc29sZS92MS9ub3RpZmljYXRpb24ucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIpEBCgxOb3RpZmljYXRpb24SCgoCaWQYASABKAkSDAoEa2luZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIMCgRib2R5GAQgASgJEgwKBGxpbmsYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEcmVhZBgHIAEoCCIvChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSEwoLdW5yZWFkX29ubHkYASABKAgiaQoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRI2Cg1ub3RpZmljYXRpb25zGAEgAygLMh8udmVydHJhLmNvbnNvbGUudjEuTm90aWZpY2F0aW9uEhQKDHVucmVhZF9jb3VudBgCIAEoBSI4ChxNYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0EgsKA2lkcxgBIAMoCRILCgNhbGwYAiABKAgiHwodTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2UitAEKC1RlYW1XZWJob29rEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEaG9zdBgCIAEoCRINCgVraW5kcxgDIAMoCRIwCgxsYXN0X3NlbnRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmxhc3RfZXJyb3IYBSABKAkSLgoKdXBkYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJQoVR2V0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkidwoWR2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2sSFQoNYWxsb3dlZF9ob3N0cxgCIAMoCRIVCg1hZG1pbl9jaGFubmVsGAMgASgIIhgKFkdldEFkbWluQ2hhbm5lbFJlcXVlc3QiJwoXR2V0QWRtaW5DaGFubmVsUmVzcG9uc2USDAoEdGVhbRgBIAEoCSImChZTZXRBZG1pbkNoYW5uZWxSZXF1ZXN0EgwKBHRlYW0YASABKAkiJwoXU2V0QWRtaW5DaGFubmVsUmVzcG9uc2USDAoEdGVhbRgBIAEoCSJBChVTZXRUZWFtV2ViaG9va1JlcXVlc3QSDAoEdGVhbRgBIAEoCRILCgN1cmwYAiABKAkSDQoFa2luZHMYAyADKAkiSQoWU2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2siKAoYRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiGwoZRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZSImChZUZXN0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiNgoXVGVzdFRlYW1XZWJob29rUmVzcG9uc2USDAoEc2VudBgBIAEoCBINCgVlcnJvchgCIAEoCSIcChpHZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdCI/ChtHZXRFbWFpbFByZWZlcmVuY2VzUmVzcG9uc2USEQoJYXZhaWxhYmxlGAEgASgIEg0KBWtpbmRzGAIgAygJIisKGlNldEVtYWlsUHJlZmVyZW5jZXNSZXF1ZXN0Eg0KBWtpbmRzGAEgAygJIiwKG1NldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZRINCgVraW5kcxgBIAMoCTL9CAoTTm90aWZpY2F0aW9uU2VydmljZRJzChFMaXN0Tm90aWZpY2F0aW9ucxIrLnZlcnRyYS5jb25zb2xlLnYxLkxpc3ROb3RpZmljYXRpb25zUmVxdWVzdBosLnZlcnRyYS5jb25zb2xlLnYxLkxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2UiA5ACARJ6ChVNYXJrTm90aWZpY2F0aW9uc1JlYWQSLy52ZXJ0cmEuY29uc29sZS52MS5NYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0GjAudmVydHJhLmNvbnNvbGUudjEuTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2USagoOR2V0VGVhbVdlYmhvb2sSKC52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtV2ViaG9va1JlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtV2ViaG9va1Jlc3BvbnNlIgOQAgESZQoOU2V0VGVhbVdlYmhvb2sSKC52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtV2ViaG9va1JlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtV2ViaG9va1Jlc3BvbnNlEm4KEURlbGV0ZVRlYW1XZWJob29rEisudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0GiwudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZRJoCg9UZXN0VGVhbVdlYmhvb2sSKS52ZXJ0cmEuY29uc29sZS52MS5UZXN0VGVhbVdlYmhvb2tSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuVGVzdFRlYW1XZWJob29rUmVzcG9uc2USbQoPR2V0QWRtaW5DaGFubmVsEikudmVydHJhLmNvbnNvbGUudjEuR2V0QWRtaW5DaGFubmVsUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLkdldEFkbWluQ2hhbm5lbFJlc3BvbnNlIgOQAgESaAoPU2V0QWRtaW5DaGFubmVsEikudmVydHJhLmNvbnNvbGUudjEuU2V0QWRtaW5DaGFubmVsUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLlNldEFkbWluQ2hhbm5lbFJlc3BvbnNlEnkKE0dldEVtYWlsUHJlZmVyZW5jZXMSLS52ZXJ0cmEuY29uc29sZS52MS5HZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdBouLnZlcnRyYS5jb25zb2xlLnYxLkdldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZSIDkAIBEnQKE1NldEVtYWlsUHJlZmVyZW5jZXMSLS52ZXJ0cmEuY29uc29sZS52MS5TZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdBouLnZlcnRyYS5jb25zb2xlLnYxLlNldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("CiR2ZXJ0cmEvY29uc29sZS92MS9ub3RpZmljYXRpb24ucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIpEBCgxOb3RpZmljYXRpb24SCgoCaWQYASABKAkSDAoEa2luZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIMCgRib2R5GAQgASgJEgwKBGxpbmsYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEcmVhZBgHIAEoCCIvChhMaXN0Tm90aWZpY2F0aW9uc1JlcXVlc3QSEwoLdW5yZWFkX29ubHkYASABKAgiaQoZTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZRI2Cg1ub3RpZmljYXRpb25zGAEgAygLMh8udmVydHJhLmNvbnNvbGUudjEuTm90aWZpY2F0aW9uEhQKDHVucmVhZF9jb3VudBgCIAEoBSI4ChxNYXJrTm90aWZpY2F0aW9uc1JlYWRSZXF1ZXN0EgsKA2lkcxgBIAMoCRILCgNhbGwYAiABKAgiHwodTWFya05vdGlmaWNhdGlvbnNSZWFkUmVzcG9uc2UitAEKC1RlYW1XZWJob29rEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEaG9zdBgCIAEoCRINCgVraW5kcxgDIAMoCRIwCgxsYXN0X3NlbnRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmxhc3RfZXJyb3IYBSABKAkSLgoKdXBkYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJQoVR2V0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkidwoWR2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2sSFQoNYWxsb3dlZF9ob3N0cxgCIAMoCRIVCg1hZG1pbl9jaGFubmVsGAMgASgIIhgKFkdldEFkbWluQ2hhbm5lbFJlcXVlc3QiJwoXR2V0QWRtaW5DaGFubmVsUmVzcG9uc2USDAoEdGVhbRgBIAEoCSImChZTZXRBZG1pbkNoYW5uZWxSZXF1ZXN0EgwKBHRlYW0YASABKAkiJwoXU2V0QWRtaW5DaGFubmVsUmVzcG9uc2USDAoEdGVhbRgBIAEoCSJBChVTZXRUZWFtV2ViaG9va1JlcXVlc3QSDAoEdGVhbRgBIAEoCRILCgN1cmwYAiABKAkSDQoFa2luZHMYAyADKAkiSQoWU2V0VGVhbVdlYmhvb2tSZXNwb25zZRIvCgd3ZWJob29rGAEgASgLMh4udmVydHJhLmNvbnNvbGUudjEuVGVhbVdlYmhvb2siKAoYRGVsZXRlVGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiGwoZRGVsZXRlVGVhbVdlYmhvb2tSZXNwb25zZSImChZUZXN0VGVhbVdlYmhvb2tSZXF1ZXN0EgwKBHRlYW0YASABKAkiNgoXVGVzdFRlYW1XZWJob29rUmVzcG9uc2USDAoEc2VudBgBIAEoCBINCgVlcnJvchgCIAEoCSIcChpHZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdCI/ChtHZXRFbWFpbFByZWZlcmVuY2VzUmVzcG9uc2USEQoJYXZhaWxhYmxlGAEgASgIEg0KBWtpbmRzGAIgAygJIisKGlNldEVtYWlsUHJlZmVyZW5jZXNSZXF1ZXN0Eg0KBWtpbmRzGAEgAygJIiwKG1NldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZRINCgVraW5kcxgBIAMoCSKmAQoMVGVhbUNhbGxiYWNrEhIKCmNvbmZpZ3VyZWQYASABKAgSDAoEaG9zdBgCIAEoCRIwCgxsYXN0X3NlbnRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmxhc3RfZXJyb3IYBCABKAkSLgoKdXBkYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJgoWR2V0VGVhbUNhbGxiYWNrUmVxdWVzdBIMCgR0ZWFtGAEgASgJImMKF0dldFRlYW1DYWxsYmFja1Jlc3BvbnNlEjEKCGNhbGxiYWNrGAEgASgLMh8udmVydHJhLmNvbnNvbGUudjEuVGVhbUNhbGxiYWNrEhUKDWFsbG93ZWRfaG9zdHMYAiADKAkiSgoWU2V0VGVhbUNhbGxiYWNrUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgsKA3VybBgCIAEoCRIVCg1yb3RhdGVfc2VjcmV0GAMgASgIImQKF1NldFRlYW1DYWxsYmFja1Jlc3BvbnNlEjEKCGNhbGxiYWNrGAEgASgLMh8udmVydHJhLmNvbnNvbGUudjEuVGVhbUNhbGxiYWNrEhYKDnNpZ25pbmdfc2VjcmV0GAIgASgJMtYKChNOb3RpZmljYXRpb25TZXJ2aWNlEnMKEUxpc3ROb3RpZmljYXRpb25zEisudmVydHJhLmNvbnNvbGUudjEuTGlzdE5vdGlmaWNhdGlvbnNSZXF1ZXN0GiwudmVydHJhLmNvbnNvbGUudjEuTGlzdE5vdGlmaWNhdGlvbnNSZXNwb25zZSIDkAIBEnoKFU1hcmtOb3RpZmljYXRpb25zUmVhZBIvLnZlcnRyYS5jb25zb2xlLnYxLk1hcmtOb3RpZmljYXRpb25zUmVhZFJlcXVlc3QaMC52ZXJ0cmEuY29uc29sZS52MS5NYXJrTm90aWZpY2F0aW9uc1JlYWRSZXNwb25zZRJqCg5HZXRUZWFtV2ViaG9vaxIoLnZlcnRyYS5jb25zb2xlLnYxLkdldFRlYW1XZWJob29rUmVxdWVzdBopLnZlcnRyYS5jb25zb2xlLnYxLkdldFRlYW1XZWJob29rUmVzcG9uc2UiA5ACARJlCg5TZXRUZWFtV2ViaG9vaxIoLnZlcnRyYS5jb25zb2xlLnYxLlNldFRlYW1XZWJob29rUmVxdWVzdBopLnZlcnRyYS5jb25zb2xlLnYxLlNldFRlYW1XZWJob29rUmVzcG9uc2USbgoRRGVsZXRlVGVhbVdlYmhvb2sSKy52ZXJ0cmEuY29uc29sZS52MS5EZWxldGVUZWFtV2ViaG9va1JlcXVlc3QaLC52ZXJ0cmEuY29uc29sZS52MS5EZWxldGVUZWFtV2ViaG9va1Jlc3BvbnNlEmgKD1Rlc3RUZWFtV2ViaG9vaxIpLnZlcnRyYS5jb25zb2xlLnYxLlRlc3RUZWFtV2ViaG9va1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5UZXN0VGVhbVdlYmhvb2tSZXNwb25zZRJtCg9HZXRUZWFtQ2FsbGJhY2sSKS52ZXJ0cmEuY29uc29sZS52MS5HZXRUZWFtQ2FsbGJhY2tSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuR2V0VGVhbUNhbGxiYWNrUmVzcG9uc2UiA5ACARJoCg9TZXRUZWFtQ2FsbGJhY2sSKS52ZXJ0cmEuY29uc29sZS52MS5TZXRUZWFtQ2FsbGJhY2tSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuU2V0VGVhbUNhbGxiYWNrUmVzcG9uc2USbQoPR2V0QWRtaW5DaGFubmVsEikudmVydHJhLmNvbnNvbGUudjEuR2V0QWRtaW5DaGFubmVsUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLkdldEFkbWluQ2hhbm5lbFJlc3BvbnNlIgOQAgESaAoPU2V0QWRtaW5DaGFubmVsEikudmVydHJhLmNvbnNvbGUudjEuU2V0QWRtaW5DaGFubmVsUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLlNldEFkbWluQ2hhbm5lbFJlc3BvbnNlEnkKE0dldEVtYWlsUHJlZmVyZW5jZXMSLS52ZXJ0cmEuY29uc29sZS52MS5HZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdBouLnZlcnRyYS5jb25zb2xlLnYxLkdldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZSIDkAIBEnQKE1NldEVtYWlsUHJlZmVyZW5jZXMSLS52ZXJ0cmEuY29uc29sZS52MS5TZXRFbWFpbFByZWZlcmVuY2VzUmVxdWVzdBouLnZlcnRyYS5jb25zb2xlLnYxLlNldEVtYWlsUHJlZmVyZW5jZXNSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.Notification
@@ -500,6 +500,143 @@ export const SetEmailPreferencesResponseSchema: GenMessage<SetEmailPreferencesRe
   messageDesc(file_vertra_console_v1_notification, 21);
 
 /**
+ * @generated from message vertra.console.v1.TeamCallback
+ */
+export type TeamCallback = Message<"vertra.console.v1.TeamCallback"> & {
+  /**
+   * Whether the team has one.
+   *
+   * @generated from field: bool configured = 1;
+   */
+  configured: boolean;
+
+  /**
+   * @generated from field: string host = 2;
+   */
+  host: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_sent_at = 3;
+   */
+  lastSentAt?: Timestamp | undefined;
+
+  /**
+   * Why the last post failed, if it did.
+   *
+   * @generated from field: string last_error = 4;
+   */
+  lastError: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 5;
+   */
+  updatedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamCallback.
+ * Use `create(TeamCallbackSchema)` to create a new message.
+ */
+export const TeamCallbackSchema: GenMessage<TeamCallback> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 22);
+
+/**
+ * @generated from message vertra.console.v1.GetTeamCallbackRequest
+ */
+export type GetTeamCallbackRequest = Message<"vertra.console.v1.GetTeamCallbackRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetTeamCallbackRequest.
+ * Use `create(GetTeamCallbackRequestSchema)` to create a new message.
+ */
+export const GetTeamCallbackRequestSchema: GenMessage<GetTeamCallbackRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 23);
+
+/**
+ * @generated from message vertra.console.v1.GetTeamCallbackResponse
+ */
+export type GetTeamCallbackResponse = Message<"vertra.console.v1.GetTeamCallbackResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.TeamCallback callback = 1;
+   */
+  callback?: TeamCallback | undefined;
+
+  /**
+   * The hosts this install allows; empty: none, so it can't have one.
+   *
+   * @generated from field: repeated string allowed_hosts = 2;
+   */
+  allowedHosts: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.GetTeamCallbackResponse.
+ * Use `create(GetTeamCallbackResponseSchema)` to create a new message.
+ */
+export const GetTeamCallbackResponseSchema: GenMessage<GetTeamCallbackResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 24);
+
+/**
+ * @generated from message vertra.console.v1.SetTeamCallbackRequest
+ */
+export type SetTeamCallbackRequest = Message<"vertra.console.v1.SetTeamCallbackRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * https://, under the install's allowed hosts; empty: remove it.
+   *
+   * @generated from field: string url = 2;
+   */
+  url: string;
+
+  /**
+   * A new signing secret, the old one no longer valid.
+   *
+   * @generated from field: bool rotate_secret = 3;
+   */
+  rotateSecret: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamCallbackRequest.
+ * Use `create(SetTeamCallbackRequestSchema)` to create a new message.
+ */
+export const SetTeamCallbackRequestSchema: GenMessage<SetTeamCallbackRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 25);
+
+/**
+ * @generated from message vertra.console.v1.SetTeamCallbackResponse
+ */
+export type SetTeamCallbackResponse = Message<"vertra.console.v1.SetTeamCallbackResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.TeamCallback callback = 1;
+   */
+  callback?: TeamCallback | undefined;
+
+  /**
+   * Set only when it's new (first set, or rotated): shown once.
+   *
+   * @generated from field: string signing_secret = 2;
+   */
+  signingSecret: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetTeamCallbackResponse.
+ * Use `create(SetTeamCallbackResponseSchema)` to create a new message.
+ */
+export const SetTeamCallbackResponseSchema: GenMessage<SetTeamCallbackResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_notification, 26);
+
+/**
  * What happened that you'd want to know (the console's notifier.ts): a run
  * of yours failed or finished, a step waits for your team's approval, the
  * catalog isn't being pulled (admins). Each is in your inbox, and a team's
@@ -571,6 +708,30 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof TestTeamWebhookRequestSchema;
     output: typeof TestTeamWebhookResponseSchema;
+  },
+  /**
+   * A team's outcome webhook (its members): where each of its runs'
+   * outcomes is posted as signed JSON, for its own systems; its host and
+   * last post, never the URL.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.GetTeamCallback
+   */
+  getTeamCallback: {
+    methodKind: "unary";
+    input: typeof GetTeamCallbackRequestSchema;
+    output: typeof GetTeamCallbackResponseSchema;
+  },
+  /**
+   * Sets it (its maintainers), under the install's allowed hosts; an empty
+   * url removes it. Its signing secret is returned when it's first set or
+   * rotated, and never again.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.SetTeamCallback
+   */
+  setTeamCallback: {
+    methodKind: "unary";
+    input: typeof SetTeamCallbackRequestSchema;
+    output: typeof SetTeamCallbackResponseSchema;
   },
   /**
    * The admins' chat channel: the team whose webhook may also get admins'

@@ -662,7 +662,7 @@ export const webhookDeliveries = pgTable(
 );
 
 /**
- * An ordering bot's callback (decision 23, orderCallbacks.ts): where its
+ * An ordering bot's callback (decision 23, callbacks.ts): where its
  * orders' outcomes are posted, signed with its secret, set by its team's
  * maintainers. Only to the hosts the install allows (orders.callbackHosts).
  */
@@ -680,19 +680,38 @@ export const botCallbacks = pgTable("bot_callbacks", {
   lastError: text("last_error"),
 });
 
-/** An order's outcome to post to its bot's callback, until it's sent or given up on. */
+/**
+ * A team's outcome webhook (decision 23, callbacks.ts): where each of its
+ * runs' outcomes is posted, as JSON for systems (beside its chat webhook),
+ * signed with its secret, set by its maintainers, under the same hosts.
+ */
+export const teamCallbacks = pgTable("team_callbacks", {
+  teamId: uuid("team_id")
+    .primaryKey()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  urlEncrypted: text("url_encrypted").notNull(),
+  host: text("host").notNull(),
+  secretEncrypted: text("secret_encrypted").notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  lastError: text("last_error"),
+});
+
+/** An outcome to post to an ordering bot's callback or a team's, until it's sent or given up on. */
 export const callbackDeliveries = pgTable("callback_deliveries", {
-  // <execution id>:<state>:<finished at>: a run retried and finished again is posted again.
+  // <execution id>:<state>:<finished at> for a bot's, with :team:<id> for a
+  // team's: a run retried and finished again is posted again.
   key: text("key").primaryKey(),
-  botId: uuid("bot_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+  // Whose callback: one of these.
+  botId: uuid("bot_id").references(() => users.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").references(() => teams.id, { onDelete: "cascade" }),
   // The JSON posted, made once so every attempt posts (and signs) the same.
   body: text("body").notNull(),
   attempts: integer("attempts").notNull().default(0),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [check("callback_deliveries_one_destination", sql`(${table.botId} is null) <> (${table.teamId} is null)`)]);
 
 /**
  * Whether a product is ready on this install (readiness.ts): its check

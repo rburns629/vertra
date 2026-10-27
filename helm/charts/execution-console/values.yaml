@@ -451,9 +451,9 @@ notifications:
     - "*.webhook.office.com"
     - "*.logic.azure.com"
 
-# -- Orders (decision 23): the hosts an ordering bot's callback may be under
-# ("*." for any name below one), where its orders' outcomes are posted,
-# signed. Empty: no callbacks (an ordering system polls GetExecution).
+# -- Orders (decision 23): the hosts an ordering bot's callback or a team's
+# outcome webhook may be under ("*." for any name below one), where runs'
+# outcomes are posted, signed. Empty: none (systems poll GetExecution).
 orders:
   callbackHosts: []
   # -- How many orders each ordering bot may place in any minute; past it,

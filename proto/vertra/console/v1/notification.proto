@@ -31,6 +31,16 @@ service NotificationService {
   rpc DeleteTeamWebhook(DeleteTeamWebhookRequest) returns (DeleteTeamWebhookResponse);
   // Posts a test message to it (its maintainers), and says whether it went.
   rpc TestTeamWebhook(TestTeamWebhookRequest) returns (TestTeamWebhookResponse);
+  // A team's outcome webhook (its members): where each of its runs'
+  // outcomes is posted as signed JSON, for its own systems; its host and
+  // last post, never the URL.
+  rpc GetTeamCallback(GetTeamCallbackRequest) returns (GetTeamCallbackResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Sets it (its maintainers), under the install's allowed hosts; an empty
+  // url removes it. Its signing secret is returned when it's first set or
+  // rotated, and never again.
+  rpc SetTeamCallback(SetTeamCallbackRequest) returns (SetTeamCallbackResponse);
   // The admins' chat channel: the team whose webhook may also get admins'
   // alerts (platform_alert, catalog_failing, and every team's step_refused).
   // Admins only.
@@ -164,4 +174,38 @@ message SetEmailPreferencesRequest {
 
 message SetEmailPreferencesResponse {
   repeated string kinds = 1;
+}
+
+message TeamCallback {
+  // Whether the team has one.
+  bool configured = 1;
+  string host = 2;
+  google.protobuf.Timestamp last_sent_at = 3;
+  // Why the last post failed, if it did.
+  string last_error = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message GetTeamCallbackRequest {
+  string team = 1;
+}
+
+message GetTeamCallbackResponse {
+  TeamCallback callback = 1;
+  // The hosts this install allows; empty: none, so it can't have one.
+  repeated string allowed_hosts = 2;
+}
+
+message SetTeamCallbackRequest {
+  string team = 1;
+  // https://, under the install's allowed hosts; empty: remove it.
+  string url = 2;
+  // A new signing secret, the old one no longer valid.
+  bool rotate_secret = 3;
+}
+
+message SetTeamCallbackResponse {
+  TeamCallback callback = 1;
+  // Set only when it's new (first set, or rotated): shown once.
+  string signing_secret = 2;
 }

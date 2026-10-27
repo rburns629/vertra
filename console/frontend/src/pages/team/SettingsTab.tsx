@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { useEnvironment } from "../../environment";
 import { QuotaSection } from "./QuotaSection";
+import { OutcomeWebhookSection } from "./OutcomeWebhookSection";
 import { WebhookSection } from "./WebhookSection";
 
 function Section({ title, children, tone }: { title: string; children: ReactNode; tone?: "danger" }) {
@@ -127,6 +128,8 @@ export function SettingsTab({
       <QuotaSection team={team} isAdmin={isAdmin} onChanged={onChanged} />
 
       <WebhookSection team={team.name} canManage={canManage} retired={retired} />
+
+      <OutcomeWebhookSection team={team.name} canManage={canManage} retired={retired} />
 
       <Section title="Where it comes from">
         <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 2, rowGap: 1 }}>

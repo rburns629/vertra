@@ -769,15 +769,31 @@ An ordering bot's callback (decision 23): where its orders' outcomes are posted,
 | `last_sent_at` | timestamptz | yes | The last post that went. |
 | `last_error` | text | yes | Why the last one didn't, if it didn't. |
 
-### callback_deliveries
+### team_callbacks
 
-An order's outcome to post to its bot's callback: tried up to five times, kept 90 days.
+A team's outcome webhook (decision 23): where each of its runs' outcomes is posted as signed JSON, for its own systems, set by its maintainers, only under the install's `orders.callbackHosts`.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
-| `key` | text | no | `<execution id>:<state>:<finished at>`, so each finish is posted once. |
-| `bot_id` | uuid | no | The ordering bot that placed it. |
-| `body` | text | no | The JSON posted (`order.finished`: the run, the order's `requestId`, its template and how it ended), made once so every attempt sends the same. |
+| `team_id` | uuid | no | |
+| `url_encrypted` | text | no | The URL, sealed as `team_webhooks.url_encrypted` is. Never sent back by the API. |
+| `host` | text | no | Its host, which is what people see. |
+| `secret_encrypted` | text | no | The secret each post is signed with (`Vertra-Signature`), sealed the same way. Shown once, when it's made. |
+| `updated_by` | uuid | yes | Who set it last. |
+| `updated_at` | timestamptz | no | |
+| `last_sent_at` | timestamptz | yes | The last post that went. |
+| `last_error` | text | yes | Why the last one didn't, if it didn't. |
+
+### callback_deliveries
+
+An outcome to post to an ordering bot's callback or a team's outcome webhook: tried up to five times, kept 90 days.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `key` | text | no | `<execution id>:<state>:<finished at>`, with `:team:<id>` for a team's, so each finish is posted once to each. |
+| `bot_id` | uuid | yes | The ordering bot that placed it, for its callback. |
+| `team_id` | uuid | yes | The team that owns the run, for its outcome webhook. Exactly one of the two is set. |
+| `body` | text | no | The JSON posted (`order.finished` for a bot's: the run, the order's `requestId`, its template and how it ended; `run.finished` for a team's: the same with each step's state, outputs and failure code), made once so every attempt sends the same. |
 | `attempts` | integer | no | |
 | `sent_at` | timestamptz | yes | When it went. |
 | `created_at` | timestamptz | no | |

@@ -7,6 +7,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CodeBlock } from "../../components/CodeBlock";
 import { TabIntro, errorMessage, relativeTime } from "./shared";
 import { Mono } from "../../components/Mono";
+import { SignedCallback } from "../../components/SignedCallback";
 
 /** Templates as typed: <team>/<name>, one per line or comma-separated. */
 function templateList(text: string): string[] {
@@ -63,78 +64,14 @@ function OrderTemplates({ teamName, bot, readOnly, onSaved }: { teamName: string
 
 /** Where an ordering bot's orders' outcomes are posted, signed. */
 function OrderCallback({ teamName, bot, readOnly, onSaved }: { teamName: string; bot: Bot; readOnly: boolean; onSaved: () => void }) {
-  const [url, setUrl] = useState("");
-  const [secret, setSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  async function save(next: string, rotate = false): Promise<void> {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await setBotCallback(teamName, bot.email, next, rotate);
-      setSecret(result.signingSecret || null);
-      setUrl("");
-      onSaved();
-    } catch (err) {
-      setError(errorMessage(err, "Couldn't save its callback. Try again."));
-    } finally {
-      setBusy(false);
-    }
-  }
-  const status = bot.callback?.lastError
-    ? `last post failed: ${bot.callback.lastError}`
-    : bot.callback?.lastSentAt
-      ? `last posted ${relativeTime(bot.callback.lastSentAt)}`
-      : "nothing posted yet";
   return (
-    <Stack spacing={1}>
-      <Typography variant="body2">
-        {bot.callback ? (
-          <>
-            Posts each order's outcome to <Mono>{bot.callback.host}</Mono>, signed ({status}).
-          </>
-        ) : (
-          "No callback: whatever placed an order asks how it went."
-        )}
-      </Typography>
-      {!readOnly && (
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { sm: "flex-start" } }}>
-          <TextField
-            label={bot.callback ? "New callback URL" : "Callback URL"}
-            size="small"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); }}
-            helperText="https://, under a host this install allows"
-            sx={{ flexGrow: 1 }}
-          />
-          <Button size="small" variant="outlined" disabled={busy || url.trim() === ""} onClick={() => void save(url.trim())}>
-            Save
-          </Button>
-          {bot.callback && (
-            <>
-              <Button size="small" disabled={busy || url.trim() === ""} onClick={() => void save(url.trim(), true)}>
-                Save with a new secret
-              </Button>
-              <Button size="small" color="error" disabled={busy} onClick={() => void save("")}>
-                Remove
-              </Button>
-            </>
-          )}
-        </Stack>
-      )}
-      {secret && (
-        <Alert severity="success" onClose={() => { setSecret(null); }}>
-          <Stack spacing={1}>
-            <Typography variant="body2">
-              Its signing secret, shown only now. Each post carries <Mono>Vertra-Signature: t=…,v1=…</Mono>: the HMAC-SHA256 of{" "}
-              <Mono>{"<t>.<body>"}</Mono> with this secret, in hex.
-            </Typography>
-            <CodeBlock code={secret} />
-          </Stack>
-        </Alert>
-      )}
-      {error && <Alert severity="error">{error}</Alert>}
-    </Stack>
+    <SignedCallback
+      current={bot.callback ? { ...bot.callback, lastError: bot.callback.lastError || null } : null}
+      editable={!readOnly}
+      none="No callback: whatever placed an order asks how it went."
+      save={async (url, rotate) => (await setBotCallback(teamName, bot.email, url, rotate)).signingSecret}
+      onSaved={onSaved}
+    />
   );
 }
 

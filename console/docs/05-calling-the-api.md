@@ -188,6 +188,24 @@ post can come twice, so act on each `executionId` and `state` once. It
 carries no outputs: read them with `GetExecution`, as the bot. **Save with a
 new secret** replaces the secret; **Remove** stops the posts.
 
+### Every run of your team, for your systems
+
+A team can also have an **outcome webhook** (its Settings tab, beside its chat
+notifications, set by its maintainers, under the same allowed hosts): every
+run the team owns posts `run.finished` there when it finishes, signed the
+same way, with each step's state, outputs and failure code:
+
+```json
+{"type": "run.finished", "executionId": "6b7a…", "requestId": "nightly-check-run-4812",
+ "template": null, "name": "nightly-check", "team": "team-a",
+ "state": "SUCCEEDED", "finishedAt": "2026-10-27T15:04:05Z",
+ "steps": [{"taskId": "say-hello", "state": "SUCCEEDED",
+            "outputs": {"message": "Hello, Anna!"}, "failureCode": null}]}
+```
+
+Past 256 KiB the outputs are left out (`"outputsOmitted": true`); read them
+with `GetExecution`.
+
 ## Errors
 
 Every error has the same shape: a code from a short, fixed list, a message for a person, and a `Failure` detail with a stable code a pipeline can branch on (in `debug`, readable with `jq`):

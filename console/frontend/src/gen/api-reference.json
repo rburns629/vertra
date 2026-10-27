@@ -496,6 +496,24 @@
      "public": false
     },
     {
+     "name": "GetTeamCallback",
+     "comment": "A team's outcome webhook (its members): where each of its runs'\noutcomes is posted as signed JSON, for its own systems; its host and\nlast post, never the URL.",
+     "input": "vertra.console.v1.GetTeamCallbackRequest",
+     "output": "vertra.console.v1.GetTeamCallbackResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetTeamCallback",
+     "comment": "Sets it (its maintainers), under the install's allowed hosts; an empty\nurl removes it. Its signing secret is returned when it's first set or\nrotated, and never again.",
+     "input": "vertra.console.v1.SetTeamCallbackRequest",
+     "output": "vertra.console.v1.SetTeamCallbackResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "GetAdminChannel",
      "comment": "The admins' chat channel: the team whose webhook may also get admins'\nalerts (platform_alert, catalog_failing, and every team's step_refused).\nAdmins only.",
      "input": "vertra.console.v1.GetAdminChannelRequest",
@@ -4840,6 +4858,129 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TeamCallback": {
+   "name": "TeamCallback",
+   "comment": "",
+   "fields": [
+    {
+     "name": "configured",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether the team has one."
+    },
+    {
+     "name": "host",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "lastSentAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "lastError",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why the last post failed, if it did."
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetTeamCallbackRequest": {
+   "name": "GetTeamCallbackRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetTeamCallbackResponse": {
+   "name": "GetTeamCallbackResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "callback",
+     "type": "TeamCallback",
+     "ref": "vertra.console.v1.TeamCallback",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "allowedHosts",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The hosts this install allows; empty: none, so it can't have one."
+    }
+   ]
+  },
+  "vertra.console.v1.SetTeamCallbackRequest": {
+   "name": "SetTeamCallbackRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "https://, under the install's allowed hosts; empty: remove it."
+    },
+    {
+     "name": "rotateSecret",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "A new signing secret, the old one no longer valid."
+    }
+   ]
+  },
+  "vertra.console.v1.SetTeamCallbackResponse": {
+   "name": "SetTeamCallbackResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "callback",
+     "type": "TeamCallback",
+     "ref": "vertra.console.v1.TeamCallback",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "signingSecret",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Set only when it's new (first set, or rotated): shown once."
     }
    ]
   },

@@ -237,8 +237,9 @@ export const config = {
     email: loadEmail(),
     webhookHosts: list(process.env["NOTIFY_WEBHOOK_HOSTS"] ?? "hooks.slack.com,chat.googleapis.com,*.webhook.office.com,*.logic.azure.com"),
   },
-  // Orders (decision 23, orderCallbacks.ts): the hosts an ordering bot's
-  // callback may be under, as webhookHosts. Empty: no callbacks.
+  // Callbacks for systems (decision 23, callbacks.ts): the hosts an
+  // ordering bot's callback or a team's outcome webhook may be under, as
+  // webhookHosts. Empty: none.
   orders: {
     callbackHosts: list(process.env["ORDER_CALLBACK_HOSTS"]),
     // How many orders each ordering bot may place a minute (core/orderRate.ts).

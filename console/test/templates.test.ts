@@ -17,7 +17,7 @@ import { addTeamMember, createTeam, recordSecretGrant, upsertProduct, upsertTemp
 import { botCallbacks, callbackDeliveries, products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { config } from "../src/config.js";
-import { deliverCallbacks, orderFinished } from "../src/orderCallbacks.js";
+import { deliverCallbacks, runFinishedCallbacks } from "../src/callbacks.js";
 import { cancelExecution, getExecution, submitExecution } from "../src/kernel/client.js";
 import { caller, problemFields, rpcClient, type RpcError } from "./rpc.js";
 
@@ -518,9 +518,9 @@ describe("an ordering bot (decision 23)", () => {
         posted.push({ url, body: init.body, signature: init.headers["vertra-signature"] ?? "" });
         return Promise.resolve(new Response("ok"));
       }));
-      const finished = { ...run!, state: "SUCCEEDED", finishedAt: new Date().toISOString() };
-      await orderFinished(finished);
-      await orderFinished(finished);
+      const finished = { ...run!, state: "SUCCEEDED", finishedAt: new Date().toISOString(), tasks: [] };
+      await runFinishedCallbacks(finished);
+      await runFinishedCallbacks(finished);
       expect(await db.select().from(callbackDeliveries).where(like(callbackDeliveries.key, `${ordered.body.executionId}:%`))).toHaveLength(1);
       await deliverCallbacks({ warn: vi.fn() } as never);
       const post = posted.find((p) => p.body.includes(ordered.body.executionId));
@@ -536,6 +536,77 @@ describe("an ordering bot (decision 23)", () => {
       expect((await setCallback({ url: "" })).code).toBe("ok");
       const [bot] = await db.select({ id: submittedExecutions.submittedBy }).from(submittedExecutions).where(eq(submittedExecutions.executionId, ordered.body.executionId));
       expect(await db.select().from(botCallbacks).where(eq(botCallbacks.botId, bot!.id!))).toEqual([]);
+    } finally {
+      config.orders.callbackHosts = hosts;
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("a team's outcome webhook (decision 23)", () => {
+  it("posts each of its runs' outcomes, with its steps' outputs, signed; set by its maintainers", async () => {
+    const team = `${prefix}-systems`;
+    const made = await createTeam(team);
+    const maintainer = await users.makeUser();
+    const member = await users.makeUser();
+    await addTeamMember(maintainer.id, made.id, "maintainer");
+    await addTeamMember(member.id, made.id, "member");
+    const [maintainerToken, memberToken] = await Promise.all([maintainer, member].map((u) => users.signIn(u.email)));
+    const set = (token: string, body: Record<string, unknown>) =>
+      call<{ callback: { host: string; configured: boolean }; signingSecret?: string }>(token, "NotificationService/SetTeamCallback", { team, ...body });
+
+    const hosts = config.orders.callbackHosts;
+    config.orders.callbackHosts = ["*.example.com"];
+    try {
+      expect((await set(memberToken, { url: "https://hooks.example.com/runs" })).code).toBe("permission_denied");
+      expect((await set(maintainerToken, { url: "http://hooks.example.com/runs" })).failure).toBe("BAD_CALLBACK");
+      const saved = await set(maintainerToken, { url: "https://hooks.example.com/runs" });
+      expect(saved.body.callback).toMatchObject({ configured: true, host: "hooks.example.com" });
+      const secret = saved.body.signingSecret ?? "";
+      expect(secret).toMatch(/^vcs_/);
+      // Its members see it, never its URL.
+      const seen = await call<{ callback: Record<string, unknown> }>(memberToken, "NotificationService/GetTeamCallback", { team });
+      expect(seen.body.callback).toMatchObject({ configured: true, host: "hooks.example.com" });
+      expect(JSON.stringify(seen.body)).not.toContain("/runs");
+
+      const posted: { url: string; body: string; signature: string }[] = [];
+      vi.stubGlobal("fetch", vi.fn((url: string, init: { body: string; headers: Record<string, string> }) => {
+        posted.push({ url, body: init.body, signature: init.headers["vertra-signature"] ?? "" });
+        return Promise.resolve(new Response("ok"));
+      }));
+      const executionId = randomUUID();
+      const tasks = [
+        { taskId: "make", state: "SUCCEEDED", outputs: { url: "https://app.example.com" }, failure: null },
+        { taskId: "check", state: "FAILED", outputs: null, failure: { code: "CHECK_FAILED", message: "not ready" } },
+      ] as never[];
+      const run = { executionId, name: "deploy", submittedBy: maintainer.id, teams: [team], template: null, onBehalfOf: null, payload: { requestId: "r-1" }, state: "FAILED", finishedAt: new Date().toISOString(), tasks };
+      await runFinishedCallbacks(run);
+      // Another team's run isn't posted to it.
+      await runFinishedCallbacks({ ...run, executionId: randomUUID(), teams: [`${prefix}-elsewhere`] });
+      await deliverCallbacks({ warn: vi.fn() } as never);
+      const mine = posted.filter((p) => p.url === "https://hooks.example.com/runs");
+      expect(mine).toHaveLength(1);
+      expect(JSON.parse(mine[0]!.body)).toEqual({
+        type: "run.finished", executionId, requestId: "r-1", template: null, name: "deploy", team, state: "FAILED", finishedAt: run.finishedAt,
+        steps: [
+          { taskId: "make", state: "SUCCEEDED", outputs: { url: "https://app.example.com" }, failureCode: null },
+          { taskId: "check", state: "FAILED", outputs: null, failureCode: "CHECK_FAILED" },
+        ],
+      });
+      const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(mine[0]!.signature) ?? [];
+      expect(v1).toBe(createHmac("sha256", secret).update(`${t ?? ""}.${mine[0]!.body}`).digest("hex"));
+
+      // Too big with its outputs: posted without them, and says so.
+      const big = randomUUID();
+      await runFinishedCallbacks({ ...run, executionId: big, tasks: [{ taskId: "make", state: "SUCCEEDED", outputs: { blob: "x".repeat(300_000) }, failure: null }] as never[] });
+      const [row] = await db.select().from(callbackDeliveries).where(like(callbackDeliveries.key, `${big}:%`));
+      expect(JSON.parse(row!.body)).toMatchObject({ outputsOmitted: true, steps: [{ taskId: "make", outputs: null }] });
+
+      // Removed: what's still waiting isn't posted.
+      expect((await set(maintainerToken, { url: "" })).body.callback.configured).toBe(false);
+      posted.length = 0;
+      await deliverCallbacks({ warn: vi.fn() } as never);
+      expect(posted.filter((p) => p.body.includes(big))).toEqual([]);
     } finally {
       config.orders.callbackHosts = hosts;
       vi.unstubAllGlobals();

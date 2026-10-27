@@ -436,7 +436,7 @@ export interface BotWithTokens {
   tokens: ApiTokenMeta[];
   /** An ordering bot's templates; null for a pipeline's bot. */
   orderTemplates: string[] | null;
-  /** Its order callback (orderCallbacks.ts), if it has one. */
+  /** Its order callback (callbacks.ts), if it has one. */
   callback: { host: string; lastSentAt: Date | null; lastError: string | null } | null;
 }
 
