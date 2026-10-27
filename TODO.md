@@ -997,7 +997,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   every one parses under 12.2.0, and a frontend test
   (`src/docsDiagrams.test.ts`) keeps it so for the next bump. How they look
   hasn't been checked by eye.
-- [ ] **An end-to-end secret test** with a product registered by catalog CI.
+- [ ] **An end-to-end secret test** with a product registered by catalog CI:
+  proven by hand on EKS (2026-10-27: a catalog-registered product mounting
+  a secret ESO synced); an automated one, on kind, remains.
 - [ ] **Re-pin `rot13`'s distroless base** once Google rebuilds
   `cc-debian12` with Debian's libssl3 fix (CVE-2026-84782), and delete its
   `.trivyignore` line (it expires 2026-11-27 by itself, failing the check
