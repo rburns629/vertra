@@ -613,6 +613,22 @@
    ]
   },
   {
+   "name": "OrderService",
+   "fullName": "vertra.console.v1.OrderService",
+   "comment": "The order builder (decision 23): a cart of actions made into one run's\nsteps, each input wired by its wiring type (an input's x-vertra-needs to\nthe one output in the cart whose x-vertra-provides is the same), for\nCompose to open. It never runs anything: a person reviews the result in\nCompose and runs it, or proposes it as a template.",
+   "methods": [
+    {
+     "name": "PreviewOrder",
+     "comment": "Wires a cart. Each required input whose type no step provides gets the\ntype's default provider added (when the catalog names one), or, for a\nshared type, one parameter asked once. An input two outputs could fill\nis left for the person to choose (AMBIGUOUS, with the options), unless\n`choices` says which; a cycle is reported (CYCLE). Members of `team`\n(and admins); an ordering bot may not (ORDERS_ONLY).",
+     "input": "vertra.console.v1.PreviewOrderRequest",
+     "output": "vertra.console.v1.PreviewOrderResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "ProductService",
    "fullName": "vertra.console.v1.ProductService",
    "comment": "Products: reviewed images and their actions, registered from the catalog.\nA product name and an image repository belong to the first team that\nregisters them, the repository even after its products are deleted.",
@@ -5646,6 +5662,201 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewOrderRequest": {
+   "name": "PreviewOrderRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team it's for: Compose's \"for team\"."
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The cart: registered actions (<team>-<product>-<action>, as the\ncatalog lists them), at most 50. One may be in it twice."
+    },
+    {
+     "name": "choices",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "Which output fills an input two could, from an earlier answer's options."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderChoice": {
+   "name": "OrderChoice",
+   "comment": "",
+   "fields": [
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "fromStep",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "fromOutput",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewOrderResponse": {
+   "name": "PreviewOrderResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "steps",
+     "type": "OrderStep",
+     "ref": "vertra.console.v1.OrderStep",
+     "repeated": true,
+     "optional": false,
+     "comment": "In an order they can run in: each after the steps it takes outputs from."
+    },
+    {
+     "name": "problems",
+     "type": "OrderProblem",
+     "ref": "vertra.console.v1.OrderProblem",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.OrderStep": {
+   "name": "OrderStep",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The registered action."
+    },
+    {
+     "name": "inputs",
+     "type": "map of string to OrderInput",
+     "ref": "vertra.console.v1.OrderInput",
+     "repeated": false,
+     "optional": false,
+     "comment": "Every input of the action, by name."
+    },
+    {
+     "name": "added",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Added as a wiring type's default provider: it wasn't in the cart."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderInput": {
+   "name": "OrderInput",
+   "comment": "",
+   "fields": [
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"step\": another step's output; \"parameter\": asked when it runs (a\nshared type's, once, named for the type); \"unset\": for the person."
+    },
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "output",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameter",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.OrderProblem": {
+   "name": "OrderProblem",
+   "comment": "",
+   "fields": [
+    {
+     "name": "code",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "AMBIGUOUS, NO_PROVIDER or CYCLE."
+    },
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "options",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "AMBIGUOUS: the outputs that could fill it."
     }
    ]
   },

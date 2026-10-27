@@ -12,11 +12,11 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import DeleteIcon from "@mui/icons-material/DeleteOutlined";
-import { ApiError, listAllTeams, listProducts, listRunnables, submitExecution, type Product } from "../api";
+import { ApiError, listAllTeams, listProducts, listRunnables, previewOrder, submitExecution, type OrderProblem, type Product } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { CodeBlock } from "../components/CodeBlock";
 import { Pill } from "../components/Pill";
-import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, templateYaml, type ComposeStep, type Draft, type InputSource } from "../compose";
+import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, stepsFromOrder, templateYaml, type ComposeStep, type Draft, type InputSource } from "../compose";
 import { draftOf, useComposeDrafts } from "./useComposeDrafts";
 
 /** "value", "parameter", "unset", or "<step>/<output>", for the source select. */
@@ -99,6 +99,7 @@ function StepCard({
                 <TextField size="small" label="Value" value={source.value} onChange={(e) => { set(input.name, { kind: "value", value: e.target.value }); }} helperText={input.description || undefined} />
               ) : (
                 <Typography variant="caption" color="text.secondary">
+                  {source.kind === "parameter" && source.name ? `Asked once, as ${source.name}, for every input of that type. ` : ""}
                   {input.description}
                 </Typography>
               )}
@@ -117,6 +118,57 @@ function StepCard({
  * or run now when every step is your team's and nothing's asked. Drafts
  * are kept by the console for their team (useComposeDrafts).
  */
+/**
+ * The order builder (decision 23): several actions at once, made into steps
+ * by OrderService/PreviewOrder, each input wired to the one output of its
+ * wiring type, a type's default provider added when nothing provides it,
+ * and what it couldn't settle said, to fix in the steps.
+ */
+function BuildFromCart({ team, choices, onBuilt }: { team: string; choices: Product[]; onBuilt: (steps: ComposeStep[], problems: OrderProblem[]) => void }) {
+  const [cart, setCart] = useState<Product[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function build(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      const built = await previewOrder(team, cart.map((p) => p.name));
+      onBuilt(stepsFromOrder(built.steps), built.problems);
+      setCart([]);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't wire them.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Typography variant="h6" component="h2">
+        Build from a cart
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Choose the actions you want; they&apos;re put in the order they can run, each input wired to what provides its type, and
+        anything else they need added. This replaces the steps above.
+      </Typography>
+      <Autocomplete
+        multiple
+        options={choices}
+        value={cart}
+        groupBy={(p) => p.teamName ?? ""}
+        getOptionLabel={(p) => `${p.displayName ?? p.name} · ${p.action}`}
+        isOptionEqualToValue={(a, b) => a.name === b.name}
+        onChange={(_e, next) => { setCart(next); }}
+        renderInput={(params) => <TextField {...params} label="Actions" />}
+        sx={{ bgcolor: "background.paper" }}
+      />
+      {error && <Alert severity="error">{error}</Alert>}
+      <Button variant="outlined" disabled={busy || cart.length === 0 || !team} onClick={() => void build()} sx={{ alignSelf: "flex-start" }}>
+        {busy ? "Wiring…" : "Wire them"}
+      </Button>
+    </Card>
+  );
+}
+
 export function ComposePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -129,6 +181,7 @@ export function ComposePage() {
   const stored = useComposeDrafts(draft);
   const [moved, setMoved] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [built, setBuilt] = useState<OrderProblem[] | null>(null);
   // The teams it can be for: yours, or any for an admin.
   const [teams, setTeams] = useState<string[]>(user?.teamNames ?? []);
 
@@ -236,6 +289,30 @@ export function ComposePage() {
             onChange={(_e, product) => { if (product) update({ ...draft, steps: [...draft.steps, newStep(draft, byName, product)] }); }}
             renderInput={(params) => <TextField {...params} label="Add a step" helperText="Actions shared with you. Inputs that need what an earlier step makes are wired to it." />}
             sx={{ bgcolor: "background.paper" }}
+          />
+          {built && (
+            <Alert severity={built.length > 0 ? "info" : "success"} onClose={() => { setBuilt(null); }}>
+              {built.length > 0 ? (
+                <>
+                  Wired, but these need you:
+                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                    {built.map((p) => (
+                      <li key={`${p.code}:${p.step}:${p.input}`}>{p.message}</li>
+                    ))}
+                  </Box>
+                </>
+              ) : (
+                "Wired. Fill in what's left and review it."
+              )}
+            </Alert>
+          )}
+          <BuildFromCart
+            team={draft.team}
+            choices={choices}
+            onBuilt={(steps, found) => {
+              update({ ...draft, steps });
+              setBuilt(found);
+            }}
           />
         </Box>
 

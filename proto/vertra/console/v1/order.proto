@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.console.v1;
+
+// The order builder (decision 23): a cart of actions made into one run's
+// steps, each input wired by its wiring type (an input's x-vertra-needs to
+// the one output in the cart whose x-vertra-provides is the same), for
+// Compose to open. It never runs anything: a person reviews the result in
+// Compose and runs it, or proposes it as a template.
+service OrderService {
+  // Wires a cart. Each required input whose type no step provides gets the
+  // type's default provider added (when the catalog names one), or, for a
+  // shared type, one parameter asked once. An input two outputs could fill
+  // is left for the person to choose (AMBIGUOUS, with the options), unless
+  // `choices` says which; a cycle is reported (CYCLE). Members of `team`
+  // (and admins); an ordering bot may not (ORDERS_ONLY).
+  rpc PreviewOrder(PreviewOrderRequest) returns (PreviewOrderResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message PreviewOrderRequest {
+  // The team it's for: Compose's "for team".
+  string team = 1;
+  // The cart: registered actions (<team>-<product>-<action>, as the
+  // catalog lists them), at most 50. One may be in it twice.
+  repeated string actions = 2;
+  // Which output fills an input two could, from an earlier answer's options.
+  repeated OrderChoice choices = 3;
+}
+
+message OrderChoice {
+  string step = 1;
+  string input = 2;
+  string from_step = 3;
+  string from_output = 4;
+}
+
+message PreviewOrderResponse {
+  // In an order they can run in: each after the steps it takes outputs from.
+  repeated OrderStep steps = 1;
+  repeated OrderProblem problems = 2;
+}
+
+message OrderStep {
+  string id = 1;
+  // The registered action.
+  string product = 2;
+  // Every input of the action, by name.
+  map<string, OrderInput> inputs = 3;
+  // Added as a wiring type's default provider: it wasn't in the cart.
+  bool added = 4;
+}
+
+message OrderInput {
+  // "step": another step's output; "parameter": asked when it runs (a
+  // shared type's, once, named for the type); "unset": for the person.
+  string kind = 1;
+  string step = 2;
+  string output = 3;
+  string parameter = 4;
+}
+
+message OrderProblem {
+  // AMBIGUOUS, NO_PROVIDER or CYCLE.
+  string code = 1;
+  string step = 2;
+  string input = 3;
+  string message = 4;
+  // AMBIGUOUS: the outputs that could fill it.
+  repeated OrderChoice options = 5;
+}

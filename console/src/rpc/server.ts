@@ -31,6 +31,7 @@ import { ResourceService } from "../gen/vertra/console/v1/resource_pb.js";
 import { NotificationService } from "../gen/vertra/console/v1/notification_pb.js";
 import { ScheduleService } from "../gen/vertra/console/v1/schedule_pb.js";
 import { DraftService } from "../gen/vertra/console/v1/draft_pb.js";
+import { OrderService } from "../gen/vertra/console/v1/order_pb.js";
 import { SsoService } from "../gen/vertra/console/v1/sso_pb.js";
 import { kAuthError, kAuthProblem, kCaller, kClientIp, kLog, kRequestId } from "./context.js";
 import { audit, maskErrors, requireCaller } from "./interceptors.js";
@@ -52,6 +53,7 @@ import { resourceService } from "./services/resource.js";
 import { notificationService } from "./services/notification.js";
 import { scheduleService } from "./services/schedule.js";
 import { draftService } from "./services/draft.js";
+import { orderService } from "./services/order.js";
 import { ssoService } from "./services/sso.js";
 
 declare module "fastify" {
@@ -99,6 +101,7 @@ export async function registerRpc(app: FastifyInstance, api: FastifyInstance): P
         router.service(NotificationService, notificationService());
         router.service(ScheduleService, scheduleService());
         router.service(DraftService, draftService());
+        router.service(OrderService, orderService());
         router.service(SsoService, ssoService());
       },
       // Outermost first.

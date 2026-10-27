@@ -181,6 +181,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/schedules.ts` | `ScheduleService`: a team's schedules (members see, maintainers make, pause and delete), checked as their bot. |
 | `core/sso.ts` | `SsoService`: single sign-on as admins set it (the provider unless the install set it, its discovery checked, its secret write-only), where groups come from, and groups mapped to teams. |
 | `core/drafts.ts` | `DraftService`: Compose's drafts, kept for their team (its members and admins), bounded, each save conditional on the version it changed. |
+| `core/orders.ts` | `OrderService` (decision 23): the order builder; a cart of actions wired by wiring type, default providers added, shared types asked once, ambiguities and cycles reported (`planOrder`, no I/O). Runs nothing: Compose opens it. |
 | `core/notifications.ts` | `NotificationService`: your inbox, and your teams' chat webhooks (members see, maintainers set, test and remove). |
 | `core/resources.ts` | What runs made (`ResourceService`): who sees and deletes each resource, and deleting them by running their products' cleanup actions, newest first. |
 | `core/runView.ts` | How much of a run a caller sees: its owners every step; a provider team's member only its own steps in full (the rest: state and failure codes). |
@@ -294,6 +295,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `product-policy.test.ts` | The identity policy's products and team secrets: their entries, and that every change rewrites them. |
 | `product-ownership.test.ts` | One team per product name and image repository, kept after deletion until an admin releases it. |
 | `templates.test.ts` | Templates: what a consumer may run, the DAG built from products, parameters against the schema, sharing and on whose behalf, unshared steps, actions alone, a consumer's rights over their run, reruns. |
+| `orders.test.ts` | The order builder: a cart wired by type, a default provider added, a shared type asked once, a choice left to the person, a cycle; and `PreviewOrder`'s checks (its team's members, no ordering bot, only shared actions). |
 | `token-audiences.test.ts` | A product's token audiences: the cluster's own refused at registration, file names, what's stored. |
 | `catalog-sync.test.ts` | Applying a catalog release: what it makes, what it drops, a failed item, a bad signature, teams it didn't make, the API; the stored credential. |
 | `team-members.test.ts`, `team-lifecycle.test.ts` | Membership, retiring and purging teams. |

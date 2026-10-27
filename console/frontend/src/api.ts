@@ -40,6 +40,8 @@ import { ResourceService } from "./gen/vertra/console/v1/resource_pb.js";
 import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js";
 import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
 import { DraftService, type Draft as DraftMessage } from "./gen/vertra/console/v1/draft_pb.js";
+import { OrderService } from "./gen/vertra/console/v1/order_pb.js";
+import type { BuiltStep } from "./compose";
 import { SsoService, type SsoSettings as SsoSettingsMessage } from "./gen/vertra/console/v1/sso_pb.js";
 
 /** A refusal or failure, with the HTTP status REST would have used. */
@@ -126,6 +128,7 @@ const resourcesApi = createClient(ResourceService, transport);
 const notificationsApi = createClient(NotificationService, transport);
 const schedulesApi = createClient(ScheduleService, transport);
 const draftsApi = createClient(DraftService, transport);
+const ordersApi = createClient(OrderService, transport);
 const ssoApi = createClient(SsoService, transport);
 
 function apiError(error: unknown): ApiError {
@@ -2312,4 +2315,29 @@ export async function setSsoGroupMapping(group: string, team: string, role: "mai
 
 export async function deleteSsoGroupMapping(id: string): Promise<void> {
   await call(() => ssoApi.deleteSsoGroupMapping({ id }));
+}
+
+/** What the order builder couldn't settle: an input two outputs could fill, nothing providing a type, or a cycle. */
+export interface OrderProblem {
+  code: string;
+  step: string;
+  input: string;
+  message: string;
+}
+
+/**
+ * The order builder (decision 23): a cart of actions for `team`, wired by
+ * wiring type, in the order they can run, with what it couldn't settle.
+ * Runs nothing.
+ */
+export async function previewOrder(team: string, actions: string[]): Promise<{ steps: BuiltStep[]; problems: OrderProblem[] }> {
+  const response = await call(() => ordersApi.previewOrder({ team, actions }));
+  return {
+    steps: response.steps.map((s) => ({
+      id: s.id,
+      product: s.product,
+      inputs: Object.fromEntries(Object.entries(s.inputs).map(([name, i]) => [name, { kind: i.kind, step: i.step, output: i.output, parameter: i.parameter }])),
+    })),
+    problems: response.problems.map((p) => ({ code: p.code, step: p.step, input: p.input, message: p.message })),
+  };
 }

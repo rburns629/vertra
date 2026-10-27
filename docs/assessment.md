@@ -812,6 +812,12 @@ version, polling and the per-bot callback (3); and possibly an outcome
 webhook a team subscribes to (JSON, for systems rather than chat: the run,
 its state, its outputs as its team may see them), beside its chat webhook.
 
+Built 2026-10-27, all of it: ordering bots (`users.order_templates`,
+`ensureMayOrder`), the per-bot callback and the team's outcome webhook (both
+signed, `console/src/callbacks.ts`), a rate per bot (`core/orderRate.ts`,
+429), and the order builder (`core/orders.ts`, Compose's "Build from a
+cart"). As proposed, an order from outside names a template, not a cart.
+
 ## 18. Roadmap
 
 None of these needs a new service. All contract changes are additive.

@@ -206,6 +206,21 @@ same way, with each step's state, outputs and failure code:
 Past 256 KiB the outputs are left out (`"outputsOmitted": true`); read them
 with `GetExecution`.
 
+## Wiring a cart of actions
+
+`OrderService/PreviewOrder` turns several actions into steps for one run,
+without running anything: each input that names a wiring type is wired to the
+one output in the cart that provides it, the steps come back in an order they
+can run, a type nothing provides gets the catalog's default provider added
+(`added: true`), and a shared type is asked once (a parameter named for it).
+What it can't settle comes back in `problems` (`AMBIGUOUS` with its
+`options`, which you send back as `choices`; `NO_PROVIDER`; `CYCLE`).
+Compose's **Build from a cart** is this, opened for you to review:
+
+```console
+$ call OrderService/PreviewOrder '{"team":"team-a","actions":["local-reverse-transform","local-rot13-transform"]}' | jq '[.steps[] | .id]'
+```
+
 ## Errors
 
 Every error has the same shape: a code from a short, fixed list, a message for a person, and a `Failure` detail with a stable code a pipeline can branch on (in `debug`, readable with `jq`):

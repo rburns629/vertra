@@ -13,7 +13,9 @@ import type { Product } from "./api";
 
 export type InputSource =
   | { kind: "value"; value: string }
-  | { kind: "parameter" }
+  // Asked when it runs: a parameter named for the input, or `name` (the order
+  // builder asks a shared wiring type's once, by the type).
+  | { kind: "parameter"; name?: string }
   | { kind: "step"; step: string; output: string }
   | { kind: "unset" };
 
@@ -166,10 +168,11 @@ export function templateOf(draft: Draft, products: Map<string, Product>): Record
         dependsOn.add(source.step);
       }
       if (source.kind === "parameter") {
-        // One parameter per input name; a second step asking for the same name shares it.
-        parameters[name] ??= field?.schema ?? { type: "string" };
-        if (field?.required && !required.includes(name)) required.push(name);
-        inputs[name] = { $param: name };
+        // One parameter per name; a second step asking for the same one shares it.
+        const param = source.name ?? name;
+        parameters[param] ??= field?.schema ?? { type: "string" };
+        if (field?.required && !required.includes(param)) required.push(param);
+        inputs[name] = { $param: param };
       }
     }
     return {
@@ -232,4 +235,29 @@ export function proposeUrl(repository: string | null, draft: Draft, yaml: string
   if (!repository) return null;
   const params = new URLSearchParams({ filename: `teams/${draft.team}/dags/${draft.name}.yaml`, value: yaml });
   return `${repository}/new/main?${params.toString()}`;
+}
+
+/** A step as the order builder (OrderService/PreviewOrder) answers it. */
+export interface BuiltStep {
+  id: string;
+  product: string;
+  inputs: Record<string, { kind: string; step?: string; output?: string; parameter?: string }>;
+}
+
+/** The order builder's steps as Compose's: wired, asked once, or left to fill in. */
+export function stepsFromOrder(steps: BuiltStep[]): ComposeStep[] {
+  return steps.map((s) => ({
+    id: s.id,
+    product: s.product,
+    inputs: Object.fromEntries(
+      Object.entries(s.inputs).map(([name, i]): [string, InputSource] => [
+        name,
+        i.kind === "step" && i.step && i.output
+          ? { kind: "step", step: i.step, output: i.output }
+          : i.kind === "parameter" && i.parameter
+            ? { kind: "parameter", name: i.parameter }
+            : { kind: "unset" },
+      ]),
+    ),
+  }));
 }

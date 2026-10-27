@@ -998,10 +998,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   provider's agent connects to it. Start with a design note in
   docs/assessment.md: what's exposed, sign-in for an agent (a bot, or the
   person through it), and what an agent may do without a person approving.
-- [ ] **Order builder (exploratory):** turn a cart of products into a DAG
-  from their schemas. The console stores products' descriptions and wiring
-  types already; next, the generator (an `OrderService/PreviewOrder`
-  method), then a page, opening the DAG in Compose (decision 23).
+- [x] **Order builder** (done 2026-10-27, decision 23, `console/src/core/
+  orders.ts`): `OrderService/PreviewOrder` wires a cart of actions by wiring
+  type (each input to the one output of its type), puts the steps in an order
+  they can run, adds a type's default provider, asks a shared type once (a
+  parameter named for it), and reports `AMBIGUOUS` (with the options, and
+  `choices` to settle them), `NO_PROVIDER` and `CYCLE`. It runs nothing:
+  Compose's **Build from a cart** opens the result for a person to review,
+  run or propose. Not for ordering bots (carts become templates first). Left:
+  choosing an ambiguous input in the card itself (today: in the step's
+  source list, after wiring).
 - [x] **Base images the platform maintains** (done 2026-10-27, decided:
   mirror and pin, not required): a catalog's `bases.yaml` lists approved
   bases; catalog CI copies each weekly into `<registry>/bases/<name>` (same

@@ -2,7 +2,7 @@
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 import type { Product } from "./api";
-import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, templateOf, templateYaml, type Draft } from "./compose";
+import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, stepsFromOrder, templateOf, templateYaml, type Draft } from "./compose";
 
 const product = (team: string, name: string, action: string, input: object, output: object) =>
   ({ name: `${team}-${name}-${action}`, action, teamName: team, image: `r/${team}/${name}@sha256:aa`, inputSchema: input, outputSchema: output }) as unknown as Product;
@@ -54,5 +54,18 @@ describe("composing", () => {
     const fixed: Draft = { ...draft, steps: [{ ...first, inputs: { projectId: { kind: "value", value: "acme" } } }, second] };
     expect(dagOf(fixed, products)).toMatchObject({ tasks: [{ id: "project", team: "gcp-platform", inputs: { projectId: "acme" } }, { id: "app", dependsOn: ["project"], inputs: { project: { $fromTask: "project", $output: "projectId" } } }] });
     expect(proposeUrl("https://github.com/acme/catalog", draft, "x: 1")).toBe("https://github.com/acme/catalog/new/main?filename=teams%2Fweb%2Fdags%2Fweb-on-gcp.yaml&value=x%3A+1");
+  });
+
+  it("opens the order builder's steps, a shared type asked once by its name", () => {
+    const steps = stepsFromOrder([
+      { id: "project", product: project.name, inputs: { projectId: { kind: "parameter", parameter: "gcp.project" } } },
+      { id: "app", product: app.name, inputs: { project: { kind: "parameter", parameter: "gcp.project" }, replicas: { kind: "unset" }, url: { kind: "step", step: "project", output: "url" } } },
+    ]);
+    expect(steps[1]?.inputs).toEqual({ project: { kind: "parameter", name: "gcp.project" }, replicas: { kind: "unset" }, url: { kind: "step", step: "project", output: "url" } });
+    steps[1]!.inputs["replicas"] = { kind: "value", value: "2" };
+    const template = templateOf({ ...empty, steps }, products) as { parameters: { required: string[]; properties: Record<string, unknown> }; steps: { inputs: Record<string, unknown> }[] };
+    expect(template.parameters.required).toEqual(["gcp.project"]);
+    expect(Object.keys(template.parameters.properties)).toEqual(["gcp.project"]);
+    expect(template.steps[1]?.inputs["project"]).toEqual({ $param: "gcp.project" });
   });
 });
