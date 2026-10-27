@@ -956,16 +956,23 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Cloud Run backend and a Lambda function URL (2026-10-22). Left: a
   read-only database role for the gateway (it only writes api_traffic).
 
-- [ ] **Submit orders from outside the cluster** (a storefront, an event
-  bus): a public HTTPS front door for the console's `/api`, keyless sign-in
-  for services (done for CI, 2026-10-24: OIDC tokens from allowed issuers,
-  mapped to a bot; other issuers are a setting away), orders
-  rather than raw DAGs, and a decision on who an order is for. kernel-api
-  stays private. Proposed in docs/assessment.md (23), awaiting review.
+- [ ] **Orders from outside the cluster** (decision 23, `docs/assessment.md`,
+  decided 2026-10-27). Through the console's public `/api`, as a bot signed
+  in keylessly; kernel-api stays private. To build:
+  1. An order is for the bot's own team (its caps, quota and approvals; its
+     maintainers see and cancel it).
+  2. A per-bot list of templates it may order, set by its team's
+     maintainers; RunTemplate refuses any other for a bot with a list.
+  3. Hearing back: polling (`GetExecution`, there today) and a per-bot
+     callback URL (allowed hosts, HMAC-signed per bot, retried as webhooks
+     are).
+  4. A request rate per bot (429 past it).
+  5. Possibly: an outcome webhook a team subscribes to (JSON for systems,
+     beside its chat webhook).
 - [ ] **Order builder (exploratory):** turn a cart of products into a DAG
   from their schemas. The console stores products' descriptions and wiring
   types already; next, the generator (an `OrderService/PreviewOrder`
-  method), then a page. Proposed in docs/assessment.md (23), awaiting review.
+  method), then a page, opening the DAG in Compose (decision 23).
 - [x] **Base images the platform maintains** (done 2026-10-27, decided:
   mirror and pin, not required): a catalog's `bases.yaml` lists approved
   bases; catalog CI copies each weekly into `<registry>/bases/<name>` (same

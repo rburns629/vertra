@@ -764,8 +764,8 @@ what its steps may deploy to (federation reaches other clouds), so a second
 install is for a real boundary (prod and non-prod, residency, separate
 units), not each engineer's cloud.
 
-**23 (proposed 2026-10-27, for review). Orders from outside, and the
-order builder.** An order is a run of a published template, with its
+**23. Orders from outside, and the order builder** (proposed and decided
+2026-10-27). An order is a run of a published template, with its
 inputs, for one team, asked for by a service outside the cluster (a
 storefront, an event bus's consumer, another platform's pipeline). Most
 of it is here: the console can be public over HTTPS (`console.public`), a
@@ -806,8 +806,11 @@ a template. Open: whether an order from outside should be able to name a
 cart rather than a template (proposed: no; carts become templates first,
 through review).
 
-Questions for review: the per-bot template list (2) or the consumer role
-as the limit; a callback (3) in the first version, or polling only.
+Decided on review: the per-bot template list (2), not the consumer role,
+limits what a bot may order; callers hear back both ways from the first
+version, polling and the per-bot callback (3); and possibly an outcome
+webhook a team subscribes to (JSON, for systems rather than chat: the run,
+its state, its outputs as its team may see them), beside its chat webhook.
 
 ## 18. Roadmap
 
