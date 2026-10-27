@@ -203,7 +203,7 @@ const ALL_PROVIDERS: ProviderGuide[] = [
     title: "AWS Secrets Manager",
     description: "Secrets in an AWS account your team owns.",
     credential: "nothing: AWS trusts this cluster's identity directly.",
-    tested: false,
+    tested: true,
     unavailable: (facts) =>
       facts.clusterIssuer ? null : "Needs a cluster whose identity AWS can trust; this one's isn't published.",
     fields: [
@@ -217,7 +217,7 @@ const ALL_PROVIDERS: ProviderGuide[] = [
       ["Subject", `system:serviceaccount:${team}:${esoAccount("aws")}`],
     ],
     commandsIntro:
-      "Registers Vertra's cluster as an identity provider (once per AWS account), then a role only this team can use, limited to secrets whose names start with the team's name and a slash.",
+      "Registers Vertra's cluster as an identity provider in IAM (once per cluster: an install vertra made on AWS has it already, so skip that step), then a role only this team's ESO ServiceAccount can use (IRSA), limited to secrets whose names start with the team's name and a slash.",
     commands: (team, facts, values) => {
       const account = values["account"] || "<ACCOUNT_ID>";
       const region = values["region"] || "<REGION>";
@@ -249,7 +249,7 @@ const ALL_PROVIDERS: ProviderGuide[] = [
         ],
       };
       return [
-        "# Once per AWS account:",
+        "# Once per cluster (vertra does this for an install it made on AWS):",
         `aws iam create-open-id-connect-provider \\`,
         `  --url ${facts.clusterIssuer} \\`,
         "  --client-id-list sts.amazonaws.com",

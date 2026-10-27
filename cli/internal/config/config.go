@@ -69,6 +69,10 @@ type Config struct {
 	ExternalCatalog ExternalCatalog `yaml:"externalCatalog,omitempty"`
 	// CatalogSignature: who may sign the catalog's releases.
 	CatalogSignature CatalogSignature `yaml:"catalogSignature,omitempty"`
+	// ExternalSecrets: install External Secrets Operator, so teams'
+	// SecretStores can sync their vaults' secrets (on aws, signing in by
+	// IRSA, the cluster's issuer registered in IAM).
+	ExternalSecrets bool `yaml:"externalSecrets,omitempty"`
 	// CatalogVersion: which of the catalog's releases this install applies.
 	// latest (the default): each one main publishes; newest: the newest
 	// version (a vX.Y.Z tag in the catalog repository); or one version,
@@ -801,7 +805,7 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		"kind.registryName": true, "kind.registryPort": true,
 		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
 		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
-		"catalogSignature.publicKeyFile": true, "catalogSignature.repository": true, "catalogVersion": true, "gateway.enabled": true, "signing": true,
+		"catalogSignature.publicKeyFile": true, "catalogSignature.repository": true, "catalogVersion": true, "externalSecrets": true, "gateway.enabled": true, "signing": true,
 		"console.ingressClass": true, "console.tls.issuer": true, "console.tls.letsEncryptEmail": true, "console.tls.installCertManager": true,
 		"logs.enabled": true, "logs.searchDays": true, "logs.keepDays": true,
 		"audit.export": true, "audit.keepDays": true, "audit.lock": true,

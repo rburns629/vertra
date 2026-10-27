@@ -64,7 +64,12 @@ network policy agent or Calico; on AKS a network policy engine).
      (`helm/values/gke/policy-controller.yaml` is an example; it must exclude
      the platform namespace), then the kernel's `imageSignature` values.
    - **Syncing secrets from a vault:** External Secrets Operator
-     (`helm repo add external-secrets https://charts.external-secrets.io`).
+     (`helm repo add external-secrets https://charts.external-secrets.io`;
+     `vertra config set externalSecrets true` has `vertra apply` install it,
+     pinned). On EKS a team's store signs in by IRSA, which needs the
+     cluster's OIDC issuer registered in IAM: `vertra` does that for a
+     cluster it makes; the Team page's guide has the command otherwise.
+     EKS Pod Identity doesn't work for a store.
 4. **Values.** Copy `helm/values/gke/` (or `kind/`) as a starting point;
    each file's comments say what its settings are for, and every setting is
    documented in the charts' `values.yaml`. The files are the whole of an

@@ -184,6 +184,13 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			return fmt.Errorf("signing in with Google: %w", err)
 		}
 	}
+	if c.ExternalSecrets {
+		// Before the console, which writes teams' SecretStores.
+		fmt.Fprintln(out, "Installing External Secrets Operator", install.ExternalSecretsChart, "(teams' SecretStores)...")
+		if err := install.ExternalSecrets(ctx, a.runner, c); err != nil {
+			return err
+		}
+	}
 	fmt.Fprintln(out, "Installing execution-console...")
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.ConsoleRelease, consoleChart, consoleValues); err != nil {
 		return err
@@ -414,6 +421,9 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 
 	if c.ChecksSignatures() {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "policy-controller " + install.PolicyControllerChart + " into cosign-system: in team namespaces, only images catalog CI signed run"})
+	}
+	if c.ExternalSecrets {
+		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "External Secrets Operator " + install.ExternalSecretsChart + " into external-secrets, for teams' SecretStores"})
 	}
 	if c.Target == "kind" && c.Size == "auto" {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "metrics-server " + install.MetricsServerChart + " into kube-system, for the auto size's autoscalers"})

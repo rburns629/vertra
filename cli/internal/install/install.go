@@ -407,6 +407,11 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 			v["trustProxy"] = []string{cloud.VPCCIDR}
 		}
 	}
+	if cloud != nil && cloud.Provider == "aws" {
+		// The issuer IAM trusts (the module registers it): a team's AWS
+		// SecretStore signs in as a role only its eso-aws may assume.
+		v["secretSources"] = map[string]any{"clusterIssuer": cloud.ClusterIssuer, "catalogRepo": c.Catalog.Repo()}
+	}
 	if cloud != nil && cloud.Provider != "aws" {
 		// Reading the task registry (pinning digests, scanning) as the
 		// module's console identity, through GKE's Workload Identity.
@@ -739,6 +744,20 @@ func CertManager(ctx context.Context, r *run.Runner, c *config.Config) error {
 		"--repo", "https://charts.jetstack.io", "--version", CertManagerChart,
 		"--kube-context", cluster.Context(c), "--namespace", "cert-manager", "--create-namespace",
 		"--set", "crds.enabled=true", "--wait", "--timeout", "10m")
+}
+
+// ExternalSecretsChart is External Secrets Operator's chart vertra installs
+// (externalSecrets), the same as `make kind-deploy-eso`: teams' SecretStores
+// sync their vaults' secrets through it.
+const ExternalSecretsChart = "2.10.0"
+
+// ExternalSecrets installs External Secrets Operator, pinned, with its
+// resource definitions, before the console, which writes SecretStores.
+func ExternalSecrets(ctx context.Context, r *run.Runner, c *config.Config) error {
+	return r.Run(ctx, "helm", "upgrade", "--install", "external-secrets", "external-secrets",
+		"--repo", "https://charts.external-secrets.io", "--version", ExternalSecretsChart,
+		"--kube-context", cluster.Context(c), "--namespace", "external-secrets", "--create-namespace",
+		"--wait", "--timeout", "10m")
 }
 
 // ConsoleCertificate is the console's certificate's state on an existing

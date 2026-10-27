@@ -575,6 +575,16 @@ resource "aws_iam_role_policy" "console_audit" {
   policy = data.aws_iam_policy_document.console_audit[0].json
 }
 
+# --- the cluster's own issuer, which IAM trusts for IRSA: a team's SecretStore
+# signs in as a role only its eso-aws ServiceAccount may assume (EKS Pod
+# Identity gives credentials to Pods, not to the tokens ESO asks for) --------
+
+resource "aws_iam_openid_connect_provider" "cluster" {
+  url            = aws_eks_cluster.this.identity[0].oidc[0].issuer
+  client_id_list = ["sts.amazonaws.com"]
+  tags           = { "vertra-environment" = var.name }
+}
+
 # --- the catalog's CI: pushes images from main, by GitHub's OIDC token -------
 
 resource "aws_iam_openid_connect_provider" "github" {

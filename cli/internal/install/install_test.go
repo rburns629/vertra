@@ -134,6 +134,18 @@ func TestValues(t *testing.T) {
 	}
 }
 
+// On aws the console gets the cluster's issuer, which IAM trusts (the
+// module registers it), for its teams' AWS SecretStores.
+func TestAnAWSConsoleKnowsTheIssuerStoresSignInWith(t *testing.T) {
+	c := kindConfig()
+	c.Catalog.Owner, c.Catalog.Repository = "octocat", "vertra-catalog"
+	cloud := &Cloud{Provider: "aws", ClusterIssuer: "https://oidc.eks.us-east-2.amazonaws.com/id/ABC"}
+	got := fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["secretSources"])
+	if got != "map[catalogRepo:octocat/vertra-catalog clusterIssuer:https://oidc.eks.us-east-2.amazonaws.com/id/ABC]" {
+		t.Errorf("secretSources: %s", got)
+	}
+}
+
 func TestConsoleReadsTheCatalogsRelease(t *testing.T) {
 	c := kindConfig()
 	cloud := &Cloud{Provider: "gcp", TaskRegistry: "us-central1-docker.pkg.dev/p/vertra-products"}

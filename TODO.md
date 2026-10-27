@@ -193,10 +193,11 @@ design.
   mounted it. Pod Identity doesn't work for a store (it isn't the Pod's
   identity ESO uses); the sample said it did. The Azure samples are after
   the MVP (decided 2026-10-25).
-- [ ] **`vertra` sets up SecretStores on aws**: register the cluster's OIDC
-  issuer in IAM (IRSA, which stores need), and offer to install External
-  Secrets Operator (pinned, as `make kind-deploy-eso` does); both were done by
-  hand for the proof.
+- [ ] **`vertra` sets up SecretStores on aws** (done 2026-10-27, not yet
+  proven on a cloud): the aws module registers the cluster's OIDC issuer
+  in IAM, the console gets it (the Team page's AWS guide, now marked
+  tested), and `externalSecrets: true` has `vertra apply` install External
+  Secrets Operator 2.10.0, pinned. Prove with the next EKS run.
 - [ ] **A first step on a new GKE Autopilot install can time out**: seen on
   both GKE proofs (2026-10-26, 2026-10-27). Fixed (2026-10-27): a step's
   timeout counts from its container's start, and waiting to start has its
