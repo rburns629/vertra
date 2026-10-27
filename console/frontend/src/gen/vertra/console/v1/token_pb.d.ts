@@ -75,6 +75,24 @@ export declare type Bot = Message<"vertra.console.v1.Bot"> & {
    * @generated from field: repeated string order_templates = 5;
    */
   orderTemplates: string[];
+
+  /**
+   * An ordering bot's callback: its host (the URL isn't sent back), the last
+   * post that went, and why the last one didn't, if it didn't. Empty: none.
+   *
+   * @generated from field: string callback_host = 6;
+   */
+  callbackHost: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp callback_last_sent_at = 7;
+   */
+  callbackLastSentAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string callback_last_error = 8;
+   */
+  callbackLastError: string;
 };
 
 /**
@@ -243,6 +261,64 @@ export declare type SetBotOrdersResponse = Message<"vertra.console.v1.SetBotOrde
  * Use `create(SetBotOrdersResponseSchema)` to create a new message.
  */
 export declare const SetBotOrdersResponseSchema: GenMessage<SetBotOrdersResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetBotCallbackRequest
+ */
+export declare type SetBotCallbackRequest = Message<"vertra.console.v1.SetBotCallbackRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * https://, under the install's orders.callbackHosts; empty: remove it.
+   *
+   * @generated from field: string url = 3;
+   */
+  url: string;
+
+  /**
+   * A new signing secret, the old one no longer valid.
+   *
+   * @generated from field: bool rotate_secret = 4;
+   */
+  rotateSecret: boolean;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetBotCallbackRequest.
+ * Use `create(SetBotCallbackRequestSchema)` to create a new message.
+ */
+export declare const SetBotCallbackRequestSchema: GenMessage<SetBotCallbackRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetBotCallbackResponse
+ */
+export declare type SetBotCallbackResponse = Message<"vertra.console.v1.SetBotCallbackResponse"> & {
+  /**
+   * @generated from field: string host = 1;
+   */
+  host: string;
+
+  /**
+   * Set only when it's new (first set, or rotated): shown once.
+   *
+   * @generated from field: string signing_secret = 2;
+   */
+  signingSecret: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetBotCallbackResponse.
+ * Use `create(SetBotCallbackResponseSchema)` to create a new message.
+ */
+export declare const SetBotCallbackResponseSchema: GenMessage<SetBotCallbackResponse>;
 
 /**
  * @generated from message vertra.console.v1.CreateBotTokenResponse
@@ -587,6 +663,19 @@ export declare const TokenService: GenService<{
     methodKind: "unary";
     input: typeof SetBotOrdersRequestSchema;
     output: typeof SetBotOrdersResponseSchema;
+  },
+  /**
+   * Sets where an ordering bot's orders' outcomes are posted, signed (its
+   * team's maintainers), under the install's allowed hosts; an empty url
+   * removes it. Its signing secret is returned when it's first set or
+   * rotated, and never again.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.SetBotCallback
+   */
+  setBotCallback: {
+    methodKind: "unary";
+    input: typeof SetBotCallbackRequestSchema;
+    output: typeof SetBotCallbackResponseSchema;
   },
   /**
    * A team's bots' keyless identities (its members), and what this install

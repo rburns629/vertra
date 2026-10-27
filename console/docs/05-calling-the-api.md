@@ -152,6 +152,39 @@ a timeout) returns the same run instead of starting a second. Follow it as in
 allowed answers `permission_denied` with `TEMPLATE_NOT_ORDERABLE`; anything
 else it tries, `ORDERS_ONLY`.
 
+### Hearing back without polling
+
+Give the ordering bot a callback: on its card, a URL under a host this
+install allows (an admin lists them: the console chart's
+`orders.callbackHosts`). Saving it shows its signing secret, once; store it
+with your receiver. When an order finishes (succeeded, failed or cancelled),
+the console posts:
+
+```json
+{"type": "order.finished", "executionId": "0c1f…", "requestId": "order-1042",
+ "template": "platform/app-on-cloud-run", "onBehalfOf": "my-team",
+ "state": "SUCCEEDED", "finishedAt": "2026-10-27T15:04:05Z"}
+```
+
+with a `Vertra-Signature: t=<unix seconds>,v1=<hex>` header, where `v1` is the
+HMAC-SHA256 of `<t>.<body>` with the secret. Check it, and that `t` is recent
+(say within five minutes), before trusting the post:
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+function verified(secret, header, body) {
+  const { t, v1 } = Object.fromEntries(header.split(",").map((p) => p.split("=")));
+  const expected = createHmac("sha256", secret).update(`${t}.${body}`).digest("hex");
+  return Math.abs(Date.now() / 1000 - Number(t)) < 300 && v1?.length === expected.length && timingSafeEqual(Buffer.from(v1), Buffer.from(expected));
+}
+```
+
+Answer with any 2xx. Anything else, or no answer in 10 seconds, is tried
+again every 30 seconds, five times in all; the card shows the last error. A
+post can come twice, so act on each `executionId` and `state` once. It
+carries no outputs: read them with `GetExecution`, as the bot. **Save with a
+new secret** replaces the secret; **Remove** stops the posts.
+
 ## Errors
 
 Every error has the same shape: a code from a short, fixed list, a message for a person, and a `Failure` detail with a stable code a pipeline can branch on (in `debug`, readable with `jq`):

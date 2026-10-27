@@ -228,6 +228,11 @@ export const config = {
     email: loadEmail(),
     webhookHosts: list(process.env["NOTIFY_WEBHOOK_HOSTS"] ?? "hooks.slack.com,chat.googleapis.com,*.webhook.office.com,*.logic.azure.com"),
   },
+  // Orders (decision 23, orderCallbacks.ts): the hosts an ordering bot's
+  // callback may be under, as webhookHosts. Empty: no callbacks.
+  orders: {
+    callbackHosts: list(process.env["ORDER_CALLBACK_HOSTS"]),
+  },
   // Off unless set: accounts are created by an admin (Admin page ->
   // Accounts, POST /api/users), with their teams attached. Open
   // registration has no email verification, so anyone who can reach the

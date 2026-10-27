@@ -451,6 +451,12 @@ notifications:
     - "*.webhook.office.com"
     - "*.logic.azure.com"
 
+# -- Orders (decision 23): the hosts an ordering bot's callback may be under
+# ("*." for any name below one), where its orders' outcomes are posted,
+# signed. Empty: no callbacks (an ordering system polls GetExecution).
+orders:
+  callbackHosts: []
+
 # -- Facts the Team page's "Connect a source" wizard shows a platform owner
 # setting up secret syncing (External Secrets Operator). Display only; an
 # empty value makes the wizard say that option isn't available here.

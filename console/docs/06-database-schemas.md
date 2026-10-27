@@ -304,6 +304,7 @@ People and bots alike.
 | `password_hash` | text | yes | An argon2 hash. Empty for bots, which use tokens, and for people who sign in only through single sign-on. |
 | `is_admin` | boolean | no | A platform admin: may act on every team and use the Admin page. |
 | `is_bot` | boolean | no | A machine identity, which signs in only with an API token. |
+| `order_templates` | text[] | yes | An ordering bot's templates (decision 23, `<team>/<name>`): the only ones it may run, and nothing else. Empty: not an ordering bot. |
 | `password_changed_at` | timestamptz | yes | Sessions issued before this are rejected, so changing a password signs out every other session. |
 | `must_change_password` | boolean | no | Its password was set by someone else (an admin's new account or reset, `vertra admin reset-password`): a session it signs in may only change it. |
 | `oidc_subject` | text, unique | yes | The single sign-on account bound at the first sign-in through it (`<issuer> <sub>`): from then on only that account signs in as this person. |
@@ -752,6 +753,34 @@ An event to post to a team's webhook: tried up to five times.
 | `team_id` | uuid | no | |
 | `attempts` | integer | no | |
 | `sent_at` | timestamptz | yes | When it went. |
+
+### bot_callbacks
+
+An ordering bot's callback (decision 23): where its orders' outcomes are posted, signed, set by its team's maintainers, only under the install's `orders.callbackHosts`.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `bot_id` | uuid | no | The ordering bot. |
+| `url_encrypted` | text | no | The callback URL, sealed as `team_webhooks.url_encrypted` is. Never sent back by the API. |
+| `host` | text | no | Its host, which is what people see. |
+| `secret_encrypted` | text | no | The secret each post is signed with (HMAC-SHA256, the `Vertra-Signature` header), sealed the same way. Shown once, when it's made. |
+| `updated_by` | uuid | yes | Who set it last. |
+| `updated_at` | timestamptz | no | |
+| `last_sent_at` | timestamptz | yes | The last post that went. |
+| `last_error` | text | yes | Why the last one didn't, if it didn't. |
+
+### callback_deliveries
+
+An order's outcome to post to its bot's callback: tried up to five times, kept 90 days.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `key` | text | no | `<execution id>:<state>:<finished at>`, so each finish is posted once. |
+| `bot_id` | uuid | no | The ordering bot that placed it. |
+| `body` | text | no | The JSON posted (`order.finished`: the run, the order's `requestId`, its template and how it ended), made once so every attempt sends the same. |
+| `attempts` | integer | no | |
+| `sent_at` | timestamptz | yes | When it went. |
+| `created_at` | timestamptz | no | |
 
 ### sso_settings
 

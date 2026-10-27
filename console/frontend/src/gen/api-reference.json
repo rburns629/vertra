@@ -1108,6 +1108,15 @@
      "public": false
     },
     {
+     "name": "SetBotCallback",
+     "comment": "Sets where an ordering bot's orders' outcomes are posted, signed (its\nteam's maintainers), under the install's allowed hosts; an empty url\nremoves it. Its signing secret is returned when it's first set or\nrotated, and never again.",
+     "input": "vertra.console.v1.SetBotCallbackRequest",
+     "output": "vertra.console.v1.SetBotCallbackResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "ListBotIdentities",
      "comment": "A team's bots' keyless identities (its members), and what this install\naccepts: its issuers and audience.",
      "input": "vertra.console.v1.ListBotIdentitiesRequest",
@@ -8649,6 +8658,27 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "callbackHost",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "An ordering bot's callback: its host (the URL isn't sent back), the last\npost that went, and why the last one didn't, if it didn't. Empty: none."
+    },
+    {
+     "name": "callbackLastSentAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "callbackLastError",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -8805,6 +8835,60 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetBotCallbackRequest": {
+   "name": "SetBotCallbackRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "url",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "https://, under the install's orders.callbackHosts; empty: remove it."
+    },
+    {
+     "name": "rotateSecret",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "A new signing secret, the old one no longer valid."
+    }
+   ]
+  },
+  "vertra.console.v1.SetBotCallbackResponse": {
+   "name": "SetBotCallbackResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "host",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "signingSecret",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Set only when it's new (first set, or rotated): shown once."
     }
    ]
   },

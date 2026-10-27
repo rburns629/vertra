@@ -13,6 +13,7 @@
 import { Code } from "@connectrpc/connect";
 import { randomUUID } from "node:crypto";
 import { Type } from "@sinclair/typebox";
+import { eq } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import { canMaintainTeam, ensureTeamMaintainer } from "../auth/access.js";
@@ -31,6 +32,9 @@ import {
   setOrderTemplates,
   teamNamesForUser,
 } from "../db/queries.js";
+import { db } from "../db/client.js";
+import { botCallbacks } from "../db/schema.js";
+import { callbackUrlProblem, newCallbackSecret, sealCallback, unsealSecret } from "../orderCallbacks.js";
 import { ensureNotRetired } from "./retired.js";
 
 export const BotEmail = Type.String({ format: "email" });
@@ -93,6 +97,42 @@ export async function setBotOrders(caller: AuthUser | undefined, teamName: strin
   }
   await setOrderTemplates(bot.id, templates);
   return { templates };
+}
+
+/**
+ * Sets, changes or removes (empty url) an ordering bot's callback (its
+ * team's maintainers). Its signing secret is made when it's first set, or
+ * rotated on request, and returned only then; changing the URL keeps it.
+ */
+export async function setBotCallback(
+  caller: AuthUser | undefined,
+  teamName: string,
+  email: string,
+  input: { url: string; rotateSecret: boolean },
+): Promise<{ host: string; signingSecret: string }> {
+  const team = await teamForMaintainer(caller, teamName);
+  ensureNotRetired(team);
+  const bot = (await listBotsForTeam(team.id)).find((b) => b.email === email);
+  if (!bot) throw new ApiError(404, "NOT_FOUND", `No bot "${email}" in team "${teamName}".`);
+  if (bot.orderTemplates === null) {
+    throw new ApiError(409, "NOT_ORDERING", `"${email}" is a pipeline's bot, not an ordering bot.`, Code.FailedPrecondition);
+  }
+  if (input.url === "") {
+    await db.delete(botCallbacks).where(eq(botCallbacks.botId, bot.id));
+    return { host: "", signingSecret: "" };
+  }
+  const problem = callbackUrlProblem(input.url);
+  if (problem) throw new ApiError(400, "BAD_CALLBACK", problem);
+  const [existing] = await db.select({ secretEncrypted: botCallbacks.secretEncrypted }).from(botCallbacks).where(eq(botCallbacks.botId, bot.id));
+  const kept = existing && !input.rotateSecret ? unsealSecret(existing.secretEncrypted) : null;
+  const secret = kept ?? newCallbackSecret();
+  const host = new URL(input.url).host;
+  const row = { ...sealCallback(input.url, secret), host, updatedBy: caller?.id ?? null, updatedAt: new Date(), lastError: null };
+  await db
+    .insert(botCallbacks)
+    .values({ botId: bot.id, ...row })
+    .onConflictDoUpdate({ target: botCallbacks.botId, set: row });
+  return { host, signingSecret: kept ? "" : secret };
 }
 
 export async function listBots(caller: AuthUser | undefined, teamName: string) {

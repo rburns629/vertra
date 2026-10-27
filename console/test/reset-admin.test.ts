@@ -38,13 +38,15 @@ describe("resetting an admin's password", () => {
   it("prints a new one once, revokes every session, and audits it", async () => {
     const admin = await accounts.makeUser({ admin: true });
     const before = await accounts.signIn(admin.email);
+    // Sessions are compared in whole seconds, and one from the reset's own
+    // second is kept: reset in a later one.
+    await new Promise((r) => setTimeout(r, 1100));
     const { stdout } = await reset(admin.email);
     const password = /New password for .+: (\S+)/.exec(stdout)?.[1] ?? "";
     expect(password.length).toBeGreaterThanOrEqual(20);
     const [row] = await db.select().from(users).where(eq(users.email, admin.email));
     expect(await verifyPassword(row?.passwordHash ?? "", password)).toBe(true);
-    // The session from before is revoked (compared in whole seconds).
-    await new Promise((r) => setTimeout(r, 1100));
+    // The session from before is revoked.
     const me = await accounts.rpc("AuthService", "GetMe", {}, { token: before });
     expect(me.statusCode).toBe(401);
     const audited = await db.select().from(auditLog).where(eq(auditLog.route, "reset-admin-password"));

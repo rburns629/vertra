@@ -52,6 +52,7 @@ import {
 import { findSubmittedExecutions } from "./db/queries.js";
 import { PLATFORM_ERRORS } from "./failureHelp.js";
 import { listAwaitingApproval, listRefusals } from "./kernel/client.js";
+import { deliverCallbacks } from "./orderCallbacks.js";
 import { policySyncOutcomes } from "./policySync.js";
 
 const MAX_ATTEMPTS = 5;
@@ -438,6 +439,7 @@ export function startNotifier(log: FastifyBaseLogger): void {
     await notifyPolicySync();
     await deliverWebhooks(log);
     await deliverEmails(log);
+    await deliverCallbacks(log);
   };
   const run = () => {
     if (running) return;

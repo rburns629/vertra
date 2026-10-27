@@ -13,6 +13,7 @@ import {
   listBots,
   OrderTemplates,
   revokeToken,
+  setBotCallback,
   setBotOrders,
   TokenId,
   TokenLabel,
@@ -73,6 +74,9 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
           })),
           ordering: bot.orderTemplates !== null,
           orderTemplates: bot.orderTemplates ?? [],
+          callbackHost: bot.callback?.host ?? "",
+          callbackLastSentAt: optionalTime(bot.callback?.lastSentAt ?? null),
+          callbackLastError: bot.callback?.lastError ?? "",
         })),
       };
     },
@@ -88,6 +92,11 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
     async setBotOrders(req, ctx) {
       const { team, email, templates } = check({ team: TeamName, email: BotEmail, templates: OrderTemplates }, req);
       return setBotOrders(callerOf(ctx), team, email, templates);
+    },
+
+    async setBotCallback(req, ctx) {
+      const { team, email } = check({ team: TeamName, email: BotEmail }, { team: req.team, email: req.email });
+      return setBotCallback(callerOf(ctx), team, email, { url: req.url.trim(), rotateSecret: req.rotateSecret });
     },
 
     async revokeToken(req, ctx) {

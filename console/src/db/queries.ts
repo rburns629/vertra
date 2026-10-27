@@ -9,6 +9,7 @@ import {
   users,
   teamMemberships,
   apiTokens,
+  botCallbacks,
   products,
   productReleases,
   submittedExecutions,
@@ -435,19 +436,30 @@ export interface BotWithTokens {
   tokens: ApiTokenMeta[];
   /** An ordering bot's templates; null for a pipeline's bot. */
   orderTemplates: string[] | null;
+  /** Its order callback (orderCallbacks.ts), if it has one. */
+  callback: { host: string; lastSentAt: Date | null; lastError: string | null } | null;
 }
 
 /** N+1 on purpose -- a team realistically has a handful of bots, and this
  * reads far more plainly than a single aggregated join would. */
 export async function listBotsForTeam(teamId: string): Promise<BotWithTokens[]> {
   const bots = await db
-    .select({ id: users.id, email: users.email, orderTemplates: users.orderTemplates })
+    .select({
+      id: users.id,
+      email: users.email,
+      orderTemplates: users.orderTemplates,
+      callbackHost: botCallbacks.host,
+      callbackLastSentAt: botCallbacks.lastSentAt,
+      callbackLastError: botCallbacks.lastError,
+    })
     .from(teamMemberships)
     .innerJoin(users, eq(users.id, teamMemberships.userId))
+    .leftJoin(botCallbacks, eq(botCallbacks.botId, users.id))
     .where(and(eq(teamMemberships.teamId, teamId), eq(users.isBot, true)));
 
   const withTokens: BotWithTokens[] = [];
-  for (const bot of bots) {
+  for (const { callbackHost, callbackLastSentAt, callbackLastError, ...bot } of bots) {
+    const callback = callbackHost === null ? null : { host: callbackHost, lastSentAt: callbackLastSentAt, lastError: callbackLastError };
     const tokens = await db
       .select({
         id: apiTokens.id,
@@ -457,7 +469,7 @@ export async function listBotsForTeam(teamId: string): Promise<BotWithTokens[]> 
       })
       .from(apiTokens)
       .where(and(eq(apiTokens.userId, bot.id), isNull(apiTokens.revokedAt)));
-    withTokens.push({ ...bot, tokens });
+    withTokens.push({ ...bot, callback, tokens });
   }
   return withTokens;
 }

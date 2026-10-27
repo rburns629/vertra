@@ -660,6 +660,39 @@ export const webhookDeliveries = pgTable(
 );
 
 /**
+ * An ordering bot's callback (decision 23, orderCallbacks.ts): where its
+ * orders' outcomes are posted, signed with its secret, set by its team's
+ * maintainers. Only to the hosts the install allows (orders.callbackHosts).
+ */
+export const botCallbacks = pgTable("bot_callbacks", {
+  botId: uuid("bot_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Sealed as team_webhooks' URL is; the secret signs each post (HMAC-SHA256).
+  urlEncrypted: text("url_encrypted").notNull(),
+  host: text("host").notNull(),
+  secretEncrypted: text("secret_encrypted").notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  lastError: text("last_error"),
+});
+
+/** An order's outcome to post to its bot's callback, until it's sent or given up on. */
+export const callbackDeliveries = pgTable("callback_deliveries", {
+  // <execution id>:<state>:<finished at>: a run retried and finished again is posted again.
+  key: text("key").primaryKey(),
+  botId: uuid("bot_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // The JSON posted, made once so every attempt posts (and signs) the same.
+  body: text("body").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Whether a product is ready on this install (readiness.ts): its check
  * action's last answer, run as the product with its secrets. One row per
  * check action (<team>-<product>-<check>), for its whole product.

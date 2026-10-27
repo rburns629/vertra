@@ -276,6 +276,16 @@ can order those templates for that team, under its caps, quota and
 approvals, and nothing more. The runs a schedule makes as its bot aren't
 limited this way: the schedule is its team's, reviewed by its maintainers.
 
+An ordering bot may have a callback, where each of its orders' outcomes is
+posted (`console/src/orderCallbacks.ts`). Like a team's chat webhook, its URL
+is sealed with a key derived from `JWT_SECRET`, never sent back, only under
+the hosts the install allows (the console chart's `orders.callbackHosts`,
+none by default) and never redirected. Each post is signed with the bot's own
+secret (HMAC-SHA256 over the time and the body, `Vertra-Signature`), shown
+once when it's made, so the receiver can refuse forged and replayed posts. A
+post says which run and order it was and how it ended, never its outputs:
+those are read with `GetExecution`, as the bot.
+
 ## Schedules
 
 A schedule runs as one of its team's bots, never as the person who made it:

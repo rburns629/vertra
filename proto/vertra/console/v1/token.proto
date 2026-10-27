@@ -19,6 +19,11 @@ service TokenService {
   // Sets the templates an ordering bot may order (its team's maintainers):
   // <team>/<name> each; it may run nothing else.
   rpc SetBotOrders(SetBotOrdersRequest) returns (SetBotOrdersResponse);
+  // Sets where an ordering bot's orders' outcomes are posted, signed (its
+  // team's maintainers), under the install's allowed hosts; an empty url
+  // removes it. Its signing secret is returned when it's first set or
+  // rotated, and never again.
+  rpc SetBotCallback(SetBotCallbackRequest) returns (SetBotCallbackResponse);
   // A team's bots' keyless identities (its members), and what this install
   // accepts: its issuers and audience.
   rpc ListBotIdentities(ListBotIdentitiesRequest) returns (ListBotIdentitiesResponse) {
@@ -58,6 +63,11 @@ message Bot {
   // these templates (<team>/<name>), nothing else.
   bool ordering = 4;
   repeated string order_templates = 5;
+  // An ordering bot's callback: its host (the URL isn't sent back), the last
+  // post that went, and why the last one didn't, if it didn't. Empty: none.
+  string callback_host = 6;
+  google.protobuf.Timestamp callback_last_sent_at = 7;
+  string callback_last_error = 8;
 }
 
 message AutomationToken {
@@ -99,6 +109,21 @@ message SetBotOrdersRequest {
 
 message SetBotOrdersResponse {
   repeated string templates = 1;
+}
+
+message SetBotCallbackRequest {
+  string team = 1;
+  string email = 2;
+  // https://, under the install's orders.callbackHosts; empty: remove it.
+  string url = 3;
+  // A new signing secret, the old one no longer valid.
+  bool rotate_secret = 4;
+}
+
+message SetBotCallbackResponse {
+  string host = 1;
+  // Set only when it's new (first set, or rotated): shown once.
+  string signing_secret = 2;
 }
 
 message CreateBotTokenResponse {

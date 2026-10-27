@@ -7,15 +7,17 @@
  * a consumer's rights over their own run. kernel-api and the registry are
  * stubbed; the rest is the real console on the real test database.
  */
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { eq, inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSecretGrant, upsertProduct, upsertTemplate } from "../src/db/queries.js";
-import { products, submittedExecutions, teams } from "../src/db/schema.js";
+import { botCallbacks, callbackDeliveries, products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { config } from "../src/config.js";
+import { deliverCallbacks, orderFinished } from "../src/orderCallbacks.js";
 import { cancelExecution, getExecution, submitExecution } from "../src/kernel/client.js";
 import { caller, problemFields, rpcClient, type RpcError } from "./rpc.js";
 
@@ -443,5 +445,67 @@ describe("an ordering bot (decision 23)", () => {
     expect((await call(maintainerToken, "TokenService/CreateBotToken", { team: shop, email: pipeline, label: "ci" })).code).toBe("ok");
     expect((await call(maintainerToken, "TokenService/CreateBotToken", { team: shop, email: pipeline, label: "x", ordering: true })).code).toBe("already_exists");
     expect((await call(maintainerToken, "TokenService/SetBotOrders", { team: shop, email: pipeline, templates: [] })).failure).toBe("NOT_ORDERING");
+  });
+
+  it("hears back: its order's outcome is posted to its callback, signed", async () => {
+    const shop = `${prefix}-store`;
+    const shopTeam = await createTeam(shop);
+    const maintainer = await users.makeUser();
+    await addTeamMember(maintainer.id, shopTeam.id, "maintainer");
+    const maintainerToken = await users.signIn(maintainer.email);
+    const botEmail = `${prefix}-store@bot.example.com`;
+    const made = await call<{ token: string }>(maintainerToken, "TokenService/CreateBotToken", {
+      team: shop, email: botEmail, label: "storefront", ordering: true, orderTemplates: [`${own}/chain`],
+    });
+    const setCallback = (body: Record<string, unknown>) =>
+      call<{ host: string; signingSecret?: string }>(maintainerToken, "TokenService/SetBotCallback", { team: shop, email: botEmail, ...body });
+
+    // Only under the install's allowed hosts: none, by default.
+    const hosts = config.orders.callbackHosts;
+    expect((await setCallback({ url: "https://orders.example.com/vertra" })).failure).toBe("BAD_CALLBACK");
+    config.orders.callbackHosts = ["orders.example.com"];
+    try {
+      expect((await setCallback({ url: "https://elsewhere.example.com/vertra" })).failure).toBe("BAD_CALLBACK");
+      const set = await setCallback({ url: "https://orders.example.com/vertra" });
+      expect(set.body.host).toBe("orders.example.com");
+      const secret = set.body.signingSecret ?? "";
+      expect(secret).toMatch(/^vcs_/);
+      // Changing the URL keeps the secret, and doesn't show it again.
+      expect((await setCallback({ url: "https://orders.example.com/v2" })).body.signingSecret ?? "").toBe("");
+      const listed = await call<{ bots: { email: string; callbackHost: string }[] }>(maintainerToken, "TokenService/ListBots", { team: shop });
+      expect(listed.body.bots.find((b) => b.email === botEmail)?.callbackHost).toBe("orders.example.com");
+
+      const ordered = await call<{ executionId: string }>(made.body.token, "TemplateService/RunTemplate", {
+        team: own, name: "chain", parameters: { text: "hi" }, onBehalfOf: shop, requestId: "order-1042",
+      });
+      expect(ordered.code).toBe("ok");
+      const [run] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.executionId, ordered.body.executionId));
+      const posted: { url: string; body: string; signature: string }[] = [];
+      vi.stubGlobal("fetch", vi.fn((url: string, init: { body: string; headers: Record<string, string> }) => {
+        posted.push({ url, body: init.body, signature: init.headers["vertra-signature"] ?? "" });
+        return Promise.resolve(new Response("ok"));
+      }));
+      const finished = { ...run!, state: "SUCCEEDED", finishedAt: new Date().toISOString() };
+      await orderFinished(finished);
+      await orderFinished(finished);
+      expect(await db.select().from(callbackDeliveries).where(like(callbackDeliveries.key, `${ordered.body.executionId}:%`))).toHaveLength(1);
+      await deliverCallbacks({ warn: vi.fn() } as never);
+      const post = posted.find((p) => p.body.includes(ordered.body.executionId));
+      expect(post?.url).toBe("https://orders.example.com/v2");
+      expect(JSON.parse(post!.body)).toMatchObject({ type: "order.finished", requestId: "order-1042", template: `${own}/chain`, onBehalfOf: shop, state: "SUCCEEDED" });
+      const [, t, v1] = /^t=(\d+),v1=([0-9a-f]+)$/.exec(post!.signature) ?? [];
+      expect(v1).toBe(createHmac("sha256", secret).update(`${t ?? ""}.${post!.body}`).digest("hex"));
+
+      // Rotated: a new secret; removed: no callback.
+      const rotated = await setCallback({ url: "https://orders.example.com/v2", rotateSecret: true });
+      expect(rotated.body.signingSecret).toMatch(/^vcs_/);
+      expect(rotated.body.signingSecret).not.toBe(secret);
+      expect((await setCallback({ url: "" })).code).toBe("ok");
+      const [bot] = await db.select({ id: submittedExecutions.submittedBy }).from(submittedExecutions).where(eq(submittedExecutions.executionId, ordered.body.executionId));
+      expect(await db.select().from(botCallbacks).where(eq(botCallbacks.botId, bot!.id!))).toEqual([]);
+    } finally {
+      config.orders.callbackHosts = hosts;
+      vi.unstubAllGlobals();
+    }
   });
 });

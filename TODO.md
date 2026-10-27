@@ -967,9 +967,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      it's made (Automation) or by `TokenService/SetBotOrders`; it may run
      only those (`TEMPLATE_NOT_ORDERABLE`) and nothing else (`ORDERS_ONLY`:
      raw DAGs, single actions, reruns). Schedules aren't limited.
-  3. Hearing back: polling (`GetExecution`, there today) and a per-bot
-     callback URL (allowed hosts, HMAC-signed per bot, retried as webhooks
-     are).
+  3. Hearing back: polling (`GetExecution`) and a per-bot callback (done
+     2026-10-27, `console/src/orderCallbacks.ts`): `TokenService/
+     SetBotCallback` (its team's maintainers), only under the console
+     chart's `orders.callbackHosts` (none by default); each finished order
+     posts `order.finished` signed (`Vertra-Signature`, HMAC-SHA256 with the
+     bot's secret, shown once), five tries as webhooks. Proven on kind: a
+     real order queued and posted (to an unresolvable host, its failure
+     recorded on the bot). Left: a post a real receiver accepts and verifies.
   4. A request rate per bot (429 past it).
   5. Possibly: an outcome webhook a team subscribes to (JSON for systems,
      beside its chat webhook).

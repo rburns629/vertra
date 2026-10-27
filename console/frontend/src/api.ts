@@ -826,6 +826,8 @@ export interface Bot {
   /** An ordering bot (decision 23): it may run only orderTemplates (<team>/<name>). */
   ordering: boolean;
   orderTemplates: string[];
+  /** Where its orders' outcomes are posted (its host only), if anywhere. */
+  callback: { host: string; lastSentAt: string | null; lastError: string } | null;
 }
 
 export async function listBots(teamName: string): Promise<Bot[]> {
@@ -841,6 +843,9 @@ export async function listBots(teamName: string): Promise<Bot[]> {
     })),
     ordering: bot.ordering,
     orderTemplates: bot.orderTemplates,
+    callback: bot.callbackHost
+      ? { host: bot.callbackHost, lastSentAt: iso(bot.callbackLastSentAt), lastError: bot.callbackLastError }
+      : null,
   }));
 }
 
@@ -861,6 +866,18 @@ export async function createBot(
 /** Sets what an ordering bot may order: <team>/<name> each. */
 export async function setBotOrders(teamName: string, email: string, templates: string[]): Promise<string[]> {
   return (await call(() => tokens.setBotOrders({ team: teamName, email, templates }))).templates;
+}
+
+/** Sets (or, with an empty url, removes) an ordering bot's callback. The
+ * signing secret comes back only when it's new: shown once, never stored here. */
+export async function setBotCallback(
+  teamName: string,
+  email: string,
+  url: string,
+  rotateSecret = false,
+): Promise<{ host: string; signingSecret: string }> {
+  const { host, signingSecret } = await call(() => tokens.setBotCallback({ team: teamName, email, url, rotateSecret }));
+  return { host, signingSecret };
 }
 
 export async function revokeToken(tokenId: string): Promise<void> {
