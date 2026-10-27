@@ -17,6 +17,23 @@ import { ApiError } from "../apiError.js";
 /** What the checks need of the caller (request.authUser). */
 type AuthUser = { id?: string; teamNames: string[]; maintainerOf?: string[]; isAdmin: boolean } | undefined;
 
+/**
+ * An ordering bot (decision 23) may run its listed templates and nothing
+ * else: throws when `template` (<team>/<name>) isn't one of them, or, with
+ * none, when the caller is an ordering bot at all (a raw DAG, a single
+ * action, a rerun). Anyone else may.
+ */
+export function ensureMayOrder(authUser: { orderTemplates?: string[] } | undefined, template?: string): void {
+  const list = authUser?.orderTemplates;
+  if (!list) return;
+  if (template === undefined) {
+    throw new ApiError(403, "ORDERS_ONLY", "This bot places orders: it may only run the templates listed for it.");
+  }
+  if (!list.includes(template)) {
+    throw new ApiError(403, "TEMPLATE_NOT_ORDERABLE", `This bot may not order ${template}: its team's maintainers list what it may order.`);
+  }
+}
+
 /** A member of the team, or a platform admin. */
 export function canActForTeam(authUser: AuthUser, team: string): boolean {
   return authUser !== undefined && (authUser.isAdmin || authUser.teamNames.includes(team));

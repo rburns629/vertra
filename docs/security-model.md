@@ -33,7 +33,7 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Team maintainers | Manage their team: its people and their roles, register its secrets and choose which step gets which, its bots, raw DAGs, cancelling its runs | Console authorization (`auth/access.ts`): the maintainer role, per-product identity, registered team secrets |
 | Team members | See their team's runs, logs, Pods and secrets' names; run its actions and what's shared with it | The member role: nothing they can change |
 | Product images | Do their one job with the inputs and secrets they're given | Their namespace, ServiceAccount and mounted secrets; admission policies |
-| Pipelines (bots) | What their token's scopes allow | Scoped, hashed API tokens |
+| Pipelines (bots) | What their token's scopes allow; an ordering bot, only its listed templates | Scoped, hashed API tokens; `auth/access.ts`'s `ensureMayOrder` |
 
 ## Where secret values live
 
@@ -265,6 +265,16 @@ be replayed here) and expiry, and returns an hour's ordinary session for
 the one bot whose claims it carries; two or none is a refusal. Each sign-in
 is logged with the bot, issuer and subject, and the identity's last use is
 kept.
+
+## Ordering bots
+
+An *ordering bot* (decision 23: a storefront or another system placing
+orders) is a member of its team, not a maintainer, and may run only the
+templates its team's maintainers list for it: no raw DAG, no single action,
+no rerun (`ORDERS_ONLY`, `TEMPLATE_NOT_ORDERABLE`). A leaked ordering token
+can order those templates for that team, under its caps, quota and
+approvals, and nothing more. The runs a schedule makes as its bot aren't
+limited this way: the schedule is its team's, reviewed by its maintainers.
 
 ## Schedules
 

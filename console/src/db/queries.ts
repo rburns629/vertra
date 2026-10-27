@@ -38,6 +38,8 @@ export interface User {
   mustChangePassword: boolean;
   // Its single sign-on identity, once bound (auth/oidc.ts).
   oidcSubject: string | null;
+  // An ordering bot's templates (decision 23); null for anyone else.
+  orderTemplates: string[] | null;
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
@@ -431,13 +433,15 @@ export interface BotWithTokens {
   id: string;
   email: string;
   tokens: ApiTokenMeta[];
+  /** An ordering bot's templates; null for a pipeline's bot. */
+  orderTemplates: string[] | null;
 }
 
 /** N+1 on purpose -- a team realistically has a handful of bots, and this
  * reads far more plainly than a single aggregated join would. */
 export async function listBotsForTeam(teamId: string): Promise<BotWithTokens[]> {
   const bots = await db
-    .select({ id: users.id, email: users.email })
+    .select({ id: users.id, email: users.email, orderTemplates: users.orderTemplates })
     .from(teamMemberships)
     .innerJoin(users, eq(users.id, teamMemberships.userId))
     .where(and(eq(teamMemberships.teamId, teamId), eq(users.isBot, true)));
@@ -1278,4 +1282,9 @@ export async function setApiPaused(id: string, message: string | null, by: strin
 /** A run to look at again for what it made or deleted (resourceRecorder.ts), once it finishes. */
 export async function markResourcesUnrecorded(executionId: string): Promise<void> {
   await db.update(submittedExecutions).set({ resourcesRecordedAt: null }).where(eq(submittedExecutions.executionId, executionId));
+}
+
+/** An ordering bot's templates (decision 23): the only ones it may run. */
+export async function setOrderTemplates(userId: string, templates: string[]): Promise<void> {
+  await db.update(users).set({ orderTemplates: templates }).where(and(eq(users.id, userId), eq(users.isBot, true)));
 }

@@ -11,7 +11,9 @@ import {
   createBotToken,
   listAutomationTokensFor,
   listBots,
+  OrderTemplates,
   revokeToken,
+  setBotOrders,
   TokenId,
   TokenLabel,
 } from "../../core/tokens.js";
@@ -69,13 +71,23 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
             createdAt: timestampFromDate(token.createdAt),
             lastUsedAt: optionalTime(token.lastUsedAt),
           })),
+          ordering: bot.orderTemplates !== null,
+          orderTemplates: bot.orderTemplates ?? [],
         })),
       };
     },
 
     async createBotToken(req, ctx) {
-      const { team, email, label } = check({ team: TeamName, email: BotEmail, label: TokenLabel }, req);
-      return createBotToken(callerOf(ctx), team, { email, label });
+      const { team, email, label, orderTemplates } = check(
+        { team: TeamName, email: BotEmail, label: TokenLabel, orderTemplates: OrderTemplates },
+        { team: req.team, email: req.email, label: req.label, orderTemplates: req.orderTemplates },
+      );
+      return createBotToken(callerOf(ctx), team, { email, label, ordering: req.ordering, orderTemplates });
+    },
+
+    async setBotOrders(req, ctx) {
+      const { team, email, templates } = check({ team: TeamName, email: BotEmail, templates: OrderTemplates }, req);
+      return setBotOrders(callerOf(ctx), team, email, templates);
     },
 
     async revokeToken(req, ctx) {

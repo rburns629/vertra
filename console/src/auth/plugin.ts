@@ -39,6 +39,10 @@ declare module "fastify" {
       isAdmin: boolean;
       scopes: string[];
       mustChangePassword?: boolean;
+      // Set for an ordering bot's own request: the only templates it may
+      // run (auth/access.ts's ensureMayOrder). Never for what the console
+      // does as a bot (a schedule's runs, reviewed by its team).
+      orderTemplates?: string[];
     };
   }
 }
@@ -118,7 +122,17 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
   const teamNames = roles.map((row) => row.name);
   const maintainerOf = roles.filter((row) => row.role === "maintainer").map((row) => row.name);
   const mustChangePassword = passwordSession && user.mustChangePassword;
-  return { authUser: { id: user.id, teamNames, maintainerOf, isAdmin: user.isAdmin, scopes, mustChangePassword } };
+  return {
+    authUser: {
+      id: user.id,
+      teamNames,
+      maintainerOf,
+      isAdmin: user.isAdmin,
+      scopes,
+      mustChangePassword,
+      ...(user.orderTemplates ? { orderTemplates: user.orderTemplates } : {}),
+    },
+  };
 }
 
 /**

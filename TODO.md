@@ -960,9 +960,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   decided 2026-10-27). Through the console's public `/api`, as a bot signed
   in keylessly; kernel-api stays private. To build:
   1. An order is for the bot's own team (its caps, quota and approvals; its
-     maintainers see and cancel it).
-  2. A per-bot list of templates it may order, set by its team's
-     maintainers; RunTemplate refuses any other for a bot with a list.
+     maintainers see and cancel it). Done 2026-10-27: a template runs on
+     behalf of one of the caller's own teams.
+  2. A per-bot list of templates it may order (done 2026-10-27): an
+     ordering bot is a member of its team with `order_templates`, set when
+     it's made (Automation) or by `TokenService/SetBotOrders`; it may run
+     only those (`TEMPLATE_NOT_ORDERABLE`) and nothing else (`ORDERS_ONLY`:
+     raw DAGs, single actions, reruns). Schedules aren't limited.
   3. Hearing back: polling (`GetExecution`, there today) and a per-bot
      callback URL (allowed hosts, HMAC-signed per bot, retried as webhooks
      are).

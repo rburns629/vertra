@@ -27,6 +27,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import { Code } from "@connectrpc/connect";
 import { ApiError } from "../apiError.js";
+import { ensureMayOrder } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import {
   findRunnableProduct,
@@ -443,6 +444,8 @@ export async function runTemplate(
   scheduleId?: string,
 ) {
   const who = signedIn(caller);
+  // An ordering bot orders only its listed templates (decision 23).
+  ensureMayOrder(who, `${team}/${name}`);
   const { template, forTeam, steps } = await prepareTemplate(who, team, name, request);
   return submitChecked(who, dagOf(template.displayName, steps, request.requestId), log, {
     template: `${template.teamName}/${template.name}`,
@@ -551,6 +554,7 @@ const noPreview = (label: string) =>
 /** Previews one action with these inputs: a run of its plan action. */
 export async function previewAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger) {
   const who = signedIn(caller);
+  ensureMayOrder(who);
   const product = await findRunnableProduct(productName);
   const allowed = product ? access(who, product.teamName, product.shareWith) : undefined;
   if (!product || !allowed?.allowed) throw new ApiError(404, "NOT_FOUND", `No action "${productName}" that's shared with you.`);
@@ -578,6 +582,7 @@ export async function previewAction(caller: AuthUser | undefined, productName: s
  */
 export async function previewTemplate(caller: AuthUser | undefined, team: string, name: string, request: RunRequest, log: FastifyBaseLogger) {
   const who = signedIn(caller);
+  ensureMayOrder(who, `${team}/${name}`);
   const template = await findRunnableTemplate(team, name);
   const allowed = template ? access(who, template.teamName, template.shareWith) : undefined;
   if (!template || !allowed?.allowed) throw new ApiError(404, "NOT_FOUND", `No template "${team}/${name}" that's shared with you.`);
@@ -635,6 +640,7 @@ export async function runCleanup(
 /** Runs one action with these inputs, as a one-step template. */
 export async function runAction(caller: AuthUser | undefined, productName: string, request: RunRequest, log: FastifyBaseLogger, scheduleId?: string) {
   const who = signedIn(caller);
+  ensureMayOrder(who);
   const product = await findRunnableProduct(productName);
   return runProduct(who, product, request, log, productName, scheduleId);
 }

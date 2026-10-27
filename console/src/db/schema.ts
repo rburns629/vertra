@@ -111,6 +111,10 @@ export const users = pgTable("users", {
   // rather than inferred from "has no password" so listing "this team's
   // bots" is a direct query, not a guess.
   isBot: boolean("is_bot").notNull().default(false),
+  // An ordering bot's templates (decision 23): the only ones it may run
+  // (<team>/<name>), and it may run nothing else (no raw DAG, no single
+  // action). Null: not an ordering bot.
+  orderTemplates: text("order_templates").array(),
   // Set on every password change or admin reset. Any session JWT issued
   // before this instant is rejected (auth/plugin.ts), so changing a
   // password actually kicks out whoever else might be holding an old

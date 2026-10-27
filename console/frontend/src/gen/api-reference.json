@@ -1099,6 +1099,15 @@
      "public": false
     },
     {
+     "name": "SetBotOrders",
+     "comment": "Sets the templates an ordering bot may order (its team's maintainers):\n<team>/<name> each; it may run nothing else.",
+     "input": "vertra.console.v1.SetBotOrdersRequest",
+     "output": "vertra.console.v1.SetBotOrdersResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "ListBotIdentities",
      "comment": "A team's bots' keyless identities (its members), and what this install\naccepts: its issuers and audience.",
      "input": "vertra.console.v1.ListBotIdentitiesRequest",
@@ -8626,6 +8635,20 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "ordering",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "An ordering bot (decision 23): a member of its team that may run only\nthese templates (<team>/<name>), nothing else."
+    },
+    {
+     "name": "orderTemplates",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -8726,6 +8749,60 @@
      "name": "label",
      "type": "string",
      "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "ordering",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "A new ordering bot: a member (not a maintainer) of the team that may\nrun only order_templates (<team>/<name>), for a storefront or another\nsystem placing orders. Otherwise a pipeline's bot, a maintainer."
+    },
+    {
+     "name": "orderTemplates",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetBotOrdersRequest": {
+   "name": "SetBotOrdersRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "templates",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "<team>/<name> each; empty: it may order nothing."
+    }
+   ]
+  },
+  "vertra.console.v1.SetBotOrdersResponse": {
+   "name": "SetBotOrdersResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "templates",
+     "type": "string",
+     "repeated": true,
      "optional": false,
      "comment": ""
     }

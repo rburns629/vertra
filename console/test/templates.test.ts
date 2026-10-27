@@ -405,3 +405,43 @@ describe("a consumer's run", () => {
     expect(record?.template).toBe(`${own}/chain`);
   });
 });
+
+describe("an ordering bot (decision 23)", () => {
+  it("orders only its listed templates, for its own team, and nothing else", async () => {
+    const shop = `${prefix}-shop`;
+    const shopTeam = await createTeam(shop);
+    const maintainer = await users.makeUser();
+    const member = await users.makeUser();
+    await addTeamMember(maintainer.id, shopTeam.id, "maintainer");
+    await addTeamMember(member.id, shopTeam.id, "member");
+    const [maintainerToken, memberToken] = await Promise.all([maintainer, member].map((u) => users.signIn(u.email)));
+    const ownTeam = (await db.select().from(teams).where(eq(teams.name, own)))[0];
+    await upsertTemplate({ teamId: ownTeam!.id, name: "second", displayName: "Second", description: "", parameters, steps: [{ id: "one", action: `${own}/hello.run`, inputs: { text: { $param: "text" } } }], shareWith: ["*"], deprecated: null });
+
+    const botEmail = `${prefix}-orders@bot.example.com`;
+    const made = await call<{ token: string }>(maintainerToken, "TokenService/CreateBotToken", {
+      team: shop, email: botEmail, label: "storefront", ordering: true, orderTemplates: [`${own}/chain`],
+    });
+    expect(made.code).toBe("ok");
+    const bot = made.body.token;
+
+    const order = (name: string) => call(bot, "TemplateService/RunTemplate", { team: own, name, parameters: { text: "hi" }, onBehalfOf: shop });
+    expect((await order("chain")).code).toBe("ok");
+    expect((await order("second")).failure).toBe("TEMPLATE_NOT_ORDERABLE");
+    expect((await call(bot, "TemplateService/RunAction", { product: `${own}-hello-run`, inputs: { text: "hi" } })).failure).toBe("ORDERS_ONLY");
+    expect((await call(bot, "ExecutionService/SubmitExecution", { dag: { name: "raw", tasks: [{ id: "a", image: "registry.example/x:1", action: "run", team: shop }] } })).failure).toBe("ORDERS_ONLY");
+
+    // Its team's maintainers list what it may order; a member may not.
+    expect((await call(memberToken, "TokenService/SetBotOrders", { team: shop, email: botEmail, templates: [`${own}/second`] })).code).toBe("permission_denied");
+    expect((await call(maintainerToken, "TokenService/SetBotOrders", { team: shop, email: botEmail, templates: [`${own}/chain`, `${own}/second`] })).code).toBe("ok");
+    expect((await order("second")).code).toBe("ok");
+    const listed = await call<{ bots: { email: string; ordering: boolean; orderTemplates: string[] }[] }>(maintainerToken, "TokenService/ListBots", { team: shop });
+    expect(listed.body.bots.find((b) => b.email === botEmail)).toMatchObject({ ordering: true, orderTemplates: [`${own}/chain`, `${own}/second`] });
+
+    // A pipeline's bot stays one: no ordering bot from it.
+    const pipeline = `${prefix}-ci@bot.example.com`;
+    expect((await call(maintainerToken, "TokenService/CreateBotToken", { team: shop, email: pipeline, label: "ci" })).code).toBe("ok");
+    expect((await call(maintainerToken, "TokenService/CreateBotToken", { team: shop, email: pipeline, label: "x", ordering: true })).code).toBe("already_exists");
+    expect((await call(maintainerToken, "TokenService/SetBotOrders", { team: shop, email: pipeline, templates: [] })).failure).toBe("NOT_ORDERING");
+  });
+});

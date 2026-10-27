@@ -62,6 +62,19 @@ export declare type Bot = Message<"vertra.console.v1.Bot"> & {
    * @generated from field: repeated vertra.console.v1.TokenInfo tokens = 3;
    */
   tokens: TokenInfo[];
+
+  /**
+   * An ordering bot (decision 23): a member of its team that may run only
+   * these templates (<team>/<name>), nothing else.
+   *
+   * @generated from field: bool ordering = 4;
+   */
+  ordering: boolean;
+
+  /**
+   * @generated from field: repeated string order_templates = 5;
+   */
+  orderTemplates: string[];
 };
 
 /**
@@ -165,6 +178,20 @@ export declare type CreateBotTokenRequest = Message<"vertra.console.v1.CreateBot
    * @generated from field: string label = 3;
    */
   label: string;
+
+  /**
+   * A new ordering bot: a member (not a maintainer) of the team that may
+   * run only order_templates (<team>/<name>), for a storefront or another
+   * system placing orders. Otherwise a pipeline's bot, a maintainer.
+   *
+   * @generated from field: bool ordering = 4;
+   */
+  ordering: boolean;
+
+  /**
+   * @generated from field: repeated string order_templates = 5;
+   */
+  orderTemplates: string[];
 };
 
 /**
@@ -172,6 +199,50 @@ export declare type CreateBotTokenRequest = Message<"vertra.console.v1.CreateBot
  * Use `create(CreateBotTokenRequestSchema)` to create a new message.
  */
 export declare const CreateBotTokenRequestSchema: GenMessage<CreateBotTokenRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetBotOrdersRequest
+ */
+export declare type SetBotOrdersRequest = Message<"vertra.console.v1.SetBotOrdersRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * <team>/<name> each; empty: it may order nothing.
+   *
+   * @generated from field: repeated string templates = 3;
+   */
+  templates: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SetBotOrdersRequest.
+ * Use `create(SetBotOrdersRequestSchema)` to create a new message.
+ */
+export declare const SetBotOrdersRequestSchema: GenMessage<SetBotOrdersRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetBotOrdersResponse
+ */
+export declare type SetBotOrdersResponse = Message<"vertra.console.v1.SetBotOrdersResponse"> & {
+  /**
+   * @generated from field: repeated string templates = 1;
+   */
+  templates: string[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SetBotOrdersResponse.
+ * Use `create(SetBotOrdersResponseSchema)` to create a new message.
+ */
+export declare const SetBotOrdersResponseSchema: GenMessage<SetBotOrdersResponse>;
 
 /**
  * @generated from message vertra.console.v1.CreateBotTokenResponse
@@ -505,6 +576,17 @@ export declare const TokenService: GenService<{
     methodKind: "unary";
     input: typeof CreateBotTokenRequestSchema;
     output: typeof CreateBotTokenResponseSchema;
+  },
+  /**
+   * Sets the templates an ordering bot may order (its team's maintainers):
+   * <team>/<name> each; it may run nothing else.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.SetBotOrders
+   */
+  setBotOrders: {
+    methodKind: "unary";
+    input: typeof SetBotOrdersRequestSchema;
+    output: typeof SetBotOrdersResponseSchema;
   },
   /**
    * A team's bots' keyless identities (its members), and what this install

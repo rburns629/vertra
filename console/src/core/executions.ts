@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError } from "../apiError.js";
-import { ensureTeamMaintainer, loadExecution } from "../auth/access.js";
+import { ensureMayOrder, ensureTeamMaintainer, loadExecution } from "../auth/access.js";
 import { failureHelp, type FailureHelp } from "../failureHelp.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
@@ -819,6 +819,7 @@ export async function listExecutions(
  * created it, or found the one its requestId already started.
  */
 export async function submit(caller: AuthUser | undefined, submitted: unknown, log: FastifyBaseLogger) {
+  ensureMayOrder(caller);
   return submitChecked(caller, submitted, log);
 }
 
@@ -1027,6 +1028,7 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
  * state, since membership or grants can have changed since.
  */
 export async function rerun(caller: AuthUser | undefined, executionId: string, log: FastifyBaseLogger) {
+  ensureMayOrder(caller); // an ordering bot places a new order instead
   const submitted = await loadExecution(executionId, caller, "any");
   if (submitted.payload === null || submitted.payload === undefined) {
     throw new ApiError(

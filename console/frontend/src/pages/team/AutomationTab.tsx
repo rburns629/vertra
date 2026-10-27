@@ -1,12 +1,65 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Alert, Box, Button, Card, CardContent, Chip, Stack, TextField, Typography } from "@mui/material";
-import { createBot, listBotIdentities, listBots, revokeToken, type Bot, type BotIdentity } from "../../api";
+import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, FormControlLabel, Stack, TextField, Typography } from "@mui/material";
+import { createBot, listBotIdentities, listBots, revokeToken, setBotOrders, type Bot, type BotIdentity } from "../../api";
 import { KeylessSection } from "./KeylessSection";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CodeBlock } from "../../components/CodeBlock";
 import { TabIntro, errorMessage, relativeTime } from "./shared";
 import { Mono } from "../../components/Mono";
+
+/** Templates as typed: <team>/<name>, one per line or comma-separated. */
+function templateList(text: string): string[] {
+  return [...new Set(text.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean))];
+}
+
+/** What an ordering bot may order, editable by the team's maintainers. */
+function OrderTemplates({ teamName, bot, readOnly, onSaved }: { teamName: string; bot: Bot; readOnly: boolean; onSaved: () => void }) {
+  const [text, setText] = useState(bot.orderTemplates.join("\n"));
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const changed = templateList(text).join("\n") !== bot.orderTemplates.join("\n");
+  async function save(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      await setBotOrders(teamName, bot.email, templateList(text));
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't save its templates. Try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Stack spacing={1}>
+      <Typography variant="body2">
+        Places orders: it may run only these templates, for {teamName}, and nothing else.
+      </Typography>
+      {readOnly ? (
+        <Typography variant="body2" color="text.secondary">
+          {bot.orderTemplates.length > 0 ? bot.orderTemplates.join(", ") : "None yet: it can't order anything."}
+        </Typography>
+      ) : (
+        <>
+          <TextField
+            label="Templates it may order"
+            size="small"
+            multiline
+            minRows={2}
+            value={text}
+            onChange={(e) => { setText(e.target.value); }}
+            helperText="<team>/<name>, one per line, as the Catalog shows them."
+          />
+          <Button size="small" variant="outlined" disabled={busy || !changed} onClick={() => void save()} sx={{ alignSelf: "flex-start" }}>
+            Save
+          </Button>
+        </>
+      )}
+      {error && <Alert severity="error">{error}</Alert>}
+    </Stack>
+  );
+}
 
 /** A bot's email is just its identity here, never mailed: derived from
  * what will use it, so the person creating one only has to say that. */
@@ -24,7 +77,7 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
   const [loadError, setLoadError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<{ tokenId: string; label: string; email: string } | null>(null);
   const [revokeBusy, setRevokeBusy] = useState(false);
-  const [issued, setIssued] = useState<{ email: string; token: string } | null>(null);
+  const [issued, setIssued] = useState<{ email: string; token: string; ordering: boolean } | null>(null);
   const [keyless, setKeyless] = useState<{ identities: BotIdentity[]; issuers: string[]; audience: string } | null>(null);
 
   const reload = useCallback(() => {
@@ -99,6 +152,7 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                       variant="outlined"
                     />
                   </Box>
+                  {bot.ordering && <OrderTemplates teamName={teamName} bot={bot} readOnly={readOnly} onSaved={reload} />}
                   {bot.tokens.length === 0 && !keylessOnly && (
                     <Typography variant="body2" color="text.secondary">
                       No working token. Anything still using an old one fails to sign in.
@@ -179,14 +233,23 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                   <CodeBlock code={issued.token} copyLabel="Copy token" />
                   <Typography variant="subtitle2">1. Store it in your pipeline</Typography>
                   <CodeBlock code={"gh secret set VERTRA_TOKEN \\\n  --repo <your-org>/<your-repo>"} />
-                  <Typography variant="subtitle2">2. Submit a DAG from it</Typography>
+                  <Typography variant="subtitle2">{issued.ordering ? "2. Place an order from it" : "2. Submit a DAG from it"}</Typography>
                   <CodeBlock
-                    code={[
-                      `jq '{dag: .}' dag.json | curl -X POST ${consoleUrl}/api/vertra.console.v1.ExecutionService/SubmitExecution \\`,
-                      '  -H "Authorization: Bearer $VERTRA_TOKEN" \\',
-                      '  -H "Content-Type: application/json" \\',
-                      "  -d @-",
-                    ].join("\n")}
+                    code={
+                      issued.ordering
+                        ? [
+                            `curl -X POST ${consoleUrl}/api/vertra.console.v1.TemplateService/RunTemplate \\`,
+                            '  -H "Authorization: Bearer $VERTRA_TOKEN" \\',
+                            '  -H "Content-Type: application/json" \\',
+                            `  -d '{"team": "<team>", "name": "<template>", "onBehalfOf": "${teamName}", "requestId": "<order id>", "parameters": {}}'`,
+                          ].join("\n")
+                        : [
+                            `jq '{dag: .}' dag.json | curl -X POST ${consoleUrl}/api/vertra.console.v1.ExecutionService/SubmitExecution \\`,
+                            '  -H "Authorization: Bearer $VERTRA_TOKEN" \\',
+                            '  -H "Content-Type: application/json" \\',
+                            "  -d @-",
+                          ].join("\n")
+                    }
                   />
                   <Button
                     variant="contained"
@@ -203,8 +266,8 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
           ) : (
             <AddBot
               teamName={teamName}
-              onCreated={(email, token) => {
-                setIssued({ email, token });
+              onCreated={(email, token, ordering) => {
+                setIssued({ email, token, ordering });
                 reload();
               }}
             />
@@ -227,8 +290,10 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
   );
 }
 
-function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: string, token: string) => void }) {
+function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: string, token: string, ordering: boolean) => void }) {
   const [purpose, setPurpose] = useState("");
+  const [ordering, setOrdering] = useState(false);
+  const [templates, setTemplates] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -237,9 +302,10 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
     setError(null);
     setSubmitting(true);
     try {
-      const result = await createBot(teamName, botEmail(teamName, purpose), purpose.trim());
+      const result = await createBot(teamName, botEmail(teamName, purpose), purpose.trim(), ordering ? templateList(templates) : undefined);
       setPurpose("");
-      onCreated(result.email, result.token);
+      setTemplates("");
+      onCreated(result.email, result.token, ordering);
     } catch (err) {
       setError(errorMessage(err, "Couldn't create the bot. Try again."));
     } finally {
@@ -266,6 +332,21 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
               placeholder="release pipeline in our infra repo"
               helperText="A pipeline or repo, so you know what breaks if you revoke it. Using the same words again adds another token to the same bot."
             />
+            <FormControlLabel
+              control={<Checkbox checked={ordering} onChange={(e) => { setOrdering(e.target.checked); }} />}
+              label="It places orders (a storefront, or another system): only the templates listed, nothing else"
+            />
+            {ordering && (
+              <TextField
+                label="Templates it may order"
+                size="small"
+                multiline
+                minRows={2}
+                value={templates}
+                onChange={(e) => { setTemplates(e.target.value); }}
+                helperText="<team>/<name>, one per line. A member of this team, not a maintainer: it can't submit raw DAGs."
+              />
+            )}
             <Button type="submit" variant="contained" disabled={submitting || !purpose.trim()} sx={{ alignSelf: "flex-start" }}>
               {submitting ? "Creating…" : "Create bot and token"}
             </Button>

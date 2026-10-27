@@ -28,6 +28,7 @@ import {
   listAutomationTokens,
   listBotsForTeam,
   revokeApiToken,
+  setOrderTemplates,
   teamNamesForUser,
 } from "../db/queries.js";
 import { ensureNotRetired } from "./retired.js";
@@ -37,6 +38,11 @@ export const TokenLabel = Type.String({ minLength: 1 });
 export const AutomationLabel = Type.String({ minLength: 1, maxLength: 100 });
 export const AutomationScopes = Type.Array(ScopeSchema, { minItems: 1, uniqueItems: true });
 export const TokenId = Type.String({ format: "uuid" });
+/** A template an ordering bot may order: <team>/<name>. */
+export const OrderTemplates = Type.Array(Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), {
+  maxItems: 100,
+  uniqueItems: true,
+});
 
 async function teamForMaintainer(caller: AuthUser | undefined, teamName: string) {
   ensureTeamMaintainer(caller, teamName);
@@ -45,11 +51,15 @@ async function teamForMaintainer(caller: AuthUser | undefined, teamName: string)
   return team;
 }
 
-/** Creates a team's bot, or a new token for an existing one. */
+/**
+ * Creates a team's bot, or a new token for an existing one. A pipeline's
+ * bot is a maintainer (it submits raw DAGs and retries them); an ordering
+ * bot (decision 23) a member that may run only its listed templates.
+ */
 export async function createBotToken(
   caller: AuthUser | undefined,
   teamName: string,
-  input: { email: string; label: string },
+  input: { email: string; label: string; ordering?: boolean; orderTemplates?: string[] },
 ) {
   const team = await teamForMaintainer(caller, teamName);
   ensureNotRetired(team);
@@ -57,11 +67,32 @@ export async function createBotToken(
   if (!bot.isBot) {
     throw new ApiError(409, "CONFLICT", `"${input.email}" already belongs to a non-bot account.`, Code.AlreadyExists);
   }
-  // A maintainer: a team's pipeline submits its raw DAGs and retries them.
-  await addTeamMember(bot.id, team.id, "maintainer");
+  const ordering = bot.orderTemplates !== null;
+  if (input.ordering && !ordering && (await teamNamesForUser(bot.id)).length > 0) {
+    throw new ApiError(409, "CONFLICT", `"${input.email}" is a pipeline's bot already; make an ordering bot with its own address.`, Code.AlreadyExists);
+  }
+  if (input.ordering || ordering) {
+    if (!ordering) await setOrderTemplates(bot.id, input.orderTemplates ?? []);
+    await addTeamMember(bot.id, team.id, "member");
+  } else {
+    await addTeamMember(bot.id, team.id, "maintainer");
+  }
   const rawToken = generateApiToken();
   const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken));
   return { email: bot.email, token: rawToken, tokenId: tokenMeta.id };
+}
+
+/** Sets what an ordering bot of the team may order (its maintainers). */
+export async function setBotOrders(caller: AuthUser | undefined, teamName: string, email: string, templates: string[]) {
+  const team = await teamForMaintainer(caller, teamName);
+  ensureNotRetired(team);
+  const bot = (await listBotsForTeam(team.id)).find((b) => b.email === email);
+  if (!bot) throw new ApiError(404, "NOT_FOUND", `No bot "${email}" in team "${teamName}".`);
+  if (bot.orderTemplates === null) {
+    throw new ApiError(409, "NOT_ORDERING", `"${email}" is a pipeline's bot, not an ordering bot.`, Code.FailedPrecondition);
+  }
+  await setOrderTemplates(bot.id, templates);
+  return { templates };
 }
 
 export async function listBots(caller: AuthUser | undefined, teamName: string) {

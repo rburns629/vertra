@@ -40,6 +40,9 @@ const (
 	// TokenServiceCreateBotTokenProcedure is the fully-qualified name of the TokenService's
 	// CreateBotToken RPC.
 	TokenServiceCreateBotTokenProcedure = "/vertra.console.v1.TokenService/CreateBotToken"
+	// TokenServiceSetBotOrdersProcedure is the fully-qualified name of the TokenService's SetBotOrders
+	// RPC.
+	TokenServiceSetBotOrdersProcedure = "/vertra.console.v1.TokenService/SetBotOrders"
 	// TokenServiceListBotIdentitiesProcedure is the fully-qualified name of the TokenService's
 	// ListBotIdentities RPC.
 	TokenServiceListBotIdentitiesProcedure = "/vertra.console.v1.TokenService/ListBotIdentities"
@@ -66,6 +69,9 @@ type TokenServiceClient interface {
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	// Creates a bot, or a new token for an existing one.
 	CreateBotToken(context.Context, *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error)
+	// Sets the templates an ordering bot may order (its team's maintainers):
+	// <team>/<name> each; it may run nothing else.
+	SetBotOrders(context.Context, *connect.Request[v1.SetBotOrdersRequest]) (*connect.Response[v1.SetBotOrdersResponse], error)
 	// A team's bots' keyless identities (its members), and what this install
 	// accepts: its issuers and audience.
 	ListBotIdentities(context.Context, *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error)
@@ -106,6 +112,12 @@ func NewTokenServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+TokenServiceCreateBotTokenProcedure,
 			connect.WithSchema(tokenServiceMethods.ByName("CreateBotToken")),
+			connect.WithClientOptions(opts...),
+		),
+		setBotOrders: connect.NewClient[v1.SetBotOrdersRequest, v1.SetBotOrdersResponse](
+			httpClient,
+			baseURL+TokenServiceSetBotOrdersProcedure,
+			connect.WithSchema(tokenServiceMethods.ByName("SetBotOrders")),
 			connect.WithClientOptions(opts...),
 		),
 		listBotIdentities: connect.NewClient[v1.ListBotIdentitiesRequest, v1.ListBotIdentitiesResponse](
@@ -154,6 +166,7 @@ func NewTokenServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type tokenServiceClient struct {
 	listBots              *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
 	createBotToken        *connect.Client[v1.CreateBotTokenRequest, v1.CreateBotTokenResponse]
+	setBotOrders          *connect.Client[v1.SetBotOrdersRequest, v1.SetBotOrdersResponse]
 	listBotIdentities     *connect.Client[v1.ListBotIdentitiesRequest, v1.ListBotIdentitiesResponse]
 	addBotIdentity        *connect.Client[v1.AddBotIdentityRequest, v1.AddBotIdentityResponse]
 	removeBotIdentity     *connect.Client[v1.RemoveBotIdentityRequest, v1.RemoveBotIdentityResponse]
@@ -170,6 +183,11 @@ func (c *tokenServiceClient) ListBots(ctx context.Context, req *connect.Request[
 // CreateBotToken calls vertra.console.v1.TokenService.CreateBotToken.
 func (c *tokenServiceClient) CreateBotToken(ctx context.Context, req *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error) {
 	return c.createBotToken.CallUnary(ctx, req)
+}
+
+// SetBotOrders calls vertra.console.v1.TokenService.SetBotOrders.
+func (c *tokenServiceClient) SetBotOrders(ctx context.Context, req *connect.Request[v1.SetBotOrdersRequest]) (*connect.Response[v1.SetBotOrdersResponse], error) {
+	return c.setBotOrders.CallUnary(ctx, req)
 }
 
 // ListBotIdentities calls vertra.console.v1.TokenService.ListBotIdentities.
@@ -208,6 +226,9 @@ type TokenServiceHandler interface {
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	// Creates a bot, or a new token for an existing one.
 	CreateBotToken(context.Context, *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error)
+	// Sets the templates an ordering bot may order (its team's maintainers):
+	// <team>/<name> each; it may run nothing else.
+	SetBotOrders(context.Context, *connect.Request[v1.SetBotOrdersRequest]) (*connect.Response[v1.SetBotOrdersResponse], error)
 	// A team's bots' keyless identities (its members), and what this install
 	// accepts: its issuers and audience.
 	ListBotIdentities(context.Context, *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error)
@@ -244,6 +265,12 @@ func NewTokenServiceHandler(svc TokenServiceHandler, opts ...connect.HandlerOpti
 		TokenServiceCreateBotTokenProcedure,
 		svc.CreateBotToken,
 		connect.WithSchema(tokenServiceMethods.ByName("CreateBotToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tokenServiceSetBotOrdersHandler := connect.NewUnaryHandler(
+		TokenServiceSetBotOrdersProcedure,
+		svc.SetBotOrders,
+		connect.WithSchema(tokenServiceMethods.ByName("SetBotOrders")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tokenServiceListBotIdentitiesHandler := connect.NewUnaryHandler(
@@ -291,6 +318,8 @@ func NewTokenServiceHandler(svc TokenServiceHandler, opts ...connect.HandlerOpti
 			tokenServiceListBotsHandler.ServeHTTP(w, r)
 		case TokenServiceCreateBotTokenProcedure:
 			tokenServiceCreateBotTokenHandler.ServeHTTP(w, r)
+		case TokenServiceSetBotOrdersProcedure:
+			tokenServiceSetBotOrdersHandler.ServeHTTP(w, r)
 		case TokenServiceListBotIdentitiesProcedure:
 			tokenServiceListBotIdentitiesHandler.ServeHTTP(w, r)
 		case TokenServiceAddBotIdentityProcedure:
@@ -318,6 +347,10 @@ func (UnimplementedTokenServiceHandler) ListBots(context.Context, *connect.Reque
 
 func (UnimplementedTokenServiceHandler) CreateBotToken(context.Context, *connect.Request[v1.CreateBotTokenRequest]) (*connect.Response[v1.CreateBotTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TokenService.CreateBotToken is not implemented"))
+}
+
+func (UnimplementedTokenServiceHandler) SetBotOrders(context.Context, *connect.Request[v1.SetBotOrdersRequest]) (*connect.Response[v1.SetBotOrdersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.TokenService.SetBotOrders is not implemented"))
 }
 
 func (UnimplementedTokenServiceHandler) ListBotIdentities(context.Context, *connect.Request[v1.ListBotIdentitiesRequest]) (*connect.Response[v1.ListBotIdentitiesResponse], error) {

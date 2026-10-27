@@ -128,6 +128,30 @@ To list executions, newest first, a page at a time (pass `nextCursor` back as `p
 $ call ExecutionService/ListExecutions '{"page":{"limit":20},"team":"team-a"}' | jq '{nextCursor, executions: [.executions[] | {name, state}]}'
 ```
 
+## Placing orders from another system
+
+A storefront, a Marketplace page of your own, or an event consumer places
+orders: it runs a published template with its inputs, and nothing else. Give
+it an **ordering bot**: on **Automation → Add a bot**, tick *It places
+orders* and list the templates it may order (`<team>/<name>`). It's a member
+of your team, not a maintainer, so it can't submit raw DAGs, run single
+actions or rerun anything, and it may run only the templates listed (your
+team's maintainers change the list on its card). An order runs for your
+team, under your team's caps, quota and approvals:
+
+```bash
+curl -X POST "$CONSOLE/api/vertra.console.v1.TemplateService/RunTemplate" \
+  -H "Authorization: Bearer $VERTRA_TOKEN" -H "Content-Type: application/json" \
+  -d '{"team": "platform", "name": "app-on-cloud-run", "onBehalfOf": "my-team",
+       "requestId": "order-1042", "parameters": {"name": "shop-api"}}'
+```
+
+`requestId` is the order's own id: sending the same one again (a retry after
+a timeout) returns the same run instead of starting a second. Follow it as in
+[3. Wait for it to finish](#3-wait-for-it-to-finish). A template it isn't
+allowed answers `permission_denied` with `TEMPLATE_NOT_ORDERABLE`; anything
+else it tries, `ORDERS_ONLY`.
+
 ## Errors
 
 Every error has the same shape: a code from a short, fixed list, a message for a person, and a `Failure` detail with a stable code a pipeline can branch on (in `debug`, readable with `jq`):

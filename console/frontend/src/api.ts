@@ -823,6 +823,9 @@ export interface Bot {
   id: string;
   email: string;
   tokens: ApiTokenMeta[];
+  /** An ordering bot (decision 23): it may run only orderTemplates (<team>/<name>). */
+  ordering: boolean;
+  orderTemplates: string[];
 }
 
 export async function listBots(teamName: string): Promise<Bot[]> {
@@ -836,6 +839,8 @@ export async function listBots(teamName: string): Promise<Bot[]> {
       createdAt: iso(t.createdAt) ?? "",
       lastUsedAt: iso(t.lastUsedAt),
     })),
+    ordering: bot.ordering,
+    orderTemplates: bot.orderTemplates,
   }));
 }
 
@@ -846,9 +851,16 @@ export async function createBot(
   teamName: string,
   email: string,
   label: string,
+  orderTemplates?: string[],
 ): Promise<{ email: string; token: string; tokenId: string }> {
-  const created = await call(() => tokens.createBotToken({ team: teamName, email, label }));
+  const ordering = orderTemplates !== undefined;
+  const created = await call(() => tokens.createBotToken({ team: teamName, email, label, ordering, orderTemplates: orderTemplates ?? [] }));
   return { email: created.email, token: created.token, tokenId: created.tokenId };
+}
+
+/** Sets what an ordering bot may order: <team>/<name> each. */
+export async function setBotOrders(teamName: string, email: string, templates: string[]): Promise<string[]> {
+  return (await call(() => tokens.setBotOrders({ team: teamName, email, templates }))).templates;
 }
 
 export async function revokeToken(tokenId: string): Promise<void> {
