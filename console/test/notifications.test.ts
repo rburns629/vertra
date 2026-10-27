@@ -24,6 +24,7 @@ import {
   deliverEmails,
   deliverWebhooks,
   encryptUrl,
+  notify,
   notifyApprovals,
   notifyPolicySync,
   notifyRefusals,
@@ -249,6 +250,12 @@ describe("a platform alert", () => {
 
     expect((await call(adminToken, "NotificationService/SetAdminChannel", { team: "" })).code).toBe("ok");
     await db.delete(notificationSettings);
+  });
+
+  it("reaches everyone who still has an account, one deleted meanwhile or not", async () => {
+    const key = `${prefix}-gone`;
+    expect(await notify({ key, kind: "platform_alert", title: "x", userIds: [member.id, randomUUID()], teams: [] })).toBe(true);
+    expect((await inbox(member.id)).some((n) => n.key === key)).toBe(true);
   });
 
   it("is made for a policy sync failing for ten minutes, not for one bad pass", async () => {

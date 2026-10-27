@@ -116,7 +116,12 @@ export async function notify(event: NewEvent): Promise<boolean> {
     if (!made) return false;
     const userIds = [...new Set(event.userIds)];
     if (userIds.length > 0) {
-      await tx.insert(userNotifications).values(userIds.map((userId) => ({ eventId: made.id, userId }))).onConflictDoNothing();
+      // Only accounts that still exist: one deleted since its id was read
+      // isn't told (nor fails the event for everyone else).
+      await tx
+        .insert(userNotifications)
+        .select(tx.select({ eventId: sql<string>`${made.id}::uuid`.as("event_id"), userId: users.id, readAt: sql<null>`null`.as("read_at") }).from(users).where(inArray(users.id, userIds)))
+        .onConflictDoNothing();
       // By email too, to those who want this kind, when the install sends email.
       if (config.notifications.email.host) {
         const wanting = await tx
@@ -252,11 +257,20 @@ export async function notifyRefusals(): Promise<number> {
   return made;
 }
 
-/** A platform change or fault: admins, once per `key`; `by`, whoever did it. */
-export async function platformAlert(key: string, title: string, body: string, by?: string, link = "/admin"): Promise<boolean> {
-  const [who] = by ? await db.select({ email: users.email }).from(users).where(eq(users.id, by)) : [];
-  const said = who ? `${body}${body ? " " : ""}By ${who.email}.` : body;
-  return notify({ key: `platform:${key}`, kind: "platform_alert", title, body: said, link, userIds: await adminIds(), teams: await adminChannel() });
+/**
+ * A platform change or fault: admins, once per `key`; `by`, whoever did it.
+ * Never fails what it reports (a purge, a policy change), which is done and
+ * audited already: an alert that can't be made is logged, and false.
+ */
+export async function platformAlert(key: string, title: string, body: string, by?: string, link = "/admin", log?: FastifyBaseLogger): Promise<boolean> {
+  try {
+    const [who] = by ? await db.select({ email: users.email }).from(users).where(eq(users.id, by)) : [];
+    const said = who ? `${body}${body ? " " : ""}By ${who.email}.` : body;
+    return await notify({ key: `platform:${key}`, kind: "platform_alert", title, body: said, link, userIds: await adminIds(), teams: await adminChannel() });
+  } catch (error) {
+    (log ?? console).error({ event: "platform_alert_failed", key, err: error }, "couldn't make a platform alert");
+    return false;
+  }
 }
 
 /** A policy the console keeps in the cluster failing to sync for a while. */
