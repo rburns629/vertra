@@ -19,7 +19,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, createUser } from "../src/db/queries.js";
 import { ssoGroupMappings, ssoSettings, teamMemberships, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
-import { refreshSso } from "../src/sso.js";
+import { refreshSso, resyncGoogleGroups } from "../src/sso.js";
 import { CLIENT_ID, CLIENT_SECRET, startProvider } from "./oidcProvider.js";
 import { caller, rpcClient } from "./rpc.js";
 
@@ -193,5 +193,36 @@ describe("a mapped team", () => {
       expect((await call(admin, "SsoService/DeleteSsoGroupMapping", { id: m.id })).code).toBe("ok");
     }
     expect((await call(admin, "TeamService/RemoveMember", { team: teamA, userId: dev?.id })).code).toBe("ok");
+  });
+});
+
+describe("Google Workspace groups", () => {
+  it("are read again between sign-ins: leaving the group leaves the team, and a failure changes nothing", async () => {
+    const real = globalThis.fetch;
+    let member = true;
+    let failing = false;
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.startsWith("http://metadata.google.internal/")) return Promise.resolve(Response.json({ access_token: "t" }));
+      if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups:lookup")) {
+        if (failing) return Promise.resolve(new Response("down", { status: 503 }));
+        const group = new URL(url).searchParams.get("groupKey.id") ?? "";
+        return Promise.resolve(group === `ops@${domain}` ? Response.json({ name: "groups/ops1" }) : new Response("{}", { status: 404 }));
+      }
+      if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups/ops1/memberships:checkTransitiveMembership")) {
+        return Promise.resolve(Response.json({ hasMembership: member }));
+      }
+      return real(input, init);
+    });
+    await resyncGoogleGroups(app.log);
+    expect(await teamsOf(`gws@${domain}`)).toEqual({ [teamB]: "member" });
+    failing = true;
+    member = false;
+    await resyncGoogleGroups(app.log);
+    expect(await teamsOf(`gws@${domain}`)).toEqual({ [teamB]: "member" }); // couldn't tell: kept
+    failing = false;
+    await resyncGoogleGroups(app.log);
+    expect(await teamsOf(`gws@${domain}`)).toEqual({});
+    spy.mockRestore();
   });
 });

@@ -425,7 +425,10 @@ which a Workspace admin makes a Groups Reader; it asks only whether the
 person is in each mapped Google group), can be mapped to teams by admins. At each
 single sign-on, every mapped team's membership follows the person's groups:
 added with the best role their groups give, changed, or removed. Teams
-nothing maps to are left alone. Groups that can't be read (a missing claim,
+nothing maps to are left alone. Google Workspace groups are also read again
+every hour for everyone who signs in with single sign-on, so leaving one
+takes someone out of its team within the hour (a person whose groups can't
+be read then keeps their teams until the next try). Groups that can't be read (a missing claim,
 too many groups for the token, Google's API failing) refuse the sign-in
 (`GROUPS_UNAVAILABLE`) rather than count as none, which would take people
 out of their teams. On a mapped team, a single sign-on member's membership
@@ -563,7 +566,7 @@ Vertra isn't production-ready yet.
 | Gap | Impact | Plan |
 | --- | --- | --- |
 | The console can still create and replace Secrets in any team namespace | A compromised console could plant or overwrite a team's secret values (it can't read them) | Bind its Secret rights per team namespace as teams are created |
-| Group membership is read at sign-in | Someone who leaves a mapped group stays in its team until they next sign in with single sign-on | Re-read mapped groups on a schedule, not only at sign-in |
+| Groups from an ID token's claim are read at sign-in only | Someone who leaves a group the provider reports in its token stays in its team until their session ends (8 hours by default) or they sign in again; Google Workspace groups are read again every hour | Shorter sessions where that matters (`JWT_TTL`) |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
 | Any member of one team in a multi-team execution can read all of its outputs (its steps' logs are filtered by level: other teams see INFO lines only) | Cross-team visibility of outputs within shared executions | Decide: filter outputs by team, or require every team for reads |
 

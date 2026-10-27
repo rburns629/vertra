@@ -17,10 +17,10 @@
  * groups, which would take people out of their teams.
  */
 import type { FastifyBaseLogger } from "fastify";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
-import { ssoGroupMappings, ssoSettings, teamMemberships, teams, type TeamRole } from "./db/schema.js";
+import { ssoGroupMappings, ssoSettings, teamMemberships, teams, users, type TeamRole } from "./db/schema.js";
 import { gcpMetadataToken } from "./registry.js";
 import { unseal } from "./sealed.js";
 
@@ -207,6 +207,52 @@ export async function syncMappedTeams(userId: string, groups: string[], log: Fas
   }
   if (changes.length > 0) log.warn({ event: "sso_teams_synced", userId, changes }, "team memberships follow single sign-on groups");
   return changes;
+}
+
+/** How often mapped Google groups are read again for everyone, between sign-ins. */
+const GROUP_RESYNC_MS = 60 * 60_000;
+
+/**
+ * Reads every single sign-on user's mapped Google Workspace groups again and
+ * makes their mapped teams follow them, so leaving a group takes someone out
+ * of its team within the hour, not at their next sign-in. Only when Google's
+ * Groups API is the only source: groups from an ID token's claim can't be
+ * read without a sign-in (the session's length bounds those). A person whose
+ * groups can't be read now keeps their teams (failing never removes
+ * anyone); the next pass tries again. Returns how many people changed.
+ */
+export async function resyncGoogleGroups(log: FastifyBaseLogger): Promise<number> {
+  const sources = groupSources();
+  if (!sources.google || sources.claim) return 0;
+  const mapped = (await db.selectDistinct({ group: ssoGroupMappings.groupName }).from(ssoGroupMappings))
+    .map((m) => m.group)
+    .filter((g) => g.includes("@"));
+  if (mapped.length === 0) return 0;
+  const people = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(and(isNotNull(users.oidcSubject), eq(users.isBot, false)));
+  let changed = 0;
+  for (const person of people) {
+    let groups: string[];
+    try {
+      groups = (await googleGroupsOf(person.email, mapped)).map((g) => g.toLowerCase());
+    } catch (error) {
+      log.warn({ event: "sso_groups_resync_failed", userId: person.id, err: error }, "couldn't read a person's Google groups; their teams stay as they are");
+      continue;
+    }
+    if ((await syncMappedTeams(person.id, groups, log)).length > 0) changed++;
+  }
+  return changed;
+}
+
+export function startGroupResync(log: FastifyBaseLogger): void {
+  const timer = setInterval(() => {
+    resyncGoogleGroups(log).catch((error: unknown) => {
+      log.error({ event: "sso_groups_resync_failed", err: error }, "couldn't read single sign-on groups again");
+    });
+  }, GROUP_RESYNC_MS);
+  timer.unref();
 }
 
 /** Whether a team's memberships of single sign-on users follow groups (it has a mapping). */

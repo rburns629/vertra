@@ -22,7 +22,7 @@ import { deleteLegacySecretRole, writeFenceProblem } from "./k8s.js";
 import { db } from "./db/client.js";
 import { registerRpc } from "./rpc/server.js";
 import { registerOidc } from "./auth/oidc.js";
-import { refreshSso, startSsoRefresh } from "./sso.js";
+import { refreshSso, startGroupResync, startSsoRefresh } from "./sso.js";
 import { startMetricsServer } from "./metrics.js";
 
 // Built by ../frontend's own `npm run build`, copied to ../frontend/dist
@@ -138,6 +138,7 @@ async function main(): Promise<void> {
   // then every few seconds, so a change made on another console reaches this one.
   await refreshSso(app.log);
   startSsoRefresh(app.log);
+  startGroupResync(app.log);
   // The cluster's copies of the console's lists (the identity and scan
   // policies): now, since things may have changed while no console ran, and
   // every few minutes after, so a failed write or a hand edit doesn't last.
