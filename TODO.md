@@ -682,8 +682,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the run form's **Show as an API call** (the same run as `curl`, proven
   against kind), and a run's **Run with changes** (its form, filled in from
   the run; the catalog's current version, so a gone image doesn't stop it).
-- [ ] **Scale-down for development installs only**: say so in
-  `vertra init`. Schedules wake a sleeping install (done 2026-10-24: the
+- [x] **Scale-down for development installs only**: `vertra init` says so
+  before asking (done 2026-10-27). Schedules wake a sleeping install (done 2026-10-24: the
   console publishes its next schedule; the sleeper stays awake for one due
   soon and otherwise arms the kernel chart's `-wake` CronJob, `kernel
   wake`, five minutes before it. Proven on kind: slept at 21:13, woke at

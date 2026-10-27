@@ -220,11 +220,14 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 		return err
 	}
 
-	// 5. Scale down.
+	// 5. Scale down: for development and test installs, not production.
 	scaleDefault := c.Size == "minimal"
 	if f.scaleDown != "" {
 		scaleDefault = f.scaleDown == "true"
 	}
+	fmt.Fprintln(out, "Scaling down suits a development or test install: while it sleeps, the console and API don't answer,")
+	fmt.Fprintln(out, "so catalog CI and automation fail until something wakes it (a schedule wakes it by itself). Keep a")
+	fmt.Fprintln(out, "production install awake.")
 	if c.ScaleDown.Enabled, err = a.ask.Confirm("Scale down when idle? (it sleeps, and `vertra wake` brings it back)", scaleDefault); err != nil {
 		return err
 	}
