@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vertra base images (bases.yaml), format v2",
+  "description": "The base images this catalog approves: each copied into its registry (<registry>/bases/<name>), pinned and scanned, for its products' Dockerfiles to build FROM (./vertra catalog bases mirror; --use-mirror points the Dockerfiles at the copies).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "bases"
+  ],
+  "properties": {
+    "apiVersion": {
+      "description": "The catalog format: vertra.dev/v2.",
+      "const": "vertra.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: Bases.",
+      "const": "Bases"
+    },
+    "bases": {
+      "description": "Each approved base image.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "image"
+        ],
+        "properties": {
+          "name": {
+            "description": "Its name in the registry: <registry>/bases/<name>.",
+            "type": "string",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+          },
+          "image": {
+            "description": "The image to copy, by tag, as a Dockerfile's FROM names it: python:3.12-slim-bookworm, gcr.io/distroless/static-debian12:nonroot. Each mirror copies what the tag names then.",
+            "type": "string",
+            "pattern": "^[^\\s@]+:[^\\s@:/]+$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -33,6 +33,7 @@ on:
     paths: ["teams/**", "tools/**", "vertra.yaml", "vertra"]
   # Checks every product again: base images get new fixes, and the
   # vulnerability database new findings, without anything here changing.
+  # And copies the approved base images (bases.yaml) into the registry again.
   schedule:
     - cron: "17 5 * * 1"
   # Rebuilds (and on main republishes) every product; with a version,
@@ -80,12 +81,14 @@ jobs:
   # With a version it only tags a release main already published and signed
   # (`vertra catalog promote`), so it signs nothing; it queues apart, so a
   # later push can't cancel it while it waits.
+  # Weekly (the schedule), it mirrors the approved bases instead: the same
+  # sign-in, no products published.
   publish:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
     environment: catalog-publish
     concurrency:
-      group: ${{ inputs.version != '' && 'catalog-version' || 'catalog-publish' }}
+      group: ${{ inputs.version != '' && 'catalog-version' || github.event_name == 'schedule' && 'catalog-bases' || 'catalog-publish' }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -131,8 +134,15 @@ jobs:
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         run: echo "$REGISTRY_PASSWORD" | docker login "${VERTRA_REGISTRY%%/*}" -u "$REGISTRY_USERNAME" --password-stdin
 
+      - name: Copy the approved base images into the registry
+        if: github.event_name == 'schedule' && hashFiles('bases.yaml') != ''
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: ./vertra catalog bases mirror
+
       - name: Check, push and sign the changed products, then release the catalog
-        if: inputs.version == ''
+        if: inputs.version == '' && github.event_name != 'schedule'
         env:
           # Empty (a manual run) publishes everything.
           BASE: ${{ github.event_name == 'push' && github.event.before || '' }}

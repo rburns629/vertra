@@ -516,6 +516,17 @@ install points its console at the release (the console chart's
 From a laptop: `./vertra catalog publish [teams/<team>/products/<product> ...]`,
 then `./vertra catalog release`, signed in to the registry with `docker login`.
 
+### Base images
+
+[bases.yaml](bases.yaml) lists the base images the catalog approves. Each
+week CI copies each into the registry, `<registry>/bases/<name>`, with the
+same digest, scans the copy and signs it as products are (`./vertra catalog
+bases mirror`; run `ci.yml` by hand to do it now). A product can then build
+FROM the catalog's own copy, which stays put if the source moves or goes
+away: `./vertra catalog bases --use-mirror` points each Dockerfile's FROM of
+an approved base at its copy, pinned. Products may use other bases too;
+their own checks scan them either way.
+
 ### Versions
 
 Every release `main` publishes is `latest`, and an install following

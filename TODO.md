@@ -964,8 +964,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   from their schemas. The console stores products' descriptions and wiring
   types already; next, the generator (an `OrderService/PreviewOrder`
   method), then a page.
-- [ ] **Base images the platform maintains**: copy approved base images into
-  a registry on a schedule, scanned and pinned, for products to build from.
+- [x] **Base images the platform maintains** (done 2026-10-27, decided:
+  mirror and pin, not required): a catalog's `bases.yaml` lists approved
+  bases; catalog CI copies each weekly into `<registry>/bases/<name>` (same
+  digest, every platform), scans it (reported, not blocking) and signs it
+  (`vertra catalog bases mirror`), and `vertra catalog bases --use-mirror`
+  points Dockerfiles at the copies. Copying is tested against a registry;
+  the weekly run itself isn't seen yet (the next cloud catalog run).
 - [x] **One provider identity per team** for SecretStores (done
   2026-10-27): the console records each team's store identities
   (`secret_store_identities`) and refuses another team's store naming one

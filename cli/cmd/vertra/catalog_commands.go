@@ -17,7 +17,8 @@ package main
 //	vertra catalog promote  VERSION [--from COMMIT]   tag a commit's release vX.Y.Z (a Git tag's CI does)
 //	vertra catalog changed  --base REF      the products changed since REF, as JSON
 //	vertra catalog secret-stores check [TEAM ...]
-//	vertra catalog bases [--update]         pin every Dockerfile's FROM to its digest
+//	vertra catalog bases [--update] [--use-mirror]   pin every Dockerfile's FROM to its digest
+//	vertra catalog bases mirror             copy the approved bases (bases.yaml) into the registry
 //	vertra catalog migrate                  rewrite a catalog from before format v2 or the rename
 
 import (
@@ -177,20 +178,33 @@ func catalogPromoteCmd() *cobra.Command {
 }
 
 func catalogBasesCmd() *cobra.Command {
-	var update bool
+	var update, useMirror bool
 	cmd := &cobra.Command{
 		Use:   "bases",
-		Short: "Pin every Dockerfile's FROM to its digest",
+		Short: "Pin every Dockerfile's FROM to its digest (and mirror the approved bases: bases mirror)",
 		Args:  cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
 			c, err := openCatalog()
 			if err != nil {
 				return err
 			}
-			return c.Bases(update)
+			return c.Bases(update, useMirror)
 		},
 	}
 	cmd.Flags().BoolVar(&update, "update", false, "re-pin already pinned bases to what their tag names now")
+	cmd.Flags().BoolVar(&useMirror, "use-mirror", false, "point a FROM of an approved base (bases.yaml) at its copy in the registry")
+	cmd.AddCommand(&cobra.Command{
+		Use:   "mirror",
+		Short: "Copy the approved bases (bases.yaml) into the registry, scanned and signed, for products to build FROM",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			c, err := openCatalog()
+			if err != nil {
+				return err
+			}
+			return catalogResult(c.MirrorBases(cmd.Context()))
+		},
+	})
 	return cmd
 }
 

@@ -175,10 +175,28 @@ func (c *Catalog) digestOf(image string) (string, error) {
 }
 
 // Bases pins every unpinned FROM to its tag's current digest; with update,
-// re-pins the pinned ones too.
-func (c *Catalog) Bases(update bool) error {
+// re-pins the pinned ones too; with useMirror, points a FROM of an approved
+// base (bases.yaml) at its copy in the registry, pinned.
+func (c *Catalog) Bases(update, useMirror bool) error {
 	changed := 0
 	digests := map[string]string{}
+	mirrors := map[string]string{}
+	if useMirror {
+		s, err := c.Settings()
+		if err != nil {
+			return err
+		}
+		bases, problems := c.LoadBases()
+		if len(problems) > 0 {
+			return fmt.Errorf("bases.yaml: %s", strings.Join(problems, "; "))
+		}
+		if s.Registry == "" {
+			return errors.New("--use-mirror needs the registry: registry in vertra.yaml or VERTRA_REGISTRY")
+		}
+		for _, b := range bases {
+			mirrors[b.Image] = s.MirrorRepository(b) + ":" + mirrorTag(b)
+		}
+	}
 	for _, path := range c.Dockerfiles() {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -195,10 +213,14 @@ func (c *Catalog) Bases(update bool) error {
 			if alias := stageAlias(rest); alias != "" {
 				stages[alias] = true
 			}
-			if stages[strings.ToLower(image)] || image == "scratch" || (strings.Contains(image, "@sha256:") && !update) {
+			tag := strings.SplitN(image, "@", 2)[0]
+			mirror, mirrored := mirrors[tag]
+			if stages[strings.ToLower(image)] || image == "scratch" || (strings.Contains(image, "@sha256:") && !update && !mirrored) {
 				continue
 			}
-			tag := strings.SplitN(image, "@", 2)[0]
+			if mirrored {
+				tag = mirror
+			}
 			if digests[tag] == "" {
 				if digests[tag], err = c.digestOf(tag); err != nil {
 					return err

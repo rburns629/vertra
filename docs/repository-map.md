@@ -499,7 +499,8 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | --- | --- |
 | `README.md` | The catalog's guide: layout, onboarding a team, `product.yaml`, testing, CI, publishing, SecretStores, retiring. |
 | `vertra.yaml` | Where products publish (registry, signing); local defaults, overridden by CI variables. |
-| `vertra`, `tools/` | The wrapper that runs `vertra` (`cli/cmd/vertra`) at a pinned, checksum-verified release, or `VERTRA_BIN`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`, `api`), for editors (vertra catalog embeds its own). |
+| `bases.yaml` | The base images the catalog approves, empty to start: CI copies each into the registry weekly (`vertra catalog bases mirror`), and `--use-mirror` points Dockerfiles at the copies. |
+| `vertra`, `tools/` | The wrapper that runs `vertra` (`cli/cmd/vertra`) at a pinned, checksum-verified release, or `VERTRA_BIN`: the one tool behind every workflow and local publishing; and the schemas of every catalog file in format v2 (`team`, `product`, `template`, `dag`, `api`, `bases`), for editors (vertra catalog embeds its own). |
 | `.github/` | The catalog's workflows (check, then publish and release; a `vX.Y.Z` tag asking main to make that version, `version.yml`; SecretStore and CODEOWNERS checks; deleting a removed team's images), its scanner installer, and a placeholder `CODEOWNERS`. |
 | `.semgrep/malicious.yml` | Code rules for products: download-and-execute, reverse shells, mining, reading the Pod's token. |
 | `templates/` | Starters to copy: a team, three products, and DAGs that use them. Checked by CI, never published. |

@@ -5,10 +5,16 @@ package catalogtool
 import (
 	"bytes"
 	"context"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/registry"
+	"github.com/google/go-containerregistry/pkg/v1/random"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 // The repository's own catalog template.
@@ -231,5 +237,45 @@ func TestSecretStoresShareNoIdentity(t *testing.T) {
 	if ids := SecretStoreIdentities([]any{map[string]any{"kind": "SecretStore", "spec": map[string]any{"provider": map[string]any{
 		"aws": map[string]any{"role": "arn:aws:iam::1:role/R"}}}}}); strings.Join(ids, ",") != "aws:arn:aws:iam::1:role/r" {
 		t.Errorf("a role the store assumes: %v", ids)
+	}
+}
+
+// An approved base is copied into the registry keeping its digest, and a
+// Dockerfile's FROM of it can point at the copy, pinned.
+func TestApprovedBasesAreMirroredAndUsed(t *testing.T) {
+	server := httptest.NewServer(registry.New())
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "http://")
+	image, err := random.Image(64, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, _ := name.NewTag(host + "/upstream/python:3.12-slim")
+	if err := remote.Write(source, image); err != nil {
+		t.Fatal(err)
+	}
+	want, _ := image.Digest()
+	s := Settings{Registry: host + "/catalog-products"}
+	reference, err := copyBase(context.Background(), s, Base{Name: "python", Image: source.String()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reference != host+"/catalog-products/bases/python@"+want.String() {
+		t.Errorf("copied as %s, want the same digest %s", reference, want)
+	}
+	mirrored, _ := name.NewTag(host + "/catalog-products/bases/python:3.12-slim")
+	if desc, err := remote.Head(mirrored); err != nil || desc.Digest != want {
+		t.Errorf("the copy's tag: %v, %v", desc, err)
+	}
+
+	c := catalogWith(t, map[string]string{
+		"bases.yaml": "apiVersion: vertra.dev/v2\nkind: Bases\nbases:\n  - {name: python, image: \"" + source.String() + "\"}\n  - {name: python, image: \"x:1\"}\n",
+	})
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateBases() }, c); !strings.Contains(out, "python is named twice") {
+		t.Errorf("a name twice: %s", out)
+	}
+	c = catalogWith(t, map[string]string{"bases.yaml": "apiVersion: vertra.dev/v2\nkind: Bases\nbases:\n  - {name: Python, image: \"python\"}\n"})
+	if out := errorsOf(t, func(c *Catalog) bool { return c.ValidateBases() }, c); !strings.Contains(out, "bases.0") {
+		t.Errorf("a bad name and an untagged image: %s", out)
 	}
 }
