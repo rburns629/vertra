@@ -186,11 +186,23 @@ design.
     `github.md`: account, root MFA, Identity Center, budgets), linked from
     the CLI when it recognises a case: a Builder ID that isn't an account,
     an Identity Center account instance, an organization a sign-up made.
-- [ ] **Prove the AWS sample's SecretStore** through ESO on EKS: its
-  products, DAG, password-free database and cleanups are proven (2026-10-19
-  and 2026-10-25). The Azure samples are after the MVP (decided 2026-10-25):
-  they build and pass their tests with the SDK mocked, but have never called
-  a real subscription.
+- [x] **Prove the AWS sample's SecretStore** (done 2026-10-27, EKS): ESO
+  2.10 signed in as team platform's `eso-aws` by IRSA (the cluster's OIDC
+  issuer registered in IAM by hand, a role trusting only that
+  ServiceAccount and reading one secret), synced the secret, and a step
+  mounted it. Pod Identity doesn't work for a store (it isn't the Pod's
+  identity ESO uses); the sample said it did. The Azure samples are after
+  the MVP (decided 2026-10-25).
+- [ ] **`vertra` sets up SecretStores on aws**: register the cluster's OIDC
+  issuer in IAM (IRSA, which stores need), and offer to install External
+  Secrets Operator (pinned, as `make kind-deploy-eso` does); both were done by
+  hand for the proof.
+- [ ] **A first step on a new GKE Autopilot install can time out**: the
+  task's 300 s counts while its Pod waits for a node, and three new nodes'
+  boot disks (about 146 GB each, short-lived jobs such as the sleeper landing
+  on fresh ones) fill a new project's 500 GB SSD quota, so the scale-up
+  fails. Seen on both GKE proofs (2026-10-26, 2026-10-27). Count the timeout
+  from the container's start, and keep platform jobs on the platform's node.
 - [x] **Let a deployment label step Pods** (I2, done 2026-10-21):
   `scheduler.taskPodLabels` (`TASK_POD_LABELS`), on the step Pod only; the
   scheduler refuses to start with `app` or a `vertra.dev/*` key. Proven on
@@ -242,6 +254,7 @@ design.
   webhook if it wants that kind; a team purged, the allowed image sources
   changed, a policy sync failing ten minutes, a run's image gone from the
   registry (`platform_alert`) tell admins. Both are emailed by default.
+  The refusal alert was seen for real on EKS (2026-10-27, the reader install).
   Left: an install-level chat webhook for admins (only teams have one), and
   a policy-sync alert said once per outage with two consoles (each replica
   keys its own).
@@ -678,9 +691,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   owner's digest, verified against the owner's keyless identity; the owner
   ran a signed image and the reader refused an unsigned one pushed by hand
   (`IMAGE_NOT_SIGNED`). Left:
-  - A signed image running on a reader: not seen (the project's 500 GB SSD
-    quota held two installs' nodes back, then the reader's control plane
-    stopped answering while it slept, TLS handshake timeouts, cause unknown).
+  - (Proven 2026-10-27.) A signed image running on a reader: an EKS reader
+    of the GKE owner's Artifact Registry (federation, policy-controller
+    signing in with the steps' pull Secret) ran a signed step and refused an
+    unsigned one, and its admin got the `step_refused` alert.
   - An aws reader of another account's ECR (its verifier role reads only its
     own task registry).
   - (Fixed 2026-10-27, not yet seen on a cloud.) `vertra destroy` stopped

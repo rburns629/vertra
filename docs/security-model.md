@@ -100,9 +100,9 @@ console records the Google service account, AWS role or Azure identity each
 team's stores sign in as (their ESO ServiceAccounts' bindings, and a role a
 store assumes) and refuses another team's store naming one
 (`IDENTITY_IN_USE`; the catalog's `secret-stores check` says so in the pull
-request). A binding made only on the cloud's side (EKS Pod Identity, a
-Workload Identity principal for the namespace) isn't in the file, so keeping
-that one per team is the cloud administrator's. Both are namespaced (never a ClusterSecretStore): an
+request). A binding made only on the cloud's side (a Workload Identity
+principal for the namespace, say) isn't in the file, so keeping that one per
+team is the cloud administrator's. Both are namespaced (never a ClusterSecretStore): an
 ExternalSecret can't use another namespace's store, even applied by hand. A
 store's own credential (for a vault that can't federate, such as a
 1Password service account token) is set per install by a team member or
@@ -115,7 +115,7 @@ change in Vertra.
 | --- | --- | --- | --- |
 | GCP Secret Manager | GKE Workload Identity | None | Yes |
 | Azure Key Vault | AKS Workload Identity | None | Not yet (`catalog-template/samples/azure`) |
-| AWS Secrets Manager | EKS Pod Identity or IRSA | None | Not yet (`catalog-template/samples/aws`) |
+| AWS Secrets Manager | IRSA (the cluster's OIDC issuer registered in IAM) | None | Yes (2026-10-27, EKS) |
 | HashiCorp Vault | Vault's Kubernetes auth | None | Not yet |
 | 1Password | A service account token | One, in `eso-auth` | Not yet |
 
