@@ -188,12 +188,37 @@ func (p *pass) recordEvent(executionID string, taskID *string, eventType domain.
 	if payload == nil {
 		payload = map[string]any{}
 	}
-	if _, err := p.db.Exec(p.ctx, `INSERT INTO execution_events (execution_id, task_id, event_type, payload)
-		VALUES ($1, $2, $3, $4::jsonb)`, executionID, taskID, string(eventType), jsonValue(payload)); err != nil {
-		return err
-	}
 	p.events = append(p.events, eventType)
-	return nil
+	if p.pendingEvents != nil {
+		*p.pendingEvents = append(*p.pendingEvents, pendingEvent{executionID, taskID, eventType, payload})
+		return nil
+	}
+	_, err := p.db.Exec(p.ctx, `INSERT INTO execution_events (execution_id, task_id, event_type, payload)
+		VALUES ($1, $2, $3, $4::jsonb)`, executionID, taskID, string(eventType), jsonValue(payload))
+	return err
+}
+
+// flushEvents writes the pass's events in one statement, in the order they
+// happened (their ids, in that order).
+func (p *pass) flushEvents() error {
+	if p.pendingEvents == nil || len(*p.pendingEvents) == 0 {
+		return nil
+	}
+	pending := *p.pendingEvents
+	executions, tasks, types, payloads := make([]string, len(pending)), make([]*string, len(pending)), make([]string, len(pending)), make([]string, len(pending))
+	for i, e := range pending {
+		executions[i], tasks[i], types[i] = e.executionID, e.taskID, string(e.eventType)
+		data, err := json.Marshal(e.payload)
+		if err != nil {
+			return err
+		}
+		payloads[i] = string(data)
+	}
+	_, err := p.db.Exec(p.ctx, `INSERT INTO execution_events (execution_id, task_id, event_type, payload)
+		SELECT e, t, ty, pl FROM unnest($1::uuid[], $2::uuid[], $3::text[], $4::jsonb[]) WITH ORDINALITY AS u(e, t, ty, pl, n)
+		ORDER BY n`, executions, tasks, types, payloads)
+	*p.pendingEvents = nil
+	return err
 }
 
 // transitionExecution moves an execution to `to` only if it's still in one

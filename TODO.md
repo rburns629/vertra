@@ -277,9 +277,13 @@ design.
   surviving an API server restart and the 5-minute relist, API rate limits
   at `scheduler_executor_concurrency` 16, and a reclaimed Spot step failing
   as retryable and being retried, on each cloud.
-- [ ] **Batch the scheduler's per-task database work** (attempts, outputs
-  and dependents for a whole pass in a few queries): about 6 ms per task
-  started and 1.6 ms per task polled today, mostly round trips.
+- [x] **Batch the scheduler's per-task database work** (done 2026-10-27,
+  proven on kind): a pass reads every running task's attempt, execution
+  state and log capture at once, renews their leases in one statement, and
+  writes its events in one (in order); a start updates its attempt in one
+  statement and marks an execution running once. Against the test database:
+  polling 30 running steps, 94 round trips (9.9 ms) → 7 (1.7 ms); starting
+  30, 278 (9.3 each, 44 ms) → 159 (5.3 each, 19 ms). Tests guard both.
 
 ## Agreed direction
 

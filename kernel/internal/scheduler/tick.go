@@ -16,8 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"github.com/rburns629/vertra/kernel/internal/domain"
 	"github.com/rburns629/vertra/kernel/internal/executor"
 	"github.com/rburns629/vertra/kernel/internal/metrics"
@@ -85,6 +83,28 @@ type pass struct {
 	now    time.Time
 	log    *slog.Logger
 	events []domain.EventType
+	// Read for every running task at once before polling them (preload),
+	// so a step still running costs no round trips of its own: its current
+	// attempt, its execution's state (dropped once this pass changes the
+	// execution), and when its logs were last captured.
+	attempts        map[string]*Attempt
+	executionStates map[string]string
+	logsCapturedAt  map[string]time.Time
+	// Tasks still running whose lease is renewed in one statement at the
+	// end of the pass.
+	heartbeats []string
+	// The pass's events, written in one statement at its end (in order:
+	// nothing in a pass reads them back); nil writes each at once.
+	pendingEvents *[]pendingEvent
+	// Executions this pass already moved to RUNNING.
+	startedExecutions map[string]bool
+}
+
+type pendingEvent struct {
+	executionID string
+	taskID      *string
+	eventType   domain.EventType
+	payload     map[string]any
 }
 
 // RunTick runs one scheduling pass on db (a transaction the caller commits):
@@ -92,7 +112,7 @@ type pass struct {
 // transaction rolls back, so running the next from scratch is always safe.
 // Only executor calls overlap; every row read and write is in order.
 func RunTick(ctx context.Context, db DB, exec executor.Executor, opts Options, now time.Time, log *slog.Logger) (Outcome, error) {
-	p := &pass{ctx: ctx, db: db, exec: exec, opts: opts, now: now, log: log}
+	p := &pass{ctx: ctx, db: db, exec: exec, opts: opts, now: now, log: log, pendingEvents: &[]pendingEvent{}}
 	if err := p.expireApprovals(); err != nil {
 		return Outcome{}, fmt.Errorf("expiring approvals: %w", err)
 	}
@@ -116,6 +136,9 @@ func RunTick(ctx context.Context, db DB, exec executor.Executor, opts Options, n
 	statuses, statusErrors := gather(ctx, running, opts.ExecutorConcurrency, func(t *Task) (executor.Status, error) {
 		return exec.Status(ctx, t.ExecutorHandle)
 	})
+	if err := p.preload(running); err != nil {
+		return Outcome{}, fmt.Errorf("reading the running tasks: %w", err)
+	}
 	var finished []executor.Handle
 	for i, t := range running {
 		handle := t.ExecutorHandle
@@ -126,6 +149,16 @@ func RunTick(ctx context.Context, db DB, exec executor.Executor, opts Options, n
 		if left {
 			finished = append(finished, handle)
 		}
+	}
+	if len(p.heartbeats) > 0 {
+		// Still alive, still ours: every lease renewed at once.
+		if _, err := db.Exec(ctx, `UPDATE execution_tasks SET lease_expires_at = $2, updated_at = now() WHERE id = ANY($1::uuid[])`,
+			p.heartbeats, p.now.Add(opts.LeaseDuration)); err != nil {
+			return Outcome{}, fmt.Errorf("renewing leases: %w", err)
+		}
+	}
+	if err := p.flushEvents(); err != nil {
+		return Outcome{}, fmt.Errorf("recording events: %w", err)
 	}
 	return Outcome{Progressed: len(claimed) > 0 || len(finished) > 0, Finished: finished, Events: p.events}, nil
 }
@@ -292,13 +325,8 @@ func (p *pass) recordStart(t *Task, resolved executor.ResolvedTask, handle execu
 	if err := saveTask(p.ctx, p.db, t); err != nil {
 		return err
 	}
-	attempt, err := currentAttempt(p.ctx, p.db, t)
-	if err != nil {
-		return err
-	}
-	attempt.StartedAt = ptr(p.now)
-	attempt.Handle = handle
-	if err := saveAttempt(p.ctx, p.db, attempt); err != nil {
+	if _, err := p.db.Exec(p.ctx, `UPDATE task_attempts SET started_at = $3, executor_handle = $4::jsonb
+		WHERE task_id = $1 AND attempt_number = $2`, t.ID, t.AttemptCount, p.now, jsonValue(handle)); err != nil {
 		return err
 	}
 	if err := p.markExecutionRunning(t.ExecutionID); err != nil {
@@ -327,16 +355,94 @@ func schemaProblems(schema map[string]any, v map[string]any) []string {
 // and says whether the task left RUNNING. A task only leaves RUNNING for a
 // retry once its attempt is known to have stopped (finished, stopped, or
 // past its Job's own deadline): otherwise a retry could run beside it.
-func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, error) {
-	attempt, err := currentAttempt(p.ctx, p.db, t)
+// preload reads, for every running task at once, what polling each needs:
+// its current attempt, its execution's state, and when its logs were last
+// captured.
+func (p *pass) preload(running []*Task) error {
+	p.attempts, p.executionStates, p.logsCapturedAt = map[string]*Attempt{}, map[string]string{}, map[string]time.Time{}
+	if len(running) == 0 {
+		return nil
+	}
+	ids, numbers, executions := make([]string, len(running)), make([]int32, len(running)), make([]string, len(running))
+	for i, t := range running {
+		ids[i], numbers[i], executions[i] = t.ID, int32(t.AttemptCount), t.ExecutionID
+	}
+	rows, err := p.db.Query(p.ctx, `SELECT a.task_id::text, a.id::text, a.started_at, a.completed_at, a.failure, a.executor_handle
+		FROM task_attempts a JOIN unnest($1::uuid[], $2::int[]) AS r(task_id, n) ON a.task_id = r.task_id AND a.attempt_number = r.n`,
+		ids, numbers)
 	if err != nil {
-		return false, err
+		return err
+	}
+	for rows.Next() {
+		a := &Attempt{}
+		var taskID string
+		var failure, handle []byte
+		if err := rows.Scan(&taskID, &a.ID, &a.StartedAt, &a.CompletedAt, &failure, &handle); err != nil {
+			rows.Close()
+			return err
+		}
+		if err := decodeJSON(failure, &a.Failure); err != nil {
+			rows.Close()
+			return err
+		}
+		if err := decodeJSON(handle, &a.Handle); err != nil {
+			rows.Close()
+			return err
+		}
+		p.attempts[taskID] = a
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows, err = p.db.Query(p.ctx, `SELECT id::text, state FROM executions WHERE id = ANY($1::uuid[])`, executions)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var id, state string
+		if err := rows.Scan(&id, &state); err != nil {
+			rows.Close()
+			return err
+		}
+		p.executionStates[id] = state
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if p.opts.LogRefresh <= 0 {
+		return nil
+	}
+	rows, err = p.db.Query(p.ctx, `SELECT task_id::text, created_at FROM task_logs WHERE task_id = ANY($1::uuid[])`, ids)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var at time.Time
+		if err := rows.Scan(&id, &at); err != nil {
+			return err
+		}
+		p.logsCapturedAt[id] = at
+	}
+	return rows.Err()
+}
+
+func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, error) {
+	attempt := p.attempts[t.ID]
+	if attempt == nil {
+		var err error
+		if attempt, err = currentAttempt(p.ctx, p.db, t); err != nil {
+			return false, err
+		}
 	}
 	handle := t.ExecutorHandle
 
-	var executionState string
-	if err := p.db.QueryRow(p.ctx, `SELECT state FROM executions WHERE id = $1`, t.ExecutionID).Scan(&executionState); err != nil {
-		return false, err
+	executionState, known := p.executionStates[t.ExecutionID]
+	if !known {
+		if err := p.db.QueryRow(p.ctx, `SELECT state FROM executions WHERE id = $1`, t.ExecutionID).Scan(&executionState); err != nil {
+			return false, err
+		}
 	}
 	if domain.ExecutionState(executionState) == domain.ExecutionCancelled {
 		// Cancelled through kernel-api, which only marks rows: only the
@@ -437,19 +543,14 @@ func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, err
 		return false, saveTask(p.ctx, p.db, t)
 	}
 
-	t.LeaseExpiresAt = ptr(p.now.Add(p.opts.LeaseDuration)) // heartbeat: still alive, still ours
-	if err := saveTask(p.ctx, p.db, t); err != nil {
-		return false, err
-	}
+	// Heartbeat: still alive, still ours (renewed with the rest at the end).
+	t.LeaseExpiresAt = ptr(p.now.Add(p.opts.LeaseDuration))
+	p.heartbeats = append(p.heartbeats, t.ID)
 	if p.opts.LogRefresh > 0 {
 		// So a long step's progress shows while it runs, not only at the end.
-		var capturedAt time.Time
-		err := p.db.QueryRow(p.ctx, `SELECT created_at FROM task_logs WHERE task_id = $1`, t.ID).Scan(&capturedAt)
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && p.now.Sub(capturedAt) >= p.opts.LogRefresh) {
+		capturedAt, captured := p.logsCapturedAt[t.ID]
+		if !captured || p.now.Sub(capturedAt) >= p.opts.LogRefresh {
 			return false, p.captureLogs(t, handle, &p.now)
-		}
-		if err != nil {
-			return false, err
 		}
 	}
 	return false, nil
@@ -602,7 +703,17 @@ func (p *pass) releaseReadyDependents(t *Task) error {
 // row's state written back: kernel-api may have cancelled it since.
 
 func (p *pass) markExecutionRunning(executionID string) error {
+	if p.startedExecutions[executionID] {
+		return nil // this pass already did
+	}
+	delete(p.executionStates, executionID) // changed by this pass: read again
 	moved, err := transitionExecution(p.ctx, p.db, executionID, domain.ExecutionRunning, domain.ExecutionPending)
+	if err == nil {
+		if p.startedExecutions == nil {
+			p.startedExecutions = map[string]bool{}
+		}
+		p.startedExecutions[executionID] = true
+	}
 	if err != nil || !moved {
 		return err
 	}
@@ -616,6 +727,7 @@ func (p *pass) markExecutionRunning(executionID string) error {
 // releaseReadyDependents: two schedulers finishing its last two tasks would
 // each count the other's as unfinished.
 func (p *pass) settleExecution(executionID string) error {
+	delete(p.executionStates, executionID) // changed by this pass: read again
 	if _, err := p.db.Exec(p.ctx, `SELECT id FROM executions WHERE id = $1 FOR NO KEY UPDATE`, executionID); err != nil {
 		return err
 	}
@@ -657,6 +769,7 @@ func (p *pass) settleExecution(executionID string) error {
 // a dependency, or to be claimed) and fails the execution. Tasks before the
 // execution's own row, in the order kernel-api's cancel locks them too.
 func (p *pass) failExecution(executionID string) error {
+	delete(p.executionStates, executionID) // changed by this pass: read again
 	if _, err := p.db.Exec(p.ctx, `UPDATE execution_tasks SET state = 'CANCELLED', updated_at = now()
 		WHERE execution_id = $1 AND state IN ('READY', 'BLOCKED', 'AWAITING_APPROVAL')`, executionID); err != nil {
 		return err
