@@ -60,6 +60,96 @@ func (*GetSecurityRequest) Descriptor() ([]byte, []int) {
 	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{0}
 }
 
+type GetImageSbomRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The image, pinned by digest, as GetSecurity lists it.
+	Image         string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetImageSbomRequest) Reset() {
+	*x = GetImageSbomRequest{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetImageSbomRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetImageSbomRequest) ProtoMessage() {}
+
+func (x *GetImageSbomRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetImageSbomRequest.ProtoReflect.Descriptor instead.
+func (*GetImageSbomRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetImageSbomRequest) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+type GetImageSbomResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The CycloneDX document, as JSON.
+	Sbom          string `protobuf:"bytes,1,opt,name=sbom,proto3" json:"sbom,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetImageSbomResponse) Reset() {
+	*x = GetImageSbomResponse{}
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetImageSbomResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetImageSbomResponse) ProtoMessage() {}
+
+func (x *GetImageSbomResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetImageSbomResponse.ProtoReflect.Descriptor instead.
+func (*GetImageSbomResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetImageSbomResponse) GetSbom() string {
+	if x != nil {
+		return x.Sbom
+	}
+	return ""
+}
+
 type GetSecurityResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Checks        []*SecurityCheck       `protobuf:"bytes,1,rep,name=checks,proto3" json:"checks,omitempty"`
@@ -71,7 +161,7 @@ type GetSecurityResponse struct {
 
 func (x *GetSecurityResponse) Reset() {
 	*x = GetSecurityResponse{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -83,7 +173,7 @@ func (x *GetSecurityResponse) String() string {
 func (*GetSecurityResponse) ProtoMessage() {}
 
 func (x *GetSecurityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -96,7 +186,7 @@ func (x *GetSecurityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecurityResponse.ProtoReflect.Descriptor instead.
 func (*GetSecurityResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{1}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetSecurityResponse) GetChecks() []*SecurityCheck {
@@ -133,7 +223,7 @@ type SecurityCheck struct {
 
 func (x *SecurityCheck) Reset() {
 	*x = SecurityCheck{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -145,7 +235,7 @@ func (x *SecurityCheck) String() string {
 func (*SecurityCheck) ProtoMessage() {}
 
 func (x *SecurityCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -158,7 +248,7 @@ func (x *SecurityCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityCheck.ProtoReflect.Descriptor instead.
 func (*SecurityCheck) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{2}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SecurityCheck) GetName() string {
@@ -207,7 +297,7 @@ type Refusal struct {
 
 func (x *Refusal) Reset() {
 	*x = Refusal{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +309,7 @@ func (x *Refusal) String() string {
 func (*Refusal) ProtoMessage() {}
 
 func (x *Refusal) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +322,7 @@ func (x *Refusal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Refusal.ProtoReflect.Descriptor instead.
 func (*Refusal) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Refusal) GetAt() *timestamppb.Timestamp {
@@ -312,7 +402,7 @@ type AllowedImage struct {
 
 func (x *AllowedImage) Reset() {
 	*x = AllowedImage{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -324,7 +414,7 @@ func (x *AllowedImage) String() string {
 func (*AllowedImage) ProtoMessage() {}
 
 func (x *AllowedImage) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -337,7 +427,7 @@ func (x *AllowedImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AllowedImage.ProtoReflect.Descriptor instead.
 func (*AllowedImage) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AllowedImage) GetProduct() string {
@@ -411,7 +501,7 @@ type GetMetricsRequest struct {
 
 func (x *GetMetricsRequest) Reset() {
 	*x = GetMetricsRequest{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -423,7 +513,7 @@ func (x *GetMetricsRequest) String() string {
 func (*GetMetricsRequest) ProtoMessage() {}
 
 func (x *GetMetricsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,7 +526,7 @@ func (x *GetMetricsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMetricsRequest.ProtoReflect.Descriptor instead.
 func (*GetMetricsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{7}
 }
 
 type GetMetricsResponse struct {
@@ -453,7 +543,7 @@ type GetMetricsResponse struct {
 
 func (x *GetMetricsResponse) Reset() {
 	*x = GetMetricsResponse{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -465,7 +555,7 @@ func (x *GetMetricsResponse) String() string {
 func (*GetMetricsResponse) ProtoMessage() {}
 
 func (x *GetMetricsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -478,7 +568,7 @@ func (x *GetMetricsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMetricsResponse.ProtoReflect.Descriptor instead.
 func (*GetMetricsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetMetricsResponse) GetHours() []*HourMetrics {
@@ -527,7 +617,7 @@ type HourMetrics struct {
 
 func (x *HourMetrics) Reset() {
 	*x = HourMetrics{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +629,7 @@ func (x *HourMetrics) String() string {
 func (*HourMetrics) ProtoMessage() {}
 
 func (x *HourMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +642,7 @@ func (x *HourMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HourMetrics.ProtoReflect.Descriptor instead.
 func (*HourMetrics) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *HourMetrics) GetHour() *timestamppb.Timestamp {
@@ -590,7 +680,7 @@ type FailureMetrics struct {
 
 func (x *FailureMetrics) Reset() {
 	*x = FailureMetrics{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +692,7 @@ func (x *FailureMetrics) String() string {
 func (*FailureMetrics) ProtoMessage() {}
 
 func (x *FailureMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +705,7 @@ func (x *FailureMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailureMetrics.ProtoReflect.Descriptor instead.
 func (*FailureMetrics) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{8}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *FailureMetrics) GetCode() string {
@@ -662,7 +752,7 @@ type ProductMetrics struct {
 
 func (x *ProductMetrics) Reset() {
 	*x = ProductMetrics{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -674,7 +764,7 @@ func (x *ProductMetrics) String() string {
 func (*ProductMetrics) ProtoMessage() {}
 
 func (x *ProductMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -687,7 +777,7 @@ func (x *ProductMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProductMetrics.ProtoReflect.Descriptor instead.
 func (*ProductMetrics) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{9}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ProductMetrics) GetProduct() string {
@@ -757,7 +847,7 @@ type ListAuditRequest struct {
 
 func (x *ListAuditRequest) Reset() {
 	*x = ListAuditRequest{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -769,7 +859,7 @@ func (x *ListAuditRequest) String() string {
 func (*ListAuditRequest) ProtoMessage() {}
 
 func (x *ListAuditRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -782,7 +872,7 @@ func (x *ListAuditRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditRequest.ProtoReflect.Descriptor instead.
 func (*ListAuditRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{10}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListAuditRequest) GetBefore() int64 {
@@ -831,7 +921,7 @@ type ListAuditResponse struct {
 
 func (x *ListAuditResponse) Reset() {
 	*x = ListAuditResponse{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -843,7 +933,7 @@ func (x *ListAuditResponse) String() string {
 func (*ListAuditResponse) ProtoMessage() {}
 
 func (x *ListAuditResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -856,7 +946,7 @@ func (x *ListAuditResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditResponse.ProtoReflect.Descriptor instead.
 func (*ListAuditResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{11}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListAuditResponse) GetEntries() []*AuditEntry {
@@ -881,7 +971,7 @@ type GetAuditCopyRequest struct {
 
 func (x *GetAuditCopyRequest) Reset() {
 	*x = GetAuditCopyRequest{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -893,7 +983,7 @@ func (x *GetAuditCopyRequest) String() string {
 func (*GetAuditCopyRequest) ProtoMessage() {}
 
 func (x *GetAuditCopyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -906,7 +996,7 @@ func (x *GetAuditCopyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuditCopyRequest.ProtoReflect.Descriptor instead.
 func (*GetAuditCopyRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{12}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{14}
 }
 
 type GetAuditCopyResponse struct {
@@ -936,7 +1026,7 @@ type GetAuditCopyResponse struct {
 
 func (x *GetAuditCopyResponse) Reset() {
 	*x = GetAuditCopyResponse{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -948,7 +1038,7 @@ func (x *GetAuditCopyResponse) String() string {
 func (*GetAuditCopyResponse) ProtoMessage() {}
 
 func (x *GetAuditCopyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -961,7 +1051,7 @@ func (x *GetAuditCopyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuditCopyResponse.ProtoReflect.Descriptor instead.
 func (*GetAuditCopyResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{13}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetAuditCopyResponse) GetEnabled() bool {
@@ -1044,7 +1134,7 @@ type SearchLogsRequest struct {
 
 func (x *SearchLogsRequest) Reset() {
 	*x = SearchLogsRequest{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1056,7 +1146,7 @@ func (x *SearchLogsRequest) String() string {
 func (*SearchLogsRequest) ProtoMessage() {}
 
 func (x *SearchLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,7 +1159,7 @@ func (x *SearchLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchLogsRequest.ProtoReflect.Descriptor instead.
 func (*SearchLogsRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{14}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SearchLogsRequest) GetText() string {
@@ -1141,7 +1231,7 @@ type SearchLogsResponse struct {
 
 func (x *SearchLogsResponse) Reset() {
 	*x = SearchLogsResponse{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1153,7 +1243,7 @@ func (x *SearchLogsResponse) String() string {
 func (*SearchLogsResponse) ProtoMessage() {}
 
 func (x *SearchLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1166,7 +1256,7 @@ func (x *SearchLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchLogsResponse.ProtoReflect.Descriptor instead.
 func (*SearchLogsResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{15}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SearchLogsResponse) GetLines() []*LogLine {
@@ -1208,7 +1298,7 @@ type LogLine struct {
 
 func (x *LogLine) Reset() {
 	*x = LogLine{}
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1220,7 +1310,7 @@ func (x *LogLine) String() string {
 func (*LogLine) ProtoMessage() {}
 
 func (x *LogLine) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_observe_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_observe_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1233,7 +1323,7 @@ func (x *LogLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogLine.ProtoReflect.Descriptor instead.
 func (*LogLine) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{16}
+	return file_vertra_console_v1_observe_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *LogLine) GetAt() *timestamppb.Timestamp {
@@ -1297,7 +1387,11 @@ var File_vertra_console_v1_observe_proto protoreflect.FileDescriptor
 const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\n" +
 	"\x1fvertra/console/v1/observe.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dvertra/console/v1/admin.proto\"\x14\n" +
-	"\x12GetSecurityRequest\"\xc0\x01\n" +
+	"\x12GetSecurityRequest\"+\n" +
+	"\x13GetImageSbomRequest\x12\x14\n" +
+	"\x05image\x18\x01 \x01(\tR\x05image\"*\n" +
+	"\x14GetImageSbomResponse\x12\x12\n" +
+	"\x04sbom\x18\x01 \x01(\tR\x04sbom\"\xc0\x01\n" +
 	"\x13GetSecurityResponse\x128\n" +
 	"\x06checks\x18\x01 \x03(\v2 .vertra.console.v1.SecurityCheckR\x06checks\x126\n" +
 	"\brefusals\x18\x02 \x03(\v2\x1a.vertra.console.v1.RefusalR\brefusals\x127\n" +
@@ -1398,9 +1492,10 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\aattempt\x18\x05 \x01(\x05R\aattempt\x12\x14\n" +
 	"\x05level\x18\x06 \x01(\tR\x05level\x12\x10\n" +
 	"\x03app\x18\a \x01(\tR\x03app\x12\x12\n" +
-	"\x04line\x18\b \x01(\tR\x04line2\xf6\x03\n" +
+	"\x04line\x18\b \x01(\tR\x04line2\xdc\x04\n" +
 	"\x0eObserveService\x12a\n" +
-	"\vGetSecurity\x12%.vertra.console.v1.GetSecurityRequest\x1a&.vertra.console.v1.GetSecurityResponse\"\x03\x90\x02\x01\x12^\n" +
+	"\vGetSecurity\x12%.vertra.console.v1.GetSecurityRequest\x1a&.vertra.console.v1.GetSecurityResponse\"\x03\x90\x02\x01\x12d\n" +
+	"\fGetImageSbom\x12&.vertra.console.v1.GetImageSbomRequest\x1a'.vertra.console.v1.GetImageSbomResponse\"\x03\x90\x02\x01\x12^\n" +
 	"\n" +
 	"GetMetrics\x12$.vertra.console.v1.GetMetricsRequest\x1a%.vertra.console.v1.GetMetricsResponse\"\x03\x90\x02\x01\x12[\n" +
 	"\tListAudit\x12#.vertra.console.v1.ListAuditRequest\x1a$.vertra.console.v1.ListAuditResponse\"\x03\x90\x02\x01\x12d\n" +
@@ -1421,57 +1516,61 @@ func file_vertra_console_v1_observe_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_observe_proto_rawDescData
 }
 
-var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_vertra_console_v1_observe_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_vertra_console_v1_observe_proto_goTypes = []any{
 	(*GetSecurityRequest)(nil),    // 0: vertra.console.v1.GetSecurityRequest
-	(*GetSecurityResponse)(nil),   // 1: vertra.console.v1.GetSecurityResponse
-	(*SecurityCheck)(nil),         // 2: vertra.console.v1.SecurityCheck
-	(*Refusal)(nil),               // 3: vertra.console.v1.Refusal
-	(*AllowedImage)(nil),          // 4: vertra.console.v1.AllowedImage
-	(*GetMetricsRequest)(nil),     // 5: vertra.console.v1.GetMetricsRequest
-	(*GetMetricsResponse)(nil),    // 6: vertra.console.v1.GetMetricsResponse
-	(*HourMetrics)(nil),           // 7: vertra.console.v1.HourMetrics
-	(*FailureMetrics)(nil),        // 8: vertra.console.v1.FailureMetrics
-	(*ProductMetrics)(nil),        // 9: vertra.console.v1.ProductMetrics
-	(*ListAuditRequest)(nil),      // 10: vertra.console.v1.ListAuditRequest
-	(*ListAuditResponse)(nil),     // 11: vertra.console.v1.ListAuditResponse
-	(*GetAuditCopyRequest)(nil),   // 12: vertra.console.v1.GetAuditCopyRequest
-	(*GetAuditCopyResponse)(nil),  // 13: vertra.console.v1.GetAuditCopyResponse
-	(*SearchLogsRequest)(nil),     // 14: vertra.console.v1.SearchLogsRequest
-	(*SearchLogsResponse)(nil),    // 15: vertra.console.v1.SearchLogsResponse
-	(*LogLine)(nil),               // 16: vertra.console.v1.LogLine
-	(*timestamppb.Timestamp)(nil), // 17: google.protobuf.Timestamp
-	(*AuditEntry)(nil),            // 18: vertra.console.v1.AuditEntry
+	(*GetImageSbomRequest)(nil),   // 1: vertra.console.v1.GetImageSbomRequest
+	(*GetImageSbomResponse)(nil),  // 2: vertra.console.v1.GetImageSbomResponse
+	(*GetSecurityResponse)(nil),   // 3: vertra.console.v1.GetSecurityResponse
+	(*SecurityCheck)(nil),         // 4: vertra.console.v1.SecurityCheck
+	(*Refusal)(nil),               // 5: vertra.console.v1.Refusal
+	(*AllowedImage)(nil),          // 6: vertra.console.v1.AllowedImage
+	(*GetMetricsRequest)(nil),     // 7: vertra.console.v1.GetMetricsRequest
+	(*GetMetricsResponse)(nil),    // 8: vertra.console.v1.GetMetricsResponse
+	(*HourMetrics)(nil),           // 9: vertra.console.v1.HourMetrics
+	(*FailureMetrics)(nil),        // 10: vertra.console.v1.FailureMetrics
+	(*ProductMetrics)(nil),        // 11: vertra.console.v1.ProductMetrics
+	(*ListAuditRequest)(nil),      // 12: vertra.console.v1.ListAuditRequest
+	(*ListAuditResponse)(nil),     // 13: vertra.console.v1.ListAuditResponse
+	(*GetAuditCopyRequest)(nil),   // 14: vertra.console.v1.GetAuditCopyRequest
+	(*GetAuditCopyResponse)(nil),  // 15: vertra.console.v1.GetAuditCopyResponse
+	(*SearchLogsRequest)(nil),     // 16: vertra.console.v1.SearchLogsRequest
+	(*SearchLogsResponse)(nil),    // 17: vertra.console.v1.SearchLogsResponse
+	(*LogLine)(nil),               // 18: vertra.console.v1.LogLine
+	(*timestamppb.Timestamp)(nil), // 19: google.protobuf.Timestamp
+	(*AuditEntry)(nil),            // 20: vertra.console.v1.AuditEntry
 }
 var file_vertra_console_v1_observe_proto_depIdxs = []int32{
-	2,  // 0: vertra.console.v1.GetSecurityResponse.checks:type_name -> vertra.console.v1.SecurityCheck
-	3,  // 1: vertra.console.v1.GetSecurityResponse.refusals:type_name -> vertra.console.v1.Refusal
-	4,  // 2: vertra.console.v1.GetSecurityResponse.images:type_name -> vertra.console.v1.AllowedImage
-	17, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
-	17, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
-	7,  // 5: vertra.console.v1.GetMetricsResponse.hours:type_name -> vertra.console.v1.HourMetrics
-	8,  // 6: vertra.console.v1.GetMetricsResponse.failures:type_name -> vertra.console.v1.FailureMetrics
-	9,  // 7: vertra.console.v1.GetMetricsResponse.products:type_name -> vertra.console.v1.ProductMetrics
-	17, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
-	18, // 9: vertra.console.v1.ListAuditResponse.entries:type_name -> vertra.console.v1.AuditEntry
-	17, // 10: vertra.console.v1.GetAuditCopyResponse.copied_at:type_name -> google.protobuf.Timestamp
-	17, // 11: vertra.console.v1.GetAuditCopyResponse.checked_at:type_name -> google.protobuf.Timestamp
-	17, // 12: vertra.console.v1.SearchLogsRequest.since:type_name -> google.protobuf.Timestamp
-	17, // 13: vertra.console.v1.SearchLogsRequest.until:type_name -> google.protobuf.Timestamp
-	16, // 14: vertra.console.v1.SearchLogsResponse.lines:type_name -> vertra.console.v1.LogLine
-	17, // 15: vertra.console.v1.LogLine.at:type_name -> google.protobuf.Timestamp
+	4,  // 0: vertra.console.v1.GetSecurityResponse.checks:type_name -> vertra.console.v1.SecurityCheck
+	5,  // 1: vertra.console.v1.GetSecurityResponse.refusals:type_name -> vertra.console.v1.Refusal
+	6,  // 2: vertra.console.v1.GetSecurityResponse.images:type_name -> vertra.console.v1.AllowedImage
+	19, // 3: vertra.console.v1.Refusal.at:type_name -> google.protobuf.Timestamp
+	19, // 4: vertra.console.v1.AllowedImage.scanned_at:type_name -> google.protobuf.Timestamp
+	9,  // 5: vertra.console.v1.GetMetricsResponse.hours:type_name -> vertra.console.v1.HourMetrics
+	10, // 6: vertra.console.v1.GetMetricsResponse.failures:type_name -> vertra.console.v1.FailureMetrics
+	11, // 7: vertra.console.v1.GetMetricsResponse.products:type_name -> vertra.console.v1.ProductMetrics
+	19, // 8: vertra.console.v1.HourMetrics.hour:type_name -> google.protobuf.Timestamp
+	20, // 9: vertra.console.v1.ListAuditResponse.entries:type_name -> vertra.console.v1.AuditEntry
+	19, // 10: vertra.console.v1.GetAuditCopyResponse.copied_at:type_name -> google.protobuf.Timestamp
+	19, // 11: vertra.console.v1.GetAuditCopyResponse.checked_at:type_name -> google.protobuf.Timestamp
+	19, // 12: vertra.console.v1.SearchLogsRequest.since:type_name -> google.protobuf.Timestamp
+	19, // 13: vertra.console.v1.SearchLogsRequest.until:type_name -> google.protobuf.Timestamp
+	18, // 14: vertra.console.v1.SearchLogsResponse.lines:type_name -> vertra.console.v1.LogLine
+	19, // 15: vertra.console.v1.LogLine.at:type_name -> google.protobuf.Timestamp
 	0,  // 16: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
-	5,  // 17: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
-	10, // 18: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
-	12, // 19: vertra.console.v1.ObserveService.GetAuditCopy:input_type -> vertra.console.v1.GetAuditCopyRequest
-	14, // 20: vertra.console.v1.ObserveService.SearchLogs:input_type -> vertra.console.v1.SearchLogsRequest
-	1,  // 21: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
-	6,  // 22: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
-	11, // 23: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
-	13, // 24: vertra.console.v1.ObserveService.GetAuditCopy:output_type -> vertra.console.v1.GetAuditCopyResponse
-	15, // 25: vertra.console.v1.ObserveService.SearchLogs:output_type -> vertra.console.v1.SearchLogsResponse
-	21, // [21:26] is the sub-list for method output_type
-	16, // [16:21] is the sub-list for method input_type
+	1,  // 17: vertra.console.v1.ObserveService.GetImageSbom:input_type -> vertra.console.v1.GetImageSbomRequest
+	7,  // 18: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
+	12, // 19: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
+	14, // 20: vertra.console.v1.ObserveService.GetAuditCopy:input_type -> vertra.console.v1.GetAuditCopyRequest
+	16, // 21: vertra.console.v1.ObserveService.SearchLogs:input_type -> vertra.console.v1.SearchLogsRequest
+	3,  // 22: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
+	2,  // 23: vertra.console.v1.ObserveService.GetImageSbom:output_type -> vertra.console.v1.GetImageSbomResponse
+	8,  // 24: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
+	13, // 25: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
+	15, // 26: vertra.console.v1.ObserveService.GetAuditCopy:output_type -> vertra.console.v1.GetAuditCopyResponse
+	17, // 27: vertra.console.v1.ObserveService.SearchLogs:output_type -> vertra.console.v1.SearchLogsResponse
+	22, // [22:28] is the sub-list for method output_type
+	16, // [16:22] is the sub-list for method input_type
 	16, // [16:16] is the sub-list for extension type_name
 	16, // [16:16] is the sub-list for extension extendee
 	0,  // [0:16] is the sub-list for field type_name
@@ -1483,14 +1582,14 @@ func file_vertra_console_v1_observe_proto_init() {
 		return
 	}
 	file_vertra_console_v1_admin_proto_init()
-	file_vertra_console_v1_observe_proto_msgTypes[13].OneofWrappers = []any{}
+	file_vertra_console_v1_observe_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_observe_proto_rawDesc), len(file_vertra_console_v1_observe_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

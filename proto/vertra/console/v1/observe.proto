@@ -17,6 +17,12 @@ service ObserveService {
   rpc GetSecurity(GetSecurityRequest) returns (GetSecurityResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // An image's software bill of materials (CycloneDX JSON), as catalog CI
+  // attached it, signed by the image's signer; for an image the caller may
+  // see. NOT_FOUND when it has none.
+  rpc GetImageSbom(GetImageSbomRequest) returns (GetImageSbomResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // What the steps are doing: started and how long they waited, hour by
   // hour over the last day; why they failed; and each product's step
   // times over the last week.
@@ -44,6 +50,16 @@ service ObserveService {
 }
 
 message GetSecurityRequest {}
+
+message GetImageSbomRequest {
+  // The image, pinned by digest, as GetSecurity lists it.
+  string image = 1;
+}
+
+message GetImageSbomResponse {
+  // The CycloneDX document, as JSON.
+  string sbom = 1;
+}
 
 message GetSecurityResponse {
   repeated SecurityCheck checks = 1;

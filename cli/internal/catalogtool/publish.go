@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -59,18 +61,7 @@ func (c *Catalog) sign(reference string, s Settings) error {
 	if err != nil {
 		return errors.New("signing needs cosign installed (.github/scripts/install-scanners.sh cosign)")
 	}
-	var args []string
-	if s.SigningMode == "key" {
-		// No public transparency log: verification uses the public key. The
-		// legacy signature format, which policy-controller reads.
-		args = []string{"--key", s.SigningKey, "--use-signing-config=false", "--tlog-upload=false", "--new-bundle-format=false"}
-	} else {
-		// keyless: CI's OIDC identity, logged publicly; Sigstore's public
-		// instances as cosign's flags default to (its signing config would
-		// need the new bundle format, which policy-controller doesn't read).
-		args = []string{"--use-signing-config=false", "--new-bundle-format=false"}
-	}
-	result, err := c.run(0, false, cosign, append(append([]string{"sign", "--yes"}, args...), reference)...)
+	result, err := c.run(0, false, cosign, append(append([]string{"sign", "--yes"}, signingArgs(s)...), reference)...)
 	if err == nil && result.code != 0 {
 		err = fmt.Errorf("cosign sign failed (exit %d)", result.code)
 	}
@@ -78,6 +69,51 @@ func (c *Catalog) sign(reference string, s Settings) error {
 		return err
 	}
 	c.info("  signed %s", reference)
+	return nil
+}
+
+// signingArgs are cosign's flags for the catalog's signing mode (sign's and
+// attest's alike). key: no public transparency log, verification uses the
+// public key; keyless: CI's OIDC identity, logged publicly, on Sigstore's
+// public instances as cosign's flags default to. Either way the legacy
+// format, which policy-controller reads (a signing config would need the
+// new bundle format).
+func signingArgs(s Settings) []string {
+	if s.SigningMode == "key" {
+		return []string{"--key", s.SigningKey, "--use-signing-config=false", "--tlog-upload=false", "--new-bundle-format=false"}
+	}
+	return []string{"--use-signing-config=false", "--new-bundle-format=false"}
+}
+
+// attestSBOM attaches the image's bill of materials to it as a CycloneDX
+// attestation, signed as the image is, for an install to show (Observe).
+// Nothing when the catalog doesn't sign, or the scan made none.
+func (c *Catalog) attestSBOM(p *Product, reference string, s Settings) error {
+	if s.SigningMode == "none" || len(p.SBOM) == 0 {
+		return nil
+	}
+	cosign, err := exec.LookPath("cosign")
+	if err != nil {
+		return errors.New("signing needs cosign installed (.github/scripts/install-scanners.sh cosign)")
+	}
+	work, cleanup, err := tempDir("vertra-sbom-")
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	predicate := filepath.Join(work, "sbom.json")
+	if err := os.WriteFile(predicate, p.SBOM, 0o644); err != nil {
+		return err
+	}
+	args := append([]string{"attest", "--yes", "--type", "cyclonedx", "--predicate", predicate}, signingArgs(s)...)
+	result, err := c.run(0, false, cosign, append(args, reference)...)
+	if err == nil && result.code != 0 {
+		err = fmt.Errorf("cosign attest failed (exit %d)", result.code)
+	}
+	if err != nil {
+		return err
+	}
+	c.info("  attached its SBOM to %s", reference)
 	return nil
 }
 
@@ -92,6 +128,9 @@ func (c *Catalog) Publish(p *Product, s Settings) bool {
 	reference, err := c.push(p, s)
 	if err == nil {
 		err = c.sign(reference, s)
+	}
+	if err == nil {
+		err = c.attestSBOM(p, reference, s)
 	}
 	if err != nil {
 		c.errorAt(p.Dir, "publishing failed: "+err.Error())

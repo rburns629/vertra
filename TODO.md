@@ -13,7 +13,11 @@ design.
     Observe page's first tab): what the cluster enforces (and what it
     doesn't yet), every allowed image with its scan, and every refusal
     (admission codes via kernel-api's `ListRefusals`, and a catalog release
-    that couldn't be applied). Left: each image's signer and SBOM.
+    that couldn't be applied). Each image's SBOM (done 2026-10-27): catalog
+    CI attaches it, from its scan, as a CycloneDX attestation signed as the
+    image is, and Observe offers it for download (an image the caller may
+    see); the release check names the signer. Not yet seen end to end:
+    attesting needs cosign, so the next cloud catalog run proves it.
   - Logs (done 2026-10-22, proven on kind: `ObserveService.SearchLogs`,
     the Observe page's Logs tab, the console chart's `logs`): Grafana Alloy
     reads steps' and the platform's Pods through the Kubernetes API,

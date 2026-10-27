@@ -1718,6 +1718,11 @@ export interface SecurityView {
 }
 
 /** What this install enforces, what it refused this week, and every image allowed to run. */
+/** An image's SBOM (CycloneDX JSON) as catalog CI attached it; ApiError NO_SBOM when there's none. */
+export async function getImageSbom(image: string): Promise<string> {
+  return (await call(() => observe.getImageSbom({ image }))).sbom;
+}
+
 export async function getSecurity(): Promise<SecurityView> {
   const s = await call(() => observe.getSecurity({}));
   return {

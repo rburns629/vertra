@@ -17,6 +17,9 @@ type Product struct {
 	// Spec is product.yaml, once validated.
 	Spec  map[string]any
 	label string
+	// SBOM is its image's software bill of materials (CycloneDX JSON), as
+	// its scan found it; publishing attaches it, signed. Empty: none.
+	SBOM []byte
 }
 
 // IsTemplate says whether it's a starter (checked, never published).

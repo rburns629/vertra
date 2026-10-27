@@ -485,7 +485,9 @@ vault its namespace can read. `./vertra catalog validate` checks this layout, an
 
 `./vertra catalog publish` checks each product, then pushes its image tagged with
 the commit (or the time, from a laptop) and `:latest`, signs it if the
-catalog signs. `./vertra catalog release` then pushes the catalog's release to
+catalog signs, and attaches its software bill of materials (CycloneDX, from
+its scan) as an attestation signed the same way, which each install's
+Observe page offers for download. `./vertra catalog release` then pushes the catalog's release to
 `<registry>/catalog-release` (tagged with the commit and `latest`) and signs it
 the same way: every team, its SecretStore files, and every action as
 `<team>-<product>-<action>`, its image pinned by digest. It's complete, not a

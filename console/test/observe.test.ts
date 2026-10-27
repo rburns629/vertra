@@ -12,6 +12,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSubmittedExecution, upsertProduct } from "../src/db/queries.js";
 import { apis, apiTraffic, imageScans, products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { fetchSbom } from "../src/registry.js";
 import { caller, rpcClient } from "./rpc.js";
 
 const prefix = `obs-${randomUUID().slice(0, 6)}`;
@@ -39,6 +40,10 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   listRefusals: vi.fn(() =>
     Promise.resolve([{ executionId, taskId: "make", team: owner, image: `registry.example/x@${digest}`, code: "IMAGE_NOT_ALLOWED", message: "m", at: new Date().toISOString() }]),
   ),
+}));
+vi.mock("../src/registry.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/registry.js")>()),
+  fetchSbom: vi.fn(),
 }));
 vi.mock("../src/imagePolicy.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/imagePolicy.js")>()),
@@ -149,5 +154,20 @@ describe("metrics", () => {
     expect(mine.failures[0]?.means).toContain("timeout");
     expect(mine.running).toBe(2);
     expect((await metrics("other")).products.map((p) => p.product)).toEqual([`${owner}-shown-run`]);
+  });
+});
+
+describe("an image's SBOM", () => {
+  it("is fetched for an image the caller may see, never a hidden one of another team", async () => {
+    vi.mocked(fetchSbom).mockResolvedValue('{"bomFormat":"CycloneDX"}');
+    const shown = `registry.example/${owner}/${owner}-shown-run@${digest}`;
+    const hidden = `registry.example/${owner}/${owner}-secret-run@${digest}`;
+    const sbom = await call<{ sbom: string }>(tokens.other, "ObserveService/GetImageSbom", { image: shown });
+    expect(sbom.body.sbom).toBe('{"bomFormat":"CycloneDX"}');
+    expect((await call(tokens.other, "ObserveService/GetImageSbom", { image: hidden })).code).toBe("not_found");
+    expect((await call(tokens.owner, "ObserveService/GetImageSbom", { image: hidden })).code).toBe("ok");
+    expect((await call(tokens.owner, "ObserveService/GetImageSbom", { image: "registry.example/anything@sha256:" + "b".repeat(64) })).code).toBe("not_found");
+    vi.mocked(fetchSbom).mockResolvedValue(null);
+    expect((await call(tokens.owner, "ObserveService/GetImageSbom", { image: shown })).failure).toBe("NO_SBOM");
   });
 });

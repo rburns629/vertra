@@ -38,6 +38,9 @@ const (
 	// ObserveServiceGetSecurityProcedure is the fully-qualified name of the ObserveService's
 	// GetSecurity RPC.
 	ObserveServiceGetSecurityProcedure = "/vertra.console.v1.ObserveService/GetSecurity"
+	// ObserveServiceGetImageSbomProcedure is the fully-qualified name of the ObserveService's
+	// GetImageSbom RPC.
+	ObserveServiceGetImageSbomProcedure = "/vertra.console.v1.ObserveService/GetImageSbom"
 	// ObserveServiceGetMetricsProcedure is the fully-qualified name of the ObserveService's GetMetrics
 	// RPC.
 	ObserveServiceGetMetricsProcedure = "/vertra.console.v1.ObserveService/GetMetrics"
@@ -57,6 +60,10 @@ type ObserveServiceClient interface {
 	// What this install enforces (and what it doesn't yet), what it refused
 	// over the last week, and every image allowed to run here.
 	GetSecurity(context.Context, *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error)
+	// An image's software bill of materials (CycloneDX JSON), as catalog CI
+	// attached it, signed by the image's signer; for an image the caller may
+	// see. NOT_FOUND when it has none.
+	GetImageSbom(context.Context, *connect.Request[v1.GetImageSbomRequest]) (*connect.Response[v1.GetImageSbomResponse], error)
 	// What the steps are doing: started and how long they waited, hour by
 	// hour over the last day; why they failed; and each product's step
 	// times over the last week.
@@ -90,6 +97,13 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+ObserveServiceGetSecurityProcedure,
 			connect.WithSchema(observeServiceMethods.ByName("GetSecurity")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getImageSbom: connect.NewClient[v1.GetImageSbomRequest, v1.GetImageSbomResponse](
+			httpClient,
+			baseURL+ObserveServiceGetImageSbomProcedure,
+			connect.WithSchema(observeServiceMethods.ByName("GetImageSbom")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -127,6 +141,7 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 // observeServiceClient implements ObserveServiceClient.
 type observeServiceClient struct {
 	getSecurity  *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
+	getImageSbom *connect.Client[v1.GetImageSbomRequest, v1.GetImageSbomResponse]
 	getMetrics   *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
 	listAudit    *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
 	getAuditCopy *connect.Client[v1.GetAuditCopyRequest, v1.GetAuditCopyResponse]
@@ -136,6 +151,11 @@ type observeServiceClient struct {
 // GetSecurity calls vertra.console.v1.ObserveService.GetSecurity.
 func (c *observeServiceClient) GetSecurity(ctx context.Context, req *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error) {
 	return c.getSecurity.CallUnary(ctx, req)
+}
+
+// GetImageSbom calls vertra.console.v1.ObserveService.GetImageSbom.
+func (c *observeServiceClient) GetImageSbom(ctx context.Context, req *connect.Request[v1.GetImageSbomRequest]) (*connect.Response[v1.GetImageSbomResponse], error) {
+	return c.getImageSbom.CallUnary(ctx, req)
 }
 
 // GetMetrics calls vertra.console.v1.ObserveService.GetMetrics.
@@ -163,6 +183,10 @@ type ObserveServiceHandler interface {
 	// What this install enforces (and what it doesn't yet), what it refused
 	// over the last week, and every image allowed to run here.
 	GetSecurity(context.Context, *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error)
+	// An image's software bill of materials (CycloneDX JSON), as catalog CI
+	// attached it, signed by the image's signer; for an image the caller may
+	// see. NOT_FOUND when it has none.
+	GetImageSbom(context.Context, *connect.Request[v1.GetImageSbomRequest]) (*connect.Response[v1.GetImageSbomResponse], error)
 	// What the steps are doing: started and how long they waited, hour by
 	// hour over the last day; why they failed; and each product's step
 	// times over the last week.
@@ -192,6 +216,13 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		ObserveServiceGetSecurityProcedure,
 		svc.GetSecurity,
 		connect.WithSchema(observeServiceMethods.ByName("GetSecurity")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	observeServiceGetImageSbomHandler := connect.NewUnaryHandler(
+		ObserveServiceGetImageSbomProcedure,
+		svc.GetImageSbom,
+		connect.WithSchema(observeServiceMethods.ByName("GetImageSbom")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -227,6 +258,8 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		switch r.URL.Path {
 		case ObserveServiceGetSecurityProcedure:
 			observeServiceGetSecurityHandler.ServeHTTP(w, r)
+		case ObserveServiceGetImageSbomProcedure:
+			observeServiceGetImageSbomHandler.ServeHTTP(w, r)
 		case ObserveServiceGetMetricsProcedure:
 			observeServiceGetMetricsHandler.ServeHTTP(w, r)
 		case ObserveServiceListAuditProcedure:
@@ -246,6 +279,10 @@ type UnimplementedObserveServiceHandler struct{}
 
 func (UnimplementedObserveServiceHandler) GetSecurity(context.Context, *connect.Request[v1.GetSecurityRequest]) (*connect.Response[v1.GetSecurityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetSecurity is not implemented"))
+}
+
+func (UnimplementedObserveServiceHandler) GetImageSbom(context.Context, *connect.Request[v1.GetImageSbomRequest]) (*connect.Response[v1.GetImageSbomResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetImageSbom is not implemented"))
 }
 
 func (UnimplementedObserveServiceHandler) GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error) {

@@ -404,3 +404,35 @@ export async function listTags(reference: string): Promise<string[]> {
   }
   throw new Error(`the release's tags: more than ${String(MAX_TAG_PAGES)} pages`);
 }
+
+/** CycloneDX's in-toto predicate type, as `cosign attest --type cyclonedx` writes it. */
+export const CYCLONEDX_PREDICATE = "https://cyclonedx.org/bom";
+
+/**
+ * The CycloneDX SBOM catalog CI attached to an image (`cosign attest`, in
+ * the legacy layout policy-controller reads: the `sha256-<hex>.att` tag, one
+ * DSSE envelope per layer), as JSON; null when there's none. `image` must be
+ * pinned by digest, and is one the caller may see (core/observe.ts). Shown
+ * as catalog CI attached it: its signature is the image's signer's, which
+ * the cluster checks on every run.
+ */
+export async function fetchSbom(image: string): Promise<string | null> {
+  const digest = /@(sha256:[0-9a-f]{64})$/.exec(image)?.[1];
+  const ref = parseImageRef(image);
+  if (!digest || !ref) return null;
+  const tag = { ...ref, reference: digest.replace(":", "-") + ".att" };
+  const response = await registryGet(tag, `manifests/${encodeURIComponent(tag.reference)}`, "application/vnd.oci.image.manifest.v1+json");
+  if (response.status === 404) return null;
+  const manifest = JSON.parse(new TextDecoder().decode(await body(response, "the image's attestations"))) as {
+    layers?: { mediaType?: string; digest?: string; annotations?: Record<string, string> }[];
+  };
+  for (const layer of manifest.layers ?? []) {
+    if (layer.annotations?.["predicateType"] !== CYCLONEDX_PREDICATE || !layer.digest || !/^sha256:[a-f0-9]{64}$/.test(layer.digest)) continue;
+    const blob = await body(await registryGet(tag, `blobs/${layer.digest}`, layer.mediaType ?? "application/json"), "the image's SBOM");
+    if (sha256(blob) !== layer.digest) throw new Error("the image's SBOM doesn't match its digest");
+    const envelope = JSON.parse(new TextDecoder().decode(blob)) as { payload?: string };
+    const statement = JSON.parse(Buffer.from(envelope.payload ?? "", "base64").toString("utf8")) as { predicateType?: string; predicate?: unknown };
+    if (statement.predicateType === CYCLONEDX_PREDICATE && statement.predicate) return JSON.stringify(statement.predicate);
+  }
+  return null;
+}

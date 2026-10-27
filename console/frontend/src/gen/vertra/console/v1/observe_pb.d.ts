@@ -27,6 +27,42 @@ export declare type GetSecurityRequest = Message<"vertra.console.v1.GetSecurityR
 export declare const GetSecurityRequestSchema: GenMessage<GetSecurityRequest>;
 
 /**
+ * @generated from message vertra.console.v1.GetImageSbomRequest
+ */
+export declare type GetImageSbomRequest = Message<"vertra.console.v1.GetImageSbomRequest"> & {
+  /**
+   * The image, pinned by digest, as GetSecurity lists it.
+   *
+   * @generated from field: string image = 1;
+   */
+  image: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetImageSbomRequest.
+ * Use `create(GetImageSbomRequestSchema)` to create a new message.
+ */
+export declare const GetImageSbomRequestSchema: GenMessage<GetImageSbomRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetImageSbomResponse
+ */
+export declare type GetImageSbomResponse = Message<"vertra.console.v1.GetImageSbomResponse"> & {
+  /**
+   * The CycloneDX document, as JSON.
+   *
+   * @generated from field: string sbom = 1;
+   */
+  sbom: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetImageSbomResponse.
+ * Use `create(GetImageSbomResponseSchema)` to create a new message.
+ */
+export declare const GetImageSbomResponseSchema: GenMessage<GetImageSbomResponse>;
+
+/**
  * @generated from message vertra.console.v1.GetSecurityResponse
  */
 export declare type GetSecurityResponse = Message<"vertra.console.v1.GetSecurityResponse"> & {
@@ -690,6 +726,18 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetSecurityRequestSchema;
     output: typeof GetSecurityResponseSchema;
+  },
+  /**
+   * An image's software bill of materials (CycloneDX JSON), as catalog CI
+   * attached it, signed by the image's signer; for an image the caller may
+   * see. NOT_FOUND when it has none.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.GetImageSbom
+   */
+  getImageSbom: {
+    methodKind: "unary";
+    input: typeof GetImageSbomRequestSchema;
+    output: typeof GetImageSbomResponseSchema;
   },
   /**
    * What the steps are doing: started and how long they waited, hour by

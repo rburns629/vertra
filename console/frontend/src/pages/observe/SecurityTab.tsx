@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -18,7 +19,7 @@ import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { Pill, type PillTone } from "../../components/Pill";
 import { MetricCard } from "../../components/MetricCard";
 import { Mono } from "../../components/Mono";
-import { ApiError, getSecurity, type SecurityView } from "../../api";
+import { ApiError, getImageSbom, getSecurity, type SecurityView } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
 
 const STATE: Record<string, { label: string; tone: PillTone }> = {
@@ -112,7 +113,34 @@ const IMAGES: DataTableColumn<Image>[] = [
     ),
   },
   { key: "when", header: "Scanned", render: (i) => (i.scannedAt ? new Date(i.scannedAt).toLocaleString() : "—"), hideBelow: "md" },
+  { key: "sbom", header: "SBOM", render: (i) => <SbomButton image={i.image} product={i.product} />, hideBelow: "md" },
 ];
+
+/** Downloads an image's SBOM, as catalog CI attached it; says so when there's none. */
+function SbomButton({ image, product }: { image: string; product: string }) {
+  const [state, setState] = useState<"idle" | "busy" | "none" | "failed">("idle");
+  async function download(): Promise<void> {
+    setState("busy");
+    try {
+      const sbom = await getImageSbom(image);
+      const url = URL.createObjectURL(new Blob([sbom], { type: "application/vnd.cyclonedx+json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${product}.cdx.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setState("idle");
+    } catch (err) {
+      setState(err instanceof ApiError && err.code === "NO_SBOM" ? "none" : "failed");
+    }
+  }
+  if (state === "none") return <Typography variant="caption" color="text.secondary">None attached</Typography>;
+  return (
+    <Button size="small" disabled={state === "busy"} onClick={() => void download()}>
+      {state === "failed" ? "Try again" : "Download"}
+    </Button>
+  );
+}
 
 export function SecurityTab() {
   const { user } = useAuth();

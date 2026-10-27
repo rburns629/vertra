@@ -548,6 +548,15 @@
      "public": false
     },
     {
+     "name": "GetImageSbom",
+     "comment": "An image's software bill of materials (CycloneDX JSON), as catalog CI\nattached it, signed by the image's signer; for an image the caller may\nsee. NOT_FOUND when it has none.",
+     "input": "vertra.console.v1.GetImageSbomRequest",
+     "output": "vertra.console.v1.GetImageSbomResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
      "name": "GetMetrics",
      "comment": "What the steps are doing: started and how long they waited, hour by\nhour over the last day; why they failed; and each product's step\ntimes over the last week.",
      "input": "vertra.console.v1.GetMetricsRequest",
@@ -4820,6 +4829,32 @@
    "name": "GetSecurityRequest",
    "comment": "",
    "fields": []
+  },
+  "vertra.console.v1.GetImageSbomRequest": {
+   "name": "GetImageSbomRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "image",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The image, pinned by digest, as GetSecurity lists it."
+    }
+   ]
+  },
+  "vertra.console.v1.GetImageSbomResponse": {
+   "name": "GetImageSbomResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "sbom",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The CycloneDX document, as JSON."
+    }
+   ]
   },
   "vertra.console.v1.GetSecurityResponse": {
    "name": "GetSecurityResponse",

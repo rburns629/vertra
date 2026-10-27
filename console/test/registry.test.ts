@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { config } from "../src/config.js";
-import { cachedImageCount, checkImage, listTags, parseImageRef, pinImages } from "../src/registry.js";
+import { cachedImageCount, checkImage, CYCLONEDX_PREDICATE, fetchSbom, listTags, parseImageRef, pinImages } from "../src/registry.js";
 
 // A fake registry behind a stubbed fetch: GAR-style token auth, where an
 // anonymous HEAD gets a Bearer challenge, the token service takes Basic
@@ -180,5 +180,43 @@ describe("listTags", () => {
       }),
     );
     expect(await listTags(`${HOST}/proj/catalog-products/catalog-release:latest`)).toEqual(["c1", "latest", "v1.0.0", "v1.1.0"]);
+  });
+});
+
+describe("fetchSbom", () => {
+  const digestOf = (data: string) => `sha256:${createHash("sha256").update(data).digest("hex")}`;
+  const image = `${HOST}/proj/catalog-products/site@${DIGEST}`;
+  const attPath = `/v2/proj/catalog-products/site/manifests/${DIGEST.replace(":", "-")}.att`;
+
+  function serve(files: Record<string, { body: string; status?: number }>) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+        const authorization = (init?.headers as Record<string, string> | undefined)?.["authorization"];
+        const file = files[decodeURIComponent(url.pathname)];
+        if (!file || authorization !== "Bearer registry-token") return fakeRegistry(input, init);
+        return Promise.resolve(new Response(file.body, { status: file.status ?? 200 }));
+      }),
+    );
+  }
+
+  it("reads the CycloneDX predicate catalog CI attested, checked against its digest", async () => {
+    const bom = { bomFormat: "CycloneDX", components: [{ name: "openssl", version: "3.0.22" }] };
+    const statement = { _type: "https://in-toto.io/Statement/v0.1", predicateType: CYCLONEDX_PREDICATE, predicate: bom };
+    const envelope = JSON.stringify({ payloadType: "application/vnd.in-toto+json", payload: Buffer.from(JSON.stringify(statement)).toString("base64"), signatures: [{ sig: "x" }] });
+    const layerDigest = digestOf(envelope);
+    const manifest = JSON.stringify({ layers: [{ mediaType: "application/vnd.dsse.envelope.v1+json", digest: layerDigest, annotations: { predicateType: CYCLONEDX_PREDICATE } }] });
+    serve({ [attPath]: { body: manifest }, [`/v2/proj/catalog-products/site/blobs/${layerDigest}`]: { body: envelope } });
+    expect(JSON.parse((await fetchSbom(image)) ?? "null")).toEqual(bom);
+  });
+
+  it("is null when nothing is attested, and refuses a blob that isn't its digest", async () => {
+    serve({});
+    existing.clear();
+    expect(await fetchSbom(image)).toBeNull();
+    const manifest = JSON.stringify({ layers: [{ digest: digestOf("other"), annotations: { predicateType: CYCLONEDX_PREDICATE } }] });
+    serve({ [attPath]: { body: manifest }, [`/v2/proj/catalog-products/site/blobs/${digestOf("other")}`]: { body: "tampered" } });
+    await expect(fetchSbom(image)).rejects.toThrow(/doesn't match/);
   });
 });

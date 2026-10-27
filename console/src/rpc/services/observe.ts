@@ -2,8 +2,9 @@
 /** ObserveService (proto/vertra/console/v1/observe.proto): core/observe.ts and core/logs.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
+import { Type } from "@sinclair/typebox";
 import { searchLogs, SearchLogsQuery, type SearchLogsInput } from "../../core/logs.js";
-import { getAuditCopy, getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
+import { getAuditCopy, getImageSbom, getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
 import type { ObserveService } from "../../gen/vertra/console/v1/observe_pb.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
 import { callerOf } from "../context.js";
@@ -13,6 +14,11 @@ import { viaKernel } from "./execution.js";
 
 export function observeService(): ServiceImpl<typeof ObserveService> {
   return {
+    async getImageSbom(req, ctx) {
+      const { image } = check({ image: Type.String({ minLength: 1, maxLength: 1024 }) }, req);
+      return { sbom: await getImageSbom(callerOf(ctx), image) };
+    },
+
     async getSecurity(_req, ctx) {
       const s = await viaKernel(ctx, () => getSecurity(callerOf(ctx)));
       return {

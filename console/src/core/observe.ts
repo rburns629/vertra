@@ -20,6 +20,7 @@ import { db } from "../db/client.js";
 import { findSubmittedExecutions, listRunnableProducts } from "../db/queries.js";
 import { apis, apiTraffic, auditLog, imageScans, teams } from "../db/schema.js";
 import { readImagePolicy } from "../imagePolicy.js";
+import { fetchSbom } from "../registry.js";
 import { getStats, listRefusals } from "../kernel/client.js";
 import { PLATFORM_ERRORS } from "../failureHelp.js";
 import { imageRepository } from "../imageRef.js";
@@ -50,7 +51,7 @@ async function checks(): Promise<Check[]> {
   const sso = currentSso();
   const policy = await readImagePolicy().catch(() => null);
   const sources = policy?.exists ? [policy.source, ...policy.additional].filter(Boolean) : [];
-  const { publicKeys, keylessIssuer } = config.catalog.signature;
+  const { publicKeys, keylessIssuer, keylessSubjectRegExp } = config.catalog.signature;
   const list: Check[] = [
     {
       name: "Steps run only in team namespaces",
@@ -84,7 +85,7 @@ async function checks(): Promise<Check[]> {
       state: publicKeys.length > 0 || keylessIssuer ? "enforced" : "off",
       text:
         publicKeys.length > 0 || keylessIssuer
-          ? "A release is applied only if a trusted signer signed it."
+          ? `A release is applied only if ${signerText(publicKeys.length, keylessSubjectRegExp)} signed it; catalog CI signs its images the same way, with their SBOMs.`
           : "Releases aren't verified: the registry's write access is the only trust.",
     },
     {
@@ -214,6 +215,23 @@ async function gatewayRefusals(who: AuthUser, since: Date) {
 
 function mayCount(n: unknown): number {
   return typeof n === "number" ? n : 0;
+}
+
+/** Who may sign the catalog, in words: its keys, and its keyless identity. */
+function signerText(keys: number, subject: string): string {
+  const keyless = subject ? `catalog CI's own identity (${subject.replace(/^\^|\$$/g, "").replace(/\\/g, "")})` : "";
+  const keyed = keys > 0 ? (keys === 1 ? "its trusted key" : `one of its ${String(keys)} trusted keys`) : "";
+  return [keyed, keyless].filter(Boolean).join(" or ");
+}
+
+/** An image's SBOM, as catalog CI attached it, for an image the caller may see. */
+export async function getImageSbom(caller: AuthUser | undefined, image: string): Promise<string> {
+  const who = signedIn(caller);
+  const product = (await listRunnableProducts()).find((p) => p.image === image && (!p.hidden || who.isAdmin || who.teamNames.includes(p.teamName)));
+  if (!product) throw new ApiError(404, "NOT_FOUND", "No such image is allowed to run here.");
+  const sbom = await fetchSbom(image);
+  if (!sbom) throw new ApiError(404, "NO_SBOM", "No SBOM is attached to this image: its catalog doesn't sign, or published it before SBOMs were attached.");
+  return sbom;
 }
 
 export async function getSecurity(caller: AuthUser | undefined) {

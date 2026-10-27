@@ -83,6 +83,14 @@ func (c *Catalog) Scan(p *Product) bool {
 	} else {
 		ok = c.trivyVerdict(p, report, &lines) && ok
 	}
+	// Its bill of materials, from the same archive, for publishing to
+	// attach (signed) beside the image. Not a verdict: none blocks nothing.
+	sbomArgs := []string{"image", "--input", archive, "--quiet", "--format", "cyclonedx", "--output", filepath.Join(work, "sbom.json")}
+	if sbomCmd, err := c.scanner("trivy", trivyImage, work, sbomArgs, true); err == nil {
+		if r, err := c.run(0, true, sbomCmd[0], sbomCmd[1:]...); err == nil && r.code == 0 {
+			p.SBOM, _ = os.ReadFile(filepath.Join(work, "sbom.json"))
+		}
+	}
 
 	// osv-scanner exits non-zero for any known vulnerability, so its
 	// report, not its exit code, is the verdict; no report blocks.
