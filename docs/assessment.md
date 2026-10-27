@@ -818,84 +818,60 @@ signed, `console/src/callbacks.ts`), a rate per bot (`core/orderRate.ts`,
 429), and the order builder (`core/orders.ts`, Compose's "Build from a
 cart"). As proposed, an order from outside names a template, not a cart.
 
-**24. An MCP server for agents** (proposed 2026-10-27). An agent (a chat
-assistant on the install's cloud, Vertex AI on GCP or Amazon Bedrock on AWS,
-or a person's own) works with Vertra through the Model Context Protocol: it
-reads what's deployed, who deployed it and what depends on what, and acts
-as the bot or person it's for, never more. Nothing in it is
-provider-specific: each provider's agent runtime connects as an MCP client.
-Proposed:
+**24. A chat agent, then an MCP server** (proposed 2026-10-27; revised the
+same day). A person comes to the console, says what they need ("app
+hosting on GCP for shop-api"), and the console's chat agent builds the cart
+with them (decision 25): what the offering needs, what the team already
+has, what's suggested. The person checks it out. Later, the same tools are
+offered over the Model Context Protocol, so an engineer's own agent (Claude
+in VS Code, for one) can do the same. Proposed:
 
-1. *Where:* in the console, at `/mcp` (MCP's Streamable HTTP transport,
-   stateless), on by `mcp.enabled` in the console chart, off by default.
-   Each tool calls the same `core/` function as its Connect method, with
-   the caller resolved as for the API (`resolveCaller`), so an agent sees
-   and does exactly what its caller may, and each change is audited as the
-   caller's, noting that it came through an agent (and which client).
-2. *What it exposes,* as the caller may see it:
-   - *the catalog:* templates and actions shared with them, their input and
-     output schemas, and the wiring types;
-   - *runs:* who ran each, for which team, its template and inputs, each
-     step's state, outputs and failure code, and what depends on what (each
-     step's `dependsOn` and the outputs wired between steps);
-   - *what's deployed:* `resources` (the product and step that reported
-     each, when, by whom, for which team, with that step's inputs and
-     outputs) and, worked out from its run when it's read (no new table),
-     the resources its step took inputs from;
-   - *previews:* `PreviewTemplate`, `PreviewAction`, `PreviewOrder`;
-   - *changes:* place an order (`RunTemplate` with a `requestId`, decision
-     23's path), cancel a run or retry a step, delete a resource (its
-     cleanup action).
+1. *In the console, as the person:* a chat panel whose agent runs in the
+   console process. Each tool is a plain function over `core/`, run as the
+   signed-in person, with the same checks as the API, so the agent sees
+   and does only what they may. The tools: describe an offering (what it
+   needs, provides and suggests, from the catalog), list what the team
+   has deployed and what depends on what, plan a cart (`PreviewOrder`),
+   and change the cart. Never place it: the agent fills the cart on the
+   page, and the person's own **Place order** is the confirmation. So
+   nothing the agent reads (outputs, names and descriptions are written by
+   products and people, and may carry instructions) can order or delete
+   anything.
+2. *The model is the install's setting* (`chat` in the console chart, off
+   by default): `provider` (vertex, bedrock, anthropic, openai-compatible),
+   `model`, and where it is. On a cloud it signs in keylessly, as the
+   console's own workload identity: Vertex AI on GCP, Bedrock on AWS
+   (Azure AI Foundry later), so what the chat sends stays in the
+   install's cloud. A key, where one is needed, is a Secret named in the
+   values, never the values themselves. Two adapters, not one per cloud:
+   Anthropic's message format (direct, on Vertex AI and on Bedrock: one
+   model family behaving the same on every install) and OpenAI-compatible
+   (a local model on a laptop install, LM Studio or Ollama; Gemini).
+   Tests use a scripted model, as the scheduler's use a fake executor.
+3. *What it sees:* the catalog shared with the person, their teams' runs
+   (who, for which team, template and inputs, steps, outputs and failure
+   codes) and resources with their links (decision 25). Not logs (a
+   step's logs can hold anything), nothing admin-only, no secrets, teams,
+   members or bots. A conversation is kept for its person only, and
+   deleted after 30 days.
+4. *Later, an MCP server* at `/mcp` (Streamable HTTP), the same tools
+   for outside agents: a team's bot first (signing in keylessly with its
+   cloud identity's ID token at `AuthService/ExchangeToken`), then people
+   through MCP's OAuth 2.1 (the console as the authorization server, a
+   token for `/mcp` alone). A person chooses on connecting: read only,
+   order with confirmation in the console (a link to the cart), or order
+   directly (within their rights and their teams' approvals). Deletes
+   always wait for confirmation in the console. Each change is audited as
+   theirs, through an agent.
 
-   Not exposed: logs (a step's logs can hold anything; open), anything
-   admin-only (audit, users, policies, single sign-on), teams, members,
-   secrets and bots, raw DAGs.
-3. *Signing in,* two ways, each an existing credential narrowed:
-   - *As a bot:* an agent of a team's own (its support assistant, its
-     storefront's) is one of that team's bots, ordering or not. It signs in
-     keylessly where it can: its cloud identity's ID token (on Vertex AI,
-     its service account's Google ID token) exchanged at
-     `AuthService/ExchangeToken` as CI does, with that issuer allowed
-     (`KEYLESS_ISSUERS`). An ordering bot's template list still limits what
-     it orders.
-   - *As a person, through the agent:* MCP's own authorization (OAuth 2.1:
-     the console is the authorization server, its sign-in or single sign-on
-     behind it). The person signs in and grants the agent a token for `/mcp`
-     alone: short-lived, refreshable, revocable on their profile, and
-     narrower than they are (*read*, or *read and order*). The agent never
-     holds the person's session or an API token.
-4. *What needs a person:* reads and previews, never. A change by an agent
-   signed in as a bot is that bot's, within what its team gave it (an
-   ordering bot's templates), as its CI's would be. A change by an agent
-   for a person (an order, a cancel, a retry) waits until the person
-   confirms it in the console: the tool answers with the preview and a
-   link, and the run starts once they confirm. Deleting a resource always
-   waits for a person, whoever the agent is. Confirming happens outside the
-   agent, so nothing it's told can confirm for them.
-5. *Text is data:* outputs, failure messages, names and inputs are written
-   by products and people, and may hold instructions meant for an agent.
-   The answers mark them as data, but what protects a change is 4, not the
-   marking: nothing an agent reads lets it make a change its bot wasn't
-   given or its person didn't confirm.
-6. *Where answers go:* whatever a tool answers reaches the agent's model
-   provider. On the install's own cloud (Vertex AI, Bedrock) it stays in
-   that cloud; an install lists which agent clients may sign people in
-   (their redirect hosts, as with callback hosts), and none by default.
+Rejected: the provider's hosted agent runtime (Vertex AI Agent Engine,
+Bedrock AgentCore) for the console's chat (it would call back in for the
+person, needing delegated sign-in first); an adapter per cloud; a
+dependency graph the agent infers from descriptions (decision 25); a
+separate service for either (decision 23's reasoning).
 
-Rejected: a separate MCP service (it would need the console's sign-in,
-authorization and audit, or a privileged credential to the console: decision
-23's reasoning); MCP over kernel-api (it has no users, teams or audit); one
-identity for every agent (it would see every team); each provider's own
-integration (Vertex AI extensions, Bedrock action groups) instead of MCP
-(one copy each, kept in step).
-
-Open, for review: logs for agents (proposed: not in the first version);
-whether a person may let their agent order without confirming, up to a
-limit they set (proposed: not in the first version); which issuer an agent
-on AWS signs in with; and the order to build it (proposed: after decision
-25's cart; bots first, reads then orders; people through OAuth after).
-Decided on review: what an order depends on, across runs too, is a must
-for the agent, and is decision 25: the agent builds its carts with it.
+Open, for review: whether the chat may answer from run logs later;
+which issuer an agent on AWS signs in with, for MCP.
 
 **25. The cart: what an offering needs, from the catalog** (proposed
 2026-10-27). A person asks for "app hosting" on GCP and nothing else, in the

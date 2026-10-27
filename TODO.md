@@ -984,24 +984,18 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      tab, beside its chat webhook), under the same hosts; each run it owns
      posts `run.finished` signed, with each step's state, outputs and failure
      code (outputs left out past 256 KiB, `outputsOmitted`).
-- [ ] **An MCP server for agents (design first)**: a Model Context Protocol
-  service over the console's API, so a chatbot or agent works with what's
-  deployed in context: what each run made (resources), who ran it and for
-  which team, its template and inputs, what depends on what (dependsOn, and
-  the outputs wired between steps), its state and failures; and, within the
-  caller's own rights, the actions people have (look up, preview, place an
-  order through decision 23's path, delete a resource). Tools and resources
-  answer as the signed-in person or bot may see, never more; every action
-  is audited as theirs. The groundwork for chat and agent support on each
-  install's cloud: Vertex AI on GCP, Amazon Bedrock (Bedrock Agents) on AWS,
-  Azure AI Foundry later; the MCP server stays provider-neutral and each
-  provider's agent connects to it. Design proposed 2026-10-27 (decision 24,
-  docs/assessment.md): in the console at `/mcp`, the same `core/` functions
-  and checks; agents sign in as a team's bot (keylessly, its cloud
-  identity) or for a person (OAuth 2.1, a narrowed token); a person's
-  agent's changes, and every resource delete, wait for a person to confirm
-  in the console. Waiting on review of its open points before building.
-  Builds on decision 25's cart.
+- [ ] **A chat agent, then an MCP server (decision 24, proposed
+  2026-10-27)**: a chat panel in the console whose agent works as the
+  signed-in person over `core/` (describe an offering, what the team has
+  and what depends on what, plan and change the cart; never place it: the
+  person's own Place order confirms). The model is the install's `chat`
+  setting: Vertex AI on GCP, Bedrock on AWS, keyless; two adapters
+  (Anthropic's format, OpenAI-compatible); a scripted model in tests. Prove
+  locally with LM Studio (Qwen3, OpenAI-compatible, at
+  `host.docker.internal:1234` from kind). Then the same tools as an MCP
+  server at `/mcp` for engineers' own agents (bots, then people through
+  OAuth 2.1). Groundwork for Vertex AI, Bedrock, Azure AI Foundry. Builds
+  on decision 25's cart.
 - [ ] **The cart (decision 25, proposed 2026-10-27)**, what the agent and
   people order with, in this order:
   1. The catalog carries its wiring types: `schema/types.yaml` in the
