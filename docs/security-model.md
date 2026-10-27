@@ -273,8 +273,10 @@ orders) is a member of its team, not a maintainer, and may run only the
 templates its team's maintainers list for it: no raw DAG, no single action,
 no rerun (`ORDERS_ONLY`, `TEMPLATE_NOT_ORDERABLE`). A leaked ordering token
 can order those templates for that team, under its caps, quota and
-approvals, and nothing more. The runs a schedule makes as its bot aren't
-limited this way: the schedule is its team's, reviewed by its maintainers.
+approvals, and nothing more, and at most the install's rate a minute
+(`orders.ratePerMinute`, 60 by default; 429 past it, counted from the runs it
+made, so every console replica agrees). The runs a schedule makes as its bot
+aren't limited this way: the schedule is its team's, reviewed by its maintainers.
 
 An ordering bot may have a callback, where each of its orders' outcomes is
 posted (`console/src/orderCallbacks.ts`). Like a team's chat webhook, its URL

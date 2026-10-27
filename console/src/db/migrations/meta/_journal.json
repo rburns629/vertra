@@ -281,6 +281,13 @@
       "when": 1793129703014,
       "tag": "0039_order_callbacks",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793130625858,
+      "tag": "0040_order_rate_index",
+      "breakpoints": true
     }
   ]
 }

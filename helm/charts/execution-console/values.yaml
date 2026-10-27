@@ -456,6 +456,9 @@ notifications:
 # signed. Empty: no callbacks (an ordering system polls GetExecution).
 orders:
   callbackHosts: []
+  # -- How many orders each ordering bot may place in any minute; past it,
+  # 429 with Retry-After. Its schedules' runs and people aren't counted.
+  ratePerMinute: 60
 
 # -- Facts the Team page's "Connect a source" wizard shows a platform owner
 # setting up secret syncing (External Secrets Operator). Display only; an

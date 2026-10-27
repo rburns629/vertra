@@ -511,6 +511,8 @@ export const submittedExecutions = pgTable("submitted_executions", {
   index("submitted_executions_created_at_idx").on(table.createdAt, table.executionId),
   // Which executions a team is part of (teams && ..., teams @> ...).
   index("submitted_executions_teams_idx").using("gin", table.teams),
+  // An ordering bot's runs in the last minute (core/orderRate.ts).
+  index("submitted_executions_submitted_by_idx").on(table.submittedBy, table.createdAt),
 ]);
 
 /**

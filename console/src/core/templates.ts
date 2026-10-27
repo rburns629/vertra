@@ -47,6 +47,7 @@ import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { allowedValues, targetInputs, targetProblems } from "../targets.js";
 import { readinessOf, type ReadinessView } from "../readiness.js";
 import { submitChecked } from "./executions.js";
+import { ensureOrderRate } from "./orderRate.js";
 
 export type TeamProduct = Product & { teamName: string };
 
@@ -446,6 +447,7 @@ export async function runTemplate(
   const who = signedIn(caller);
   // An ordering bot orders only its listed templates (decision 23).
   ensureMayOrder(who, `${team}/${name}`);
+  if (scheduleId === undefined) await ensureOrderRate(who);
   const { template, forTeam, steps } = await prepareTemplate(who, team, name, request);
   return submitChecked(who, dagOf(template.displayName, steps, request.requestId), log, {
     template: `${template.teamName}/${template.name}`,
@@ -583,6 +585,7 @@ export async function previewAction(caller: AuthUser | undefined, productName: s
 export async function previewTemplate(caller: AuthUser | undefined, team: string, name: string, request: RunRequest, log: FastifyBaseLogger) {
   const who = signedIn(caller);
   ensureMayOrder(who, `${team}/${name}`);
+  await ensureOrderRate(who);
   const template = await findRunnableTemplate(team, name);
   const allowed = template ? access(who, template.teamName, template.shareWith) : undefined;
   if (!template || !allowed?.allowed) throw new ApiError(404, "NOT_FOUND", `No template "${team}/${name}" that's shared with you.`);

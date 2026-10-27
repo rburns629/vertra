@@ -147,7 +147,10 @@ curl -X POST "$CONSOLE/api/vertra.console.v1.TemplateService/RunTemplate" \
 ```
 
 `requestId` is the order's own id: sending the same one again (a retry after
-a timeout) returns the same run instead of starting a second. Follow it as in
+a timeout) returns the same run instead of starting a second. An ordering bot
+may place a set number of orders in any minute (60 unless your install says
+otherwise); past it, an order is refused with `resource_exhausted` (429) and
+a `Retry-After` header, in seconds. Follow it as in
 [3. Wait for it to finish](#3-wait-for-it-to-finish). A template it isn't
 allowed answers `permission_denied` with `TEMPLATE_NOT_ORDERABLE`; anything
 else it tries, `ORDERS_ONLY`.

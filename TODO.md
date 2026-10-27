@@ -975,7 +975,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      bot's secret, shown once), five tries as webhooks. Proven on kind: a
      real order queued and posted (to an unresolvable host, its failure
      recorded on the bot). Left: a post a real receiver accepts and verifies.
-  4. A request rate per bot (429 past it).
+  4. A request rate per bot (done 2026-10-27, `console/src/core/
+     orderRate.ts`): the console chart's `orders.ratePerMinute` (60) orders
+     a minute for each ordering bot, counted from its runs in the database,
+     then `RATE_LIMITED` (429, `Retry-After`).
   5. Possibly: an outcome webhook a team subscribes to (JSON for systems,
      beside its chat webhook).
 - [ ] **An MCP server for agents (design first)**: a Model Context Protocol

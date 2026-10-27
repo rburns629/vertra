@@ -58,7 +58,10 @@ export const maskErrors: Interceptor = (next) => async (req) => {
     if (error instanceof ApiError) {
       const { problems, ...rest } = error.extra;
       const detail = Object.keys(rest).length > 0 ? (JSON.parse(JSON.stringify(rest)) as JsonObject) : undefined;
-      const refusal = rpcError(error.connectCode, error.code, error.message, false, detail);
+      const retryAfter = typeof rest["retryAfterSeconds"] === "number" ? rest["retryAfterSeconds"] : undefined;
+      const refusal = rpcError(error.connectCode, error.code, error.message, retryAfter !== undefined, detail);
+      // A rate's refusal says when to come back, as the gateway's does.
+      if (retryAfter !== undefined) refusal.metadata.set("Retry-After", String(retryAfter));
       if (Array.isArray(problems)) {
         for (const problem of problems as unknown[]) {
           const { field, message } =

@@ -58,6 +58,15 @@ function parseRegistryMirrors(value: string | undefined): Map<string, string> {
 }
 
 /** A comma-separated setting as a list, blanks dropped. */
+/** A whole number above zero, or the default when unset; anything else fails startup. */
+function positiveInt(name: string, fallback: number): number {
+  const value = process.env[name];
+  if (value === undefined || value === "") return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`Invalid ${name} "${value}": expected a whole number above zero.`);
+  return n;
+}
+
 function list(value: string | undefined): string[] {
   return (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
@@ -232,6 +241,8 @@ export const config = {
   // callback may be under, as webhookHosts. Empty: no callbacks.
   orders: {
     callbackHosts: list(process.env["ORDER_CALLBACK_HOSTS"]),
+    // How many orders each ordering bot may place a minute (core/orderRate.ts).
+    ratePerMinute: positiveInt("ORDER_RATE_PER_MINUTE", 60),
   },
   // Off unless set: accounts are created by an admin (Admin page ->
   // Accounts, POST /api/users), with their teams attached. Open

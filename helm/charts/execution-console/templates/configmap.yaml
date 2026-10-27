@@ -62,6 +62,7 @@ data:
   CONSOLE_URL: {{ .Values.notifications.consoleUrl | default (ternary (printf "https://%s" $host) "" (ne $host "")) | quote }}
   NOTIFY_WEBHOOK_HOSTS: {{ join "," .Values.notifications.webhookHosts | quote }}
   ORDER_CALLBACK_HOSTS: {{ join "," .Values.orders.callbackHosts | quote }}
+  ORDER_RATE_PER_MINUTE: {{ .Values.orders.ratePerMinute | quote }}
   {{- with .Values.notifications.email }}
   {{- if .host }}
   {{- if not .from }}

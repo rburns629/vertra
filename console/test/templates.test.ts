@@ -447,6 +447,39 @@ describe("an ordering bot (decision 23)", () => {
     expect((await call(maintainerToken, "TokenService/SetBotOrders", { team: shop, email: pipeline, templates: [] })).failure).toBe("NOT_ORDERING");
   });
 
+  it("is held to its rate: past it, 429 with Retry-After", async () => {
+    const shop = `${prefix}-rated`;
+    const shopTeam = await createTeam(shop);
+    const maintainer = await users.makeUser();
+    await addTeamMember(maintainer.id, shopTeam.id, "maintainer");
+    const made = await call<{ token: string }>(await users.signIn(maintainer.email), "TokenService/CreateBotToken", {
+      team: shop, email: `${prefix}-rated@bot.example.com`, label: "storefront", ordering: true, orderTemplates: [`${own}/chain`],
+    });
+    const bot = made.body.token;
+    const order = (requestId: string) =>
+      app.inject({
+        method: "POST",
+        url: "/api/vertra.console.v1.TemplateService/RunTemplate",
+        headers: { "content-type": "application/json", authorization: `Bearer ${bot}` },
+        payload: JSON.stringify({ team: own, name: "chain", parameters: { text: "hi" }, onBehalfOf: shop, requestId }),
+      });
+    const rate = config.orders.ratePerMinute;
+    config.orders.ratePerMinute = 2;
+    try {
+      expect((await order("one")).statusCode).toBe(200);
+      expect((await order("two")).statusCode).toBe(200);
+      const refused = await order("three");
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json<RpcError>().code).toBe("resource_exhausted");
+      expect(Number(refused.headers["retry-after"])).toBeGreaterThanOrEqual(1);
+      expect(Number(refused.headers["retry-after"])).toBeLessThanOrEqual(60);
+      // A person isn't held to it.
+      expect((await call(ownMemberToken, "TemplateService/RunTemplate", { team: own, name: "chain", parameters: { text: "hi" } })).code).toBe("ok");
+    } finally {
+      config.orders.ratePerMinute = rate;
+    }
+  });
+
   it("hears back: its order's outcome is posted to its callback, signed", async () => {
     const shop = `${prefix}-store`;
     const shopTeam = await createTeam(shop);

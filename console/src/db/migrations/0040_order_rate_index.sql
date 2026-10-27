@@ -1,0 +1,1 @@
+CREATE INDEX "submitted_executions_submitted_by_idx" ON "submitted_executions" USING btree ("submitted_by","created_at");
