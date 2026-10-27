@@ -60,3 +60,22 @@ func TestScanningIsWaitedOut(t *testing.T) {
 		t.Error("a network error isn't a scan")
 	}
 }
+
+// A destroy that couldn't reach its cluster lists the disks it may have
+// left, and how to delete them; it says when it couldn't look.
+func TestLeftBehind(t *testing.T) {
+	var b strings.Builder
+	leftBehind(&b, "disk", nil, nil, "")
+	if b.String() != "" {
+		t.Errorf("nothing left: %q", b.String())
+	}
+	leftBehind(&b, "disk", []string{"us-central1-b/pvc-1"}, nil, "gcloud compute disks delete <name>")
+	if !strings.Contains(b.String(), "us-central1-b/pvc-1") || !strings.Contains(b.String(), "gcloud compute disks delete") {
+		t.Errorf("found: %q", b.String())
+	}
+	b.Reset()
+	leftBehind(&b, "EBS volume", nil, errors.New("expired"), "")
+	if !strings.Contains(b.String(), "Couldn't list the EBS volumes") {
+		t.Errorf("error: %q", b.String())
+	}
+}

@@ -236,3 +236,24 @@ func SigningPublicKey(ctx context.Context, r *run.Runner, key string) (string, e
 	}
 	return string(pem), nil
 }
+
+// LeftDisks are persistent disks a namespace's claims made that nothing
+// has attached (zone/name): what a cluster deleted without its volume
+// claims leaves. GKE's driver names the claim's namespace in the
+// description; another cluster's unattached disks for the same namespace
+// match too, so they're only listed, never deleted.
+func LeftDisks(ctx context.Context, r *run.Runner, c *config.Config, namespace string) ([]string, error) {
+	out, err := r.Output(ctx, "gcloud", "compute", "disks", "list", "--project", c.GCP.Project,
+		`--filter=description~"kubernetes.io/created-for/pvc/namespace\":\"`+namespace+`\"" AND -users:*`,
+		"--format=value(zone.basename(),name)")
+	if err != nil {
+		return nil, err
+	}
+	var disks []string
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if f := strings.Fields(line); len(f) == 2 {
+			disks = append(disks, f[0]+"/"+f[1])
+		}
+	}
+	return disks, nil
+}

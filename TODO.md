@@ -677,10 +677,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
     stopped answering while it slept, TLS handshake timeouts, cause unknown).
   - An aws reader of another account's ECR (its verifier role reads only its
     own task registry).
-  - `vertra destroy` stops when the cluster's API doesn't answer (it
-    checks the database volume's disk is gone first): the reader's was torn
-    down with `tofu destroy` on its state. Destroy should go on to the cloud
-    side, warning about any disk it couldn't confirm deleted.
+  - (Fixed 2026-10-27, not yet seen on a cloud.) `vertra destroy` stopped
+    when the cluster's API didn't answer (the reader's was torn down with
+    `tofu destroy` on its state): it now skips what's inside an unanswering
+    cluster, deletes the cloud side, and lists the unattached disks or EBS
+    volumes its volumes may have left.
 
 ## Security
 

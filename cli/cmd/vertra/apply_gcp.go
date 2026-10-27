@@ -253,10 +253,14 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 		return fmt.Errorf("the project isn't reachable:\n  - %s", strings.Join(state.Problems, "\n  - "))
 	}
 	kctx := cluster.Context(c)
+	unreached := false
 	if state.ClusterStatus == "RUNNING" {
 		if err := gcp.Credentials(ctx, a.runner, c); err != nil {
 			return err
 		}
+		unreached = !a.clusterAnswers(ctx, out, kctx)
+	}
+	if state.ClusterStatus == "RUNNING" && !unreached {
 		for _, r := range []string{install.ConsoleRelease, install.KernelRelease} {
 			if err := install.Uninstall(ctx, a.runner, c, r); err != nil {
 				return err
@@ -346,10 +350,44 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 			return err
 		}
 	}
+	if unreached {
+		disks, err := gcp.LeftDisks(ctx, a.runner, c, c.Namespace)
+		leftBehind(out, "disk", disks, err, fmt.Sprintf("gcloud compute disks delete <name> --zone <zone> --project %s", c.GCP.Project))
+	}
 	for _, kind := range []string{"context", "cluster", "user"} {
 		_ = a.runner.Succeeds(ctx, "kubectl", "config", "delete-"+kind, kctx)
 	}
 	return nil
+}
+
+// clusterAnswers says whether the cluster's API answers, trying a few
+// times: destroy skips what's inside one that doesn't (it all goes with the
+// cluster) rather than stop, and reports the disks its volumes may leave.
+func (a *app) clusterAnswers(ctx context.Context, out io.Writer, kctx string) bool {
+	for i := 0; i < 3; i++ {
+		if a.runner.Succeeds(ctx, "kubectl", "--context", kctx, "--request-timeout=20s", "get", "--raw", "/readyz") {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(10 * time.Second):
+		}
+	}
+	fmt.Fprintln(out, "The cluster's API doesn't answer: deleting it without removing what's inside first (it all goes with the cluster).")
+	return false
+}
+
+// leftBehind says which of the volumes' disks a cluster deleted unreached
+// may have left, and how to delete them once checked.
+func leftBehind(out io.Writer, what string, found []string, err error, deleteWith string) {
+	switch {
+	case err != nil:
+		fmt.Fprintf(out, "Couldn't list the %ss its volumes may have left (%v): check for unattached ones.\n", what, err)
+	case len(found) > 0:
+		fmt.Fprintf(out, "Unattached %ss its volumes may have left (another cluster's may match too): %s\n", what, strings.Join(found, ", "))
+		fmt.Fprintf(out, "Delete each that's this install's: %s\n", deleteWith)
+	}
 }
 
 // waitNoVolumes waits until the namespace's volumes (and their disks) are gone.

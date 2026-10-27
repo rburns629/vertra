@@ -430,3 +430,17 @@ func publicKeyPEM(out string) (string, error) {
 	b.WriteString(der + "\n-----END PUBLIC KEY-----\n")
 	return b.String(), nil
 }
+
+// LeftVolumes are EBS volumes a namespace's claims made that nothing has
+// attached: what a cluster deleted without its volume claims leaves.
+func LeftVolumes(ctx context.Context, r *run.Runner, c *config.Config, namespace string) ([]string, error) {
+	out, err := r.Output(ctx, "aws", args(c, "ec2", "describe-volumes", "--filters",
+		"Name=tag:kubernetes.io/created-for/pvc/namespace,Values="+namespace, "Name=status,Values=available",
+		"--query", "Volumes[].VolumeId")...)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	_ = json.Unmarshal([]byte(out), &ids)
+	return ids, nil
+}

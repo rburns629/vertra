@@ -208,10 +208,14 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 		return fmt.Errorf("AWS isn't reachable:\n  - %s", strings.Join(state.Problems, "\n  - "))
 	}
 	kctx := cluster.Context(c)
+	unreached := false
 	if state.ClusterStatus == "ACTIVE" {
 		if err := awscloud.Credentials(ctx, a.runner, c); err != nil {
 			return err
 		}
+		unreached = !a.clusterAnswers(ctx, out, kctx)
+	}
+	if state.ClusterStatus == "ACTIVE" && !unreached {
 		for _, r := range []string{install.ConsoleRelease, install.KernelRelease} {
 			if err := install.Uninstall(ctx, a.runner, c, r); err != nil {
 				return err
@@ -305,6 +309,10 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 		if err := awscloud.DeleteTaskRepositories(ctx, a.runner, c); err != nil {
 			return err
 		}
+	}
+	if unreached {
+		vols, err := awscloud.LeftVolumes(ctx, a.runner, c, c.Namespace)
+		leftBehind(out, "EBS volume", vols, err, "aws ec2 delete-volume --volume-id <id> --region "+c.AWS.Region)
 	}
 	for _, kind := range []string{"context", "cluster", "user"} {
 		_ = a.runner.Succeeds(ctx, "kubectl", "config", "delete-"+kind, kctx)
