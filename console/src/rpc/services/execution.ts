@@ -188,6 +188,7 @@ function execution(detail: Detail) {
           }
         : undefined,
       waitingFor: task.waitingFor ?? undefined,
+      waitingForCap: task.waitingForCap,
     })),
     teams: detail.teams,
     submittedBy: detail.submittedBy ?? "",

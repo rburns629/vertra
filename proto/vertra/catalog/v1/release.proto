@@ -124,6 +124,9 @@ message ProductAction {
   // (tests/<action>/<case>/): at most ten, each a name, inputs and what it
   // gave. Reviewed with the product, so offered as they are.
   repeated Example examples = 25;
+  // product.yaml's maxRunning: at most this many of the product's steps (all
+  // its actions share it) claimed or running at once; 0: no cap of its own.
+  int32 max_running = 26;
 }
 
 message Example {

@@ -25,6 +25,7 @@ import {
   ExecutionState,
   KernelService,
   ConcurrencyKeySchema,
+  ProductCapSchema,
   ResourcesSchema,
   SubmitExecutionRequestSchema,
   TaskSchema,
@@ -112,6 +113,7 @@ const TASK_FIELDS = new Set([
   "inputSchema",
   "outputSchema",
   "concurrencyKey",
+  "productCap",
   "approvalRequired",
   "inputs",
   "timeoutSeconds",
@@ -183,6 +185,12 @@ function task(value: unknown, index: number): Task {
       ? create(ConcurrencyKeySchema, {
           scope: text(value.concurrencyKey.scope, `${where}.concurrencyKey.scope`),
           inputs: texts(value.concurrencyKey.inputs, `${where}.concurrencyKey.inputs`),
+        })
+      : undefined,
+    productCap: isObject(value.productCap)
+      ? create(ProductCapSchema, {
+          scope: text(value.productCap.scope, `${where}.productCap.scope`),
+          maxRunning: whole(value.productCap.maxRunning, `${where}.productCap.maxRunning`) ?? 0,
         })
       : undefined,
     approvalRequired: value.approvalRequired === true,
@@ -262,6 +270,8 @@ export interface KernelTaskStatus {
   awaitingSince: string | null;
   /** While READY but held by another step with its concurrency key: the key's inputs and values. */
   waitingFor: JsonObject | null;
+  /** While READY but held because its product already has its most steps running. */
+  waitingForCap: boolean;
 }
 
 export interface KernelExecution {
@@ -302,6 +312,7 @@ export async function getExecution(executionId: string): Promise<KernelExecution
       approvedAt: iso(task.approvedAt),
       awaitingSince: iso(task.awaitingSince),
       waitingFor: task.waitingFor ?? null,
+      waitingForCap: task.waitingForCap,
     })),
   };
 }

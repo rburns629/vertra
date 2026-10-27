@@ -104,6 +104,7 @@ runtime: python3.12         # what the Dockerfile installs (for readers)
 serviceAccount: project     # optional: the identity it runs as (otherwise default)
 tokenAudiences: [sts.amazonaws.com]  # optional: tokens for another cloud (below)
 check: check                # optional: the action that says whether it's ready on an install (below)
+maxRunning: 5               # optional: at most 5 of its steps (all its actions) at once, per install
 actions:
   - name: create
     script: actions/create.py
@@ -171,7 +172,11 @@ gets exactly one: write it to find what it would create first (as every
 sample does) before you declare it. `concurrencyKey` names the inputs that
 say what a step changes: while one step with the same values is starting
 or running, another waits its turn, so two runs never change the same
-project at once (a value an earlier step produced counts too).
+project at once (a value an earlier step produced counts too). `maxRunning`
+is for the product as a whole: at most that many of its steps, of any of
+its actions in any run, start or run at once on an install, and the rest
+wait their turn (the run page says so). Use it for a backend or an API quota
+that can't take more.
 
 An action that makes or changes something lists it in its outputs as
 `resources`, each a `type`, an `id`, and optionally a `name` and an http(s)

@@ -246,6 +246,13 @@
       "when": 1793121048063,
       "tag": "0034_admin_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793122377847,
+      "tag": "0035_product_caps",
+      "breakpoints": true
     }
   ]
 }

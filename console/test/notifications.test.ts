@@ -256,15 +256,14 @@ describe("a platform alert", () => {
     const long = new Date(Date.now() - 11 * 60_000).toISOString();
     vi.mocked(policySyncOutcomes).mockReturnValue({
       identityPolicy: { applies: true, ok: false, at: recent, error: "forbidden", failingSince: recent },
-      scanPolicy: { applies: true, ok: false, at: recent, error: `${prefix} forbidden`, failingSince: long },
+      [`${prefix}Policy`]: { applies: true, ok: false, at: recent, error: `${prefix} forbidden`, failingSince: long },
       pullSecrets: { applies: true, ok: true, at: recent },
     });
     expect(await notifyPolicySync()).toBe(1);
     expect(await notifyPolicySync()).toBe(0);
     const day = new Date().toISOString().slice(0, 10);
-    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${day}`));
-    expect(event?.title).toBe("The scanPolicy isn't being synced to the cluster");
-    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${day}`));
+    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:${prefix}Policy:${day}`));
+    expect(event?.title).toBe(`The ${prefix}Policy isn't being synced to the cluster`);
     vi.mocked(policySyncOutcomes).mockReturnValue({});
   });
 });

@@ -551,7 +551,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the bot, through the same checks, by whichever console claims it first;
   a refused start is kept and told to the maintainers (`scheduleRunner.ts`,
   console migration 0024). Left: schedules waking a sleeping install.
-- [ ] **P2: caps per product** (how many of its steps run at once).
+- [x] **P2: caps per product** (done 2026-10-27, proven on kind):
+  product.yaml's `maxRunning` (1 to 100) caps how many of the product's
+  steps, all its actions sharing it, are claimed or running at once; the
+  rest wait READY, and the run page says why (`waiting_for_cap`). The
+  console scopes it to the product's catalog folder (or its image, for one
+  registered by hand); the kernel holds it in the claim, under an advisory
+  lock like concurrency keys. The ticket sample allows two.
 - [x] **Keyless bots** (done 2026-10-24): a bot signs in with its CI job's
   OIDC identity (GitHub Actions, GitLab) instead of a stored token. Its
   team's maintainers bind it to exact claims (`TokenService.AddBotIdentity`;

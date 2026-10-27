@@ -196,6 +196,12 @@ export function StepPanel({
             . It starts when that one finishes.
           </Alert>
         )}
+        {task.waitingForCap && (
+          <Alert severity="info">
+            Waiting its turn: its product already has as many steps running as it allows at once (its maxRunning). It starts
+            when one of them finishes.
+          </Alert>
+        )}
         {task.approval && <Approval executionId={executionId} taskId={task.taskId} approval={task.approval} awaiting={task.state === "AWAITING_APPROVAL"} busy={busy} onDecide={onDecide} />}
 
         <Tabs value={tab} onChange={(_, value: TabId) => { setTab(value); }} variant="scrollable" allowScrollButtonsMobile sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}>

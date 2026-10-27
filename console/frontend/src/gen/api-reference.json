@@ -3249,6 +3249,13 @@
      "repeated": false,
      "optional": false,
      "comment": "While it's ready but waiting its turn: another step with the same\nconcurrency key (product.yaml's concurrencyKey) is running. The key's\ninputs, with their values; unset for a step whose inputs the caller\ncan't see."
+    },
+    {
+     "name": "waitingForCap",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "While it's ready but waiting its turn because its product already has\nits most steps running (product.yaml's maxRunning)."
     }
    ]
   },

@@ -100,6 +100,9 @@ func (p *Product) ReleaseActions(reference string) ([]*catalogv1.ProductAction, 
 		if n, ok := whole(action["maxAttempts"]); ok {
 			a.MaxAttempts = n
 		}
+		if n, ok := whole(p.Spec["maxRunning"]); ok {
+			a.MaxRunning = n
+		}
 		secrets, _ := action["secretRefs"].([]any)
 		for _, s := range secrets {
 			if m, ok := s.(map[string]any); ok {

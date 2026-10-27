@@ -39,6 +39,10 @@ type TaskDef struct {
 	// ApprovalRequired holds the task in AWAITING_APPROVAL until a person
 	// approves it, instead of letting it become READY.
 	ApprovalRequired bool
+	// CapScope and CapLimit hold the task while CapLimit tasks of the same
+	// scope (its product) are claimed or running; no scope: no cap.
+	CapScope string
+	CapLimit int
 }
 
 // MaxTokenAudiences is how many a task may ask for.
@@ -314,6 +318,22 @@ func ConcurrencyKeyProblem(scope string, inputs []string) string {
 		return "needs a scope of at most 256 characters"
 	case len(inputs) == 0 || len(inputs) > MaxConcurrencyInputs:
 		return fmt.Sprintf("needs 1 to %d inputs", MaxConcurrencyInputs)
+	}
+	return ""
+}
+
+// MaxProductCap is the most a product's cap may be.
+const MaxProductCap = 100
+
+// ProductCapProblem is why a task's product cap can't be used, or "".
+func ProductCapProblem(scope string, limit int) string {
+	switch {
+	case scope == "" && limit == 0:
+		return ""
+	case scope == "" || len(scope) > 256:
+		return "needs a scope of at most 256 characters"
+	case limit < 1 || limit > MaxProductCap:
+		return fmt.Sprintf("needs max_running from 1 to %d", MaxProductCap)
 	}
 	return ""
 }

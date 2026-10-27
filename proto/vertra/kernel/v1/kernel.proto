@@ -138,6 +138,17 @@ message Task {
   // approves it (DecideApproval); expires with APPROVAL_EXPIRED after the
   // scheduler's approval timeout.
   bool approval_required = 16;
+  // Holds this step while its product already has max_running steps
+  // claimed or running (product.yaml's maxRunning): all of the product's
+  // actions share the scope.
+  ProductCap product_cap = 17;
+}
+
+message ProductCap {
+  // Whose cap it is: the product (its catalog path), so its actions share it.
+  string scope = 1;
+  // How many of its steps may be claimed or running at once; 1 to 100.
+  int32 max_running = 2;
 }
 
 message ConcurrencyKey {
@@ -225,6 +236,9 @@ message TaskStatus {
   // key (Task.concurrency_key) is claimed or running: the key's inputs,
   // with their values.
   google.protobuf.Struct waiting_for = 14;
+  // While READY but held because its product already has its most steps
+  // claimed or running (Task.product_cap).
+  bool waiting_for_cap = 15;
 }
 
 message Attempt {

@@ -146,6 +146,12 @@ func taskDefs(tasks []*kernelv1.Task) ([]domain.TaskDef, []domain.ValidationIssu
 		if problem := domain.ConcurrencyKeyProblem(def.ConcurrencyScope, def.ConcurrencyInputs); problem != "" {
 			bad("concurrency_key", problem)
 		}
+		if c := t.GetProductCap(); c != nil {
+			def.CapScope, def.CapLimit = c.GetScope(), int(c.GetMaxRunning())
+		}
+		if problem := domain.ProductCapProblem(def.CapScope, def.CapLimit); problem != "" {
+			bad("product_cap", problem)
+		}
 		if t.GetOutputSchema() != nil {
 			def.OutputSchema = t.GetOutputSchema().AsMap()
 		}
@@ -289,11 +295,11 @@ func (s *Service) insert(ctx context.Context, db pgx.Tx, id, name, requestID, re
 		}
 		if _, err := db.Exec(ctx, `INSERT INTO execution_tasks (id, execution_id, task_key, image, action, team, service_account,
 			secret_refs, token_audiences, resources, state, original_inputs, timeout_seconds, max_attempts, attempt_count,
-			input_schema, output_schema, concurrency_scope, concurrency_inputs, approval_required)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16, $17, $18, $19)`,
+			input_schema, output_schema, concurrency_scope, concurrency_inputs, approval_required, cap_scope, cap_limit)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, $15, $16, $17, $18, $19, $20, $21)`,
 			ids[d.ID], id, d.ID, d.Image, d.Action, d.Team, d.ServiceAccount, d.SecretRefs, d.TokenAudiences, resources,
 			string(d.InitialState()), inputs, d.TimeoutSeconds, d.MaxAttempts, inputSchema, outputSchema,
-			nullable(d.ConcurrencyScope), d.ConcurrencyInputs, d.ApprovalRequired); err != nil {
+			nullable(d.ConcurrencyScope), d.ConcurrencyInputs, d.ApprovalRequired, nullable(d.CapScope), d.CapLimit); err != nil {
 			return err
 		}
 	}
@@ -348,7 +354,9 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 			a.started_at, a.completed_at, t.approval_required, coalesce(t.approved_by, ''), t.approved_at,
 			CASE WHEN t.state = 'AWAITING_APPROVAL' THEN t.available_at END,
 			CASE WHEN t.state = 'READY' AND EXISTS (SELECT 1 FROM execution_tasks h WHERE h.concurrency_key = t.concurrency_key
-				AND h.state IN ('CLAIMED', 'RUNNING') AND h.id <> t.id) THEN t.concurrency_key END, t.concurrency_inputs
+				AND h.state IN ('CLAIMED', 'RUNNING') AND h.id <> t.id) THEN t.concurrency_key END, t.concurrency_inputs,
+			t.state = 'READY' AND t.cap_scope IS NOT NULL AND (SELECT count(*) FROM execution_tasks c WHERE c.cap_scope = t.cap_scope
+				AND c.state IN ('CLAIMED', 'RUNNING')) >= t.cap_limit
 		FROM execution_tasks t
 		LEFT JOIN task_outputs o ON o.task_id = t.id
 		LEFT JOIN LATERAL (SELECT started_at, completed_at FROM task_attempts
@@ -367,7 +375,7 @@ func (s *Service) GetExecution(ctx context.Context, req *connect.Request[kernelv
 		var waitingKey *string
 		var keyInputs []string
 		if err := rows.Scan(&task.TaskId, &taskSt, &attempts, &outputs, &failure, &task.DependsOn, &started, &completed,
-			&task.ApprovalRequired, &task.ApprovedBy, &approved, &awaiting, &waitingKey, &keyInputs); err != nil {
+			&task.ApprovalRequired, &task.ApprovedBy, &approved, &awaiting, &waitingKey, &keyInputs, &task.WaitingForCap); err != nil {
 			return nil, err
 		}
 		if waitingKey != nil {

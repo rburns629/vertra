@@ -505,6 +505,7 @@ export interface Product {
   idempotent: boolean;
   maxAttempts: number;
   concurrencyKey: string[];
+  maxRunning: number;
   cleanup: ProductCleanup | null;
   plan: string | null;
   check: string | null;
@@ -550,6 +551,7 @@ export interface ProductInput {
   idempotent?: boolean | undefined;
   maxAttempts?: number | undefined;
   concurrencyKey?: string[] | undefined;
+  maxRunning?: number | undefined;
   cleanup?: ProductCleanup | null | undefined;
   plan?: string | null | undefined;
   check?: string | null | undefined;
@@ -602,6 +604,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       idempotent: input.idempotent,
       maxAttempts: input.maxAttempts,
       concurrencyKey: input.concurrencyKey,
+      maxRunning: input.maxRunning,
       cleanup: input.cleanup,
       plan: input.plan,
       check: input.check,

@@ -76,6 +76,12 @@
     "resources": {
       "$ref": "#/$defs/resources"
     },
+    "maxRunning": {
+      "description": "At most this many of the product's steps (all its actions, every run) start or run at once, on each install; the rest wait their turn. For a product whose backend or quota can't take more. Left out: no cap of its own (the install's caps still apply).",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
     "actions": {
       "type": "array",
       "minItems": 1,

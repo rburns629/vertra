@@ -286,6 +286,15 @@ func TestMalformedSubmissionsAreRefused(t *testing.T) {
 		"a concurrency key with no scope": func(r *kernelv1.SubmitExecutionRequest) {
 			r.Tasks[0].ConcurrencyKey = &kernelv1.ConcurrencyKey{Inputs: []string{"projectId"}}
 		},
+		"a product cap of none": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].ProductCap = &kernelv1.ProductCap{Scope: "teams/web/products/site"}
+		},
+		"a product cap past the most": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].ProductCap = &kernelv1.ProductCap{Scope: "teams/web/products/site", MaxRunning: 101}
+		},
+		"a product cap with no scope": func(r *kernelv1.SubmitExecutionRequest) {
+			r.Tasks[0].ProductCap = &kernelv1.ProductCap{MaxRunning: 2}
+		},
 	} {
 		req := single(unique("malformed"))
 		change(req)
@@ -559,6 +568,29 @@ func TestEveryMethodNeedsAnAllowedCaller(t *testing.T) {
 	// Every method, not just one.
 	_, err = c.SubmitExecution(ctx, connect.NewRequest(single(unique("unauthenticated"))))
 	code(t, err, connect.CodeUnauthenticated)
+}
+
+func TestAStepHeldByItsProductsCapSaysSo(t *testing.T) {
+	c := client(t)
+	scope := unique("teams/web/products/site")
+	cappedSingle := func() string {
+		req := single(unique("capped"))
+		req.Tasks[0].ProductCap = &kernelv1.ProductCap{Scope: scope, MaxRunning: 1}
+		return submit(t, c, req).ExecutionId
+	}
+	first, second := cappedSingle(), cappedSingle()
+	exec(t, `UPDATE execution_tasks SET state = 'RUNNING' WHERE execution_id = $1::uuid`, first)
+	exec(t, `UPDATE execution_tasks SET state = 'READY' WHERE execution_id = $1::uuid`, second)
+	if !tasksByID(get(t, c, second))["create-project"].WaitingForCap {
+		t.Error("the second doesn't say it waits for its product's cap")
+	}
+	if tasksByID(get(t, c, first))["create-project"].WaitingForCap {
+		t.Error("the running one says it waits")
+	}
+	exec(t, `UPDATE execution_tasks SET state = 'SUCCEEDED' WHERE execution_id = $1::uuid`, first)
+	if tasksByID(get(t, c, second))["create-project"].WaitingForCap {
+		t.Error("still waiting once the other finished")
+	}
 }
 
 func TestAStepHeldByItsConcurrencyKeySaysWhatItsWaitingFor(t *testing.T) {

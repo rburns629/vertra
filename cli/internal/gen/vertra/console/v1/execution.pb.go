@@ -711,7 +711,10 @@ type TaskStatus struct {
 	// concurrency key (product.yaml's concurrencyKey) is running. The key's
 	// inputs, with their values; unset for a step whose inputs the caller
 	// can't see.
-	WaitingFor    *structpb.Struct `protobuf:"bytes,12,opt,name=waiting_for,json=waitingFor,proto3" json:"waiting_for,omitempty"`
+	WaitingFor *structpb.Struct `protobuf:"bytes,12,opt,name=waiting_for,json=waitingFor,proto3" json:"waiting_for,omitempty"`
+	// While it's ready but waiting its turn because its product already has
+	// its most steps running (product.yaml's maxRunning).
+	WaitingForCap bool `protobuf:"varint,13,opt,name=waiting_for_cap,json=waitingForCap,proto3" json:"waiting_for_cap,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -828,6 +831,13 @@ func (x *TaskStatus) GetWaitingFor() *structpb.Struct {
 		return x.WaitingFor
 	}
 	return nil
+}
+
+func (x *TaskStatus) GetWaitingForCap() bool {
+	if x != nil {
+		return x.WaitingForCap
+	}
+	return false
 }
 
 type Approval struct {
@@ -2651,7 +2661,7 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12%\n" +
 	"\x0emissing_images\x18\x03 \x03(\tR\rmissingImages\x12+\n" +
 	"\x11disallowed_images\x18\x04 \x03(\tR\x10disallowedImages\x12'\n" +
-	"\x0fallowed_sources\x18\x05 \x03(\tR\x0eallowedSources\"\x90\x05\n" +
+	"\x0fallowed_sources\x18\x05 \x03(\tR\x0eallowedSources\"\xb8\x05\n" +
 	"\n" +
 	"TaskStatus\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x122\n" +
@@ -2669,7 +2679,8 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	" \x01(\v2\x1e.vertra.console.v1.FailureHelpH\x01R\x04help\x88\x01\x01\x12<\n" +
 	"\bapproval\x18\v \x01(\v2\x1b.vertra.console.v1.ApprovalH\x02R\bapproval\x88\x01\x01\x128\n" +
 	"\vwaiting_for\x18\f \x01(\v2\x17.google.protobuf.StructR\n" +
-	"waitingForB\n" +
+	"waitingFor\x12&\n" +
+	"\x0fwaiting_for_cap\x18\r \x01(\bR\rwaitingForCapB\n" +
 	"\n" +
 	"\b_failureB\a\n" +
 	"\x05_helpB\v\n" +

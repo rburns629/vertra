@@ -146,12 +146,18 @@ func (p *pass) claimReadyTasks() ([]*Task, error) {
 
 	var claimed []*Task
 	keys := map[string]bool{}
+	capped := map[string]int{}
 	for _, t := range ready {
 		if len(claimed) == limit {
 			break
 		}
 		if p.opts.MaxRunningPerTeam > 0 && perTeam[t.Team] >= p.opts.MaxRunningPerTeam {
 			continue
+		}
+		if held, err := p.capHold(t, capped); err != nil {
+			return nil, err
+		} else if held {
+			continue // stays READY; GetExecution says it waits for its product's cap
 		}
 		key, held, err := p.concurrencyHold(t, keys)
 		if err != nil {
@@ -169,6 +175,9 @@ func (p *pass) claimReadyTasks() ([]*Task, error) {
 		if key != "" {
 			keys[key] = true
 			t.ConcurrencyKey = &key
+		}
+		if t.CapScope != nil {
+			capped[*t.CapScope]++
 		}
 		if p.opts.MaxRunningPerTeam > 0 {
 			perTeam[t.Team]++
@@ -214,6 +223,31 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// capHold says whether a task must wait for its product's cap: CapLimit
+// tasks of its scope are claimed or running, counting those claimed earlier
+// in this pass, or another scheduler is claiming one right now (the scope's
+// transaction-scoped advisory lock, as for concurrency keys). No scope: no
+// cap.
+func (p *pass) capHold(t *Task, claimedNow map[string]int) (bool, error) {
+	if t.CapScope == nil || *t.CapScope == "" || t.CapLimit < 1 {
+		return false, nil
+	}
+	scope := *t.CapScope
+	var locked bool
+	if err := p.db.QueryRow(p.ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0))`, "cap:"+scope).Scan(&locked); err != nil {
+		return false, err
+	}
+	if !locked {
+		return true, nil
+	}
+	var running int
+	if err := p.db.QueryRow(p.ctx, `SELECT count(*) FROM execution_tasks
+		WHERE cap_scope = $1 AND state IN ('CLAIMED', 'RUNNING') AND id <> $2::uuid`, scope, t.ID).Scan(&running); err != nil {
+		return false, err
+	}
+	return running+claimedNow[scope] >= t.CapLimit, nil
 }
 
 // concurrencyHold is the task's concurrency key, and whether it must wait:

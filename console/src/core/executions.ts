@@ -490,7 +490,12 @@ async function withProductResources(submission: Record<string, unknown>): Promis
 }
 
 /** The fields a task gets from its product, never from whoever submits it. */
-const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey", "approvalRequired"] as const;
+const PRODUCT_FIELDS = ["tokenAudiences", "inputSchema", "outputSchema", "concurrencyKey", "productCap", "approvalRequired"] as const;
+
+/** What a product's actions share, for its cap: its catalog folder, or (registered by hand) its image's repository. */
+function productScope(product: { sourcePath: string | null; image: string }): string {
+  return product.sourcePath ? product.sourcePath.replace(/\/product\.yaml$/, "") : imageRepository(product.image);
+}
 
 const isReference = (value: unknown) =>
   isRecord(value) && Object.keys(value).length === 2 && "$fromTask" in value && "$output" in value;
@@ -582,6 +587,9 @@ async function withProductContract(submission: Record<string, unknown>, runner: 
       // One step per set of these inputs' values at a time, the product's
       // own (the kernel works the key out once the inputs are resolved).
       ...(product.concurrencyKey.length > 0 ? { concurrencyKey: { scope: product.name, inputs: product.concurrencyKey } } : {}),
+      // At most so many of the product's steps at once, all its actions
+      // sharing it: scoped to its folder in the catalog, else its image.
+      ...(product.maxRunning > 0 ? { productCap: { scope: productScope(product), maxRunning: product.maxRunning } } : {}),
       ...((await approvalRequired(product, team ?? "", isRecord(task["inputs"]) ? task["inputs"] : {}, runner))
         ? { approvalRequired: true }
         : {}),

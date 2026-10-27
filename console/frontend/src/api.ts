@@ -1001,6 +1001,8 @@ export interface TaskStatus {
   approval: TaskApproval | null;
   /** While it's ready but waiting its turn behind another step with its concurrency key: the key's inputs and values. */
   waitingFor: Record<string, unknown> | null;
+  /** While it's ready but waiting because its product already has its most steps running. */
+  waitingForCap: boolean;
 }
 
 export interface TaskApproval {
@@ -1172,6 +1174,7 @@ function executionDetail(execution: Execution): ExecutionDetail {
           }
         : null,
       waitingFor: task.waitingFor ?? null,
+      waitingForCap: task.waitingForCap,
     })),
     teams: execution.teams,
     submittedBy: execution.submittedBy || null,

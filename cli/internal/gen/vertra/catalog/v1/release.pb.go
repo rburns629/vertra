@@ -400,7 +400,10 @@ type ProductAction struct {
 	// Examples of running it, from its passing contract tests
 	// (tests/<action>/<case>/): at most ten, each a name, inputs and what it
 	// gave. Reviewed with the product, so offered as they are.
-	Examples      []*Example `protobuf:"bytes,25,rep,name=examples,proto3" json:"examples,omitempty"`
+	Examples []*Example `protobuf:"bytes,25,rep,name=examples,proto3" json:"examples,omitempty"`
+	// product.yaml's maxRunning: at most this many of the product's steps (all
+	// its actions share it) claimed or running at once; 0: no cap of its own.
+	MaxRunning    int32 `protobuf:"varint,26,opt,name=max_running,json=maxRunning,proto3" json:"max_running,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -608,6 +611,13 @@ func (x *ProductAction) GetExamples() []*Example {
 		return x.Examples
 	}
 	return nil
+}
+
+func (x *ProductAction) GetMaxRunning() int32 {
+	if x != nil {
+		return x.MaxRunning
+	}
+	return 0
 }
 
 type Example struct {
@@ -1541,7 +1551,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\bapproval\x18\x03 \x01(\bR\bapproval\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xfd\a\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\x9e\b\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1574,7 +1584,9 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\acleanup\x18\x16 \x01(\v2\x1a.vertra.catalog.v1.CleanupR\acleanup\x12\x12\n" +
 	"\x04plan\x18\x17 \x01(\tR\x04plan\x12\x14\n" +
 	"\x05check\x18\x18 \x01(\tR\x05check\x126\n" +
-	"\bexamples\x18\x19 \x03(\v2\x1a.vertra.catalog.v1.ExampleR\bexamples\x1aW\n" +
+	"\bexamples\x18\x19 \x03(\v2\x1a.vertra.catalog.v1.ExampleR\bexamples\x12\x1f\n" +
+	"\vmax_running\x18\x1a \x01(\x05R\n" +
+	"maxRunning\x1aW\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
 	"\x05value\x18\x02 \x01(\v2\x1c.vertra.catalog.v1.ErrorHelpR\x05value:\x028\x01\"\x81\x01\n" +

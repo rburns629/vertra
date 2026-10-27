@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "max_running" integer DEFAULT 0 NOT NULL;

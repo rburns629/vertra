@@ -409,6 +409,14 @@ export declare type TaskStatus = Message<"vertra.console.v1.TaskStatus"> & {
    * @generated from field: google.protobuf.Struct waiting_for = 12;
    */
   waitingFor?: JsonObject | undefined;
+
+  /**
+   * While it's ready but waiting its turn because its product already has
+   * its most steps running (product.yaml's maxRunning).
+   *
+   * @generated from field: bool waiting_for_cap = 13;
+   */
+  waitingForCap: boolean;
 };
 
 /**

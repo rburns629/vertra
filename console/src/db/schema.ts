@@ -242,6 +242,9 @@ export const products = pgTable(
     // The inputs naming what a step of it changes (product.yaml's
     // concurrencyKey): the kernel runs one step per set of values at a time.
     concurrencyKey: text("concurrency_key").array().notNull().default(sql`'{}'::text[]`),
+    // product.yaml's maxRunning: at most this many of the product's steps
+    // (all its actions) claimed or running at once; 0, no cap of its own.
+    maxRunning: integer("max_running").notNull().default(0),
     // What removes the resources its steps report (product.yaml's cleanup):
     // another action of the product, and its inputs (null: {"resource":
     // ...}). Null: nothing does (core/resources.ts).
