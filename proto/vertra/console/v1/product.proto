@@ -43,8 +43,9 @@ service ProductService {
   rpc ListWiringTypes(ListWiringTypesRequest) returns (ListWiringTypesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Replaces every wiring type with the catalog's schema/types.yaml. An
-  // admin, or a token with products:register.
+  // Replaces every wiring type, for an install whose catalog has no
+  // teams/<team>/types.yaml (a catalog release that has them replaces them
+  // itself). An admin, or a token with products:register.
   rpc ReplaceWiringTypes(ReplaceWiringTypesRequest) returns (ReplaceWiringTypesResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -124,6 +125,9 @@ message WiringType {
   // has no provider.
   optional string default_provider = 5;
   google.protobuf.Timestamp updated_at = 6;
+  // The team whose types.yaml defines it; unset for one set by
+  // ReplaceWiringTypes.
+  optional string team = 7;
 }
 
 message ListProductsRequest {}

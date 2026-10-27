@@ -829,6 +829,8 @@ export interface WiringType {
   description: string;
   shared: boolean;
   defaultProvider: string | null;
+  /** The team whose types.yaml defines it; null: set by ReplaceWiringTypes. */
+  team: string | null;
   updatedAt: Date;
 }
 
@@ -836,8 +838,9 @@ export function listWiringTypes(): Promise<WiringType[]> {
   return db.select().from(wiringTypes).orderBy(wiringTypes.name);
 }
 
-/** Replaces the whole vocabulary in one transaction: what catalog CI sends
- * is the complete schema/types.yaml, so a type removed there goes here too. */
+/** Replaces the whole vocabulary in one transaction: what's given is all of
+ * it (a catalog release's, or ReplaceWiringTypes'), so a type removed there
+ * goes here too. */
 export async function replaceWiringTypes(
   types: Omit<WiringType, "updatedAt">[],
 ): Promise<WiringType[]> {

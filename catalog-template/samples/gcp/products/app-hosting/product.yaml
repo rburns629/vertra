@@ -44,10 +44,12 @@ actions:
             -- this action never redeploys an existing service.
         region:
           type: string
+          x-vertra-needs: gcp.region
           default: us-central1
           description: Cloud Run region.
         image:
           type: string
+          x-vertra-needs: gcp.container-image
           description: >-
             Fully-qualified container image to deploy (e.g. an Artifact
             Registry path), built and pushed ahead of time. This product
@@ -55,6 +57,8 @@ actions:
             itself.
         cloudSqlConnectionName:
           type: string
+          # Optional: the cart suggests a database (cloud-sql.create) for it.
+          x-vertra-needs: gcp.cloud-sql-instance
           description: >-
             Optional. A Cloud SQL instance's connectionName (typically
             gcp/cloud-sql's own output, via $fromTask/$output) -- the

@@ -53,6 +53,7 @@ actions:
       properties:
         imageUri:
           type: string
+          x-vertra-provides: gcp.container-image
           description: >-
             Echoed back either way -- feed this into gcp/app-hosting's
             `image` input via $fromTask/$output.

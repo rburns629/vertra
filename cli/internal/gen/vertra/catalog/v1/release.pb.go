@@ -51,7 +51,12 @@ type Release struct {
 	Templates []*Template `protobuf:"bytes,6,rep,name=templates,proto3" json:"templates,omitempty"`
 	// Every team's API products (teams/<team>/apis/<name>/api.yaml), as vertra
 	// catalog checked them, each with its OpenAPI document.
-	Apis          []*Api `protobuf:"bytes,7,rep,name=apis,proto3" json:"apis,omitempty"`
+	Apis []*Api `protobuf:"bytes,7,rep,name=apis,proto3" json:"apis,omitempty"`
+	// The catalog's wiring types, every team's teams/<team>/types.yaml
+	// together. Unset when no team has one: the install's own (set with
+	// ProductService.ReplaceWiringTypes) are left alone. Set, it's the whole
+	// vocabulary, and replaces the install's.
+	WiringTypes   *WiringTypes `protobuf:"bytes,8,opt,name=wiring_types,json=wiringTypes,proto3" json:"wiring_types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -135,6 +140,149 @@ func (x *Release) GetApis() []*Api {
 	return nil
 }
 
+func (x *Release) GetWiringTypes() *WiringTypes {
+	if x != nil {
+		return x.WiringTypes
+	}
+	return nil
+}
+
+type WiringTypes struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Types         []*WiringType          `protobuf:"bytes,1,rep,name=types,proto3" json:"types,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WiringTypes) Reset() {
+	*x = WiringTypes{}
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WiringTypes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WiringTypes) ProtoMessage() {}
+
+func (x *WiringTypes) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WiringTypes.ProtoReflect.Descriptor instead.
+func (*WiringTypes) Descriptor() ([]byte, []int) {
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *WiringTypes) GetTypes() []*WiringType {
+	if x != nil {
+		return x.Types
+	}
+	return nil
+}
+
+// A kind of thing an input needs (x-vertra-needs) and an output provides
+// (x-vertra-provides): what the order builder wires by.
+type WiringType struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lower-case words joined by dots: gcp.project.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The team whose types.yaml defines it, which says what it means.
+	Team string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
+	// string, integer, number or boolean.
+	JsonType    string `protobuf:"bytes,3,opt,name=json_type,json=jsonType,proto3" json:"json_type,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// Asked once per order (a parameter named for it) when nothing provides it.
+	Shared bool `protobuf:"varint,5,opt,name=shared,proto3" json:"shared,omitempty"`
+	// <team>/<product>.<action>, one of its team's: what an order adds when it
+	// needs the type and nothing in it provides it. Empty: none.
+	DefaultProvider string `protobuf:"bytes,6,opt,name=default_provider,json=defaultProvider,proto3" json:"default_provider,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *WiringType) Reset() {
+	*x = WiringType{}
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WiringType) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WiringType) ProtoMessage() {}
+
+func (x *WiringType) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WiringType.ProtoReflect.Descriptor instead.
+func (*WiringType) Descriptor() ([]byte, []int) {
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *WiringType) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WiringType) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *WiringType) GetJsonType() string {
+	if x != nil {
+		return x.JsonType
+	}
+	return ""
+}
+
+func (x *WiringType) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *WiringType) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
+}
+
+func (x *WiringType) GetDefaultProvider() string {
+	if x != nil {
+		return x.DefaultProvider
+	}
+	return ""
+}
+
 type Team struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Its folder's name, teams/<name>/: the team and its namespace.
@@ -160,7 +308,7 @@ type Team struct {
 
 func (x *Team) Reset() {
 	*x = Team{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[1]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +320,7 @@ func (x *Team) String() string {
 func (*Team) ProtoMessage() {}
 
 func (x *Team) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[1]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,7 +333,7 @@ func (x *Team) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Team.ProtoReflect.Descriptor instead.
 func (*Team) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{1}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Team) GetName() string {
@@ -253,7 +401,7 @@ type TargetRule struct {
 
 func (x *TargetRule) Reset() {
 	*x = TargetRule{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[2]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -265,7 +413,7 @@ func (x *TargetRule) String() string {
 func (*TargetRule) ProtoMessage() {}
 
 func (x *TargetRule) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[2]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -278,7 +426,7 @@ func (x *TargetRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TargetRule.ProtoReflect.Descriptor instead.
 func (*TargetRule) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{2}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TargetRule) GetTeams() []string {
@@ -313,7 +461,7 @@ type Targets struct {
 
 func (x *Targets) Reset() {
 	*x = Targets{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -325,7 +473,7 @@ func (x *Targets) String() string {
 func (*Targets) ProtoMessage() {}
 
 func (x *Targets) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[3]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -338,7 +486,7 @@ func (x *Targets) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Targets.ProtoReflect.Descriptor instead.
 func (*Targets) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{3}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Targets) GetType() string {
@@ -423,7 +571,7 @@ type ProductAction struct {
 
 func (x *ProductAction) Reset() {
 	*x = ProductAction{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[4]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +583,7 @@ func (x *ProductAction) String() string {
 func (*ProductAction) ProtoMessage() {}
 
 func (x *ProductAction) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[4]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +596,7 @@ func (x *ProductAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProductAction.ProtoReflect.Descriptor instead.
 func (*ProductAction) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{4}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ProductAction) GetName() string {
@@ -652,7 +800,7 @@ type Example struct {
 
 func (x *Example) Reset() {
 	*x = Example{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -664,7 +812,7 @@ func (x *Example) String() string {
 func (*Example) ProtoMessage() {}
 
 func (x *Example) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[5]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -677,7 +825,7 @@ func (x *Example) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Example.ProtoReflect.Descriptor instead.
 func (*Example) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{5}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Example) GetName() string {
@@ -716,7 +864,7 @@ type Cleanup struct {
 
 func (x *Cleanup) Reset() {
 	*x = Cleanup{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +876,7 @@ func (x *Cleanup) String() string {
 func (*Cleanup) ProtoMessage() {}
 
 func (x *Cleanup) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[6]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,7 +889,7 @@ func (x *Cleanup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Cleanup.ProtoReflect.Descriptor instead.
 func (*Cleanup) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{6}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Cleanup) GetAction() string {
@@ -769,7 +917,7 @@ type ErrorHelp struct {
 
 func (x *ErrorHelp) Reset() {
 	*x = ErrorHelp{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -781,7 +929,7 @@ func (x *ErrorHelp) String() string {
 func (*ErrorHelp) ProtoMessage() {}
 
 func (x *ErrorHelp) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[7]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +942,7 @@ func (x *ErrorHelp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorHelp.ProtoReflect.Descriptor instead.
 func (*ErrorHelp) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{7}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ErrorHelp) GetMeans() string {
@@ -844,7 +992,7 @@ type Template struct {
 
 func (x *Template) Reset() {
 	*x = Template{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[8]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -856,7 +1004,7 @@ func (x *Template) String() string {
 func (*Template) ProtoMessage() {}
 
 func (x *Template) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[8]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -869,7 +1017,7 @@ func (x *Template) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Template.ProtoReflect.Descriptor instead.
 func (*Template) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{8}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Template) GetName() string {
@@ -968,7 +1116,7 @@ type TemplateStep struct {
 
 func (x *TemplateStep) Reset() {
 	*x = TemplateStep{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[9]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1128,7 @@ func (x *TemplateStep) String() string {
 func (*TemplateStep) ProtoMessage() {}
 
 func (x *TemplateStep) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[9]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +1141,7 @@ func (x *TemplateStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TemplateStep.ProtoReflect.Descriptor instead.
 func (*TemplateStep) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{9}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TemplateStep) GetId() string {
@@ -1050,7 +1198,7 @@ type Resources struct {
 
 func (x *Resources) Reset() {
 	*x = Resources{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[10]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1062,7 +1210,7 @@ func (x *Resources) String() string {
 func (*Resources) ProtoMessage() {}
 
 func (x *Resources) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[10]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1075,7 +1223,7 @@ func (x *Resources) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resources.ProtoReflect.Descriptor instead.
 func (*Resources) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{10}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Resources) GetCpu() string {
@@ -1142,7 +1290,7 @@ type Api struct {
 
 func (x *Api) Reset() {
 	*x = Api{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[11]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1154,7 +1302,7 @@ func (x *Api) String() string {
 func (*Api) ProtoMessage() {}
 
 func (x *Api) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[11]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1167,7 +1315,7 @@ func (x *Api) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Api.ProtoReflect.Descriptor instead.
 func (*Api) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{11}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Api) GetName() string {
@@ -1296,7 +1444,7 @@ type BackendAuth struct {
 
 func (x *BackendAuth) Reset() {
 	*x = BackendAuth{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[12]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1308,7 +1456,7 @@ func (x *BackendAuth) String() string {
 func (*BackendAuth) ProtoMessage() {}
 
 func (x *BackendAuth) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[12]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1321,7 +1469,7 @@ func (x *BackendAuth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BackendAuth.ProtoReflect.Descriptor instead.
 func (*BackendAuth) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{12}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *BackendAuth) GetKind() isBackendAuth_Kind {
@@ -1390,7 +1538,7 @@ type ServiceAccountTokenAuth struct {
 
 func (x *ServiceAccountTokenAuth) Reset() {
 	*x = ServiceAccountTokenAuth{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[13]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1402,7 +1550,7 @@ func (x *ServiceAccountTokenAuth) String() string {
 func (*ServiceAccountTokenAuth) ProtoMessage() {}
 
 func (x *ServiceAccountTokenAuth) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[13]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1415,7 +1563,7 @@ func (x *ServiceAccountTokenAuth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceAccountTokenAuth.ProtoReflect.Descriptor instead.
 func (*ServiceAccountTokenAuth) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{13}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ServiceAccountTokenAuth) GetAudience() string {
@@ -1437,7 +1585,7 @@ type GoogleIdTokenAuth struct {
 
 func (x *GoogleIdTokenAuth) Reset() {
 	*x = GoogleIdTokenAuth{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[14]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1449,7 +1597,7 @@ func (x *GoogleIdTokenAuth) String() string {
 func (*GoogleIdTokenAuth) ProtoMessage() {}
 
 func (x *GoogleIdTokenAuth) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[14]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1462,7 +1610,7 @@ func (x *GoogleIdTokenAuth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GoogleIdTokenAuth.ProtoReflect.Descriptor instead.
 func (*GoogleIdTokenAuth) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{14}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GoogleIdTokenAuth) GetServiceAccount() string {
@@ -1492,7 +1640,7 @@ type AwsSigV4Auth struct {
 
 func (x *AwsSigV4Auth) Reset() {
 	*x = AwsSigV4Auth{}
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[15]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1504,7 +1652,7 @@ func (x *AwsSigV4Auth) String() string {
 func (*AwsSigV4Auth) ProtoMessage() {}
 
 func (x *AwsSigV4Auth) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_catalog_v1_release_proto_msgTypes[15]
+	mi := &file_vertra_catalog_v1_release_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1517,7 +1665,7 @@ func (x *AwsSigV4Auth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsSigV4Auth.ProtoReflect.Descriptor instead.
 func (*AwsSigV4Auth) Descriptor() ([]byte, []int) {
-	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{15}
+	return file_vertra_catalog_v1_release_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *AwsSigV4Auth) GetRoleArn() string {
@@ -1545,7 +1693,7 @@ var File_vertra_catalog_v1_release_proto protoreflect.FileDescriptor
 
 const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\n" +
-	"\x1fvertra/catalog/v1/release.proto\x12\x11vertra.catalog.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd0\x02\n" +
+	"\x1fvertra/catalog/v1/release.proto\x12\x11vertra.catalog.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x93\x03\n" +
 	"\aRelease\x12\x16\n" +
 	"\x06commit\x18\x01 \x01(\tR\x06commit\x12\x1e\n" +
 	"\n" +
@@ -1556,7 +1704,18 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\x05teams\x18\x04 \x03(\v2\x17.vertra.catalog.v1.TeamR\x05teams\x12<\n" +
 	"\bproducts\x18\x05 \x03(\v2 .vertra.catalog.v1.ProductActionR\bproducts\x129\n" +
 	"\ttemplates\x18\x06 \x03(\v2\x1b.vertra.catalog.v1.TemplateR\ttemplates\x12*\n" +
-	"\x04apis\x18\a \x03(\v2\x16.vertra.catalog.v1.ApiR\x04apis\"\x99\x02\n" +
+	"\x04apis\x18\a \x03(\v2\x16.vertra.catalog.v1.ApiR\x04apis\x12A\n" +
+	"\fwiring_types\x18\b \x01(\v2\x1e.vertra.catalog.v1.WiringTypesR\vwiringTypes\"B\n" +
+	"\vWiringTypes\x123\n" +
+	"\x05types\x18\x01 \x03(\v2\x1d.vertra.catalog.v1.WiringTypeR\x05types\"\xb6\x01\n" +
+	"\n" +
+	"WiringType\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04team\x18\x02 \x01(\tR\x04team\x12\x1b\n" +
+	"\tjson_type\x18\x03 \x01(\tR\bjsonType\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x16\n" +
+	"\x06shared\x18\x05 \x01(\bR\x06shared\x12)\n" +
+	"\x10default_provider\x18\x06 \x01(\tR\x0fdefaultProvider\"\x99\x02\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12M\n" +
 	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\x12F\n" +
@@ -1709,62 +1868,66 @@ func file_vertra_catalog_v1_release_proto_rawDescGZIP() []byte {
 	return file_vertra_catalog_v1_release_proto_rawDescData
 }
 
-var file_vertra_catalog_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_vertra_catalog_v1_release_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_vertra_catalog_v1_release_proto_goTypes = []any{
 	(*Release)(nil),                 // 0: vertra.catalog.v1.Release
-	(*Team)(nil),                    // 1: vertra.catalog.v1.Team
-	(*TargetRule)(nil),              // 2: vertra.catalog.v1.TargetRule
-	(*Targets)(nil),                 // 3: vertra.catalog.v1.Targets
-	(*ProductAction)(nil),           // 4: vertra.catalog.v1.ProductAction
-	(*Example)(nil),                 // 5: vertra.catalog.v1.Example
-	(*Cleanup)(nil),                 // 6: vertra.catalog.v1.Cleanup
-	(*ErrorHelp)(nil),               // 7: vertra.catalog.v1.ErrorHelp
-	(*Template)(nil),                // 8: vertra.catalog.v1.Template
-	(*TemplateStep)(nil),            // 9: vertra.catalog.v1.TemplateStep
-	(*Resources)(nil),               // 10: vertra.catalog.v1.Resources
-	(*Api)(nil),                     // 11: vertra.catalog.v1.Api
-	(*BackendAuth)(nil),             // 12: vertra.catalog.v1.BackendAuth
-	(*ServiceAccountTokenAuth)(nil), // 13: vertra.catalog.v1.ServiceAccountTokenAuth
-	(*GoogleIdTokenAuth)(nil),       // 14: vertra.catalog.v1.GoogleIdTokenAuth
-	(*AwsSigV4Auth)(nil),            // 15: vertra.catalog.v1.AwsSigV4Auth
-	nil,                             // 16: vertra.catalog.v1.ProductAction.ErrorsEntry
-	nil,                             // 17: vertra.catalog.v1.Api.PerMinuteEntry
-	(*timestamppb.Timestamp)(nil),   // 18: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),         // 19: google.protobuf.Struct
+	(*WiringTypes)(nil),             // 1: vertra.catalog.v1.WiringTypes
+	(*WiringType)(nil),              // 2: vertra.catalog.v1.WiringType
+	(*Team)(nil),                    // 3: vertra.catalog.v1.Team
+	(*TargetRule)(nil),              // 4: vertra.catalog.v1.TargetRule
+	(*Targets)(nil),                 // 5: vertra.catalog.v1.Targets
+	(*ProductAction)(nil),           // 6: vertra.catalog.v1.ProductAction
+	(*Example)(nil),                 // 7: vertra.catalog.v1.Example
+	(*Cleanup)(nil),                 // 8: vertra.catalog.v1.Cleanup
+	(*ErrorHelp)(nil),               // 9: vertra.catalog.v1.ErrorHelp
+	(*Template)(nil),                // 10: vertra.catalog.v1.Template
+	(*TemplateStep)(nil),            // 11: vertra.catalog.v1.TemplateStep
+	(*Resources)(nil),               // 12: vertra.catalog.v1.Resources
+	(*Api)(nil),                     // 13: vertra.catalog.v1.Api
+	(*BackendAuth)(nil),             // 14: vertra.catalog.v1.BackendAuth
+	(*ServiceAccountTokenAuth)(nil), // 15: vertra.catalog.v1.ServiceAccountTokenAuth
+	(*GoogleIdTokenAuth)(nil),       // 16: vertra.catalog.v1.GoogleIdTokenAuth
+	(*AwsSigV4Auth)(nil),            // 17: vertra.catalog.v1.AwsSigV4Auth
+	nil,                             // 18: vertra.catalog.v1.ProductAction.ErrorsEntry
+	nil,                             // 19: vertra.catalog.v1.Api.PerMinuteEntry
+	(*timestamppb.Timestamp)(nil),   // 20: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),         // 21: google.protobuf.Struct
 }
 var file_vertra_catalog_v1_release_proto_depIdxs = []int32{
-	18, // 0: vertra.catalog.v1.Release.created_at:type_name -> google.protobuf.Timestamp
-	1,  // 1: vertra.catalog.v1.Release.teams:type_name -> vertra.catalog.v1.Team
-	4,  // 2: vertra.catalog.v1.Release.products:type_name -> vertra.catalog.v1.ProductAction
-	8,  // 3: vertra.catalog.v1.Release.templates:type_name -> vertra.catalog.v1.Template
-	11, // 4: vertra.catalog.v1.Release.apis:type_name -> vertra.catalog.v1.Api
-	19, // 5: vertra.catalog.v1.Team.secret_store_documents:type_name -> google.protobuf.Struct
-	2,  // 6: vertra.catalog.v1.Team.allowed_targets:type_name -> vertra.catalog.v1.TargetRule
-	3,  // 7: vertra.catalog.v1.TargetRule.targets:type_name -> vertra.catalog.v1.Targets
-	19, // 8: vertra.catalog.v1.ProductAction.input_schema:type_name -> google.protobuf.Struct
-	19, // 9: vertra.catalog.v1.ProductAction.output_schema:type_name -> google.protobuf.Struct
-	10, // 10: vertra.catalog.v1.ProductAction.resources:type_name -> vertra.catalog.v1.Resources
-	16, // 11: vertra.catalog.v1.ProductAction.errors:type_name -> vertra.catalog.v1.ProductAction.ErrorsEntry
-	6,  // 12: vertra.catalog.v1.ProductAction.cleanup:type_name -> vertra.catalog.v1.Cleanup
-	5,  // 13: vertra.catalog.v1.ProductAction.examples:type_name -> vertra.catalog.v1.Example
-	19, // 14: vertra.catalog.v1.Example.inputs:type_name -> google.protobuf.Struct
-	19, // 15: vertra.catalog.v1.Example.outputs:type_name -> google.protobuf.Struct
-	19, // 16: vertra.catalog.v1.Cleanup.inputs:type_name -> google.protobuf.Struct
-	19, // 17: vertra.catalog.v1.Template.parameters:type_name -> google.protobuf.Struct
-	9,  // 18: vertra.catalog.v1.Template.steps:type_name -> vertra.catalog.v1.TemplateStep
-	5,  // 19: vertra.catalog.v1.Template.examples:type_name -> vertra.catalog.v1.Example
-	19, // 20: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
-	12, // 21: vertra.catalog.v1.Api.backend_auth:type_name -> vertra.catalog.v1.BackendAuth
-	17, // 22: vertra.catalog.v1.Api.per_minute:type_name -> vertra.catalog.v1.Api.PerMinuteEntry
-	13, // 23: vertra.catalog.v1.BackendAuth.service_account_token:type_name -> vertra.catalog.v1.ServiceAccountTokenAuth
-	14, // 24: vertra.catalog.v1.BackendAuth.google_id_token:type_name -> vertra.catalog.v1.GoogleIdTokenAuth
-	15, // 25: vertra.catalog.v1.BackendAuth.aws_sig_v4:type_name -> vertra.catalog.v1.AwsSigV4Auth
-	7,  // 26: vertra.catalog.v1.ProductAction.ErrorsEntry.value:type_name -> vertra.catalog.v1.ErrorHelp
-	27, // [27:27] is the sub-list for method output_type
-	27, // [27:27] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	20, // 0: vertra.catalog.v1.Release.created_at:type_name -> google.protobuf.Timestamp
+	3,  // 1: vertra.catalog.v1.Release.teams:type_name -> vertra.catalog.v1.Team
+	6,  // 2: vertra.catalog.v1.Release.products:type_name -> vertra.catalog.v1.ProductAction
+	10, // 3: vertra.catalog.v1.Release.templates:type_name -> vertra.catalog.v1.Template
+	13, // 4: vertra.catalog.v1.Release.apis:type_name -> vertra.catalog.v1.Api
+	1,  // 5: vertra.catalog.v1.Release.wiring_types:type_name -> vertra.catalog.v1.WiringTypes
+	2,  // 6: vertra.catalog.v1.WiringTypes.types:type_name -> vertra.catalog.v1.WiringType
+	21, // 7: vertra.catalog.v1.Team.secret_store_documents:type_name -> google.protobuf.Struct
+	4,  // 8: vertra.catalog.v1.Team.allowed_targets:type_name -> vertra.catalog.v1.TargetRule
+	5,  // 9: vertra.catalog.v1.TargetRule.targets:type_name -> vertra.catalog.v1.Targets
+	21, // 10: vertra.catalog.v1.ProductAction.input_schema:type_name -> google.protobuf.Struct
+	21, // 11: vertra.catalog.v1.ProductAction.output_schema:type_name -> google.protobuf.Struct
+	12, // 12: vertra.catalog.v1.ProductAction.resources:type_name -> vertra.catalog.v1.Resources
+	18, // 13: vertra.catalog.v1.ProductAction.errors:type_name -> vertra.catalog.v1.ProductAction.ErrorsEntry
+	8,  // 14: vertra.catalog.v1.ProductAction.cleanup:type_name -> vertra.catalog.v1.Cleanup
+	7,  // 15: vertra.catalog.v1.ProductAction.examples:type_name -> vertra.catalog.v1.Example
+	21, // 16: vertra.catalog.v1.Example.inputs:type_name -> google.protobuf.Struct
+	21, // 17: vertra.catalog.v1.Example.outputs:type_name -> google.protobuf.Struct
+	21, // 18: vertra.catalog.v1.Cleanup.inputs:type_name -> google.protobuf.Struct
+	21, // 19: vertra.catalog.v1.Template.parameters:type_name -> google.protobuf.Struct
+	11, // 20: vertra.catalog.v1.Template.steps:type_name -> vertra.catalog.v1.TemplateStep
+	7,  // 21: vertra.catalog.v1.Template.examples:type_name -> vertra.catalog.v1.Example
+	21, // 22: vertra.catalog.v1.TemplateStep.inputs:type_name -> google.protobuf.Struct
+	14, // 23: vertra.catalog.v1.Api.backend_auth:type_name -> vertra.catalog.v1.BackendAuth
+	19, // 24: vertra.catalog.v1.Api.per_minute:type_name -> vertra.catalog.v1.Api.PerMinuteEntry
+	15, // 25: vertra.catalog.v1.BackendAuth.service_account_token:type_name -> vertra.catalog.v1.ServiceAccountTokenAuth
+	16, // 26: vertra.catalog.v1.BackendAuth.google_id_token:type_name -> vertra.catalog.v1.GoogleIdTokenAuth
+	17, // 27: vertra.catalog.v1.BackendAuth.aws_sig_v4:type_name -> vertra.catalog.v1.AwsSigV4Auth
+	9,  // 28: vertra.catalog.v1.ProductAction.ErrorsEntry.value:type_name -> vertra.catalog.v1.ErrorHelp
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_vertra_catalog_v1_release_proto_init() }
@@ -1772,8 +1935,8 @@ func file_vertra_catalog_v1_release_proto_init() {
 	if File_vertra_catalog_v1_release_proto != nil {
 		return
 	}
-	file_vertra_catalog_v1_release_proto_msgTypes[9].OneofWrappers = []any{}
-	file_vertra_catalog_v1_release_proto_msgTypes[12].OneofWrappers = []any{
+	file_vertra_catalog_v1_release_proto_msgTypes[11].OneofWrappers = []any{}
+	file_vertra_catalog_v1_release_proto_msgTypes[14].OneofWrappers = []any{
 		(*BackendAuth_ServiceAccountToken)(nil),
 		(*BackendAuth_GoogleIdToken)(nil),
 		(*BackendAuth_AwsSigV4)(nil),
@@ -1784,7 +1947,7 @@ func file_vertra_catalog_v1_release_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_catalog_v1_release_proto_rawDesc), len(file_vertra_catalog_v1_release_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

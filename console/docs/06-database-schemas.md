@@ -459,7 +459,7 @@ Which secrets each team has registered, never their values. The values live only
 
 ### wiring_types
 
-The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a product's input uses to say what it needs (`x-vertra-needs`) and an output what it provides (`x-vertra-provides`), such as `gcp.project`. A generated DAG connects a needing input to a providing output through these. An admin replaces the whole set (`ProductService/SetWiringTypes`).
+The catalog's wiring vocabulary, from each team's `teams/<team>/types.yaml`: the names a product's input uses to say what it needs (`x-vertra-needs`) and an output what it provides (`x-vertra-provides`), such as `gcp.project`. The order builder wires a cart by them (decision 25). A catalog release that has any replaces the whole set; an install whose catalog has none sets it with `ProductService/ReplaceWiringTypes` (an admin).
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -468,6 +468,7 @@ The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a produ
 | `description` | text | no | What a value of this type is. |
 | `shared` | boolean | no | When nothing in an order provides it, asked once for the whole order instead of once per product. |
 | `default_provider` | text | yes | `<team>/<product>.<action>` added to an order automatically when a required input needs this type and nothing provides it. |
+| `team` | text | yes | The team whose `types.yaml` defines it, which says what it means. Null: set by `ReplaceWiringTypes`. |
 | `updated_at` | timestamptz | no | |
 
 ### notification_settings

@@ -235,6 +235,15 @@ func (c *Catalog) BuildRelease(ctx context.Context, s Settings, commit, reposito
 		}
 		release.Apis = apis
 	}
+	if !c.ValidateWiringTypes() {
+		problems = append(problems, "a types.yaml, or a type a product names, isn't valid (above)")
+	} else {
+		types, err := c.releaseWiringTypes()
+		if err != nil {
+			return nil, err
+		}
+		release.WiringTypes = types
+	}
 	if len(problems) > 0 {
 		return nil, fmt.Errorf("the release can't be made:\n  %s", strings.Join(problems, "\n  "))
 	}

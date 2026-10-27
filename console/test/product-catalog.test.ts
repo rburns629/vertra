@@ -10,6 +10,7 @@ import { createApiToken, createBotUser, createTeam, createUser, setUserAdmin } f
 import { products, teams, users, wiringTypes } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { caller } from "./rpc.js";
+import { lockWiringTypes } from "./wiringTypesLock.js";
 
 // Registering a team's product creates its ServiceAccount in the team's
 // namespace (test/product-policy.test.ts checks that); not here.
@@ -27,6 +28,7 @@ let app: FastifyInstance;
 let admin: string;
 let member: string;
 let catalogCi: string;
+let unlock: () => Promise<void>;
 
 const call = caller(() => app);
 const register = (token: string, body: object) => call(token, "ProductService/RegisterProduct", body);
@@ -67,6 +69,7 @@ const OUTPUT = {
 };
 
 beforeAll(async () => {
+  unlock = await lockWiringTypes();
   app = await buildApp();
   await app.ready();
   await createTeam(prefix);
@@ -86,6 +89,7 @@ afterAll(async () => {
   await db.delete(teams).where(inArray(teams.name, [prefix]));
   await db.delete(users).where(inArray(users.email, emails));
   await app.close();
+  await unlock();
 });
 
 describe("registering a product's full description", () => {

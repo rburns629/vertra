@@ -175,8 +175,8 @@ export type RegisterProductInput = {
 };
 
 /**
- * The catalog's wiring vocabulary (db/schema.ts's wiringTypes), sent as its
- * schema/types.yaml converted to JSON: one entry per type name.
+ * The wiring vocabulary (db/schema.ts's wiringTypes), for an install whose
+ * catalog defines none (ReplaceWiringTypes): one entry per type name.
  */
 export const WiringTypesBody = Type.Record(
   // A type's name: lower-case words joined by dots (gcp.project). Any
@@ -394,6 +394,7 @@ export async function setWiringTypes(
     description: type.description,
     shared: type.shared,
     defaultProvider: type.defaultProvider ?? null,
+    team: null,
   }));
   return replaceWiringTypes(types);
 }

@@ -20,12 +20,13 @@ import { newestVersion, syncCatalog } from "../src/catalogSync.js";
 import { config } from "../src/config.js";
 import { db } from "../src/db/client.js";
 import { createTeam } from "../src/db/queries.js";
-import { auditLog, catalogSync, products, teams, templates } from "../src/db/schema.js";
+import { auditLog, catalogSync, products, teams, templates, wiringTypes } from "../src/db/schema.js";
 import { ReleaseSchema, type Release } from "../src/gen/vertra/catalog/v1/release_pb.js";
 import { buildApp } from "../src/index.js";
 import { applySecretStoreObjects, createVerifyJob, readScanJob } from "../src/k8s.js";
 import { fetchRelease, listTags } from "../src/registry.js";
 import { caller, rpcClient } from "./rpc.js";
+import { lockWiringTypes } from "./wiringTypesLock.js";
 
 vi.mock("../src/registry.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/registry.js")>()),
@@ -422,6 +423,44 @@ describe("a release's templates", () => {
     await syncCatalog(log);
     expect((await status())?.problems).toEqual([]);
     expect(await stored()).toContain("uses-b");
+  });
+});
+
+describe("a release's wiring types", () => {
+  it("replace the install's when the catalog defines any, and leave them alone when it doesn't", async () => {
+    const unlock = await lockWiringTypes();
+    const ours = (await db.select().from(wiringTypes)).filter((t) => t.name.startsWith(prefix));
+    try {
+      await db.insert(wiringTypes).values({ name: `${prefix}.own`, jsonType: "string", description: "Set by hand.", shared: false });
+      publish(release({ commit: "no-types", teams: [{ name: teamA }] }), digestOf(60));
+      await syncCatalog(log);
+      expect((await db.select().from(wiringTypes)).map((t) => t.name)).toContain(`${prefix}.own`);
+
+      publish(
+        release({
+          commit: "types",
+          teams: [{ name: teamA }],
+          wiringTypes: {
+            types: [
+              { name: `${prefix}.project`, team: teamA, jsonType: "string", description: "A project.", defaultProvider: `${teamA}/project.create` },
+              { name: `${prefix}.region`, team: teamA, jsonType: "string", description: "A region.", shared: true },
+            ],
+          },
+        }),
+        digestOf(61),
+      );
+      await syncCatalog(log);
+      expect((await status())?.problems).toEqual([]);
+      const all = await db.select().from(wiringTypes).orderBy(wiringTypes.name);
+      expect(all.map((t) => [t.name, t.team, t.shared, t.defaultProvider])).toEqual([
+        [`${prefix}.project`, teamA, false, `${teamA}/project.create`],
+        [`${prefix}.region`, teamA, true, null],
+      ]);
+    } finally {
+      await db.delete(wiringTypes).where(like(wiringTypes.name, `${prefix}.%`));
+      expect(ours).toEqual([]);
+      await unlock();
+    }
   });
 });
 

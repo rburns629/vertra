@@ -31,7 +31,7 @@ func quiet(t *testing.T, root string) (*Catalog, *bytes.Buffer) {
 }
 
 func TestEmbeddedSchemasMatchTheTemplates(t *testing.T) {
-	for _, name := range []string{"product.schema.json", "team.schema.json", "template.schema.json", "dag.schema.json", "api.schema.json"} {
+	for _, name := range []string{"product.schema.json", "team.schema.json", "template.schema.json", "dag.schema.json", "api.schema.json", "types.schema.json"} {
 		embedded, err := schemas.ReadFile("schemas/" + name)
 		if err != nil {
 			t.Fatal(err)

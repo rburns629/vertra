@@ -698,7 +698,7 @@
     },
     {
      "name": "ReplaceWiringTypes",
-     "comment": "Replaces every wiring type with the catalog's schema/types.yaml. An\nadmin, or a token with products:register.",
+     "comment": "Replaces every wiring type, for an install whose catalog has no\nteams/<team>/types.yaml (a catalog release that has them replaces them\nitself). An admin, or a token with products:register.",
      "input": "vertra.console.v1.ReplaceWiringTypesRequest",
      "output": "vertra.console.v1.ReplaceWiringTypesResponse",
      "streaming": false,
@@ -6149,6 +6149,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "The team whose types.yaml defines it; unset for one set by\nReplaceWiringTypes."
     }
    ]
   },

@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/catalog/v1/release.proto.
  */
 export const file_vertra_catalog_v1_release: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSKPAgoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlEiQKBGFwaXMYByADKAsyFi52ZXJ0cmEuY2F0YWxvZy52MS5BcGkiygEKBFRlYW0SDAoEbmFtZRgBIAEoCRI3ChZzZWNyZXRfc3RvcmVfZG9jdW1lbnRzGAIgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBI2Cg9hbGxvd2VkX3RhcmdldHMYAyADKAsyHS52ZXJ0cmEuY2F0YWxvZy52MS5UYXJnZXRSdWxlEg8KB2NvbnRhY3QYBCABKAkSEQoJaGVscF9jaGF0GAUgASgJEhAKCGhlbHBfdXJsGAYgASgJEg0KBW93bmVyGAcgASgJIloKClRhcmdldFJ1bGUSDQoFdGVhbXMYASADKAkSKwoHdGFyZ2V0cxgCIAMoCzIaLnZlcnRyYS5jYXRhbG9nLnYxLlRhcmdldHMSEAoIYXBwcm92YWwYAyABKAgiJwoHVGFyZ2V0cxIMCgR0eXBlGAEgASgJEg4KBnZhbHVlcxgCIAMoCSKRBgoNUHJvZHVjdEFjdGlvbhIMCgRuYW1lGAEgASgJEg0KBWltYWdlGAIgASgJEg4KBmFjdGlvbhgDIAEoCRIMCgR0ZWFtGAQgASgJEi0KDGlucHV0X3NjaGVtYRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNb3V0cHV0X3NjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSFAoMZGlzcGxheV9uYW1lGAcgASgJEhMKC2Rlc2NyaXB0aW9uGAggASgJEhcKD3NlcnZpY2VfYWNjb3VudBgJIAEoCRITCgtzZWNyZXRfcmVmcxgKIAMoCRIvCglyZXNvdXJjZXMYCyABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5SZXNvdXJjZXMSEgoKc2hhcmVfd2l0aBgMIAMoCRISCgpkZXByZWNhdGVkGA0gASgJEhcKD3Rva2VuX2F1ZGllbmNlcxgOIAMoCRIOCgZoaWRkZW4YDyABKAgSDAoEcGF0aBgQIAEoCRISCgppZGVtcG90ZW50GBEgASgIEhQKDG1heF9hdHRlbXB0cxgSIAEoBRIXCg9jb25jdXJyZW5jeV9rZXkYEyADKAkSPAoGZXJyb3JzGBQgAygLMiwudmVydHJhLmNhdGFsb2cudjEuUHJvZHVjdEFjdGlvbi5FcnJvcnNFbnRyeRIQCghhcHByb3ZhbBgVIAEoCRIrCgdjbGVhbnVwGBYgASgLMhoudmVydHJhLmNhdGFsb2cudjEuQ2xlYW51cBIMCgRwbGFuGBcgASgJEg0KBWNoZWNrGBggASgJEiwKCGV4YW1wbGVzGBkgAygLMhoudmVydHJhLmNhdGFsb2cudjEuRXhhbXBsZRITCgttYXhfcnVubmluZxgaIAEoBRIQCghjYXBhY2l0eRgbIAEoCRpLCgtFcnJvcnNFbnRyeRILCgNrZXkYASABKAkSKwoFdmFsdWUYAiABKAsyHC52ZXJ0cmEuY2F0YWxvZy52MS5FcnJvckhlbHA6AjgBImoKB0V4YW1wbGUSDAoEbmFtZRgBIAEoCRInCgZpbnB1dHMYAiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EigKB291dHB1dHMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IkIKB0NsZWFudXASDgoGYWN0aW9uGAEgASgJEicKBmlucHV0cxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiJgoJRXJyb3JIZWxwEg0KBW1lYW5zGAEgASgJEgoKAmRvGAIgASgJIqICCghUZW1wbGF0ZRIMCgRuYW1lGAEgASgJEgwKBHRlYW0YAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEisKCnBhcmFtZXRlcnMYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei4KBXN0ZXBzGAYgAygLMh8udmVydHJhLmNhdGFsb2cudjEuVGVtcGxhdGVTdGVwEhIKCnNoYXJlX3dpdGgYByADKAkSEgoKZGVwcmVjYXRlZBgIIAEoCRIOCgZoaWRkZW4YCSABKAgSDAoEcGF0aBgKIAEoCRIsCghleGFtcGxlcxgLIAMoCzIaLnZlcnRyYS5jYXRhbG9nLnYxLkV4YW1wbGUixQEKDFRlbXBsYXRlU3RlcBIKCgJpZBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEgoKZGVwZW5kc19vbhgDIAMoCRInCgZpbnB1dHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhwKD3RpbWVvdXRfc2Vjb25kcxgFIAEoBUgAiAEBEhkKDG1heF9hdHRlbXB0cxgGIAEoBUgBiAEBQhIKEF90aW1lb3V0X3NlY29uZHNCDwoNX21heF9hdHRlbXB0cyI+CglSZXNvdXJjZXMSCwoDY3B1GAEgASgJEg4KBm1lbW9yeRgCIAEoCRIUCgxtZW1vcnlfbGltaXQYAyABKAkiugMKA0FwaRIMCgRuYW1lGAEgASgJEgwKBHRlYW0YAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEg8KB29wZW5hcGkYBSABKAkSEwoLYmFja2VuZF91cmwYBiABKAkSNAoMYmFja2VuZF9hdXRoGAcgASgLMh4udmVydHJhLmNhdGFsb2cudjEuQmFja2VuZEF1dGgSFwoPc2VydmljZV9hY2NvdW50GAggASgJEhIKCnNoYXJlX3dpdGgYCSADKAkSDgoGaGlkZGVuGAogASgIEhIKCmRlcHJlY2F0ZWQYCyABKAkSEAoIaW50ZXJuZXQYDCABKAgSOQoKcGVyX21pbnV0ZRgNIAMoCzIlLnZlcnRyYS5jYXRhbG9nLnYxLkFwaS5QZXJNaW51dGVFbnRyeRIXCg90aW1lb3V0X3NlY29uZHMYDiABKAUSGQoRbWF4X3JlcXVlc3RfYnl0ZXMYDyABKAMSDAoEcGF0aBgQIAEoCRowCg5QZXJNaW51dGVFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBIugBCgtCYWNrZW5kQXV0aBJLChVzZXJ2aWNlX2FjY291bnRfdG9rZW4YASABKAsyKi52ZXJ0cmEuY2F0YWxvZy52MS5TZXJ2aWNlQWNjb3VudFRva2VuQXV0aEgAEj8KD2dvb2dsZV9pZF90b2tlbhgCIAEoCzIkLnZlcnRyYS5jYXRhbG9nLnYxLkdvb2dsZUlkVG9rZW5BdXRoSAASNQoKYXdzX3NpZ192NBgEIAEoCzIfLnZlcnRyYS5jYXRhbG9nLnYxLkF3c1NpZ1Y0QXV0aEgAQgYKBGtpbmRKBAgDEARSBnNlY3JldCIrChdTZXJ2aWNlQWNjb3VudFRva2VuQXV0aBIQCghhdWRpZW5jZRgBIAEoCSI+ChFHb29nbGVJZFRva2VuQXV0aBIXCg9zZXJ2aWNlX2FjY291bnQYASABKAkSEAoIYXVkaWVuY2UYAiABKAkiQQoMQXdzU2lnVjRBdXRoEhAKCHJvbGVfYXJuGAEgASgJEg4KBnJlZ2lvbhgCIAEoCRIPCgdzZXJ2aWNlGAMgASgJYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch92ZXJ0cmEvY2F0YWxvZy92MS9yZWxlYXNlLnByb3RvEhF2ZXJ0cmEuY2F0YWxvZy52MSLFAgoHUmVsZWFzZRIOCgZjb21taXQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBImCgV0ZWFtcxgEIAMoCzIXLnZlcnRyYS5jYXRhbG9nLnYxLlRlYW0SMgoIcHJvZHVjdHMYBSADKAsyIC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uEi4KCXRlbXBsYXRlcxgGIAMoCzIbLnZlcnRyYS5jYXRhbG9nLnYxLlRlbXBsYXRlEiQKBGFwaXMYByADKAsyFi52ZXJ0cmEuY2F0YWxvZy52MS5BcGkSNAoMd2lyaW5nX3R5cGVzGAggASgLMh4udmVydHJhLmNhdGFsb2cudjEuV2lyaW5nVHlwZXMiOwoLV2lyaW5nVHlwZXMSLAoFdHlwZXMYASADKAsyHS52ZXJ0cmEuY2F0YWxvZy52MS5XaXJpbmdUeXBlInoKCldpcmluZ1R5cGUSDAoEbmFtZRgBIAEoCRIMCgR0ZWFtGAIgASgJEhEKCWpzb25fdHlwZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRIOCgZzaGFyZWQYBSABKAgSGAoQZGVmYXVsdF9wcm92aWRlchgGIAEoCSLKAQoEVGVhbRIMCgRuYW1lGAEgASgJEjcKFnNlY3JldF9zdG9yZV9kb2N1bWVudHMYAiADKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EjYKD2FsbG93ZWRfdGFyZ2V0cxgDIAMoCzIdLnZlcnRyYS5jYXRhbG9nLnYxLlRhcmdldFJ1bGUSDwoHY29udGFjdBgEIAEoCRIRCgloZWxwX2NoYXQYBSABKAkSEAoIaGVscF91cmwYBiABKAkSDQoFb3duZXIYByABKAkiWgoKVGFyZ2V0UnVsZRINCgV0ZWFtcxgBIAMoCRIrCgd0YXJnZXRzGAIgAygLMhoudmVydHJhLmNhdGFsb2cudjEuVGFyZ2V0cxIQCghhcHByb3ZhbBgDIAEoCCInCgdUYXJnZXRzEgwKBHR5cGUYASABKAkSDgoGdmFsdWVzGAIgAygJIpEGCg1Qcm9kdWN0QWN0aW9uEgwKBG5hbWUYASABKAkSDQoFaW1hZ2UYAiABKAkSDgoGYWN0aW9uGAMgASgJEgwKBHRlYW0YBCABKAkSLQoMaW5wdXRfc2NoZW1hGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1vdXRwdXRfc2NoZW1hGAYgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIUCgxkaXNwbGF5X25hbWUYByABKAkSEwoLZGVzY3JpcHRpb24YCCABKAkSFwoPc2VydmljZV9hY2NvdW50GAkgASgJEhMKC3NlY3JldF9yZWZzGAogAygJEi8KCXJlc291cmNlcxgLIAEoCzIcLnZlcnRyYS5jYXRhbG9nLnYxLlJlc291cmNlcxISCgpzaGFyZV93aXRoGAwgAygJEhIKCmRlcHJlY2F0ZWQYDSABKAkSFwoPdG9rZW5fYXVkaWVuY2VzGA4gAygJEg4KBmhpZGRlbhgPIAEoCBIMCgRwYXRoGBAgASgJEhIKCmlkZW1wb3RlbnQYESABKAgSFAoMbWF4X2F0dGVtcHRzGBIgASgFEhcKD2NvbmN1cnJlbmN5X2tleRgTIAMoCRI8CgZlcnJvcnMYFCADKAsyLC52ZXJ0cmEuY2F0YWxvZy52MS5Qcm9kdWN0QWN0aW9uLkVycm9yc0VudHJ5EhAKCGFwcHJvdmFsGBUgASgJEisKB2NsZWFudXAYFiABKAsyGi52ZXJ0cmEuY2F0YWxvZy52MS5DbGVhbnVwEgwKBHBsYW4YFyABKAkSDQoFY2hlY2sYGCABKAkSLAoIZXhhbXBsZXMYGSADKAsyGi52ZXJ0cmEuY2F0YWxvZy52MS5FeGFtcGxlEhMKC21heF9ydW5uaW5nGBogASgFEhAKCGNhcGFjaXR5GBsgASgJGksKC0Vycm9yc0VudHJ5EgsKA2tleRgBIAEoCRIrCgV2YWx1ZRgCIAEoCzIcLnZlcnRyYS5jYXRhbG9nLnYxLkVycm9ySGVscDoCOAEiagoHRXhhbXBsZRIMCgRuYW1lGAEgASgJEicKBmlucHV0cxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSKAoHb3V0cHV0cxgDIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiQgoHQ2xlYW51cBIOCgZhY3Rpb24YASABKAkSJwoGaW5wdXRzGAIgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCImCglFcnJvckhlbHASDQoFbWVhbnMYASABKAkSCgoCZG8YAiABKAkiogIKCFRlbXBsYXRlEgwKBG5hbWUYASABKAkSDAoEdGVhbRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSKwoKcGFyYW1ldGVycxgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoFc3RlcHMYBiADKAsyHy52ZXJ0cmEuY2F0YWxvZy52MS5UZW1wbGF0ZVN0ZXASEgoKc2hhcmVfd2l0aBgHIAMoCRISCgpkZXByZWNhdGVkGAggASgJEg4KBmhpZGRlbhgJIAEoCBIMCgRwYXRoGAogASgJEiwKCGV4YW1wbGVzGAsgAygLMhoudmVydHJhLmNhdGFsb2cudjEuRXhhbXBsZSLFAQoMVGVtcGxhdGVTdGVwEgoKAmlkGAEgASgJEg4KBmFjdGlvbhgCIAEoCRISCgpkZXBlbmRzX29uGAMgAygJEicKBmlucHV0cxgEIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSHAoPdGltZW91dF9zZWNvbmRzGAUgASgFSACIAQESGQoMbWF4X2F0dGVtcHRzGAYgASgFSAGIAQFCEgoQX3RpbWVvdXRfc2Vjb25kc0IPCg1fbWF4X2F0dGVtcHRzIj4KCVJlc291cmNlcxILCgNjcHUYASABKAkSDgoGbWVtb3J5GAIgASgJEhQKDG1lbW9yeV9saW1pdBgDIAEoCSK6AwoDQXBpEgwKBG5hbWUYASABKAkSDAoEdGVhbRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSDwoHb3BlbmFwaRgFIAEoCRITCgtiYWNrZW5kX3VybBgGIAEoCRI0CgxiYWNrZW5kX2F1dGgYByABKAsyHi52ZXJ0cmEuY2F0YWxvZy52MS5CYWNrZW5kQXV0aBIXCg9zZXJ2aWNlX2FjY291bnQYCCABKAkSEgoKc2hhcmVfd2l0aBgJIAMoCRIOCgZoaWRkZW4YCiABKAgSEgoKZGVwcmVjYXRlZBgLIAEoCRIQCghpbnRlcm5ldBgMIAEoCBI5CgpwZXJfbWludXRlGA0gAygLMiUudmVydHJhLmNhdGFsb2cudjEuQXBpLlBlck1pbnV0ZUVudHJ5EhcKD3RpbWVvdXRfc2Vjb25kcxgOIAEoBRIZChFtYXhfcmVxdWVzdF9ieXRlcxgPIAEoAxIMCgRwYXRoGBAgASgJGjAKDlBlck1pbnV0ZUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoBToCOAEi6AEKC0JhY2tlbmRBdXRoEksKFXNlcnZpY2VfYWNjb3VudF90b2tlbhgBIAEoCzIqLnZlcnRyYS5jYXRhbG9nLnYxLlNlcnZpY2VBY2NvdW50VG9rZW5BdXRoSAASPwoPZ29vZ2xlX2lkX3Rva2VuGAIgASgLMiQudmVydHJhLmNhdGFsb2cudjEuR29vZ2xlSWRUb2tlbkF1dGhIABI1Cgphd3Nfc2lnX3Y0GAQgASgLMh8udmVydHJhLmNhdGFsb2cudjEuQXdzU2lnVjRBdXRoSABCBgoEa2luZEoECAMQBFIGc2VjcmV0IisKF1NlcnZpY2VBY2NvdW50VG9rZW5BdXRoEhAKCGF1ZGllbmNlGAEgASgJIj4KEUdvb2dsZUlkVG9rZW5BdXRoEhcKD3NlcnZpY2VfYWNjb3VudBgBIAEoCRIQCghhdWRpZW5jZRgCIAEoCSJBCgxBd3NTaWdWNEF1dGgSEAoIcm9sZV9hcm4YASABKAkSDgoGcmVnaW9uGAIgASgJEg8KB3NlcnZpY2UYAyABKAliBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * A catalog release: everything a catalog's main branch says, as of one
@@ -78,6 +78,16 @@ export type Release = Message<"vertra.catalog.v1.Release"> & {
    * @generated from field: repeated vertra.catalog.v1.Api apis = 7;
    */
   apis: Api[];
+
+  /**
+   * The catalog's wiring types, every team's teams/<team>/types.yaml
+   * together. Unset when no team has one: the install's own (set with
+   * ProductService.ReplaceWiringTypes) are left alone. Set, it's the whole
+   * vocabulary, and replaces the install's.
+   *
+   * @generated from field: vertra.catalog.v1.WiringTypes wiring_types = 8;
+   */
+  wiringTypes?: WiringTypes | undefined;
 };
 
 /**
@@ -86,6 +96,79 @@ export type Release = Message<"vertra.catalog.v1.Release"> & {
  */
 export const ReleaseSchema: GenMessage<Release> = /*@__PURE__*/
   messageDesc(file_vertra_catalog_v1_release, 0);
+
+/**
+ * @generated from message vertra.catalog.v1.WiringTypes
+ */
+export type WiringTypes = Message<"vertra.catalog.v1.WiringTypes"> & {
+  /**
+   * @generated from field: repeated vertra.catalog.v1.WiringType types = 1;
+   */
+  types: WiringType[];
+};
+
+/**
+ * Describes the message vertra.catalog.v1.WiringTypes.
+ * Use `create(WiringTypesSchema)` to create a new message.
+ */
+export const WiringTypesSchema: GenMessage<WiringTypes> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 1);
+
+/**
+ * A kind of thing an input needs (x-vertra-needs) and an output provides
+ * (x-vertra-provides): what the order builder wires by.
+ *
+ * @generated from message vertra.catalog.v1.WiringType
+ */
+export type WiringType = Message<"vertra.catalog.v1.WiringType"> & {
+  /**
+   * Lower-case words joined by dots: gcp.project.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The team whose types.yaml defines it, which says what it means.
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * string, integer, number or boolean.
+   *
+   * @generated from field: string json_type = 3;
+   */
+  jsonType: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+
+  /**
+   * Asked once per order (a parameter named for it) when nothing provides it.
+   *
+   * @generated from field: bool shared = 5;
+   */
+  shared: boolean;
+
+  /**
+   * <team>/<product>.<action>, one of its team's: what an order adds when it
+   * needs the type and nothing in it provides it. Empty: none.
+   *
+   * @generated from field: string default_provider = 6;
+   */
+  defaultProvider: string;
+};
+
+/**
+ * Describes the message vertra.catalog.v1.WiringType.
+ * Use `create(WiringTypeSchema)` to create a new message.
+ */
+export const WiringTypeSchema: GenMessage<WiringType> = /*@__PURE__*/
+  messageDesc(file_vertra_catalog_v1_release, 2);
 
 /**
  * @generated from message vertra.catalog.v1.Team
@@ -147,7 +230,7 @@ export type Team = Message<"vertra.catalog.v1.Team"> & {
  * Use `create(TeamSchema)` to create a new message.
  */
 export const TeamSchema: GenMessage<Team> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 1);
+  messageDesc(file_vertra_catalog_v1_release, 3);
 
 /**
  * One rule of a team's allowedTargets: the teams it covers ("*" for every
@@ -181,7 +264,7 @@ export type TargetRule = Message<"vertra.catalog.v1.TargetRule"> & {
  * Use `create(TargetRuleSchema)` to create a new message.
  */
 export const TargetRuleSchema: GenMessage<TargetRule> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 2);
+  messageDesc(file_vertra_catalog_v1_release, 4);
 
 /**
  * @generated from message vertra.catalog.v1.Targets
@@ -205,7 +288,7 @@ export type Targets = Message<"vertra.catalog.v1.Targets"> & {
  * Use `create(TargetsSchema)` to create a new message.
  */
 export const TargetsSchema: GenMessage<Targets> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 3);
+  messageDesc(file_vertra_catalog_v1_release, 5);
 
 /**
  * One action of a product.yaml, as the console registers it.
@@ -404,7 +487,7 @@ export type ProductAction = Message<"vertra.catalog.v1.ProductAction"> & {
  * Use `create(ProductActionSchema)` to create a new message.
  */
 export const ProductActionSchema: GenMessage<ProductAction> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 4);
+  messageDesc(file_vertra_catalog_v1_release, 6);
 
 /**
  * @generated from message vertra.catalog.v1.Example
@@ -433,7 +516,7 @@ export type Example = Message<"vertra.catalog.v1.Example"> & {
  * Use `create(ExampleSchema)` to create a new message.
  */
 export const ExampleSchema: GenMessage<Example> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 5);
+  messageDesc(file_vertra_catalog_v1_release, 7);
 
 /**
  * An action's cleanup: which action of the same product removes one
@@ -462,7 +545,7 @@ export type Cleanup = Message<"vertra.catalog.v1.Cleanup"> & {
  * Use `create(CleanupSchema)` to create a new message.
  */
 export const CleanupSchema: GenMessage<Cleanup> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 6);
+  messageDesc(file_vertra_catalog_v1_release, 8);
 
 /**
  * @generated from message vertra.catalog.v1.ErrorHelp
@@ -486,7 +569,7 @@ export type ErrorHelp = Message<"vertra.catalog.v1.ErrorHelp"> & {
  * Use `create(ErrorHelpSchema)` to create a new message.
  */
 export const ErrorHelpSchema: GenMessage<ErrorHelp> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 7);
+  messageDesc(file_vertra_catalog_v1_release, 9);
 
 /**
  * A template: a DAG of actions with parameters, which a consumer runs by
@@ -575,7 +658,7 @@ export type Template = Message<"vertra.catalog.v1.Template"> & {
  * Use `create(TemplateSchema)` to create a new message.
  */
 export const TemplateSchema: GenMessage<Template> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 8);
+  messageDesc(file_vertra_catalog_v1_release, 10);
 
 /**
  * @generated from message vertra.catalog.v1.TemplateStep
@@ -625,7 +708,7 @@ export type TemplateStep = Message<"vertra.catalog.v1.TemplateStep"> & {
  * Use `create(TemplateStepSchema)` to create a new message.
  */
 export const TemplateStepSchema: GenMessage<TemplateStep> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 9);
+  messageDesc(file_vertra_catalog_v1_release, 11);
 
 /**
  * The Pod size its tasks get, as Kubernetes quantities.
@@ -654,7 +737,7 @@ export type Resources = Message<"vertra.catalog.v1.Resources"> & {
  * Use `create(ResourcesSchema)` to create a new message.
  */
 export const ResourcesSchema: GenMessage<Resources> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 10);
+  messageDesc(file_vertra_catalog_v1_release, 12);
 
 /**
  * An API product: a backend a team already runs, published through the
@@ -779,7 +862,7 @@ export type Api = Message<"vertra.catalog.v1.Api"> & {
  * Use `create(ApiSchema)` to create a new message.
  */
 export const ApiSchema: GenMessage<Api> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 11);
+  messageDesc(file_vertra_catalog_v1_release, 13);
 
 /**
  * @generated from message vertra.catalog.v1.BackendAuth
@@ -814,7 +897,7 @@ export type BackendAuth = Message<"vertra.catalog.v1.BackendAuth"> & {
  * Use `create(BackendAuthSchema)` to create a new message.
  */
 export const BackendAuthSchema: GenMessage<BackendAuth> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 12);
+  messageDesc(file_vertra_catalog_v1_release, 14);
 
 /**
  * A token for the API's own ServiceAccount, for this audience.
@@ -833,7 +916,7 @@ export type ServiceAccountTokenAuth = Message<"vertra.catalog.v1.ServiceAccountT
  * Use `create(ServiceAccountTokenAuthSchema)` to create a new message.
  */
 export const ServiceAccountTokenAuthSchema: GenMessage<ServiceAccountTokenAuth> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 13);
+  messageDesc(file_vertra_catalog_v1_release, 15);
 
 /**
  * A Google ID token, as service_account, for audience; minted per request
@@ -858,7 +941,7 @@ export type GoogleIdTokenAuth = Message<"vertra.catalog.v1.GoogleIdTokenAuth"> &
  * Use `create(GoogleIdTokenAuthSchema)` to create a new message.
  */
 export const GoogleIdTokenAuthSchema: GenMessage<GoogleIdTokenAuth> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 14);
+  messageDesc(file_vertra_catalog_v1_release, 16);
 
 /**
  * AWS SigV4 for service in region, as role_arn, assumed per request with
@@ -888,5 +971,5 @@ export type AwsSigV4Auth = Message<"vertra.catalog.v1.AwsSigV4Auth"> & {
  * Use `create(AwsSigV4AuthSchema)` to create a new message.
  */
 export const AwsSigV4AuthSchema: GenMessage<AwsSigV4Auth> = /*@__PURE__*/
-  messageDesc(file_vertra_catalog_v1_release, 15);
+  messageDesc(file_vertra_catalog_v1_release, 17);
 

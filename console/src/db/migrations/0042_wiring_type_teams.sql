@@ -1,0 +1,1 @@
+ALTER TABLE "wiring_types" ADD COLUMN "team" text;

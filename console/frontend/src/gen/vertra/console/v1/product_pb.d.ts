@@ -289,6 +289,14 @@ export declare type WiringType = Message<"vertra.console.v1.WiringType"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 6;
    */
   updatedAt?: Timestamp | undefined;
+
+  /**
+   * The team whose types.yaml defines it; unset for one set by
+   * ReplaceWiringTypes.
+   *
+   * @generated from field: optional string team = 7;
+   */
+  team?: string | undefined;
 };
 
 /**
@@ -727,8 +735,9 @@ export declare const ProductService: GenService<{
     output: typeof ListWiringTypesResponseSchema;
   },
   /**
-   * Replaces every wiring type with the catalog's schema/types.yaml. An
-   * admin, or a token with products:register.
+   * Replaces every wiring type, for an install whose catalog has no
+   * teams/<team>/types.yaml (a catalog release that has them replaces them
+   * itself). An admin, or a token with products:register.
    *
    * @generated from rpc vertra.console.v1.ProductService.ReplaceWiringTypes
    */

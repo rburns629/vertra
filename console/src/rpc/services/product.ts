@@ -156,6 +156,7 @@ function wiringType(row: {
   description: string;
   shared: boolean;
   defaultProvider: string | null;
+  team: string | null;
   updatedAt: Date;
 }) {
   return {
@@ -165,5 +166,6 @@ function wiringType(row: {
     shared: row.shared,
     defaultProvider: row.defaultProvider ?? undefined,
     updatedAt: timestamp(row.updatedAt),
+    team: row.team ?? undefined,
   };
 }

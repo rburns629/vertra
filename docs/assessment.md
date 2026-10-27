@@ -796,7 +796,7 @@ secrets); a separate orders service (the console already authenticates,
 authorizes, audits and runs templates).
 
 The *order builder* turns a cart of actions into a DAG. Products' inputs and
-outputs name wiring types (`schema/types.yaml`); `OrderService/PreviewOrder`
+outputs name wiring types (each team's `teams/<team>/types.yaml`, decision 25); `OrderService/PreviewOrder`
 would wire each required input to the one output in the cart that provides
 its type, add a type's default provider when nothing in the cart provides
 it, ask once for a shared type, and refuse a cycle or an input that two
@@ -890,9 +890,13 @@ never guesses dependencies from descriptions. Proposed:
    hosting's `cloudSqlConnectionName`, typed `gcp.cloud-sql-instance`,
    suggests a database). The wiring types themselves (what each means,
    `shared`, and its `defaultProvider`, what a cart adds when nothing
-   fills it) are the catalog's `schema/types.yaml`, owned by the catalog's
-   platform engineers. They travel in the catalog release like everything
-   else, and `ReplaceWiringTypes` is left for installs without one.
+   fills it) are defined by the team that's the authority on each, in its
+   own `teams/<team>/types.yaml`, with its default providers among its own
+   actions (decided while building: one catalog-wide file would put every
+   team's vocabulary under the catalog's admins, and break whenever the
+   teams installed vary). Each type is defined once in the catalog. They
+   travel in the catalog release like everything else, and
+   `ReplaceWiringTypes` is left for installs without any.
 2. *Filled by what's already deployed:* a needed type is filled by a step
    in the cart, by something the team already has, by its default
    provider (added), or by a value typed in. For "already has", each

@@ -449,8 +449,11 @@ type WiringType struct {
 	// has no provider.
 	DefaultProvider *string                `protobuf:"bytes,5,opt,name=default_provider,json=defaultProvider,proto3,oneof" json:"default_provider,omitempty"`
 	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The team whose types.yaml defines it; unset for one set by
+	// ReplaceWiringTypes.
+	Team          *string `protobuf:"bytes,7,opt,name=team,proto3,oneof" json:"team,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WiringType) Reset() {
@@ -523,6 +526,13 @@ func (x *WiringType) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *WiringType) GetTeam() string {
+	if x != nil && x.Team != nil {
+		return *x.Team
+	}
+	return ""
 }
 
 type ListProductsRequest struct {
@@ -1430,7 +1440,7 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1a\n" +
 	"\bproducts\x18\x04 \x01(\x05R\bproductsB\f\n" +
 	"\n" +
-	"_team_name\"\xf7\x01\n" +
+	"_team_name\"\x99\x02\n" +
 	"\n" +
 	"WiringType\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
@@ -1439,8 +1449,10 @@ const file_vertra_console_v1_product_proto_rawDesc = "" +
 	"\x06shared\x18\x04 \x01(\bR\x06shared\x12.\n" +
 	"\x10default_provider\x18\x05 \x01(\tH\x00R\x0fdefaultProvider\x88\x01\x01\x129\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtB\x13\n" +
-	"\x11_default_provider\"\x15\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x17\n" +
+	"\x04team\x18\a \x01(\tH\x01R\x04team\x88\x01\x01B\x13\n" +
+	"\x11_default_providerB\a\n" +
+	"\x05_team\"\x15\n" +
 	"\x13ListProductsRequest\"N\n" +
 	"\x14ListProductsResponse\x126\n" +
 	"\bproducts\x18\x01 \x03(\v2\x1a.vertra.console.v1.ProductR\bproducts\"\x84\x05\n" +

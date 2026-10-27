@@ -58,6 +58,7 @@ actions:
             shared-core tier, the sane default for a demo.
         region:
           type: string
+          x-vertra-needs: gcp.region
           default: us-central1
     output:
       type: object
@@ -65,6 +66,7 @@ actions:
       properties:
         instanceConnectionName:
           type: string
+          x-vertra-provides: gcp.cloud-sql-instance
           description: >-
             "<project>:<region>:<instanceName>" -- what the Cloud SQL Auth
             Proxy/connector expects, and exactly what gcp/app-hosting's

@@ -54,7 +54,7 @@ func formatProblem(doc any, kinds ...string) string {
 }
 
 // teamEntries are what a team folder may hold, besides team.yaml.
-var teamEntries = []string{"README.md", "apis", "dags", "products", "secret-stores", "team.yaml"}
+var teamEntries = []string{"README.md", "apis", "dags", "products", "secret-stores", "team.yaml", "types.yaml"}
 
 // renamed is why an old catalog's names are refused.
 const renamed = "teams were called platforms until 2026-10-18"

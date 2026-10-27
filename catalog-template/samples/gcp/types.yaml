@@ -1,0 +1,29 @@
+# The kinds of thing this team's products make or name (decision 25): an
+# input that needs one says x-vertra-needs, an output that is one says
+# x-vertra-provides. The console's cart and chat agent wire orders by them:
+# someone who orders app hosting and nothing else is offered a project they
+# already have, or gets this team's default provider (project.create) added,
+# and is asked once for a region. Any team's products may use these; only
+# this team defines them.
+apiVersion: vertra.dev/v2
+kind: WiringTypes
+types:
+  - name: gcp.project
+    jsonType: string
+    description: A Google Cloud project's id, such as sandbox-web-1.
+    defaultProvider: project.create
+  - name: gcp.region
+    jsonType: string
+    description: A Google Cloud region, such as us-central1. One per order.
+    shared: true
+  - name: gcp.cloud-sql-instance
+    jsonType: string
+    description: >-
+      A Cloud SQL instance's connection name, <project>:<region>:<instance>:
+      a database for a service to use.
+    defaultProvider: cloud-sql.create
+  # No default provider: people usually deploy an image they already built;
+  # build-image.create makes one from source.
+  - name: gcp.container-image
+    jsonType: string
+    description: A container image reference to deploy, such as an Artifact Registry path.

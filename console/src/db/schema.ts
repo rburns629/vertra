@@ -378,11 +378,12 @@ export const auditExport = pgTable("audit_export", {
 });
 
 /**
- * The catalog's wiring vocabulary (its schema/types.yaml): the names a
- * product's input uses to say what it needs (x-vertra-needs) and an
- * output what it provides (x-vertra-provides). A DAG generator connects
- * a needing input to a providing output through these. Catalog CI
- * replaces the whole set on every push to main (PUT /wiring-types).
+ * The catalog's wiring vocabulary (each team's teams/<team>/types.yaml,
+ * decision 25): the names a product's input uses to say what it needs
+ * (x-vertra-needs) and an output what it provides (x-vertra-provides). The
+ * order builder (core/orders.ts) wires carts by them. A catalog release
+ * that has any replaces the whole set (catalogSync.ts); an install whose
+ * catalog has none sets them with ProductService.ReplaceWiringTypes.
  */
 export const wiringTypes = pgTable("wiring_types", {
   name: text("name").primaryKey(),
@@ -394,6 +395,9 @@ export const wiringTypes = pgTable("wiring_types", {
   // <team>/<product>.<action> added to an order automatically when a
   // required input needs the type and nothing in the order provides it.
   defaultProvider: text("default_provider"),
+  // The team whose types.yaml defines it, which says what it means; null
+  // for one set by ReplaceWiringTypes.
+  team: text("team"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

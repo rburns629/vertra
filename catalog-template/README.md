@@ -317,10 +317,36 @@ browser saying what to add to `shareWith` and where. Mark one
 your team sees it; it can't be shared then.
 
 Type outputs too: an output that is a project, a database, a URL of some
-kind, says so with `x-vertra-provides` (a wiring type from
-`schema/types.yaml`, such as `gcp.project`). The console's **Compose**, where
-people build templates from your actions, then wires it into later steps'
-inputs that `x-vertra-needs` the same type.
+kind, says so with `x-vertra-provides` (a wiring type, such as
+`gcp.project`), and an input that takes one says `x-vertra-needs`. The
+console wires orders by them: someone who orders your app hosting and
+nothing else is offered the projects their team already has, or gets the
+type's default provider added to their cart, and an optional input that
+needs a type (a database) is suggested. Its chat agent reads the same thing.
+A required input is a dependency; an optional one, a suggestion.
+
+Each wiring type is defined once, by the team that's the authority on it,
+in `teams/<team>/types.yaml` (`tools/types.schema.json`;
+`samples/gcp/types.yaml` is an example):
+
+```yaml
+apiVersion: vertra.dev/v2
+kind: WiringTypes
+types:
+  - name: gcp.project
+    jsonType: string
+    description: A Google Cloud project's id.
+    defaultProvider: project.create   # one of this team's actions, providing it
+  - name: gcp.region
+    jsonType: string
+    description: A Google Cloud region.
+    shared: true                      # one value for the whole order
+```
+
+Any team's products may need or provide it. Once any team defines types,
+`vertra catalog validate` refuses a product naming a type no team defines,
+or naming it with a different JSON type, so the vocabulary stays the one
+reviewed. The catalog's release carries them to every install.
 
 When another team runs your product, it chooses the inputs, so it could aim
 your identity at something that isn't theirs. Type each input that names a

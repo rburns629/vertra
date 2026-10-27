@@ -33,6 +33,32 @@ message Release {
   // Every team's API products (teams/<team>/apis/<name>/api.yaml), as vertra
   // catalog checked them, each with its OpenAPI document.
   repeated Api apis = 7;
+  // The catalog's wiring types, every team's teams/<team>/types.yaml
+  // together. Unset when no team has one: the install's own (set with
+  // ProductService.ReplaceWiringTypes) are left alone. Set, it's the whole
+  // vocabulary, and replaces the install's.
+  WiringTypes wiring_types = 8;
+}
+
+message WiringTypes {
+  repeated WiringType types = 1;
+}
+
+// A kind of thing an input needs (x-vertra-needs) and an output provides
+// (x-vertra-provides): what the order builder wires by.
+message WiringType {
+  // Lower-case words joined by dots: gcp.project.
+  string name = 1;
+  // The team whose types.yaml defines it, which says what it means.
+  string team = 2;
+  // string, integer, number or boolean.
+  string json_type = 3;
+  string description = 4;
+  // Asked once per order (a parameter named for it) when nothing provides it.
+  bool shared = 5;
+  // <team>/<product>.<action>, one of its team's: what an order adds when it
+  // needs the type and nothing in it provides it. Empty: none.
+  string default_provider = 6;
 }
 
 message Team {

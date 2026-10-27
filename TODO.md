@@ -998,10 +998,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   on decision 25's cart.
 - [ ] **The cart (decision 25, proposed 2026-10-27)**, what the agent and
   people order with, in this order:
-  1. The catalog carries its wiring types: `schema/types.yaml` in the
-     catalog release (today only an admin's `ReplaceWiringTypes` sets
-     them; no catalog has the file), and the samples typed
-     (`gcp/app-hosting`'s database and region).
+  1. The catalog carries its wiring types (done 2026-10-27): each team's
+     `teams/<team>/types.yaml` (`tools/types.schema.json`, checked by
+     `vertra catalog validate`: defined once, default providers the team's
+     own and providing the type, every type a product names defined) in
+     the release's `wiring_types`, replacing the install's; the gcp sample
+     typed (project, region, database, image).
   2. Resources remember what their step provided (wiring type and value),
      and links to what they took inputs from, across runs. Deleting
      something others depend on is refused, alerts the admins, and goes

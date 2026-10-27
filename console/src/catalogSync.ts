@@ -23,6 +23,8 @@
  *   - each team's API products are stored with their OpenAPI documents,
  *     each with its ServiceAccount (create-only, as a product's); one it no
  *     longer has is removed;
+ *   - the catalog's wiring types (every team's types.yaml) replace the
+ *     install's, when it has any;
  *   - each team's SecretStore documents are applied. A store's stored
  *     credential is set per install (TeamService.SetSecretStoreCredential),
  *     never carried by a release.
@@ -45,7 +47,7 @@ import { deleteProduct, registerProduct } from "./core/products.js";
 import { applySecretStore, ensureTeam, retireTeam } from "./core/teams.js";
 import { parameterSchemaProblem, templateStepProblems } from "./core/templates.js";
 import { db } from "./db/client.js";
-import { deleteApisExcept, deleteTemplatesExcept, findTeamByName, upsertApi, upsertTemplate } from "./db/queries.js";
+import { deleteApisExcept, deleteTemplatesExcept, findTeamByName, replaceWiringTypes, upsertApi, upsertTemplate } from "./db/queries.js";
 import type { BackendAuth } from "./db/schema.js";
 import { catalogSync, products, teams } from "./db/schema.js";
 import { ReleaseSchema, type BackendAuth as ReleaseBackendAuth, type Release } from "./gen/vertra/catalog/v1/release_pb.js";
@@ -367,6 +369,23 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
   }
   await attempt("removing templates", () => deleteTemplatesExcept(keepTemplates));
   await applyApis(release.apis, named, foreign, attempt);
+  // The whole vocabulary, when the catalog defines one; else the install's
+  // own (ReplaceWiringTypes) stay.
+  const vocabulary = release.wiringTypes;
+  if (vocabulary) {
+    await attempt("wiring types", () =>
+      replaceWiringTypes(
+        vocabulary.types.map((t) => ({
+          name: t.name,
+          team: t.team,
+          jsonType: t.jsonType,
+          description: t.description,
+          shared: t.shared,
+          defaultProvider: t.defaultProvider || null,
+        })),
+      ),
+    );
+  }
   // What earlier releases made and this one no longer has.
   for (const gone of await db.select({ name: products.name }).from(products).where(eq(products.fromCatalog, true))) {
     if (!released.has(gone.name)) await attempt(`removing product ${gone.name}`, () => deleteProduct(CATALOG, gone.name));

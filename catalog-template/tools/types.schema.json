@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vertra wiring types (teams/<team>/types.yaml), format v2",
+  "description": "The kinds of thing a team's products make or name, such as gcp.project: an input says it needs one (x-vertra-needs), an output that it is one (x-vertra-provides). The order builder and the console's chat agent wire carts by them, add a type's default provider when a cart needs one, and offer what the team already has of it. Each type is defined once in the catalog, by the team whose types.yaml names it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "types"
+  ],
+  "properties": {
+    "apiVersion": {
+      "description": "The catalog format: vertra.dev/v2.",
+      "const": "vertra.dev/v2"
+    },
+    "kind": {
+      "description": "What the file is: WiringTypes.",
+      "const": "WiringTypes"
+    },
+    "types": {
+      "description": "Each type this team defines.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "jsonType",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "description": "Lower-case words joined by dots, such as gcp.project. Unique in the catalog.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+          },
+          "jsonType": {
+            "description": "The value's JSON type.",
+            "enum": [
+              "string",
+              "integer",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": {
+            "description": "What a value of it is, for people and for the chat agent: a Google Cloud project's id.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "shared": {
+            "description": "True: one value for the whole order (a region), asked once when nothing in the order provides it, rather than a step added.",
+            "type": "boolean"
+          },
+          "defaultProvider": {
+            "description": "<product>.<action>, one of this team's, whose output provides the type: what an order adds when it needs one and has none. Omit it where people usually have one already.",
+            "type": "string",
+            "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$"
+          }
+        }
+      }
+    }
+  }
+}

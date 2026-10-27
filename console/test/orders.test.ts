@@ -18,6 +18,7 @@ import { addTeamMember, createTeam, findTeamByName, upsertProduct } from "../src
 import { wiringTypes } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { caller, rpcClient } from "./rpc.js";
+import { lockWiringTypes } from "./wiringTypesLock.js";
 
 /** A product, as planOrder needs it: what it needs and provides, by wiring type ("": none). */
 function product(name: string, needs: Record<string, string | [string, "optional"]>, provides: Record<string, string> = {}): TeamProduct {
@@ -115,10 +116,12 @@ const prefix = `ord-${randomUUID().slice(0, 6)}`;
 const team = `${prefix}-shop`;
 const other = `${prefix}-other`;
 let app: FastifyInstance;
+let unlock: () => Promise<void>;
 const users = rpcClient(() => app);
 const call = caller(() => app);
 
 beforeAll(async () => {
+  unlock = await lockWiringTypes();
   app = await buildApp();
   const shop = await createTeam(team);
   const otherTeam = await createTeam(other);
@@ -146,6 +149,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.delete(wiringTypes).where(inArray(wiringTypes.name, [`${prefix}.project`]));
   await app.close();
+  await unlock();
 });
 
 describe("PreviewOrder", () => {

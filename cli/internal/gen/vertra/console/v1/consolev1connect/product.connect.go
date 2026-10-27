@@ -82,8 +82,9 @@ type ProductServiceClient interface {
 	ReleaseImageRepository(context.Context, *connect.Request[v1.ReleaseImageRepositoryRequest]) (*connect.Response[v1.ReleaseImageRepositoryResponse], error)
 	// The catalog's wiring types: what inputs can need and outputs provide.
 	ListWiringTypes(context.Context, *connect.Request[v1.ListWiringTypesRequest]) (*connect.Response[v1.ListWiringTypesResponse], error)
-	// Replaces every wiring type with the catalog's schema/types.yaml. An
-	// admin, or a token with products:register.
+	// Replaces every wiring type, for an install whose catalog has no
+	// teams/<team>/types.yaml (a catalog release that has them replaces them
+	// itself). An admin, or a token with products:register.
 	ReplaceWiringTypes(context.Context, *connect.Request[v1.ReplaceWiringTypesRequest]) (*connect.Response[v1.ReplaceWiringTypesResponse], error)
 }
 
@@ -229,8 +230,9 @@ type ProductServiceHandler interface {
 	ReleaseImageRepository(context.Context, *connect.Request[v1.ReleaseImageRepositoryRequest]) (*connect.Response[v1.ReleaseImageRepositoryResponse], error)
 	// The catalog's wiring types: what inputs can need and outputs provide.
 	ListWiringTypes(context.Context, *connect.Request[v1.ListWiringTypesRequest]) (*connect.Response[v1.ListWiringTypesResponse], error)
-	// Replaces every wiring type with the catalog's schema/types.yaml. An
-	// admin, or a token with products:register.
+	// Replaces every wiring type, for an install whose catalog has no
+	// teams/<team>/types.yaml (a catalog release that has them replaces them
+	// itself). An admin, or a token with products:register.
 	ReplaceWiringTypes(context.Context, *connect.Request[v1.ReplaceWiringTypesRequest]) (*connect.Response[v1.ReplaceWiringTypesResponse], error)
 }
 
