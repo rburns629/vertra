@@ -197,12 +197,15 @@ design.
   issuer in IAM (IRSA, which stores need), and offer to install External
   Secrets Operator (pinned, as `make kind-deploy-eso` does); both were done by
   hand for the proof.
-- [ ] **A first step on a new GKE Autopilot install can time out**: the
-  task's 300 s counts while its Pod waits for a node, and three new nodes'
-  boot disks (about 146 GB each, short-lived jobs such as the sleeper landing
-  on fresh ones) fill a new project's 500 GB SSD quota, so the scale-up
-  fails. Seen on both GKE proofs (2026-10-26, 2026-10-27). Count the timeout
-  from the container's start, and keep platform jobs on the platform's node.
+- [ ] **A first step on a new GKE Autopilot install can time out**: seen on
+  both GKE proofs (2026-10-26, 2026-10-27). Fixed (2026-10-27): a step's
+  timeout counts from its container's start, and waiting to start has its
+  own limit (`scheduler.taskStartTimeoutSeconds`, 10 minutes), past which it
+  fails as `TASK_NOT_STARTED` (retryable) instead of a misleading
+  `TASK_TIMEOUT`. Left: why a minimal install had three nodes (one with the
+  platform, one with only a sleeper Job, one empty), whose boot disks
+  (about 146 GB each) filled a new project's 500 GB SSD quota so no node
+  could be added for a step; look on a live cluster.
 - [x] **Let a deployment label step Pods** (I2, done 2026-10-21):
   `scheduler.taskPodLabels` (`TASK_POD_LABELS`), on the step Pod only; the
   scheduler refuses to start with `app` or a `vertra.dev/*` key. Proven on

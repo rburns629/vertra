@@ -53,7 +53,8 @@ func (f *Fake) Start(_ context.Context, task executor.ResolvedTask) (executor.Ha
 	f.Started = append(f.Started, task)
 	f.nextID++
 	handleID := fmt.Sprint(f.nextID)
-	f.statuses[handleID] = executor.Status{State: executor.Running}
+	started := time.Now()
+	f.statuses[handleID] = executor.Status{State: executor.Running, StartedAt: &started}
 	f.logs[handleID] = []string{fmt.Sprintf("started %s attempt %d", task.TaskKey, task.Attempt)}
 	handle := executor.Handle{"fakeId": handleID}
 	f.Launched[handleID] = &executor.LaunchedAttempt{Handle: handle, ExecutionID: task.ExecutionID, TaskKey: task.TaskKey, Attempt: task.Attempt, CreatedAt: time.Now()}
@@ -130,6 +131,20 @@ func (f *Fake) Complete(handle executor.Handle, outputs map[string]any) {
 }
 
 // Fail makes an attempt fail with err.
+// Pending makes an attempt one still waiting to start (for a node).
+func (f *Fake) Pending(handle executor.Handle) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.statuses[id(handle)] = executor.Status{State: executor.Running}
+}
+
+// StartedAt makes an attempt's container start at at.
+func (f *Fake) StartedAt(handle executor.Handle, at time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.statuses[id(handle)] = executor.Status{State: executor.Running, StartedAt: &at}
+}
+
 func (f *Fake) Fail(handle executor.Handle, err domain.StructuredError) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

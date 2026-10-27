@@ -148,6 +148,10 @@ type Settings struct {
 	// on it too: a timed-out task whose Job it can't stop is failed (and
 	// maybe retried) only once this deadline has passed.
 	JobDeadlineGrace time.Duration
+	// How long a task may wait to start (a node being added, a quota)
+	// before it fails as TASK_NOT_STARTED; its timeout counts from its
+	// container's start.
+	TaskStartTimeout time.Duration
 	// A task awaiting approval fails with APPROVAL_EXPIRED after this; 0,
 	// never.
 	ApprovalTimeout time.Duration
@@ -283,6 +287,7 @@ func Load(getenv func(string) string) (Settings, error) {
 		ImagePullGrace:         r.seconds("IMAGE_PULL_GRACE_SECONDS", 120, true),
 		KubernetesTimeout:      r.seconds("KUBERNETES_REQUEST_TIMEOUT_SECONDS", 30, true),
 		JobDeadlineGrace:       r.seconds("KUBERNETES_JOB_DEADLINE_GRACE_SECONDS", 600, false),
+		TaskStartTimeout:       r.seconds("TASK_START_TIMEOUT_SECONDS", 600, true),
 		ApprovalTimeout:        r.seconds("SCHEDULER_APPROVAL_TIMEOUT_SECONDS", 259200, false),
 		TaskLogMaxLines:        r.integer("TASK_LOG_MAX_LINES", 5000, true),
 		TaskLogMaxBytes:        r.integer("TASK_LOG_MAX_BYTES", 1_048_576, true),

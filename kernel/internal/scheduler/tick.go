@@ -46,6 +46,11 @@ type Options struct {
 	// JobDeadlineGrace is how far past its timeout a Job's own deadline is:
 	// a timed-out task whose Job can't be stopped fails only after it.
 	JobDeadlineGrace time.Duration
+	// StartTimeout is how long an attempt may wait to start (for a node,
+	// under a quota) before it fails as TASK_NOT_STARTED; its timeout counts
+	// from its container's start. 0: no such wait, the timeout counts from
+	// dispatch.
+	StartTimeout time.Duration
 	// ApprovalTimeout is how long a task may await approval before it
 	// fails with APPROVAL_EXPIRED; 0, forever.
 	ApprovalTimeout time.Duration
@@ -56,7 +61,7 @@ func DefaultOptions(owner string) Options {
 	return Options{
 		Owner: owner, LeaseDuration: 60 * time.Second, ClaimLimit: 50, ExecutorConcurrency: 16,
 		RetryBackoff: domain.DefaultRetryBackoff, MaxDispatchFailures: 5, JobDeadlineGrace: 600 * time.Second,
-		ApprovalTimeout: 72 * time.Hour,
+		StartTimeout: 600 * time.Second, ApprovalTimeout: 72 * time.Hour,
 	}
 }
 
@@ -386,8 +391,28 @@ func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, err
 	}
 
 	if attempt.StartedAt != nil {
+		// The timeout counts from the container's start (never before the
+		// dispatch: clocks differ); until then the attempt may wait
+		// StartTimeout for room. Not knowing, it counts from the dispatch,
+		// as a timed-out attempt must be stopped even when it can't be read.
 		elapsed := p.now.Sub(*attempt.StartedAt)
 		timeout := time.Duration(t.TimeoutSeconds) * time.Second
+		failure := domain.StructuredError{
+			Code: "TASK_TIMEOUT", Message: fmt.Sprintf("Task exceeded its %ds timeout.", t.TimeoutSeconds), Retryable: true,
+		}
+		switch {
+		case p.opts.StartTimeout <= 0, statusErr != nil:
+		case status.StartedAt != nil:
+			if status.StartedAt.After(*attempt.StartedAt) {
+				elapsed = p.now.Sub(*status.StartedAt)
+			}
+		default:
+			timeout = p.opts.StartTimeout
+			failure = domain.StructuredError{
+				Code: "TASK_NOT_STARTED", Retryable: true,
+				Message: fmt.Sprintf("Task didn't start within %s: the cluster had no room for it (no node could be added, or a quota).", p.opts.StartTimeout),
+			}
+		}
 		if elapsed > timeout {
 			if err := p.exec.Cancel(p.ctx, handle); err != nil && elapsed <= timeout+p.opts.JobDeadlineGrace {
 				// Before the Job's own deadline the attempt may still be
@@ -397,9 +422,7 @@ func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, err
 				t.LeaseExpiresAt = ptr(p.now.Add(p.opts.LeaseDuration))
 				return false, saveTask(p.ctx, p.db, t)
 			}
-			return true, p.handleFailure(t, attempt, domain.StructuredError{
-				Code: "TASK_TIMEOUT", Message: fmt.Sprintf("Task exceeded its %ds timeout.", t.TimeoutSeconds), Retryable: true,
-			}, handle)
+			return true, p.handleFailure(t, attempt, failure, handle)
 		}
 	}
 

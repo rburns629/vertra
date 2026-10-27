@@ -267,7 +267,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		}
 	}
 	exec := executor.NewKubernetes(client, executor.KubernetesOptions{
-		JobTTL: s.JobTTL, ImagePullGrace: s.ImagePullGrace, JobDeadlineGrace: s.JobDeadlineGrace,
+		JobTTL: s.JobTTL, ImagePullGrace: s.ImagePullGrace, JobDeadlineGrace: s.JobDeadlineGrace, StartTimeout: s.TaskStartTimeout,
 		RequestTimeout: s.KubernetesTimeout, WatchResync: s.WatchResync,
 		ExtraEnvironment: s.TaskExtraEnvironment, DefaultResources: s.TaskDefaultResources,
 		NodeSelector: s.TaskNodeSelector, Tolerations: tolerations, Affinity: affinity, PodLabels: s.TaskPodLabels,
@@ -284,7 +284,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		ExecutorConcurrency: s.ExecutorConcurrency, MaxRunning: s.MaxRunning,
 		MaxRunningPerTeam: s.MaxRunningPerTeam, RetryBackoff: s.RetryBackoff,
 		MaxDispatchFailures: s.MaxDispatchFailures, LogRefresh: s.TaskLogRefresh,
-		JobDeadlineGrace: s.JobDeadlineGrace, ApprovalTimeout: s.ApprovalTimeout,
+		JobDeadlineGrace: s.JobDeadlineGrace, StartTimeout: s.TaskStartTimeout, ApprovalTimeout: s.ApprovalTimeout,
 	}
 	loop := &scheduler.Loop{Pool: pool, Executor: exec, Options: opts, PollInterval: s.PollInterval,
 		ReleaseAfter: s.ReleaseFinishedAfter, RetentionDays: s.ExecutionRetentionDays, HeartbeatFile: s.HeartbeatFile, Log: log}

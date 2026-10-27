@@ -206,11 +206,15 @@ read concurrently first, then `poll()` acts on each in order)
                                                     no change since a read within the resync interval]
 → [execution CANCELLED?]
     → exec.Cancel() → CANCELLED → recordEvent(TASK_CANCELLED) → done
-→ [now - started_at > timeout_seconds, and the status isn't a finish?]
+→ [the status isn't a finish, and either
+     its container started (status.StartedAt) more than timeout_seconds ago, or
+     it hasn't started and was dispatched more than the start timeout ago
+     (TASK_START_TIMEOUT_SECONDS: waiting for a node isn't running), or
+     its status couldn't be read and it was dispatched more than timeout_seconds ago?]
     → exec.Cancel()
-        [failed, and the Job's own deadline (timeout + grace) not yet passed?]
+        [failed, and the Job's own deadline (timeout + start timeout + grace) not yet passed?]
             → renew the lease, try again next pass (no retry may run beside it)
-    → handleFailure(TASK_TIMEOUT, retryable=true)
+    → handleFailure(TASK_TIMEOUT, or TASK_NOT_STARTED; retryable=true)
 → the status read above:
     errored   → unknown, not failed: renew the lease, read it again next pass
                 (kernel_scheduler_status_read_errors_total; the timeout above still applies)

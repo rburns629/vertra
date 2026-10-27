@@ -243,6 +243,47 @@ func TestTaskExceedingTimeoutIsCancelledAndFailed(t *testing.T) {
 	equal(t, "code", tk.Failure["code"], "TASK_TIMEOUT")
 }
 
+// Waiting for a node isn't running: the timeout counts from the container's
+// start, and the wait has its own limit.
+func TestATaskWaitingToStartIsntTimedOut(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-pending", task("create-project", timeout(30)))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	k.opts.LeaseDuration = 300 * time.Second
+	t0 := time.Now()
+	k.tick(t0)
+	handle := tasksByKey(t, tx, id)["create-project"].ExecutorHandle
+	exec.Pending(handle)
+	k.tick(t0.Add(5 * time.Minute)) // ten timeouts, still waiting for a node
+	equal(t, "waiting", tasksByKey(t, tx, id)["create-project"].State, domain.TaskRunning)
+
+	exec.StartedAt(handle, t0.Add(5*time.Minute))
+	k.tick(t0.Add(5*time.Minute + 20*time.Second))
+	equal(t, "running, within its timeout", tasksByKey(t, tx, id)["create-project"].State, domain.TaskRunning)
+	k.tick(t0.Add(5*time.Minute + 31*time.Second))
+	equal(t, "timed out from its start", tasksByKey(t, tx, id)["create-project"].Failure["code"], "TASK_TIMEOUT")
+}
+
+func TestATaskThatNeverStartsFailsAsNotStarted(t *testing.T) {
+	tx := txFor(t)
+	id := submit(t, tx, "idem-sched-not-started", task("create-project", timeout(30)))
+	exec := fake()
+	k := newTicker(t, tx, exec)
+	k.opts.LeaseDuration = 900 * time.Second
+	t0 := time.Now()
+	k.tick(t0)
+	exec.Pending(tasksByKey(t, tx, id)["create-project"].ExecutorHandle)
+	k.tick(t0.Add(k.opts.StartTimeout + time.Second))
+	tk := tasksByKey(t, tx, id)["create-project"]
+	equal(t, "state", tk.State, domain.TaskFailed)
+	equal(t, "code", tk.Failure["code"], "TASK_NOT_STARTED")
+	equal(t, "retryable", tk.Failure["retryable"], true)
+	if len(exec.Cancelled) != 1 {
+		t.Errorf("cancelled = %v", exec.Cancelled)
+	}
+}
+
 func TestATickReportsWhetherItMovedAnything(t *testing.T) {
 	tx := txFor(t)
 	submit(t, tx, "idem-progress", task("create-project"))

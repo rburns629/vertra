@@ -55,6 +55,9 @@ type KubernetesOptions struct {
 	JobTTL           time.Duration
 	ImagePullGrace   time.Duration
 	JobDeadlineGrace time.Duration
+	// StartTimeout is how long an attempt may wait to start (for a node);
+	// the Job's deadline allows for it.
+	StartTimeout     time.Duration
 	RequestTimeout   time.Duration
 	WatchResync      time.Duration
 	ExtraEnvironment map[string]string
@@ -90,11 +93,13 @@ type Kubernetes struct {
 	// watch is healthy, a Job isn't re-read until it changes or WatchResync
 	// passes.
 	quietSince map[string]time.Time
+	// When each running Job's container started, once read from its Pod.
+	startedAt map[string]time.Time
 }
 
 // NewKubernetes is an executor on client; call Watch to follow changes.
 func NewKubernetes(client kubernetes.Interface, opts KubernetesOptions, log *slog.Logger) *Kubernetes {
-	return &Kubernetes{client: client, opts: opts, log: log, terminal: map[string]terminalRecord{}, quietSince: map[string]time.Time{}}
+	return &Kubernetes{client: client, opts: opts, log: log, terminal: map[string]terminalRecord{}, quietSince: map[string]time.Time{}, startedAt: map[string]time.Time{}}
 }
 
 // call bounds one API request: the client's own default is to wait forever,
@@ -364,8 +369,9 @@ func (k *Kubernetes) jobFor(name string, task ResolvedTask) (*batchv1.Job, error
 	annotations := map[string]string{"vertra.dev/task": task.TaskKey}
 	backoff := int32(0) // one attempt per Job: the scheduler owns retries
 	ttl := int32(k.opts.JobTTL.Seconds())
-	// A backstop: a Job the scheduler lost track of mustn't run forever.
-	deadline := int64(task.TimeoutSeconds) + int64(k.opts.JobDeadlineGrace.Seconds())
+	// A backstop: a Job the scheduler lost track of mustn't run forever. It
+	// counts from the Job's creation, so it allows for waiting to start.
+	deadline := int64(task.TimeoutSeconds) + int64(k.opts.StartTimeout.Seconds()) + int64(k.opts.JobDeadlineGrace.Seconds())
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels, Annotations: annotations},
 		Spec: batchv1.JobSpec{
@@ -403,6 +409,7 @@ func (k *Kubernetes) remember(name string, record terminalRecord) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	delete(k.quietSince, name)
+	delete(k.startedAt, name)
 	record.recordedAt = time.Now()
 	k.terminal[name] = record
 	cutoff := time.Now().Add(-terminalRetention)
@@ -442,7 +449,7 @@ func (k *Kubernetes) Status(ctx context.Context, handle Handle) (Status, error) 
 		return record.status, nil
 	}
 	if k.unchangedSinceLastRead(name) {
-		return Status{State: Running}, nil
+		return Status{State: Running, StartedAt: k.started(name)}, nil
 	}
 	callCtx, cancel := k.call(ctx)
 	defer cancel()
@@ -464,10 +471,14 @@ func (k *Kubernetes) Status(ctx context.Context, handle Handle) (Status, error) 
 		// pulling it. A ready one is left alone until the watch reports a
 		// change; a stuck pull is caught by the grace period.
 		if job.Status.Ready != nil && *job.Status.Ready > 0 {
+			started, err := k.containerStarted(ctx, namespace, name)
+			if err != nil {
+				return Status{}, err
+			}
 			k.mu.Lock()
 			k.quietSince[name] = time.Now()
 			k.mu.Unlock()
-			return Status{State: Running}, nil
+			return Status{State: Running, StartedAt: started}, nil
 		}
 		failure, podless, err := k.imagePullError(ctx, namespace, name)
 		if err != nil {
@@ -494,6 +505,40 @@ func (k *Kubernetes) Status(ctx context.Context, handle Handle) (Status, error) 
 	}
 	k.remember(name, record)
 	return record.status, nil
+}
+
+// started is when a Job's container started, if that's been read.
+func (k *Kubernetes) started(name string) *time.Time {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if at, ok := k.startedAt[name]; ok {
+		return &at
+	}
+	return nil
+}
+
+// containerStarted is when a ready Job's container started, read from its
+// Pod once and remembered (it never changes); nil if no container says.
+func (k *Kubernetes) containerStarted(ctx context.Context, namespace, name string) (*time.Time, error) {
+	if at := k.started(name); at != nil {
+		return at, nil
+	}
+	pods, err := k.pods(ctx, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range pods {
+		for _, c := range pod.Status.ContainerStatuses {
+			if c.State.Running != nil && !c.State.Running.StartedAt.IsZero() {
+				at := c.State.Running.StartedAt.Time
+				k.mu.Lock()
+				k.startedAt[name] = at
+				k.mu.Unlock()
+				return &at, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (k *Kubernetes) pods(ctx context.Context, namespace, job string) ([]corev1.Pod, error) {
@@ -748,6 +793,7 @@ func (k *Kubernetes) deleteConfigMap(ctx context.Context, namespace, name string
 func (k *Kubernetes) remove(ctx context.Context, namespace, name string) error {
 	k.mu.Lock()
 	delete(k.quietSince, name)
+	delete(k.startedAt, name)
 	k.mu.Unlock()
 	if err := k.deleteJob(ctx, namespace, name); err != nil {
 		return err
@@ -830,6 +876,7 @@ func (k *Kubernetes) WaitForChange(ctx context.Context, timeout time.Duration) {
 	for name, at := range k.quietSince {
 		if at.Before(stale) {
 			delete(k.quietSince, name)
+			delete(k.startedAt, name)
 		}
 	}
 	k.mu.Unlock()

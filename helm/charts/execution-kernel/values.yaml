@@ -203,10 +203,14 @@ scheduler:
   # the Job, so the same attempt is retried, adopting it, up to this many
   # times in a row before the attempt fails and what it left is removed.
   maxDispatchFailures: 5
-  # Every Job's activeDeadlineSeconds is its task's timeout plus this: a
-  # backstop, so Kubernetes stops a Job the scheduler lost track of. Covers
-  # pulling the image.
+  # Every Job's activeDeadlineSeconds is its task's timeout, plus
+  # taskStartTimeoutSeconds, plus this: a backstop, so Kubernetes stops a Job
+  # the scheduler lost track of. Covers pulling the image.
   jobDeadlineGraceSeconds: 600
+  # How long a step may wait to start (a node being added, a quota) before
+  # it fails as TASK_NOT_STARTED (retryable). Its timeout counts from its
+  # container's start, so the wait never eats into it.
+  taskStartTimeoutSeconds: 600
   # A step that needs an approval fails with APPROVAL_EXPIRED if nobody
   # approves or declines it within this many seconds (3 days); 0, never.
   approvalTimeoutSeconds: 259200

@@ -15,6 +15,7 @@ export const PLATFORM_ERRORS: Record<string, ErrorHelp> = {
   OUTPUT_INVALID: { means: "It finished, but its outputs didn't fit the product's output schema.", do: "Ask the product's team: their action returned something it doesn't promise." },
   MISSING_UPSTREAM_OUTPUT: { means: "A step it depends on finished without the output this step takes.", do: "Ask the team of the step before it." },
   TASK_TIMEOUT: { means: "It ran longer than its timeout and was stopped." },
+  TASK_NOT_STARTED: { means: "It never started: the cluster had no room for it (no node could be added, or a quota was reached).", do: "Retry it; if it keeps happening, an admin can check the cloud's quotas." },
   POD_TERMINATED_UNEXPECTEDLY: { means: "Its container stopped before reporting a result: a node went away or it ran out of memory." },
   EXECUTOR_START_FAILED: { means: "The cluster couldn't start it." },
   JOB_NOT_FOUND: { means: "Its Job disappeared from the cluster before it reported a result." },

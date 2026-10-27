@@ -60,11 +60,14 @@ const (
 )
 
 // Status is one read of an attempt: Outputs when it succeeded, Error when
-// it failed, neither while it runs.
+// it failed, neither while it runs. StartedAt is when its container
+// started, once it has: until then it waits for room (a node, a quota),
+// which its timeout doesn't count.
 type Status struct {
-	State   RunState
-	Outputs map[string]any
-	Error   *domain.StructuredError
+	State     RunState
+	Outputs   map[string]any
+	Error     *domain.StructuredError
+	StartedAt *time.Time
 }
 
 // LaunchedAttempt is an attempt whose unit still exists, as ListAttempts

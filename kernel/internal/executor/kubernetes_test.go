@@ -224,11 +224,14 @@ func TestARefusedConfigMapTakesItsJobWithIt(t *testing.T) {
 	check(t, "deleted", len(c.deleted("jobs")), 1)
 }
 
-// A backstop for a Job the scheduler loses track of.
+// A backstop for a Job the scheduler loses track of, allowing for the wait
+// to start (it counts from the Job's creation).
 func TestEveryJobHasADeadlinePastItsTasksTimeout(t *testing.T) {
-	c := newCluster(options())
+	opts := options()
+	opts.StartTimeout = 300 * time.Second
+	c := newCluster(opts)
 	_, _ = c.k.Start(context.Background(), stepTask())
-	check(t, "deadline", *c.job(t).Spec.ActiveDeadlineSeconds, int64(60+600))
+	check(t, "deadline", *c.job(t).Spec.ActiveDeadlineSeconds, int64(60+300+600))
 	check(t, "backoff", *c.job(t).Spec.BackoffLimit, int32(0))
 }
 
@@ -654,6 +657,35 @@ func twice(t *testing.T, c *cluster, handle Handle) {
 			t.Fatalf("status = %v, %v", s, err)
 		}
 	}
+}
+
+// A running step says when its container started (its timeout counts from
+// then), read from its Pod once.
+func TestARunningStepSaysWhenItStarted(t *testing.T) {
+	ns, name := "team-a", "ek-step-1"
+	one := int32(1)
+	started := metav1.NewTime(time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC))
+	c := newCluster(options(),
+		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Status: batchv1.JobStatus{Ready: &one}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name + "-x", Namespace: ns, Labels: map[string]string{"job-name": name}},
+			Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "product", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: started}}}}}})
+	handle := Handle{"namespace": ns, "jobName": name}
+	podLists := func() int {
+		n := 0
+		for _, a := range c.Actions() {
+			if a.GetVerb() == "list" && a.GetResource().Resource == "pods" {
+				n++
+			}
+		}
+		return n
+	}
+	for range 2 {
+		s, err := c.k.Status(context.Background(), handle)
+		if err != nil || s.StartedAt == nil || !s.StartedAt.Equal(started.Time) {
+			t.Fatalf("status = %+v, %v", s, err)
+		}
+	}
+	check(t, "pods listed", podLists(), 1)
 }
 
 func TestAnUnchangedRunningStepIsntReadAgain(t *testing.T) {
