@@ -969,6 +969,20 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   4. A request rate per bot (429 past it).
   5. Possibly: an outcome webhook a team subscribes to (JSON for systems,
      beside its chat webhook).
+- [ ] **An MCP server for agents (design first)**: a Model Context Protocol
+  service over the console's API, so a chatbot or agent works with what's
+  deployed in context: what each run made (resources), who ran it and for
+  which team, its template and inputs, what depends on what (dependsOn, and
+  the outputs wired between steps), its state and failures; and, within the
+  caller's own rights, the actions people have (look up, preview, place an
+  order through decision 23's path, delete a resource). Tools and resources
+  answer as the signed-in person or bot may see, never more; every action
+  is audited as theirs. The groundwork for chat and agent support on each
+  install's cloud: Vertex AI on GCP, Amazon Bedrock (Bedrock Agents) on AWS,
+  Azure AI Foundry later; the MCP server stays provider-neutral and each
+  provider's agent connects to it. Start with a design note in
+  docs/assessment.md: what's exposed, sign-in for an agent (a bot, or the
+  person through it), and what an agent may do without a person approving.
 - [ ] **Order builder (exploratory):** turn a cart of products into a DAG
   from their schemas. The console stores products' descriptions and wiring
   types already; next, the generator (an `OrderService/PreviewOrder`
