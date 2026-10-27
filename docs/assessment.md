@@ -891,11 +891,74 @@ integration (Vertex AI extensions, Bedrock action groups) instead of MCP
 
 Open, for review: logs for agents (proposed: not in the first version);
 whether a person may let their agent order without confirming, up to a
-limit they set (proposed: not in the first version); dependencies across
-runs (a VM in one run on a network another made is only an input value
-today; proposed: later, record when a step's input names a resource Vertra
-knows); which issuer an agent on AWS signs in with; and the order to build
-it (proposed: bots first, reads then orders; people through OAuth after).
+limit they set (proposed: not in the first version); which issuer an agent
+on AWS signs in with; and the order to build it (proposed: after decision
+25's cart; bots first, reads then orders; people through OAuth after).
+Decided on review: what an order depends on, across runs too, is a must
+for the agent, and is decision 25: the agent builds its carts with it.
+
+**25. The cart: what an offering needs, from the catalog** (proposed
+2026-10-27). A person asks for "app hosting" on GCP and nothing else, in the
+console or by talking to its agent (decision 24). What app hosting *is* (a
+Cloud Run service, or whatever else) is the platform engineers' to say, and
+so is what it needs (a project; a database, if wanted). The cart shows
+the offering, what it needs added, what it could use that the team already
+has, and what's suggested; the person (or the agent, then the person)
+checks it out as one run. The agent reads the same answer the cart does. It
+never guesses dependencies from descriptions. Proposed:
+
+1. *Declared in the catalog, by the product's own team:* an input that
+   `x-vertra-needs` a wiring type depends on something of that type, and
+   an output that `x-vertra-provides` one is one (both as today). A
+   required input is a dependency; an optional one is a suggestion (app
+   hosting's `cloudSqlConnectionName`, typed `gcp.cloud-sql-instance`,
+   suggests a database). The wiring types themselves (what each means,
+   `shared`, and its `defaultProvider`, what a cart adds when nothing
+   fills it) are the catalog's `schema/types.yaml`, owned by the catalog's
+   platform engineers. They travel in the catalog release like everything
+   else, and `ReplaceWiringTypes` is left for installs without one.
+2. *Filled by what's already deployed:* a needed type is filled by a step
+   in the cart, by something the team already has, by its default
+   provider (added), or by a value typed in. For "already has", each
+   resource remembers what its step provided (each typed output, its
+   wiring type and value), recorded when its run finishes; those of the
+   team's own, and the caller's, are offered first.
+3. *Dependencies across runs, recorded:* when a run finishes, each
+   resource gets a link to each resource it took an input from, whether
+   that came from a step in its own run or from a resource the team already
+   had. So "this service runs in that project, made by run X, by Ana" is a
+   query, and deleting something others depend on says what depends on
+   it. Deleting a project under a live service is refused until the
+   service goes, or the person deletes both, dependents first.
+4. *The cart:* add an action; `OrderService/PreviewOrder` answers the plan:
+   - what it needs added (default providers, marked as added);
+   - existing resources it could use instead, the choice the person's;
+   - suggestions for optional needs (not in the cart until chosen);
+   - and the problems it already reports.
+
+   Built for the Catalog (an "Add to cart" beside Run) and for the agent
+   alike, as well as Compose.
+5. *Checking out:* `OrderService/PlaceOrder` runs a planned cart as one run
+   for one team: each step exactly as `RunAction` would run that shared
+   action alone (sharing, parameters, targets, its fixed secrets), wired
+   by `$fromTask`, with existing resources' values filled in by the
+   console (from resources the caller may see). It takes a `requestId`. So
+   a member may check out what they could run step by step, without a raw
+   DAG. A target-typed input wired from another step (a project id) is
+   checked against `allowedTargets` again when that step starts, since its
+   value isn't known at submit. Ordering bots still order templates only
+   (decision 23).
+
+Rejected: dependencies inferred by the agent from descriptions (not
+reviewed, and not the same twice); a separate dependency file per
+offering (it would drift from the schemas the steps actually run with);
+carts only through Compose and templates (a person could then order
+what they need only with a maintainer's help).
+
+Open, for review: which existing resource is offered when the team has
+several of a type (proposed: all of them, the person chooses, none chosen
+by default); and whether a cart can be saved and shared before checkout
+(proposed: later, as drafts are).
 
 ## 18. Roadmap
 

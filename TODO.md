@@ -1001,6 +1001,20 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   identity) or for a person (OAuth 2.1, a narrowed token); a person's
   agent's changes, and every resource delete, wait for a person to confirm
   in the console. Waiting on review of its open points before building.
+  Builds on decision 25's cart.
+- [ ] **The cart (decision 25, proposed 2026-10-27)**, what the agent and
+  people order with, in this order:
+  1. The catalog carries its wiring types: `schema/types.yaml` in the
+     catalog release (today only an admin's `ReplaceWiringTypes` sets
+     them; no catalog has the file), and the samples typed
+     (`gcp/app-hosting`'s database and region).
+  2. Resources remember what their step provided (wiring type and value),
+     and links to what they took inputs from, across runs; deleting
+     something others depend on says so.
+  3. `PreviewOrder` offers existing resources and optional suggestions.
+  4. `OrderService/PlaceOrder`: a member checks out a cart, each step as
+     `RunAction` would run it; a wired target re-checked when its step
+     starts. The Catalog's cart.
 - [x] **Order builder** (done 2026-10-27, decision 23, `console/src/core/
   orders.ts`): `OrderService/PreviewOrder` wires a cart of actions by wiring
   type (each input to the one output of its type), puts the steps in an order
