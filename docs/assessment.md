@@ -904,8 +904,9 @@ never guesses dependencies from descriptions. Proposed:
    that came from a step in its own run or from a resource the team already
    had. So "this service runs in that project, made by run X, by Ana" is a
    query, and deleting something others depend on says what depends on
-   it. Deleting a project under a live service is refused until the
-   service goes, or the person deletes both, dependents first.
+   it. Deleting a project under a live service is refused, and the
+   admins are alerted; it goes ahead only once an admin approves it
+   (deleting the service first needs no approval).
 4. *The cart:* add an action; `OrderService/PreviewOrder` answers the plan:
    - what it needs added (default providers, marked as added);
    - existing resources it could use instead, the choice the person's;
@@ -931,10 +932,17 @@ offering (it would drift from the schemas the steps actually run with);
 carts only through Compose and templates (a person could then order
 what they need only with a maintainer's help).
 
-Open, for review: which existing resource is offered when the team has
-several of a type (proposed: all of them, the person chooses, none chosen
-by default); and whether a cart can be saved and shared before checkout
+Open, for review: whether a cart can be saved and shared before checkout
 (proposed: later, as drafts are).
+
+Decided on review (2026-10-27): members check out carts (5), without a
+maintainer; ordering bots still order templates only. Every existing
+resource of a needed type that the caller may see is offered, none chosen
+by default, except APIs published through the gateway (decision 20):
+those are called through the gateway, under its sharing and rates, never
+wired into a run as a dependency. Deleting something others depend on (3)
+is refused and alerts the admins; it goes ahead only once an admin
+approves it, and the approval is audited as theirs.
 
 ## 18. Roadmap
 

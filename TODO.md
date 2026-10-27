@@ -1003,10 +1003,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      them; no catalog has the file), and the samples typed
      (`gcp/app-hosting`'s database and region).
   2. Resources remember what their step provided (wiring type and value),
-     and links to what they took inputs from, across runs; deleting
-     something others depend on says so.
-  3. `PreviewOrder` offers existing resources and optional suggestions.
-  4. `OrderService/PlaceOrder`: a member checks out a cart, each step as
+     and links to what they took inputs from, across runs. Deleting
+     something others depend on is refused, alerts the admins, and goes
+     ahead only on an admin's approval.
+  3. `PreviewOrder` offers existing resources (all the caller may see,
+     none chosen; never a gateway API) and optional suggestions.
+  4. `OrderService/PlaceOrder`: a member checks out a cart (decided), each step as
      `RunAction` would run it; a wired target re-checked when its step
      starts. The Catalog's cart.
 - [x] **Order builder** (done 2026-10-27, decision 23, `console/src/core/
