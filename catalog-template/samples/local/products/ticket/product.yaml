@@ -17,6 +17,9 @@ runtime: python3.12
 # Each install runs check (no inputs) when this is registered and daily, and
 # shows whether it's ready there.
 check: check
+# At most two of its steps at once, open or close, in any run: a ticketing
+# system that limits how many calls it takes. The rest wait their turn.
+maxRunning: 2
 errors:
   MISSING_INPUT:
     means: It wasn't given what it needs.
