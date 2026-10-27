@@ -959,11 +959,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   for services (done for CI, 2026-10-24: OIDC tokens from allowed issuers,
   mapped to a bot; other issuers are a setting away), orders
   rather than raw DAGs, and a decision on who an order is for. kernel-api
-  stays private.
+  stays private. Proposed in docs/assessment.md (23), awaiting review.
 - [ ] **Order builder (exploratory):** turn a cart of products into a DAG
   from their schemas. The console stores products' descriptions and wiring
   types already; next, the generator (an `OrderService/PreviewOrder`
-  method), then a page.
+  method), then a page. Proposed in docs/assessment.md (23), awaiting review.
 - [x] **Base images the platform maintains** (done 2026-10-27, decided:
   mirror and pin, not required): a catalog's `bases.yaml` lists approved
   bases; catalog CI copies each weekly into `<registry>/bases/<name>` (same

@@ -764,6 +764,51 @@ what its steps may deploy to (federation reaches other clouds), so a second
 install is for a real boundary (prod and non-prod, residency, separate
 units), not each engineer's cloud.
 
+**23 (proposed 2026-10-27, for review). Orders from outside, and the
+order builder.** An order is a run of a published template, with its
+inputs, for one team, asked for by a service outside the cluster (a
+storefront, an event bus's consumer, another platform's pipeline). Most
+of it is here: the console can be public over HTTPS (`console.public`), a
+service signs in keylessly as a bot (its OIDC token, from an issuer the
+install allows, mapped to the bot; done for CI on 2026-10-24),
+`TemplateService/RunTemplate` runs a template with inputs only and takes
+a `request_id`, so a retried order runs once, and a consumer may run
+templates and nothing else. What's missing, proposed:
+
+1. *Who an order is for:* always the bot's own team, which owns the run
+   (its caps, quota and approvals apply, and its maintainers see and cancel
+   it). A bot can't order on behalf of a team it isn't in.
+2. *What a bot may order:* a list of templates on the bot (empty: none),
+   set by its team's maintainers; RunTemplate refuses any other. Narrower
+   than the consumer role, which may run every template shared with the
+   team.
+3. *Hearing back:* the caller polls `ExecutionService/GetExecution`, or the
+   bot names a callback URL (under the install's allowed hosts, as chat
+   webhooks are) that the console POSTs the outcome to when the run
+   finishes, signed with a secret kept per bot (HMAC), retried as webhooks
+   are. An event bus is a product that forwards these, not the platform's.
+4. *Limits:* a request rate per bot, and the gateway's style of refusal
+   (429) when it's passed.
+
+Rejected: kernel-api in front (it stays private, and has no idea of users);
+raw DAGs from outside (they bypass the templates' review and their fixed
+secrets); a separate orders service (the console already authenticates,
+authorizes, audits and runs templates).
+
+The *order builder* turns a cart of actions into a DAG. Products' inputs and
+outputs name wiring types (`schema/types.yaml`); `OrderService/PreviewOrder`
+would wire each required input to the one output in the cart that provides
+its type, add a type's default provider when nothing in the cart provides
+it, ask once for a shared type, and refuse a cycle or an input that two
+outputs could fill (the person chooses). It never runs anything: it opens
+the DAG in Compose, where a person reviews it and runs it or proposes it as
+a template. Open: whether an order from outside should be able to name a
+cart rather than a template (proposed: no; carts become templates first,
+through review).
+
+Questions for review: the per-bot template list (2) or the consumer role
+as the limit; a callback (3) in the first version, or polling only.
+
 ## 18. Roadmap
 
 None of these needs a new service. All contract changes are additive.
