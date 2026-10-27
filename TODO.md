@@ -987,6 +987,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `kernel/tests/conftest.py`): on Kubernetes 1.37, a side-loaded image can
   stop being usable after it's pulled under a second name.
 - [ ] **An end-to-end secret test** with a product registered by catalog CI.
+- [ ] **Re-pin `rot13`'s distroless base** once Google rebuilds
+  `cc-debian12` with Debian's libssl3 fix (CVE-2026-84782), and delete its
+  `.trivyignore` line (it expires 2026-11-27 by itself, failing the check
+  again if the base still has it).
 - [ ] **actionlint in the catalog template's own CI.**
 - [ ] **Move `docker` to the kernel's dev dependencies** (tests only).
 - [x] **`make up` mistakes any console port-forward for its own** (done:
