@@ -565,7 +565,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   rest wait READY, and the run page says why (`waiting_for_cap`). The
   console scopes it to the product's catalog folder (or its image, for one
   registered by hand); the kernel holds it in the claim, under an advisory
-  lock like concurrency keys. The ticket sample allows two.
+  lock like concurrency keys. Left: the ticket sample's `maxRunning: 2`,
+  back once the template pins a vertra that knows the field (0.4.0 doesn't;
+  the template is checked with its pinned vertra).
 - [x] **Keyless bots** (done 2026-10-24): a bot signs in with its CI job's
   OIDC identity (GitHub Actions, GitLab) instead of a stored token. Its
   team's maintainers bind it to exact claims (`TokenService.AddBotIdentity`;
