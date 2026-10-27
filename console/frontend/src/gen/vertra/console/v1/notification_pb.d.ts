@@ -154,7 +154,8 @@ export declare type TeamWebhook = Message<"vertra.console.v1.TeamWebhook"> & {
   host: string;
 
   /**
-   * The kinds it's sent: run_failed, approval_waiting.
+   * The kinds it's sent: run_failed, approval_waiting, product_not_ready,
+   * step_refused.
    *
    * @generated from field: repeated string kinds = 3;
    */
@@ -487,7 +488,8 @@ export declare const NotificationService: GenService<{
   },
   /**
    * Chooses which kinds are emailed to you (any of run_failed,
-   * run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+   * run_succeeded, approval_waiting, product_not_ready, catalog_failing,
+   * step_refused, platform_alert).
    *
    * @generated from rpc vertra.console.v1.NotificationService.SetEmailPreferences
    */

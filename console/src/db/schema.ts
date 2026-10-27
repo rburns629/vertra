@@ -130,7 +130,7 @@ export const users = pgTable("users", {
   // Which notifications reach them by email too, when the install sends
   // email (notifier.ts): failures, approvals and readiness by default, not
   // every finished run.
-  emailKinds: text("email_kinds").array().$type<NotificationKind[]>().notNull().default(sql`'{run_failed,approval_waiting,product_not_ready,catalog_failing}'::text[]`),
+  emailKinds: text("email_kinds").array().$type<NotificationKind[]>().notNull().default(sql`'{run_failed,approval_waiting,product_not_ready,catalog_failing,step_refused,platform_alert}'::text[]`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -573,7 +573,14 @@ export const notificationEvents = pgTable(
   (table) => [index("notification_events_created_at_idx").on(table.createdAt)],
 );
 
-export type NotificationKind = "run_failed" | "run_succeeded" | "approval_waiting" | "catalog_failing" | "product_not_ready";
+export type NotificationKind =
+  | "run_failed"
+  | "run_succeeded"
+  | "approval_waiting"
+  | "catalog_failing"
+  | "product_not_ready"
+  | "step_refused"
+  | "platform_alert";
 
 /** A person's copy of an event, until they've read it. */
 export const userNotifications = pgTable(

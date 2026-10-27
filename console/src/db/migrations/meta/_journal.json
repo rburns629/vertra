@@ -232,6 +232,13 @@
       "when": 1793114648818,
       "tag": "0032_secret_store_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793115602843,
+      "tag": "0033_alerts",
+      "breakpoints": true
     }
   ]
 }

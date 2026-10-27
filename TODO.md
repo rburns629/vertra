@@ -236,9 +236,15 @@ design.
   for up to 30 seconds (until `resourceRecorder.ts` next looks at the run),
   so asking again at once is refused (`DELETE_IN_PROGRESS`). Read the run's
   own state when it's finished but not yet recorded.
-- [ ] **Alerts** on `IMAGE_NOT_ALLOWED`, `IMAGE_NOT_FOUND`,
-  `IMAGE_NOT_SIGNED`, `IMAGE_SCAN_FAILED`, dispatch rejections, purges,
-  policy sync failures, and changes to the image policy.
+- [x] **Alerts** (done 2026-10-27, proven on kind for purges and image
+  source changes): a step the cluster refused (`step_refused`: the kernel's
+  admission codes) tells admins and whoever ran it, and posts to its team's
+  webhook if it wants that kind; a team purged, the allowed image sources
+  changed, a policy sync failing ten minutes, a run's image gone from the
+  registry (`platform_alert`) tell admins. Both are emailed by default.
+  Left: an install-level chat webhook for admins (only teams have one), and
+  a policy-sync alert said once per outage with two consoles (each replica
+  keys its own).
 - [ ] **Prove the scheduler at scale on a cloud cluster:** the watches
   surviving an API server restart and the 5-minute relist, API rate limits
   at `scheduler_executor_concurrency` 16, and a reclaimed Spot step failing

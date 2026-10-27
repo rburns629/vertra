@@ -7,7 +7,12 @@
  *   - a run that succeeded: whoever ran it;
  *   - a step waiting for an approval: its team's maintainers (not whoever
  *     ran it, who can't decide) and its team's webhook;
- *   - the catalog not pulled: admins.
+ *   - the catalog not pulled: admins;
+ *   - a step the cluster refused (an image unsigned, unscanned or from an
+ *     unallowed source, an identity it isn't registered for): admins,
+ *     whoever ran it, and its team's webhook;
+ *   - a platform change or fault (a team purged, the allowed image sources
+ *     changed, a policy sync failing, a run's image gone): admins.
  *
  * Each is shown in its people's inbox, emailed to those who want its kind
  * (users.email_kinds) when the install sends email (SMTP_*), and posted to
@@ -32,13 +37,18 @@ import { seal, unseal } from "./sealed.js";
 import { backendAllowed } from "./core/apis.js";
 import { db } from "./db/client.js";
 import { catalogSync, emailDeliveries, notificationEvents, teamMemberships, teams, teamWebhooks, userNotifications, users, webhookDeliveries, type NotificationKind } from "./db/schema.js";
-import { listAwaitingApproval } from "./kernel/client.js";
+import { findSubmittedExecutions } from "./db/queries.js";
+import { PLATFORM_ERRORS } from "./failureHelp.js";
+import { listAwaitingApproval, listRefusals } from "./kernel/client.js";
+import { policySyncOutcomes } from "./policySync.js";
 
 const MAX_ATTEMPTS = 5;
 /** A finished run older than this when it's recorded isn't news (a console's first pass over old runs). */
 const NEWS_MS = 60 * 60_000;
 /** The catalog failing for this long is worth telling admins. */
 const CATALOG_GRACE_MS = 30 * 60_000;
+/** A policy sync failing for this long is (one bad pass isn't). */
+const POLICY_GRACE_MS = 10 * 60_000;
 
 // --- the webhook URL, encrypted ---
 
@@ -185,20 +195,74 @@ export async function notifyApprovals(): Promise<number> {
   return made;
 }
 
+/** The install's admins who read an inbox. */
+async function adminIds(): Promise<string[]> {
+  const rows = await db.select({ id: users.id }).from(users).where(and(eq(users.isAdmin, true), eq(users.isBot, false)));
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Steps the cluster refused in the last hour (the kernel's refusals: its
+ * admission policies'): admins, whoever ran it, and its team's webhook, once
+ * per step and reason.
+ */
+export async function notifyRefusals(): Promise<number> {
+  const refused = await listRefusals(new Date(Date.now() - NEWS_MS));
+  if (refused.length === 0) return 0;
+  const runs = new Map((await findSubmittedExecutions([...new Set(refused.map((r) => r.executionId))])).map((e) => [e.executionId, e]));
+  const admins = await adminIds();
+  let made = 0;
+  for (const r of refused) {
+    const fresh = await notify({
+      key: `refused:${r.executionId}:${r.taskId}:${r.code}`,
+      kind: "step_refused",
+      title: `${r.team} step ${r.taskId} was refused: ${r.code}`,
+      body: `${PLATFORM_ERRORS[r.code]?.means ?? r.message} Image: ${r.image}`,
+      link: `/runs/${r.executionId}`,
+      userIds: await people([...admins, runs.get(r.executionId)?.submittedBy ?? null]),
+      teams: [r.team],
+    });
+    if (fresh) made += 1;
+  }
+  return made;
+}
+
+/** A platform change or fault: admins, once per `key`; `by`, whoever did it. */
+export async function platformAlert(key: string, title: string, body: string, by?: string, link = "/admin"): Promise<boolean> {
+  const [who] = by ? await db.select({ email: users.email }).from(users).where(eq(users.id, by)) : [];
+  const said = who ? `${body}${body ? " " : ""}By ${who.email}.` : body;
+  return notify({ key: `platform:${key}`, kind: "platform_alert", title, body: said, link, userIds: await adminIds(), teams: [] });
+}
+
+/** A policy the console keeps in the cluster failing to sync for a while. */
+export async function notifyPolicySync(): Promise<number> {
+  let made = 0;
+  for (const [name, outcome] of Object.entries(policySyncOutcomes())) {
+    if (!outcome || outcome.ok || !outcome.failingSince) continue;
+    if (Date.now() - Date.parse(outcome.failingSince) < POLICY_GRACE_MS) continue;
+    const fresh = await platformAlert(
+      `policy:${name}:${outcome.failingSince}`,
+      `The ${name} isn't being synced to the cluster`,
+      `Failing since ${outcome.failingSince}: ${(outcome.error ?? "").slice(0, 500)}`,
+    );
+    if (fresh) made += 1;
+  }
+  return made;
+}
+
 /** The catalog not pulled for a while: admins, once per outage. */
 export async function notifyCatalog(): Promise<boolean> {
   const [status] = await db.select().from(catalogSync).where(eq(catalogSync.id, 1));
   if (!status?.error || !status.checkedAt) return false;
   const since = status.appliedAt ?? status.checkedAt;
   if (Date.now() - since.getTime() < CATALOG_GRACE_MS) return false;
-  const admins = await db.select({ id: users.id }).from(users).where(and(eq(users.isAdmin, true), eq(users.isBot, false)));
   return notify({
     key: `catalog:${status.appliedAt?.toISOString() ?? "never"}`,
     kind: "catalog_failing",
     title: "The catalog isn't being pulled",
     body: status.error.slice(0, 500),
     link: "/admin",
-    userIds: admins.map((a) => a.id),
+    userIds: await adminIds(),
     teams: [],
   });
 }
@@ -329,6 +393,8 @@ export function startNotifier(log: FastifyBaseLogger): void {
   const pass = async () => {
     await notifyApprovals();
     await notifyCatalog();
+    await notifyRefusals();
+    await notifyPolicySync();
     await deliverWebhooks(log);
     await deliverEmails(log);
   };

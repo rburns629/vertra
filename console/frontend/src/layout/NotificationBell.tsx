@@ -20,6 +20,8 @@ const TONE: Record<Notification["kind"], string> = {
   approval_waiting: "warning.main",
   catalog_failing: "error.main",
   product_not_ready: "warning.main",
+  step_refused: "error.main",
+  platform_alert: "warning.main",
 };
 
 /**

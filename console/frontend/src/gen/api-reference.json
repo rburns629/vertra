@@ -506,7 +506,7 @@
     },
     {
      "name": "SetEmailPreferences",
-     "comment": "Chooses which kinds are emailed to you (any of run_failed,\nrun_succeeded, approval_waiting, product_not_ready, catalog_failing).",
+     "comment": "Chooses which kinds are emailed to you (any of run_failed,\nrun_succeeded, approval_waiting, product_not_ready, catalog_failing,\nstep_refused, platform_alert).",
      "input": "vertra.console.v1.SetEmailPreferencesRequest",
      "output": "vertra.console.v1.SetEmailPreferencesResponse",
      "streaming": false,
@@ -4538,7 +4538,7 @@
      "type": "string",
      "repeated": true,
      "optional": false,
-     "comment": "The kinds it's sent: run_failed, approval_waiting."
+     "comment": "The kinds it's sent: run_failed, approval_waiting, product_not_ready,\nstep_refused."
     },
     {
      "name": "lastSentAt",

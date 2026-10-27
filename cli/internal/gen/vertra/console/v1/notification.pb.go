@@ -309,7 +309,8 @@ type TeamWebhook struct {
 	Configured bool `protobuf:"varint,1,opt,name=configured,proto3" json:"configured,omitempty"`
 	// Its host, such as hooks.slack.com.
 	Host string `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
-	// The kinds it's sent: run_failed, approval_waiting.
+	// The kinds it's sent: run_failed, approval_waiting, product_not_ready,
+	// step_refused.
 	Kinds      []string               `protobuf:"bytes,3,rep,name=kinds,proto3" json:"kinds,omitempty"`
 	LastSentAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_sent_at,json=lastSentAt,proto3" json:"last_sent_at,omitempty"`
 	// Why the last post failed, if it did.

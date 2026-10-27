@@ -14,6 +14,8 @@ const KINDS = [
   { kind: "approval_waiting", label: "A step waits for my team's approval" },
   { kind: "product_not_ready", label: "A product of my team isn't ready" },
   { kind: "catalog_failing", label: "The catalog isn't being pulled (admins)" },
+  { kind: "step_refused", label: "The cluster refused a step (mine, or anyone's for admins)" },
+  { kind: "platform_alert", label: "A team purged, the image sources changed, a policy not syncing (admins)" },
 ];
 
 /** Which of your notifications are emailed to you too; hidden when the install sends no email. */

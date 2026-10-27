@@ -22,6 +22,8 @@ export interface SyncOutcome {
   ok: boolean;
   at: string;
   error?: string;
+  /** Since when it's been failing, pass after pass (notifier.ts tells admins). */
+  failingSince?: string;
 }
 
 const outcomes = new Map<string, SyncOutcome>();
@@ -44,7 +46,8 @@ export async function syncPolicies(log: FastifyBaseLogger): Promise<void> {
       outcomes.set(name, { applies: await sync(), ok: true, at });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      outcomes.set(name, { applies: true, ok: false, at, error: message });
+      const failingSince = outcomes.get(name)?.failingSince ?? at;
+      outcomes.set(name, { applies: true, ok: false, at, error: message, failingSince });
       log.error({ err: error, event: "policy_sync_failed", policy: name }, `couldn't sync the ${name}`);
     }
   }

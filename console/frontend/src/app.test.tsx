@@ -780,7 +780,7 @@ describe("a team's settings", () => {
     fireEvent.change(await screen.findByLabelText(/webhook url/i), { target: { value: "https://hooks.slack.com/services/T/B/x" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /waits for the team's approval/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed", "product_not_ready"] }]); });
+    await waitFor(() => { expect(saved).toEqual([{ team: "payments", url: "https://hooks.slack.com/services/T/B/x", kinds: ["run_failed", "product_not_ready", "step_refused"] }]); });
     expect(await screen.findByText("hooks.slack.com")).toBeTruthy();
     expect((screen.getByLabelText(/new webhook url/i) as HTMLInputElement).value).toBe("");
   });

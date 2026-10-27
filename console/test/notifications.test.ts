@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
  * Notifications (src/notifier.ts, src/core/notifications.ts): who's told
- * what, once; a team's webhook URL kept encrypted, only to allowed hosts,
+ * what, once (a run, an approval, a step the cluster refused, a platform
+ * alert); a team's webhook URL kept encrypted, only to allowed hosts,
  * never sent back, and set only by its maintainers; posting, and what a
  * failed post leaves. kernel-api and fetch are stubbed; the rest is the
  * real console on the real test database.
@@ -12,12 +13,24 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "../src/db/client.js";
-import { addTeamMember, createTeam } from "../src/db/queries.js";
+import { addTeamMember, createTeam, recordSubmittedExecution } from "../src/db/queries.js";
 import { notificationEvents, teams, teamWebhooks, userNotifications, users as usersTable, webhookDeliveries } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
-import { listAwaitingApproval } from "../src/kernel/client.js";
+import { listAwaitingApproval, listRefusals } from "../src/kernel/client.js";
+import { policySyncOutcomes } from "../src/policySync.js";
 import { config } from "../src/config.js";
-import { decryptUrl, deliverEmails, deliverWebhooks, encryptUrl, notifyApprovals, runFinished, webhookUrlProblem } from "../src/notifier.js";
+import {
+  decryptUrl,
+  deliverEmails,
+  deliverWebhooks,
+  encryptUrl,
+  notifyApprovals,
+  notifyPolicySync,
+  notifyRefusals,
+  platformAlert,
+  runFinished,
+  webhookUrlProblem,
+} from "../src/notifier.js";
 import { caller, rpcClient } from "./rpc.js";
 
 const sent: { to: string; subject: string; text: string }[] = [];
@@ -27,6 +40,11 @@ vi.mock("nodemailer", () => ({
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/kernel/client.js")>()),
   listAwaitingApproval: vi.fn(() => Promise.resolve([])),
+  listRefusals: vi.fn(() => Promise.resolve([])),
+}));
+vi.mock("../src/policySync.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/policySync.js")>()),
+  policySyncOutcomes: vi.fn(() => ({})),
 }));
 
 const prefix = `ntf-${randomUUID().slice(0, 6)}`;
@@ -66,6 +84,7 @@ beforeEach(() => {
 
 afterAll(async () => {
   await db.delete(notificationEvents).where(like(notificationEvents.key, `%${prefix}%`));
+  await db.delete(notificationEvents).where(like(notificationEvents.key, "refused:%"));
   await db.delete(teams).where(like(teams.name, `${prefix}%`));
   await users.cleanUp();
   await app.close();
@@ -176,6 +195,59 @@ describe("a step waiting for an approval", () => {
   });
 });
 
+describe("a step the cluster refused", () => {
+  it("tells admins and whoever ran it, once, and posts it to its team's webhook if it wants these", async () => {
+    const admin = await users.makeUser({ admin: true });
+    await call(maintainerToken, "NotificationService/SetTeamWebhook", { team, kinds: ["run_failed", "step_refused"] });
+    const executionId = randomUUID();
+    await recordSubmittedExecution({ executionId, teams: [team], submittedBy: member.id, name: `${prefix} unsigned`, payload: {} });
+    vi.mocked(listRefusals).mockResolvedValue([
+      { executionId, taskId: "deploy", team, image: "reg/x@sha256:aa", code: "IMAGE_NOT_SIGNED", message: "denied", at: new Date().toISOString() },
+    ]);
+    expect(await notifyRefusals()).toBe(1);
+    expect(await notifyRefusals()).toBe(0);
+    for (const who of [admin, member]) {
+      expect((await inbox(who.id)).filter((n) => n.key.startsWith(`refused:${executionId}`)).map((n) => n.title)).toEqual([
+        `${team} step deploy was refused: IMAGE_NOT_SIGNED`,
+      ]);
+    }
+    expect((await inbox(maintainer.id)).some((n) => n.key.startsWith(`refused:${executionId}`))).toBe(false);
+    const [event] = await db.select().from(notificationEvents).where(like(notificationEvents.key, `refused:${executionId}%`));
+    expect(event?.body).toContain("isn't signed by the catalog's CI");
+    expect(await db.select().from(webhookDeliveries).where(eq(webhookDeliveries.eventId, event?.id ?? ""))).toHaveLength(1);
+    vi.mocked(listRefusals).mockResolvedValue([]);
+  });
+});
+
+describe("a platform alert", () => {
+  it("tells admins only, once, saying who did it", async () => {
+    const admin = await users.makeUser({ admin: true });
+    const key = `${prefix}-purge`;
+    expect(await platformAlert(key, "Team x was purged", "Its people are gone.", maintainer.id)).toBe(true);
+    expect(await platformAlert(key, "Team x was purged", "Its people are gone.", maintainer.id)).toBe(false);
+    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:${key}`));
+    expect(event?.body).toBe(`Its people are gone. By ${maintainer.email}.`);
+    expect((await inbox(admin.id)).some((n) => n.key === `platform:${key}`)).toBe(true);
+    expect((await inbox(member.id)).some((n) => n.key === `platform:${key}`)).toBe(false);
+  });
+
+  it("is made for a policy sync failing for ten minutes, not for one bad pass", async () => {
+    const recent = new Date(Date.now() - 60_000).toISOString();
+    const long = new Date(Date.now() - 11 * 60_000).toISOString();
+    vi.mocked(policySyncOutcomes).mockReturnValue({
+      identityPolicy: { applies: true, ok: false, at: recent, error: "forbidden", failingSince: recent },
+      scanPolicy: { applies: true, ok: false, at: recent, error: `${prefix} forbidden`, failingSince: long },
+      pullSecrets: { applies: true, ok: true, at: recent },
+    });
+    expect(await notifyPolicySync()).toBe(1);
+    expect(await notifyPolicySync()).toBe(0);
+    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${long}`));
+    expect(event?.title).toBe("The scanPolicy isn't being synced to the cluster");
+    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${long}`));
+    vi.mocked(policySyncOutcomes).mockReturnValue({});
+  });
+});
+
 describe("the inbox", () => {
   it("lists your own, counts what's unread, and marks it read", async () => {
     const listed = await call<{ notifications?: { id: string; read: boolean }[]; unreadCount?: number }>(memberToken, "NotificationService/ListNotifications");
@@ -203,7 +275,7 @@ describe("email", () => {
       expect((await call(maintainerToken, "NotificationService/SetEmailPreferences", { kinds: [] })).code).toBe("ok");
       expect((await call(maintainerToken, "NotificationService/SetEmailPreferences", { kinds: ["everything"] })).code).toBe("invalid_argument");
       const prefs = await call<{ available?: boolean; kinds?: string[] }>(memberToken, "NotificationService/GetEmailPreferences");
-      expect(prefs.body).toEqual({ available: true, kinds: ["run_failed", "approval_waiting", "product_not_ready", "catalog_failing"] });
+      expect(prefs.body).toEqual({ available: true, kinds: ["run_failed", "approval_waiting", "product_not_ready", "catalog_failing", "step_refused", "platform_alert"] });
 
       const executionId = randomUUID();
       await runFinished({ executionId, name: `${prefix} mailed`, state: "FAILED", submittedBy: member.id, teams: [], finishedAt: new Date().toISOString() });

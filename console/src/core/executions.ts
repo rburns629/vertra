@@ -57,6 +57,7 @@ import { visibleLines } from "../logLevels.js";
 import { failureCodeOnly, runView, visibleEvent, visiblePayload } from "./runView.js";
 import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
+import { platformAlert } from "../notifier.js";
 import { scanBlocker } from "../scanning.js";
 import { targetsNeedApproval } from "../targets.js";
 
@@ -203,6 +204,14 @@ async function refuseBlockedImages(images: string[], context: RunContext): Promi
     },
     blocker.message,
   );
+  // An image gone from the registry breaks its product for everyone: once
+  // an hour per image.
+  if (blocker.error === "IMAGE_NOT_FOUND") {
+    const hour = new Date().toISOString().slice(0, 13);
+    for (const image of blocker.missingImages ?? []) {
+      await platformAlert(`image-missing:${image}:${hour}`, "A run's image is gone from the registry", `${image}. Runs of it are refused until it's published again.`);
+    }
+  }
   throw blocked(422, blocker);
 }
 

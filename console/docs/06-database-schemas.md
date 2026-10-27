@@ -304,7 +304,7 @@ People and bots alike.
 | `must_change_password` | boolean | no | Its password was set by someone else (an admin's new account or reset, `vertra admin reset-password`): a session it signs in may only change it. |
 | `oidc_subject` | text, unique | yes | The single sign-on account bound at the first sign-in through it (`<issuer> <sub>`): from then on only that account signs in as this person. |
 | `last_signed_in_at` | timestamptz | yes | Its last sign-in, with a password or single sign-on; empty if it never has. Shown on the Admin page's list of people. |
-| `email_kinds` | text[] | no | Which of their notifications are emailed to them too, when the install sends email: `run_failed`, `approval_waiting`, `product_not_ready` and `catalog_failing` by default. |
+| `email_kinds` | text[] | no | Which of their notifications are emailed to them too, when the install sends email: `run_failed`, `approval_waiting`, `product_not_ready`, `catalog_failing`, `step_refused` and `platform_alert` by default. |
 | `created_at` | timestamptz | no | |
 
 ### team_memberships
@@ -683,7 +683,7 @@ Something worth telling people: a run that failed or finished, a step waiting fo
 | --- | --- | --- | --- |
 | `id` | uuid | no | |
 | `key` | text | no | What makes it the same event (`run:<id>:<state>:<finished at>`, `approval:<run>:<step>:<since>`, `catalog:<last applied>`). Unique, so it's only ever made once. |
-| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing` or `product_not_ready`. |
+| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing`, `product_not_ready`, `step_refused` (a step the cluster refused) or `platform_alert` (a team purged, the allowed image sources changed, a policy not syncing, a run's image gone). |
 | `title` | text | no | |
 | `body` | text | no | |
 | `link` | text | yes | The console page it's about, such as `/runs/<id>`. |
@@ -708,7 +708,7 @@ A team's chat webhook (Slack, Google Chat, Teams), set by its maintainers.
 | `team_id` | uuid | no | |
 | `url_encrypted` | text | no | The webhook URL, a credential: AES-256-GCM with a key derived from the console's `JWT_SECRET`. Never sent back by the API. |
 | `host` | text | no | Its host, which is what people see. |
-| `kinds` | text[] | no | What it gets: `run_failed`, `approval_waiting`, `product_not_ready`. |
+| `kinds` | text[] | no | What it gets: `run_failed`, `approval_waiting`, `product_not_ready`, `step_refused`. |
 | `updated_by` | uuid | yes | Who set it last. |
 | `updated_at` | timestamptz | no | |
 | `last_sent_at` | timestamptz | yes | The last post that went. |

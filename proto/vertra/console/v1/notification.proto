@@ -37,7 +37,8 @@ service NotificationService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Chooses which kinds are emailed to you (any of run_failed,
-  // run_succeeded, approval_waiting, product_not_ready, catalog_failing).
+  // run_succeeded, approval_waiting, product_not_ready, catalog_failing,
+  // step_refused, platform_alert).
   rpc SetEmailPreferences(SetEmailPreferencesRequest) returns (SetEmailPreferencesResponse);
 }
 
@@ -75,7 +76,8 @@ message TeamWebhook {
   bool configured = 1;
   // Its host, such as hooks.slack.com.
   string host = 2;
-  // The kinds it's sent: run_failed, approval_waiting.
+  // The kinds it's sent: run_failed, approval_waiting, product_not_ready,
+  // step_refused.
   repeated string kinds = 3;
   google.protobuf.Timestamp last_sent_at = 4;
   // Why the last post failed, if it did.

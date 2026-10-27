@@ -62,6 +62,7 @@ import { ensureTeamQuota } from "../teamQuota.js";
 import { ensureNotRetired } from "./retired.js";
 import { checkSecretStoreObjects, cloudIdentities } from "../secretStores.js";
 import { isUniqueViolation } from "./products.js";
+import { platformAlert } from "../notifier.js";
 
 /** A team's name is also its namespace's: a DNS label. */
 export const TeamName = Type.String({ pattern: "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" });
@@ -392,6 +393,12 @@ export async function purgeTeam(caller: AuthUser | undefined, name: string, log:
   await syncIdentityPolicy();
   await purgeNamespace();
   log.info({ team: team.name, by: caller?.id, revokedBotTokens }, "team purged");
+  await platformAlert(
+    `purge:${team.id}`,
+    `Team ${team.name} was purged`,
+    `Its people, secrets, products and bots' tokens are gone${namespaceDeleted ? ", and its namespace" : "; its namespace stays, labelled retired, for an operator to delete"}.`,
+    caller?.id,
+  );
   return { name: team.name, purged: true, revokedBotTokens, namespaceDeleted };
 }
 

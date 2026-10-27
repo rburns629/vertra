@@ -18,7 +18,7 @@ import { decryptUrl, encryptUrl, postToWebhook, webhookUrlProblem } from "../not
 import { ensureNotRetired } from "./retired.js";
 
 /** The kinds a team's webhook can get: a person's own runs finishing stay in their inbox. */
-export const WEBHOOK_KINDS: NotificationKind[] = ["run_failed", "approval_waiting", "product_not_ready"];
+export const WEBHOOK_KINDS: NotificationKind[] = ["run_failed", "approval_waiting", "product_not_ready", "step_refused"];
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
   if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
@@ -125,7 +125,7 @@ export async function testTeamWebhook(caller: AuthUser | undefined, teamName: st
   }
 }
 
-const EMAIL_KINDS: NotificationKind[] = ["run_failed", "run_succeeded", "approval_waiting", "product_not_ready", "catalog_failing"];
+const EMAIL_KINDS: NotificationKind[] = ["run_failed", "run_succeeded", "approval_waiting", "product_not_ready", "catalog_failing", "step_refused", "platform_alert"];
 
 export async function emailPreferences(caller: AuthUser | undefined) {
   const who = signedIn(caller);

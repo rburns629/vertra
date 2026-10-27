@@ -26,6 +26,7 @@ import {
 } from "../imagePolicy.js";
 import { ImagePolicyConflictError } from "../k8s.js";
 import { requestScan, syncScanPolicy } from "../scanning.js";
+import { platformAlert } from "../notifier.js";
 
 const REQUIRES_ADMIN = "Requires admin access.";
 
@@ -86,6 +87,13 @@ export async function setImagePolicy(
       broadSources: [after.source, ...after.additional].filter(isBroadSource),
     },
     "allowed image sources changed",
+  );
+  const listed = (p: { source: string; additional: string[] }) => [p.source, ...p.additional].filter(Boolean).join(", ") || "none";
+  await platformAlert(
+    `image-policy:${newVersion}`,
+    "The allowed image sources changed",
+    `Now: ${listed(after)}. Before: ${listed(before)}.`,
+    caller?.id,
   );
   const policy = { ...after, exists: true, version: newVersion };
   return { ...policy, allowed: allowedPrefixes(policy) };

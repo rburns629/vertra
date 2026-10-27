@@ -15,6 +15,7 @@ const KINDS = [
   { kind: "run_failed", label: "A run for the team failed" },
   { kind: "approval_waiting", label: "A step waits for the team's approval" },
   { kind: "product_not_ready", label: "A product of the team isn't ready on this install" },
+  { kind: "step_refused", label: "The cluster refused a step of the team (an unsigned or unallowed image, say)" },
 ] as const;
 
 /**
