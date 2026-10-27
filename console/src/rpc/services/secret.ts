@@ -90,7 +90,7 @@ export function secretService(): ServiceImpl<typeof SecretService> {
       return {};
     },
 
-    getSecretSources() {
+    async getSecretSources() {
       return secretSources();
     },
   };

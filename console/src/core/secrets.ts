@@ -19,6 +19,7 @@ import { ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import {
+  catalogRepository,
   deleteSecretGrantRecord,
   findTeamByName,
   isSecretRegistered,
@@ -253,7 +254,12 @@ export async function teamSecretStores(caller: AuthUser | undefined, teamName: s
   });
 }
 
-/** What the "connect a source" guide needs to know about this install. */
-export function secretSources() {
-  return config.secretSources;
+/**
+ * What the "connect a source" guide needs to know about this install. The
+ * catalog repository is the install's setting, else the one its applied
+ * release came from (owner/name, without github.com/).
+ */
+export async function secretSources() {
+  const fromRelease = (await catalogRepository())?.replace(/^github\.com\//, "") ?? "";
+  return { ...config.secretSources, catalogRepo: config.secretSources.catalogRepo || fromRelease };
 }

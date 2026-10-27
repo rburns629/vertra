@@ -255,6 +255,22 @@ describe("the API", () => {
     expect(shown.body.status.digest).toBe(digestOf(30));
   });
 
+  it("names the release's repository in the secret-setup guides, unless the install sets one", async () => {
+    const someone = await users.makeUser();
+    const token = await users.signIn(someone.email);
+    publish(release({ commit: "guides", teams: [{ name: teamA }] }), digestOf(31));
+    await syncCatalog(log);
+    const facts = await call<{ catalogRepo: string }>(token, "SecretService/GetSecretSources");
+    expect(facts.body.catalogRepo).toBe("my-org/vertra-catalog");
+    const original = config.secretSources.catalogRepo;
+    config.secretSources.catalogRepo = "acme/catalog";
+    try {
+      expect((await call<{ catalogRepo: string }>(token, "SecretService/GetSecretSources")).body.catalogRepo).toBe("acme/catalog");
+    } finally {
+      config.secretSources.catalogRepo = original;
+    }
+  });
+
   it("lets a team's members set its SecretStores' credential, which is never audited", async () => {
     const member = await users.makeUser();
     const outsider = await users.makeUser();

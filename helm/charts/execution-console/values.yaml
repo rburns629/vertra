@@ -455,7 +455,8 @@ notifications:
 # setting up secret syncing (External Secrets Operator). Display only; an
 # empty value makes the wizard say that option isn't available here.
 secretSources:
-  # -- owner/repo of the catalog, where secret-stores/<team>/ lives.
+  # -- owner/repo of the catalog, where secret-stores/<team>/ lives. Empty:
+  # the repository the applied catalog release came from.
   catalogRepo: ""
   # -- This cluster's service-account token issuer, which Azure and AWS
   # federate with. On GKE:

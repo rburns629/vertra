@@ -854,8 +854,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   audit log's is Observe's Audit log tab (2026-10-22).
 - [ ] **Connect a team's `owner` to its console team**: membership is
   managed on the team's page, separately from the catalog's CODEOWNERS.
-- [ ] **Set the catalog repository on the Admin page** instead of the
-  `secretSources.catalogRepo` Helm setting, for the secret-setup guides.
+- [x] **The catalog repository for the secret-setup guides** (done
+  2026-10-27): the repository the applied release came from, unless the
+  console chart's `secretSources.catalogRepo` names another; no Admin
+  setting needed.
 - [x] **Run forms generated from each action's input schema** (done
   2026-10-23). The Catalog's Run opens a page (`/catalog/run`) whose form
   comes from the template's parameters or the action's input schema
