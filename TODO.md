@@ -76,9 +76,8 @@ design.
   the chart features, is in the charts: size presets (`sizes/`), the
   sleeper, the idle scanner, headroom, PodDisruptionBudgets and the `auto`
   autoscalers. Step 3, gcp, is in: the OpenTofu module (Autopilot and
-  Standard), live list prices, apply and destroy; still to do there:
-  Cloud SQL, signing and catalog federation (with the catalog step),
-  account prices. Step 4, the catalog on GitHub, is proven (repository,
+  Standard), live list prices, apply and destroy; signing (2026-10-26) and
+  catalog federation are in; still to do there: Cloud SQL, account prices. Step 4, the catalog on GitHub, is proven (repository,
   federation, CI publishing, a starter run on Spot). Step 5, aws, is proven
   on EKS Auto Mode in us-east-2 (2026-10-18): install, ECR pinning and scans
   through Pod Identity, S3 backups, sleep (nodes gone in about a minute) and
@@ -98,8 +97,9 @@ design.
   for a repository named with its tag (so retries said the image was gone).
   Just Ship It was left empty afterwards (2026-10-19). The test catalog
   repositories (rburns629/vertra-catalog-test, -aws-test) are kept for
-  now. Still to do: the AWS sample's SecretStore. The sizes' figures are first estimates, to be
-  measured.
+  now. The AWS sample's SecretStore is proven (2026-10-27). Still to do: a
+  managed database (Cloud SQL, RDS), and measuring the sizes' figures, which
+  are first estimates (both billed runs).
   Decided 2026-10-18:
   - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster
     mode when the CLI creates one: `auto` (GKE Autopilot, EKS Auto Mode, AKS
