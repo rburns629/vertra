@@ -993,8 +993,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   inserted for a team another file had deleted meanwhile. The claim now
   reads the team, locked (`FOR KEY SHARE`), in the same statement as its
   insert (reading it unlocked still raced, once).
-- [ ] **Check the docs page's diagrams under mermaid 12** (taken by a
-  Dependabot bump, which cleared the KaTeX advisories; not yet looked at).
+- [x] **The docs page's diagrams under mermaid 12** (done 2026-10-27):
+  every one parses under 12.2.0, and a frontend test
+  (`src/docsDiagrams.test.ts`) keeps it so for the next bump. How they look
+  hasn't been checked by eye.
 - [ ] **An end-to-end secret test** with a product registered by catalog CI.
 - [ ] **Re-pin `rot13`'s distroless base** once Google rebuilds
   `cc-debian12` with Debian's libssl3 fix (CVE-2026-84782), and delete its

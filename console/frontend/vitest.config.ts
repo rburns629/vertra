@@ -6,4 +6,6 @@ import { defineConfig } from "vitest/config";
 // comment at its top.
 export default defineConfig({
   test: { include: ["src/**/*.test.ts", "src/**/*.test.tsx"] },
+  // docsDiagrams.test.ts reads the console's docs (../docs), outside this folder.
+  server: { fs: { allow: [".", "../docs"] } },
 });
