@@ -463,6 +463,16 @@ The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a produ
 | `default_provider` | text | yes | `<team>/<product>.<action>` added to an order automatically when a required input needs this type and nothing provides it. |
 | `updated_at` | timestamptz | no | |
 
+### secret_store_identities
+
+The cloud identities each team's SecretStores sign in as: a Google service account, an AWS role or an Azure identity, from its ESO ServiceAccounts' annotations and the role a store assumes. Each is one team's alone, so another team's store can't sign in as it and read that team's secrets; applying a store that names one another team holds is refused (`IDENTITY_IN_USE`). A team keeps its own while retired or purged.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `identity` | text | no | `<cloud>:<id>`, lowercased: `gcp:eso@p.iam.gserviceaccount.com`, `aws:arn:aws:iam::…:role/…`, `azure:<client id>`. Primary key. |
+| `team_id` | uuid | no | The team whose stores sign in as it (`teams.id`; deleted with the team). |
+| `created_at` | timestamptz | no | When its stores first named it. |
+
 ### catalog_sync
 
 The catalog release this console last applied (its teams, products and SecretStores), and how its last look went. One row. The console reads the release from the registry every few minutes and on **Sync now** (Admin page), verifies its signature where the install trusts one, and applies a new one.

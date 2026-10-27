@@ -29,7 +29,7 @@ import {
 } from "../src/k8s.js";
 import { syncPullSecrets } from "../src/pullSecret.js";
 import { syncTeamNetworkPolicies } from "../src/teamNetwork.js";
-import { checkSecretStoreObjects } from "../src/secretStores.js";
+import { checkSecretStoreObjects, cloudIdentities } from "../src/secretStores.js";
 import { caller, problemMessages, type RpcError } from "./rpc.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
@@ -252,6 +252,43 @@ describe("applying a team's SecretStore file", () => {
     expect(refused.code).toBe("invalid_argument");
     expect(problemMessages(refused.body)[0]).toContain("namespace must be");
     expect(applySecretStoreObjects).not.toHaveBeenCalled();
+  });
+});
+
+describe("a SecretStore's cloud identity", () => {
+  const gsa = `eso-${randomUUID().slice(0, 8)}@acme.iam.gserviceaccount.com`;
+  const role = `arn:aws:iam::123456789012:role/eso-${randomUUID().slice(0, 8)}`;
+  const signingInAs = (team: string, sa: string, spec: unknown = { provider: { gcpsm: { projectID: "p" } } }) => [
+    { apiVersion: "v1", kind: "ServiceAccount", metadata: { name: "eso-gcp", annotations: { "iam.gke.io/gcp-service-account": sa } } },
+    { apiVersion: "external-secrets.io/v1", kind: "SecretStore", metadata: { name: "vault", namespace: team }, spec },
+  ];
+
+  it("is read from its ServiceAccount and the role the store assumes", () => {
+    const checked = checkSecretStoreObjects("team-a", signingInAs("team-a", "Eso@P.iam.gserviceaccount.com", { provider: { aws: { role: "arn:aws:iam::1:role/R" } } }));
+    expect(cloudIdentities(checked.objects)).toEqual(["aws:arn:aws:iam::1:role/r", "gcp:eso@p.iam.gserviceaccount.com"]);
+  });
+
+  it("is one team's alone: another team's store can't sign in as it, until the first lets it go", async () => {
+    const [first, second] = [name("id-a"), name("id-b")];
+    await createTeam(first);
+    await createTeam(second);
+    const apply = (team: string, sa: string, spec?: unknown) =>
+      call<RpcError>(admin, "TeamService/ApplySecretStore", { team, documents: signingInAs(team, sa, spec) });
+
+    expect((await apply(first, gsa)).code).toBe("ok");
+    expect((await apply(first, gsa)).code).toBe("ok"); // its own again
+    vi.mocked(applySecretStoreObjects).mockClear();
+    const taken = await apply(second, gsa.toUpperCase());
+    expect(taken.code).toBe("already_exists");
+    expect(taken.failure).toBe("IDENTITY_IN_USE");
+    expect(applySecretStoreObjects).not.toHaveBeenCalled();
+    // The same through a role the store assumes.
+    expect((await apply(first, gsa, { provider: { aws: { role } } })).code).toBe("ok");
+    expect((await apply(second, `other-${gsa}`, { provider: { aws: { role } } })).failure).toBe("IDENTITY_IN_USE");
+
+    // The first team's store signs in as another: the old one is free.
+    expect((await apply(first, `new-${gsa}`)).code).toBe("ok");
+    expect((await apply(second, gsa)).code).toBe("ok");
   });
 });
 

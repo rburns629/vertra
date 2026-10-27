@@ -225,6 +225,13 @@
       "when": 1793035036832,
       "tag": "0031_catalog_version",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793114648818,
+      "tag": "0032_secret_store_identities",
+      "breakpoints": true
     }
   ]
 }

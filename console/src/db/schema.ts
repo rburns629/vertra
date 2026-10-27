@@ -923,6 +923,18 @@ export interface TemplateStep {
  * (config.catalog.release), verified, and applied; the same digest isn't
  * applied twice.
  */
+// The cloud identities each team's SecretStores sign in as (secretStores.ts
+// cloudIdentities): each is one team's alone, so another team's store can't
+// sign in as it and read that team's secrets. A team keeps its own while
+// retired or purged (its namespace, and the cloud's binding, may remain).
+export const secretStoreIdentities = pgTable("secret_store_identities", {
+  identity: text("identity").primaryKey(),
+  teamId: uuid("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const catalogSync = pgTable("catalog_sync", {
   id: integer("id").primaryKey().default(1),
   // The release artifact's manifest digest, its commit and repository.

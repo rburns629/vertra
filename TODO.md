@@ -921,8 +921,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   method), then a page.
 - [ ] **Base images the platform maintains**: copy approved base images into
   a registry on a schedule, scanned and pinned, for products to build from.
-- [ ] **One provider identity per team** for SecretStores: two teams'
-  stores must not sign in as the same cloud identity.
+- [x] **One provider identity per team** for SecretStores (done
+  2026-10-27): the console records each team's store identities
+  (`secret_store_identities`) and refuses another team's store naming one
+  (`IDENTITY_IN_USE`), and the catalog's `secret-stores check` says so in
+  the pull request. Bindings made only on the cloud's side (EKS Pod
+  Identity) stay the cloud administrator's to keep per team.
 
 ## Testing and housekeeping
 

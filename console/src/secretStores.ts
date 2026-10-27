@@ -11,6 +11,10 @@
  *  - the ServiceAccounts ESO signs in as with a cloud identity: eso-gcp,
  *    eso-azure, eso-aws.
  *
+ * And a store's cloud identity is the team's alone (cloudIdentities): two
+ * teams' stores signing in as one Google service account, AWS role or Azure
+ * identity could each read what the other's may (core/teams.ts holds it).
+ *
  * The same rules as the catalog's own pull-request check (its
  * `./vertra catalog secret-stores check`): that one gives the author an early
  * answer; this one is the one that holds.
@@ -115,4 +119,35 @@ export function checkSecretStoreObjects(
   });
   if (!objects.some((o) => o.kind === "SecretStore")) problems.push("No SecretStore in the file.");
   return problems.length > 0 ? { objects: [], problems } : { objects, problems: [] };
+}
+
+/** The annotations that bind an ESO ServiceAccount to a cloud identity. */
+const IDENTITY_ANNOTATIONS: Record<string, string> = {
+  "iam.gke.io/gcp-service-account": "gcp",
+  "eks.amazonaws.com/role-arn": "aws",
+  "azure.workload.identity/client-id": "azure",
+};
+
+/**
+ * The cloud identities a team's stores sign in as: its ESO ServiceAccounts'
+ * bindings, and the role or identity a store names itself (AWS's `role`,
+ * which ESO assumes; Azure's `identityId`). As `<cloud>:<id>`, lowercased
+ * (none of them tells case apart). A binding made only on the cloud's side
+ * (EKS Pod Identity, a Workload Identity principal for the namespace) isn't
+ * here: that one is the cloud administrator's to keep per team.
+ */
+export function cloudIdentities(objects: SecretStoreObject[]): string[] {
+  const found = new Set<string>();
+  for (const o of objects) {
+    for (const [key, value] of Object.entries(o.metadata.annotations ?? {})) {
+      const cloud = IDENTITY_ANNOTATIONS[key];
+      if (cloud && value.trim()) found.add(`${cloud}:${value.trim().toLowerCase()}`);
+    }
+    const provider = isRecord(o.spec) && isRecord(o.spec["provider"]) ? o.spec["provider"] : {};
+    const aws = isRecord(provider["aws"]) ? provider["aws"]["role"] : undefined;
+    if (typeof aws === "string" && aws.trim()) found.add(`aws:${aws.trim().toLowerCase()}`);
+    const azure = isRecord(provider["azurekv"]) ? provider["azurekv"]["identityId"] : undefined;
+    if (typeof azure === "string" && azure.trim()) found.add(`azure:${azure.trim().toLowerCase()}`);
+  }
+  return [...found].sort();
 }

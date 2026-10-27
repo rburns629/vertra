@@ -42,9 +42,9 @@ import {
   setTeamRetired,
   type TeamMember,
 } from "../db/queries.js";
-import { teamMemberships, teams, type TeamRole } from "../db/schema.js";
+import { secretStoreIdentities, teamMemberships, teams, type TeamRole } from "../db/schema.js";
 import { db } from "../db/client.js";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   applySecretStoreObjects,
   deleteTeamNamespace,
@@ -60,7 +60,8 @@ import { copyPullSecret } from "../pullSecret.js";
 import { ensureTeamNetworkPolicy } from "../teamNetwork.js";
 import { ensureTeamQuota } from "../teamQuota.js";
 import { ensureNotRetired } from "./retired.js";
-import { checkSecretStoreObjects } from "../secretStores.js";
+import { checkSecretStoreObjects, cloudIdentities } from "../secretStores.js";
+import { isUniqueViolation } from "./products.js";
 
 /** A team's name is also its namespace's: a DNS label. */
 export const TeamName = Type.String({ pattern: "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" });
@@ -421,9 +422,34 @@ export async function applySecretStore(
       problems: checked.problems,
     });
   }
-  await applySecretStoreObjects(team.name, checked.objects, input.credential);
+  // Its cloud identities become the team's alone, in the same transaction
+  // as the cluster write: refused if another team's stores sign in as one.
+  const identities = cloudIdentities(checked.objects);
+  const inUse = (taken: string[]) =>
+    new ApiError(409, "IDENTITY_IN_USE", `Another team's SecretStore already signs in as ${taken.join(", ")}; each team needs its own.`,
+      Code.AlreadyExists, { identities: taken });
+  try {
+    await db.transaction(async (tx) => {
+      if (identities.length > 0) {
+        const taken = await tx
+          .select({ identity: secretStoreIdentities.identity })
+          .from(secretStoreIdentities)
+          .where(and(inArray(secretStoreIdentities.identity, identities), ne(secretStoreIdentities.teamId, team.id)));
+        if (taken.length > 0) throw inUse(taken.map((t) => t.identity));
+      }
+      await tx.delete(secretStoreIdentities).where(eq(secretStoreIdentities.teamId, team.id));
+      if (identities.length > 0) {
+        await tx.insert(secretStoreIdentities).values(identities.map((identity) => ({ identity, teamId: team.id })));
+      }
+      await applySecretStoreObjects(team.name, checked.objects, input.credential);
+    });
+  } catch (error) {
+    // Another team claimed one between the check and the insert.
+    if (isUniqueViolation(error)) throw inUse(identities);
+    throw error;
+  }
   log.info(
-    { team: team.name, by: caller?.id, objects: checked.objects.map((o) => `${o.kind}/${o.metadata.name}`) },
+    { team: team.name, by: caller?.id, objects: checked.objects.map((o) => `${o.kind}/${o.metadata.name}`), identities },
     "secret store applied",
   );
 }

@@ -128,6 +128,60 @@ func SecretStoreProblems(team string, documents []any) []string {
 	return problems
 }
 
+// identityAnnotations bind an ESO ServiceAccount to a cloud identity.
+var identityAnnotations = map[string]string{
+	"iam.gke.io/gcp-service-account":    "gcp",
+	"eks.amazonaws.com/role-arn":        "aws",
+	"azure.workload.identity/client-id": "azure",
+}
+
+// SecretStoreIdentities are the cloud identities a team's stores sign in
+// as, as the console reads them (console/src/secretStores.ts
+// cloudIdentities): its ESO ServiceAccounts' bindings and the role or
+// identity a store names, as <cloud>:<id>, lowercased.
+func SecretStoreIdentities(documents []any) []string {
+	found := map[string]bool{}
+	add := func(cloud string, v any) {
+		if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+			found[cloud+":"+strings.ToLower(strings.TrimSpace(s))] = true
+		}
+	}
+	for _, doc := range documents {
+		m, _ := doc.(map[string]any)
+		metadata, _ := m["metadata"].(map[string]any)
+		annotations, _ := metadata["annotations"].(map[string]any)
+		for key, value := range annotations {
+			if cloud, ok := identityAnnotations[key]; ok {
+				add(cloud, value)
+			}
+		}
+		spec, _ := m["spec"].(map[string]any)
+		provider, _ := spec["provider"].(map[string]any)
+		if aws, ok := provider["aws"].(map[string]any); ok {
+			add("aws", aws["role"])
+		}
+		if azure, ok := provider["azurekv"].(map[string]any); ok {
+			add("azure", azure["identityId"])
+		}
+	}
+	ids := make([]string, 0, len(found))
+	for id := range found {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func without(list []string, s string) []string {
+	var out []string
+	for _, v := range list {
+		if v != s {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 func (c *Catalog) secretStoreFolder(team string) string {
 	return c.path("teams", team, "secret-stores")
 }
@@ -170,11 +224,28 @@ func (c *Catalog) secretStoreDocuments(team string) ([]any, []string) {
 
 // SecretStoresCheck checks each team's SecretStore files.
 func (c *Catalog) SecretStoresCheck(teams []string) bool {
+	// Each cloud identity a store signs in as is one team's alone (the
+	// console refuses a second, IDENTITY_IN_USE): who holds which, across
+	// every team here, not only the ones checked.
+	holders := map[string][]string{}
+	for _, team := range c.SecretStoreTeams() {
+		if documents, problems := c.secretStoreDocuments(team); len(problems) == 0 {
+			for _, id := range SecretStoreIdentities(documents) {
+				holders[id] = append(holders[id], team)
+			}
+		}
+	}
 	ok := true
 	for _, team := range teams {
 		documents, problems := c.secretStoreDocuments(team)
 		if len(problems) == 0 {
 			problems = SecretStoreProblems(team, documents)
+		}
+		for _, id := range SecretStoreIdentities(documents) {
+			if others := without(holders[id], team); len(others) > 0 {
+				problems = append(problems, fmt.Sprintf("%s signs in as %s, as %s's store does: each team needs its own cloud identity.",
+					team, id, strings.Join(others, " and ")))
+			}
 		}
 		for _, p := range problems {
 			c.errorAt(c.secretStoreFolder(team), p)

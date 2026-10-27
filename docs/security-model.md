@@ -95,7 +95,14 @@ by different people on purpose:
 | **ExternalSecret** | Sync this key from that store into this Secret: a reference | Team members, self-service, on the Secrets tab |
 
 So a team can sync as many secrets as it likes without ever widening what
-its store can reach. Both are namespaced (never a ClusterSecretStore): an
+its store can reach. And a store's cloud identity is its team's alone: the
+console records the Google service account, AWS role or Azure identity each
+team's stores sign in as (their ESO ServiceAccounts' bindings, and a role a
+store assumes) and refuses another team's store naming one
+(`IDENTITY_IN_USE`; the catalog's `secret-stores check` says so in the pull
+request). A binding made only on the cloud's side (EKS Pod Identity, a
+Workload Identity principal for the namespace) isn't in the file, so keeping
+that one per team is the cloud administrator's. Both are namespaced (never a ClusterSecretStore): an
 ExternalSecret can't use another namespace's store, even applied by hand. A
 store's own credential (for a vault that can't federate, such as a
 1Password service account token) is set per install by a team member or

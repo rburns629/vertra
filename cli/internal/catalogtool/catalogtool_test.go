@@ -209,3 +209,27 @@ func TestBuildPlatform(t *testing.T) {
 		}
 	}
 }
+
+// A store's cloud identity is one team's alone: two teams' files naming the
+// same Google service account are refused, whichever is checked.
+func TestSecretStoresShareNoIdentity(t *testing.T) {
+	file := func(team, gsa string) string {
+		return "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: eso-gcp\n  annotations:\n    iam.gke.io/gcp-service-account: " + gsa +
+			"\n---\napiVersion: external-secrets.io/v1\nkind: SecretStore\nmetadata:\n  name: vault\n  namespace: " + team +
+			"\nspec:\n  provider:\n    gcpsm:\n      projectID: p\n"
+	}
+	c := catalogWith(t, map[string]string{
+		"teams/web/secret-stores/store.yaml":  file("web", "eso@p.iam.gserviceaccount.com"),
+		"teams/data/secret-stores/store.yaml": file("data", "ESO@p.iam.gserviceaccount.com"),
+		"teams/ops/secret-stores/store.yaml":  file("ops", "ops@p.iam.gserviceaccount.com"),
+	})
+	out := errorsOf(t, func(c *Catalog) bool { return !c.SecretStoresCheck([]string{"data", "ops"}) }, c)
+	if !strings.Contains(out, "data signs in as gcp:eso@p.iam.gserviceaccount.com, as web's store does") || strings.Contains(out, "ops signs in") {
+		t.Errorf("got:\n%s", out)
+	}
+
+	if ids := SecretStoreIdentities([]any{map[string]any{"kind": "SecretStore", "spec": map[string]any{"provider": map[string]any{
+		"aws": map[string]any{"role": "arn:aws:iam::1:role/R"}}}}}); strings.Join(ids, ",") != "aws:arn:aws:iam::1:role/r" {
+		t.Errorf("a role the store assumes: %v", ids)
+	}
+}

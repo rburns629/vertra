@@ -195,7 +195,7 @@ export const WiringTypesBody = Type.Record(
  * "already registered, update it" case onConflictDoUpdate handles (keyed on
  * name). drizzle-orm wraps the pg error, the one with the SQLSTATE as its
  * `.cause` (undocumented; seen in the installed version). */
-function isUniqueViolation(error: unknown): boolean {
+export function isUniqueViolation(error: unknown): boolean {
   const cause = error instanceof Error ? error.cause : undefined;
   return typeof cause === "object" && cause !== null && "code" in cause && cause.code === "23505";
 }
