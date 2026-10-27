@@ -942,6 +942,16 @@ export const secretStoreIdentities = pgTable("secret_store_identities", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Install-wide notification settings, one row: the team whose chat webhook
+// also gets admins' alerts (platform_alert, catalog_failing, and every
+// team's step_refused), when its webhook asks for those kinds.
+export const notificationSettings = pgTable("notification_settings", {
+  id: integer("id").primaryKey().default(1),
+  adminTeamId: uuid("admin_team_id").references(() => teams.id, { onDelete: "set null" }),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const catalogSync = pgTable("catalog_sync", {
   id: integer("id").primaryKey().default(1),
   // The release artifact's manifest digest, its commit and repository.

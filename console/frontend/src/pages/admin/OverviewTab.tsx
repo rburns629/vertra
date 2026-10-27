@@ -10,6 +10,7 @@ import Typography from "@mui/material/Typography";
 import { ApiError, getAuditCopy, getPolicySync, syncPolicies, type AuditCopy, type PolicySync } from "../../api";
 import { Pill } from "../../components/Pill";
 import { when } from "../../time";
+import { AdminChannelCard } from "./AdminChannelCard";
 import { CatalogCard } from "./CatalogCard";
 import { ImageSourcesCard } from "./ImageSourcesCard";
 import { FirstRunChecklist, InstallCard } from "./InstallCards";
@@ -184,6 +185,7 @@ export function OverviewTab() {
         <AuditCopyCard />
       </Box>
       <ImageSourcesCard />
+      <AdminChannelCard />
       <Typography variant="body2" color="text.secondary">
         Every image allowed to run here, with its last scan, is on{" "}
         <Link component={RouterLink} to="/observe">

@@ -496,6 +496,24 @@
      "public": false
     },
     {
+     "name": "GetAdminChannel",
+     "comment": "The admins' chat channel: the team whose webhook may also get admins'\nalerts (platform_alert, catalog_failing, and every team's step_refused).\nAdmins only.",
+     "input": "vertra.console.v1.GetAdminChannelRequest",
+     "output": "vertra.console.v1.GetAdminChannelResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetAdminChannel",
+     "comment": "Chooses it (a team's name), or none (empty). Admins only.",
+     "input": "vertra.console.v1.SetAdminChannelRequest",
+     "output": "vertra.console.v1.SetAdminChannelResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "GetEmailPreferences",
      "comment": "Which of your notifications are emailed to you too, and whether this\ninstall sends email at all.",
      "input": "vertra.console.v1.GetEmailPreferencesRequest",
@@ -4417,7 +4435,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "run_failed, run_succeeded, approval_waiting or catalog_failing."
+     "comment": "run_failed, run_succeeded, approval_waiting, catalog_failing,\nproduct_not_ready, step_refused or platform_alert."
     },
     {
      "name": "title",
@@ -4538,7 +4556,7 @@
      "type": "string",
      "repeated": true,
      "optional": false,
-     "comment": "The kinds it's sent: run_failed, approval_waiting, product_not_ready,\nstep_refused."
+     "comment": "The kinds it's sent: run_failed, approval_waiting, product_not_ready,\nstep_refused; and on the admins' channel, platform_alert and\ncatalog_failing."
     },
     {
      "name": "lastSentAt",
@@ -4594,6 +4612,57 @@
      "repeated": true,
      "optional": false,
      "comment": "The hosts this install allows."
+    },
+    {
+     "name": "adminChannel",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether this team is the admins' channel: its webhook may also get\nplatform_alert and catalog_failing."
+    }
+   ]
+  },
+  "vertra.console.v1.GetAdminChannelRequest": {
+   "name": "GetAdminChannelRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetAdminChannelResponse": {
+   "name": "GetAdminChannelResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team's name; empty: none."
+    }
+   ]
+  },
+  "vertra.console.v1.SetAdminChannelRequest": {
+   "name": "SetAdminChannelRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetAdminChannelResponse": {
+   "name": "SetAdminChannelResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

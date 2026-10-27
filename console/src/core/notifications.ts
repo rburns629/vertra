@@ -4,21 +4,25 @@
  * (notifier.ts makes and posts the notifications). Anyone signed in reads
  * and clears their own; a team's members see its webhook's host and state,
  * and its maintainers set, test and remove it. The URL is never sent back.
+ * An admin may choose one team as the admins' channel: its webhook may then
+ * also get admins' alerts.
  */
 import { Code } from "@connectrpc/connect";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { ApiError } from "../apiError.js";
+import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import { ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { findTeamByName } from "../db/queries.js";
-import { notificationEvents, teamWebhooks, userNotifications, users, type NotificationKind } from "../db/schema.js";
-import { decryptUrl, encryptUrl, postToWebhook, webhookUrlProblem } from "../notifier.js";
+import { notificationEvents, notificationSettings, teamWebhooks, userNotifications, users, type NotificationKind } from "../db/schema.js";
+import { adminChannel, decryptUrl, encryptUrl, postToWebhook, webhookUrlProblem } from "../notifier.js";
 import { ensureNotRetired } from "./retired.js";
 
 /** The kinds a team's webhook can get: a person's own runs finishing stay in their inbox. */
 export const WEBHOOK_KINDS: NotificationKind[] = ["run_failed", "approval_waiting", "product_not_ready", "step_refused"];
+/** And the admins' channel's, besides: admins' alerts. */
+export const ADMIN_WEBHOOK_KINDS: NotificationKind[] = ["platform_alert", "catalog_failing"];
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
   if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
@@ -71,7 +75,7 @@ export async function getTeamWebhook(caller: AuthUser | undefined, teamName: str
   ensureTeamMember(who, teamName);
   const team = await teamNamed(teamName);
   const [row] = await db.select().from(teamWebhooks).where(eq(teamWebhooks.teamId, team.id));
-  return { webhook: view(row), allowedHosts: config.notifications.webhookHosts };
+  return { webhook: view(row), allowedHosts: config.notifications.webhookHosts, adminChannel: (await adminChannel()).includes(team.name) };
 }
 
 /** Sets a team's webhook: a new URL, or (url empty) only which kinds the one it has gets. */
@@ -81,8 +85,9 @@ export async function setTeamWebhook(caller: AuthUser | undefined, teamName: str
   const team = await teamNamed(teamName);
   ensureNotRetired(team);
   const wanted = [...new Set(kinds)];
-  const unknown = wanted.filter((k) => !(WEBHOOK_KINDS as string[]).includes(k));
-  if (unknown.length > 0) throw new ApiError(400, "BAD_REQUEST", `A webhook can get ${WEBHOOK_KINDS.join(" and ")}, not ${unknown.join(", ")}.`);
+  const allowed = (await adminChannel()).includes(team.name) ? [...WEBHOOK_KINDS, ...ADMIN_WEBHOOK_KINDS] : WEBHOOK_KINDS;
+  const unknown = wanted.filter((k) => !(allowed as string[]).includes(k));
+  if (unknown.length > 0) throw new ApiError(400, "BAD_REQUEST", `This webhook can get ${allowed.join(", ")}, not ${unknown.join(", ")}.`);
   const [existing] = await db.select().from(teamWebhooks).where(eq(teamWebhooks.teamId, team.id));
   let fields: { urlEncrypted: string; host: string } | undefined;
   if (url) {
@@ -123,6 +128,29 @@ export async function testTeamWebhook(caller: AuthUser | undefined, teamName: st
     await db.update(teamWebhooks).set({ lastError: why }).where(eq(teamWebhooks.teamId, team.id));
     return { sent: false, error: why };
   }
+}
+
+/** The admins' chat channel: which team's webhook also gets admins' alerts. */
+export async function getAdminChannel(caller: AuthUser | undefined) {
+  forbiddenUnlessAdmin(signedIn(caller), "Only admins choose where admins' alerts are posted.");
+  return { team: (await adminChannel())[0] ?? "" };
+}
+
+/** Chooses the admins' channel (a team), or none (team empty). */
+export async function setAdminChannel(caller: AuthUser | undefined, teamName: string) {
+  const who = signedIn(caller);
+  forbiddenUnlessAdmin(who, "Only admins choose where admins' alerts are posted.");
+  let adminTeamId: string | null = null;
+  if (teamName) {
+    const team = await teamNamed(teamName);
+    ensureNotRetired(team);
+    adminTeamId = team.id;
+  }
+  await db
+    .insert(notificationSettings)
+    .values({ id: 1, adminTeamId, updatedBy: who.id, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: notificationSettings.id, set: { adminTeamId, updatedBy: who.id, updatedAt: new Date() } });
+  return { team: teamName };
 }
 
 const EMAIL_KINDS: NotificationKind[] = ["run_failed", "run_succeeded", "approval_waiting", "product_not_ready", "catalog_failing", "step_refused", "platform_alert"];

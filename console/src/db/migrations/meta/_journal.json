@@ -239,6 +239,13 @@
       "when": 1793115602843,
       "tag": "0033_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793121048063,
+      "tag": "0034_admin_channel",
+      "breakpoints": true
     }
   ]
 }

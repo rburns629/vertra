@@ -53,6 +53,12 @@ const (
 	// NotificationServiceTestTeamWebhookProcedure is the fully-qualified name of the
 	// NotificationService's TestTeamWebhook RPC.
 	NotificationServiceTestTeamWebhookProcedure = "/vertra.console.v1.NotificationService/TestTeamWebhook"
+	// NotificationServiceGetAdminChannelProcedure is the fully-qualified name of the
+	// NotificationService's GetAdminChannel RPC.
+	NotificationServiceGetAdminChannelProcedure = "/vertra.console.v1.NotificationService/GetAdminChannel"
+	// NotificationServiceSetAdminChannelProcedure is the fully-qualified name of the
+	// NotificationService's SetAdminChannel RPC.
+	NotificationServiceSetAdminChannelProcedure = "/vertra.console.v1.NotificationService/SetAdminChannel"
 	// NotificationServiceGetEmailPreferencesProcedure is the fully-qualified name of the
 	// NotificationService's GetEmailPreferences RPC.
 	NotificationServiceGetEmailPreferencesProcedure = "/vertra.console.v1.NotificationService/GetEmailPreferences"
@@ -78,6 +84,12 @@ type NotificationServiceClient interface {
 	DeleteTeamWebhook(context.Context, *connect.Request[v1.DeleteTeamWebhookRequest]) (*connect.Response[v1.DeleteTeamWebhookResponse], error)
 	// Posts a test message to it (its maintainers), and says whether it went.
 	TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error)
+	// The admins' chat channel: the team whose webhook may also get admins'
+	// alerts (platform_alert, catalog_failing, and every team's step_refused).
+	// Admins only.
+	GetAdminChannel(context.Context, *connect.Request[v1.GetAdminChannelRequest]) (*connect.Response[v1.GetAdminChannelResponse], error)
+	// Chooses it (a team's name), or none (empty). Admins only.
+	SetAdminChannel(context.Context, *connect.Request[v1.SetAdminChannelRequest]) (*connect.Response[v1.SetAdminChannelResponse], error)
 	// Which of your notifications are emailed to you too, and whether this
 	// install sends email at all.
 	GetEmailPreferences(context.Context, *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error)
@@ -136,6 +148,19 @@ func NewNotificationServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(notificationServiceMethods.ByName("TestTeamWebhook")),
 			connect.WithClientOptions(opts...),
 		),
+		getAdminChannel: connect.NewClient[v1.GetAdminChannelRequest, v1.GetAdminChannelResponse](
+			httpClient,
+			baseURL+NotificationServiceGetAdminChannelProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("GetAdminChannel")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setAdminChannel: connect.NewClient[v1.SetAdminChannelRequest, v1.SetAdminChannelResponse](
+			httpClient,
+			baseURL+NotificationServiceSetAdminChannelProcedure,
+			connect.WithSchema(notificationServiceMethods.ByName("SetAdminChannel")),
+			connect.WithClientOptions(opts...),
+		),
 		getEmailPreferences: connect.NewClient[v1.GetEmailPreferencesRequest, v1.GetEmailPreferencesResponse](
 			httpClient,
 			baseURL+NotificationServiceGetEmailPreferencesProcedure,
@@ -160,6 +185,8 @@ type notificationServiceClient struct {
 	setTeamWebhook        *connect.Client[v1.SetTeamWebhookRequest, v1.SetTeamWebhookResponse]
 	deleteTeamWebhook     *connect.Client[v1.DeleteTeamWebhookRequest, v1.DeleteTeamWebhookResponse]
 	testTeamWebhook       *connect.Client[v1.TestTeamWebhookRequest, v1.TestTeamWebhookResponse]
+	getAdminChannel       *connect.Client[v1.GetAdminChannelRequest, v1.GetAdminChannelResponse]
+	setAdminChannel       *connect.Client[v1.SetAdminChannelRequest, v1.SetAdminChannelResponse]
 	getEmailPreferences   *connect.Client[v1.GetEmailPreferencesRequest, v1.GetEmailPreferencesResponse]
 	setEmailPreferences   *connect.Client[v1.SetEmailPreferencesRequest, v1.SetEmailPreferencesResponse]
 }
@@ -194,6 +221,16 @@ func (c *notificationServiceClient) TestTeamWebhook(ctx context.Context, req *co
 	return c.testTeamWebhook.CallUnary(ctx, req)
 }
 
+// GetAdminChannel calls vertra.console.v1.NotificationService.GetAdminChannel.
+func (c *notificationServiceClient) GetAdminChannel(ctx context.Context, req *connect.Request[v1.GetAdminChannelRequest]) (*connect.Response[v1.GetAdminChannelResponse], error) {
+	return c.getAdminChannel.CallUnary(ctx, req)
+}
+
+// SetAdminChannel calls vertra.console.v1.NotificationService.SetAdminChannel.
+func (c *notificationServiceClient) SetAdminChannel(ctx context.Context, req *connect.Request[v1.SetAdminChannelRequest]) (*connect.Response[v1.SetAdminChannelResponse], error) {
+	return c.setAdminChannel.CallUnary(ctx, req)
+}
+
 // GetEmailPreferences calls vertra.console.v1.NotificationService.GetEmailPreferences.
 func (c *notificationServiceClient) GetEmailPreferences(ctx context.Context, req *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error) {
 	return c.getEmailPreferences.CallUnary(ctx, req)
@@ -222,6 +259,12 @@ type NotificationServiceHandler interface {
 	DeleteTeamWebhook(context.Context, *connect.Request[v1.DeleteTeamWebhookRequest]) (*connect.Response[v1.DeleteTeamWebhookResponse], error)
 	// Posts a test message to it (its maintainers), and says whether it went.
 	TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error)
+	// The admins' chat channel: the team whose webhook may also get admins'
+	// alerts (platform_alert, catalog_failing, and every team's step_refused).
+	// Admins only.
+	GetAdminChannel(context.Context, *connect.Request[v1.GetAdminChannelRequest]) (*connect.Response[v1.GetAdminChannelResponse], error)
+	// Chooses it (a team's name), or none (empty). Admins only.
+	SetAdminChannel(context.Context, *connect.Request[v1.SetAdminChannelRequest]) (*connect.Response[v1.SetAdminChannelResponse], error)
 	// Which of your notifications are emailed to you too, and whether this
 	// install sends email at all.
 	GetEmailPreferences(context.Context, *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error)
@@ -276,6 +319,19 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 		connect.WithSchema(notificationServiceMethods.ByName("TestTeamWebhook")),
 		connect.WithHandlerOptions(opts...),
 	)
+	notificationServiceGetAdminChannelHandler := connect.NewUnaryHandler(
+		NotificationServiceGetAdminChannelProcedure,
+		svc.GetAdminChannel,
+		connect.WithSchema(notificationServiceMethods.ByName("GetAdminChannel")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	notificationServiceSetAdminChannelHandler := connect.NewUnaryHandler(
+		NotificationServiceSetAdminChannelProcedure,
+		svc.SetAdminChannel,
+		connect.WithSchema(notificationServiceMethods.ByName("SetAdminChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	notificationServiceGetEmailPreferencesHandler := connect.NewUnaryHandler(
 		NotificationServiceGetEmailPreferencesProcedure,
 		svc.GetEmailPreferences,
@@ -303,6 +359,10 @@ func NewNotificationServiceHandler(svc NotificationServiceHandler, opts ...conne
 			notificationServiceDeleteTeamWebhookHandler.ServeHTTP(w, r)
 		case NotificationServiceTestTeamWebhookProcedure:
 			notificationServiceTestTeamWebhookHandler.ServeHTTP(w, r)
+		case NotificationServiceGetAdminChannelProcedure:
+			notificationServiceGetAdminChannelHandler.ServeHTTP(w, r)
+		case NotificationServiceSetAdminChannelProcedure:
+			notificationServiceSetAdminChannelHandler.ServeHTTP(w, r)
 		case NotificationServiceGetEmailPreferencesProcedure:
 			notificationServiceGetEmailPreferencesHandler.ServeHTTP(w, r)
 		case NotificationServiceSetEmailPreferencesProcedure:
@@ -338,6 +398,14 @@ func (UnimplementedNotificationServiceHandler) DeleteTeamWebhook(context.Context
 
 func (UnimplementedNotificationServiceHandler) TestTeamWebhook(context.Context, *connect.Request[v1.TestTeamWebhookRequest]) (*connect.Response[v1.TestTeamWebhookResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.TestTeamWebhook is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) GetAdminChannel(context.Context, *connect.Request[v1.GetAdminChannelRequest]) (*connect.Response[v1.GetAdminChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.GetAdminChannel is not implemented"))
+}
+
+func (UnimplementedNotificationServiceHandler) SetAdminChannel(context.Context, *connect.Request[v1.SetAdminChannelRequest]) (*connect.Response[v1.SetAdminChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.NotificationService.SetAdminChannel is not implemented"))
 }
 
 func (UnimplementedNotificationServiceHandler) GetEmailPreferences(context.Context, *connect.Request[v1.GetEmailPreferencesRequest]) (*connect.Response[v1.GetEmailPreferencesResponse], error) {

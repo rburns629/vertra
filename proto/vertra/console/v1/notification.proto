@@ -31,6 +31,14 @@ service NotificationService {
   rpc DeleteTeamWebhook(DeleteTeamWebhookRequest) returns (DeleteTeamWebhookResponse);
   // Posts a test message to it (its maintainers), and says whether it went.
   rpc TestTeamWebhook(TestTeamWebhookRequest) returns (TestTeamWebhookResponse);
+  // The admins' chat channel: the team whose webhook may also get admins'
+  // alerts (platform_alert, catalog_failing, and every team's step_refused).
+  // Admins only.
+  rpc GetAdminChannel(GetAdminChannelRequest) returns (GetAdminChannelResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Chooses it (a team's name), or none (empty). Admins only.
+  rpc SetAdminChannel(SetAdminChannelRequest) returns (SetAdminChannelResponse);
   // Which of your notifications are emailed to you too, and whether this
   // install sends email at all.
   rpc GetEmailPreferences(GetEmailPreferencesRequest) returns (GetEmailPreferencesResponse) {
@@ -44,7 +52,8 @@ service NotificationService {
 
 message Notification {
   string id = 1;
-  // run_failed, run_succeeded, approval_waiting or catalog_failing.
+  // run_failed, run_succeeded, approval_waiting, catalog_failing,
+  // product_not_ready, step_refused or platform_alert.
   string kind = 2;
   string title = 3;
   string body = 4;
@@ -77,7 +86,8 @@ message TeamWebhook {
   // Its host, such as hooks.slack.com.
   string host = 2;
   // The kinds it's sent: run_failed, approval_waiting, product_not_ready,
-  // step_refused.
+  // step_refused; and on the admins' channel, platform_alert and
+  // catalog_failing.
   repeated string kinds = 3;
   google.protobuf.Timestamp last_sent_at = 4;
   // Why the last post failed, if it did.
@@ -93,6 +103,24 @@ message GetTeamWebhookResponse {
   TeamWebhook webhook = 1;
   // The hosts this install allows.
   repeated string allowed_hosts = 2;
+  // Whether this team is the admins' channel: its webhook may also get
+  // platform_alert and catalog_failing.
+  bool admin_channel = 3;
+}
+
+message GetAdminChannelRequest {}
+
+message GetAdminChannelResponse {
+  // The team's name; empty: none.
+  string team = 1;
+}
+
+message SetAdminChannelRequest {
+  string team = 1;
+}
+
+message SetAdminChannelResponse {
+  string team = 1;
 }
 
 message SetTeamWebhookRequest {

@@ -18,27 +18,36 @@ const KINDS = [
   { kind: "step_refused", label: "The cluster refused a step of the team (an unsigned or unallowed image, say)" },
 ] as const;
 
+/** What the admins' channel may get besides (an admin chooses the team, on the Admin page). */
+const ADMIN_KINDS = [
+  { kind: "platform_alert", label: "Admins' alerts: a team purged, the image sources changed, a policy not syncing" },
+  { kind: "catalog_failing", label: "The catalog isn't being pulled" },
+] as const;
+
 /**
  * The team's chat webhook (Slack, Google Chat, Teams): where its
  * notifications are posted. Its maintainers set, test and remove it; the URL
  * is never shown again once saved, only its host. Members see whether it's
- * set and working.
+ * set and working. On the admins' channel it may get admins' alerts too.
  */
 export function WebhookSection({ team, canManage, retired }: { team: string; canManage: boolean; retired: boolean }) {
   const [webhook, setWebhook] = useState<TeamWebhook | null>(null);
   const [allowed, setAllowed] = useState<string[]>([]);
   const [url, setUrl] = useState("");
   const [kinds, setKinds] = useState<string[]>(KINDS.map((k) => k.kind));
+  const [adminChannel, setAdminChannel] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     getTeamWebhook(team)
-      .then(({ webhook: found, allowedHosts }) => {
+      .then(({ webhook: found, allowedHosts, adminChannel: forAdmins }) => {
         setWebhook(found);
         setAllowed(allowedHosts);
+        setAdminChannel(forAdmins);
         if (found.configured) setKinds(found.kinds);
+        else if (forAdmins) setKinds([...KINDS, ...ADMIN_KINDS].map((k) => k.kind));
       })
       .catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't load the webhook."); });
   }, [team]);
@@ -110,7 +119,7 @@ export function WebhookSection({ team, canManage, retired }: { team: string; can
             size="small"
           />
           <Box sx={{ display: "flex", flexDirection: "column" }}>
-            {KINDS.map(({ kind, label }) => (
+            {[...KINDS, ...(adminChannel ? ADMIN_KINDS : [])].map(({ kind, label }) => (
               <FormControlLabel key={kind} control={<Checkbox checked={kinds.includes(kind)} onChange={(e) => { toggle(kind, e.target.checked); }} />} label={label} />
             ))}
           </Box>

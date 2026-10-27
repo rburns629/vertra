@@ -259,9 +259,10 @@ design.
   changed, a policy sync failing ten minutes, a run's image gone from the
   registry (`platform_alert`) tell admins. Both are emailed by default.
   The refusal alert was seen for real on EKS (2026-10-27, the reader install).
-  Left: an install-level chat webhook for admins (only teams have one), and
-  a policy-sync alert said once per outage with two consoles (each replica
-  keys its own).
+  Admins' alerts in chat (done 2026-10-27, proven on kind): an admin
+  chooses a team (Admin page) whose webhook may also get `platform_alert`,
+  `catalog_failing` and every team's `step_refused`; a policy-sync alert is
+  keyed by policy and day, so two consoles say it once.
 - [ ] **Prove the scheduler at scale on a cloud cluster:** the watches
   surviving an API server restart and the 5-minute relist, API rate limits
   at `scheduler_executor_concurrency` 16, and a reclaimed Spot step failing

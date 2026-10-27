@@ -5,7 +5,9 @@ import { Type } from "@sinclair/typebox";
 import {
   deleteTeamWebhook,
   emailPreferences,
+  getAdminChannel,
   getTeamWebhook,
+  setAdminChannel,
   setEmailPreferences,
   listNotifications,
   markNotificationsRead,
@@ -49,7 +51,7 @@ export function notificationService(): ServiceImpl<typeof NotificationService> {
     async getTeamWebhook(req, ctx) {
       const { team } = check({ team: Team }, req);
       const found = await getTeamWebhook(callerOf(ctx), team);
-      return { webhook: webhook(found.webhook), allowedHosts: found.allowedHosts };
+      return { webhook: webhook(found.webhook), allowedHosts: found.allowedHosts, adminChannel: found.adminChannel };
     },
 
     async setTeamWebhook(req, ctx) {
@@ -64,6 +66,15 @@ export function notificationService(): ServiceImpl<typeof NotificationService> {
       const { team } = check({ team: Team }, req);
       await deleteTeamWebhook(callerOf(ctx), team);
       return {};
+    },
+
+    async getAdminChannel(_req, ctx) {
+      return getAdminChannel(callerOf(ctx));
+    },
+
+    async setAdminChannel(req, ctx) {
+      const { team } = check({ team: Type.String({ maxLength: 63 }) }, req);
+      return setAdminChannel(callerOf(ctx), team);
     },
 
     async getEmailPreferences(_req, ctx) {

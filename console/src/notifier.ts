@@ -36,7 +36,19 @@ import { config } from "./config.js";
 import { seal, unseal } from "./sealed.js";
 import { backendAllowed } from "./core/apis.js";
 import { db } from "./db/client.js";
-import { catalogSync, emailDeliveries, notificationEvents, teamMemberships, teams, teamWebhooks, userNotifications, users, webhookDeliveries, type NotificationKind } from "./db/schema.js";
+import {
+  catalogSync,
+  emailDeliveries,
+  notificationEvents,
+  notificationSettings,
+  teamMemberships,
+  teams,
+  teamWebhooks,
+  userNotifications,
+  users,
+  webhookDeliveries,
+  type NotificationKind,
+} from "./db/schema.js";
 import { findSubmittedExecutions } from "./db/queries.js";
 import { PLATFORM_ERRORS } from "./failureHelp.js";
 import { listAwaitingApproval, listRefusals } from "./kernel/client.js";
@@ -195,6 +207,18 @@ export async function notifyApprovals(): Promise<number> {
   return made;
 }
 
+/** The admins' chat channel: the team an admin chose, whose webhook also
+ * gets admins' alerts (when it asks for their kinds); none while it's
+ * retired or gone. */
+export async function adminChannel(): Promise<string[]> {
+  const [row] = await db
+    .select({ name: teams.name })
+    .from(notificationSettings)
+    .innerJoin(teams, eq(teams.id, notificationSettings.adminTeamId))
+    .where(and(eq(notificationSettings.id, 1), isNull(teams.deletedAt), isNull(teams.retiredAt)));
+  return row ? [row.name] : [];
+}
+
 /** The install's admins who read an inbox. */
 async function adminIds(): Promise<string[]> {
   const rows = await db.select({ id: users.id }).from(users).where(and(eq(users.isAdmin, true), eq(users.isBot, false)));
@@ -211,6 +235,7 @@ export async function notifyRefusals(): Promise<number> {
   if (refused.length === 0) return 0;
   const runs = new Map((await findSubmittedExecutions([...new Set(refused.map((r) => r.executionId))])).map((e) => [e.executionId, e]));
   const admins = await adminIds();
+  const channel = await adminChannel();
   let made = 0;
   for (const r of refused) {
     const fresh = await notify({
@@ -220,7 +245,7 @@ export async function notifyRefusals(): Promise<number> {
       body: `${PLATFORM_ERRORS[r.code]?.means ?? r.message} Image: ${r.image}`,
       link: `/runs/${r.executionId}`,
       userIds: await people([...admins, runs.get(r.executionId)?.submittedBy ?? null]),
-      teams: [r.team],
+      teams: [r.team, ...channel],
     });
     if (fresh) made += 1;
   }
@@ -231,7 +256,7 @@ export async function notifyRefusals(): Promise<number> {
 export async function platformAlert(key: string, title: string, body: string, by?: string, link = "/admin"): Promise<boolean> {
   const [who] = by ? await db.select({ email: users.email }).from(users).where(eq(users.id, by)) : [];
   const said = who ? `${body}${body ? " " : ""}By ${who.email}.` : body;
-  return notify({ key: `platform:${key}`, kind: "platform_alert", title, body: said, link, userIds: await adminIds(), teams: [] });
+  return notify({ key: `platform:${key}`, kind: "platform_alert", title, body: said, link, userIds: await adminIds(), teams: await adminChannel() });
 }
 
 /** A policy the console keeps in the cluster failing to sync for a while. */
@@ -240,8 +265,10 @@ export async function notifyPolicySync(): Promise<number> {
   for (const [name, outcome] of Object.entries(policySyncOutcomes())) {
     if (!outcome || outcome.ok || !outcome.failingSince) continue;
     if (Date.now() - Date.parse(outcome.failingSince) < POLICY_GRACE_MS) continue;
+    // Keyed by the day, not this console's failingSince: two consoles
+    // seeing the same outage say it once.
     const fresh = await platformAlert(
-      `policy:${name}:${outcome.failingSince}`,
+      `policy:${name}:${new Date().toISOString().slice(0, 10)}`,
       `The ${name} isn't being synced to the cluster`,
       `Failing since ${outcome.failingSince}: ${(outcome.error ?? "").slice(0, 500)}`,
     );
@@ -263,7 +290,7 @@ export async function notifyCatalog(): Promise<boolean> {
     body: status.error.slice(0, 500),
     link: "/admin",
     userIds: await adminIds(),
-    teams: [],
+    teams: await adminChannel(),
   });
 }
 

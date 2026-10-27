@@ -1959,9 +1959,18 @@ function webhookOf(w: { configured: boolean; host: string; kinds: string[]; last
   return { configured: w?.configured ?? false, host: w?.host ?? "", kinds: w?.kinds ?? [], lastSentAt: iso(w?.lastSentAt), lastError: w?.lastError || null };
 }
 
-export async function getTeamWebhook(team: string): Promise<{ webhook: TeamWebhook; allowedHosts: string[] }> {
+export async function getTeamWebhook(team: string): Promise<{ webhook: TeamWebhook; allowedHosts: string[]; adminChannel: boolean }> {
   const response = await call(() => notificationsApi.getTeamWebhook({ team }));
-  return { webhook: webhookOf(response.webhook), allowedHosts: response.allowedHosts };
+  return { webhook: webhookOf(response.webhook), allowedHosts: response.allowedHosts, adminChannel: response.adminChannel };
+}
+
+/** The team whose webhook also gets admins' alerts; "" for none (admins only). */
+export async function getAdminChannel(): Promise<string> {
+  return (await call(() => notificationsApi.getAdminChannel({}))).team;
+}
+
+export async function setAdminChannel(team: string): Promise<string> {
+  return (await call(() => notificationsApi.setAdminChannel({ team }))).team;
 }
 
 /** Sets it: a new URL, or (url "") only the kinds. */

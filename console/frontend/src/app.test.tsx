@@ -653,6 +653,30 @@ describe("a new install", () => {
   });
 });
 
+describe("the admins' chat channel", () => {
+  it("lets an admin choose the team whose webhook gets admins' alerts", async () => {
+    const saved: Record<string, unknown>[] = [];
+    await renderAt("/admin", ADMIN, {
+      "AdminService/GetCatalogStatus": { status: { release: "" } },
+      "ImageService/GetImagePolicy": { policy: { exists: true, source: "registry.example/", allowed: ["registry.example/"] } },
+      "TeamService/ListTeams": { teams: [{ id: "t1", name: "platform" }, { id: "t2", name: "old", retiredAt: "2026-10-01T00:00:00Z" }] },
+      "UserService/ListUsers": { users: [{ email: "ana@acme.com", isAdmin: true }] },
+      "NotificationService/GetAdminChannel": { team: "" },
+      "NotificationService/SetAdminChannel": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return { team: request["team"] };
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "Admins' alerts in chat" })).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Team" }));
+    expect(screen.queryByRole("option", { name: "old" })).toBeNull(); // retired
+    fireEvent.click(await screen.findByRole("option", { name: "platform" }));
+    const card = screen.getByRole("heading", { name: "Admins' alerts in chat" }).closest("div") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Save" }));
+    await waitFor(() => { expect(saved).toEqual([{ team: "platform" }]); });
+  });
+});
+
 describe("pages that moved", () => {
   it.each([
     ["/executions", "Runs"],

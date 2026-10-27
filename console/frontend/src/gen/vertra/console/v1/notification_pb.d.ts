@@ -23,7 +23,8 @@ export declare type Notification = Message<"vertra.console.v1.Notification"> & {
   id: string;
 
   /**
-   * run_failed, run_succeeded, approval_waiting or catalog_failing.
+   * run_failed, run_succeeded, approval_waiting, catalog_failing,
+   * product_not_ready, step_refused or platform_alert.
    *
    * @generated from field: string kind = 2;
    */
@@ -155,7 +156,8 @@ export declare type TeamWebhook = Message<"vertra.console.v1.TeamWebhook"> & {
 
   /**
    * The kinds it's sent: run_failed, approval_waiting, product_not_ready,
-   * step_refused.
+   * step_refused; and on the admins' channel, platform_alert and
+   * catalog_failing.
    *
    * @generated from field: repeated string kinds = 3;
    */
@@ -216,6 +218,14 @@ export declare type GetTeamWebhookResponse = Message<"vertra.console.v1.GetTeamW
    * @generated from field: repeated string allowed_hosts = 2;
    */
   allowedHosts: string[];
+
+  /**
+   * Whether this team is the admins' channel: its webhook may also get
+   * platform_alert and catalog_failing.
+   *
+   * @generated from field: bool admin_channel = 3;
+   */
+  adminChannel: boolean;
 };
 
 /**
@@ -223,6 +233,68 @@ export declare type GetTeamWebhookResponse = Message<"vertra.console.v1.GetTeamW
  * Use `create(GetTeamWebhookResponseSchema)` to create a new message.
  */
 export declare const GetTeamWebhookResponseSchema: GenMessage<GetTeamWebhookResponse>;
+
+/**
+ * @generated from message vertra.console.v1.GetAdminChannelRequest
+ */
+export declare type GetAdminChannelRequest = Message<"vertra.console.v1.GetAdminChannelRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetAdminChannelRequest.
+ * Use `create(GetAdminChannelRequestSchema)` to create a new message.
+ */
+export declare const GetAdminChannelRequestSchema: GenMessage<GetAdminChannelRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetAdminChannelResponse
+ */
+export declare type GetAdminChannelResponse = Message<"vertra.console.v1.GetAdminChannelResponse"> & {
+  /**
+   * The team's name; empty: none.
+   *
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetAdminChannelResponse.
+ * Use `create(GetAdminChannelResponseSchema)` to create a new message.
+ */
+export declare const GetAdminChannelResponseSchema: GenMessage<GetAdminChannelResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetAdminChannelRequest
+ */
+export declare type SetAdminChannelRequest = Message<"vertra.console.v1.SetAdminChannelRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetAdminChannelRequest.
+ * Use `create(SetAdminChannelRequestSchema)` to create a new message.
+ */
+export declare const SetAdminChannelRequestSchema: GenMessage<SetAdminChannelRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetAdminChannelResponse
+ */
+export declare type SetAdminChannelResponse = Message<"vertra.console.v1.SetAdminChannelResponse"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetAdminChannelResponse.
+ * Use `create(SetAdminChannelResponseSchema)` to create a new message.
+ */
+export declare const SetAdminChannelResponseSchema: GenMessage<SetAdminChannelResponse>;
 
 /**
  * @generated from message vertra.console.v1.SetTeamWebhookRequest
@@ -474,6 +546,28 @@ export declare const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof TestTeamWebhookRequestSchema;
     output: typeof TestTeamWebhookResponseSchema;
+  },
+  /**
+   * The admins' chat channel: the team whose webhook may also get admins'
+   * alerts (platform_alert, catalog_failing, and every team's step_refused).
+   * Admins only.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.GetAdminChannel
+   */
+  getAdminChannel: {
+    methodKind: "unary";
+    input: typeof GetAdminChannelRequestSchema;
+    output: typeof GetAdminChannelResponseSchema;
+  },
+  /**
+   * Chooses it (a team's name), or none (empty). Admins only.
+   *
+   * @generated from rpc vertra.console.v1.NotificationService.SetAdminChannel
+   */
+  setAdminChannel: {
+    methodKind: "unary";
+    input: typeof SetAdminChannelRequestSchema;
+    output: typeof SetAdminChannelResponseSchema;
   },
   /**
    * Which of your notifications are emailed to you too, and whether this

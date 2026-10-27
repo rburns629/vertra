@@ -463,6 +463,17 @@ The catalog's wiring vocabulary, from its `schema/types.yaml`: the names a produ
 | `default_provider` | text | yes | `<team>/<product>.<action>` added to an order automatically when a required input needs this type and nothing provides it. |
 | `updated_at` | timestamptz | no | |
 
+### notification_settings
+
+Install-wide notification settings, one row: the admins' chat channel, a team whose webhook may also get admins' alerts (`platform_alert`, `catalog_failing`, and every team's `step_refused`) when it asks for those kinds. Admins choose it on the Admin page.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | no | Always 1. |
+| `admin_team_id` | uuid | yes | The team (`teams.id`); none when unset or the team is deleted. A retired one is skipped. |
+| `updated_by` | uuid | yes | The admin who chose it (`users.id`). |
+| `updated_at` | timestamptz | no | When. |
+
 ### secret_store_identities
 
 The cloud identities each team's SecretStores sign in as: a Google service account, an AWS role or an Azure identity, from its ESO ServiceAccounts' annotations and the role a store assumes. Each is one team's alone, so another team's store can't sign in as it and read that team's secrets; applying a store that names one another team holds is refused (`IDENTITY_IN_USE`). A team keeps its own while retired or purged.

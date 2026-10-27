@@ -14,7 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, recordSubmittedExecution } from "../src/db/queries.js";
-import { notificationEvents, teams, teamWebhooks, userNotifications, users as usersTable, webhookDeliveries } from "../src/db/schema.js";
+import { notificationEvents, notificationSettings, teams, teamWebhooks, userNotifications, users as usersTable, webhookDeliveries } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { listAwaitingApproval, listRefusals } from "../src/kernel/client.js";
 import { policySyncOutcomes } from "../src/policySync.js";
@@ -231,6 +231,26 @@ describe("a platform alert", () => {
     expect((await inbox(member.id)).some((n) => n.key === `platform:${key}`)).toBe(false);
   });
 
+  it("is posted to the admins' channel too, a team an admin chooses, when its webhook asks for it", async () => {
+    const admin = await users.makeUser({ admin: true });
+    const adminToken = await users.signIn(admin.email);
+    // Only admins choose it; until then the team's webhook can't ask for admins' kinds.
+    expect((await call(maintainerToken, "NotificationService/SetAdminChannel", { team })).code).toBe("permission_denied");
+    expect((await call(maintainerToken, "NotificationService/SetTeamWebhook", { team, kinds: ["run_failed", "platform_alert"] })).code).toBe("invalid_argument");
+    expect((await call(adminToken, "NotificationService/SetAdminChannel", { team })).code).toBe("ok");
+    expect((await call(adminToken, "NotificationService/GetAdminChannel", {})).body).toEqual({ team });
+    expect((await call(memberToken, "NotificationService/GetTeamWebhook", { team })).body).toMatchObject({ adminChannel: true });
+    expect((await call(maintainerToken, "NotificationService/SetTeamWebhook", { team, kinds: ["run_failed", "platform_alert"] })).code).toBe("ok");
+
+    const key = `${prefix}-channel`;
+    await platformAlert(key, "The allowed image sources changed", "Now: x.");
+    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:${key}`));
+    expect(await db.select().from(webhookDeliveries).where(eq(webhookDeliveries.eventId, event?.id ?? ""))).toHaveLength(1);
+
+    expect((await call(adminToken, "NotificationService/SetAdminChannel", { team: "" })).code).toBe("ok");
+    await db.delete(notificationSettings);
+  });
+
   it("is made for a policy sync failing for ten minutes, not for one bad pass", async () => {
     const recent = new Date(Date.now() - 60_000).toISOString();
     const long = new Date(Date.now() - 11 * 60_000).toISOString();
@@ -241,9 +261,10 @@ describe("a platform alert", () => {
     });
     expect(await notifyPolicySync()).toBe(1);
     expect(await notifyPolicySync()).toBe(0);
-    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${long}`));
+    const day = new Date().toISOString().slice(0, 10);
+    const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${day}`));
     expect(event?.title).toBe("The scanPolicy isn't being synced to the cluster");
-    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${long}`));
+    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:policy:scanPolicy:${day}`));
     vi.mocked(policySyncOutcomes).mockReturnValue({});
   });
 });
