@@ -7,7 +7,7 @@
  * the real test database.
  */
 import { randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -15,7 +15,7 @@ import { planOrder } from "../src/core/orders.js";
 import type { TeamProduct } from "../src/core/templates.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, findTeamByName, upsertProduct } from "../src/db/queries.js";
-import { wiringTypes } from "../src/db/schema.js";
+import { resources, wiringTypes } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { caller, rpcClient } from "./rpc.js";
 import { lockWiringTypes } from "./wiringTypesLock.js";
@@ -106,6 +106,55 @@ describe("planning an order", () => {
     expect(problems).toMatchObject([{ code: "CYCLE", step: "a, b" }]);
   });
 
+  it("leaves what an action makes to the person: a project.create's project id is never wired", () => {
+    const create = product("project-create", { projectId: "gcp.project" }, { projectId: "gcp.project" });
+    const { steps, problems } = planOrder([create], types, defaults, []);
+    expect(problems).toEqual([]);
+    expect(steps.map((s) => s.id)).toEqual(["project-create"]);
+    expect(steps[0]?.inputs["projectId"]).toEqual({ kind: "unset" });
+  });
+
+  it("offers what's already there before adding a new one, none chosen", () => {
+    const existing = [
+      { id: "r1", wiringType: "gcp.project", value: "web-prod", label: "web-prod (gcp/project)" },
+      { id: "r2", wiringType: "gcp.project", value: "web-dev", label: "web-dev (gcp/project)" },
+    ];
+    const open = planOrder([network], types, defaults, [], existing);
+    expect(open.steps.map((s) => s.id)).toEqual(["network"]);
+    expect(open.steps[0]?.inputs["project"]).toEqual({ kind: "unset" });
+    expect(open.problems).toMatchObject([
+      {
+        code: "CHOOSE_EXISTING",
+        step: "network",
+        input: "project",
+        options: [{ resourceId: "r1" }, { resourceId: "r2" }, { addNew: true }],
+      },
+    ]);
+
+    const used = planOrder([network], types, defaults, [{ step: "network", input: "project", resourceId: "r2" }], existing);
+    expect(used.problems).toEqual([]);
+    expect(used.steps.map((s) => s.id)).toEqual(["network"]);
+    expect(used.steps[0]?.inputs["project"]).toEqual({ kind: "resource", resourceId: "r2", value: "web-dev" });
+
+    const fresh = planOrder([network], types, defaults, [{ step: "network", input: "project", addNew: true }], existing);
+    expect(fresh.problems).toEqual([]);
+    expect(fresh.steps.map((s) => [s.id, s.added])).toEqual([["project", true], ["network", false]]);
+    expect(fresh.steps[1]?.inputs["project"]).toEqual({ kind: "step", step: "project", output: "projectId" });
+  });
+
+  it("suggests what could fill an optional input, adding nothing", () => {
+    const database = product("database", {}, { connection: "gcp.db" });
+    const app = product("app", { project: "gcp.project", db: ["gcp.db", "optional"] });
+    const withDb = [...types, { name: "gcp.db", shared: false, defaultProvider: "platform/database.create" }];
+    const { steps, problems, suggestions } = planOrder([project, app], withDb, new Map([...defaults, ["platform/database.create", database]]), [], [
+      { id: "d1", wiringType: "gcp.db", value: "p:r:main", label: "main (gcp/sql)" },
+    ]);
+    expect(problems).toEqual([]);
+    expect(steps.map((s) => s.id)).toEqual(["project", "app"]);
+    expect(steps[1]?.inputs["db"]).toEqual({ kind: "unset" });
+    expect(suggestions).toMatchObject([{ step: "app", input: "db", wiringType: "gcp.db", provider: "platform-database-create", existing: [{ resourceId: "d1" }] }]);
+  });
+
   it("gives the same action twice two steps", () => {
     const { steps } = planOrder([project, project], types, defaults, []);
     expect(steps.map((s) => s.id)).toEqual(["project", "project-2"]);
@@ -170,6 +219,33 @@ describe("PreviewOrder", () => {
     // Not for a team they aren't in; not an action that isn't shared with them.
     expect((await call(token, "OrderService/PreviewOrder", { team: other, actions: [`${team}-bucket-create`] })).code).toBe("permission_denied");
     expect((await call(token, "OrderService/PreviewOrder", { team, actions: [`${other}-secret-get`] })).code).toBe("not_found");
+  });
+
+  it("offers the team's own resources of a needed type, not other teams'", async () => {
+    const member = await users.makeUser();
+    await join(member.id, team);
+    const token = await users.signIn(member.email);
+    const made = (owner: string, id: string) => ({
+      product: `${team}-project-create`,
+      productTeam: team,
+      type: "demo/project",
+      externalId: `${prefix}-${id}`,
+      ownerTeam: owner,
+      executionId: randomUUID(),
+      taskId: "project",
+      provides: [{ type: `${prefix}.project`, value: `${prefix}-${id}`, output: "projectId" }],
+    });
+    await db.insert(resources).values([made(team, "ours"), made(other, "theirs")]);
+    const preview = await call<{ problems?: { code: string; options: { resourceId?: string; addNew?: boolean; label?: string }[] }[] }>(
+      token,
+      "OrderService/PreviewOrder",
+      { team, actions: [`${team}-bucket-create`] },
+    );
+    expect(preview.code).toBe("ok");
+    expect(preview.body.problems).toMatchObject([{ code: "CHOOSE_EXISTING" }]);
+    const options = preview.body.problems?.[0]?.options ?? [];
+    expect(options.map((o) => o.label ?? "")).toEqual([`${prefix}-ours (demo/project)`, expect.stringContaining("A new one")]);
+    await db.delete(resources).where(like(resources.externalId, `${prefix}-%`));
   });
 
   it("isn't for an ordering bot: carts become templates first", async () => {

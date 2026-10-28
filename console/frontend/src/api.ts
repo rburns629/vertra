@@ -2395,7 +2395,7 @@ export async function previewOrder(team: string, actions: string[]): Promise<{ s
     steps: response.steps.map((s) => ({
       id: s.id,
       product: s.product,
-      inputs: Object.fromEntries(Object.entries(s.inputs).map(([name, i]) => [name, { kind: i.kind, step: i.step, output: i.output, parameter: i.parameter }])),
+      inputs: Object.fromEntries(Object.entries(s.inputs).map(([name, i]) => [name, { kind: i.kind, step: i.step, output: i.output, parameter: i.parameter, value: i.value }])),
     })),
     problems: response.problems.map((p) => ({ code: p.code, step: p.step, input: p.input, message: p.message })),
   };

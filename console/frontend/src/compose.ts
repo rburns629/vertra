@@ -241,10 +241,10 @@ export function proposeUrl(repository: string | null, draft: Draft, yaml: string
 export interface BuiltStep {
   id: string;
   product: string;
-  inputs: Record<string, { kind: string; step?: string; output?: string; parameter?: string }>;
+  inputs: Record<string, { kind: string; step?: string; output?: string; parameter?: string; value?: string }>;
 }
 
-/** The order builder's steps as Compose's: wired, asked once, or left to fill in. */
+/** The order builder's steps as Compose's: wired, asked once, an existing resource's value, or left to fill in. */
 export function stepsFromOrder(steps: BuiltStep[]): ComposeStep[] {
   return steps.map((s) => ({
     id: s.id,
@@ -256,7 +256,9 @@ export function stepsFromOrder(steps: BuiltStep[]): ComposeStep[] {
           ? { kind: "step", step: i.step, output: i.output }
           : i.kind === "parameter" && i.parameter
             ? { kind: "parameter", name: i.parameter }
-            : { kind: "unset" },
+            : i.kind === "resource" && i.value !== undefined
+              ? { kind: "value", value: i.value }
+              : { kind: "unset" },
       ]),
     ),
   }));

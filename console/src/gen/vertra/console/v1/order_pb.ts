@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/order.proto.
  */
 export const file_vertra_console_v1_order: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9vcmRlci5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiZQoTUHJldmlld09yZGVyUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg8KB2FjdGlvbnMYAiADKAkSLwoHY2hvaWNlcxgDIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyQ2hvaWNlIlIKC09yZGVyQ2hvaWNlEgwKBHN0ZXAYASABKAkSDQoFaW5wdXQYAiABKAkSEQoJZnJvbV9zdGVwGAMgASgJEhMKC2Zyb21fb3V0cHV0GAQgASgJInYKFFByZXZpZXdPcmRlclJlc3BvbnNlEisKBXN0ZXBzGAEgAygLMhwudmVydHJhLmNvbnNvbGUudjEuT3JkZXJTdGVwEjEKCHByb2JsZW1zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuT3JkZXJQcm9ibGVtIr8BCglPcmRlclN0ZXASCgoCaWQYASABKAkSDwoHcHJvZHVjdBgCIAEoCRI4CgZpbnB1dHMYAyADKAsyKC52ZXJ0cmEuY29uc29sZS52MS5PcmRlclN0ZXAuSW5wdXRzRW50cnkSDQoFYWRkZWQYBCABKAgaTAoLSW5wdXRzRW50cnkSCwoDa2V5GAEgASgJEiwKBXZhbHVlGAIgASgLMh0udmVydHJhLmNvbnNvbGUudjEuT3JkZXJJbnB1dDoCOAEiSwoKT3JkZXJJbnB1dBIMCgRraW5kGAEgASgJEgwKBHN0ZXAYAiABKAkSDgoGb3V0cHV0GAMgASgJEhEKCXBhcmFtZXRlchgEIAEoCSJ7CgxPcmRlclByb2JsZW0SDAoEY29kZRgBIAEoCRIMCgRzdGVwGAIgASgJEg0KBWlucHV0GAMgASgJEg8KB21lc3NhZ2UYBCABKAkSLwoHb3B0aW9ucxgFIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyQ2hvaWNlMnQKDE9yZGVyU2VydmljZRJkCgxQcmV2aWV3T3JkZXISJi52ZXJ0cmEuY29uc29sZS52MS5QcmV2aWV3T3JkZXJSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuUHJldmlld09yZGVyUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9vcmRlci5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiZQoTUHJldmlld09yZGVyUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg8KB2FjdGlvbnMYAiADKAkSLwoHY2hvaWNlcxgDIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyQ2hvaWNlIocBCgtPcmRlckNob2ljZRIMCgRzdGVwGAEgASgJEg0KBWlucHV0GAIgASgJEhEKCWZyb21fc3RlcBgDIAEoCRITCgtmcm9tX291dHB1dBgEIAEoCRITCgtyZXNvdXJjZV9pZBgFIAEoCRIPCgdhZGRfbmV3GAYgASgIEg0KBWxhYmVsGAcgASgJIq8BChRQcmV2aWV3T3JkZXJSZXNwb25zZRIrCgVzdGVwcxgBIAMoCzIcLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyU3RlcBIxCghwcm9ibGVtcxgCIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyUHJvYmxlbRI3CgtzdWdnZXN0aW9ucxgDIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyU3VnZ2VzdGlvbiKHAQoPT3JkZXJTdWdnZXN0aW9uEgwKBHN0ZXAYASABKAkSDQoFaW5wdXQYAiABKAkSEwoLd2lyaW5nX3R5cGUYAyABKAkSEAoIcHJvdmlkZXIYBCABKAkSMAoIZXhpc3RpbmcYBSADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5PcmRlckNob2ljZSK/AQoJT3JkZXJTdGVwEgoKAmlkGAEgASgJEg8KB3Byb2R1Y3QYAiABKAkSOAoGaW5wdXRzGAMgAygLMigudmVydHJhLmNvbnNvbGUudjEuT3JkZXJTdGVwLklucHV0c0VudHJ5Eg0KBWFkZGVkGAQgASgIGkwKC0lucHV0c0VudHJ5EgsKA2tleRgBIAEoCRIsCgV2YWx1ZRgCIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVySW5wdXQ6AjgBIm8KCk9yZGVySW5wdXQSDAoEa2luZBgBIAEoCRIMCgRzdGVwGAIgASgJEg4KBm91dHB1dBgDIAEoCRIRCglwYXJhbWV0ZXIYBCABKAkSEwoLcmVzb3VyY2VfaWQYBSABKAkSDQoFdmFsdWUYBiABKAkiewoMT3JkZXJQcm9ibGVtEgwKBGNvZGUYASABKAkSDAoEc3RlcBgCIAEoCRINCgVpbnB1dBgDIAEoCRIPCgdtZXNzYWdlGAQgASgJEi8KB29wdGlvbnMYBSADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5PcmRlckNob2ljZTJ0CgxPcmRlclNlcnZpY2USZAoMUHJldmlld09yZGVyEiYudmVydHJhLmNvbnNvbGUudjEuUHJldmlld09yZGVyUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdPcmRlclJlc3BvbnNlIgOQAgFiBnByb3RvMw");
 
 /**
  * @generated from message vertra.console.v1.PreviewOrderRequest
@@ -49,6 +49,10 @@ export const PreviewOrderRequestSchema: GenMessage<PreviewOrderRequest> = /*@__P
   messageDesc(file_vertra_console_v1_order, 0);
 
 /**
+ * How an input is filled: one of another step's output (from_step and
+ * from_output), a resource already there (resource_id), or a new one, the
+ * type's default provider (add_new). Send back one of an answer's options.
+ *
  * @generated from message vertra.console.v1.OrderChoice
  */
 export type OrderChoice = Message<"vertra.console.v1.OrderChoice"> & {
@@ -71,6 +75,23 @@ export type OrderChoice = Message<"vertra.console.v1.OrderChoice"> & {
    * @generated from field: string from_output = 4;
    */
   fromOutput: string;
+
+  /**
+   * @generated from field: string resource_id = 5;
+   */
+  resourceId: string;
+
+  /**
+   * @generated from field: bool add_new = 6;
+   */
+  addNew: boolean;
+
+  /**
+   * For people: what the option is.
+   *
+   * @generated from field: string label = 7;
+   */
+  label: string;
 };
 
 /**
@@ -95,6 +116,14 @@ export type PreviewOrderResponse = Message<"vertra.console.v1.PreviewOrderRespon
    * @generated from field: repeated vertra.console.v1.OrderProblem problems = 2;
    */
   problems: OrderProblem[];
+
+  /**
+   * Optional inputs nothing fills, and what could: add the provider to the
+   * cart, or choose an existing one.
+   *
+   * @generated from field: repeated vertra.console.v1.OrderSuggestion suggestions = 3;
+   */
+  suggestions: OrderSuggestion[];
 };
 
 /**
@@ -103,6 +132,48 @@ export type PreviewOrderResponse = Message<"vertra.console.v1.PreviewOrderRespon
  */
 export const PreviewOrderResponseSchema: GenMessage<PreviewOrderResponse> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_order, 2);
+
+/**
+ * @generated from message vertra.console.v1.OrderSuggestion
+ */
+export type OrderSuggestion = Message<"vertra.console.v1.OrderSuggestion"> & {
+  /**
+   * @generated from field: string step = 1;
+   */
+  step: string;
+
+  /**
+   * @generated from field: string input = 2;
+   */
+  input: string;
+
+  /**
+   * @generated from field: string wiring_type = 3;
+   */
+  wiringType: string;
+
+  /**
+   * The type's default provider (a registered action) to add; empty when
+   * there's none you may use.
+   *
+   * @generated from field: string provider = 4;
+   */
+  provider: string;
+
+  /**
+   * What you already have of it, as choices.
+   *
+   * @generated from field: repeated vertra.console.v1.OrderChoice existing = 5;
+   */
+  existing: OrderChoice[];
+};
+
+/**
+ * Describes the message vertra.console.v1.OrderSuggestion.
+ * Use `create(OrderSuggestionSchema)` to create a new message.
+ */
+export const OrderSuggestionSchema: GenMessage<OrderSuggestion> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_order, 3);
 
 /**
  * @generated from message vertra.console.v1.OrderStep
@@ -140,7 +211,7 @@ export type OrderStep = Message<"vertra.console.v1.OrderStep"> & {
  * Use `create(OrderStepSchema)` to create a new message.
  */
 export const OrderStepSchema: GenMessage<OrderStep> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 3);
+  messageDesc(file_vertra_console_v1_order, 4);
 
 /**
  * @generated from message vertra.console.v1.OrderInput
@@ -148,7 +219,8 @@ export const OrderStepSchema: GenMessage<OrderStep> = /*@__PURE__*/
 export type OrderInput = Message<"vertra.console.v1.OrderInput"> & {
   /**
    * "step": another step's output; "parameter": asked when it runs (a
-   * shared type's, once, named for the type); "unset": for the person.
+   * shared type's, once, named for the type); "resource": something already
+   * there, its value; "unset": for the person.
    *
    * @generated from field: string kind = 1;
    */
@@ -168,6 +240,16 @@ export type OrderInput = Message<"vertra.console.v1.OrderInput"> & {
    * @generated from field: string parameter = 4;
    */
   parameter: string;
+
+  /**
+   * @generated from field: string resource_id = 5;
+   */
+  resourceId: string;
+
+  /**
+   * @generated from field: string value = 6;
+   */
+  value: string;
 };
 
 /**
@@ -175,14 +257,14 @@ export type OrderInput = Message<"vertra.console.v1.OrderInput"> & {
  * Use `create(OrderInputSchema)` to create a new message.
  */
 export const OrderInputSchema: GenMessage<OrderInput> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 4);
+  messageDesc(file_vertra_console_v1_order, 5);
 
 /**
  * @generated from message vertra.console.v1.OrderProblem
  */
 export type OrderProblem = Message<"vertra.console.v1.OrderProblem"> & {
   /**
-   * AMBIGUOUS, NO_PROVIDER or CYCLE.
+   * AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE.
    *
    * @generated from field: string code = 1;
    */
@@ -204,7 +286,8 @@ export type OrderProblem = Message<"vertra.console.v1.OrderProblem"> & {
   message: string;
 
   /**
-   * AMBIGUOUS: the outputs that could fill it.
+   * AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's
+   * there, and a new one.
    *
    * @generated from field: repeated vertra.console.v1.OrderChoice options = 5;
    */
@@ -216,7 +299,7 @@ export type OrderProblem = Message<"vertra.console.v1.OrderProblem"> & {
  * Use `create(OrderProblemSchema)` to create a new message.
  */
 export const OrderProblemSchema: GenMessage<OrderProblem> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 5);
+  messageDesc(file_vertra_console_v1_order, 6);
 
 /**
  * The order builder (decision 23): a cart of actions made into one run's
@@ -229,12 +312,17 @@ export const OrderProblemSchema: GenMessage<OrderProblem> = /*@__PURE__*/
  */
 export const OrderService: GenService<{
   /**
-   * Wires a cart. Each required input whose type no step provides gets the
-   * type's default provider added (when the catalog names one), or, for a
-   * shared type, one parameter asked once. An input two outputs could fill
-   * is left for the person to choose (AMBIGUOUS, with the options), unless
-   * `choices` says which; a cycle is reported (CYCLE). Members of `team`
-   * (and admins); an ordering bot may not (ORDERS_ONLY).
+   * Wires a cart (decision 25). Each required input whose type no step
+   * provides is offered what the team (or you) already has of it, none
+   * chosen (CHOOSE_EXISTING, with "a new one" when the type has a default
+   * provider); with nothing there, the type's default provider is added
+   * (when the catalog names one), or, for a shared type, one parameter is
+   * asked once. An input of a type its own action provides (what it makes)
+   * is yours to fill. An optional input nothing fills is suggested
+   * (`suggestions`), not added. An input two outputs could fill is left for
+   * you to choose (AMBIGUOUS, with the options), unless `choices` says
+   * which; a cycle is reported (CYCLE). Members of `team` (and admins); an
+   * ordering bot may not (ORDERS_ONLY).
    *
    * @generated from rpc vertra.console.v1.OrderService.PreviewOrder
    */

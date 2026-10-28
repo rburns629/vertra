@@ -619,7 +619,7 @@
    "methods": [
     {
      "name": "PreviewOrder",
-     "comment": "Wires a cart. Each required input whose type no step provides gets the\ntype's default provider added (when the catalog names one), or, for a\nshared type, one parameter asked once. An input two outputs could fill\nis left for the person to choose (AMBIGUOUS, with the options), unless\n`choices` says which; a cycle is reported (CYCLE). Members of `team`\n(and admins); an ordering bot may not (ORDERS_ONLY).",
+     "comment": "Wires a cart (decision 25). Each required input whose type no step\nprovides is offered what the team (or you) already has of it, none\nchosen (CHOOSE_EXISTING, with \"a new one\" when the type has a default\nprovider); with nothing there, the type's default provider is added\n(when the catalog names one), or, for a shared type, one parameter is\nasked once. An input of a type its own action provides (what it makes)\nis yours to fill. An optional input nothing fills is suggested\n(`suggestions`), not added. An input two outputs could fill is left for\nyou to choose (AMBIGUOUS, with the options), unless `choices` says\nwhich; a cycle is reported (CYCLE). Members of `team` (and admins); an\nordering bot may not (ORDERS_ONLY).",
      "input": "vertra.console.v1.PreviewOrderRequest",
      "output": "vertra.console.v1.PreviewOrderResponse",
      "streaming": false,
@@ -5713,7 +5713,7 @@
   },
   "vertra.console.v1.OrderChoice": {
    "name": "OrderChoice",
-   "comment": "",
+   "comment": "How an input is filled: one of another step's output (from_step and\nfrom_output), a resource already there (resource_id), or a new one, the\ntype's default provider (add_new). Send back one of an answer's options.",
    "fields": [
     {
      "name": "step",
@@ -5742,6 +5742,27 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "resourceId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "addNew",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "For people: what the option is."
     }
    ]
   },
@@ -5764,6 +5785,56 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "suggestions",
+     "type": "OrderSuggestion",
+     "ref": "vertra.console.v1.OrderSuggestion",
+     "repeated": true,
+     "optional": false,
+     "comment": "Optional inputs nothing fills, and what could: add the provider to the\ncart, or choose an existing one."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderSuggestion": {
+   "name": "OrderSuggestion",
+   "comment": "",
+   "fields": [
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "wiringType",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The type's default provider (a registered action) to add; empty when\nthere's none you may use."
+    },
+    {
+     "name": "existing",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "What you already have of it, as choices."
     }
    ]
   },
@@ -5811,7 +5882,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "\"step\": another step's output; \"parameter\": asked when it runs (a\nshared type's, once, named for the type); \"unset\": for the person."
+     "comment": "\"step\": another step's output; \"parameter\": asked when it runs (a\nshared type's, once, named for the type); \"resource\": something already\nthere, its value; \"unset\": for the person."
     },
     {
      "name": "step",
@@ -5833,6 +5904,20 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "resourceId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "value",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -5845,7 +5930,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "AMBIGUOUS, NO_PROVIDER or CYCLE."
+     "comment": "AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE."
     },
     {
      "name": "step",
@@ -5874,7 +5959,7 @@
      "ref": "vertra.console.v1.OrderChoice",
      "repeated": true,
      "optional": false,
-     "comment": "AMBIGUOUS: the outputs that could fill it."
+     "comment": "AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's\nthere, and a new one."
     }
    ]
   },

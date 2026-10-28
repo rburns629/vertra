@@ -210,11 +210,22 @@ with `GetExecution`.
 
 `OrderService/PreviewOrder` turns several actions into steps for one run,
 without running anything: each input that names a wiring type is wired to the
-one output in the cart that provides it, the steps come back in an order they
-can run, a type nothing provides gets the catalog's default provider added
-(`added: true`), and a shared type is asked once (a parameter named for it).
-What it can't settle comes back in `problems` (`AMBIGUOUS` with its
-`options`, which you send back as `choices`; `NO_PROVIDER`; `CYCLE`).
+one output in the cart that provides it, and the steps come back in an order
+they can run. For a required input nothing in the cart provides:
+
+- what your team (or you) already has of that type is offered, none chosen:
+  `CHOOSE_EXISTING`, its `options` each an existing resource
+  (`resourceId`) or a new one (`addNew`), which you send back as `choices`.
+  Using one fills the input with its value (`kind: "resource"`);
+- with nothing there, the catalog's default provider is added
+  (`added: true`), or a shared type is asked once (a parameter named for it).
+
+An input of a type its own action provides names what it makes (a new
+project's id): it's yours to fill. An optional input nothing fills comes
+back in `suggestions`: its type's default provider to add to the cart, and
+what you already have of it. What else it can't settle comes back in
+`problems` (`AMBIGUOUS`, with `options` to send back as `choices`;
+`NO_PROVIDER`; `CYCLE`).
 Compose's **Build from a cart** is this, opened for you to review:
 
 ```console

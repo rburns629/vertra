@@ -87,12 +87,19 @@ func (x *PreviewOrderRequest) GetChoices() []*OrderChoice {
 	return nil
 }
 
+// How an input is filled: one of another step's output (from_step and
+// from_output), a resource already there (resource_id), or a new one, the
+// type's default provider (add_new). Send back one of an answer's options.
 type OrderChoice struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Step          string                 `protobuf:"bytes,1,opt,name=step,proto3" json:"step,omitempty"`
-	Input         string                 `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
-	FromStep      string                 `protobuf:"bytes,3,opt,name=from_step,json=fromStep,proto3" json:"from_step,omitempty"`
-	FromOutput    string                 `protobuf:"bytes,4,opt,name=from_output,json=fromOutput,proto3" json:"from_output,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Step       string                 `protobuf:"bytes,1,opt,name=step,proto3" json:"step,omitempty"`
+	Input      string                 `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
+	FromStep   string                 `protobuf:"bytes,3,opt,name=from_step,json=fromStep,proto3" json:"from_step,omitempty"`
+	FromOutput string                 `protobuf:"bytes,4,opt,name=from_output,json=fromOutput,proto3" json:"from_output,omitempty"`
+	ResourceId string                 `protobuf:"bytes,5,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	AddNew     bool                   `protobuf:"varint,6,opt,name=add_new,json=addNew,proto3" json:"add_new,omitempty"`
+	// For people: what the option is.
+	Label         string `protobuf:"bytes,7,opt,name=label,proto3" json:"label,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -155,11 +162,35 @@ func (x *OrderChoice) GetFromOutput() string {
 	return ""
 }
 
+func (x *OrderChoice) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *OrderChoice) GetAddNew() bool {
+	if x != nil {
+		return x.AddNew
+	}
+	return false
+}
+
+func (x *OrderChoice) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
 type PreviewOrderResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// In an order they can run in: each after the steps it takes outputs from.
-	Steps         []*OrderStep    `protobuf:"bytes,1,rep,name=steps,proto3" json:"steps,omitempty"`
-	Problems      []*OrderProblem `protobuf:"bytes,2,rep,name=problems,proto3" json:"problems,omitempty"`
+	Steps    []*OrderStep    `protobuf:"bytes,1,rep,name=steps,proto3" json:"steps,omitempty"`
+	Problems []*OrderProblem `protobuf:"bytes,2,rep,name=problems,proto3" json:"problems,omitempty"`
+	// Optional inputs nothing fills, and what could: add the provider to the
+	// cart, or choose an existing one.
+	Suggestions   []*OrderSuggestion `protobuf:"bytes,3,rep,name=suggestions,proto3" json:"suggestions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -208,6 +239,92 @@ func (x *PreviewOrderResponse) GetProblems() []*OrderProblem {
 	return nil
 }
 
+func (x *PreviewOrderResponse) GetSuggestions() []*OrderSuggestion {
+	if x != nil {
+		return x.Suggestions
+	}
+	return nil
+}
+
+type OrderSuggestion struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Step       string                 `protobuf:"bytes,1,opt,name=step,proto3" json:"step,omitempty"`
+	Input      string                 `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
+	WiringType string                 `protobuf:"bytes,3,opt,name=wiring_type,json=wiringType,proto3" json:"wiring_type,omitempty"`
+	// The type's default provider (a registered action) to add; empty when
+	// there's none you may use.
+	Provider string `protobuf:"bytes,4,opt,name=provider,proto3" json:"provider,omitempty"`
+	// What you already have of it, as choices.
+	Existing      []*OrderChoice `protobuf:"bytes,5,rep,name=existing,proto3" json:"existing,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrderSuggestion) Reset() {
+	*x = OrderSuggestion{}
+	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrderSuggestion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderSuggestion) ProtoMessage() {}
+
+func (x *OrderSuggestion) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderSuggestion.ProtoReflect.Descriptor instead.
+func (*OrderSuggestion) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *OrderSuggestion) GetStep() string {
+	if x != nil {
+		return x.Step
+	}
+	return ""
+}
+
+func (x *OrderSuggestion) GetInput() string {
+	if x != nil {
+		return x.Input
+	}
+	return ""
+}
+
+func (x *OrderSuggestion) GetWiringType() string {
+	if x != nil {
+		return x.WiringType
+	}
+	return ""
+}
+
+func (x *OrderSuggestion) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *OrderSuggestion) GetExisting() []*OrderChoice {
+	if x != nil {
+		return x.Existing
+	}
+	return nil
+}
+
 type OrderStep struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -223,7 +340,7 @@ type OrderStep struct {
 
 func (x *OrderStep) Reset() {
 	*x = OrderStep{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -235,7 +352,7 @@ func (x *OrderStep) String() string {
 func (*OrderStep) ProtoMessage() {}
 
 func (x *OrderStep) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,7 +365,7 @@ func (x *OrderStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStep.ProtoReflect.Descriptor instead.
 func (*OrderStep) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *OrderStep) GetId() string {
@@ -282,18 +399,21 @@ func (x *OrderStep) GetAdded() bool {
 type OrderInput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "step": another step's output; "parameter": asked when it runs (a
-	// shared type's, once, named for the type); "unset": for the person.
+	// shared type's, once, named for the type); "resource": something already
+	// there, its value; "unset": for the person.
 	Kind          string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Step          string `protobuf:"bytes,2,opt,name=step,proto3" json:"step,omitempty"`
 	Output        string `protobuf:"bytes,3,opt,name=output,proto3" json:"output,omitempty"`
 	Parameter     string `protobuf:"bytes,4,opt,name=parameter,proto3" json:"parameter,omitempty"`
+	ResourceId    string `protobuf:"bytes,5,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	Value         string `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderInput) Reset() {
 	*x = OrderInput{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -305,7 +425,7 @@ func (x *OrderInput) String() string {
 func (*OrderInput) ProtoMessage() {}
 
 func (x *OrderInput) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -318,7 +438,7 @@ func (x *OrderInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderInput.ProtoReflect.Descriptor instead.
 func (*OrderInput) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *OrderInput) GetKind() string {
@@ -349,14 +469,29 @@ func (x *OrderInput) GetParameter() string {
 	return ""
 }
 
+func (x *OrderInput) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *OrderInput) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 type OrderProblem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// AMBIGUOUS, NO_PROVIDER or CYCLE.
+	// AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE.
 	Code    string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	Step    string `protobuf:"bytes,2,opt,name=step,proto3" json:"step,omitempty"`
 	Input   string `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`
 	Message string `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
-	// AMBIGUOUS: the outputs that could fill it.
+	// AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's
+	// there, and a new one.
 	Options       []*OrderChoice `protobuf:"bytes,5,rep,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -364,7 +499,7 @@ type OrderProblem struct {
 
 func (x *OrderProblem) Reset() {
 	*x = OrderProblem{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -376,7 +511,7 @@ func (x *OrderProblem) String() string {
 func (*OrderProblem) ProtoMessage() {}
 
 func (x *OrderProblem) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -389,7 +524,7 @@ func (x *OrderProblem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderProblem.ProtoReflect.Descriptor instead.
 func (*OrderProblem) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *OrderProblem) GetCode() string {
@@ -435,16 +570,28 @@ const file_vertra_console_v1_order_proto_rawDesc = "" +
 	"\x13PreviewOrderRequest\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x18\n" +
 	"\aactions\x18\x02 \x03(\tR\aactions\x128\n" +
-	"\achoices\x18\x03 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\achoices\"u\n" +
+	"\achoices\x18\x03 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\achoices\"\xc5\x01\n" +
 	"\vOrderChoice\x12\x12\n" +
 	"\x04step\x18\x01 \x01(\tR\x04step\x12\x14\n" +
 	"\x05input\x18\x02 \x01(\tR\x05input\x12\x1b\n" +
 	"\tfrom_step\x18\x03 \x01(\tR\bfromStep\x12\x1f\n" +
 	"\vfrom_output\x18\x04 \x01(\tR\n" +
-	"fromOutput\"\x87\x01\n" +
+	"fromOutput\x12\x1f\n" +
+	"\vresource_id\x18\x05 \x01(\tR\n" +
+	"resourceId\x12\x17\n" +
+	"\aadd_new\x18\x06 \x01(\bR\x06addNew\x12\x14\n" +
+	"\x05label\x18\a \x01(\tR\x05label\"\xcd\x01\n" +
 	"\x14PreviewOrderResponse\x122\n" +
 	"\x05steps\x18\x01 \x03(\v2\x1c.vertra.console.v1.OrderStepR\x05steps\x12;\n" +
-	"\bproblems\x18\x02 \x03(\v2\x1f.vertra.console.v1.OrderProblemR\bproblems\"\xe7\x01\n" +
+	"\bproblems\x18\x02 \x03(\v2\x1f.vertra.console.v1.OrderProblemR\bproblems\x12D\n" +
+	"\vsuggestions\x18\x03 \x03(\v2\".vertra.console.v1.OrderSuggestionR\vsuggestions\"\xb4\x01\n" +
+	"\x0fOrderSuggestion\x12\x12\n" +
+	"\x04step\x18\x01 \x01(\tR\x04step\x12\x14\n" +
+	"\x05input\x18\x02 \x01(\tR\x05input\x12\x1f\n" +
+	"\vwiring_type\x18\x03 \x01(\tR\n" +
+	"wiringType\x12\x1a\n" +
+	"\bprovider\x18\x04 \x01(\tR\bprovider\x12:\n" +
+	"\bexisting\x18\x05 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\bexisting\"\xe7\x01\n" +
 	"\tOrderStep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aproduct\x18\x02 \x01(\tR\aproduct\x12@\n" +
@@ -452,13 +599,16 @@ const file_vertra_console_v1_order_proto_rawDesc = "" +
 	"\x05added\x18\x04 \x01(\bR\x05added\x1aX\n" +
 	"\vInputsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x123\n" +
-	"\x05value\x18\x02 \x01(\v2\x1d.vertra.console.v1.OrderInputR\x05value:\x028\x01\"j\n" +
+	"\x05value\x18\x02 \x01(\v2\x1d.vertra.console.v1.OrderInputR\x05value:\x028\x01\"\xa1\x01\n" +
 	"\n" +
 	"OrderInput\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04step\x18\x02 \x01(\tR\x04step\x12\x16\n" +
 	"\x06output\x18\x03 \x01(\tR\x06output\x12\x1c\n" +
-	"\tparameter\x18\x04 \x01(\tR\tparameter\"\xa0\x01\n" +
+	"\tparameter\x18\x04 \x01(\tR\tparameter\x12\x1f\n" +
+	"\vresource_id\x18\x05 \x01(\tR\n" +
+	"resourceId\x12\x14\n" +
+	"\x05value\x18\x06 \x01(\tR\x05value\"\xa0\x01\n" +
 	"\fOrderProblem\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x12\n" +
 	"\x04step\x18\x02 \x01(\tR\x04step\x12\x14\n" +
@@ -482,30 +632,33 @@ func file_vertra_console_v1_order_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_order_proto_rawDescData
 }
 
-var file_vertra_console_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_vertra_console_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_vertra_console_v1_order_proto_goTypes = []any{
 	(*PreviewOrderRequest)(nil),  // 0: vertra.console.v1.PreviewOrderRequest
 	(*OrderChoice)(nil),          // 1: vertra.console.v1.OrderChoice
 	(*PreviewOrderResponse)(nil), // 2: vertra.console.v1.PreviewOrderResponse
-	(*OrderStep)(nil),            // 3: vertra.console.v1.OrderStep
-	(*OrderInput)(nil),           // 4: vertra.console.v1.OrderInput
-	(*OrderProblem)(nil),         // 5: vertra.console.v1.OrderProblem
-	nil,                          // 6: vertra.console.v1.OrderStep.InputsEntry
+	(*OrderSuggestion)(nil),      // 3: vertra.console.v1.OrderSuggestion
+	(*OrderStep)(nil),            // 4: vertra.console.v1.OrderStep
+	(*OrderInput)(nil),           // 5: vertra.console.v1.OrderInput
+	(*OrderProblem)(nil),         // 6: vertra.console.v1.OrderProblem
+	nil,                          // 7: vertra.console.v1.OrderStep.InputsEntry
 }
 var file_vertra_console_v1_order_proto_depIdxs = []int32{
 	1, // 0: vertra.console.v1.PreviewOrderRequest.choices:type_name -> vertra.console.v1.OrderChoice
-	3, // 1: vertra.console.v1.PreviewOrderResponse.steps:type_name -> vertra.console.v1.OrderStep
-	5, // 2: vertra.console.v1.PreviewOrderResponse.problems:type_name -> vertra.console.v1.OrderProblem
-	6, // 3: vertra.console.v1.OrderStep.inputs:type_name -> vertra.console.v1.OrderStep.InputsEntry
-	1, // 4: vertra.console.v1.OrderProblem.options:type_name -> vertra.console.v1.OrderChoice
-	4, // 5: vertra.console.v1.OrderStep.InputsEntry.value:type_name -> vertra.console.v1.OrderInput
-	0, // 6: vertra.console.v1.OrderService.PreviewOrder:input_type -> vertra.console.v1.PreviewOrderRequest
-	2, // 7: vertra.console.v1.OrderService.PreviewOrder:output_type -> vertra.console.v1.PreviewOrderResponse
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 1: vertra.console.v1.PreviewOrderResponse.steps:type_name -> vertra.console.v1.OrderStep
+	6, // 2: vertra.console.v1.PreviewOrderResponse.problems:type_name -> vertra.console.v1.OrderProblem
+	3, // 3: vertra.console.v1.PreviewOrderResponse.suggestions:type_name -> vertra.console.v1.OrderSuggestion
+	1, // 4: vertra.console.v1.OrderSuggestion.existing:type_name -> vertra.console.v1.OrderChoice
+	7, // 5: vertra.console.v1.OrderStep.inputs:type_name -> vertra.console.v1.OrderStep.InputsEntry
+	1, // 6: vertra.console.v1.OrderProblem.options:type_name -> vertra.console.v1.OrderChoice
+	5, // 7: vertra.console.v1.OrderStep.InputsEntry.value:type_name -> vertra.console.v1.OrderInput
+	0, // 8: vertra.console.v1.OrderService.PreviewOrder:input_type -> vertra.console.v1.PreviewOrderRequest
+	2, // 9: vertra.console.v1.OrderService.PreviewOrder:output_type -> vertra.console.v1.PreviewOrderResponse
+	9, // [9:10] is the sub-list for method output_type
+	8, // [8:9] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_order_proto_init() }
@@ -519,7 +672,7 @@ func file_vertra_console_v1_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_order_proto_rawDesc), len(file_vertra_console_v1_order_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -10,12 +10,17 @@ package vertra.console.v1;
 // Compose to open. It never runs anything: a person reviews the result in
 // Compose and runs it, or proposes it as a template.
 service OrderService {
-  // Wires a cart. Each required input whose type no step provides gets the
-  // type's default provider added (when the catalog names one), or, for a
-  // shared type, one parameter asked once. An input two outputs could fill
-  // is left for the person to choose (AMBIGUOUS, with the options), unless
-  // `choices` says which; a cycle is reported (CYCLE). Members of `team`
-  // (and admins); an ordering bot may not (ORDERS_ONLY).
+  // Wires a cart (decision 25). Each required input whose type no step
+  // provides is offered what the team (or you) already has of it, none
+  // chosen (CHOOSE_EXISTING, with "a new one" when the type has a default
+  // provider); with nothing there, the type's default provider is added
+  // (when the catalog names one), or, for a shared type, one parameter is
+  // asked once. An input of a type its own action provides (what it makes)
+  // is yours to fill. An optional input nothing fills is suggested
+  // (`suggestions`), not added. An input two outputs could fill is left for
+  // you to choose (AMBIGUOUS, with the options), unless `choices` says
+  // which; a cycle is reported (CYCLE). Members of `team` (and admins); an
+  // ordering bot may not (ORDERS_ONLY).
   rpc PreviewOrder(PreviewOrderRequest) returns (PreviewOrderResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -31,17 +36,38 @@ message PreviewOrderRequest {
   repeated OrderChoice choices = 3;
 }
 
+// How an input is filled: one of another step's output (from_step and
+// from_output), a resource already there (resource_id), or a new one, the
+// type's default provider (add_new). Send back one of an answer's options.
 message OrderChoice {
   string step = 1;
   string input = 2;
   string from_step = 3;
   string from_output = 4;
+  string resource_id = 5;
+  bool add_new = 6;
+  // For people: what the option is.
+  string label = 7;
 }
 
 message PreviewOrderResponse {
   // In an order they can run in: each after the steps it takes outputs from.
   repeated OrderStep steps = 1;
   repeated OrderProblem problems = 2;
+  // Optional inputs nothing fills, and what could: add the provider to the
+  // cart, or choose an existing one.
+  repeated OrderSuggestion suggestions = 3;
+}
+
+message OrderSuggestion {
+  string step = 1;
+  string input = 2;
+  string wiring_type = 3;
+  // The type's default provider (a registered action) to add; empty when
+  // there's none you may use.
+  string provider = 4;
+  // What you already have of it, as choices.
+  repeated OrderChoice existing = 5;
 }
 
 message OrderStep {
@@ -56,19 +82,23 @@ message OrderStep {
 
 message OrderInput {
   // "step": another step's output; "parameter": asked when it runs (a
-  // shared type's, once, named for the type); "unset": for the person.
+  // shared type's, once, named for the type); "resource": something already
+  // there, its value; "unset": for the person.
   string kind = 1;
   string step = 2;
   string output = 3;
   string parameter = 4;
+  string resource_id = 5;
+  string value = 6;
 }
 
 message OrderProblem {
-  // AMBIGUOUS, NO_PROVIDER or CYCLE.
+  // AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE.
   string code = 1;
   string step = 2;
   string input = 3;
   string message = 4;
-  // AMBIGUOUS: the outputs that could fill it.
+  // AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's
+  // there, and a new one.
   repeated OrderChoice options = 5;
 }

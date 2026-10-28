@@ -42,12 +42,17 @@ const (
 
 // OrderServiceClient is a client for the vertra.console.v1.OrderService service.
 type OrderServiceClient interface {
-	// Wires a cart. Each required input whose type no step provides gets the
-	// type's default provider added (when the catalog names one), or, for a
-	// shared type, one parameter asked once. An input two outputs could fill
-	// is left for the person to choose (AMBIGUOUS, with the options), unless
-	// `choices` says which; a cycle is reported (CYCLE). Members of `team`
-	// (and admins); an ordering bot may not (ORDERS_ONLY).
+	// Wires a cart (decision 25). Each required input whose type no step
+	// provides is offered what the team (or you) already has of it, none
+	// chosen (CHOOSE_EXISTING, with "a new one" when the type has a default
+	// provider); with nothing there, the type's default provider is added
+	// (when the catalog names one), or, for a shared type, one parameter is
+	// asked once. An input of a type its own action provides (what it makes)
+	// is yours to fill. An optional input nothing fills is suggested
+	// (`suggestions`), not added. An input two outputs could fill is left for
+	// you to choose (AMBIGUOUS, with the options), unless `choices` says
+	// which; a cycle is reported (CYCLE). Members of `team` (and admins); an
+	// ordering bot may not (ORDERS_ONLY).
 	PreviewOrder(context.Context, *connect.Request[v1.PreviewOrderRequest]) (*connect.Response[v1.PreviewOrderResponse], error)
 }
 
@@ -84,12 +89,17 @@ func (c *orderServiceClient) PreviewOrder(ctx context.Context, req *connect.Requ
 
 // OrderServiceHandler is an implementation of the vertra.console.v1.OrderService service.
 type OrderServiceHandler interface {
-	// Wires a cart. Each required input whose type no step provides gets the
-	// type's default provider added (when the catalog names one), or, for a
-	// shared type, one parameter asked once. An input two outputs could fill
-	// is left for the person to choose (AMBIGUOUS, with the options), unless
-	// `choices` says which; a cycle is reported (CYCLE). Members of `team`
-	// (and admins); an ordering bot may not (ORDERS_ONLY).
+	// Wires a cart (decision 25). Each required input whose type no step
+	// provides is offered what the team (or you) already has of it, none
+	// chosen (CHOOSE_EXISTING, with "a new one" when the type has a default
+	// provider); with nothing there, the type's default provider is added
+	// (when the catalog names one), or, for a shared type, one parameter is
+	// asked once. An input of a type its own action provides (what it makes)
+	// is yours to fill. An optional input nothing fills is suggested
+	// (`suggestions`), not added. An input two outputs could fill is left for
+	// you to choose (AMBIGUOUS, with the options), unless `choices` says
+	// which; a cycle is reported (CYCLE). Members of `team` (and admins); an
+	// ordering bot may not (ORDERS_ONLY).
 	PreviewOrder(context.Context, *connect.Request[v1.PreviewOrderRequest]) (*connect.Response[v1.PreviewOrderResponse], error)
 }
 

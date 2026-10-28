@@ -1043,8 +1043,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      an admin). Deleting the dependents with it needs no approval, and they
      go first. Tested on the real database; not yet seen on kind with a
      product that types its outputs (the local sample's don't).
-  3. `PreviewOrder` offers existing resources (all the caller may see,
-     none chosen; never a gateway API) and optional suggestions.
+  3. `PreviewOrder` offers existing resources and optional suggestions
+     (done 2026-10-28, `core/orders.ts`): a required input nothing in the
+     cart provides is offered the team's and the caller's live resources
+     of its type, none chosen (`CHOOSE_EXISTING`, with "a new one" when
+     the type has a default provider; `choices` take `resourceId` or
+     `addNew`); an optional one is suggested (`suggestions`); an input of
+     a type its own action provides is the person's (a project.create's
+     id). Gateway APIs aren't resources, so they're never offered. Compose
+     shows the choices but can't make them yet: the cart (4) does.
   4. `OrderService/PlaceOrder`: a member checks out a cart (decided), each step as
      `RunAction` would run it; a wired target re-checked when its step
      starts. The Catalog's cart.

@@ -5,10 +5,17 @@
  * input's x-vertra-needs to the one output in the cart whose
  * x-vertra-provides is the same type (the catalog's wiring_types).
  *
- *   - Nothing in the cart provides a required input's type: the type's
- *     default provider (wiring_types.default_provider) is added as a step,
- *     or, for a shared type, one parameter (named for the type) is asked
- *     once for every input of that type.
+ *   - Nothing in the cart provides a required input's type: what the team
+ *     (or the caller) already has of it is offered, none chosen
+ *     (CHOOSE_EXISTING, with "add a new one" when the type has a default
+ *     provider), decision 25; with nothing there, the type's default
+ *     provider (wiring_types.default_provider) is added as a step, or, for
+ *     a shared type, one parameter (named for the type) is asked once for
+ *     every input of that type.
+ *   - An input of a type its own action provides names what it makes (a
+ *     project.create's project id): the person's to fill, never wired.
+ *   - An optional input nothing fills is suggested: its type's default
+ *     provider, and what the team has of it. Nothing is added for it.
  *   - Two outputs could fill an input: it's left for the person, with the
  *     options (AMBIGUOUS), unless the request chose one.
  *   - Steps feeding each other round: CYCLE, and the cart's order kept.
@@ -21,21 +28,51 @@ import { Code } from "@connectrpc/connect";
 import { ApiError } from "../apiError.js";
 import { ensureMayOrder, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
+import { and, eq, isNull, or } from "drizzle-orm";
+import { db } from "../db/client.js";
 import { findRunnableProduct, listWiringTypes, type WiringType } from "../db/queries.js";
+import { resources } from "../db/schema.js";
 import type { TeamProduct } from "./templates.js";
 
 export const MAX_CART = 50;
+/** Resources looked at for what an order could use. */
+const MAX_EXISTING = 500;
 
 export type OrderInput =
   | { kind: "step"; step: string; output: string }
   | { kind: "parameter"; parameter: string }
+  // Something already deployed: the value it provides.
+  | { kind: "resource"; resourceId: string; value: string }
   | { kind: "unset" };
 
+/** How an input is filled: another step's output, an existing resource, or a new one (the type's default provider). */
 export interface OrderChoice {
   step: string;
   input: string;
-  fromStep: string;
-  fromOutput: string;
+  fromStep?: string;
+  fromOutput?: string;
+  resourceId?: string;
+  addNew?: boolean;
+  /** For people: what the option is. */
+  label?: string;
+}
+
+/** A resource the order could use: something the team (or the caller) already has, of a wiring type. */
+export interface ExistingResource {
+  id: string;
+  wiringType: string;
+  value: string;
+  label: string;
+}
+
+/** An optional input nothing fills: what could. Not in the order until chosen. */
+export interface OrderSuggestion {
+  step: string;
+  input: string;
+  wiringType: string;
+  /** The type's default provider, to add to the cart; null when there's none for the caller. */
+  provider: string | null;
+  existing: OrderChoice[];
 }
 
 export interface OrderStep {
@@ -46,7 +83,7 @@ export interface OrderStep {
 }
 
 export interface OrderProblem {
-  code: "AMBIGUOUS" | "NO_PROVIDER" | "CYCLE";
+  code: "AMBIGUOUS" | "NO_PROVIDER" | "CHOOSE_EXISTING" | "CYCLE";
   step: string;
   input: string;
   message: string;
@@ -101,22 +138,31 @@ export function planOrder(
   types: Pick<WiringType, "name" | "shared" | "defaultProvider">[],
   defaults: Map<string, TeamProduct | null>,
   choices: OrderChoice[],
-): { steps: OrderStep[]; problems: OrderProblem[] } {
+  existing: ExistingResource[] = [],
+): { steps: OrderStep[]; problems: OrderProblem[]; suggestions: OrderSuggestion[] } {
   const typeOf = new Map(types.map((t) => [t.name, t]));
   const taken = new Set<string>();
   const planned = cart.map((product) => ({ id: stepId(product, taken), product, added: false }));
   const problems: OrderProblem[] = [];
+  const suggestions: OrderSuggestion[] = [];
 
-  const provided = (type: string) => planned.some((s) => fields(s.product.outputSchema, "x-vertra-provides").some((o) => o.wiring === type));
+  const provides = (product: TeamProduct, type: string) => fields(product.outputSchema, "x-vertra-provides").some((o) => o.wiring === type);
+  const provided = (type: string) => planned.some((s) => provides(s.product, type));
+  const existingOf = (type: string) => existing.filter((r) => r.wiringType === type);
+  const choiceFor = (step: string, input: string) => choices.find((c) => c.step === step && c.input === input);
   // Default providers, until nothing more is needed: a provider added may
   // need its own. Each is added once, whatever it turns out to provide.
   const added = new Set<string>();
   // A for...of over an array visits what's pushed onto it while it runs.
   for (const step of planned) {
     for (const input of fields(step.product.inputSchema, "x-vertra-needs")) {
-      if (!input.required || !input.wiring || provided(input.wiring)) continue;
+      if (!input.required || !input.wiring || provided(input.wiring) || provides(step.product, input.wiring)) continue;
       const type = typeOf.get(input.wiring);
       if (!type || type.shared || !type.defaultProvider || added.has(type.defaultProvider)) continue;
+      // What's already there is the person's to choose; a new one only if asked.
+      const choice = choiceFor(step.id, input.name);
+      if (existingOf(input.wiring).length > 0 && !choice?.addNew) continue;
+      if (choice?.resourceId) continue;
       added.add(type.defaultProvider);
       const provider = defaults.get(type.defaultProvider);
       if (provider) planned.push({ id: stepId(provider, taken), product: provider, added: true });
@@ -135,15 +181,41 @@ export function planOrder(
             .filter((o) => o.wiring === input.wiring)
             .map((o) => ({ step: s.id, input: input.name, fromStep: other.id, fromOutput: o.name })),
         );
-      const chosen = choices.find((c) => c.step === s.id && c.input === input.name);
-      const pick = chosen ? options.find((o) => o.fromStep === chosen.fromStep && o.fromOutput === chosen.fromOutput) : options.length === 1 ? options[0] : undefined;
-      if (pick) {
+      // What it makes (project.create's project id): the person's.
+      if (provides(s.product, input.wiring)) continue;
+      const chosen = choiceFor(s.id, input.name);
+      const there = existingOf(input.wiring);
+      const resource = chosen?.resourceId ? there.find((r) => r.id === chosen.resourceId) : undefined;
+      const pick = chosen?.fromStep
+        ? options.find((o) => o.fromStep === chosen.fromStep && o.fromOutput === chosen.fromOutput)
+        : !resource && options.length === 1
+          ? options[0]
+          : undefined;
+      const provider = typeOf.get(input.wiring)?.defaultProvider ?? null;
+      const providerHere = provider ? (defaults.get(provider) ?? null) : null;
+      const asOptions = (step: string) =>
+        there.map((r): OrderChoice => ({ step, input: input.name, resourceId: r.id, label: r.label }));
+      if (resource) {
+        inputs[input.name] = { kind: "resource", resourceId: resource.id, value: resource.value };
+      } else if (pick?.fromStep && pick.fromOutput) {
         inputs[input.name] = { kind: "step", step: pick.fromStep, output: pick.fromOutput };
       } else if (options.length > 1) {
-        problems.push({ code: "AMBIGUOUS", step: s.id, input: input.name, message: `${s.id}'s ${input.name} (${input.wiring}) could come from ${options.map((o) => `${o.fromStep}.${o.fromOutput}`).join(" or ")}: choose one.`, options });
+        problems.push({ code: "AMBIGUOUS", step: s.id, input: input.name, message: `${s.id}'s ${input.name} (${input.wiring}) could come from ${options.map((o) => `${o.fromStep ?? ""}.${o.fromOutput ?? ""}`).join(" or ")}: choose one.`, options });
       } else if (typeOf.get(input.wiring)?.shared) {
         inputs[input.name] = { kind: "parameter", parameter: input.wiring };
-      } else if (input.required) {
+      } else if (!input.required) {
+        if (there.length > 0 || providerHere) {
+          suggestions.push({ step: s.id, input: input.name, wiringType: input.wiring, provider: providerHere?.name ?? null, existing: asOptions(s.id) });
+        }
+      } else if (there.length > 0) {
+        problems.push({
+          code: "CHOOSE_EXISTING",
+          step: s.id,
+          input: input.name,
+          message: `${s.id}'s ${input.name} (${input.wiring}): use one you already have (${there.map((r) => r.label).join(", ")})${providerHere ? ", or add a new one" : ""}.`,
+          options: [...asOptions(s.id), ...(providerHere ? [{ step: s.id, input: input.name, addNew: true, label: `A new one (${providerHere.name})` }] : [])],
+        });
+      } else {
         const provider = typeOf.get(input.wiring)?.defaultProvider;
         problems.push({
           code: "NO_PROVIDER",
@@ -171,7 +243,7 @@ export function planOrder(
     }
     ordered.push(...left.splice(next, 1));
   }
-  return { steps: ordered, problems };
+  return { steps: ordered, problems, suggestions };
 }
 
 /** Whether `who` may use a product in an order: its team's own, or shared with one of theirs. */
@@ -193,11 +265,24 @@ export async function previewOrder(caller: AuthUser | undefined, request: { team
     cart.push(product);
   }
   const types = await listWiringTypes();
+  const shared = new Set(types.filter((t) => t.shared).map((t) => t.name));
+  // What the team, or the caller, already has, by what it provides. (Never a
+  // gateway's API: those are called through the gateway, not wired in.)
+  const found = await db
+    .select({ id: resources.id, type: resources.type, externalId: resources.externalId, name: resources.name, provides: resources.provides })
+    .from(resources)
+    .where(and(isNull(resources.deletedAt), or(eq(resources.ownerTeam, request.team), eq(resources.ownerUserId, who.id))))
+    .limit(MAX_EXISTING);
+  const existing: ExistingResource[] = found.flatMap((r) =>
+    r.provides
+      .filter((p) => !shared.has(p.type))
+      .map((p) => ({ id: r.id, wiringType: p.type, value: p.value, label: `${r.name ?? r.externalId} (${r.type})` })),
+  );
   const defaults = new Map<string, TeamProduct | null>();
   for (const ref of new Set(types.map((t) => t.defaultProvider).filter((p): p is string => p !== null))) {
     const name = registeredName(ref);
     const product = name ? await findRunnableProduct(name) : undefined;
     defaults.set(ref, product && mayUse(who, product) ? product : null);
   }
-  return planOrder(cart, types, defaults, request.choices);
+  return planOrder(cart, types, defaults, request.choices, existing);
 }

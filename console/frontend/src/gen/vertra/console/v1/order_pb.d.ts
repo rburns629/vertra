@@ -46,6 +46,10 @@ export declare type PreviewOrderRequest = Message<"vertra.console.v1.PreviewOrde
 export declare const PreviewOrderRequestSchema: GenMessage<PreviewOrderRequest>;
 
 /**
+ * How an input is filled: one of another step's output (from_step and
+ * from_output), a resource already there (resource_id), or a new one, the
+ * type's default provider (add_new). Send back one of an answer's options.
+ *
  * @generated from message vertra.console.v1.OrderChoice
  */
 export declare type OrderChoice = Message<"vertra.console.v1.OrderChoice"> & {
@@ -68,6 +72,23 @@ export declare type OrderChoice = Message<"vertra.console.v1.OrderChoice"> & {
    * @generated from field: string from_output = 4;
    */
   fromOutput: string;
+
+  /**
+   * @generated from field: string resource_id = 5;
+   */
+  resourceId: string;
+
+  /**
+   * @generated from field: bool add_new = 6;
+   */
+  addNew: boolean;
+
+  /**
+   * For people: what the option is.
+   *
+   * @generated from field: string label = 7;
+   */
+  label: string;
 };
 
 /**
@@ -91,6 +112,14 @@ export declare type PreviewOrderResponse = Message<"vertra.console.v1.PreviewOrd
    * @generated from field: repeated vertra.console.v1.OrderProblem problems = 2;
    */
   problems: OrderProblem[];
+
+  /**
+   * Optional inputs nothing fills, and what could: add the provider to the
+   * cart, or choose an existing one.
+   *
+   * @generated from field: repeated vertra.console.v1.OrderSuggestion suggestions = 3;
+   */
+  suggestions: OrderSuggestion[];
 };
 
 /**
@@ -98,6 +127,47 @@ export declare type PreviewOrderResponse = Message<"vertra.console.v1.PreviewOrd
  * Use `create(PreviewOrderResponseSchema)` to create a new message.
  */
 export declare const PreviewOrderResponseSchema: GenMessage<PreviewOrderResponse>;
+
+/**
+ * @generated from message vertra.console.v1.OrderSuggestion
+ */
+export declare type OrderSuggestion = Message<"vertra.console.v1.OrderSuggestion"> & {
+  /**
+   * @generated from field: string step = 1;
+   */
+  step: string;
+
+  /**
+   * @generated from field: string input = 2;
+   */
+  input: string;
+
+  /**
+   * @generated from field: string wiring_type = 3;
+   */
+  wiringType: string;
+
+  /**
+   * The type's default provider (a registered action) to add; empty when
+   * there's none you may use.
+   *
+   * @generated from field: string provider = 4;
+   */
+  provider: string;
+
+  /**
+   * What you already have of it, as choices.
+   *
+   * @generated from field: repeated vertra.console.v1.OrderChoice existing = 5;
+   */
+  existing: OrderChoice[];
+};
+
+/**
+ * Describes the message vertra.console.v1.OrderSuggestion.
+ * Use `create(OrderSuggestionSchema)` to create a new message.
+ */
+export declare const OrderSuggestionSchema: GenMessage<OrderSuggestion>;
 
 /**
  * @generated from message vertra.console.v1.OrderStep
@@ -142,7 +212,8 @@ export declare const OrderStepSchema: GenMessage<OrderStep>;
 export declare type OrderInput = Message<"vertra.console.v1.OrderInput"> & {
   /**
    * "step": another step's output; "parameter": asked when it runs (a
-   * shared type's, once, named for the type); "unset": for the person.
+   * shared type's, once, named for the type); "resource": something already
+   * there, its value; "unset": for the person.
    *
    * @generated from field: string kind = 1;
    */
@@ -162,6 +233,16 @@ export declare type OrderInput = Message<"vertra.console.v1.OrderInput"> & {
    * @generated from field: string parameter = 4;
    */
   parameter: string;
+
+  /**
+   * @generated from field: string resource_id = 5;
+   */
+  resourceId: string;
+
+  /**
+   * @generated from field: string value = 6;
+   */
+  value: string;
 };
 
 /**
@@ -175,7 +256,7 @@ export declare const OrderInputSchema: GenMessage<OrderInput>;
  */
 export declare type OrderProblem = Message<"vertra.console.v1.OrderProblem"> & {
   /**
-   * AMBIGUOUS, NO_PROVIDER or CYCLE.
+   * AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE.
    *
    * @generated from field: string code = 1;
    */
@@ -197,7 +278,8 @@ export declare type OrderProblem = Message<"vertra.console.v1.OrderProblem"> & {
   message: string;
 
   /**
-   * AMBIGUOUS: the outputs that could fill it.
+   * AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's
+   * there, and a new one.
    *
    * @generated from field: repeated vertra.console.v1.OrderChoice options = 5;
    */
@@ -221,12 +303,17 @@ export declare const OrderProblemSchema: GenMessage<OrderProblem>;
  */
 export declare const OrderService: GenService<{
   /**
-   * Wires a cart. Each required input whose type no step provides gets the
-   * type's default provider added (when the catalog names one), or, for a
-   * shared type, one parameter asked once. An input two outputs could fill
-   * is left for the person to choose (AMBIGUOUS, with the options), unless
-   * `choices` says which; a cycle is reported (CYCLE). Members of `team`
-   * (and admins); an ordering bot may not (ORDERS_ONLY).
+   * Wires a cart (decision 25). Each required input whose type no step
+   * provides is offered what the team (or you) already has of it, none
+   * chosen (CHOOSE_EXISTING, with "a new one" when the type has a default
+   * provider); with nothing there, the type's default provider is added
+   * (when the catalog names one), or, for a shared type, one parameter is
+   * asked once. An input of a type its own action provides (what it makes)
+   * is yours to fill. An optional input nothing fills is suggested
+   * (`suggestions`), not added. An input two outputs could fill is left for
+   * you to choose (AMBIGUOUS, with the options), unless `choices` says
+   * which; a cycle is reported (CYCLE). Members of `team` (and admins); an
+   * ordering bot may not (ORDERS_ONLY).
    *
    * @generated from rpc vertra.console.v1.OrderService.PreviewOrder
    */

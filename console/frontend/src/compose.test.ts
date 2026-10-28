@@ -68,4 +68,9 @@ describe("composing", () => {
     expect(Object.keys(template.parameters.properties)).toEqual(["gcp.project"]);
     expect(template.steps[1]?.inputs["project"]).toEqual({ $param: "gcp.project" });
   });
+
+  it("opens an existing resource the order uses as its value", () => {
+    const [step] = stepsFromOrder([{ id: "app", product: app.name, inputs: { project: { kind: "resource", value: "web-prod" } } }]);
+    expect(step?.inputs["project"]).toEqual({ kind: "value", value: "web-prod" });
+  });
 });
