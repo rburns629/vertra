@@ -1062,7 +1062,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      suggestions and values, Place order; the run is the team's, an
      "order", its cart its parameters (rerun plans it again). Wired targets
      are now held to allowedTargets for every submission (the attached
-     schema narrowed; the kernel refuses with INPUT_INVALID). Was: a
+     schema narrowed; the kernel refuses with INPUT_INVALID). Proven on
+     kind: a two-step order of local actions ran as the team's order; an
+     incomplete cart was refused, saying what's missing. The narrowed
+     schema's refusal is tested in the kernel, not seen on kind (no runnable
+     sample provides a target type). Was: a
      member checks out a cart (decided), each step as
      `RunAction` would run it; a wired target re-checked when its step
      starts. The Catalog's cart.
