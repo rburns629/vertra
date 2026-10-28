@@ -115,6 +115,14 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
   const steps: Answer["steps"] = [];
   const maxSteps = config.chat?.maxSteps ?? 8;
   let text: string | null = null;
+  // Search first, always: the docs for the person's own words are in front
+  // of the model before it says anything, whether or not it would have
+  // searched (a small model often doesn't, and answers from memory).
+  const question = request.messages.at(-1)?.content ?? "";
+  const first = await runTool(state, "search_docs", JSON.stringify({ query: question.slice(0, 500) }));
+  steps.push({ tool: "search_docs", ok: first.ok });
+  messages.push({ role: "assistant", content: "", toolCalls: [{ id: "search-first", name: "search_docs", arguments: JSON.stringify({ query: question.slice(0, 500) }) }] });
+  messages.push({ role: "tool", toolCallId: "search-first", content: forModel(first.result) });
   try {
     for (let i = 0; i < maxSteps; i++) {
       const reply = await model.complete(messages, toolSpecs);
@@ -133,6 +141,26 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
     if (text === null) {
       messages.push({ role: "user", content: "Answer now from what the tools have returned, saying what you couldn't find out." });
       text = (await model.complete(messages, [])).content;
+    }
+    // One repair: an answer that's empty, or uses the docs and cites none of
+    // them, is asked for again, cited, or as "the docs don't cover that".
+    // Kept only if it's better: cited, where the first wasn't.
+    const draft = checkCitations(text, state.sources);
+    if (!text.trim() || (draft.uncited && !/docs don't cover/i.test(text))) {
+      messages.push({ role: "assistant", content: text });
+      messages.push({
+        role: "user",
+        content:
+          "Rewrite your answer using only the sections the tools returned above, ending each fact with the id of the section it came from, like [S2]. If they don't answer the question, say only: The docs don't cover that.",
+      });
+      const repaired = (await model.complete(messages, [])).content;
+      const again = checkCitations(repaired, state.sources);
+      if (repaired.trim() && (!again.uncited || /docs don't cover/i.test(repaired) || !text.trim())) {
+        text = repaired;
+        steps.push({ tool: "repair", ok: true });
+      } else {
+        steps.push({ tool: "repair", ok: false });
+      }
     }
   } catch (error) {
     if (error instanceof ModelUnavailable) {

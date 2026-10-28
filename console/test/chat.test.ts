@@ -107,7 +107,35 @@ describe("answering from the docs", () => {
     expect(answer.citations).toMatchObject([{ guide: "reference-operations", heading: "Backups", link: "/docs/reference-operations#backups" }]);
     expect(answer.text).not.toContain("S42");
     expect(answer.uncited).toBe(false);
+    // Its own search, after the console's first one.
+    expect(answer.steps).toEqual([{ tool: "search_docs", ok: true }, { tool: "search_docs", ok: true }]);
+  });
+
+  it("searches first, so a model that never searches still answers from the docs", async () => {
+    const model = new Scripted([
+      (sent) => {
+        const found = (lastResult(sent)["found"] ?? []) as { id: string; section: string }[];
+        return { content: `Nightly dumps [${found.find((f) => f.section === "Backups")?.id ?? "S0"}].` };
+      },
+    ]);
+    const answer = await ask(person([mine]), question("how do I back up the databases"), log, model);
     expect(answer.steps).toEqual([{ tool: "search_docs", ok: true }]);
+    expect(answer.citations).toMatchObject([{ heading: "Backups" }]);
+  });
+
+  it("asks once for an uncited or empty answer again, keeping the repair only when it's cited", async () => {
+    const cited = new Scripted([say("Back up nightly."), (sent) => {
+      const first = (JSON.parse(sent.find((m) => m.role === "tool")?.content ?? "{}") as { found?: { id: string }[] }).found?.[0]?.id ?? "S0";
+      return { content: `Back up nightly [${first}].` };
+    }]);
+    const repaired = await ask(person([mine]), question("how do I back up the databases"), log, cited);
+    expect(repaired).toMatchObject({ uncited: false, steps: [{ tool: "search_docs" }, { tool: "repair", ok: true }] });
+
+    const stubborn = await ask(person([mine]), question("how do I back up the databases"), log, new Scripted([say("Back up nightly."), say("Still nightly.")]));
+    expect(stubborn).toMatchObject({ text: "Back up nightly.", uncited: true, steps: [{ tool: "search_docs" }, { tool: "repair", ok: false }] });
+
+    const empty = await ask(person([mine]), question("how do I back up the databases"), log, new Scripted([say(""), say("The docs don't cover that.")]));
+    expect(empty.text).toBe("The docs don't cover that.");
   });
 
   it("flags an answer that searched and cites nothing", async () => {
@@ -138,13 +166,13 @@ describe("what it sees and does", () => {
   });
 
   it("proposes a cart of actions shared with them, and refuses one that isn't", async () => {
-    const ok = await ask(person([mine]), question("A bucket please"), log, new Scripted([call("propose_cart", { actions: [`${mine}-bucket-create`] }), say("Open the cart.")]));
+    const ok = await ask(person([mine]), question("A bucket please"), log, new Scripted([call("propose_cart", { actions: [`${mine}-bucket-create`] }), say("Open the cart."), say("Open the cart.")]));
     expect(ok.cart).toEqual({ team: mine, actions: [`${mine}-bucket-create`] });
 
     const outsider = new Scripted([call("propose_cart", { actions: [`${mine}-bucket-create`] }), say("Couldn't.")]);
     const refused = await ask(person([theirs]), question("A bucket please", theirs), log, outsider);
     expect(refused.cart).toBeNull();
-    expect(refused.steps).toEqual([{ tool: "propose_cart", ok: false }]);
+    expect(refused.steps.filter((x) => x.tool === "propose_cart")).toEqual([{ tool: "propose_cart", ok: false }]);
     expect(String(lastResult(outsider.seen[1] ?? [])["error"])).toContain("shared");
   });
 
@@ -161,14 +189,15 @@ describe("what it sees and does", () => {
       say("Sorry."),
     ]);
     const answer = await ask(person([mine]), question("x"), log, model);
-    expect(answer.steps).toEqual([{ tool: "drop_database", ok: false }, { tool: "search_docs", ok: false }]);
+    expect(answer.steps.slice(1, 3)).toEqual([{ tool: "drop_database", ok: false }, { tool: "search_docs", ok: false }]);
     expect(answer.text).toBe("Sorry.");
   });
 
   it("stops at its step limit and answers from what it has", async () => {
     const model = new Scripted([...Array.from({ length: 8 }, () => call("search_docs", { query: "dag" })), say("Here's what I found.")]);
     const answer = await ask(person([mine]), question("loop"), log, model);
-    expect(answer.steps).toHaveLength(8);
+    // The console's search, the model's eight, and a repair it didn't take.
+    expect(answer.steps.filter((x) => x.tool === "search_docs")).toHaveLength(9);
     expect(answer.text).toBe("Here's what I found.");
   });
 });
