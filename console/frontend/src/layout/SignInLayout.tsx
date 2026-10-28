@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: MIT
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { keyframes } from "@mui/material/styles";
 import { useEnvironment } from "../environment";
 
-// A run, over and over, on one 6 s clock: a step starts running as its line
-// sets out (the left one first, then the right), the third as soon as
-// either line reaches it, and all three run until the lines fade and it
-// starts again. Times in seconds of the cycle.
+// A run, over and over, a different one each time on the same 6 s clock:
+// either top step may go first, the bottom one may feed both, or the run
+// may pass through it either way. A step starts running as its first line
+// sets out or a line reaches it, whichever comes first, and every step
+// runs until the lines fade. Times in seconds of the cycle.
 const CYCLE = 6;
 const pct = (seconds: number) => `${String(Math.round((seconds / CYCLE) * 1000) / 10)}%`;
 const FADE = { from: 4.8, to: 5.4 };
+const STOP = (FADE.from + FADE.to) / 2;
+const DRAW = 1.2;
 
 /** A line drawn from `from` to `to`, held, then faded with the others. */
 const drawn = (from: number, to: number) => keyframes`
@@ -38,20 +41,47 @@ function running(from: number, to: number) {
 const spin = keyframes`to { transform: rotate(360deg); }`;
 const rise = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; }`;
 
-const LINES = { left: drawn(0.3, 1.5), right: drawn(0.9, 2.1) };
-// Each runs from its line setting out (the last, from the first line arriving) until the lines have faded.
-const STOP = (FADE.from + FADE.to) / 2;
-const RUNS = { left: running(0.3, STOP), right: running(0.9, STOP), last: running(1.5, STOP) };
+type Node = "left" | "right" | "bottom";
+const AT: Record<Node, { x: number; y: number }> = { left: { x: 40, y: 40 }, right: { x: 200, y: 40 }, bottom: { x: 120, y: 160 } };
+/** A line from one step to another, setting out at `at`. */
+interface Edge {
+  from: Node;
+  to: Node;
+  at: number;
+}
+
+/** The runs to choose between: the two lines, each one way or the other, in some order. */
+const SHAPES: Edge[][] = [
+  [{ from: "left", to: "bottom", at: 0.3 }, { from: "right", to: "bottom", at: 0.9 }],
+  [{ from: "right", to: "bottom", at: 0.3 }, { from: "left", to: "bottom", at: 0.9 }],
+  [{ from: "bottom", to: "left", at: 0.3 }, { from: "bottom", to: "right", at: 0.9 }],
+  [{ from: "bottom", to: "right", at: 0.3 }, { from: "bottom", to: "left", at: 0.9 }],
+  [{ from: "left", to: "bottom", at: 0.3 }, { from: "bottom", to: "right", at: 0.3 + DRAW }],
+  [{ from: "right", to: "bottom", at: 0.3 }, { from: "bottom", to: "left", at: 0.3 + DRAW }],
+];
+
+/** Each shape's lines and steps, as keyframes made once. */
+const RUNS = SHAPES.map((edges) => ({
+  lines: edges.map((e) => ({ ...e, frames: drawn(e.at, e.at + DRAW) })),
+  steps: (Object.keys(AT) as Node[]).map((node) => {
+    const starts = edges.flatMap((e) => (e.from === node ? [e.at] : e.to === node ? [e.at + DRAW] : []));
+    return { node, run: running(Math.min(...starts), STOP) };
+  }),
+}));
+
+/** Another shape than the last. */
+const next = (last: number) => (last + 1 + Math.floor(Math.random() * (RUNS.length - 1))) % RUNS.length;
 
 const still = { "@media (prefers-reduced-motion: reduce)": { animation: "none" } };
-const loop = (frames: string) => `${frames} ${String(CYCLE)}s cubic-bezier(.4,0,.2,1) infinite`;
+// Once: the drawing is drawn afresh, with another run, every cycle.
+const once = (frames: string) => `${frames} ${String(CYCLE)}s cubic-bezier(.4,0,.2,1) both`;
 
 /** A step: a ring that, while it runs, grows into a spinning status wheel. */
 function Step({ cx, cy, run }: { cx: number; cy: number; run: ReturnType<typeof running> }) {
   return (
-    <Box component="g" sx={{ transformBox: "fill-box", transformOrigin: "center", animation: loop(run.grow), ...still }}>
-      <Box component="circle" cx={cx} cy={cy} r={16} fill="#232833" stroke="currentColor" strokeWidth={3} sx={{ animation: loop(run.track), ...still }} />
-      <Box component="g" sx={{ opacity: 0, animation: loop(run.arc), ...still }}>
+    <Box component="g" sx={{ transformBox: "fill-box", transformOrigin: "center", animation: once(run.grow), ...still }}>
+      <Box component="circle" cx={cx} cy={cy} r={16} fill="#232833" stroke="currentColor" strokeWidth={3} sx={{ animation: once(run.track), ...still }} />
+      <Box component="g" sx={{ opacity: 0, animation: once(run.arc), ...still }}>
         <Box
           component="circle"
           cx={cx}
@@ -70,21 +100,44 @@ function Step({ cx, cy, run }: { cx: number; cy: number; run: ReturnType<typeof 
   );
 }
 
-/** Two steps feeding a third, run over and over as a DAG runs. Still for reduced motion. */
+/** Two lines joining three steps, run over and over as a DAG runs, a different way each time. Still for reduced motion. */
 function Dag() {
+  const [shape, setShape] = useState(() => Math.floor(Math.random() * RUNS.length));
+  const [cycle, setCycle] = useState(0);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShape(next(shape));
+      setCycle(cycle + 1);
+    }, CYCLE * 1000);
+    return () => { clearTimeout(timer); };
+  }, [shape, cycle]);
+
+  const { lines, steps } = RUNS[shape] ?? RUNS[0]!;
   const edge = (frames: string) => ({
     strokeDasharray: 1,
     strokeDashoffset: 1,
-    animation: loop(frames),
+    animation: once(frames),
     "@media (prefers-reduced-motion: reduce)": { strokeDashoffset: 0, animation: "none" },
   });
   return (
-    <Box component="svg" viewBox="0 0 240 200" sx={{ width: 200, height: "auto", color: "sidebar.accent", overflow: "visible" }} aria-hidden="true">
-      <Box component="path" pathLength={1} d="M40 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge(LINES.left)} />
-      <Box component="path" pathLength={1} d="M200 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge(LINES.right)} />
-      <Step cx={40} cy={40} run={RUNS.left} />
-      <Step cx={200} cy={40} run={RUNS.right} />
-      <Step cx={120} cy={160} run={RUNS.last} />
+    // Keyed by the cycle, so every animation in it starts over.
+    <Box key={cycle} component="svg" viewBox="0 0 240 200" sx={{ width: 200, height: "auto", color: "sidebar.accent", overflow: "visible" }} aria-hidden="true">
+      {lines.map((l) => (
+        <Box
+          key={`${l.from}-${l.to}`}
+          component="path"
+          pathLength={1}
+          d={`M${String(AT[l.from].x)} ${String(AT[l.from].y)} L${String(AT[l.to].x)} ${String(AT[l.to].y)}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={3}
+          strokeLinecap="round"
+          sx={edge(l.frames)}
+        />
+      ))}
+      {steps.map((s) => (
+        <Step key={s.node} cx={AT[s.node].x} cy={AT[s.node].y} run={s.run} />
+      ))}
     </Box>
   );
 }
