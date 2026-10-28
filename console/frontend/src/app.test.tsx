@@ -412,6 +412,43 @@ describe("the docs", () => {
     const hit = await screen.findByRole("link", { name: /Operations · Databases > Backups/ });
     expect(hit.getAttribute("href")).toBe("/docs/reference-operations#backups");
   });
+
+  const DOCS = {
+    "GuideService/ListGuides": {
+      guides: [
+        { id: "01-getting-started", title: "Try Vertra end to end", section: "guides", kind: "guide" },
+        { id: "03-what-is-a-dag", title: "What's a DAG", section: "guides", kind: "guide" },
+        { id: "reference-setup", title: "Setting up Vertra", section: "reference", kind: "operating" },
+        { id: "reference-operations", title: "Operations", section: "reference", kind: "operating" },
+        { id: "09-something-new", title: "Something new", section: "guides", kind: "guide" },
+      ],
+    },
+    "GuideService/GetGuide": { markdown: "# Operations\n\n## Upgrading\n\n```\n## not a section\n```\n\n## Backups\n\nNightly." },
+  };
+
+  it("opens on a home with where to start and every category, a new doc under More", async () => {
+    await renderAt("/docs", MEMBER, DOCS);
+    const start = await screen.findByRole("region", { name: "Start here" });
+    expect(within(start).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["/docs/01-getting-started", "/docs/03-what-is-a-dag"]);
+    expect(screen.getByRole("heading", { name: "Install and operate" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "More" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Something new" }).getAttribute("href")).toBe("/docs/09-something-new");
+  });
+
+  it("shows a doc in its category, with its sections, and the docs before and after it", async () => {
+    await renderAt("/docs/reference-operations", MEMBER, DOCS);
+    const trail = await screen.findByRole("navigation", { name: "Where this is" });
+    expect(await within(trail).findByText("Install and operate")).toBeTruthy();
+    const contents = screen.getByRole("navigation", { name: "Docs contents" });
+    expect(within(contents).getByRole("button", { name: "Install and operate" }).getAttribute("aria-expanded")).toBe("true");
+    expect(within(contents).getByRole("button", { name: "Get started" }).getAttribute("aria-expanded")).toBe("false");
+    expect(within(contents).getByRole("link", { name: "Operations" }).getAttribute("aria-current")).toBe("page");
+    const sections = await screen.findByRole("navigation", { name: "On this page" });
+    expect(within(sections).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#upgrading", "#backups"]);
+    const onward = screen.getByRole("navigation", { name: "Previous and next" });
+    expect(within(onward).getByRole("link", { name: /Previous · Install and operate.*Set up Vertra/ }).getAttribute("href")).toBe("/docs/reference-setup");
+    expect(within(onward).getByRole("link", { name: /Next · Reference.*API reference/ }).getAttribute("href")).toBe("/docs/api-reference");
+  });
 });
 
 describe("the chat panel", () => {
