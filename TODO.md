@@ -1031,6 +1031,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   nothing measurable here. The search's two misses were the docs' (the
   sections never said "before publishing" or "steps start late"): a
   sentence each, and retrieval is 40 of 40, Haiku 40 of 40 (2026-10-28).
+  Ordering tasks (`test/chatTasks.ts`, judged by actions: tools in order,
+  the cart, what it says): Haiku does all five, app hosting planned and
+  proposed with the project it needs, a database wired in, a Kafka
+  cluster nobody offers declined, a sample ticket called a sample.
+  Running them found the repair turn rewriting ordering answers into
+  "the docs don't cover that": an answer from the platform's tools is no
+  longer repaired or flagged as not from the docs.
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (usage logged). Left: the

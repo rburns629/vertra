@@ -342,6 +342,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |
 | `access.test.ts` | The authorization rules in `auth/access.ts`. |
 | `security-headers.test.ts` | The browser security headers (CSP and others) on pages and errors. |
+| `chatTasks.ts` | Ordering tasks for the chat agent, judged by what it did: the tools it used, in order; the cart it proposed, or that it proposed none; what it must say. Scored with the question set by `scripts/chat-eval.ts`. |
 | `docQuestions.ts` | The question set: questions as people ask them, each with the sections that answer it. `docs.test.ts` holds the search's retrieval at 90% or more of them; the chat agent's answers are scored against them. |
 | `rpc.ts` | Calling the Connect services as JSON through `app.inject`, and reading their error details. |
 | `wiringTypesLock.ts` | A Postgres advisory lock the tests that read or replace the install-wide wiring types hold, since test files run in parallel. |

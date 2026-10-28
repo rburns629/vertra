@@ -177,6 +177,13 @@ describe("what it sees and does", () => {
     expect(String(lastResult(outsider.seen[1] ?? [])["error"])).toContain("shared");
   });
 
+  it("leaves an answer from the platform's tools alone: no repair, not flagged as not from the docs", async () => {
+    const model = new Scripted([call("describe_offering", { name: `${mine}-bucket-create` }), say("The bucket needs a name."), say("The docs don't cover that.")]);
+    const answer = await ask(person([mine]), question("What does the bucket need?"), log, model);
+    expect(answer).toMatchObject({ text: "The bucket needs a name.", uncited: false });
+    expect(answer.steps.map((x) => x.tool)).toEqual(["search_docs", "describe_offering"]);
+  });
+
   it("describes an action from the catalog, not from the model", async () => {
     const model = new Scripted([call("describe_offering", { name: `${mine}-bucket-create` }), say("It needs a name.")]);
     await ask(person([mine]), question("What does the bucket need?"), log, model);

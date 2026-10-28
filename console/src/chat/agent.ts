@@ -67,7 +67,7 @@ A. A question about how Vertra works or how to do something:
    2. If an excerpt doesn't fully answer it, read_doc_section for that one section.
    3. Answer from those sections only. Search at most twice.
 B. A question about what exists (their team's resources, a run, an offering): use list_team_resources, get_run or describe_offering, and answer from the result.
-C. They want something ("app hosting for shop-api"): find_offerings, describe_offering, list_team_resources, plan_order, then propose_cart. Then say what was added because something needs it, what they already have that they could reuse, what's suggested, and what they must fill in. You never place orders; they open the cart and place it.
+C. They want something made, opened, deployed or run ("app hosting for shop-api", "open a ticket"): look in the catalog before ever saying it can't be done. find_offerings, describe_offering, list_team_resources, plan_order, then propose_cart. Then say what was added because something needs it, what they already have that they could reuse, what's suggested, and what they must fill in. You never place orders; they open the cart and place it.
 
 Rules:
 - Every fact from the docs ends with its source id, like this: "Backups are off by default [S2]." Use only ids your tools gave you this turn.
@@ -82,6 +82,11 @@ Rules:
 function systemPrompt(caller: AuthUser, team: string | null): string {
   const facts = `Today is ${new Date().toISOString().slice(0, 10)}. The person is in ${caller.teamNames.length > 0 ? `teams ${caller.teamNames.join(", ")}` : "no team"}${caller.isAdmin ? ", and is an admin" : ""}.${team ? ` They are working for team ${team}.` : ""}`;
   return [VOICE, VERTRA, facts].join("\n\n");
+}
+
+/** Whether a turn used the platform's own tools, not only the docs. */
+function fromPlatform(steps: Answer["steps"]): boolean {
+  return steps.some((s) => s.ok && !["search_docs", "read_doc_section", "repair"].includes(s.tool));
 }
 
 function checked(caller: AuthUser | undefined, request: AskRequest): { who: AuthUser; team: string | null } {
@@ -147,11 +152,13 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
       text = last.content;
       finalRaw = last.raw;
     }
-    // One repair: an answer that's empty, or uses the docs and cites none of
-    // them, is asked for again, cited, or as "the docs don't cover that".
-    // Kept only if it's better: cited, where the first wasn't.
+    // One repair: an answer that's empty, or that answers from the docs and
+    // cites none of them, is asked for again, cited, or as "the docs don't
+    // cover that". Kept only if it's better: cited, where the first wasn't.
+    // An answer from the platform's own tools (an offering, a plan, a cart,
+    // what a team has, a run) rests on their results, not on the docs.
     const draft = checkCitations(text, state.sources);
-    if (!text.trim() || (draft.uncited && !/docs don't cover/i.test(text))) {
+    if (!text.trim() || (!fromPlatform(steps) && draft.uncited && !/docs don't cover/i.test(text))) {
       messages.push({ role: "assistant", content: text, raw: finalRaw });
       messages.push({
         role: "user",
@@ -174,7 +181,9 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
     }
     throw error;
   }
-  const result = checkCitations(text || "I couldn't put an answer together.", state.sources);
+  const checkedText = checkCitations(text || "I couldn't put an answer together.", state.sources);
+  // "Not from the docs" is said only of an answer that had only the docs to go on.
+  const result = { ...checkedText, uncited: checkedText.uncited && !fromPlatform(steps) };
   log.info(
     {
       event: "chat_answered",

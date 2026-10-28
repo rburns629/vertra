@@ -8,22 +8,29 @@
  * what it must and mustn't say, and how long it took. Writes
  * chat-eval-results/<model>-<time>.json, to compare models and prompts.
  *
- *   VERTRA_TOKEN=... npm run chat-eval            # every question
- *   VERTRA_TOKEN=... npm run chat-eval -- 5       # the first five
+ * And the ordering tasks (test/chatTasks.ts), judged by what the agent did:
+ * the tools it used, in order; the cart it proposed, or that it proposed
+ * none; what its answer must say.
+ *
+ *   VERTRA_TOKEN=... npm run chat-eval            # every question, then the tasks
+ *   VERTRA_TOKEN=... npm run chat-eval -- 5       # the first five questions, then the tasks
+ *   TASKS_ONLY=1 VERTRA_TOKEN=... npm run chat-eval
  *
  * CONSOLE_URL (http://localhost:18080) and TEAM (the token's first) as needed.
  * A model's run, not CI: real models are slow, and their answers vary.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
+import { CHAT_TASKS } from "../test/chatTasks.js";
 import { DOC_QUESTIONS } from "../test/docQuestions.js";
 
 const consoleUrl = (process.env["CONSOLE_URL"] ?? "http://localhost:18080").replace(/\/+$/, "");
 const token = process.env["VERTRA_TOKEN"] ?? "";
-const limit = Number(process.argv[2] ?? DOC_QUESTIONS.length);
+const limit = process.env["TASKS_ONLY"] ? 0 : Number(process.argv[2] ?? DOC_QUESTIONS.length);
 
 interface Answer {
   text?: string;
   citations?: { guide: string; heading: string; link: string }[];
+  cart?: { team: string; actions: string[] };
   uncited?: boolean;
   steps?: { tool: string; ok: boolean }[];
   model?: string;
@@ -81,6 +88,39 @@ async function main(): Promise<void> {
         (said.length > 0 ? `  [said: ${said.join(", ")}]` : ""),
     );
   }
+  // The ordering tasks: what it did, not only what it said.
+  const tasks = [];
+  for (const t of CHAT_TASKS) {
+    const started = Date.now();
+    const a = await call<Answer>("ChatService/Ask", { team, messages: [{ role: "user", content: t.request }] });
+    const used = (a.steps ?? []).map((s) => s.tool);
+    let at = 0;
+    for (const tool of used) if (tool === t.tools[at]) at++;
+    const cart = a.cart?.actions ?? null;
+    const expected = t.cart;
+    const cartRight =
+      expected === undefined ? true : expected === null ? cart === null || cart.length === 0 : cart !== null && expected.every((x) => cart.includes(x));
+    const text = (a.text ?? "").toLowerCase();
+    const missing = (t.mustSay ?? []).filter((w) => !text.includes(w.toLowerCase()));
+    const row = {
+      request: t.request,
+      error: a.code ? `${a.code}: ${a.message ?? ""}` : null,
+      toolsInOrder: at === t.tools.length,
+      cartRight,
+      missing,
+      steps: used,
+      cart,
+      seconds: Math.round((Date.now() - started) / 100) / 10,
+      answer: a.text ?? "",
+    };
+    tasks.push(row);
+    const passed = !row.error && row.toolsInOrder && row.cartRight && missing.length === 0;
+    console.log(
+      `${passed ? "done" : "FAILED"}  ${String(row.seconds).padStart(5)}s  ${t.request}  [${used.join(" > ")}] cart: ${cart ? cart.join(", ") : "none"}` +
+        (missing.length > 0 ? `  [missing: ${missing.join(", ")}]` : ""),
+    );
+  }
+
   const answered = rows.filter((r) => !r.error);
   const summary = {
     model: settings.model,
@@ -92,12 +132,14 @@ async function main(): Promise<void> {
     mustSayMissed: rows.filter((r) => r.missing.length > 0).length,
     mustNotSaySaid: rows.filter((r) => r.said.length > 0).length,
     medianSeconds: median(rows.map((r) => r.seconds)),
-    slowestSeconds: Math.max(...rows.map((r) => r.seconds)),
+    slowestSeconds: rows.length > 0 ? Math.max(...rows.map((r) => r.seconds)) : 0,
+    tasks: tasks.length,
+    tasksDone: tasks.filter((t) => !t.error && t.toolsInOrder && t.cartRight && t.missing.length === 0).length,
   };
   console.log(`\n${JSON.stringify(summary, null, 2)}`);
   mkdirSync("chat-eval-results", { recursive: true });
   const file = `chat-eval-results/${String(settings.model).replace(/[^a-zA-Z0-9.-]/g, "_")}-${summary.at.replace(/[:.]/g, "-")}.json`;
-  writeFileSync(file, JSON.stringify({ summary, rows }, null, 2));
+  writeFileSync(file, JSON.stringify({ summary, rows, tasks }, null, 2));
   console.log(`Written: ${file}`);
 }
 
