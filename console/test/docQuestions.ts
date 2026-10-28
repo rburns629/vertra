@@ -25,7 +25,14 @@ export const DOC_QUESTIONS: DocQuestion[] = [
   { question: "how do I get started trying vertra?", answers: ["01-getting-started :: Try Vertra end to end", "01-getting-started :: Six words to know"] },
   { question: "how do I give my product a password or API key?", answers: ["01-getting-started :: Step 4: Give it a secret", "04-secrets-explained :: Step 1 — registering one"] },
   { question: "can I pass one product's output into another?", answers: ["01-getting-started :: Step 5: Chain two products", "07-how-data-moves :: How a value moves from one task to the next"] },
-  { question: "what is a DAG and why use one", answers: ["03-what-is-a-dag :: What's a DAG, and why does this whole system revolve around one?", "03-what-is-a-dag :: The concept, with no jargon first"] },
+  {
+    question: "what is a DAG and why use one",
+    answers: [
+      "03-what-is-a-dag :: What's a DAG, and why does this whole system revolve around one?",
+      "03-what-is-a-dag :: The concept, with no jargon first",
+      "reference-architecture :: Glossary",
+    ],
+  },
   { question: "how is this different from terraform", answers: ["03-what-is-a-dag :: The direct comparison: Terraform"] },
   { question: "can another team read my team's secrets?", answers: ["04-secrets-explained :: How isolation actually works", "reference-security-model :: Who can read a secret"] },
   { question: "where are secret values actually stored", answers: ["04-secrets-explained :: Step 2 — where it actually goes", "reference-security-model :: Where secret values live"] },
@@ -78,7 +85,7 @@ export const DOC_QUESTIONS: DocQuestion[] = [
   { question: "how do I set up HTTPS for the console", answers: ["reference-operations :: HTTPS for the console"] },
   {
     question: "let people sign in with their google accounts",
-    answers: ["reference-operations :: Signing in with Google", "reference-security-model :: Signing in"],
+    answers: ["reference-operations :: Signing in with Google", "reference-security-model :: Signing in", "reference-setup :: 3. Sign in, and invite people"],
     // Qwen3 14B, 2026-10-28: invented where to require it ("Admin > People")
     // under a genuine citation; it's on the team's page.
     mustSay: ["vertra sso google"],

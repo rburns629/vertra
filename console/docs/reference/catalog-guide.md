@@ -466,6 +466,8 @@ Run, `googleIdToken`) and `samples/aws/apis/orders` (a Lambda function URL,
 
 ## Testing
 
+Test a product before publishing it: `./vertra catalog check` builds it and
+runs its tests on your machine, as CI does before anything is published.
 A product's tests are contract tests: `tests/<action>/<case>/request.json`
 and the `expected.json` its result must contain. `./vertra catalog check` runs
 each against the built image the way the platform runs a step, with no

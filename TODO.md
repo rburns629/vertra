@@ -1028,7 +1028,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   3.3 s and 5 s; six spot-checked answers all right on Haiku (two or three
   of six on the 14B). All three miss the same two: the search's misses.
   Haiku is the default worth having: Sonnet's twentyfold price bought
-  nothing measurable here. Next: the search's two misses; Claude or Gemini
+  nothing measurable here. The search's two misses were the docs' (the
+  sections never said "before publishing" or "steps start late"): a
+  sentence each, and retrieval is 40 of 40, Haiku 40 of 40 (2026-10-28).
+  Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (usage logged). Left: the
   answers scored per model on the question set, scripted tasks with a real

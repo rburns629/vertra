@@ -627,7 +627,8 @@ set (`console/test/docQuestions.ts`). The console logs each answer's steps
 
 ## Throughput
 
-How many steps a second an install starts and finishes is, in practice,
+When steps start late, or the scheduler seems slow with steps waiting their
+turn, look here first. How many steps a second an install starts and finishes is, in practice,
 set by its Kubernetes API calls, not its database: the scheduler and
 Postgres alone manage hundreds a second, while each step costs the kernel
 about five to seven API calls. The kernel chart's `kubernetesClient` (`qps`,
