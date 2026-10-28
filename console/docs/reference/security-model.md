@@ -192,7 +192,10 @@ sees what they may, and its only effect is a proposed cart, which they open
 and place themselves. Ordering bots can't use it. Its answers' citations
 are kept only when they name a section it retrieved, and links are the
 console's, not the model's. What's asked, and what its tools return, goes to
-the install's chat model (`chat.endpoint`); nothing is kept by the console.
+the install's chat model (`chat.endpoint`); nothing is kept by the console,
+except an answer someone rates: its question, answer, sources and their
+comment, for the admins only (`ChatService/RateAnswer`, a rating for a
+team only by its members), deleted after 90 days.
 
 A member checks out a cart as one run for their team (`OrderService/
 PlaceOrder`, `console/src/core/orders.ts`): each step is an action shared

@@ -6,11 +6,191 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file vertra/console/v1/chat.proto.
  */
 export declare const file_vertra_console_v1_chat: GenFile;
+
+/**
+ * @generated from message vertra.console.v1.RateAnswerRequest
+ */
+export declare type RateAnswerRequest = Message<"vertra.console.v1.RateAnswerRequest"> & {
+  /**
+   * "up" or "down".
+   *
+   * @generated from field: string rating = 1;
+   */
+  rating: string;
+
+  /**
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * At most 4,000 characters.
+   *
+   * @generated from field: string question = 3;
+   */
+  question: string;
+
+  /**
+   * At most 20,000 characters.
+   *
+   * @generated from field: string answer = 4;
+   */
+  answer: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatCitation citations = 5;
+   */
+  citations: ChatCitation[];
+
+  /**
+   * The tools it used, in order.
+   *
+   * @generated from field: repeated string steps = 6;
+   */
+  steps: string[];
+
+  /**
+   * @generated from field: string model = 7;
+   */
+  model: string;
+
+  /**
+   * What was wrong, or right; at most 2,000 characters.
+   *
+   * @generated from field: string comment = 8;
+   */
+  comment: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RateAnswerRequest.
+ * Use `create(RateAnswerRequestSchema)` to create a new message.
+ */
+export declare const RateAnswerRequestSchema: GenMessage<RateAnswerRequest>;
+
+/**
+ * @generated from message vertra.console.v1.RateAnswerResponse
+ */
+export declare type RateAnswerResponse = Message<"vertra.console.v1.RateAnswerResponse"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RateAnswerResponse.
+ * Use `create(RateAnswerResponseSchema)` to create a new message.
+ */
+export declare const RateAnswerResponseSchema: GenMessage<RateAnswerResponse>;
+
+/**
+ * @generated from message vertra.console.v1.ListChatFeedbackRequest
+ */
+export declare type ListChatFeedbackRequest = Message<"vertra.console.v1.ListChatFeedbackRequest"> & {
+  /**
+   * "up", "down", or empty for both.
+   *
+   * @generated from field: string rating = 1;
+   */
+  rating: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListChatFeedbackRequest.
+ * Use `create(ListChatFeedbackRequestSchema)` to create a new message.
+ */
+export declare const ListChatFeedbackRequestSchema: GenMessage<ListChatFeedbackRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ChatRating
+ */
+export declare type ChatRating = Message<"vertra.console.v1.ChatRating"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string rating = 2;
+   */
+  rating: string;
+
+  /**
+   * @generated from field: string team = 3;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string question = 4;
+   */
+  question: string;
+
+  /**
+   * @generated from field: string answer = 5;
+   */
+  answer: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatCitation citations = 6;
+   */
+  citations: ChatCitation[];
+
+  /**
+   * @generated from field: repeated string steps = 7;
+   */
+  steps: string[];
+
+  /**
+   * @generated from field: string model = 8;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string comment = 9;
+   */
+  comment: string;
+
+  /**
+   * Who rated it; empty once their account is gone.
+   *
+   * @generated from field: string email = 10;
+   */
+  email: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 11;
+   */
+  createdAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ChatRating.
+ * Use `create(ChatRatingSchema)` to create a new message.
+ */
+export declare const ChatRatingSchema: GenMessage<ChatRating>;
+
+/**
+ * @generated from message vertra.console.v1.ListChatFeedbackResponse
+ */
+export declare type ListChatFeedbackResponse = Message<"vertra.console.v1.ListChatFeedbackResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatRating ratings = 1;
+   */
+  ratings: ChatRating[];
+};
+
+/**
+ * Describes the message vertra.console.v1.ListChatFeedbackResponse.
+ * Use `create(ListChatFeedbackResponseSchema)` to create a new message.
+ */
+export declare const ListChatFeedbackResponseSchema: GenMessage<ListChatFeedbackResponse>;
 
 /**
  * @generated from message vertra.console.v1.GetChatSettingsRequest
@@ -261,6 +441,27 @@ export declare const ChatService: GenService<{
     methodKind: "unary";
     input: typeof AskRequestSchema;
     output: typeof AskResponseSchema;
+  },
+  /**
+   * Thumbs up or down on an answer you got, sent with its question and
+   * answer, for the admins (kept 90 days).
+   *
+   * @generated from rpc vertra.console.v1.ChatService.RateAnswer
+   */
+  rateAnswer: {
+    methodKind: "unary";
+    input: typeof RateAnswerRequestSchema;
+    output: typeof RateAnswerResponseSchema;
+  },
+  /**
+   * The ratings, newest first, at most 200. Admins only.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.ListChatFeedback
+   */
+  listChatFeedback: {
+    methodKind: "unary";
+    input: typeof ListChatFeedbackRequestSchema;
+    output: typeof ListChatFeedbackResponseSchema;
   },
 }>;
 

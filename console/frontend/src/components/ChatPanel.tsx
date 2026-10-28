@@ -14,7 +14,9 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CloseIcon from "@mui/icons-material/Close";
-import { ApiError, askChat, type ChatAnswer } from "../api";
+import ThumbDownIcon from "@mui/icons-material/ThumbDownOutlined";
+import ThumbUpIcon from "@mui/icons-material/ThumbUpOutlined";
+import { ApiError, askChat, rateAnswer, type ChatAnswer } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { cart, useCart } from "../cart";
 
@@ -75,6 +77,68 @@ function Answer({ turn, onOpenCart }: { turn: Extract<Turn, { role: "assistant" 
           It {looked.join(", ")}.
         </Typography>
       )}
+    </Box>
+  );
+}
+
+/** Thumbs up or down on one answer: sent with its question and answer, for the admins. */
+function Rate({ question, turn, team, model }: { question: string; turn: Extract<Turn, { role: "assistant" }>; team: string | null; model: string }) {
+  const [sent, setSent] = useState<"up" | "down" | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function send(rating: "up" | "down"): Promise<void> {
+    setError(null);
+    try {
+      await rateAnswer({ rating, team, question, answer: turn.content, citations: turn.citations, steps: turn.steps.map((s) => s.tool), model, comment: comment.trim() });
+      setSent(rating);
+      setAsking(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't send it.");
+    }
+  }
+
+  if (sent) {
+    return (
+      <Typography variant="caption" color="text.secondary">
+        Thanks: sent to your admins{sent === "down" ? ", to fix" : ""}.
+      </Typography>
+    );
+  }
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <IconButton size="small" aria-label="Good answer" title="Good answer: sends this question and answer to your admins" onClick={() => { void send("up"); }}>
+          <ThumbUpIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" aria-label="Wrong answer" title="Wrong answer: say what was wrong" onClick={() => { setAsking(true); }}>
+          <ThumbDownIcon fontSize="small" />
+        </IconButton>
+      </Box>
+      {asking && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <TextField
+            size="small"
+            multiline
+            maxRows={4}
+            label="What was wrong?"
+            value={comment}
+            onChange={(e) => { setComment(e.target.value); }}
+            slotProps={{ htmlInput: { maxLength: 2000 } }}
+            helperText="Sent with this question and answer to your admins, who fix the docs or the agent."
+          />
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button size="small" variant="contained" onClick={() => { void send("down"); }}>
+              Send
+            </Button>
+            <Button size="small" onClick={() => { setAsking(false); }}>
+              Cancel
+            </Button>
+          </Box>
+        </Box>
+      )}
+      {error && <Alert severity="error">{error}</Alert>}
     </Box>
   );
 }
@@ -164,16 +228,18 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
               {t.content}
             </Box>
           ) : (
-            <Answer
-              key={i}
-              turn={t}
-              onOpenCart={(c) => {
-                cart.replace(c.team, c.actions);
-                navigate("/catalog/cart");
-                // The cart is the page now; the conversation stays for Ask.
-                onClose();
-              }}
-            />
+            <Box key={i} sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Answer
+                turn={t}
+                onOpenCart={(c) => {
+                  cart.replace(c.team, c.actions);
+                  navigate("/catalog/cart");
+                  // The cart is the page now; the conversation stays for Ask.
+                  onClose();
+                }}
+              />
+              <Rate question={turns[i - 1]?.content ?? ""} turn={t} team={team || null} model={model} />
+            </Box>
           ),
         )}
         {busy && (

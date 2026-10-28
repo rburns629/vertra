@@ -6,13 +6,199 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file vertra/console/v1/chat.proto.
  */
 export const file_vertra_console_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgi2AEKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAlCBwoFX2NhcnQywgEKC0NoYXRTZXJ2aWNlEm0KD0dldENoYXRTZXR0aW5ncxIpLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXNwb25zZSIDkAIBEkQKA0FzaxIdLnZlcnRyYS5jb25zb2xlLnYxLkFza1JlcXVlc3QaHi52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXNwb25zZWIGcHJvdG8z");
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgi2AEKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAlCBwoFX2NhcnQyjwMKC0NoYXRTZXJ2aWNlEm0KD0dldENoYXRTZXR0aW5ncxIpLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXNwb25zZSIDkAIBEkQKA0FzaxIdLnZlcnRyYS5jb25zb2xlLnYxLkFza1JlcXVlc3QaHi52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXNwb25zZRJZCgpSYXRlQW5zd2VyEiQudmVydHJhLmNvbnNvbGUudjEuUmF0ZUFuc3dlclJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5SYXRlQW5zd2VyUmVzcG9uc2UScAoQTGlzdENoYXRGZWVkYmFjaxIqLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RDaGF0RmVlZGJhY2tSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuTGlzdENoYXRGZWVkYmFja1Jlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+
+/**
+ * @generated from message vertra.console.v1.RateAnswerRequest
+ */
+export type RateAnswerRequest = Message<"vertra.console.v1.RateAnswerRequest"> & {
+  /**
+   * "up" or "down".
+   *
+   * @generated from field: string rating = 1;
+   */
+  rating: string;
+
+  /**
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * At most 4,000 characters.
+   *
+   * @generated from field: string question = 3;
+   */
+  question: string;
+
+  /**
+   * At most 20,000 characters.
+   *
+   * @generated from field: string answer = 4;
+   */
+  answer: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatCitation citations = 5;
+   */
+  citations: ChatCitation[];
+
+  /**
+   * The tools it used, in order.
+   *
+   * @generated from field: repeated string steps = 6;
+   */
+  steps: string[];
+
+  /**
+   * @generated from field: string model = 7;
+   */
+  model: string;
+
+  /**
+   * What was wrong, or right; at most 2,000 characters.
+   *
+   * @generated from field: string comment = 8;
+   */
+  comment: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RateAnswerRequest.
+ * Use `create(RateAnswerRequestSchema)` to create a new message.
+ */
+export const RateAnswerRequestSchema: GenMessage<RateAnswerRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 0);
+
+/**
+ * @generated from message vertra.console.v1.RateAnswerResponse
+ */
+export type RateAnswerResponse = Message<"vertra.console.v1.RateAnswerResponse"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.RateAnswerResponse.
+ * Use `create(RateAnswerResponseSchema)` to create a new message.
+ */
+export const RateAnswerResponseSchema: GenMessage<RateAnswerResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 1);
+
+/**
+ * @generated from message vertra.console.v1.ListChatFeedbackRequest
+ */
+export type ListChatFeedbackRequest = Message<"vertra.console.v1.ListChatFeedbackRequest"> & {
+  /**
+   * "up", "down", or empty for both.
+   *
+   * @generated from field: string rating = 1;
+   */
+  rating: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ListChatFeedbackRequest.
+ * Use `create(ListChatFeedbackRequestSchema)` to create a new message.
+ */
+export const ListChatFeedbackRequestSchema: GenMessage<ListChatFeedbackRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 2);
+
+/**
+ * @generated from message vertra.console.v1.ChatRating
+ */
+export type ChatRating = Message<"vertra.console.v1.ChatRating"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string rating = 2;
+   */
+  rating: string;
+
+  /**
+   * @generated from field: string team = 3;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string question = 4;
+   */
+  question: string;
+
+  /**
+   * @generated from field: string answer = 5;
+   */
+  answer: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatCitation citations = 6;
+   */
+  citations: ChatCitation[];
+
+  /**
+   * @generated from field: repeated string steps = 7;
+   */
+  steps: string[];
+
+  /**
+   * @generated from field: string model = 8;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string comment = 9;
+   */
+  comment: string;
+
+  /**
+   * Who rated it; empty once their account is gone.
+   *
+   * @generated from field: string email = 10;
+   */
+  email: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 11;
+   */
+  createdAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ChatRating.
+ * Use `create(ChatRatingSchema)` to create a new message.
+ */
+export const ChatRatingSchema: GenMessage<ChatRating> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 3);
+
+/**
+ * @generated from message vertra.console.v1.ListChatFeedbackResponse
+ */
+export type ListChatFeedbackResponse = Message<"vertra.console.v1.ListChatFeedbackResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatRating ratings = 1;
+   */
+  ratings: ChatRating[];
+};
+
+/**
+ * Describes the message vertra.console.v1.ListChatFeedbackResponse.
+ * Use `create(ListChatFeedbackResponseSchema)` to create a new message.
+ */
+export const ListChatFeedbackResponseSchema: GenMessage<ListChatFeedbackResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 4);
 
 /**
  * @generated from message vertra.console.v1.GetChatSettingsRequest
@@ -25,7 +211,7 @@ export type GetChatSettingsRequest = Message<"vertra.console.v1.GetChatSettingsR
  * Use `create(GetChatSettingsRequestSchema)` to create a new message.
  */
 export const GetChatSettingsRequestSchema: GenMessage<GetChatSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 0);
+  messageDesc(file_vertra_console_v1_chat, 5);
 
 /**
  * @generated from message vertra.console.v1.GetChatSettingsResponse
@@ -47,7 +233,7 @@ export type GetChatSettingsResponse = Message<"vertra.console.v1.GetChatSettings
  * Use `create(GetChatSettingsResponseSchema)` to create a new message.
  */
 export const GetChatSettingsResponseSchema: GenMessage<GetChatSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 1);
+  messageDesc(file_vertra_console_v1_chat, 6);
 
 /**
  * @generated from message vertra.console.v1.ChatTurn
@@ -71,7 +257,7 @@ export type ChatTurn = Message<"vertra.console.v1.ChatTurn"> & {
  * Use `create(ChatTurnSchema)` to create a new message.
  */
 export const ChatTurnSchema: GenMessage<ChatTurn> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 2);
+  messageDesc(file_vertra_console_v1_chat, 7);
 
 /**
  * @generated from message vertra.console.v1.AskRequest
@@ -98,7 +284,7 @@ export type AskRequest = Message<"vertra.console.v1.AskRequest"> & {
  * Use `create(AskRequestSchema)` to create a new message.
  */
 export const AskRequestSchema: GenMessage<AskRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 3);
+  messageDesc(file_vertra_console_v1_chat, 8);
 
 /**
  * @generated from message vertra.console.v1.ChatCitation
@@ -146,7 +332,7 @@ export type ChatCitation = Message<"vertra.console.v1.ChatCitation"> & {
  * Use `create(ChatCitationSchema)` to create a new message.
  */
 export const ChatCitationSchema: GenMessage<ChatCitation> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 4);
+  messageDesc(file_vertra_console_v1_chat, 9);
 
 /**
  * @generated from message vertra.console.v1.ProposedCart
@@ -168,7 +354,7 @@ export type ProposedCart = Message<"vertra.console.v1.ProposedCart"> & {
  * Use `create(ProposedCartSchema)` to create a new message.
  */
 export const ProposedCartSchema: GenMessage<ProposedCart> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 5);
+  messageDesc(file_vertra_console_v1_chat, 10);
 
 /**
  * @generated from message vertra.console.v1.ChatStep
@@ -190,7 +376,7 @@ export type ChatStep = Message<"vertra.console.v1.ChatStep"> & {
  * Use `create(ChatStepSchema)` to create a new message.
  */
 export const ChatStepSchema: GenMessage<ChatStep> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 6);
+  messageDesc(file_vertra_console_v1_chat, 11);
 
 /**
  * @generated from message vertra.console.v1.AskResponse
@@ -239,7 +425,7 @@ export type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
  * Use `create(AskResponseSchema)` to create a new message.
  */
 export const AskResponseSchema: GenMessage<AskResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 7);
+  messageDesc(file_vertra_console_v1_chat, 12);
 
 /**
  * The chat agent (decision 24): answers from the docs and the catalog,
@@ -271,6 +457,27 @@ export const ChatService: GenService<{
     methodKind: "unary";
     input: typeof AskRequestSchema;
     output: typeof AskResponseSchema;
+  },
+  /**
+   * Thumbs up or down on an answer you got, sent with its question and
+   * answer, for the admins (kept 90 days).
+   *
+   * @generated from rpc vertra.console.v1.ChatService.RateAnswer
+   */
+  rateAnswer: {
+    methodKind: "unary";
+    input: typeof RateAnswerRequestSchema;
+    output: typeof RateAnswerResponseSchema;
+  },
+  /**
+   * The ratings, newest first, at most 200. Admins only.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.ListChatFeedback
+   */
+  listChatFeedback: {
+    methodKind: "unary";
+    input: typeof ListChatFeedbackRequestSchema;
+    output: typeof ListChatFeedbackResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_chat, 0);

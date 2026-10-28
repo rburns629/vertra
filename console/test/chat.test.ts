@@ -17,7 +17,7 @@ import { AnthropicMessages, ModelUnavailable, OpenAICompatible, withoutThinking,
 import type { AuthUser } from "../src/auth/plugin.js";
 import { db } from "../src/db/client.js";
 import { createTeam, upsertProduct } from "../src/db/queries.js";
-import { products, resources, teams } from "../src/db/schema.js";
+import { chatFeedback, products, resources, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { caller, rpcClient } from "./rpc.js";
 
@@ -87,6 +87,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db.delete(chatFeedback).where(like(chatFeedback.question, `${prefix}%`));
   await db.delete(resources).where(like(resources.externalId, `${prefix}%`));
   await db.delete(products).where(like(products.name, `${prefix}%`));
   await db.delete(teams).where(like(teams.name, `${prefix}%`));
@@ -316,5 +317,36 @@ describe("the anthropic model", () => {
     expect((await refused.complete([{ role: "user", content: "x" }], [])).content).toBe("I can't help with that one.");
     const down = new AnthropicMessages(options, fakeClient(new Anthropic.APIConnectionError({ message: "down" })).client);
     await expect(down.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);
+  });
+});
+
+describe("rating answers", () => {
+  it("is anyone's for an answer they got, read by admins only, with what was asked and answered", async () => {
+    const person = await users.makeUser();
+    const token = await users.signIn(person.email);
+    const rating = {
+      rating: "down",
+      question: `${prefix} how do I back up?`,
+      answer: "Run vertra config set backup.enabled [S1].",
+      citations: [{ id: "S1", guide: "reference-operations", title: "Operations", heading: "Backups", kind: "operating", link: "/docs/reference-operations#backups" }],
+      steps: ["search_docs"],
+      model: "claude-haiku-5-5",
+      comment: "That key doesn't exist.",
+    };
+    expect((await rpc(token, "ChatService/RateAnswer", rating)).code).toBe("ok");
+    expect((await rpc(token, "ChatService/RateAnswer", { ...rating, rating: "up", question: `${prefix} thanks` })).code).toBe("ok");
+    expect((await rpc(token, "ChatService/RateAnswer", { ...rating, rating: "sideways" })).code).toBe("invalid_argument");
+    expect((await rpc(token, "ChatService/RateAnswer", { ...rating, team: theirs })).failure).toBe("FORBIDDEN");
+
+    expect((await rpc(token, "ChatService/ListChatFeedback", {})).failure).toBe("FORBIDDEN");
+    const admin = await users.signIn((await users.makeUser({ admin: true })).email);
+    expect((await rpc(admin, "ChatService/RateAnswer", { ...rating, team: `${prefix}-no-such-team` })).failure).toBe("NOT_FOUND");
+    type Listed = { ratings?: { rating: string; question: string; comment: string; email: string; citations: { link: string }[] }[] };
+    const downs = (await rpc<Listed>(admin, "ChatService/ListChatFeedback", { rating: "down" })).body.ratings ?? [];
+    expect(downs.filter((r) => r.question.startsWith(prefix))).toMatchObject([
+      { rating: "down", comment: "That key doesn't exist.", email: person.email, citations: [{ link: "/docs/reference-operations#backups" }] },
+    ]);
+    const all = (await rpc<Listed>(admin, "ChatService/ListChatFeedback", {})).body.ratings ?? [];
+    expect(all.filter((r) => r.question.startsWith(prefix)).map((r) => r.rating)).toEqual(["up", "down"]);
   });
 });

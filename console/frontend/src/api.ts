@@ -2540,3 +2540,56 @@ export async function askChat(team: string | null, messages: { role: "user" | "a
     steps: r.steps.map((s) => ({ tool: s.tool, ok: s.ok })),
   };
 }
+
+/** Thumbs up or down on an answer you got, sent with its question and answer, for the admins. */
+export async function rateAnswer(rating: {
+  rating: "up" | "down";
+  team: string | null;
+  question: string;
+  answer: string;
+  citations: ChatCitation[];
+  steps: string[];
+  model: string;
+  comment: string;
+}): Promise<void> {
+  await call(() =>
+    chatApi.rateAnswer({
+      ...rating,
+      team: rating.team ?? "",
+      citations: rating.citations.map((c) => ({ id: c.id, guide: "", title: c.title, heading: c.heading, kind: c.kind, link: c.link })),
+    }),
+  );
+}
+
+/** A rating of a chat answer, for admins. */
+export interface ChatRating {
+  id: string;
+  rating: "up" | "down";
+  team: string | null;
+  question: string;
+  answer: string;
+  citations: ChatCitation[];
+  steps: string[];
+  model: string;
+  comment: string | null;
+  email: string | null;
+  createdAt: string;
+}
+
+/** The chat's ratings, newest first: admins only. */
+export async function listChatFeedback(rating: "up" | "down" | null): Promise<ChatRating[]> {
+  const { ratings } = await call(() => chatApi.listChatFeedback({ rating: rating ?? "" }));
+  return ratings.map((r) => ({
+    id: r.id,
+    rating: r.rating === "up" ? "up" : "down",
+    team: r.team || null,
+    question: r.question,
+    answer: r.answer,
+    citations: r.citations.map((c) => ({ id: c.id, title: c.title, heading: c.heading, kind: c.kind, link: c.link })),
+    steps: r.steps,
+    model: r.model,
+    comment: r.comment || null,
+    email: r.email || null,
+    createdAt: iso(r.createdAt) ?? "",
+  }));
+}

@@ -40,6 +40,11 @@ const (
 	ChatServiceGetChatSettingsProcedure = "/vertra.console.v1.ChatService/GetChatSettings"
 	// ChatServiceAskProcedure is the fully-qualified name of the ChatService's Ask RPC.
 	ChatServiceAskProcedure = "/vertra.console.v1.ChatService/Ask"
+	// ChatServiceRateAnswerProcedure is the fully-qualified name of the ChatService's RateAnswer RPC.
+	ChatServiceRateAnswerProcedure = "/vertra.console.v1.ChatService/RateAnswer"
+	// ChatServiceListChatFeedbackProcedure is the fully-qualified name of the ChatService's
+	// ListChatFeedback RPC.
+	ChatServiceListChatFeedbackProcedure = "/vertra.console.v1.ChatService/ListChatFeedback"
 )
 
 // ChatServiceClient is a client for the vertra.console.v1.ChatService service.
@@ -50,6 +55,11 @@ type ChatServiceClient interface {
 	// the conversation each time. CHAT_OFF without a model here;
 	// MODEL_UNAVAILABLE when it doesn't answer.
 	Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error)
+	// Thumbs up or down on an answer you got, sent with its question and
+	// answer, for the admins (kept 90 days).
+	RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error)
+	// The ratings, newest first, at most 200. Admins only.
+	ListChatFeedback(context.Context, *connect.Request[v1.ListChatFeedbackRequest]) (*connect.Response[v1.ListChatFeedbackResponse], error)
 }
 
 // NewChatServiceClient constructs a client for the vertra.console.v1.ChatService service. By
@@ -76,13 +86,28 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("Ask")),
 			connect.WithClientOptions(opts...),
 		),
+		rateAnswer: connect.NewClient[v1.RateAnswerRequest, v1.RateAnswerResponse](
+			httpClient,
+			baseURL+ChatServiceRateAnswerProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("RateAnswer")),
+			connect.WithClientOptions(opts...),
+		),
+		listChatFeedback: connect.NewClient[v1.ListChatFeedbackRequest, v1.ListChatFeedbackResponse](
+			httpClient,
+			baseURL+ChatServiceListChatFeedbackProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("ListChatFeedback")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // chatServiceClient implements ChatServiceClient.
 type chatServiceClient struct {
-	getChatSettings *connect.Client[v1.GetChatSettingsRequest, v1.GetChatSettingsResponse]
-	ask             *connect.Client[v1.AskRequest, v1.AskResponse]
+	getChatSettings  *connect.Client[v1.GetChatSettingsRequest, v1.GetChatSettingsResponse]
+	ask              *connect.Client[v1.AskRequest, v1.AskResponse]
+	rateAnswer       *connect.Client[v1.RateAnswerRequest, v1.RateAnswerResponse]
+	listChatFeedback *connect.Client[v1.ListChatFeedbackRequest, v1.ListChatFeedbackResponse]
 }
 
 // GetChatSettings calls vertra.console.v1.ChatService.GetChatSettings.
@@ -95,6 +120,16 @@ func (c *chatServiceClient) Ask(ctx context.Context, req *connect.Request[v1.Ask
 	return c.ask.CallUnary(ctx, req)
 }
 
+// RateAnswer calls vertra.console.v1.ChatService.RateAnswer.
+func (c *chatServiceClient) RateAnswer(ctx context.Context, req *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error) {
+	return c.rateAnswer.CallUnary(ctx, req)
+}
+
+// ListChatFeedback calls vertra.console.v1.ChatService.ListChatFeedback.
+func (c *chatServiceClient) ListChatFeedback(ctx context.Context, req *connect.Request[v1.ListChatFeedbackRequest]) (*connect.Response[v1.ListChatFeedbackResponse], error) {
+	return c.listChatFeedback.CallUnary(ctx, req)
+}
+
 // ChatServiceHandler is an implementation of the vertra.console.v1.ChatService service.
 type ChatServiceHandler interface {
 	// Whether chat is on here, and with which model.
@@ -103,6 +138,11 @@ type ChatServiceHandler interface {
 	// the conversation each time. CHAT_OFF without a model here;
 	// MODEL_UNAVAILABLE when it doesn't answer.
 	Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error)
+	// Thumbs up or down on an answer you got, sent with its question and
+	// answer, for the admins (kept 90 days).
+	RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error)
+	// The ratings, newest first, at most 200. Admins only.
+	ListChatFeedback(context.Context, *connect.Request[v1.ListChatFeedbackRequest]) (*connect.Response[v1.ListChatFeedbackResponse], error)
 }
 
 // NewChatServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -125,12 +165,29 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("Ask")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceRateAnswerHandler := connect.NewUnaryHandler(
+		ChatServiceRateAnswerProcedure,
+		svc.RateAnswer,
+		connect.WithSchema(chatServiceMethods.ByName("RateAnswer")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceListChatFeedbackHandler := connect.NewUnaryHandler(
+		ChatServiceListChatFeedbackProcedure,
+		svc.ListChatFeedback,
+		connect.WithSchema(chatServiceMethods.ByName("ListChatFeedback")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ChatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChatServiceGetChatSettingsProcedure:
 			chatServiceGetChatSettingsHandler.ServeHTTP(w, r)
 		case ChatServiceAskProcedure:
 			chatServiceAskHandler.ServeHTTP(w, r)
+		case ChatServiceRateAnswerProcedure:
+			chatServiceRateAnswerHandler.ServeHTTP(w, r)
+		case ChatServiceListChatFeedbackProcedure:
+			chatServiceListChatFeedbackHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -146,4 +203,12 @@ func (UnimplementedChatServiceHandler) GetChatSettings(context.Context, *connect
 
 func (UnimplementedChatServiceHandler) Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.Ask is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.RateAnswer is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) ListChatFeedback(context.Context, *connect.Request[v1.ListChatFeedbackRequest]) (*connect.Response[v1.ListChatFeedbackResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.ListChatFeedback is not implemented"))
 }

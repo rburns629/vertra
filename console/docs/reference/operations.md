@@ -624,6 +624,9 @@ bound one answer; `chat.effort` sets how hard Claude thinks. Score a model
 before trusting it: `npm run chat-eval` in `console/` asks it the question
 set (`console/test/docQuestions.ts`). The console logs each answer's steps
 (`chat_answered`: tools used, sources, citations), not what was said.
+People rate answers up or down in the panel; Admin's Chat tab lists them
+(question, answer, sources, what was wrong), kept 90 days. A wrong answer
+is usually a doc to fix, or a question to add to the question set.
 
 ## Throughput
 

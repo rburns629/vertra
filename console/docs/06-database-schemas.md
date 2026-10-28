@@ -674,6 +674,24 @@ A delete refused because other resources still depended on what it would delete:
 | `decided_at` | timestamptz | yes | |
 | `execution_id` | uuid | yes | The cleanup run an approval started. |
 
+### chat_feedback
+
+Ratings of the chat agent's answers (decision 24): thumbs up or down, each with what was asked and answered, sent by the person who rated it. The agent keeps nothing else of a conversation. Admins read them (Admin, Chat); kept 90 days.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `user_id` | uuid | yes | Who rated it. Emptied if the account is deleted. |
+| `team` | text | yes | The team they were working for. |
+| `rating` | text | no | `up` or `down`. |
+| `question` | text | no | What they asked. |
+| `answer` | text | no | What the agent answered. |
+| `citations` | jsonb | no | The sections it cited: `[{id, title, heading, kind, link}]`. |
+| `steps` | jsonb | no | The tools it used, in order. |
+| `model` | text | no | The model that answered. |
+| `comment` | text | yes | What they said was wrong, or right. |
+| `created_at` | timestamptz | no | |
+
 ### bot_identities
 
 Who a bot is when it signs in without a stored token (`auth/keyless.ts`): a CI's OIDC issuer and the exact claims its ID token must carry.

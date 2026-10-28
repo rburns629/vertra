@@ -1152,3 +1152,33 @@ export const ssoGroupMappings = pgTable(
   },
   (table) => [unique("sso_group_mappings_group_team").on(table.groupName, table.teamId)],
 );
+
+/**
+ * Ratings of the chat agent's answers (decision 24, Correctness): thumbs up
+ * or down, each with what was asked and answered, its sources, its steps
+ * and its model, sent by the person who rated it (the panel says so).
+ * Admins read them (Admin, Chat); a bad one becomes a question-set case or
+ * a doc fix. Kept 90 days (retention.ts).
+ */
+export const chatFeedback = pgTable(
+  "chat_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    team: text("team"),
+    rating: text("rating").$type<"up" | "down">().notNull(),
+    question: text("question").notNull(),
+    answer: text("answer").notNull(),
+    // [{id, title, heading, kind, link}] as the answer cited them.
+    citations: jsonb("citations").$type<{ id: string; title: string; heading: string; kind: string; link: string }[]>().notNull().default([]),
+    // The tools it used, in order.
+    steps: jsonb("steps").$type<string[]>().notNull().default([]),
+    model: text("model").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("chat_feedback_created_at_idx").on(table.createdAt),
+    check("chat_feedback_rating", sql`${table.rating} IN ('up', 'down')`),
+  ],
+);

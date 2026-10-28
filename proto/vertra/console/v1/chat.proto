@@ -4,6 +4,8 @@ syntax = "proto3";
 
 package vertra.console.v1;
 
+import "google/protobuf/timestamp.proto";
+
 // The chat agent (decision 24): answers from the docs and the catalog,
 // looks at what the person's teams have, and proposes carts, all as the
 // signed-in person, through the console's own checks. It never orders: a
@@ -17,6 +19,57 @@ service ChatService {
   // the conversation each time. CHAT_OFF without a model here;
   // MODEL_UNAVAILABLE when it doesn't answer.
   rpc Ask(AskRequest) returns (AskResponse);
+  // Thumbs up or down on an answer you got, sent with its question and
+  // answer, for the admins (kept 90 days).
+  rpc RateAnswer(RateAnswerRequest) returns (RateAnswerResponse);
+  // The ratings, newest first, at most 200. Admins only.
+  rpc ListChatFeedback(ListChatFeedbackRequest) returns (ListChatFeedbackResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message RateAnswerRequest {
+  // "up" or "down".
+  string rating = 1;
+  string team = 2;
+  // At most 4,000 characters.
+  string question = 3;
+  // At most 20,000 characters.
+  string answer = 4;
+  repeated ChatCitation citations = 5;
+  // The tools it used, in order.
+  repeated string steps = 6;
+  string model = 7;
+  // What was wrong, or right; at most 2,000 characters.
+  string comment = 8;
+}
+
+message RateAnswerResponse {
+  string id = 1;
+}
+
+message ListChatFeedbackRequest {
+  // "up", "down", or empty for both.
+  string rating = 1;
+}
+
+message ChatRating {
+  string id = 1;
+  string rating = 2;
+  string team = 3;
+  string question = 4;
+  string answer = 5;
+  repeated ChatCitation citations = 6;
+  repeated string steps = 7;
+  string model = 8;
+  string comment = 9;
+  // Who rated it; empty once their account is gone.
+  string email = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message ListChatFeedbackResponse {
+  repeated ChatRating ratings = 1;
 }
 
 message GetChatSettingsRequest {}

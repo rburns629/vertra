@@ -5,68 +5,104 @@
 /* eslint-disable */
 
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file vertra/console/v1/chat.proto.
  */
 export const file_vertra_console_v1_chat = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgi2AEKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAlCBwoFX2NhcnQywgEKC0NoYXRTZXJ2aWNlEm0KD0dldENoYXRTZXR0aW5ncxIpLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXNwb25zZSIDkAIBEkQKA0FzaxIdLnZlcnRyYS5jb25zb2xlLnYxLkFza1JlcXVlc3QaHi52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXNwb25zZWIGcHJvdG8z");
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgi2AEKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAlCBwoFX2NhcnQyjwMKC0NoYXRTZXJ2aWNlEm0KD0dldENoYXRTZXR0aW5ncxIpLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXNwb25zZSIDkAIBEkQKA0FzaxIdLnZlcnRyYS5jb25zb2xlLnYxLkFza1JlcXVlc3QaHi52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXNwb25zZRJZCgpSYXRlQW5zd2VyEiQudmVydHJhLmNvbnNvbGUudjEuUmF0ZUFuc3dlclJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5SYXRlQW5zd2VyUmVzcG9uc2UScAoQTGlzdENoYXRGZWVkYmFjaxIqLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RDaGF0RmVlZGJhY2tSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuTGlzdENoYXRGZWVkYmFja1Jlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+
+/**
+ * Describes the message vertra.console.v1.RateAnswerRequest.
+ * Use `create(RateAnswerRequestSchema)` to create a new message.
+ */
+export const RateAnswerRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 0);
+
+/**
+ * Describes the message vertra.console.v1.RateAnswerResponse.
+ * Use `create(RateAnswerResponseSchema)` to create a new message.
+ */
+export const RateAnswerResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 1);
+
+/**
+ * Describes the message vertra.console.v1.ListChatFeedbackRequest.
+ * Use `create(ListChatFeedbackRequestSchema)` to create a new message.
+ */
+export const ListChatFeedbackRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 2);
+
+/**
+ * Describes the message vertra.console.v1.ChatRating.
+ * Use `create(ChatRatingSchema)` to create a new message.
+ */
+export const ChatRatingSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 3);
+
+/**
+ * Describes the message vertra.console.v1.ListChatFeedbackResponse.
+ * Use `create(ListChatFeedbackResponseSchema)` to create a new message.
+ */
+export const ListChatFeedbackResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 4);
 
 /**
  * Describes the message vertra.console.v1.GetChatSettingsRequest.
  * Use `create(GetChatSettingsRequestSchema)` to create a new message.
  */
 export const GetChatSettingsRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 0);
+  messageDesc(file_vertra_console_v1_chat, 5);
 
 /**
  * Describes the message vertra.console.v1.GetChatSettingsResponse.
  * Use `create(GetChatSettingsResponseSchema)` to create a new message.
  */
 export const GetChatSettingsResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 1);
+  messageDesc(file_vertra_console_v1_chat, 6);
 
 /**
  * Describes the message vertra.console.v1.ChatTurn.
  * Use `create(ChatTurnSchema)` to create a new message.
  */
 export const ChatTurnSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 2);
+  messageDesc(file_vertra_console_v1_chat, 7);
 
 /**
  * Describes the message vertra.console.v1.AskRequest.
  * Use `create(AskRequestSchema)` to create a new message.
  */
 export const AskRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 3);
+  messageDesc(file_vertra_console_v1_chat, 8);
 
 /**
  * Describes the message vertra.console.v1.ChatCitation.
  * Use `create(ChatCitationSchema)` to create a new message.
  */
 export const ChatCitationSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 4);
+  messageDesc(file_vertra_console_v1_chat, 9);
 
 /**
  * Describes the message vertra.console.v1.ProposedCart.
  * Use `create(ProposedCartSchema)` to create a new message.
  */
 export const ProposedCartSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 5);
+  messageDesc(file_vertra_console_v1_chat, 10);
 
 /**
  * Describes the message vertra.console.v1.ChatStep.
  * Use `create(ChatStepSchema)` to create a new message.
  */
 export const ChatStepSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 6);
+  messageDesc(file_vertra_console_v1_chat, 11);
 
 /**
  * Describes the message vertra.console.v1.AskResponse.
  * Use `create(AskResponseSchema)` to create a new message.
  */
 export const AskResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 7);
+  messageDesc(file_vertra_console_v1_chat, 12);
 
 /**
  * The chat agent (decision 24): answers from the docs and the catalog,

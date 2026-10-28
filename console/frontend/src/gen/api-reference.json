@@ -232,6 +232,24 @@
      "streaming": false,
      "idempotency": "",
      "public": false
+    },
+    {
+     "name": "RateAnswer",
+     "comment": "Thumbs up or down on an answer you got, sent with its question and\nanswer, for the admins (kept 90 days).",
+     "input": "vertra.console.v1.RateAnswerRequest",
+     "output": "vertra.console.v1.RateAnswerResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ListChatFeedback",
+     "comment": "The ratings, newest first, at most 200. Admins only.",
+     "input": "vertra.console.v1.ListChatFeedbackRequest",
+     "output": "vertra.console.v1.ListChatFeedbackResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
     }
    ]
   },
@@ -2701,6 +2719,193 @@
      "name": "expiresAt",
      "type": "timestamp (RFC 3339 string)",
      "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.RateAnswerRequest": {
+   "name": "RateAnswerRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "rating",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"up\" or \"down\"."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "question",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "At most 4,000 characters."
+    },
+    {
+     "name": "answer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "At most 20,000 characters."
+    },
+    {
+     "name": "citations",
+     "type": "ChatCitation",
+     "ref": "vertra.console.v1.ChatCitation",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The tools it used, in order."
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "comment",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What was wrong, or right; at most 2,000 characters."
+    }
+   ]
+  },
+  "vertra.console.v1.RateAnswerResponse": {
+   "name": "RateAnswerResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListChatFeedbackRequest": {
+   "name": "ListChatFeedbackRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "rating",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"up\", \"down\", or empty for both."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatRating": {
+   "name": "ChatRating",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "rating",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "question",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "answer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "citations",
+     "type": "ChatCitation",
+     "ref": "vertra.console.v1.ChatCitation",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "comment",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who rated it; empty once their account is gone."
+    },
+    {
+     "name": "createdAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListChatFeedbackResponse": {
+   "name": "ListChatFeedbackResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "ratings",
+     "type": "ChatRating",
+     "ref": "vertra.console.v1.ChatRating",
+     "repeated": true,
      "optional": false,
      "comment": ""
     }

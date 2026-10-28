@@ -1038,11 +1038,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Running them found the repair turn rewriting ordering answers into
   "the docs don't cover that": an answer from the platform's tools is no
   longer repaired or flagged as not from the docs.
+  Thumbs up or down on each answer (2026-10-28): a wrong one asks what
+  was wrong; both go, with the question, answer and sources, to Admin's
+  Chat tab (`ChatService/RateAnswer`, `ListChatFeedback`; 90 days).
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
-  caching measured (usage logged). Left: the
-  answers scored per model on the question set, scripted tasks with a real
-  model, thumbs up or down, streaming, Vertex's sign-in; then MCP) (proposed
+  caching measured (usage logged). Left:
+  streaming, Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the
@@ -1055,8 +1057,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   what was retrieved with links the console builds (`src/chat/
   citations.ts`), and a 40-question set (`test/docQuestions.ts`) whose
   retrieval CI holds at 90% or more (95% now, from 80% before stemming,
-  a softer length penalty, synonyms and heading scores). Left: answers
-  scored per model, scripted tasks, thumbs up or down. The model is the install's `chat`
+  a softer length penalty, synonyms and heading scores). Since done:
+  answers scored per model, scripted tasks, thumbs up or down. The model is the install's `chat`
   setting: Vertex AI on GCP, Bedrock on AWS, keyless; two adapters
   (Anthropic's format, OpenAI-compatible); a scripted model in tests. Prove
   locally with LM Studio (Qwen3, OpenAI-compatible, at

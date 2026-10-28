@@ -411,6 +411,7 @@ describe("the docs", () => {
 describe("the chat panel", () => {
   it("isn't there without a model, and answers with its sources and a cart to open", async () => {
     const asked: Record<string, unknown>[] = [];
+    const rated: Record<string, unknown>[] = [];
     await renderAt("/", MEMBER, {
       "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
       "ChatService/Ask": (request: Record<string, unknown>) => {
@@ -425,6 +426,10 @@ describe("the chat panel", () => {
           steps: [{ tool: "search_docs", ok: true }, { tool: "propose_cart", ok: true }],
         };
       },
+      "ChatService/RateAnswer": (request: Record<string, unknown>) => {
+        rated.push(request);
+        return {};
+      },
       "TemplateService/ListTemplates": { runnables: [] },
     });
     fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra" }));
@@ -434,6 +439,23 @@ describe("the chat panel", () => {
     expect(screen.getByText(/design history: why, not how it works now/)).toBeTruthy();
     expect(screen.getByText(/searched the docs, filled a cart/)).toBeTruthy();
     expect(asked).toMatchObject([{ team: "azure-apps", messages: [{ role: "user", content: "How do I back up?" }] }]);
+    // A wrong answer goes to the admins with its question, and what was wrong.
+    fireEvent.click(screen.getByRole("button", { name: "Wrong answer" }));
+    fireEvent.change(await screen.findByLabelText("What was wrong?"), { target: { value: "Only the kernel's is nightly" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Send" })[0]!);
+    expect(await screen.findByText(/sent to your admins, to fix/)).toBeTruthy();
+    expect(rated).toMatchObject([
+      {
+        rating: "down",
+        team: "azure-apps",
+        question: "How do I back up?",
+        answer: "Back up both databases nightly [S1]. Here's a cart for a bucket.",
+        steps: ["search_docs", "propose_cart"],
+        model: "qwen3.8-27b",
+        comment: "Only the kernel's is nightly",
+      },
+    ]);
+    expect(rated[0]?.citations).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Open in cart" }));
     expect(await screen.findByRole("heading", { name: "Cart" })).toBeTruthy();
     const { cart } = await import("./cart");
@@ -566,6 +588,34 @@ describe("admin", () => {
     fireEvent.change(await screen.findByLabelText(/temporary password/i), { target: { value: "a-temporary-one" } });
     fireEvent.click(screen.getByRole("button", { name: "Reset password" }));
     await waitFor(() => { expect(reset).toEqual([{ email: "lee@acme.com", newPassword: "a-temporary-one" }]); });
+  });
+
+  it("lists how people rated the chat's answers, the wrong ones first", async () => {
+    await renderAt("/admin?tab=chat", ADMIN, {
+      "ChatService/ListChatFeedback": {
+        ratings: [
+          { id: "1", rating: "up", question: "How do I add a secret?", answer: "Register it.", model: "claude-haiku-5-5", email: "lee@acme.com", createdAt: "2026-10-28T10:00:00Z" },
+          {
+            id: "2",
+            rating: "down",
+            team: "payments",
+            question: "How do I back up?",
+            answer: "Nightly.",
+            comment: "Only the kernel's",
+            citations: [{ id: "S1", guide: "reference-operations", title: "Operations", heading: "Backups", kind: "operating", link: "/docs/reference-operations#backups" }],
+            steps: ["search_docs"],
+            model: "claude-haiku-5-5",
+            email: "kim@acme.com",
+            createdAt: "2026-10-28T11:00:00Z",
+          },
+        ],
+      },
+    });
+    expect(await screen.findByText("How do I back up?")).toBeTruthy();
+    expect(screen.getByText(/Only the kernel's/)).toBeTruthy();
+    expect(screen.queryByText("How do I add a secret?")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "All 2" }));
+    expect(await screen.findByText("How do I add a secret?")).toBeTruthy();
   });
 
   it("opens a tab from the address", async () => {
