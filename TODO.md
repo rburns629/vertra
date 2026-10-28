@@ -1018,7 +1018,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   person's own Place order confirms), and answer questions from every doc
   (done first, 2026-10-28: the platform's docs ship in the console's image,
   `console/docs/reference/`, and `GuideService/SearchGuides` searches them
-  and the guides by section, the Docs page's search too). The model is the install's `chat`
+  and the guides by section, the Docs page's search too). Correctness
+  (decision 24, part 4), done first, 2026-10-28: docs labelled by kind
+  (design history searched only for "why"), citations checked against
+  what was retrieved with links the console builds (`src/chat/
+  citations.ts`), and a 40-question set (`test/docQuestions.ts`) whose
+  retrieval CI holds at 90% or more (95% now, from 80% before stemming,
+  a softer length penalty, synonyms and heading scores). Left: answers
+  scored per model, scripted tasks, thumbs up or down. The model is the install's `chat`
   setting: Vertex AI on GCP, Bedrock on AWS, keyless; two adapters
   (Anthropic's format, OpenAI-compatible); a scripted model in tests. Prove
   locally with LM Studio (Qwen3, OpenAI-compatible, at

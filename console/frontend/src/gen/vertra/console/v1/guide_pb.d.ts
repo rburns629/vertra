@@ -27,6 +27,13 @@ export declare type SearchGuidesRequest = Message<"vertra.console.v1.SearchGuide
    * @generated from field: int32 limit = 2;
    */
   limit: number;
+
+  /**
+   * Design history too (kind "history"): for a question of why.
+   *
+   * @generated from field: bool include_history = 3;
+   */
+  includeHistory: boolean;
 };
 
 /**
@@ -85,6 +92,13 @@ export declare type GuideHit = Message<"vertra.console.v1.GuideHit"> & {
    * @generated from field: double score = 5;
    */
   score: number;
+
+  /**
+   * The doc's kind, as Guide's.
+   *
+   * @generated from field: string kind = 6;
+   */
+  kind: string;
 };
 
 /**
@@ -115,6 +129,16 @@ export declare type Guide = Message<"vertra.console.v1.Guide"> & {
    * @generated from field: string section = 3;
    */
   section: string;
+
+  /**
+   * What it is: "guide" (using Vertra), "current" (how it works now),
+   * "operating" (installing and running it) or "history" (design history:
+   * decisions, with proposals and rejected options; it answers why, never
+   * what is).
+   *
+   * @generated from field: string kind = 4;
+   */
+  kind: string;
 };
 
 /**

@@ -29,7 +29,7 @@ export function guideService(): ServiceImpl<typeof GuideService> {
     async searchGuides(req) {
       const { query } = check({ query: Type.String({ minLength: 1, maxLength: 500 }) }, { query: req.query });
       const limit = Math.min(Math.max(req.limit || 5, 1), 20);
-      return { hits: (await guideIndex()).search(query, limit) };
+      return { hits: (await guideIndex()).search(query, limit, req.includeHistory) };
     },
   };
 }

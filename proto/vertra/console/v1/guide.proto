@@ -27,6 +27,8 @@ message SearchGuidesRequest {
   string query = 1;
   // 5 when unset, at most 20.
   int32 limit = 2;
+  // Design history too (kind "history"): for a question of why.
+  bool include_history = 3;
 }
 
 message SearchGuidesResponse {
@@ -42,6 +44,8 @@ message GuideHit {
   // About 600 characters of it, from where the words first appear.
   string excerpt = 4;
   double score = 5;
+  // The doc's kind, as Guide's.
+  string kind = 6;
 }
 
 message Guide {
@@ -50,6 +54,11 @@ message Guide {
   string title = 2;
   // "guides" (using Vertra) or "reference" (the platform's own docs).
   string section = 3;
+  // What it is: "guide" (using Vertra), "current" (how it works now),
+  // "operating" (installing and running it) or "history" (design history:
+  // decisions, with proposals and rejected options; it answers why, never
+  // what is).
+  string kind = 4;
 }
 
 message ListGuidesRequest {}

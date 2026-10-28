@@ -14,11 +14,34 @@ import { Type } from "@sinclair/typebox";
 const DOCS_DIR = process.env["DOCS_DIR"] ?? "/app/docs";
 const REFERENCE = "reference-";
 
+/** What a doc is (decision 24): a guide to using Vertra; how it works now;
+ * installing and running it; or design history, which answers "why",
+ * never "what is". */
+export type GuideKind = "guide" | "current" | "operating" | "history";
+
 export interface GuideSummary {
   id: string;
   title: string;
   /** guides: for using Vertra; reference: the platform's own docs. */
   section: "guides" | "reference";
+  kind: GuideKind;
+}
+
+const KINDS: readonly string[] = ["current", "operating", "history"];
+
+/** The reference docs' kinds, from reference/SOURCES ("<id> <kind> <path>"); a doc missing there is "current". */
+async function referenceKinds(): Promise<Map<string, GuideKind>> {
+  try {
+    const sources = await readFile(join(DOCS_DIR, "reference", "SOURCES"), "utf-8");
+    const kinds = new Map<string, GuideKind>();
+    for (const line of sources.split("\n")) {
+      const [id, kind] = line.trim().split(/\s+/);
+      if (id && !id.startsWith("#") && kind && KINDS.includes(kind)) kinds.set(id, kind as GuideKind);
+    }
+    return kinds;
+  } catch {
+    return new Map();
+  }
 }
 
 /** Kept to exactly `[a-zA-Z0-9_-]+`: an id becomes a path component in
@@ -42,6 +65,7 @@ async function markdownIn(dir: string): Promise<string[]> {
 }
 
 export async function listGuides(): Promise<GuideSummary[]> {
+  const kinds = await referenceKinds();
   const guides: GuideSummary[] = [];
   for (const [dir, section, prefix] of [
     [DOCS_DIR, "guides", ""],
@@ -49,7 +73,9 @@ export async function listGuides(): Promise<GuideSummary[]> {
   ] as const) {
     for (const entry of await markdownIn(dir)) {
       const content = await readFile(join(dir, entry), "utf-8");
-      guides.push({ id: prefix + entry.replace(/\.md$/, ""), title: titleFromMarkdown(content, entry), section });
+      const name = entry.replace(/\.md$/, "");
+      const kind: GuideKind = section === "guides" ? "guide" : (kinds.get(name) ?? "current");
+      guides.push({ id: prefix + name, title: titleFromMarkdown(content, entry), section, kind });
     }
   }
   return guides;

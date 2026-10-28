@@ -1499,10 +1499,17 @@ export interface DocSummary {
   title: string;
   /** guides: for using Vertra; reference: the platform's own docs. */
   section: "guides" | "reference";
+  /** guide, current (how it works now), operating (running it), or history (decisions: why, not what is). */
+  kind: string;
 }
 
 export async function listDocs(): Promise<DocSummary[]> {
-  return (await call(() => guides.listGuides({}))).guides.map((g) => ({ id: g.id, title: g.title, section: g.section === "reference" ? "reference" : "guides" }));
+  return (await call(() => guides.listGuides({}))).guides.map((g) => ({
+    id: g.id,
+    title: g.title,
+    section: g.section === "reference" ? "reference" : "guides",
+    kind: g.kind,
+  }));
 }
 
 /** A section of a guide or reference doc that matches a question. */
@@ -1511,11 +1518,18 @@ export interface DocHit {
   title: string;
   heading: string;
   excerpt: string;
+  kind: string;
 }
 
-/** The sections that best match a question's words, best first. */
+/** The sections that best match a question's words, best first, design history included (labelled). */
 export async function searchDocs(query: string): Promise<DocHit[]> {
-  return (await call(() => guides.searchGuides({ query, limit: 8 }))).hits.map((h) => ({ guide: h.guide, title: h.title, heading: h.heading, excerpt: h.excerpt }));
+  return (await call(() => guides.searchGuides({ query, limit: 8, includeHistory: true }))).hits.map((h) => ({
+    guide: h.guide,
+    title: h.title,
+    heading: h.heading,
+    excerpt: h.excerpt,
+    kind: h.kind,
+  }));
 }
 
 /** A guide's markdown. */

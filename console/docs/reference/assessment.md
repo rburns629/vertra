@@ -864,7 +864,33 @@ in VS Code, for one) can do the same. Proposed:
    step's logs can hold anything), nothing admin-only, no secrets, teams,
    members or bots. A conversation is kept for its person only, and
    deleted after 30 days.
-4. *Later, an MCP server* at `/mcp` (Streamable HTTP), the same tools
+4. *Correctness* (decided on review, 2026-10-28): the model words answers;
+   it's never the source of a fact.
+   - *What's there is asked, never remembered.* What a team has, why a run
+     failed, what an offering needs: only from a tool, live, with the
+     person's permissions. Anything shown as a thing (a resource, an
+     action, a run, the cart) is drawn from the tool's data, not the
+     model's text, so a misnamed action shows as the real one or nothing.
+   - *Answers from the docs cite, checked.* Only from the sections retrieved
+     that turn, each cited; the server keeps a citation only if it names a
+     section retrieved, and builds every link itself from the search's
+     result, never from the model's text. A factual answer citing nothing
+     is marked as not from the docs, and nothing found means "the docs
+     don't say", with a link to search.
+   - *Docs by kind.* Each says what it is: a guide (using Vertra), how it
+     works now, how to run it, or design history (the decisions, with
+     proposals and rejected options). History answers "why", never "what
+     is", and is searched only for that. The TODO isn't shipped.
+   - *Actions checked by the platform.* The agent proposes a cart; the plan
+     shown is PreviewOrder's, and PlaceOrder checks it again on the
+     person's click.
+   - *Measured.* A question set, each with the section that answers it:
+     retrieval (the section in the best five) checked in CI; answers, per
+     model, run by hand or nightly; scripted tasks checking the tools are
+     called in order. Thumbs up or down on each answer, the misses turned
+     into cases or doc fixes. A small local model proves the agent's logic,
+     not its answers' quality: a production install uses a capable one.
+5. *Later, an MCP server* at `/mcp` (Streamable HTTP), the same tools
    for outside agents: a team's bot first (signing in keylessly with its
    cloud identity's ID token at `AuthService/ExchangeToken`), then people
    through MCP's OAuth 2.1 (the console as the authorization server, a

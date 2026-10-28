@@ -183,6 +183,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/schedules.ts` | `ScheduleService`: a team's schedules (members see, maintainers make, pause and delete), checked as their bot. |
 | `core/sso.ts` | `SsoService`: single sign-on as admins set it (the provider unless the install set it, its discovery checked, its secret write-only), where groups come from, and groups mapped to teams. |
 | `core/drafts.ts` | `DraftService`: Compose's drafts, kept for their team (its members and admins), bounded, each save conditional on the version it changed. |
+| `chat/citations.ts` | The chat agent's citations: retrieved sections numbered as sources, an answer's citations kept only when they name one retrieved that turn, links built by the console, an answer citing nothing it found flagged. |
 | `guideSearch.ts` | Searching the guides and reference docs: each cut into sections at its headings, ranked by BM25 (a heading's words three times; two words also tried as one), built once from the image's docs (`GuideService/SearchGuides`, the Docs page's search, the chat agent). |
 | `core/orders.ts` | `OrderService` (decisions 23 and 25): the order builder (`planOrder`, no I/O): a cart of actions wired by wiring type; for a needed type, what the team already has offered, else its default provider added, or a shared type asked once; optional inputs suggested; ambiguities and cycles reported. `PreviewOrder` runs nothing; `PlaceOrder` runs a planned cart as one run for the team, each step as its action alone (`templates.ts`'s `runOrderSteps`). |
 | `core/notifications.ts` | `NotificationService`: your inbox, and your teams' chat webhooks (members see, maintainers set, test and remove). |
@@ -338,6 +339,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `execution-list.test.ts` | The execution list, a page at a time: every row once, only the caller's, server-side filters. |
 | `access.test.ts` | The authorization rules in `auth/access.ts`. |
 | `security-headers.test.ts` | The browser security headers (CSP and others) on pages and errors. |
+| `docQuestions.ts` | The question set: questions as people ask them, each with the sections that answer it. `docs.test.ts` holds the search's retrieval at 90% or more of them; the chat agent's answers are scored against them. |
 | `rpc.ts` | Calling the Connect services as JSON through `app.inject`, and reading their error details. |
 | `wiringTypesLock.ts` | A Postgres advisory lock the tests that read or replace the install-wide wiring types hold, since test files run in parallel. |
 | `rpc-*.test.ts` | Each Connect service (auth, users, tokens, admin, secrets, products, teams, executions): who may call it, its refusals as Connect codes and details, and requests checked against their schemas. |

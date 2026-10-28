@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/guide.proto.
  */
 export const file_vertra_console_v1_guide: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiMwoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBSJBChRTZWFyY2hHdWlkZXNSZXNwb25zZRIpCgRoaXRzGAEgAygLMhsudmVydHJhLmNvbnNvbGUudjEuR3VpZGVIaXQiWQoIR3VpZGVIaXQSDQoFZ3VpZGUYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHaGVhZGluZxgDIAEoCRIPCgdleGNlcnB0GAQgASgJEg0KBXNjb3JlGAUgASgBIjMKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkiEwoRTGlzdEd1aWRlc1JlcXVlc3QiPgoSTGlzdEd1aWRlc1Jlc3BvbnNlEigKBmd1aWRlcxgBIAMoCzIYLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlIh0KD0dldEd1aWRlUmVxdWVzdBIKCgJpZBgBIAEoCSIkChBHZXRHdWlkZVJlc3BvbnNlEhAKCG1hcmtkb3duGAEgASgJMq4CCgxHdWlkZVNlcnZpY2USXgoKTGlzdEd1aWRlcxIkLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RHdWlkZXNSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1Jlc3BvbnNlIgOQAgESWAoIR2V0R3VpZGUSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlc3BvbnNlIgOQAgESZAoMU2VhcmNoR3VpZGVzEiYudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlNlYXJjaEd1aWRlc1Jlc3BvbnNlIgOQAgFiBnByb3RvMw");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiTAoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBRIXCg9pbmNsdWRlX2hpc3RvcnkYAyABKAgiQQoUU2VhcmNoR3VpZGVzUmVzcG9uc2USKQoEaGl0cxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlSGl0ImcKCEd1aWRlSGl0Eg0KBWd1aWRlGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB2hlYWRpbmcYAyABKAkSDwoHZXhjZXJwdBgEIAEoCRINCgVzY29yZRgFIAEoARIMCgRraW5kGAYgASgJIkEKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkSDAoEa2luZBgEIAEoCSITChFMaXN0R3VpZGVzUmVxdWVzdCI+ChJMaXN0R3VpZGVzUmVzcG9uc2USKAoGZ3VpZGVzGAEgAygLMhgudmVydHJhLmNvbnNvbGUudjEuR3VpZGUiHQoPR2V0R3VpZGVSZXF1ZXN0EgoKAmlkGAEgASgJIiQKEEdldEd1aWRlUmVzcG9uc2USEAoIbWFya2Rvd24YASABKAkyrgIKDEd1aWRlU2VydmljZRJeCgpMaXN0R3VpZGVzEiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5MaXN0R3VpZGVzUmVzcG9uc2UiA5ACARJYCghHZXRHdWlkZRIiLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVzcG9uc2UiA5ACARJkCgxTZWFyY2hHdWlkZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hHdWlkZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
 
 /**
  * @generated from message vertra.console.v1.SearchGuidesRequest
@@ -29,6 +29,13 @@ export type SearchGuidesRequest = Message<"vertra.console.v1.SearchGuidesRequest
    * @generated from field: int32 limit = 2;
    */
   limit: number;
+
+  /**
+   * Design history too (kind "history"): for a question of why.
+   *
+   * @generated from field: bool include_history = 3;
+   */
+  includeHistory: boolean;
 };
 
 /**
@@ -89,6 +96,13 @@ export type GuideHit = Message<"vertra.console.v1.GuideHit"> & {
    * @generated from field: double score = 5;
    */
   score: number;
+
+  /**
+   * The doc's kind, as Guide's.
+   *
+   * @generated from field: string kind = 6;
+   */
+  kind: string;
 };
 
 /**
@@ -120,6 +134,16 @@ export type Guide = Message<"vertra.console.v1.Guide"> & {
    * @generated from field: string section = 3;
    */
   section: string;
+
+  /**
+   * What it is: "guide" (using Vertra), "current" (how it works now),
+   * "operating" (installing and running it) or "history" (design history:
+   * decisions, with proposals and rejected options; it answers why, never
+   * what is).
+   *
+   * @generated from field: string kind = 4;
+   */
+  kind: string;
 };
 
 /**

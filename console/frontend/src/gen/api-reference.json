@@ -4119,6 +4119,13 @@
      "repeated": false,
      "optional": false,
      "comment": "5 when unset, at most 20."
+    },
+    {
+     "name": "includeHistory",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Design history too (kind \"history\"): for a question of why."
     }
    ]
   },
@@ -4174,6 +4181,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The doc's kind, as Guide's."
     }
    ]
   },
@@ -4201,6 +4215,13 @@
      "repeated": false,
      "optional": false,
      "comment": "\"guides\" (using Vertra) or \"reference\" (the platform's own docs)."
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What it is: \"guide\" (using Vertra), \"current\" (how it works now),\n\"operating\" (installing and running it) or \"history\" (design history:\ndecisions, with proposals and rejected options; it answers why, never\nwhat is)."
     }
    ]
   },

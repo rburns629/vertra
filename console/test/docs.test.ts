@@ -10,7 +10,8 @@ import { users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { sectionsOf } from "../src/guideSearch.js";
+import { guideIndex, sectionsOf } from "../src/guideSearch.js";
+import { DOC_QUESTIONS } from "./docQuestions.js";
 import { caller } from "./rpc.js";
 
 let app: FastifyInstance;
@@ -36,7 +37,7 @@ const getGuide = (id: string, as: string | undefined = token) => call<{ markdown
 describe("the in-app guides", () => {
   it("lists the guides in order, the walkthrough first", async () => {
     const docs = await listGuides();
-    expect(docs[0]).toEqual({ id: "01-getting-started", title: "Try Vertra end to end", section: "guides" });
+    expect(docs[0]).toEqual({ id: "01-getting-started", title: "Try Vertra end to end", section: "guides", kind: "guide" });
     expect(docs.map((d) => d.id)).toEqual([...docs.map((d) => d.id)].sort());
   });
 
@@ -67,11 +68,11 @@ describe("the platform's own docs", () => {
   const sources = readFileSync("docs/reference/SOURCES", "utf-8")
     .split("\n")
     .filter((line) => line.trim() && !line.startsWith("#"))
-    .map((line) => line.trim().split(/\s+/) as [string, string]);
+    .map((line) => line.trim().split(/\s+/) as [string, string, string]);
 
   it("are copies of the repository's, current (make console-docs)", () => {
     expect(sources.length).toBeGreaterThan(5);
-    for (const [id, path] of sources) {
+    for (const [id, , path] of sources) {
       const copy = readFileSync(join("docs/reference", `${id}.md`), "utf-8");
       expect(copy === readFileSync(join("..", path), "utf-8"), `console/docs/reference/${id}.md is behind ${path}: run make console-docs`).toBe(true);
     }
@@ -83,6 +84,20 @@ describe("the platform's own docs", () => {
     expect(reference.map((d) => d.id).sort()).toEqual(sources.map(([id]) => `reference-${id}`).sort());
     expect(docs.findIndex((d) => d.section === "reference")).toBeGreaterThan(docs.findLastIndex((d) => d.section === "guides"));
     expect((await getGuide("reference-operations")).body.markdown).toContain("## Upgrading");
+    // Each says what it is; design history is the decisions.
+    expect(docs.find((d) => d.id === "01-getting-started")).toMatchObject({ kind: "guide" });
+    expect(docs.find((d) => d.id === "reference-operations")).toMatchObject({ kind: "operating" });
+    expect(docs.find((d) => d.id === "reference-assessment")).toMatchObject({ kind: "history" });
+    for (const [id, kind] of sources) expect(["current", "operating", "history"], `${id}'s kind`).toContain(kind);
+  });
+
+  it("leaves design history out of a search unless asked: it answers why, not what is", async () => {
+    type Hits = { hits: { guide: string; kind: string }[] };
+    const decisions = "decisions rejected Temporal message broker";
+    const plain = (await call<Hits>(token, "GuideService/SearchGuides", { query: decisions, limit: 20 })).body.hits;
+    expect(plain.some((h) => h.kind === "history")).toBe(false);
+    const why = (await call<Hits>(token, "GuideService/SearchGuides", { query: decisions, limit: 20, includeHistory: true })).body.hits;
+    expect(why.some((h) => h.guide === "reference-assessment" && h.kind === "history")).toBe(true);
   });
 });
 
@@ -97,6 +112,22 @@ describe("searching the docs", () => {
     expect((await top("what is a DAG")).some((h) => h.startsWith("03-what-is-a-dag"))).toBe(true);
     expect((await top("wiring types types.yaml default provider")).some((h) => h.startsWith("reference-catalog-guide"))).toBe(true);
     expect(await search("zzzz qqqq")).toEqual([]);
+  });
+
+  it("finds what answers the question set's questions among its best five: at least 90% (docQuestions.ts)", async () => {
+    const index = await guideIndex();
+    const misses = DOC_QUESTIONS.filter(({ question, answers }) => {
+      const hits = index.search(question, 5);
+      return !answers.some((answer) => {
+        const [guide, heading = ""] = answer.split(" :: ");
+        return hits.some((h) => h.guide === guide && h.heading.includes(heading));
+      });
+    });
+    const recall = 1 - misses.length / DOC_QUESTIONS.length;
+    // Every miss said, so a change to the ranking shows what it moved.
+    console.info(`search: ${String(DOC_QUESTIONS.length - misses.length)}/${String(DOC_QUESTIONS.length)} found; missed: ${misses.map((m) => m.question).join("; ") || "none"}`);
+    expect(DOC_QUESTIONS.length).toBeGreaterThanOrEqual(40);
+    expect(recall).toBeGreaterThanOrEqual(0.9);
   });
 
   it("refuses an empty question", async () => {

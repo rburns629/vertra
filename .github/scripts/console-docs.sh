@@ -4,7 +4,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 dir="$root/console/docs/reference"
-grep -v '^\s*#' "$dir/SOURCES" | while read -r id path; do
+grep -v "^\s*#" "$dir/SOURCES" | while read -r id _kind path; do
   [ -n "$id" ] || continue
   cp "$root/$path" "$dir/$id.md"
 done

@@ -27,9 +27,11 @@ type SearchGuidesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Query string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
 	// 5 when unset, at most 20.
-	Limit         int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Design history too (kind "history"): for a question of why.
+	IncludeHistory bool `protobuf:"varint,3,opt,name=include_history,json=includeHistory,proto3" json:"include_history,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SearchGuidesRequest) Reset() {
@@ -74,6 +76,13 @@ func (x *SearchGuidesRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *SearchGuidesRequest) GetIncludeHistory() bool {
+	if x != nil {
+		return x.IncludeHistory
+	}
+	return false
 }
 
 type SearchGuidesResponse struct {
@@ -128,8 +137,10 @@ type GuideHit struct {
 	// The section: its heading and those it's under, "Upgrading > Databases".
 	Heading string `protobuf:"bytes,3,opt,name=heading,proto3" json:"heading,omitempty"`
 	// About 600 characters of it, from where the words first appear.
-	Excerpt       string  `protobuf:"bytes,4,opt,name=excerpt,proto3" json:"excerpt,omitempty"`
-	Score         float64 `protobuf:"fixed64,5,opt,name=score,proto3" json:"score,omitempty"`
+	Excerpt string  `protobuf:"bytes,4,opt,name=excerpt,proto3" json:"excerpt,omitempty"`
+	Score   float64 `protobuf:"fixed64,5,opt,name=score,proto3" json:"score,omitempty"`
+	// The doc's kind, as Guide's.
+	Kind          string `protobuf:"bytes,6,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,13 +210,25 @@ func (x *GuideHit) GetScore() float64 {
 	return 0
 }
 
+func (x *GuideHit) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
 type Guide struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Such as 03-what-is-a-dag, or reference-operations.
 	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	// "guides" (using Vertra) or "reference" (the platform's own docs).
-	Section       string `protobuf:"bytes,3,opt,name=section,proto3" json:"section,omitempty"`
+	Section string `protobuf:"bytes,3,opt,name=section,proto3" json:"section,omitempty"`
+	// What it is: "guide" (using Vertra), "current" (how it works now),
+	// "operating" (installing and running it) or "history" (design history:
+	// decisions, with proposals and rejected options; it answers why, never
+	// what is).
+	Kind          string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -257,6 +280,13 @@ func (x *Guide) GetTitle() string {
 func (x *Guide) GetSection() string {
 	if x != nil {
 		return x.Section
+	}
+	return ""
+}
+
+func (x *Guide) GetKind() string {
+	if x != nil {
+		return x.Kind
 	}
 	return ""
 }
@@ -433,22 +463,25 @@ var File_vertra_console_v1_guide_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_guide_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/console/v1/guide.proto\x12\x11vertra.console.v1\"A\n" +
+	"\x1dvertra/console/v1/guide.proto\x12\x11vertra.console.v1\"j\n" +
 	"\x13SearchGuidesRequest\x12\x14\n" +
 	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"G\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12'\n" +
+	"\x0finclude_history\x18\x03 \x01(\bR\x0eincludeHistory\"G\n" +
 	"\x14SearchGuidesResponse\x12/\n" +
-	"\x04hits\x18\x01 \x03(\v2\x1b.vertra.console.v1.GuideHitR\x04hits\"\x80\x01\n" +
+	"\x04hits\x18\x01 \x03(\v2\x1b.vertra.console.v1.GuideHitR\x04hits\"\x94\x01\n" +
 	"\bGuideHit\x12\x14\n" +
 	"\x05guide\x18\x01 \x01(\tR\x05guide\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
 	"\aheading\x18\x03 \x01(\tR\aheading\x12\x18\n" +
 	"\aexcerpt\x18\x04 \x01(\tR\aexcerpt\x12\x14\n" +
-	"\x05score\x18\x05 \x01(\x01R\x05score\"G\n" +
+	"\x05score\x18\x05 \x01(\x01R\x05score\x12\x12\n" +
+	"\x04kind\x18\x06 \x01(\tR\x04kind\"[\n" +
 	"\x05Guide\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
-	"\asection\x18\x03 \x01(\tR\asection\"\x13\n" +
+	"\asection\x18\x03 \x01(\tR\asection\x12\x12\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\"\x13\n" +
 	"\x11ListGuidesRequest\"F\n" +
 	"\x12ListGuidesResponse\x120\n" +
 	"\x06guides\x18\x01 \x03(\v2\x18.vertra.console.v1.GuideR\x06guides\"!\n" +

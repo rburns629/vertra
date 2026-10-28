@@ -199,7 +199,10 @@ function DocSearch() {
                   to={`/docs/${h.guide}${h.heading === h.title ? "" : `#${slug(h.heading.split(" > ").at(-1) ?? "")}`}`}
                   onClick={() => { setQuery(""); }}
                 >
-                  <ListItemText primary={`${h.title} · ${h.heading}`} secondary={h.excerpt.slice(0, 180)} />
+                  <ListItemText
+                    primary={`${h.title} · ${h.heading}`}
+                    secondary={`${h.kind === "history" ? "Design history, not how it works now: " : ""}${h.excerpt.slice(0, 180)}`}
+                  />
                 </ListItemButton>
               ))}
             </List>
@@ -366,7 +369,7 @@ export function DocsPage() {
                       selected={doc.id === id}
                       aria-current={doc.id === id ? "page" : undefined}
                     >
-                      <ListItemText primary={doc.title} />
+                      <ListItemText primary={doc.title} secondary={doc.kind === "history" ? "Design history" : undefined} />
                     </ListItemButton>
                   ))}
                 </>
