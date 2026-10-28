@@ -5,15 +5,21 @@ import Typography from "@mui/material/Typography";
 import { keyframes } from "@mui/material/styles";
 import { useEnvironment } from "../environment";
 
-const draw = keyframes`to { stroke-dashoffset: 0; }`;
+// Drawn in, held, faded, and again: a run that keeps running.
+const draw = keyframes`
+  0% { stroke-dashoffset: 1; opacity: 1; }
+  35% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+`;
 const rise = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; }`;
 
-/** Two steps feeding a third, drawn in once: what Vertra runs. */
+/** Two steps feeding a third, drawn over and over: what Vertra runs. Still for reduced motion. */
 function Dag() {
   const edge = (delay: string) => ({
     strokeDasharray: 1,
     strokeDashoffset: 1,
-    animation: `${draw} 1.4s cubic-bezier(.4,0,.2,1) ${delay} forwards`,
+    animation: `${draw} 4s cubic-bezier(.4,0,.2,1) ${delay} infinite`,
     "@media (prefers-reduced-motion: reduce)": { strokeDashoffset: 0, animation: "none" },
   });
   return (
