@@ -36,14 +36,15 @@ bootstrapAdmin:
 # so only stored-credential sources (1Password) are offered here.
 secretSources:
   catalogRepo: my-org/vertra-catalog
-# The API gateway: forwards to backends in the vertra-samples namespace only
+# The API gateway: forwards to backends in the vertra-samples namespace and
+# the local sample team's (its greetings API: make kind-sample-api)
 # (kubectl port-forward svc/console-execution-console-gateway 18090:8080).
 gateway:
   enabled: true
   image:
     repository: execution-gateway
     tag: latest
-  backendHosts: ["*.vertra-samples.svc.cluster.local"]
+  backendHosts: ["*.vertra-samples.svc.cluster.local", "*.local.svc.cluster.local"]
   url: http://localhost:18090
 
 # A Prometheus in the monitoring namespace may scrape /metrics (none is

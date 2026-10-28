@@ -456,7 +456,8 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | --- | --- |
 | `project-product/` | Pretends to create a project and outputs its id. |
 | `application-product/` | Pretends to deploy an application into a project, taking the project id from the step before. |
-| `hello-world-app/` | A tiny web app: the image the Cloud Run demo deploys. |
+| `hello-world-app/` | A tiny web app: the image the Cloud Run demo deploys (and `samples/gcp/apis/hello-world` publishes through the gateway). |
+| `greetings-api/` | The backend of `samples/local/apis/greetings`: a Go service (standard library only) that checks the gateway's signed `Vertra-Caller` against its JWKS before answering; `deploy.yaml` runs it in the local team's namespace, labelled `vertra/api-backend` (`make kind-sample-api`). |
 
 ## `cli/`: the installer
 
@@ -511,10 +512,10 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | `.semgrep/malicious.yml` | Code rules for products: download-and-execute, reverse shells, mining, reading the Pod's token. |
 | `templates/` | Starters to copy: a team, three products, and DAGs that use them. Checked by CI, never published. |
 | `teams/` | Empty but for its README: a new catalog's teams go here. |
-| `samples/local/` | A sample team with no cloud or secrets: one product in Python, TypeScript, Go, PowerShell and Rust, shared with every team, and a template chaining two of them (`dags/shout-backwards.yaml`); and `ticket`, which reports what it opens as `resources` and names `close` as its `cleanup`. New teams copy starters from it by language; published whole, it proves an install end to end. |
+| `samples/local/` | A sample team with no cloud or secrets: one product in Python, TypeScript, Go, PowerShell and Rust, shared with every team, and a template chaining two of them (`dags/shout-backwards.yaml`); and `ticket`, which reports what it opens as `resources` and names `close` as its `cleanup`. New teams copy starters from it by language; published whole, it proves an install end to end. `apis/greetings` is an API product with no cloud: a backend in the team's own namespace, published through the gateway. |
 | `docs/onboarding-with-ai.md` | For catalog teams using an AI assistant to add a team or product. |
-| `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up; `project`, `app-hosting` and `cloud-sql` label what they make and delete it as their `cleanup` (`actions/delete.py`); `types.yaml` defines the wiring types they need and provide (`gcp.project`, `gcp.region`, `gcp.cloud-sql-instance`, `gcp.container-image`) and their default providers. |
-| `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Proven on EKS (its SecretStore not yet). |
+| `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up; `project`, `app-hosting` and `cloud-sql` label what they make and delete it as their `cleanup` (`actions/delete.py`); `apis/hello-world` publishes the Cloud Run service app-hosting deploys (the gateway signs in with a Google ID token); `types.yaml` defines the wiring types they need and provide (`gcp.project`, `gcp.region`, `gcp.cloud-sql-instance`, `gcp.container-image`) and their default providers. |
+| `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Proven on EKS (its SecretStore not yet). `apis/orders` is an API product in front of a Lambda function URL that requires IAM (the gateway signs with SigV4). |
 | `samples/azure/` | The same for Azure: a resource group, a Container App, a PostgreSQL flexible server with Entra sign-in only, keyless through AKS Workload Identity. Not yet proven, and needs a step Pod label the kernel can't set yet. |
 
 ## Not in git

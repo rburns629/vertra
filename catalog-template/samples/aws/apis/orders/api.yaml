@@ -1,0 +1,32 @@
+# An API product (the catalog's README.md, API products) in front of an AWS
+# Lambda function URL that requires IAM (AuthType AWS_IAM): a backend the
+# team already runs, not one of this sample's products. The gateway signs
+# each request with SigV4 as the role below, assumed with its own
+# ServiceAccount's token (orders-api, which the console creates in this
+# team's namespace), so nothing is stored. The role trusts the cluster's
+# OIDC issuer for system:serviceaccount:aws:orders-api, audience
+# sts.amazonaws.com, and may call the function: for a function URL both
+# lambda:InvokeFunctionUrl and lambda:InvokeFunction. For an API Gateway
+# that takes IAM, service is execute-api. Replace the URL, account and
+# role with yours.
+apiVersion: vertra.dev/v2
+kind: Api
+name: orders
+displayName: Orders (Lambda)
+description: >-
+  Places and looks up orders, in a Lambda function the team runs. The
+  gateway checks every request against openapi.yaml before signing it.
+spec: openapi.yaml
+backend:
+  url: https://abcdefghijklmnopqrstuvwxyz012345.lambda-url.us-east-2.on.aws
+  auth:
+    awsSigV4:
+      roleArn: arn:aws:iam::123456789012:role/vertra-orders-api
+      region: us-east-2
+      service: lambda
+shareWith: [web]
+limits:
+  default: 300/min
+  web: 600/min
+timeout: 15s
+maxRequest: 16KiB

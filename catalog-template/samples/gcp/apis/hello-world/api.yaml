@@ -1,0 +1,36 @@
+# An API product (the catalog's README.md, API products) in front of a Cloud
+# Run service: the one app-hosting deploys from examples/hello-world-app in
+# the platform's repository. The service requires Google sign-in (deploy it
+# with --no-allow-unauthenticated), so nobody reaches it but the gateway,
+# which signs in per request with a Google ID token: it federates its own
+# ServiceAccount here (hello-world-api, which the console creates in this
+# team's namespace) and acts as the invoker account below. Nothing is
+# stored. Once:
+#   gcloud run services add-iam-policy-binding hello-world --region us-central1 \
+#     --member serviceAccount:hello-invoker@sandbox-web-1.iam.gserviceaccount.com \
+#     --role roles/run.invoker
+#   gcloud iam service-accounts add-iam-policy-binding \
+#     hello-invoker@sandbox-web-1.iam.gserviceaccount.com \
+#     --role roles/iam.serviceAccountOpenIdTokenCreator \
+#     --member "principal://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/$POOL/subject/system:serviceaccount:gcp:hello-world-api"
+# Replace the URL, project and account with yours.
+apiVersion: vertra.dev/v2
+kind: Api
+name: hello-world
+displayName: Hello World on Cloud Run
+description: >-
+  The hello-world app app-hosting deploys, published through the gateway:
+  callers sign in as at the console, and only GET / reaches the service.
+spec: openapi.yaml
+backend:
+  url: https://hello-world-7xk2abcdq-uc.a.run.app
+  auth:
+    googleIdToken:
+      serviceAccount: hello-invoker@sandbox-web-1.iam.gserviceaccount.com
+      # Cloud Run takes its own URL as the audience.
+      audience: https://hello-world-7xk2abcdq-uc.a.run.app
+shareWith: ["*"]
+limits:
+  default: 120/min
+timeout: 30s
+maxRequest: 1KiB

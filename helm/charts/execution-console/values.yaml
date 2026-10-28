@@ -561,8 +561,11 @@ teamNamespaces:
   # -- A NetworkPolicy (vertra-default-deny) in every team namespace: its
   # Pods accept connections only from Pods in the same namespace, so one
   # team's steps can't reach another's. Written with each namespace and
-  # rewritten on every policy resync; the write fence accepts no other
-  # policy from the console. Needs a CNI that enforces NetworkPolicy.
+  # rewritten on every policy resync. With gateway.enabled, a second one
+  # (vertra-gateway-ingress) lets the gateway's Pods reach the Pods a team
+  # labels vertra/api-backend: "true", its APIs' in-cluster backends. The
+  # write fence accepts no other policy from the console. Needs a CNI that
+  # enforces NetworkPolicy.
   defaultDenyIngress: true
   # -- What each team's steps may use together, as a ResourceQuota
   # (vertra-team-quota) and LimitRange (vertra-team-limits) in its

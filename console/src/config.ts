@@ -96,6 +96,20 @@ function loadQuota() {
   return quota;
 }
 
+function gatewayPods(): { namespace: string; labels: Record<string, string> } | null {
+  const namespace = process.env["TEAM_GATEWAY_NAMESPACE"] ?? "";
+  if (!namespace) return null;
+  const labels = Object.fromEntries(
+    list(process.env["TEAM_GATEWAY_POD_LABELS"]).map((pair) => {
+      const [key, value] = pair.split("=", 2);
+      if (!key || value === undefined) throw new Error(`TEAM_GATEWAY_POD_LABELS: "${pair}" isn't key=value`);
+      return [key, value];
+    }),
+  );
+  if (Object.keys(labels).length === 0) throw new Error("TEAM_GATEWAY_POD_LABELS: the gateway's Pod labels are needed with TEAM_GATEWAY_NAMESPACE");
+  return { namespace, labels };
+}
+
 function loadOidc() {
   const issuer = process.env["OIDC_ISSUER"] ?? "";
   if (!issuer) return null;
@@ -431,6 +445,10 @@ export const config = {
     // A NetworkPolicy in each one refusing connections from outside it
     // (teamNetwork.ts).
     defaultDenyIngress: process.env["TEAM_NAMESPACE_DEFAULT_DENY_INGRESS"] === "true",
+    // With the gateway on: its Pods (their namespace and labels), which a
+    // second NetworkPolicy lets reach the Pods a team labels as API
+    // backends (k8s.ts's TEAM_GATEWAY_INGRESS). Null: the gateway is off.
+    gatewayIngress: gatewayPods(),
     // What each team's steps may use together, unless an admin set the
     // team's own (teamQuota.ts): Kubernetes quantities, "" for no limit.
     quota: loadQuota(),

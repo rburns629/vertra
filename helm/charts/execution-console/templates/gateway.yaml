@@ -111,13 +111,11 @@ spec:
   replicas: {{ .Values.gateway.replicaCount }}
   selector:
     matchLabels:
-      {{- include "execution-console.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: gateway
+      {{- include "execution-console.gatewaySelectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "execution-console.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: gateway
+        {{- include "execution-console.gatewaySelectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ $name }}
       securityContext:

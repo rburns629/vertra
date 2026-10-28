@@ -594,9 +594,13 @@ Each team namespace gets one too, `vertra-default-deny`, written by the
 console with the namespace and rewritten on every policy resync (console
 chart, `teamNamespaces.defaultDenyIngress`, on by default; only when the
 console manages team namespaces). Its Pods accept connections only from
-Pods in the same namespace, so teams can't reach each other. A namespace
-the console doesn't manage needs the same policy from whoever made it.
-Outbound traffic isn't restricted.
+Pods in the same namespace, so teams can't reach each other. With the
+gateway on, a second one, `vertra-gateway-ingress`, lets the gateway's Pods
+(and nothing else) reach the Pods a team labels `vertra/api-backend: "true"`:
+an API product whose backend runs in the team's own namespace
+(`samples/local/apis/greetings`; on kind, `make kind-sample-api`). A
+namespace the console doesn't manage needs the same policies from whoever
+made it. Outbound traffic isn't restricted.
 
 ## Troubleshooting
 

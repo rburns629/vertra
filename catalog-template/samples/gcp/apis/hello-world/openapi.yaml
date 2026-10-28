@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info:
+  title: Hello World
+  version: 1.0.0
+servers:
+  - url: https://hello-world-7xk2abcdq-uc.a.run.app
+paths:
+  /:
+    get:
+      operationId: hello
+      summary: Says hello.
+      responses:
+        "200":
+          description: A greeting.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: {type: string}

@@ -507,24 +507,66 @@ export async function writeRegistryTokenSecret(namespace: string, name: string, 
 }
 
 /** The NetworkPolicy every team namespace holds (teamNetwork.ts). The
- * console's write fence accepts no other name, and only this shape. */
+ * console's write fence accepts no other name but TEAM_GATEWAY_INGRESS,
+ * and only these shapes. */
 export const TEAM_NETWORK_POLICY = "vertra-default-deny";
+
+/** With the gateway on, a second one: the gateway's Pods may reach the Pods
+ * a team labels as API backends (API_BACKEND_LABEL: "true"), and nothing
+ * else of the team's. */
+export const TEAM_GATEWAY_INGRESS = "vertra-gateway-ingress";
+export const API_BACKEND_LABEL = "vertra/api-backend";
+
+/** The gateway-ingress policy for a team namespace. */
+export interface GatewayPods {
+  namespace: string;
+  labels: Record<string, string>;
+}
+
+export function gatewayIngressPolicy(namespace: string, gateway: GatewayPods): k8s.V1NetworkPolicy {
+  return {
+    metadata: { name: TEAM_GATEWAY_INGRESS, namespace, labels: MANAGED_LABELS },
+    spec: {
+      podSelector: { matchLabels: { [API_BACKEND_LABEL]: "true" } },
+      policyTypes: ["Ingress"],
+      ingress: [
+        {
+          _from: [
+            {
+              namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": gateway.namespace } },
+              podSelector: { matchLabels: gateway.labels },
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
 
 /**
  * Writes a team namespace's default-deny NetworkPolicy, replacing the copy
  * there: every Pod in it accepts connections only from Pods in the same
  * namespace, so another team's steps can't reach it. Outgoing traffic is
  * left alone (steps call their clouds); the platform's own Pods refuse
- * steps with policies of their own. Returns false when the namespace
- * doesn't exist (yet).
+ * steps with policies of their own. With `gateway`, also
+ * TEAM_GATEWAY_INGRESS. Returns false when the namespace doesn't exist
+ * (yet).
  */
-export async function writeTeamNetworkPolicy(namespace: string): Promise<boolean> {
-  const { networking } = getApis();
+export async function writeTeamNetworkPolicy(namespace: string, gateway: GatewayPods | null): Promise<boolean> {
   const body: k8s.V1NetworkPolicy = {
     metadata: { name: TEAM_NETWORK_POLICY, namespace, labels: MANAGED_LABELS },
     // The client's model calls `from` `_from`, and sends it as `from`.
     spec: { podSelector: {}, policyTypes: ["Ingress"], ingress: [{ _from: [{ podSelector: {} }] }] },
   };
+  if (!(await writeNetworkPolicy(namespace, body))) return false;
+  if (gateway) await writeNetworkPolicy(namespace, gatewayIngressPolicy(namespace, gateway));
+  return true;
+}
+
+/** Creates or replaces one of the console's NetworkPolicies (reserved
+ * names: always its own). False when the namespace doesn't exist. */
+async function writeNetworkPolicy(namespace: string, body: k8s.V1NetworkPolicy): Promise<boolean> {
+  const { networking } = getApis();
   try {
     await networking.createNamespacedNetworkPolicy({ namespace, body });
     return true;
@@ -532,8 +574,7 @@ export async function writeTeamNetworkPolicy(namespace: string): Promise<boolean
     if (isNotFound(error)) return false;
     if (!isConflict(error)) throw error;
   }
-  // A reserved name: always the console's to write.
-  await networking.replaceNamespacedNetworkPolicy({ name: TEAM_NETWORK_POLICY, namespace, body });
+  await networking.replaceNamespacedNetworkPolicy({ name: body.metadata?.name ?? "", namespace, body });
   return true;
 }
 

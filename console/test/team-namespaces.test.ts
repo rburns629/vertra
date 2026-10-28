@@ -21,9 +21,11 @@ import { buildApp } from "../src/index.js";
 import {
   applySecretStoreObjects,
   deleteTeamNamespace,
+  gatewayIngressPolicy,
   NamespaceNotTeamsError,
   ProtectedNamespaceError,
   setTeamNamespace,
+  TEAM_GATEWAY_INGRESS,
   writeTeamNetworkPolicy,
   writeTeamPullSecret,
 } from "../src/k8s.js";
@@ -343,6 +345,27 @@ describe("the registry pull Secret", () => {
   });
 });
 
+describe("the gateway-ingress network policy", () => {
+  it("lets only the gateway's Pods in, only to the Pods a team labels as API backends", () => {
+    const policy = gatewayIngressPolicy("team-a", { namespace: "vertra-system", labels: { "app.kubernetes.io/component": "gateway" } });
+    expect(policy.metadata?.name).toBe(TEAM_GATEWAY_INGRESS);
+    expect(policy.spec).toEqual({
+      podSelector: { matchLabels: { "vertra/api-backend": "true" } },
+      policyTypes: ["Ingress"],
+      ingress: [
+        {
+          _from: [
+            {
+              namespaceSelector: { matchLabels: { "kubernetes.io/metadata.name": "vertra-system" } },
+              podSelector: { matchLabels: { "app.kubernetes.io/component": "gateway" } },
+            },
+          ],
+        },
+      ],
+    });
+  });
+});
+
 describe("the default-deny network policy", () => {
   beforeAll(() => {
     config.teamNamespaces.defaultDenyIngress = true;
@@ -350,7 +373,7 @@ describe("the default-deny network policy", () => {
 
   it("is written into a new team's namespace", async () => {
     expect((await call(admin, "TeamService/CreateTeam", { name: name("net") })).code).toBe("ok");
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net"));
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net"), null);
   });
 
   it("isn't written when a team is retired, and is again when it comes back", async () => {
@@ -359,13 +382,19 @@ describe("the default-deny network policy", () => {
     await retire(name("net-retire"));
     expect(writeTeamNetworkPolicy).not.toHaveBeenCalled();
     await call(admin, "TeamService/UnretireTeam", { name: name("net-retire") });
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-retire"));
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-retire"), null);
   });
 
   it("is written into every team on a resync, and a failure is reported", async () => {
     await createTeam(name("net-sync"));
     expect(await syncTeamNetworkPolicies()).toBe(true);
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"));
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), null);
+    // With the gateway on, its Pods go with it.
+    const gateway = { namespace: "vertra-system", labels: { "app.kubernetes.io/component": "gateway" } };
+    config.teamNamespaces.gatewayIngress = gateway;
+    await syncTeamNetworkPolicies();
+    config.teamNamespaces.gatewayIngress = null;
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), gateway);
     vi.mocked(writeTeamNetworkPolicy).mockImplementationOnce(() => Promise.reject(new Error("boom")));
     await expect(syncTeamNetworkPolicies()).rejects.toThrow("Couldn't write the network policy");
   });

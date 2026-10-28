@@ -142,3 +142,12 @@ allowPrivilegeEscalation: false
 readOnlyRootFilesystem: true
 capabilities: {drop: ["ALL"]}
 {{- end }}
+
+{{/*
+The gateway's Pods: its Deployment selects them by these, and each team
+namespace's vertra-gateway-ingress lets them reach the team's API backends.
+*/}}
+{{- define "execution-console.gatewaySelectorLabels" -}}
+{{ include "execution-console.selectorLabels" . }}
+app.kubernetes.io/component: gateway
+{{- end -}}

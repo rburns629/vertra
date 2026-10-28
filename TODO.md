@@ -953,8 +953,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      them into `api_traffic`, kept a week), a team's APIs tab, and the
      admin's gateway card (done 2026-10-22).
   Proven on kind with a backend in a team namespace, then on GKE with a
-  Cloud Run backend and a Lambda function URL (2026-10-22). Left: a
-  read-only database role for the gateway (it only writes api_traffic).
+  Cloud Run backend and a Lambda function URL (2026-10-22). A backend in a
+  team's own namespace couldn't be reached at all (the namespace's
+  default deny refused the gateway); since 2026-10-28 the console writes
+  `vertra-gateway-ingress` (the gateway's Pods to Pods labelled
+  `vertra/api-backend: "true"`, fenced to that shape), proven on kind with
+  the samples' API products: `samples/local/apis/greetings` (its backend
+  `examples/greetings-api`, `make kind-sample-api`), `gcp/apis/hello-world`
+  (Cloud Run, Google ID token) and `aws/apis/orders` (Lambda URL, SigV4),
+  the last two validated, not deployed. Left: a read-only database role for
+  the gateway (it only writes api_traffic).
 
 - [ ] **Orders from outside the cluster** (decision 23, `docs/assessment.md`,
   decided 2026-10-27). Through the console's public `/api`, as a bot signed

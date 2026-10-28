@@ -140,6 +140,15 @@ data:
   PROTECTED_NAMESPACES: {{ join "," .Values.teamNamespaces.protected | quote }}
   TEAM_NAMESPACE_POD_SECURITY: {{ .Values.teamNamespaces.podSecurity | quote }}
   TEAM_NAMESPACE_DEFAULT_DENY_INGRESS: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress | quote }}
+  {{- if and .Values.gateway.enabled .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress }}
+  # The gateway's Pods, let into each team's API backends (vertra-gateway-ingress).
+  TEAM_GATEWAY_NAMESPACE: {{ .Release.Namespace | quote }}
+  {{- $labels := list }}
+  {{- range $k, $v := (include "execution-console.gatewaySelectorLabels" . | fromYaml) }}
+  {{- $labels = append $labels (printf "%s=%s" $k $v) }}
+  {{- end }}
+  TEAM_GATEWAY_POD_LABELS: {{ join "," $labels | quote }}
+  {{- end }}
   TEAM_QUOTA_CPU: {{ .Values.teamNamespaces.quota.cpu | quote }}
   TEAM_QUOTA_MEMORY: {{ .Values.teamNamespaces.quota.memory | quote }}
   TEAM_QUOTA_PODS: {{ .Values.teamNamespaces.quota.pods | quote }}

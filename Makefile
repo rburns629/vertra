@@ -1,5 +1,5 @@
 .PHONY: gke-verify-release gke-deploy-console-from-source gke-deploy-kernel-from-source kind-tls kind-audit-store quickstart _quickstart-prereqs kind-cluster kind-namespaces \
-	build-products catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
+	build-products kind-sample-api catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
 	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
 
@@ -176,6 +176,18 @@ build-products: kind-registry
 	$(DOCKER) build -t $(KIND_REGISTRY)/demo-application-product:local examples/application-product
 	$(DOCKER) push $(KIND_REGISTRY)/demo-project-product:local
 	$(DOCKER) push $(KIND_REGISTRY)/demo-application-product:local
+
+# The backend of the local sample's API product (samples/local/apis/greetings),
+# run in the local team's namespace as the team itself would run it: the
+# gateway reaches it through the console's vertra-gateway-ingress policy.
+# Publish the local sample first (make catalog-publish), so the namespace
+# and the API exist.
+kind-sample-api: kind-registry
+	$(DOCKER) build -t $(KIND_REGISTRY)/local/greetings-api:demo examples/greetings-api
+	$(DOCKER) push $(KIND_REGISTRY)/local/greetings-api:demo
+	$(KUBECTL) apply -f examples/greetings-api/deploy.yaml
+	$(KUBECTL) -n local rollout restart deployment greetings
+	$(KUBECTL) -n local rollout status deployment greetings --timeout=2m
 
 # Local mode: publish a catalog repository's products to kind without any Git
 # hosting or CI, with ./vertra (built from this checkout), the tool its CI runs:

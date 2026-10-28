@@ -431,6 +431,14 @@ the gateway reads no secrets. Your backend learns who called from the
 `Vertra-Caller` header, which the gateway signs (its public key at
 `/.vertra/jwks.json` on the gateway).
 
+A backend in your team's own namespace is reachable by the gateway only
+when its Pods are labelled `vertra/api-backend: "true"` (every other Pod
+there stays closed to everything outside the namespace). The samples show
+each way: `samples/local/apis/greetings` (a Service in the namespace, no
+cloud, checking `Vertra-Caller`), `samples/gcp/apis/hello-world` (Cloud
+Run, `googleIdToken`) and `samples/aws/apis/orders` (a Lambda function URL,
+`awsSigV4`).
+
 ### The container contract
 
 - The step's request is `/platform/input/request.json`; the action is the

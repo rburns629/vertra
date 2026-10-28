@@ -71,23 +71,47 @@ spec:
         "The console may only update the ServiceAccounts ESO signs in as (eso-*), not " +
         object.metadata.name + "."
       reason: Forbidden
-    # Its only NetworkPolicy is each team's default deny (teamNetwork.ts),
+    # Its NetworkPolicies are each team's default deny (teamNetwork.ts),
     # never deleted, and only ever refusing more: every Pod selected, and
     # connections let in from this namespace's own Pods alone. So the
-    # console can't open a team namespace to anything outside it.
+    # console can't open a team namespace to anything outside it, except,
+    # with the gateway on, exactly one opening: this release's gateway Pods
+    # to the Pods the team itself labels vertra/api-backend=true.
+    {{- $gatewayIngress := and .Values.gateway.enabled .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress }}
     - expression: >-
         request.resource.resource != "networkpolicies" || (
-          request.operation != "DELETE" &&
+          request.operation != "DELETE" && ((
           object.metadata.name == "vertra-default-deny" &&
           (!has(object.spec.podSelector.matchLabels) || size(object.spec.podSelector.matchLabels) == 0) &&
           !has(object.spec.podSelector.matchExpressions) &&
           object.spec.policyTypes.exists(t, t == "Ingress") &&
           (!has(object.spec.ingress) || object.spec.ingress.all(rule,
             has(rule.from) && size(rule.from) > 0 && rule.from.all(peer,
-              has(peer.podSelector) && !has(peer.namespaceSelector) && !has(peer.ipBlock)))))
+              has(peer.podSelector) && !has(peer.namespaceSelector) && !has(peer.ipBlock))))
+          ){{ if $gatewayIngress }} || (
+          object.metadata.name == "vertra-gateway-ingress" &&
+          has(object.spec.podSelector.matchLabels) &&
+          object.spec.podSelector.matchLabels == {"vertra/api-backend": "true"} &&
+          !has(object.spec.podSelector.matchExpressions) &&
+          object.spec.policyTypes == ["Ingress"] &&
+          has(object.spec.ingress) && size(object.spec.ingress) == 1 &&
+          !has(object.spec.ingress[0].ports) &&
+          has(object.spec.ingress[0].from) && size(object.spec.ingress[0].from) == 1 &&
+          !has(object.spec.ingress[0].from[0].ipBlock) &&
+          has(object.spec.ingress[0].from[0].namespaceSelector) &&
+          has(object.spec.ingress[0].from[0].namespaceSelector.matchLabels) &&
+          object.spec.ingress[0].from[0].namespaceSelector.matchLabels == {"kubernetes.io/metadata.name": {{ .Release.Namespace | quote }}} &&
+          !has(object.spec.ingress[0].from[0].namespaceSelector.matchExpressions) &&
+          has(object.spec.ingress[0].from[0].podSelector) &&
+          has(object.spec.ingress[0].from[0].podSelector.matchLabels) &&
+          object.spec.ingress[0].from[0].podSelector.matchLabels == {{ include "execution-console.gatewaySelectorLabels" . | fromYaml | toJson }} &&
+          !has(object.spec.ingress[0].from[0].podSelector.matchExpressions)
+          ){{ end }}))
       message: >-
-        The console's only NetworkPolicy is a team namespace's vertra-default-deny, selecting every
-        Pod and letting in nothing from outside the namespace; it never deletes one.
+        The console's NetworkPolicies are a team namespace's vertra-default-deny, selecting every
+        Pod and letting in nothing from outside the namespace, and (with the gateway on)
+        vertra-gateway-ingress, letting only the gateway's Pods reach the team's API backends; it
+        never deletes one.
       reason: Forbidden
     # Its only quota and limits are each team's (teamQuota.ts). (Deleting
     # one is checked by its name in the request: there's no object then.)
