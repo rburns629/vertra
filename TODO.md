@@ -1062,10 +1062,23 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (less than half); an off-topic refusal one call of about 500. Cache
   writes are most of a question's cost. The context window's estimate
   (three characters a token) ran 0.91 to 0.99 of the real count: now 2.5.
+  Gemini on Vertex for GCP installs (decided 2026-10-28: "If this is
+  hosted in GCP, I'd prefer we use Gemini with Vertex"): the `vertex`
+  provider, Vertex AI's OpenAI-compatible endpoint in the install's
+  project, signed in as the console's Workload Identity (the metadata
+  server's token, as registry checks and audit export already are), no
+  key; `reasoning_effort` minimal for the scope check. vertra turns it on
+  for gcp (`chat.off`, `chat.model`); its module enables Vertex AI's API
+  and grants the console `roles/aiplatform.user`, and gives the scan Jobs
+  an identity of their own (they read images anyone can publish; they had
+  the console's). Not yet proven against Vertex: needs the API enabled in
+  acyclix-dev and a scoring run; and the default model's name
+  (`google/gemini-3.5-flash`, from Google's compatibility page) checked
+  there.
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (done, above). Left:
-  Vertex's sign-in; then MCP) (proposed
+  Gemini on Vertex proven; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the

@@ -72,40 +72,51 @@ function loadChat() {
   const endpoint = (process.env["CHAT_ENDPOINT"] ?? "").replace(/\/+$/, "");
   const provider = process.env["CHAT_PROVIDER"] || "openai-compatible";
   if (!model) return null;
-  if (provider !== "openai-compatible" && provider !== "anthropic") {
-    throw new Error(`CHAT_PROVIDER "${provider}": openai-compatible or anthropic`);
+  if (provider !== "openai-compatible" && provider !== "anthropic" && provider !== "vertex") {
+    throw new Error(`CHAT_PROVIDER "${provider}": openai-compatible, anthropic or vertex`);
   }
-  // Anthropic's API is the SDK's own address unless given; any other needs one.
-  if (endpoint ? !/^https?:\/\//.test(endpoint) : provider !== "anthropic") {
+  // Vertex: Gemini through Vertex AI's OpenAI-compatible endpoint, in the
+  // install's own project, as the console's Workload Identity (no key).
+  const vertexProject = process.env["CHAT_VERTEX_PROJECT"] ?? "";
+  const vertexLocation = process.env["CHAT_VERTEX_LOCATION"] || "global";
+  if (provider === "vertex" && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(vertexProject)) {
+    throw new Error(`CHAT_VERTEX_PROJECT "${vertexProject}": the Google Cloud project whose Vertex AI answers`);
+  }
+  if (!/^[a-z0-9-]+$/.test(vertexLocation)) throw new Error(`CHAT_VERTEX_LOCATION "${vertexLocation}": global, or a region`);
+  // Anthropic's API is the SDK's own address unless given, Vertex's built
+  // from its project and location; any other needs one.
+  if (endpoint ? !/^https?:\/\//.test(endpoint) : provider === "openai-compatible") {
     throw new Error(`CHAT_ENDPOINT "${endpoint}": the model's base URL, http(s)://.../v1`);
   }
   const apiKey = process.env["CHAT_API_KEY"] ?? "";
   if (provider === "anthropic" && !apiKey) throw new Error("CHAT_API_KEY: Anthropic's API needs a key (the chart's chat.apiKeySecret)");
   const effort = process.env["CHAT_EFFORT"] ?? "";
   if (effort && !["low", "medium", "high"].includes(effort)) throw new Error(`CHAT_EFFORT "${effort}": low, medium or high`);
-  const maxTokens = positiveInt("CHAT_MAX_TOKENS", provider === "anthropic" ? 8000 : 1500);
-  const contextTokens = positiveInt("CHAT_CONTEXT_TOKENS", provider === "anthropic" ? 64000 : 16000);
+  // A cloud's model thinks, and its thinking counts toward its reply: more room there.
+  const cloud = provider !== "openai-compatible";
+  const maxTokens = positiveInt("CHAT_MAX_TOKENS", cloud ? 8000 : 1500);
+  const contextTokens = positiveInt("CHAT_CONTEXT_TOKENS", cloud ? 64000 : 16000);
   // The prompt, the tools' descriptions and a question need about 6000, and two replies their room.
   if (contextTokens < 2 * maxTokens + 8000) {
     throw new Error(`CHAT_CONTEXT_TOKENS ${String(contextTokens)}: at least twice CHAT_MAX_TOKENS (${String(maxTokens)}) and 8000 more`);
   }
+  const vertexHost = vertexLocation === "global" ? "aiplatform.googleapis.com" : `${vertexLocation}-aiplatform.googleapis.com`;
   return {
     provider,
-    endpoint,
+    endpoint: endpoint || (provider === "vertex" ? `https://${vertexHost}/v1/projects/${vertexProject}/locations/${vertexLocation}/endpoints/openapi` : ""),
     model,
     apiKey,
     // Model calls and tool calls in one answer, at most.
     maxSteps: positiveInt("CHAT_MAX_STEPS", 8),
     // How long one model call may take: a local model is slow.
     timeoutSeconds: positiveInt("CHAT_TIMEOUT_SECONDS", 180),
-    // Thinking counts toward it on Claude: more room there.
     maxTokens,
     // The most one model call is sent, in tokens (estimated): the
     // conversation, what the tools return and room for the replies. A
     // conversation that can't fit is refused; a tool result that won't fit
     // is held back. Claude takes far more; this bounds the cost.
     contextTokens,
-    // How hard the model thinks, where it takes one (Anthropic); unset, its own default.
+    // How hard the model thinks, where it takes one (Anthropic, Vertex); unset, its own default.
     effort: (effort || null) as "low" | "medium" | "high" | null,
   };
 }

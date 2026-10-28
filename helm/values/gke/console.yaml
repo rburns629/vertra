@@ -64,3 +64,13 @@ teamNamespaces:
     memory: "64Gi"
     pods: "50"
     stepMemory: "16Gi"
+# The chat agent: Gemini through Vertex AI in the install's own project,
+# signed in as the console's Workload Identity (the service account above
+# needs roles/aiplatform.user in that project). Nothing it's sent leaves
+# the install's cloud.
+chat:
+  model: google/gemini-3.5-flash
+  provider: vertex
+  vertex:
+    project: my-gcp-project
+    location: global

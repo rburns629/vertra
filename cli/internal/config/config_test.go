@@ -125,6 +125,19 @@ func TestValidateGoogleGroupsIsGCPOnly(t *testing.T) {
 	}
 }
 
+func TestValidateChatModelIsGCPOnlyAndVertexs(t *testing.T) {
+	c := validKind(t)
+	c.Chat.Model = "google/gemini-3.5-flash"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "chat.model: gcp only") {
+		t.Fatalf("kind: %v", err)
+	}
+	c.Target = "gcp"
+	c.Chat.Model = "gpt-5"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "Vertex's name for a Gemini model") {
+		t.Fatalf("gcp: %v", err)
+	}
+}
+
 func TestValidateManagedDatabaseNeedsCloud(t *testing.T) {
 	c := validKind(t)
 	c.Database.Type = "managed"

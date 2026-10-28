@@ -15,6 +15,7 @@ const gcpOutputs = `{
  "task_registry": "us-central1-docker.pkg.dev/p/vertra-products",
  "platform_registry": "",
  "console_service_account": "vertra-console@p.iam.gserviceaccount.com",
+ "scanner_service_account": "vertra-scanner@p.iam.gserviceaccount.com",
  "backup": {"bucket":"p-vertra-backups","service_account":"vertra-backup@p.iam.gserviceaccount.com"},
  "step_placement": {"nodeSelector":{"cloud.google.com/gke-spot":"true"},"tolerations":[]},
  "capacity_placements": {"spot":{"nodeSelector":{"cloud.google.com/gke-spot":"true"},"tolerations":[]},"onDemand":{"nodeSelector":{},"tolerations":[]}},
@@ -38,6 +39,9 @@ func TestCloudFromGCPOutputs(t *testing.T) {
 	}
 	if _, ok := cloud.CapacityPlacements["onDemand"]; !ok {
 		t.Errorf("capacities: %+v", cloud.CapacityPlacements)
+	}
+	if cloud.ScannerServiceAccount != "vertra-scanner@p.iam.gserviceaccount.com" {
+		t.Errorf("scanner: %q", cloud.ScannerServiceAccount)
 	}
 	if cloud.ConsoleIP != "34.1.2.3" || cloud.CatalogProvider != "" {
 		t.Errorf("address and catalog: %+v", cloud)

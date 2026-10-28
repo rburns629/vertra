@@ -134,6 +134,7 @@ console:                     # existing clusters: a public console behind your I
   tls: {letsEncryptEmail: you@example.com, installCertManager: true}   # or issuer: <ClusterIssuer>
 audit: {export: false, keepDays: 365, lock: false}
 sso: {provider: google, clientId: ..., clientFile: ~/vertra-oauth.json, allowedDomains: [example.com]}   # vertra sso google       # the audit log's write-once copy (gcp, aws); lock is permanent
+chat: {off: false, model: google/gemini-3.5-flash}   # gcp: the chat agent on Vertex AI, as the console
 admin: {email: you@example.com}
 catalog:
   host: github
@@ -280,11 +281,12 @@ for teams that run OpenTofu or Terraform themselves.
 | Network | VPC and subnet (or uses one given) | VPC, subnets, NAT | VNet and subnet |
 | Cluster | Autopilot or Standard with Workload Identity | Auto Mode or managed node groups with Pod Identity | Automatic or standard, with Workload Identity and network policy |
 | Registries | Artifact Registry: platform images, task images | ECR repositories | ACR |
-| Identities | Service accounts and Workload Identity bindings for the console, the scanner, backups, and ESO | IAM roles and Pod Identity associations | Managed identities and federated credentials |
+| Identities | Service accounts and Workload Identity bindings for the console, the scanner (its own, read-only), backups, and ESO | IAM roles and Pod Identity associations | Managed identities and federated credentials |
 | Signing | Cloud KMS key (signing: kms) | KMS key | Key Vault key |
 | Catalog CI | Workload Identity Federation limited to the catalog repository | GitHub OIDC provider and a role limited to the repository | Federated credential for the repository |
 | Database (managed) | Cloud SQL for PostgreSQL (HA optional) | RDS PostgreSQL (Multi-AZ optional) | Azure Database for PostgreSQL Flexible Server (zone-redundant optional) |
 | Backups (in-cluster database) | Bucket with a lifecycle rule | S3 bucket with a lifecycle rule | Storage container with a lifecycle rule |
+| The chat agent's model | Vertex AI's API, and `roles/aiplatform.user` for the console (Gemini; `chat.off` for none) | (the chart's chat values) | (the chart's chat values) |
 
 Outputs feed the generated Helm values (registry paths, identity
 annotations, the database URL, the backup destination). State lives in

@@ -374,6 +374,33 @@ describe("the openai-compatible model", () => {
     expect(withoutThinking("<think>a\nb</think>\nAnswer")).toBe("Answer");
   });
 
+  it("on Vertex, signs in with the console's token and sets Gemini's thinking: the install's, or the least for the scope check", async () => {
+    const sent: { headers: Record<string, string>; body: Record<string, unknown> }[] = [];
+    const fetchFn = vi.fn((_url: string, init: { headers: Record<string, string>; body: string }) => {
+      sent.push({ headers: init.headers, body: JSON.parse(init.body) as Record<string, unknown> });
+      return Promise.resolve(
+        new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: "VERTRA" } }], usage: { prompt_tokens: 500, completion_tokens: 3, prompt_tokens_details: { cached_tokens: 200 } } })),
+      );
+    });
+    let tokens = 0;
+    const token = () => Promise.resolve(`ya29.token-${String(++tokens)}`);
+    const options = { endpoint: "https://aiplatform.googleapis.com/v1/projects/p/locations/global/endpoints/openapi", model: "google/gemini-3.5-flash", apiKey: "", timeoutSeconds: 5, maxTokens: 8000 };
+    const gemini = new OpenAICompatible(options, fetchFn as unknown as typeof fetch, { token, effort: "low" });
+    const reply = await gemini.complete([{ role: "user", content: "hi" }], []);
+    expect(sent[0]?.headers["Authorization"]).toBe("Bearer ya29.token-1");
+    expect(sent[0]?.body).toMatchObject({ model: "google/gemini-3.5-flash", max_tokens: 8000, reasoning_effort: "low" });
+    expect(reply.usage).toEqual({ input: 300, cacheRead: 200, cacheWrite: 0, output: 3 });
+    await gemini.complete([{ role: "user", content: "hi" }], [], { quick: true });
+    expect(sent[1]?.body).toMatchObject({ max_tokens: 256, reasoning_effort: "minimal" });
+    expect(sent[1]?.headers["Authorization"]).toBe("Bearer ya29.token-2");
+    // Not on Vertex: no reasoning_effort, which another server may not know.
+    await new OpenAICompatible({ ...options, endpoint: "http://m/v1" }, fetchFn as unknown as typeof fetch).complete([{ role: "user", content: "hi" }], [], { quick: true });
+    expect(sent[2]?.body).not.toHaveProperty("reasoning_effort");
+    // No token, no call: the model's away, not the console broken.
+    const signedOut = new OpenAICompatible(options, fetchFn as unknown as typeof fetch, { token: () => Promise.reject(new Error("metadata server returned 404")), effort: null });
+    await expect(signedOut.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);
+  });
+
   it("says when the model can't be reached", async () => {
     const down = new OpenAICompatible({ endpoint: "http://m/v1", model: "q", apiKey: "", timeoutSeconds: 5, maxTokens: 10 }, (() => Promise.reject(new Error("ECONNREFUSED"))) as unknown as typeof fetch);
     await expect(down.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);

@@ -197,7 +197,9 @@ question as data) gets a fixed sentence and never reaches the agent, and an
 answer resting on neither the docs it cites nor its tools' results is
 replaced, so neither a question that talks it out of its instructions nor
 the model's memory can put an answer in front of someone. A conversation
-is bounded by `chat.contextTokens`. What's asked, and what its tools return, goes to
+is bounded by `chat.contextTokens`. On GCP it's Gemini through Vertex AI in
+the install's own project, as the console's Workload Identity: no key, and
+nothing leaves the install's cloud. What's asked, and what its tools return, goes to
 the install's chat model (`chat.endpoint`); nothing is kept by the console,
 except an answer someone rates: its question, answer, sources and their
 comment, for the admins only (`ChatService/RateAnswer`, a rating for a

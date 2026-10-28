@@ -94,7 +94,7 @@ export function parseImageRef(image: string): ImageRef | null {
 
 let gcpToken: { value: string; expiresAt: number } | null = null;
 
-/** The console's own Google access token (Workload Identity), from the node's metadata server; also auditExport.ts's. */
+/** The console's own Google access token (Workload Identity), from the node's metadata server; also auditExport.ts's, sso.ts's and the chat's on Vertex. */
 export async function gcpMetadataToken(): Promise<string> {
   if (gcpToken && gcpToken.expiresAt > Date.now()) return gcpToken.value;
   // The metadata server is node-local and only speaks plain HTTP.

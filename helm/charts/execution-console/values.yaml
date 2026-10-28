@@ -554,12 +554,14 @@ rbac:
 # -- The chat agent (decision 24): a panel on every page whose agent answers
 # from the docs and the catalog, looks at what the person's teams have, and
 # fills their cart (they place the order). Off unless `model` is set.
-# `provider`: openai-compatible (LM Studio, Ollama, Gemini on Vertex's
-# compatible endpoint; `endpoint` its base URL, http(s)://.../v1) or
-# anthropic (Claude through Anthropic's API, `model` such as
-# claude-haiku-5-5 or claude-sonnet-5-5; `endpoint` empty for Anthropic's
-# own). A key, when it needs one: a Secret's name, key `api-key`, never
-# the key itself.
+# `provider`: openai-compatible (LM Studio, Ollama; `endpoint` its base
+# URL, http(s)://.../v1), anthropic (Claude through Anthropic's API, `model`
+# such as claude-haiku-5-5; `endpoint` empty for Anthropic's own), or vertex
+# (Gemini through Vertex AI in `vertex.project`, `model` such as
+# google/gemini-3.5-flash, signed in as the console's Workload Identity:
+# no key; its Google service account needs roles/aiplatform.user there). A
+# key, when one's needed: a Secret's name, key `api-key`, never the key
+# itself.
 # What it's sent reaches the model's provider: on a cloud, choose one in
 # the install's own cloud.
 chat:
@@ -579,6 +581,11 @@ chat:
   maxTokens: ""
   effort: ""
   contextTokens: ""
+  # With provider vertex: the project whose Vertex AI answers, and where
+  # (global, or a region to keep requests in it).
+  vertex:
+    project: ""
+    location: global
 
 teamNamespaces:
   manage: true

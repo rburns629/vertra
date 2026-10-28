@@ -27,7 +27,7 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "storage.googleapis.com",
-  ], var.google_groups ? ["cloudidentity.googleapis.com"] : [], var.signing == "kms" ? ["cloudkms.googleapis.com"] : []))
+  ], var.google_groups ? ["cloudidentity.googleapis.com"] : [], var.signing == "kms" ? ["cloudkms.googleapis.com"] : [], var.chat ? ["aiplatform.googleapis.com"] : []))
   service = each.value
   # Other things in the project may use them.
   disable_on_destroy = false
@@ -223,14 +223,52 @@ resource "google_artifact_registry_repository_iam_member" "console_read" {
   depends_on = [google_artifact_registry_repository.tasks]
 }
 
+# Was one of two (the scan Jobs' too, now their own identity's): the
+# console's binding stays as it is, and only the scanner's goes.
+moved {
+  from = google_service_account_iam_member.console_workload_identity["console-execution-console"]
+  to   = google_service_account_iam_member.console_workload_identity
+}
+
 resource "google_service_account_iam_member" "console_workload_identity" {
-  for_each = toset([
-    "console-execution-console",         # the console
-    "console-execution-console-scanner", # its scan Jobs
-  ])
   service_account_id = google_service_account.console.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "${local.ksa}/${each.value}]"
+  member             = "${local.ksa}/console-execution-console]"
+  depends_on         = [google_container_cluster.this]
+}
+
+# The chat agent's model: Gemini through Vertex AI, as the console. Vertex
+# grants calling a model only on the project.
+resource "google_project_iam_member" "console_chat" {
+  count      = var.chat ? 1 : 0
+  project    = var.project
+  role       = "roles/aiplatform.user"
+  member     = google_service_account.console.member
+  depends_on = [google_project_service.apis]
+}
+
+# --- the scan Jobs' identity: pulling what they scan, and nothing else. Not
+# the console's: they read images anyone can publish, and the console's
+# identity can do more (call Vertex AI, export the audit log). ------------
+
+resource "google_service_account" "scanner" {
+  account_id   = "${var.name}-scanner"
+  display_name = "Vertra ${var.name}: image scans (reads the task registry)"
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_artifact_registry_repository_iam_member" "scanner_read" {
+  location   = var.region
+  repository = var.task_registry
+  role       = "roles/artifactregistry.reader"
+  member     = google_service_account.scanner.member
+  depends_on = [google_artifact_registry_repository.tasks]
+}
+
+resource "google_service_account_iam_member" "scanner_workload_identity" {
+  service_account_id = google_service_account.scanner.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "${local.ksa}/console-execution-console-scanner]"
   depends_on         = [google_container_cluster.this]
 }
 

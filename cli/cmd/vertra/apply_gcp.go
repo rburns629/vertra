@@ -127,7 +127,7 @@ func sameIdentity(recorded, now string) error {
 
 // optionalOutputs are the modules' outputs that are null when not used
 // (no backups, no catalog, no public console), which `tofu output` omits.
-var optionalOutputs = map[string]bool{"backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true, "capacity_placements": true}
+var optionalOutputs = map[string]bool{"scanner_service_account": true, "backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true, "capacity_placements": true}
 
 // cloudFromGCP reads the module's outputs.
 func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
@@ -138,6 +138,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 		WorkloadPool   string
 		TaskRegistry   string
 		ConsoleAccount string
+		ScannerAccount string
 		Backup         *struct {
 			Bucket         string `json:"bucket"`
 			ServiceAccount string `json:"service_account"`
@@ -166,7 +167,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "workload_identity_pool": &v.WorkloadPool, "task_registry": &v.TaskRegistry,
-		"console_service_account": &v.ConsoleAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities,
+		"console_service_account": &v.ConsoleAccount, "scanner_service_account": &v.ScannerAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities,
 		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog, "signing": &v.Signing,
 	} {
 		raw, ok := outputs[name]
@@ -185,6 +186,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 		Provider:              "gcp",
 		TaskRegistry:          v.TaskRegistry,
 		ConsoleServiceAccount: v.ConsoleAccount,
+		ScannerServiceAccount: v.ScannerAccount,
 		StepPlacement:         v.StepPlacement,
 		CapacityPlacements:    v.Capacities,
 		ClusterName:           v.Cluster.Name,

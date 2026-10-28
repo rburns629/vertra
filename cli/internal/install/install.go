@@ -29,6 +29,9 @@ type Cloud struct {
 	Provider              string // gcp, aws
 	TaskRegistry          string
 	ConsoleServiceAccount string // gcp: the console's Google service account
+	// ScannerServiceAccount: its scan Jobs' (gcp), reading the task
+	// registry and nothing else; the console's, from a module before it.
+	ScannerServiceAccount string
 	BackupBucket          string
 	BackupRegion          string // aws: the bucket's region
 	// BackupServiceAccount is the cloud identity the backups run as (gcp);
@@ -423,7 +426,20 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		// module's console identity, through GKE's Workload Identity.
 		identity := map[string]any{"iam.gke.io/gcp-service-account": cloud.ConsoleServiceAccount}
 		v["serviceAccount"] = map[string]any{"annotations": identity}
-		v["scanning"] = map[string]any{"serviceAccountAnnotations": identity}
+		scanner := cloud.ScannerServiceAccount
+		if scanner == "" {
+			scanner = cloud.ConsoleServiceAccount
+		}
+		v["scanning"] = map[string]any{"serviceAccountAnnotations": map[string]any{"iam.gke.io/gcp-service-account": scanner}}
+		if c.ChatOnVertex() {
+			// The chat agent: Gemini through Vertex AI in the install's
+			// project, as the console's identity (the module grants it).
+			v["chat"] = map[string]any{
+				"model":    c.ChatModel(),
+				"provider": "vertex",
+				"vertex":   map[string]any{"project": c.GCP.Project, "location": "global"},
+			}
+		}
 		v["registryCheck"] = map[string]any{"gcpMetadataToken": true}
 		v["secretSources"] = map[string]any{
 			"clusterIssuer":           cloud.ClusterIssuer,

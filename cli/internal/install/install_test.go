@@ -261,6 +261,43 @@ func TestAReaderTrustsTheCatalogsSigner(t *testing.T) {
 	}
 }
 
+// On GKE the chat agent answers with Gemini through Vertex AI in the
+// install's project, as the console; its scan Jobs read as their own,
+// narrower identity.
+func TestTheChatOnGCP(t *testing.T) {
+	c := kindConfig()
+	if _, ok := ConsoleValues(c, "dev", Images{}, nil)["chat"]; ok {
+		t.Error("kind: the chart's own chat values, not vertra's")
+	}
+	c.Target = "gcp"
+	c.GCP.Project = "acme-dev"
+	cloud := &Cloud{Provider: "gcp", ConsoleServiceAccount: "v-console@acme-dev.iam.gserviceaccount.com", ScannerServiceAccount: "v-scanner@acme-dev.iam.gserviceaccount.com"}
+	v := ConsoleValues(c, "dev", Images{}, cloud)
+	chat := fmt.Sprint(v["chat"])
+	if chat != "map[model:google/gemini-3.5-flash provider:vertex vertex:map[location:global project:acme-dev]]" {
+		t.Errorf("chat: %s", chat)
+	}
+	if scanning := fmt.Sprint(v["scanning"]); !strings.Contains(scanning, "v-scanner@") {
+		t.Errorf("scanning: %s", scanning)
+	}
+	if sa := fmt.Sprint(v["serviceAccount"]); !strings.Contains(sa, "v-console@") {
+		t.Errorf("serviceAccount: %s", sa)
+	}
+	c.Chat.Model = "google/gemini-3.5-pro"
+	if !strings.Contains(fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["chat"]), "gemini-3.5-pro") {
+		t.Error("chat.model")
+	}
+	c.Chat.Off = true
+	if _, ok := ConsoleValues(c, "dev", Images{}, cloud)["chat"]; ok {
+		t.Error("chat.off")
+	}
+	// A module from before the scanner had its own: the console's, as then.
+	cloud.ScannerServiceAccount = ""
+	if scanning := fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["scanning"]); !strings.Contains(scanning, "v-console@") {
+		t.Errorf("old module: %s", scanning)
+	}
+}
+
 // The gateway, when it's on: its image built from source, and on GKE the
 // cluster's Workload Identity pool for minting Google ID tokens.
 func TestTheGatewaysValues(t *testing.T) {

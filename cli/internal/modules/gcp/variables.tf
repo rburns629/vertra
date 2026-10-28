@@ -139,6 +139,12 @@ variable "google_groups" {
   default     = false
 }
 
+variable "chat" {
+  description = "The console's chat agent answers with Gemini through Vertex AI here, as the console's own service account."
+  type        = bool
+  default     = false
+}
+
 variable "signing" {
   description = "How the catalog is signed: none, kms (a key here only its CI signs with) or keyless; or verify: another install signs it, and policy-controller only checks it here."
   type        = string

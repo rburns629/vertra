@@ -3,14 +3,14 @@
  * The chat agent's model (decision 24): one interface, so the agent's loop,
  * its tools and its checks are the same whatever answers. Behind it, one
  * adapter per API shape, not per cloud: openai-compatible (LM Studio,
- * Ollama, Gemini on Vertex's compatible endpoint) and Anthropic's Messages
- * API (Claude, with an API key; on Vertex and Bedrock through their own
- * clients, later). A cloud's
- * sign-in (a key from a Secret here; workload identity later) is the
+ * Ollama; and `vertex`, Gemini on Vertex AI's compatible endpoint) and
+ * Anthropic's Messages API (Claude, with an API key). A cloud's sign-in (a
+ * key from a Secret; on Vertex, the console's Workload Identity) is the
  * adapter's, never the agent's.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config.js";
+import { gcpMetadataToken } from "../registry.js";
 
 export interface ToolCall {
   id: string;
@@ -75,11 +75,18 @@ export function withoutThinking(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/^[\s\S]*<\/think>/, "").trim();
 }
 
-/** OpenAI's chat completions, which LM Studio, Ollama and Vertex (for Gemini) speak too. */
+/**
+ * OpenAI's chat completions, which LM Studio, Ollama and Vertex (for
+ * Gemini) speak too. On Vertex (`vertex`): signed in with a token got for
+ * each call (the console's Workload Identity's, cached for its hour), and
+ * Gemini's thinking set with reasoning_effort: the install's effort, or
+ * the least for a quick call.
+ */
 export class OpenAICompatible implements ChatModel {
   constructor(
     private readonly options: { endpoint: string; model: string; apiKey: string; timeoutSeconds: number; maxTokens: number },
     private readonly fetchFn: typeof fetch = fetch,
+    private readonly vertex?: { token: () => Promise<string>; effort: "low" | "medium" | "high" | null },
   ) {}
 
   get name(): string {
@@ -88,10 +95,13 @@ export class OpenAICompatible implements ChatModel {
 
   async complete(messages: ChatMessage[], tools: ToolSpec[], options: CompleteOptions = {}): Promise<ModelReply> {
     const { signal } = options;
+    const effort = this.vertex ? (options.quick ? "minimal" : this.vertex.effort) : null;
     const body = {
       model: this.options.model,
       temperature: 0.2,
-      max_tokens: this.options.maxTokens,
+      // A quick call's one word, with room for what thinking it still does.
+      max_tokens: options.quick && this.vertex ? 256 : this.options.maxTokens,
+      ...(effort ? { reasoning_effort: effort } : {}),
       messages: messages.map((m) =>
         m.role === "tool"
           ? { role: "tool", tool_call_id: m.toolCallId, content: m.content }
@@ -113,9 +123,10 @@ export class OpenAICompatible implements ChatModel {
     const timeout = AbortSignal.timeout(this.options.timeoutSeconds * 1000);
     let response: Response;
     try {
+      const key = this.vertex ? await this.vertex.token() : this.options.apiKey;
       response = await this.fetchFn(`${this.options.endpoint}/chat/completions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : {}) },
+        headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
         body: JSON.stringify(body),
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       });
@@ -266,5 +277,7 @@ export class AnthropicMessages implements ChatModel {
 export function chatModel(): ChatModel | null {
   const c = config.chat;
   if (!c) return null;
-  return c.provider === "anthropic" ? new AnthropicMessages(c) : new OpenAICompatible(c);
+  if (c.provider === "anthropic") return new AnthropicMessages(c);
+  if (c.provider === "vertex") return new OpenAICompatible(c, fetch, { token: gcpMetadataToken, effort: c.effort });
+  return new OpenAICompatible(c);
 }

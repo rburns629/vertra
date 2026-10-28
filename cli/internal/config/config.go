@@ -93,6 +93,10 @@ type Config struct {
 	Audit Audit `yaml:"audit,omitempty"`
 	// SSO: signing in with Google (vertra sso google sets it up).
 	SSO SSO `yaml:"sso,omitempty"`
+	// Chat: the console's chat agent. On gcp, Gemini through Vertex AI in
+	// the install's own project, unless it's off; elsewhere, the console
+	// chart's chat values.
+	Chat Chat `yaml:"chat,omitempty"`
 	// Monitoring: the charts' PodMonitors, alerts and Grafana dashboard,
 	// for a Prometheus Operator already in the cluster.
 	Monitoring Monitoring `yaml:"monitoring,omitempty"`
@@ -184,6 +188,27 @@ type Audit struct {
 	Export   bool `yaml:"export"`
 	KeepDays int  `yaml:"keepDays,omitempty"`
 	Lock     bool `yaml:"lock,omitempty"`
+}
+
+// Chat is the console's chat agent on gcp.
+type Chat struct {
+	Off bool `yaml:"off,omitempty"`
+	// Model is Vertex's name for it; empty for DefaultChatModel.
+	Model string `yaml:"model,omitempty"`
+}
+
+// DefaultChatModel answers on gcp unless chat.model says otherwise.
+const DefaultChatModel = "google/gemini-3.5-flash"
+
+// ChatOnVertex: the chat agent answers through Vertex AI in the install's project.
+func (c *Config) ChatOnVertex() bool { return c.Target == "gcp" && !c.Chat.Off }
+
+// ChatModel is the model it answers with.
+func (c *Config) ChatModel() string {
+	if c.Chat.Model != "" {
+		return c.Chat.Model
+	}
+	return DefaultChatModel
 }
 
 // SSO is single sign-on with Google: an OAuth web client made in Google's
@@ -403,6 +428,7 @@ var (
 	dnsLabel = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`)
 	// <host>/<path>: a registry and repository path, no tag.
 	registryPath = regexp.MustCompile(`^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+)+$`)
+	chatModel    = regexp.MustCompile(`^google/[a-z0-9][a-z0-9.-]*$`)
 	wifProvider  = regexp.MustCompile(`^projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]{4,32}/providers/[a-z0-9-]{4,32}$`)
 	gcpProject   = regexp.MustCompile(`^[a-z][-a-z0-9]{4,28}[a-z0-9]$`)
 	gcpRegion    = regexp.MustCompile(`^[a-z]+-[a-z]+[0-9]$`)
@@ -544,6 +570,13 @@ func (c *Config) Validate() error {
 		}
 	default:
 		add("signing: %q: none, kms or keyless", c.Signing)
+	}
+	if c.Chat.Model != "" {
+		if c.Target != "gcp" {
+			add("chat.model: gcp only (elsewhere, set the console chart's chat values)")
+		} else if !chatModel.MatchString(c.Chat.Model) {
+			add("chat.model: %q: Vertex's name for a Gemini model, such as %s", c.Chat.Model, DefaultChatModel)
+		}
 	}
 	if c.SSO.GoogleGroups && c.Target != "gcp" {
 		add("sso.googleGroups: gcp only (the console reads groups as its own Google service account)")
