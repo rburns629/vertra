@@ -1012,7 +1012,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      server away, cancelling as a step finishes); repeated runs compared;
      a manual or nightly CI job. And `perf/`'s own tests in CI.
 - [ ] **A chat agent, then an MCP server (decision 24; the chat agent built
-  2026-10-28: `console/src/chat/`, `ChatService`, the Ask panel. Left: the
+  2026-10-28: `console/src/chat/`, `ChatService`, the Ask panel. Seen on
+  kind with Qwen 27B: a backups question answered in 229 s (the laptop
+  swapping), both citations genuine, every fact from them but one: a
+  `vertra config set` command made by joining two sections. Doc fixed, and
+  `mustSay`/`mustNotSay` in the question set for scoring. Left: the
   answers scored per model on the question set, scripted tasks with a real
   model, thumbs up or down, streaming, Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the

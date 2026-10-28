@@ -524,7 +524,9 @@ scan verdicts have their own settings in `retention`). 0 keeps them forever.
 
 ## Backups
 
-Off by default (`backup.enabled`), for the bundled Postgres only. A CronJob
+Off by default, for the bundled Postgres only. With the installer, turn them
+on with `vertra config set -e <env> database.backups.enabled true`, then
+`vertra apply <env>`; with Helm alone, the charts' `backup.enabled`. A CronJob
 in each chart runs `pg_dump -Fc`, checks the dump with `pg_restore --list`,
 names it `<release>/<UTC timestamp>.pgdump` (with the console's database, on
 a shared instance, as `<backupPrefix>/<same timestamp>.pgdump`), and copies it

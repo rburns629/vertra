@@ -12,6 +12,12 @@ export interface DocQuestion {
   question: string;
   /** Any of these sections answers it. */
   answers: string[];
+  /**
+   * For scoring a model's answers (not CI): what a right answer says, and
+   * what a wrong one has said before. Each came from a real miss.
+   */
+  mustSay?: string[];
+  mustNotSay?: string[];
 }
 
 export const DOC_QUESTIONS: DocQuestion[] = [
@@ -52,7 +58,14 @@ export const DOC_QUESTIONS: DocQuestion[] = [
   { question: "who has to approve changes to my team's products", answers: ["reference-catalog-guide :: Who approves what"] },
   { question: "what should a product never print or return", answers: ["reference-catalog-guide :: The container contract", "reference-security-model :: Rules for product authors"] },
   // Running Vertra
-  { question: "how do I back up the databases", answers: ["reference-operations :: Backups"] },
+  {
+    question: "how do I back up the databases",
+    answers: ["reference-operations :: Backups"],
+    // Qwen 27B, 2026-10-28: joined the chart's backup.enabled to `vertra
+    // config set` into a command that doesn't exist. The doc now says it.
+    mustSay: ["database.backups.enabled"],
+    mustNotSay: ["config set -e <env> backup.enabled"],
+  },
   { question: "how do I upgrade to a new version", answers: ["reference-operations :: Upgrading"] },
   { question: "install vertra on a cluster with helm", answers: ["reference-operations :: Installing on a cluster with Helm", "reference-setup :: 2. `vertra apply <env>`"] },
   { question: "how do I set up HTTPS for the console", answers: ["reference-operations :: HTTPS for the console"] },
