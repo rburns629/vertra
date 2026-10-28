@@ -559,9 +559,10 @@ rbac:
 # such as claude-haiku-5-5; `endpoint` empty for Anthropic's own), or vertex
 # (Gemini through Vertex AI in `vertex.project`, `model` such as
 # google/gemini-3.5-flash, signed in as the console's Workload Identity:
-# no key; its Google service account needs roles/aiplatform.user there). A
-# key, when one's needed: a Secret's name, key `api-key`, never the key
-# itself.
+# no key; its Google service account needs roles/aiplatform.user there;
+# a key given anyway is an access token used instead, for trying it off
+# GKE, good for an hour). A key, when one's needed: a Secret's name, key
+# `api-key`, never the key itself.
 # What it's sent reaches the model's provider: on a cloud, choose one in
 # the install's own cloud.
 chat:

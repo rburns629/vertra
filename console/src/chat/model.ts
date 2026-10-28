@@ -17,6 +17,8 @@ export interface ToolCall {
   name: string;
   /** As the model wrote them: JSON, unchecked. */
   arguments: string;
+  /** The provider's own data on the call, sent back as it came (Gemini's thought signature). */
+  extra?: unknown;
 }
 
 export type ChatMessage =
@@ -75,6 +77,9 @@ export function withoutThinking(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/^[\s\S]*<\/think>/, "").trim();
 }
 
+/** Waits before asking a busy model again, in ms. */
+const RETRIES = [1000, 3000];
+
 /**
  * OpenAI's chat completions, which LM Studio, Ollama and Vertex (for
  * Gemini) speak too. On Vertex (`vertex`): signed in with a token got for
@@ -96,6 +101,7 @@ export class OpenAICompatible implements ChatModel {
   async complete(messages: ChatMessage[], tools: ToolSpec[], options: CompleteOptions = {}): Promise<ModelReply> {
     const { signal } = options;
     const effort = this.vertex ? (options.quick ? "minimal" : this.vertex.effort) : null;
+    const vertex = this.vertex !== undefined;
     const body = {
       model: this.options.model,
       temperature: 0.2,
@@ -109,7 +115,19 @@ export class OpenAICompatible implements ChatModel {
             ? {
                 role: "assistant",
                 content: m.content,
-                tool_calls: m.toolCalls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: c.arguments } })),
+                tool_calls: m.toolCalls.map((c, i) => ({
+                  id: c.id,
+                  type: "function",
+                  function: { name: c.name, arguments: c.arguments },
+                  ...(c.extra !== undefined
+                    ? { extra_content: c.extra }
+                    : // Gemini refuses a step's first call without a thought
+                      // signature: one it didn't make (the console's own
+                      // first search) gets the placeholder Google allows.
+                      vertex && i === 0 && m.toolCalls?.every((x) => x.extra === undefined)
+                      ? { extra_content: { google: { thought_signature: "skip_thought_signature_validator" } } }
+                      : {}),
+                })),
               }
             : { role: m.role, content: m.content },
       ),
@@ -122,23 +140,35 @@ export class OpenAICompatible implements ChatModel {
     };
     const timeout = AbortSignal.timeout(this.options.timeoutSeconds * 1000);
     let response: Response;
-    try {
-      const key = this.vertex ? await this.vertex.token() : this.options.apiKey;
-      response = await this.fetchFn(`${this.options.endpoint}/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
-        body: JSON.stringify(body),
-        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-      });
-    } catch (error) {
-      throw new ModelUnavailable(`The model at ${this.options.endpoint} didn't answer: ${error instanceof Error ? error.message : String(error)}`);
+    // A busy model (429, 503: Vertex's shared capacity, a rate limit) is
+    // asked again, twice, after a moment; one that doesn't answer isn't (a
+    // slow local model would only be slower).
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const key = this.vertex ? await this.vertex.token() : this.options.apiKey;
+        response = await this.fetchFn(`${this.options.endpoint}/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
+          body: JSON.stringify(body),
+          signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        });
+      } catch (error) {
+        throw new ModelUnavailable(`The model at ${this.options.endpoint} didn't answer: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      if ((response.status !== 429 && response.status !== 503) || attempt >= RETRIES.length || signal?.aborted) break;
+      await response.body?.cancel();
+      const after = Number(response.headers.get("retry-after"));
+      await new Promise((resolve) => setTimeout(resolve, Number.isFinite(after) && after > 0 ? Math.min(after, 10) * 1000 : (RETRIES[attempt] ?? 0)));
     }
     if (!response.ok) {
       throw new ModelUnavailable(`The model answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
     }
     const data = (await response.json()) as {
       usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
-      choices?: { finish_reason?: string; message?: { content?: string | null; tool_calls?: { id?: string; function?: { name?: string; arguments?: string } }[] } }[];
+      choices?: {
+        finish_reason?: string;
+        message?: { content?: string | null; tool_calls?: { id?: string; function?: { name?: string; arguments?: string }; extra_content?: unknown }[] };
+      }[];
     };
     const choice = data.choices?.[0];
     if (!choice?.message) throw new ModelUnavailable("The model's answer had no message.");
@@ -148,6 +178,7 @@ export class OpenAICompatible implements ChatModel {
         id: c.id || `call-${String(i)}`,
         name: c.function?.name ?? "",
         arguments: c.function?.arguments ?? "{}",
+        ...(c.extra_content !== undefined ? { extra: c.extra_content } : {}),
       })),
       finishReason: choice.finish_reason ?? "stop",
       ...(data.usage
@@ -278,6 +309,8 @@ export function chatModel(): ChatModel | null {
   const c = config.chat;
   if (!c) return null;
   if (c.provider === "anthropic") return new AnthropicMessages(c);
-  if (c.provider === "vertex") return new OpenAICompatible(c, fetch, { token: gcpMetadataToken, effort: c.effort });
+  // On Vertex, a key is an access token used instead of the console's
+  // identity: for proving it off GKE (it lasts an hour).
+  if (c.provider === "vertex") return new OpenAICompatible(c, fetch, { token: c.apiKey ? () => Promise.resolve(c.apiKey) : gcpMetadataToken, effort: c.effort });
   return new OpenAICompatible(c);
 }

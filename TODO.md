@@ -1071,14 +1071,27 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   for gcp (`chat.off`, `chat.model`); its module enables Vertex AI's API
   and grants the console `roles/aiplatform.user`, and gives the scan Jobs
   an identity of their own (they read images anyone can publish; they had
-  the console's). Not yet proven against Vertex: needs the API enabled in
-  acyclix-dev and a scoring run; and the default model's name
-  (`google/gemini-3.5-flash`, from Google's compatibility page) checked
-  there.
+  the console's). Proven against Vertex in acyclix-dev (2026-10-28, from
+  kind, an hour's access token standing in for Workload Identity):
+  `google/gemini-3.5-flash` answers on the global endpoint (3.5-pro
+  doesn't exist there). Running it found Gemini 3 refusing every tool call
+  sent back without its thought signature (`extra_content.google.
+  thought_signature`, now carried through; the console's own first search
+  gets the placeholder Google allows) and Vertex's shared capacity
+  answering 429 (a busy model is now asked twice more). Then: 40 of 40
+  cited, none refused in scope, 10 of 10 off-topic refused, 5 of 5 tasks
+  once the ordering recipe said to give every choice the plan names and
+  to call a sample a sample (Haiku, rescored, still everything); median
+  6.4 s (Haiku 4.2). Three answers spot-checked, all right. Tokens: a
+  question about 7,900 in, an order about 25,000, Vertex's implicit
+  cache only 4 to 10% (Haiku's explicit one 45 to 78%): explicit context
+  caching on Vertex is worth a look. The window's estimate runs 1.8 times
+  Gemini's count (safe). Not proven: the console's own Workload Identity
+  signing in, which needs a GKE install.
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (done, above). Left:
-  Gemini on Vertex proven; then MCP) (proposed
+  Workload Identity's sign-in on a GKE install; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the
@@ -1172,6 +1185,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Identity) stay the cloud administrator's to keep per team.
 
 ## Testing and housekeeping
+
+- [ ] **Two console tests fail now and then in the full parallel run**
+  (found 2026-10-28): `sso.test.ts`'s Google groups re-read and
+  `readiness.test.ts`'s product check each failed once, alone, and passed
+  on their own and on the next full run. Likely shared rows or timing
+  between files on one database; find which before CI meets them.
 
 - [x] **`vertra catalog publish` from a laptop builds for the laptop's
   platform** (done 2026-10-25): a catalog's `platform` (`VERTRA_PLATFORM`)

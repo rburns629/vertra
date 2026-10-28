@@ -360,7 +360,10 @@ describe("the openai-compatible model", () => {
             choices: [
               {
                 finish_reason: "tool_calls",
-                message: { content: "<think>hmm</think>Looking.", tool_calls: [{ id: "t1", function: { name: "search_docs", arguments: '{"query":"x"}' } }] },
+                message: {
+                  content: "<think>hmm</think>Looking.",
+                  tool_calls: [{ id: "t1", function: { name: "search_docs", arguments: '{"query":"x"}' }, extra_content: { google: { thought_signature: "sig" } } }],
+                },
               },
             ],
           }),
@@ -369,7 +372,11 @@ describe("the openai-compatible model", () => {
     });
     const model = new OpenAICompatible({ endpoint: "http://m/v1", model: "qwen", apiKey: "", timeoutSeconds: 5, maxTokens: 100 }, fetchFn as unknown as typeof fetch);
     const reply = await model.complete([{ role: "user", content: "hi" }], [{ name: "search_docs", description: "d", parameters: { type: "object" } }]);
-    expect(reply).toEqual({ content: "Looking.", toolCalls: [{ id: "t1", name: "search_docs", arguments: '{"query":"x"}' }], finishReason: "tool_calls" });
+    expect(reply).toEqual({
+      content: "Looking.",
+      toolCalls: [{ id: "t1", name: "search_docs", arguments: '{"query":"x"}', extra: { google: { thought_signature: "sig" } } }],
+      finishReason: "tool_calls",
+    });
     expect(body).toMatchObject({ model: "qwen", tools: [{ type: "function", function: { name: "search_docs" } }] });
     expect(withoutThinking("<think>a\nb</think>\nAnswer")).toBe("Answer");
   });
@@ -396,9 +403,46 @@ describe("the openai-compatible model", () => {
     // Not on Vertex: no reasoning_effort, which another server may not know.
     await new OpenAICompatible({ ...options, endpoint: "http://m/v1" }, fetchFn as unknown as typeof fetch).complete([{ role: "user", content: "hi" }], [], { quick: true });
     expect(sent[2]?.body).not.toHaveProperty("reasoning_effort");
+    // Gemini's thought signatures: its own sent back as they came, the
+    // placeholder on a call it didn't make, nothing added off Vertex.
+    const history: ChatMessage[] = [
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "", toolCalls: [{ id: "search-first", name: "search_docs", arguments: "{}" }] },
+      { role: "tool", toolCallId: "search-first", content: "{}" },
+      { role: "assistant", content: "", toolCalls: [{ id: "g1", name: "search_docs", arguments: "{}", extra: { google: { thought_signature: "sig" } } }] },
+      { role: "tool", toolCallId: "g1", content: "{}" },
+    ];
+    await gemini.complete(history, []);
+    const calls = (sent[3]?.body["messages"] as { tool_calls?: { extra_content?: unknown }[] }[]).flatMap((m) => m.tool_calls ?? []);
+    expect(calls.map((c) => c.extra_content)).toEqual([{ google: { thought_signature: "skip_thought_signature_validator" } }, { google: { thought_signature: "sig" } }]);
+    await new OpenAICompatible({ ...options, endpoint: "http://m/v1" }, fetchFn as unknown as typeof fetch).complete(history.slice(0, 3), []);
+    const local = (sent[4]?.body["messages"] as { tool_calls?: Record<string, unknown>[] }[]).flatMap((m) => m.tool_calls ?? []);
+    expect(local[0]).not.toHaveProperty("extra_content");
     // No token, no call: the model's away, not the console broken.
     const signedOut = new OpenAICompatible(options, fetchFn as unknown as typeof fetch, { token: () => Promise.reject(new Error("metadata server returned 404")), effort: null });
     await expect(signedOut.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);
+  });
+
+  it("asks a busy model again, twice, then says it's away", async () => {
+    vi.useFakeTimers();
+    try {
+      const busy = () => new Response("Resource exhausted", { status: 429 });
+      const ok = () => new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: "Done." } }] }));
+      const once = vi.fn().mockResolvedValueOnce(busy()).mockResolvedValueOnce(ok());
+      const model = (f: unknown) => new OpenAICompatible({ endpoint: "http://m/v1", model: "g", apiKey: "", timeoutSeconds: 5, maxTokens: 10 }, f as typeof fetch);
+      const answered = model(once).complete([{ role: "user", content: "x" }], []);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect((await answered).content).toBe("Done.");
+      expect(once).toHaveBeenCalledTimes(2);
+
+      const always = vi.fn(() => Promise.resolve(busy()));
+      const refused = expect(model(always).complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);
+      await vi.advanceTimersByTimeAsync(4000);
+      await refused;
+      expect(always).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("says when the model can't be reached", async () => {

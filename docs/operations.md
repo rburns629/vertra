@@ -648,7 +648,9 @@ cache reads and writes, output, as the provider counted them), not what was
 said. With Haiku 5.5 (2026-10-28, kind): a docs question about 9,000 input
 tokens over three calls, under a tenth of a cent; an order about 27,000
 over six, 78% read from the cache, about $0.0015; an off-topic question
-one call of about 500.
+one call of about 500. With Gemini 3.5 Flash on Vertex: the same scores,
+a median of 6.4 s, a question about 7,900 input tokens and an order
+about 25,000, little of it cached (Vertex caches only implicitly here).
 People rate answers up or down in the panel; Admin's Chat tab lists them
 (question, answer, sources, what was wrong), kept 90 days. A wrong answer
 is usually a doc to fix, or a question to add to the question set.

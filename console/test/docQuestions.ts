@@ -37,7 +37,7 @@ export const DOC_QUESTIONS: DocQuestion[] = [
   { question: "can another team read my team's secrets?", answers: ["04-secrets-explained :: How isolation actually works", "reference-security-model :: Who can read a secret"] },
   { question: "where are secret values actually stored", answers: ["04-secrets-explained :: Step 2 — where it actually goes", "reference-security-model :: Where secret values live"] },
   { question: "what happens if a secret gets deleted by accident", answers: ["04-secrets-explained :: If a secret gets wiped, can it come back?"] },
-  { question: "how do I pull secrets from GCP Secret Manager", answers: ["02-sync-secrets-gcp :: Sync secrets from GCP Secret Manager", "reference-security-model :: Syncing secrets from a vault"] },
+  { question: "how do I pull secrets from GCP Secret Manager", answers: ["02-sync-secrets-gcp :: Sync secrets from GCP Secret Manager", "02-sync-secrets-gcp :: 6. Add the secret, and use it", "reference-security-model :: Syncing secrets from a vault"] },
   { question: "how do I get an API token for my pipeline", answers: ["05-calling-the-api :: 1. Get a token"] },
   { question: "can github actions sign in without storing a token", answers: ["05-calling-the-api :: Or no token at all: sign in from CI", "reference-security-model :: Keyless bots"] },
   { question: "how do I wait for a run to finish from a script", answers: ["05-calling-the-api :: 3. Wait for it to finish"] },

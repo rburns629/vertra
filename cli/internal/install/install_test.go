@@ -283,8 +283,8 @@ func TestTheChatOnGCP(t *testing.T) {
 	if sa := fmt.Sprint(v["serviceAccount"]); !strings.Contains(sa, "v-console@") {
 		t.Errorf("serviceAccount: %s", sa)
 	}
-	c.Chat.Model = "google/gemini-3.5-pro"
-	if !strings.Contains(fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["chat"]), "gemini-3.5-pro") {
+	c.Chat.Model = "google/gemini-3.5-flash-lite"
+	if !strings.Contains(fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["chat"]), "gemini-3.5-flash-lite") {
 		t.Error("chat.model")
 	}
 	c.Chat.Off = true
