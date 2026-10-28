@@ -1186,11 +1186,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Testing and housekeeping
 
-- [ ] **Two console tests fail now and then in the full parallel run**
-  (found 2026-10-28): `sso.test.ts`'s Google groups re-read and
-  `readiness.test.ts`'s product check each failed once, alone, and passed
-  on their own and on the next full run. Likely shared rows or timing
-  between files on one database; find which before CI meets them.
+- [ ] **A console test fails now and then in the full parallel run**
+  (found 2026-10-28). `sso.test.ts`'s was a real bug (fixed 2026-10-28):
+  the hourly Google groups re-read reads every single sign-on user, and one
+  deleted mid-pass (another test file's, or anyone's) failed the whole pass
+  on its membership's foreign key, leaving everyone after them unsynced for
+  another hour; a deleted person is now skipped, anything else still fails
+  the pass. `readiness.test.ts`'s product check failed once and not in 13
+  full runs since; its failure wasn't kept, so the cause is unknown.
 
 - [x] **`vertra catalog publish` from a laptop builds for the laptop's
   platform** (done 2026-10-25): a catalog's `platform` (`VERTRA_PLATFORM`)

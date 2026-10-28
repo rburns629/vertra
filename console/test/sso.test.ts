@@ -225,4 +225,26 @@ describe("Google Workspace groups", () => {
     expect(await teamsOf(`gws@${domain}`)).toEqual({});
     spy.mockRestore();
   });
+
+  it("skip someone deleted while their groups are read, and carry on with everyone else", async () => {
+    const gone = await createUser(`gone@${domain}`, null);
+    await db.update(users).set({ oidcSubject: `sub-gone-${prefix}` }).where(eq(users.id, gone.id));
+    const real = globalThis.fetch;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.startsWith("http://metadata.google.internal/")) return Response.json({ access_token: "t" });
+      if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups:lookup")) {
+        const group = new URL(url).searchParams.get("groupKey.id") ?? "";
+        return group === `ops@${domain}` ? Response.json({ name: "groups/ops1" }) : new Response("{}", { status: 404 });
+      }
+      if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups/ops1/memberships:checkTransitiveMembership")) {
+        // Their account goes while the pass reads their groups.
+        if (decodeURIComponent(url).includes(`gone@${domain}`)) await db.delete(users).where(eq(users.id, gone.id));
+        return Response.json({ hasMembership: true });
+      }
+      return real(input, init);
+    });
+    await expect(resyncGoogleGroups(app.log)).resolves.toBeTypeOf("number");
+    expect(await teamsOf(`gws@${domain}`)).toEqual({ [teamB]: "member" });
+  });
 });

@@ -241,9 +241,22 @@ export async function resyncGoogleGroups(log: FastifyBaseLogger): Promise<number
       log.warn({ event: "sso_groups_resync_failed", userId: person.id, err: error }, "couldn't read a person's Google groups; their teams stay as they are");
       continue;
     }
-    if ((await syncMappedTeams(person.id, groups, log)).length > 0) changed++;
+    try {
+      if ((await syncMappedTeams(person.id, groups, log)).length > 0) changed++;
+    } catch (error) {
+      // Deleted while this pass ran: nothing of theirs to follow, and the
+      // rest still are. Anything else fails the pass, as it should.
+      if (!userIsGone(error)) throw error;
+      log.info({ event: "sso_groups_resync_skipped", userId: person.id }, "a person was deleted while their groups were read");
+    }
   }
   return changed;
+}
+
+/** A foreign_key_violation on a membership's user: the account was deleted (drizzle-orm wraps the pg error as `.cause`). */
+function userIsGone(error: unknown): boolean {
+  const cause = error instanceof Error ? error.cause : undefined;
+  return typeof cause === "object" && cause !== null && "code" in cause && cause.code === "23503" && "constraint" in cause && cause.constraint === "team_memberships_user_id_users_id_fk";
 }
 
 export function startGroupResync(log: FastifyBaseLogger): void {
