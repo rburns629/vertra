@@ -151,8 +151,9 @@ func poolFor(ctx context.Context, s config.Settings) (*pgxpool.Pool, error) {
 	return pgxpool.NewWithConfig(ctx, poolConfig)
 }
 
-// kubeClient is in-cluster when running as a Pod, else the local kubeconfig.
-func kubeClient() (kubernetes.Interface, error) {
+// kubeClient is in-cluster when running as a Pod, else the local kubeconfig,
+// limited to the settings' requests a second.
+func kubeClient(s config.Settings) (kubernetes.Interface, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		rules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -164,6 +165,7 @@ func kubeClient() (kubernetes.Interface, error) {
 	// for every request that draws one (Autopilot's defaulting notice on
 	// every Job): each distinct one is logged once instead.
 	config.WarningHandler = &onceWarnings{log: logging.New("kernel", "app.kubernetes")}
+	config.QPS, config.Burst = float32(s.KubernetesQPS), s.KubernetesBurst
 	return kubernetes.NewForConfig(config)
 }
 
@@ -208,7 +210,7 @@ func runAPI(ctx context.Context, s config.Settings, log *slog.Logger) error {
 		if len(s.APIAllowedCallers) == 0 {
 			log.Error("API_ALLOWED_CALLERS is empty: kernel-api will refuse every request")
 		}
-		client, err := kubeClient()
+		client, err := kubeClient(s)
 		if err != nil {
 			return err
 		}
@@ -249,7 +251,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 		return err
 	}
 	defer pool.Close()
-	client, err := kubeClient()
+	client, err := kubeClient(s)
 	if err != nil {
 		return err
 	}
@@ -294,7 +296,7 @@ func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) erro
 
 // runWake wakes a sleeping install for its next schedule (the wake CronJob).
 func runWake(ctx context.Context, s config.Settings, log *slog.Logger) error {
-	client, err := kubeClient()
+	client, err := kubeClient(s)
 	if err != nil {
 		return err
 	}
@@ -302,7 +304,7 @@ func runWake(ctx context.Context, s config.Settings, log *slog.Logger) error {
 }
 
 func runSleep(ctx context.Context, s config.Settings, now bool, log *slog.Logger) error {
-	client, err := kubeClient()
+	client, err := kubeClient(s)
 	if err != nil {
 		return err
 	}

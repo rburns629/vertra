@@ -1,0 +1,66 @@
+apiVersion: vertra.dev/v2
+kind: Product
+name: noop
+team: perf
+displayName: No-op (benchmarks)
+description: >-
+  Sleeps for sleepMs, then succeeds or fails as asked, reporting when its
+  container started and finished. For benchmarking the platform only.
+owner: perf
+runtime: go1.27
+# Small and fixed, so a benchmark's steps cost the cluster the same each time.
+resources:
+  cpu: 10m
+  memory: 16Mi
+  memoryLimit: 32Mi
+errors:
+  PERF_FAILED:
+    means: The step was asked to fail (fail is always or first-attempt).
+    do: Nothing; a benchmark asked for it.
+actions:
+  - name: run
+    # Nothing outside the container changes: running it again is harmless.
+    idempotent: true
+    maxAttempts: 2
+    script: main.go
+    input:
+      type: object
+      additionalProperties: false
+      properties:
+        sleepMs:
+          type: integer
+          minimum: 0
+          maximum: 600000
+          default: 0
+          description: How long to do nothing, in milliseconds (at most ten minutes).
+        fail:
+          type: string
+          enum: [never, always, first-attempt]
+          default: never
+          description: >-
+            never; always (a permanent failure); first-attempt (a retryable
+            failure on attempt 1, so attempt 2 succeeds).
+        outputBytes:
+          type: integer
+          minimum: 0
+          maximum: 2048
+          default: 0
+          description: Padding to put in the outputs, to test larger results (result.json is at most 4 KB).
+        label:
+          type: string
+          maxLength: 64
+          description: Anything, echoed back, to tell runs apart.
+    output:
+      type: object
+      additionalProperties: false
+      required: [attempt, startedAtMs, finishedAtMs]
+      properties:
+        attempt: {type: integer}
+        startedAtMs:
+          type: integer
+          description: When the container started, in Unix milliseconds.
+        finishedAtMs:
+          type: integer
+          description: When it finished doing nothing, in Unix milliseconds.
+        label: {type: string}
+        padding: {type: string}

@@ -992,6 +992,25 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      tab, beside its chat webhook), under the same hosts; each run it owns
      posts `run.finished` signed, with each step's state, outputs and failure
      code (outputs left out past 256 KiB, `outputsOmitted`).
+- [ ] **Performance benchmarks** (phase 1 done 2026-10-28, `perf/README.md`):
+  the `perf` sample's no-op product, a driver submitting DAGs through the
+  console to a kind cluster of their own (`vertra-perf`), and the scheduler
+  and Postgres alone with the fake executor. Found: the kernel's Kubernetes
+  client ran at client-go's default 5 requests a second, about one step a
+  second; now a setting (`kubernetesClient`, still 5/10 by default), and
+  50/100 tripled throughput on kind. The scheduler and Postgres manage
+  160 to 515 steps a second. Next:
+  1. Raise `kubernetesClient`'s default (proposed 50 and 100), after
+     trying it on GKE.
+  2. Read a finished Pod's status instead of waiting for its Job complete
+     (about 2.5 s a step), if that's still the largest part.
+  3. A pass stamps what it records with its start: under a long pass a
+     step's completion time is early by up to the pass.
+  4. The sustained and higher scenarios; profiling (pprof on a private
+     listener); API load through the console; the failure cases not yet
+     covered (a create that times out but happened, Postgres or the API
+     server away, cancelling as a step finishes); repeated runs compared;
+     a manual or nightly CI job. And `perf/`'s own tests in CI.
 - [ ] **A chat agent, then an MCP server (decision 24, proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has

@@ -202,6 +202,10 @@ its own directory.
   vertra.dev/v2` and a `kind`: Team, Product, Template, Dag); the schemas
   are in `tools/` and embedded in vertra (`cli/internal/catalogtool/
   schemas/`, kept equal by a test): change both together.
+- **`perf/`**: performance benchmarks on a kind cluster of their own,
+  `vertra-perf` (`perf/README.md`: the runbook, and what's been found).
+  Never run them on `vertra-local` or a shared cluster; every Makefile kind
+  target takes `KIND_CLUSTER=vertra-perf`.
 - **`_local/`** (gitignored): personal scratch space, such as a clone of
   your own catalog repository.
 - `examples/`: fake demo products (`project-product`,

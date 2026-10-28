@@ -1,0 +1,13 @@
+# The performance-testing team (perf/README.md in the platform's
+# repository): one product that does nothing, for a fixed time, so a
+# benchmark measures Vertra and not a cloud. Never installed on a real
+# install; published only to the vertra-perf kind cluster.
+apiVersion: vertra.dev/v2
+kind: Team
+name: perf
+displayName: Performance tests
+description: >-
+  A no-op product for benchmarking the platform: it sleeps, succeeds or
+  fails as asked, and says when it ran. Nothing called, nothing made.
+owner: catalog-admins
+contact: catalog-admins@example.com

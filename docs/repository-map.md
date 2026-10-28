@@ -44,6 +44,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `proto/vertra/catalog/v1/release.proto` | A catalog release: every team (with its SecretStore files) and product action of a catalog's `main`, which `vertra catalog release` pushes as an OCI artifact and each console pulls. |
 | `proto/vertra/kernel/v1/kernel.proto` | kernel-api's `KernelService`, internal: only the console calls it. |
 | `gateway/` | The API gateway (its own section, below). |
+| `perf/` | Performance benchmarks on a kind cluster of their own (`vertra-perf`): `README.md` (the runbook and the findings), the driver (a Go module, no dependencies: `main.go` runs a scenario through the console's API, `workload.go` the shapes and hard caps, `console.go` the calls, `analyze.go` the timings, correctness checks and report), and the perf cluster's settings (`kind-kernel.yaml`, `kind-console.yaml`). Results go to `perf/results/`, not in git. |
 | `.semgrep/malicious.yml` | Semgrep rules for code that has no business in a product (running remote code, hidden payloads, reverse shells, mining). Run by `security.yml`. |
 
 ## `.github/`: CI
@@ -109,6 +110,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `internal/sleeper/sleeper.go` | The sleeper: one look, and if the platform is idle, the counts to wake to recorded and every Deployment scaled to zero (the databases last), the wake CronJob armed for the console's next schedule; and `Wake` (`kernel wake`), which brings it back. |
 | `internal/logging/`, `internal/metrics/` | JSON logs; the Prometheus metrics. |
 | `internal/gen/` | `KernelService`'s generated Go (`make proto`). |
+| `internal/scheduler/perf_test.go` | The scheduler and Postgres alone, with the fake executor and 1, 2 and 4 schedulers: steps a second, and that no step starts twice. Only with `VERTRA_PERF=1` (`perf/README.md`). |
 | `internal/dbtest/`, `internal/kindtest/` | For tests: the test database and throwaway ones; the current kind cluster and test images (`kindtest/fixture/`: a test-only product that crashes, sleeps or fails on demand). |
 | `*_test.go` | Beside each package: against the real, migrated test database (`TEST_DATABASE_URL`), client-go's fake clientset, or (`TestKind*`) a real kind cluster, skipping without one or failing when `KERNEL_TESTS_REQUIRE_KUBERNETES=1` (CI). |
 
@@ -516,6 +518,7 @@ Copied whole into a new catalog repository (`README.md` there explains it to its
 | `docs/onboarding-with-ai.md` | For catalog teams using an AI assistant to add a team or product. |
 | `samples/gcp/` | A sample team whose products call real, billed Google Cloud APIs, copied into a team once a cloud identity is set up; `project`, `app-hosting` and `cloud-sql` label what they make and delete it as their `cleanup` (`actions/delete.py`); `apis/hello-world` publishes the Cloud Run service app-hosting deploys (the gateway signs in with a Google ID token); `types.yaml` defines the wiring types they need and provide (`gcp.project`, `gcp.region`, `gcp.cloud-sql-instance`, `gcp.container-image`) and their default providers. |
 | `samples/aws/` | The same for AWS: an S3 bucket, an App Runner service, RDS for PostgreSQL (its password kept by Secrets Manager), keyless through EKS Pod Identity or IRSA. Proven on EKS (its SecretStore not yet). `apis/orders` is an API product in front of a Lambda function URL that requires IAM (the gateway signs with SigV4). |
+| `samples/perf/` | The performance-testing team: `noop`, which sleeps, succeeds or fails as asked and says when its container ran, for `perf/` in the platform's repository. No network, no credentials; published only to the perf cluster. |
 | `samples/azure/` | The same for Azure: a resource group, a Container App, a PostgreSQL flexible server with Entra sign-in only, keyless through AKS Workload Identity. Not yet proven, and needs a step Pod label the kernel can't set yet. |
 
 ## Not in git

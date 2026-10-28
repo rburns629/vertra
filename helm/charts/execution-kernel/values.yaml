@@ -175,6 +175,16 @@ api:
       cpu: "1"
       memory: 256Mi
 
+# -- The kernel's own limit on its Kubernetes API calls, per process:
+# requests a second, and how many may go above it at once. Every step costs
+# a handful of calls (its ConfigMap and Job made; read, logged and deleted
+# once done), so this caps how many steps a second the scheduler can start
+# and finish. client-go's defaults are 5 and 10 (perf/README.md has what
+# they cost); the API server's own priority and fairness still applies.
+kubernetesClient:
+  qps: 5
+  burst: 10
+
 scheduler:
   replicaCount: 1
   # The longest the scheduler waits between passes when nothing happens; a

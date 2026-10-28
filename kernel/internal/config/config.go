@@ -110,6 +110,11 @@ type Settings struct {
 	// re-read from the API, except once this often, in case an event was
 	// missed.
 	WatchResync time.Duration
+	// The Kubernetes client's own rate limit: requests a second, and how
+	// many may go at once above it. client-go's defaults (5 and 10) are
+	// kept unless set; perf/README.md has what they cost.
+	KubernetesQPS   float64
+	KubernetesBurst int
 
 	// Env vars set on every step container, whatever its image: knobs every
 	// Pod needs the same value for (on kind, GOOGLE_APPLICATION_CREDENTIALS
@@ -291,6 +296,8 @@ func Load(getenv func(string) string) (Settings, error) {
 		},
 		MaxDispatchFailures:    r.integer("SCHEDULER_MAX_DISPATCH_FAILURES", 5, true),
 		WatchResync:            r.seconds("KUBERNETES_WATCH_RESYNC_SECONDS", 30, true),
+		KubernetesQPS:          r.number("KUBERNETES_CLIENT_QPS", 5, true),
+		KubernetesBurst:        r.integer("KUBERNETES_CLIENT_BURST", 10, true),
 		TaskImagePullSecret:    r.str("TASK_IMAGE_PULL_SECRET", ""),
 		TaskPodHardening:       r.boolean("TASK_POD_HARDENING", true),
 		JobTTL:                 r.seconds("KUBERNETES_JOB_TTL_SECONDS", 3600, false),

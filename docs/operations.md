@@ -602,6 +602,20 @@ an API product whose backend runs in the team's own namespace
 namespace the console doesn't manage needs the same policies from whoever
 made it. Outbound traffic isn't restricted.
 
+## Throughput
+
+How many steps a second an install starts and finishes is, in practice,
+set by its Kubernetes API calls, not its database: the scheduler and
+Postgres alone manage hundreds a second, while each step costs the kernel
+about five to seven API calls. The kernel chart's `kubernetesClient` (`qps`,
+`burst`) is the kernel's own limit on those calls; at client-go's default
+of 5 a second the scheduler finishes about one step a second, whatever else
+is set, and logs "client-side throttling". Raising it (50 and 100 tripled
+kind's throughput: `perf/README.md`) leaves the API server's own priority
+and fairness in charge. `scheduler.maxRunningTasks` and
+`maxRunningTasksPerTeam` cap how many steps run at once (0: no cap), so a
+burst of runs queues instead of starting every Pod at once.
+
 ## Troubleshooting
 
 **The first admin's password is lost.** It's printed once, by the first

@@ -17,8 +17,11 @@ DOCKER := $(shell command -v docker 2>/dev/null || echo $(DOCKER_DESKTOP_BIN)/do
 # Every local target names the kind context explicitly rather than trusting
 # kubectl's current-context: with a GKE context configured alongside it,
 # `make up` would otherwise force-delete "Unknown" pods on whichever
-# cluster kubectl happened to point at.
-KIND_CONTEXT ?= kind-vertra-local
+# cluster kubectl happened to point at. One name decides the cluster, its
+# context and its node: KIND_CLUSTER=vertra-perf works on the performance
+# cluster (perf/README.md) and nothing else.
+KIND_CLUSTER ?= vertra-local
+KIND_CONTEXT ?= kind-$(KIND_CLUSTER)
 # Where the platform itself (kernel + console + their Postgres) is
 # installed. Deliberately not `default` -- that's the admins' own team
 # namespace, and tasks can never be dispatched into this one (see
@@ -38,7 +41,7 @@ PORT_FORWARD := $(KUBECTL) -n $(PLATFORM_NAMESPACE) port-forward svc/console-exe
 KIND_REGISTRY_NAME ?= kind-registry
 KIND_REGISTRY_PORT ?= 5001
 KIND_REGISTRY := localhost:$(KIND_REGISTRY_PORT)
-KIND_NODE ?= vertra-local-control-plane
+KIND_NODE ?= $(KIND_CLUSTER)-control-plane
 
 # Idempotent: starts the registry if needed, joins it to kind's network,
 # and points the node's containerd at it. That last part is kind's own
@@ -78,7 +81,8 @@ ADMIN_PASSWORD := vertra-local
 quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
 	$(DOCKER) build -t execution-kernel:latest kernel/
 	$(DOCKER) build -t execution-console:latest console/
-	kind load docker-image execution-kernel:latest execution-console:latest --name $(KIND_CLUSTER)
+	$(DOCKER) build -t execution-gateway:latest gateway/
+	kind load docker-image execution-kernel:latest execution-console:latest execution-gateway:latest --name $(KIND_CLUSTER)
 	@$(MAKE) --no-print-directory build-products
 	@for release in kernel console; do \
 		existed=false; \
@@ -201,12 +205,15 @@ kind-sample-api: kind-registry
 # catalog (default: all).
 CATALOG ?=
 SAMPLES ?= local
+# Where it's published: the registry path the cluster's console reads its
+# release from (perf/kind-console.yaml gives the perf cluster its own).
+CATALOG_REGISTRY ?= $(KIND_REGISTRY)
 PRODUCTS ?=
 catalog-publish: kind-registry
 	@if [ -n "$(CATALOG)" ]; then test -x "$(CATALOG)/vertra" || { echo "No catalog at $(CATALOG)."; exit 1; }; fi
 	@# This checkout's vertra.
 	@VERTRA_BIN=$$(bash .github/scripts/build-vertra.sh) || exit 1; \
-	export VERTRA_BIN VERTRA_REGISTRY=$(KIND_REGISTRY); \
+	export VERTRA_BIN VERTRA_REGISTRY=$(CATALOG_REGISTRY); \
 	if [ -z "$(CATALOG)" ]; then \
 		SAMPLES="$(SAMPLES)" bash .github/scripts/catalog-template.sh publish $(PRODUCTS) -- release; \
 	else \
@@ -223,7 +230,6 @@ catalog-publish: kind-registry
 # settings in helm/values/kind/*.yaml (--reset-values: the files are the whole
 # story). The image is loaded straight onto the node; the restart is because
 # the tag is a reused :latest.
-KIND_CLUSTER ?= vertra-local
 # --force-conflicts: the console edits two of the kernel chart's admission
 # policies (allowed image sources, registered products), which makes it the
 # owner of those fields under Helm 4's server-side apply, so a plain upgrade
@@ -312,18 +318,18 @@ kind-deploy-eso:
 # actually reachable rather than just printing a reminder -- `make down`
 # kills it by matching this same command line via pkill.
 up:
-	@STATUS="$$($(DOCKER) inspect vertra-local-control-plane --format '{{.State.Status}}' 2>/dev/null)"; \
+	@STATUS="$$($(DOCKER) inspect $(KIND_NODE) --format '{{.State.Status}}' 2>/dev/null)"; \
 	if [ "$$STATUS" = "running" ]; then \
-		echo "vertra-local-control-plane is already running."; \
+		echo "$(KIND_NODE) is already running."; \
 	elif [ -n "$$STATUS" ]; then \
-		$(DOCKER) start vertra-local-control-plane; \
+		$(DOCKER) start $(KIND_NODE); \
 	else \
-		echo "vertra-local-control-plane doesn't exist: make quickstart creates it" ; \
+		echo "$(KIND_NODE) doesn't exist: make quickstart creates it" ; \
 		echo "(docs/operations.md)."; \
 		exit 1; \
 	fi
 	@echo "Waiting for the node to be Ready..."
-	@until $(KUBECTL) get nodes vertra-local-control-plane 2>/dev/null | grep -q " Ready"; do sleep 2; done
+	@until $(KUBECTL) get nodes $(KIND_NODE) 2>/dev/null | grep -q " Ready"; do sleep 2; done
 	@echo "Node is Ready. Cleaning up any pods stuck in Unknown state from the restart..."
 	@$(KUBECTL) get pods -A --no-headers 2>/dev/null | awk '$$4 == "Unknown" {print $$1, $$2}' | \
 		while read -r ns name; do \
@@ -361,10 +367,10 @@ up:
 # Also kills any leftover `kubectl port-forward` to it, since a forward
 # pointed at a stopped cluster is just confusing noise otherwise.
 down:
-	@if $(DOCKER) ps -a --format '{{.Names}}' | grep -q '^vertra-local-control-plane$$'; then \
-		$(DOCKER) stop vertra-local-control-plane; \
+	@if $(DOCKER) ps -a --format '{{.Names}}' | grep -q '^$(KIND_NODE)$$'; then \
+		$(DOCKER) stop $(KIND_NODE); \
 	else \
-		echo "vertra-local-control-plane doesn't exist -- nothing to stop."; \
+		echo "$(KIND_NODE) doesn't exist -- nothing to stop."; \
 	fi
 	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
 
