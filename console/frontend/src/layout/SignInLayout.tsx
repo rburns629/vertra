@@ -5,10 +5,10 @@ import Typography from "@mui/material/Typography";
 import { keyframes } from "@mui/material/styles";
 import { useEnvironment } from "../environment";
 
-// A run, over and over, on one 6 s clock: the two steps run (the second
-// starting later), each line connects as the step it leaves finishes, the
-// third runs once both its inputs are connected, then the lines fade and
-// it starts again. Times in seconds of the cycle.
+// A run, over and over, on one 6 s clock: a step starts running as its line
+// sets out (the left one first, then the right), the third as soon as
+// either line reaches it, and all three run until the lines fade and it
+// starts again. Times in seconds of the cycle.
 const CYCLE = 6;
 const pct = (seconds: number) => `${String(Math.round((seconds / CYCLE) * 1000) / 10)}%`;
 const FADE = { from: 4.8, to: 5.4 };
@@ -38,8 +38,10 @@ function running(from: number, to: number) {
 const spin = keyframes`to { transform: rotate(360deg); }`;
 const rise = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; }`;
 
-const RUNS = { left: running(0.3, 1.5), right: running(0.8, 2.0), last: running(2.6, 4.1) };
-const LINES = { left: drawn(1.5, 2.1), right: drawn(2.0, 2.6) };
+const LINES = { left: drawn(0.3, 1.5), right: drawn(0.9, 2.1) };
+// Each runs from its line setting out (the last, from the first line arriving) until the lines have faded.
+const STOP = (FADE.from + FADE.to) / 2;
+const RUNS = { left: running(0.3, STOP), right: running(0.9, STOP), last: running(1.5, STOP) };
 
 const still = { "@media (prefers-reduced-motion: reduce)": { animation: "none" } };
 const loop = (frames: string) => `${frames} ${String(CYCLE)}s cubic-bezier(.4,0,.2,1) infinite`;
