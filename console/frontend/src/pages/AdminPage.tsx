@@ -1,35 +1,91 @@
 // SPDX-License-Identifier: MIT
-import { useSearchParams } from "react-router-dom";
+import type { ReactNode } from "react";
+import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorPage } from "../components/ErrorPage";
 import { PageHeader } from "../components/PageHeader";
+import { AdminChannelCard } from "./admin/AdminChannelCard";
+import { AutomationTokensCard } from "./admin/AutomationTokensCard";
+import { ChatSettingsCard } from "./admin/ChatSettingsCard";
 import { ChatTab } from "./admin/ChatTab";
 import { GatewayTab } from "./admin/GatewayTab";
 import { ImageScansTab } from "./admin/ImageScansTab";
-import { OverviewTab } from "./admin/OverviewTab";
+import { CatalogSection, OverviewTab, PoliciesSection } from "./admin/OverviewTab";
 import { PeopleTab } from "./admin/PeopleTab";
+import { SsoCard } from "./admin/SsoCard";
 
-type TabId = "overview" | "people" | "scans" | "gateway" | "chat";
+interface Section {
+  id: string;
+  label: string;
+  content: ReactNode;
+}
+
+/** The sections, grouped: each its own page, /admin/<id>. */
+const GROUPS: { name: string; sections: Section[] }[] = [
+  { name: "Install", sections: [{ id: "overview", label: "Overview", content: <OverviewTab /> }] },
+  {
+    name: "Access",
+    sections: [
+      { id: "people", label: "People", content: <PeopleTab /> },
+      { id: "sign-in", label: "Sign-in & groups", content: <SsoCard /> },
+      { id: "tokens", label: "Automation tokens", content: <AutomationTokensCard /> },
+    ],
+  },
+  {
+    name: "Integrations",
+    sections: [
+      {
+        id: "chat",
+        label: "Chat agent",
+        content: (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <ChatSettingsCard />
+            <ChatTab />
+          </Box>
+        ),
+      },
+      { id: "catalog", label: "Catalog & images", content: <CatalogSection /> },
+      { id: "gateway", label: "API gateway", content: <GatewayTab /> },
+      { id: "alerts", label: "Admins' alerts", content: <AdminChannelCard /> },
+    ],
+  },
+  {
+    name: "Security",
+    sections: [
+      { id: "scans", label: "Image scans", content: <ImageScansTab /> },
+      { id: "policies", label: "Policies & audit", content: <PoliciesSection /> },
+    ],
+  },
+];
+const SECTIONS = GROUPS.flatMap((g) => g.sections);
 
 /**
- * This install's settings, for admins: Overview (the catalog, the cluster's
- * policies, the audit log's copy, image sources), People (signing in and
- * accounts), Image scans, the API gateway, and Chat (how people rated
- * the chat agent's answers). The tab is in the address
- * (?tab=people).
+ * This install's settings, for admins, in sections down the side: the
+ * install, who has access and how they sign in, what it's connected to
+ * (the chat agent's model, the catalog, the gateway, alerts) and what keeps
+ * it safe. Each section is in the address (/admin/chat); the old tabs'
+ * addresses (?tab=people) still lead to theirs.
  */
 export function AdminPage() {
   const { user } = useAuth();
-  const [params, setParams] = useSearchParams();
-  const requested = params.get("tab");
-  const tab: TabId = requested === "people" || requested === "scans" || requested === "gateway" || requested === "chat" ? requested : "overview";
+  const navigate = useNavigate();
+  const { section: id } = useParams();
+  const [params] = useSearchParams();
 
   if (!user?.isAdmin) {
     return <ErrorPage title="Admins only" message="This page holds the install's settings, for its admins. Ask one if you need something changed." />;
   }
+  const tab = params.get("tab");
+  if (!id && tab && SECTIONS.some((s) => s.id === tab)) return <Navigate to={`/admin/${tab}`} replace />;
+  const section = SECTIONS.find((s) => s.id === (id ?? "overview"));
+  if (!section) return <Navigate to="/admin" replace />;
 
   return (
     <Box>
@@ -37,22 +93,48 @@ export function AdminPage() {
         title="Admin"
         subtitle="Settings for this install. Teams, products and templates come from the catalog; runs and their state are never edited by hand."
       />
-      <Tabs
-        value={tab}
-        onChange={(_e, value: TabId) => { setParams(value === "overview" ? {} : { tab: value }, { replace: true }); }}
-        sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}
-      >
-        <Tab value="overview" label="Overview" />
-        <Tab value="people" label="People" />
-        <Tab value="scans" label="Image scans" />
-        <Tab value="gateway" label="Gateway" />
-        <Tab value="chat" label="Chat" />
-      </Tabs>
-      {tab === "overview" && <OverviewTab />}
-      {tab === "people" && <PeopleTab />}
-      {tab === "scans" && <ImageScansTab />}
-      {tab === "gateway" && <GatewayTab />}
-      {tab === "chat" && <ChatTab />}
+      <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "200px minmax(0, 1fr)" }, alignItems: "start" }}>
+        <Box component="nav" aria-label="Admin sections" sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 16 }}>
+          <List dense disablePadding>
+            {GROUPS.map((g) => (
+              <Box component="li" key={g.name} sx={{ listStyle: "none" }}>
+                <List dense disablePadding subheader={<ListSubheader disableSticky sx={{ lineHeight: "32px", bgcolor: "transparent", px: 1.5 }}>{g.name}</ListSubheader>}>
+                  {g.sections.map((s) => (
+                    <ListItemButton
+                      key={s.id}
+                      component={RouterLink}
+                      to={`/admin/${s.id}`}
+                      selected={s.id === section.id}
+                      aria-current={s.id === section.id ? "page" : undefined}
+                      sx={{ borderRadius: 1, py: 0.5 }}
+                    >
+                      <ListItemText primary={s.label} slotProps={{ primary: { variant: "body2" } }} />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Box>
+            ))}
+          </List>
+        </Box>
+        <TextField
+          select
+          size="small"
+          label="Section"
+          value={section.id}
+          onChange={(e) => { navigate(`/admin/${e.target.value}`); }}
+          sx={{ display: { xs: "flex", md: "none" } }}
+        >
+          {GROUPS.flatMap((g) => [
+            <ListSubheader key={g.name}>{g.name}</ListSubheader>,
+            ...g.sections.map((s) => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.label}
+              </MenuItem>
+            )),
+          ])}
+        </TextField>
+        <Box sx={{ minWidth: 0 }}>{section.content}</Box>
+      </Box>
     </Box>
   );
 }

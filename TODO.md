@@ -1094,10 +1094,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `vertra-ch-scanner`; Gemini 3.5 Flash answered 10 of 10 questions cited
   and refused 10 of 10 off-topic, median 6 s. (The first apply met a
   us-central1 capacity shortage; the retry went through.)
+  Admins set the chat agent's model in the console (2026-10-28, Admin, Chat
+  agent): provider, model, key (sealed, write-only), limits, in place of
+  the install's until reset; checked as the install's are; tried with one
+  question before saving. The Admin page is now sections down the side
+  (Install, Access, Integrations, Security), each its own address, with
+  room for MCP and Bedrock.
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (done, above). Left:
-  an admin's chat settings in the console; Claude on Bedrock; then MCP) (proposed
+  Claude on Bedrock; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the

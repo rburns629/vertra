@@ -252,7 +252,7 @@ export function SecurityTab() {
             {user?.isAdmin && (
               <>
                 {" "}
-                <Link component={RouterLink} to="/admin?tab=scans">
+                <Link component={RouterLink} to="/admin/scans">
                   Every scan, its findings, and accepting one
                 </Link>
                 .

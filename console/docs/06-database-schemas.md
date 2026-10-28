@@ -676,7 +676,7 @@ A delete refused because other resources still depended on what it would delete:
 
 ### chat_feedback
 
-Ratings of the chat agent's answers (decision 24): thumbs up or down, each with what was asked and answered, sent by the person who rated it. The agent keeps nothing else of a conversation. Admins read them (Admin, Chat); kept 90 days.
+Ratings of the chat agent's answers (decision 24): thumbs up or down, each with what was asked and answered, sent by the person who rated it. The agent keeps nothing else of a conversation. Admins read them (Admin, Chat agent); kept 90 days.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |

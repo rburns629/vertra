@@ -7,18 +7,26 @@ import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import CheckIcon from "@mui/icons-material/CheckCircle";
 import TodoIcon from "@mui/icons-material/RadioButtonUnchecked";
-import { getCatalogStatus, getImagePolicy, getInstall, listAllTeams, listUsers, type InstallInfo } from "../../api";
+import { getCatalogStatus, getChatSettings, getImagePolicy, getInstall, listAllTeams, listUsers, type InstallInfo } from "../../api";
 import { Pill } from "../../components/Pill";
 
 const mono = { fontFamily: "fontFamilyMono", fontSize: 13 } as const;
 const code = (text: string) => <Box component="span" sx={mono}>{text}</Box>;
 
-/** One optional part: on, or what turns it on. */
-function Part({ name, on, detail, howTo }: { name: string; on: boolean; detail?: string; howTo: ReactNode }) {
+/** One optional part: on, or what turns it on; its name leads to its section, when it has one. */
+function Part({ name, on, detail, howTo, to }: { name: string; on: boolean; detail?: string; howTo: ReactNode; to?: string }) {
   return (
     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, py: 1, borderTop: 1, borderColor: "divider" }}>
       <Box sx={{ minWidth: 0 }}>
-        <Typography variant="body2">{name}</Typography>
+        <Typography variant="body2">
+          {to ? (
+            <Link component={RouterLink} to={to}>
+              {name}
+            </Link>
+          ) : (
+            name
+          )}
+        </Typography>
         <Typography variant="caption" color="text.secondary">
           {on ? detail : howTo}
         </Typography>
@@ -31,9 +39,11 @@ function Part({ name, on, detail, howTo }: { name: string; on: boolean; detail?:
 /** This install: its version, and which optional parts are on (each a setting in vertra.yaml). */
 export function InstallCard() {
   const [install, setInstall] = useState<InstallInfo | null>(null);
+  const [chat, setChat] = useState<{ enabled: boolean; model: string } | null>(null);
   useEffect(() => {
     // Display only: without it, the card isn't shown.
     getInstall().then(setInstall).catch(() => undefined);
+    getChatSettings().then(setChat).catch(() => undefined);
   }, []);
   if (!install) return null;
   return (
@@ -46,14 +56,16 @@ export function InstallCard() {
           {install.environmentLabel} · {code(install.version)}
         </Typography>
       </Box>
-      <Part name="Signing in with single sign-on" on={install.ssoProvider !== ""} detail={install.ssoProvider} howTo={<>Admin, People: Single sign-on</>} />
-      <Part name="The catalog" on={install.catalog} detail={install.catalogSigned ? "Releases' signatures checked" : "Releases read, signatures not checked"} howTo={<>{code("vertra catalog create")}</>} />
-      <Part name="Images scanned before they run" on={install.scanning} detail="Fixable high and critical findings block a run" howTo="The console chart's scanning.enabled" />
+      <Part name="Signing in with single sign-on" to="/admin/sign-in" on={install.ssoProvider !== ""} detail={install.ssoProvider} howTo="Set up in Sign-in & groups" />
+      <Part name="The chat agent" to="/admin/chat" on={chat?.enabled ?? false} detail={chat?.model} howTo="Choose its model in Chat agent" />
+      <Part name="The catalog" to="/admin/catalog" on={install.catalog} detail={install.catalogSigned ? "Releases' signatures checked" : "Releases read, signatures not checked"} howTo={<>{code("vertra catalog create")}</>} />
+      <Part name="Images scanned before they run" to="/admin/scans" on={install.scanning} detail="Fixable high and critical findings block a run" howTo="The console chart's scanning.enabled" />
       <Part name="Log search" on={install.logs} detail={`The last ${String(install.logSearchDays)} days, in Observe`} howTo={<>{code("logs.enabled")} in vertra.yaml</>} />
-      <Part name="The audit log's write-once copy" on={install.auditCopy} detail="Copied to a bucket that refuses deletes" howTo={<>{code("audit.export")} in vertra.yaml (gcp, aws)</>} />
-      <Part name="The API gateway" on={install.gateway} detail="Serving the catalog's API products" howTo={<>{code("gateway.enabled")} in vertra.yaml</>} />
+      <Part name="The audit log's write-once copy" to="/admin/policies" on={install.auditCopy} detail="Copied to a bucket that refuses deletes" howTo={<>{code("audit.export")} in vertra.yaml (gcp, aws)</>} />
+      <Part name="The API gateway" to="/admin/gateway" on={install.gateway} detail="Serving the catalog's API products" howTo={<>{code("gateway.enabled")} in vertra.yaml</>} />
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-        Runs are kept {install.runRetentionDays} days. Settings change with {code("vertra config set")} and {code("vertra apply")}, not here.
+        Runs are kept {install.runRetentionDays} days. Sign-in and the chat agent&apos;s model are set here; the rest changes with{" "}
+        {code("vertra config set")} and {code("vertra apply")}.
       </Typography>
     </Card>
   );
@@ -99,12 +111,12 @@ export function FirstRunChecklist() {
         {
           done: Boolean(u && u.length > 1),
           title: "Add people",
-          how: <>On the <Link component={RouterLink} to="/admin?tab=people">People</Link> tab, in the teams they work on.</>,
+          how: <>On the <Link component={RouterLink} to="/admin/people">People</Link> section, in the teams they work on.</>,
         },
         {
           done: Boolean(i?.ssoProvider),
           title: "Optional: single sign-on",
-          how: <>On the <Link component={RouterLink} to="/admin?tab=people">People</Link> tab (Google, Entra ID, Okta…), or {code("vertra sso google")}. Passwords keep working.</>,
+          how: <>In <Link component={RouterLink} to="/admin/sign-in">Sign-in &amp; groups</Link> (Google, Entra ID, Okta…), or {code("vertra sso google")}. Passwords keep working.</>,
         },
       ]);
     });

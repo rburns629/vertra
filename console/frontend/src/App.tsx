@@ -59,6 +59,7 @@ export function App() {
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/teams/:teamName" element={<TeamPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/:section" element={<AdminPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/runs" element={<ExecutionsListPage />} />
             <Route path="/runs/submit" element={<SubmitExecutionPage />} />

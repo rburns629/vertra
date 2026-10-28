@@ -197,7 +197,11 @@ question as data) gets a fixed sentence and never reaches the agent, and an
 answer resting on neither the docs it cites nor its tools' results is
 replaced, so neither a question that talks it out of its instructions nor
 the model's memory can put an answer in front of someone. A conversation
-is bounded by `chat.contextTokens`. On GCP it's Gemini through Vertex AI in
+is bounded by `chat.contextTokens`. Admins may set its model in the console
+(`console/src/core/chatSettings.ts`): its key sealed with a key derived
+from `JWT_SECRET`, write-only. An address an admin gives is fetched by the
+console from inside the cluster, so testing one reports only whether it
+answered as a model, never what it replied. On GCP it's Gemini through Vertex AI in
 the install's own project, as the console's Workload Identity: no key, and
 nothing leaves the install's cloud. What's asked, and what its tools return, goes to
 the install's chat model (`chat.endpoint`); nothing is kept by the console,
@@ -452,7 +456,7 @@ would keep it from binding the role elsewhere.
 People sign in with a password, or with single sign-on when it's on: an
 OpenID Connect provider (Google, Entra ID, Okta, Keycloak) that either the
 console chart's `sso` sets (then it's read-only in the console) or admins
-set on Admin, People (`console/src/core/sso.ts`; its client secret sealed
+set on Admin, Sign-in & groups (`console/src/core/sso.ts`; its client secret sealed
 in the database with a key derived from `JWT_SECRET`, write-only). Saving
 a provider reads its discovery document first. Every console reads the
 saved settings every few seconds, so turning it on or off needs no restart

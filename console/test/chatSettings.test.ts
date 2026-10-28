@@ -14,6 +14,7 @@ import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { currentChat, refreshChatSettings } from "../src/chat/settings.js";
+import { chatFrom, config, type ChatConfig } from "../src/config.js";
 import { db } from "../src/db/client.js";
 import { chatSettings } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
@@ -109,6 +110,22 @@ describe("the chat agent's settings", () => {
     const vertex = (await call<Config>(admin, "ChatService/SetChatConfig", { config: input({ provider: "vertex", model: "", apiKey: "sk-not-kept", vertexProject: "acyclix-dev" }) })).body.config;
     expect(vertex).toMatchObject({ provider: "vertex", model: "google/gemini-3.5-flash", keySet: false });
     expect((await db.select().from(chatSettings))[0]?.apiKeyEncrypted).toBeNull();
+  });
+
+  it("use the install's key for the install's own provider when none is given", async () => {
+    const install = config.chat;
+    config.chat = { ...(chatFrom({ ...input(), apiKey: "sk-install", timeoutSeconds: null, maxSteps: null, maxTokens: null, contextTokens: null, vertexProject: "", vertexLocation: "", effort: "" }) as ChatConfig) };
+    try {
+      await call(admin, "ChatService/ResetChatConfig");
+      const saved = (await call<Config>(admin, "ChatService/SetChatConfig", { config: input({ apiKey: "", model: "stand-in-3" }) })).body.config;
+      expect(saved).toMatchObject({ source: "admins", model: "stand-in-3", keySet: true });
+      // In effect, as every console reads it: with the install's key.
+      expect(currentChat()).toMatchObject({ model: "stand-in-3", apiKey: "sk-install" });
+      expect((await db.select().from(chatSettings))[0]?.apiKeyEncrypted).toBeNull();
+    } finally {
+      config.chat = install;
+      await call(admin, "ChatService/ResetChatConfig");
+    }
   });
 
   it("can turn chat off, say why an admin's can't be used, and go back to the install's", async () => {

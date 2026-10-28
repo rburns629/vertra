@@ -58,7 +58,8 @@ export async function refreshChatSettings(log?: FastifyBaseLogger): Promise<void
     current = { source: "admins", chat: null, problem: null };
     return;
   }
-  let apiKey = "";
+  // None kept for the install's own provider: the install's (its Secret's).
+  let apiKey = row.provider !== "vertex" && config.chat?.provider === row.provider ? config.chat.apiKey : "";
   if (row.apiKeyEncrypted) {
     const key = unseal(row.apiKeyEncrypted, KEY_PURPOSE);
     if (key === null) {

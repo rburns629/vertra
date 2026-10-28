@@ -651,10 +651,51 @@ describe("admin", () => {
     expect(await screen.findByText("How do I add a secret?")).toBeTruthy();
   });
 
-  it("opens a tab from the address", async () => {
+  it("opens a section from the address, and from an old tab's", async () => {
     await renderAt("/admin?tab=gateway", ADMIN, { "ApiService/GetGateway": { enabled: true, url: "http://gateway:8080" } });
     expect(await screen.findByRole("button", { name: "Close the gateway" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Gateway", selected: true })).toBeTruthy();
+    const nav = screen.getByRole("navigation", { name: "Admin sections" });
+    expect(within(nav).getByRole("link", { name: "API gateway" }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav).getByRole("link", { name: "Chat agent" }).getAttribute("href")).toBe("/admin/chat");
+  });
+
+  it("sets the chat agent's model in place of the install's, keeps its key unshown, and tries it first", async () => {
+    const saved: Record<string, unknown>[] = [];
+    const tried: Record<string, unknown>[] = [];
+    await renderAt("/admin/chat", ADMIN, {
+      "ChatService/GetChatConfig": {
+        config: { source: "install", enabled: true, provider: "vertex", model: "google/gemini-3.5-flash", vertexProject: "acme-prod", vertexLocation: "global", installProvider: "vertex", installModel: "google/gemini-3.5-flash" },
+      },
+      "ChatService/TestChatConfig": (request: Record<string, unknown>) => {
+        tried.push(request);
+        return { ok: true, seconds: 3.2, model: "claude-haiku-5-5", answer: "Back up nightly [S1].", citations: 1 };
+      },
+      "ChatService/SetChatConfig": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return { config: { source: "admins", enabled: true, provider: "anthropic", model: "claude-haiku-5-5", keySet: true, updatedBy: "ana@acme.com", installProvider: "vertex", installModel: "google/gemini-3.5-flash" } };
+      },
+      "ChatService/ListChatFeedback": { ratings: [] },
+    });
+    expect(await screen.findByText(/These are the install's settings \(Gemini on Vertex AI/)).toBeTruthy();
+    expect((screen.getByLabelText("Google Cloud project") as HTMLInputElement).value).toBe("acme-prod");
+    // No key on Vertex: it signs in as the console.
+    expect(screen.queryByLabelText(/API key/)).toBeNull();
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Provider" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Claude through Anthropic's API" }));
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "claude-haiku-5-5" } });
+    fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-ant-typed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Test" }));
+    expect(await screen.findByText(/claude-haiku-5-5 answered in 3.2 s, citing 1 section/)).toBeTruthy();
+    expect(tried[0]?.["config"]).toMatchObject({ provider: "anthropic", model: "claude-haiku-5-5", apiKey: "sk-ant-typed" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/Saved: in effect within seconds/)).toBeTruthy();
+    expect(saved[0]?.["config"]).toMatchObject({ enabled: true, provider: "anthropic", model: "claude-haiku-5-5", apiKey: "sk-ant-typed" });
+    // Saved, the key is never shown again: kept, and the field empty.
+    expect((screen.getByLabelText("API key") as HTMLInputElement).value).toBe("");
+    expect(screen.getByText(/One is kept \(encrypted, never shown\)/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use the install's" })).toBeTruthy();
   });
 });
 
@@ -873,16 +914,18 @@ describe("a new install", () => {
     expect(screen.getByText("1 of 4 done")).toBeTruthy();
     expect(screen.getByText("Connect the catalog")).toBeTruthy();
     expect(await screen.findByText("0.4.0")).toBeTruthy();
-    // Single sign-on: set on the People tab, or with vertra.
+    // Single sign-on: set in Sign-in & groups, or with vertra; each part leads to its section.
     expect(screen.getAllByText(/vertra sso google/, { selector: "span" }).length).toBe(1);
-    expect(screen.getByText("Admin, People: Single sign-on")).toBeTruthy();
+    expect(screen.getByText("Set up in Sign-in & groups")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Signing in with single sign-on" }).getAttribute("href")).toBe("/admin/sign-in");
+    expect(screen.getByRole("link", { name: "The chat agent" }).getAttribute("href")).toBe("/admin/chat");
   });
 });
 
 describe("the admins' chat channel", () => {
   it("lets an admin choose the team whose webhook gets admins' alerts", async () => {
     const saved: Record<string, unknown>[] = [];
-    await renderAt("/admin", ADMIN, {
+    await renderAt("/admin/alerts", ADMIN, {
       "AdminService/GetCatalogStatus": { status: { release: "" } },
       "ImageService/GetImagePolicy": { policy: { exists: true, source: "registry.example/", allowed: ["registry.example/"] } },
       "TeamService/ListTeams": { teams: [{ id: "t1", name: "platform" }, { id: "t2", name: "old", retiredAt: "2026-10-01T00:00:00Z" }] },

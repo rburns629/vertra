@@ -637,6 +637,14 @@ conversation that won't fit is refused (`CONVERSATION_TOO_LONG`; the panel
 offers a new one, and says when one passes 75%), and a tool result that
 won't fit is held back from the model.
 
+Admins can set the model in the console instead (Admin, Chat agent): the
+provider, model, key and limits, tried with one question before saving,
+in place of the install's until they go back to it. The key is kept
+sealed (from `JWT_SECRET`), never shown again; for the install's own
+provider, left out, the install's is used. An admin's settings that stop
+working (a key that no longer unseals after `JWT_SECRET` changes) turn chat
+off and say why there, rather than falling back.
+
 It answers only about Vertra. A short check of each question, by the same
 model with no tools, answers anything else with one fixed sentence
 (`offTopic`), and the prompt holds the same scope; an answer from neither
@@ -653,7 +661,7 @@ over six, 78% read from the cache, about $0.0015; an off-topic question
 one call of about 500. With Gemini 3.5 Flash on Vertex: the same scores,
 a median of 6.4 s, a question about 7,900 input tokens and an order
 about 25,000, little of it cached (Vertex caches only implicitly here).
-People rate answers up or down in the panel; Admin's Chat tab lists them
+People rate answers up or down in the panel; Admin's Chat agent section lists them
 (question, answer, sources, what was wrong), kept 90 days. A wrong answer
 is usually a doc to fix, or a question to add to the question set.
 

@@ -10,7 +10,6 @@ import Typography from "@mui/material/Typography";
 import { ApiError, getAuditCopy, getPolicySync, syncPolicies, type AuditCopy, type PolicySync } from "../../api";
 import { Pill } from "../../components/Pill";
 import { when } from "../../time";
-import { AdminChannelCard } from "./AdminChannelCard";
 import { CatalogCard } from "./CatalogCard";
 import { ImageSourcesCard } from "./ImageSourcesCard";
 import { FirstRunChecklist, InstallCard } from "./InstallCards";
@@ -38,7 +37,7 @@ function Panel({ title, status, children }: { title: string; status?: ReactNode;
 }
 
 /** The cluster's admission policies, which the console writes and the cluster enforces. */
-function PoliciesCard() {
+export function PoliciesCard() {
   const [policies, setPolicies] = useState<PolicySync[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -173,19 +172,32 @@ function AuditCopyCard() {
   );
 }
 
-/** This install at a glance: where its teams and products come from, what the cluster enforces, and its audit trail. */
+/** This install at a glance: what's left to set up, and which parts are on (each linked to its section). */
 export function OverviewTab() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <FirstRunChecklist />
       <InstallCard />
+    </Box>
+  );
+}
+
+/** What the cluster enforces, and the audit trail's copy. */
+export function PoliciesSection() {
+  return (
+    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, alignItems: "start" }}>
+      <PoliciesCard />
+      <AuditCopyCard />
+    </Box>
+  );
+}
+
+/** Where teams, products and their images come from. */
+export function CatalogSection() {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <CatalogCard />
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, alignItems: "start" }}>
-        <PoliciesCard />
-        <AuditCopyCard />
-      </Box>
       <ImageSourcesCard />
-      <AdminChannelCard />
       <Typography variant="body2" color="text.secondary">
         Every image allowed to run here, with its last scan, is on{" "}
         <Link component={RouterLink} to="/observe">

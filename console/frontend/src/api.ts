@@ -41,7 +41,7 @@ import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js"
 import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
 import { DraftService, type Draft as DraftMessage } from "./gen/vertra/console/v1/draft_pb.js";
 import { OrderService } from "./gen/vertra/console/v1/order_pb.js";
-import { ChatService, type AskResponse } from "./gen/vertra/console/v1/chat_pb.js";
+import { ChatService, type AskResponse, type ChatConfig as ChatConfigMessage } from "./gen/vertra/console/v1/chat_pb.js";
 import type { BuiltStep } from "./compose";
 import { SsoService, type SsoSettings as SsoSettingsMessage } from "./gen/vertra/console/v1/sso_pb.js";
 
@@ -2592,6 +2592,95 @@ export async function rateAnswer(rating: {
 }
 
 /** A rating of a chat answer, for admins. */
+/** The chat agent's model as it's set: the install's, or an admin's (never the key). */
+export interface ChatConfig {
+  source: "install" | "admins";
+  enabled: boolean;
+  provider: string;
+  model: string;
+  endpoint: string;
+  vertexProject: string;
+  vertexLocation: string;
+  effort: string;
+  maxSteps: number;
+  contextTokens: number;
+  maxTokens: number;
+  keySet: boolean;
+  /** Why an admin's settings can't be used now: chat is off meanwhile. */
+  problem: string | null;
+  updatedBy: string;
+  updatedAt: string | null;
+  installProvider: string;
+  installModel: string;
+}
+
+/** Settings to save or try: numbers 0 for their defaults, the key empty to keep the one kept. */
+export interface ChatConfigInput {
+  enabled: boolean;
+  provider: string;
+  model: string;
+  endpoint: string;
+  vertexProject: string;
+  vertexLocation: string;
+  effort: string;
+  maxSteps: number;
+  contextTokens: number;
+  maxTokens: number;
+  apiKey: string;
+}
+
+export interface ChatTestResult {
+  ok: boolean;
+  problem: string;
+  seconds: number;
+  model: string;
+  answer: string;
+  citations: number;
+}
+
+function chatConfig(c: ChatConfigMessage | undefined): ChatConfig {
+  return {
+    source: c?.source === "admins" ? "admins" : "install",
+    enabled: c?.enabled ?? false,
+    provider: c?.provider ?? "",
+    model: c?.model ?? "",
+    endpoint: c?.endpoint ?? "",
+    vertexProject: c?.vertexProject ?? "",
+    vertexLocation: c?.vertexLocation ?? "",
+    effort: c?.effort ?? "",
+    maxSteps: c?.maxSteps ?? 0,
+    contextTokens: c?.contextTokens ?? 0,
+    maxTokens: c?.maxTokens ?? 0,
+    keySet: c?.keySet ?? false,
+    problem: c?.problem || null,
+    updatedBy: c?.updatedBy ?? "",
+    updatedAt: iso(c?.updatedAt) ?? null,
+    installProvider: c?.installProvider ?? "",
+    installModel: c?.installModel ?? "",
+  };
+}
+
+/** The chat agent's model as it's set (admins only). */
+export async function getChatConfig(): Promise<ChatConfig> {
+  return chatConfig((await call(() => chatApi.getChatConfig({}))).config);
+}
+
+/** An admin's own settings for the chat agent, in effect within seconds. */
+export async function setChatConfig(config: ChatConfigInput): Promise<ChatConfig> {
+  return chatConfig((await call(() => chatApi.setChatConfig({ config }))).config);
+}
+
+/** Back to the install's settings. */
+export async function resetChatConfig(): Promise<ChatConfig> {
+  return chatConfig((await call(() => chatApi.resetChatConfig({}))).config);
+}
+
+/** Settings tried before they're saved: one question through the agent. */
+export async function testChatConfig(config: ChatConfigInput): Promise<ChatTestResult> {
+  const r = await call(() => chatApi.testChatConfig({ config }));
+  return { ok: r.ok, problem: r.problem, seconds: r.seconds, model: r.model, answer: r.answer, citations: r.citations };
+}
+
 export interface ChatRating {
   id: string;
   rating: "up" | "down";
