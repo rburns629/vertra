@@ -1016,7 +1016,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   kind with Qwen 27B: a backups question answered in 229 s (the laptop
   swapping), both citations genuine, every fact from them but one: a
   `vertra config set` command made by joining two sections. Doc fixed, and
-  `mustSay`/`mustNotSay` in the question set for scoring. Left: the
+  `mustSay`/`mustNotSay` in the question set for scoring. Scored with
+  Qwen3 14B (`npm run chat-eval`, 2026-10-28): the layered prompt alone, 10
+  of 40 cited an answering section (half answered from memory, inventing
+  commands); with the console searching first and repairing an uncited
+  answer once, 38 of 40, none uncited, median 32 s. Spot-checked, about
+  half are wholly right: the 14B attaches genuine citations to sentences
+  its source doesn't support. Next: the same 40 on a capable model (Gemini
+  or Claude on Vertex, billed) to compare; a sentence-level support check
+  if a capable model still needs it. Left: the
   answers scored per model on the question set, scripted tasks with a real
   model, thumbs up or down, streaming, Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the

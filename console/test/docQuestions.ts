@@ -35,7 +35,14 @@ export const DOC_QUESTIONS: DocQuestion[] = [
   { question: "can github actions sign in without storing a token", answers: ["05-calling-the-api :: Or no token at all: sign in from CI", "reference-security-model :: Keyless bots"] },
   { question: "how do I wait for a run to finish from a script", answers: ["05-calling-the-api :: 3. Wait for it to finish"] },
   { question: "get notified when an order finishes instead of polling", answers: ["05-calling-the-api :: Hearing back without polling", "05-calling-the-api :: Every run of your team, for your systems"] },
-  { question: "how can a storefront place orders", answers: ["05-calling-the-api :: Placing orders from another system", "reference-security-model :: Ordering bots"] },
+  {
+    question: "how can a storefront place orders",
+    answers: ["05-calling-the-api :: Placing orders from another system", "reference-security-model :: Ordering bots"],
+    // Qwen3 14B, 2026-10-28: told the storefront to preview first, which an
+    // ordering bot may not (ORDERS_ONLY).
+    mustSay: ["RunTemplate"],
+    mustNotSay: ["PreviewOrder"],
+  },
   { question: "what does resource_exhausted 429 mean", answers: ["05-calling-the-api :: Errors", "05-calling-the-api :: Placing orders from another system"] },
   { question: "where does the console store resources it made", answers: ["06-database-schemas :: resources"] },
   {
@@ -69,7 +76,14 @@ export const DOC_QUESTIONS: DocQuestion[] = [
   { question: "how do I upgrade to a new version", answers: ["reference-operations :: Upgrading"] },
   { question: "install vertra on a cluster with helm", answers: ["reference-operations :: Installing on a cluster with Helm", "reference-setup :: 2. `vertra apply <env>`"] },
   { question: "how do I set up HTTPS for the console", answers: ["reference-operations :: HTTPS for the console"] },
-  { question: "let people sign in with their google accounts", answers: ["reference-operations :: Signing in with Google", "reference-security-model :: Signing in"] },
+  {
+    question: "let people sign in with their google accounts",
+    answers: ["reference-operations :: Signing in with Google", "reference-security-model :: Signing in"],
+    // Qwen3 14B, 2026-10-28: invented where to require it ("Admin > People")
+    // under a genuine citation; it's on the team's page.
+    mustSay: ["vertra sso google"],
+    mustNotSay: ["Admin > People"],
+  },
   { question: "the scheduler is slow, steps start late", answers: ["reference-operations :: Throughput", "reference-operations :: Troubleshooting"] },
   { question: "which pods can talk to postgres", answers: ["reference-operations :: Network policies"] },
   { question: "where are the metrics and alerts", answers: ["reference-operations :: Metrics and alerts"] },
