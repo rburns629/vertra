@@ -8,4 +8,9 @@ grep -v "^\s*#" "$dir/SOURCES" | while read -r id _kind path; do
   [ -n "$id" ] || continue
   cp "$root/$path" "$dir/$id.md"
 done
+# And the figures the docs draw (docs/architecture/*.svg), which the Docs
+# page shows through GuideService/GetGuideImage.
+rm -rf "$dir/architecture"
+mkdir -p "$dir/architecture"
+cp "$root"/docs/architecture/*.svg "$dir/architecture/"
 echo "console/docs/reference: copied $(grep -cv '^\s*#' "$dir/SOURCES") docs."

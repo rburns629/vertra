@@ -9,7 +9,7 @@ import type { ServiceImpl } from "@connectrpc/connect";
 import type { GuideService } from "../../gen/vertra/console/v1/guide_pb.js";
 import { Type } from "@sinclair/typebox";
 import { guideIndex } from "../../guideSearch.js";
-import { GuideId, listGuides, readGuide } from "../../guides.js";
+import { GuideId, GuideImagePath, listGuides, readGuide, readGuideImage } from "../../guides.js";
 import { notFound } from "../errors.js";
 import { check } from "../validate.js";
 
@@ -24,6 +24,13 @@ export function guideService(): ServiceImpl<typeof GuideService> {
       const markdown = await readGuide(id);
       if (markdown === undefined) throw notFound("No such guide.");
       return { markdown };
+    },
+
+    async getGuideImage(req) {
+      const { path } = check({ path: GuideImagePath }, req);
+      const svg = await readGuideImage(path);
+      if (svg === undefined) throw notFound("No such figure.");
+      return { svg };
     },
 
     async searchGuides(req) {

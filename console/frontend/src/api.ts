@@ -1503,6 +1503,8 @@ export interface DocSummary {
   section: "guides" | "reference";
   /** guide, current (how it works now), operating (running it), or history (decisions: why, not what is). */
   kind: string;
+  /** Its ## headings, in order, with their anchors: a long doc is shown a section to a page. */
+  sections: { title: string; anchor: string }[];
 }
 
 export async function listDocs(): Promise<DocSummary[]> {
@@ -1511,6 +1513,7 @@ export async function listDocs(): Promise<DocSummary[]> {
     title: g.title,
     section: g.section === "reference" ? "reference" : "guides",
     kind: g.kind,
+    sections: g.sections.map((x) => ({ title: x.title, anchor: x.anchor })),
   }));
 }
 
@@ -1537,6 +1540,12 @@ export async function searchDocs(query: string): Promise<DocHit[]> {
 /** A guide's markdown. */
 export async function getDoc(id: string): Promise<string> {
   return (await call(() => guides.getGuide({ id }))).markdown;
+}
+
+/** A figure the docs draw (architecture/6-the-pieces.svg), as a data: URL an <img> shows (the CSP allows those, and an SVG shown as an image runs nothing). */
+export async function getDocImage(path: string): Promise<string> {
+  const { svg } = await call(() => guides.getGuideImage({ path }));
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 /** A template, or an action that can run on its own, that the caller may

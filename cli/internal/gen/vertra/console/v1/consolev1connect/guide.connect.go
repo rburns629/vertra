@@ -39,6 +39,9 @@ const (
 	GuideServiceListGuidesProcedure = "/vertra.console.v1.GuideService/ListGuides"
 	// GuideServiceGetGuideProcedure is the fully-qualified name of the GuideService's GetGuide RPC.
 	GuideServiceGetGuideProcedure = "/vertra.console.v1.GuideService/GetGuide"
+	// GuideServiceGetGuideImageProcedure is the fully-qualified name of the GuideService's
+	// GetGuideImage RPC.
+	GuideServiceGetGuideImageProcedure = "/vertra.console.v1.GuideService/GetGuideImage"
 	// GuideServiceSearchGuidesProcedure is the fully-qualified name of the GuideService's SearchGuides
 	// RPC.
 	GuideServiceSearchGuidesProcedure = "/vertra.console.v1.GuideService/SearchGuides"
@@ -52,6 +55,9 @@ type GuideServiceClient interface {
 	ListGuides(context.Context, *connect.Request[v1.ListGuidesRequest]) (*connect.Response[v1.ListGuidesResponse], error)
 	// One guide, as markdown.
 	GetGuide(context.Context, *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error)
+	// A figure a reference doc draws (docs/architecture/*.svg, copied with
+	// the docs), by its path from the docs: architecture/6-the-pieces.svg.
+	GetGuideImage(context.Context, *connect.Request[v1.GetGuideImageRequest]) (*connect.Response[v1.GetGuideImageResponse], error)
 	// The sections of the guides and reference docs that best match a
 	// question's words, best first: what the chat agent answers from.
 	SearchGuides(context.Context, *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error)
@@ -82,6 +88,13 @@ func NewGuideServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getGuideImage: connect.NewClient[v1.GetGuideImageRequest, v1.GetGuideImageResponse](
+			httpClient,
+			baseURL+GuideServiceGetGuideImageProcedure,
+			connect.WithSchema(guideServiceMethods.ByName("GetGuideImage")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		searchGuides: connect.NewClient[v1.SearchGuidesRequest, v1.SearchGuidesResponse](
 			httpClient,
 			baseURL+GuideServiceSearchGuidesProcedure,
@@ -94,9 +107,10 @@ func NewGuideServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // guideServiceClient implements GuideServiceClient.
 type guideServiceClient struct {
-	listGuides   *connect.Client[v1.ListGuidesRequest, v1.ListGuidesResponse]
-	getGuide     *connect.Client[v1.GetGuideRequest, v1.GetGuideResponse]
-	searchGuides *connect.Client[v1.SearchGuidesRequest, v1.SearchGuidesResponse]
+	listGuides    *connect.Client[v1.ListGuidesRequest, v1.ListGuidesResponse]
+	getGuide      *connect.Client[v1.GetGuideRequest, v1.GetGuideResponse]
+	getGuideImage *connect.Client[v1.GetGuideImageRequest, v1.GetGuideImageResponse]
+	searchGuides  *connect.Client[v1.SearchGuidesRequest, v1.SearchGuidesResponse]
 }
 
 // ListGuides calls vertra.console.v1.GuideService.ListGuides.
@@ -107,6 +121,11 @@ func (c *guideServiceClient) ListGuides(ctx context.Context, req *connect.Reques
 // GetGuide calls vertra.console.v1.GuideService.GetGuide.
 func (c *guideServiceClient) GetGuide(ctx context.Context, req *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error) {
 	return c.getGuide.CallUnary(ctx, req)
+}
+
+// GetGuideImage calls vertra.console.v1.GuideService.GetGuideImage.
+func (c *guideServiceClient) GetGuideImage(ctx context.Context, req *connect.Request[v1.GetGuideImageRequest]) (*connect.Response[v1.GetGuideImageResponse], error) {
+	return c.getGuideImage.CallUnary(ctx, req)
 }
 
 // SearchGuides calls vertra.console.v1.GuideService.SearchGuides.
@@ -122,6 +141,9 @@ type GuideServiceHandler interface {
 	ListGuides(context.Context, *connect.Request[v1.ListGuidesRequest]) (*connect.Response[v1.ListGuidesResponse], error)
 	// One guide, as markdown.
 	GetGuide(context.Context, *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error)
+	// A figure a reference doc draws (docs/architecture/*.svg, copied with
+	// the docs), by its path from the docs: architecture/6-the-pieces.svg.
+	GetGuideImage(context.Context, *connect.Request[v1.GetGuideImageRequest]) (*connect.Response[v1.GetGuideImageResponse], error)
 	// The sections of the guides and reference docs that best match a
 	// question's words, best first: what the chat agent answers from.
 	SearchGuides(context.Context, *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error)
@@ -148,6 +170,13 @@ func NewGuideServiceHandler(svc GuideServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	guideServiceGetGuideImageHandler := connect.NewUnaryHandler(
+		GuideServiceGetGuideImageProcedure,
+		svc.GetGuideImage,
+		connect.WithSchema(guideServiceMethods.ByName("GetGuideImage")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	guideServiceSearchGuidesHandler := connect.NewUnaryHandler(
 		GuideServiceSearchGuidesProcedure,
 		svc.SearchGuides,
@@ -161,6 +190,8 @@ func NewGuideServiceHandler(svc GuideServiceHandler, opts ...connect.HandlerOpti
 			guideServiceListGuidesHandler.ServeHTTP(w, r)
 		case GuideServiceGetGuideProcedure:
 			guideServiceGetGuideHandler.ServeHTTP(w, r)
+		case GuideServiceGetGuideImageProcedure:
+			guideServiceGetGuideImageHandler.ServeHTTP(w, r)
 		case GuideServiceSearchGuidesProcedure:
 			guideServiceSearchGuidesHandler.ServeHTTP(w, r)
 		default:
@@ -178,6 +209,10 @@ func (UnimplementedGuideServiceHandler) ListGuides(context.Context, *connect.Req
 
 func (UnimplementedGuideServiceHandler) GetGuide(context.Context, *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.GuideService.GetGuide is not implemented"))
+}
+
+func (UnimplementedGuideServiceHandler) GetGuideImage(context.Context, *connect.Request[v1.GetGuideImageRequest]) (*connect.Response[v1.GetGuideImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.GuideService.GetGuideImage is not implemented"))
 }
 
 func (UnimplementedGuideServiceHandler) SearchGuides(context.Context, *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error) {

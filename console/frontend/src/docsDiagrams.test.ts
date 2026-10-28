@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 // SPDX-License-Identifier: MIT
 /**
- * The docs page draws the console docs' mermaid diagrams (DocsPage.tsx):
+ * The docs page draws the mermaid diagrams in the console's docs and the
+ * platform docs it copies (DocsPage.tsx):
  * each must still parse under the mermaid installed, so a major bump that
  * breaks one fails here rather than on the page.
  */
 import { expect, it } from "vitest";
 import mermaid from "mermaid";
 
-const docs = import.meta.glob<string>("../../docs/*.md", { query: "?raw", import: "default", eager: true });
+const docs = {
+  ...import.meta.glob<string>("../../docs/*.md", { query: "?raw", import: "default", eager: true }),
+  ...import.meta.glob<string>("../../docs/reference/*.md", { query: "?raw", import: "default", eager: true }),
+};
 
 it("parses every diagram in the console's docs", async () => {
   mermaid.initialize({ startOnLoad: false });

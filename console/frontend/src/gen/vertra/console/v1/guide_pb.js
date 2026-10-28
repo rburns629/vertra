@@ -10,7 +10,7 @@ import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2
  * Describes the file vertra/console/v1/guide.proto.
  */
 export const file_vertra_console_v1_guide = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiTAoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBRIXCg9pbmNsdWRlX2hpc3RvcnkYAyABKAgiQQoUU2VhcmNoR3VpZGVzUmVzcG9uc2USKQoEaGl0cxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlSGl0ImcKCEd1aWRlSGl0Eg0KBWd1aWRlGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB2hlYWRpbmcYAyABKAkSDwoHZXhjZXJwdBgEIAEoCRINCgVzY29yZRgFIAEoARIMCgRraW5kGAYgASgJIkEKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkSDAoEa2luZBgEIAEoCSITChFMaXN0R3VpZGVzUmVxdWVzdCI+ChJMaXN0R3VpZGVzUmVzcG9uc2USKAoGZ3VpZGVzGAEgAygLMhgudmVydHJhLmNvbnNvbGUudjEuR3VpZGUiHQoPR2V0R3VpZGVSZXF1ZXN0EgoKAmlkGAEgASgJIiQKEEdldEd1aWRlUmVzcG9uc2USEAoIbWFya2Rvd24YASABKAkyrgIKDEd1aWRlU2VydmljZRJeCgpMaXN0R3VpZGVzEiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5MaXN0R3VpZGVzUmVzcG9uc2UiA5ACARJYCghHZXRHdWlkZRIiLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVzcG9uc2UiA5ACARJkCgxTZWFyY2hHdWlkZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hHdWlkZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiTAoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBRIXCg9pbmNsdWRlX2hpc3RvcnkYAyABKAgiQQoUU2VhcmNoR3VpZGVzUmVzcG9uc2USKQoEaGl0cxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlSGl0ImcKCEd1aWRlSGl0Eg0KBWd1aWRlGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB2hlYWRpbmcYAyABKAkSDwoHZXhjZXJwdBgEIAEoCRINCgVzY29yZRgFIAEoARIMCgRraW5kGAYgASgJInQKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkSDAoEa2luZBgEIAEoCRIxCghzZWN0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlU2VjdGlvbiItCgxHdWlkZVNlY3Rpb24SDQoFdGl0bGUYASABKAkSDgoGYW5jaG9yGAIgASgJIhMKEUxpc3RHdWlkZXNSZXF1ZXN0Ij4KEkxpc3RHdWlkZXNSZXNwb25zZRIoCgZndWlkZXMYASADKAsyGC52ZXJ0cmEuY29uc29sZS52MS5HdWlkZSIdCg9HZXRHdWlkZVJlcXVlc3QSCgoCaWQYASABKAkiJAoQR2V0R3VpZGVSZXNwb25zZRIQCghtYXJrZG93bhgBIAEoCSIkChRHZXRHdWlkZUltYWdlUmVxdWVzdBIMCgRwYXRoGAEgASgJIiQKFUdldEd1aWRlSW1hZ2VSZXNwb25zZRILCgNzdmcYASABKAkylwMKDEd1aWRlU2VydmljZRJeCgpMaXN0R3VpZGVzEiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5MaXN0R3VpZGVzUmVzcG9uc2UiA5ACARJYCghHZXRHdWlkZRIiLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVzcG9uc2UiA5ACARJnCg1HZXRHdWlkZUltYWdlEicudmVydHJhLmNvbnNvbGUudjEuR2V0R3VpZGVJbWFnZVJlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZUltYWdlUmVzcG9uc2UiA5ACARJkCgxTZWFyY2hHdWlkZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hHdWlkZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
 
 /**
  * Describes the message vertra.console.v1.SearchGuidesRequest.
@@ -41,32 +41,53 @@ export const GuideSchema = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_guide, 3);
 
 /**
+ * Describes the message vertra.console.v1.GuideSection.
+ * Use `create(GuideSectionSchema)` to create a new message.
+ */
+export const GuideSectionSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 4);
+
+/**
  * Describes the message vertra.console.v1.ListGuidesRequest.
  * Use `create(ListGuidesRequestSchema)` to create a new message.
  */
 export const ListGuidesRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 4);
+  messageDesc(file_vertra_console_v1_guide, 5);
 
 /**
  * Describes the message vertra.console.v1.ListGuidesResponse.
  * Use `create(ListGuidesResponseSchema)` to create a new message.
  */
 export const ListGuidesResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 5);
+  messageDesc(file_vertra_console_v1_guide, 6);
 
 /**
  * Describes the message vertra.console.v1.GetGuideRequest.
  * Use `create(GetGuideRequestSchema)` to create a new message.
  */
 export const GetGuideRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 6);
+  messageDesc(file_vertra_console_v1_guide, 7);
 
 /**
  * Describes the message vertra.console.v1.GetGuideResponse.
  * Use `create(GetGuideResponseSchema)` to create a new message.
  */
 export const GetGuideResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 7);
+  messageDesc(file_vertra_console_v1_guide, 8);
+
+/**
+ * Describes the message vertra.console.v1.GetGuideImageRequest.
+ * Use `create(GetGuideImageRequestSchema)` to create a new message.
+ */
+export const GetGuideImageRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 9);
+
+/**
+ * Describes the message vertra.console.v1.GetGuideImageResponse.
+ * Use `create(GetGuideImageResponseSchema)` to create a new message.
+ */
+export const GetGuideImageResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 10);
 
 /**
  * The guides the console shows (console/docs/). Anyone signed in.

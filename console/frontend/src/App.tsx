@@ -75,6 +75,7 @@ export function App() {
             <Route path="/apis/:team/:name" element={<ApiPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/docs/:id" element={<DocsPage />} />
+            <Route path="/docs/:id/:section" element={<DocsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
           {/* Where pages used to be, for bookmarks and old links. */}

@@ -19,8 +19,10 @@ already exist — check them before re-deriving anything:
 - `docs/repository-map.md`: every folder and file, one line each. Update it
   when adding, moving or removing files.
 - `docs/architecture/`: draw.io diagrams (system, UML classes for both
-  services, a submit-to-finished sequence, state machines), all written by
-  `generate.py`. Rerun it after changing code; don't hand-edit the .drawio.
+  services, a submit-to-finished sequence, state machines, and the pieces at
+  a glance that `architecture.md` shows), all written by `generate.py`.
+  Rerun it after changing code, then `make console-docs`; don't hand-edit
+  the .drawio.
   The database tables are in `console/docs/06-database-schemas.md`, which
   tests in both projects keep in step with the models.
 - `kernel/ARCHITECTURE.md`: the kernel's layer rules and a literal

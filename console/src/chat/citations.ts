@@ -10,6 +10,9 @@
  * the docs.
  */
 import type { Hit } from "../guideSearch.js";
+import { anchor } from "../guides.js";
+
+export { anchor };
 
 export interface Source extends Hit {
   /** S1, S2, ...: what the answer cites. */
@@ -37,13 +40,6 @@ export interface Checked {
   uncited: boolean;
 }
 
-/** A heading's anchor, as the Docs page's rehype-slug makes it (GitHub's). */
-export function anchor(heading: string): string {
-  return heading
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
-    .replace(/\s/g, "-");
-}
 
 /** Numbers this turn's retrieved sections as sources, after any already given. */
 export function asSources(hits: Hit[], already: number): Source[] {

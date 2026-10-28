@@ -27,26 +27,12 @@ every other team's.
 
 ## The pieces
 
-```
-  catalog repository (one per organization; started from catalog-template/)
-    teams/<team>/products/<product>/    product.yaml, Dockerfile, actions, tests
-    CI (./vertra): build, test, scan, sign, push; then release
-            │                                 │
-            │ images                          │ <registry>/catalog-release (signed):
-            │                                 │ teams, products, SecretStores
-            ▼                                 ▼ (each console pulls it)
-  ┌──────────────────────── Kubernetes cluster ────────────────────────┐
-  │  platform namespace (vertra-system)                                │
-  │    console ──────────► kernel-api        kernel-scheduler           │
-  │    (UI + /api)         (accepts DAGs)    (claims, dispatches, polls)│
-  │       │                     │                  │                    │
-  │    console Postgres     kernel Postgres ◄──────┘                    │
-  │                                                                     │
-  │  team namespaces (one per team, labelled vertra/team=true)         │
-  │    one Job per step attempt: the product image, its inputs as a     │
-  │    ConfigMap, the secrets it lists mounted as files                 │
-  └─────────────────────────────────────────────────────────────────────┘
-```
+![The pieces: a catalog repository's CI pushes product images and a signed catalog release to a registry; each console pulls the release. People and bots sign in to the console, which keeps its own Postgres and hands authorized DAGs to kernel-api, which stores them in the kernel's Postgres. kernel-scheduler claims steps from those rows and creates one Job per step attempt in a team namespace; admission policies check every Job.](architecture/6-the-pieces.svg)
+
+The whole of it as deployed on GKE, with the cloud services around it and
+one execution traced through it: [the system diagram](architecture/1-system.svg).
+[`architecture/`](architecture/README.md) has the others: every type in the
+kernel and module in the console, a run call by call, and the state machines.
 
 - **console** (`console/`, TypeScript, Fastify, React): the only front door.
   People and bots sign in here; it holds teams, memberships, bots and

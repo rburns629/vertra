@@ -25,6 +25,34 @@ export interface GuideSummary {
   /** guides: for using Vertra; reference: the platform's own docs. */
   section: "guides" | "reference";
   kind: GuideKind;
+  /** Its ## headings, in order, each with its anchor. */
+  sections: { title: string; anchor: string }[];
+}
+
+/** A heading's anchor, as the Docs page's rehype-slug makes it (GitHub's). */
+export function anchor(heading: string): string {
+  return heading
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .replace(/\s/g, "-");
+}
+
+/** A doc's ## headings outside code, as they read (no markdown) and with their anchors; a repeated one numbered -1, -2… */
+export function headingsOf(markdown: string): { title: string; anchor: string }[] {
+  const out: { title: string; anchor: string }[] = [];
+  const seen = new Map<string, number>();
+  let fenced = false;
+  for (const line of markdown.split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+    const match = fenced ? null : /^## (.+?)\s*#*\s*$/.exec(line);
+    if (!match?.[1]) continue;
+    const title = match[1].replace(/`([^`]*)`/g, "$1").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*/g, "");
+    const base = anchor(title);
+    const times = seen.get(base) ?? 0;
+    seen.set(base, times + 1);
+    out.push({ title, anchor: times === 0 ? base : `${base}-${String(times)}` });
+  }
+  return out;
 }
 
 const KINDS: readonly string[] = ["current", "operating", "history"];
@@ -75,10 +103,25 @@ export async function listGuides(): Promise<GuideSummary[]> {
       const content = await readFile(join(dir, entry), "utf-8");
       const name = entry.replace(/\.md$/, "");
       const kind: GuideKind = section === "guides" ? "guide" : (kinds.get(name) ?? "current");
-      guides.push({ id: prefix + name, title: titleFromMarkdown(content, entry), section, kind });
+      guides.push({ id: prefix + name, title: titleFromMarkdown(content, entry), section, kind, sections: headingsOf(content) });
     }
   }
   return guides;
+}
+
+/** A figure's path from the docs, such as architecture/6-the-pieces.svg:
+ * one folder and an SVG, in lowercase words, so it can't leave the
+ * figures' folder. */
+export const GuideImagePath = Type.String({ pattern: "^[a-z0-9-]+/[a-z0-9-]+\\.svg$" });
+
+/** A figure the reference docs draw, as SVG text, or undefined if there's
+ * none there. `path` must match GuideImagePath (checked by the caller). */
+export async function readGuideImage(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(join(DOCS_DIR, "reference", path), "utf-8");
+  } catch {
+    return undefined;
+  }
 }
 
 /** A guide's markdown, or undefined if there's none by that id. `id` must

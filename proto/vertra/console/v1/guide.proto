@@ -16,6 +16,11 @@ service GuideService {
   rpc GetGuide(GetGuideRequest) returns (GetGuideResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // A figure a reference doc draws (docs/architecture/*.svg, copied with
+  // the docs), by its path from the docs: architecture/6-the-pieces.svg.
+  rpc GetGuideImage(GetGuideImageRequest) returns (GetGuideImageResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The sections of the guides and reference docs that best match a
   // question's words, best first: what the chat agent answers from.
   rpc SearchGuides(SearchGuidesRequest) returns (SearchGuidesResponse) {
@@ -59,6 +64,16 @@ message Guide {
   // decisions, with proposals and rejected options; it answers why, never
   // what is).
   string kind = 4;
+  // Its sections (its ## headings), in order: the Docs page shows a long
+  // doc a section to a page.
+  repeated GuideSection sections = 5;
+}
+
+message GuideSection {
+  string title = 1;
+  // The heading's anchor, as the page makes it (GitHub's): a heading used
+  // again gets -1, -2…
+  string anchor = 2;
 }
 
 message ListGuidesRequest {}
@@ -73,4 +88,13 @@ message GetGuideRequest {
 
 message GetGuideResponse {
   string markdown = 1;
+}
+
+message GetGuideImageRequest {
+  string path = 1;
+}
+
+message GetGuideImageResponse {
+  // The SVG's text.
+  string svg = 1;
 }

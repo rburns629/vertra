@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/guide.proto.
  */
 export const file_vertra_console_v1_guide: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiTAoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBRIXCg9pbmNsdWRlX2hpc3RvcnkYAyABKAgiQQoUU2VhcmNoR3VpZGVzUmVzcG9uc2USKQoEaGl0cxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlSGl0ImcKCEd1aWRlSGl0Eg0KBWd1aWRlGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB2hlYWRpbmcYAyABKAkSDwoHZXhjZXJwdBgEIAEoCRINCgVzY29yZRgFIAEoARIMCgRraW5kGAYgASgJIkEKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkSDAoEa2luZBgEIAEoCSITChFMaXN0R3VpZGVzUmVxdWVzdCI+ChJMaXN0R3VpZGVzUmVzcG9uc2USKAoGZ3VpZGVzGAEgAygLMhgudmVydHJhLmNvbnNvbGUudjEuR3VpZGUiHQoPR2V0R3VpZGVSZXF1ZXN0EgoKAmlkGAEgASgJIiQKEEdldEd1aWRlUmVzcG9uc2USEAoIbWFya2Rvd24YASABKAkyrgIKDEd1aWRlU2VydmljZRJeCgpMaXN0R3VpZGVzEiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5MaXN0R3VpZGVzUmVzcG9uc2UiA5ACARJYCghHZXRHdWlkZRIiLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVzcG9uc2UiA5ACARJkCgxTZWFyY2hHdWlkZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hHdWlkZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiTAoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBRIXCg9pbmNsdWRlX2hpc3RvcnkYAyABKAgiQQoUU2VhcmNoR3VpZGVzUmVzcG9uc2USKQoEaGl0cxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlSGl0ImcKCEd1aWRlSGl0Eg0KBWd1aWRlGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB2hlYWRpbmcYAyABKAkSDwoHZXhjZXJwdBgEIAEoCRINCgVzY29yZRgFIAEoARIMCgRraW5kGAYgASgJInQKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkSDAoEa2luZBgEIAEoCRIxCghzZWN0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlU2VjdGlvbiItCgxHdWlkZVNlY3Rpb24SDQoFdGl0bGUYASABKAkSDgoGYW5jaG9yGAIgASgJIhMKEUxpc3RHdWlkZXNSZXF1ZXN0Ij4KEkxpc3RHdWlkZXNSZXNwb25zZRIoCgZndWlkZXMYASADKAsyGC52ZXJ0cmEuY29uc29sZS52MS5HdWlkZSIdCg9HZXRHdWlkZVJlcXVlc3QSCgoCaWQYASABKAkiJAoQR2V0R3VpZGVSZXNwb25zZRIQCghtYXJrZG93bhgBIAEoCSIkChRHZXRHdWlkZUltYWdlUmVxdWVzdBIMCgRwYXRoGAEgASgJIiQKFUdldEd1aWRlSW1hZ2VSZXNwb25zZRILCgNzdmcYASABKAkylwMKDEd1aWRlU2VydmljZRJeCgpMaXN0R3VpZGVzEiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5MaXN0R3VpZGVzUmVzcG9uc2UiA5ACARJYCghHZXRHdWlkZRIiLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldEd1aWRlUmVzcG9uc2UiA5ACARJnCg1HZXRHdWlkZUltYWdlEicudmVydHJhLmNvbnNvbGUudjEuR2V0R3VpZGVJbWFnZVJlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZUltYWdlUmVzcG9uc2UiA5ACARJkCgxTZWFyY2hHdWlkZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hHdWlkZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
 
 /**
  * @generated from message vertra.console.v1.SearchGuidesRequest
@@ -144,6 +144,14 @@ export type Guide = Message<"vertra.console.v1.Guide"> & {
    * @generated from field: string kind = 4;
    */
   kind: string;
+
+  /**
+   * Its sections (its ## headings), in order: the Docs page shows a long
+   * doc a section to a page.
+   *
+   * @generated from field: repeated vertra.console.v1.GuideSection sections = 5;
+   */
+  sections: GuideSection[];
 };
 
 /**
@@ -152,6 +160,31 @@ export type Guide = Message<"vertra.console.v1.Guide"> & {
  */
 export const GuideSchema: GenMessage<Guide> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_guide, 3);
+
+/**
+ * @generated from message vertra.console.v1.GuideSection
+ */
+export type GuideSection = Message<"vertra.console.v1.GuideSection"> & {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title: string;
+
+  /**
+   * The heading's anchor, as the page makes it (GitHub's): a heading used
+   * again gets -1, -2…
+   *
+   * @generated from field: string anchor = 2;
+   */
+  anchor: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GuideSection.
+ * Use `create(GuideSectionSchema)` to create a new message.
+ */
+export const GuideSectionSchema: GenMessage<GuideSection> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 4);
 
 /**
  * @generated from message vertra.console.v1.ListGuidesRequest
@@ -164,7 +197,7 @@ export type ListGuidesRequest = Message<"vertra.console.v1.ListGuidesRequest"> &
  * Use `create(ListGuidesRequestSchema)` to create a new message.
  */
 export const ListGuidesRequestSchema: GenMessage<ListGuidesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 4);
+  messageDesc(file_vertra_console_v1_guide, 5);
 
 /**
  * @generated from message vertra.console.v1.ListGuidesResponse
@@ -181,7 +214,7 @@ export type ListGuidesResponse = Message<"vertra.console.v1.ListGuidesResponse">
  * Use `create(ListGuidesResponseSchema)` to create a new message.
  */
 export const ListGuidesResponseSchema: GenMessage<ListGuidesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 5);
+  messageDesc(file_vertra_console_v1_guide, 6);
 
 /**
  * @generated from message vertra.console.v1.GetGuideRequest
@@ -198,7 +231,7 @@ export type GetGuideRequest = Message<"vertra.console.v1.GetGuideRequest"> & {
  * Use `create(GetGuideRequestSchema)` to create a new message.
  */
 export const GetGuideRequestSchema: GenMessage<GetGuideRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 6);
+  messageDesc(file_vertra_console_v1_guide, 7);
 
 /**
  * @generated from message vertra.console.v1.GetGuideResponse
@@ -215,7 +248,43 @@ export type GetGuideResponse = Message<"vertra.console.v1.GetGuideResponse"> & {
  * Use `create(GetGuideResponseSchema)` to create a new message.
  */
 export const GetGuideResponseSchema: GenMessage<GetGuideResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 7);
+  messageDesc(file_vertra_console_v1_guide, 8);
+
+/**
+ * @generated from message vertra.console.v1.GetGuideImageRequest
+ */
+export type GetGuideImageRequest = Message<"vertra.console.v1.GetGuideImageRequest"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGuideImageRequest.
+ * Use `create(GetGuideImageRequestSchema)` to create a new message.
+ */
+export const GetGuideImageRequestSchema: GenMessage<GetGuideImageRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 9);
+
+/**
+ * @generated from message vertra.console.v1.GetGuideImageResponse
+ */
+export type GetGuideImageResponse = Message<"vertra.console.v1.GetGuideImageResponse"> & {
+  /**
+   * The SVG's text.
+   *
+   * @generated from field: string svg = 1;
+   */
+  svg: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGuideImageResponse.
+ * Use `create(GetGuideImageResponseSchema)` to create a new message.
+ */
+export const GetGuideImageResponseSchema: GenMessage<GetGuideImageResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 10);
 
 /**
  * The guides the console shows (console/docs/). Anyone signed in.
@@ -244,6 +313,17 @@ export const GuideService: GenService<{
     methodKind: "unary";
     input: typeof GetGuideRequestSchema;
     output: typeof GetGuideResponseSchema;
+  },
+  /**
+   * A figure a reference doc draws (docs/architecture/*.svg, copied with
+   * the docs), by its path from the docs: architecture/6-the-pieces.svg.
+   *
+   * @generated from rpc vertra.console.v1.GuideService.GetGuideImage
+   */
+  getGuideImage: {
+    methodKind: "unary";
+    input: typeof GetGuideImageRequestSchema;
+    output: typeof GetGuideImageResponseSchema;
   },
   /**
    * The sections of the guides and reference docs that best match a

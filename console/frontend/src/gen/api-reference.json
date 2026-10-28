@@ -471,6 +471,15 @@
      "public": false
     },
     {
+     "name": "GetGuideImage",
+     "comment": "A figure a reference doc draws (docs/architecture/*.svg, copied with\nthe docs), by its path from the docs: architecture/6-the-pieces.svg.",
+     "input": "vertra.console.v1.GetGuideImageRequest",
+     "output": "vertra.console.v1.GetGuideImageResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
      "name": "SearchGuides",
      "comment": "The sections of the guides and reference docs that best match a\nquestion's words, best first: what the chat agent answers from.",
      "input": "vertra.console.v1.SearchGuidesRequest",
@@ -5095,6 +5104,34 @@
      "repeated": false,
      "optional": false,
      "comment": "What it is: \"guide\" (using Vertra), \"current\" (how it works now),\n\"operating\" (installing and running it) or \"history\" (design history:\ndecisions, with proposals and rejected options; it answers why, never\nwhat is)."
+    },
+    {
+     "name": "sections",
+     "type": "GuideSection",
+     "ref": "vertra.console.v1.GuideSection",
+     "repeated": true,
+     "optional": false,
+     "comment": "Its sections (its ## headings), in order: the Docs page shows a long\ndoc a section to a page."
+    }
+   ]
+  },
+  "vertra.console.v1.GuideSection": {
+   "name": "GuideSection",
+   "comment": "",
+   "fields": [
+    {
+     "name": "title",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "anchor",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The heading's anchor, as the page makes it (GitHub's): a heading used\nagain gets -1, -2…"
     }
    ]
   },
@@ -5140,6 +5177,32 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetGuideImageRequest": {
+   "name": "GetGuideImageRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "path",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetGuideImageResponse": {
+   "name": "GetGuideImageResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "svg",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The SVG's text."
     }
    ]
   },

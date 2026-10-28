@@ -8,9 +8,10 @@ import { db } from "../src/db/client.js";
 import { createUser } from "../src/db/queries.js";
 import { users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { guideIndex, sectionsOf } from "../src/guideSearch.js";
+import { headingsOf } from "../src/guides.js";
 import { DOC_QUESTIONS } from "./docQuestions.js";
 import { caller } from "./rpc.js";
 
@@ -31,13 +32,13 @@ afterAll(async () => {
 });
 
 const call = caller(() => app);
-const listGuides = async () => (await call<{ guides: { id: string; title: string; section: string }[] }>(token, "GuideService/ListGuides")).body.guides;
+const listGuides = async () => (await call<{ guides: { id: string; title: string; section: string; sections?: { title: string; anchor: string }[] }[] }>(token, "GuideService/ListGuides")).body.guides;
 const getGuide = (id: string, as: string | undefined = token) => call<{ markdown: string }>(as, "GuideService/GetGuide", { id });
 
 describe("the in-app guides", () => {
   it("lists the guides in order, the walkthrough first", async () => {
     const docs = await listGuides();
-    expect(docs[0]).toEqual({ id: "01-getting-started", title: "Try Vertra end to end", section: "guides", kind: "guide" });
+    expect(docs[0]).toMatchObject({ id: "01-getting-started", title: "Try Vertra end to end", section: "guides", kind: "guide" });
     expect(docs.map((d) => d.id)).toEqual([...docs.map((d) => d.id)].sort());
   });
 
@@ -78,6 +79,23 @@ describe("the platform's own docs", () => {
     }
   });
 
+  it("come with the figures they draw, current, for signed-in users only", async () => {
+    const figures = readdirSync("../docs/architecture").filter((name) => name.endsWith(".svg"));
+    expect(figures).toContain("6-the-pieces.svg");
+    expect(readdirSync("docs/reference/architecture").sort()).toEqual(figures.sort());
+    for (const name of figures) {
+      expect(readFileSync(join("docs/reference/architecture", name), "utf-8") === readFileSync(join("../docs/architecture", name), "utf-8"), `${name} is behind: run make console-docs`).toBe(true);
+    }
+    const figure = await call<{ svg: string }>(token, "GuideService/GetGuideImage", { path: "architecture/6-the-pieces.svg" });
+    expect(figure.body.svg).toContain("<svg");
+    expect((await call(token, "GuideService/GetGuideImage", { path: "architecture/none.svg" })).code).toBe("not_found");
+    // Never outside the figures' folder.
+    for (const path of ["../SOURCES", "architecture/../../../package.json", "architecture/6-the-pieces.md", "/etc/passwd"]) {
+      expect((await call(token, "GuideService/GetGuideImage", { path })).code).toBe("invalid_argument");
+    }
+    expect((await call(undefined, "GuideService/GetGuideImage", { path: "architecture/6-the-pieces.svg" })).code).toBe("unauthenticated");
+  });
+
   it("are listed after the guides, as the reference", async () => {
     const docs = await listGuides();
     const reference = docs.filter((d) => d.section === "reference");
@@ -88,6 +106,9 @@ describe("the platform's own docs", () => {
     expect(docs.find((d) => d.id === "01-getting-started")).toMatchObject({ kind: "guide" });
     expect(docs.find((d) => d.id === "reference-operations")).toMatchObject({ kind: "operating" });
     expect(docs.find((d) => d.id === "reference-assessment")).toMatchObject({ kind: "history" });
+    // With their sections, which the Docs page shows a page each.
+    const operations = docs.find((d) => d.id === "reference-operations");
+    expect(operations?.sections).toContainEqual({ title: "Upgrading", anchor: "upgrading" });
     for (const [id, kind] of sources) expect(["current", "operating", "history"], `${id}'s kind`).toContain(kind);
   });
 
@@ -138,5 +159,17 @@ describe("searching the docs", () => {
     const sections = sectionsOf("g", "# Title\nintro\n## A\na text\n### B\n```\n# not a heading\n```\nb text\n## C\nc");
     expect(sections.map((x) => x.heading)).toEqual(["Title", "A", "A > B", "C"]);
     expect(sections[2]?.text).toContain("# not a heading");
+  });
+});
+
+describe("a doc's sections", () => {
+  it("are its ## headings outside code, as they read, a repeated one numbered as the page numbers it", () => {
+    const md = "# T\n\n## The `chat` agent\n\n```\n## not one\n```\n\n### Deeper\n\n## Backups\n\n## Backups\n\n## See [the API](05.md)\n";
+    expect(headingsOf(md)).toEqual([
+      { title: "The chat agent", anchor: "the-chat-agent" },
+      { title: "Backups", anchor: "backups" },
+      { title: "Backups", anchor: "backups-1" },
+      { title: "See the API", anchor: "see-the-api" },
+    ]);
   });
 });

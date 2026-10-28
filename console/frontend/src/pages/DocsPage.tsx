@@ -25,7 +25,8 @@ import rehypeSlug from "rehype-slug";
 import { ApiError, getDoc, listDocs, searchDocs, type DocHit, type DocSummary } from "../api";
 import { PageHeader } from "../components/PageHeader";
 import { API_REFERENCE_ID, ApiReference } from "./ApiReference";
-import { contentsOf, docTarget, placeOf, sectionsOf, slug, START_HERE, type Category, type Entry } from "./docs/contents";
+import { DocFigure, FigureLink, figurePath } from "./docs/Figure";
+import { contentsOf, docTarget, isSplit, pageOf, pagesOf, placeOf, sectionHolding, sectionsOf, slug, START_HERE, trailOf, type Category, type Group, type Node, type Page } from "./docs/contents";
 
 /** mermaid is most of this page's weight, so it's fetched only when a
  * guide actually has a diagram, and once. */
@@ -116,8 +117,8 @@ function TaskMark({ type, checked }: { type?: string; checked?: boolean }) {
   );
 }
 
-/** The ids of the docs the console serves, for links between them. */
-const Served = createContext<ReadonlySet<string>>(new Set());
+/** The docs the console serves, and the one open: what links between docs and to a section resolve against. */
+const Served = createContext<{ ids: ReadonlySet<string>; doc: string }>({ ids: new Set(), doc: "" });
 
 /**
  * A link from one doc to another is written as the repository has it
@@ -125,14 +126,31 @@ const Served = createContext<ReadonlySet<string>>(new Set());
  * same doc here (docTarget), through react-router: a full navigation to
  * /docs/<id> would reach the backend's own GET /docs/:id (raw markdown),
  * not the app. A doc the console doesn't serve (TODO.md, the kernel's)
- * stays as its words, not a link to nowhere. External links and in-page
- * "#anchor" links are left as plain <a>s.
+ * stays as its words, not a link to nowhere. A "#section" link to a part
+ * of a long doc that's on another of its pages goes there (DocsPage finds
+ * which); one on this page, and external links, are plain <a>s.
  */
 function DocLink({ href, children }: { href?: string; children?: React.ReactNode }) {
   const navigate = useNavigate();
-  const served = useContext(Served);
+  const { ids, doc } = useContext(Served);
+  if (href?.startsWith("#")) {
+    return (
+      <a
+        href={href}
+        onClick={(event) => {
+          if (document.getElementById(decodeURIComponent(href.slice(1)))) return;
+          event.preventDefault();
+          void navigate(`/docs/${doc}${href}`);
+        }}
+      >
+        {children}
+      </a>
+    );
+  }
+  const figure = figurePath(href);
+  if (figure) return <FigureLink path={figure}>{children}</FigureLink>;
   if (!href || !/^[^:]*\.md(#|$)/.test(href)) return <a href={href}>{children}</a>;
-  const to = docTarget(href, served);
+  const to = docTarget(href, ids);
   if (!to) return <>{children}</>;
   return (
     <a
@@ -147,7 +165,23 @@ function DocLink({ href, children }: { href?: string; children?: React.ReactNode
   );
 }
 
+/** An image in a doc: a figure the docs draw, fetched through the API; anything else as written. */
+function DocImage({ src, alt }: { src?: string | Blob; alt?: string }) {
+  const path = typeof src === "string" ? figurePath(src) : null;
+  if (path) return <DocFigure path={path} alt={alt ?? ""} />;
+  return <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} />;
+}
+
+/** A paragraph, except one that's only an image: that's a figure, which a <p> can't hold. */
+function Paragraph({ node, children }: { node?: { children: { type: string; tagName?: string; value?: string }[] }; children?: React.ReactNode }) {
+  const parts = node?.children.filter((c) => c.type !== "text" || c.value?.trim()) ?? [];
+  if (parts.length === 1 && parts[0]?.tagName === "img") return <>{children}</>;
+  return <p>{children}</p>;
+}
+
 const MARKDOWN_COMPONENTS: Components = {
+  img: DocImage,
+  p: Paragraph,
   code: CodeBlock,
   pre: Pre,
   a: DocLink,
@@ -214,18 +248,80 @@ function DocSearch() {
 }
 
 
-/** The contents down the side: each category a heading that opens and closes, the one you're in open. */
+const linkTo = (p: Page) => `/docs/${p.doc}${p.section ? `/${p.section}` : ""}`;
+
+interface Opened {
+  current: string | undefined;
+  open: Set<string>;
+  toggle: (key: string) => void;
+}
+
+/** A group in the contents: its name opens and closes it, its pages and groups indented under it. */
+function NavGroup({ group, depth, ...opened }: Opened & { group: Group; depth: number }) {
+  const expanded = opened.open.has(group.key);
+  return (
+    <Box component="li" sx={{ listStyle: "none" }}>
+      <ListItemButton onClick={() => { opened.toggle(group.key); }} aria-expanded={expanded} sx={{ borderRadius: 1, py: 0.25, pl: 0.5 }}>
+        <ExpandMoreIcon fontSize="small" sx={{ mr: 0.5, color: "text.secondary", transition: "transform .15s", transform: expanded ? "none" : "rotate(-90deg)" }} />
+        <ListItemText primary={group.label} slotProps={{ primary: { sx: { fontWeight: 600, color: "text.primary", fontSize: 13.5 } } }} />
+      </ListItemButton>
+      <Collapse in={expanded} unmountOnExit>
+        <NavNodes nodes={group.children} depth={depth + 1} {...opened} />
+      </Collapse>
+    </Box>
+  );
+}
+
+function NavNodes({ nodes, depth, ...opened }: Opened & { nodes: Node[]; depth: number }) {
+  return (
+    <List dense disablePadding sx={depth > 0 ? { ml: 1.5, pl: 0.75, borderLeft: 1, borderColor: "divider" } : undefined}>
+      {nodes.map((n) =>
+        n.kind === "group" ? (
+          <NavGroup key={n.key} group={n} depth={depth} {...opened} />
+        ) : (
+          <ListItemButton
+            key={n.key}
+            component={RouterLink}
+            to={linkTo(n)}
+            selected={n.key === opened.current}
+            aria-current={n.key === opened.current ? "page" : undefined}
+            sx={{ borderRadius: 1, py: 0.25, pl: 1, color: "text.secondary", "&.Mui-selected": { color: "primary.main", fontWeight: 600 } }}
+          >
+            <ListItemText
+              primary={n.label}
+              secondary={n.history && !/history/i.test(n.label) ? "Design history" : undefined}
+              slotProps={{ primary: { sx: { fontWeight: "inherit", fontSize: 13.5 } } }}
+            />
+          </ListItemButton>
+        ),
+      )}
+    </List>
+  );
+}
+
+/**
+ * The contents down the side, nested: each category a heading, then its
+ * docs and groups (a long doc is a group of its sections, some of those
+ * grouped again). Each opens and closes; the way to the page you're on
+ * is open.
+ */
 function DocsNav({ categories, current }: { categories: Category[]; current: string | undefined }) {
-  const here = categories.find((c) => c.entries.some((e) => e.id === current))?.id;
-  const [open, setOpen] = useState<Set<string>>(() => new Set(here ? [here] : []));
+  const way = useMemo(() => {
+    for (const c of categories) {
+      const trail = current ? trailOf(c.children, current) : null;
+      if (trail) return [`category:${c.id}`, ...trail.map((g) => g.key)];
+    }
+    return [];
+  }, [categories, current]);
+  const [open, setOpen] = useState<Set<string>>(() => new Set(way));
   useEffect(() => {
-    if (here) setOpen((was) => (was.has(here) ? was : new Set([...was, here])));
-  }, [here]);
-  const toggle = (id: string) => {
+    setOpen((was) => (way.every((k) => was.has(k)) ? was : new Set([...was, ...way])));
+  }, [way]);
+  const toggle = (key: string) => {
     setOpen((was) => {
       const now = new Set(was);
-      if (now.has(id)) now.delete(id);
-      else now.add(id);
+      if (now.has(key)) now.delete(key);
+      else now.add(key);
       return now;
     });
   };
@@ -235,28 +331,16 @@ function DocsNav({ categories, current }: { categories: Category[]; current: str
         <ListItemText primary="Docs home" slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
       </ListItemButton>
       {categories.map((c) => {
-        const expanded = open.has(c.id);
+        const key = `category:${c.id}`;
+        const expanded = open.has(key);
         return (
-          <Box component="li" key={c.id} sx={{ listStyle: "none" }}>
-            <ListItemButton onClick={() => { toggle(c.id); }} aria-expanded={expanded} sx={{ borderRadius: 1 }}>
+          <Box component="li" key={c.id} sx={{ listStyle: "none", mb: 0.5 }}>
+            <ListItemButton onClick={() => { toggle(key); }} aria-expanded={expanded} sx={{ borderRadius: 1 }}>
               <ListItemText primary={c.title} slotProps={{ primary: { sx: { fontWeight: 700, color: "text.primary" } } }} />
               <ExpandMoreIcon fontSize="small" sx={{ color: "text.secondary", transition: "transform .15s", transform: expanded ? "rotate(180deg)" : "none" }} />
             </ListItemButton>
             <Collapse in={expanded} unmountOnExit>
-              <List dense disablePadding sx={{ ml: 1.5, pl: 1, borderLeft: 1, borderColor: "divider", mb: 0.5 }}>
-                {c.entries.map((e) => (
-                  <ListItemButton
-                    key={e.id}
-                    component={RouterLink}
-                    to={`/docs/${e.id}`}
-                    selected={e.id === current}
-                    aria-current={e.id === current ? "page" : undefined}
-                    sx={{ borderRadius: 1, py: 0.25, color: "text.secondary", "&.Mui-selected": { color: "primary.main", fontWeight: 600 } }}
-                  >
-                    <ListItemText primary={e.label} secondary={e.history && !/history/i.test(e.label) ? "Design history" : undefined} slotProps={{ primary: { sx: { fontWeight: "inherit" } } }} />
-                  </ListItemButton>
-                ))}
-              </List>
+              <NavNodes nodes={c.children} depth={0} current={current} open={open} toggle={toggle} />
             </Collapse>
           </Box>
         );
@@ -265,28 +349,32 @@ function DocsNav({ categories, current }: { categories: Category[]; current: str
   );
 }
 
-/** On a phone, the contents as one list to choose from. */
+/** On a phone, the contents as one list to choose from, indented as they nest. */
 function DocsPicker({ categories, current }: { categories: Category[]; current: string | undefined }) {
   const navigate = useNavigate();
+  const options = (nodes: Node[], depth: number): React.ReactNode[] =>
+    nodes.flatMap((n) => {
+      const indent = "   ".repeat(depth);
+      return n.kind === "page"
+        ? [<option key={n.key} value={linkTo(n)}>{indent + n.label}</option>]
+        : [<option key={n.key} disabled>{indent + n.label}</option>, ...options(n.children, depth + 1)];
+    });
+  const here = categories.flatMap((c) => pagesOf(c.children)).find((p) => p.key === current);
   return (
     <TextField
       select
       label="Doc"
       size="small"
-      value={current ?? ""}
-      onChange={(event) => { void navigate(event.target.value ? `/docs/${event.target.value}` : "/docs"); }}
+      value={here ? linkTo(here) : "/docs"}
+      onChange={(event) => { void navigate(event.target.value); }}
       slotProps={{ select: { native: true } }}
       sx={{ display: { md: "none" }, bgcolor: "background.paper", mb: 2 }}
       fullWidth
     >
-      <option value="">Docs home</option>
+      <option value="/docs">Docs home</option>
       {categories.map((c) => (
         <optgroup key={c.id} label={c.title}>
-          {c.entries.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.label}
-            </option>
-          ))}
+          {options(c.children, 0)}
         </optgroup>
       ))}
     </TextField>
@@ -295,8 +383,8 @@ function DocsPicker({ categories, current }: { categories: Category[]; current: 
 
 /** The docs' home: where to start, in order, and each category with what's in it. */
 function DocsHome({ categories }: { categories: Category[] }) {
-  const entries = new Map(categories.flatMap((c) => c.entries.map((e) => [e.id, e])));
-  const path = START_HERE.flatMap((id) => entries.get(id) ?? []);
+  const pages = new Map(categories.flatMap((c) => pagesOf(c.children).map((p) => [p.key, p])));
+  const path = START_HERE.flatMap((id) => pages.get(id) ?? []);
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {path.length > 0 && (
@@ -305,10 +393,10 @@ function DocsHome({ categories }: { categories: Category[] }) {
             Start here
           </Typography>
           <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: `repeat(${String(path.length)}, 1fr)` } }}>
-            {path.map((e, i) => (
-              <li key={e.id}>
+            {path.map((p, i) => (
+              <li key={p.key}>
                 <Card variant="outlined" sx={{ height: "100%", "&:hover": { borderColor: "primary.main" } }}>
-                  <CardActionArea component={RouterLink} to={`/docs/${e.id}`} sx={{ p: 2, height: "100%", display: "flex", alignItems: "flex-start", justifyContent: "flex-start", gap: 1.5 }}>
+                  <CardActionArea component={RouterLink} to={linkTo(p)} sx={{ p: 2, height: "100%", display: "flex", alignItems: "flex-start", justifyContent: "flex-start", gap: 1.5 }}>
                     <Box
                       aria-hidden="true"
                       sx={{ flex: "none", width: 28, height: 28, borderRadius: "50%", bgcolor: "primary.main", color: "primary.contrastText", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 700 }}
@@ -319,7 +407,7 @@ function DocsHome({ categories }: { categories: Category[] }) {
                       <Typography variant="caption" color="text.secondary">
                         Step {i + 1}
                       </Typography>
-                      <Typography sx={{ fontWeight: 600 }}>{e.label}</Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{p.label}</Typography>
                     </Box>
                   </CardActionArea>
                 </Card>
@@ -342,13 +430,24 @@ function DocsHome({ categories }: { categories: Category[] }) {
                 {c.blurb}
               </Typography>
               <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 0.75 }}>
-                {c.entries.map((e) => (
-                  <li key={e.id}>
-                    <Link component={RouterLink} to={`/docs/${e.id}`} underline="hover" variant="body2" sx={{ fontWeight: 500 }}>
-                      {e.label}
-                    </Link>
-                  </li>
-                ))}
+                {c.children.map((n) => {
+                  // A group leads to its first page, and says how many it holds.
+                  const all = n.kind === "page" ? [n] : pagesOf(n.children);
+                  const first = all[0];
+                  if (!first) return null;
+                  return (
+                    <li key={n.key}>
+                      <Link component={RouterLink} to={linkTo(first)} underline="hover" variant="body2" sx={{ fontWeight: 500 }}>
+                        {n.label}
+                      </Link>
+                      {all.length > 1 && (
+                        <Typography component="span" variant="caption" color="text.secondary">
+                          {` · ${String(all.length)} pages`}
+                        </Typography>
+                      )}
+                    </li>
+                  );
+                })}
               </Box>
             </Card>
           ))}
@@ -358,23 +457,28 @@ function DocsHome({ categories }: { categories: Category[] }) {
   );
 }
 
-/** Previous and next in reading order, at the foot of a doc. */
+/** What a page is called on its own: a section by its name, a long doc's overview by the doc's. */
+const nameOf = (p: Page, groups: Group[]) => (p.section || groups.length === 0 ? p.label : (groups.at(-1)?.label ?? p.label));
+
+/** Previous and next in reading order, at the foot of a page. */
 function Onward({ place }: { place: NonNullable<ReturnType<typeof placeOf>> }) {
-  const card = (to: { entry: Entry; category: Category } | undefined, way: "Previous" | "Next") =>
-    to ? (
+  const card = (to: { page: Page; category: Category } | undefined, way: "Previous" | "Next") => {
+    if (!to) return <Box />;
+    const groups = trailOf(to.category.children, to.page.key) ?? [];
+    const where = groups.length > 0 && to.page.section ? `${to.category.title} › ${groups[0]?.label ?? ""}` : to.category.title;
+    return (
       <Card variant="outlined" sx={{ "&:hover": { borderColor: "primary.main" } }}>
-        <CardActionArea component={RouterLink} to={`/docs/${to.entry.id}`} sx={{ p: 2, textAlign: way === "Next" ? "right" : "left" }}>
+        <CardActionArea component={RouterLink} to={linkTo(to.page)} sx={{ p: 2, textAlign: way === "Next" ? "right" : "left" }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, justifyContent: way === "Next" ? "flex-end" : "flex-start" }}>
             {way === "Previous" && <ArrowBackIcon sx={{ fontSize: 14 }} />}
-            {way} · {to.category.title}
+            {way} · {where}
             {way === "Next" && <ArrowForwardIcon sx={{ fontSize: 14 }} />}
           </Typography>
-          <Typography sx={{ fontWeight: 600, color: "primary.main" }}>{to.entry.label}</Typography>
+          <Typography sx={{ fontWeight: 600, color: "primary.main" }}>{nameOf(to.page, groups)}</Typography>
         </CardActionArea>
       </Card>
-    ) : (
-      <Box />
     );
+  };
   return (
     <Box component="nav" aria-label="Previous and next" sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, mt: 4 }}>
       {card(place.previous, "Previous")}
@@ -386,7 +490,6 @@ function Onward({ place }: { place: NonNullable<ReturnType<typeof placeOf>> }) {
 /** "On this page": a doc's sections, beside it on a wide screen. */
 function OnThisPage({ markdown }: { markdown: string }) {
   const sections = useMemo(() => sectionsOf(markdown), [markdown]);
-  if (sections.length < 2) return null;
   return (
     <Box component="nav" aria-label="On this page" sx={{ display: { xs: "none", lg: "block" }, position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}>
       <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 0.5, lineHeight: 2 }}>
@@ -438,7 +541,9 @@ const PROSE = {
  * to read at its foot, and a search over them all.
  */
 export function DocsPage() {
-  const { id } = useParams();
+  const { id, section } = useParams();
+  const navigate = useNavigate();
+  const { hash } = useLocation();
   const [docs, setDocs] = useState<DocSummary[] | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -452,6 +557,7 @@ export function DocsPage() {
       });
   }, []);
 
+  // A doc is fetched once, whichever of its pages is open.
   useEffect(() => {
     if (!id || id === API_REFERENCE_ID) return;
     setLoadingContent(true);
@@ -466,15 +572,39 @@ export function DocsPage() {
       });
   }, [id]);
 
-  // A link to a section scrolls to it once the doc is there to scroll in.
-  const { hash } = useLocation();
-  useEffect(() => {
-    if (content && hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
-  }, [content, hash]);
-
   const categories = useMemo(() => (docs ? contentsOf(docs) : []), [docs]);
-  const served = useMemo(() => new Set([API_REFERENCE_ID, ...(docs?.map((d) => d.id) ?? [])]), [docs]);
-  const place = id ? placeOf(categories, id) : null;
+  const served = useMemo(() => ({ ids: new Set([API_REFERENCE_ID, ...(docs?.map((d) => d.id) ?? [])]), doc: id ?? "" }), [docs, id]);
+  const split = !!id && isSplit(categories, id);
+  const place = id ? placeOf(categories, id, split ? section : undefined) : null;
+  const current = id ? (split && section ? `${id}/${section}` : id) : undefined;
+  // What this page shows: a long doc's one section, or a doc whole.
+  const shown = !docs || content === null ? null : split ? pageOf(content, section) : content;
+  // "On this page" takes a column only when there's a list for it; without one the page has the width (a figure's drawn full size).
+  const aside = id !== API_REFERENCE_ID && !!shown && sectionsOf(shown).length >= 2;
+
+  // A link into a long doc by a heading's anchor (search, the chat agent's
+  // sources, a link between docs) opens the page that heading is on; one to
+  // a section of a doc shown whole opens the doc.
+  useEffect(() => {
+    if (!id || !docs || content === null) return;
+    if (!split && section) {
+      void navigate(`/docs/${id}${hash}`, { replace: true });
+      return;
+    }
+    if (split && !section && hash) {
+      const holding = sectionHolding(content, decodeURIComponent(hash.slice(1)));
+      if (holding) void navigate(`/docs/${id}/${holding}${hash === `#${holding}` ? "" : hash}`, { replace: true });
+    }
+  }, [id, section, hash, docs, content, split, navigate]);
+
+  // A new page opens at its top, or at the heading it was linked to.
+  useEffect(() => {
+    if (shown === null) return;
+    const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    // (Optional calls: a test's DOM has neither.)
+    if (target) target.scrollIntoView?.();
+    else window.scrollTo?.(0, 0);
+  }, [shown, hash]);
 
   const header = (
     <PageHeader
@@ -509,14 +639,14 @@ export function DocsPage() {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "248px minmax(0, 1fr)" },
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "264px minmax(0, 1fr)" },
           gap: { xs: 0, md: 4 },
           alignItems: "start",
         }}
       >
-        <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto" }}>
+        <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", pr: 0.5 }}>
           {docs ? (
-            <DocsNav categories={categories} current={id} />
+            <DocsNav categories={categories} current={current} />
           ) : (
             <Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>
               <CircularProgress size={24} aria-label="Loading" />
@@ -524,41 +654,91 @@ export function DocsPage() {
           )}
         </Box>
         <Box sx={{ minWidth: 0 }}>
-          {docs && <DocsPicker categories={categories} current={id} />}
+          {docs && <DocsPicker categories={categories} current={current} />}
           {!id && docs && <DocsHome categories={categories} />}
           {id && (
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) 220px" }, gap: 4, alignItems: "start" }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: aside ? "minmax(0, 1fr) 220px" : "minmax(0, 1fr)" }, gap: 4, alignItems: "start" }}>
               <Box sx={{ minWidth: 0 }}>
                 <Breadcrumbs aria-label="Where this is" sx={{ mb: 2, fontSize: 14 }}>
                   <Link component={RouterLink} to="/docs" underline="hover" color="inherit">
                     Docs
                   </Link>
                   {place && <Typography sx={{ fontSize: "inherit" }}>{place.category.title}</Typography>}
+                  {place?.groups.map((g) => {
+                    const first = pagesOf(g.children)[0];
+                    return first && first.key !== place.page.key ? (
+                      <Link key={g.key} component={RouterLink} to={linkTo(first)} underline="hover" color="inherit">
+                        {g.label}
+                      </Link>
+                    ) : (
+                      <Typography key={g.key} sx={{ fontSize: "inherit" }}>
+                        {g.label}
+                      </Typography>
+                    );
+                  })}
                 </Breadcrumbs>
                 <Card variant="outlined" sx={{ p: { xs: 2, sm: 4 } }}>
                   {id === API_REFERENCE_ID && <ApiReference />}
-                  {id !== API_REFERENCE_ID && (loadingContent || !content) && (
+                  {id !== API_REFERENCE_ID && (loadingContent || !docs || content === null) && (
                     <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
                       <CircularProgress size={24} aria-label="Loading" />
                     </Box>
                   )}
-                  {id !== API_REFERENCE_ID && !loadingContent && content && (
+                  {id !== API_REFERENCE_ID && !loadingContent && docs && content !== null && shown === null && (
+                    <Alert severity="info">
+                      This doc has no such section now. <Link component={RouterLink} to={`/docs/${id}`}>Its first page</Link> lists what it has.
+                    </Alert>
+                  )}
+                  {id !== API_REFERENCE_ID && !loadingContent && shown !== null && (
                     <Box sx={PROSE}>
                       <Served.Provider value={served}>
                         <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]} components={MARKDOWN_COMPONENTS}>
-                          {content}
+                          {shown}
                         </Markdown>
                       </Served.Provider>
+                      {split && !section && place && <SectionList place={place} />}
                     </Box>
                   )}
                 </Card>
                 {place && <Onward place={place} />}
               </Box>
-              {id !== API_REFERENCE_ID && content && <OnThisPage markdown={content} />}
+              {aside && shown && <OnThisPage markdown={shown} />}
             </Box>
           )}
         </Box>
       </Box>
     </Box>
+  );
+}
+
+/** A long doc's first page ends with what's in it: its pages, as the contents group them. */
+function SectionList({ place }: { place: NonNullable<ReturnType<typeof placeOf>> }) {
+  const doc = place.groups.at(-1);
+  if (!doc) return null;
+  const list = (nodes: Node[]): React.ReactNode => (
+    <ul>
+      {nodes.map((n) =>
+        n.kind === "page" ? (
+          n.section ? (
+            <li key={n.key}>
+              <Link component={RouterLink} to={linkTo(n)}>
+                {n.label}
+              </Link>
+            </li>
+          ) : null
+        ) : (
+          <li key={n.key}>
+            <strong>{n.label}</strong>
+            {list(n.children)}
+          </li>
+        ),
+      )}
+    </ul>
+  );
+  return (
+    <>
+      <h2 id="in-this-doc">In this doc</h2>
+      {list(doc.children)}
+    </>
   );
 }

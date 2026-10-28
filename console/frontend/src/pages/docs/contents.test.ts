@@ -1,39 +1,62 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import SOURCES from "../../../../docs/reference/SOURCES?raw";
-import { contentsOf, docTarget, sectionsOf } from "./contents";
+import { contentsOf, docTarget, pageOf, pagesOf, placeOf, sectionHolding, sectionsOf } from "./contents";
 
-// What the console serves (../../../src/guides.ts): its guides, and the reference SOURCES lists.
-const guides = Object.keys(import.meta.glob("../../../../docs/*.md")).map((path) => path.split("/").at(-1)?.replace(/\.md$/, "") ?? "");
-const reference = SOURCES
-  .split("\n")
-  .filter((line) => line.trim() && !line.trim().startsWith("#"))
-  .map((line) => `reference-${line.split(/\s+/)[0] ?? ""}`);
+// What the console serves (../../../src/guides.ts): its guides, and the platform's docs copied into reference/.
+const files = {
+  ...import.meta.glob<string>("../../../../docs/*.md", { query: "?raw", import: "default", eager: true }),
+  ...import.meta.glob<string>("../../../../docs/reference/*.md", { query: "?raw", import: "default", eager: true }),
+};
+const served = Object.entries(files).map(([path, markdown]) => {
+  const name = path.split("/").at(-1)?.replace(/\.md$/, "") ?? "";
+  const id = path.includes("/reference/") ? `reference-${name}` : name;
+  return { id, title: name, section: "guides" as const, kind: "guide", sections: sectionsOf(markdown) };
+});
 
 describe("the docs' contents", () => {
-  const served = new Set(["01-getting-started", "06-database-schemas", "api-reference", "reference-setup", "reference-security-model", "reference-clouds-gcp", "reference-catalog-onboarding-with-ai"]);
-
-  it("places every doc the console serves in a category", () => {
-    expect(guides.length).toBeGreaterThan(5);
-    expect(reference.length).toBeGreaterThan(5);
-    const served = [...guides, ...reference].map((id) => ({ id, title: id, section: "guides" as const, kind: "guide" }));
+  it("places every doc the console serves, and every section of those shown a section to a page", () => {
+    expect(served.length).toBeGreaterThan(15);
     const more = contentsOf(served).find((c) => c.id === "more");
-    expect(more?.entries.map((e) => e.id) ?? []).toEqual([]);
+    expect(more ? pagesOf(more.children).map((p) => p.key) : []).toEqual([]);
+  });
+
+  it("nests a long doc's sections under it, and reads on from one page to the next", () => {
+    const categories = contentsOf(served);
+    const place = placeOf(categories, "reference-security-model", "where-secret-values-live");
+    expect(place?.category.title).toBe("How Vertra works");
+    expect(place?.groups.map((g) => g.label)).toEqual(["Security model", "Secrets"]);
+    expect(place?.previous?.page.key).toBe("reference-security-model/tokens-for-another-cloud");
+    expect(place?.next?.page.key).toBe("reference-security-model/how-a-secret-reaches-a-step");
+  });
+
+  const md = "# Ops\n\nIntro.\n\n## Upgrading\n\nUp.\n\n### Reused tags\n\nTags.\n\n```\n## not a section\n```\n\n## Backups\n\nNightly.\n";
+
+  it("shows a long doc a page at a time, each section's headings a level up", () => {
+    expect(pageOf(md)).toBe("# Ops\n\nIntro.\n");
+    expect(pageOf(md, "upgrading")).toBe("# Upgrading\n\nUp.\n\n## Reused tags\n\nTags.\n\n```\n## not a section\n```\n");
+    expect(pageOf(md, "backups")).toBe("# Backups\n\nNightly.\n");
+    expect(pageOf(md, "gone")).toBeNull();
+  });
+
+  it("finds the page a heading's anchor is on", () => {
+    expect(sectionHolding(md, "reused-tags")).toBe("upgrading");
+    expect(sectionHolding(md, "backups")).toBe("backups");
+    expect(sectionHolding(md, "ops")).toBeUndefined();
   });
 
   it("finds the doc a link between docs means, however the repository wrote its path", () => {
-    expect(docTarget("security-model.md#guardrails", served)).toBe("/docs/reference-security-model#guardrails");
-    expect(docTarget("../setup.md", served)).toBe("/docs/reference-setup");
-    expect(docTarget("clouds/gcp.md", served)).toBe("/docs/reference-clouds-gcp");
-    expect(docTarget("../console/docs/06-database-schemas.md", served)).toBe("/docs/06-database-schemas");
-    expect(docTarget("docs/onboarding-with-ai.md", served)).toBe("/docs/reference-catalog-onboarding-with-ai");
-    expect(docTarget("api-reference.md", served)).toBe("/docs/api-reference");
-    expect(docTarget("../TODO.md", served)).toBeNull();
+    const ids = new Set(["01-getting-started", "06-database-schemas", "api-reference", "reference-setup", "reference-security-model", "reference-clouds-gcp", "reference-catalog-onboarding-with-ai"]);
+    expect(docTarget("security-model.md#guardrails", ids)).toBe("/docs/reference-security-model#guardrails");
+    expect(docTarget("../setup.md", ids)).toBe("/docs/reference-setup");
+    expect(docTarget("clouds/gcp.md", ids)).toBe("/docs/reference-clouds-gcp");
+    expect(docTarget("../console/docs/06-database-schemas.md", ids)).toBe("/docs/06-database-schemas");
+    expect(docTarget("docs/onboarding-with-ai.md", ids)).toBe("/docs/reference-catalog-onboarding-with-ai");
+    expect(docTarget("api-reference.md", ids)).toBe("/docs/api-reference");
+    expect(docTarget("../TODO.md", ids)).toBeNull();
   });
 
   it("lists a doc's sections as rehype-slug anchors them, skipping code", () => {
-    const md = "# T\n\n## The `chat` agent\n\n```\n## no\n```\n\n## Backups\n\n## Backups\n";
-    expect(sectionsOf(md)).toEqual([
+    expect(sectionsOf("# T\n\n## The `chat` agent\n\n```\n## no\n```\n\n## Backups\n\n## Backups\n")).toEqual([
       { title: "The chat agent", anchor: "the-chat-agent" },
       { title: "Backups", anchor: "backups" },
       { title: "Backups", anchor: "backups-1" },

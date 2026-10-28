@@ -419,11 +419,22 @@ describe("the docs", () => {
         { id: "01-getting-started", title: "Try Vertra end to end", section: "guides", kind: "guide" },
         { id: "03-what-is-a-dag", title: "What's a DAG", section: "guides", kind: "guide" },
         { id: "reference-setup", title: "Setting up Vertra", section: "reference", kind: "operating" },
-        { id: "reference-operations", title: "Operations", section: "reference", kind: "operating" },
+        {
+          id: "reference-operations",
+          title: "Operations",
+          section: "reference",
+          kind: "operating",
+          sections: [
+            { title: "Upgrading", anchor: "upgrading" },
+            { title: "Backups", anchor: "backups" },
+          ],
+        },
         { id: "09-something-new", title: "Something new", section: "guides", kind: "guide" },
       ],
     },
-    "GuideService/GetGuide": { markdown: "# Operations\n\n## Upgrading\n\n```\n## not a section\n```\n\n## Backups\n\nNightly." },
+    "GuideService/GetGuide": {
+      markdown: "# Operations\n\nRunning it.\n\n## Upgrading\n\nUp.\n\n### Reused tags\n\nTags.\n\n```\n## not a section\n```\n\n### Rolling back\n\nBack.\n\n## Backups\n\nNightly.",
+    },
   };
 
   it("opens on a home with where to start and every category, a new doc under More", async () => {
@@ -435,19 +446,51 @@ describe("the docs", () => {
     expect(screen.getByRole("link", { name: "Something new" }).getAttribute("href")).toBe("/docs/09-something-new");
   });
 
-  it("shows a doc in its category, with its sections, and the docs before and after it", async () => {
-    await renderAt("/docs/reference-operations", MEMBER, DOCS);
+  it("shows a long doc a section to a page, nested under it, with the pages before and after", async () => {
+    await renderAt("/docs/reference-operations/upgrading", MEMBER, DOCS);
     const trail = await screen.findByRole("navigation", { name: "Where this is" });
     expect(await within(trail).findByText("Install and operate")).toBeTruthy();
+    expect(within(trail).getByRole("link", { name: "Operations" }).getAttribute("href")).toBe("/docs/reference-operations");
+    expect(within(trail).getByText("Run it")).toBeTruthy();
+    // Only this section, its headings a level up.
+    expect(await screen.findByRole("heading", { level: 1, name: "Upgrading" })).toBeTruthy();
+    expect(screen.queryByText("Nightly.")).toBeNull();
     const contents = screen.getByRole("navigation", { name: "Docs contents" });
-    expect(within(contents).getByRole("button", { name: "Install and operate" }).getAttribute("aria-expanded")).toBe("true");
+    for (const open of ["Install and operate", "Operations", "Run it"]) {
+      expect(within(contents).getByRole("button", { name: open }).getAttribute("aria-expanded")).toBe("true");
+    }
     expect(within(contents).getByRole("button", { name: "Get started" }).getAttribute("aria-expanded")).toBe("false");
-    expect(within(contents).getByRole("link", { name: "Operations" }).getAttribute("aria-current")).toBe("page");
-    const sections = await screen.findByRole("navigation", { name: "On this page" });
-    expect(within(sections).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#upgrading", "#backups"]);
+    expect(within(contents).getByRole("link", { name: "Upgrading" }).getAttribute("aria-current")).toBe("page");
+    const sections = screen.getByRole("navigation", { name: "On this page" });
+    expect(within(sections).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#reused-tags", "#rolling-back"]);
     const onward = screen.getByRole("navigation", { name: "Previous and next" });
-    expect(within(onward).getByRole("link", { name: /Previous · Install and operate.*Set up Vertra/ }).getAttribute("href")).toBe("/docs/reference-setup");
-    expect(within(onward).getByRole("link", { name: /Next · Reference.*API reference/ }).getAttribute("href")).toBe("/docs/api-reference");
+    expect(within(onward).getByRole("link", { name: /Previous · Install and operate\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
+    expect(within(onward).getByRole("link", { name: /Next · Install and operate › Operations\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
+  });
+
+  it("draws a doc's figure, and opens it and a linked one at full size", async () => {
+    const asked: string[] = [];
+    await renderAt("/docs/reference-architecture", MEMBER, {
+      "GuideService/ListGuides": { guides: [{ id: "reference-architecture", title: "Architecture", section: "reference", kind: "current" }] },
+      "GuideService/GetGuide": { markdown: "# Architecture\n\n![The pieces: what runs where](architecture/6-the-pieces.svg)\n\nIn full: [the system diagram](architecture/1-system.svg)." },
+      "GuideService/GetGuideImage": (body: Record<string, unknown>) => {
+        asked.push(String(body["path"]));
+        return { svg: "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>" };
+      },
+    });
+    const figure = await screen.findByRole("img", { name: /The pieces: what runs where/ });
+    await waitFor(() => { expect(figure.getAttribute("src")).toMatch(/^data:image\/svg\+xml/); });
+    expect(figure.closest("p")).toBeNull();
+    fireEvent.click(screen.getByRole("link", { name: "the system diagram" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByRole("img", { name: "The system diagram" })).toBeTruthy();
+    expect(asked).toEqual(["architecture/6-the-pieces.svg", "architecture/1-system.svg"]);
+  });
+
+  it("opens a link to a heading in a long doc on the page that heading is on", async () => {
+    await renderAt("/docs/reference-operations#reused-tags", MEMBER, DOCS);
+    expect(await screen.findByRole("heading", { level: 1, name: "Upgrading" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Reused tags" })).toBeTruthy();
   });
 });
 

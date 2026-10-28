@@ -2,33 +2,61 @@
 import type { DocSummary } from "../../api";
 import { API_REFERENCE_ID } from "../ApiReference";
 
-/** A doc as the contents list it: its id, and a short name for the side. */
-export interface Entry {
-  id: string;
+/** A page: a whole doc, or one section of a long one (its ## heading's anchor; none for the part before the first). */
+export interface Page {
+  kind: "page";
+  /** Unique in the contents: the doc's id, and the section's anchor. */
+  key: string;
+  doc: string;
+  section?: string;
   label: string;
   /** Design history: why, not how it works now. */
   history?: boolean;
 }
+
+/** Pages under one name: a long doc's sections, or docs that belong together. Opens and closes. */
+export interface Group {
+  kind: "group";
+  key: string;
+  label: string;
+  children: Node[];
+}
+
+export type Node = Page | Group;
 
 export interface Category {
   id: string;
   title: string;
   /** Who it's for and what's in it, on the docs' home. */
   blurb: string;
-  entries: Entry[];
+  children: Node[];
 }
 
 /**
- * The docs in the order to read them: getting started, the ideas, then
- * by what you're doing. A doc the console serves that isn't placed here
- * still shows, under More, so a new one is never lost.
+ * What the contents are written as: a doc whole ([id, label]); a long doc a
+ * section to a page ({ doc, label, sections }), its sections in groups of
+ * their own where there are many (an anchor alone, or [group, anchors]),
+ * or simply in order (sections: "all"); or docs under a name of their own
+ * ({ group, items }).
  */
-const CONTENTS: { id: string; title: string; blurb: string; docs: [string, string][] }[] = [
+type Item =
+  | [string, string]
+  | { doc: string; label: string; sections: "all" | (string | [string, string[]])[]; skip?: string[] }
+  | { group: string; items: Item[] };
+
+/**
+ * The docs in the order to read them: getting started, the ideas, the
+ * how-tos, then by what you're doing, then how it all works, in depth. A
+ * doc the console serves that isn't placed here still shows, under More,
+ * and so does a section of a long doc not placed in its groups; a test
+ * fails while either happens.
+ */
+const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = [
   {
     id: "start",
     title: "Get started",
     blurb: "Run your first DAG, and learn the one idea everything else builds on.",
-    docs: [
+    items: [
       ["01-getting-started", "Try Vertra end to end"],
       ["03-what-is-a-dag", "What's a DAG?"],
     ],
@@ -37,7 +65,7 @@ const CONTENTS: { id: string; title: string; blurb: string; docs: [string, strin
     id: "concepts",
     title: "Concepts",
     blurb: "How values pass between steps, and how secrets stay with their team.",
-    docs: [
+    items: [
       ["07-how-data-moves", "How values move between steps"],
       ["04-secrets-explained", "Secrets, explained"],
     ],
@@ -46,7 +74,7 @@ const CONTENTS: { id: string; title: string; blurb: string; docs: [string, strin
     id: "how-to",
     title: "How-to guides",
     blurb: "Things you'll do once you're running: automate runs and bring in secrets.",
-    docs: [
+    items: [
       ["05-calling-the-api", "Call the API from a pipeline"],
       ["02-sync-secrets-gcp", "Sync secrets from Secret Manager"],
     ],
@@ -54,44 +82,102 @@ const CONTENTS: { id: string; title: string; blurb: string; docs: [string, strin
   {
     id: "products",
     title: "Build products",
-    blurb: "For platform teams: publish products and templates to the catalog.",
-    docs: [
-      ["reference-catalog-guide", "The catalog"],
+    blurb: "For platform teams: publish products, templates and APIs to the catalog.",
+    items: [
+      {
+        doc: "reference-catalog-guide",
+        label: "The catalog",
+        sections: [
+          ["Set up", ["layout", "onboarding-a-team", "a-teams-secretstore", "removing-a-team"]],
+          ["Write products", ["productyaml", "templates-and-dags-dags", "api-products-apis"]],
+          ["Ship them", ["testing", "what-ci-blocks", "who-approves-what", "publishing"]],
+        ],
+      },
       ["reference-catalog-onboarding-with-ai", "Onboard with an AI assistant"],
-      ["reference-clouds-github", "Get GitHub ready"],
     ],
   },
   {
     id: "operate",
     title: "Install and operate",
     blurb: "For admins: set Vertra up, connect your cloud, and run it day to day.",
-    docs: [
-      ["reference-setup", "Set up Vertra"],
-      ["reference-clouds-gcp", "Get Google Cloud ready"],
-      ["reference-clouds-aws", "Get AWS ready"],
-      ["reference-operations", "Operations"],
+    items: [
+      {
+        group: "Set up",
+        items: [
+          ["reference-setup", "Set up Vertra"],
+          ["reference-clouds-gcp", "Get Google Cloud ready"],
+          ["reference-clouds-aws", "Get AWS ready"],
+          ["reference-clouds-github", "Get GitHub ready"],
+        ],
+      },
+      {
+        doc: "reference-operations",
+        label: "Operations",
+        sections: [
+          ["Install", ["local-install-with-kind", "installing-on-a-cluster-with-helm"]],
+          ["Run it", ["upgrading", "databases", "backups", "network-policies", "the-chat-agent", "throughput"]],
+          "troubleshooting",
+        ],
+      },
     ],
   },
   {
     id: "internals",
     title: "How Vertra works",
     blurb: "In depth: the pieces and how they fit, a run call by call, what keeps teams apart, the data, and why it's built this way.",
-    docs: [
-      ["reference-architecture", "Architecture"],
-      ["08-under-the-hood", "Under the hood"],
-      ["reference-kernel-architecture", "Inside the kernel"],
-      ["reference-security-model", "Security model"],
-      ["06-database-schemas", "Where the data lives"],
-      ["reference-assessment", "Design history"],
+    items: [
+      { doc: "reference-architecture", label: "Architecture", sections: "all" },
+      { doc: "08-under-the-hood", label: "Under the hood", sections: "all" },
+      { doc: "reference-kernel-architecture", label: "Inside the kernel", sections: "all", skip: ["table-of-contents"] },
+      {
+        doc: "reference-security-model",
+        label: "Security model",
+        sections: [
+          "at-a-glance",
+          ["Identity and signing in", ["who-is-trusted", "signing-in", "in-the-browser", "how-kernel-api-knows-its-caller", "keyless-bots", "ordering-bots", "tokens-for-another-cloud"]],
+          ["Secrets", ["where-secret-values-live", "how-a-secret-reaches-a-step", "who-can-read-a-secret"]],
+          ["Runs and what they make", ["consumers-and-templates", "who-sees-a-run-that-spans-teams", "who-sees-a-steps-logs", "what-a-run-made-and-deleting-it", "schedules"]],
+          ["Notifications", ["notifications-and-chat-webhooks", "email"]],
+          ["What the platform enforces", ["guardrails-the-cluster-enforces", "the-consoles-writes", "the-api-gateway", "what-vertra-stores", "rules-for-product-authors"]],
+          ["Limits", ["not-yet-enforced", "out-of-scope", "reporting-a-vulnerability"]],
+        ],
+      },
+      { doc: "06-database-schemas", label: "Where the data lives", sections: "all" },
+      {
+        doc: "reference-assessment",
+        label: "Design history",
+        skip: ["contents"],
+        sections: [
+          "1-summary",
+          ["Where it started", ["2-the-intended-model", "3-what-exists-today", "4-findings"]],
+          ["Compared with", ["5-compared-with-temporal", "6-compared-with-inngest"]],
+          [
+            "The design, area by area",
+            [
+              "7-the-git-catalog",
+              "8-team-authorization-and-secrets",
+              "9-cloud-identity",
+              "10-hosting-and-target-clouds",
+              "11-keeping-cloud-permissions-from-creeping",
+              "12-which-targets-a-consumer-may-use",
+              "13-golden-paths-and-compatibility",
+              "14-the-console-as-a-marketplace",
+              "15-execution-reliability-traced",
+              "16-before-production",
+            ],
+          ],
+          ["What was decided", ["17-decisions", "18-roadmap", "19-the-smallest-architecture-that-does-it", "20-what-should-not-change", "21-answers-in-brief"]],
+        ],
+      },
     ],
   },
   {
     id: "reference",
     title: "Reference",
     blurb: "The console's API, and every folder and file in the repository.",
-    docs: [
+    items: [
       [API_REFERENCE_ID, "API reference"],
-      ["reference-repository-map", "Repository map"],
+      { doc: "reference-repository-map", label: "Repository map", sections: "all" },
     ],
   },
 ];
@@ -99,39 +185,105 @@ const CONTENTS: { id: string; title: string; blurb: string; docs: [string, strin
 /** The first steps, in order, on the docs' home. */
 export const START_HERE = ["01-getting-started", "03-what-is-a-dag", "07-how-data-moves", "04-secrets-explained"];
 
-/** The contents for the docs the console serves: each category with those it has, then any not placed. */
+const keyOf = (doc: string, section?: string) => (section ? `${doc}/${section}` : doc);
+
+/** The contents for the docs the console serves: each category with what it has, then anything not placed. */
 export function contentsOf(docs: DocSummary[]): Category[] {
   const served = new Map(docs.map((d) => [d.id, d]));
   const placed = new Set<string>();
+  const strays: Page[] = [];
+
+  // A whole doc of design history says so; a long one's pages are under its name, which does.
+  const page = (doc: string, label: string, section?: string, whole = false): Page => {
+    placed.add(doc);
+    const p: Page = { kind: "page", key: keyOf(doc, section), doc, label, history: whole && served.get(doc)?.kind === "history" };
+    if (section) p.section = section;
+    return p;
+  };
+  const expand = (item: Item): Node[] => {
+    if (Array.isArray(item)) {
+      const [id, label] = item;
+      return id === API_REFERENCE_ID || served.has(id) ? [page(id, label, undefined, true)] : [];
+    }
+    if ("group" in item) {
+      const children = item.items.flatMap(expand);
+      return children.length > 0 ? [{ kind: "group", key: `group:${item.group}`, label: item.group, children }] : [];
+    }
+    const doc = served.get(item.doc);
+    if (!doc) return [];
+    const titles = new Map(doc.sections.map((s) => [s.anchor, s.title]));
+    const used = new Set<string>(item.skip);
+    const sectionPage = (anchor: string): Page[] => {
+      const title = titles.get(anchor);
+      if (!title) return [];
+      used.add(anchor);
+      return [page(doc.id, title, anchor)];
+    };
+    const children: Node[] = [page(doc.id, "Overview")];
+    if (item.sections === "all") {
+      children.push(...doc.sections.filter((s) => !used.has(s.anchor)).flatMap((s) => sectionPage(s.anchor)));
+    } else {
+      for (const s of item.sections) {
+        if (typeof s === "string") {
+          children.push(...sectionPage(s));
+          continue;
+        }
+        const [label, anchors] = s;
+        const pages = anchors.flatMap(sectionPage);
+        if (pages.length > 0) children.push({ kind: "group", key: `${doc.id}:${label}`, label, children: pages });
+      }
+    }
+    // A section the groups don't name (a heading added or renamed since) still shows, under More.
+    for (const s of doc.sections) {
+      if (!used.has(s.anchor)) strays.push({ kind: "page", key: keyOf(doc.id, s.anchor), doc: doc.id, section: s.anchor, label: `${item.label}: ${s.title}` });
+    }
+    return [{ kind: "group", key: doc.id, label: item.label, children }];
+  };
+
   const categories: Category[] = [];
   for (const c of CONTENTS) {
-    const entries = c.docs
-      .filter(([id]) => id === API_REFERENCE_ID || served.has(id))
-      .map(([id, label]): Entry => {
-        placed.add(id);
-        return { id, label, history: served.get(id)?.kind === "history" };
-      });
-    if (entries.length > 0) categories.push({ id: c.id, title: c.title, blurb: c.blurb, entries });
+    const children = c.items.flatMap(expand);
+    if (children.length > 0) categories.push({ id: c.id, title: c.title, blurb: c.blurb, children });
   }
-  const rest = docs.filter((d) => !placed.has(d.id));
-  if (rest.length > 0) {
-    categories.push({
-      id: "more",
-      title: "More",
-      blurb: "Other guides and reference.",
-      entries: rest.map((d) => ({ id: d.id, label: d.title, history: d.kind === "history" })),
-    });
-  }
+  const more: Node[] = [
+    ...docs.filter((d) => !placed.has(d.id)).map((d): Page => ({ kind: "page", key: d.id, doc: d.id, label: d.title, history: d.kind === "history" })),
+    ...strays,
+  ];
+  if (more.length > 0) categories.push({ id: "more", title: "More", blurb: "Other guides and reference.", children: more });
   return categories;
 }
 
-/** Where a doc is: its category, and the docs before and after it in reading order. */
-export function placeOf(categories: Category[], id: string) {
-  const order = categories.flatMap((c) => c.entries.map((entry) => ({ entry, category: c })));
-  const at = order.findIndex((o) => o.entry.id === id);
+/** Every page under some nodes, in order. */
+export function pagesOf(nodes: Node[]): Page[] {
+  return nodes.flatMap((n) => (n.kind === "page" ? [n] : pagesOf(n.children)));
+}
+
+/** The groups a page is under, outermost first (what to open to show it); null when it isn't under these. */
+export function trailOf(nodes: Node[], key: string): Group[] | null {
+  for (const n of nodes) {
+    if (n.kind === "page") {
+      if (n.key === key) return [];
+      continue;
+    }
+    const below = trailOf(n.children, key);
+    if (below) return [n, ...below];
+  }
+  return null;
+}
+
+/** Where a page is: its category, the groups it's under, and the pages before and after it in reading order. */
+export function placeOf(categories: Category[], doc: string, section?: string) {
+  const key = keyOf(doc, section);
+  const order = categories.flatMap((category) => pagesOf(category.children).map((page) => ({ page, category })));
+  const at = order.findIndex((o) => o.page.key === key);
   const found = order[at];
   if (!found) return null;
-  return { ...found, previous: order[at - 1], next: order[at + 1] };
+  return { ...found, groups: trailOf(found.category.children, key) ?? [], previous: order[at - 1], next: order[at + 1] };
+}
+
+/** Whether a doc is shown a section to a page. */
+export function isSplit(categories: Category[], doc: string): boolean {
+  return categories.some((c) => pagesOf(c.children).some((p) => p.doc === doc && p.section !== undefined));
 }
 
 /** A heading's anchor, as rehype-slug makes it (GitHub's). */
@@ -142,25 +294,75 @@ export function slug(heading: string): string {
     .replace(/\s/g, "-");
 }
 
-/** A doc's sections (its ## headings, outside code), for "On this page". */
+/** A heading as it reads, without the markdown around its words. */
+const plain = (heading: string) =>
+  heading
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*/g, "");
+
+/** A doc's lines, each with whether it's code (inside a fenced block, or its fence). */
+function linesOf(markdown: string): { line: string; code: boolean }[] {
+  let fenced = false;
+  return markdown.split("\n").map((line) => {
+    const fence = /^\s*(```|~~~)/.test(line);
+    if (fence) fenced = !fenced;
+    return { line, code: fenced || fence };
+  });
+}
+
+/** A doc's sections (its ## headings, outside code), for "On this page"; a repeated one numbered -1, -2… as rehype-slug does. */
 export function sectionsOf(markdown: string): { title: string; anchor: string }[] {
   const sections: { title: string; anchor: string }[] = [];
-  // A heading used again gets -1, -2… as rehype-slug numbers it.
   const seen = new Map<string, number>();
-  let fenced = false;
-  for (const line of markdown.split("\n")) {
-    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    const heading = fenced ? null : /^## (.+?)\s*#*\s*$/.exec(line);
-    if (heading?.[1]) {
-      // As it renders: without the markdown around its words.
-      const title = heading[1].replace(/`([^`]*)`/g, "$1").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*/g, "");
-      const anchor = slug(title);
-      const times = seen.get(anchor) ?? 0;
-      seen.set(anchor, times + 1);
-      sections.push({ title, anchor: times === 0 ? anchor : `${anchor}-${String(times)}` });
-    }
+  for (const { line, code } of linesOf(markdown)) {
+    const heading = code ? null : /^## (.+?)\s*#*\s*$/.exec(line);
+    if (!heading?.[1]) continue;
+    const title = plain(heading[1]);
+    const anchor = slug(title);
+    const times = seen.get(anchor) ?? 0;
+    seen.set(anchor, times + 1);
+    sections.push({ title, anchor: times === 0 ? anchor : `${anchor}-${String(times)}` });
   }
   return sections;
+}
+
+/**
+ * One page of a long doc: the part before its first section (none), or the
+ * section with that anchor, its headings a level up so it reads as a page
+ * of its own (its ## the page's title, its ### its sections). Null when
+ * the doc has no such section.
+ */
+export function pageOf(markdown: string, section?: string): string | null {
+  const lines = linesOf(markdown);
+  const starts = lines.flatMap((l, i) => (!l.code && l.line.startsWith("## ") ? [i] : []));
+  if (!section) return lines.slice(0, starts[0] ?? lines.length).map((l) => l.line).join("\n");
+  const index = sectionsOf(markdown).findIndex((s) => s.anchor === section);
+  const start = starts[index];
+  if (index < 0 || start === undefined) return null;
+  return lines
+    .slice(start, starts[index + 1] ?? lines.length)
+    .map((l) => (l.code ? l.line : l.line.replace(/^#(#{1,5}) /, "$1 ")))
+    .join("\n");
+}
+
+/** The section of a long doc that a heading's anchor is in: undefined when it's before the first, or isn't there. */
+export function sectionHolding(markdown: string, anchor: string): string | undefined {
+  const sections = sectionsOf(markdown);
+  let current: string | undefined;
+  let h2 = -1;
+  for (const { line, code } of linesOf(markdown)) {
+    const heading = code ? null : /^(#{1,6}) (.+?)\s*#*\s*$/.exec(line);
+    if (!heading?.[1] || !heading[2]) continue;
+    if (heading[1] === "##") {
+      h2 += 1;
+      current = sections[h2]?.anchor;
+      if (current === anchor) return current;
+    } else if (current && slug(plain(heading[2])) === anchor) {
+      return current;
+    }
+  }
+  return undefined;
 }
 
 /**

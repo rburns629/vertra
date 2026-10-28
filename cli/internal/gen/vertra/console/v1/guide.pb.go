@@ -228,7 +228,10 @@ type Guide struct {
 	// "operating" (installing and running it) or "history" (design history:
 	// decisions, with proposals and rejected options; it answers why, never
 	// what is).
-	Kind          string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	Kind string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Its sections (its ## headings), in order: the Docs page shows a long
+	// doc a section to a page.
+	Sections      []*GuideSection `protobuf:"bytes,5,rep,name=sections,proto3" json:"sections,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -291,6 +294,67 @@ func (x *Guide) GetKind() string {
 	return ""
 }
 
+func (x *Guide) GetSections() []*GuideSection {
+	if x != nil {
+		return x.Sections
+	}
+	return nil
+}
+
+type GuideSection struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Title string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	// The heading's anchor, as the page makes it (GitHub's): a heading used
+	// again gets -1, -2…
+	Anchor        string `protobuf:"bytes,2,opt,name=anchor,proto3" json:"anchor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GuideSection) Reset() {
+	*x = GuideSection{}
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GuideSection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GuideSection) ProtoMessage() {}
+
+func (x *GuideSection) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GuideSection.ProtoReflect.Descriptor instead.
+func (*GuideSection) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GuideSection) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *GuideSection) GetAnchor() string {
+	if x != nil {
+		return x.Anchor
+	}
+	return ""
+}
+
 type ListGuidesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -299,7 +363,7 @@ type ListGuidesRequest struct {
 
 func (x *ListGuidesRequest) Reset() {
 	*x = ListGuidesRequest{}
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -311,7 +375,7 @@ func (x *ListGuidesRequest) String() string {
 func (*ListGuidesRequest) ProtoMessage() {}
 
 func (x *ListGuidesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -324,7 +388,7 @@ func (x *ListGuidesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGuidesRequest.ProtoReflect.Descriptor instead.
 func (*ListGuidesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{5}
 }
 
 type ListGuidesResponse struct {
@@ -336,7 +400,7 @@ type ListGuidesResponse struct {
 
 func (x *ListGuidesResponse) Reset() {
 	*x = ListGuidesResponse{}
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -348,7 +412,7 @@ func (x *ListGuidesResponse) String() string {
 func (*ListGuidesResponse) ProtoMessage() {}
 
 func (x *ListGuidesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -361,7 +425,7 @@ func (x *ListGuidesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGuidesResponse.ProtoReflect.Descriptor instead.
 func (*ListGuidesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListGuidesResponse) GetGuides() []*Guide {
@@ -380,7 +444,7 @@ type GetGuideRequest struct {
 
 func (x *GetGuideRequest) Reset() {
 	*x = GetGuideRequest{}
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -392,7 +456,7 @@ func (x *GetGuideRequest) String() string {
 func (*GetGuideRequest) ProtoMessage() {}
 
 func (x *GetGuideRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -405,7 +469,7 @@ func (x *GetGuideRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGuideRequest.ProtoReflect.Descriptor instead.
 func (*GetGuideRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetGuideRequest) GetId() string {
@@ -424,7 +488,7 @@ type GetGuideResponse struct {
 
 func (x *GetGuideResponse) Reset() {
 	*x = GetGuideResponse{}
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -436,7 +500,7 @@ func (x *GetGuideResponse) String() string {
 func (*GetGuideResponse) ProtoMessage() {}
 
 func (x *GetGuideResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_guide_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -449,12 +513,101 @@ func (x *GetGuideResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGuideResponse.ProtoReflect.Descriptor instead.
 func (*GetGuideResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetGuideResponse) GetMarkdown() string {
 	if x != nil {
 		return x.Markdown
+	}
+	return ""
+}
+
+type GetGuideImageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGuideImageRequest) Reset() {
+	*x = GetGuideImageRequest{}
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGuideImageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGuideImageRequest) ProtoMessage() {}
+
+func (x *GetGuideImageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGuideImageRequest.ProtoReflect.Descriptor instead.
+func (*GetGuideImageRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetGuideImageRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+type GetGuideImageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The SVG's text.
+	Svg           string `protobuf:"bytes,1,opt,name=svg,proto3" json:"svg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGuideImageResponse) Reset() {
+	*x = GetGuideImageResponse{}
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGuideImageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGuideImageResponse) ProtoMessage() {}
+
+func (x *GetGuideImageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_guide_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGuideImageResponse.ProtoReflect.Descriptor instead.
+func (*GetGuideImageResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_guide_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetGuideImageResponse) GetSvg() string {
+	if x != nil {
+		return x.Svg
 	}
 	return ""
 }
@@ -476,23 +629,32 @@ const file_vertra_console_v1_guide_proto_rawDesc = "" +
 	"\aheading\x18\x03 \x01(\tR\aheading\x12\x18\n" +
 	"\aexcerpt\x18\x04 \x01(\tR\aexcerpt\x12\x14\n" +
 	"\x05score\x18\x05 \x01(\x01R\x05score\x12\x12\n" +
-	"\x04kind\x18\x06 \x01(\tR\x04kind\"[\n" +
+	"\x04kind\x18\x06 \x01(\tR\x04kind\"\x98\x01\n" +
 	"\x05Guide\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
 	"\asection\x18\x03 \x01(\tR\asection\x12\x12\n" +
-	"\x04kind\x18\x04 \x01(\tR\x04kind\"\x13\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\x12;\n" +
+	"\bsections\x18\x05 \x03(\v2\x1f.vertra.console.v1.GuideSectionR\bsections\"<\n" +
+	"\fGuideSection\x12\x14\n" +
+	"\x05title\x18\x01 \x01(\tR\x05title\x12\x16\n" +
+	"\x06anchor\x18\x02 \x01(\tR\x06anchor\"\x13\n" +
 	"\x11ListGuidesRequest\"F\n" +
 	"\x12ListGuidesResponse\x120\n" +
 	"\x06guides\x18\x01 \x03(\v2\x18.vertra.console.v1.GuideR\x06guides\"!\n" +
 	"\x0fGetGuideRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\".\n" +
 	"\x10GetGuideResponse\x12\x1a\n" +
-	"\bmarkdown\x18\x01 \x01(\tR\bmarkdown2\xae\x02\n" +
+	"\bmarkdown\x18\x01 \x01(\tR\bmarkdown\"*\n" +
+	"\x14GetGuideImageRequest\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\")\n" +
+	"\x15GetGuideImageResponse\x12\x10\n" +
+	"\x03svg\x18\x01 \x01(\tR\x03svg2\x97\x03\n" +
 	"\fGuideService\x12^\n" +
 	"\n" +
 	"ListGuides\x12$.vertra.console.v1.ListGuidesRequest\x1a%.vertra.console.v1.ListGuidesResponse\"\x03\x90\x02\x01\x12X\n" +
-	"\bGetGuide\x12\".vertra.console.v1.GetGuideRequest\x1a#.vertra.console.v1.GetGuideResponse\"\x03\x90\x02\x01\x12d\n" +
+	"\bGetGuide\x12\".vertra.console.v1.GetGuideRequest\x1a#.vertra.console.v1.GetGuideResponse\"\x03\x90\x02\x01\x12g\n" +
+	"\rGetGuideImage\x12'.vertra.console.v1.GetGuideImageRequest\x1a(.vertra.console.v1.GetGuideImageResponse\"\x03\x90\x02\x01\x12d\n" +
 	"\fSearchGuides\x12&.vertra.console.v1.SearchGuidesRequest\x1a'.vertra.console.v1.SearchGuidesResponse\"\x03\x90\x02\x01B\xd3\x01\n" +
 	"\x15com.vertra.console.v1B\n" +
 	"GuideProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
@@ -509,31 +671,37 @@ func file_vertra_console_v1_guide_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_guide_proto_rawDescData
 }
 
-var file_vertra_console_v1_guide_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_vertra_console_v1_guide_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_vertra_console_v1_guide_proto_goTypes = []any{
-	(*SearchGuidesRequest)(nil),  // 0: vertra.console.v1.SearchGuidesRequest
-	(*SearchGuidesResponse)(nil), // 1: vertra.console.v1.SearchGuidesResponse
-	(*GuideHit)(nil),             // 2: vertra.console.v1.GuideHit
-	(*Guide)(nil),                // 3: vertra.console.v1.Guide
-	(*ListGuidesRequest)(nil),    // 4: vertra.console.v1.ListGuidesRequest
-	(*ListGuidesResponse)(nil),   // 5: vertra.console.v1.ListGuidesResponse
-	(*GetGuideRequest)(nil),      // 6: vertra.console.v1.GetGuideRequest
-	(*GetGuideResponse)(nil),     // 7: vertra.console.v1.GetGuideResponse
+	(*SearchGuidesRequest)(nil),   // 0: vertra.console.v1.SearchGuidesRequest
+	(*SearchGuidesResponse)(nil),  // 1: vertra.console.v1.SearchGuidesResponse
+	(*GuideHit)(nil),              // 2: vertra.console.v1.GuideHit
+	(*Guide)(nil),                 // 3: vertra.console.v1.Guide
+	(*GuideSection)(nil),          // 4: vertra.console.v1.GuideSection
+	(*ListGuidesRequest)(nil),     // 5: vertra.console.v1.ListGuidesRequest
+	(*ListGuidesResponse)(nil),    // 6: vertra.console.v1.ListGuidesResponse
+	(*GetGuideRequest)(nil),       // 7: vertra.console.v1.GetGuideRequest
+	(*GetGuideResponse)(nil),      // 8: vertra.console.v1.GetGuideResponse
+	(*GetGuideImageRequest)(nil),  // 9: vertra.console.v1.GetGuideImageRequest
+	(*GetGuideImageResponse)(nil), // 10: vertra.console.v1.GetGuideImageResponse
 }
 var file_vertra_console_v1_guide_proto_depIdxs = []int32{
-	2, // 0: vertra.console.v1.SearchGuidesResponse.hits:type_name -> vertra.console.v1.GuideHit
-	3, // 1: vertra.console.v1.ListGuidesResponse.guides:type_name -> vertra.console.v1.Guide
-	4, // 2: vertra.console.v1.GuideService.ListGuides:input_type -> vertra.console.v1.ListGuidesRequest
-	6, // 3: vertra.console.v1.GuideService.GetGuide:input_type -> vertra.console.v1.GetGuideRequest
-	0, // 4: vertra.console.v1.GuideService.SearchGuides:input_type -> vertra.console.v1.SearchGuidesRequest
-	5, // 5: vertra.console.v1.GuideService.ListGuides:output_type -> vertra.console.v1.ListGuidesResponse
-	7, // 6: vertra.console.v1.GuideService.GetGuide:output_type -> vertra.console.v1.GetGuideResponse
-	1, // 7: vertra.console.v1.GuideService.SearchGuides:output_type -> vertra.console.v1.SearchGuidesResponse
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2,  // 0: vertra.console.v1.SearchGuidesResponse.hits:type_name -> vertra.console.v1.GuideHit
+	4,  // 1: vertra.console.v1.Guide.sections:type_name -> vertra.console.v1.GuideSection
+	3,  // 2: vertra.console.v1.ListGuidesResponse.guides:type_name -> vertra.console.v1.Guide
+	5,  // 3: vertra.console.v1.GuideService.ListGuides:input_type -> vertra.console.v1.ListGuidesRequest
+	7,  // 4: vertra.console.v1.GuideService.GetGuide:input_type -> vertra.console.v1.GetGuideRequest
+	9,  // 5: vertra.console.v1.GuideService.GetGuideImage:input_type -> vertra.console.v1.GetGuideImageRequest
+	0,  // 6: vertra.console.v1.GuideService.SearchGuides:input_type -> vertra.console.v1.SearchGuidesRequest
+	6,  // 7: vertra.console.v1.GuideService.ListGuides:output_type -> vertra.console.v1.ListGuidesResponse
+	8,  // 8: vertra.console.v1.GuideService.GetGuide:output_type -> vertra.console.v1.GetGuideResponse
+	10, // 9: vertra.console.v1.GuideService.GetGuideImage:output_type -> vertra.console.v1.GetGuideImageResponse
+	1,  // 10: vertra.console.v1.GuideService.SearchGuides:output_type -> vertra.console.v1.SearchGuidesResponse
+	7,  // [7:11] is the sub-list for method output_type
+	3,  // [3:7] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_guide_proto_init() }
@@ -547,7 +715,7 @@ func file_vertra_console_v1_guide_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_guide_proto_rawDesc), len(file_vertra_console_v1_guide_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

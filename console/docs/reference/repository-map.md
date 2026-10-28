@@ -172,7 +172,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `productPolicy.ts` | Writes the registered products into the cluster's identity policy, after every product change and at startup. |
 | `registry.ts` | Asks a container registry whether an image still exists, before a run, pins tags to digests, and fetches the catalog's release (digest-checked) and lists its tags, for its newest version. |
 | `apiError.ts` | `ApiError`: a refusal (HTTP status, stable code, message, Connect code, extra fields) thrown by `core/` and turned into a Connect error (its code, a `Failure` detail with any extra fields) by Connect's interceptor. |
-| `guides.ts` | The guides in `console/docs/`: listing and reading them (`GuideService`). |
+| `guides.ts` | The guides in `console/docs/` and the reference: listing them with their sections, reading them, and the figures they draw (`GuideService`). |
 | **`core/`** | **What the API does**, one file per area, called by the Connect services: each function takes the caller, checks access, does the work, and throws `ApiError` to refuse. |
 | `core/executions.ts` | Submitting (team, identity, secret, image and scan checks, pinning, ServiceAccounts), listing, reading, events, logs, cancel, retry, rerun. |
 | `core/teams.ts` | Teams and members, their namespaces, retiring, restoring and purging, SecretStore files, running task Pods. |
@@ -275,7 +275,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/RunFormPage.tsx`, `src/pages/catalog/FieldInput.tsx`, `src/schemaForm.ts` | Running one (`/catalog/run?template=` or `?action=`): a form from its schema (text, numbers, yes/no, choices, lists, name/value pairs, JSON; checked on each field before sending; ordered and grouped by its form hints), which of your teams it's for, and what will run. |
 | `src/pages/AdminPage.tsx`, `src/pages/admin/` | Admin (admins only), in sections down the side (`/admin/<section>`; the old `?tab=` addresses lead to theirs). Install: Overview (getting a new install ready; this install's version and which parts are on, each linked to its section). Access: People (how people sign in, adding them, everyone with how they sign in and when they last did, admin rights, password resets, deletes), Sign-in & groups (single sign-on's provider and groups mapped to teams, `SsoCard.tsx`), Automation tokens. Integrations: Chat agent (its model, provider, key and limits in place of the install's, tried before saved, `ChatSettingsCard.tsx`; and how people rated its answers, `ChatTab.tsx`), Catalog & images (the catalog, image sources), API gateway (its settings, closing it), Admins' alerts (the team whose chat webhook gets them). Security: Image scans (every digest's verdict and findings, rescanning one, accepting a failure with a reason), Policies & audit (the cluster's policies, the audit log's copy). |
 | `src/pages/AccountPage.tsx`, `ChoosePasswordPage.tsx`, `src/components/PasswordChangeForm.tsx` | Preferences (`/account`): who you are, how you sign in (a password to change, or single sign-on), your teams; and the screen a password someone else set holds you on until you choose your own. |
-| `src/pages/DocsPage.tsx`, `ApiReference.tsx`, `src/pages/docs/` | The docs: the guides from `console/docs/`, the platform's own docs copied into `console/docs/reference/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos), as one set. A home with where to start, the contents down the side in categories that open and close, each doc with its place, its sections beside it and the next one to read at its foot. `docs/contents.ts` places each doc in a category, in reading order (its test fails while a doc the console serves isn't placed), and turns the repository's links between docs into links here. |
+| `src/pages/DocsPage.tsx`, `ApiReference.tsx`, `src/pages/docs/` | The docs: the guides from `console/docs/`, the platform's own docs copied into `console/docs/reference/`, and the API reference (from `src/gen/api-reference.json`, which `make proto` writes from the protos), as one set. A home with where to start; the contents down the side nested three deep, in categories, docs and groups that open and close; a long doc a section to a page (`/docs/<doc>/<section>`, its headings a level up), and a link to any heading in it opening the page it's on; each page with its trail, its sections beside it and the next one to read at its foot. `docs/contents.ts` places each doc and each section of a long one, in reading order (its test fails while one the console serves isn't placed), and turns the repository's links between docs into links here; `docs/Figure.tsx` shows the figures the docs draw, and opens them at full size.
 | `src/pages/LoginPage.tsx`, `RegisterPage.tsx` | Sign-in and registration. |
 | `public/favicon.svg` | The browser tab icon. |
 | `vite.config.ts`, `tsconfig*.json` | Build settings. |
@@ -294,7 +294,7 @@ Shown on the console's Docs page, in file order. They ship inside the console im
 | `06-database-schemas.md` | Every table in both databases. Tests in both projects keep it in step with the code. |
 | `07-how-data-moves.md` | One real value followed from one task to the next. |
 | `08-under-the-hood.md` | Every unusual use of Kubernetes, Helm and Postgres, and why. |
-| `reference/` | The platform's own docs, copied from the repository (`SOURCES` lists them; `make console-docs`, `.github/scripts/console-docs.sh`): the Docs page's reference, and what the chat agent answers from. `test/docs.test.ts` fails while a copy differs. |
+| `reference/` | The platform's own docs, copied from the repository (`SOURCES` lists them; `make console-docs`, `.github/scripts/console-docs.sh`): the Docs page's reference, and what the chat agent answers from; `reference/architecture/` holds the figures they draw (`docs/architecture/*.svg`). `test/docs.test.ts` fails while a copy differs. |
 
 ### `console/test/`
 
@@ -451,7 +451,7 @@ The complete settings for each cluster: `make kind-deploy*` and `make gke-deploy
 | `security-model.md` | For security reviewers: where secrets live, vault sync, who can read a secret, what the cluster enforces, what isn't enforced yet, and what's out of scope. |
 | `assessment.md` | The architecture assessment of 2026-10-19: what exists, findings, comparisons with Temporal and Inngest, identity across clouds, the agreed direction and its roadmap. |
 | `repository-map.md` | This page. |
-| `architecture/` | draw.io diagrams (system, UML classes for both projects, a submit-to-finished sequence, state machines), their SVG exports, and `generate.py`, which writes them from the code. Rerun it after changing code. |
+| `architecture/` | draw.io diagrams (system, UML classes for both projects, a submit-to-finished sequence, state machines, and the pieces at a glance that `architecture.md` shows), their SVG exports, and `generate.py`, which writes them from the code. Rerun it after changing code, then `make console-docs`. |
 
 ### `docs/setup.md`
 

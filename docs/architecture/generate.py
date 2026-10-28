@@ -4,7 +4,7 @@
 
 Run from anywhere: python3 docs/architecture/generate.py
 
-Five pages:
+Six pages:
   1. System: what runs where, on GKE and around it, and how a request flows.
   2. Kernel types: every file, type and function in the kernel's Go
      (kernel/cmd, kernel/internal), read with regular expressions, grouped
@@ -12,10 +12,12 @@ Five pages:
   3. Console classes: the same for console/src and console/frontend/src.
   4. Submit to finished: a sequence diagram of one execution, function by function.
   5. States: the task and execution state machines.
+  6. The pieces: the parts at a glance, for docs/architecture.md, as wide
+     as the console's Docs page shows a figure.
 
 Pages 2 and 3 come from the code, so rerun this after changing it rather
 than editing them by hand in draw.io (a rerun overwrites the file). Pages
-1, 4 and 5 are laid out below. Labels are plain text, not HTML, so the
+1, 4, 5 and 6 are laid out below. Labels are plain text, not HTML, so the
 SVGs hold real text instead of a PNG fallback for every label. The SVGs
 need draw.io's desktop app, whose CLI exports them; without it only the
 .drawio is written.
@@ -643,6 +645,47 @@ def system_page() -> Page:
     return p
 
 
+# ------------------------------------------------------ page 6: the pieces
+
+
+def pieces_page() -> Page:
+    """The pieces at a glance, for docs/architecture.md: as wide as the docs' reading column, so it's shown at full size."""
+    p = Page("6 · The pieces")
+    p.vertex(0, 0, 300, 150, "Catalog repository · one per organization", frame(GREY, dashed=False))
+    p.titled(15, 32, 270, 48, "teams/<team>/products/<product>", "product.yaml · Dockerfile · actions · tests", GREY)
+    ci = p.titled(15, 90, 270, 48, "CI (./vertra)", "build → test → scan → sign → push, then release", GREY)
+    registry = p.vertex(345, 30, 170, 95, "Registry\nproduct images\nsigned catalog-release", database(BLUE))
+    people = p.titled(570, 40, 170, 70, "People and bots", "the console, its API,\nteams' pipelines", WHITE)
+
+    p.vertex(0, 185, 760, 395, "Kubernetes cluster", frame(BLUE, dashed=False))
+    p.vertex(20, 220, 720, 215, "vertra-system · the platform", frame(ORANGE))
+    scheduler = p.titled(40, 255, 190, 72, "kernel-scheduler", "claims ready steps,\nstarts and watches them", ORANGE)
+    kernel_api = p.titled(285, 255, 190, 72, "kernel-api", "validates and stores DAGs;\nanswers only the console", ORANGE)
+    console = p.titled(530, 255, 190, 72, "console", "UI + API: signs people in,\nauthorizes every request", ORANGE)
+    kernel_db = p.vertex(178, 350, 155, 72, "kernel\nPostgres", database(YELLOW))
+    console_db = p.vertex(548, 350, 155, 72, "console\nPostgres", database(YELLOW))
+
+    p.vertex(20, 455, 420, 110, "Team namespaces · labelled vertra/team=true", frame(GREEN))
+    job = p.titled(40, 490, 380, 62, "One Job per step attempt", "its product's image · its inputs as a\nConfigMap · the secrets it lists", GREEN)
+    policies = p.titled(530, 472, 210, 90, "Admission policies", "where steps may run, which\nimages (pinned, scanned,\nsigned), identity and secrets", RED)
+
+    p.edge(ci, registry, "push", EDGE + ends(1, 0.5, 0, 0.6))
+    p.edge(people, console, "sign in, order, run", EDGE + ends(0.5, 1, 0.65, 0), label_offset=(0, -38))
+    p.edge(registry, console, "each console pulls the release", EDGE + ends(0.5, 1, 0.3, 0), points=[(430, 165), (587, 165)], label_offset=(-75, 0))
+    p.edge(console, kernel_api, "DAGs", EDGE + ends(0, 0.5, 1, 0.5))
+    p.edge(console, console_db, "", EDGE + ends(0.5, 1, 0.5, 0))
+    p.edge(kernel_api, kernel_db, "", EDGE + ends(0.25, 1, 0.75, 0))
+    p.edge(scheduler, kernel_db, "", EDGE + ends(0.75, 1, 0.25, 0) + "startArrow=block;startFill=1;")
+    p.edge(scheduler, job, "creates Jobs", EDGE + ends(0.5, 1, x_of(135, 40, 380), 0))
+    p.edge(policies, job, "check every Job", EDGE + ends(0, 0.6, 1, 0.5) + "dashed=1;")
+    return p
+
+
+def x_of(x: float, left: float, width: float) -> float:
+    """Where x is across a box, 0 to 1: for an edge's end."""
+    return (x - left) / width
+
+
 # ---------------------------------------------------- page 4: sequence
 
 
@@ -898,7 +941,7 @@ def main() -> None:
         console,
         console_imports,
     )
-    pages = [system_page(), kernel_page, console_page, sequence_page(), states_page()]
+    pages = [system_page(), kernel_page, console_page, sequence_page(), states_page(), pieces_page()]
     DRAWIO_FILE.write_text(
         '<mxfile host="Electron" agent="docs/architecture/generate.py">'
         + "".join(page.xml(i) for i, page in enumerate(pages))

@@ -139,6 +139,14 @@ export declare type Guide = Message<"vertra.console.v1.Guide"> & {
    * @generated from field: string kind = 4;
    */
   kind: string;
+
+  /**
+   * Its sections (its ## headings), in order: the Docs page shows a long
+   * doc a section to a page.
+   *
+   * @generated from field: repeated vertra.console.v1.GuideSection sections = 5;
+   */
+  sections: GuideSection[];
 };
 
 /**
@@ -146,6 +154,30 @@ export declare type Guide = Message<"vertra.console.v1.Guide"> & {
  * Use `create(GuideSchema)` to create a new message.
  */
 export declare const GuideSchema: GenMessage<Guide>;
+
+/**
+ * @generated from message vertra.console.v1.GuideSection
+ */
+export declare type GuideSection = Message<"vertra.console.v1.GuideSection"> & {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title: string;
+
+  /**
+   * The heading's anchor, as the page makes it (GitHub's): a heading used
+   * again gets -1, -2…
+   *
+   * @generated from field: string anchor = 2;
+   */
+  anchor: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GuideSection.
+ * Use `create(GuideSectionSchema)` to create a new message.
+ */
+export declare const GuideSectionSchema: GenMessage<GuideSection>;
 
 /**
  * @generated from message vertra.console.v1.ListGuidesRequest
@@ -208,6 +240,40 @@ export declare type GetGuideResponse = Message<"vertra.console.v1.GetGuideRespon
 export declare const GetGuideResponseSchema: GenMessage<GetGuideResponse>;
 
 /**
+ * @generated from message vertra.console.v1.GetGuideImageRequest
+ */
+export declare type GetGuideImageRequest = Message<"vertra.console.v1.GetGuideImageRequest"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGuideImageRequest.
+ * Use `create(GetGuideImageRequestSchema)` to create a new message.
+ */
+export declare const GetGuideImageRequestSchema: GenMessage<GetGuideImageRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetGuideImageResponse
+ */
+export declare type GetGuideImageResponse = Message<"vertra.console.v1.GetGuideImageResponse"> & {
+  /**
+   * The SVG's text.
+   *
+   * @generated from field: string svg = 1;
+   */
+  svg: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetGuideImageResponse.
+ * Use `create(GetGuideImageResponseSchema)` to create a new message.
+ */
+export declare const GetGuideImageResponseSchema: GenMessage<GetGuideImageResponse>;
+
+/**
  * The guides the console shows (console/docs/). Anyone signed in.
  *
  * @generated from service vertra.console.v1.GuideService
@@ -234,6 +300,17 @@ export declare const GuideService: GenService<{
     methodKind: "unary";
     input: typeof GetGuideRequestSchema;
     output: typeof GetGuideResponseSchema;
+  },
+  /**
+   * A figure a reference doc draws (docs/architecture/*.svg, copied with
+   * the docs), by its path from the docs: architecture/6-the-pieces.svg.
+   *
+   * @generated from rpc vertra.console.v1.GuideService.GetGuideImage
+   */
+  getGuideImage: {
+    methodKind: "unary";
+    input: typeof GetGuideImageRequestSchema;
+    output: typeof GetGuideImageResponseSchema;
   },
   /**
    * The sections of the guides and reference docs that best match a
