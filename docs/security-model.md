@@ -186,6 +186,14 @@ provides a target type into another team's (since 2026-10-28; before, a
 step's output went unchecked). The identity's cloud permissions, scoped to
 the same folders, hold if the console's check is ever bypassed.
 
+The chat agent (decision 24, `console/src/chat/`) acts as the person
+asking: each tool calls the console's own code with their identity, so it
+sees what they may, and its only effect is a proposed cart, which they open
+and place themselves. Ordering bots can't use it. Its answers' citations
+are kept only when they name a section it retrieved, and links are the
+console's, not the model's. What's asked, and what its tools return, goes to
+the install's chat model (`chat.endpoint`); nothing is kept by the console.
+
 A member checks out a cart as one run for their team (`OrderService/
 PlaceOrder`, `console/src/core/orders.ts`): each step is an action shared
 with them, run as it would be alone (its product's image, identity and

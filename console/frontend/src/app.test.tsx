@@ -408,6 +408,45 @@ describe("the docs", () => {
   });
 });
 
+describe("the chat panel", () => {
+  it("isn't there without a model, and answers with its sources and a cart to open", async () => {
+    const asked: Record<string, unknown>[] = [];
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "ChatService/Ask": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return {
+          text: "Back up both databases nightly [S1]. Here's a cart for a bucket.",
+          citations: [
+            { id: "S1", guide: "reference-operations", title: "Operations", heading: "Backups", kind: "operating", link: "/docs/reference-operations#backups" },
+            { id: "S2", guide: "reference-assessment", title: "Assessment", heading: "17. Decisions", kind: "history", link: "/docs/reference-assessment#17-decisions" },
+          ],
+          cart: { team: "azure-apps", actions: ["azure-apps-bucket-create"] },
+          steps: [{ tool: "search_docs", ok: true }, { tool: "propose_cart", ok: true }],
+        };
+      },
+      "TemplateService/ListTemplates": { runnables: [] },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra" }));
+    fireEvent.change(await screen.findByLabelText("Your question"), { target: { value: "How do I back up?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect((await screen.findByRole("link", { name: "[S1] Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    expect(screen.getByText(/design history: why, not how it works now/)).toBeTruthy();
+    expect(screen.getByText(/searched the docs, filled a cart/)).toBeTruthy();
+    expect(asked).toMatchObject([{ team: "azure-apps", messages: [{ role: "user", content: "How do I back up?" }] }]);
+    fireEvent.click(screen.getByRole("button", { name: "Open in cart" }));
+    expect(await screen.findByRole("heading", { name: "Cart" })).toBeTruthy();
+    const { cart } = await import("./cart");
+    cart.clear();
+  });
+
+  it("isn't offered when the install has no model", async () => {
+    await renderAt("/", MEMBER, { "ChatService/GetChatSettings": { enabled: false } });
+    await screen.findByRole("navigation", { name: /main/i }).catch(() => undefined);
+    expect(screen.queryByRole("button", { name: "Ask Vertra" })).toBeNull();
+  });
+});
+
 describe("the cart", () => {
   it("plans the cart for your team, offers what's there, and places it with what you fill in", async () => {
     const { cart } = await import("./cart");

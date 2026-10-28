@@ -1011,7 +1011,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      covered (a create that times out but happened, Postgres or the API
      server away, cancelling as a step finishes); repeated runs compared;
      a manual or nightly CI job. And `perf/`'s own tests in CI.
-- [ ] **A chat agent, then an MCP server (decision 24, proposed
+- [ ] **A chat agent, then an MCP server (decision 24; the chat agent built
+  2026-10-28: `console/src/chat/`, `ChatService`, the Ask panel. Left: the
+  answers scored per model on the question set, scripted tasks with a real
+  model, thumbs up or down, streaming, Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the

@@ -109,6 +109,11 @@ spec:
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom: {secretKeyRef: {name: {{ . }}, key: secret-access-key}}
             {{- end }}
+            {{- with .Values.chat.apiKeySecret }}
+            # The chat model's key, when its provider needs one.
+            - name: CHAT_API_KEY
+              valueFrom: {secretKeyRef: {name: {{ . }}, key: api-key}}
+            {{- end }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

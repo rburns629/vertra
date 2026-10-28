@@ -551,6 +551,25 @@ rbac:
 # and delete it, so a compromised console could delete any team's. A purged
 # team's namespace stays, labelled retired (nothing new runs there), for an
 # operator to delete with their own identity.
+# -- The chat agent (decision 24): a panel on every page whose agent answers
+# from the docs and the catalog, looks at what the person's teams have, and
+# fills their cart (they place the order). Off unless `model` is set.
+# `provider`: openai-compatible (LM Studio, Ollama, Gemini on Vertex's
+# compatible endpoint). `endpoint`: its base URL, http(s)://.../v1. A key,
+# if it needs one: a Secret's name, key `api-key`, never the key itself.
+# What it's sent reaches the model's provider: on a cloud, choose one in
+# the install's own cloud.
+chat:
+  model: ""
+  provider: openai-compatible
+  endpoint: ""
+  apiKeySecret: ""
+  # Model and tool calls in one answer, at most; how long one model call
+  # may take; how long an answer may be.
+  maxSteps: 8
+  timeoutSeconds: 180
+  maxTokens: 1500
+
 teamNamespaces:
   manage: true
   purge: false

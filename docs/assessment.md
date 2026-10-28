@@ -890,6 +890,10 @@ in VS Code, for one) can do the same. Proposed:
      called in order. Thumbs up or down on each answer, the misses turned
      into cases or doc fixes. A small local model proves the agent's logic,
      not its answers' quality: a production install uses a capable one.
+   Built 2026-10-28: the agent (`console/src/chat/`: one model interface
+   and the openai-compatible adapter, the tools, the loop with its step
+   cap and citation check), `ChatService`, and the Ask panel on every
+   page; tested with a scripted model.
 5. *Later, an MCP server* at `/mcp` (Streamable HTTP), the same tools
    for outside agents: a team's bot first (signing in keylessly with its
    cloud identity's ID token at `AuthService/ExchangeToken`), then people

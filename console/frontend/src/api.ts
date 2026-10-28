@@ -41,6 +41,7 @@ import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js"
 import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
 import { DraftService, type Draft as DraftMessage } from "./gen/vertra/console/v1/draft_pb.js";
 import { OrderService } from "./gen/vertra/console/v1/order_pb.js";
+import { ChatService } from "./gen/vertra/console/v1/chat_pb.js";
 import type { BuiltStep } from "./compose";
 import { SsoService, type SsoSettings as SsoSettingsMessage } from "./gen/vertra/console/v1/sso_pb.js";
 
@@ -112,6 +113,7 @@ const session: Interceptor = (next) => async (req) => {
 // collide with a same-named React Router page on a hard refresh.
 const transport = createConnectTransport({ baseUrl: "/api", interceptors: [session] });
 const auth = createClient(AuthService, transport);
+const chatApi = createClient(ChatService, transport);
 const apisApi = createClient(ApiService, transport);
 const observe = createClient(ObserveService, transport);
 const admin = createClient(AdminService, transport);
@@ -2501,4 +2503,40 @@ export async function placeOrder(order: {
     }),
   );
   return response.executionId;
+}
+
+/** Whether the chat agent is on here, and its model (ChatService). */
+export async function getChatSettings(): Promise<{ enabled: boolean; model: string }> {
+  const r = await call(() => chatApi.getChatSettings({}));
+  return { enabled: r.enabled, model: r.model };
+}
+
+/** A source an answer cites: a doc's section, linked by the console. */
+export interface ChatCitation {
+  id: string;
+  title: string;
+  heading: string;
+  kind: string;
+  link: string;
+}
+
+export interface ChatAnswer {
+  text: string;
+  citations: ChatCitation[];
+  /** It searched the docs and cites nothing it found. */
+  uncited: boolean;
+  cart: { team: string; actions: string[] } | null;
+  steps: { tool: string; ok: boolean }[];
+}
+
+/** The chat agent's answer to the conversation's last message. */
+export async function askChat(team: string | null, messages: { role: "user" | "assistant"; content: string }[]): Promise<ChatAnswer> {
+  const r = await call(() => chatApi.ask({ team: team ?? "", messages }));
+  return {
+    text: r.text,
+    citations: r.citations.map((c) => ({ id: c.id, title: c.title, heading: c.heading, kind: c.kind, link: c.link })),
+    uncited: r.uncited,
+    cart: r.cart ? { team: r.cart.team, actions: r.cart.actions } : null,
+    steps: r.steps.map((s) => ({ tool: s.tool, ok: s.ok })),
+  };
 }

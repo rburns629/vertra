@@ -74,6 +74,10 @@ export const cart = {
   setTeam(team: string): void {
     write({ ...current, team });
   },
+  /** What a chat answer proposed, in place of what's there. */
+  replace(team: string, actions: string[]): void {
+    write({ team, actions: actions.slice(0, 50) });
+  },
   clear(): void {
     write({ team: current.team, actions: [] });
   },

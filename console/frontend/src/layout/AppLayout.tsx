@@ -33,6 +33,7 @@ import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { PageErrorBoundary } from "../components/ErrorPage";
 import { useEnvironment } from "../environment";
+import { ChatLauncher } from "./ChatLauncher";
 import { NotificationBell } from "./NotificationBell";
 
 const DRAWER_WIDTH = 248;
@@ -264,6 +265,7 @@ export function AppLayout() {
           </Suspense>
         </Box>
       </Box>
+      <ChatLauncher />
     </Box>
   );
 }

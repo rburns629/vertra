@@ -67,6 +67,26 @@ function positiveInt(name: string, fallback: number): number {
   return n;
 }
 
+function loadChat() {
+  const model = process.env["CHAT_MODEL"] ?? "";
+  const endpoint = (process.env["CHAT_ENDPOINT"] ?? "").replace(/\/+$/, "");
+  const provider = process.env["CHAT_PROVIDER"] || "openai-compatible";
+  if (!model) return null;
+  if (provider !== "openai-compatible") throw new Error(`CHAT_PROVIDER "${provider}": this console speaks openai-compatible`);
+  if (!/^https?:\/\//.test(endpoint)) throw new Error(`CHAT_ENDPOINT "${endpoint}": the model's base URL, http(s)://.../v1`);
+  return {
+    provider,
+    endpoint,
+    model,
+    apiKey: process.env["CHAT_API_KEY"] ?? "",
+    // Model calls and tool calls in one answer, at most.
+    maxSteps: positiveInt("CHAT_MAX_STEPS", 8),
+    // How long one model call may take: a local model is slow.
+    timeoutSeconds: positiveInt("CHAT_TIMEOUT_SECONDS", 180),
+    maxTokens: positiveInt("CHAT_MAX_TOKENS", 1500),
+  };
+}
+
 function list(value: string | undefined): string[] {
   return (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
@@ -254,6 +274,12 @@ export const config = {
   // Callbacks for systems (decision 23, callbacks.ts): the hosts an
   // ordering bot's callback or a team's outcome webhook may be under, as
   // webhookHosts. Empty: none.
+  // The chat agent (decision 24, src/chat/): off unless a model is set.
+  // provider: openai-compatible (LM Studio, Ollama, Gemini on Vertex's
+  // compatible endpoint, any /v1/chat/completions); endpoint its base URL
+  // (.../v1); model its name there. A key, when one's needed, comes from a
+  // Secret (CHAT_API_KEY), never the settings.
+  chat: loadChat(),
   orders: {
     callbackHosts: list(process.env["ORDER_CALLBACK_HOSTS"]),
     // How many orders each ordering bot may place a minute (core/orderRate.ts).

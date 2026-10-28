@@ -602,6 +602,21 @@ an API product whose backend runs in the team's own namespace
 namespace the console doesn't manage needs the same policies from whoever
 made it. Outbound traffic isn't restricted.
 
+## The chat agent
+
+The console's **Ask** panel (decision 24) answers from the docs, citing
+them, looks at what a person's teams have, and fills a cart for them to
+place. It's off until the console chart's `chat.model` is set, with
+`chat.endpoint` the model's OpenAI-compatible base URL (`.../v1`): LM
+Studio or Ollama on a laptop (kind's values point at
+`host.docker.internal:1234`), Gemini on Vertex's compatible endpoint, any
+other server of `/chat/completions`. A key, when one's needed, is a Secret
+named in `chat.apiKeySecret` (key `api-key`). What a person asks, and what
+the agent's tools find for them, goes to the model: on a cloud, use one in
+the install's own. `chat.maxSteps` (8), `timeoutSeconds` (180) and
+`maxTokens` (1500) bound one answer. The console logs each answer's steps
+(`chat_answered`: tools used, sources, citations), not what was said.
+
 ## Throughput
 
 How many steps a second an install starts and finishes is, in practice,

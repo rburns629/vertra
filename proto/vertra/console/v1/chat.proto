@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+package vertra.console.v1;
+
+// The chat agent (decision 24): answers from the docs and the catalog,
+// looks at what the person's teams have, and proposes carts, all as the
+// signed-in person, through the console's own checks. It never orders: a
+// cart it proposes is the person's to open and place.
+service ChatService {
+  // Whether chat is on here, and with which model.
+  rpc GetChatSettings(GetChatSettingsRequest) returns (GetChatSettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // An answer to the conversation's last message. Nothing is kept: send
+  // the conversation each time. CHAT_OFF without a model here;
+  // MODEL_UNAVAILABLE when it doesn't answer.
+  rpc Ask(AskRequest) returns (AskResponse);
+}
+
+message GetChatSettingsRequest {}
+
+message GetChatSettingsResponse {
+  bool enabled = 1;
+  string model = 2;
+}
+
+message ChatTurn {
+  // "user" or "assistant".
+  string role = 1;
+  string content = 2;
+}
+
+message AskRequest {
+  // The team they're working for; empty for none chosen.
+  string team = 1;
+  // Oldest first, the question last; at most 40, each at most 4,000
+  // characters.
+  repeated ChatTurn messages = 2;
+}
+
+message ChatCitation {
+  // As the answer cites it: [S1].
+  string id = 1;
+  string guide = 2;
+  string title = 3;
+  string heading = 4;
+  // The doc's kind: guide, current, operating or history.
+  string kind = 5;
+  // The console's page for it, built by the console, never by the model.
+  string link = 6;
+}
+
+message ProposedCart {
+  string team = 1;
+  repeated string actions = 2;
+}
+
+message ChatStep {
+  string tool = 1;
+  bool ok = 2;
+}
+
+message AskResponse {
+  // Markdown, with citations like [S1] kept only when they name a section
+  // retrieved for this answer.
+  string text = 1;
+  repeated ChatCitation citations = 2;
+  // It searched the docs and cites nothing it found: not from the docs.
+  bool uncited = 3;
+  optional ProposedCart cart = 4;
+  // What it did: each tool, in order, and whether it worked.
+  repeated ChatStep steps = 5;
+  string model = 6;
+}

@@ -132,6 +132,13 @@ data:
   CATALOG_SIGNATURE_KEYLESS_ISSUER: {{ .Values.catalog.signature.keyless.issuer | quote }}
   CATALOG_SIGNATURE_KEYLESS_SUBJECT_REGEXP: {{ .Values.catalog.signature.keyless.subjectRegExp | quote }}
   CATALOG_VERIFIER_IMAGE: {{ include "execution-console.image" .Values.catalog.verifier.image | quote }}
+  # The chat agent (values.yaml's chat): off without a model.
+  CHAT_MODEL: {{ .Values.chat.model | quote }}
+  CHAT_PROVIDER: {{ .Values.chat.provider | quote }}
+  CHAT_ENDPOINT: {{ .Values.chat.endpoint | quote }}
+  CHAT_MAX_STEPS: {{ .Values.chat.maxSteps | quote }}
+  CHAT_TIMEOUT_SECONDS: {{ .Values.chat.timeoutSeconds | quote }}
+  CHAT_MAX_TOKENS: {{ .Values.chat.maxTokens | quote }}
   # Team namespaces (values.yaml's teamNamespaces).
   TEAM_NAMESPACES_MANAGE: {{ .Values.teamNamespaces.manage | quote }}
   TEAM_NAMESPACES_PURGE: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.purge | quote }}

@@ -211,6 +211,31 @@
    ]
   },
   {
+   "name": "ChatService",
+   "fullName": "vertra.console.v1.ChatService",
+   "comment": "The chat agent (decision 24): answers from the docs and the catalog,\nlooks at what the person's teams have, and proposes carts, all as the\nsigned-in person, through the console's own checks. It never orders: a\ncart it proposes is the person's to open and place.",
+   "methods": [
+    {
+     "name": "GetChatSettings",
+     "comment": "Whether chat is on here, and with which model.",
+     "input": "vertra.console.v1.GetChatSettingsRequest",
+     "output": "vertra.console.v1.GetChatSettingsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "Ask",
+     "comment": "An answer to the conversation's last message. Nothing is kept: send\nthe conversation each time. CHAT_OFF without a model here;\nMODEL_UNAVAILABLE when it doesn't answer.",
+     "input": "vertra.console.v1.AskRequest",
+     "output": "vertra.console.v1.AskResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    }
+   ]
+  },
+  {
    "name": "DraftService",
    "fullName": "vertra.console.v1.DraftService",
    "comment": "Compose's drafts: templates being built, kept by the console for the team\neach is for, so its members (and admins) see and change them from any\ndevice. A draft is the page's own state, which the console keeps as it\nis (at most 64 KiB, 100 a team). Each save names the version it changed,\nso two people's edits never silently overwrite each other.",
@@ -2675,6 +2700,211 @@
     {
      "name": "expiresAt",
      "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetChatSettingsRequest": {
+   "name": "GetChatSettingsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetChatSettingsResponse": {
+   "name": "GetChatSettingsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ChatTurn": {
+   "name": "ChatTurn",
+   "comment": "",
+   "fields": [
+    {
+     "name": "role",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"user\" or \"assistant\"."
+    },
+    {
+     "name": "content",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskRequest": {
+   "name": "AskRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team they're working for; empty for none chosen."
+    },
+    {
+     "name": "messages",
+     "type": "ChatTurn",
+     "ref": "vertra.console.v1.ChatTurn",
+     "repeated": true,
+     "optional": false,
+     "comment": "Oldest first, the question last; at most 40, each at most 4,000\ncharacters."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatCitation": {
+   "name": "ChatCitation",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "As the answer cites it: [S1]."
+    },
+    {
+     "name": "guide",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "heading",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The doc's kind: guide, current, operating or history."
+    },
+    {
+     "name": "link",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The console's page for it, built by the console, never by the model."
+    }
+   ]
+  },
+  "vertra.console.v1.ProposedCart": {
+   "name": "ProposedCart",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ChatStep": {
+   "name": "ChatStep",
+   "comment": "",
+   "fields": [
+    {
+     "name": "tool",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "ok",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskResponse": {
+   "name": "AskResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "text",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Markdown, with citations like [S1] kept only when they name a section\nretrieved for this answer."
+    },
+    {
+     "name": "citations",
+     "type": "ChatCitation",
+     "ref": "vertra.console.v1.ChatCitation",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "uncited",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "It searched the docs and cites nothing it found: not from the docs."
+    },
+    {
+     "name": "cart",
+     "type": "ProposedCart",
+     "ref": "vertra.console.v1.ProposedCart",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "ChatStep",
+     "ref": "vertra.console.v1.ChatStep",
+     "repeated": true,
+     "optional": false,
+     "comment": "What it did: each tool, in order, and whether it worked."
+    },
+    {
+     "name": "model",
+     "type": "string",
      "repeated": false,
      "optional": false,
      "comment": ""
