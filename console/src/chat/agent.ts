@@ -26,7 +26,7 @@ import { ensureMayOrder } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import { checkCitations, type Citation } from "./citations.js";
-import { chatModel, ModelUnavailable, type ChatMessage, type ChatModel } from "./model.js";
+import { chatModel, ModelUnavailable, type ChatMessage, type ChatModel, type Usage } from "./model.js";
 import { forModel, MAX_RESULT, runTool, toolSpecs, type TurnState } from "./tools.js";
 
 export interface AskRequest {
@@ -62,8 +62,13 @@ export const NOT_FOUND = "I couldn't find that in Vertra's docs or your catalog,
 /** A single short question back: the one ungrounded reply that's let through. */
 const CLARIFYING = /^[^.!?\n]{1,199}\?$/;
 
-/** Tokens, estimated on the safe side: three characters each (English runs nearer four). */
-const tokensIn = (text: string) => Math.ceil(text.length / 3);
+/**
+ * Tokens, estimated on the safe side. Three characters each came out at
+ * 0.91 to 0.99 of Haiku 5.5's own counts on kind (2026-10-28: tool results
+ * are JSON, which counts dense); 2.5 puts it about a tenth over.
+ */
+export const CHARS_PER_TOKEN = 2.5;
+const tokensIn = (text: string) => Math.ceil(text.length / CHARS_PER_TOKEN);
 export const tokensOf = (messages: ChatMessage[]) =>
   messages.reduce(
     (n, m) => n + tokensIn(m.content) + (m.role === "assistant" ? tokensIn(JSON.stringify(m.toolCalls ?? [])) + (m.raw === undefined ? 0 : tokensIn(JSON.stringify(m.raw))) : 0),
@@ -183,6 +188,33 @@ function checked(caller: AuthUser | undefined, request: AskRequest): { who: Auth
   return { who: caller, team: team || null };
 }
 
+/**
+ * The model, its calls counted: tokens as the provider counted them, summed
+ * over the answer (the scope check's too), and the context window's own
+ * estimate of what was sent, to check one against the other.
+ */
+function counted(model: ChatModel): { model: ChatModel; tokens: Usage & { calls: number; estimated: number } } {
+  const tokens = { calls: 0, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, estimated: 0 };
+  return {
+    tokens,
+    model: {
+      name: model.name,
+      async complete(messages, tools, options) {
+        const reply = await model.complete(messages, tools, options);
+        tokens.calls++;
+        tokens.estimated += tokensOf(messages) + (tools.length > 0 ? TOOLS_TOKENS : 0);
+        if (reply.usage) {
+          tokens.input += reply.usage.input;
+          tokens.cacheRead += reply.usage.cacheRead;
+          tokens.cacheWrite += reply.usage.cacheWrite;
+          tokens.output += reply.usage.output;
+        }
+        return reply;
+      },
+    },
+  };
+}
+
 export interface AskOptions {
   /** Each step as it's taken (ChatService/AskStream): what it's doing while the model works. */
   onStep?: (step: Answer["steps"][number]) => void;
@@ -201,6 +233,7 @@ export async function ask(
   const { who, team } = checked(caller, request);
   if (!model) throw new ApiError(503, "CHAT_OFF", "The chat agent isn't set up on this install: an admin sets chat.model.", Code.Unavailable);
   const started = Date.now();
+  const { model: counting, tokens } = counted(model);
   const state: TurnState = { caller: who, team, log, sources: [], cart: null };
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(who, team) },
@@ -236,16 +269,16 @@ export async function ask(
     // so the docs for the person's own words are in front of the model
     // before it says anything, whether or not it would have searched (a
     // small model often doesn't, and answers from memory).
-    const [about, first] = await Promise.all([inScope(model, request, log, signal), runTool(state, "search_docs", JSON.stringify({ query: question.slice(0, 500) }))]);
+    const [about, first] = await Promise.all([inScope(counting, request, log, signal), runTool(state, "search_docs", JSON.stringify({ query: question.slice(0, 500) }))]);
     if (!about) {
-      log.info({ event: "chat_answered", model: model.name, offTopic: true, ms: Date.now() - started }, "the chat agent answered");
+      log.info({ event: "chat_answered", model: model.name, offTopic: true, tokens, ms: Date.now() - started }, "the chat agent answered");
       return { text: OFF_TOPIC, citations: [], uncited: false, offTopic: true, contextPercent: percent(OFF_TOPIC), cart: null, steps: [], model: model.name };
     }
     record({ tool: "search_docs", ok: first.ok });
     messages.push({ role: "assistant", content: "", toolCalls: [{ id: "search-first", name: "search_docs", arguments: JSON.stringify({ query: question.slice(0, 500) }) }] });
     messages.push({ role: "tool", toolCallId: "search-first", content: fitted(first.result) });
     for (let i = 0; i < maxSteps; i++) {
-      const reply = await model.complete(messages, toolSpecs, { signal });
+      const reply = await counting.complete(messages, toolSpecs, { signal });
       if (reply.toolCalls.length === 0) {
         text = reply.content;
         finalRaw = reply.raw;
@@ -261,7 +294,7 @@ export async function ask(
     // Out of steps: an answer from what it has, with no more tools.
     if (text === null) {
       messages.push({ role: "user", content: "Answer now from what the tools have returned, saying what you couldn't find out." });
-      const last = await model.complete(messages, toolSpecs, { noTools: true, signal });
+      const last = await counting.complete(messages, toolSpecs, { noTools: true, signal });
       text = last.content;
       finalRaw = last.raw;
     }
@@ -278,7 +311,7 @@ export async function ask(
         content:
           "Rewrite your answer using only the sections the tools returned above, ending each fact with the id of the section it came from, like [S2]. If they don't answer the question, say only: The docs don't cover that.",
       });
-      const repaired = (await model.complete(messages, toolSpecs, { noTools: true, signal })).content;
+      const repaired = (await counting.complete(messages, toolSpecs, { noTools: true, signal })).content;
       const again = checkCitations(repaired, state.sources);
       if (repaired.trim() && (!again.uncited || /docs don't cover/i.test(repaired) || !text.trim())) {
         text = repaired;
@@ -296,7 +329,7 @@ export async function ask(
   }
   // The prompt's scope, kept by the model: the same answer as the scope check's.
   if (text.includes(OFF_TOPIC)) {
-    log.info({ event: "chat_answered", model: model.name, offTopic: true, steps: steps.map((s) => s.tool), ms: Date.now() - started }, "the chat agent answered");
+    log.info({ event: "chat_answered", model: model.name, offTopic: true, steps: steps.map((s) => s.tool), tokens, ms: Date.now() - started }, "the chat agent answered");
     return { text: OFF_TOPIC, citations: [], uncited: false, offTopic: true, contextPercent: percent(OFF_TOPIC), cart: null, steps, model: model.name };
   }
   const checkedText = checkCitations(text, state.sources);
@@ -317,6 +350,7 @@ export async function ask(
       uncited: result.uncited,
       offTopic: false,
       heldBack,
+      tokens,
       cart: state.cart !== null,
       ms: Date.now() - started,
     },

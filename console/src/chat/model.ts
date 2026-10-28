@@ -40,6 +40,18 @@ export interface ModelReply {
   finishReason: string;
   /** The reply as the provider gave it, for the adapter to send back. */
   raw?: unknown;
+  /** Tokens, as the provider counted them: what it cost, what caching saved. */
+  usage?: Usage;
+}
+
+export interface Usage {
+  /** Input not read from the cache (Anthropic's input_tokens; OpenAI's prompt less its cached). */
+  input: number;
+  /** Input read from the cache: about a tenth of the price on Anthropic's API. */
+  cacheRead: number;
+  /** Input written to the cache: a quarter more than input, once. */
+  cacheWrite: number;
+  output: number;
 }
 
 export interface CompleteOptions {
@@ -114,6 +126,7 @@ export class OpenAICompatible implements ChatModel {
       throw new ModelUnavailable(`The model answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
     }
     const data = (await response.json()) as {
+      usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
       choices?: { finish_reason?: string; message?: { content?: string | null; tool_calls?: { id?: string; function?: { name?: string; arguments?: string } }[] } }[];
     };
     const choice = data.choices?.[0];
@@ -126,6 +139,16 @@ export class OpenAICompatible implements ChatModel {
         arguments: c.function?.arguments ?? "{}",
       })),
       finishReason: choice.finish_reason ?? "stop",
+      ...(data.usage
+        ? {
+            usage: {
+              input: (data.usage.prompt_tokens ?? 0) - (data.usage.prompt_tokens_details?.cached_tokens ?? 0),
+              cacheRead: data.usage.prompt_tokens_details?.cached_tokens ?? 0,
+              cacheWrite: 0,
+              output: data.usage.completion_tokens ?? 0,
+            },
+          }
+        : {}),
     };
   }
 }
@@ -229,6 +252,12 @@ export class AnthropicMessages implements ChatModel {
       toolCalls: response.content.flatMap((b) => (b.type === "tool_use" ? [{ id: b.id, name: b.name, arguments: JSON.stringify(b.input) }] : [])),
       finishReason: response.stop_reason ?? "end_turn",
       raw: response.content,
+      usage: {
+        input: response.usage.input_tokens,
+        cacheRead: response.usage.cache_read_input_tokens ?? 0,
+        cacheWrite: response.usage.cache_creation_input_tokens ?? 0,
+        output: response.usage.output_tokens,
+      },
     };
   }
 }

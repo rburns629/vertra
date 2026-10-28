@@ -11,7 +11,7 @@ import { like } from "drizzle-orm";
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { ask, askStream, NOT_FOUND, OFF_TOPIC, tokensOf, windowOf } from "../src/chat/agent.js";
+import { ask, askStream, CHARS_PER_TOKEN, NOT_FOUND, OFF_TOPIC, tokensOf, windowOf } from "../src/chat/agent.js";
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicMessages, ModelUnavailable, OpenAICompatible, withoutThinking, type ChatMessage, type ChatModel, type CompleteOptions, type ModelReply } from "../src/chat/model.js";
 import type { AuthUser } from "../src/auth/plugin.js";
@@ -232,11 +232,11 @@ describe("the context window", () => {
     await ask(person([mine]), question(q), log, probe);
     const system = probe.seen[0]?.slice(0, 1) ?? [];
     const first = probe.seen[0]?.find((m) => m.role === "tool")?.content ?? "";
-    let left = (windowOf().conversationLimit - tokensOf(system) - tokensOf([{ role: "user", content: q }]) - 20) * 3;
+    let left = (windowOf().conversationLimit - tokensOf(system) - tokensOf([{ role: "user", content: q }]) - 20) * CHARS_PER_TOKEN;
     const history: { role: "user" | "assistant"; content: string }[] = [];
     while (left > 0) {
-      history.push({ role: history.length % 2 === 0 ? "user" : "assistant", content: "y".repeat(Math.min(3999, left)) });
-      left -= 3999;
+      history.push({ role: history.length % 2 === 0 ? "user" : "assistant", content: "y".repeat(Math.min(4000, left)) });
+      left -= 4000;
     }
     if (history.length % 2 === 1) history.push({ role: "assistant", content: "y" });
     history.push({ role: "user", content: q });
@@ -423,19 +423,29 @@ describe("the anthropic model", () => {
       { type: "text", text: "Looking." },
       { type: "tool_use", id: "t1", name: "search_docs", input: { query: "x" } },
     ];
-    const { client, sent } = fakeClient({ content, stop_reason: "tool_use" });
+    const usage = { input_tokens: 40, output_tokens: 12, cache_read_input_tokens: 3000, cache_creation_input_tokens: 0 };
+    const { client, sent } = fakeClient({ content, stop_reason: "tool_use", usage });
     const model = new AnthropicMessages(options, client);
     const tools = [{ name: "search_docs", description: "d", parameters: { type: "object" } }];
     const reply = await model.complete([{ role: "system", content: "s" }, { role: "user", content: "hi" }], tools);
-    expect(reply).toEqual({ content: "Looking.", toolCalls: [{ id: "t1", name: "search_docs", arguments: '{"query":"x"}' }], finishReason: "tool_use", raw: content });
+    expect(reply).toEqual({
+      content: "Looking.",
+      toolCalls: [{ id: "t1", name: "search_docs", arguments: '{"query":"x"}' }],
+      finishReason: "tool_use",
+      raw: content,
+      usage: { input: 40, cacheRead: 3000, cacheWrite: 0, output: 12 },
+    });
     expect(sent[0]).toMatchObject({ model: "claude-haiku-5-5", max_tokens: 8000, system: "s", cache_control: { type: "ephemeral" }, tools: [{ name: "search_docs", input_schema: { type: "object" } }] });
     expect(sent[0]).not.toHaveProperty("tool_choice");
     await model.complete([{ role: "user", content: "hi" }], tools, { noTools: true });
     expect(sent[1]).toMatchObject({ tool_choice: { type: "none" } });
+    // The scope check: no thinking, a short reply.
+    await model.complete([{ role: "user", content: "hi" }], [], { quick: true });
+    expect(sent[2]).toMatchObject({ max_tokens: 64, thinking: { type: "disabled" } });
   });
 
   it("says a refusal, and an API it can't reach", async () => {
-    const refused = new AnthropicMessages(options, fakeClient({ content: [], stop_reason: "refusal" }).client);
+    const refused = new AnthropicMessages(options, fakeClient({ content: [], stop_reason: "refusal", usage: {} }).client);
     expect((await refused.complete([{ role: "user", content: "x" }], [])).content).toBe("I can't help with that one.");
     const down = new AnthropicMessages(options, fakeClient(new Anthropic.APIConnectionError({ message: "down" })).client);
     await expect(down.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);

@@ -1055,9 +1055,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   stream, since the console checks (and may replace) the whole answer
   before anyone sees it. On kind, an app-hosting order: seven steps over
   15 s, the first at 1 s. Closing the conversation stops its model calls.
+  Prompt caching measured (2026-10-28, `chat_answered`'s `tokens`): with
+  Haiku 5.5 a docs question takes about 9,000 input tokens over three
+  calls, 45% read from the cache, about $0.0009 (a fifth less than
+  uncached); an order about 27,000 over six, 78% cached, about $0.0014
+  (less than half); an off-topic refusal one call of about 500. Cache
+  writes are most of a question's cost. The context window's estimate
+  (three characters a token) ran 0.91 to 0.99 of the real count: now 2.5.
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
-  caching measured (usage logged). Left:
+  caching measured (done, above). Left:
   Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has

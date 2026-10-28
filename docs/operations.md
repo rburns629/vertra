@@ -622,7 +622,9 @@ the install's own. `chat.maxSteps` (8), `timeoutSeconds` (180) and
 `maxTokens` (8000 on anthropic, where thinking counts toward it; else 1500)
 bound one answer; `chat.effort` sets how hard Claude thinks.
 `chat.contextTokens` (64000 on anthropic, else 16000; at most the model's
-own window) bounds what one model call is sent, and so its cost: a
+own window) bounds what one model call is sent, and so its cost (Claude
+Haiku 5.5 costs five times as much for a prompt over 100K tokens: keep it
+under): a
 conversation that won't fit is refused (`CONVERSATION_TOO_LONG`; the panel
 offers a new one, and says when one passes 75%), and a tool result that
 won't fit is held back from the model.
@@ -635,7 +637,12 @@ the docs it cites nor the platform's tools is never shown, the console's
 before trusting it: `npm run chat-eval` in `console/` asks it the question
 set (`console/test/docQuestions.ts`), the ordering tasks and questions
 it must refuse (`console/test/chatTasks.ts`). The console logs each answer's steps
-(`chat_answered`: tools used, sources, citations), not what was said.
+(`chat_answered`: tools used, sources, citations, and `tokens`: input,
+cache reads and writes, output, as the provider counted them), not what was
+said. With Haiku 5.5 (2026-10-28, kind): a docs question about 9,000 input
+tokens over three calls, under a tenth of a cent; an order about 27,000
+over six, 78% read from the cache, about $0.0015; an off-topic question
+one call of about 500.
 People rate answers up or down in the panel; Admin's Chat tab lists them
 (question, answer, sources, what was wrong), kept 90 days. A wrong answer
 is usually a doc to fix, or a question to add to the question set.
