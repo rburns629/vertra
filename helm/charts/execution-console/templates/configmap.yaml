@@ -14,6 +14,15 @@ metadata:
     {{- include "execution-console.labels" . | nindent 4 }}
 data:
 {{- include "execution-console.configData" . }}
+  # The chat agent (values.yaml's chat): off without a model. The console's
+  # alone: the migration Job has no use for it, nor its key.
+  CHAT_MODEL: {{ .Values.chat.model | quote }}
+  CHAT_PROVIDER: {{ .Values.chat.provider | quote }}
+  CHAT_ENDPOINT: {{ .Values.chat.endpoint | quote }}
+  CHAT_MAX_STEPS: {{ .Values.chat.maxSteps | quote }}
+  CHAT_TIMEOUT_SECONDS: {{ .Values.chat.timeoutSeconds | quote }}
+  CHAT_MAX_TOKENS: {{ .Values.chat.maxTokens | quote }}
+  CHAT_EFFORT: {{ .Values.chat.effort | quote }}
 ---
 # The migration Job's own copy, made by the same hook just before it: a
 # pre-upgrade Job reading the ConfigMap above would get the previous
@@ -132,13 +141,6 @@ data:
   CATALOG_SIGNATURE_KEYLESS_ISSUER: {{ .Values.catalog.signature.keyless.issuer | quote }}
   CATALOG_SIGNATURE_KEYLESS_SUBJECT_REGEXP: {{ .Values.catalog.signature.keyless.subjectRegExp | quote }}
   CATALOG_VERIFIER_IMAGE: {{ include "execution-console.image" .Values.catalog.verifier.image | quote }}
-  # The chat agent (values.yaml's chat): off without a model.
-  CHAT_MODEL: {{ .Values.chat.model | quote }}
-  CHAT_PROVIDER: {{ .Values.chat.provider | quote }}
-  CHAT_ENDPOINT: {{ .Values.chat.endpoint | quote }}
-  CHAT_MAX_STEPS: {{ .Values.chat.maxSteps | quote }}
-  CHAT_TIMEOUT_SECONDS: {{ .Values.chat.timeoutSeconds | quote }}
-  CHAT_MAX_TOKENS: {{ .Values.chat.maxTokens | quote }}
   # Team namespaces (values.yaml's teamNamespaces).
   TEAM_NAMESPACES_MANAGE: {{ .Values.teamNamespaces.manage | quote }}
   TEAM_NAMESPACES_PURGE: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.purge | quote }}

@@ -115,6 +115,8 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
   const steps: Answer["steps"] = [];
   const maxSteps = config.chat?.maxSteps ?? 8;
   let text: string | null = null;
+  // The final reply as the model gave it (Claude's thinking with it).
+  let finalRaw: unknown;
   // Search first, always: the docs for the person's own words are in front
   // of the model before it says anything, whether or not it would have
   // searched (a small model often doesn't, and answers from memory).
@@ -128,9 +130,10 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
       const reply = await model.complete(messages, toolSpecs);
       if (reply.toolCalls.length === 0) {
         text = reply.content;
+        finalRaw = reply.raw;
         break;
       }
-      messages.push({ role: "assistant", content: reply.content, toolCalls: reply.toolCalls });
+      messages.push({ role: "assistant", content: reply.content, toolCalls: reply.toolCalls, raw: reply.raw });
       for (const call of reply.toolCalls) {
         const { result, ok } = await runTool(state, call.name, call.arguments);
         steps.push({ tool: call.name, ok });
@@ -140,20 +143,22 @@ export async function ask(caller: AuthUser | undefined, request: AskRequest, log
     // Out of steps: an answer from what it has, with no more tools.
     if (text === null) {
       messages.push({ role: "user", content: "Answer now from what the tools have returned, saying what you couldn't find out." });
-      text = (await model.complete(messages, [])).content;
+      const last = await model.complete(messages, toolSpecs, { noTools: true });
+      text = last.content;
+      finalRaw = last.raw;
     }
     // One repair: an answer that's empty, or uses the docs and cites none of
     // them, is asked for again, cited, or as "the docs don't cover that".
     // Kept only if it's better: cited, where the first wasn't.
     const draft = checkCitations(text, state.sources);
     if (!text.trim() || (draft.uncited && !/docs don't cover/i.test(text))) {
-      messages.push({ role: "assistant", content: text });
+      messages.push({ role: "assistant", content: text, raw: finalRaw });
       messages.push({
         role: "user",
         content:
           "Rewrite your answer using only the sections the tools returned above, ending each fact with the id of the section it came from, like [S2]. If they don't answer the question, say only: The docs don't cover that.",
       });
-      const repaired = (await model.complete(messages, [])).content;
+      const repaired = (await model.complete(messages, toolSpecs, { noTools: true })).content;
       const again = checkCitations(repaired, state.sources);
       if (repaired.trim() && (!again.uncited || /docs don't cover/i.test(repaired) || !text.trim())) {
         text = repaired;

@@ -1022,9 +1022,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   commands); with the console searching first and repairing an uncited
   answer once, 38 of 40, none uncited, median 32 s. Spot-checked, about
   half are wholly right: the 14B attaches genuine citations to sentences
-  its source doesn't support. Next: the same 40 on a capable model (Gemini
-  or Claude on Vertex, billed) to compare; a sentence-level support check
-  if a capable model still needs it. Left: the
+  its source doesn't support. Then Claude through Anthropic's API (the
+  `anthropic` provider, a key in a Secret): Haiku 5.5 and Sonnet 5.5 both
+  38 of 40, none uncited, every must-say and must-not-say kept, medians
+  3.3 s and 5 s; six spot-checked answers all right on Haiku (two or three
+  of six on the 14B). All three miss the same two: the search's misses.
+  Haiku is the default worth having: Sonnet's twentyfold price bought
+  nothing measurable here. Next: the search's two misses; Claude or Gemini
+  on Vertex for an install that must keep its data in its cloud; prompt
+  caching measured (usage logged). Left: the
   answers scored per model on the question set, scripted tasks with a real
   model, thumbs up or down, streaming, Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the

@@ -555,8 +555,11 @@ rbac:
 # from the docs and the catalog, looks at what the person's teams have, and
 # fills their cart (they place the order). Off unless `model` is set.
 # `provider`: openai-compatible (LM Studio, Ollama, Gemini on Vertex's
-# compatible endpoint). `endpoint`: its base URL, http(s)://.../v1. A key,
-# if it needs one: a Secret's name, key `api-key`, never the key itself.
+# compatible endpoint; `endpoint` its base URL, http(s)://.../v1) or
+# anthropic (Claude through Anthropic's API, `model` such as
+# claude-haiku-5-5 or claude-sonnet-5-5; `endpoint` empty for Anthropic's
+# own). A key, when it needs one: a Secret's name, key `api-key`, never
+# the key itself.
 # What it's sent reaches the model's provider: on a cloud, choose one in
 # the install's own cloud.
 chat:
@@ -565,10 +568,13 @@ chat:
   endpoint: ""
   apiKeySecret: ""
   # Model and tool calls in one answer, at most; how long one model call
-  # may take; how long an answer may be.
+  # may take; how long one model call's output may be ("": the provider's
+  # default, 8000 on anthropic where thinking counts toward it, else 1500);
+  # how hard Claude thinks (low, medium, high; "": the model's default).
   maxSteps: 8
   timeoutSeconds: 180
-  maxTokens: 1500
+  maxTokens: ""
+  effort: ""
 
 teamNamespaces:
   manage: true

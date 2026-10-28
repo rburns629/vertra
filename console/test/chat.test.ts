@@ -12,7 +12,8 @@ import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ask } from "../src/chat/agent.js";
-import { ModelUnavailable, OpenAICompatible, withoutThinking, type ChatMessage, type ChatModel, type ModelReply } from "../src/chat/model.js";
+import Anthropic from "@anthropic-ai/sdk";
+import { AnthropicMessages, ModelUnavailable, OpenAICompatible, withoutThinking, type ChatMessage, type ChatModel, type ModelReply } from "../src/chat/model.js";
 import type { AuthUser } from "../src/auth/plugin.js";
 import { db } from "../src/db/client.js";
 import { createTeam, upsertProduct } from "../src/db/queries.js";
@@ -245,6 +246,68 @@ describe("the openai-compatible model", () => {
 
   it("says when the model can't be reached", async () => {
     const down = new OpenAICompatible({ endpoint: "http://m/v1", model: "q", apiKey: "", timeoutSeconds: 5, maxTokens: 10 }, (() => Promise.reject(new Error("ECONNREFUSED"))) as unknown as typeof fetch);
+    await expect(down.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);
+  });
+});
+
+describe("the anthropic model", () => {
+  const options = { model: "claude-haiku-5-5", apiKey: "test", endpoint: "", timeoutSeconds: 5, maxTokens: 8000, effort: null };
+  /** A client whose messages.create answers with `reply`, recording each request. */
+  const fakeClient = (reply: unknown) => {
+    const sent: Record<string, unknown>[] = [];
+    const client = {
+      messages: {
+        create: (body: Record<string, unknown>) => {
+          sent.push(body);
+          return reply instanceof Error ? Promise.reject(reply) : Promise.resolve(reply);
+        },
+      },
+    } as unknown as Anthropic;
+    return { client, sent };
+  };
+
+  it("sends the conversation in the Messages API's shape: Claude's own turns unchanged, a turn's results together", () => {
+    const raw = [{ type: "thinking", thinking: "", signature: "sig" }, { type: "tool_use", id: "t1", name: "search_docs", input: { query: "x" } }];
+    const { system, messages } = AnthropicMessages.messagesOf([
+      { role: "system", content: "Be brief." },
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "", toolCalls: [{ id: "first", name: "search_docs", arguments: '{"query":"hi"}' }] },
+      { role: "tool", toolCallId: "first", content: "{}" },
+      { role: "assistant", content: "", toolCalls: [], raw },
+      { role: "tool", toolCallId: "t1", content: "a" },
+      { role: "tool", toolCallId: "t2", content: "b" },
+    ]);
+    expect(system).toBe("Be brief.");
+    expect(messages).toEqual([
+      { role: "user", content: "hi" },
+      { role: "assistant", content: [{ type: "tool_use", id: "first", name: "search_docs", input: { query: "hi" } }] },
+      { role: "user", content: [{ type: "tool_result", tool_use_id: "first", content: "{}" }] },
+      { role: "assistant", content: raw },
+      { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "a" }, { type: "tool_result", tool_use_id: "t2", content: "b" }] },
+    ]);
+  });
+
+  it("reads Claude's reply, thinking kept to send back, and asks for no tools when told", async () => {
+    const content = [
+      { type: "thinking", thinking: "", signature: "s" },
+      { type: "text", text: "Looking." },
+      { type: "tool_use", id: "t1", name: "search_docs", input: { query: "x" } },
+    ];
+    const { client, sent } = fakeClient({ content, stop_reason: "tool_use" });
+    const model = new AnthropicMessages(options, client);
+    const tools = [{ name: "search_docs", description: "d", parameters: { type: "object" } }];
+    const reply = await model.complete([{ role: "system", content: "s" }, { role: "user", content: "hi" }], tools);
+    expect(reply).toEqual({ content: "Looking.", toolCalls: [{ id: "t1", name: "search_docs", arguments: '{"query":"x"}' }], finishReason: "tool_use", raw: content });
+    expect(sent[0]).toMatchObject({ model: "claude-haiku-5-5", max_tokens: 8000, system: "s", cache_control: { type: "ephemeral" }, tools: [{ name: "search_docs", input_schema: { type: "object" } }] });
+    expect(sent[0]).not.toHaveProperty("tool_choice");
+    await model.complete([{ role: "user", content: "hi" }], tools, { noTools: true });
+    expect(sent[1]).toMatchObject({ tool_choice: { type: "none" } });
+  });
+
+  it("says a refusal, and an API it can't reach", async () => {
+    const refused = new AnthropicMessages(options, fakeClient({ content: [], stop_reason: "refusal" }).client);
+    expect((await refused.complete([{ role: "user", content: "x" }], [])).content).toBe("I can't help with that one.");
+    const down = new AnthropicMessages(options, fakeClient(new Anthropic.APIConnectionError({ message: "down" })).client);
     await expect(down.complete([{ role: "user", content: "x" }], [])).rejects.toBeInstanceOf(ModelUnavailable);
   });
 });

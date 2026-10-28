@@ -72,18 +72,30 @@ function loadChat() {
   const endpoint = (process.env["CHAT_ENDPOINT"] ?? "").replace(/\/+$/, "");
   const provider = process.env["CHAT_PROVIDER"] || "openai-compatible";
   if (!model) return null;
-  if (provider !== "openai-compatible") throw new Error(`CHAT_PROVIDER "${provider}": this console speaks openai-compatible`);
-  if (!/^https?:\/\//.test(endpoint)) throw new Error(`CHAT_ENDPOINT "${endpoint}": the model's base URL, http(s)://.../v1`);
+  if (provider !== "openai-compatible" && provider !== "anthropic") {
+    throw new Error(`CHAT_PROVIDER "${provider}": openai-compatible or anthropic`);
+  }
+  // Anthropic's API is the SDK's own address unless given; any other needs one.
+  if (endpoint ? !/^https?:\/\//.test(endpoint) : provider !== "anthropic") {
+    throw new Error(`CHAT_ENDPOINT "${endpoint}": the model's base URL, http(s)://.../v1`);
+  }
+  const apiKey = process.env["CHAT_API_KEY"] ?? "";
+  if (provider === "anthropic" && !apiKey) throw new Error("CHAT_API_KEY: Anthropic's API needs a key (the chart's chat.apiKeySecret)");
+  const effort = process.env["CHAT_EFFORT"] ?? "";
+  if (effort && !["low", "medium", "high"].includes(effort)) throw new Error(`CHAT_EFFORT "${effort}": low, medium or high`);
   return {
     provider,
     endpoint,
     model,
-    apiKey: process.env["CHAT_API_KEY"] ?? "",
+    apiKey,
     // Model calls and tool calls in one answer, at most.
     maxSteps: positiveInt("CHAT_MAX_STEPS", 8),
     // How long one model call may take: a local model is slow.
     timeoutSeconds: positiveInt("CHAT_TIMEOUT_SECONDS", 180),
-    maxTokens: positiveInt("CHAT_MAX_TOKENS", 1500),
+    // Thinking counts toward it on Claude: more room there.
+    maxTokens: positiveInt("CHAT_MAX_TOKENS", provider === "anthropic" ? 8000 : 1500),
+    // How hard the model thinks, where it takes one (Anthropic); unset, its own default.
+    effort: (effort || null) as "low" | "medium" | "high" | null,
   };
 }
 
