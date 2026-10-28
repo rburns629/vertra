@@ -11,7 +11,7 @@ import { like } from "drizzle-orm";
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { ask, NOT_FOUND, OFF_TOPIC, tokensOf, windowOf } from "../src/chat/agent.js";
+import { ask, askStream, NOT_FOUND, OFF_TOPIC, tokensOf, windowOf } from "../src/chat/agent.js";
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicMessages, ModelUnavailable, OpenAICompatible, withoutThinking, type ChatMessage, type ChatModel, type CompleteOptions, type ModelReply } from "../src/chat/model.js";
 import type { AuthUser } from "../src/auth/plugin.js";
@@ -244,6 +244,39 @@ describe("the context window", () => {
     await ask(person([mine]), { team: mine, messages: history }, log, model);
     expect(model.seen[0]?.find((m) => m.role === "tool")?.content).toBe(first);
     expect(String(lastResult(model.seen[1] ?? [])["error"])).toContain("no room");
+  });
+});
+
+describe("as it goes", () => {
+  it("streams each step as it's taken, then the checked answer, last", async () => {
+    const model = new Scripted([call("describe_offering", { name: `${mine}-bucket-create` }), say("The bucket needs a name.")]);
+    const events = [];
+    for await (const event of askStream(person([mine]), question("What does the bucket need?"), log, model)) events.push(event);
+    expect(events).toEqual([
+      { step: { tool: "search_docs", ok: true } },
+      { step: { tool: "describe_offering", ok: true } },
+      { answer: expect.objectContaining({ text: "The bucket needs a name.", steps: [{ tool: "search_docs", ok: true }, { tool: "describe_offering", ok: true }] }) as unknown },
+    ]);
+  });
+
+  it("ends with the refusal when it can't answer, and hands every model call the person's signal", async () => {
+    const away: ChatModel = { name: "away", complete: () => Promise.reject(new ModelUnavailable("down")) };
+    await expect(async () => {
+      for await (const _ of askStream(person([mine]), question("x"), log, away)) void _;
+    }).rejects.toMatchObject({ code: "MODEL_UNAVAILABLE" });
+
+    const signals: (AbortSignal | undefined)[] = [];
+    const watching: ChatModel = {
+      name: "watching",
+      complete: (_m, _t, options) => {
+        signals.push(options?.signal);
+        return Promise.resolve({ content: options?.quick ? "VERTRA" : "The docs don't cover that.", toolCalls: [], finishReason: "stop" });
+      },
+    };
+    const gone = new AbortController();
+    await ask(person([mine]), question("x"), log, watching, { signal: gone.signal });
+    expect(signals.length).toBeGreaterThanOrEqual(2);
+    expect(signals.every((s) => s === gone.signal)).toBe(true);
   });
 });
 

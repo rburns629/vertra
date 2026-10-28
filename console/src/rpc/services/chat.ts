@@ -2,15 +2,38 @@
 /** ChatService (proto/vertra/console/v1/chat.proto): src/chat/agent.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
-import { ask } from "../../chat/agent.js";
+import { ask, askStream, type Answer, type AskRequest as AskQuestion } from "../../chat/agent.js";
+import { chatModel } from "../../chat/model.js";
 import { listChatFeedback, rateAnswer } from "../../core/chatFeedback.js";
 import { config } from "../../config.js";
-import type { ChatService } from "../../gen/vertra/console/v1/chat_pb.js";
+import type { AskRequest, AskStreamRequest, ChatService } from "../../gen/vertra/console/v1/chat_pb.js";
 import { callerOf, logOf } from "../context.js";
 import { timestamp } from "../convert.js";
 import { check } from "../validate.js";
 
 const Turn = Type.Object({ role: Type.Union([Type.Literal("user"), Type.Literal("assistant")]), content: Type.String({ minLength: 1, maxLength: 4000 }) });
+
+/** Ask's request, checked. */
+function asked(req: AskRequest | AskStreamRequest): AskQuestion {
+  const { messages, team } = check(
+    { messages: Type.Array(Turn, { minItems: 1, maxItems: 40 }), team: Type.String({ maxLength: 253 }) },
+    { messages: req.messages.map((m) => ({ role: m.role, content: m.content })), team: req.team },
+  );
+  return { team: team || null, messages };
+}
+
+function response(answer: Answer) {
+  return {
+    text: answer.text,
+    citations: answer.citations,
+    uncited: answer.uncited,
+    offTopic: answer.offTopic,
+    contextPercent: answer.contextPercent,
+    ...(answer.cart ? { cart: answer.cart } : {}),
+    steps: answer.steps,
+    model: answer.model,
+  };
+}
 
 export function chatService(): ServiceImpl<typeof ChatService> {
   return {
@@ -60,21 +83,13 @@ export function chatService(): ServiceImpl<typeof ChatService> {
     },
 
     async ask(req, ctx) {
-      const { messages, team } = check(
-        { messages: Type.Array(Turn, { minItems: 1, maxItems: 40 }), team: Type.String({ maxLength: 253 }) },
-        { messages: req.messages.map((m) => ({ role: m.role, content: m.content })), team: req.team },
-      );
-      const answer = await ask(callerOf(ctx), { team: team || null, messages }, logOf(ctx));
-      return {
-        text: answer.text,
-        citations: answer.citations,
-        uncited: answer.uncited,
-        offTopic: answer.offTopic,
-        contextPercent: answer.contextPercent,
-        ...(answer.cart ? { cart: answer.cart } : {}),
-        steps: answer.steps,
-        model: answer.model,
-      };
+      return response(await ask(callerOf(ctx), asked(req), logOf(ctx), chatModel(), { signal: ctx.signal }));
+    },
+
+    async *askStream(req, ctx) {
+      for await (const event of askStream(callerOf(ctx), asked(req), logOf(ctx), chatModel(), ctx.signal)) {
+        yield "step" in event ? { event: { case: "step" as const, value: event.step } } : { event: { case: "answer" as const, value: response(event.answer) } };
+      }
     },
   };
 }

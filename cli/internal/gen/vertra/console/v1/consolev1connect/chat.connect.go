@@ -40,6 +40,8 @@ const (
 	ChatServiceGetChatSettingsProcedure = "/vertra.console.v1.ChatService/GetChatSettings"
 	// ChatServiceAskProcedure is the fully-qualified name of the ChatService's Ask RPC.
 	ChatServiceAskProcedure = "/vertra.console.v1.ChatService/Ask"
+	// ChatServiceAskStreamProcedure is the fully-qualified name of the ChatService's AskStream RPC.
+	ChatServiceAskStreamProcedure = "/vertra.console.v1.ChatService/AskStream"
 	// ChatServiceRateAnswerProcedure is the fully-qualified name of the ChatService's RateAnswer RPC.
 	ChatServiceRateAnswerProcedure = "/vertra.console.v1.ChatService/RateAnswer"
 	// ChatServiceListChatFeedbackProcedure is the fully-qualified name of the ChatService's
@@ -58,6 +60,10 @@ type ChatServiceClient interface {
 	// isn't about Vertra gets the same short answer (off_topic), and an
 	// answer from neither the docs nor the platform isn't shown (uncited).
 	Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error)
+	// Ask, with each step as it's taken (a tool used, whether it worked),
+	// then the answer. The answer's words come only at the end, checked:
+	// what the model says isn't shown until the console has checked it.
+	AskStream(context.Context, *connect.Request[v1.AskStreamRequest]) (*connect.ServerStreamForClient[v1.AskStreamResponse], error)
 	// Thumbs up or down on an answer you got, sent with its question and
 	// answer, for the admins (kept 90 days).
 	RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error)
@@ -89,6 +95,12 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("Ask")),
 			connect.WithClientOptions(opts...),
 		),
+		askStream: connect.NewClient[v1.AskStreamRequest, v1.AskStreamResponse](
+			httpClient,
+			baseURL+ChatServiceAskStreamProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("AskStream")),
+			connect.WithClientOptions(opts...),
+		),
 		rateAnswer: connect.NewClient[v1.RateAnswerRequest, v1.RateAnswerResponse](
 			httpClient,
 			baseURL+ChatServiceRateAnswerProcedure,
@@ -109,6 +121,7 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type chatServiceClient struct {
 	getChatSettings  *connect.Client[v1.GetChatSettingsRequest, v1.GetChatSettingsResponse]
 	ask              *connect.Client[v1.AskRequest, v1.AskResponse]
+	askStream        *connect.Client[v1.AskStreamRequest, v1.AskStreamResponse]
 	rateAnswer       *connect.Client[v1.RateAnswerRequest, v1.RateAnswerResponse]
 	listChatFeedback *connect.Client[v1.ListChatFeedbackRequest, v1.ListChatFeedbackResponse]
 }
@@ -121,6 +134,11 @@ func (c *chatServiceClient) GetChatSettings(ctx context.Context, req *connect.Re
 // Ask calls vertra.console.v1.ChatService.Ask.
 func (c *chatServiceClient) Ask(ctx context.Context, req *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error) {
 	return c.ask.CallUnary(ctx, req)
+}
+
+// AskStream calls vertra.console.v1.ChatService.AskStream.
+func (c *chatServiceClient) AskStream(ctx context.Context, req *connect.Request[v1.AskStreamRequest]) (*connect.ServerStreamForClient[v1.AskStreamResponse], error) {
+	return c.askStream.CallServerStream(ctx, req)
 }
 
 // RateAnswer calls vertra.console.v1.ChatService.RateAnswer.
@@ -144,6 +162,10 @@ type ChatServiceHandler interface {
 	// isn't about Vertra gets the same short answer (off_topic), and an
 	// answer from neither the docs nor the platform isn't shown (uncited).
 	Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error)
+	// Ask, with each step as it's taken (a tool used, whether it worked),
+	// then the answer. The answer's words come only at the end, checked:
+	// what the model says isn't shown until the console has checked it.
+	AskStream(context.Context, *connect.Request[v1.AskStreamRequest], *connect.ServerStream[v1.AskStreamResponse]) error
 	// Thumbs up or down on an answer you got, sent with its question and
 	// answer, for the admins (kept 90 days).
 	RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error)
@@ -171,6 +193,12 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("Ask")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceAskStreamHandler := connect.NewServerStreamHandler(
+		ChatServiceAskStreamProcedure,
+		svc.AskStream,
+		connect.WithSchema(chatServiceMethods.ByName("AskStream")),
+		connect.WithHandlerOptions(opts...),
+	)
 	chatServiceRateAnswerHandler := connect.NewUnaryHandler(
 		ChatServiceRateAnswerProcedure,
 		svc.RateAnswer,
@@ -190,6 +218,8 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceGetChatSettingsHandler.ServeHTTP(w, r)
 		case ChatServiceAskProcedure:
 			chatServiceAskHandler.ServeHTTP(w, r)
+		case ChatServiceAskStreamProcedure:
+			chatServiceAskStreamHandler.ServeHTTP(w, r)
 		case ChatServiceRateAnswerProcedure:
 			chatServiceRateAnswerHandler.ServeHTTP(w, r)
 		case ChatServiceListChatFeedbackProcedure:
@@ -209,6 +239,10 @@ func (UnimplementedChatServiceHandler) GetChatSettings(context.Context, *connect
 
 func (UnimplementedChatServiceHandler) Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.Ask is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) AskStream(context.Context, *connect.Request[v1.AskStreamRequest], *connect.ServerStream[v1.AskStreamResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.AskStream is not implemented"))
 }
 
 func (UnimplementedChatServiceHandler) RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error) {

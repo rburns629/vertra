@@ -17,7 +17,7 @@ import AddCommentIcon from "@mui/icons-material/AddCommentOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import ThumbDownIcon from "@mui/icons-material/ThumbDownOutlined";
 import ThumbUpIcon from "@mui/icons-material/ThumbUpOutlined";
-import { ApiError, askChat, rateAnswer, type ChatAnswer } from "../api";
+import { ApiError, askChatStream, rateAnswer, type ChatAnswer } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { cart, useCart } from "../cart";
 
@@ -157,18 +157,25 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; tooLong: boolean } | null>(null);
+  // What it's done so far for the question it's answering.
+  const [doing, setDoing] = useState<string[]>([]);
+  const asking = useRef<AbortController | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const last = turns.at(-1);
   const full = last?.role === "assistant" ? last.contextPercent : 0;
 
   function startOver(): void {
+    asking.current?.abort();
     setTurns([]);
     setError(null);
   }
 
+  // Leaving the page stops a question in flight: no more model calls for it.
+  useEffect(() => () => asking.current?.abort(), []);
+
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end" });
-  }, [turns, busy]);
+  }, [turns, busy, doing]);
 
   async function send(): Promise<void> {
     const question = draft.trim();
@@ -178,16 +185,32 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
     setDraft("");
     setBusy(true);
     setError(null);
+    setDoing([]);
+    const controller = new AbortController();
+    asking.current = controller;
     try {
-      const answer = await askChat(team || null, next.map((t) => ({ role: t.role, content: t.content })));
+      const answer = await askChatStream(
+        team || null,
+        next.map((t) => ({ role: t.role, content: t.content })),
+        (step) => {
+          const said = TOOL_NAMES[step.tool] ?? step.tool;
+          setDoing((d) => (d.includes(said) ? d : [...d, said]));
+        },
+        controller.signal,
+      );
       setTurns([...next, { role: "assistant", ...answer, content: answer.text }]);
     } catch (err) {
+      // Started over: the question went with the conversation.
+      if (controller.signal.aborted) return;
       // The question stays in the box to ask again (or in a new conversation).
       setTurns(turns);
       setDraft(question);
       setError({ message: err instanceof ApiError ? err.message : "Couldn't get an answer.", tooLong: err instanceof ApiError && err.code === "CONVERSATION_TOO_LONG" });
     } finally {
-      setBusy(false);
+      if (asking.current === controller) {
+        asking.current = null;
+        setBusy(false);
+      }
     }
   }
 
@@ -208,7 +231,7 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
           </Typography>
         </Box>
         {turns.length > 0 && (
-          <IconButton aria-label="New conversation" title="New conversation" onClick={startOver} disabled={busy}>
+          <IconButton aria-label="New conversation" title="New conversation" onClick={startOver}>
             <AddCommentIcon />
           </IconButton>
         )}
@@ -257,7 +280,7 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
         {busy && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.secondary" }}>
             <CircularProgress size={16} />
-            <Typography variant="body2">Thinking… a model can take a minute to answer.</Typography>
+            <Typography variant="body2">{doing.length > 0 ? `It's ${doing.join(", ")}…` : "Thinking… a model can take a minute to answer."}</Typography>
           </Box>
         )}
         {error && (

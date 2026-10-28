@@ -41,7 +41,7 @@ import { NotificationService } from "./gen/vertra/console/v1/notification_pb.js"
 import { ScheduleService } from "./gen/vertra/console/v1/schedule_pb.js";
 import { DraftService, type Draft as DraftMessage } from "./gen/vertra/console/v1/draft_pb.js";
 import { OrderService } from "./gen/vertra/console/v1/order_pb.js";
-import { ChatService } from "./gen/vertra/console/v1/chat_pb.js";
+import { ChatService, type AskResponse } from "./gen/vertra/console/v1/chat_pb.js";
 import type { BuiltStep } from "./compose";
 import { SsoService, type SsoSettings as SsoSettingsMessage } from "./gen/vertra/console/v1/sso_pb.js";
 
@@ -2533,9 +2533,33 @@ export interface ChatAnswer {
   steps: { tool: string; ok: boolean }[];
 }
 
+/**
+ * The chat agent's answer to the conversation's last message, each step
+ * it takes handed to `onStep` as it's taken (ChatService/AskStream).
+ */
+export async function askChatStream(
+  team: string | null,
+  messages: { role: "user" | "assistant"; content: string }[],
+  onStep: (step: { tool: string; ok: boolean }) => void,
+  signal: AbortSignal,
+): Promise<ChatAnswer> {
+  try {
+    for await (const { event } of chatApi.askStream({ team: team ?? "", messages }, { signal })) {
+      if (event.case === "step") onStep({ tool: event.value.tool, ok: event.value.ok });
+      if (event.case === "answer") return chatAnswer(event.value);
+    }
+  } catch (error) {
+    throw apiError(error);
+  }
+  throw new ApiError(502, "The answer didn't arrive.");
+}
+
 /** The chat agent's answer to the conversation's last message. */
 export async function askChat(team: string | null, messages: { role: "user" | "assistant"; content: string }[]): Promise<ChatAnswer> {
-  const r = await call(() => chatApi.ask({ team: team ?? "", messages }));
+  return chatAnswer(await call(() => chatApi.ask({ team: team ?? "", messages })));
+}
+
+function chatAnswer(r: AskResponse): ChatAnswer {
   return {
     text: r.text,
     citations: r.citations.map((c) => ({ id: c.id, title: c.title, heading: c.heading, kind: c.kind, link: c.link })),

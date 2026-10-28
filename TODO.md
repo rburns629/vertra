@@ -1050,10 +1050,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   questions refused (two of them trying to talk it out of its
   instructions), none of the 40 refused, 40 of 40 cited, 5 of 5 tasks; a
   stricter check first refused three (a DAG, GitHub Actions, a 429).
+  Streaming (2026-10-28): the steps, not the words. `AskStream` sends
+  each step as it's taken and the answer last; the answer's words can't
+  stream, since the console checks (and may replace) the whole answer
+  before anyone sees it. On kind, an app-hosting order: seven steps over
+  15 s, the first at 1 s. Closing the conversation stops its model calls.
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (usage logged). Left:
-  streaming, Vertex's sign-in; then MCP) (proposed
+  Vertex's sign-in; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the

@@ -22,6 +22,10 @@ service ChatService {
   // isn't about Vertra gets the same short answer (off_topic), and an
   // answer from neither the docs nor the platform isn't shown (uncited).
   rpc Ask(AskRequest) returns (AskResponse);
+  // Ask, with each step as it's taken (a tool used, whether it worked),
+  // then the answer. The answer's words come only at the end, checked:
+  // what the model says isn't shown until the console has checked it.
+  rpc AskStream(AskStreamRequest) returns (stream AskStreamResponse);
   // Thumbs up or down on an answer you got, sent with its question and
   // answer, for the admins (kept 90 days).
   rpc RateAnswer(RateAnswerRequest) returns (RateAnswerResponse);
@@ -116,6 +120,21 @@ message ProposedCart {
 message ChatStep {
   string tool = 1;
   bool ok = 2;
+}
+
+// As AskRequest.
+message AskStreamRequest {
+  string team = 1;
+  repeated ChatTurn messages = 2;
+}
+
+message AskStreamResponse {
+  oneof event {
+    // A step it took: the tool, and whether it worked.
+    ChatStep step = 1;
+    // The answer, as Ask gives it: the last message.
+    AskResponse answer = 2;
+  }
 }
 
 message AskResponse {

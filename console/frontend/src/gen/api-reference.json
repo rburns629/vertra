@@ -234,6 +234,15 @@
      "public": false
     },
     {
+     "name": "AskStream",
+     "comment": "Ask, with each step as it's taken (a tool used, whether it worked),\nthen the answer. The answer's words come only at the end, checked:\nwhat the model says isn't shown until the console has checked it.",
+     "input": "vertra.console.v1.AskStreamRequest",
+     "output": "vertra.console.v1.AskStreamResponse",
+     "streaming": true,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "RateAnswer",
      "comment": "Thumbs up or down on an answer you got, sent with its question and\nanswer, for the admins (kept 90 days).",
      "input": "vertra.console.v1.RateAnswerRequest",
@@ -3062,6 +3071,49 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskStreamRequest": {
+   "name": "AskStreamRequest",
+   "comment": "As AskRequest.",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "messages",
+     "type": "ChatTurn",
+     "ref": "vertra.console.v1.ChatTurn",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskStreamResponse": {
+   "name": "AskStreamResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "step",
+     "type": "ChatStep",
+     "ref": "vertra.console.v1.ChatStep",
+     "repeated": false,
+     "optional": false,
+     "comment": "A step it took: the tool, and whether it worked."
+    },
+    {
+     "name": "answer",
+     "type": "AskResponse",
+     "ref": "vertra.console.v1.AskResponse",
+     "repeated": false,
+     "optional": false,
+     "comment": "The answer, as Ask gives it: the last message."
     }
    ]
   },

@@ -364,6 +364,61 @@ export declare type ChatStep = Message<"vertra.console.v1.ChatStep"> & {
 export declare const ChatStepSchema: GenMessage<ChatStep>;
 
 /**
+ * As AskRequest.
+ *
+ * @generated from message vertra.console.v1.AskStreamRequest
+ */
+export declare type AskStreamRequest = Message<"vertra.console.v1.AskStreamRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatTurn messages = 2;
+   */
+  messages: ChatTurn[];
+};
+
+/**
+ * Describes the message vertra.console.v1.AskStreamRequest.
+ * Use `create(AskStreamRequestSchema)` to create a new message.
+ */
+export declare const AskStreamRequestSchema: GenMessage<AskStreamRequest>;
+
+/**
+ * @generated from message vertra.console.v1.AskStreamResponse
+ */
+export declare type AskStreamResponse = Message<"vertra.console.v1.AskStreamResponse"> & {
+  /**
+   * @generated from oneof vertra.console.v1.AskStreamResponse.event
+   */
+  event: {
+    /**
+     * A step it took: the tool, and whether it worked.
+     *
+     * @generated from field: vertra.console.v1.ChatStep step = 1;
+     */
+    value: ChatStep;
+    case: "step";
+  } | {
+    /**
+     * The answer, as Ask gives it: the last message.
+     *
+     * @generated from field: vertra.console.v1.AskResponse answer = 2;
+     */
+    value: AskResponse;
+    case: "answer";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message vertra.console.v1.AskStreamResponse.
+ * Use `create(AskStreamResponseSchema)` to create a new message.
+ */
+export declare const AskStreamResponseSchema: GenMessage<AskStreamResponse>;
+
+/**
  * @generated from message vertra.console.v1.AskResponse
  */
 export declare type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
@@ -462,6 +517,18 @@ export declare const ChatService: GenService<{
     methodKind: "unary";
     input: typeof AskRequestSchema;
     output: typeof AskResponseSchema;
+  },
+  /**
+   * Ask, with each step as it's taken (a tool used, whether it worked),
+   * then the answer. The answer's words come only at the end, checked:
+   * what the model says isn't shown until the console has checked it.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.AskStream
+   */
+  askStream: {
+    methodKind: "server_streaming";
+    input: typeof AskStreamRequestSchema;
+    output: typeof AskStreamResponseSchema;
   },
   /**
    * Thumbs up or down on an answer you got, sent with its question and

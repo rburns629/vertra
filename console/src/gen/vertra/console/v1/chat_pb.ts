@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/chat.proto.
  */
 export const file_vertra_console_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgihAIKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAkSEQoJb2ZmX3RvcGljGAcgASgIEhcKD2NvbnRleHRfcGVyY2VudBgIIAEoBUIHCgVfY2FydDKPAwoLQ2hhdFNlcnZpY2USbQoPR2V0Q2hhdFNldHRpbmdzEikudmVydHJhLmNvbnNvbGUudjEuR2V0Q2hhdFNldHRpbmdzUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESRAoDQXNrEh0udmVydHJhLmNvbnNvbGUudjEuQXNrUmVxdWVzdBoeLnZlcnRyYS5jb25zb2xlLnYxLkFza1Jlc3BvbnNlElkKClJhdGVBbnN3ZXISJC52ZXJ0cmEuY29uc29sZS52MS5SYXRlQW5zd2VyUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLlJhdGVBbnN3ZXJSZXNwb25zZRJwChBMaXN0Q2hhdEZlZWRiYWNrEioudmVydHJhLmNvbnNvbGUudjEuTGlzdENoYXRGZWVkYmFja1JlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5MaXN0Q2hhdEZlZWRiYWNrUmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgiTwoQQXNrU3RyZWFtUmVxdWVzdBIMCgR0ZWFtGAEgASgJEi0KCG1lc3NhZ2VzGAIgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFR1cm4iewoRQXNrU3RyZWFtUmVzcG9uc2USKwoEc3RlcBgBIAEoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRTdGVwSAASMAoGYW5zd2VyGAIgASgLMh4udmVydHJhLmNvbnNvbGUudjEuQXNrUmVzcG9uc2VIAEIHCgVldmVudCKEAgoLQXNrUmVzcG9uc2USDAoEdGV4dBgBIAEoCRIyCgljaXRhdGlvbnMYAiADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5DaGF0Q2l0YXRpb24SDwoHdW5jaXRlZBgDIAEoCBIyCgRjYXJ0GAQgASgLMh8udmVydHJhLmNvbnNvbGUudjEuUHJvcG9zZWRDYXJ0SACIAQESKgoFc3RlcHMYBSADKAsyGy52ZXJ0cmEuY29uc29sZS52MS5DaGF0U3RlcBINCgVtb2RlbBgGIAEoCRIRCglvZmZfdG9waWMYByABKAgSFwoPY29udGV4dF9wZXJjZW50GAggASgFQgcKBV9jYXJ0MukDCgtDaGF0U2VydmljZRJtCg9HZXRDaGF0U2V0dGluZ3MSKS52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuR2V0Q2hhdFNldHRpbmdzUmVzcG9uc2UiA5ACARJECgNBc2sSHS52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXF1ZXN0Gh4udmVydHJhLmNvbnNvbGUudjEuQXNrUmVzcG9uc2USWAoJQXNrU3RyZWFtEiMudmVydHJhLmNvbnNvbGUudjEuQXNrU3RyZWFtUmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLkFza1N0cmVhbVJlc3BvbnNlMAESWQoKUmF0ZUFuc3dlchIkLnZlcnRyYS5jb25zb2xlLnYxLlJhdGVBbnN3ZXJSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuUmF0ZUFuc3dlclJlc3BvbnNlEnAKEExpc3RDaGF0RmVlZGJhY2sSKi52ZXJ0cmEuY29uc29sZS52MS5MaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RDaGF0RmVlZGJhY2tSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.RateAnswerRequest
@@ -379,6 +379,63 @@ export const ChatStepSchema: GenMessage<ChatStep> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_chat, 11);
 
 /**
+ * As AskRequest.
+ *
+ * @generated from message vertra.console.v1.AskStreamRequest
+ */
+export type AskStreamRequest = Message<"vertra.console.v1.AskStreamRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.ChatTurn messages = 2;
+   */
+  messages: ChatTurn[];
+};
+
+/**
+ * Describes the message vertra.console.v1.AskStreamRequest.
+ * Use `create(AskStreamRequestSchema)` to create a new message.
+ */
+export const AskStreamRequestSchema: GenMessage<AskStreamRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 12);
+
+/**
+ * @generated from message vertra.console.v1.AskStreamResponse
+ */
+export type AskStreamResponse = Message<"vertra.console.v1.AskStreamResponse"> & {
+  /**
+   * @generated from oneof vertra.console.v1.AskStreamResponse.event
+   */
+  event: {
+    /**
+     * A step it took: the tool, and whether it worked.
+     *
+     * @generated from field: vertra.console.v1.ChatStep step = 1;
+     */
+    value: ChatStep;
+    case: "step";
+  } | {
+    /**
+     * The answer, as Ask gives it: the last message.
+     *
+     * @generated from field: vertra.console.v1.AskResponse answer = 2;
+     */
+    value: AskResponse;
+    case: "answer";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message vertra.console.v1.AskStreamResponse.
+ * Use `create(AskStreamResponseSchema)` to create a new message.
+ */
+export const AskStreamResponseSchema: GenMessage<AskStreamResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 13);
+
+/**
  * @generated from message vertra.console.v1.AskResponse
  */
 export type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
@@ -443,7 +500,7 @@ export type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
  * Use `create(AskResponseSchema)` to create a new message.
  */
 export const AskResponseSchema: GenMessage<AskResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_chat, 12);
+  messageDesc(file_vertra_console_v1_chat, 14);
 
 /**
  * The chat agent (decision 24): answers from the docs and the catalog,
@@ -478,6 +535,18 @@ export const ChatService: GenService<{
     methodKind: "unary";
     input: typeof AskRequestSchema;
     output: typeof AskResponseSchema;
+  },
+  /**
+   * Ask, with each step as it's taken (a tool used, whether it worked),
+   * then the answer. The answer's words come only at the end, checked:
+   * what the model says isn't shown until the console has checked it.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.AskStream
+   */
+  askStream: {
+    methodKind: "server_streaming";
+    input: typeof AskStreamRequestSchema;
+    output: typeof AskStreamResponseSchema;
   },
   /**
    * Thumbs up or down on an answer you got, sent with its question and

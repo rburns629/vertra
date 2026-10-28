@@ -47,7 +47,7 @@ export interface CompleteOptions {
   noTools?: boolean;
   /** A one-word judgment (the scope check): no thinking where the model takes that, a short reply. */
   quick?: boolean;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 }
 
 export interface ChatModel {

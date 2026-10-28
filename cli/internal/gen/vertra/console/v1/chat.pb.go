@@ -774,6 +774,143 @@ func (x *ChatStep) GetOk() bool {
 	return false
 }
 
+// As AskRequest.
+type AskStreamRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Team          string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	Messages      []*ChatTurn            `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AskStreamRequest) Reset() {
+	*x = AskStreamRequest{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AskStreamRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AskStreamRequest) ProtoMessage() {}
+
+func (x *AskStreamRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AskStreamRequest.ProtoReflect.Descriptor instead.
+func (*AskStreamRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AskStreamRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *AskStreamRequest) GetMessages() []*ChatTurn {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+type AskStreamResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*AskStreamResponse_Step
+	//	*AskStreamResponse_Answer
+	Event         isAskStreamResponse_Event `protobuf_oneof:"event"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AskStreamResponse) Reset() {
+	*x = AskStreamResponse{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AskStreamResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AskStreamResponse) ProtoMessage() {}
+
+func (x *AskStreamResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AskStreamResponse.ProtoReflect.Descriptor instead.
+func (*AskStreamResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AskStreamResponse) GetEvent() isAskStreamResponse_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *AskStreamResponse) GetStep() *ChatStep {
+	if x != nil {
+		if x, ok := x.Event.(*AskStreamResponse_Step); ok {
+			return x.Step
+		}
+	}
+	return nil
+}
+
+func (x *AskStreamResponse) GetAnswer() *AskResponse {
+	if x != nil {
+		if x, ok := x.Event.(*AskStreamResponse_Answer); ok {
+			return x.Answer
+		}
+	}
+	return nil
+}
+
+type isAskStreamResponse_Event interface {
+	isAskStreamResponse_Event()
+}
+
+type AskStreamResponse_Step struct {
+	// A step it took: the tool, and whether it worked.
+	Step *ChatStep `protobuf:"bytes,1,opt,name=step,proto3,oneof"`
+}
+
+type AskStreamResponse_Answer struct {
+	// The answer, as Ask gives it: the last message.
+	Answer *AskResponse `protobuf:"bytes,2,opt,name=answer,proto3,oneof"`
+}
+
+func (*AskStreamResponse_Step) isAskStreamResponse_Event() {}
+
+func (*AskStreamResponse_Answer) isAskStreamResponse_Event() {}
+
 type AskResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Markdown, with citations like [S1] kept only when they name a section
@@ -800,7 +937,7 @@ type AskResponse struct {
 
 func (x *AskResponse) Reset() {
 	*x = AskResponse{}
-	mi := &file_vertra_console_v1_chat_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -812,7 +949,7 @@ func (x *AskResponse) String() string {
 func (*AskResponse) ProtoMessage() {}
 
 func (x *AskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_chat_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -825,7 +962,7 @@ func (x *AskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskResponse.ProtoReflect.Descriptor instead.
 func (*AskResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{12}
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AskResponse) GetText() string {
@@ -942,7 +1079,14 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\aactions\x18\x02 \x03(\tR\aactions\".\n" +
 	"\bChatStep\x12\x12\n" +
 	"\x04tool\x18\x01 \x01(\tR\x04tool\x12\x0e\n" +
-	"\x02ok\x18\x02 \x01(\bR\x02ok\"\xcc\x02\n" +
+	"\x02ok\x18\x02 \x01(\bR\x02ok\"_\n" +
+	"\x10AskStreamRequest\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\x127\n" +
+	"\bmessages\x18\x02 \x03(\v2\x1b.vertra.console.v1.ChatTurnR\bmessages\"\x89\x01\n" +
+	"\x11AskStreamResponse\x121\n" +
+	"\x04step\x18\x01 \x01(\v2\x1b.vertra.console.v1.ChatStepH\x00R\x04step\x128\n" +
+	"\x06answer\x18\x02 \x01(\v2\x1e.vertra.console.v1.AskResponseH\x00R\x06answerB\a\n" +
+	"\x05event\"\xcc\x02\n" +
 	"\vAskResponse\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12=\n" +
 	"\tcitations\x18\x02 \x03(\v2\x1f.vertra.console.v1.ChatCitationR\tcitations\x12\x18\n" +
@@ -952,10 +1096,11 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\x05model\x18\x06 \x01(\tR\x05model\x12\x1b\n" +
 	"\toff_topic\x18\a \x01(\bR\boffTopic\x12'\n" +
 	"\x0fcontext_percent\x18\b \x01(\x05R\x0econtextPercentB\a\n" +
-	"\x05_cart2\x8f\x03\n" +
+	"\x05_cart2\xe9\x03\n" +
 	"\vChatService\x12m\n" +
 	"\x0fGetChatSettings\x12).vertra.console.v1.GetChatSettingsRequest\x1a*.vertra.console.v1.GetChatSettingsResponse\"\x03\x90\x02\x01\x12D\n" +
-	"\x03Ask\x12\x1d.vertra.console.v1.AskRequest\x1a\x1e.vertra.console.v1.AskResponse\x12Y\n" +
+	"\x03Ask\x12\x1d.vertra.console.v1.AskRequest\x1a\x1e.vertra.console.v1.AskResponse\x12X\n" +
+	"\tAskStream\x12#.vertra.console.v1.AskStreamRequest\x1a$.vertra.console.v1.AskStreamResponse0\x01\x12Y\n" +
 	"\n" +
 	"RateAnswer\x12$.vertra.console.v1.RateAnswerRequest\x1a%.vertra.console.v1.RateAnswerResponse\x12p\n" +
 	"\x10ListChatFeedback\x12*.vertra.console.v1.ListChatFeedbackRequest\x1a+.vertra.console.v1.ListChatFeedbackResponse\"\x03\x90\x02\x01B\xd2\x01\n" +
@@ -973,7 +1118,7 @@ func file_vertra_console_v1_chat_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_chat_proto_rawDescData
 }
 
-var file_vertra_console_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_vertra_console_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_vertra_console_v1_chat_proto_goTypes = []any{
 	(*RateAnswerRequest)(nil),        // 0: vertra.console.v1.RateAnswerRequest
 	(*RateAnswerResponse)(nil),       // 1: vertra.console.v1.RateAnswerResponse
@@ -987,31 +1132,38 @@ var file_vertra_console_v1_chat_proto_goTypes = []any{
 	(*ChatCitation)(nil),             // 9: vertra.console.v1.ChatCitation
 	(*ProposedCart)(nil),             // 10: vertra.console.v1.ProposedCart
 	(*ChatStep)(nil),                 // 11: vertra.console.v1.ChatStep
-	(*AskResponse)(nil),              // 12: vertra.console.v1.AskResponse
-	(*timestamppb.Timestamp)(nil),    // 13: google.protobuf.Timestamp
+	(*AskStreamRequest)(nil),         // 12: vertra.console.v1.AskStreamRequest
+	(*AskStreamResponse)(nil),        // 13: vertra.console.v1.AskStreamResponse
+	(*AskResponse)(nil),              // 14: vertra.console.v1.AskResponse
+	(*timestamppb.Timestamp)(nil),    // 15: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_chat_proto_depIdxs = []int32{
 	9,  // 0: vertra.console.v1.RateAnswerRequest.citations:type_name -> vertra.console.v1.ChatCitation
 	9,  // 1: vertra.console.v1.ChatRating.citations:type_name -> vertra.console.v1.ChatCitation
-	13, // 2: vertra.console.v1.ChatRating.created_at:type_name -> google.protobuf.Timestamp
+	15, // 2: vertra.console.v1.ChatRating.created_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: vertra.console.v1.ListChatFeedbackResponse.ratings:type_name -> vertra.console.v1.ChatRating
 	7,  // 4: vertra.console.v1.AskRequest.messages:type_name -> vertra.console.v1.ChatTurn
-	9,  // 5: vertra.console.v1.AskResponse.citations:type_name -> vertra.console.v1.ChatCitation
-	10, // 6: vertra.console.v1.AskResponse.cart:type_name -> vertra.console.v1.ProposedCart
-	11, // 7: vertra.console.v1.AskResponse.steps:type_name -> vertra.console.v1.ChatStep
-	5,  // 8: vertra.console.v1.ChatService.GetChatSettings:input_type -> vertra.console.v1.GetChatSettingsRequest
-	8,  // 9: vertra.console.v1.ChatService.Ask:input_type -> vertra.console.v1.AskRequest
-	0,  // 10: vertra.console.v1.ChatService.RateAnswer:input_type -> vertra.console.v1.RateAnswerRequest
-	2,  // 11: vertra.console.v1.ChatService.ListChatFeedback:input_type -> vertra.console.v1.ListChatFeedbackRequest
-	6,  // 12: vertra.console.v1.ChatService.GetChatSettings:output_type -> vertra.console.v1.GetChatSettingsResponse
-	12, // 13: vertra.console.v1.ChatService.Ask:output_type -> vertra.console.v1.AskResponse
-	1,  // 14: vertra.console.v1.ChatService.RateAnswer:output_type -> vertra.console.v1.RateAnswerResponse
-	4,  // 15: vertra.console.v1.ChatService.ListChatFeedback:output_type -> vertra.console.v1.ListChatFeedbackResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	7,  // 5: vertra.console.v1.AskStreamRequest.messages:type_name -> vertra.console.v1.ChatTurn
+	11, // 6: vertra.console.v1.AskStreamResponse.step:type_name -> vertra.console.v1.ChatStep
+	14, // 7: vertra.console.v1.AskStreamResponse.answer:type_name -> vertra.console.v1.AskResponse
+	9,  // 8: vertra.console.v1.AskResponse.citations:type_name -> vertra.console.v1.ChatCitation
+	10, // 9: vertra.console.v1.AskResponse.cart:type_name -> vertra.console.v1.ProposedCart
+	11, // 10: vertra.console.v1.AskResponse.steps:type_name -> vertra.console.v1.ChatStep
+	5,  // 11: vertra.console.v1.ChatService.GetChatSettings:input_type -> vertra.console.v1.GetChatSettingsRequest
+	8,  // 12: vertra.console.v1.ChatService.Ask:input_type -> vertra.console.v1.AskRequest
+	12, // 13: vertra.console.v1.ChatService.AskStream:input_type -> vertra.console.v1.AskStreamRequest
+	0,  // 14: vertra.console.v1.ChatService.RateAnswer:input_type -> vertra.console.v1.RateAnswerRequest
+	2,  // 15: vertra.console.v1.ChatService.ListChatFeedback:input_type -> vertra.console.v1.ListChatFeedbackRequest
+	6,  // 16: vertra.console.v1.ChatService.GetChatSettings:output_type -> vertra.console.v1.GetChatSettingsResponse
+	14, // 17: vertra.console.v1.ChatService.Ask:output_type -> vertra.console.v1.AskResponse
+	13, // 18: vertra.console.v1.ChatService.AskStream:output_type -> vertra.console.v1.AskStreamResponse
+	1,  // 19: vertra.console.v1.ChatService.RateAnswer:output_type -> vertra.console.v1.RateAnswerResponse
+	4,  // 20: vertra.console.v1.ChatService.ListChatFeedback:output_type -> vertra.console.v1.ListChatFeedbackResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_chat_proto_init() }
@@ -1019,14 +1171,18 @@ func file_vertra_console_v1_chat_proto_init() {
 	if File_vertra_console_v1_chat_proto != nil {
 		return
 	}
-	file_vertra_console_v1_chat_proto_msgTypes[12].OneofWrappers = []any{}
+	file_vertra_console_v1_chat_proto_msgTypes[13].OneofWrappers = []any{
+		(*AskStreamResponse_Step)(nil),
+		(*AskStreamResponse_Answer)(nil),
+	}
+	file_vertra_console_v1_chat_proto_msgTypes[14].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_chat_proto_rawDesc), len(file_vertra_console_v1_chat_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

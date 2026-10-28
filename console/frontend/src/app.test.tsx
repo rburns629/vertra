@@ -31,10 +31,16 @@ function connectResponse(key: string, request: Record<string, unknown>, streamin
     const details = failure
       ? [{ type: "vertra.console.v1.Failure", value: btoa(String.fromCharCode(...toBinary(FailureSchema, create(FailureSchema, { code: failure, message })))) }]
       : undefined;
+    // A stream that fails says so in its end, as the console's does.
+    if (streaming) return streamOf([], { error: { code, message, details } });
     return new Response(JSON.stringify({ code, message, details }), { status, headers: { "content-type": "application/json" } });
   }
   if (!streaming) return new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
-  // A server stream: its messages (an answer that's a list), then its end.
+  return streamOf(Array.isArray(value) ? value : [], {});
+}
+
+/** A server stream: its messages, then its end. */
+function streamOf(messages: unknown[], end: unknown): Response {
   const frame = (flags: number, json: unknown) => {
     const body = new TextEncoder().encode(JSON.stringify(json));
     const envelope = new Uint8Array(5 + body.length);
@@ -43,7 +49,7 @@ function connectResponse(key: string, request: Record<string, unknown>, streamin
     envelope.set(body, 5);
     return envelope;
   };
-  const frames = [...(Array.isArray(value) ? value.map((m) => frame(0, m)) : []), frame(0b10, {})];
+  const frames = [...messages.map((m) => frame(0, m)), frame(0b10, end)];
   // One byte array: jsdom's Blob isn't one Node's Response can read.
   const body = new Uint8Array(frames.reduce((n, f) => n + f.length, 0));
   frames.reduce((offset, f) => {
@@ -414,9 +420,9 @@ describe("the chat panel", () => {
     const rated: Record<string, unknown>[] = [];
     await renderAt("/", MEMBER, {
       "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
-      "ChatService/Ask": (request: Record<string, unknown>) => {
+      "ChatService/AskStream": (request: Record<string, unknown>) => {
         asked.push(request);
-        return {
+        const answer = {
           text: "Back up both databases nightly [S1]. Here's a cart for a bucket.",
           citations: [
             { id: "S1", guide: "reference-operations", title: "Operations", heading: "Backups", kind: "operating", link: "/docs/reference-operations#backups" },
@@ -425,6 +431,8 @@ describe("the chat panel", () => {
           cart: { team: "azure-apps", actions: ["azure-apps-bucket-create"] },
           steps: [{ tool: "search_docs", ok: true }, { tool: "propose_cart", ok: true }],
         };
+        // Its steps as it takes them, then the answer.
+        return [{ step: { tool: "search_docs", ok: true } }, { step: { tool: "propose_cart", ok: true } }, { answer }];
       },
       "ChatService/RateAnswer": (request: Record<string, unknown>) => {
         rated.push(request);
@@ -466,10 +474,10 @@ describe("the chat panel", () => {
     let asked = 0;
     await renderAt("/", MEMBER, {
       "ChatService/GetChatSettings": { enabled: true, model: "claude-haiku-5-5" },
-      "ChatService/Ask": () => {
+      "ChatService/AskStream": () => {
         asked++;
         return asked === 1
-          ? { text: "The docs don't cover that.", contextPercent: 80 }
+          ? [{ answer: { text: "The docs don't cover that.", contextPercent: 80 } }]
           : refused(429, "resource_exhausted", "This conversation is too long for the chat model: start a new one.", "CONVERSATION_TOO_LONG");
       },
     });
