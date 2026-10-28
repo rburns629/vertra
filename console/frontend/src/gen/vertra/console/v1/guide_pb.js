@@ -10,42 +10,63 @@ import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2
  * Describes the file vertra/console/v1/guide.proto.
  */
 export const file_vertra_console_v1_guide = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiIgoFR3VpZGUSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkiEwoRTGlzdEd1aWRlc1JlcXVlc3QiPgoSTGlzdEd1aWRlc1Jlc3BvbnNlEigKBmd1aWRlcxgBIAMoCzIYLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlIh0KD0dldEd1aWRlUmVxdWVzdBIKCgJpZBgBIAEoCSIkChBHZXRHdWlkZVJlc3BvbnNlEhAKCG1hcmtkb3duGAEgASgJMsgBCgxHdWlkZVNlcnZpY2USXgoKTGlzdEd1aWRlcxIkLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RHdWlkZXNSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1Jlc3BvbnNlIgOQAgESWAoIR2V0R3VpZGUSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlc3BvbnNlIgOQAgFiBnByb3RvMw");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiMwoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBSJBChRTZWFyY2hHdWlkZXNSZXNwb25zZRIpCgRoaXRzGAEgAygLMhsudmVydHJhLmNvbnNvbGUudjEuR3VpZGVIaXQiWQoIR3VpZGVIaXQSDQoFZ3VpZGUYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHaGVhZGluZxgDIAEoCRIPCgdleGNlcnB0GAQgASgJEg0KBXNjb3JlGAUgASgBIjMKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkiEwoRTGlzdEd1aWRlc1JlcXVlc3QiPgoSTGlzdEd1aWRlc1Jlc3BvbnNlEigKBmd1aWRlcxgBIAMoCzIYLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlIh0KD0dldEd1aWRlUmVxdWVzdBIKCgJpZBgBIAEoCSIkChBHZXRHdWlkZVJlc3BvbnNlEhAKCG1hcmtkb3duGAEgASgJMq4CCgxHdWlkZVNlcnZpY2USXgoKTGlzdEd1aWRlcxIkLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RHdWlkZXNSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1Jlc3BvbnNlIgOQAgESWAoIR2V0R3VpZGUSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlc3BvbnNlIgOQAgESZAoMU2VhcmNoR3VpZGVzEiYudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlNlYXJjaEd1aWRlc1Jlc3BvbnNlIgOQAgFiBnByb3RvMw");
+
+/**
+ * Describes the message vertra.console.v1.SearchGuidesRequest.
+ * Use `create(SearchGuidesRequestSchema)` to create a new message.
+ */
+export const SearchGuidesRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 0);
+
+/**
+ * Describes the message vertra.console.v1.SearchGuidesResponse.
+ * Use `create(SearchGuidesResponseSchema)` to create a new message.
+ */
+export const SearchGuidesResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 1);
+
+/**
+ * Describes the message vertra.console.v1.GuideHit.
+ * Use `create(GuideHitSchema)` to create a new message.
+ */
+export const GuideHitSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 2);
 
 /**
  * Describes the message vertra.console.v1.Guide.
  * Use `create(GuideSchema)` to create a new message.
  */
 export const GuideSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 0);
+  messageDesc(file_vertra_console_v1_guide, 3);
 
 /**
  * Describes the message vertra.console.v1.ListGuidesRequest.
  * Use `create(ListGuidesRequestSchema)` to create a new message.
  */
 export const ListGuidesRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 1);
+  messageDesc(file_vertra_console_v1_guide, 4);
 
 /**
  * Describes the message vertra.console.v1.ListGuidesResponse.
  * Use `create(ListGuidesResponseSchema)` to create a new message.
  */
 export const ListGuidesResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 2);
+  messageDesc(file_vertra_console_v1_guide, 5);
 
 /**
  * Describes the message vertra.console.v1.GetGuideRequest.
  * Use `create(GetGuideRequestSchema)` to create a new message.
  */
 export const GetGuideRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 3);
+  messageDesc(file_vertra_console_v1_guide, 6);
 
 /**
  * Describes the message vertra.console.v1.GetGuideResponse.
  * Use `create(GetGuideResponseSchema)` to create a new message.
  */
 export const GetGuideResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 4);
+  messageDesc(file_vertra_console_v1_guide, 7);
 
 /**
  * The guides the console shows (console/docs/). Anyone signed in.

@@ -366,7 +366,7 @@
    "methods": [
     {
      "name": "ListGuides",
-     "comment": "Every guide, in reading order: its id and title.",
+     "comment": "Every guide, in reading order: its id and title; then the platform's\nown docs (section \"reference\": architecture, operations, the security\nmodel, the catalog's guide).",
      "input": "vertra.console.v1.ListGuidesRequest",
      "output": "vertra.console.v1.ListGuidesResponse",
      "streaming": false,
@@ -378,6 +378,15 @@
      "comment": "One guide, as markdown.",
      "input": "vertra.console.v1.GetGuideRequest",
      "output": "vertra.console.v1.GetGuideResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SearchGuides",
+     "comment": "The sections of the guides and reference docs that best match a\nquestion's words, best first: what the chat agent answers from.",
+     "input": "vertra.console.v1.SearchGuidesRequest",
+     "output": "vertra.console.v1.SearchGuidesResponse",
      "streaming": false,
      "idempotency": "read",
      "public": false
@@ -4093,6 +4102,81 @@
     }
    ]
   },
+  "vertra.console.v1.SearchGuidesRequest": {
+   "name": "SearchGuidesRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "query",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "limit",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "5 when unset, at most 20."
+    }
+   ]
+  },
+  "vertra.console.v1.SearchGuidesResponse": {
+   "name": "SearchGuidesResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "hits",
+     "type": "GuideHit",
+     "ref": "vertra.console.v1.GuideHit",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GuideHit": {
+   "name": "GuideHit",
+   "comment": "",
+   "fields": [
+    {
+     "name": "guide",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The guide's id, and its title."
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "heading",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The section: its heading and those it's under, \"Upgrading > Databases\"."
+    },
+    {
+     "name": "excerpt",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "About 600 characters of it, from where the words first appear."
+    },
+    {
+     "name": "score",
+     "type": "number",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
   "vertra.console.v1.Guide": {
    "name": "Guide",
    "comment": "",
@@ -4102,7 +4186,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "Such as 03-what-is-a-dag."
+     "comment": "Such as 03-what-is-a-dag, or reference-operations."
     },
     {
      "name": "title",
@@ -4110,6 +4194,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "section",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"guides\" (using Vertra) or \"reference\" (the platform's own docs)."
     }
    ]
   },

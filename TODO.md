@@ -1015,7 +1015,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the
-  person's own Place order confirms). The model is the install's `chat`
+  person's own Place order confirms), and answer questions from every doc
+  (done first, 2026-10-28: the platform's docs ship in the console's image,
+  `console/docs/reference/`, and `GuideService/SearchGuides` searches them
+  and the guides by section, the Docs page's search too). The model is the install's `chat`
   setting: Vertex AI on GCP, Bedrock on AWS, keyless; two adapters
   (Anthropic's format, OpenAI-compatible); a scripted model in tests. Prove
   locally with LM Studio (Qwen3, OpenAI-compatible, at

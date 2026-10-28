@@ -1,0 +1,16 @@
+# The platform's own docs, copied here so they ship in the console's image
+# with the version they describe: the Docs page's reference, and what the
+# chat agent answers from (guides.ts). One line each: the id here, and the
+# file in the repository it's a copy of. `make console-docs` copies them;
+# console/test/guides.test.ts fails while a copy differs.
+architecture docs/architecture.md
+operations docs/operations.md
+security-model docs/security-model.md
+setup docs/setup.md
+assessment docs/assessment.md
+repository-map docs/repository-map.md
+clouds-gcp docs/clouds/gcp.md
+clouds-aws docs/clouds/aws.md
+clouds-github docs/clouds/github.md
+catalog-guide catalog-template/README.md
+catalog-onboarding-with-ai catalog-template/docs/onboarding-with-ai.md

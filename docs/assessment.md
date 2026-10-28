@@ -850,7 +850,17 @@ in VS Code, for one) can do the same. Proposed:
    Tests use a scripted model, as the scheduler's use a fake executor.
 3. *What it sees:* the catalog shared with the person, their teams' runs
    (who, for which team, template and inputs, steps, outputs and failure
-   codes) and resources with their links (decision 25). Not logs (a
+   codes) and resources with their links (decision 25). And every doc, so
+   it answers questions too (decided on review): the console's guides and
+   the platform's own docs (architecture, operations, the security model,
+   setup, the clouds, the catalog's guide), shipped in the console's image
+   with the version they describe (`console/docs/reference/`, copied by
+   `make console-docs`). It searches them by section (keywords, BM25, in the
+   console process: `GuideService/SearchGuides`, the Docs page's search
+   too) and reads a section whole, and links what it answers from. The
+   repository is public, so no doc is a secret; none holds a credential.
+   Searching by meaning (embeddings) waits until keywords are measured
+   short. Not logs (a
    step's logs can hold anything), nothing admin-only, no secrets, teams,
    members or bots. A conversation is kept for its person only, and
    deleted after 30 days.

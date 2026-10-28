@@ -1497,10 +1497,25 @@ export async function listTeamPods(teamName: string): Promise<TaskPod[]> {
 export interface DocSummary {
   id: string;
   title: string;
+  /** guides: for using Vertra; reference: the platform's own docs. */
+  section: "guides" | "reference";
 }
 
 export async function listDocs(): Promise<DocSummary[]> {
-  return (await call(() => guides.listGuides({}))).guides.map((g) => ({ id: g.id, title: g.title }));
+  return (await call(() => guides.listGuides({}))).guides.map((g) => ({ id: g.id, title: g.title, section: g.section === "reference" ? "reference" : "guides" }));
+}
+
+/** A section of a guide or reference doc that matches a question. */
+export interface DocHit {
+  guide: string;
+  title: string;
+  heading: string;
+  excerpt: string;
+}
+
+/** The sections that best match a question's words, best first. */
+export async function searchDocs(query: string): Promise<DocHit[]> {
+  return (await call(() => guides.searchGuides({ query, limit: 8 }))).hits.map((h) => ({ guide: h.guide, title: h.title, heading: h.heading, excerpt: h.excerpt }));
 }
 
 /** A guide's markdown. */

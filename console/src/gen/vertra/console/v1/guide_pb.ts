@@ -12,14 +12,98 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/guide.proto.
  */
 export const file_vertra_console_v1_guide: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiIgoFR3VpZGUSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkiEwoRTGlzdEd1aWRlc1JlcXVlc3QiPgoSTGlzdEd1aWRlc1Jlc3BvbnNlEigKBmd1aWRlcxgBIAMoCzIYLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlIh0KD0dldEd1aWRlUmVxdWVzdBIKCgJpZBgBIAEoCSIkChBHZXRHdWlkZVJlc3BvbnNlEhAKCG1hcmtkb3duGAEgASgJMsgBCgxHdWlkZVNlcnZpY2USXgoKTGlzdEd1aWRlcxIkLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RHdWlkZXNSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1Jlc3BvbnNlIgOQAgESWAoIR2V0R3VpZGUSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlc3BvbnNlIgOQAgFiBnByb3RvMw");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9ndWlkZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiMwoTU2VhcmNoR3VpZGVzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRINCgVsaW1pdBgCIAEoBSJBChRTZWFyY2hHdWlkZXNSZXNwb25zZRIpCgRoaXRzGAEgAygLMhsudmVydHJhLmNvbnNvbGUudjEuR3VpZGVIaXQiWQoIR3VpZGVIaXQSDQoFZ3VpZGUYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHaGVhZGluZxgDIAEoCRIPCgdleGNlcnB0GAQgASgJEg0KBXNjb3JlGAUgASgBIjMKBUd1aWRlEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEg8KB3NlY3Rpb24YAyABKAkiEwoRTGlzdEd1aWRlc1JlcXVlc3QiPgoSTGlzdEd1aWRlc1Jlc3BvbnNlEigKBmd1aWRlcxgBIAMoCzIYLnZlcnRyYS5jb25zb2xlLnYxLkd1aWRlIh0KD0dldEd1aWRlUmVxdWVzdBIKCgJpZBgBIAEoCSIkChBHZXRHdWlkZVJlc3BvbnNlEhAKCG1hcmtkb3duGAEgASgJMq4CCgxHdWlkZVNlcnZpY2USXgoKTGlzdEd1aWRlcxIkLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RHdWlkZXNSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuTGlzdEd1aWRlc1Jlc3BvbnNlIgOQAgESWAoIR2V0R3VpZGUSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRHdWlkZVJlc3BvbnNlIgOQAgESZAoMU2VhcmNoR3VpZGVzEiYudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoR3VpZGVzUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlNlYXJjaEd1aWRlc1Jlc3BvbnNlIgOQAgFiBnByb3RvMw");
+
+/**
+ * @generated from message vertra.console.v1.SearchGuidesRequest
+ */
+export type SearchGuidesRequest = Message<"vertra.console.v1.SearchGuidesRequest"> & {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query: string;
+
+  /**
+   * 5 when unset, at most 20.
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchGuidesRequest.
+ * Use `create(SearchGuidesRequestSchema)` to create a new message.
+ */
+export const SearchGuidesRequestSchema: GenMessage<SearchGuidesRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 0);
+
+/**
+ * @generated from message vertra.console.v1.SearchGuidesResponse
+ */
+export type SearchGuidesResponse = Message<"vertra.console.v1.SearchGuidesResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.GuideHit hits = 1;
+   */
+  hits: GuideHit[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchGuidesResponse.
+ * Use `create(SearchGuidesResponseSchema)` to create a new message.
+ */
+export const SearchGuidesResponseSchema: GenMessage<SearchGuidesResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 1);
+
+/**
+ * @generated from message vertra.console.v1.GuideHit
+ */
+export type GuideHit = Message<"vertra.console.v1.GuideHit"> & {
+  /**
+   * The guide's id, and its title.
+   *
+   * @generated from field: string guide = 1;
+   */
+  guide: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * The section: its heading and those it's under, "Upgrading > Databases".
+   *
+   * @generated from field: string heading = 3;
+   */
+  heading: string;
+
+  /**
+   * About 600 characters of it, from where the words first appear.
+   *
+   * @generated from field: string excerpt = 4;
+   */
+  excerpt: string;
+
+  /**
+   * @generated from field: double score = 5;
+   */
+  score: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GuideHit.
+ * Use `create(GuideHitSchema)` to create a new message.
+ */
+export const GuideHitSchema: GenMessage<GuideHit> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_guide, 2);
 
 /**
  * @generated from message vertra.console.v1.Guide
  */
 export type Guide = Message<"vertra.console.v1.Guide"> & {
   /**
-   * Such as 03-what-is-a-dag.
+   * Such as 03-what-is-a-dag, or reference-operations.
    *
    * @generated from field: string id = 1;
    */
@@ -29,6 +113,13 @@ export type Guide = Message<"vertra.console.v1.Guide"> & {
    * @generated from field: string title = 2;
    */
   title: string;
+
+  /**
+   * "guides" (using Vertra) or "reference" (the platform's own docs).
+   *
+   * @generated from field: string section = 3;
+   */
+  section: string;
 };
 
 /**
@@ -36,7 +127,7 @@ export type Guide = Message<"vertra.console.v1.Guide"> & {
  * Use `create(GuideSchema)` to create a new message.
  */
 export const GuideSchema: GenMessage<Guide> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 0);
+  messageDesc(file_vertra_console_v1_guide, 3);
 
 /**
  * @generated from message vertra.console.v1.ListGuidesRequest
@@ -49,7 +140,7 @@ export type ListGuidesRequest = Message<"vertra.console.v1.ListGuidesRequest"> &
  * Use `create(ListGuidesRequestSchema)` to create a new message.
  */
 export const ListGuidesRequestSchema: GenMessage<ListGuidesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 1);
+  messageDesc(file_vertra_console_v1_guide, 4);
 
 /**
  * @generated from message vertra.console.v1.ListGuidesResponse
@@ -66,7 +157,7 @@ export type ListGuidesResponse = Message<"vertra.console.v1.ListGuidesResponse">
  * Use `create(ListGuidesResponseSchema)` to create a new message.
  */
 export const ListGuidesResponseSchema: GenMessage<ListGuidesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 2);
+  messageDesc(file_vertra_console_v1_guide, 5);
 
 /**
  * @generated from message vertra.console.v1.GetGuideRequest
@@ -83,7 +174,7 @@ export type GetGuideRequest = Message<"vertra.console.v1.GetGuideRequest"> & {
  * Use `create(GetGuideRequestSchema)` to create a new message.
  */
 export const GetGuideRequestSchema: GenMessage<GetGuideRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 3);
+  messageDesc(file_vertra_console_v1_guide, 6);
 
 /**
  * @generated from message vertra.console.v1.GetGuideResponse
@@ -100,7 +191,7 @@ export type GetGuideResponse = Message<"vertra.console.v1.GetGuideResponse"> & {
  * Use `create(GetGuideResponseSchema)` to create a new message.
  */
 export const GetGuideResponseSchema: GenMessage<GetGuideResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_guide, 4);
+  messageDesc(file_vertra_console_v1_guide, 7);
 
 /**
  * The guides the console shows (console/docs/). Anyone signed in.
@@ -109,7 +200,9 @@ export const GetGuideResponseSchema: GenMessage<GetGuideResponse> = /*@__PURE__*
  */
 export const GuideService: GenService<{
   /**
-   * Every guide, in reading order: its id and title.
+   * Every guide, in reading order: its id and title; then the platform's
+   * own docs (section "reference": architecture, operations, the security
+   * model, the catalog's guide).
    *
    * @generated from rpc vertra.console.v1.GuideService.ListGuides
    */
@@ -127,6 +220,17 @@ export const GuideService: GenService<{
     methodKind: "unary";
     input: typeof GetGuideRequestSchema;
     output: typeof GetGuideResponseSchema;
+  },
+  /**
+   * The sections of the guides and reference docs that best match a
+   * question's words, best first: what the chat agent answers from.
+   *
+   * @generated from rpc vertra.console.v1.GuideService.SearchGuides
+   */
+  searchGuides: {
+    methodKind: "unary";
+    input: typeof SearchGuidesRequestSchema;
+    output: typeof SearchGuidesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_guide, 0);

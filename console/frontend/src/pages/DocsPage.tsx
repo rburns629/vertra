@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { Children, isValidElement, useEffect, useId, useRef, useState } from "react";
+import { Children, isValidElement, useDeferredValue, useEffect, useId, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -8,6 +8,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
 import TextField from "@mui/material/TextField";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
@@ -15,7 +16,7 @@ import Typography from "@mui/material/Typography";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
-import { ApiError, getDoc, listDocs, type DocSummary } from "../api";
+import { ApiError, getDoc, listDocs, searchDocs, type DocHit, type DocSummary } from "../api";
 import { PageHeader } from "../components/PageHeader";
 import { API_REFERENCE_ID, ApiReference } from "./ApiReference";
 import Divider from "@mui/material/Divider";
@@ -146,9 +147,74 @@ const MARKDOWN_COMPONENTS: Components = {
   input: TaskMark,
 };
 
+/** A heading's anchor, as rehype-slug makes it (GitHub's). */
+function slug(heading: string): string {
+  return heading
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .replace(/\s/g, "-");
+}
+
+/** Searching every guide and reference doc (GuideService/SearchGuides): the sections that match, linked. */
+function DocSearch() {
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<DocHit[] | null>(null);
+  const search = useDeferredValue(query.trim());
+  useEffect(() => {
+    if (search.length < 2) {
+      setHits(null);
+      return;
+    }
+    let current = true;
+    searchDocs(search)
+      .then((found) => { if (current) setHits(found); })
+      .catch(() => { if (current) setHits([]); });
+    return () => {
+      current = false;
+    };
+  }, [search]);
+  return (
+    <Box sx={{ mb: 2 }}>
+      <TextField
+        size="small"
+        fullWidth
+        placeholder="Search the docs: how do I back up the database?"
+        slotProps={{ htmlInput: { "aria-label": "Search the docs" } }}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); }}
+        sx={{ maxWidth: 560, bgcolor: "background.paper" }}
+      />
+      {hits && (
+        <Card variant="outlined" sx={{ mt: 1, maxWidth: 760 }}>
+          {hits.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
+              Nothing matches.
+            </Typography>
+          ) : (
+            <List dense disablePadding aria-label="Search results">
+              {hits.map((h) => (
+                <ListItemButton
+                  key={`${h.guide}#${h.heading}`}
+                  component={RouterLink}
+                  to={`/docs/${h.guide}${h.heading === h.title ? "" : `#${slug(h.heading.split(" > ").at(-1) ?? "")}`}`}
+                  onClick={() => { setQuery(""); }}
+                >
+                  <ListItemText primary={`${h.title} · ${h.heading}`} secondary={h.excerpt.slice(0, 180)} />
+                </ListItemButton>
+              ))}
+            </List>
+          )}
+        </Card>
+      )}
+    </Box>
+  );
+}
+
 /**
- * Renders the guides in console/docs/, served by ../../src/rpc/services/guide.ts
- * from the console's image. The first one in the list opens by default.
+ * Renders the guides in console/docs/, and the platform's own docs in
+ * console/docs/reference/ (the reference), served by
+ * ../../src/rpc/services/guide.ts from the console's image, with a search
+ * over them all. The first one in the list opens by default.
  */
 export function DocsPage() {
   const { id } = useParams();
@@ -188,9 +254,11 @@ export function DocsPage() {
   const header = (
     <PageHeader
       title="Help and guides"
-      subtitle="How Vertra works and how to use it: getting started, secrets, DAGs, calling the API, and the API reference."
+      subtitle="How Vertra works and how to use it: getting started, secrets, DAGs, calling the API, the API reference, and the platform's own docs."
     />
   );
+  const guideDocs = docs?.filter((d) => d.section === "guides") ?? [];
+  const referenceDocs = docs?.filter((d) => d.section === "reference") ?? [];
 
   if (error) {
     return (
@@ -215,6 +283,7 @@ export function DocsPage() {
   return (
     <Box>
       {header}
+      <DocSearch />
       {/* Grid, not flex, for the page-level split: a fixed sidebar column plus
          a content column that takes every remaining pixel (1fr), not just
          "grows to fit its content" the way flex's grow/shrink math does --
@@ -243,18 +312,27 @@ export function DocsPage() {
             slotProps={{ select: { native: true } }}
             sx={{ display: { md: "none" }, bgcolor: "background.paper" }}
           >
-            {docs.map((doc) => (
+            {guideDocs.map((doc) => (
               <option key={doc.id} value={doc.id}>
                 {doc.title}
               </option>
             ))}
             <option value={API_REFERENCE_ID}>API reference</option>
+            {referenceDocs.length > 0 && (
+              <optgroup label="Reference">
+                {referenceDocs.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </TextField>
         )}
         <Card variant="outlined" sx={{ display: { xs: "none", md: "block" } }}>
           {docs ? (
             <List component="nav" aria-label="Guides" dense disablePadding>
-              {docs.map((doc) => (
+              {guideDocs.map((doc) => (
                 <ListItemButton
                   key={doc.id}
                   component={RouterLink}
@@ -274,6 +352,25 @@ export function DocsPage() {
               >
                 <ListItemText primary="API reference" />
               </ListItemButton>
+              {referenceDocs.length > 0 && (
+                <>
+                  <Divider />
+                  <ListSubheader disableSticky sx={{ lineHeight: 2.5 }}>
+                    Reference
+                  </ListSubheader>
+                  {referenceDocs.map((doc) => (
+                    <ListItemButton
+                      key={doc.id}
+                      component={RouterLink}
+                      to={`/docs/${doc.id}`}
+                      selected={doc.id === id}
+                      aria-current={doc.id === id ? "page" : undefined}
+                    >
+                      <ListItemText primary={doc.title} />
+                    </ListItemButton>
+                  ))}
+                </>
+              )}
             </List>
           ) : (
             <Box sx={{ p: 2, display: "flex", justifyContent: "center" }}>

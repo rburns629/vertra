@@ -1,5 +1,5 @@
 .PHONY: gke-verify-release gke-deploy-console-from-source gke-deploy-kernel-from-source kind-tls kind-audit-store quickstart _quickstart-prereqs kind-cluster kind-namespaces \
-	build-products kind-sample-api catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
+	build-products kind-sample-api console-docs catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
 	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
 
@@ -180,6 +180,11 @@ build-products: kind-registry
 	$(DOCKER) build -t $(KIND_REGISTRY)/demo-application-product:local examples/application-product
 	$(DOCKER) push $(KIND_REGISTRY)/demo-project-product:local
 	$(DOCKER) push $(KIND_REGISTRY)/demo-application-product:local
+
+# The platform's docs, copied into the console's image (console/docs/reference/
+# SOURCES lists them): run after changing any of them, or the console's tests fail.
+console-docs:
+	@bash .github/scripts/console-docs.sh
 
 # The backend of the local sample's API product (samples/local/apis/greetings),
 # run in the local team's namespace as the team itself would run it: the

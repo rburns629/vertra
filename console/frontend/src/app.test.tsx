@@ -389,6 +389,25 @@ describe("the catalog", () => {
   });
 });
 
+describe("the docs", () => {
+  it("lists the platform's docs as the reference, and finds a section by search", async () => {
+    await renderAt("/docs/01-getting-started", MEMBER, {
+      "GuideService/ListGuides": {
+        guides: [
+          { id: "01-getting-started", title: "Getting started", section: "guides" },
+          { id: "reference-operations", title: "Operations", section: "reference" },
+        ],
+      },
+      "GuideService/GetGuide": { markdown: "# Getting started\n\nHello." },
+      "GuideService/SearchGuides": { hits: [{ guide: "reference-operations", title: "Operations", heading: "Databases > Backups", excerpt: "Back up both databases nightly." }] },
+    });
+    expect(await screen.findByText("Reference")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search the docs"), { target: { value: "back up" } });
+    const hit = await screen.findByRole("link", { name: /Operations · Databases > Backups/ });
+    expect(hit.getAttribute("href")).toBe("/docs/reference-operations#backups");
+  });
+});
+
 describe("the cart", () => {
   it("plans the cart for your team, offers what's there, and places it with what you fill in", async () => {
     const { cart } = await import("./cart");

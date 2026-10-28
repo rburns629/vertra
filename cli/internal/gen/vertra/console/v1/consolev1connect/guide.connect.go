@@ -39,14 +39,22 @@ const (
 	GuideServiceListGuidesProcedure = "/vertra.console.v1.GuideService/ListGuides"
 	// GuideServiceGetGuideProcedure is the fully-qualified name of the GuideService's GetGuide RPC.
 	GuideServiceGetGuideProcedure = "/vertra.console.v1.GuideService/GetGuide"
+	// GuideServiceSearchGuidesProcedure is the fully-qualified name of the GuideService's SearchGuides
+	// RPC.
+	GuideServiceSearchGuidesProcedure = "/vertra.console.v1.GuideService/SearchGuides"
 )
 
 // GuideServiceClient is a client for the vertra.console.v1.GuideService service.
 type GuideServiceClient interface {
-	// Every guide, in reading order: its id and title.
+	// Every guide, in reading order: its id and title; then the platform's
+	// own docs (section "reference": architecture, operations, the security
+	// model, the catalog's guide).
 	ListGuides(context.Context, *connect.Request[v1.ListGuidesRequest]) (*connect.Response[v1.ListGuidesResponse], error)
 	// One guide, as markdown.
 	GetGuide(context.Context, *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error)
+	// The sections of the guides and reference docs that best match a
+	// question's words, best first: what the chat agent answers from.
+	SearchGuides(context.Context, *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error)
 }
 
 // NewGuideServiceClient constructs a client for the vertra.console.v1.GuideService service. By
@@ -74,13 +82,21 @@ func NewGuideServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		searchGuides: connect.NewClient[v1.SearchGuidesRequest, v1.SearchGuidesResponse](
+			httpClient,
+			baseURL+GuideServiceSearchGuidesProcedure,
+			connect.WithSchema(guideServiceMethods.ByName("SearchGuides")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // guideServiceClient implements GuideServiceClient.
 type guideServiceClient struct {
-	listGuides *connect.Client[v1.ListGuidesRequest, v1.ListGuidesResponse]
-	getGuide   *connect.Client[v1.GetGuideRequest, v1.GetGuideResponse]
+	listGuides   *connect.Client[v1.ListGuidesRequest, v1.ListGuidesResponse]
+	getGuide     *connect.Client[v1.GetGuideRequest, v1.GetGuideResponse]
+	searchGuides *connect.Client[v1.SearchGuidesRequest, v1.SearchGuidesResponse]
 }
 
 // ListGuides calls vertra.console.v1.GuideService.ListGuides.
@@ -93,12 +109,22 @@ func (c *guideServiceClient) GetGuide(ctx context.Context, req *connect.Request[
 	return c.getGuide.CallUnary(ctx, req)
 }
 
+// SearchGuides calls vertra.console.v1.GuideService.SearchGuides.
+func (c *guideServiceClient) SearchGuides(ctx context.Context, req *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error) {
+	return c.searchGuides.CallUnary(ctx, req)
+}
+
 // GuideServiceHandler is an implementation of the vertra.console.v1.GuideService service.
 type GuideServiceHandler interface {
-	// Every guide, in reading order: its id and title.
+	// Every guide, in reading order: its id and title; then the platform's
+	// own docs (section "reference": architecture, operations, the security
+	// model, the catalog's guide).
 	ListGuides(context.Context, *connect.Request[v1.ListGuidesRequest]) (*connect.Response[v1.ListGuidesResponse], error)
 	// One guide, as markdown.
 	GetGuide(context.Context, *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error)
+	// The sections of the guides and reference docs that best match a
+	// question's words, best first: what the chat agent answers from.
+	SearchGuides(context.Context, *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error)
 }
 
 // NewGuideServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -122,12 +148,21 @@ func NewGuideServiceHandler(svc GuideServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	guideServiceSearchGuidesHandler := connect.NewUnaryHandler(
+		GuideServiceSearchGuidesProcedure,
+		svc.SearchGuides,
+		connect.WithSchema(guideServiceMethods.ByName("SearchGuides")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.GuideService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GuideServiceListGuidesProcedure:
 			guideServiceListGuidesHandler.ServeHTTP(w, r)
 		case GuideServiceGetGuideProcedure:
 			guideServiceGetGuideHandler.ServeHTTP(w, r)
+		case GuideServiceSearchGuidesProcedure:
+			guideServiceSearchGuidesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -143,4 +178,8 @@ func (UnimplementedGuideServiceHandler) ListGuides(context.Context, *connect.Req
 
 func (UnimplementedGuideServiceHandler) GetGuide(context.Context, *connect.Request[v1.GetGuideRequest]) (*connect.Response[v1.GetGuideResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.GuideService.GetGuide is not implemented"))
+}
+
+func (UnimplementedGuideServiceHandler) SearchGuides(context.Context, *connect.Request[v1.SearchGuidesRequest]) (*connect.Response[v1.SearchGuidesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.GuideService.SearchGuides is not implemented"))
 }

@@ -183,6 +183,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/schedules.ts` | `ScheduleService`: a team's schedules (members see, maintainers make, pause and delete), checked as their bot. |
 | `core/sso.ts` | `SsoService`: single sign-on as admins set it (the provider unless the install set it, its discovery checked, its secret write-only), where groups come from, and groups mapped to teams. |
 | `core/drafts.ts` | `DraftService`: Compose's drafts, kept for their team (its members and admins), bounded, each save conditional on the version it changed. |
+| `guideSearch.ts` | Searching the guides and reference docs: each cut into sections at its headings, ranked by BM25 (a heading's words three times; two words also tried as one), built once from the image's docs (`GuideService/SearchGuides`, the Docs page's search, the chat agent). |
 | `core/orders.ts` | `OrderService` (decisions 23 and 25): the order builder (`planOrder`, no I/O): a cart of actions wired by wiring type; for a needed type, what the team already has offered, else its default provider added, or a shared type asked once; optional inputs suggested; ambiguities and cycles reported. `PreviewOrder` runs nothing; `PlaceOrder` runs a planned cart as one run for the team, each step as its action alone (`templates.ts`'s `runOrderSteps`). |
 | `core/notifications.ts` | `NotificationService`: your inbox, and your teams' chat webhooks (members see, maintainers set, test and remove). |
 | `core/resources.ts` | What runs made (`ResourceService`): who sees and deletes each resource, and deleting them by running their products' cleanup actions, newest first. |
@@ -286,6 +287,7 @@ Shown on the console's Docs page, in file order. They ship inside the console im
 | `06-database-schemas.md` | Every table in both databases. Tests in both projects keep it in step with the code. |
 | `07-how-data-moves.md` | One real value followed from one task to the next. |
 | `08-under-the-hood.md` | Every unusual use of Kubernetes, Helm and Postgres, and why. |
+| `reference/` | The platform's own docs, copied from the repository (`SOURCES` lists them; `make console-docs`, `.github/scripts/console-docs.sh`): the Docs page's reference, and what the chat agent answers from. `test/docs.test.ts` fails while a copy differs. |
 
 ### `console/test/`
 

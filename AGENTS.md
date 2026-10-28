@@ -350,6 +350,11 @@ kind cluster of its own (`--cluster-name`); it shares the `kind-registry`.
   console reach kernel-api. A new component, or a debugging Pod, can't
   connect until it carries those labels. Checking a database password from
   inside the Postgres Pod proves nothing: local connections are trusted.
+- The platform's docs are copied into the console's image
+  (`console/docs/reference/`, listed in its `SOURCES`) for the Docs page and
+  the chat agent. After changing any of them (`docs/*.md`, `docs/clouds/`,
+  `catalog-template/README.md`), run `make console-docs`, or the console's
+  tests fail.
 - After rebuilding a platform image for kind, you must `kind load
   docker-image <img> --name <cluster>` again. Otherwise the cluster keeps
   running the stale image, or fails with `ImagePullBackOff`.

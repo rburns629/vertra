@@ -1,0 +1,111 @@
+# Setting up Vertra
+
+From an empty account to people running steps, with `vertra`, the installer.
+It asks what it needs, shows what it will create and what that costs, and
+changes nothing until you approve. Every answer is kept in
+`deploy/<env>/vertra.yaml`, so `vertra apply` again makes the install match it,
+and `vertra config set` changes one thing.
+
+## Before you start
+
+- **Where it runs.** Your laptop (`kind`, free), Google Cloud (`gcp`), AWS
+  (`aws`), or a Kubernetes cluster you already have (`existing`). For a cloud,
+  get the account ready first: [Google Cloud](clouds/gcp.md),
+  [AWS](clouds/aws.md). For the catalog, [GitHub](clouds/github.md).
+- **The tools.** `vertra tools --install` downloads what's missing (kubectl,
+  helm, OpenTofu, kind), each pinned and checksum-verified. Docker is yours to
+  install.
+
+## 1. `vertra init <env>`
+
+It asks, in order, with what each choice costs or gives up:
+
+| Question | What it decides |
+| --- | --- |
+| Where | kind, gcp, aws or existing; the project, region or kubectl context |
+| Size | how many copies of each part, and the step caps (`minimal` to `scaled`, or `auto`) |
+| Sleep when idle | scale to zero after a quiet spell (data kept); `vertra wake` brings it back |
+| First admin | their email; the password is generated and shown once after the first apply |
+| The console | private (`vertra console` port-forwards to it) or reached over HTTPS at a hostname |
+| The catalog | a GitHub repository for your teams' products, made for you |
+| Log search | keep steps' logs for search in Observe (archived to a bucket after 30 days on a cloud) |
+| The audit copy | gcp, aws: copy the audit log to a bucket that refuses deletes; locking it is a separate, permanent choice |
+| The API gateway | serve the catalog's API products |
+| Monitoring | kind, existing: when the cluster runs a Prometheus Operator, Vertra's alerts and Grafana dashboard for it |
+
+**A public console**, by target:
+
+- **gcp**: a reserved address and a Google-managed certificate, on a free
+  `nip.io` name or a hostname of yours.
+- **aws**: a Route 53 zone vertra creates (e.g. `vertra.example.com`), which you
+  delegate once with its NS records; the certificate and record are made for
+  you.
+- **existing**: your Ingress controller and a certificate from cert-manager
+  (Let's Encrypt, or a ClusterIssuer of yours); vertra installs cert-manager if
+  the cluster hasn't got it.
+
+## 2. `vertra apply <env>`
+
+It shows the plan: what it creates in your account, what it builds and
+installs, and the estimated monthly cost. Nothing happens until you approve.
+A first cloud install takes about ten to twenty minutes.
+
+**DNS.** With a hostname of yours, apply says exactly which record to add
+where your domain is managed, and waits for it:
+
+```
+Add this DNS record where example.com is managed:
+  A     vertra.example.com → 34.57.221.133   (TTL 300)
+```
+
+Many DNS providers add the domain themselves: then the record's name is just
+`vertra`. The certificate is issued once the name resolves; `vertra status`
+shows both.
+
+**The admin's password** is printed once at the end of the first apply. Sign
+in with it and choose your own: nothing else opens until you do. If it's lost,
+`vertra admin reset-password <env>` makes a new one, which then has to be
+changed at the next sign-in.
+
+## 3. Sign in, and invite people
+
+Sign in at the console's address (or `vertra console <env>`, then
+http://localhost:18080). On the Admin page, create accounts: each gets a
+temporary password to change at their first sign-in, and starts in the teams
+you choose.
+
+**Signing in with Google** (Workspace accounts): `vertra sso google <env>`. It
+says which two pages of the Google Cloud console to open and what to paste
+there, then reads the file you download. `vertra apply` turns it on. Passwords
+keep working; on a team's page, an admin can then require Google sign-in for
+that team's members (admins can always use their password, in case Google
+can't be reached). `vertra sso off` turns it off again.
+
+## 4. The catalog
+
+`vertra catalog create <env>` makes your catalog repository: its CI builds,
+scans and signs your teams' products and releases them to every install that
+reads the catalog. The [catalog's own guide](../catalog-template/README.md)
+covers adding teams and products.
+
+## Day to day
+
+| Command | What it does |
+| --- | --- |
+| `vertra status <env>` | what's installed, awake or asleep; a public console's DNS and certificate |
+| `vertra console <env>` | reach the console from your machine |
+| `vertra sleep` / `vertra wake <env>` | scale to zero and back (data kept) |
+| `vertra config set -e <env> <key> <value>` | change a setting, then `vertra apply` |
+| `vertra apply <env>` | upgrade, or make the install match the settings again |
+| `vertra destroy <env>` | remove it; asks about data |
+
+**What `destroy` keeps.** Unless you choose to delete data: the database's
+disk, the backups and logs buckets, and the task registry. The audit copy's
+bucket is always kept: it's the record, and its retention refuses deletion
+until it lapses. A local registry another kind cluster still uses is kept too.
+
+## Where to read more
+
+- [Operations](operations.md): every setting, what each feature does on each
+  cloud, upgrades, backups, troubleshooting.
+- [Security model](security-model.md): what's enforced, and by which part.

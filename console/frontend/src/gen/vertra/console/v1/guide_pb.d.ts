@@ -13,11 +13,92 @@ import type { Message } from "@bufbuild/protobuf";
 export declare const file_vertra_console_v1_guide: GenFile;
 
 /**
+ * @generated from message vertra.console.v1.SearchGuidesRequest
+ */
+export declare type SearchGuidesRequest = Message<"vertra.console.v1.SearchGuidesRequest"> & {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query: string;
+
+  /**
+   * 5 when unset, at most 20.
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchGuidesRequest.
+ * Use `create(SearchGuidesRequestSchema)` to create a new message.
+ */
+export declare const SearchGuidesRequestSchema: GenMessage<SearchGuidesRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SearchGuidesResponse
+ */
+export declare type SearchGuidesResponse = Message<"vertra.console.v1.SearchGuidesResponse"> & {
+  /**
+   * @generated from field: repeated vertra.console.v1.GuideHit hits = 1;
+   */
+  hits: GuideHit[];
+};
+
+/**
+ * Describes the message vertra.console.v1.SearchGuidesResponse.
+ * Use `create(SearchGuidesResponseSchema)` to create a new message.
+ */
+export declare const SearchGuidesResponseSchema: GenMessage<SearchGuidesResponse>;
+
+/**
+ * @generated from message vertra.console.v1.GuideHit
+ */
+export declare type GuideHit = Message<"vertra.console.v1.GuideHit"> & {
+  /**
+   * The guide's id, and its title.
+   *
+   * @generated from field: string guide = 1;
+   */
+  guide: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * The section: its heading and those it's under, "Upgrading > Databases".
+   *
+   * @generated from field: string heading = 3;
+   */
+  heading: string;
+
+  /**
+   * About 600 characters of it, from where the words first appear.
+   *
+   * @generated from field: string excerpt = 4;
+   */
+  excerpt: string;
+
+  /**
+   * @generated from field: double score = 5;
+   */
+  score: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GuideHit.
+ * Use `create(GuideHitSchema)` to create a new message.
+ */
+export declare const GuideHitSchema: GenMessage<GuideHit>;
+
+/**
  * @generated from message vertra.console.v1.Guide
  */
 export declare type Guide = Message<"vertra.console.v1.Guide"> & {
   /**
-   * Such as 03-what-is-a-dag.
+   * Such as 03-what-is-a-dag, or reference-operations.
    *
    * @generated from field: string id = 1;
    */
@@ -27,6 +108,13 @@ export declare type Guide = Message<"vertra.console.v1.Guide"> & {
    * @generated from field: string title = 2;
    */
   title: string;
+
+  /**
+   * "guides" (using Vertra) or "reference" (the platform's own docs).
+   *
+   * @generated from field: string section = 3;
+   */
+  section: string;
 };
 
 /**
@@ -102,7 +190,9 @@ export declare const GetGuideResponseSchema: GenMessage<GetGuideResponse>;
  */
 export declare const GuideService: GenService<{
   /**
-   * Every guide, in reading order: its id and title.
+   * Every guide, in reading order: its id and title; then the platform's
+   * own docs (section "reference": architecture, operations, the security
+   * model, the catalog's guide).
    *
    * @generated from rpc vertra.console.v1.GuideService.ListGuides
    */
@@ -120,6 +210,17 @@ export declare const GuideService: GenService<{
     methodKind: "unary";
     input: typeof GetGuideRequestSchema;
     output: typeof GetGuideResponseSchema;
+  },
+  /**
+   * The sections of the guides and reference docs that best match a
+   * question's words, best first: what the chat agent answers from.
+   *
+   * @generated from rpc vertra.console.v1.GuideService.SearchGuides
+   */
+  searchGuides: {
+    methodKind: "unary";
+    input: typeof SearchGuidesRequestSchema;
+    output: typeof SearchGuidesResponseSchema;
   },
 }>;
 
