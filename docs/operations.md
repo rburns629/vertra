@@ -610,9 +610,10 @@ Postgres alone manage hundreds a second, while each step costs the kernel
 about five to seven API calls. The kernel chart's `kubernetesClient` (`qps`,
 `burst`) is the kernel's own limit on those calls; at client-go's default
 of 5 a second the scheduler finishes about one step a second, whatever else
-is set, and logs "client-side throttling". Raising it (50 and 100 tripled
-kind's throughput: `perf/README.md`) leaves the API server's own priority
-and fairness in charge. `scheduler.maxRunningTasks` and
+is set, and logs "client-side throttling". The chart sets 50 and 100, which
+tripled kind's throughput (`perf/README.md`); the API server's own priority
+and fairness stays in charge of a busy install. Raise it further only if the
+scheduler's log still shows throttling. `scheduler.maxRunningTasks` and
 `maxRunningTasksPerTeam` cap how many steps run at once (0: no cap), so a
 burst of runs queues instead of starting every Pod at once.
 

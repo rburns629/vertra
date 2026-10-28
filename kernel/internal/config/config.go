@@ -111,8 +111,8 @@ type Settings struct {
 	// missed.
 	WatchResync time.Duration
 	// The Kubernetes client's own rate limit: requests a second, and how
-	// many may go at once above it. client-go's defaults (5 and 10) are
-	// kept unless set; perf/README.md has what they cost.
+	// many may go at once above it. 50 and 100, not client-go's 5 and 10,
+	// which held the scheduler to about a step a second (perf/README.md).
 	KubernetesQPS   float64
 	KubernetesBurst int
 
@@ -296,8 +296,8 @@ func Load(getenv func(string) string) (Settings, error) {
 		},
 		MaxDispatchFailures:    r.integer("SCHEDULER_MAX_DISPATCH_FAILURES", 5, true),
 		WatchResync:            r.seconds("KUBERNETES_WATCH_RESYNC_SECONDS", 30, true),
-		KubernetesQPS:          r.number("KUBERNETES_CLIENT_QPS", 5, true),
-		KubernetesBurst:        r.integer("KUBERNETES_CLIENT_BURST", 10, true),
+		KubernetesQPS:          r.number("KUBERNETES_CLIENT_QPS", 50, true),
+		KubernetesBurst:        r.integer("KUBERNETES_CLIENT_BURST", 100, true),
 		TaskImagePullSecret:    r.str("TASK_IMAGE_PULL_SECRET", ""),
 		TaskPodHardening:       r.boolean("TASK_POD_HARDENING", true),
 		JobTTL:                 r.seconds("KUBERNETES_JOB_TTL_SECONDS", 3600, false),

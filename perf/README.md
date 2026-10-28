@@ -100,8 +100,8 @@ ConfigMap deleted), so the scheduler could start and finish about one step
 a second, whatever the cap. The scheduler's own log said so ("client-side
 throttling"), and its passes that finished steps took 2.5 to 10 s while the
 rest took under 5 ms. With the limit made a setting (`kubernetesClient` in
-the kernel chart, still 5 and 10 by default) and raised to 50 and 100,
-nothing else changed:
+the kernel chart) and raised to 50 and 100, nothing else changed (now the
+default, since 2026-10-28):
 
 | | 5/s (default) | 50/s |
 | --- | --- | --- |
@@ -134,8 +134,7 @@ times early by up to one pass, which the driver's completion lag inherits.
 
 ## Next (TODO.md)
 
-Raise the client's default (proposed: 50 and 100; the API server's
-priority and fairness still protects it), and then: whether to read a
+Whether to read a
 finished Pod's status instead of waiting for its Job (about 2.5 s a step);
 the sustained and higher scenarios; profiling; the remaining failure cases
 (a create that times out but happened, Postgres or the API server away,

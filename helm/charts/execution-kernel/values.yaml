@@ -179,11 +179,12 @@ api:
 # requests a second, and how many may go above it at once. Every step costs
 # a handful of calls (its ConfigMap and Job made; read, logged and deleted
 # once done), so this caps how many steps a second the scheduler can start
-# and finish. client-go's defaults are 5 and 10 (perf/README.md has what
-# they cost); the API server's own priority and fairness still applies.
+# and finish. client-go's own defaults, 5 and 10, held it to about a step a
+# second (perf/README.md); the API server's priority and fairness still
+# protects it from a busy install.
 kubernetesClient:
-  qps: 5
-  burst: 10
+  qps: 50
+  burst: 100
 
 scheduler:
   replicaCount: 1

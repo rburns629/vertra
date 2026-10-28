@@ -997,11 +997,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   console to a kind cluster of their own (`vertra-perf`), and the scheduler
   and Postgres alone with the fake executor. Found: the kernel's Kubernetes
   client ran at client-go's default 5 requests a second, about one step a
-  second; now a setting (`kubernetesClient`, still 5/10 by default), and
-  50/100 tripled throughput on kind. The scheduler and Postgres manage
-  160 to 515 steps a second. Next:
-  1. Raise `kubernetesClient`'s default (proposed 50 and 100), after
-     trying it on GKE.
+  second; now a setting (`kubernetesClient`), 50 and 100 by default since
+  2026-10-28, which tripled throughput on kind. The scheduler and Postgres
+  manage 160 to 515 steps a second. Next:
+  1. Not yet seen on GKE or EKS at 50/100: watch the scheduler's log for
+     throttling and the API server's for rejections on the next deploy.
   2. Read a finished Pod's status instead of waiting for its Job complete
      (about 2.5 s a step), if that's still the largest part.
   3. A pass stamps what it records with its start: under a long pass a
