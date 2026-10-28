@@ -5,12 +5,82 @@
 /* eslint-disable */
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
+import type { JsonObject, Message } from "@bufbuild/protobuf";
+import type { ExecutionState } from "./execution_pb";
 
 /**
  * Describes the file vertra/console/v1/order.proto.
  */
 export declare const file_vertra_console_v1_order: GenFile;
+
+/**
+ * @generated from message vertra.console.v1.PlaceOrderRequest
+ */
+export declare type PlaceOrderRequest = Message<"vertra.console.v1.PlaceOrderRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: repeated string actions = 2;
+   */
+  actions: string[];
+
+  /**
+   * @generated from field: repeated vertra.console.v1.OrderChoice choices = 3;
+   */
+  choices: OrderChoice[];
+
+  /**
+   * What you fill in: {"<step>": {"<input>": value}}, for inputs nothing in
+   * the order fills.
+   *
+   * @generated from field: google.protobuf.Struct values = 4;
+   */
+  values?: JsonObject | undefined;
+
+  /**
+   * A shared type's value, by the type's name: {"gcp.region": "us-central1"}.
+   *
+   * @generated from field: google.protobuf.Struct parameters = 5;
+   */
+  parameters?: JsonObject | undefined;
+
+  /**
+   * Sent again (a retry after a timeout), the same run.
+   *
+   * @generated from field: string request_id = 6;
+   */
+  requestId: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.PlaceOrderRequest.
+ * Use `create(PlaceOrderRequestSchema)` to create a new message.
+ */
+export declare const PlaceOrderRequestSchema: GenMessage<PlaceOrderRequest>;
+
+/**
+ * @generated from message vertra.console.v1.PlaceOrderResponse
+ */
+export declare type PlaceOrderResponse = Message<"vertra.console.v1.PlaceOrderResponse"> & {
+  /**
+   * @generated from field: string execution_id = 1;
+   */
+  executionId: string;
+
+  /**
+   * @generated from field: vertra.console.v1.ExecutionState state = 2;
+   */
+  state: ExecutionState;
+};
+
+/**
+ * Describes the message vertra.console.v1.PlaceOrderResponse.
+ * Use `create(PlaceOrderResponseSchema)` to create a new message.
+ */
+export declare const PlaceOrderResponseSchema: GenMessage<PlaceOrderResponse>;
 
 /**
  * @generated from message vertra.console.v1.PreviewOrderRequest
@@ -321,6 +391,24 @@ export declare const OrderService: GenService<{
     methodKind: "unary";
     input: typeof PreviewOrderRequestSchema;
     output: typeof PreviewOrderResponseSchema;
+  },
+  /**
+   * Places a cart as one run for `team` (decision 25): planned as
+   * PreviewOrder plans it, with `choices` made and `values` given. Refused
+   * while a choice is unmade, or a required value without a provider is
+   * missing (ORDER_INCOMPLETE, with what's left in the Failure detail).
+   * Each step runs as its action would alone: shared with you for the team,
+   * its targets ones the team may use, its inputs fitting its schema (a
+   * value another step gives, targets included, checked once known). The
+   * run is the team's, and an order (its template "order", its cart as its
+   * parameters). Members of `team` (and admins); an ordering bot may not.
+   *
+   * @generated from rpc vertra.console.v1.OrderService.PlaceOrder
+   */
+  placeOrder: {
+    methodKind: "unary";
+    input: typeof PlaceOrderRequestSchema;
+    output: typeof PlaceOrderResponseSchema;
   },
 }>;
 

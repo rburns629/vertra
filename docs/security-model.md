@@ -176,9 +176,21 @@ input typed as a target (`x-vertra-needs: gcp.project`, `gcp.folder`,
 `aws.account`, `azure.subscription`) must match its team.yaml's
 `allowedTargets` for the running team, or the run is refused before it
 starts (`TARGET_NOT_ALLOWED`, `console/src/targets.ts`). The owning team's
-own runs aren't limited, and a value an earlier step produced isn't
-checked. The identity's cloud permissions, scoped to the same folders,
-hold if the console's check is ever bypassed.
+own runs aren't limited. A value another step will produce isn't known at
+submit: the input schema the console attaches for the kernel is narrowed to
+the patterns the rules allow without an approval, so the kernel refuses
+any other value once it's resolved, before the step starts
+(`INPUT_INVALID`); with none allowed, the run is refused at submit. That
+matters since carts (decision 25) let a member wire any product that
+provides a target type into another team's (since 2026-10-28; before, a
+step's output went unchecked). The identity's cloud permissions, scoped to
+the same folders, hold if the console's check is ever bypassed.
+
+A member checks out a cart as one run for their team (`OrderService/
+PlaceOrder`, `console/src/core/orders.ts`): each step is an action shared
+with them, run as it would be alone (its product's image, identity and
+secrets, its targets checked as above), so it's no more than they could run
+step by step; no raw DAG, and ordering bots still order templates only.
 
 A team can also make a step wait for a person (approvals): product.yaml's
 `approval` (`always`, or `otherTeams` for another team's runs), or an

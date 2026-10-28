@@ -6,9 +6,14 @@
  * on; when another team runs it, the value must match one of the owning
  * team's rules for that team (team.yaml's allowedTargets, from the
  * catalog's release). The owning team's own runs, and admins', aren't
- * limited. A value an earlier step produced ($fromTask) isn't checked: that
- * step made it. The owning identity's cloud permissions, scoped to the same
- * folders, are the backstop; the console never asks the cloud.
+ * limited. A value an earlier step produces ($fromTask) isn't known when
+ * the run is submitted: the input schema the console attaches for the kernel
+ * is narrowed to what the rules allow (narrowWiredTargets), so the kernel
+ * refuses any other value once it's resolved (INPUT_INVALID), before the
+ * step starts. Since carts (decision 25) let anyone wire any provider in,
+ * a step's say-so is no longer enough. The owning identity's cloud
+ * permissions, scoped to the same folders, are the backstop; the console
+ * never asks the cloud.
  */
 import type { TargetRule } from "./db/schema.js";
 
@@ -32,11 +37,7 @@ export function targetInputs(inputSchema: unknown): Map<string, string> {
 
 /** Whether a value matches a pattern: exact, where * matches any run of characters. */
 export function matchesTarget(pattern: string, value: string): boolean {
-  const expression = pattern
-    .split("*")
-    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
-    .join(".*");
-  return new RegExp(`^${expression}$`).test(value);
+  return new RegExp(schemaPattern(pattern)).test(value);
 }
 
 /** The values or patterns `teams` may supply for a kind of target, under the owner's rules. */
@@ -95,4 +96,43 @@ export function targetProblems(
     });
   }
   return problems;
+}
+
+/** A pattern ("*" matches any run of characters) as a regular expression, the kernel's (JSON Schema) and this. */
+function schemaPattern(pattern: string): string {
+  return `^${pattern
+    .split("*")
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*")}$`;
+}
+
+/**
+ * The input schema with each target input that another step will fill
+ * ($fromTask) limited to what the owner's rules let `teams` use without an
+ * approval, for the kernel to enforce once the value is known. `refused`:
+ * the inputs no rule lets them fill that way at all.
+ */
+export function narrowWiredTargets(
+  owner: { allowedTargets: TargetRule[] },
+  inputSchema: unknown,
+  inputs: Record<string, unknown>,
+  teams: string[],
+): { schema: unknown; refused: { field: string; kind: string }[] } {
+  const wired = [...targetInputs(inputSchema)].filter(([name]) => {
+    const value = inputs[name];
+    return isRecord(value) && "$fromTask" in value;
+  });
+  if (wired.length === 0 || !isRecord(inputSchema) || !isRecord(inputSchema["properties"])) return { schema: inputSchema, refused: [] };
+  const rules = owner.allowedTargets.filter((rule) => !rule.approval && (rule.teams.includes("*") || rule.teams.some((team) => teams.includes(team))));
+  const properties: Record<string, unknown> = { ...inputSchema["properties"] };
+  const refused: { field: string; kind: string }[] = [];
+  for (const [name, kind] of wired) {
+    const patterns = rules.flatMap((rule) => rule.targets[kind] ?? []);
+    if (patterns.length === 0) {
+      refused.push({ field: name, kind });
+      continue;
+    }
+    properties[name] = { allOf: [properties[name] ?? {}, { anyOf: patterns.map((p) => ({ type: "string", pattern: schemaPattern(p) })) }] };
+  }
+  return { schema: { ...inputSchema, properties }, refused };
 }

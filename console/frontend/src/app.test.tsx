@@ -389,6 +389,66 @@ describe("the catalog", () => {
   });
 });
 
+describe("the cart", () => {
+  it("plans the cart for your team, offers what's there, and places it with what you fill in", async () => {
+    const { cart } = await import("./cart");
+    cart.add("gcp-app-hosting-create");
+    const placed: Record<string, unknown>[] = [];
+    const step = (projectId: Record<string, unknown>) => ({
+      id: "app-hosting",
+      product: "gcp-app-hosting-create",
+      inputs: { serviceName: { kind: "unset" }, region: { kind: "parameter", parameter: "gcp.region" }, projectId },
+    });
+    const options = [
+      { step: "app-hosting", input: "projectId", resourceId: "r1", label: "web-prod (gcp/project)" },
+      { step: "app-hosting", input: "projectId", addNew: true, label: "A new one (gcp-project-create)" },
+    ];
+    await renderAt("/catalog/cart", MEMBER, {
+      "TemplateService/ListTemplates": {
+        runnables: [
+          {
+            kind: "KIND_ACTION",
+            team: "gcp",
+            name: "gcp-app-hosting-create",
+            displayName: "App hosting",
+            parameters: { type: "object", required: ["serviceName"], properties: { serviceName: { type: "string", title: "Service name" }, projectId: { type: "string" }, region: { type: "string" } } },
+            actions: ["gcp/app-hosting.create"],
+            shared: true,
+          },
+        ],
+      },
+      "OrderService/PreviewOrder": (request: Record<string, unknown>) =>
+        Array.isArray(request["choices"]) && request["choices"].length > 0
+          ? { steps: [step({ kind: "resource", resourceId: "r1", value: "web-prod" })] }
+          : { steps: [step({ kind: "unset" })], problems: [{ code: "CHOOSE_EXISTING", step: "app-hosting", input: "projectId", message: "Use one you already have, or add a new one.", options }] },
+      "OrderService/PlaceOrder": (request: Record<string, unknown>) => {
+        placed.push(request);
+        return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "App hosting" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Place order" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "projectId" }));
+    fireEvent.click(await screen.findByRole("option", { name: "web-prod (gcp/project)" }));
+    expect(await screen.findByText("Uses web-prod (gcp/project)")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Service name/), { target: { value: "shop-api" } });
+    fireEvent.change(screen.getByLabelText(/gcp\.region/), { target: { value: "us-central1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Place order" }));
+    await waitFor(() => {
+      expect(placed).toMatchObject([
+        {
+          team: "azure-apps",
+          actions: ["gcp-app-hosting-create"],
+          choices: [{ step: "app-hosting", input: "projectId", resourceId: "r1" }],
+          values: { "app-hosting": { serviceName: "shop-api" } },
+          parameters: { "gcp.region": "us-central1" },
+        },
+      ]);
+    });
+    cart.clear();
+  });
+});
+
 describe("an API", () => {
   const ORDERS = { team: "payments", name: "orders", displayName: "Orders API", state: "API_STATE_LIVE", mayCall: true, endpoints: [{ method: "GET", path: "/orders/{id}", summary: "One order" }], perMinute: 600 };
 

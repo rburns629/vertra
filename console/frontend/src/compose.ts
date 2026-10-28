@@ -241,6 +241,8 @@ export function proposeUrl(repository: string | null, draft: Draft, yaml: string
 export interface BuiltStep {
   id: string;
   product: string;
+  /** Added by the order builder (a type's default provider), not in the cart. */
+  added?: boolean;
   inputs: Record<string, { kind: string; step?: string; output?: string; parameter?: string; value?: string }>;
 }
 

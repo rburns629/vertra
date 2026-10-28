@@ -625,6 +625,15 @@
      "streaming": false,
      "idempotency": "read",
      "public": false
+    },
+    {
+     "name": "PlaceOrder",
+     "comment": "Places a cart as one run for `team` (decision 25): planned as\nPreviewOrder plans it, with `choices` made and `values` given. Refused\nwhile a choice is unmade, or a required value without a provider is\nmissing (ORDER_INCOMPLETE, with what's left in the Failure detail).\nEach step runs as its action would alone: shared with you for the team,\nits targets ones the team may use, its inputs fitting its schema (a\nvalue another step gives, targets included, checked once known). The\nrun is the team's, and an order (its template \"order\", its cart as its\nparameters). Members of `team` (and admins); an ordering bot may not.",
+     "input": "vertra.console.v1.PlaceOrderRequest",
+     "output": "vertra.console.v1.PlaceOrderResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
     }
    ]
   },
@@ -5677,6 +5686,76 @@
     {
      "name": "line",
      "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PlaceOrderRequest": {
+   "name": "PlaceOrderRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "choices",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "values",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "What you fill in: {\"<step>\": {\"<input>\": value}}, for inputs nothing in\nthe order fills."
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "A shared type's value, by the type's name: {\"gcp.region\": \"us-central1\"}."
+    },
+    {
+     "name": "requestId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Sent again (a retry after a timeout), the same run."
+    }
+   ]
+  },
+  "vertra.console.v1.PlaceOrderResponse": {
+   "name": "PlaceOrderResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
      "repeated": false,
      "optional": false,
      "comment": ""

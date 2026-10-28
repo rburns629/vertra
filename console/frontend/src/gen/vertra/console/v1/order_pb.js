@@ -5,61 +5,77 @@
 /* eslint-disable */
 
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
+import { file_vertra_console_v1_execution } from "./execution_pb";
 
 /**
  * Describes the file vertra/console/v1/order.proto.
  */
 export const file_vertra_console_v1_order = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9vcmRlci5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiZQoTUHJldmlld09yZGVyUmVxdWVzdBIMCgR0ZWFtGAEgASgJEg8KB2FjdGlvbnMYAiADKAkSLwoHY2hvaWNlcxgDIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyQ2hvaWNlIocBCgtPcmRlckNob2ljZRIMCgRzdGVwGAEgASgJEg0KBWlucHV0GAIgASgJEhEKCWZyb21fc3RlcBgDIAEoCRITCgtmcm9tX291dHB1dBgEIAEoCRITCgtyZXNvdXJjZV9pZBgFIAEoCRIPCgdhZGRfbmV3GAYgASgIEg0KBWxhYmVsGAcgASgJIq8BChRQcmV2aWV3T3JkZXJSZXNwb25zZRIrCgVzdGVwcxgBIAMoCzIcLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyU3RlcBIxCghwcm9ibGVtcxgCIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyUHJvYmxlbRI3CgtzdWdnZXN0aW9ucxgDIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyU3VnZ2VzdGlvbiKHAQoPT3JkZXJTdWdnZXN0aW9uEgwKBHN0ZXAYASABKAkSDQoFaW5wdXQYAiABKAkSEwoLd2lyaW5nX3R5cGUYAyABKAkSEAoIcHJvdmlkZXIYBCABKAkSMAoIZXhpc3RpbmcYBSADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5PcmRlckNob2ljZSK/AQoJT3JkZXJTdGVwEgoKAmlkGAEgASgJEg8KB3Byb2R1Y3QYAiABKAkSOAoGaW5wdXRzGAMgAygLMigudmVydHJhLmNvbnNvbGUudjEuT3JkZXJTdGVwLklucHV0c0VudHJ5Eg0KBWFkZGVkGAQgASgIGkwKC0lucHV0c0VudHJ5EgsKA2tleRgBIAEoCRIsCgV2YWx1ZRgCIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVySW5wdXQ6AjgBIm8KCk9yZGVySW5wdXQSDAoEa2luZBgBIAEoCRIMCgRzdGVwGAIgASgJEg4KBm91dHB1dBgDIAEoCRIRCglwYXJhbWV0ZXIYBCABKAkSEwoLcmVzb3VyY2VfaWQYBSABKAkSDQoFdmFsdWUYBiABKAkiewoMT3JkZXJQcm9ibGVtEgwKBGNvZGUYASABKAkSDAoEc3RlcBgCIAEoCRINCgVpbnB1dBgDIAEoCRIPCgdtZXNzYWdlGAQgASgJEi8KB29wdGlvbnMYBSADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5PcmRlckNob2ljZTJ0CgxPcmRlclNlcnZpY2USZAoMUHJldmlld09yZGVyEiYudmVydHJhLmNvbnNvbGUudjEuUHJldmlld09yZGVyUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdPcmRlclJlc3BvbnNlIgOQAgFiBnByb3RvMw");
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9vcmRlci5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEizQEKEVBsYWNlT3JkZXJSZXF1ZXN0EgwKBHRlYW0YASABKAkSDwoHYWN0aW9ucxgCIAMoCRIvCgdjaG9pY2VzGAMgAygLMh4udmVydHJhLmNvbnNvbGUudjEuT3JkZXJDaG9pY2USJwoGdmFsdWVzGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIrCgpwYXJhbWV0ZXJzGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBISCgpyZXF1ZXN0X2lkGAYgASgJIlwKElBsYWNlT3JkZXJSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkSMAoFc3RhdGUYAiABKA4yIS52ZXJ0cmEuY29uc29sZS52MS5FeGVjdXRpb25TdGF0ZSJlChNQcmV2aWV3T3JkZXJSZXF1ZXN0EgwKBHRlYW0YASABKAkSDwoHYWN0aW9ucxgCIAMoCRIvCgdjaG9pY2VzGAMgAygLMh4udmVydHJhLmNvbnNvbGUudjEuT3JkZXJDaG9pY2UihwEKC09yZGVyQ2hvaWNlEgwKBHN0ZXAYASABKAkSDQoFaW5wdXQYAiABKAkSEQoJZnJvbV9zdGVwGAMgASgJEhMKC2Zyb21fb3V0cHV0GAQgASgJEhMKC3Jlc291cmNlX2lkGAUgASgJEg8KB2FkZF9uZXcYBiABKAgSDQoFbGFiZWwYByABKAkirwEKFFByZXZpZXdPcmRlclJlc3BvbnNlEisKBXN0ZXBzGAEgAygLMhwudmVydHJhLmNvbnNvbGUudjEuT3JkZXJTdGVwEjEKCHByb2JsZW1zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuT3JkZXJQcm9ibGVtEjcKC3N1Z2dlc3Rpb25zGAMgAygLMiIudmVydHJhLmNvbnNvbGUudjEuT3JkZXJTdWdnZXN0aW9uIocBCg9PcmRlclN1Z2dlc3Rpb24SDAoEc3RlcBgBIAEoCRINCgVpbnB1dBgCIAEoCRITCgt3aXJpbmdfdHlwZRgDIAEoCRIQCghwcm92aWRlchgEIAEoCRIwCghleGlzdGluZxgFIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyQ2hvaWNlIr8BCglPcmRlclN0ZXASCgoCaWQYASABKAkSDwoHcHJvZHVjdBgCIAEoCRI4CgZpbnB1dHMYAyADKAsyKC52ZXJ0cmEuY29uc29sZS52MS5PcmRlclN0ZXAuSW5wdXRzRW50cnkSDQoFYWRkZWQYBCABKAgaTAoLSW5wdXRzRW50cnkSCwoDa2V5GAEgASgJEiwKBXZhbHVlGAIgASgLMh0udmVydHJhLmNvbnNvbGUudjEuT3JkZXJJbnB1dDoCOAEibwoKT3JkZXJJbnB1dBIMCgRraW5kGAEgASgJEgwKBHN0ZXAYAiABKAkSDgoGb3V0cHV0GAMgASgJEhEKCXBhcmFtZXRlchgEIAEoCRITCgtyZXNvdXJjZV9pZBgFIAEoCRINCgV2YWx1ZRgGIAEoCSJ7CgxPcmRlclByb2JsZW0SDAoEY29kZRgBIAEoCRIMCgRzdGVwGAIgASgJEg0KBWlucHV0GAMgASgJEg8KB21lc3NhZ2UYBCABKAkSLwoHb3B0aW9ucxgFIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLk9yZGVyQ2hvaWNlMs8BCgxPcmRlclNlcnZpY2USZAoMUHJldmlld09yZGVyEiYudmVydHJhLmNvbnNvbGUudjEuUHJldmlld09yZGVyUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlByZXZpZXdPcmRlclJlc3BvbnNlIgOQAgESWQoKUGxhY2VPcmRlchIkLnZlcnRyYS5jb25zb2xlLnYxLlBsYWNlT3JkZXJSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuUGxhY2VPcmRlclJlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_struct, file_vertra_console_v1_execution]);
+
+/**
+ * Describes the message vertra.console.v1.PlaceOrderRequest.
+ * Use `create(PlaceOrderRequestSchema)` to create a new message.
+ */
+export const PlaceOrderRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_order, 0);
+
+/**
+ * Describes the message vertra.console.v1.PlaceOrderResponse.
+ * Use `create(PlaceOrderResponseSchema)` to create a new message.
+ */
+export const PlaceOrderResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_order, 1);
 
 /**
  * Describes the message vertra.console.v1.PreviewOrderRequest.
  * Use `create(PreviewOrderRequestSchema)` to create a new message.
  */
 export const PreviewOrderRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 0);
+  messageDesc(file_vertra_console_v1_order, 2);
 
 /**
  * Describes the message vertra.console.v1.OrderChoice.
  * Use `create(OrderChoiceSchema)` to create a new message.
  */
 export const OrderChoiceSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 1);
+  messageDesc(file_vertra_console_v1_order, 3);
 
 /**
  * Describes the message vertra.console.v1.PreviewOrderResponse.
  * Use `create(PreviewOrderResponseSchema)` to create a new message.
  */
 export const PreviewOrderResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 2);
+  messageDesc(file_vertra_console_v1_order, 4);
 
 /**
  * Describes the message vertra.console.v1.OrderSuggestion.
  * Use `create(OrderSuggestionSchema)` to create a new message.
  */
 export const OrderSuggestionSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 3);
+  messageDesc(file_vertra_console_v1_order, 5);
 
 /**
  * Describes the message vertra.console.v1.OrderStep.
  * Use `create(OrderStepSchema)` to create a new message.
  */
 export const OrderStepSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 4);
+  messageDesc(file_vertra_console_v1_order, 6);
 
 /**
  * Describes the message vertra.console.v1.OrderInput.
  * Use `create(OrderInputSchema)` to create a new message.
  */
 export const OrderInputSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 5);
+  messageDesc(file_vertra_console_v1_order, 7);
 
 /**
  * Describes the message vertra.console.v1.OrderProblem.
  * Use `create(OrderProblemSchema)` to create a new message.
  */
 export const OrderProblemSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_order, 6);
+  messageDesc(file_vertra_console_v1_order, 8);
 
 /**
  * The order builder (decision 23): a cart of actions made into one run's

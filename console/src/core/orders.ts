@@ -20,11 +20,17 @@
  *     options (AMBIGUOUS), unless the request chose one.
  *   - Steps feeding each other round: CYCLE, and the cart's order kept.
  *
- * It never runs anything: Compose opens what it answers, for a person to
- * review and run, or propose as a template. planOrder is the whole of the
- * wiring, without I/O; previewOrder checks who may and loads what it needs.
+ * PreviewOrder never runs anything: Compose and the Catalog's cart show
+ * what it answers. PlaceOrder (decided 2026-10-27) runs a cart once its
+ * choices are made and its values given: one run for the team, each step
+ * as running its action alone would be (templates.ts's runOrderSteps), so a
+ * member checks out what they could run step by step, with no raw DAG.
+ * Ordering bots still order templates only (decision 23). planOrder is the
+ * whole of the wiring, without I/O; previewOrder checks who may and loads
+ * what it needs.
  */
 import { Code } from "@connectrpc/connect";
+import type { FastifyBaseLogger } from "fastify";
 import { ApiError } from "../apiError.js";
 import { ensureMayOrder, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
@@ -32,7 +38,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { findRunnableProduct, listWiringTypes, type WiringType } from "../db/queries.js";
 import { resources } from "../db/schema.js";
-import type { TeamProduct } from "./templates.js";
+import { runOrderSteps, type OrderRunStep, type TeamProduct } from "./templates.js";
 
 export const MAX_CART = 50;
 /** Resources looked at for what an order could use. */
@@ -285,4 +291,76 @@ export async function previewOrder(caller: AuthUser | undefined, request: { team
     defaults.set(ref, product && mayUse(who, product) ? product : null);
   }
   return planOrder(cart, types, defaults, request.choices, existing);
+}
+
+/** A cart to place: its actions, its choices, the person's values (by step, then input) and its shared types' values. */
+export interface Cart {
+  team: string;
+  actions: string[];
+  choices: OrderChoice[];
+  values: Record<string, Record<string, unknown>>;
+  parameters: Record<string, unknown>;
+  requestId?: string | undefined;
+}
+
+const record = (v: unknown): Record<string, unknown> => (isRecord(v) ? v : {});
+
+/** An order's run's stored cart (submitted_executions.template_parameters), for a rerun. */
+export function cartOf(stored: unknown, team: string): Cart {
+  const s = record(stored);
+  return {
+    team,
+    actions: Array.isArray(s["actions"]) ? s["actions"].filter((a): a is string => typeof a === "string") : [],
+    choices: Array.isArray(s["choices"]) ? (s["choices"].filter(isRecord) as unknown as OrderChoice[]) : [],
+    values: Object.fromEntries(Object.entries(record(s["values"])).map(([k, v]) => [k, record(v)])),
+    parameters: record(s["parameters"]),
+  };
+}
+
+/**
+ * Places a cart: plans it as PreviewOrder does, refuses it while a choice is
+ * unmade or a required value without a provider is missing
+ * (ORDER_INCOMPLETE, with what's left), and runs it.
+ */
+export async function placeOrder(caller: AuthUser | undefined, cart: Cart, log: FastifyBaseLogger) {
+  const plan = await previewOrder(caller, { team: cart.team, actions: cart.actions, choices: cart.choices });
+  const left = plan.problems.filter((p) => !(p.code === "NO_PROVIDER" && cart.values[p.step]?.[p.input] !== undefined));
+  if (left.length > 0) {
+    throw new ApiError(
+      422,
+      "ORDER_INCOMPLETE",
+      `The order isn't ready: ${left.map((p) => p.message).join(" ")}`,
+      Code.FailedPrecondition,
+      { problems: left.map((p) => ({ code: p.code, step: p.step, input: p.input, message: p.message })) },
+    );
+  }
+  const steps: OrderRunStep[] = [];
+  for (const planned of plan.steps) {
+    const product = await findRunnableProduct(planned.product);
+    if (!product) throw new ApiError(404, "NOT_FOUND", `No action "${planned.product}" any more.`);
+    const inputs: Record<string, unknown> = {};
+    const dependsOn = new Set<string>();
+    for (const [name, input] of Object.entries(planned.inputs)) {
+      let value: unknown;
+      if (input.kind === "step") {
+        value = { $fromTask: input.step, $output: input.output };
+        dependsOn.add(input.step);
+      } else if (input.kind === "parameter") value = cart.parameters[input.parameter];
+      else if (input.kind === "resource") value = input.value;
+      else value = cart.values[planned.id]?.[name];
+      if (value !== undefined) inputs[name] = value;
+    }
+    steps.push({ id: planned.id, product, inputs, dependsOn: [...dependsOn] });
+  }
+  if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
+  const name = `Order: ${steps.map((s) => s.id).join(", ")}`.slice(0, 200);
+  return runOrderSteps(
+    caller,
+    name,
+    steps,
+    cart.team,
+    { actions: cart.actions, choices: cart.choices, values: cart.values, parameters: cart.parameters },
+    cart.requestId,
+    log,
+  );
 }

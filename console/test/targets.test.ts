@@ -13,7 +13,7 @@ import { addTeamMember, createTeam, upsertProduct, upsertTemplate } from "../src
 import { products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { submitExecution } from "../src/kernel/client.js";
-import { allowedValues, matchesTarget, targetProblems } from "../src/targets.js";
+import { allowedValues, matchesTarget, narrowWiredTargets, targetProblems } from "../src/targets.js";
 import { caller, failureCode, problemFields, rpcClient, type RpcError } from "./rpc.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
@@ -87,6 +87,30 @@ beforeAll(async () => {
     shareWith: [],
     deprecated: null,
   });
+  // A step of any team's that says it provides a project, wired into the
+  // owner's: the value isn't known until it runs (a cart can wire it in).
+  for (const [team, teamId] of [[allowed, appsTeam.id], [other, otherTeam.id]] as const) {
+    await upsertProduct({
+      name: `${team}-source-make`,
+      image: `registry.example/${team}/source:1`,
+      action: "make",
+      teamId,
+      outputSchema: { type: "object", properties: { projectId: { type: "string", "x-vertra-provides": "gcp.project" } } },
+    });
+    await upsertTemplate({
+      teamId,
+      name: "wired-project",
+      displayName: "Wired project",
+      description: "",
+      parameters: { type: "object" },
+      steps: [
+        { id: "source", action: `${team}/source.make`, inputs: {} },
+        { id: "make", action: `${owner}/project.create`, dependsOn: ["source"], inputs: { projectId: { $fromStep: "source", $output: "projectId" } } },
+      ],
+      shareWith: [],
+      deprecated: null,
+    });
+  }
   const [apps, outsider, ownerMember] = [await users.makeUser(), await users.makeUser(), await users.makeUser()];
   await addTeamMember(apps.id, appsTeam.id, "member");
   await addTeamMember(outsider.id, otherTeam.id, "member");
@@ -125,6 +149,40 @@ describe("matching", () => {
     const team = { name: "o", allowedTargets: [] };
     expect(targetProblems(team, inputSchema, { projectId: { $fromTask: "a", $output: "projectId" } }, ["web"])).toEqual([]);
     expect(targetProblems(team, inputSchema, { projectId: "x" }, ["web"])).toHaveLength(1);
+  });
+});
+
+describe("a target another step will fill", () => {
+  const wired = { projectId: { $fromTask: "a", $output: "projectId" } };
+
+  it("is limited, for the kernel, to what the owner lets the team use without an approval", () => {
+    const rules = [
+      { teams: ["web"], targets: { "gcp.project": ["web-*", "a.b"] } },
+      { teams: ["web"], targets: { "gcp.project": ["prod-*"] }, approval: true },
+    ];
+    const { schema, refused } = narrowWiredTargets({ allowedTargets: rules }, inputSchema, wired, ["web"]);
+    expect(refused).toEqual([]);
+    expect((schema as { properties: Record<string, unknown> }).properties["projectId"]).toEqual({
+      allOf: [inputSchema.properties.projectId, { anyOf: [{ type: "string", pattern: "^web-.*$" }, { type: "string", pattern: "^a\\.b$" }] }],
+    });
+    // A value given now is left to the submit-time check.
+    expect(narrowWiredTargets({ allowedTargets: rules }, inputSchema, { projectId: "web-1" }, ["web"]).schema).toBe(inputSchema);
+    // Allowed only with an approval, or not at all: refused.
+    expect(narrowWiredTargets({ allowedTargets: rules.slice(1) }, inputSchema, wired, ["web"]).refused).toEqual([{ field: "projectId", kind: "gcp.project" }]);
+  });
+
+  it("goes to the kernel limited when another team runs it, and is refused for a team allowed none", async () => {
+    vi.mocked(submitExecution).mockClear();
+    const ok = await call<RpcError>(appsToken, "TemplateService/RunTemplate", { team: allowed, name: "wired-project", parameters: {} });
+    expect(ok.code).toBe("ok");
+    const dag = vi.mocked(submitExecution).mock.calls.at(-1)?.[0] as { tasks: { id: string; inputSchema?: { properties: Record<string, { allOf?: unknown[] }> } }[] };
+    const make = dag.tasks.find((t) => t.id === "make");
+    expect(make?.inputSchema?.properties["projectId"]?.allOf?.[1]).toEqual({
+      anyOf: [{ type: "string", pattern: `^${allowed}-.*$` }, { type: "string", pattern: "^shared-sandbox$" }],
+    });
+    const refused = await call<RpcError>(otherToken, "TemplateService/RunTemplate", { team: other, name: "wired-project", parameters: {} });
+    expect(refused.code).toBe("invalid_argument");
+    expect(failureCode(refused.body)).toBe("INPUT_INVALID");
   });
 });
 

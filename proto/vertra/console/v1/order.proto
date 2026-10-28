@@ -4,6 +4,9 @@ syntax = "proto3";
 
 package vertra.console.v1;
 
+import "google/protobuf/struct.proto";
+import "vertra/console/v1/execution.proto";
+
 // The order builder (decision 23): a cart of actions made into one run's
 // steps, each input wired by its wiring type (an input's x-vertra-needs to
 // the one output in the cart whose x-vertra-provides is the same), for
@@ -24,6 +27,34 @@ service OrderService {
   rpc PreviewOrder(PreviewOrderRequest) returns (PreviewOrderResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Places a cart as one run for `team` (decision 25): planned as
+  // PreviewOrder plans it, with `choices` made and `values` given. Refused
+  // while a choice is unmade, or a required value without a provider is
+  // missing (ORDER_INCOMPLETE, with what's left in the Failure detail).
+  // Each step runs as its action would alone: shared with you for the team,
+  // its targets ones the team may use, its inputs fitting its schema (a
+  // value another step gives, targets included, checked once known). The
+  // run is the team's, and an order (its template "order", its cart as its
+  // parameters). Members of `team` (and admins); an ordering bot may not.
+  rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+}
+
+message PlaceOrderRequest {
+  string team = 1;
+  repeated string actions = 2;
+  repeated OrderChoice choices = 3;
+  // What you fill in: {"<step>": {"<input>": value}}, for inputs nothing in
+  // the order fills.
+  google.protobuf.Struct values = 4;
+  // A shared type's value, by the type's name: {"gcp.region": "us-central1"}.
+  google.protobuf.Struct parameters = 5;
+  // Sent again (a retry after a timeout), the same run.
+  string request_id = 6;
+}
+
+message PlaceOrderResponse {
+  string execution_id = 1;
+  ExecutionState state = 2;
 }
 
 message PreviewOrderRequest {

@@ -7,18 +7,41 @@
  * the real test database.
  */
 import { randomUUID } from "node:crypto";
-import { inArray, like } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { planOrder } from "../src/core/orders.js";
 import type { TeamProduct } from "../src/core/templates.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, findTeamByName, upsertProduct } from "../src/db/queries.js";
-import { resources, wiringTypes } from "../src/db/schema.js";
+import { resources, submittedExecutions, wiringTypes } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { submitExecution } from "../src/kernel/client.js";
 import { caller, rpcClient } from "./rpc.js";
 import { lockWiringTypes } from "./wiringTypesLock.js";
+
+vi.mock("../src/k8s.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/k8s.js")>()),
+  ensureServiceAccount: vi.fn(() => Promise.resolve()),
+  updateIdentityPolicy: vi.fn(() => Promise.resolve(true)),
+}));
+vi.mock("../src/registry.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/registry.js")>()),
+  missingImages: vi.fn(() => Promise.resolve([])),
+  pinImages: vi.fn((images: string[]) =>
+    Promise.resolve({ pinned: new Map(images.map((i) => [i, `${i}@sha256:${"c".repeat(64)}`])), unresolved: [] }),
+  ),
+}));
+vi.mock("../src/kernel/client.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/kernel/client.js")>();
+  const { randomUUID: uuid } = await import("node:crypto");
+  return { ...actual, submitExecution: vi.fn(() => Promise.resolve({ executionId: uuid(), state: "PENDING", created: true })) };
+});
+vi.mock("../src/imagePolicy.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/imagePolicy.js")>()),
+  readImagePolicy: vi.fn(() => Promise.resolve({ exists: true, source: "registry.example/", additional: [], version: "1" })),
+}));
 
 /** A product, as planOrder needs it: what it needs and provides, by wiring type ("": none). */
 function product(name: string, needs: Record<string, string | [string, "optional"]>, provides: Record<string, string> = {}): TeamProduct {
@@ -196,6 +219,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db.delete(submittedExecutions).where(inArray(submittedExecutions.onBehalfOf, [team]));
   await db.delete(wiringTypes).where(inArray(wiringTypes.name, [`${prefix}.project`]));
   await app.close();
   await unlock();
@@ -255,6 +279,70 @@ describe("PreviewOrder", () => {
       team, email: `${prefix}-orders@bot.example.com`, label: "storefront", ordering: true, orderTemplates: [],
     });
     expect((await call(made.body.token, "OrderService/PreviewOrder", { team, actions: [`${team}-bucket-create`] })).failure).toBe("ORDERS_ONLY");
+  });
+});
+
+describe("PlaceOrder", () => {
+  type Dag = { tasks: { id: string; team: string; dependsOn?: string[]; inputs: Record<string, unknown> }[] };
+  const lastDag = () => vi.mocked(submitExecution).mock.calls.at(-1)?.[0] as Dag;
+  let token: string;
+  beforeAll(async () => {
+    const member = await users.makeUser();
+    await join(member.id, team);
+    token = await users.signIn(member.email);
+  });
+
+  it("runs a cart as one run, the default provider added and wired in, as the team's order", async () => {
+    vi.mocked(submitExecution).mockClear();
+    const placed = await call<{ executionId: string }>(token, "OrderService/PlaceOrder", { team, actions: [`${team}-bucket-create`], requestId: `${prefix}-1` });
+    expect(placed.code).toBe("ok");
+    expect(lastDag().tasks.map((t) => [t.id, t.dependsOn ?? [], t.inputs])).toEqual([
+      ["project", [], {}],
+      ["bucket", ["project"], { project: { $fromTask: "project", $output: "projectId" } }],
+    ]);
+    const [run] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.executionId, placed.body.executionId));
+    expect(run).toMatchObject({ template: "order", onBehalfOf: team, templateParameters: { actions: [`${team}-bucket-create`] } });
+  });
+
+  it("is refused while a choice is unmade, and uses what's already there once chosen", async () => {
+    const [made] = await db
+      .insert(resources)
+      .values({
+        product: `${team}-project-create`,
+        productTeam: team,
+        type: "demo/project",
+        externalId: `${prefix}-existing`,
+        ownerTeam: team,
+        executionId: randomUUID(),
+        taskId: "project",
+        provides: [{ type: `${prefix}.project`, value: `${prefix}-existing`, output: "projectId" }],
+      })
+      .returning();
+    try {
+      const refused = await call(token, "OrderService/PlaceOrder", { team, actions: [`${team}-bucket-create`] });
+      expect(refused.failure).toBe("ORDER_INCOMPLETE");
+      vi.mocked(submitExecution).mockClear();
+      const placed = await call(token, "OrderService/PlaceOrder", {
+        team,
+        actions: [`${team}-bucket-create`],
+        choices: [{ step: "bucket", input: "project", resourceId: made?.id }],
+      });
+      expect(placed.code).toBe("ok");
+      expect(lastDag().tasks).toMatchObject([{ id: "bucket", inputs: { project: `${prefix}-existing` } }]);
+    } finally {
+      await db.delete(resources).where(like(resources.externalId, `${prefix}-%`));
+    }
+  });
+
+  it("isn't for someone outside the team, or an ordering bot", async () => {
+    const outsider = await users.signIn((await users.makeUser()).email);
+    expect((await call(outsider, "OrderService/PlaceOrder", { team, actions: [`${team}-bucket-create`] })).code).toBe("permission_denied");
+    const maintainer = await users.makeUser();
+    await join(maintainer.id, team, "maintainer");
+    const bot = await call<{ token: string }>(await users.signIn(maintainer.email), "TokenService/CreateBotToken", {
+      team, email: `${prefix}-cart@bot.example.com`, label: "storefront", ordering: true, orderTemplates: [],
+    });
+    expect((await call(bot.body.token, "OrderService/PlaceOrder", { team, actions: [`${team}-bucket-create`] })).failure).toBe("ORDERS_ONLY");
   });
 });
 

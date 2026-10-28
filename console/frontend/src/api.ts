@@ -2377,26 +2377,99 @@ export async function deleteSsoGroupMapping(id: string): Promise<void> {
 }
 
 /** What the order builder couldn't settle: an input two outputs could fill, nothing providing a type, or a cycle. */
+/** One way to fill an input: another step's output, something already there, or a new one (proto's OrderChoice). */
+export interface OrderOption {
+  step: string;
+  input: string;
+  fromStep?: string;
+  fromOutput?: string;
+  resourceId?: string;
+  addNew?: boolean;
+  label: string;
+}
+
 export interface OrderProblem {
+  /** AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE. */
   code: string;
   step: string;
   input: string;
   message: string;
+  options: OrderOption[];
 }
 
+/** An optional input nothing fills, and what could: a provider to add, or something already there. */
+export interface OrderSuggestion {
+  step: string;
+  input: string;
+  wiringType: string;
+  provider: string | null;
+  existing: OrderOption[];
+}
+
+function option(o: { step: string; input: string; fromStep: string; fromOutput: string; resourceId: string; addNew: boolean; label: string }): OrderOption {
+  return {
+    step: o.step,
+    input: o.input,
+    ...(o.fromStep ? { fromStep: o.fromStep, fromOutput: o.fromOutput } : {}),
+    ...(o.resourceId ? { resourceId: o.resourceId } : {}),
+    ...(o.addNew ? { addNew: true } : {}),
+    label: o.label || (o.fromStep ? `${o.fromStep}.${o.fromOutput}` : ""),
+  };
+}
+
+const choiceOf = (o: OrderOption) => ({
+  step: o.step,
+  input: o.input,
+  fromStep: o.fromStep ?? "",
+  fromOutput: o.fromOutput ?? "",
+  resourceId: o.resourceId ?? "",
+  addNew: o.addNew ?? false,
+});
+
 /**
- * The order builder (decision 23): a cart of actions for `team`, wired by
- * wiring type, in the order they can run, with what it couldn't settle.
- * Runs nothing.
+ * The order builder (decision 25): a cart of actions for `team`, wired by
+ * wiring type, in the order they can run, with what it couldn't settle
+ * (each with its options, to send back chosen) and what's suggested. Runs
+ * nothing.
  */
-export async function previewOrder(team: string, actions: string[]): Promise<{ steps: BuiltStep[]; problems: OrderProblem[] }> {
-  const response = await call(() => ordersApi.previewOrder({ team, actions }));
+export async function previewOrder(
+  team: string,
+  actions: string[],
+  choices: OrderOption[] = [],
+): Promise<{ steps: BuiltStep[]; problems: OrderProblem[]; suggestions: OrderSuggestion[] }> {
+  const response = await call(() => ordersApi.previewOrder({ team, actions, choices: choices.map(choiceOf) }));
   return {
     steps: response.steps.map((s) => ({
       id: s.id,
       product: s.product,
-      inputs: Object.fromEntries(Object.entries(s.inputs).map(([name, i]) => [name, { kind: i.kind, step: i.step, output: i.output, parameter: i.parameter, value: i.value }])),
+      added: s.added,
+      inputs: Object.fromEntries(
+        Object.entries(s.inputs).map(([name, i]) => [name, { kind: i.kind, step: i.step, output: i.output, parameter: i.parameter, value: i.value }]),
+      ),
     })),
-    problems: response.problems.map((p) => ({ code: p.code, step: p.step, input: p.input, message: p.message })),
+    problems: response.problems.map((p) => ({ code: p.code, step: p.step, input: p.input, message: p.message, options: p.options.map(option) })),
+    suggestions: response.suggestions.map((s) => ({ step: s.step, input: s.input, wiringType: s.wiringType, provider: s.provider || null, existing: s.existing.map(option) })),
   };
+}
+
+/** Places a cart as one run for `team`; its id. */
+export async function placeOrder(order: {
+  team: string;
+  actions: string[];
+  choices: OrderOption[];
+  values: Record<string, Record<string, unknown>>;
+  parameters: Record<string, unknown>;
+  requestId: string;
+}): Promise<string> {
+  const response = await call(() =>
+    ordersApi.placeOrder({
+      team: order.team,
+      actions: order.actions,
+      choices: order.choices.map(choiceOf),
+      values: order.values as JsonObject,
+      parameters: order.parameters as JsonObject,
+      requestId: order.requestId,
+    }),
+  );
+  return response.executionId;
 }

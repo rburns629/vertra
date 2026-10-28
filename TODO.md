@@ -1056,7 +1056,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      adds project.create, asks the region once, suggests a database, and
      reports the image; with a project the team has, offers it or a new one,
      and each choice wires as asked.
-  4. `OrderService/PlaceOrder`: a member checks out a cart (decided), each step as
+  4. ~~`OrderService/PlaceOrder` and the Catalog's cart~~ (done
+     2026-10-28, `core/orders.ts`, `pages/CartPage.tsx`): Add to cart on
+     each action, the cart planned for one of your teams with its choices,
+     suggestions and values, Place order; the run is the team's, an
+     "order", its cart its parameters (rerun plans it again). Wired targets
+     are now held to allowedTargets for every submission (the attached
+     schema narrowed; the kernel refuses with INPUT_INVALID). Was: a
+     member checks out a cart (decided), each step as
      `RunAction` would run it; a wired target re-checked when its step
      starts. The Catalog's cart.
 - [x] **Order builder** (done 2026-10-27, decision 23, `console/src/core/

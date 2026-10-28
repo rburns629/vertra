@@ -45,6 +45,7 @@ type Whose = "all" | "mine" | "approve";
 function what(run: ExecutionSummary): string {
   if (run.template === "cleanup") return `Cleanup · ${run.teams.join(", ")}`;
   if (run.template === "preview") return `Preview · ${run.teams.join(", ")}`;
+  if (run.template === "order") return `Order · ${run.teams.join(", ")}`;
   const slash = run.template.indexOf("/");
   if (slash > 0) return `${run.template.slice(slash + 1)} · ${run.template.slice(0, slash)}`;
   return `DAG · ${run.teams.join(", ")}`;

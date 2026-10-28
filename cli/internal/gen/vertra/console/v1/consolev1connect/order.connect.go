@@ -38,6 +38,8 @@ const (
 	// OrderServicePreviewOrderProcedure is the fully-qualified name of the OrderService's PreviewOrder
 	// RPC.
 	OrderServicePreviewOrderProcedure = "/vertra.console.v1.OrderService/PreviewOrder"
+	// OrderServicePlaceOrderProcedure is the fully-qualified name of the OrderService's PlaceOrder RPC.
+	OrderServicePlaceOrderProcedure = "/vertra.console.v1.OrderService/PlaceOrder"
 )
 
 // OrderServiceClient is a client for the vertra.console.v1.OrderService service.
@@ -54,6 +56,16 @@ type OrderServiceClient interface {
 	// which; a cycle is reported (CYCLE). Members of `team` (and admins); an
 	// ordering bot may not (ORDERS_ONLY).
 	PreviewOrder(context.Context, *connect.Request[v1.PreviewOrderRequest]) (*connect.Response[v1.PreviewOrderResponse], error)
+	// Places a cart as one run for `team` (decision 25): planned as
+	// PreviewOrder plans it, with `choices` made and `values` given. Refused
+	// while a choice is unmade, or a required value without a provider is
+	// missing (ORDER_INCOMPLETE, with what's left in the Failure detail).
+	// Each step runs as its action would alone: shared with you for the team,
+	// its targets ones the team may use, its inputs fitting its schema (a
+	// value another step gives, targets included, checked once known). The
+	// run is the team's, and an order (its template "order", its cart as its
+	// parameters). Members of `team` (and admins); an ordering bot may not.
+	PlaceOrder(context.Context, *connect.Request[v1.PlaceOrderRequest]) (*connect.Response[v1.PlaceOrderResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the vertra.console.v1.OrderService service. By
@@ -74,17 +86,29 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		placeOrder: connect.NewClient[v1.PlaceOrderRequest, v1.PlaceOrderResponse](
+			httpClient,
+			baseURL+OrderServicePlaceOrderProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("PlaceOrder")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // orderServiceClient implements OrderServiceClient.
 type orderServiceClient struct {
 	previewOrder *connect.Client[v1.PreviewOrderRequest, v1.PreviewOrderResponse]
+	placeOrder   *connect.Client[v1.PlaceOrderRequest, v1.PlaceOrderResponse]
 }
 
 // PreviewOrder calls vertra.console.v1.OrderService.PreviewOrder.
 func (c *orderServiceClient) PreviewOrder(ctx context.Context, req *connect.Request[v1.PreviewOrderRequest]) (*connect.Response[v1.PreviewOrderResponse], error) {
 	return c.previewOrder.CallUnary(ctx, req)
+}
+
+// PlaceOrder calls vertra.console.v1.OrderService.PlaceOrder.
+func (c *orderServiceClient) PlaceOrder(ctx context.Context, req *connect.Request[v1.PlaceOrderRequest]) (*connect.Response[v1.PlaceOrderResponse], error) {
+	return c.placeOrder.CallUnary(ctx, req)
 }
 
 // OrderServiceHandler is an implementation of the vertra.console.v1.OrderService service.
@@ -101,6 +125,16 @@ type OrderServiceHandler interface {
 	// which; a cycle is reported (CYCLE). Members of `team` (and admins); an
 	// ordering bot may not (ORDERS_ONLY).
 	PreviewOrder(context.Context, *connect.Request[v1.PreviewOrderRequest]) (*connect.Response[v1.PreviewOrderResponse], error)
+	// Places a cart as one run for `team` (decision 25): planned as
+	// PreviewOrder plans it, with `choices` made and `values` given. Refused
+	// while a choice is unmade, or a required value without a provider is
+	// missing (ORDER_INCOMPLETE, with what's left in the Failure detail).
+	// Each step runs as its action would alone: shared with you for the team,
+	// its targets ones the team may use, its inputs fitting its schema (a
+	// value another step gives, targets included, checked once known). The
+	// run is the team's, and an order (its template "order", its cart as its
+	// parameters). Members of `team` (and admins); an ordering bot may not.
+	PlaceOrder(context.Context, *connect.Request[v1.PlaceOrderRequest]) (*connect.Response[v1.PlaceOrderResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -117,10 +151,18 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServicePlaceOrderHandler := connect.NewUnaryHandler(
+		OrderServicePlaceOrderProcedure,
+		svc.PlaceOrder,
+		connect.WithSchema(orderServiceMethods.ByName("PlaceOrder")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServicePreviewOrderProcedure:
 			orderServicePreviewOrderHandler.ServeHTTP(w, r)
+		case OrderServicePlaceOrderProcedure:
+			orderServicePlaceOrderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -132,4 +174,8 @@ type UnimplementedOrderServiceHandler struct{}
 
 func (UnimplementedOrderServiceHandler) PreviewOrder(context.Context, *connect.Request[v1.PreviewOrderRequest]) (*connect.Response[v1.PreviewOrderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.OrderService.PreviewOrder is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) PlaceOrder(context.Context, *connect.Request[v1.PlaceOrderRequest]) (*connect.Response[v1.PlaceOrderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.OrderService.PlaceOrder is not implemented"))
 }

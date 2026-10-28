@@ -59,7 +59,7 @@ import { errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { platformAlert } from "../notifier.js";
 import { scanBlocker } from "../scanning.js";
-import { targetsNeedApproval } from "../targets.js";
+import { narrowWiredTargets, targetsNeedApproval } from "../targets.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -531,6 +531,7 @@ function attemptsFor(product: { idempotent: boolean; maxAttempts: number }, requ
 interface Runner {
   teamNames: string[];
   forTeam?: string | undefined;
+  isAdmin?: boolean | undefined;
 }
 
 /**
@@ -568,6 +569,23 @@ async function withProductContract(submission: Record<string, unknown>, runner: 
       out.push(rest);
       continue;
     }
+    // A target another step will fill: limited, for the kernel, to what the
+    // product's team lets this run's team use (targets.ts), unless it's
+    // the team's own run, or an admin's.
+    let inputSchema = product.inputSchema;
+    if (team !== undefined && !runner.isAdmin && !runner.teamNames.includes(team)) {
+      const owner = await findTeamByName(team);
+      if (owner) {
+        const narrowed = narrowWiredTargets(owner, product.inputSchema, isRecord(task["inputs"]) ? task["inputs"] : {}, runner.forTeam ? [runner.forTeam] : runner.teamNames);
+        inputSchema = narrowed.schema;
+        for (const r of narrowed.refused) {
+          problems.push({
+            field: `tasks.${String(task["id"])}.inputs.${r.field}`,
+            message: `comes from another step, but ${team} lets your team aim this at no ${r.kind} without an approval: give it a value instead`,
+          });
+        }
+      }
+    }
     if (nonEmpty(product.inputSchema)) {
       const inputs = isRecord(task["inputs"]) ? task["inputs"] : {};
       const references = new Set(Object.keys(inputs).filter((key) => isReference(inputs[key])));
@@ -582,7 +600,7 @@ async function withProductContract(submission: Record<string, unknown>, runner: 
       ...rest,
       maxAttempts: attemptsFor(product, task["maxAttempts"]),
       ...(product.tokenAudiences.length > 0 ? { tokenAudiences: product.tokenAudiences } : {}),
-      ...(nonEmpty(product.inputSchema) ? { inputSchema: product.inputSchema } : {}),
+      ...(nonEmpty(inputSchema) ? { inputSchema } : {}),
       ...(nonEmpty(product.outputSchema) ? { outputSchema: product.outputSchema } : {}),
       // One step per set of these inputs' values at a time, the product's
       // own (the kernel works the key out once the inputs are resolved).
@@ -866,6 +884,7 @@ export async function submitChecked(
   const submission = await withProductContract(await withProductResources(pinnedBody), {
     teamNames: caller?.teamNames ?? [],
     forTeam: run?.onBehalfOf,
+    isAdmin: caller?.isAdmin,
   });
 
   const result = await submitExecution(scopeRequestId(submission, run ? [`user:${caller?.id ?? ""}`] : teams), requester(caller));
@@ -1061,6 +1080,8 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
   await refuseUnscanned(taskImages(pinnedReplay), context);
   const rerunPayload = await withProductContract(await withProductResources({ ...pinnedReplay, requestId: randomUUID() }), {
     teamNames: caller?.teamNames ?? [],
+    forTeam: submitted.onBehalfOf ?? undefined,
+    isAdmin: caller?.isAdmin,
   });
 
   const result = await submitExecution(scopeRequestId(rerunPayload, submitted.teams), requester(caller));

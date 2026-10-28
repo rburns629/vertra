@@ -18,6 +18,7 @@ import { Pill } from "../components/Pill";
 import { ReadinessPill } from "../components/ReadinessPill";
 import { ApiError, listRunnables, type Runnable } from "../api";
 import { runLink } from "./RunFormPage";
+import { cart, useCart } from "../cart";
 
 /** How a runnable is named in links: ?template=<team>/<name> or ?action=<product>. */
 function linkKey(r: Runnable): string {
@@ -95,9 +96,16 @@ function CatalogCard({ r }: { r: Runnable }) {
               : `Only ${r.team} runs it.`}
         </Typography>
         {r.shared ? (
-          <Button variant="contained" component={RouterLink} to={runLink(r)}>
-            Run
-          </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            {r.kind === "action" && (
+              <Button variant="outlined" onClick={() => { cart.add(r.name); }} title="Order it with others, wired together, as one run">
+                Add to cart
+              </Button>
+            )}
+            <Button variant="contained" component={RouterLink} to={runLink(r)}>
+              Run
+            </Button>
+          </Box>
         ) : r.askForAccessUrl ? (
           <Button
             variant="outlined"
@@ -132,6 +140,7 @@ export function CatalogPage() {
   const [team, setTeam] = useState<string | null>(null);
   const [runnableOnly, setRunnableOnly] = useState(false);
   const [params] = useSearchParams();
+  const inCart = useCart().actions.length;
 
   useEffect(() => {
     listRunnables()
@@ -173,6 +182,9 @@ export function CatalogPage() {
             </Button>
             <Button component={RouterLink} to="/catalog/compose" variant="outlined">
               Compose
+            </Button>
+            <Button component={RouterLink} to="/catalog/cart" variant={inCart > 0 ? "contained" : "outlined"}>
+              Cart{inCart > 0 ? ` (${String(inCart)})` : ""}
             </Button>
           </Box>
         }

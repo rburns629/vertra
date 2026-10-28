@@ -368,7 +368,9 @@ allowedTargets:
 The console refuses another team's run with any other value before it
 starts (`TARGET_NOT_ALLOWED`), and its form offers only those values. With
 no rule for a team, that team can't supply the target at all. Your own
-team isn't limited, and a value an earlier step produced isn't checked.
+team isn't limited. A value another step produces (an order wiring your
+product to one that provides a project) is held to the same rules once
+it's known, before your step starts.
 A rule with `approval: true` lets its values through only with an approval
 (as product.yaml's `approval` does), unless another rule without one
 allows the same value.

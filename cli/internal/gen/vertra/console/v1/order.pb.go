@@ -11,6 +11,7 @@ package consolev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -22,6 +23,146 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+type PlaceOrderRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Team    string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	Actions []string               `protobuf:"bytes,2,rep,name=actions,proto3" json:"actions,omitempty"`
+	Choices []*OrderChoice         `protobuf:"bytes,3,rep,name=choices,proto3" json:"choices,omitempty"`
+	// What you fill in: {"<step>": {"<input>": value}}, for inputs nothing in
+	// the order fills.
+	Values *structpb.Struct `protobuf:"bytes,4,opt,name=values,proto3" json:"values,omitempty"`
+	// A shared type's value, by the type's name: {"gcp.region": "us-central1"}.
+	Parameters *structpb.Struct `protobuf:"bytes,5,opt,name=parameters,proto3" json:"parameters,omitempty"`
+	// Sent again (a retry after a timeout), the same run.
+	RequestId     string `protobuf:"bytes,6,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlaceOrderRequest) Reset() {
+	*x = PlaceOrderRequest{}
+	mi := &file_vertra_console_v1_order_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlaceOrderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlaceOrderRequest) ProtoMessage() {}
+
+func (x *PlaceOrderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_order_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlaceOrderRequest.ProtoReflect.Descriptor instead.
+func (*PlaceOrderRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *PlaceOrderRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *PlaceOrderRequest) GetActions() []string {
+	if x != nil {
+		return x.Actions
+	}
+	return nil
+}
+
+func (x *PlaceOrderRequest) GetChoices() []*OrderChoice {
+	if x != nil {
+		return x.Choices
+	}
+	return nil
+}
+
+func (x *PlaceOrderRequest) GetValues() *structpb.Struct {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+func (x *PlaceOrderRequest) GetParameters() *structpb.Struct {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *PlaceOrderRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+type PlaceOrderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	State         ExecutionState         `protobuf:"varint,2,opt,name=state,proto3,enum=vertra.console.v1.ExecutionState" json:"state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlaceOrderResponse) Reset() {
+	*x = PlaceOrderResponse{}
+	mi := &file_vertra_console_v1_order_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlaceOrderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlaceOrderResponse) ProtoMessage() {}
+
+func (x *PlaceOrderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_order_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlaceOrderResponse.ProtoReflect.Descriptor instead.
+func (*PlaceOrderResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PlaceOrderResponse) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *PlaceOrderResponse) GetState() ExecutionState {
+	if x != nil {
+		return x.State
+	}
+	return ExecutionState_EXECUTION_STATE_UNSPECIFIED
+}
 
 type PreviewOrderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -38,7 +179,7 @@ type PreviewOrderRequest struct {
 
 func (x *PreviewOrderRequest) Reset() {
 	*x = PreviewOrderRequest{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[0]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -50,7 +191,7 @@ func (x *PreviewOrderRequest) String() string {
 func (*PreviewOrderRequest) ProtoMessage() {}
 
 func (x *PreviewOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[0]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -63,7 +204,7 @@ func (x *PreviewOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewOrderRequest.ProtoReflect.Descriptor instead.
 func (*PreviewOrderRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{0}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PreviewOrderRequest) GetTeam() string {
@@ -106,7 +247,7 @@ type OrderChoice struct {
 
 func (x *OrderChoice) Reset() {
 	*x = OrderChoice{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -118,7 +259,7 @@ func (x *OrderChoice) String() string {
 func (*OrderChoice) ProtoMessage() {}
 
 func (x *OrderChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -131,7 +272,7 @@ func (x *OrderChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderChoice.ProtoReflect.Descriptor instead.
 func (*OrderChoice) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{1}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *OrderChoice) GetStep() string {
@@ -197,7 +338,7 @@ type PreviewOrderResponse struct {
 
 func (x *PreviewOrderResponse) Reset() {
 	*x = PreviewOrderResponse{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -209,7 +350,7 @@ func (x *PreviewOrderResponse) String() string {
 func (*PreviewOrderResponse) ProtoMessage() {}
 
 func (x *PreviewOrderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -222,7 +363,7 @@ func (x *PreviewOrderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewOrderResponse.ProtoReflect.Descriptor instead.
 func (*PreviewOrderResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{2}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PreviewOrderResponse) GetSteps() []*OrderStep {
@@ -262,7 +403,7 @@ type OrderSuggestion struct {
 
 func (x *OrderSuggestion) Reset() {
 	*x = OrderSuggestion{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +415,7 @@ func (x *OrderSuggestion) String() string {
 func (*OrderSuggestion) ProtoMessage() {}
 
 func (x *OrderSuggestion) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +428,7 @@ func (x *OrderSuggestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderSuggestion.ProtoReflect.Descriptor instead.
 func (*OrderSuggestion) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *OrderSuggestion) GetStep() string {
@@ -340,7 +481,7 @@ type OrderStep struct {
 
 func (x *OrderStep) Reset() {
 	*x = OrderStep{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -352,7 +493,7 @@ func (x *OrderStep) String() string {
 func (*OrderStep) ProtoMessage() {}
 
 func (x *OrderStep) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -365,7 +506,7 @@ func (x *OrderStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStep.ProtoReflect.Descriptor instead.
 func (*OrderStep) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *OrderStep) GetId() string {
@@ -413,7 +554,7 @@ type OrderInput struct {
 
 func (x *OrderInput) Reset() {
 	*x = OrderInput{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -425,7 +566,7 @@ func (x *OrderInput) String() string {
 func (*OrderInput) ProtoMessage() {}
 
 func (x *OrderInput) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -438,7 +579,7 @@ func (x *OrderInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderInput.ProtoReflect.Descriptor instead.
 func (*OrderInput) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *OrderInput) GetKind() string {
@@ -499,7 +640,7 @@ type OrderProblem struct {
 
 func (x *OrderProblem) Reset() {
 	*x = OrderProblem{}
-	mi := &file_vertra_console_v1_order_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -511,7 +652,7 @@ func (x *OrderProblem) String() string {
 func (*OrderProblem) ProtoMessage() {}
 
 func (x *OrderProblem) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_order_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_order_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -524,7 +665,7 @@ func (x *OrderProblem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderProblem.ProtoReflect.Descriptor instead.
 func (*OrderProblem) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_order_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *OrderProblem) GetCode() string {
@@ -566,7 +707,20 @@ var File_vertra_console_v1_order_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/console/v1/order.proto\x12\x11vertra.console.v1\"}\n" +
+	"\x1dvertra/console/v1/order.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a!vertra/console/v1/execution.proto\"\x84\x02\n" +
+	"\x11PlaceOrderRequest\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\x12\x18\n" +
+	"\aactions\x18\x02 \x03(\tR\aactions\x128\n" +
+	"\achoices\x18\x03 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\achoices\x12/\n" +
+	"\x06values\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x06values\x127\n" +
+	"\n" +
+	"parameters\x18\x05 \x01(\v2\x17.google.protobuf.StructR\n" +
+	"parameters\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x06 \x01(\tR\trequestId\"p\n" +
+	"\x12PlaceOrderResponse\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x127\n" +
+	"\x05state\x18\x02 \x01(\x0e2!.vertra.console.v1.ExecutionStateR\x05state\"}\n" +
 	"\x13PreviewOrderRequest\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x18\n" +
 	"\aactions\x18\x02 \x03(\tR\aactions\x128\n" +
@@ -614,9 +768,11 @@ const file_vertra_console_v1_order_proto_rawDesc = "" +
 	"\x04step\x18\x02 \x01(\tR\x04step\x12\x14\n" +
 	"\x05input\x18\x03 \x01(\tR\x05input\x12\x18\n" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x128\n" +
-	"\aoptions\x18\x05 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\aoptions2t\n" +
+	"\aoptions\x18\x05 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\aoptions2\xcf\x01\n" +
 	"\fOrderService\x12d\n" +
-	"\fPreviewOrder\x12&.vertra.console.v1.PreviewOrderRequest\x1a'.vertra.console.v1.PreviewOrderResponse\"\x03\x90\x02\x01B\xd3\x01\n" +
+	"\fPreviewOrder\x12&.vertra.console.v1.PreviewOrderRequest\x1a'.vertra.console.v1.PreviewOrderResponse\"\x03\x90\x02\x01\x12Y\n" +
+	"\n" +
+	"PlaceOrder\x12$.vertra.console.v1.PlaceOrderRequest\x1a%.vertra.console.v1.PlaceOrderResponseB\xd3\x01\n" +
 	"\x15com.vertra.console.v1B\n" +
 	"OrderProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
@@ -632,33 +788,43 @@ func file_vertra_console_v1_order_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_order_proto_rawDescData
 }
 
-var file_vertra_console_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_vertra_console_v1_order_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_vertra_console_v1_order_proto_goTypes = []any{
-	(*PreviewOrderRequest)(nil),  // 0: vertra.console.v1.PreviewOrderRequest
-	(*OrderChoice)(nil),          // 1: vertra.console.v1.OrderChoice
-	(*PreviewOrderResponse)(nil), // 2: vertra.console.v1.PreviewOrderResponse
-	(*OrderSuggestion)(nil),      // 3: vertra.console.v1.OrderSuggestion
-	(*OrderStep)(nil),            // 4: vertra.console.v1.OrderStep
-	(*OrderInput)(nil),           // 5: vertra.console.v1.OrderInput
-	(*OrderProblem)(nil),         // 6: vertra.console.v1.OrderProblem
-	nil,                          // 7: vertra.console.v1.OrderStep.InputsEntry
+	(*PlaceOrderRequest)(nil),    // 0: vertra.console.v1.PlaceOrderRequest
+	(*PlaceOrderResponse)(nil),   // 1: vertra.console.v1.PlaceOrderResponse
+	(*PreviewOrderRequest)(nil),  // 2: vertra.console.v1.PreviewOrderRequest
+	(*OrderChoice)(nil),          // 3: vertra.console.v1.OrderChoice
+	(*PreviewOrderResponse)(nil), // 4: vertra.console.v1.PreviewOrderResponse
+	(*OrderSuggestion)(nil),      // 5: vertra.console.v1.OrderSuggestion
+	(*OrderStep)(nil),            // 6: vertra.console.v1.OrderStep
+	(*OrderInput)(nil),           // 7: vertra.console.v1.OrderInput
+	(*OrderProblem)(nil),         // 8: vertra.console.v1.OrderProblem
+	nil,                          // 9: vertra.console.v1.OrderStep.InputsEntry
+	(*structpb.Struct)(nil),      // 10: google.protobuf.Struct
+	(ExecutionState)(0),          // 11: vertra.console.v1.ExecutionState
 }
 var file_vertra_console_v1_order_proto_depIdxs = []int32{
-	1, // 0: vertra.console.v1.PreviewOrderRequest.choices:type_name -> vertra.console.v1.OrderChoice
-	4, // 1: vertra.console.v1.PreviewOrderResponse.steps:type_name -> vertra.console.v1.OrderStep
-	6, // 2: vertra.console.v1.PreviewOrderResponse.problems:type_name -> vertra.console.v1.OrderProblem
-	3, // 3: vertra.console.v1.PreviewOrderResponse.suggestions:type_name -> vertra.console.v1.OrderSuggestion
-	1, // 4: vertra.console.v1.OrderSuggestion.existing:type_name -> vertra.console.v1.OrderChoice
-	7, // 5: vertra.console.v1.OrderStep.inputs:type_name -> vertra.console.v1.OrderStep.InputsEntry
-	1, // 6: vertra.console.v1.OrderProblem.options:type_name -> vertra.console.v1.OrderChoice
-	5, // 7: vertra.console.v1.OrderStep.InputsEntry.value:type_name -> vertra.console.v1.OrderInput
-	0, // 8: vertra.console.v1.OrderService.PreviewOrder:input_type -> vertra.console.v1.PreviewOrderRequest
-	2, // 9: vertra.console.v1.OrderService.PreviewOrder:output_type -> vertra.console.v1.PreviewOrderResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	3,  // 0: vertra.console.v1.PlaceOrderRequest.choices:type_name -> vertra.console.v1.OrderChoice
+	10, // 1: vertra.console.v1.PlaceOrderRequest.values:type_name -> google.protobuf.Struct
+	10, // 2: vertra.console.v1.PlaceOrderRequest.parameters:type_name -> google.protobuf.Struct
+	11, // 3: vertra.console.v1.PlaceOrderResponse.state:type_name -> vertra.console.v1.ExecutionState
+	3,  // 4: vertra.console.v1.PreviewOrderRequest.choices:type_name -> vertra.console.v1.OrderChoice
+	6,  // 5: vertra.console.v1.PreviewOrderResponse.steps:type_name -> vertra.console.v1.OrderStep
+	8,  // 6: vertra.console.v1.PreviewOrderResponse.problems:type_name -> vertra.console.v1.OrderProblem
+	5,  // 7: vertra.console.v1.PreviewOrderResponse.suggestions:type_name -> vertra.console.v1.OrderSuggestion
+	3,  // 8: vertra.console.v1.OrderSuggestion.existing:type_name -> vertra.console.v1.OrderChoice
+	9,  // 9: vertra.console.v1.OrderStep.inputs:type_name -> vertra.console.v1.OrderStep.InputsEntry
+	3,  // 10: vertra.console.v1.OrderProblem.options:type_name -> vertra.console.v1.OrderChoice
+	7,  // 11: vertra.console.v1.OrderStep.InputsEntry.value:type_name -> vertra.console.v1.OrderInput
+	2,  // 12: vertra.console.v1.OrderService.PreviewOrder:input_type -> vertra.console.v1.PreviewOrderRequest
+	0,  // 13: vertra.console.v1.OrderService.PlaceOrder:input_type -> vertra.console.v1.PlaceOrderRequest
+	4,  // 14: vertra.console.v1.OrderService.PreviewOrder:output_type -> vertra.console.v1.PreviewOrderResponse
+	1,  // 15: vertra.console.v1.OrderService.PlaceOrder:output_type -> vertra.console.v1.PlaceOrderResponse
+	14, // [14:16] is the sub-list for method output_type
+	12, // [12:14] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_order_proto_init() }
@@ -666,13 +832,14 @@ func file_vertra_console_v1_order_proto_init() {
 	if File_vertra_console_v1_order_proto != nil {
 		return
 	}
+	file_vertra_console_v1_execution_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_order_proto_rawDesc), len(file_vertra_console_v1_order_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

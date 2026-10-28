@@ -226,7 +226,13 @@ back in `suggestions`: its type's default provider to add to the cart, and
 what you already have of it. What else it can't settle comes back in
 `problems` (`AMBIGUOUS`, with `options` to send back as `choices`;
 `NO_PROVIDER`; `CYCLE`).
-Compose's **Build from a cart** is this, opened for you to review:
+To run it, `OrderService/PlaceOrder` takes the same cart with your
+`choices` made, `values` for what you fill in (`{"<step>": {"<input>":
+value}}`), `parameters` for the shared types (`{"gcp.region":
+"us-central1"}`) and a `requestId`. It's refused while a choice is unmade
+(`ORDER_INCOMPLETE`, with what's left). The run is your team's, each step
+checked as if you ran its action alone. The Catalog's **Cart** is this, and
+Compose's **Build from a cart** opens the plan for you to edit:
 
 ```console
 $ call OrderService/PreviewOrder '{"team":"team-a","actions":["local-reverse-transform","local-rot13-transform"]}' | jq '[.steps[] | .id]'

@@ -181,6 +181,45 @@ func TestInputsThatDontFitTheSchemaFailTheStepBeforeItStarts(t *testing.T) {
 	}
 }
 
+// A target another step fills, for another team's run: the console narrows
+// the input's schema to what the owning team allows (console/src/targets.ts's
+// narrowWiredTargets), and the resolved value is held to it before the step
+// starts.
+func TestAWiredTargetOutsideWhatItsOwnerAllowsFailsTheStepBeforeItStarts(t *testing.T) {
+	narrowed := map[string]any{
+		"type": "object", "required": []any{"projectId"},
+		"properties": map[string]any{"projectId": map[string]any{"allOf": []any{
+			map[string]any{"type": "string", "x-vertra-needs": "gcp.project"},
+			map[string]any{"anyOf": []any{
+				map[string]any{"type": "string", "pattern": "^apps-.*$"},
+				map[string]any{"type": "string", "pattern": "^shared\\.sandbox$"},
+			}},
+		}}},
+	}
+	for _, c := range []struct {
+		project string
+		want    domain.TaskState
+	}{{"apps-web", domain.TaskRunning}, {"shared.sandbox", domain.TaskRunning}, {"payments-prod", domain.TaskFailed}, {"sharedXsandbox", domain.TaskFailed}} {
+		tx := txFor(t)
+		id := submit(t, tx, "idem-sched-wired-target-"+c.project,
+			task("source"),
+			task("make", dependsOn("source"), inputs(map[string]any{"projectId": map[string]any{"$fromTask": "source", "$output": "projectId"}}), schemas(narrowed, nil)))
+		exec := fake()
+		k := newTicker(t, tx, exec)
+		t0 := time.Now()
+		k.tick(t0)
+		exec.Complete(tasksByKey(t, tx, id)["source"].ExecutorHandle, map[string]any{"projectId": c.project})
+		k.tick(t0.Add(time.Second))
+		k.tick(t0.Add(2 * time.Second))
+		made := tasksByKey(t, tx, id)["make"]
+		equal(t, c.project, made.State, c.want)
+		if c.want == domain.TaskFailed {
+			equal(t, c.project+" code", made.Failure["code"], "INPUT_INVALID")
+			equal(t, c.project+" started", made.ExecutorHandle == nil, true)
+		}
+	}
+}
+
 func TestOutputsThatDontFitTheSchemaFailTheStep(t *testing.T) {
 	tx := txFor(t)
 	id := submit(t, tx, "idem-sched-output-schema",

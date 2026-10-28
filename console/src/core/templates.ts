@@ -491,6 +491,49 @@ export const CLEANUP_RUN = "cleanup";
 /** What submitted_executions.template says for a preview run: never a template's <team>/<name>. */
 export const PREVIEW_RUN = "preview";
 
+/** What submitted_executions.template says for an order of a cart (core/orders.ts); its parameters are the cart. */
+export const ORDER_RUN = "order";
+
+/** One step of an order: a planned cart's action, its inputs (with {$fromTask} wiring), and what it waits for. */
+export interface OrderRunStep {
+  id: string;
+  product: TeamProduct;
+  inputs: Record<string, unknown>;
+  dependsOn: string[];
+}
+
+/**
+ * Runs a planned cart as one run for `forTeam` (decision 25): each step as
+ * running its action alone would be (shared with the caller for that team,
+ * its targets ones the team may use; its inputs known now checked at
+ * submit, and wired ones, targets included, once the kernel resolves
+ * them), wired between them. Nothing a raw DAG could add: the steps are
+ * the registered products', with their own identities and secrets.
+ */
+export async function runOrderSteps(
+  who: AuthUser,
+  name: string,
+  list: OrderRunStep[],
+  forTeam: string,
+  cart: Record<string, unknown>,
+  requestId: string | undefined,
+  log: FastifyBaseLogger,
+) {
+  for (const s of list) {
+    const allowed = access(who, s.product.teamName, s.product.shareWith);
+    if (!allowed.allowed || (allowed.required && !allowed.onBehalfOf.includes(forTeam))) {
+      throw new ApiError(403, "FORBIDDEN", `Step ${s.id}: ${actionRef(s.product)} isn't shared with team "${forTeam}".`);
+    }
+  }
+  const steps: ResolvedStep[] = list.map((s) => ({
+    step: { id: s.id, action: actionRef(s.product), ...(s.dependsOn.length > 0 ? { dependsOn: s.dependsOn } : {}) },
+    product: s.product,
+    inputs: s.inputs,
+  }));
+  await ensureTargetsAllowed(who, forTeam, steps, name);
+  return submitChecked(who, dagOf(name, steps, requestId), log, { template: ORDER_RUN, parameters: cart, onBehalfOf: forTeam });
+}
+
 /** One step of a run the console makes itself (a cleanup, a preview): a product's action, with its inputs. */
 export interface ProductStep {
   id: string;
@@ -720,6 +763,17 @@ export async function ensureStillRunnable(caller: AuthUser | undefined, submitte
   // A cleanup's steps were allowed when it was asked for; retrying one
   // deletes the same thing again, which cleanup actions must allow.
   if (ref === CLEANUP_RUN || ref === PREVIEW_RUN) return;
+  if (ref === ORDER_RUN) {
+    // Each of its actions still shared with the caller: as placing it was.
+    const actions = isRecord(submitted.templateParameters) && Array.isArray(submitted.templateParameters["actions"]) ? submitted.templateParameters["actions"] : [];
+    for (const name of actions) {
+      const product = typeof name === "string" ? await findRunnableProduct(name) : undefined;
+      if (!product || !access(who, product.teamName, product.shareWith).allowed) {
+        throw new ApiError(403, "FORBIDDEN", `${String(name)} isn't shared with you any more, so this order can't be retried.`);
+      }
+    }
+    return;
+  }
   const refused = (why: string) =>
     new ApiError(403, "FORBIDDEN", `${ref} ${why}, so this run can't be retried. Its team can share it again.`);
   if (ACTION_REF.test(ref)) {
@@ -741,6 +795,11 @@ export async function rerunTemplate(caller: AuthUser | undefined, submitted: Sub
     throw new ApiError(409, "CLEANUP_RUN", "A cleanup run isn't run again: delete what's still there from the resources it was for.");
   }
   if (ref === PREVIEW_RUN) throw new ApiError(409, "PREVIEW_RUN", "A preview isn't run again: preview from the form.");
+  if (ref === ORDER_RUN) {
+    // The same cart, planned again against the catalog as it is now.
+    const { placeOrder, cartOf } = await import("./orders.js");
+    return placeOrder(who, { ...cartOf(submitted.templateParameters, submitted.onBehalfOf ?? ""), requestId: undefined }, log);
+  }
   const request: RunRequest = {
     parameters: isRecord(submitted.templateParameters) ? submitted.templateParameters : {},
     onBehalfOf: submitted.onBehalfOf ?? undefined,

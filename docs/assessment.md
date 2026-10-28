@@ -942,7 +942,9 @@ Open, for review: whether a cart can be saved and shared before checkout
 Built so far: the catalog's wiring types (1, 2026-10-27) and what each
 resource provides and depends on, with deletes of what others depend on
 waiting for an admin (3, 2026-10-28); the preview offering existing
-resources and suggestions (4, 2026-10-28).
+resources and suggestions (4, 2026-10-28); and checkout, PlaceOrder and
+the Catalog's cart, with wired targets held to allowedTargets for every
+run (5, 2026-10-28).
 
 Decided on review (2026-10-27): members check out carts (5), without a
 maintainer; ordering bots still order templates only. Every existing
