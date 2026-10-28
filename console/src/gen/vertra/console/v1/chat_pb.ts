@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/chat.proto.
  */
 export const file_vertra_console_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgi2AEKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAlCBwoFX2NhcnQyjwMKC0NoYXRTZXJ2aWNlEm0KD0dldENoYXRTZXR0aW5ncxIpLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXNwb25zZSIDkAIBEkQKA0FzaxIdLnZlcnRyYS5jb25zb2xlLnYxLkFza1JlcXVlc3QaHi52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXNwb25zZRJZCgpSYXRlQW5zd2VyEiQudmVydHJhLmNvbnNvbGUudjEuUmF0ZUFuc3dlclJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5SYXRlQW5zd2VyUmVzcG9uc2UScAoQTGlzdENoYXRGZWVkYmFjaxIqLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RDaGF0RmVlZGJhY2tSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuTGlzdENoYXRGZWVkYmFja1Jlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgihAIKC0Fza1Jlc3BvbnNlEgwKBHRleHQYASABKAkSMgoJY2l0YXRpb25zGAIgAygLMh8udmVydHJhLmNvbnNvbGUudjEuQ2hhdENpdGF0aW9uEg8KB3VuY2l0ZWQYAyABKAgSMgoEY2FydBgEIAEoCzIfLnZlcnRyYS5jb25zb2xlLnYxLlByb3Bvc2VkQ2FydEgAiAEBEioKBXN0ZXBzGAUgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFN0ZXASDQoFbW9kZWwYBiABKAkSEQoJb2ZmX3RvcGljGAcgASgIEhcKD2NvbnRleHRfcGVyY2VudBgIIAEoBUIHCgVfY2FydDKPAwoLQ2hhdFNlcnZpY2USbQoPR2V0Q2hhdFNldHRpbmdzEikudmVydHJhLmNvbnNvbGUudjEuR2V0Q2hhdFNldHRpbmdzUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESRAoDQXNrEh0udmVydHJhLmNvbnNvbGUudjEuQXNrUmVxdWVzdBoeLnZlcnRyYS5jb25zb2xlLnYxLkFza1Jlc3BvbnNlElkKClJhdGVBbnN3ZXISJC52ZXJ0cmEuY29uc29sZS52MS5SYXRlQW5zd2VyUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLlJhdGVBbnN3ZXJSZXNwb25zZRJwChBMaXN0Q2hhdEZlZWRiYWNrEioudmVydHJhLmNvbnNvbGUudjEuTGlzdENoYXRGZWVkYmFja1JlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5MaXN0Q2hhdEZlZWRiYWNrUmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.RateAnswerRequest
@@ -396,7 +396,8 @@ export type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
   citations: ChatCitation[];
 
   /**
-   * It searched the docs and cites nothing it found: not from the docs.
+   * It found nothing to answer from, in the docs or the platform: the text
+   * says so, in the console's words, not the model's.
    *
    * @generated from field: bool uncited = 3;
    */
@@ -418,6 +419,23 @@ export type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
    * @generated from field: string model = 6;
    */
   model: string;
+
+  /**
+   * Not about Vertra: the text says what it helps with, and the model
+   * wasn't asked.
+   *
+   * @generated from field: bool off_topic = 7;
+   */
+  offTopic: boolean;
+
+  /**
+   * How much of the chat's context window the conversation takes, with this
+   * answer: 0 to 100. At 100 the next question is refused
+   * (CONVERSATION_TOO_LONG): start a new conversation.
+   *
+   * @generated from field: int32 context_percent = 8;
+   */
+  contextPercent: number;
 };
 
 /**
@@ -449,7 +467,10 @@ export const ChatService: GenService<{
   /**
    * An answer to the conversation's last message. Nothing is kept: send
    * the conversation each time. CHAT_OFF without a model here;
-   * MODEL_UNAVAILABLE when it doesn't answer.
+   * MODEL_UNAVAILABLE when it doesn't answer; CONVERSATION_TOO_LONG when
+   * the conversation won't fit the chat's context window. A question that
+   * isn't about Vertra gets the same short answer (off_topic), and an
+   * answer from neither the docs nor the platform isn't shown (uncited).
    *
    * @generated from rpc vertra.console.v1.ChatService.Ask
    */

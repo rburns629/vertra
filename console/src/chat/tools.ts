@@ -35,7 +35,7 @@ interface Tool {
   run(state: TurnState, args: Record<string, unknown>): Promise<unknown>;
 }
 
-const MAX_RESULT = 7000;
+export const MAX_RESULT = 7000;
 
 const text = (v: unknown, max = 500): string => (typeof v === "string" ? v.slice(0, max) : "");
 

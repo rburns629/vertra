@@ -620,9 +620,21 @@ when one's needed, is a Secret named in `chat.apiKeySecret` (key
 the agent's tools find for them, goes to the model: on a cloud, use one in
 the install's own. `chat.maxSteps` (8), `timeoutSeconds` (180) and
 `maxTokens` (8000 on anthropic, where thinking counts toward it; else 1500)
-bound one answer; `chat.effort` sets how hard Claude thinks. Score a model
+bound one answer; `chat.effort` sets how hard Claude thinks.
+`chat.contextTokens` (64000 on anthropic, else 16000; at most the model's
+own window) bounds what one model call is sent, and so its cost: a
+conversation that won't fit is refused (`CONVERSATION_TOO_LONG`; the panel
+offers a new one, and says when one passes 75%), and a tool result that
+won't fit is held back from the model.
+
+It answers only about Vertra. A short check of each question, by the same
+model with no tools, answers anything else with one fixed sentence
+(`offTopic`), and the prompt holds the same scope; an answer from neither
+the docs it cites nor the platform's tools is never shown, the console's
+"I couldn't find that" in its place. Score a model
 before trusting it: `npm run chat-eval` in `console/` asks it the question
-set (`console/test/docQuestions.ts`). The console logs each answer's steps
+set (`console/test/docQuestions.ts`), the ordering tasks and questions
+it must refuse (`console/test/chatTasks.ts`). The console logs each answer's steps
 (`chat_answered`: tools used, sources, citations), not what was said.
 People rate answers up or down in the panel; Admin's Chat tab lists them
 (question, answer, sources, what was wrong), kept 90 days. A wrong answer

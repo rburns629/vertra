@@ -42,10 +42,17 @@ export interface ModelReply {
   raw?: unknown;
 }
 
+export interface CompleteOptions {
+  /** Answer in words; the tools are still described (the history may hold their calls). */
+  noTools?: boolean;
+  /** A one-word judgment (the scope check): no thinking where the model takes that, a short reply. */
+  quick?: boolean;
+  signal?: AbortSignal;
+}
+
 export interface ChatModel {
   readonly name: string;
-  /** `noTools`: answer in words; the tools are still described (the history may hold their calls). */
-  complete(messages: ChatMessage[], tools: ToolSpec[], options?: { noTools?: boolean; signal?: AbortSignal }): Promise<ModelReply>;
+  complete(messages: ChatMessage[], tools: ToolSpec[], options?: CompleteOptions): Promise<ModelReply>;
 }
 
 /** The model couldn't be reached, or answered with something unusable. */
@@ -67,7 +74,7 @@ export class OpenAICompatible implements ChatModel {
     return this.options.model;
   }
 
-  async complete(messages: ChatMessage[], tools: ToolSpec[], options: { noTools?: boolean; signal?: AbortSignal } = {}): Promise<ModelReply> {
+  async complete(messages: ChatMessage[], tools: ToolSpec[], options: CompleteOptions = {}): Promise<ModelReply> {
     const { signal } = options;
     const body = {
       model: this.options.model,
@@ -185,7 +192,7 @@ export class AnthropicMessages implements ChatModel {
     return { system, messages: out };
   }
 
-  async complete(messages: ChatMessage[], tools: ToolSpec[], options: { noTools?: boolean; signal?: AbortSignal } = {}): Promise<ModelReply> {
+  async complete(messages: ChatMessage[], tools: ToolSpec[], options: CompleteOptions = {}): Promise<ModelReply> {
     const { signal } = options;
     const { system, messages: converted } = AnthropicMessages.messagesOf(messages);
     let response: Anthropic.Message;
@@ -193,7 +200,8 @@ export class AnthropicMessages implements ChatModel {
       response = await this.client.messages.create(
         {
           model: this.options.model,
-          max_tokens: this.options.maxTokens,
+          max_tokens: options.quick ? 64 : this.options.maxTokens,
+          ...(options.quick ? { thinking: { type: "disabled" as const } } : {}),
           ...(system ? { system } : {}),
           messages: converted,
           ...(tools.length > 0
@@ -202,7 +210,7 @@ export class AnthropicMessages implements ChatModel {
                 ...(options.noTools ? { tool_choice: { type: "none" as const } } : {}),
               }
             : {}),
-          ...(this.options.effort ? { output_config: { effort: this.options.effort } } : {}),
+          ...(this.options.effort && !options.quick ? { output_config: { effort: this.options.effort } } : {}),
           cache_control: { type: "ephemeral" },
         },
         { timeout: this.options.timeoutSeconds * 1000, ...(signal ? { signal } : {}) },

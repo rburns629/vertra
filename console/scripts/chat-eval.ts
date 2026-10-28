@@ -10,7 +10,9 @@
  *
  * And the ordering tasks (test/chatTasks.ts), judged by what the agent did:
  * the tools it used, in order; the cart it proposed, or that it proposed
- * none; what its answer must say.
+ * none; what its answer must say. And the guardrails: questions that
+ * aren't about Vertra (chatTasks.ts's OFF_TOPIC) answered with the scope
+ * answer, and none of the question set's refused.
  *
  *   VERTRA_TOKEN=... npm run chat-eval            # every question, then the tasks
  *   VERTRA_TOKEN=... npm run chat-eval -- 5       # the first five questions, then the tasks
@@ -20,7 +22,7 @@
  * A model's run, not CI: real models are slow, and their answers vary.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
-import { CHAT_TASKS } from "../test/chatTasks.js";
+import { CHAT_TASKS, OFF_TOPIC } from "../test/chatTasks.js";
 import { DOC_QUESTIONS } from "../test/docQuestions.js";
 
 const consoleUrl = (process.env["CONSOLE_URL"] ?? "http://localhost:18080").replace(/\/+$/, "");
@@ -32,6 +34,8 @@ interface Answer {
   citations?: { guide: string; heading: string; link: string }[];
   cart?: { team: string; actions: string[] };
   uncited?: boolean;
+  offTopic?: boolean;
+  contextPercent?: number;
   steps?: { tool: string; ok: boolean }[];
   model?: string;
   code?: string;
@@ -74,6 +78,7 @@ async function main(): Promise<void> {
       error: a.code ? `${a.code}: ${a.message ?? ""}` : null,
       citedAnAnswer: cited,
       uncited: a.uncited ?? false,
+      offTopic: a.offTopic ?? false,
       citations: (a.citations ?? []).map((c) => `${c.guide} :: ${c.heading}`),
       missing,
       said,
@@ -83,7 +88,7 @@ async function main(): Promise<void> {
     };
     rows.push(row);
     console.log(
-      `${row.error ? "ERROR" : row.citedAnAnswer ? "cited" : row.uncited ? "UNCITED" : "other"}  ${String(row.seconds).padStart(5)}s  ${q.question}` +
+      `${row.error ? "ERROR" : row.offTopic ? "REFUSED" : row.citedAnAnswer ? "cited" : row.uncited ? "UNCITED" : "other"}  ${String(row.seconds).padStart(5)}s  ${q.question}` +
         (missing.length > 0 ? `  [missing: ${missing.join(", ")}]` : "") +
         (said.length > 0 ? `  [said: ${said.join(", ")}]` : ""),
     );
@@ -121,6 +126,24 @@ async function main(): Promise<void> {
     );
   }
 
+  // The guardrails: what isn't about Vertra gets the scope answer.
+  const refusals = [];
+  for (const q of OFF_TOPIC) {
+    const started = Date.now();
+    const a = await call<Answer>("ChatService/Ask", { team, messages: [{ role: "user", content: q }] });
+    const row = {
+      question: q,
+      error: a.code ? `${a.code}: ${a.message ?? ""}` : null,
+      offTopic: a.offTopic ?? false,
+      // Past the scope check, and not shown: from neither the docs nor the platform.
+      held: a.uncited ?? false,
+      seconds: Math.round((Date.now() - started) / 100) / 10,
+      answer: a.text ?? "",
+    };
+    refusals.push(row);
+    console.log(`${row.offTopic ? "refused" : row.held ? "held" : row.error ? "ERROR" : "ANSWERED"}  ${String(row.seconds).padStart(5)}s  ${q}`);
+  }
+
   const answered = rows.filter((r) => !r.error);
   const summary = {
     model: settings.model,
@@ -129,17 +152,22 @@ async function main(): Promise<void> {
     errors: rows.length - answered.length,
     citedAnAnswer: answered.filter((r) => r.citedAnAnswer).length,
     uncited: answered.filter((r) => r.uncited).length,
+    refusedInScope: answered.filter((r) => r.offTopic).length,
     mustSayMissed: rows.filter((r) => r.missing.length > 0).length,
     mustNotSaySaid: rows.filter((r) => r.said.length > 0).length,
     medianSeconds: median(rows.map((r) => r.seconds)),
     slowestSeconds: rows.length > 0 ? Math.max(...rows.map((r) => r.seconds)) : 0,
     tasks: tasks.length,
     tasksDone: tasks.filter((t) => !t.error && t.toolsInOrder && t.cartRight && t.missing.length === 0).length,
+    offTopic: refusals.length,
+    offTopicRefused: refusals.filter((r) => r.offTopic).length,
+    // Refused, or past the check and not shown: either way, not answered.
+    offTopicNotAnswered: refusals.filter((r) => r.offTopic || r.held).length,
   };
   console.log(`\n${JSON.stringify(summary, null, 2)}`);
   mkdirSync("chat-eval-results", { recursive: true });
   const file = `chat-eval-results/${String(settings.model).replace(/[^a-zA-Z0-9.-]/g, "_")}-${summary.at.replace(/[:.]/g, "-")}.json`;
-  writeFileSync(file, JSON.stringify({ summary, rows, tasks }, null, 2));
+  writeFileSync(file, JSON.stringify({ summary, rows, tasks, refusals }, null, 2));
   console.log(`Written: ${file}`);
 }
 

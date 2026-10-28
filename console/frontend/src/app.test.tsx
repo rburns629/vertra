@@ -462,6 +462,31 @@ describe("the chat panel", () => {
     cart.clear();
   });
 
+  it("says when a conversation is filling the model's window, and starts a new one when it's too long", async () => {
+    let asked = 0;
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "claude-haiku-5-5" },
+      "ChatService/Ask": () => {
+        asked++;
+        return asked === 1
+          ? { text: "The docs don't cover that.", contextPercent: 80 }
+          : refused(429, "resource_exhausted", "This conversation is too long for the chat model: start a new one.", "CONVERSATION_TOO_LONG");
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra" }));
+    fireEvent.change(await screen.findByLabelText("Your question"), { target: { value: "first" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(/80% of what the model can take/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Your question"), { target: { value: "second" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(/too long for the chat model/)).toBeTruthy();
+    // The question waits in the box, to ask in a new conversation.
+    expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe("second");
+    fireEvent.click(screen.getAllByRole("button", { name: "New conversation" })[0]!);
+    await waitFor(() => { expect(screen.queryByText("first")).toBeNull(); });
+    expect(screen.queryByText(/too long for the chat model/)).toBeNull();
+  });
+
   it("isn't offered when the install has no model", async () => {
     await renderAt("/", MEMBER, { "ChatService/GetChatSettings": { enabled: false } });
     await screen.findByRole("navigation", { name: /main/i }).catch(() => undefined);

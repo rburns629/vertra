@@ -381,7 +381,8 @@ export declare type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
   citations: ChatCitation[];
 
   /**
-   * It searched the docs and cites nothing it found: not from the docs.
+   * It found nothing to answer from, in the docs or the platform: the text
+   * says so, in the console's words, not the model's.
    *
    * @generated from field: bool uncited = 3;
    */
@@ -403,6 +404,23 @@ export declare type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
    * @generated from field: string model = 6;
    */
   model: string;
+
+  /**
+   * Not about Vertra: the text says what it helps with, and the model
+   * wasn't asked.
+   *
+   * @generated from field: bool off_topic = 7;
+   */
+  offTopic: boolean;
+
+  /**
+   * How much of the chat's context window the conversation takes, with this
+   * answer: 0 to 100. At 100 the next question is refused
+   * (CONVERSATION_TOO_LONG): start a new conversation.
+   *
+   * @generated from field: int32 context_percent = 8;
+   */
+  contextPercent: number;
 };
 
 /**
@@ -433,7 +451,10 @@ export declare const ChatService: GenService<{
   /**
    * An answer to the conversation's last message. Nothing is kept: send
    * the conversation each time. CHAT_OFF without a model here;
-   * MODEL_UNAVAILABLE when it doesn't answer.
+   * MODEL_UNAVAILABLE when it doesn't answer; CONVERSATION_TOO_LONG when
+   * the conversation won't fit the chat's context window. A question that
+   * isn't about Vertra gets the same short answer (off_topic), and an
+   * answer from neither the docs nor the platform isn't shown (uncited).
    *
    * @generated from rpc vertra.console.v1.ChatService.Ask
    */

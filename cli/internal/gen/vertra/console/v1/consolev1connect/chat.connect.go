@@ -53,7 +53,10 @@ type ChatServiceClient interface {
 	GetChatSettings(context.Context, *connect.Request[v1.GetChatSettingsRequest]) (*connect.Response[v1.GetChatSettingsResponse], error)
 	// An answer to the conversation's last message. Nothing is kept: send
 	// the conversation each time. CHAT_OFF without a model here;
-	// MODEL_UNAVAILABLE when it doesn't answer.
+	// MODEL_UNAVAILABLE when it doesn't answer; CONVERSATION_TOO_LONG when
+	// the conversation won't fit the chat's context window. A question that
+	// isn't about Vertra gets the same short answer (off_topic), and an
+	// answer from neither the docs nor the platform isn't shown (uncited).
 	Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error)
 	// Thumbs up or down on an answer you got, sent with its question and
 	// answer, for the admins (kept 90 days).
@@ -136,7 +139,10 @@ type ChatServiceHandler interface {
 	GetChatSettings(context.Context, *connect.Request[v1.GetChatSettingsRequest]) (*connect.Response[v1.GetChatSettingsResponse], error)
 	// An answer to the conversation's last message. Nothing is kept: send
 	// the conversation each time. CHAT_OFF without a model here;
-	// MODEL_UNAVAILABLE when it doesn't answer.
+	// MODEL_UNAVAILABLE when it doesn't answer; CONVERSATION_TOO_LONG when
+	// the conversation won't fit the chat's context window. A question that
+	// isn't about Vertra gets the same short answer (off_topic), and an
+	// answer from neither the docs nor the platform isn't shown (uncited).
 	Ask(context.Context, *connect.Request[v1.AskRequest]) (*connect.Response[v1.AskResponse], error)
 	// Thumbs up or down on an answer you got, sent with its question and
 	// answer, for the admins (kept 90 days).

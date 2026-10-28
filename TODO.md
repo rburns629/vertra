@@ -1041,6 +1041,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Thumbs up or down on each answer (2026-10-28): a wrong one asks what
   was wrong; both go, with the question, answer and sources, to Admin's
   Chat tab (`ChatService/RateAnswer`, `ListChatFeedback`; 90 days).
+  Guardrails (2026-10-28): a scope check (its own tool-less call, the
+  question as data) answers what isn't about Vertra with one sentence; the
+  prompt holds the same scope; an answer from neither cited docs nor the
+  platform's tools is replaced with the console's "I couldn't find that";
+  `chat.contextTokens` bounds every call (a conversation too long refused,
+  a tool result that won't fit held back). Haiku: 10 of 10 off-topic
+  questions refused (two of them trying to talk it out of its
+  instructions), none of the 40 refused, 40 of 40 cited, 5 of 5 tasks; a
+  stricter check first refused three (a DAG, GitHub Actions, a 429).
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (usage logged). Left:

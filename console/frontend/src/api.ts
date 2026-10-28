@@ -2523,8 +2523,12 @@ export interface ChatCitation {
 export interface ChatAnswer {
   text: string;
   citations: ChatCitation[];
-  /** It searched the docs and cites nothing it found. */
+  /** It found nothing to answer from: the text says so, in the console's words. */
   uncited: boolean;
+  /** Not about Vertra: the text says what it helps with. */
+  offTopic: boolean;
+  /** How much of the chat's context window the conversation takes, 0 to 100. */
+  contextPercent: number;
   cart: { team: string; actions: string[] } | null;
   steps: { tool: string; ok: boolean }[];
 }
@@ -2536,6 +2540,8 @@ export async function askChat(team: string | null, messages: { role: "user" | "a
     text: r.text,
     citations: r.citations.map((c) => ({ id: c.id, title: c.title, heading: c.heading, kind: c.kind, link: c.link })),
     uncited: r.uncited,
+    offTopic: r.offTopic,
+    contextPercent: r.contextPercent,
     cart: r.cart ? { team: r.cart.team, actions: r.cart.actions } : null,
     steps: r.steps.map((s) => ({ tool: s.tool, ok: s.ok })),
   };

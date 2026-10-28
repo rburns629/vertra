@@ -83,6 +83,12 @@ function loadChat() {
   if (provider === "anthropic" && !apiKey) throw new Error("CHAT_API_KEY: Anthropic's API needs a key (the chart's chat.apiKeySecret)");
   const effort = process.env["CHAT_EFFORT"] ?? "";
   if (effort && !["low", "medium", "high"].includes(effort)) throw new Error(`CHAT_EFFORT "${effort}": low, medium or high`);
+  const maxTokens = positiveInt("CHAT_MAX_TOKENS", provider === "anthropic" ? 8000 : 1500);
+  const contextTokens = positiveInt("CHAT_CONTEXT_TOKENS", provider === "anthropic" ? 64000 : 16000);
+  // The prompt, the tools' descriptions and a question need about 6000, and two replies their room.
+  if (contextTokens < 2 * maxTokens + 8000) {
+    throw new Error(`CHAT_CONTEXT_TOKENS ${String(contextTokens)}: at least twice CHAT_MAX_TOKENS (${String(maxTokens)}) and 8000 more`);
+  }
   return {
     provider,
     endpoint,
@@ -93,7 +99,12 @@ function loadChat() {
     // How long one model call may take: a local model is slow.
     timeoutSeconds: positiveInt("CHAT_TIMEOUT_SECONDS", 180),
     // Thinking counts toward it on Claude: more room there.
-    maxTokens: positiveInt("CHAT_MAX_TOKENS", provider === "anthropic" ? 8000 : 1500),
+    maxTokens,
+    // The most one model call is sent, in tokens (estimated): the
+    // conversation, what the tools return and room for the replies. A
+    // conversation that can't fit is refused; a tool result that won't fit
+    // is held back. Claude takes far more; this bounds the cost.
+    contextTokens,
     // How hard the model thinks, where it takes one (Anthropic); unset, its own default.
     effort: (effort || null) as "low" | "medium" | "high" | null,
   };

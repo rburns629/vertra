@@ -13,6 +13,7 @@ import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import AddCommentIcon from "@mui/icons-material/AddCommentOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import ThumbDownIcon from "@mui/icons-material/ThumbDownOutlined";
 import ThumbUpIcon from "@mui/icons-material/ThumbUpOutlined";
@@ -40,11 +41,6 @@ function Answer({ turn, onOpenCart }: { turn: Extract<Turn, { role: "assistant" 
       <Box sx={{ "& p": { my: 0.75 }, "& pre": { overflowX: "auto" }, fontSize: 14, lineHeight: 1.55, overflowWrap: "anywhere" }}>
         <Markdown remarkPlugins={[remarkGfm]}>{turn.content}</Markdown>
       </Box>
-      {turn.uncited && (
-        <Typography variant="caption" color="warning.main">
-          Not from the docs: it searched them and cites nothing it found. Check before relying on it.
-        </Typography>
-      )}
       {turn.citations.length > 0 && (
         <Box component="ol" sx={{ m: 0, pl: 2.5, fontSize: 13 }} aria-label="Sources">
           {turn.citations.map((c) => (
@@ -148,7 +144,8 @@ function Rate({ question, turn, team, model }: { question: string; turn: Extract
  * from its docs (cited, each linked to its section), or say what you need
  * and get a cart to open and place yourself. The conversation is kept on
  * this page only; each question sends it whole (ChatService/Ask keeps
- * nothing).
+ * nothing), so it's bounded by the model's context window: the panel says
+ * when it's filling, and offers a new one.
  */
 export function ChatPanel({ model, onClose }: { model: string; onClose: () => void }) {
   const { user } = useAuth();
@@ -159,8 +156,15 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; tooLong: boolean } | null>(null);
   const end = useRef<HTMLDivElement>(null);
+  const last = turns.at(-1);
+  const full = last?.role === "assistant" ? last.contextPercent : 0;
+
+  function startOver(): void {
+    setTurns([]);
+    setError(null);
+  }
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end" });
@@ -176,9 +180,12 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
     setError(null);
     try {
       const answer = await askChat(team || null, next.map((t) => ({ role: t.role, content: t.content })));
-      setTurns([...next, { role: "assistant", content: answer.text, citations: answer.citations, uncited: answer.uncited, cart: answer.cart, steps: answer.steps }]);
+      setTurns([...next, { role: "assistant", ...answer, content: answer.text }]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't get an answer.");
+      // The question stays in the box to ask again (or in a new conversation).
+      setTurns(turns);
+      setDraft(question);
+      setError({ message: err instanceof ApiError ? err.message : "Couldn't get an answer.", tooLong: err instanceof ApiError && err.code === "CONVERSATION_TOO_LONG" });
     } finally {
       setBusy(false);
     }
@@ -200,6 +207,11 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
             Answers from the docs and your catalog · {model}
           </Typography>
         </Box>
+        {turns.length > 0 && (
+          <IconButton aria-label="New conversation" title="New conversation" onClick={startOver} disabled={busy}>
+            <AddCommentIcon />
+          </IconButton>
+        )}
         <IconButton aria-label="Close" onClick={onClose}>
           <CloseIcon />
         </IconButton>
@@ -248,7 +260,25 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
             <Typography variant="body2">Thinking… a model can take a minute to answer.</Typography>
           </Box>
         )}
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && (
+          <Alert
+            severity="error"
+            action={
+              error.tooLong ? (
+                <Button color="inherit" size="small" onClick={startOver}>
+                  New conversation
+                </Button>
+              ) : undefined
+            }
+          >
+            {error.message}
+          </Alert>
+        )}
+        {!error && full >= 75 && (
+          <Typography variant="caption" color="text.secondary">
+            This conversation is {full}% of what the model can take: start a new one soon.
+          </Typography>
+        )}
         <div ref={end} />
       </Box>
       <Box sx={{ p: 1.5, borderTop: 1, borderColor: "divider", display: "flex", gap: 1, alignItems: "flex-end" }}>

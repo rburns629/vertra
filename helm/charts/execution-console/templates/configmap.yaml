@@ -23,6 +23,7 @@ data:
   CHAT_TIMEOUT_SECONDS: {{ .Values.chat.timeoutSeconds | quote }}
   CHAT_MAX_TOKENS: {{ .Values.chat.maxTokens | quote }}
   CHAT_EFFORT: {{ .Values.chat.effort | quote }}
+  CHAT_CONTEXT_TOKENS: {{ .Values.chat.contextTokens | quote }}
 ---
 # The migration Job's own copy, made by the same hook just before it: a
 # pre-upgrade Job reading the ConfigMap above would get the previous

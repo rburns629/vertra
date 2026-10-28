@@ -191,7 +191,13 @@ asking: each tool calls the console's own code with their identity, so it
 sees what they may, and its only effect is a proposed cart, which they open
 and place themselves. Ordering bots can't use it. Its answers' citations
 are kept only when they name a section it retrieved, and links are the
-console's, not the model's. What's asked, and what its tools return, goes to
+console's, not the model's. It answers only about Vertra: a question
+judged not about it (by a separate, tool-less call that treats the
+question as data) gets a fixed sentence and never reaches the agent, and an
+answer resting on neither the docs it cites nor its tools' results is
+replaced, so neither a question that talks it out of its instructions nor
+the model's memory can put an answer in front of someone. A conversation
+is bounded by `chat.contextTokens`. What's asked, and what its tools return, goes to
 the install's chat model (`chat.endpoint`); nothing is kept by the console,
 except an answer someone rates: its question, answer, sources and their
 comment, for the admins only (`ChatService/RateAnswer`, a rating for a

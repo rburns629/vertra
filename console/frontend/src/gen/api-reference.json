@@ -226,7 +226,7 @@
     },
     {
      "name": "Ask",
-     "comment": "An answer to the conversation's last message. Nothing is kept: send\nthe conversation each time. CHAT_OFF without a model here;\nMODEL_UNAVAILABLE when it doesn't answer.",
+     "comment": "An answer to the conversation's last message. Nothing is kept: send\nthe conversation each time. CHAT_OFF without a model here;\nMODEL_UNAVAILABLE when it doesn't answer; CONVERSATION_TOO_LONG when\nthe conversation won't fit the chat's context window. A question that\nisn't about Vertra gets the same short answer (off_topic), and an\nanswer from neither the docs nor the platform isn't shown (uncited).",
      "input": "vertra.console.v1.AskRequest",
      "output": "vertra.console.v1.AskResponse",
      "streaming": false,
@@ -3089,7 +3089,7 @@
      "type": "boolean",
      "repeated": false,
      "optional": false,
-     "comment": "It searched the docs and cites nothing it found: not from the docs."
+     "comment": "It found nothing to answer from, in the docs or the platform: the text\nsays so, in the console's words, not the model's."
     },
     {
      "name": "cart",
@@ -3113,6 +3113,20 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "offTopic",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Not about Vertra: the text says what it helps with, and the model\nwasn't asked."
+    },
+    {
+     "name": "contextPercent",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How much of the chat's context window the conversation takes, with this\nanswer: 0 to 100. At 100 the next question is refused\n(CONVERSATION_TOO_LONG): start a new conversation."
     }
    ]
   },

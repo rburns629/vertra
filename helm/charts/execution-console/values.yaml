@@ -570,11 +570,15 @@ chat:
   # Model and tool calls in one answer, at most; how long one model call
   # may take; how long one model call's output may be ("": the provider's
   # default, 8000 on anthropic where thinking counts toward it, else 1500);
-  # how hard Claude thinks (low, medium, high; "": the model's default).
+  # how hard Claude thinks (low, medium, high; "": the model's default);
+  # the most one model call is sent, in tokens, the conversation and what
+  # the tools returned ("": 64000 on anthropic, else 16000; at most the
+  # model's own window). A longer conversation is refused: start a new one.
   maxSteps: 8
   timeoutSeconds: 180
   maxTokens: ""
   effort: ""
+  contextTokens: ""
 
 teamNamespaces:
   manage: true

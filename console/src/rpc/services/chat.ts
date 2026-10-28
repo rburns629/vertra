@@ -69,6 +69,8 @@ export function chatService(): ServiceImpl<typeof ChatService> {
         text: answer.text,
         citations: answer.citations,
         uncited: answer.uncited,
+        offTopic: answer.offTopic,
+        contextPercent: answer.contextPercent,
         ...(answer.cart ? { cart: answer.cart } : {}),
         steps: answer.steps,
         model: answer.model,

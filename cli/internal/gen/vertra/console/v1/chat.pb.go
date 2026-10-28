@@ -780,14 +780,22 @@ type AskResponse struct {
 	// retrieved for this answer.
 	Text      string          `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
 	Citations []*ChatCitation `protobuf:"bytes,2,rep,name=citations,proto3" json:"citations,omitempty"`
-	// It searched the docs and cites nothing it found: not from the docs.
+	// It found nothing to answer from, in the docs or the platform: the text
+	// says so, in the console's words, not the model's.
 	Uncited bool          `protobuf:"varint,3,opt,name=uncited,proto3" json:"uncited,omitempty"`
 	Cart    *ProposedCart `protobuf:"bytes,4,opt,name=cart,proto3,oneof" json:"cart,omitempty"`
 	// What it did: each tool, in order, and whether it worked.
-	Steps         []*ChatStep `protobuf:"bytes,5,rep,name=steps,proto3" json:"steps,omitempty"`
-	Model         string      `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Steps []*ChatStep `protobuf:"bytes,5,rep,name=steps,proto3" json:"steps,omitempty"`
+	Model string      `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
+	// Not about Vertra: the text says what it helps with, and the model
+	// wasn't asked.
+	OffTopic bool `protobuf:"varint,7,opt,name=off_topic,json=offTopic,proto3" json:"off_topic,omitempty"`
+	// How much of the chat's context window the conversation takes, with this
+	// answer: 0 to 100. At 100 the next question is refused
+	// (CONVERSATION_TOO_LONG): start a new conversation.
+	ContextPercent int32 `protobuf:"varint,8,opt,name=context_percent,json=contextPercent,proto3" json:"context_percent,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AskResponse) Reset() {
@@ -862,6 +870,20 @@ func (x *AskResponse) GetModel() string {
 	return ""
 }
 
+func (x *AskResponse) GetOffTopic() bool {
+	if x != nil {
+		return x.OffTopic
+	}
+	return false
+}
+
+func (x *AskResponse) GetContextPercent() int32 {
+	if x != nil {
+		return x.ContextPercent
+	}
+	return 0
+}
+
 var File_vertra_console_v1_chat_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_chat_proto_rawDesc = "" +
@@ -920,14 +942,16 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\aactions\x18\x02 \x03(\tR\aactions\".\n" +
 	"\bChatStep\x12\x12\n" +
 	"\x04tool\x18\x01 \x01(\tR\x04tool\x12\x0e\n" +
-	"\x02ok\x18\x02 \x01(\bR\x02ok\"\x86\x02\n" +
+	"\x02ok\x18\x02 \x01(\bR\x02ok\"\xcc\x02\n" +
 	"\vAskResponse\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12=\n" +
 	"\tcitations\x18\x02 \x03(\v2\x1f.vertra.console.v1.ChatCitationR\tcitations\x12\x18\n" +
 	"\auncited\x18\x03 \x01(\bR\auncited\x128\n" +
 	"\x04cart\x18\x04 \x01(\v2\x1f.vertra.console.v1.ProposedCartH\x00R\x04cart\x88\x01\x01\x121\n" +
 	"\x05steps\x18\x05 \x03(\v2\x1b.vertra.console.v1.ChatStepR\x05steps\x12\x14\n" +
-	"\x05model\x18\x06 \x01(\tR\x05modelB\a\n" +
+	"\x05model\x18\x06 \x01(\tR\x05model\x12\x1b\n" +
+	"\toff_topic\x18\a \x01(\bR\boffTopic\x12'\n" +
+	"\x0fcontext_percent\x18\b \x01(\x05R\x0econtextPercentB\a\n" +
 	"\x05_cart2\x8f\x03\n" +
 	"\vChatService\x12m\n" +
 	"\x0fGetChatSettings\x12).vertra.console.v1.GetChatSettingsRequest\x1a*.vertra.console.v1.GetChatSettingsResponse\"\x03\x90\x02\x01\x12D\n" +
