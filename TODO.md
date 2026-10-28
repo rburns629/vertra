@@ -1051,7 +1051,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      `addNew`); an optional one is suggested (`suggestions`); an input of
      a type its own action provides is the person's (a project.create's
      id). Gateway APIs aren't resources, so they're never offered. Compose
-     shows the choices but can't make them yet: the cart (4) does.
+     shows the choices but can't make them yet: the cart (4) does. Proven
+     on kind with the gcp sample registered (not run): app hosting alone
+     adds project.create, asks the region once, suggests a database, and
+     reports the image; with a project the team has, offers it or a new one,
+     and each choice wires as asked.
   4. `OrderService/PlaceOrder`: a member checks out a cart (decided), each step as
      `RunAction` would run it; a wired target re-checked when its step
      starts. The Catalog's cart.
