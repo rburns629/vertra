@@ -12,27 +12,70 @@ const draw = keyframes`
   85% { stroke-dashoffset: 0; opacity: 1; }
   100% { stroke-dashoffset: 0; opacity: 0; }
 `;
+// While its line is connected (35% to 85% of the line's cycle), a step
+// grows and runs: its ring dims to a track, and a thick arc spins round it.
+const grow = keyframes`
+  0%, 30% { transform: scale(1); }
+  38%, 82% { transform: scale(1.3); }
+  90%, 100% { transform: scale(1); }
+`;
+const track = keyframes`
+  0%, 30% { stroke-opacity: 1; }
+  38%, 82% { stroke-opacity: 0.3; }
+  90%, 100% { stroke-opacity: 1; }
+`;
+const running = keyframes`
+  0%, 32% { opacity: 0; }
+  38%, 82% { opacity: 1; }
+  88%, 100% { opacity: 0; }
+`;
+const spin = keyframes`to { transform: rotate(360deg); }`;
 const rise = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; }`;
 
-/** Two steps feeding a third, drawn over and over: what Vertra runs. Still for reduced motion. */
+const CYCLE = "4s";
+const still = { "@media (prefers-reduced-motion: reduce)": { animation: "none" } };
+
+/** A step: a ring that, while its line is connected, grows into a spinning status wheel. */
+function Step({ cx, cy, delay }: { cx: number; cy: number; delay: string }) {
+  const phase = (name: string, timing = "cubic-bezier(.4,0,.2,1)") => `${name} ${CYCLE} ${timing} ${delay} infinite`;
+  return (
+    <Box component="g" sx={{ transformBox: "fill-box", transformOrigin: "center", animation: phase(grow), ...still }}>
+      <Box component="circle" cx={cx} cy={cy} r={16} fill="#232833" stroke="currentColor" strokeWidth={3} sx={{ animation: phase(track), ...still }} />
+      <Box component="g" sx={{ opacity: 0, animation: phase(running), ...still }}>
+        <Box
+          component="circle"
+          cx={cx}
+          cy={cy}
+          r={16}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={5}
+          strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray="0.28 0.72"
+          sx={{ transformBox: "fill-box", transformOrigin: "center", animation: `${spin} 0.9s linear infinite`, ...still }}
+        />
+      </Box>
+    </Box>
+  );
+}
+
+/** Two steps feeding a third, over and over: each runs while it's connected. Still for reduced motion. */
 function Dag() {
   const edge = (delay: string) => ({
     strokeDasharray: 1,
     strokeDashoffset: 1,
-    animation: `${draw} 4s cubic-bezier(.4,0,.2,1) ${delay} infinite`,
+    animation: `${draw} ${CYCLE} cubic-bezier(.4,0,.2,1) ${delay} infinite`,
     "@media (prefers-reduced-motion: reduce)": { strokeDashoffset: 0, animation: "none" },
   });
   return (
-    <Box component="svg" viewBox="0 0 240 200" sx={{ width: 200, height: "auto", color: "sidebar.accent" }} aria-hidden="true">
+    <Box component="svg" viewBox="0 0 240 200" sx={{ width: 200, height: "auto", color: "sidebar.accent", overflow: "visible" }} aria-hidden="true">
       <Box component="path" pathLength={1} d="M40 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge("0.2s")} />
       <Box component="path" pathLength={1} d="M200 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge("0.55s")} />
-      {[
-        [40, 40],
-        [200, 40],
-        [120, 160],
-      ].map(([cx, cy]) => (
-        <circle key={`${String(cx)},${String(cy)}`} cx={cx} cy={cy} r={16} fill="#232833" stroke="currentColor" strokeWidth={3} />
-      ))}
+      <Step cx={40} cy={40} delay="0.2s" />
+      <Step cx={200} cy={40} delay="0.55s" />
+      {/* The third runs once both its inputs are connected: with the second line. */}
+      <Step cx={120} cy={160} delay="0.55s" />
     </Box>
   );
 }
