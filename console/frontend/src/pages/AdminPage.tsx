@@ -66,6 +66,9 @@ const GROUPS: { name: string; sections: Section[] }[] = [
 ];
 const SECTIONS = GROUPS.flatMap((g) => g.sections);
 
+// A group's name heads its sections: bold and darker than they are, not one of them.
+const GROUP_HEADER = { lineHeight: "32px", bgcolor: "transparent", px: 1.5, fontWeight: 700, color: "text.primary" } as const;
+
 /**
  * This install's settings, for admins, in sections down the side: the
  * install, who has access and how they sign in, what it's connected to
@@ -98,7 +101,7 @@ export function AdminPage() {
           <List dense disablePadding>
             {GROUPS.map((g) => (
               <Box component="li" key={g.name} sx={{ listStyle: "none" }}>
-                <List dense disablePadding subheader={<ListSubheader disableSticky sx={{ lineHeight: "32px", bgcolor: "transparent", px: 1.5 }}>{g.name}</ListSubheader>}>
+                <List dense disablePadding subheader={<ListSubheader disableSticky sx={GROUP_HEADER}>{g.name}</ListSubheader>}>
                   {g.sections.map((s) => (
                     <ListItemButton
                       key={s.id}
@@ -106,7 +109,7 @@ export function AdminPage() {
                       to={`/admin/${s.id}`}
                       selected={s.id === section.id}
                       aria-current={s.id === section.id ? "page" : undefined}
-                      sx={{ borderRadius: 1, py: 0.5 }}
+                      sx={{ borderRadius: 1, py: 0.5, color: "text.secondary", "&.Mui-selected": { color: "text.primary" } }}
                     >
                       <ListItemText primary={s.label} slotProps={{ primary: { variant: "body2" } }} />
                     </ListItemButton>
@@ -125,7 +128,9 @@ export function AdminPage() {
           sx={{ display: { xs: "flex", md: "none" } }}
         >
           {GROUPS.flatMap((g) => [
-            <ListSubheader key={g.name}>{g.name}</ListSubheader>,
+            <ListSubheader key={g.name} sx={{ ...GROUP_HEADER, lineHeight: "36px" }}>
+              {g.name}
+            </ListSubheader>,
             ...g.sections.map((s) => (
               <MenuItem key={s.id} value={s.id}>
                 {s.label}
