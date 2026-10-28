@@ -1021,6 +1021,694 @@ func (x *AskResponse) GetContextPercent() int32 {
 	return 0
 }
 
+// The chat agent's model, as it's set.
+type ChatConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// install (the chart's chat values) or admins (set here).
+	Source  string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	Enabled bool   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// vertex, anthropic or openai-compatible.
+	Provider string `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
+	Model    string `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
+	// openai-compatible's base URL (.../v1), or Anthropic's when not its own.
+	Endpoint       string `protobuf:"bytes,5,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	VertexProject  string `protobuf:"bytes,6,opt,name=vertex_project,json=vertexProject,proto3" json:"vertex_project,omitempty"`
+	VertexLocation string `protobuf:"bytes,7,opt,name=vertex_location,json=vertexLocation,proto3" json:"vertex_location,omitempty"`
+	// low, medium, high; empty: the model's own.
+	Effort        string `protobuf:"bytes,8,opt,name=effort,proto3" json:"effort,omitempty"`
+	MaxSteps      int32  `protobuf:"varint,9,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`
+	ContextTokens int32  `protobuf:"varint,10,opt,name=context_tokens,json=contextTokens,proto3" json:"context_tokens,omitempty"`
+	MaxTokens     int32  `protobuf:"varint,11,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	// A key is kept (sealed) or comes from the install: it's never sent.
+	KeySet bool `protobuf:"varint,12,opt,name=key_set,json=keySet,proto3" json:"key_set,omitempty"`
+	// Why an admin's settings can't be used now (chat is off meanwhile).
+	Problem   string                 `protobuf:"bytes,13,opt,name=problem,proto3" json:"problem,omitempty"`
+	UpdatedBy string                 `protobuf:"bytes,14,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// What Reset returns to: the install's provider and model, empty for none.
+	InstallProvider string `protobuf:"bytes,16,opt,name=install_provider,json=installProvider,proto3" json:"install_provider,omitempty"`
+	InstallModel    string `protobuf:"bytes,17,opt,name=install_model,json=installModel,proto3" json:"install_model,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ChatConfig) Reset() {
+	*x = ChatConfig{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatConfig) ProtoMessage() {}
+
+func (x *ChatConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatConfig.ProtoReflect.Descriptor instead.
+func (*ChatConfig) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ChatConfig) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *ChatConfig) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetVertexProject() string {
+	if x != nil {
+		return x.VertexProject
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetVertexLocation() string {
+	if x != nil {
+		return x.VertexLocation
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetEffort() string {
+	if x != nil {
+		return x.Effort
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetMaxSteps() int32 {
+	if x != nil {
+		return x.MaxSteps
+	}
+	return 0
+}
+
+func (x *ChatConfig) GetContextTokens() int32 {
+	if x != nil {
+		return x.ContextTokens
+	}
+	return 0
+}
+
+func (x *ChatConfig) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+func (x *ChatConfig) GetKeySet() bool {
+	if x != nil {
+		return x.KeySet
+	}
+	return false
+}
+
+func (x *ChatConfig) GetProblem() string {
+	if x != nil {
+		return x.Problem
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *ChatConfig) GetInstallProvider() string {
+	if x != nil {
+		return x.InstallProvider
+	}
+	return ""
+}
+
+func (x *ChatConfig) GetInstallModel() string {
+	if x != nil {
+		return x.InstallModel
+	}
+	return ""
+}
+
+// Settings to save or try.
+type ChatConfigInput struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Enabled        bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Provider       string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	Model          string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
+	Endpoint       string                 `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	VertexProject  string                 `protobuf:"bytes,5,opt,name=vertex_project,json=vertexProject,proto3" json:"vertex_project,omitempty"`
+	VertexLocation string                 `protobuf:"bytes,6,opt,name=vertex_location,json=vertexLocation,proto3" json:"vertex_location,omitempty"`
+	Effort         string                 `protobuf:"bytes,7,opt,name=effort,proto3" json:"effort,omitempty"`
+	// 0: the default.
+	MaxSteps      int32 `protobuf:"varint,8,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`
+	ContextTokens int32 `protobuf:"varint,9,opt,name=context_tokens,json=contextTokens,proto3" json:"context_tokens,omitempty"`
+	MaxTokens     int32 `protobuf:"varint,10,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	// Empty: keep the one kept, or use the install's for its own provider.
+	// Ignored on Vertex, which signs in as the console.
+	ApiKey        string `protobuf:"bytes,11,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatConfigInput) Reset() {
+	*x = ChatConfigInput{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatConfigInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatConfigInput) ProtoMessage() {}
+
+func (x *ChatConfigInput) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatConfigInput.ProtoReflect.Descriptor instead.
+func (*ChatConfigInput) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ChatConfigInput) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *ChatConfigInput) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetVertexProject() string {
+	if x != nil {
+		return x.VertexProject
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetVertexLocation() string {
+	if x != nil {
+		return x.VertexLocation
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetEffort() string {
+	if x != nil {
+		return x.Effort
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetMaxSteps() int32 {
+	if x != nil {
+		return x.MaxSteps
+	}
+	return 0
+}
+
+func (x *ChatConfigInput) GetContextTokens() int32 {
+	if x != nil {
+		return x.ContextTokens
+	}
+	return 0
+}
+
+func (x *ChatConfigInput) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+func (x *ChatConfigInput) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+type GetChatConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatConfigRequest) Reset() {
+	*x = GetChatConfigRequest{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatConfigRequest) ProtoMessage() {}
+
+func (x *GetChatConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatConfigRequest.ProtoReflect.Descriptor instead.
+func (*GetChatConfigRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{17}
+}
+
+type GetChatConfigResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *ChatConfig            `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetChatConfigResponse) Reset() {
+	*x = GetChatConfigResponse{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChatConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChatConfigResponse) ProtoMessage() {}
+
+func (x *GetChatConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChatConfigResponse.ProtoReflect.Descriptor instead.
+func (*GetChatConfigResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetChatConfigResponse) GetConfig() *ChatConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type SetChatConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *ChatConfigInput       `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetChatConfigRequest) Reset() {
+	*x = SetChatConfigRequest{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetChatConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetChatConfigRequest) ProtoMessage() {}
+
+func (x *SetChatConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetChatConfigRequest.ProtoReflect.Descriptor instead.
+func (*SetChatConfigRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SetChatConfigRequest) GetConfig() *ChatConfigInput {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type SetChatConfigResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *ChatConfig            `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetChatConfigResponse) Reset() {
+	*x = SetChatConfigResponse{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetChatConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetChatConfigResponse) ProtoMessage() {}
+
+func (x *SetChatConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetChatConfigResponse.ProtoReflect.Descriptor instead.
+func (*SetChatConfigResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SetChatConfigResponse) GetConfig() *ChatConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type ResetChatConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetChatConfigRequest) Reset() {
+	*x = ResetChatConfigRequest{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetChatConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetChatConfigRequest) ProtoMessage() {}
+
+func (x *ResetChatConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetChatConfigRequest.ProtoReflect.Descriptor instead.
+func (*ResetChatConfigRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{21}
+}
+
+type ResetChatConfigResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *ChatConfig            `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetChatConfigResponse) Reset() {
+	*x = ResetChatConfigResponse{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetChatConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetChatConfigResponse) ProtoMessage() {}
+
+func (x *ResetChatConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetChatConfigResponse.ProtoReflect.Descriptor instead.
+func (*ResetChatConfigResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ResetChatConfigResponse) GetConfig() *ChatConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type TestChatConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *ChatConfigInput       `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestChatConfigRequest) Reset() {
+	*x = TestChatConfigRequest{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestChatConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestChatConfigRequest) ProtoMessage() {}
+
+func (x *TestChatConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestChatConfigRequest.ProtoReflect.Descriptor instead.
+func (*TestChatConfigRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TestChatConfigRequest) GetConfig() *ChatConfigInput {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type TestChatConfigResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The model answered.
+	Ok bool `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	// Why it didn't, when it didn't.
+	Problem string  `protobuf:"bytes,2,opt,name=problem,proto3" json:"problem,omitempty"`
+	Seconds float64 `protobuf:"fixed64,3,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	Model   string  `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
+	// The start of its answer to the test question.
+	Answer string `protobuf:"bytes,5,opt,name=answer,proto3" json:"answer,omitempty"`
+	// How many sections it cited.
+	Citations     int32 `protobuf:"varint,6,opt,name=citations,proto3" json:"citations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestChatConfigResponse) Reset() {
+	*x = TestChatConfigResponse{}
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestChatConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestChatConfigResponse) ProtoMessage() {}
+
+func (x *TestChatConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_chat_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestChatConfigResponse.ProtoReflect.Descriptor instead.
+func (*TestChatConfigResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_chat_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *TestChatConfigResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *TestChatConfigResponse) GetProblem() string {
+	if x != nil {
+		return x.Problem
+	}
+	return ""
+}
+
+func (x *TestChatConfigResponse) GetSeconds() float64 {
+	if x != nil {
+		return x.Seconds
+	}
+	return 0
+}
+
+func (x *TestChatConfigResponse) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *TestChatConfigResponse) GetAnswer() string {
+	if x != nil {
+		return x.Answer
+	}
+	return ""
+}
+
+func (x *TestChatConfigResponse) GetCitations() int32 {
+	if x != nil {
+		return x.Citations
+	}
+	return 0
+}
+
 var File_vertra_console_v1_chat_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_chat_proto_rawDesc = "" +
@@ -1096,11 +1784,71 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\x05model\x18\x06 \x01(\tR\x05model\x12\x1b\n" +
 	"\toff_topic\x18\a \x01(\bR\boffTopic\x12'\n" +
 	"\x0fcontext_percent\x18\b \x01(\x05R\x0econtextPercentB\a\n" +
-	"\x05_cart2\xe9\x03\n" +
+	"\x05_cart\"\xb4\x04\n" +
+	"\n" +
+	"ChatConfig\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\x1a\n" +
+	"\bprovider\x18\x03 \x01(\tR\bprovider\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\x12\x1a\n" +
+	"\bendpoint\x18\x05 \x01(\tR\bendpoint\x12%\n" +
+	"\x0evertex_project\x18\x06 \x01(\tR\rvertexProject\x12'\n" +
+	"\x0fvertex_location\x18\a \x01(\tR\x0evertexLocation\x12\x16\n" +
+	"\x06effort\x18\b \x01(\tR\x06effort\x12\x1b\n" +
+	"\tmax_steps\x18\t \x01(\x05R\bmaxSteps\x12%\n" +
+	"\x0econtext_tokens\x18\n" +
+	" \x01(\x05R\rcontextTokens\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\v \x01(\x05R\tmaxTokens\x12\x17\n" +
+	"\akey_set\x18\f \x01(\bR\x06keySet\x12\x18\n" +
+	"\aproblem\x18\r \x01(\tR\aproblem\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\x0e \x01(\tR\tupdatedBy\x129\n" +
+	"\n" +
+	"updated_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12)\n" +
+	"\x10install_provider\x18\x10 \x01(\tR\x0finstallProvider\x12#\n" +
+	"\rinstall_model\x18\x11 \x01(\tR\finstallModel\"\xdd\x02\n" +
+	"\x0fChatConfigInput\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
+	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12%\n" +
+	"\x0evertex_project\x18\x05 \x01(\tR\rvertexProject\x12'\n" +
+	"\x0fvertex_location\x18\x06 \x01(\tR\x0evertexLocation\x12\x16\n" +
+	"\x06effort\x18\a \x01(\tR\x06effort\x12\x1b\n" +
+	"\tmax_steps\x18\b \x01(\x05R\bmaxSteps\x12%\n" +
+	"\x0econtext_tokens\x18\t \x01(\x05R\rcontextTokens\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\n" +
+	" \x01(\x05R\tmaxTokens\x12\x17\n" +
+	"\aapi_key\x18\v \x01(\tR\x06apiKey\"\x16\n" +
+	"\x14GetChatConfigRequest\"N\n" +
+	"\x15GetChatConfigResponse\x125\n" +
+	"\x06config\x18\x01 \x01(\v2\x1d.vertra.console.v1.ChatConfigR\x06config\"R\n" +
+	"\x14SetChatConfigRequest\x12:\n" +
+	"\x06config\x18\x01 \x01(\v2\".vertra.console.v1.ChatConfigInputR\x06config\"N\n" +
+	"\x15SetChatConfigResponse\x125\n" +
+	"\x06config\x18\x01 \x01(\v2\x1d.vertra.console.v1.ChatConfigR\x06config\"\x18\n" +
+	"\x16ResetChatConfigRequest\"P\n" +
+	"\x17ResetChatConfigResponse\x125\n" +
+	"\x06config\x18\x01 \x01(\v2\x1d.vertra.console.v1.ChatConfigR\x06config\"S\n" +
+	"\x15TestChatConfigRequest\x12:\n" +
+	"\x06config\x18\x01 \x01(\v2\".vertra.console.v1.ChatConfigInputR\x06config\"\xa8\x01\n" +
+	"\x16TestChatConfigResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x18\n" +
+	"\aproblem\x18\x02 \x01(\tR\aproblem\x12\x18\n" +
+	"\aseconds\x18\x03 \x01(\x01R\aseconds\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\x12\x16\n" +
+	"\x06answer\x18\x05 \x01(\tR\x06answer\x12\x1c\n" +
+	"\tcitations\x18\x06 \x01(\x05R\tcitations2\x87\a\n" +
 	"\vChatService\x12m\n" +
 	"\x0fGetChatSettings\x12).vertra.console.v1.GetChatSettingsRequest\x1a*.vertra.console.v1.GetChatSettingsResponse\"\x03\x90\x02\x01\x12D\n" +
 	"\x03Ask\x12\x1d.vertra.console.v1.AskRequest\x1a\x1e.vertra.console.v1.AskResponse\x12X\n" +
-	"\tAskStream\x12#.vertra.console.v1.AskStreamRequest\x1a$.vertra.console.v1.AskStreamResponse0\x01\x12Y\n" +
+	"\tAskStream\x12#.vertra.console.v1.AskStreamRequest\x1a$.vertra.console.v1.AskStreamResponse0\x01\x12g\n" +
+	"\rGetChatConfig\x12'.vertra.console.v1.GetChatConfigRequest\x1a(.vertra.console.v1.GetChatConfigResponse\"\x03\x90\x02\x01\x12b\n" +
+	"\rSetChatConfig\x12'.vertra.console.v1.SetChatConfigRequest\x1a(.vertra.console.v1.SetChatConfigResponse\x12h\n" +
+	"\x0fResetChatConfig\x12).vertra.console.v1.ResetChatConfigRequest\x1a*.vertra.console.v1.ResetChatConfigResponse\x12e\n" +
+	"\x0eTestChatConfig\x12(.vertra.console.v1.TestChatConfigRequest\x1a).vertra.console.v1.TestChatConfigResponse\x12Y\n" +
 	"\n" +
 	"RateAnswer\x12$.vertra.console.v1.RateAnswerRequest\x1a%.vertra.console.v1.RateAnswerResponse\x12p\n" +
 	"\x10ListChatFeedback\x12*.vertra.console.v1.ListChatFeedbackRequest\x1a+.vertra.console.v1.ListChatFeedbackResponse\"\x03\x90\x02\x01B\xd2\x01\n" +
@@ -1118,7 +1866,7 @@ func file_vertra_console_v1_chat_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_chat_proto_rawDescData
 }
 
-var file_vertra_console_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_vertra_console_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_vertra_console_v1_chat_proto_goTypes = []any{
 	(*RateAnswerRequest)(nil),        // 0: vertra.console.v1.RateAnswerRequest
 	(*RateAnswerResponse)(nil),       // 1: vertra.console.v1.RateAnswerResponse
@@ -1135,12 +1883,22 @@ var file_vertra_console_v1_chat_proto_goTypes = []any{
 	(*AskStreamRequest)(nil),         // 12: vertra.console.v1.AskStreamRequest
 	(*AskStreamResponse)(nil),        // 13: vertra.console.v1.AskStreamResponse
 	(*AskResponse)(nil),              // 14: vertra.console.v1.AskResponse
-	(*timestamppb.Timestamp)(nil),    // 15: google.protobuf.Timestamp
+	(*ChatConfig)(nil),               // 15: vertra.console.v1.ChatConfig
+	(*ChatConfigInput)(nil),          // 16: vertra.console.v1.ChatConfigInput
+	(*GetChatConfigRequest)(nil),     // 17: vertra.console.v1.GetChatConfigRequest
+	(*GetChatConfigResponse)(nil),    // 18: vertra.console.v1.GetChatConfigResponse
+	(*SetChatConfigRequest)(nil),     // 19: vertra.console.v1.SetChatConfigRequest
+	(*SetChatConfigResponse)(nil),    // 20: vertra.console.v1.SetChatConfigResponse
+	(*ResetChatConfigRequest)(nil),   // 21: vertra.console.v1.ResetChatConfigRequest
+	(*ResetChatConfigResponse)(nil),  // 22: vertra.console.v1.ResetChatConfigResponse
+	(*TestChatConfigRequest)(nil),    // 23: vertra.console.v1.TestChatConfigRequest
+	(*TestChatConfigResponse)(nil),   // 24: vertra.console.v1.TestChatConfigResponse
+	(*timestamppb.Timestamp)(nil),    // 25: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_chat_proto_depIdxs = []int32{
 	9,  // 0: vertra.console.v1.RateAnswerRequest.citations:type_name -> vertra.console.v1.ChatCitation
 	9,  // 1: vertra.console.v1.ChatRating.citations:type_name -> vertra.console.v1.ChatCitation
-	15, // 2: vertra.console.v1.ChatRating.created_at:type_name -> google.protobuf.Timestamp
+	25, // 2: vertra.console.v1.ChatRating.created_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: vertra.console.v1.ListChatFeedbackResponse.ratings:type_name -> vertra.console.v1.ChatRating
 	7,  // 4: vertra.console.v1.AskRequest.messages:type_name -> vertra.console.v1.ChatTurn
 	7,  // 5: vertra.console.v1.AskStreamRequest.messages:type_name -> vertra.console.v1.ChatTurn
@@ -1149,21 +1907,35 @@ var file_vertra_console_v1_chat_proto_depIdxs = []int32{
 	9,  // 8: vertra.console.v1.AskResponse.citations:type_name -> vertra.console.v1.ChatCitation
 	10, // 9: vertra.console.v1.AskResponse.cart:type_name -> vertra.console.v1.ProposedCart
 	11, // 10: vertra.console.v1.AskResponse.steps:type_name -> vertra.console.v1.ChatStep
-	5,  // 11: vertra.console.v1.ChatService.GetChatSettings:input_type -> vertra.console.v1.GetChatSettingsRequest
-	8,  // 12: vertra.console.v1.ChatService.Ask:input_type -> vertra.console.v1.AskRequest
-	12, // 13: vertra.console.v1.ChatService.AskStream:input_type -> vertra.console.v1.AskStreamRequest
-	0,  // 14: vertra.console.v1.ChatService.RateAnswer:input_type -> vertra.console.v1.RateAnswerRequest
-	2,  // 15: vertra.console.v1.ChatService.ListChatFeedback:input_type -> vertra.console.v1.ListChatFeedbackRequest
-	6,  // 16: vertra.console.v1.ChatService.GetChatSettings:output_type -> vertra.console.v1.GetChatSettingsResponse
-	14, // 17: vertra.console.v1.ChatService.Ask:output_type -> vertra.console.v1.AskResponse
-	13, // 18: vertra.console.v1.ChatService.AskStream:output_type -> vertra.console.v1.AskStreamResponse
-	1,  // 19: vertra.console.v1.ChatService.RateAnswer:output_type -> vertra.console.v1.RateAnswerResponse
-	4,  // 20: vertra.console.v1.ChatService.ListChatFeedback:output_type -> vertra.console.v1.ListChatFeedbackResponse
-	16, // [16:21] is the sub-list for method output_type
-	11, // [11:16] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	25, // 11: vertra.console.v1.ChatConfig.updated_at:type_name -> google.protobuf.Timestamp
+	15, // 12: vertra.console.v1.GetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
+	16, // 13: vertra.console.v1.SetChatConfigRequest.config:type_name -> vertra.console.v1.ChatConfigInput
+	15, // 14: vertra.console.v1.SetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
+	15, // 15: vertra.console.v1.ResetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
+	16, // 16: vertra.console.v1.TestChatConfigRequest.config:type_name -> vertra.console.v1.ChatConfigInput
+	5,  // 17: vertra.console.v1.ChatService.GetChatSettings:input_type -> vertra.console.v1.GetChatSettingsRequest
+	8,  // 18: vertra.console.v1.ChatService.Ask:input_type -> vertra.console.v1.AskRequest
+	12, // 19: vertra.console.v1.ChatService.AskStream:input_type -> vertra.console.v1.AskStreamRequest
+	17, // 20: vertra.console.v1.ChatService.GetChatConfig:input_type -> vertra.console.v1.GetChatConfigRequest
+	19, // 21: vertra.console.v1.ChatService.SetChatConfig:input_type -> vertra.console.v1.SetChatConfigRequest
+	21, // 22: vertra.console.v1.ChatService.ResetChatConfig:input_type -> vertra.console.v1.ResetChatConfigRequest
+	23, // 23: vertra.console.v1.ChatService.TestChatConfig:input_type -> vertra.console.v1.TestChatConfigRequest
+	0,  // 24: vertra.console.v1.ChatService.RateAnswer:input_type -> vertra.console.v1.RateAnswerRequest
+	2,  // 25: vertra.console.v1.ChatService.ListChatFeedback:input_type -> vertra.console.v1.ListChatFeedbackRequest
+	6,  // 26: vertra.console.v1.ChatService.GetChatSettings:output_type -> vertra.console.v1.GetChatSettingsResponse
+	14, // 27: vertra.console.v1.ChatService.Ask:output_type -> vertra.console.v1.AskResponse
+	13, // 28: vertra.console.v1.ChatService.AskStream:output_type -> vertra.console.v1.AskStreamResponse
+	18, // 29: vertra.console.v1.ChatService.GetChatConfig:output_type -> vertra.console.v1.GetChatConfigResponse
+	20, // 30: vertra.console.v1.ChatService.SetChatConfig:output_type -> vertra.console.v1.SetChatConfigResponse
+	22, // 31: vertra.console.v1.ChatService.ResetChatConfig:output_type -> vertra.console.v1.ResetChatConfigResponse
+	24, // 32: vertra.console.v1.ChatService.TestChatConfig:output_type -> vertra.console.v1.TestChatConfigResponse
+	1,  // 33: vertra.console.v1.ChatService.RateAnswer:output_type -> vertra.console.v1.RateAnswerResponse
+	4,  // 34: vertra.console.v1.ChatService.ListChatFeedback:output_type -> vertra.console.v1.ListChatFeedbackResponse
+	26, // [26:35] is the sub-list for method output_type
+	17, // [17:26] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_chat_proto_init() }
@@ -1182,7 +1954,7 @@ func file_vertra_console_v1_chat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_chat_proto_rawDesc), len(file_vertra_console_v1_chat_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

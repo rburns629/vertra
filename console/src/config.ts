@@ -70,50 +70,76 @@ function positiveInt(name: string, fallback: number): number {
 /** Vertex's model unless another's named: the one scored (decision 24, 2026-10-28). */
 export const VERTEX_MODEL = "google/gemini-3.5-flash";
 
-function loadChat() {
-  const endpoint = (process.env["CHAT_ENDPOINT"] ?? "").replace(/\/+$/, "");
-  const provider = process.env["CHAT_PROVIDER"] || "openai-compatible";
+/**
+ * The chat agent's settings, as given: from the install (the chart's chat
+ * values, read at startup) or from an admin (the Admin page's, chat/
+ * settings.ts). A number left null takes its default.
+ */
+export interface ChatInput {
+  provider: string;
+  model: string;
+  endpoint: string;
+  apiKey: string;
+  vertexProject: string;
+  vertexLocation: string;
+  effort: string;
+  maxSteps: number | null;
+  timeoutSeconds: number | null;
+  maxTokens: number | null;
+  contextTokens: number | null;
+}
+
+export const CHAT_PROVIDERS = ["vertex", "anthropic", "openai-compatible"] as const;
+export type ChatProvider = (typeof CHAT_PROVIDERS)[number];
+
+/** The chat agent's settings checked, or null when it's off (no model). Throws, naming the setting, when one's wrong. */
+export function chatFrom(input: ChatInput) {
+  const endpoint = input.endpoint.trim().replace(/\/+$/, "");
+  const provider = input.provider || "openai-compatible";
   // On Vertex, choosing it is choosing chat: Gemini 3.5 Flash unless another's named.
-  const model = process.env["CHAT_MODEL"] || (provider === "vertex" ? VERTEX_MODEL : "");
+  const model = input.model.trim() || (provider === "vertex" ? VERTEX_MODEL : "");
   if (!model) return null;
-  if (provider !== "openai-compatible" && provider !== "anthropic" && provider !== "vertex") {
-    throw new Error(`CHAT_PROVIDER "${provider}": openai-compatible, anthropic or vertex`);
+  if (!(CHAT_PROVIDERS as readonly string[]).includes(provider)) {
+    throw new Error(`chat.provider "${provider}": ${CHAT_PROVIDERS.join(", ")}`);
   }
   // Vertex: Gemini through Vertex AI's OpenAI-compatible endpoint, in the
   // install's own project, as the console's Workload Identity (no key).
-  const vertexProject = process.env["CHAT_VERTEX_PROJECT"] ?? "";
-  const vertexLocation = process.env["CHAT_VERTEX_LOCATION"] || "global";
+  const vertexProject = input.vertexProject.trim();
+  const vertexLocation = input.vertexLocation.trim() || "global";
   if (provider === "vertex" && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(vertexProject)) {
-    throw new Error(`CHAT_VERTEX_PROJECT "${vertexProject}": the Google Cloud project whose Vertex AI answers`);
+    throw new Error(`chat.vertex.project "${vertexProject}": the Google Cloud project whose Vertex AI answers`);
   }
-  if (!/^[a-z0-9-]+$/.test(vertexLocation)) throw new Error(`CHAT_VERTEX_LOCATION "${vertexLocation}": global, or a region`);
+  if (!/^[a-z0-9-]+$/.test(vertexLocation)) throw new Error(`chat.vertex.location "${vertexLocation}": global, or a region`);
   // Anthropic's API is the SDK's own address unless given, Vertex's built
   // from its project and location; any other needs one.
-  if (endpoint ? !/^https?:\/\//.test(endpoint) : provider === "openai-compatible") {
-    throw new Error(`CHAT_ENDPOINT "${endpoint}": the model's base URL, http(s)://.../v1`);
+  if (endpoint ? !/^https?:\/\/[^\s]+$/.test(endpoint) : provider === "openai-compatible") {
+    throw new Error(`chat.endpoint "${endpoint}": the model's base URL, http(s)://.../v1`);
   }
-  const apiKey = process.env["CHAT_API_KEY"] ?? "";
-  if (provider === "anthropic" && !apiKey) throw new Error("CHAT_API_KEY: Anthropic's API needs a key (the chart's chat.apiKeySecret)");
-  const effort = process.env["CHAT_EFFORT"] ?? "";
-  if (effort && !["low", "medium", "high"].includes(effort)) throw new Error(`CHAT_EFFORT "${effort}": low, medium or high`);
+  if (provider === "anthropic" && !input.apiKey) throw new Error("chat.apiKey: Anthropic's API needs a key");
+  if (input.effort && !["low", "medium", "high"].includes(input.effort)) throw new Error(`chat.effort "${input.effort}": low, medium or high`);
+  for (const [name, n] of Object.entries({ maxSteps: input.maxSteps, timeoutSeconds: input.timeoutSeconds, maxTokens: input.maxTokens, contextTokens: input.contextTokens })) {
+    if (n !== null && (!Number.isInteger(n) || n < 1)) throw new Error(`chat.${name} ${String(n)}: a whole number above zero`);
+  }
   // A cloud's model thinks, and its thinking counts toward its reply: more room there.
   const cloud = provider !== "openai-compatible";
-  const maxTokens = positiveInt("CHAT_MAX_TOKENS", cloud ? 8000 : 1500);
-  const contextTokens = positiveInt("CHAT_CONTEXT_TOKENS", cloud ? 64000 : 16000);
+  const maxTokens = input.maxTokens ?? (cloud ? 8000 : 1500);
+  const contextTokens = input.contextTokens ?? (cloud ? 64000 : 16000);
   // The prompt, the tools' descriptions and a question need about 6000, and two replies their room.
   if (contextTokens < 2 * maxTokens + 8000) {
-    throw new Error(`CHAT_CONTEXT_TOKENS ${String(contextTokens)}: at least twice CHAT_MAX_TOKENS (${String(maxTokens)}) and 8000 more`);
+    throw new Error(`chat.contextTokens ${String(contextTokens)}: at least twice chat.maxTokens (${String(maxTokens)}) and 8000 more`);
   }
   const vertexHost = vertexLocation === "global" ? "aiplatform.googleapis.com" : `${vertexLocation}-aiplatform.googleapis.com`;
   return {
-    provider,
+    provider: provider as ChatProvider,
     endpoint: endpoint || (provider === "vertex" ? `https://${vertexHost}/v1/projects/${vertexProject}/locations/${vertexLocation}/endpoints/openapi` : ""),
     model,
-    apiKey,
+    apiKey: input.apiKey,
+    vertexProject,
+    vertexLocation,
     // Model calls and tool calls in one answer, at most.
-    maxSteps: positiveInt("CHAT_MAX_STEPS", 8),
+    maxSteps: input.maxSteps ?? 8,
     // How long one model call may take: a local model is slow.
-    timeoutSeconds: positiveInt("CHAT_TIMEOUT_SECONDS", 180),
+    timeoutSeconds: input.timeoutSeconds ?? 180,
     maxTokens,
     // The most one model call is sent, in tokens (estimated): the
     // conversation, what the tools return and room for the replies. A
@@ -121,8 +147,33 @@ function loadChat() {
     // is held back. Claude takes far more; this bounds the cost.
     contextTokens,
     // How hard the model thinks, where it takes one (Anthropic, Vertex); unset, its own default.
-    effort: (effort || null) as "low" | "medium" | "high" | null,
+    effort: (input.effort || null) as "low" | "medium" | "high" | null,
   };
+}
+
+export type ChatConfig = NonNullable<ReturnType<typeof chatFrom>>;
+
+/** A whole-number setting from the environment, or null for its default. */
+function optionalInt(name: string): number | null {
+  const value = process.env[name];
+  return value === undefined || value === "" ? null : positiveInt(name, 0);
+}
+
+/** The install's chat settings: the chart's, from the environment. */
+function loadChat(): ChatConfig | null {
+  return chatFrom({
+    provider: process.env["CHAT_PROVIDER"] ?? "",
+    model: process.env["CHAT_MODEL"] ?? "",
+    endpoint: process.env["CHAT_ENDPOINT"] ?? "",
+    apiKey: process.env["CHAT_API_KEY"] ?? "",
+    vertexProject: process.env["CHAT_VERTEX_PROJECT"] ?? "",
+    vertexLocation: process.env["CHAT_VERTEX_LOCATION"] ?? "",
+    effort: process.env["CHAT_EFFORT"] ?? "",
+    maxSteps: optionalInt("CHAT_MAX_STEPS"),
+    timeoutSeconds: optionalInt("CHAT_TIMEOUT_SECONDS"),
+    maxTokens: optionalInt("CHAT_MAX_TOKENS"),
+    contextTokens: optionalInt("CHAT_CONTEXT_TOKENS"),
+  });
 }
 
 function list(value: string | undefined): string[] {
@@ -312,11 +363,11 @@ export const config = {
   // Callbacks for systems (decision 23, callbacks.ts): the hosts an
   // ordering bot's callback or a team's outcome webhook may be under, as
   // webhookHosts. Empty: none.
-  // The chat agent (decision 24, src/chat/): off unless a model is set.
-  // provider: openai-compatible (LM Studio, Ollama, Gemini on Vertex's
-  // compatible endpoint, any /v1/chat/completions); endpoint its base URL
-  // (.../v1); model its name there. A key, when one's needed, comes from a
-  // Secret (CHAT_API_KEY), never the settings.
+  // The chat agent (decision 24, src/chat/), as the install sets it: off
+  // unless a model is set or the provider is vertex. A key, when one's
+  // needed, comes from a Secret (CHAT_API_KEY), never the settings. Admins
+  // may set their own on the Admin page (chat/settings.ts chatSettings(),
+  // which everything reads; this is its default).
   chat: loadChat(),
   orders: {
     callbackHosts: list(process.env["ORDER_CALLBACK_HOSTS"]),

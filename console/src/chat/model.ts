@@ -9,8 +9,9 @@
  * adapter's, never the agent's.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import { config } from "../config.js";
+import type { ChatConfig } from "../config.js";
 import { gcpMetadataToken } from "../registry.js";
+import { currentChat } from "./settings.js";
 
 export interface ToolCall {
   id: string;
@@ -69,8 +70,19 @@ export interface ChatModel {
   complete(messages: ChatMessage[], tools: ToolSpec[], options?: CompleteOptions): Promise<ModelReply>;
 }
 
-/** The model couldn't be reached, or answered with something unusable. */
-export class ModelUnavailable extends Error {}
+/**
+ * The model couldn't be reached, or answered with something unusable.
+ * `summary` leaves out what the server answered: an admin testing an
+ * endpoint sees whether it answered, not another service's reply.
+ */
+export class ModelUnavailable extends Error {
+  constructor(
+    message: string,
+    readonly summary: string = message,
+  ) {
+    super(message);
+  }
+}
 
 /** A reasoning model's thinking (Qwen's <think>...</think>): not the answer. */
 export function withoutThinking(text: string): string {
@@ -161,7 +173,7 @@ export class OpenAICompatible implements ChatModel {
       await new Promise((resolve) => setTimeout(resolve, Number.isFinite(after) && after > 0 ? Math.min(after, 10) * 1000 : (RETRIES[attempt] ?? 0)));
     }
     if (!response.ok) {
-      throw new ModelUnavailable(`The model answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
+      throw new ModelUnavailable(`The model answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`, `The model answered ${String(response.status)}.`);
     }
     const data = (await response.json()) as {
       usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
@@ -202,7 +214,7 @@ export class OpenAICompatible implements ChatModel {
  * results go back together in one user message. The tools and system
  * prompt are the same on every call, so the request is cached (a cached
  * read costs a tenth). Thinking is the model's own default (adaptive);
- * effort, when set, is config.chat.effort.
+ * effort, when set, is the settings' effort.
  */
 export class AnthropicMessages implements ChatModel {
   private readonly client: Anthropic;
@@ -304,10 +316,14 @@ export class AnthropicMessages implements ChatModel {
   }
 }
 
-/** The install's model, or null when chat is off. */
+/** The model in effect (chat/settings.ts), or null when chat is off. */
 export function chatModel(): ChatModel | null {
-  const c = config.chat;
-  if (!c) return null;
+  const c = currentChat();
+  return c ? modelFor(c) : null;
+}
+
+/** A model for these settings: the one in effect, or ones an admin is trying. */
+export function modelFor(c: ChatConfig): ChatModel {
   if (c.provider === "anthropic") return new AnthropicMessages(c);
   // On Vertex, a key is an access token used instead of the console's
   // identity: for proving it off GKE (it lasts an hour).

@@ -42,6 +42,18 @@ const (
 	ChatServiceAskProcedure = "/vertra.console.v1.ChatService/Ask"
 	// ChatServiceAskStreamProcedure is the fully-qualified name of the ChatService's AskStream RPC.
 	ChatServiceAskStreamProcedure = "/vertra.console.v1.ChatService/AskStream"
+	// ChatServiceGetChatConfigProcedure is the fully-qualified name of the ChatService's GetChatConfig
+	// RPC.
+	ChatServiceGetChatConfigProcedure = "/vertra.console.v1.ChatService/GetChatConfig"
+	// ChatServiceSetChatConfigProcedure is the fully-qualified name of the ChatService's SetChatConfig
+	// RPC.
+	ChatServiceSetChatConfigProcedure = "/vertra.console.v1.ChatService/SetChatConfig"
+	// ChatServiceResetChatConfigProcedure is the fully-qualified name of the ChatService's
+	// ResetChatConfig RPC.
+	ChatServiceResetChatConfigProcedure = "/vertra.console.v1.ChatService/ResetChatConfig"
+	// ChatServiceTestChatConfigProcedure is the fully-qualified name of the ChatService's
+	// TestChatConfig RPC.
+	ChatServiceTestChatConfigProcedure = "/vertra.console.v1.ChatService/TestChatConfig"
 	// ChatServiceRateAnswerProcedure is the fully-qualified name of the ChatService's RateAnswer RPC.
 	ChatServiceRateAnswerProcedure = "/vertra.console.v1.ChatService/RateAnswer"
 	// ChatServiceListChatFeedbackProcedure is the fully-qualified name of the ChatService's
@@ -64,6 +76,18 @@ type ChatServiceClient interface {
 	// then the answer. The answer's words come only at the end, checked:
 	// what the model says isn't shown until the console has checked it.
 	AskStream(context.Context, *connect.Request[v1.AskStreamRequest]) (*connect.ServerStreamForClient[v1.AskStreamResponse], error)
+	// The chat agent's model as it's set: the install's (the chart's chat
+	// values) or an admin's. Admins only. Never the key.
+	GetChatConfig(context.Context, *connect.Request[v1.GetChatConfigRequest]) (*connect.Response[v1.GetChatConfigResponse], error)
+	// An admin's own settings, checked as the install's are
+	// (BAD_CHAT_SETTINGS), in effect on every console within seconds.
+	SetChatConfig(context.Context, *connect.Request[v1.SetChatConfigRequest]) (*connect.Response[v1.SetChatConfigResponse], error)
+	// Back to the install's settings; the admins' are forgotten, key and all.
+	ResetChatConfig(context.Context, *connect.Request[v1.ResetChatConfigRequest]) (*connect.Response[v1.ResetChatConfigResponse], error)
+	// Settings tried before they're saved: one real question through the
+	// agent, as the admin. Says whether the model answered, not what another
+	// server said.
+	TestChatConfig(context.Context, *connect.Request[v1.TestChatConfigRequest]) (*connect.Response[v1.TestChatConfigResponse], error)
 	// Thumbs up or down on an answer you got, sent with its question and
 	// answer, for the admins (kept 90 days).
 	RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error)
@@ -101,6 +125,31 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("AskStream")),
 			connect.WithClientOptions(opts...),
 		),
+		getChatConfig: connect.NewClient[v1.GetChatConfigRequest, v1.GetChatConfigResponse](
+			httpClient,
+			baseURL+ChatServiceGetChatConfigProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("GetChatConfig")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setChatConfig: connect.NewClient[v1.SetChatConfigRequest, v1.SetChatConfigResponse](
+			httpClient,
+			baseURL+ChatServiceSetChatConfigProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("SetChatConfig")),
+			connect.WithClientOptions(opts...),
+		),
+		resetChatConfig: connect.NewClient[v1.ResetChatConfigRequest, v1.ResetChatConfigResponse](
+			httpClient,
+			baseURL+ChatServiceResetChatConfigProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("ResetChatConfig")),
+			connect.WithClientOptions(opts...),
+		),
+		testChatConfig: connect.NewClient[v1.TestChatConfigRequest, v1.TestChatConfigResponse](
+			httpClient,
+			baseURL+ChatServiceTestChatConfigProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("TestChatConfig")),
+			connect.WithClientOptions(opts...),
+		),
 		rateAnswer: connect.NewClient[v1.RateAnswerRequest, v1.RateAnswerResponse](
 			httpClient,
 			baseURL+ChatServiceRateAnswerProcedure,
@@ -122,6 +171,10 @@ type chatServiceClient struct {
 	getChatSettings  *connect.Client[v1.GetChatSettingsRequest, v1.GetChatSettingsResponse]
 	ask              *connect.Client[v1.AskRequest, v1.AskResponse]
 	askStream        *connect.Client[v1.AskStreamRequest, v1.AskStreamResponse]
+	getChatConfig    *connect.Client[v1.GetChatConfigRequest, v1.GetChatConfigResponse]
+	setChatConfig    *connect.Client[v1.SetChatConfigRequest, v1.SetChatConfigResponse]
+	resetChatConfig  *connect.Client[v1.ResetChatConfigRequest, v1.ResetChatConfigResponse]
+	testChatConfig   *connect.Client[v1.TestChatConfigRequest, v1.TestChatConfigResponse]
 	rateAnswer       *connect.Client[v1.RateAnswerRequest, v1.RateAnswerResponse]
 	listChatFeedback *connect.Client[v1.ListChatFeedbackRequest, v1.ListChatFeedbackResponse]
 }
@@ -139,6 +192,26 @@ func (c *chatServiceClient) Ask(ctx context.Context, req *connect.Request[v1.Ask
 // AskStream calls vertra.console.v1.ChatService.AskStream.
 func (c *chatServiceClient) AskStream(ctx context.Context, req *connect.Request[v1.AskStreamRequest]) (*connect.ServerStreamForClient[v1.AskStreamResponse], error) {
 	return c.askStream.CallServerStream(ctx, req)
+}
+
+// GetChatConfig calls vertra.console.v1.ChatService.GetChatConfig.
+func (c *chatServiceClient) GetChatConfig(ctx context.Context, req *connect.Request[v1.GetChatConfigRequest]) (*connect.Response[v1.GetChatConfigResponse], error) {
+	return c.getChatConfig.CallUnary(ctx, req)
+}
+
+// SetChatConfig calls vertra.console.v1.ChatService.SetChatConfig.
+func (c *chatServiceClient) SetChatConfig(ctx context.Context, req *connect.Request[v1.SetChatConfigRequest]) (*connect.Response[v1.SetChatConfigResponse], error) {
+	return c.setChatConfig.CallUnary(ctx, req)
+}
+
+// ResetChatConfig calls vertra.console.v1.ChatService.ResetChatConfig.
+func (c *chatServiceClient) ResetChatConfig(ctx context.Context, req *connect.Request[v1.ResetChatConfigRequest]) (*connect.Response[v1.ResetChatConfigResponse], error) {
+	return c.resetChatConfig.CallUnary(ctx, req)
+}
+
+// TestChatConfig calls vertra.console.v1.ChatService.TestChatConfig.
+func (c *chatServiceClient) TestChatConfig(ctx context.Context, req *connect.Request[v1.TestChatConfigRequest]) (*connect.Response[v1.TestChatConfigResponse], error) {
+	return c.testChatConfig.CallUnary(ctx, req)
 }
 
 // RateAnswer calls vertra.console.v1.ChatService.RateAnswer.
@@ -166,6 +239,18 @@ type ChatServiceHandler interface {
 	// then the answer. The answer's words come only at the end, checked:
 	// what the model says isn't shown until the console has checked it.
 	AskStream(context.Context, *connect.Request[v1.AskStreamRequest], *connect.ServerStream[v1.AskStreamResponse]) error
+	// The chat agent's model as it's set: the install's (the chart's chat
+	// values) or an admin's. Admins only. Never the key.
+	GetChatConfig(context.Context, *connect.Request[v1.GetChatConfigRequest]) (*connect.Response[v1.GetChatConfigResponse], error)
+	// An admin's own settings, checked as the install's are
+	// (BAD_CHAT_SETTINGS), in effect on every console within seconds.
+	SetChatConfig(context.Context, *connect.Request[v1.SetChatConfigRequest]) (*connect.Response[v1.SetChatConfigResponse], error)
+	// Back to the install's settings; the admins' are forgotten, key and all.
+	ResetChatConfig(context.Context, *connect.Request[v1.ResetChatConfigRequest]) (*connect.Response[v1.ResetChatConfigResponse], error)
+	// Settings tried before they're saved: one real question through the
+	// agent, as the admin. Says whether the model answered, not what another
+	// server said.
+	TestChatConfig(context.Context, *connect.Request[v1.TestChatConfigRequest]) (*connect.Response[v1.TestChatConfigResponse], error)
 	// Thumbs up or down on an answer you got, sent with its question and
 	// answer, for the admins (kept 90 days).
 	RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error)
@@ -199,6 +284,31 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("AskStream")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceGetChatConfigHandler := connect.NewUnaryHandler(
+		ChatServiceGetChatConfigProcedure,
+		svc.GetChatConfig,
+		connect.WithSchema(chatServiceMethods.ByName("GetChatConfig")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceSetChatConfigHandler := connect.NewUnaryHandler(
+		ChatServiceSetChatConfigProcedure,
+		svc.SetChatConfig,
+		connect.WithSchema(chatServiceMethods.ByName("SetChatConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceResetChatConfigHandler := connect.NewUnaryHandler(
+		ChatServiceResetChatConfigProcedure,
+		svc.ResetChatConfig,
+		connect.WithSchema(chatServiceMethods.ByName("ResetChatConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceTestChatConfigHandler := connect.NewUnaryHandler(
+		ChatServiceTestChatConfigProcedure,
+		svc.TestChatConfig,
+		connect.WithSchema(chatServiceMethods.ByName("TestChatConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
 	chatServiceRateAnswerHandler := connect.NewUnaryHandler(
 		ChatServiceRateAnswerProcedure,
 		svc.RateAnswer,
@@ -220,6 +330,14 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceAskHandler.ServeHTTP(w, r)
 		case ChatServiceAskStreamProcedure:
 			chatServiceAskStreamHandler.ServeHTTP(w, r)
+		case ChatServiceGetChatConfigProcedure:
+			chatServiceGetChatConfigHandler.ServeHTTP(w, r)
+		case ChatServiceSetChatConfigProcedure:
+			chatServiceSetChatConfigHandler.ServeHTTP(w, r)
+		case ChatServiceResetChatConfigProcedure:
+			chatServiceResetChatConfigHandler.ServeHTTP(w, r)
+		case ChatServiceTestChatConfigProcedure:
+			chatServiceTestChatConfigHandler.ServeHTTP(w, r)
 		case ChatServiceRateAnswerProcedure:
 			chatServiceRateAnswerHandler.ServeHTTP(w, r)
 		case ChatServiceListChatFeedbackProcedure:
@@ -243,6 +361,22 @@ func (UnimplementedChatServiceHandler) Ask(context.Context, *connect.Request[v1.
 
 func (UnimplementedChatServiceHandler) AskStream(context.Context, *connect.Request[v1.AskStreamRequest], *connect.ServerStream[v1.AskStreamResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.AskStream is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) GetChatConfig(context.Context, *connect.Request[v1.GetChatConfigRequest]) (*connect.Response[v1.GetChatConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.GetChatConfig is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) SetChatConfig(context.Context, *connect.Request[v1.SetChatConfigRequest]) (*connect.Response[v1.SetChatConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.SetChatConfig is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) ResetChatConfig(context.Context, *connect.Request[v1.ResetChatConfigRequest]) (*connect.Response[v1.ResetChatConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.ResetChatConfig is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) TestChatConfig(context.Context, *connect.Request[v1.TestChatConfigRequest]) (*connect.Response[v1.TestChatConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ChatService.TestChatConfig is not implemented"))
 }
 
 func (UnimplementedChatServiceHandler) RateAnswer(context.Context, *connect.Request[v1.RateAnswerRequest]) (*connect.Response[v1.RateAnswerResponse], error) {

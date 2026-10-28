@@ -485,6 +485,344 @@ export declare type AskResponse = Message<"vertra.console.v1.AskResponse"> & {
 export declare const AskResponseSchema: GenMessage<AskResponse>;
 
 /**
+ * The chat agent's model, as it's set.
+ *
+ * @generated from message vertra.console.v1.ChatConfig
+ */
+export declare type ChatConfig = Message<"vertra.console.v1.ChatConfig"> & {
+  /**
+   * install (the chart's chat values) or admins (set here).
+   *
+   * @generated from field: string source = 1;
+   */
+  source: string;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * vertex, anthropic or openai-compatible.
+   *
+   * @generated from field: string provider = 3;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+
+  /**
+   * openai-compatible's base URL (.../v1), or Anthropic's when not its own.
+   *
+   * @generated from field: string endpoint = 5;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string vertex_project = 6;
+   */
+  vertexProject: string;
+
+  /**
+   * @generated from field: string vertex_location = 7;
+   */
+  vertexLocation: string;
+
+  /**
+   * low, medium, high; empty: the model's own.
+   *
+   * @generated from field: string effort = 8;
+   */
+  effort: string;
+
+  /**
+   * @generated from field: int32 max_steps = 9;
+   */
+  maxSteps: number;
+
+  /**
+   * @generated from field: int32 context_tokens = 10;
+   */
+  contextTokens: number;
+
+  /**
+   * @generated from field: int32 max_tokens = 11;
+   */
+  maxTokens: number;
+
+  /**
+   * A key is kept (sealed) or comes from the install: it's never sent.
+   *
+   * @generated from field: bool key_set = 12;
+   */
+  keySet: boolean;
+
+  /**
+   * Why an admin's settings can't be used now (chat is off meanwhile).
+   *
+   * @generated from field: string problem = 13;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: string updated_by = 14;
+   */
+  updatedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 15;
+   */
+  updatedAt?: Timestamp | undefined;
+
+  /**
+   * What Reset returns to: the install's provider and model, empty for none.
+   *
+   * @generated from field: string install_provider = 16;
+   */
+  installProvider: string;
+
+  /**
+   * @generated from field: string install_model = 17;
+   */
+  installModel: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ChatConfig.
+ * Use `create(ChatConfigSchema)` to create a new message.
+ */
+export declare const ChatConfigSchema: GenMessage<ChatConfig>;
+
+/**
+ * Settings to save or try.
+ *
+ * @generated from message vertra.console.v1.ChatConfigInput
+ */
+export declare type ChatConfigInput = Message<"vertra.console.v1.ChatConfigInput"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string model = 3;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string endpoint = 4;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string vertex_project = 5;
+   */
+  vertexProject: string;
+
+  /**
+   * @generated from field: string vertex_location = 6;
+   */
+  vertexLocation: string;
+
+  /**
+   * @generated from field: string effort = 7;
+   */
+  effort: string;
+
+  /**
+   * 0: the default.
+   *
+   * @generated from field: int32 max_steps = 8;
+   */
+  maxSteps: number;
+
+  /**
+   * @generated from field: int32 context_tokens = 9;
+   */
+  contextTokens: number;
+
+  /**
+   * @generated from field: int32 max_tokens = 10;
+   */
+  maxTokens: number;
+
+  /**
+   * Empty: keep the one kept, or use the install's for its own provider.
+   * Ignored on Vertex, which signs in as the console.
+   *
+   * @generated from field: string api_key = 11;
+   */
+  apiKey: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ChatConfigInput.
+ * Use `create(ChatConfigInputSchema)` to create a new message.
+ */
+export declare const ChatConfigInputSchema: GenMessage<ChatConfigInput>;
+
+/**
+ * @generated from message vertra.console.v1.GetChatConfigRequest
+ */
+export declare type GetChatConfigRequest = Message<"vertra.console.v1.GetChatConfigRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetChatConfigRequest.
+ * Use `create(GetChatConfigRequestSchema)` to create a new message.
+ */
+export declare const GetChatConfigRequestSchema: GenMessage<GetChatConfigRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetChatConfigResponse
+ */
+export declare type GetChatConfigResponse = Message<"vertra.console.v1.GetChatConfigResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfig config = 1;
+   */
+  config?: ChatConfig | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetChatConfigResponse.
+ * Use `create(GetChatConfigResponseSchema)` to create a new message.
+ */
+export declare const GetChatConfigResponseSchema: GenMessage<GetChatConfigResponse>;
+
+/**
+ * @generated from message vertra.console.v1.SetChatConfigRequest
+ */
+export declare type SetChatConfigRequest = Message<"vertra.console.v1.SetChatConfigRequest"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfigInput config = 1;
+   */
+  config?: ChatConfigInput | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetChatConfigRequest.
+ * Use `create(SetChatConfigRequestSchema)` to create a new message.
+ */
+export declare const SetChatConfigRequestSchema: GenMessage<SetChatConfigRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SetChatConfigResponse
+ */
+export declare type SetChatConfigResponse = Message<"vertra.console.v1.SetChatConfigResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfig config = 1;
+   */
+  config?: ChatConfig | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetChatConfigResponse.
+ * Use `create(SetChatConfigResponseSchema)` to create a new message.
+ */
+export declare const SetChatConfigResponseSchema: GenMessage<SetChatConfigResponse>;
+
+/**
+ * @generated from message vertra.console.v1.ResetChatConfigRequest
+ */
+export declare type ResetChatConfigRequest = Message<"vertra.console.v1.ResetChatConfigRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.ResetChatConfigRequest.
+ * Use `create(ResetChatConfigRequestSchema)` to create a new message.
+ */
+export declare const ResetChatConfigRequestSchema: GenMessage<ResetChatConfigRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ResetChatConfigResponse
+ */
+export declare type ResetChatConfigResponse = Message<"vertra.console.v1.ResetChatConfigResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfig config = 1;
+   */
+  config?: ChatConfig | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ResetChatConfigResponse.
+ * Use `create(ResetChatConfigResponseSchema)` to create a new message.
+ */
+export declare const ResetChatConfigResponseSchema: GenMessage<ResetChatConfigResponse>;
+
+/**
+ * @generated from message vertra.console.v1.TestChatConfigRequest
+ */
+export declare type TestChatConfigRequest = Message<"vertra.console.v1.TestChatConfigRequest"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfigInput config = 1;
+   */
+  config?: ChatConfigInput | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.TestChatConfigRequest.
+ * Use `create(TestChatConfigRequestSchema)` to create a new message.
+ */
+export declare const TestChatConfigRequestSchema: GenMessage<TestChatConfigRequest>;
+
+/**
+ * @generated from message vertra.console.v1.TestChatConfigResponse
+ */
+export declare type TestChatConfigResponse = Message<"vertra.console.v1.TestChatConfigResponse"> & {
+  /**
+   * The model answered.
+   *
+   * @generated from field: bool ok = 1;
+   */
+  ok: boolean;
+
+  /**
+   * Why it didn't, when it didn't.
+   *
+   * @generated from field: string problem = 2;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: double seconds = 3;
+   */
+  seconds: number;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+
+  /**
+   * The start of its answer to the test question.
+   *
+   * @generated from field: string answer = 5;
+   */
+  answer: string;
+
+  /**
+   * How many sections it cited.
+   *
+   * @generated from field: int32 citations = 6;
+   */
+  citations: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.TestChatConfigResponse.
+ * Use `create(TestChatConfigResponseSchema)` to create a new message.
+ */
+export declare const TestChatConfigResponseSchema: GenMessage<TestChatConfigResponse>;
+
+/**
  * The chat agent (decision 24): answers from the docs and the catalog,
  * looks at what the person's teams have, and proposes carts, all as the
  * signed-in person, through the console's own checks. It never orders: a
@@ -529,6 +867,50 @@ export declare const ChatService: GenService<{
     methodKind: "server_streaming";
     input: typeof AskStreamRequestSchema;
     output: typeof AskStreamResponseSchema;
+  },
+  /**
+   * The chat agent's model as it's set: the install's (the chart's chat
+   * values) or an admin's. Admins only. Never the key.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.GetChatConfig
+   */
+  getChatConfig: {
+    methodKind: "unary";
+    input: typeof GetChatConfigRequestSchema;
+    output: typeof GetChatConfigResponseSchema;
+  },
+  /**
+   * An admin's own settings, checked as the install's are
+   * (BAD_CHAT_SETTINGS), in effect on every console within seconds.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.SetChatConfig
+   */
+  setChatConfig: {
+    methodKind: "unary";
+    input: typeof SetChatConfigRequestSchema;
+    output: typeof SetChatConfigResponseSchema;
+  },
+  /**
+   * Back to the install's settings; the admins' are forgotten, key and all.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.ResetChatConfig
+   */
+  resetChatConfig: {
+    methodKind: "unary";
+    input: typeof ResetChatConfigRequestSchema;
+    output: typeof ResetChatConfigResponseSchema;
+  },
+  /**
+   * Settings tried before they're saved: one real question through the
+   * agent, as the admin. Says whether the model answered, not what another
+   * server said.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.TestChatConfig
+   */
+  testChatConfig: {
+    methodKind: "unary";
+    input: typeof TestChatConfigRequestSchema;
+    output: typeof TestChatConfigResponseSchema;
   },
   /**
    * Thumbs up or down on an answer you got, sent with its question and

@@ -1136,6 +1136,34 @@ export const ssoSettings = pgTable(
   (table) => [check("sso_settings_one_row", sql`${table.id} = 1`)],
 );
 
+/**
+ * The chat agent's model as an admin set it on the Admin page (chat/
+ * settings.ts), in place of the install's (the chart's chat values). No row:
+ * the install's. One row at most. The key is sealed, never sent back.
+ */
+export const chatSettings = pgTable(
+  "chat_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    // Off: no chat agent, whatever the install says.
+    enabled: boolean("enabled").notNull().default(true),
+    provider: text("provider").notNull(),
+    model: text("model").notNull().default(""),
+    endpoint: text("endpoint").notNull().default(""),
+    vertexProject: text("vertex_project").notNull().default(""),
+    vertexLocation: text("vertex_location").notNull().default(""),
+    apiKeyEncrypted: text("api_key_encrypted"),
+    effort: text("effort").notNull().default(""),
+    // Null: the default.
+    maxSteps: integer("max_steps"),
+    contextTokens: integer("context_tokens"),
+    maxTokens: integer("max_tokens"),
+    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("chat_settings_one_row", sql`${table.id} = 1`)],
+);
+
 /** A provider group that makes its members a team's, at each single sign-on (sso.ts). */
 export const ssoGroupMappings = pgTable(
   "sso_group_mappings",

@@ -243,6 +243,42 @@
      "public": false
     },
     {
+     "name": "GetChatConfig",
+     "comment": "The chat agent's model as it's set: the install's (the chart's chat\nvalues) or an admin's. Admins only. Never the key.",
+     "input": "vertra.console.v1.GetChatConfigRequest",
+     "output": "vertra.console.v1.GetChatConfigResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "SetChatConfig",
+     "comment": "An admin's own settings, checked as the install's are\n(BAD_CHAT_SETTINGS), in effect on every console within seconds.",
+     "input": "vertra.console.v1.SetChatConfigRequest",
+     "output": "vertra.console.v1.SetChatConfigResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ResetChatConfig",
+     "comment": "Back to the install's settings; the admins' are forgotten, key and all.",
+     "input": "vertra.console.v1.ResetChatConfigRequest",
+     "output": "vertra.console.v1.ResetChatConfigResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "TestChatConfig",
+     "comment": "Settings tried before they're saved: one real question through the\nagent, as the admin. Says whether the model answered, not what another\nserver said.",
+     "input": "vertra.console.v1.TestChatConfigRequest",
+     "output": "vertra.console.v1.TestChatConfigResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "RateAnswer",
      "comment": "Thumbs up or down on an answer you got, sent with its question and\nanswer, for the admins (kept 90 days).",
      "input": "vertra.console.v1.RateAnswerRequest",
@@ -3179,6 +3215,342 @@
      "repeated": false,
      "optional": false,
      "comment": "How much of the chat's context window the conversation takes, with this\nanswer: 0 to 100. At 100 the next question is refused\n(CONVERSATION_TOO_LONG): start a new conversation."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatConfig": {
+   "name": "ChatConfig",
+   "comment": "The chat agent's model, as it's set.",
+   "fields": [
+    {
+     "name": "source",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "install (the chart's chat values) or admins (set here)."
+    },
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "vertex, anthropic or openai-compatible."
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "endpoint",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "openai-compatible's base URL (.../v1), or Anthropic's when not its own."
+    },
+    {
+     "name": "vertexProject",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "vertexLocation",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "low, medium, high; empty: the model's own."
+    },
+    {
+     "name": "maxSteps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "contextTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "keySet",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "A key is kept (sealed) or comes from the install: it's never sent."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why an admin's settings can't be used now (chat is off meanwhile)."
+    },
+    {
+     "name": "updatedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "installProvider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What Reset returns to: the install's provider and model, empty for none."
+    },
+    {
+     "name": "installModel",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ChatConfigInput": {
+   "name": "ChatConfigInput",
+   "comment": "Settings to save or try.",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "endpoint",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "vertexProject",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "vertexLocation",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxSteps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "0: the default."
+    },
+    {
+     "name": "contextTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "apiKey",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: keep the one kept, or use the install's for its own provider.\nIgnored on Vertex, which signs in as the console."
+    }
+   ]
+  },
+  "vertra.console.v1.GetChatConfigRequest": {
+   "name": "GetChatConfigRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetChatConfigResponse": {
+   "name": "GetChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfig",
+     "ref": "vertra.console.v1.ChatConfig",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetChatConfigRequest": {
+   "name": "SetChatConfigRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfigInput",
+     "ref": "vertra.console.v1.ChatConfigInput",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetChatConfigResponse": {
+   "name": "SetChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfig",
+     "ref": "vertra.console.v1.ChatConfig",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ResetChatConfigRequest": {
+   "name": "ResetChatConfigRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ResetChatConfigResponse": {
+   "name": "ResetChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfig",
+     "ref": "vertra.console.v1.ChatConfig",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TestChatConfigRequest": {
+   "name": "TestChatConfigRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfigInput",
+     "ref": "vertra.console.v1.ChatConfigInput",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TestChatConfigResponse": {
+   "name": "TestChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "ok",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "The model answered."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why it didn't, when it didn't."
+    },
+    {
+     "name": "seconds",
+     "type": "number",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "answer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The start of its answer to the test question."
+    },
+    {
+     "name": "citations",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How many sections it cited."
     }
    ]
   },

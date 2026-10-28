@@ -692,6 +692,27 @@ Ratings of the chat agent's answers (decision 24): thumbs up or down, each with 
 | `comment` | text | yes | What they said was wrong, or right. |
 | `created_at` | timestamptz | no | |
 
+### chat_settings
+
+The chat agent's model as an admin set it on the Admin page (Chat agent), in place of the install's (the chart's `chat` values). No row: the install's. At most one row. While it can't be used (a key that no longer unseals, a setting refused), chat is off and the Admin page says why.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | no | Always 1. |
+| `enabled` | boolean | no | Off: no chat agent, whatever the install says. |
+| `provider` | text | no | `vertex`, `anthropic` or `openai-compatible`. |
+| `model` | text | no | Its name there; empty on Vertex for Gemini 3.5 Flash. |
+| `endpoint` | text | no | An openai-compatible server's base URL (`.../v1`), or Anthropic's when not its own. |
+| `vertex_project` | text | no | The project whose Vertex AI answers. |
+| `vertex_location` | text | no | `global`, or a region. |
+| `api_key_encrypted` | text | yes | The key, sealed with the console's secret, never sent back. None on Vertex; none for the install's own provider means the install's. |
+| `effort` | text | no | `low`, `medium` or `high`; empty for the model's own. |
+| `max_steps` | integer | yes | Model and tool calls in one answer; empty for 8. |
+| `context_tokens` | integer | yes | The most one model call is sent; empty for the default. |
+| `max_tokens` | integer | yes | The most one reply may be; empty for the default. |
+| `updated_by` | uuid | yes | The admin who set them. |
+| `updated_at` | timestamptz | no | |
+
 ### bot_identities
 
 Who a bot is when it signs in without a stored token (`auth/keyless.ts`): a CI's OIDC issuer and the exact claims its ID token must carry.

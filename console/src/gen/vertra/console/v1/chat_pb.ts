@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/chat.proto.
  */
 export const file_vertra_console_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgiTwoQQXNrU3RyZWFtUmVxdWVzdBIMCgR0ZWFtGAEgASgJEi0KCG1lc3NhZ2VzGAIgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFR1cm4iewoRQXNrU3RyZWFtUmVzcG9uc2USKwoEc3RlcBgBIAEoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRTdGVwSAASMAoGYW5zd2VyGAIgASgLMh4udmVydHJhLmNvbnNvbGUudjEuQXNrUmVzcG9uc2VIAEIHCgVldmVudCKEAgoLQXNrUmVzcG9uc2USDAoEdGV4dBgBIAEoCRIyCgljaXRhdGlvbnMYAiADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5DaGF0Q2l0YXRpb24SDwoHdW5jaXRlZBgDIAEoCBIyCgRjYXJ0GAQgASgLMh8udmVydHJhLmNvbnNvbGUudjEuUHJvcG9zZWRDYXJ0SACIAQESKgoFc3RlcHMYBSADKAsyGy52ZXJ0cmEuY29uc29sZS52MS5DaGF0U3RlcBINCgVtb2RlbBgGIAEoCRIRCglvZmZfdG9waWMYByABKAgSFwoPY29udGV4dF9wZXJjZW50GAggASgFQgcKBV9jYXJ0MukDCgtDaGF0U2VydmljZRJtCg9HZXRDaGF0U2V0dGluZ3MSKS52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuR2V0Q2hhdFNldHRpbmdzUmVzcG9uc2UiA5ACARJECgNBc2sSHS52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXF1ZXN0Gh4udmVydHJhLmNvbnNvbGUudjEuQXNrUmVzcG9uc2USWAoJQXNrU3RyZWFtEiMudmVydHJhLmNvbnNvbGUudjEuQXNrU3RyZWFtUmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLkFza1N0cmVhbVJlc3BvbnNlMAESWQoKUmF0ZUFuc3dlchIkLnZlcnRyYS5jb25zb2xlLnYxLlJhdGVBbnN3ZXJSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuUmF0ZUFuc3dlclJlc3BvbnNlEnAKEExpc3RDaGF0RmVlZGJhY2sSKi52ZXJ0cmEuY29uc29sZS52MS5MaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RDaGF0RmVlZGJhY2tSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9jaGF0LnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSK2AQoRUmF0ZUFuc3dlclJlcXVlc3QSDgoGcmF0aW5nGAEgASgJEgwKBHRlYW0YAiABKAkSEAoIcXVlc3Rpb24YAyABKAkSDgoGYW5zd2VyGAQgASgJEjIKCWNpdGF0aW9ucxgFIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgGIAMoCRINCgVtb2RlbBgHIAEoCRIPCgdjb21tZW50GAggASgJIiAKElJhdGVBbnN3ZXJSZXNwb25zZRIKCgJpZBgBIAEoCSIpChdMaXN0Q2hhdEZlZWRiYWNrUmVxdWVzdBIOCgZyYXRpbmcYASABKAki+gEKCkNoYXRSYXRpbmcSCgoCaWQYASABKAkSDgoGcmF0aW5nGAIgASgJEgwKBHRlYW0YAyABKAkSEAoIcXVlc3Rpb24YBCABKAkSDgoGYW5zd2VyGAUgASgJEjIKCWNpdGF0aW9ucxgGIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDaXRhdGlvbhINCgVzdGVwcxgHIAMoCRINCgVtb2RlbBgIIAEoCRIPCgdjb21tZW50GAkgASgJEg0KBWVtYWlsGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkoKGExpc3RDaGF0RmVlZGJhY2tSZXNwb25zZRIuCgdyYXRpbmdzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdFJhdGluZyIYChZHZXRDaGF0U2V0dGluZ3NSZXF1ZXN0IjkKF0dldENoYXRTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDQoFbW9kZWwYAiABKAkiKQoIQ2hhdFR1cm4SDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJIkkKCkFza1JlcXVlc3QSDAoEdGVhbRgBIAEoCRItCghtZXNzYWdlcxgCIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRUdXJuImUKDENoYXRDaXRhdGlvbhIKCgJpZBgBIAEoCRINCgVndWlkZRgCIAEoCRINCgV0aXRsZRgDIAEoCRIPCgdoZWFkaW5nGAQgASgJEgwKBGtpbmQYBSABKAkSDAoEbGluaxgGIAEoCSItCgxQcm9wb3NlZENhcnQSDAoEdGVhbRgBIAEoCRIPCgdhY3Rpb25zGAIgAygJIiQKCENoYXRTdGVwEgwKBHRvb2wYASABKAkSCgoCb2sYAiABKAgiTwoQQXNrU3RyZWFtUmVxdWVzdBIMCgR0ZWFtGAEgASgJEi0KCG1lc3NhZ2VzGAIgAygLMhsudmVydHJhLmNvbnNvbGUudjEuQ2hhdFR1cm4iewoRQXNrU3RyZWFtUmVzcG9uc2USKwoEc3RlcBgBIAEoCzIbLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRTdGVwSAASMAoGYW5zd2VyGAIgASgLMh4udmVydHJhLmNvbnNvbGUudjEuQXNrUmVzcG9uc2VIAEIHCgVldmVudCKEAgoLQXNrUmVzcG9uc2USDAoEdGV4dBgBIAEoCRIyCgljaXRhdGlvbnMYAiADKAsyHy52ZXJ0cmEuY29uc29sZS52MS5DaGF0Q2l0YXRpb24SDwoHdW5jaXRlZBgDIAEoCBIyCgRjYXJ0GAQgASgLMh8udmVydHJhLmNvbnNvbGUudjEuUHJvcG9zZWRDYXJ0SACIAQESKgoFc3RlcHMYBSADKAsyGy52ZXJ0cmEuY29uc29sZS52MS5DaGF0U3RlcBINCgVtb2RlbBgGIAEoCRIRCglvZmZfdG9waWMYByABKAgSFwoPY29udGV4dF9wZXJjZW50GAggASgFQgcKBV9jYXJ0IvcCCgpDaGF0Q29uZmlnEg4KBnNvdXJjZRgBIAEoCRIPCgdlbmFibGVkGAIgASgIEhAKCHByb3ZpZGVyGAMgASgJEg0KBW1vZGVsGAQgASgJEhAKCGVuZHBvaW50GAUgASgJEhYKDnZlcnRleF9wcm9qZWN0GAYgASgJEhcKD3ZlcnRleF9sb2NhdGlvbhgHIAEoCRIOCgZlZmZvcnQYCCABKAkSEQoJbWF4X3N0ZXBzGAkgASgFEhYKDmNvbnRleHRfdG9rZW5zGAogASgFEhIKCm1heF90b2tlbnMYCyABKAUSDwoHa2V5X3NldBgMIAEoCBIPCgdwcm9ibGVtGA0gASgJEhIKCnVwZGF0ZWRfYnkYDiABKAkSLgoKdXBkYXRlZF9hdBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQaW5zdGFsbF9wcm92aWRlchgQIAEoCRIVCg1pbnN0YWxsX21vZGVsGBEgASgJIuYBCg9DaGF0Q29uZmlnSW5wdXQSDwoHZW5hYmxlZBgBIAEoCBIQCghwcm92aWRlchgCIAEoCRINCgVtb2RlbBgDIAEoCRIQCghlbmRwb2ludBgEIAEoCRIWCg52ZXJ0ZXhfcHJvamVjdBgFIAEoCRIXCg92ZXJ0ZXhfbG9jYXRpb24YBiABKAkSDgoGZWZmb3J0GAcgASgJEhEKCW1heF9zdGVwcxgIIAEoBRIWCg5jb250ZXh0X3Rva2VucxgJIAEoBRISCgptYXhfdG9rZW5zGAogASgFEg8KB2FwaV9rZXkYCyABKAkiFgoUR2V0Q2hhdENvbmZpZ1JlcXVlc3QiRgoVR2V0Q2hhdENvbmZpZ1Jlc3BvbnNlEi0KBmNvbmZpZxgBIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLkNoYXRDb25maWciSgoUU2V0Q2hhdENvbmZpZ1JlcXVlc3QSMgoGY29uZmlnGAEgASgLMiIudmVydHJhLmNvbnNvbGUudjEuQ2hhdENvbmZpZ0lucHV0IkYKFVNldENoYXRDb25maWdSZXNwb25zZRItCgZjb25maWcYASABKAsyHS52ZXJ0cmEuY29uc29sZS52MS5DaGF0Q29uZmlnIhgKFlJlc2V0Q2hhdENvbmZpZ1JlcXVlc3QiSAoXUmVzZXRDaGF0Q29uZmlnUmVzcG9uc2USLQoGY29uZmlnGAEgASgLMh0udmVydHJhLmNvbnNvbGUudjEuQ2hhdENvbmZpZyJLChVUZXN0Q2hhdENvbmZpZ1JlcXVlc3QSMgoGY29uZmlnGAEgASgLMiIudmVydHJhLmNvbnNvbGUudjEuQ2hhdENvbmZpZ0lucHV0IngKFlRlc3RDaGF0Q29uZmlnUmVzcG9uc2USCgoCb2sYASABKAgSDwoHcHJvYmxlbRgCIAEoCRIPCgdzZWNvbmRzGAMgASgBEg0KBW1vZGVsGAQgASgJEg4KBmFuc3dlchgFIAEoCRIRCgljaXRhdGlvbnMYBiABKAUyhwcKC0NoYXRTZXJ2aWNlEm0KD0dldENoYXRTZXR0aW5ncxIpLnZlcnRyYS5jb25zb2xlLnYxLkdldENoYXRTZXR0aW5nc1JlcXVlc3QaKi52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0U2V0dGluZ3NSZXNwb25zZSIDkAIBEkQKA0FzaxIdLnZlcnRyYS5jb25zb2xlLnYxLkFza1JlcXVlc3QaHi52ZXJ0cmEuY29uc29sZS52MS5Bc2tSZXNwb25zZRJYCglBc2tTdHJlYW0SIy52ZXJ0cmEuY29uc29sZS52MS5Bc2tTdHJlYW1SZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuQXNrU3RyZWFtUmVzcG9uc2UwARJnCg1HZXRDaGF0Q29uZmlnEicudmVydHJhLmNvbnNvbGUudjEuR2V0Q2hhdENvbmZpZ1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5HZXRDaGF0Q29uZmlnUmVzcG9uc2UiA5ACARJiCg1TZXRDaGF0Q29uZmlnEicudmVydHJhLmNvbnNvbGUudjEuU2V0Q2hhdENvbmZpZ1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5TZXRDaGF0Q29uZmlnUmVzcG9uc2USaAoPUmVzZXRDaGF0Q29uZmlnEikudmVydHJhLmNvbnNvbGUudjEuUmVzZXRDaGF0Q29uZmlnUmVxdWVzdBoqLnZlcnRyYS5jb25zb2xlLnYxLlJlc2V0Q2hhdENvbmZpZ1Jlc3BvbnNlEmUKDlRlc3RDaGF0Q29uZmlnEigudmVydHJhLmNvbnNvbGUudjEuVGVzdENoYXRDb25maWdSZXF1ZXN0GikudmVydHJhLmNvbnNvbGUudjEuVGVzdENoYXRDb25maWdSZXNwb25zZRJZCgpSYXRlQW5zd2VyEiQudmVydHJhLmNvbnNvbGUudjEuUmF0ZUFuc3dlclJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5SYXRlQW5zd2VyUmVzcG9uc2UScAoQTGlzdENoYXRGZWVkYmFjaxIqLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RDaGF0RmVlZGJhY2tSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuTGlzdENoYXRGZWVkYmFja1Jlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.RateAnswerRequest
@@ -503,6 +503,354 @@ export const AskResponseSchema: GenMessage<AskResponse> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_chat, 14);
 
 /**
+ * The chat agent's model, as it's set.
+ *
+ * @generated from message vertra.console.v1.ChatConfig
+ */
+export type ChatConfig = Message<"vertra.console.v1.ChatConfig"> & {
+  /**
+   * install (the chart's chat values) or admins (set here).
+   *
+   * @generated from field: string source = 1;
+   */
+  source: string;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * vertex, anthropic or openai-compatible.
+   *
+   * @generated from field: string provider = 3;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+
+  /**
+   * openai-compatible's base URL (.../v1), or Anthropic's when not its own.
+   *
+   * @generated from field: string endpoint = 5;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string vertex_project = 6;
+   */
+  vertexProject: string;
+
+  /**
+   * @generated from field: string vertex_location = 7;
+   */
+  vertexLocation: string;
+
+  /**
+   * low, medium, high; empty: the model's own.
+   *
+   * @generated from field: string effort = 8;
+   */
+  effort: string;
+
+  /**
+   * @generated from field: int32 max_steps = 9;
+   */
+  maxSteps: number;
+
+  /**
+   * @generated from field: int32 context_tokens = 10;
+   */
+  contextTokens: number;
+
+  /**
+   * @generated from field: int32 max_tokens = 11;
+   */
+  maxTokens: number;
+
+  /**
+   * A key is kept (sealed) or comes from the install: it's never sent.
+   *
+   * @generated from field: bool key_set = 12;
+   */
+  keySet: boolean;
+
+  /**
+   * Why an admin's settings can't be used now (chat is off meanwhile).
+   *
+   * @generated from field: string problem = 13;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: string updated_by = 14;
+   */
+  updatedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 15;
+   */
+  updatedAt?: Timestamp | undefined;
+
+  /**
+   * What Reset returns to: the install's provider and model, empty for none.
+   *
+   * @generated from field: string install_provider = 16;
+   */
+  installProvider: string;
+
+  /**
+   * @generated from field: string install_model = 17;
+   */
+  installModel: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ChatConfig.
+ * Use `create(ChatConfigSchema)` to create a new message.
+ */
+export const ChatConfigSchema: GenMessage<ChatConfig> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 15);
+
+/**
+ * Settings to save or try.
+ *
+ * @generated from message vertra.console.v1.ChatConfigInput
+ */
+export type ChatConfigInput = Message<"vertra.console.v1.ChatConfigInput"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string model = 3;
+   */
+  model: string;
+
+  /**
+   * @generated from field: string endpoint = 4;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string vertex_project = 5;
+   */
+  vertexProject: string;
+
+  /**
+   * @generated from field: string vertex_location = 6;
+   */
+  vertexLocation: string;
+
+  /**
+   * @generated from field: string effort = 7;
+   */
+  effort: string;
+
+  /**
+   * 0: the default.
+   *
+   * @generated from field: int32 max_steps = 8;
+   */
+  maxSteps: number;
+
+  /**
+   * @generated from field: int32 context_tokens = 9;
+   */
+  contextTokens: number;
+
+  /**
+   * @generated from field: int32 max_tokens = 10;
+   */
+  maxTokens: number;
+
+  /**
+   * Empty: keep the one kept, or use the install's for its own provider.
+   * Ignored on Vertex, which signs in as the console.
+   *
+   * @generated from field: string api_key = 11;
+   */
+  apiKey: string;
+};
+
+/**
+ * Describes the message vertra.console.v1.ChatConfigInput.
+ * Use `create(ChatConfigInputSchema)` to create a new message.
+ */
+export const ChatConfigInputSchema: GenMessage<ChatConfigInput> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 16);
+
+/**
+ * @generated from message vertra.console.v1.GetChatConfigRequest
+ */
+export type GetChatConfigRequest = Message<"vertra.console.v1.GetChatConfigRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.GetChatConfigRequest.
+ * Use `create(GetChatConfigRequestSchema)` to create a new message.
+ */
+export const GetChatConfigRequestSchema: GenMessage<GetChatConfigRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 17);
+
+/**
+ * @generated from message vertra.console.v1.GetChatConfigResponse
+ */
+export type GetChatConfigResponse = Message<"vertra.console.v1.GetChatConfigResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfig config = 1;
+   */
+  config?: ChatConfig | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetChatConfigResponse.
+ * Use `create(GetChatConfigResponseSchema)` to create a new message.
+ */
+export const GetChatConfigResponseSchema: GenMessage<GetChatConfigResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 18);
+
+/**
+ * @generated from message vertra.console.v1.SetChatConfigRequest
+ */
+export type SetChatConfigRequest = Message<"vertra.console.v1.SetChatConfigRequest"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfigInput config = 1;
+   */
+  config?: ChatConfigInput | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetChatConfigRequest.
+ * Use `create(SetChatConfigRequestSchema)` to create a new message.
+ */
+export const SetChatConfigRequestSchema: GenMessage<SetChatConfigRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 19);
+
+/**
+ * @generated from message vertra.console.v1.SetChatConfigResponse
+ */
+export type SetChatConfigResponse = Message<"vertra.console.v1.SetChatConfigResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfig config = 1;
+   */
+  config?: ChatConfig | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.SetChatConfigResponse.
+ * Use `create(SetChatConfigResponseSchema)` to create a new message.
+ */
+export const SetChatConfigResponseSchema: GenMessage<SetChatConfigResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 20);
+
+/**
+ * @generated from message vertra.console.v1.ResetChatConfigRequest
+ */
+export type ResetChatConfigRequest = Message<"vertra.console.v1.ResetChatConfigRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.ResetChatConfigRequest.
+ * Use `create(ResetChatConfigRequestSchema)` to create a new message.
+ */
+export const ResetChatConfigRequestSchema: GenMessage<ResetChatConfigRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 21);
+
+/**
+ * @generated from message vertra.console.v1.ResetChatConfigResponse
+ */
+export type ResetChatConfigResponse = Message<"vertra.console.v1.ResetChatConfigResponse"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfig config = 1;
+   */
+  config?: ChatConfig | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ResetChatConfigResponse.
+ * Use `create(ResetChatConfigResponseSchema)` to create a new message.
+ */
+export const ResetChatConfigResponseSchema: GenMessage<ResetChatConfigResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 22);
+
+/**
+ * @generated from message vertra.console.v1.TestChatConfigRequest
+ */
+export type TestChatConfigRequest = Message<"vertra.console.v1.TestChatConfigRequest"> & {
+  /**
+   * @generated from field: vertra.console.v1.ChatConfigInput config = 1;
+   */
+  config?: ChatConfigInput | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.TestChatConfigRequest.
+ * Use `create(TestChatConfigRequestSchema)` to create a new message.
+ */
+export const TestChatConfigRequestSchema: GenMessage<TestChatConfigRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 23);
+
+/**
+ * @generated from message vertra.console.v1.TestChatConfigResponse
+ */
+export type TestChatConfigResponse = Message<"vertra.console.v1.TestChatConfigResponse"> & {
+  /**
+   * The model answered.
+   *
+   * @generated from field: bool ok = 1;
+   */
+  ok: boolean;
+
+  /**
+   * Why it didn't, when it didn't.
+   *
+   * @generated from field: string problem = 2;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: double seconds = 3;
+   */
+  seconds: number;
+
+  /**
+   * @generated from field: string model = 4;
+   */
+  model: string;
+
+  /**
+   * The start of its answer to the test question.
+   *
+   * @generated from field: string answer = 5;
+   */
+  answer: string;
+
+  /**
+   * How many sections it cited.
+   *
+   * @generated from field: int32 citations = 6;
+   */
+  citations: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.TestChatConfigResponse.
+ * Use `create(TestChatConfigResponseSchema)` to create a new message.
+ */
+export const TestChatConfigResponseSchema: GenMessage<TestChatConfigResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_chat, 24);
+
+/**
  * The chat agent (decision 24): answers from the docs and the catalog,
  * looks at what the person's teams have, and proposes carts, all as the
  * signed-in person, through the console's own checks. It never orders: a
@@ -547,6 +895,50 @@ export const ChatService: GenService<{
     methodKind: "server_streaming";
     input: typeof AskStreamRequestSchema;
     output: typeof AskStreamResponseSchema;
+  },
+  /**
+   * The chat agent's model as it's set: the install's (the chart's chat
+   * values) or an admin's. Admins only. Never the key.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.GetChatConfig
+   */
+  getChatConfig: {
+    methodKind: "unary";
+    input: typeof GetChatConfigRequestSchema;
+    output: typeof GetChatConfigResponseSchema;
+  },
+  /**
+   * An admin's own settings, checked as the install's are
+   * (BAD_CHAT_SETTINGS), in effect on every console within seconds.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.SetChatConfig
+   */
+  setChatConfig: {
+    methodKind: "unary";
+    input: typeof SetChatConfigRequestSchema;
+    output: typeof SetChatConfigResponseSchema;
+  },
+  /**
+   * Back to the install's settings; the admins' are forgotten, key and all.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.ResetChatConfig
+   */
+  resetChatConfig: {
+    methodKind: "unary";
+    input: typeof ResetChatConfigRequestSchema;
+    output: typeof ResetChatConfigResponseSchema;
+  },
+  /**
+   * Settings tried before they're saved: one real question through the
+   * agent, as the admin. Says whether the model answered, not what another
+   * server said.
+   *
+   * @generated from rpc vertra.console.v1.ChatService.TestChatConfig
+   */
+  testChatConfig: {
+    methodKind: "unary";
+    input: typeof TestChatConfigRequestSchema;
+    output: typeof TestChatConfigResponseSchema;
   },
   /**
    * Thumbs up or down on an answer you got, sent with its question and

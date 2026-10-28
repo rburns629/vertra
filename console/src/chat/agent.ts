@@ -2,7 +2,7 @@
 /**
  * The chat agent (decision 24): one answer to the person's latest message,
  * the model calling the tools (tools.ts) as many times as it needs, up to
- * config.chat.maxSteps, each as the person. Its answer's citations are
+ * the settings' maxSteps (chat/settings.ts), each as the person. Its answer's citations are
  * checked against what it retrieved (citations.ts). It never orders
  * anything: a cart it proposes is the person's to open and place.
  *
@@ -16,7 +16,7 @@
  * its own before the model sees it; the prompt holds the same scope; and an
  * answer from neither the docs (cited) nor the platform's tools is never
  * shown: NOT_FOUND is, in its place. And a context window
- * (config.chat.contextTokens): a conversation too long to fit is refused,
+ * (the settings' contextTokens): a conversation too long to fit is refused,
  * a tool result that won't fit is held back from the model.
  */
 import { Code } from "@connectrpc/connect";
@@ -24,9 +24,9 @@ import type { FastifyBaseLogger } from "fastify";
 import { ApiError } from "../apiError.js";
 import { ensureMayOrder } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
-import { config } from "../config.js";
 import { checkCitations, type Citation } from "./citations.js";
 import { chatModel, ModelUnavailable, type ChatMessage, type ChatModel, type Usage } from "./model.js";
+import { currentChat } from "./settings.js";
 import { forModel, MAX_RESULT, runTool, toolSpecs, type TurnState } from "./tools.js";
 
 export interface AskRequest {
@@ -79,8 +79,8 @@ const HELD_BACK = JSON.stringify({ error: "Not shown: this conversation has no r
 
 /** The window's parts: what one call may be sent, and what a conversation may take before its next question. */
 export function windowOf(): { room: (messages: ChatMessage[]) => number; conversationLimit: number } {
-  const window = config.chat?.contextTokens ?? 16000;
-  const reply = config.chat?.maxTokens ?? 1500;
+  const window = currentChat()?.contextTokens ?? 16000;
+  const reply = currentChat()?.maxTokens ?? 1500;
   // Room for this call's reply and the next one's, after the tools' descriptions.
   const usable = window - TOOLS_TOKENS - 2 * reply;
   return { room: (messages) => usable - tokensOf(messages), conversationLimit: usable - tokensIn("x".repeat(MAX_RESULT)) };
@@ -251,7 +251,7 @@ export async function ask(
     options.onStep?.(step);
   };
   const { signal } = options;
-  const maxSteps = config.chat?.maxSteps ?? 8;
+  const maxSteps = currentChat()?.maxSteps ?? 8;
   let text: string | null = null;
   // The final reply as the model gave it (Claude's thinking with it).
   let finalRaw: unknown;

@@ -5,8 +5,9 @@ import { Type } from "@sinclair/typebox";
 import { ask, askStream, type Answer, type AskRequest as AskQuestion } from "../../chat/agent.js";
 import { chatModel } from "../../chat/model.js";
 import { listChatFeedback, rateAnswer } from "../../core/chatFeedback.js";
-import { config } from "../../config.js";
-import type { AskRequest, AskStreamRequest, ChatService } from "../../gen/vertra/console/v1/chat_pb.js";
+import { getChatConfig, resetChatConfig, setChatConfig, testChatConfig, type ChatConfigInput, type ChatConfigView } from "../../core/chatSettings.js";
+import { currentChat } from "../../chat/settings.js";
+import type { AskRequest, AskStreamRequest, ChatConfigInput as ChatConfigMessage, ChatService } from "../../gen/vertra/console/v1/chat_pb.js";
 import { callerOf, logOf } from "../context.js";
 import { timestamp } from "../convert.js";
 import { check } from "../validate.js";
@@ -20,6 +21,49 @@ function asked(req: AskRequest | AskStreamRequest): AskQuestion {
     { messages: req.messages.map((m) => ({ role: m.role, content: m.content })), team: req.team },
   );
   return { team: team || null, messages };
+}
+
+const Setting = (max: number) => Type.String({ maxLength: max });
+
+/** Settings to save or try, checked at the edge (chatFrom checks what they mean). */
+function configInput(c: ChatConfigMessage | undefined): ChatConfigInput {
+  const valid = check(
+    {
+      provider: Setting(40),
+      model: Setting(200),
+      endpoint: Setting(500),
+      vertexProject: Setting(40),
+      vertexLocation: Setting(40),
+      effort: Setting(10),
+      apiKey: Setting(500),
+      maxSteps: Type.Integer({ minimum: 0, maximum: 50 }),
+      contextTokens: Type.Integer({ minimum: 0, maximum: 2_000_000 }),
+      maxTokens: Type.Integer({ minimum: 0, maximum: 200_000 }),
+    },
+    {
+      provider: c?.provider ?? "",
+      model: c?.model ?? "",
+      endpoint: c?.endpoint ?? "",
+      vertexProject: c?.vertexProject ?? "",
+      vertexLocation: c?.vertexLocation ?? "",
+      effort: c?.effort ?? "",
+      apiKey: c?.apiKey ?? "",
+      maxSteps: c?.maxSteps ?? 0,
+      contextTokens: c?.contextTokens ?? 0,
+      maxTokens: c?.maxTokens ?? 0,
+    },
+  );
+  return {
+    ...valid,
+    enabled: c?.enabled ?? false,
+    maxSteps: valid.maxSteps || null,
+    contextTokens: valid.contextTokens || null,
+    maxTokens: valid.maxTokens || null,
+  };
+}
+
+function configView({ updatedAt, problem, ...v }: ChatConfigView) {
+  return { config: { ...v, problem: problem ?? "", ...(updatedAt ? { updatedAt: timestamp(updatedAt) } : {}) } };
 }
 
 function response(answer: Answer) {
@@ -38,7 +82,8 @@ function response(answer: Answer) {
 export function chatService(): ServiceImpl<typeof ChatService> {
   return {
     getChatSettings() {
-      return { enabled: config.chat !== null, model: config.chat?.model ?? "" };
+      const chat = currentChat();
+      return { enabled: chat !== null, model: chat?.model ?? "" };
     },
 
     async rateAnswer(req, ctx) {
@@ -80,6 +125,22 @@ export function chatService(): ServiceImpl<typeof ChatService> {
           createdAt: timestamp(r.createdAt),
         })),
       };
+    },
+
+    async getChatConfig(_req, ctx) {
+      return configView(await getChatConfig(callerOf(ctx)));
+    },
+
+    async setChatConfig(req, ctx) {
+      return configView(await setChatConfig(callerOf(ctx), configInput(req.config), logOf(ctx)));
+    },
+
+    async resetChatConfig(_req, ctx) {
+      return configView(await resetChatConfig(callerOf(ctx), logOf(ctx)));
+    },
+
+    async testChatConfig(req, ctx) {
+      return testChatConfig(callerOf(ctx), configInput(req.config), logOf(ctx));
     },
 
     async ask(req, ctx) {
