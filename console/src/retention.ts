@@ -3,13 +3,25 @@
  * Deleting what's past its retention, hourly: submitted-execution records
  * (the kernel deletes the executions themselves after the same period),
  * audit entries, and scan verdicts of images nobody has used in a while
- * (scanned again if they're used again). 0 keeps a kind forever.
+ * (scanned again if they're used again), and sign-in's bookkeeping. 0 keeps
+ * a kind forever.
  */
 import type { FastifyBaseLogger } from "fastify";
 import { and, isNull, lt, ne, sql } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
-import { apiTraffic, auditLog, callbackDeliveries, chatFeedback, imageScans, notificationEvents, submittedExecutions } from "./db/schema.js";
+import {
+  apiTraffic,
+  auditLog,
+  callbackDeliveries,
+  chatFeedback,
+  imageScans,
+  notificationEvents,
+  rateLimitWindows,
+  revokedSessions,
+  signInFailures,
+  submittedExecutions,
+} from "./db/schema.js";
 
 const daysAgo = (days: number) => sql`now() - make_interval(days => ${days})`;
 
@@ -41,6 +53,12 @@ export async function deleteExpired(): Promise<{ executions: number; audit: numb
   await db.delete(notificationEvents).where(lt(notificationEvents.createdAt, daysAgo(90)));
   await db.delete(callbackDeliveries).where(lt(callbackDeliveries.createdAt, daysAgo(90)));
   await db.delete(chatFeedback).where(lt(chatFeedback.createdAt, daysAgo(90)));
+  // Sign-in's bookkeeping, once it no longer counts: sessions signed out
+  // that have expired anyway, limits' ended windows, and failures over an
+  // hour old (auth/loginThrottle.ts).
+  await db.delete(revokedSessions).where(lt(revokedSessions.expiresAt, sql`now()`));
+  await db.delete(rateLimitWindows).where(lt(rateLimitWindows.resetsAt, sql`now()`));
+  await db.delete(signInFailures).where(lt(signInFailures.windowStart, sql`now() - interval '1 hour'`));
   return { executions, audit, scans };
 }
 

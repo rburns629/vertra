@@ -50,6 +50,8 @@ const (
 	// AuthServiceChangePasswordProcedure is the fully-qualified name of the AuthService's
 	// ChangePassword RPC.
 	AuthServiceChangePasswordProcedure = "/vertra.console.v1.AuthService/ChangePassword"
+	// AuthServiceSignOutProcedure is the fully-qualified name of the AuthService's SignOut RPC.
+	AuthServiceSignOutProcedure = "/vertra.console.v1.AuthService/SignOut"
 )
 
 // AuthServiceClient is a client for the vertra.console.v1.AuthService service.
@@ -74,6 +76,10 @@ type AuthServiceClient interface {
 	// Changes your password (people only), signing out your other sessions;
 	// returns a fresh token for this one.
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// Ends this session: its token is refused from now on, by the console
+	// and the gateway. An API token is revoked with TokenService.RevokeToken
+	// instead.
+	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the vertra.console.v1.AuthService service. By
@@ -125,6 +131,13 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
 			connect.WithClientOptions(opts...),
 		),
+		signOut: connect.NewClient[v1.SignOutRequest, v1.SignOutResponse](
+			httpClient,
+			baseURL+AuthServiceSignOutProcedure,
+			connect.WithSchema(authServiceMethods.ByName("SignOut")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -136,6 +149,7 @@ type authServiceClient struct {
 	exchangeToken  *connect.Client[v1.ExchangeTokenRequest, v1.ExchangeTokenResponse]
 	getMe          *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 	changePassword *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
+	signOut        *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
 }
 
 // GetEnvironment calls vertra.console.v1.AuthService.GetEnvironment.
@@ -168,6 +182,11 @@ func (c *authServiceClient) ChangePassword(ctx context.Context, req *connect.Req
 	return c.changePassword.CallUnary(ctx, req)
 }
 
+// SignOut calls vertra.console.v1.AuthService.SignOut.
+func (c *authServiceClient) SignOut(ctx context.Context, req *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
+	return c.signOut.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the vertra.console.v1.AuthService service.
 type AuthServiceHandler interface {
 	// Which deployment this is. Anyone, signed in or not.
@@ -190,6 +209,10 @@ type AuthServiceHandler interface {
 	// Changes your password (people only), signing out your other sessions;
 	// returns a fresh token for this one.
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// Ends this session: its token is refused from now on, by the console
+	// and the gateway. An API token is revoked with TokenService.RevokeToken
+	// instead.
+	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -237,6 +260,13 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceSignOutHandler := connect.NewUnaryHandler(
+		AuthServiceSignOutProcedure,
+		svc.SignOut,
+		connect.WithSchema(authServiceMethods.ByName("SignOut")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceGetEnvironmentProcedure:
@@ -251,6 +281,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceGetMeHandler.ServeHTTP(w, r)
 		case AuthServiceChangePasswordProcedure:
 			authServiceChangePasswordHandler.ServeHTTP(w, r)
+		case AuthServiceSignOutProcedure:
+			authServiceSignOutHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -282,4 +314,8 @@ func (UnimplementedAuthServiceHandler) GetMe(context.Context, *connect.Request[v
 
 func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.AuthService.ChangePassword is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.AuthService.SignOut is not implemented"))
 }

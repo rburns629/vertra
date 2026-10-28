@@ -8,6 +8,7 @@ import { CodeBlock } from "../../components/CodeBlock";
 import { TabIntro, errorMessage, relativeTime } from "./shared";
 import { Mono } from "../../components/Mono";
 import { SignedCallback } from "../../components/SignedCallback";
+import { DEFAULT_TOKEN_DAYS, expiryText, TokenLifetime } from "../../components/TokenLifetime";
 
 /** Templates as typed: <team>/<name>, one per line or comma-separated. */
 function templateList(text: string): string[] {
@@ -201,7 +202,7 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
                       <Box>
                         <Typography sx={{ fontWeight: 500 }}>{token.label}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          created {relativeTime(token.createdAt)} · last used {relativeTime(token.lastUsedAt)}
+                          created {relativeTime(token.createdAt)} · last used {relativeTime(token.lastUsedAt)} · {expiryText(token.expiresAt)}
                         </Typography>
                       </Box>
                       {!readOnly && (
@@ -309,6 +310,7 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
   const [purpose, setPurpose] = useState("");
   const [ordering, setOrdering] = useState(false);
   const [templates, setTemplates] = useState("");
+  const [days, setDays] = useState(DEFAULT_TOKEN_DAYS);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -317,7 +319,7 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
     setError(null);
     setSubmitting(true);
     try {
-      const result = await createBot(teamName, botEmail(teamName, purpose), purpose.trim(), ordering ? templateList(templates) : undefined);
+      const result = await createBot(teamName, botEmail(teamName, purpose), purpose.trim(), ordering ? templateList(templates) : undefined, days);
       setPurpose("");
       setTemplates("");
       onCreated(result.email, result.token, ordering);
@@ -362,6 +364,7 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
                 helperText="<team>/<name>, one per line. A member of this team, not a maintainer: it can't submit raw DAGs."
               />
             )}
+            <TokenLifetime days={days} onChange={setDays} />
             <Button type="submit" variant="contained" disabled={submitting || !purpose.trim()} sx={{ alignSelf: "flex-start" }}>
               {submitting ? "Creating…" : "Create bot and token"}
             </Button>

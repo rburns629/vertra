@@ -4,7 +4,8 @@ import fp from "fastify-plugin";
 import fastifyJwt from "@fastify/jwt";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { config } from "../config.js";
-import { findApiTokenPrincipal, findUserById, teamRolesForUser, touchApiToken } from "../db/queries.js";
+import { randomUUID } from "node:crypto";
+import { findApiTokenPrincipal, findUserById, isSessionRevoked, teamRolesForUser, touchApiToken } from "../db/queries.js";
 import { API_TOKEN_PREFIX, hashApiToken } from "./apiToken.js";
 
 /** How stale an API token's "last used" time may get before a request
@@ -13,10 +14,12 @@ const TOKEN_USE_RESOLUTION_MS = 5 * 60 * 1000;
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    // sso: made by single sign-on (auth/oidc.ts), not a password.
-    payload: { userId: string; sso?: boolean };
-    // iat/exp are added by the signer, not by our own jwtSign call.
-    user: { userId: string; sso?: boolean; iat: number; exp: number };
+    // sso: made by single sign-on (auth/oidc.ts), not a password. sid: the
+    // session's own id, which signing out revokes (newSession).
+    payload: { userId: string; sso?: boolean; sid: string };
+    // iat/exp are added by the signer, not by our own jwtSign call. A
+    // session from before sids has none, and can't be signed out early.
+    user: { userId: string; sso?: boolean; sid?: string; iat: number; exp: number };
   }
 }
 
@@ -43,8 +46,16 @@ declare module "fastify" {
       // run (auth/access.ts's ensureMayOrder). Never for what the console
       // does as a bot (a schedule's runs, reviewed by its team).
       orderTemplates?: string[];
+      // A session's (not an API token's): its id and when it expires
+      // (seconds), for signing it out (AuthService.SignOut).
+      session?: { sid: string; exp: number };
     };
   }
+}
+
+/** A new session's claims: who, how they signed in, and the session's own id. */
+export function newSession(userId: string, sso = false): { userId: string; sso?: boolean; sid: string } {
+  return { userId, ...(sso ? { sso: true } : {}), sid: randomUUID() };
 }
 
 /**
@@ -80,6 +91,7 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
   let scopes: string[] = [];
   // A session a password made (not single sign-on, not an API token).
   let passwordSession = false;
+  let session: { sid: string; exp: number } | undefined;
   if (bearer?.startsWith(API_TOKEN_PREFIX)) {
     const principal = await findApiTokenPrincipal(hashApiToken(bearer));
     user = principal?.user;
@@ -104,6 +116,12 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
     // the same second must still be accepted.
     if (user?.passwordChangedAt && request.user.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
       user = undefined;
+    }
+    // Signed out (AuthService.SignOut) before it expired.
+    const sid = request.user.sid;
+    if (sid) {
+      if (await isSessionRevoked(sid)) user = undefined;
+      session = { sid, exp: request.user.exp };
     }
   }
 
@@ -131,6 +149,7 @@ export async function resolveCaller(request: FastifyRequest): Promise<CallerReso
       scopes,
       mustChangePassword,
       ...(user.orderTemplates ? { orderTemplates: user.orderTemplates } : {}),
+      ...(session ? { session } : {}),
     },
   };
 }

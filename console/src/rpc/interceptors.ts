@@ -8,8 +8,8 @@
  *    message, as the REST error handler does for a 5xx.
  * 2. audit: a method that can change something is recorded once answered,
  *    allowed or refused, with its request's identifying fields only
- *    (audit.ts), and the run it started, if any. Reads aren't, nor
- *    sign-in and passwords.
+ *    (audit.ts), and the run it started, if any, and the client's
+ *    address. Reads aren't; sign-ins are.
  * 3. requireCaller: every method but the few public ones needs a valid
  *    credential; one that couldn't be checked (the database failed) fails
  *    the call, whatever the method.
@@ -21,7 +21,7 @@ import { ApiError } from "../apiError.js";
 import { targetFields, writeAuditEntry } from "../audit.js";
 import { AuthService } from "../gen/vertra/console/v1/auth_pb.js";
 import { ProblemSchema } from "../gen/vertra/console/v1/common_pb.js";
-import { kAuthError, kAuthProblem, kCaller, kLog, kRequestId } from "./context.js";
+import { kAuthError, kAuthProblem, kCaller, kClientIp, kLog, kRequestId, kSignedIn } from "./context.js";
 import { httpStatusFor, rpcError, unauthenticated } from "./errors.js";
 
 const procedure = (service: { typeName: string }, method: { name: string }) => `${service.typeName}/${method.name}`;
@@ -36,15 +36,11 @@ export const PUBLIC = new Set(
 /** All a session may do while its password must be changed. */
 // GetEnvironment is public anyway: the screen to change it shows the install.
 const WHILE_CHANGING_PASSWORD = new Set(
-  [AuthService.method.getMe, AuthService.method.changePassword, AuthService.method.getEnvironment].map((m) => procedure(m.parent, m)),
-);
-
-/** Changes nothing worth recording, or carries secrets: never audited. */
-const UNAUDITED = new Set(
-  [AuthService.method.register, AuthService.method.login, AuthService.method.changePassword, AuthService.method.exchangeToken].map((m) =>
+  [AuthService.method.getMe, AuthService.method.changePassword, AuthService.method.getEnvironment, AuthService.method.signOut].map((m) =>
     procedure(m.parent, m),
   ),
 );
+
 
 const GENERIC = "Internal server error.";
 
@@ -101,7 +97,9 @@ export const maskErrors: Interceptor = (next) => async (req) => {
 
 export const audit: Interceptor = (next) => async (req) => {
   const name = procedure(req.service, req.method);
-  if (req.method.idempotency === MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS || UNAUDITED.has(name)) {
+  // Sign-ins, registering and password changes too, allowed or refused:
+  // their requests carry secrets, but targetFields reads only the email.
+  if (req.method.idempotency === MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS) {
     return next(req);
   }
   let status = 200;
@@ -123,9 +121,11 @@ export const audit: Interceptor = (next) => async (req) => {
     const log = req.contextValues.get(kLog);
     const target = req.stream ? {} : targetFields(toJson(req.method.input, req.message));
     if (started && target["executionId"] === undefined) target["executionId"] = started;
+    const clientIp = req.contextValues.get(kClientIp);
+    if (clientIp) target["clientIp"] = clientIp;
     if (log) {
       await writeAuditEntry(log, {
-        actorId: req.contextValues.get(kCaller)?.id ?? null,
+        actorId: req.contextValues.get(kCaller)?.id ?? req.contextValues.get(kSignedIn) ?? null,
         method: "RPC",
         route: name,
         target,

@@ -152,7 +152,7 @@ export function teamService(): ServiceImpl<typeof TeamService> {
 
     async addMember(req, ctx) {
       const caller = callerOf(ctx);
-      addMemberLimit.take(`members:${caller.id}`, ctx);
+      await addMemberLimit.take(`members:${caller.id}`, ctx);
       const { team: name, email } = check({ team: AnyTeam, email: MemberEmail }, req);
       await addMember(caller, name, email, roleOf(req.role, "member"));
       return {};

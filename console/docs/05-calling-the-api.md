@@ -14,7 +14,7 @@ In the console, open your team → **Automation → Add a bot**, say what will u
 $ gh secret set VERTRA_TOKEN --repo <your-org>/<your-repo>
 ```
 
-A token doesn't expire: it works until it's revoked. To rotate one, add a bot again with the same answer to "What will use it?": that gives the same bot a second token. Put the new token in your pipeline, then revoke the old one on the bot's card. Revoking stops a token at once.
+A token lasts 90 days unless you choose otherwise when you make it (30 days, a year, two years, or until revoked); the bot's card shows when each expires. An expired token is refused like a revoked one. To rotate one before it expires, add a bot again with the same answer to "What will use it?": that gives the same bot a second token. Put the new token in your pipeline, then revoke the old one on the bot's card. Revoking stops a token at once.
 
 ### Or no token at all: sign in from CI
 

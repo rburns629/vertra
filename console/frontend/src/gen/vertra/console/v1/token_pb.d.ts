@@ -36,6 +36,13 @@ export declare type TokenInfo = Message<"vertra.console.v1.TokenInfo"> & {
    * @generated from field: google.protobuf.Timestamp last_used_at = 4;
    */
   lastUsedAt?: Timestamp | undefined;
+
+  /**
+   * After this it authenticates nothing. Unset: until revoked.
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 5;
+   */
+  expiresAt?: Timestamp | undefined;
 };
 
 /**
@@ -136,6 +143,13 @@ export declare type AutomationToken = Message<"vertra.console.v1.AutomationToken
    * @generated from field: string bot_email = 6;
    */
   botEmail: string;
+
+  /**
+   * After this it authenticates nothing. Unset: until revoked.
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 7;
+   */
+  expiresAt?: Timestamp | undefined;
 };
 
 /**
@@ -210,6 +224,14 @@ export declare type CreateBotTokenRequest = Message<"vertra.console.v1.CreateBot
    * @generated from field: repeated string order_templates = 5;
    */
   orderTemplates: string[];
+
+  /**
+   * How many days the token lasts, 1 to 730. Left out, 90; 0, until
+   * revoked.
+   *
+   * @generated from field: optional int32 expires_in_days = 6;
+   */
+  expiresInDays?: number | undefined;
 };
 
 /**
@@ -419,6 +441,14 @@ export declare type CreateAutomationTokenRequest = Message<"vertra.console.v1.Cr
    * @generated from field: repeated string scopes = 2;
    */
   scopes: string[];
+
+  /**
+   * How many days the token lasts, 1 to 730. Left out, 90; 0, until
+   * revoked.
+   *
+   * @generated from field: optional int32 expires_in_days = 3;
+   */
+  expiresInDays?: number | undefined;
 };
 
 /**

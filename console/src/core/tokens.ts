@@ -42,6 +42,15 @@ export const TokenLabel = Type.String({ minLength: 1 });
 export const AutomationLabel = Type.String({ minLength: 1, maxLength: 100 });
 export const AutomationScopes = Type.Array(ScopeSchema, { minItems: 1, uniqueItems: true });
 export const TokenId = Type.String({ format: "uuid" });
+/** How long a new token lasts, in days: 0 until revoked, otherwise up to two years. */
+export const ExpiresInDays = Type.Integer({ minimum: 0, maximum: 730 });
+/** A new token's lifetime when none is asked for. */
+export const DEFAULT_TOKEN_DAYS = 90;
+
+/** When a token made now for `days` expires: null for 0, until revoked. */
+export function expiryAfter(days: number): Date | null {
+  return days === 0 ? null : new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
 /** A template an ordering bot may order: <team>/<name>. */
 export const OrderTemplates = Type.Array(Type.String({ pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$" }), {
   maxItems: 100,
@@ -63,7 +72,7 @@ async function teamForMaintainer(caller: AuthUser | undefined, teamName: string)
 export async function createBotToken(
   caller: AuthUser | undefined,
   teamName: string,
-  input: { email: string; label: string; ordering?: boolean; orderTemplates?: string[] },
+  input: { email: string; label: string; ordering?: boolean; orderTemplates?: string[]; expiresInDays?: number },
 ) {
   const team = await teamForMaintainer(caller, teamName);
   ensureNotRetired(team);
@@ -82,7 +91,7 @@ export async function createBotToken(
     await addTeamMember(bot.id, team.id, "maintainer");
   }
   const rawToken = generateApiToken();
-  const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken));
+  const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken), [], expiryAfter(input.expiresInDays ?? DEFAULT_TOKEN_DAYS));
   return { email: bot.email, token: rawToken, tokenId: tokenMeta.id };
 }
 
@@ -155,13 +164,19 @@ export async function revokeToken(caller: AuthUser | undefined, tokenId: string)
 /** For platform automation such as the catalog's CI. Admins only. */
 export async function createAutomationToken(
   caller: AuthUser | undefined,
-  input: { label: string; scopes: string[] },
+  input: { label: string; scopes: string[]; expiresInDays?: number },
   log: FastifyBaseLogger | undefined,
 ) {
   forbiddenUnlessAdmin(caller);
   const bot = await createBotUser(`automation-${randomUUID().slice(0, 8)}@bot.internal`);
   const rawToken = generateApiToken();
-  const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken), input.scopes);
+  const tokenMeta = await createApiToken(
+    bot.id,
+    input.label,
+    hashApiToken(rawToken),
+    input.scopes,
+    expiryAfter(input.expiresInDays ?? DEFAULT_TOKEN_DAYS),
+  );
   log?.info({ tokenId: tokenMeta.id, scopes: input.scopes, createdBy: caller?.id }, "automation token created");
   return { tokenId: tokenMeta.id, label: tokenMeta.label, scopes: input.scopes, token: rawToken };
 }

@@ -15,6 +15,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
+    globalSetup: ["test/globalSetup.ts"],
     env: {
       DATABASE_URL: process.env["TEST_DATABASE_URL"] ?? "postgresql://localhost/execution_console_test",
       JWT_SECRET: "test-only-jwt-secret",

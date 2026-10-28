@@ -9,6 +9,8 @@ import {
   BotEmail,
   createAutomationToken,
   createBotToken,
+  DEFAULT_TOKEN_DAYS,
+  ExpiresInDays,
   listAutomationTokensFor,
   listBots,
   OrderTemplates,
@@ -71,6 +73,7 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
             label: token.label,
             createdAt: timestampFromDate(token.createdAt),
             lastUsedAt: optionalTime(token.lastUsedAt),
+            expiresAt: optionalTime(token.expiresAt),
           })),
           ordering: bot.orderTemplates !== null,
           orderTemplates: bot.orderTemplates ?? [],
@@ -82,11 +85,11 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
     },
 
     async createBotToken(req, ctx) {
-      const { team, email, label, orderTemplates } = check(
-        { team: TeamName, email: BotEmail, label: TokenLabel, orderTemplates: OrderTemplates },
-        { team: req.team, email: req.email, label: req.label, orderTemplates: req.orderTemplates },
+      const { team, email, label, orderTemplates, expiresInDays } = check(
+        { team: TeamName, email: BotEmail, label: TokenLabel, orderTemplates: OrderTemplates, expiresInDays: ExpiresInDays },
+        { team: req.team, email: req.email, label: req.label, orderTemplates: req.orderTemplates, expiresInDays: req.expiresInDays ?? DEFAULT_TOKEN_DAYS },
       );
-      return createBotToken(callerOf(ctx), team, { email, label, ordering: req.ordering, orderTemplates });
+      return createBotToken(callerOf(ctx), team, { email, label, ordering: req.ordering, orderTemplates, expiresInDays });
     },
 
     async setBotOrders(req, ctx) {
@@ -115,12 +118,16 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
           lastUsedAt: optionalTime(token.lastUsedAt),
           scopes: token.scopes,
           botEmail: token.botEmail,
+          expiresAt: optionalTime(token.expiresAt),
         })),
       };
     },
 
     async createAutomationToken(req, ctx) {
-      const input = check({ label: AutomationLabel, scopes: AutomationScopes }, req);
+      const input = check(
+        { label: AutomationLabel, scopes: AutomationScopes, expiresInDays: ExpiresInDays },
+        { label: req.label, scopes: req.scopes, expiresInDays: req.expiresInDays ?? DEFAULT_TOKEN_DAYS },
+      );
       return createAutomationToken(callerOf(ctx), input, logOf(ctx));
     },
   };

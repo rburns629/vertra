@@ -9,6 +9,7 @@ import {
   users,
   teamMemberships,
   apiTokens,
+  revokedSessions,
   botCallbacks,
   products,
   productReleases,
@@ -347,6 +348,7 @@ export interface ApiTokenMeta {
   label: string;
   createdAt: Date;
   lastUsedAt: Date | null;
+  expiresAt: Date | null;
 }
 
 export async function createApiToken(
@@ -354,10 +356,11 @@ export async function createApiToken(
   label: string,
   tokenHash: string,
   scopes: string[] = [],
+  expiresAt: Date | null = null,
 ): Promise<ApiTokenMeta> {
   const [token] = await db
     .insert(apiTokens)
-    .values({ userId, label, tokenHash, scopes })
+    .values({ userId, label, tokenHash, scopes, expiresAt })
     .returning();
   if (!token) throw new Error("Insert returned no row");
   return token;
@@ -377,6 +380,7 @@ export function listAutomationTokens(): Promise<AutomationToken[]> {
       label: apiTokens.label,
       createdAt: apiTokens.createdAt,
       lastUsedAt: apiTokens.lastUsedAt,
+      expiresAt: apiTokens.expiresAt,
       scopes: apiTokens.scopes,
       botEmail: users.email,
     })
@@ -403,9 +407,26 @@ export async function findApiTokenPrincipal(
     })
     .from(apiTokens)
     .innerJoin(users, eq(users.id, apiTokens.userId))
-    .where(and(eq(apiTokens.tokenHash, tokenHash), isNull(apiTokens.revokedAt)))
+    .where(
+      and(
+        eq(apiTokens.tokenHash, tokenHash),
+        isNull(apiTokens.revokedAt),
+        or(isNull(apiTokens.expiresAt), sql`${apiTokens.expiresAt} > now()`),
+      ),
+    )
     .limit(1);
   return row;
+}
+
+/** Whether a session was signed out before it expired. */
+export async function isSessionRevoked(sid: string): Promise<boolean> {
+  const [row] = await db.select({ sid: revokedSessions.sid }).from(revokedSessions).where(eq(revokedSessions.sid, sid)).limit(1);
+  return row !== undefined;
+}
+
+/** Signs a session out, until it would have expired anyway. */
+export async function revokeSession(sid: string, expiresAt: Date): Promise<void> {
+  await db.insert(revokedSessions).values({ sid, expiresAt }).onConflictDoNothing();
 }
 
 /** Records that a token was just used. Coarse on purpose: the caller skips
@@ -466,6 +487,7 @@ export async function listBotsForTeam(teamId: string): Promise<BotWithTokens[]> 
         label: apiTokens.label,
         createdAt: apiTokens.createdAt,
         lastUsedAt: apiTokens.lastUsedAt,
+        expiresAt: apiTokens.expiresAt,
       })
       .from(apiTokens)
       .where(and(eq(apiTokens.userId, bot.id), isNull(apiTokens.revokedAt)));

@@ -3,8 +3,8 @@
 // Package auth signs a gateway caller in exactly as the console does
 // (console/src/auth/plugin.ts, kept in step): a person's session JWT
 // (HS256, the console's JWT_SECRET; one issued before the account's last
-// password change is revoked), or a bot's API token (mp_..., found by its
-// SHA-256 in api_tokens, unless revoked). The caller's teams are read from
+// password change, or signed out, is revoked), or a bot's API token
+// (mp_..., found by its SHA-256 in api_tokens, unless revoked or expired). The caller's teams are read from
 // the console's database on every request, so a membership change counts at
 // once. A token is never logged or kept.
 package auth
@@ -69,7 +69,8 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 	if strings.HasPrefix(bearer, APITokenPrefix) {
 		sum := sha256.Sum256([]byte(bearer))
 		err := r.DB.QueryRow(ctx, `SELECT u.id::text, u.email, u.is_admin, u.is_bot FROM api_tokens t
-			JOIN users u ON u.id = t.user_id WHERE t.token_hash = $1 AND t.revoked_at IS NULL`, hex.EncodeToString(sum[:])).
+			JOIN users u ON u.id = t.user_id WHERE t.token_hash = $1 AND t.revoked_at IS NULL
+			AND (t.expires_at IS NULL OR t.expires_at > now())`, hex.EncodeToString(sum[:])).
 			Scan(&c.UserID, &c.Email, &c.IsAdmin, &c.IsBot)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUnauthenticated
@@ -94,6 +95,16 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 		// change issues in the same second still counts.
 		if passwordChanged != nil && claims.IssuedAt < passwordChanged.Unix() {
 			return nil, ErrUnauthenticated
+		}
+		// Signed out before it expired (the console's AuthService.SignOut).
+		if claims.SessionID != "" {
+			var revoked bool
+			if err := r.DB.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM revoked_sessions WHERE sid = $1)`, claims.SessionID).Scan(&revoked); err != nil {
+				return nil, err
+			}
+			if revoked {
+				return nil, ErrUnauthenticated
+			}
 		}
 		passwordSession = !claims.SSO
 		// A password someone else set: the console allows nothing but
@@ -130,9 +141,11 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 type claims struct {
 	UserID string `json:"userId"`
 	// Made by single sign-on, not a password.
-	SSO       bool  `json:"sso"`
-	IssuedAt  int64 `json:"iat"`
-	ExpiresAt int64 `json:"exp"`
+	SSO bool `json:"sso"`
+	// The session's id, which signing out revokes; empty on older sessions.
+	SessionID string `json:"sid"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
 }
 
 // verifyJWT checks an HS256 JWT signed with the console's secret, and that

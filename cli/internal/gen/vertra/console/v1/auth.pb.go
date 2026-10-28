@@ -325,6 +325,78 @@ func (x *LoginResponse) GetToken() string {
 	return ""
 }
 
+type SignOutRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignOutRequest) Reset() {
+	*x = SignOutRequest{}
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignOutRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignOutRequest) ProtoMessage() {}
+
+func (x *SignOutRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignOutRequest.ProtoReflect.Descriptor instead.
+func (*SignOutRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+type SignOutResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignOutResponse) Reset() {
+	*x = SignOutResponse{}
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignOutResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignOutResponse) ProtoMessage() {}
+
+func (x *SignOutResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignOutResponse.ProtoReflect.Descriptor instead.
+func (*SignOutResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{7}
+}
+
 type GetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -333,7 +405,7 @@ type GetMeRequest struct {
 
 func (x *GetMeRequest) Reset() {
 	*x = GetMeRequest{}
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -345,7 +417,7 @@ func (x *GetMeRequest) String() string {
 func (*GetMeRequest) ProtoMessage() {}
 
 func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -358,7 +430,7 @@ func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
 func (*GetMeRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 type GetMeResponse struct {
@@ -383,7 +455,7 @@ type GetMeResponse struct {
 
 func (x *GetMeResponse) Reset() {
 	*x = GetMeResponse{}
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -395,7 +467,7 @@ func (x *GetMeResponse) String() string {
 func (*GetMeResponse) ProtoMessage() {}
 
 func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -408,7 +480,7 @@ func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
 func (*GetMeResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetMeResponse) GetUserId() string {
@@ -477,7 +549,7 @@ type ChangePasswordRequest struct {
 
 func (x *ChangePasswordRequest) Reset() {
 	*x = ChangePasswordRequest{}
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -489,7 +561,7 @@ func (x *ChangePasswordRequest) String() string {
 func (*ChangePasswordRequest) ProtoMessage() {}
 
 func (x *ChangePasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -502,7 +574,7 @@ func (x *ChangePasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangePasswordRequest.ProtoReflect.Descriptor instead.
 func (*ChangePasswordRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ChangePasswordRequest) GetCurrentPassword() string {
@@ -528,7 +600,7 @@ type ChangePasswordResponse struct {
 
 func (x *ChangePasswordResponse) Reset() {
 	*x = ChangePasswordResponse{}
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -540,7 +612,7 @@ func (x *ChangePasswordResponse) String() string {
 func (*ChangePasswordResponse) ProtoMessage() {}
 
 func (x *ChangePasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -553,7 +625,7 @@ func (x *ChangePasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangePasswordResponse.ProtoReflect.Descriptor instead.
 func (*ChangePasswordResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ChangePasswordResponse) GetToken() string {
@@ -573,7 +645,7 @@ type ExchangeTokenRequest struct {
 
 func (x *ExchangeTokenRequest) Reset() {
 	*x = ExchangeTokenRequest{}
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -585,7 +657,7 @@ func (x *ExchangeTokenRequest) String() string {
 func (*ExchangeTokenRequest) ProtoMessage() {}
 
 func (x *ExchangeTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +670,7 @@ func (x *ExchangeTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExchangeTokenRequest.ProtoReflect.Descriptor instead.
 func (*ExchangeTokenRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{10}
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ExchangeTokenRequest) GetIdToken() string {
@@ -621,7 +693,7 @@ type ExchangeTokenResponse struct {
 
 func (x *ExchangeTokenResponse) Reset() {
 	*x = ExchangeTokenResponse{}
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -633,7 +705,7 @@ func (x *ExchangeTokenResponse) String() string {
 func (*ExchangeTokenResponse) ProtoMessage() {}
 
 func (x *ExchangeTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_auth_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_auth_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -646,7 +718,7 @@ func (x *ExchangeTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExchangeTokenResponse.ProtoReflect.Descriptor instead.
 func (*ExchangeTokenResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{11}
+	return file_vertra_console_v1_auth_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ExchangeTokenResponse) GetToken() string {
@@ -690,7 +762,9 @@ const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"%\n" +
 	"\rLoginResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\x0e\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\x10\n" +
+	"\x0eSignOutRequest\"\x11\n" +
+	"\x0fSignOutResponse\"\x0e\n" +
 	"\fGetMeRequest\"\x8d\x02\n" +
 	"\rGetMeResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
@@ -713,14 +787,15 @@ const file_vertra_console_v1_auth_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x129\n" +
 	"\n" +
-	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2\xb6\x04\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2\x8d\x05\n" +
 	"\vAuthService\x12j\n" +
 	"\x0eGetEnvironment\x12(.vertra.console.v1.GetEnvironmentRequest\x1a).vertra.console.v1.GetEnvironmentResponse\"\x03\x90\x02\x01\x12S\n" +
 	"\bRegister\x12\".vertra.console.v1.RegisterRequest\x1a#.vertra.console.v1.RegisterResponse\x12J\n" +
 	"\x05Login\x12\x1f.vertra.console.v1.LoginRequest\x1a .vertra.console.v1.LoginResponse\x12b\n" +
 	"\rExchangeToken\x12'.vertra.console.v1.ExchangeTokenRequest\x1a(.vertra.console.v1.ExchangeTokenResponse\x12O\n" +
 	"\x05GetMe\x12\x1f.vertra.console.v1.GetMeRequest\x1a .vertra.console.v1.GetMeResponse\"\x03\x90\x02\x01\x12e\n" +
-	"\x0eChangePassword\x12(.vertra.console.v1.ChangePasswordRequest\x1a).vertra.console.v1.ChangePasswordResponseB\xd2\x01\n" +
+	"\x0eChangePassword\x12(.vertra.console.v1.ChangePasswordRequest\x1a).vertra.console.v1.ChangePasswordResponse\x12U\n" +
+	"\aSignOut\x12!.vertra.console.v1.SignOutRequest\x1a\".vertra.console.v1.SignOutResponse\"\x03\x90\x02\x02B\xd2\x01\n" +
 	"\x15com.vertra.console.v1B\tAuthProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -735,7 +810,7 @@ func file_vertra_console_v1_auth_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_auth_proto_rawDescData
 }
 
-var file_vertra_console_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_vertra_console_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_vertra_console_v1_auth_proto_goTypes = []any{
 	(*GetEnvironmentRequest)(nil),  // 0: vertra.console.v1.GetEnvironmentRequest
 	(*GetEnvironmentResponse)(nil), // 1: vertra.console.v1.GetEnvironmentResponse
@@ -743,30 +818,34 @@ var file_vertra_console_v1_auth_proto_goTypes = []any{
 	(*RegisterResponse)(nil),       // 3: vertra.console.v1.RegisterResponse
 	(*LoginRequest)(nil),           // 4: vertra.console.v1.LoginRequest
 	(*LoginResponse)(nil),          // 5: vertra.console.v1.LoginResponse
-	(*GetMeRequest)(nil),           // 6: vertra.console.v1.GetMeRequest
-	(*GetMeResponse)(nil),          // 7: vertra.console.v1.GetMeResponse
-	(*ChangePasswordRequest)(nil),  // 8: vertra.console.v1.ChangePasswordRequest
-	(*ChangePasswordResponse)(nil), // 9: vertra.console.v1.ChangePasswordResponse
-	(*ExchangeTokenRequest)(nil),   // 10: vertra.console.v1.ExchangeTokenRequest
-	(*ExchangeTokenResponse)(nil),  // 11: vertra.console.v1.ExchangeTokenResponse
-	(*timestamppb.Timestamp)(nil),  // 12: google.protobuf.Timestamp
+	(*SignOutRequest)(nil),         // 6: vertra.console.v1.SignOutRequest
+	(*SignOutResponse)(nil),        // 7: vertra.console.v1.SignOutResponse
+	(*GetMeRequest)(nil),           // 8: vertra.console.v1.GetMeRequest
+	(*GetMeResponse)(nil),          // 9: vertra.console.v1.GetMeResponse
+	(*ChangePasswordRequest)(nil),  // 10: vertra.console.v1.ChangePasswordRequest
+	(*ChangePasswordResponse)(nil), // 11: vertra.console.v1.ChangePasswordResponse
+	(*ExchangeTokenRequest)(nil),   // 12: vertra.console.v1.ExchangeTokenRequest
+	(*ExchangeTokenResponse)(nil),  // 13: vertra.console.v1.ExchangeTokenResponse
+	(*timestamppb.Timestamp)(nil),  // 14: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_auth_proto_depIdxs = []int32{
-	12, // 0: vertra.console.v1.ExchangeTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	14, // 0: vertra.console.v1.ExchangeTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: vertra.console.v1.AuthService.GetEnvironment:input_type -> vertra.console.v1.GetEnvironmentRequest
 	2,  // 2: vertra.console.v1.AuthService.Register:input_type -> vertra.console.v1.RegisterRequest
 	4,  // 3: vertra.console.v1.AuthService.Login:input_type -> vertra.console.v1.LoginRequest
-	10, // 4: vertra.console.v1.AuthService.ExchangeToken:input_type -> vertra.console.v1.ExchangeTokenRequest
-	6,  // 5: vertra.console.v1.AuthService.GetMe:input_type -> vertra.console.v1.GetMeRequest
-	8,  // 6: vertra.console.v1.AuthService.ChangePassword:input_type -> vertra.console.v1.ChangePasswordRequest
-	1,  // 7: vertra.console.v1.AuthService.GetEnvironment:output_type -> vertra.console.v1.GetEnvironmentResponse
-	3,  // 8: vertra.console.v1.AuthService.Register:output_type -> vertra.console.v1.RegisterResponse
-	5,  // 9: vertra.console.v1.AuthService.Login:output_type -> vertra.console.v1.LoginResponse
-	11, // 10: vertra.console.v1.AuthService.ExchangeToken:output_type -> vertra.console.v1.ExchangeTokenResponse
-	7,  // 11: vertra.console.v1.AuthService.GetMe:output_type -> vertra.console.v1.GetMeResponse
-	9,  // 12: vertra.console.v1.AuthService.ChangePassword:output_type -> vertra.console.v1.ChangePasswordResponse
-	7,  // [7:13] is the sub-list for method output_type
-	1,  // [1:7] is the sub-list for method input_type
+	12, // 4: vertra.console.v1.AuthService.ExchangeToken:input_type -> vertra.console.v1.ExchangeTokenRequest
+	8,  // 5: vertra.console.v1.AuthService.GetMe:input_type -> vertra.console.v1.GetMeRequest
+	10, // 6: vertra.console.v1.AuthService.ChangePassword:input_type -> vertra.console.v1.ChangePasswordRequest
+	6,  // 7: vertra.console.v1.AuthService.SignOut:input_type -> vertra.console.v1.SignOutRequest
+	1,  // 8: vertra.console.v1.AuthService.GetEnvironment:output_type -> vertra.console.v1.GetEnvironmentResponse
+	3,  // 9: vertra.console.v1.AuthService.Register:output_type -> vertra.console.v1.RegisterResponse
+	5,  // 10: vertra.console.v1.AuthService.Login:output_type -> vertra.console.v1.LoginResponse
+	13, // 11: vertra.console.v1.AuthService.ExchangeToken:output_type -> vertra.console.v1.ExchangeTokenResponse
+	9,  // 12: vertra.console.v1.AuthService.GetMe:output_type -> vertra.console.v1.GetMeResponse
+	11, // 13: vertra.console.v1.AuthService.ChangePassword:output_type -> vertra.console.v1.ChangePasswordResponse
+	7,  // 14: vertra.console.v1.AuthService.SignOut:output_type -> vertra.console.v1.SignOutResponse
+	8,  // [8:15] is the sub-list for method output_type
+	1,  // [1:8] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -783,7 +862,7 @@ func file_vertra_console_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_auth_proto_rawDesc), len(file_vertra_console_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

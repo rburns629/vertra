@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 import { randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
 import { db } from "../src/db/client.js";
 import { createBotUser, createUser, setUserAdmin } from "../src/db/queries.js";
-import { users } from "../src/db/schema.js";
+import { auditLog, signInFailures, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { failureCode, type RpcError } from "./rpc.js";
 
@@ -231,5 +231,54 @@ describe("login timing", () => {
     // Both pay for one argon2 check; without it a missing account answered
     // about seven times faster.
     expect(none).toBeGreaterThan(real * 0.5);
+  });
+});
+
+describe("signing out", () => {
+  it("ends the session at once, and only that one", async () => {
+    const { email } = await makeUser();
+    const first = await tokenFor(email);
+    const second = await tokenFor(email);
+    expect((await rpc("AuthService/SignOut", {}, first)).statusCode).toBe(200);
+    expect((await me(first)).statusCode).toBe(401);
+    expect((await me(second)).statusCode).toBe(200);
+    // Again: already gone, still fine to ask.
+    expect((await rpc("AuthService/SignOut", {}, first)).statusCode).toBe(401);
+  });
+
+  it("gives every session its own id", async () => {
+    const { email } = await makeUser();
+    const a = app.jwt.decode<{ sid?: string }>(await tokenFor(email));
+    const b = app.jwt.decode<{ sid?: string }>(await tokenFor(email));
+    expect(a?.sid).toBeTruthy();
+    expect(a?.sid).not.toBe(b?.sid);
+  });
+});
+
+describe("sign-ins in the audit log", () => {
+  it("records a sign-in, allowed or refused, with the email and address, never the password", async () => {
+    const { id, email } = await makeUser();
+    expect((await login(email, "wrong-password", "10.40.0.1")).statusCode).toBe(401);
+    expect((await login(email, PASSWORD, "10.40.0.2")).statusCode).toBe(200);
+    const rows = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.route, "vertra.console.v1.AuthService/Login"), sql`${auditLog.target}->>'email' = ${email}`))
+      .orderBy(auditLog.id);
+    expect(rows.map((r) => [r.status, r.actorId, (r.target as { clientIp?: string }).clientIp])).toEqual([
+      [401, null, "10.40.0.1"],
+      [200, id, "10.40.0.2"],
+    ]);
+    expect(JSON.stringify(rows)).not.toContain("wrong-password");
+    expect(JSON.stringify(rows)).not.toContain(PASSWORD);
+  });
+});
+
+describe("limits shared by every copy of the console", () => {
+  it("counts an account's failures in the database, not in one process", async () => {
+    const { email } = await makeUser();
+    for (let n = 0; n < 3; n++) await login(email, "wrong-password", `10.41.0.${String(n)}`);
+    const [row] = await db.select().from(signInFailures).where(eq(signInFailures.email, email.toLowerCase()));
+    expect(row?.failures).toBe(3);
   });
 });

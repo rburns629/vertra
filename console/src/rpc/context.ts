@@ -17,6 +17,8 @@ export const kAuthProblem = createContextKey<string | undefined>(undefined, { de
 export const kAuthError = createContextKey<Error | undefined>(undefined, { description: "auth error" });
 /** The client's address, as Fastify resolved it (trustProxy). */
 export const kClientIp = createContextKey<string>("", { description: "client ip" });
+/** Who a sign-in call signed in, for its audit entry (it has no caller yet). */
+export const kSignedIn = createContextKey<string | undefined>(undefined, { description: "signed in" });
 export const kRequestId = createContextKey<string>("", { description: "request id" });
 export const kLog = createContextKey<FastifyBaseLogger | undefined>(undefined, { description: "logger" });
 

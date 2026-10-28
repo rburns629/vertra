@@ -3,7 +3,7 @@
  * Slows password guessing against one account, from any number of IPs,
  * without locking its owner out.
  *
- * The per-IP limit on /auth/login (rpc/services/auth.ts) stops one source; an
+ * The per-IP limit on sign-in (rpc/services/auth.ts) stops one source; an
  * attacker with many IPs gets 10 guesses per IP per window. This counts an
  * account's failed sign-ins across all sources instead, and past a free
  * allowance spaces attempts out: after FREE_FAILURES failures within the
@@ -15,71 +15,45 @@
  * out. A successful sign-in clears the account's count.
  *
  * Counted for every email tried, existing or not: throttling only real
- * accounts would tell an attacker which emails exist. In memory and per
- * replica, like the per-IP limit (the console runs one replica); a restart
- * forgets the counts, which only ever errs toward letting someone in.
+ * accounts would tell an attacker which emails exist. In Postgres
+ * (sign_in_failures), so every copy of the console counts the same
+ * failures; retention.ts deletes rows whose window has passed.
  */
+import { eq, sql } from "drizzle-orm";
+import { db } from "../db/client.js";
+import { signInFailures } from "../db/schema.js";
 
 const WINDOW_MS = 60 * 60 * 1000;
 const FREE_FAILURES = 10;
 const MAX_GAP_MS = 60 * 1000;
-// Bounds the memory an attacker can make this hold by spraying emails.
-const MAX_TRACKED = 50_000;
-
-interface AccountState {
-  failures: number;
-  windowStart: number;
-  /** No attempt is evaluated before this time. */
-  nextAt: number;
-}
-
-const accounts = new Map<string, AccountState>();
 
 function key(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function current(email: string, now: number): AccountState | undefined {
-  const state = accounts.get(key(email));
-  if (state && now - state.windowStart > WINDOW_MS) {
-    accounts.delete(key(email));
-    return undefined;
-  }
-  return state;
-}
-
 /** Seconds until this account may try again, or 0 if it may now. */
-export function loginWaitSeconds(email: string, now = Date.now()): number {
-  const state = current(email, now);
-  return state && state.nextAt > now ? Math.ceil((state.nextAt - now) / 1000) : 0;
+export async function loginWaitSeconds(email: string, now = Date.now()): Promise<number> {
+  const [state] = await db.select().from(signInFailures).where(eq(signInFailures.email, key(email)));
+  if (!state?.nextAt || now - state.windowStart.getTime() > WINDOW_MS) return 0;
+  const next = state.nextAt.getTime();
+  return next > now ? Math.ceil((next - now) / 1000) : 0;
 }
 
-export function recordLoginFailure(email: string, now = Date.now()): void {
-  const state = current(email, now) ?? { failures: 0, windowStart: now, nextAt: 0 };
-  state.failures += 1;
-  const over = state.failures - FREE_FAILURES;
-  state.nextAt = over > 0 ? now + Math.min(1000 * 2 ** (over - 1), MAX_GAP_MS) : 0;
-  accounts.delete(key(email)); // re-insert, so the Map stays oldest-first
-  accounts.set(key(email), state);
-  if (accounts.size > MAX_TRACKED) prune(now);
+export async function recordLoginFailure(email: string, now = Date.now()): Promise<void> {
+  const at = new Date(now);
+  const windowEnded = new Date(now - WINDOW_MS);
+  // One statement, so failures from two consoles at once both count.
+  const { rows } = await db.execute<{ failures: number }>(sql`
+    INSERT INTO sign_in_failures (email, failures, window_start) VALUES (${key(email)}, 1, ${at})
+    ON CONFLICT (email) DO UPDATE SET
+      failures = CASE WHEN sign_in_failures.window_start < ${windowEnded} THEN 1 ELSE sign_in_failures.failures + 1 END,
+      window_start = CASE WHEN sign_in_failures.window_start < ${windowEnded} THEN ${at} ELSE sign_in_failures.window_start END
+    RETURNING failures`);
+  const over = (rows[0]?.failures ?? 0) - FREE_FAILURES;
+  const nextAt = over > 0 ? new Date(now + Math.min(1000 * 2 ** (over - 1), MAX_GAP_MS)) : null;
+  await db.update(signInFailures).set({ nextAt }).where(eq(signInFailures.email, key(email)));
 }
 
-export function recordLoginSuccess(email: string): void {
-  accounts.delete(key(email));
-}
-
-function prune(now: number): void {
-  for (const [email, state] of accounts) {
-    if (now - state.windowStart > WINDOW_MS) accounts.delete(email);
-  }
-  // Still too many: drop the least recently failed.
-  for (const email of accounts.keys()) {
-    if (accounts.size <= MAX_TRACKED) break;
-    accounts.delete(email);
-  }
-}
-
-/** Tests only: forget every account. */
-export function resetLoginThrottle(): void {
-  accounts.clear();
+export async function recordLoginSuccess(email: string): Promise<void> {
+  await db.delete(signInFailures).where(eq(signInFailures.email, key(email)));
 }

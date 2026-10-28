@@ -959,13 +959,14 @@ back with the next upgrade.
 
 **`401` from the console's API.** The token is missing, malformed, expired
 (sessions last 8 hours), from before a password change (which signs out
-every session), or a revoked bot token. Everyone at once: the console's
+every session), signed out, or a revoked or expired bot token. Everyone at once: the console's
 `JWT_SECRET` changed ([Rotating secrets](#rotating-secrets)).
 
 **`429` signing in.** Too many attempts from one address for one account:
-wait for the time shown. The counter is in memory, so restarting the
-console clears it. Each console copy keeps its own, so with several copies
-the limit is per copy.
+wait for the time shown. The counts are in the console's database, shared
+by every copy, so restarting the console doesn't clear them; to let someone
+in sooner, delete their row from `sign_in_failures` (and
+`rate_limit_windows` rows whose key ends in their email).
 
 **A submission is refused.** The response says why:
 - `403`: not a member of a team the DAG names; a secret not registered for

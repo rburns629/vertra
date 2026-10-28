@@ -29,6 +29,8 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "../config.js";
 import { currentSso, groupsOf, GroupsUnavailable, syncMappedTeams, type Sso } from "../sso.js";
 import { bindOidcSubject, createSsoUser, findUserByEmail, findUserByOidcSubject, recordSignIn } from "../db/queries.js";
+import { newSession } from "./plugin.js";
+import { writeAuditEntry } from "../audit.js";
 
 const COOKIE = "vertra_oidc";
 const COOKIE_PATH = "/api/auth/oidc";
@@ -208,8 +210,24 @@ export async function registerOidc(api: FastifyInstance): Promise<void> {
       if (groups !== null) await syncMappedTeams(user.id, groups, request.log);
       await recordSignIn(user.id);
       request.log.info({ event: "sso_sign_in", userId: user.id }, "signed in with single sign-on");
-      return await reply.redirect(`/login#token=${encodeURIComponent(api.jwt.sign({ userId: user.id, sso: true }))}`);
+      await writeAuditEntry(request.log, {
+        actorId: user.id,
+        method: "GET",
+        route: "/api/auth/oidc/callback",
+        target: { email, clientIp: request.ip },
+        status: 200,
+        requestId: request.id,
+      });
+      return await reply.redirect(`/login#token=${encodeURIComponent(api.jwt.sign(newSession(user.id, true)))}`);
     } catch (error) {
+      await writeAuditEntry(request.log, {
+        actorId: null,
+        method: "GET",
+        route: "/api/auth/oidc/callback",
+        target: { clientIp: request.ip },
+        status: 401,
+        requestId: request.id,
+      });
       return refuse(reply, request.log, error);
     }
   });

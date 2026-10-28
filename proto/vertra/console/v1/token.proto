@@ -53,6 +53,8 @@ message TokenInfo {
   string label = 2;
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp last_used_at = 4;
+  // After this it authenticates nothing. Unset: until revoked.
+  google.protobuf.Timestamp expires_at = 5;
 }
 
 message Bot {
@@ -78,6 +80,8 @@ message AutomationToken {
   // Such as teams:create, products:register, teams:retire.
   repeated string scopes = 5;
   string bot_email = 6;
+  // After this it authenticates nothing. Unset: until revoked.
+  google.protobuf.Timestamp expires_at = 7;
 }
 
 message ListBotsRequest {
@@ -98,6 +102,9 @@ message CreateBotTokenRequest {
   // system placing orders. Otherwise a pipeline's bot, a maintainer.
   bool ordering = 4;
   repeated string order_templates = 5;
+  // How many days the token lasts, 1 to 730. Left out, 90; 0, until
+  // revoked.
+  optional int32 expires_in_days = 6;
 }
 
 message SetBotOrdersRequest {
@@ -149,6 +156,9 @@ message CreateAutomationTokenRequest {
   string label = 1;
   // At least one, each once.
   repeated string scopes = 2;
+  // How many days the token lasts, 1 to 730. Left out, 90; 0, until
+  // revoked.
+  optional int32 expires_in_days = 3;
 }
 
 message CreateAutomationTokenResponse {

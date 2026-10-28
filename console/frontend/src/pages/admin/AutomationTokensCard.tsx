@@ -13,6 +13,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
+import { DEFAULT_TOKEN_DAYS, expiryText, TokenLifetime } from "../../components/TokenLifetime";
 import { AUTOMATION_SCOPES, ApiError, createAutomationToken, listAutomationTokens, revokeToken, type AutomationToken } from "../../api";
 
 /** Platform-wide tokens for automation: each holds
@@ -26,6 +27,7 @@ export function AutomationTokensCard() {
   const [scopes, setScopes] = useState<string[]>(
     AUTOMATION_SCOPES.filter((s) => s.defaultOn).map((s) => s.scope),
   );
+  const [days, setDays] = useState(DEFAULT_TOKEN_DAYS);
   const [submitting, setSubmitting] = useState(false);
   const [justIssued, setJustIssued] = useState<{ label: string; token: string } | null>(null);
   const [revoking, setRevoking] = useState<AutomationToken | null>(null);
@@ -46,7 +48,7 @@ export function AutomationTokensCard() {
     setJustIssued(null);
     setSubmitting(true);
     try {
-      const result = await createAutomationToken(label, scopes);
+      const result = await createAutomationToken(label, scopes, days);
       setJustIssued({ label: result.label, token: result.token });
       setLabel("");
       reload();
@@ -85,6 +87,7 @@ export function AutomationTokensCard() {
       ),
     },
     { key: "created", header: "Created", render: (t) => new Date(t.createdAt).toLocaleString() },
+    { key: "expires", header: "Expiry", render: (t) => expiryText(t.expiresAt) },
     {
       key: "actions",
       header: "",
@@ -153,6 +156,7 @@ export function AutomationTokensCard() {
               }
             />
           ))}
+          <TokenLifetime days={days} onChange={setDays} />
           <Box>
             <Button
               variant="contained"

@@ -139,6 +139,30 @@ export declare type LoginResponse = Message<"vertra.console.v1.LoginResponse"> &
 export declare const LoginResponseSchema: GenMessage<LoginResponse>;
 
 /**
+ * @generated from message vertra.console.v1.SignOutRequest
+ */
+export declare type SignOutRequest = Message<"vertra.console.v1.SignOutRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SignOutRequest.
+ * Use `create(SignOutRequestSchema)` to create a new message.
+ */
+export declare const SignOutRequestSchema: GenMessage<SignOutRequest>;
+
+/**
+ * @generated from message vertra.console.v1.SignOutResponse
+ */
+export declare type SignOutResponse = Message<"vertra.console.v1.SignOutResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SignOutResponse.
+ * Use `create(SignOutResponseSchema)` to create a new message.
+ */
+export declare const SignOutResponseSchema: GenMessage<SignOutResponse>;
+
+/**
  * @generated from message vertra.console.v1.GetMeRequest
  */
 export declare type GetMeRequest = Message<"vertra.console.v1.GetMeRequest"> & {
@@ -369,6 +393,18 @@ export declare const AuthService: GenService<{
     methodKind: "unary";
     input: typeof ChangePasswordRequestSchema;
     output: typeof ChangePasswordResponseSchema;
+  },
+  /**
+   * Ends this session: its token is refused from now on, by the console
+   * and the gateway. An API token is revoked with TokenService.RevokeToken
+   * instead.
+   *
+   * @generated from rpc vertra.console.v1.AuthService.SignOut
+   */
+  signOut: {
+    methodKind: "unary";
+    input: typeof SignOutRequestSchema;
+    output: typeof SignOutResponseSchema;
   },
 }>;
 

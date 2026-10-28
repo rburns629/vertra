@@ -323,6 +323,13 @@
       "when": 1793202200891,
       "tag": "0045_chat_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793231124251,
+      "tag": "0046_sign_in_hardening",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { ApiError, getMe, login as apiLogin, SESSION_EXPIRED_EVENT, type Me } from "../api";
+import { ApiError, getMe, login as apiLogin, signOut as apiSignOut, SESSION_EXPIRED_EVENT, type Me } from "../api";
 
 interface AuthState {
   user: Me | null;
@@ -74,7 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout(): void {
-    localStorage.removeItem("token");
+    // Ended on the server first, while the token is still sent; signed out
+    // here whatever it answers (a session already gone is still gone).
+    void apiSignOut()
+      .catch(() => undefined)
+      .finally(() => {
+        localStorage.removeItem("token");
+      });
     setSessionExpired(false);
     setUser(null);
   }

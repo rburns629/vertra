@@ -343,6 +343,37 @@ Tokens for bots: a team's bots (Team page → Automation) and the catalog's auto
 | `created_at` | timestamptz | no | |
 | `revoked_at` | timestamptz | yes | Set when revoked; the token stops working at once. |
 | `last_used_at` | timestamptz | yes | When it last signed a request in (updated at most every few minutes). |
+| `expires_at` | timestamptz | yes | After this it signs nothing in. New tokens last 90 days unless their maker chose otherwise; empty: until revoked (tokens from before expiry, and those made to last). |
+
+### revoked_sessions
+
+Sessions signed out before they expired (`AuthService/SignOut`): the console and the gateway refuse a session whose id is here. Deleted once the session would have expired anyway.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `sid` | text | no, key | The session's id (its token's `sid`). |
+| `expires_at` | timestamptz | no | When the session would have expired. |
+
+### rate_limit_windows
+
+The fixed-window limits on signing in, registering, changing a password and adding members (`src/rpc/rateLimit.ts`), kept here so every copy of the console counts the same attempts. Deleted once their window ends.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `key` | text | no, key | The limit and who it counts, such as `login:<address>:<email>`. |
+| `count` | integer | no | Attempts this window. |
+| `resets_at` | timestamptz | no | When the window ends and the count starts again. |
+
+### sign_in_failures
+
+Each email's failed sign-ins, from any address (`src/auth/loginThrottle.ts`): past 10 in an hour, attempts are spaced out. Cleared by a successful sign-in; deleted an hour after the window started.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `email` | text | no, key | The email tried, lowercased, whether or not it has an account. |
+| `failures` | integer | no | Failures this window. |
+| `window_start` | timestamptz | no | When the window's first failure was. |
+| `next_at` | timestamptz | yes | No attempt is checked before this. |
 
 ### products
 
@@ -406,16 +437,16 @@ Which team owns each image repository: the first team to register a product from
 
 ### audit_log
 
-Who changed what (`src/audit.ts`): one row per call that tried to change something (any method not marked as only reading), allowed or refused, recorded once it's answered. Sign-in and password changes aren't recorded. Admins read it with `AdminService/ListAuditEntries`; each entry is also logged (`event: "audit"`).
+Who changed what (`src/audit.ts`): one row per call that tried to change something (any method not marked as only reading), allowed or refused, recorded once it's answered, signing in and changing a password included. Admins read it with `AdminService/ListAuditEntries`; each entry is also logged (`event: "audit"`).
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
 | `id` | bigserial | no | Increasing; pages go by it. |
 | `at` | timestamptz | no | |
-| `actor_id` | uuid | yes | The caller (a user or a bot); null when unauthenticated. |
+| `actor_id` | uuid | yes | The caller (a user or a bot), or for a sign-in, who it signed in; null when unauthenticated. |
 | `method` | text | no | `RPC` (older rows: POST, PUT, PATCH or DELETE). |
 | `route` | text | no | The method, such as `vertra.console.v1.SecretService/PutSecret` (older rows: a REST route pattern, such as `/api/teams/:teamName/secrets/:secretName`). |
-| `target` | jsonb | no | The identifying fields of the request (names, teams, images, emails, scopes, reasons); never a secret value, password or token. |
+| `target` | jsonb | no | The identifying fields of the request (names, teams, images, emails, scopes, reasons) and the client's address (`clientIp`); never a secret value, password or token. |
 | `status` | integer | no | The answer's status, as HTTP would say it (200, 403, 409, ...): a refusal is recorded too. |
 | `request_id` | text | yes | The request's id, as in the logs. |
 | `hash` | text | yes | sha256 of the previous entry's hash and this entry's fields, so changing, removing or adding an entry breaks every later hash. Null on entries from before the chain. |

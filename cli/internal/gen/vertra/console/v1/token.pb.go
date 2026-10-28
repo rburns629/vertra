@@ -25,11 +25,13 @@ const (
 )
 
 type TokenInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	LastUsedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Label      string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastUsedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	// After this it authenticates nothing. Unset: until revoked.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -88,6 +90,13 @@ func (x *TokenInfo) GetCreatedAt() *timestamppb.Timestamp {
 func (x *TokenInfo) GetLastUsedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LastUsedAt
+	}
+	return nil
+}
+
+func (x *TokenInfo) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
 	}
 	return nil
 }
@@ -203,8 +212,10 @@ type AutomationToken struct {
 	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	LastUsedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
 	// Such as teams:create, products:register, teams:retire.
-	Scopes        []string `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
-	BotEmail      string   `protobuf:"bytes,6,opt,name=bot_email,json=botEmail,proto3" json:"bot_email,omitempty"`
+	Scopes   []string `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	BotEmail string   `protobuf:"bytes,6,opt,name=bot_email,json=botEmail,proto3" json:"bot_email,omitempty"`
+	// After this it authenticates nothing. Unset: until revoked.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -279,6 +290,13 @@ func (x *AutomationToken) GetBotEmail() string {
 		return x.BotEmail
 	}
 	return ""
+}
+
+func (x *AutomationToken) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
 }
 
 type ListBotsRequest struct {
@@ -380,8 +398,11 @@ type CreateBotTokenRequest struct {
 	// system placing orders. Otherwise a pipeline's bot, a maintainer.
 	Ordering       bool     `protobuf:"varint,4,opt,name=ordering,proto3" json:"ordering,omitempty"`
 	OrderTemplates []string `protobuf:"bytes,5,rep,name=order_templates,json=orderTemplates,proto3" json:"order_templates,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// How many days the token lasts, 1 to 730. Left out, 90; 0, until
+	// revoked.
+	ExpiresInDays *int32 `protobuf:"varint,6,opt,name=expires_in_days,json=expiresInDays,proto3,oneof" json:"expires_in_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateBotTokenRequest) Reset() {
@@ -447,6 +468,13 @@ func (x *CreateBotTokenRequest) GetOrderTemplates() []string {
 		return x.OrderTemplates
 	}
 	return nil
+}
+
+func (x *CreateBotTokenRequest) GetExpiresInDays() int32 {
+	if x != nil && x.ExpiresInDays != nil {
+		return *x.ExpiresInDays
+	}
+	return 0
 }
 
 type SetBotOrdersRequest struct {
@@ -902,7 +930,10 @@ type CreateAutomationTokenRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Label string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
 	// At least one, each once.
-	Scopes        []string `protobuf:"bytes,2,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	Scopes []string `protobuf:"bytes,2,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	// How many days the token lasts, 1 to 730. Left out, 90; 0, until
+	// revoked.
+	ExpiresInDays *int32 `protobuf:"varint,3,opt,name=expires_in_days,json=expiresInDays,proto3,oneof" json:"expires_in_days,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -949,6 +980,13 @@ func (x *CreateAutomationTokenRequest) GetScopes() []string {
 		return x.Scopes
 	}
 	return nil
+}
+
+func (x *CreateAutomationTokenRequest) GetExpiresInDays() int32 {
+	if x != nil && x.ExpiresInDays != nil {
+		return *x.ExpiresInDays
+	}
+	return 0
 }
 
 type CreateAutomationTokenResponse struct {
@@ -1413,14 +1451,16 @@ var File_vertra_console_v1_token_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/console/v1/token.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaa\x01\n" +
+	"\x1dvertra/console/v1/token.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe5\x01\n" +
 	"\tTokenInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x129\n" +
 	"\n" +
 	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12<\n" +
 	"\flast_used_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastUsedAt\"\xca\x02\n" +
+	"lastUsedAt\x129\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xca\x02\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x124\n" +
@@ -1429,7 +1469,7 @@ const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\x0forder_templates\x18\x05 \x03(\tR\x0eorderTemplates\x12#\n" +
 	"\rcallback_host\x18\x06 \x01(\tR\fcallbackHost\x12M\n" +
 	"\x15callback_last_sent_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x12callbackLastSentAt\x12.\n" +
-	"\x13callback_last_error\x18\b \x01(\tR\x11callbackLastError\"\xe5\x01\n" +
+	"\x13callback_last_error\x18\b \x01(\tR\x11callbackLastError\"\xa0\x02\n" +
 	"\x0fAutomationToken\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x129\n" +
@@ -1438,17 +1478,21 @@ const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\flast_used_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"lastUsedAt\x12\x16\n" +
 	"\x06scopes\x18\x05 \x03(\tR\x06scopes\x12\x1b\n" +
-	"\tbot_email\x18\x06 \x01(\tR\bbotEmail\"%\n" +
+	"\tbot_email\x18\x06 \x01(\tR\bbotEmail\x129\n" +
+	"\n" +
+	"expires_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"%\n" +
 	"\x0fListBotsRequest\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\">\n" +
 	"\x10ListBotsResponse\x12*\n" +
-	"\x04bots\x18\x01 \x03(\v2\x16.vertra.console.v1.BotR\x04bots\"\x9c\x01\n" +
+	"\x04bots\x18\x01 \x03(\v2\x16.vertra.console.v1.BotR\x04bots\"\xdd\x01\n" +
 	"\x15CreateBotTokenRequest\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
 	"\x05label\x18\x03 \x01(\tR\x05label\x12\x1a\n" +
 	"\bordering\x18\x04 \x01(\bR\bordering\x12'\n" +
-	"\x0forder_templates\x18\x05 \x03(\tR\x0eorderTemplates\"]\n" +
+	"\x0forder_templates\x18\x05 \x03(\tR\x0eorderTemplates\x12+\n" +
+	"\x0fexpires_in_days\x18\x06 \x01(\x05H\x00R\rexpiresInDays\x88\x01\x01B\x12\n" +
+	"\x10_expires_in_days\"]\n" +
 	"\x13SetBotOrdersRequest\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1c\n" +
@@ -1472,10 +1516,12 @@ const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\x13RevokeTokenResponse\"\x1d\n" +
 	"\x1bListAutomationTokensRequest\"Z\n" +
 	"\x1cListAutomationTokensResponse\x12:\n" +
-	"\x06tokens\x18\x01 \x03(\v2\".vertra.console.v1.AutomationTokenR\x06tokens\"L\n" +
+	"\x06tokens\x18\x01 \x03(\v2\".vertra.console.v1.AutomationTokenR\x06tokens\"\x8d\x01\n" +
 	"\x1cCreateAutomationTokenRequest\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x16\n" +
-	"\x06scopes\x18\x02 \x03(\tR\x06scopes\"~\n" +
+	"\x06scopes\x18\x02 \x03(\tR\x06scopes\x12+\n" +
+	"\x0fexpires_in_days\x18\x03 \x01(\x05H\x00R\rexpiresInDays\x88\x01\x01B\x12\n" +
+	"\x10_expires_in_days\"~\n" +
 	"\x1dCreateAutomationTokenResponse\x12\x19\n" +
 	"\btoken_id\x18\x01 \x01(\tR\atokenId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x16\n" +
@@ -1574,43 +1620,45 @@ var file_vertra_console_v1_token_proto_goTypes = []any{
 var file_vertra_console_v1_token_proto_depIdxs = []int32{
 	26, // 0: vertra.console.v1.TokenInfo.created_at:type_name -> google.protobuf.Timestamp
 	26, // 1: vertra.console.v1.TokenInfo.last_used_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: vertra.console.v1.Bot.tokens:type_name -> vertra.console.v1.TokenInfo
-	26, // 3: vertra.console.v1.Bot.callback_last_sent_at:type_name -> google.protobuf.Timestamp
-	26, // 4: vertra.console.v1.AutomationToken.created_at:type_name -> google.protobuf.Timestamp
-	26, // 5: vertra.console.v1.AutomationToken.last_used_at:type_name -> google.protobuf.Timestamp
-	1,  // 6: vertra.console.v1.ListBotsResponse.bots:type_name -> vertra.console.v1.Bot
-	2,  // 7: vertra.console.v1.ListAutomationTokensResponse.tokens:type_name -> vertra.console.v1.AutomationToken
-	24, // 8: vertra.console.v1.BotIdentity.claims:type_name -> vertra.console.v1.BotIdentity.ClaimsEntry
-	26, // 9: vertra.console.v1.BotIdentity.created_at:type_name -> google.protobuf.Timestamp
-	26, // 10: vertra.console.v1.BotIdentity.last_used_at:type_name -> google.protobuf.Timestamp
-	17, // 11: vertra.console.v1.ListBotIdentitiesResponse.identities:type_name -> vertra.console.v1.BotIdentity
-	25, // 12: vertra.console.v1.AddBotIdentityRequest.claims:type_name -> vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
-	17, // 13: vertra.console.v1.AddBotIdentityResponse.identity:type_name -> vertra.console.v1.BotIdentity
-	3,  // 14: vertra.console.v1.TokenService.ListBots:input_type -> vertra.console.v1.ListBotsRequest
-	5,  // 15: vertra.console.v1.TokenService.CreateBotToken:input_type -> vertra.console.v1.CreateBotTokenRequest
-	6,  // 16: vertra.console.v1.TokenService.SetBotOrders:input_type -> vertra.console.v1.SetBotOrdersRequest
-	8,  // 17: vertra.console.v1.TokenService.SetBotCallback:input_type -> vertra.console.v1.SetBotCallbackRequest
-	18, // 18: vertra.console.v1.TokenService.ListBotIdentities:input_type -> vertra.console.v1.ListBotIdentitiesRequest
-	20, // 19: vertra.console.v1.TokenService.AddBotIdentity:input_type -> vertra.console.v1.AddBotIdentityRequest
-	22, // 20: vertra.console.v1.TokenService.RemoveBotIdentity:input_type -> vertra.console.v1.RemoveBotIdentityRequest
-	11, // 21: vertra.console.v1.TokenService.RevokeToken:input_type -> vertra.console.v1.RevokeTokenRequest
-	13, // 22: vertra.console.v1.TokenService.ListAutomationTokens:input_type -> vertra.console.v1.ListAutomationTokensRequest
-	15, // 23: vertra.console.v1.TokenService.CreateAutomationToken:input_type -> vertra.console.v1.CreateAutomationTokenRequest
-	4,  // 24: vertra.console.v1.TokenService.ListBots:output_type -> vertra.console.v1.ListBotsResponse
-	10, // 25: vertra.console.v1.TokenService.CreateBotToken:output_type -> vertra.console.v1.CreateBotTokenResponse
-	7,  // 26: vertra.console.v1.TokenService.SetBotOrders:output_type -> vertra.console.v1.SetBotOrdersResponse
-	9,  // 27: vertra.console.v1.TokenService.SetBotCallback:output_type -> vertra.console.v1.SetBotCallbackResponse
-	19, // 28: vertra.console.v1.TokenService.ListBotIdentities:output_type -> vertra.console.v1.ListBotIdentitiesResponse
-	21, // 29: vertra.console.v1.TokenService.AddBotIdentity:output_type -> vertra.console.v1.AddBotIdentityResponse
-	23, // 30: vertra.console.v1.TokenService.RemoveBotIdentity:output_type -> vertra.console.v1.RemoveBotIdentityResponse
-	12, // 31: vertra.console.v1.TokenService.RevokeToken:output_type -> vertra.console.v1.RevokeTokenResponse
-	14, // 32: vertra.console.v1.TokenService.ListAutomationTokens:output_type -> vertra.console.v1.ListAutomationTokensResponse
-	16, // 33: vertra.console.v1.TokenService.CreateAutomationToken:output_type -> vertra.console.v1.CreateAutomationTokenResponse
-	24, // [24:34] is the sub-list for method output_type
-	14, // [14:24] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	26, // 2: vertra.console.v1.TokenInfo.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 3: vertra.console.v1.Bot.tokens:type_name -> vertra.console.v1.TokenInfo
+	26, // 4: vertra.console.v1.Bot.callback_last_sent_at:type_name -> google.protobuf.Timestamp
+	26, // 5: vertra.console.v1.AutomationToken.created_at:type_name -> google.protobuf.Timestamp
+	26, // 6: vertra.console.v1.AutomationToken.last_used_at:type_name -> google.protobuf.Timestamp
+	26, // 7: vertra.console.v1.AutomationToken.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 8: vertra.console.v1.ListBotsResponse.bots:type_name -> vertra.console.v1.Bot
+	2,  // 9: vertra.console.v1.ListAutomationTokensResponse.tokens:type_name -> vertra.console.v1.AutomationToken
+	24, // 10: vertra.console.v1.BotIdentity.claims:type_name -> vertra.console.v1.BotIdentity.ClaimsEntry
+	26, // 11: vertra.console.v1.BotIdentity.created_at:type_name -> google.protobuf.Timestamp
+	26, // 12: vertra.console.v1.BotIdentity.last_used_at:type_name -> google.protobuf.Timestamp
+	17, // 13: vertra.console.v1.ListBotIdentitiesResponse.identities:type_name -> vertra.console.v1.BotIdentity
+	25, // 14: vertra.console.v1.AddBotIdentityRequest.claims:type_name -> vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
+	17, // 15: vertra.console.v1.AddBotIdentityResponse.identity:type_name -> vertra.console.v1.BotIdentity
+	3,  // 16: vertra.console.v1.TokenService.ListBots:input_type -> vertra.console.v1.ListBotsRequest
+	5,  // 17: vertra.console.v1.TokenService.CreateBotToken:input_type -> vertra.console.v1.CreateBotTokenRequest
+	6,  // 18: vertra.console.v1.TokenService.SetBotOrders:input_type -> vertra.console.v1.SetBotOrdersRequest
+	8,  // 19: vertra.console.v1.TokenService.SetBotCallback:input_type -> vertra.console.v1.SetBotCallbackRequest
+	18, // 20: vertra.console.v1.TokenService.ListBotIdentities:input_type -> vertra.console.v1.ListBotIdentitiesRequest
+	20, // 21: vertra.console.v1.TokenService.AddBotIdentity:input_type -> vertra.console.v1.AddBotIdentityRequest
+	22, // 22: vertra.console.v1.TokenService.RemoveBotIdentity:input_type -> vertra.console.v1.RemoveBotIdentityRequest
+	11, // 23: vertra.console.v1.TokenService.RevokeToken:input_type -> vertra.console.v1.RevokeTokenRequest
+	13, // 24: vertra.console.v1.TokenService.ListAutomationTokens:input_type -> vertra.console.v1.ListAutomationTokensRequest
+	15, // 25: vertra.console.v1.TokenService.CreateAutomationToken:input_type -> vertra.console.v1.CreateAutomationTokenRequest
+	4,  // 26: vertra.console.v1.TokenService.ListBots:output_type -> vertra.console.v1.ListBotsResponse
+	10, // 27: vertra.console.v1.TokenService.CreateBotToken:output_type -> vertra.console.v1.CreateBotTokenResponse
+	7,  // 28: vertra.console.v1.TokenService.SetBotOrders:output_type -> vertra.console.v1.SetBotOrdersResponse
+	9,  // 29: vertra.console.v1.TokenService.SetBotCallback:output_type -> vertra.console.v1.SetBotCallbackResponse
+	19, // 30: vertra.console.v1.TokenService.ListBotIdentities:output_type -> vertra.console.v1.ListBotIdentitiesResponse
+	21, // 31: vertra.console.v1.TokenService.AddBotIdentity:output_type -> vertra.console.v1.AddBotIdentityResponse
+	23, // 32: vertra.console.v1.TokenService.RemoveBotIdentity:output_type -> vertra.console.v1.RemoveBotIdentityResponse
+	12, // 33: vertra.console.v1.TokenService.RevokeToken:output_type -> vertra.console.v1.RevokeTokenResponse
+	14, // 34: vertra.console.v1.TokenService.ListAutomationTokens:output_type -> vertra.console.v1.ListAutomationTokensResponse
+	16, // 35: vertra.console.v1.TokenService.CreateAutomationToken:output_type -> vertra.console.v1.CreateAutomationTokenResponse
+	26, // [26:36] is the sub-list for method output_type
+	16, // [16:26] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_token_proto_init() }
@@ -1618,6 +1666,8 @@ func file_vertra_console_v1_token_proto_init() {
 	if File_vertra_console_v1_token_proto != nil {
 		return
 	}
+	file_vertra_console_v1_token_proto_msgTypes[5].OneofWrappers = []any{}
+	file_vertra_console_v1_token_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

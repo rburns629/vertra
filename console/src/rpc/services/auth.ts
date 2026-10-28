@@ -14,10 +14,10 @@ import type { FastifyInstance } from "fastify";
 import { loginWaitSeconds, recordLoginFailure, recordLoginSuccess } from "../../auth/loginThrottle.js";
 import { hashPassword, NewPassword, verifyAgainstNothing, verifyPassword } from "../../auth/password.js";
 import { config } from "../../config.js";
-import { createUser, findUserByEmail, findUserById, recordSignIn, setUserPassword, teamRolesForUser } from "../../db/queries.js";
-import { ssoRequiredBy } from "../../auth/plugin.js";
+import { createUser, findUserByEmail, findUserById, recordSignIn, revokeSession, setUserPassword, teamRolesForUser } from "../../db/queries.js";
+import { newSession, ssoRequiredBy } from "../../auth/plugin.js";
 import type { AuthService } from "../../gen/vertra/console/v1/auth_pb.js";
-import { callerOf, kClientIp, logOf } from "../context.js";
+import { callerOf, kClientIp, kSignedIn, logOf } from "../context.js";
 import { badRequest, forbidden, rpcError, unauthenticated } from "../errors.js";
 import { FixedWindowLimit } from "../rateLimit.js";
 import { botForToken } from "../../auth/keyless.js";
@@ -49,7 +49,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
     },
 
     async register(req, ctx) {
-      registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
+      await registerLimit.take(`register:${ctx.values.get(kClientIp)}`, ctx);
       const { email, password } = check({ email: Email, password: NewPassword }, req);
       if (!config.allowSelfRegistration) {
         throw forbidden("Accounts are created by an admin. Ask a Vertra admin for one.", "REGISTRATION_DISABLED");
@@ -63,19 +63,20 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
 
     async exchangeToken(req, ctx) {
       const { idToken } = check({ idToken: Type.String({ minLength: 1, maxLength: 8192 }) }, req);
-      exchangeLimit.take(`exchange:${ctx.values.get(kClientIp)}`, ctx);
+      await exchangeLimit.take(`exchange:${ctx.values.get(kClientIp)}`, ctx);
       const bot = await botForToken(idToken);
       logOf(ctx).info({ event: "keyless_sign_in", userId: bot.botId, issuer: bot.issuer, subject: bot.subject }, "a bot signed in with its CI's identity");
       // Not a password's session: signed in by an identity provider, as single sign-on is.
-      const token = app.jwt.sign({ userId: bot.botId, sso: true }, { expiresIn: KEYLESS_SESSION_SECONDS });
+      ctx.values.set(kSignedIn, bot.botId);
+      const token = app.jwt.sign(newSession(bot.botId, true), { expiresIn: KEYLESS_SESSION_SECONDS });
       return { token, email: bot.email, expiresAt: timestamp(new Date(Date.now() + KEYLESS_SESSION_SECONDS * 1000)) };
     },
 
     async login(req, ctx) {
       const { email, password } = check({ email: Email, password: AnyPassword }, req);
-      loginLimit.take(`login:${ctx.values.get(kClientIp)}:${email.toLowerCase()}`, ctx);
+      await loginLimit.take(`login:${ctx.values.get(kClientIp)}:${email.toLowerCase()}`, ctx);
       // Refused before the password is checked, so this says nothing about it.
-      const wait = loginWaitSeconds(email);
+      const wait = await loginWaitSeconds(email);
       if (wait > 0) {
         ctx.responseHeader.set("Retry-After", String(wait));
         throw rpcError(
@@ -92,9 +93,11 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
         ? await verifyPassword(user.passwordHash, password)
         : await verifyAgainstNothing(password);
       if (!user || !valid) {
-        recordLoginFailure(email);
+        await recordLoginFailure(email);
+        logOf(ctx).warn({ event: "sign_in_failed", email, clientIp: ctx.values.get(kClientIp) }, "a sign-in failed");
         throw unauthenticated("Invalid email or password.");
       }
+      ctx.values.set(kSignedIn, user.id);
       // A team that requires single sign-on refuses its members' passwords;
       // checked only once the password was right, so the answer says
       // nothing about an account to someone guessing.
@@ -105,9 +108,9 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
           "SSO_REQUIRED",
         );
       }
-      recordLoginSuccess(email);
+      await recordLoginSuccess(email);
       await recordSignIn(user.id);
-      return { token: app.jwt.sign({ userId: user.id }) };
+      return { token: app.jwt.sign(newSession(user.id)) };
     },
 
     async getMe(_req, ctx) {
@@ -129,7 +132,7 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
 
     async changePassword(req, ctx) {
       const caller = callerOf(ctx);
-      passwordChangeLimit.take(`password-change:${caller.id}`, ctx);
+      await passwordChangeLimit.take(`password-change:${caller.id}`, ctx);
       const { currentPassword, newPassword } = check(
         { currentPassword: AnyPassword, newPassword: NewPassword },
         req,
@@ -148,7 +151,15 @@ export function authService(app: FastifyInstance): ServiceImpl<typeof AuthServic
       }
       await setUserPassword(user.id, await hashPassword(newPassword), false);
       logOf(ctx).info({ userId: user.id }, "password changed");
-      return { token: app.jwt.sign({ userId: user.id }) };
+      return { token: app.jwt.sign(newSession(user.id)) };
+    },
+
+    async signOut(_req, ctx) {
+      const session = callerOf(ctx).session;
+      // An API token, or a session from before sessions had ids: nothing to end here.
+      if (session) await revokeSession(session.sid, new Date(session.exp * 1000));
+      logOf(ctx).info({ event: "signed_out" }, "signed out");
+      return {};
     },
   };
 }

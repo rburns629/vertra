@@ -219,6 +219,11 @@ export async function login(email: string, password: string): Promise<string> {
   return (await call(() => auth.login({ email, password }))).token;
 }
 
+/** Ends this session on the server too, so a copy of its token stops working. */
+export async function signOut(): Promise<void> {
+  await call(() => auth.signOut({}));
+}
+
 export async function getMe(): Promise<Me> {
   const me = await call(() => auth.getMe({}));
   return {
@@ -822,6 +827,8 @@ export interface ApiTokenMeta {
   createdAt: string;
   /** Recorded to within a few minutes; null if never used. */
   lastUsedAt: string | null;
+  /** Null: until revoked. */
+  expiresAt: string | null;
 }
 
 export interface Bot {
@@ -845,6 +852,7 @@ export async function listBots(teamName: string): Promise<Bot[]> {
       label: t.label,
       createdAt: iso(t.createdAt) ?? "",
       lastUsedAt: iso(t.lastUsedAt),
+      expiresAt: iso(t.expiresAt),
     })),
     ordering: bot.ordering,
     orderTemplates: bot.orderTemplates,
@@ -862,9 +870,12 @@ export async function createBot(
   email: string,
   label: string,
   orderTemplates?: string[],
+  expiresInDays?: number,
 ): Promise<{ email: string; token: string; tokenId: string }> {
   const ordering = orderTemplates !== undefined;
-  const created = await call(() => tokens.createBotToken({ team: teamName, email, label, ordering, orderTemplates: orderTemplates ?? [] }));
+  const created = await call(() =>
+    tokens.createBotToken({ team: teamName, email, label, ordering, orderTemplates: orderTemplates ?? [], expiresInDays }),
+  );
   return { email: created.email, token: created.token, tokenId: created.tokenId };
 }
 
@@ -910,6 +921,7 @@ export interface AutomationToken {
   scopes: string[];
   botEmail: string;
   createdAt: string;
+  expiresAt: string | null;
 }
 
 export async function listAutomationTokens(): Promise<AutomationToken[]> {
@@ -920,6 +932,7 @@ export async function listAutomationTokens(): Promise<AutomationToken[]> {
     scopes: t.scopes,
     botEmail: t.botEmail,
     createdAt: iso(t.createdAt) ?? "",
+    expiresAt: iso(t.expiresAt),
   }));
 }
 
@@ -927,8 +940,9 @@ export async function listAutomationTokens(): Promise<AutomationToken[]> {
 export async function createAutomationToken(
   label: string,
   scopes: string[],
+  expiresInDays?: number,
 ): Promise<{ tokenId: string; label: string; scopes: string[]; token: string }> {
-  const created = await call(() => tokens.createAutomationToken({ label, scopes }));
+  const created = await call(() => tokens.createAutomationToken({ label, scopes, expiresInDays }));
   return { tokenId: created.tokenId, label: created.label, scopes: created.scopes, token: created.token };
 }
 

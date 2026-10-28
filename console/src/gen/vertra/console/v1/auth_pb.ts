@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/auth.proto.
  */
 export const file_vertra_console_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9hdXRoLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIXChVHZXRFbnZpcm9ubWVudFJlcXVlc3QiVQoWR2V0RW52aXJvbm1lbnRSZXNwb25zZRINCgVsYWJlbBgBIAEoCRIZChFzZWxmX3JlZ2lzdHJhdGlvbhgCIAEoCBIRCglzc29fbGFiZWwYAyABKAkiMgoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIjIKEFJlZ2lzdGVyUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIvCgxMb2dpblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiHgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCSIOCgxHZXRNZVJlcXVlc3QisgEKDUdldE1lUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCRISCgp0ZWFtX25hbWVzGAMgAygJEhAKCGlzX2FkbWluGAQgASgIEhUKDW1haW50YWluZXJfb2YYBSADKAkSHAoUbXVzdF9jaGFuZ2VfcGFzc3dvcmQYBiABKAgSFAoMaGFzX3Bhc3N3b3JkGAcgASgIEhAKCHVzZXNfc3NvGAggASgIIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSInChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlEg0KBXRva2VuGAEgASgJIigKFEV4Y2hhbmdlVG9rZW5SZXF1ZXN0EhAKCGlkX3Rva2VuGAEgASgJImUKFUV4Y2hhbmdlVG9rZW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCRINCgVlbWFpbBgCIAEoCRIuCgpleHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcDK2BAoLQXV0aFNlcnZpY2USagoOR2V0RW52aXJvbm1lbnQSKC52ZXJ0cmEuY29uc29sZS52MS5HZXRFbnZpcm9ubWVudFJlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5HZXRFbnZpcm9ubWVudFJlc3BvbnNlIgOQAgESUwoIUmVnaXN0ZXISIi52ZXJ0cmEuY29uc29sZS52MS5SZWdpc3RlclJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5SZWdpc3RlclJlc3BvbnNlEkoKBUxvZ2luEh8udmVydHJhLmNvbnNvbGUudjEuTG9naW5SZXF1ZXN0GiAudmVydHJhLmNvbnNvbGUudjEuTG9naW5SZXNwb25zZRJiCg1FeGNoYW5nZVRva2VuEicudmVydHJhLmNvbnNvbGUudjEuRXhjaGFuZ2VUb2tlblJlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5FeGNoYW5nZVRva2VuUmVzcG9uc2USTwoFR2V0TWUSHy52ZXJ0cmEuY29uc29sZS52MS5HZXRNZVJlcXVlc3QaIC52ZXJ0cmEuY29uc29sZS52MS5HZXRNZVJlc3BvbnNlIgOQAgESZQoOQ2hhbmdlUGFzc3dvcmQSKC52ZXJ0cmEuY29uc29sZS52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaKS52ZXJ0cmEuY29uc29sZS52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("Chx2ZXJ0cmEvY29uc29sZS92MS9hdXRoLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIXChVHZXRFbnZpcm9ubWVudFJlcXVlc3QiVQoWR2V0RW52aXJvbm1lbnRSZXNwb25zZRINCgVsYWJlbBgBIAEoCRIZChFzZWxmX3JlZ2lzdHJhdGlvbhgCIAEoCBIRCglzc29fbGFiZWwYAyABKAkiMgoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIjIKEFJlZ2lzdGVyUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIvCgxMb2dpblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiHgoNTG9naW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCSIQCg5TaWduT3V0UmVxdWVzdCIRCg9TaWduT3V0UmVzcG9uc2UiDgoMR2V0TWVSZXF1ZXN0IrIBCg1HZXRNZVJlc3BvbnNlEg8KB3VzZXJfaWQYASABKAkSDQoFZW1haWwYAiABKAkSEgoKdGVhbV9uYW1lcxgDIAMoCRIQCghpc19hZG1pbhgEIAEoCBIVCg1tYWludGFpbmVyX29mGAUgAygJEhwKFG11c3RfY2hhbmdlX3Bhc3N3b3JkGAYgASgIEhQKDGhhc19wYXNzd29yZBgHIAEoCBIQCgh1c2VzX3NzbxgIIAEoCCJHChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSGAoQY3VycmVudF9wYXNzd29yZBgBIAEoCRIUCgxuZXdfcGFzc3dvcmQYAiABKAkiJwoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRINCgV0b2tlbhgBIAEoCSIoChRFeGNoYW5nZVRva2VuUmVxdWVzdBIQCghpZF90b2tlbhgBIAEoCSJlChVFeGNoYW5nZVRva2VuUmVzcG9uc2USDQoFdG9rZW4YASABKAkSDQoFZW1haWwYAiABKAkSLgoKZXhwaXJlc19hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAyjQUKC0F1dGhTZXJ2aWNlEmoKDkdldEVudmlyb25tZW50EigudmVydHJhLmNvbnNvbGUudjEuR2V0RW52aXJvbm1lbnRSZXF1ZXN0GikudmVydHJhLmNvbnNvbGUudjEuR2V0RW52aXJvbm1lbnRSZXNwb25zZSIDkAIBElMKCFJlZ2lzdGVyEiIudmVydHJhLmNvbnNvbGUudjEuUmVnaXN0ZXJSZXF1ZXN0GiMudmVydHJhLmNvbnNvbGUudjEuUmVnaXN0ZXJSZXNwb25zZRJKCgVMb2dpbhIfLnZlcnRyYS5jb25zb2xlLnYxLkxvZ2luUmVxdWVzdBogLnZlcnRyYS5jb25zb2xlLnYxLkxvZ2luUmVzcG9uc2USYgoNRXhjaGFuZ2VUb2tlbhInLnZlcnRyYS5jb25zb2xlLnYxLkV4Y2hhbmdlVG9rZW5SZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuRXhjaGFuZ2VUb2tlblJlc3BvbnNlEk8KBUdldE1lEh8udmVydHJhLmNvbnNvbGUudjEuR2V0TWVSZXF1ZXN0GiAudmVydHJhLmNvbnNvbGUudjEuR2V0TWVSZXNwb25zZSIDkAIBEmUKDkNoYW5nZVBhc3N3b3JkEigudmVydHJhLmNvbnNvbGUudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GikudmVydHJhLmNvbnNvbGUudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRJVCgdTaWduT3V0EiEudmVydHJhLmNvbnNvbGUudjEuU2lnbk91dFJlcXVlc3QaIi52ZXJ0cmEuY29uc29sZS52MS5TaWduT3V0UmVzcG9uc2UiA5ACAmIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.GetEnvironmentRequest
@@ -148,6 +148,32 @@ export const LoginResponseSchema: GenMessage<LoginResponse> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_auth, 5);
 
 /**
+ * @generated from message vertra.console.v1.SignOutRequest
+ */
+export type SignOutRequest = Message<"vertra.console.v1.SignOutRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SignOutRequest.
+ * Use `create(SignOutRequestSchema)` to create a new message.
+ */
+export const SignOutRequestSchema: GenMessage<SignOutRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_auth, 6);
+
+/**
+ * @generated from message vertra.console.v1.SignOutResponse
+ */
+export type SignOutResponse = Message<"vertra.console.v1.SignOutResponse"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.SignOutResponse.
+ * Use `create(SignOutResponseSchema)` to create a new message.
+ */
+export const SignOutResponseSchema: GenMessage<SignOutResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_auth, 7);
+
+/**
  * @generated from message vertra.console.v1.GetMeRequest
  */
 export type GetMeRequest = Message<"vertra.console.v1.GetMeRequest"> & {
@@ -158,7 +184,7 @@ export type GetMeRequest = Message<"vertra.console.v1.GetMeRequest"> & {
  * Use `create(GetMeRequestSchema)` to create a new message.
  */
 export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_auth, 6);
+  messageDesc(file_vertra_console_v1_auth, 8);
 
 /**
  * @generated from message vertra.console.v1.GetMeResponse
@@ -219,7 +245,7 @@ export type GetMeResponse = Message<"vertra.console.v1.GetMeResponse"> & {
  * Use `create(GetMeResponseSchema)` to create a new message.
  */
 export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_auth, 7);
+  messageDesc(file_vertra_console_v1_auth, 9);
 
 /**
  * @generated from message vertra.console.v1.ChangePasswordRequest
@@ -241,7 +267,7 @@ export type ChangePasswordRequest = Message<"vertra.console.v1.ChangePasswordReq
  * Use `create(ChangePasswordRequestSchema)` to create a new message.
  */
 export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_auth, 8);
+  messageDesc(file_vertra_console_v1_auth, 10);
 
 /**
  * @generated from message vertra.console.v1.ChangePasswordResponse
@@ -258,7 +284,7 @@ export type ChangePasswordResponse = Message<"vertra.console.v1.ChangePasswordRe
  * Use `create(ChangePasswordResponseSchema)` to create a new message.
  */
 export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_auth, 9);
+  messageDesc(file_vertra_console_v1_auth, 11);
 
 /**
  * @generated from message vertra.console.v1.ExchangeTokenRequest
@@ -277,7 +303,7 @@ export type ExchangeTokenRequest = Message<"vertra.console.v1.ExchangeTokenReque
  * Use `create(ExchangeTokenRequestSchema)` to create a new message.
  */
 export const ExchangeTokenRequestSchema: GenMessage<ExchangeTokenRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_auth, 10);
+  messageDesc(file_vertra_console_v1_auth, 12);
 
 /**
  * @generated from message vertra.console.v1.ExchangeTokenResponse
@@ -308,7 +334,7 @@ export type ExchangeTokenResponse = Message<"vertra.console.v1.ExchangeTokenResp
  * Use `create(ExchangeTokenResponseSchema)` to create a new message.
  */
 export const ExchangeTokenResponseSchema: GenMessage<ExchangeTokenResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_auth, 11);
+  messageDesc(file_vertra_console_v1_auth, 13);
 
 /**
  * Signing in, and who you are. Bots don't sign in: they send their API
@@ -384,6 +410,18 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof ChangePasswordRequestSchema;
     output: typeof ChangePasswordResponseSchema;
+  },
+  /**
+   * Ends this session: its token is refused from now on, by the console
+   * and the gateway. An API token is revoked with TokenService.RevokeToken
+   * instead.
+   *
+   * @generated from rpc vertra.console.v1.AuthService.SignOut
+   */
+  signOut: {
+    methodKind: "unary";
+    input: typeof SignOutRequestSchema;
+    output: typeof SignOutResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_vertra_console_v1_auth, 0);

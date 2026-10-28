@@ -33,6 +33,12 @@ service AuthService {
   // Changes your password (people only), signing out your other sessions;
   // returns a fresh token for this one.
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  // Ends this session: its token is refused from now on, by the console
+  // and the gateway. An API token is revoked with TokenService.RevokeToken
+  // instead.
+  rpc SignOut(SignOutRequest) returns (SignOutResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 message GetEnvironmentRequest {}
@@ -66,6 +72,10 @@ message LoginResponse {
   // Send as Authorization: Bearer <token>.
   string token = 1;
 }
+
+message SignOutRequest {}
+
+message SignOutResponse {}
 
 message GetMeRequest {}
 

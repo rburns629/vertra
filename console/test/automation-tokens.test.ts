@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 import { randomUUID } from "node:crypto";
-import { inArray, like } from "drizzle-orm";
+import { eq, inArray, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
 import { db } from "../src/db/client.js";
 import { createUser, setUserAdmin } from "../src/db/queries.js";
-import { products, teams, users } from "../src/db/schema.js";
+import { apiTokens, products, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { caller } from "./rpc.js";
 
@@ -118,5 +118,35 @@ describe("automation tokens", () => {
 
     expect((await call(adminToken, "TokenService/RevokeToken", { tokenId })).code).toBe("ok");
     expect((await call(token, "TeamService/CreateTeam", { name: `${prefix}-f` })).code).toBe("unauthenticated");
+  });
+});
+
+describe("token expiry", () => {
+  it("lasts 90 days unless asked otherwise; 0 lasts until revoked", async () => {
+    const byDefault = await mint(["teams:create"]);
+    const forever = await call<{ tokenId: string }>(adminToken, "TokenService/CreateAutomationToken", {
+      label: "forever",
+      scopes: ["teams:create"],
+      expiresInDays: 0,
+    });
+    expect(forever.code).toBe("ok");
+    const [a] = await db.select().from(apiTokens).where(eq(apiTokens.id, byDefault.tokenId));
+    const [b] = await db.select().from(apiTokens).where(eq(apiTokens.id, forever.body.tokenId));
+    const days = ((a?.expiresAt?.getTime() ?? 0) - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(89.9);
+    expect(days).toBeLessThanOrEqual(90);
+    expect(b?.expiresAt).toBeNull();
+  });
+
+  it("refuses a lifetime over two years", async () => {
+    const minted = await call(adminToken, "TokenService/CreateAutomationToken", { label: "x", scopes: ["teams:create"], expiresInDays: 731 });
+    expect(minted.code).toBe("invalid_argument");
+  });
+
+  it("authenticates nothing once expired", async () => {
+    const { token, tokenId } = await mint(["teams:create"]);
+    expect((await call(token, "TeamService/CreateTeam", { name: `${prefix}-e1` })).code).toBe("ok");
+    await db.update(apiTokens).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(apiTokens.id, tokenId));
+    expect((await call(token, "TeamService/CreateTeam", { name: `${prefix}-e2` })).code).toBe("unauthenticated");
   });
 });

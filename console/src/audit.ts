@@ -11,8 +11,9 @@
  * identifying fields of the request (TARGET_FIELDS: names, teams, images,
  * emails, scopes, reasons), and the status. Never the rest of a request: a
  * secret's value, a password, a token or a credential is never read here.
- * Sign-in and password changes aren't recorded (they have their own
- * throttling and logs, and their requests are mostly secrets).
+ * Sign-ins, registering and password changes are recorded too, allowed or
+ * refused (the email tried, never the password); a sign-in's actor is who
+ * it signed in. Every entry carries the client's address (clientIp).
  */
 import { createHash } from "node:crypto";
 import { desc, isNotNull, sql } from "drizzle-orm";

@@ -728,22 +728,22 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Security
 
-- [ ] **Gaps the 2026-10-28 docs audit found** (now documented in
-  `docs/security-model.md`, not fixed): sign-ins, failed or not, and
-  password changes aren't audited (failed ones aren't even logged); the
-  sign-in throttle is per console copy, in memory, so two copies double it
-  and a restart clears it; console → kernel-api and every Postgres
+- [ ] **Gaps the 2026-10-28 docs audit found** (documented in
+  `docs/security-model.md`): console → kernel-api and every Postgres
   connection are plain inside the cluster, relying on NetworkPolicy; the
   scheduler's ClusterRole may read every Pod's logs and delete any Job or
   ConfigMap cluster-wide (the dispatch policy fences only CREATE); whether
   an EKS step can reach the node role through IMDS isn't settled (the node
-  groups set no hop limit); bot tokens never expire; signing out doesn't
-  revoke a session (the token is only dropped from the browser); the
-  gateway holds the console's database credentials and `JWT_SECRET`; Pod
-  hardening is the scheduler's choice (`taskPodHardening`), backed by Pod
-  Security `restricted` only on namespaces the console created; and a
-  compromised console can loosen the image, identity and scan policies
-  (accepted: Kubernetes can't fence an admission policy's own edits).
+  groups set no hop limit); the gateway holds the console's database
+  credentials and `JWT_SECRET`; Pod hardening is the scheduler's choice
+  (`taskPodHardening`), backed by Pod Security `restricted` only on
+  namespaces the console created; and a compromised console can loosen the
+  image, identity and scan policies (accepted: Kubernetes can't fence an
+  admission policy's own edits). Done 2026-10-28: sign-ins and password
+  changes audited (with the client's address), failed ones logged; the
+  sign-in limits counted in Postgres, shared by every console copy; signing
+  out ends the session (`revoked_sessions`, checked by the gateway too);
+  bot and automation tokens expire (90 days by default).
 
 - [x] **TLS in front of the console** in the charts. Done 2026-10-22, proven
   on kind (`make kind-tls`): the Ingress takes a certificate from

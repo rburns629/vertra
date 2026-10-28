@@ -207,6 +207,15 @@
      "streaming": false,
      "idempotency": "",
      "public": false
+    },
+    {
+     "name": "SignOut",
+     "comment": "Ends this session: its token is refused from now on, by the console\nand the gateway. An API token is revoked with TokenService.RevokeToken\ninstead.",
+     "input": "vertra.console.v1.SignOutRequest",
+     "output": "vertra.console.v1.SignOutResponse",
+     "streaming": false,
+     "idempotency": "idempotent",
+     "public": false
     }
    ]
   },
@@ -2637,6 +2646,16 @@
      "comment": "Send as Authorization: Bearer <token>."
     }
    ]
+  },
+  "vertra.console.v1.SignOutRequest": {
+   "name": "SignOutRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.SignOutResponse": {
+   "name": "SignOutResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.GetMeRequest": {
    "name": "GetMeRequest",
@@ -10441,6 +10460,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "expiresAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "After this it authenticates nothing. Unset: until revoked."
     }
    ]
   },
@@ -10552,6 +10578,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "expiresAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "After this it authenticates nothing. Unset: until revoked."
     }
    ]
   },
@@ -10620,6 +10653,13 @@
      "repeated": true,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "expiresInDays",
+     "type": "integer",
+     "repeated": false,
+     "optional": true,
+     "comment": "How many days the token lasts, 1 to 730. Left out, 90; 0, until\nrevoked."
     }
    ]
   },
@@ -10798,6 +10838,13 @@
      "repeated": true,
      "optional": false,
      "comment": "At least one, each once."
+    },
+    {
+     "name": "expiresInDays",
+     "type": "integer",
+     "repeated": false,
+     "optional": true,
+     "comment": "How many days the token lasts, 1 to 730. Left out, 90; 0, until\nrevoked."
     }
    ]
   },

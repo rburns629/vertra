@@ -35,7 +35,7 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Team maintainers | Manage their team: its people and their roles, register its secrets and choose which step gets which, its bots, raw DAGs, cancelling its runs | Console authorization (`auth/access.ts`): the maintainer role, per-product identity, registered team secrets |
 | Team members | See their team's runs, logs, Pods and secrets' names; run its actions and what's shared with it | The member role: nothing they can change |
 | Product images | Do their one job with the inputs and secrets they're given | Their namespace, ServiceAccount and mounted secrets; admission policies |
-| Pipelines (bots) | A team's bot: what a maintainer of its team may do; an ordering bot, only its listed templates; an automation token, only its scopes, in no team | Hashed API tokens that last until revoked; `auth/access.ts`'s `ensureMayOrder`. See [Bot tokens](#bot-tokens) |
+| Pipelines (bots) | A team's bot: what a maintainer of its team may do; an ordering bot, only its listed templates; an automation token, only its scopes, in no team | Hashed API tokens that expire (90 days unless their maker chose otherwise) or are revoked; `auth/access.ts`'s `ensureMayOrder`. See [Bot tokens](#bot-tokens) |
 
 ## Where secret values live
 
@@ -299,9 +299,11 @@ happened and link to the console, as the inbox does: no outputs or logs.
 A bot is an account that signs in with an API token instead of a password.
 A token is `mp_` and 256 random bits, shown once when it's made; the
 console keeps only its SHA-256 (`console/src/auth/apiToken.ts`), and when
-it was last used, to within five minutes. Tokens don't expire: one works
-until it's revoked (`TokenService/RevokeToken`, by a maintainer of a team
-its bot is in, or an admin) or its bot is deleted. What a leaked token can
+it was last used, to within five minutes. A token works until it expires
+(`api_tokens.expires_at`: 90 days unless its maker chose 30 days, a year,
+two years, or until revoked), it's revoked (`TokenService/RevokeToken`, by
+a maintainer of a team its bot is in, or an admin), or its bot is deleted.
+The console and the gateway both refuse an expired one. What a leaked token can
 do depends on its kind:
 
 - **A team's bot** is a maintainer of its team (`console/src/core/tokens.ts`),
@@ -551,8 +553,10 @@ sign-ins per 15 minutes per client address and email, and, per email from
 any address, after 10 failures in an hour each attempt waits 1 s, then 2 s,
 4 s, up to a minute (`console/src/auth/loginThrottle.ts`), so the owner is
 slowed, never locked out. A wrong email costs the same time as a wrong
-password. Both counts are in memory in each console copy: two copies (the
-chart's `autoscaling`) double them, and a restart clears them. The client
+password. Both are counted in the console's database (`rate_limit_windows`,
+`sign_in_failures`), so every copy of the console counts the same attempts
+and a restart forgets nothing. A failed sign-in is logged (`event:
+"sign_in_failed"`, with the email and address) and audited. The client
 address is the connection's unless `trustProxy` names the load balancer.
 
 **Sessions** are JWTs signed with `JWT_SECRET` (HS256), lasting `JWT_TTL`
@@ -561,9 +565,11 @@ browser keeps one in `localStorage` and sends it as a bearer header, never
 a cookie, so there's no cross-site request forgery to defend. The token
 only says who you are: teams, roles and admin come from the database on
 every request, so removing someone from a team takes effect at once.
-Signing out only forgets the token in the browser; a copy keeps working
-until it expires. Every session of a person ends when their password is
-changed or reset, or their account is deleted
+Each session has its own id (`sid`). Signing out (`AuthService/SignOut`)
+records it in `revoked_sessions`, so a copy of that token is refused from
+then on, by the console and the gateway; the person's other sessions go
+on. Every session of a person ends when their password is changed or
+reset, or their account is deleted
 (`console/src/auth/plugin.ts`); disabling someone at the single sign-on
 provider ends nothing until their session expires. Anyone with
 `JWT_SECRET` can make a session for anyone: the console and the gateway
@@ -787,7 +793,11 @@ The console records every call that can change something, allowed or
 refused, once it's answered (`console/src/audit.ts`, by one interceptor):
 who (a user or bot id), the method, the fields that name what it acted on
 (team, secret name, image, email, ...; never a value, password or token)
-and the outcome, with the request's id. Each entry is in the `audit_log`
+and the outcome, with the request's id and the client's address. Signing
+in is recorded the same way, allowed or refused (the email tried, never
+the password; a successful one's actor is who signed in), as are keyless
+and single sign-on sign-ins, registering and changing a password. Each
+entry is in the `audit_log`
 table, hash-chained so a change or removal shows, and in the console's log
 as `event: "audit"`. A catalog release's changes are recorded too.
 Entries are kept `retention.auditDays` (365 by default); `audit.export`
@@ -797,15 +807,8 @@ to their teams or to runs in them.
 
 Not recorded:
 
-- **Signing in and passwords.** Sign-ins, keyless ones, registration and
-  password changes are never audited. A failed sign-in appears only as
-  the request's own log line (address, method, status, not the email) and
-  in the `console_rpc_requests_total` metric; a successful one only as the
-  account's last sign-in time. Keyless sign-ins and password changes get
-  a log line of their own.
 - **Reads.** Who looked at a run, its outputs or logs, or a team's secrets'
   names, isn't recorded.
-- **The client's address**, in an entry.
 - **What the console does on its own**, such as a schedule's runs: the
   schedule's creation is in the log, and each run in its own records.
 - **Anything done to the cluster directly**, outside the console: that's
@@ -865,12 +868,9 @@ Vertra isn't production-ready yet.
 | --- | --- | --- |
 | A compromised console can loosen the image, identity and scan policies, and write any team's Secrets | It could run a step of its choosing with any team's secrets ([If a component is compromised](#if-a-component-is-compromised)) | Accepted for now: Kubernetes can't guard admission policies from their editor; treat the console as the most privileged component |
 | The gateway holds the console's database credentials and `JWT_SECRET` | A compromised gateway could act as anyone through the console's API | Not decided |
-| Signing out doesn't end a session | A copied session token works until it expires (8 hours by default) | Not decided; meanwhile shorter sessions (`JWT_TTL`), and a password reset or deleting the account ends them all |
-| Bot tokens don't expire | A leaked team bot's token acts as a maintainer until someone revokes it | Not decided; meanwhile keyless sign-in where the CI supports it |
 | Groups from an ID token's claim are read at sign-in only | Someone who leaves a group the provider reports in its token stays in its team until their session ends (8 hours by default) or they sign in again; Google Workspace groups are read again every hour | Shorter sessions where that matters (`JWT_TTL`) |
-| Sign-ins and password changes aren't audited, and reads aren't either ([Audit](#audit)) | A failed sign-in leaves only a request log line | Not decided |
+| Reads aren't audited ([Audit](#audit)) | Who looked at a run's outputs or logs isn't recorded | Not decided |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
-| The sign-in limits are in memory in each console copy | Two copies double them; a restart clears them | Not decided; meanwhile run one copy |
 | Traffic inside the cluster is plain (console to kernel-api, every Postgres connection) | Anyone who can watch the cluster's network sees the console's token and the data | Not decided; meanwhile a service mesh where NetworkPolicy isn't enough |
 | The scheduler may read every Pod's logs and delete any Job or ConfigMap, cluster-wide | A stolen scheduler identity reaches well beyond team namespaces | Not decided |
 | Step Pod hardening is enforced by the cluster only through Pod Security, set on namespaces the console created | In an adopted namespace, `scheduler.taskPodHardening: false` runs steps as root with an API token | Not decided; meanwhile keep `taskPodHardening` on and let the console create team namespaces |

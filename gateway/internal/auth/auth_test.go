@@ -122,6 +122,28 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 	if _, err := r.Resolve(ctx, "Bearer "+ssoSession); err != nil {
 		t.Errorf("a single sign-on session, whatever the password: %v", err)
 	}
+	// A session signed out at the console, and not another of the same person's.
+	signedOut := jwt(t, secret, "HS256", map[string]any{"userId": userID, "sso": true, "sid": "gw-signed-out", "iat": now.Unix(), "exp": now.Unix() + 60})
+	other := jwt(t, secret, "HS256", map[string]any{"userId": userID, "sso": true, "sid": "gw-still-in", "iat": now.Unix(), "exp": now.Unix() + 60})
+	_, err = db.Exec(ctx, `INSERT INTO revoked_sessions (sid, expires_at) VALUES ('gw-signed-out', now() + interval '1 minute')`)
+	must(err)
+	if _, err := r.Resolve(ctx, "Bearer "+signedOut); err != ErrUnauthenticated {
+		t.Errorf("a signed-out session: %v", err)
+	}
+	if _, err := r.Resolve(ctx, "Bearer "+other); err != nil {
+		t.Errorf("another session of the same person: %v", err)
+	}
+	// An expired token.
+	_, err = db.Exec(ctx, `UPDATE api_tokens SET expires_at = now() - interval '1 second' WHERE user_id = $1`, botID)
+	must(err)
+	if _, err := r.Resolve(ctx, "Bearer "+token); err != ErrUnauthenticated {
+		t.Errorf("an expired token: %v", err)
+	}
+	_, err = db.Exec(ctx, `UPDATE api_tokens SET expires_at = now() + interval '1 day' WHERE user_id = $1`, botID)
+	must(err)
+	if _, err := r.Resolve(ctx, "Bearer "+token); err != nil {
+		t.Errorf("a token not yet expired: %v", err)
+	}
 	// A revoked token.
 	_, err = db.Exec(ctx, `UPDATE api_tokens SET revoked_at = now() WHERE user_id = $1`, botID)
 	must(err)

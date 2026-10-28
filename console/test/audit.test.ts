@@ -73,15 +73,17 @@ describe("the audit log", () => {
     expect(refused).toMatchObject({ status: 403, target: { name: `${prefix}-nope` } });
   });
 
-  it("doesn't record reads, or sign-in and password changes", async () => {
+  it("doesn't record reads, but does record a password change, never the password", async () => {
     await call(member.token, "AuthService/GetMe");
     await call(member.token, "AuthService/ChangePassword", {
       currentPassword: "correct-horse-battery",
       newPassword: "another-horse-battery",
     });
-    const routes = (await entriesBy(member.id)).map((e) => e.route);
+    const entries = await entriesBy(member.id);
+    const routes = entries.map((e) => e.route);
     expect(routes).not.toContain(route("AuthService/GetMe"));
-    expect(routes).not.toContain(route("AuthService/ChangePassword"));
+    expect(routes).toContain(route("AuthService/ChangePassword"));
+    expect(JSON.stringify(entries)).not.toContain("horse-battery");
   });
 
   it("is readable by admins only, newest first", async () => {

@@ -174,6 +174,38 @@ export const apiTokens = pgTable("api_tokens", {
   // stale (auth/plugin.ts only writes it when it has moved on), so the Team
   // page can show which tokens are still in use before someone revokes one.
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  // After this it authenticates nothing. Null: until revoked (tokens made
+  // before expiry existed, and those made to last).
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+/**
+ * Sessions signed out before they expired (auth/plugin.ts refuses them, as
+ * the gateway does): a session's id (its JWT's `sid`) until it would have
+ * expired anyway, when retention.ts deletes it.
+ */
+export const revokedSessions = pgTable("revoked_sessions", {
+  sid: text("sid").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+/**
+ * The fixed windows of rpc/rateLimit.ts, here so every copy of the console
+ * counts the same attempts: a key (the limit's name and who) and its count
+ * until the window resets.
+ */
+export const rateLimitWindows = pgTable("rate_limit_windows", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetsAt: timestamp("resets_at", { withTimezone: true }).notNull(),
+});
+
+/** An account's failed sign-ins (auth/loginThrottle.ts), shared by every copy. */
+export const signInFailures = pgTable("sign_in_failures", {
+  email: text("email").primaryKey(),
+  failures: integer("failures").notNull(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  nextAt: timestamp("next_at", { withTimezone: true }),
 });
 
 /**
