@@ -36,13 +36,10 @@ const CONTENTS: { id: string; title: string; blurb: string; docs: [string, strin
   {
     id: "concepts",
     title: "Concepts",
-    blurb: "How values pass between steps, how secrets stay with their team, and what runs where.",
+    blurb: "How values pass between steps, and how secrets stay with their team.",
     docs: [
       ["07-how-data-moves", "How values move between steps"],
       ["04-secrets-explained", "Secrets, explained"],
-      ["08-under-the-hood", "Under the hood"],
-      ["reference-architecture", "Architecture"],
-      ["reference-security-model", "Security model"],
     ],
   },
   {
@@ -76,14 +73,25 @@ const CONTENTS: { id: string; title: string; blurb: string; docs: [string, strin
     ],
   },
   {
+    id: "internals",
+    title: "How Vertra works",
+    blurb: "In depth: the pieces and how they fit, a run call by call, what keeps teams apart, the data, and why it's built this way.",
+    docs: [
+      ["reference-architecture", "Architecture"],
+      ["08-under-the-hood", "Under the hood"],
+      ["reference-kernel-architecture", "Inside the kernel"],
+      ["reference-security-model", "Security model"],
+      ["06-database-schemas", "Where the data lives"],
+      ["reference-assessment", "Design history"],
+    ],
+  },
+  {
     id: "reference",
     title: "Reference",
-    blurb: "The API, the database, the code's layout, and why it's built the way it is.",
+    blurb: "The console's API, and every folder and file in the repository.",
     docs: [
       [API_REFERENCE_ID, "API reference"],
-      ["06-database-schemas", "Database tables"],
       ["reference-repository-map", "Repository map"],
-      ["reference-assessment", "Design history"],
     ],
   },
 ];

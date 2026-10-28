@@ -27,7 +27,7 @@ import GroupsIcon from "@mui/icons-material/GroupsOutlined";
 import AdminIcon from "@mui/icons-material/VerifiedUserOutlined";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import PersonIcon from "@mui/icons-material/PersonOutlined";
-import HelpIcon from "@mui/icons-material/HelpOutlineOutlined";
+import DocsIcon from "@mui/icons-material/MenuBookOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -218,9 +218,9 @@ export function AppLayout() {
           </MenuItem>
           <MenuItem onClick={() => { goTo("/docs"); }}>
             <ListItemIcon>
-              <HelpIcon fontSize="small" />
+              <DocsIcon fontSize="small" />
             </ListItemIcon>
-            Help and guides
+            Documentation
           </MenuItem>
           <MenuItem
             onClick={() => {

@@ -997,13 +997,13 @@ describe("pages that moved", () => {
 });
 
 describe("the settings menu", () => {
-  it("holds Preferences, Help and guides, and Sign out; the sidebar has neither Docs nor Help", async () => {
+  it("holds Preferences, Documentation, and Sign out; the sidebar has neither Docs nor Help", async () => {
     await renderAt("/", MEMBER);
     const nav = await screen.findByRole("navigation", { name: /main/i });
     expect(within(nav).queryByRole("link", { name: /docs|help/i })).toBeNull();
     screen.getByRole("button", { name: "Settings" }).click();
     const menu = await screen.findByRole("menu");
-    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Preferences", "Help and guides", "Sign out"]);
+    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Preferences", "Documentation", "Sign out"]);
   });
 });
 

@@ -9,6 +9,7 @@
 # `make console-docs` copies them; console/test/docs.test.ts fails while a
 # copy differs.
 architecture current docs/architecture.md
+kernel-architecture current kernel/ARCHITECTURE.md
 operations operating docs/operations.md
 security-model current docs/security-model.md
 setup operating docs/setup.md

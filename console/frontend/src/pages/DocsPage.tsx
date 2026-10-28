@@ -253,7 +253,7 @@ function DocsNav({ categories, current }: { categories: Category[]; current: str
                     aria-current={e.id === current ? "page" : undefined}
                     sx={{ borderRadius: 1, py: 0.25, color: "text.secondary", "&.Mui-selected": { color: "primary.main", fontWeight: 600 } }}
                   >
-                    <ListItemText primary={e.label} secondary={e.history ? "Design history" : undefined} slotProps={{ primary: { sx: { fontWeight: "inherit" } } }} />
+                    <ListItemText primary={e.label} secondary={e.history && !/history/i.test(e.label) ? "Design history" : undefined} slotProps={{ primary: { sx: { fontWeight: "inherit" } } }} />
                   </ListItemButton>
                 ))}
               </List>
