@@ -294,6 +294,7 @@ Shown on the console's Docs page, in file order. They ship inside the console im
 | `06-database-schemas.md` | Every table in both databases. Tests in both projects keep it in step with the code. |
 | `07-how-data-moves.md` | One real value followed from one task to the next. |
 | `08-under-the-hood.md` | Every unusual use of Kubernetes, Helm and Postgres, and why. |
+| `09-runs-explained.md` | A run's states, retries, cancelling, approvals, every failure code, limits, retention and logs. |
 | `reference/` | The platform's own docs, copied from the repository (`SOURCES` lists them; `make console-docs`, `.github/scripts/console-docs.sh`): the Docs page's reference, and what the chat agent answers from; `reference/architecture/` holds the figures they draw (`docs/architecture/*.svg`). `test/docs.test.ts` fails while a copy differs. |
 
 ### `console/test/`

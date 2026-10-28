@@ -24,6 +24,25 @@ A team offers products; a DAG runs some of their actions in order; a team's secr
 | **Task** | One action of one product, run once, with its inputs and the secrets it lists | A line in a DAG |
 | **Secret** | A value your products need at run time, read as a file. It's your team's: only your products' tasks can mount it, and only when they list it ([more](04-secrets-explained.md)) | Console, Team page, Secrets tab |
 
+## Members and maintainers
+
+Everyone in a team is a member or a maintainer. What each may do:
+
+| | Member | Maintainer |
+| --- | --- | --- |
+| See the team's runs, their outputs and logs, its Pods, and its secrets' names | Yes | Yes |
+| Run templates and actions shared with the team, from **Catalog** | Yes | Yes |
+| Retry, cancel and run again a template run they started | Yes | Yes |
+| Submit a raw DAG (**Runs → Submit new**) | No | Yes, if they maintain every team it names |
+| Retry, cancel or run again any other run of the team | No | Yes, if they maintain every team in it |
+| Add, change or remove the team's secrets | No | Yes |
+| Add people, change roles, add or revoke bots | No | Yes |
+| Approve or decline a step waiting for approval | No | Yes, unless they submitted the run |
+
+A member who tries a maintainer's action is refused with `Managing team "team-a" takes a maintainer; you're a member, not a maintainer`. Ask a maintainer, or ask one to make you a maintainer.
+
+Who's in a team is read on every request, so being added, removed or changed takes effect at once. Once you're removed you no longer see the team's runs, even ones you submitted yourself; template runs you started stay yours to see.
+
 ## Step 1: Claim your team
 
 One pull request creates your team. Merging it sets up your namespace and your team in the console, both named `team-a`.
@@ -33,7 +52,7 @@ One pull request creates your team. Merging it sets up your namespace and your t
 3. Add your team's line to `.github/CODEOWNERS`, with the other teams' lines: `/teams/team-a/ @<your-org>/<your-team>`. From then on, your team approves changes to your products.
 4. Open a pull request. A catalog admin approves it, since it changes `.github/`. The `check-new-team-names` check fails if the name is taken or was used before; pick another.
 5. Merge once it's approved.
-6. Ask a Vertra admin to add you to the `team-a` team. A new team starts empty, so its first person comes from an admin, as a maintainer; after that, its maintainers add teammates on the Members tab, as members (who see the team's work and run its actions) or maintainers (who also manage it).
+6. Ask a Vertra admin to add you to the `team-a` team. A new team starts empty, so its first person comes from an admin, as a maintainer; after that, its maintainers add teammates on the Members tab, as members or maintainers ([what each may do](#members-and-maintainers)).
 
 **You're done when** the console's Teams page lists `team-a` and you can open it.
 
@@ -62,7 +81,9 @@ Paste a one-task DAG into the console and you'll get `Hello, Anna!` back in unde
 
 1. Open `templates/dags/1-hello.yaml` and replace `team-a` with your team, and the registry with yours.
 2. In the console, open **Runs → Submit new**, paste it, and submit.
-3. On the execution's page, watch the task go from Pending to Succeeded.
+3. On the execution's page, watch the task go from Ready to Running to Succeeded. ([Runs, explained](09-runs-explained.md) has every state.)
+
+Submitting a raw DAG takes a maintainer of its team; a member runs the team's products from **Catalog** instead.
 
 ```yaml
 name: my-first-hello           # a label for this run; it can repeat
@@ -204,7 +225,7 @@ Every error names its cause; this table maps the common ones to the fix.
 | Task failed: `OUTPUT_INVALID` | The step's `result.json` didn't fit its action's `output` schema, so no later step got it | Fix the product, or its schema, in the catalog |
 | Task failed: `MISSING_SECRET` | The action wanted its secret, but the task didn't list it | Add the secret to the task's `secretRefs` |
 | Task failed: `IMAGE_NOT_FOUND` | A typo in `image`, or the product's pull request isn't merged yet | Copy the exact image from the Products page |
-| Task failed: `IMAGE_NOT_ALLOWED` | The image isn't from the catalog's registry | Publish it through a catalog pull request |
+| Task failed: `IMAGE_NOT_ALLOWED` | The image isn't from the catalog's registry, or another source an admin allowed | Publish it through a catalog pull request; an admin can allow another source on the Admin page |
 | Task failed: `IDENTITY_NOT_ALLOWED` | The step ran as a ServiceAccount its product doesn't declare, or mounted a secret that isn't one of its team's (normally the console refuses this first; seeing it means the console and cluster disagree, e.g. the product or secret changed after submitting) | Check the product's `serviceAccount` on the Products page and the secret on the Secrets tab; an admin can check the console's log for an identity policy sync error |
 | Task failed: `IMAGE_NOT_SIGNED` | The image wasn't published by catalog CI | Publish it through a catalog pull request |
 | Submitting shows an old run instead of a new one | The DAG's `requestId` was used before | Remove the `requestId`, or change it |
@@ -212,8 +233,30 @@ Every error names its cause; this table maps the common ones to the fix.
 | CI: `no tests` | The product has no `tests/<action>/<case>/` folders | Add one; copy the sample's |
 | CI: a `HIGH`/`CRITICAL` vulnerability, a secret, or a malicious package | The image failed its security scan | The run's summary lists each; usually keep the `apt-get upgrade` line and pin a fixed version |
 | You can't open your team | You're not a member yet | Ask a Vertra admin (first member) or a teammate |
+| Refused: `Managing team "team-a" takes a maintainer` | You're a member, and this takes a maintainer | Ask a maintainer to do it, or to make you one ([who may do what](#members-and-maintainers)) |
+| Refused: `TEAM_RETIRED` | The team is retired, so nothing new runs for it | See [a retired team](#if-your-team-is-retired) |
 
-A task's own logs are on its execution's page; the team's **Running now** tab shows a task that can't start and why.
+A task's own logs are on its execution's page; the team's **Running now** tab shows a task that can't start and why. Every failure code, what it means and whether it's retried is in [Runs, explained](09-runs-explained.md#what-does-each-failure-code-mean).
+
+## Your account
+
+- **Signing in.** With your email and password, or with single sign-on when your install has it. A team can require single sign-on; then your password no longer works while you're in that team.
+- **A new or reset password.** A password an admin set for you must be changed before you can do anything else.
+- **A forgotten password.** There's no email reset: ask a Vertra admin to reset it, then change it.
+- **Changing your password** signs you out everywhere else.
+- **Sessions** last 8 hours, unless your install says otherwise; then you sign in again.
+- **Too many wrong passwords.** After 10 failed sign-ins, you must wait before the next try; a successful sign-in clears the count.
+
+## If your team is retired
+
+A team is retired when its folder is removed from the catalog, or by an admin. It can be undone: by an admin, or by restoring the folder.
+
+- The team is read-only: nothing new can be run, retried, added or changed for it (`TEAM_RETIRED`).
+- Its products are unregistered, so templates that use them stop working too.
+- Its history stays: you can still open its runs, outputs and logs.
+- Steps already running finish. Steps of its runs that hadn't started yet usually fail with `DISPATCH_REJECTED`: the cluster no longer starts anything in its namespace.
+
+An admin can later remove a retired team for good. Its name stays reserved.
 
 ## Help, and what isn't ready yet
 
@@ -226,4 +269,4 @@ Known gaps today:
 - **One namespace per team.** Separate environments by secret name for now, for example `db-password-prod`.
 - **The console is served over plain HTTP** while HTTPS is set up. Don't reuse a password you use elsewhere.
 
-**Cleaning up a trial team:** a pull request that deletes `teams/team-a/` retires it (its tasks stop and the team becomes read-only); a Vertra admin can then remove it for good. Its name stays reserved.
+**Cleaning up a trial team:** a pull request that deletes `teams/team-a/` retires it ([what that means](#if-your-team-is-retired)); a Vertra admin can then remove it for good. Its name stays reserved.

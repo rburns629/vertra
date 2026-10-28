@@ -25,14 +25,15 @@ Vertra is in 0.x. Only the latest release receives security fixes.
 
 ## Scope
 
-In scope: the kernel (`kernel/`), the console (`console/`), the Helm charts
-and the admission policies they install (`helm/charts/`).
+In scope: the kernel (`kernel/`), the console (`console/`), the API gateway
+(`gateway/`), the installer CLI (`cli/`), the Helm charts and the admission
+policies they install (`helm/charts/`).
 
 Not in scope:
 
 - Gaps already documented as not yet enforced in
-  [`docs/security-model.md`](docs/security-model.md) (for example, the
-  kernel API's lack of authentication). They're tracked in
+  [`docs/security-model.md`](docs/security-model.md) (for example, a
+  session that outlives signing out). They're tracked in
   [`TODO.md`](TODO.md); reports that show a new way to exploit them are still
   welcome.
 - The fixed admin password in the local `kind` settings

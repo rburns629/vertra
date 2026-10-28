@@ -122,8 +122,12 @@ kernel and module in the console, a run call by call, and the state machines.
   UUIDs, an execution's edges are all created in the one transaction that
   stores it, and input resolution only follows a task's own edges. An
   output that isn't there fails the task rather than guessing.
-- **A failure doesn't undo success.** Finished steps keep their outputs; the
-  steps waiting on a failed one are cancelled. Retrying a failed step
+- **A failure doesn't undo success.** Finished steps keep their outputs.
+  Once a step fails for good, every step of the execution that hasn't
+  started (waiting on a dependency, to be claimed, or for an approval) is
+  cancelled, not only the ones that depend on it, and the execution fails;
+  steps already running finish (`kernel/internal/scheduler/tick.go`,
+  `failExecution`). Retrying a failed step
   (`ExecutionService/RetryTask`) resumes the execution.
   Cancelling is idempotent.
 
@@ -169,9 +173,17 @@ in `docs/architecture/` (`5-states`), with the rest of the diagrams.
   tells kernel-api from the scheduler), so any log stack can query them. A
   request ID (`X-Request-ID`, reused or generated) ties a request's lines
   together. `make logs` tails all three on kind.
-- **Metrics:** Prometheus `/metrics` on kernel-api's port and the
-  scheduler's own (9090): request counts and latencies by route template,
-  scheduler pass durations and errors, task events.
+- **Metrics:** Prometheus `/metrics` on kernel-api's port, and on a port
+  of its own (9090) for the scheduler, the console and the gateway, which
+  their public listeners never serve: request counts and latencies by
+  route template or method, scheduler pass durations and errors, task
+  events, catalog syncs and image scans. Only `networkPolicy.metricsFrom`
+  (and, on kernel-api's port, the console) may reach them, and no metric is labelled with a user, a team or a token.
+- **Health:** `/health/live` (the process is up; never touches the
+  database) and `/health/ready` (the database answers; for kernel-api, at
+  this code's schema) on kernel-api and the console; `/.vertra/health` on
+  the gateway; the scheduler's liveness is its heartbeat
+  (`kernel check-heartbeat`).
 - **Audit:** every console call that changes something, with who, what,
   the target and the outcome (`audit_log`, `AdminService/ListAuditEntries`).
 - **State:** the databases themselves; see

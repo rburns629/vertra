@@ -4,11 +4,14 @@ Installing, upgrading and running Vertra: on your machine with `kind`, and
 on a cloud cluster. For how it works, see [architecture.md](architecture.md);
 for what it enforces, [security-model.md](security-model.md).
 
-An installer CLI (`vertra`, see [TODO.md](../TODO.md)) will do the cloud
-setup, the install and the catalog repository in one place. Until then,
-`make` targets do it on `kind`, and the Helm charts directly anywhere else.
-Either way, the charts are complete on their own: `helm install` creates both
-databases, generates their passwords and creates the first admin.
+`vertra`, the installer, does the cloud setup, the install and the catalog
+repository in one place: [Setting up Vertra](setup.md). This page is what it
+does underneath, and how to do it by hand: `make` targets on `kind` while
+working on Vertra itself, and the Helm charts directly anywhere else. Either
+way, the charts are complete on their own: `helm install` creates both
+databases, generates their passwords and creates the first admin. Every
+chart setting, with its default, is in the charts' `values.yaml`
+(`helm/charts/execution-kernel/`, `helm/charts/execution-console/`).
 
 ## Local install with kind
 
@@ -102,6 +105,11 @@ network policy agent or Calico; on AKS a network policy engine).
    kernel-api must stay `ClusterIP`.
 7. **Sign in, change the password**, and on the Admin page: add admins,
    mint the catalog's automation token, and set the allowed image sources.
+   Keep the first admin's account. Every install and upgrade creates an
+   admin with `bootstrapAdmin.email` if no account has that email, so if
+   you delete it or change the setting, the next upgrade makes a new admin.
+   Its generated password is then in the migrate Job's log
+   ([Troubleshooting](#troubleshooting)).
 
 `make gke-deploy VERSION=v<x.y.z>` (and `gke-deploy-kernel`, `-console`)
 deploys a release to GKE: the release's signed charts, which run its signed
@@ -115,6 +123,48 @@ unreleased change on a cluster that isn't production,
 `gke-deploy-{kernel,console}-from-source` build the working copy with Cloud
 Build instead (unsigned, `:latest`). `-policy-controller` and `-eso` install
 those charts.
+
+### What the cluster needs
+
+**Room.** What each copy of the platform's parts requests, from the charts'
+`values.yaml` (steps come on top: a step without its own size requests the
+size preset's `scheduler.taskDefaultResources`):
+
+| Part | CPU | Memory | When |
+| --- | --- | --- | --- |
+| kernel-api | 100m | 256Mi | Always, per copy |
+| Scheduler | 100m | 512Mi | Always, per copy |
+| Console | 100m | 512Mi | Always, per copy |
+| Postgres | 250m | 512Mi | Per instance: one when the kernel's holds the console's database (what `vertra` does), two otherwise |
+| Trivy server | 100m | 512Mi, and 4Gi ephemeral storage | While scans run (`scanning.idleMinutes`) |
+| Gateway | 50m | 64Mi | `gateway.enabled` |
+| Loki, Alloy | 100m, 50m | 256Mi, 128Mi | `logs.enabled` |
+
+So a `minimal` install with one Postgres needs about 650m CPU and 2.3Gi of
+memory before any step runs. The migrate Jobs (100m, 256Mi) and the
+sleeper's CronJob (50m, 128Mi) run briefly.
+
+**Outbound access.** The platform's NetworkPolicies only limit what may
+connect *to* its Pods (the gateway's also limit where it connects), so
+nothing in the charts blocks outbound traffic. If your network does, the
+platform reaches:
+
+- the registries it pulls and checks images from: ghcr.io for its own
+  images (unless you mirror them), the task images' registry, and the
+  catalog release's;
+- Trivy's vulnerability database (mirror.gcr.io, ghcr.io), when the scanner
+  starts and every few hours;
+- Sigstore's public services (Fulcio, Rekor) for keyless signatures, from
+  the catalog release check and policy-controller;
+- the chat agent's provider, when `chat` is set;
+- Google (accounts.google.com, and cloudidentity.googleapis.com for group
+  mappings) for Google sign-in, and the keyless bots' issuers (`keyless.issuers`) for their keys;
+- the SMTP server (`notifications.email`), the teams' chat webhooks
+  (`notifications.webhookHosts`) and order callbacks (`orders.callbackHosts`);
+- on a cloud, its own APIs for workload identity, buckets (backups, logs,
+  the audit copy) and registries.
+
+There's no setting for an HTTP proxy, and no offline mode.
 
 ### HTTPS for the console
 
@@ -321,16 +371,37 @@ Catalog card shows the version applied.
 
 Each chart ships four presets in `sizes/` (`minimal`, `resilient`,
 `scaled`, `auto`), layered under your values with `-f`. They set the
-copies of the console and kernel-api (with PodDisruptionBudgets from two
-copies, so drains and upgrades take one at a time), the scheduler's step
-caps and default step size, how long executions are kept and the database
-volume's size; `auto` scales the console and kernel-api from one to three
+copies of the console, kernel-api and the scheduler (with
+PodDisruptionBudgets from two copies, so drains and upgrades take one at a
+time), the scheduler's step caps and default step size (and, in `scaled`,
+its `claimLimit` and `executorConcurrency`), how long executions are kept
+and the database volume's size; `auto` scales the console and kernel-api from one to three
 copies on CPU load, and needs the cluster's metrics API (metrics-server;
 built into GKE, EKS Auto Mode and AKS Automatic). `vertra` picks one
 from its `size` setting. A preset doesn't say where steps run: Spot is
 `scheduler.taskPlacement`. Labels every step Pod needs, such as AKS
 Workload Identity's `azure.workload.identity/use: "true"`, go in
 `scheduler.taskPodLabels`.
+
+| Preset | Console | kernel-api | Scheduler | Steps at once (all, per team) | Executions kept | Kernel database volume |
+| --- | --- | --- | --- | --- | --- | --- |
+| None (the charts' defaults) | 1 | 1 | 1 | no cap | 90 days | 1Gi |
+| `minimal` | 1 | 1 | 1 | 10, 5 | 30 days | 10Gi |
+| `resilient` | 2 | 2 | 1 | 50, 20 | 90 days | 50Gi |
+| `scaled` | 3 | 3 | 2 | 200, 50 | 90 days | 100Gi |
+| `auto` | 1 to 3 | 1 to 3 | 1 | 50, 20 | 90 days | 50Gi |
+
+**More than one copy.** kernel-api holds no state, so any number of
+copies is safe. So is more than one scheduler: each claims steps with
+`FOR UPDATE SKIP LOCKED` under a lease, so two never claim the same step,
+and one that dies has its running steps adopted by another when its leases
+expire. The one thing that loosens is the step caps: `maxRunningTasks` and
+`maxRunningTasksPerTeam` are exact with one scheduler, and with several
+each counts on its own and can overshoot by up to one `claimLimit`. A
+product's own cap and concurrency key stay exact. Several console copies
+share everything through the database (the catalog sync and the audit copy
+run on one at a time), except the sign-in throttle, which each copy keeps
+in its own memory.
 
 - **Sleeping when idle** (kernel chart, `scaleDown`): a CronJob scales both
   releases' Deployments to zero after `idleAfterMinutes` with no execution
@@ -396,6 +467,41 @@ the charts don't ship yet (`TODO.md`).
   ConfigMap labelled for Grafana's dashboard sidecar; set
   `monitoring.dashboard.namespace` if the sidecar watches only Grafana's.
 
+The metrics, for alerts and dashboards of your own:
+
+| Metric | Labels | What it counts |
+| --- | --- | --- |
+| `kernel_tasks` | `state` | Unfinished steps by state (`BLOCKED`, `READY`, `AWAITING_APPROVAL`, `CLAIMED`, `RUNNING`) |
+| `kernel_oldest_ready_task_age_seconds` | | How long the longest-waiting `READY` step has waited; 0 when none is |
+| `kernel_scheduler_tick_duration_seconds` | | One scheduler pass |
+| `kernel_scheduler_tick_errors_total` | | Passes that failed (logged, retried next pass) |
+| `kernel_scheduler_status_read_errors_total` | | Failed reads of a running step's status (read again) |
+| `kernel_events_total` | `event_type` | Step and execution events |
+| `kernel_http_requests_total`, `kernel_http_request_duration_seconds` | `method`, `path` (and `status`) | kernel-api's requests |
+| `console_rpc_requests_total`, `console_rpc_request_duration_seconds` | `procedure` (and `code`) | The console's API calls |
+| `console_catalog_syncs_total` | `outcome` (`unchanged`, `applied`, `applied_with_problems`, `failed`) | Catalog release checks |
+| `console_image_scans_total` | `status` (`passed`, `failed`, `error`) | Image scans finished |
+| `vertra_gateway_requests_total` | `api`, `outcome` | Gateway requests, by what happened to them |
+| `vertra_gateway_request_duration_seconds` | `api`, `answered_by` | Gateway request times |
+
+**Health.** kernel-api and the console answer `GET /health/live` (the
+process is up) and `GET /health/ready` on their API ports: kernel-api's is
+ready once its database answers and is at the schema its code expects, the
+console's once its database answers. The charts' probes use them. The
+scheduler serves no health endpoint: its loop touches a heartbeat file each
+time round, and its liveness probe restarts it when the file is older than
+`scheduler.livenessSeconds` (120).
+
+**Log format.** One JSON object per line on stdout. The kernel's carry
+`timestamp`, `severity` (`INFO`, `WARNING`, `ERROR`), `logger`, `message`
+and `service` (`kernel-api`, `kernel-scheduler`, `kernel-migrate`,
+`kernel-sleeper`), then the line's own
+fields; kernel-api logs each request with its `requestId` (`X-Request-ID`,
+reused or generated). The console's are Fastify's (pino's: a numeric
+`level`, `time`, `msg`, `reqId`), and its own events carry an `event`
+field, such as `catalog_sync_failed`. The level is fixed at INFO; there's
+no setting for it.
+
 ### The audit log's copy
 
 The console hash-chains its audit log: each entry's hash covers the entry
@@ -454,6 +560,28 @@ storage costs a fraction of a cent per GB-month, but has a minimum stay
 has no archive class: logs are kept on it until `keepDays`.
 `vertra destroy` keeps the logs bucket unless you delete the data too.
 
+### Uninstalling
+
+`vertra destroy` does this for you (setup.md says what it keeps). By hand,
+the console first, then the kernel:
+
+```
+helm uninstall console -n vertra-system --wait
+helm uninstall kernel -n vertra-system --wait
+```
+
+That removes the platform's Pods, Services, RBAC and admission policies.
+It leaves:
+
+- **The databases' volumes.** `postgres.persistence.keepOnUninstall` (on by
+  default) keeps each PVC. Delete them when you mean to:
+  `kubectl -n vertra-system delete pvc -l 'app.kubernetes.io/instance in (kernel,console)'`.
+- **The team namespaces**, with their Secrets, ServiceAccounts and anything
+  steps made there. The console created them, not Helm. Delete them with
+  `kubectl delete namespace -l vertra/team` (retired ones included).
+- Anything outside the charts: buckets, cloud identities, the registry, and
+  the platform namespace itself.
+
 ## Upgrading
 
 `helm upgrade` with the same values files and `--reset-values`. Two things
@@ -475,6 +603,36 @@ image keeps it. Deploy by digest (`image.digest`) or a new tag, or set
 upgrade that changes nothing in the Pod template doesn't restart them).
 Check what's really running with
 `kubectl get pods -o jsonpath='{..imageID}'`.
+
+### Choosing the version
+
+With `vertra`, the release an install runs is the `vertra` key in
+vertra.yaml (`source` builds the working copy instead):
+`vertra config set -e <env> vertra <x.y.z>`, then `vertra apply <env>`.
+With Helm, it's the charts' `--version`; each chart defaults to the images
+released with it. Upgrade the kernel first, as on install.
+
+### Rolling back
+
+Migrations only go forward, so a rollback across one means restoring the
+databases:
+
+- The kernel runs only against the schema its code expects. kernel-api
+  isn't ready until the database is at exactly its newest migration, and
+  the scheduler waits for it, logging "waiting for database migrations"
+  with the version it expects and the one it found. Older code against a
+  newer schema waits forever: `helm rollback` of the kernel works only if
+  the upgrade applied no migration (the release added no file to
+  `kernel/internal/migrate/sql/`).
+- The console doesn't check its schema. Older console code against a newer
+  schema isn't tested; don't rely on it.
+
+So take a backup before an upgrade, by running the backup CronJob by hand
+(and the console's, `console-execution-console-pg-backup`, when it has its
+own Postgres):
+`kubectl -n vertra-system create job --from=cronjob/kernel-execution-kernel-pg-backup pre-upgrade`.
+To go back: install the previous release's charts, then restore that backup
+([Restoring](#backups)).
 
 ## Databases
 
@@ -500,9 +658,28 @@ kubectl -n $NS patch secret $SECRET --type merge -p "{\"stringData\":{\"postgres
 kubectl -n $NS rollout restart deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler
 ```
 
-The console's own Postgres is the same with its Secret, then restart the
-console. Checking a password from inside the Postgres Pod proves nothing:
-local connections are trusted there.
+A console with its own Postgres is the same with its Secret
+(`console-execution-console`, deployment `console-execution-console-postgres`),
+then restart the console, and the gateway if it runs.
+
+When the kernel's Postgres holds the console's database (what `vertra`
+installs), the console signs in as the role `console`, whose password is in
+`kernel-execution-kernel-console-db` (keys `password` and `database-url`).
+Every kernel install and upgrade sets the role's password from that Secret
+(the `console-db` hook Job), so change both together:
+
+```
+NS=vertra-system; PG=deploy/kernel-execution-kernel-postgres; SECRET=kernel-execution-kernel-console-db
+NEW=$(openssl rand -hex 24)
+printf "ALTER ROLE console PASSWORD '%s';\n" "$NEW" | kubectl -n $NS exec -i $PG -- psql -q -U postgres -v ON_ERROR_STOP=1
+URL=$(kubectl -n $NS get secret $SECRET -o jsonpath='{.data.database-url}' | base64 -d | sed "s|^\([^:]*://[^:]*\):[^@]*@|\1:$NEW@|")
+kubectl -n $NS patch secret $SECRET --type merge -p "{\"stringData\":{\"password\":\"$NEW\",\"database-url\":\"$URL\"}}"
+kubectl -n $NS rollout restart deployment console-execution-console   # and console-execution-console-gateway, if it runs
+```
+
+Checking a password from inside the Postgres Pod proves nothing: local
+connections are trusted there. The console's other secret, the one that
+signs sessions, is under [Rotating secrets](#rotating-secrets).
 
 **Connecting.** Neither database is exposed outside the cluster, and
 NetworkPolicies admit only the platform's own Pods. To look at one:
@@ -521,6 +698,49 @@ API for anything it can do. What's in each database:
 events) are deleted 90 days after their last event
 (`executionRetentionDays`; the console's record of them, its audit log and
 scan verdicts have their own settings in `retention`). 0 keeps them forever.
+The scheduler deletes them once an hour, so nothing is deleted while it's
+stopped or the install is asleep.
+
+**Sizing.** What grows is the kernel's database, by step: each step keeps
+its outputs (at most 4 KB), its events, and the last
+`scheduler.taskLogs.maxLines` lines of its log, at most
+`scheduler.taskLogs.maxBytes` (1 MiB). So a chatty step can cost up to a
+megabyte, kept for `executionRetentionDays`. The size presets give the
+kernel's volume 10, 50 or 100Gi; without one it's the charts' 1Gi, which a
+busy install outgrows. The volume's size is a plain PVC request: raising
+it on an upgrade works only if its storage class allows volume expansion,
+and Kubernetes refuses to shrink one, which fails the upgrade (so going
+from `scaled` to `resilient` needs `postgres.persistence.size` kept at
+the larger size). Postgres doesn't hand space from deleted rows back to the
+disk; it reuses it.
+
+## Rotating secrets
+
+The databases' passwords: [Databases](#databases). The registry pull
+Secret (`registryCheck.pullSecretName`): replace it, and the next policy
+sync copies it to every team.
+
+**The console's `JWT_SECRET`** signs every session, and the console and
+the gateway both check sessions with it. It also seals the values the
+console keeps in its database to use itself: teams' chat webhook URLs,
+order callbacks and their signing secrets, the Google sign-in client secret
+set on the Admin page, and the chat agent's key set there. It's generated on
+install, kept in the `jwt-secret` key of the `console-execution-console`
+Secret and read back on every upgrade; the chart's `jwtSecret` overrides
+it. To rotate it:
+
+```
+kubectl -n vertra-system patch secret console-execution-console --type json -p '[{"op":"remove","path":"/data/jwt-secret"}]'
+helm upgrade console ...   # your usual upgrade: a new one is generated
+kubectl -n vertra-system rollout restart deployment console-execution-console   # and console-execution-console-gateway, if it runs
+```
+
+A changed Secret restarts nothing by itself, hence the restart. Then:
+
+- every session ends, so everyone signs in again;
+- every sealed value becomes unreadable and has to be entered again: each
+  team's webhooks and callbacks, the Admin page's sign-in and chat
+  settings (chat turns itself off and says why until then).
 
 ## Backups
 
@@ -554,7 +774,9 @@ instance; with two instances, restore each on its own):
 
 ```
 # 1. Download a matching pair (gcloud storage cp, aws s3 cp, az storage blob download).
-# 2. Stop everything that writes (the scheduler releases its leases on the way out).
+# 2. Note each Deployment's copies, then stop everything that writes
+#    (the scheduler releases its leases on the way out).
+kubectl -n $NS get deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler console-execution-console
 kubectl -n $NS scale deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler console-execution-console --replicas=0
 # 3. Copy the dumps into the Postgres Pod.
 kubectl -n $NS exec -i deploy/kernel-execution-kernel-postgres -- sh -c 'cat > /tmp/kernel.pgdump' < kernel.pgdump
@@ -569,13 +791,42 @@ psql -c 'REVOKE CONNECT ON DATABASE execution_kernel FROM PUBLIC' \
      -c 'REVOKE CONNECT ON DATABASE execution_console FROM PUBLIC' \
      -c 'GRANT CONNECT ON DATABASE execution_console TO console'
 rm /tmp/*.pgdump
-# 5. Start everything again.
-kubectl -n $NS scale deployment kernel-execution-kernel-api kernel-execution-kernel-scheduler console-execution-console --replicas=1
+# 5. Start everything again, each at the copies noted in step 2.
+kubectl -n $NS scale deployment kernel-execution-kernel-api --replicas=<as before>
+kubectl -n $NS scale deployment kernel-execution-kernel-scheduler --replicas=<as before>
+kubectl -n $NS scale deployment console-execution-console --replicas=<as before>
 ```
 
 The console's database must stay owned by its own role, or the console
 can't use its tables. To only check a backup, restore it into a new
 database instead.
+
+**Onto a new cluster.** The databases hold the platform's records, not
+everything the cluster held. After installing the same release on the new
+cluster and restoring both databases as above:
+
+- **Team namespaces aren't re-created on their own.** The console's
+  policy sync, at startup and every `policySyncIntervalSeconds` (300),
+  rewrites the admission policies' lists, and each team's network policy,
+  quota and pull Secret, but only into namespaces that already exist; for a
+  missing one it reports a failure (Admin page, `AdminService/GetPolicySync`).
+  A catalog team's namespace comes back when a catalog release is applied:
+  press **Sync now** on the Admin page's Catalog card, which applies the
+  current release again even though it hasn't changed. Any other team's
+  namespace has to be created by hand, labelled `vertra/team=true` (and
+  `pod-security.kubernetes.io/enforce=restricted`, as the console would).
+- **Team secrets' values are gone.** The console records each secret's name
+  and keys, never its value, and the values lived only in the old cluster's
+  Secrets. Secrets synced from a vault come back once the team's SecretStore
+  is applied again (a catalog release does it); the rest have to be set
+  again.
+- **Products' ServiceAccounts** are made again when products are
+  registered, without the cloud-identity annotations an admin added: add
+  those again, and the cloud side's bindings for the new cluster.
+- **Unfinished steps** whose Jobs were on the old cluster fail as
+  `JOB_NOT_FOUND` (retryable: retried if their `maxAttempts` allows).
+
+This is drawn from the code, not yet rehearsed end to end.
 
 ## Network policies
 
@@ -679,7 +930,9 @@ tripled kind's throughput (`perf/README.md`); the API server's own priority
 and fairness stays in charge of a busy install. Raise it further only if the
 scheduler's log still shows throttling. `scheduler.maxRunningTasks` and
 `maxRunningTasksPerTeam` cap how many steps run at once (0: no cap), so a
-burst of runs queues instead of starting every Pod at once.
+burst of runs queues instead of starting every Pod at once. A second
+scheduler (`scheduler.replicaCount`, 2 in `scaled`) is safe, but loosens
+those caps ([More than one copy](#sizes-sleeping-and-headroom)).
 
 ## Troubleshooting
 
@@ -694,13 +947,25 @@ else does (a new account's, or an admin's reset of theirs). Without vertra: `kub
 deploy/console-execution-console -n vertra-system -- node
 dist/db/resetAdmin.js <email>`.
 
+**An admin account appeared after an upgrade.** Every console install and
+upgrade creates an admin with the console chart's `bootstrapAdmin.email`
+(`admin.email` in vertra.yaml) when no account has that email: the first
+admin's account was deleted, or the setting changed. Its password is in the
+migrate Job's log (`kubectl -n vertra-system logs
+job/console-execution-console-migrate`), kept until the next upgrade, and
+must be changed at its first sign-in. Delete the account on the Admin page
+only after setting `bootstrapAdmin.email` to an admin who stays, or it comes
+back with the next upgrade.
+
 **`401` from the console's API.** The token is missing, malformed, expired
 (sessions last 8 hours), from before a password change (which signs out
-every session), or a revoked bot token.
+every session), or a revoked bot token. Everyone at once: the console's
+`JWT_SECRET` changed ([Rotating secrets](#rotating-secrets)).
 
 **`429` signing in.** Too many attempts from one address for one account:
 wait for the time shown. The counter is in memory, so restarting the
-console clears it.
+console clears it. Each console copy keeps its own, so with several copies
+the limit is per copy.
 
 **A submission is refused.** The response says why:
 - `403`: not a member of a team the DAG names; a secret not registered for
@@ -757,6 +1022,29 @@ reused tags.
 **A catalog workflow shows "a workflow file issue" and runs no jobs.** It
 didn't parse. Run `actionlint` on it; a common cause is using `secrets` in a
 step's `if:` (move it to `env:` and test that).
+
+**The catalog release doesn't apply.** The Admin page's Catalog card shows
+the last check's error and what was applied, and `VertraCatalogNotApplying`
+fires after an hour of failures. A failed check applies nothing: the last
+release applied stays in force. The console logs each failure as
+`catalog_sync_failed`. The usual causes:
+- "no trusted signer signed the catalog release": `catalog.signature`
+  doesn't match who signed it (another key, or a keyless identity whose
+  subject doesn't match `subjectRegExp`). The console's log has cosign's own
+  output (`catalog_release_unverified`). The verify Job reaches the
+  registry by the name in `catalog.release`, with `registryCheck`'s
+  credentials or the scan Jobs' cloud identity; on kind it can't reach
+  `localhost:5001`.
+- "has no version yet": the install follows `newest` (or a pinned
+  version) and the catalog has no `vX.Y.Z` tag for it yet.
+- The registry can't be read: check `registryCheck` and the console's
+  identity on the registry.
+
+A release that applied with problems (some teams, products or SecretStores
+refused, each logged as `catalog_apply_problem`) applied everything else;
+the card lists what was refused. A team the catalog didn't make is one of
+them until an admin adopts it. **Sync now** checks again at once and applies
+the current release even if it hasn't changed.
 
 **On kind:**
 - Docker Desktop restarted and the node stopped (`docker ps -a` shows

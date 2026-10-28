@@ -5,7 +5,7 @@ enforced today, by which layer, what isn't enforced yet, and what's out of
 scope. Written for security reviewers evaluating Vertra, and kept honest:
 where something is a plan rather than a fact, it says so.
 
-Last reviewed 2026-10-18, for 0.x. Vertra is not production-ready yet; the
+Last reviewed 2026-10-28, for 0.x. Vertra is not production-ready yet; the
 gaps in [Not yet enforced](#not-yet-enforced) are why.
 
 ## At a glance
@@ -19,8 +19,10 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Can one product reach another product's secret in the same team? | By design, yes: a team's secrets are the team's, and the team chooses per step which ones it gets (`secretRefs`). What a team can't do is give one to an image that isn't its registered product (it runs with no secrets), or mount a Secret it never registered. The console checks this at submit time, and an admission policy makes the cluster enforce it on every step's Job. A product's own cloud identity (its declared ServiceAccount) is still its own: another product can't run as it. |
 | Can a team register another team's product, or its image, as its own? | No. A product name and an image repository belong to the first team that registers them, the repository even after its products are deleted (an admin can release an unused one). Catalog CI also derives each image's path from its team's folder, so one team can't publish under another's name. |
 | Can anything but the console submit work? | No. kernel-api accepts only the console's ServiceAccount token, issued for kernel-api alone and checked with a TokenReview. See [How kernel-api knows its caller](#how-kernel-api-knows-its-caller). |
-| Is anything enforced if the console is bypassed? | Yes: which namespaces steps may run in, which image sources they may use, image signatures (with Sigstore's policy-controller installed) and who may delete a team namespace. These are admission policies the Kubernetes API server applies. |
+| Is anything enforced if the console is bypassed? | Yes: which namespaces steps may run in, which image sources they may use, that images are pinned and passed their scan, which ServiceAccount and Secrets a step may have, image signatures (with Sigstore's policy-controller installed) and who may delete a team namespace. These are admission policies the Kubernetes API server applies to the scheduler's Jobs. They don't hold if the console itself is compromised: it can rewrite three of them. See [If a component is compromised](#if-a-component-is-compromised). |
 | Are secrets encrypted at rest? | That depends on the cluster. Enabling encryption of Secrets at rest in etcd, ideally with a KMS provider, is the cluster operator's responsibility and a prerequisite for production. |
+| Is Vertra's own data encrypted at rest? | Only the few credentials the console keeps itself. Step inputs, outputs and logs, and the audit log, are plain in Postgres; encrypting its disks and backups is the operator's. See [What Vertra stores](#what-vertra-stores). |
+| Is traffic inside the cluster encrypted? | No. The console calls kernel-api over plain HTTP, and the bundled Postgres takes plain connections; NetworkPolicies limit who can connect. |
 | What reaches logs and outputs? | Whatever a step prints or returns. Vertra stores step outputs and logs; a product must never print or return a secret. |
 
 ## Who is trusted
@@ -33,7 +35,7 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Team maintainers | Manage their team: its people and their roles, register its secrets and choose which step gets which, its bots, raw DAGs, cancelling its runs | Console authorization (`auth/access.ts`): the maintainer role, per-product identity, registered team secrets |
 | Team members | See their team's runs, logs, Pods and secrets' names; run its actions and what's shared with it | The member role: nothing they can change |
 | Product images | Do their one job with the inputs and secrets they're given | Their namespace, ServiceAccount and mounted secrets; admission policies |
-| Pipelines (bots) | What their token's scopes allow; an ordering bot, only its listed templates | Scoped, hashed API tokens; `auth/access.ts`'s `ensureMayOrder` |
+| Pipelines (bots) | A team's bot: what a maintainer of its team may do; an ordering bot, only its listed templates; an automation token, only its scopes, in no team | Hashed API tokens that last until revoked; `auth/access.ts`'s `ensureMayOrder`. See [Bot tokens](#bot-tokens) |
 
 ## Where secret values live
 
@@ -204,7 +206,14 @@ console from inside the cluster, so testing one reports only whether it
 answered as a model, never what it replied. On GCP it's Gemini through Vertex AI in
 the install's own project, as the console's Workload Identity: no key, and
 nothing leaves the install's cloud. What's asked, and what its tools return, goes to
-the install's chat model (`chat.endpoint`); nothing is kept by the console,
+the install's chat model (`chat.endpoint`): the conversation, doc sections,
+the offerings shared with the person, their team's resources (each one's
+type, id, name and what it provides) and, for a run they may see, each
+step's state, outputs and failure message (`console/src/chat/tools.ts`,
+`get_run`; a provider's member gets only what [the run's
+page](#who-sees-a-run-that-spans-teams) shows them). With `anthropic`, or
+an `openai-compatible` address (the chart's or an admin's) outside the
+install, all of that leaves the install's cloud. Nothing is kept by the console,
 except an answer someone rates: its question, answer, sources and their
 comment, for the admins only (`ChatService/RateAnswer`, a rating for a
 team only by its members), deleted after 90 days.
@@ -284,6 +293,30 @@ for the kinds they choose, to their account's address. The server's
 password is a Secret the console mounts as a file and reads itself; it's
 never in an environment variable, the database or a log. Emails say what
 happened and link to the console, as the inbox does: no outputs or logs.
+
+## Bot tokens
+
+A bot is an account that signs in with an API token instead of a password.
+A token is `mp_` and 256 random bits, shown once when it's made; the
+console keeps only its SHA-256 (`console/src/auth/apiToken.ts`), and when
+it was last used, to within five minutes. Tokens don't expire: one works
+until it's revoked (`TokenService/RevokeToken`, by a maintainer of a team
+its bot is in, or an admin) or its bot is deleted. What a leaked token can
+do depends on its kind:
+
+- **A team's bot** is a maintainer of its team (`console/src/core/tokens.ts`),
+  so its token can do what a maintainer can there: register and replace
+  the team's secrets, submit raw DAGs, retry and cancel the team's runs,
+  and manage its people and bots.
+- **An ordering bot** is a member, and may only order the templates its
+  maintainers list for it ([Ordering bots](#ordering-bots)).
+- **An automation token** (admins only) belongs to no team and can do
+  exactly what its scopes say (`console/src/auth/scopes.ts`): create teams,
+  register any team's products, retire or purge teams, apply SecretStores.
+  It can't read a secret or submit a run.
+
+Where the CI supports it, sign the bot in keylessly instead (next): then
+there's no token to leak.
 
 ## Keyless bots
 
@@ -377,7 +410,11 @@ the API is held: the gateway can't be pointed anywhere a catalog says. Its
 only Kubernetes right is minting ServiceAccount tokens, and an admission
 policy limits that to API ServiceAccounts (`*-api`) in team namespaces, so
 it can't mint the platform's or a team's other identities. It reads the
-console's database and never writes it. Requests are logged and counted by
+console's database and writes only its traffic counts (`api_traffic`), but
+it signs in with the console's own database credentials and holds
+`JWT_SECRET` to check sessions, so a compromised gateway is as strong as
+the console's API (see [If a component is
+compromised](#if-a-component-is-compromised)). Requests are logged and counted by
 API, team, caller and outcome, never with bodies, header values or
 credentials; the counts kept for each API's page (`api_traffic`, a week)
 hold only the calling team, never who. What it refused there is also in
@@ -501,6 +538,37 @@ reset of someone else's, `vertra admin reset-password`) has to be changed
 before anything else: until then its session may only read who it is and
 change it (`PASSWORD_CHANGE_REQUIRED`), and the gateway refuses it.
 
+**Passwords** are hashed with argon2id at the library's default cost
+(`console/src/auth/password.ts`). A new one must be 12 to 256 characters;
+nothing else is checked (no character classes, no breached-password list).
+There's no second factor for password accounts; where that matters, use
+single sign-on and the provider's. Password accounts are made by admins: open
+registration (`ALLOW_SELF_REGISTRATION`) is off by default and, when on,
+doesn't verify the email.
+
+**Guessing** is limited twice (`console/src/rpc/services/auth.ts`): 10
+sign-ins per 15 minutes per client address and email, and, per email from
+any address, after 10 failures in an hour each attempt waits 1 s, then 2 s,
+4 s, up to a minute (`console/src/auth/loginThrottle.ts`), so the owner is
+slowed, never locked out. A wrong email costs the same time as a wrong
+password. Both counts are in memory in each console copy: two copies (the
+chart's `autoscaling`) double them, and a restart clears them. The client
+address is the connection's unless `trustProxy` names the load balancer.
+
+**Sessions** are JWTs signed with `JWT_SECRET` (HS256), lasting `JWT_TTL`
+(8 hours by default; single sign-on's too, a keyless bot's an hour). The
+browser keeps one in `localStorage` and sends it as a bearer header, never
+a cookie, so there's no cross-site request forgery to defend. The token
+only says who you are: teams, roles and admin come from the database on
+every request, so removing someone from a team takes effect at once.
+Signing out only forgets the token in the browser; a copy keeps working
+until it expires. Every session of a person ends when their password is
+changed or reset, or their account is deleted
+(`console/src/auth/plugin.ts`); disabling someone at the single sign-on
+provider ends nothing until their session expires. Anyone with
+`JWT_SECRET` can make a session for anyone: the console and the gateway
+hold it.
+
 ## In the browser
 
 The console sends a Content-Security-Policy on every response: scripts only
@@ -519,7 +587,9 @@ violations).
   not read them (no `get` or `list`): whether a Secret is a team's comes
   from its own records. Its writes are fenced to team namespaces (below),
   and it can't grant RBAC (it may only delete Roles, never create them). A
-  compromised console could still write a team's secret values, so it
+  compromised console could still write a team's secret values and, by
+  loosening the identity policy, have a step of its choosing mount one
+  ([If a component is compromised](#if-a-component-is-compromised)), so it
   remains the most privileged component and should be treated that way.
 - **Nobody, for the registry pull Secret.** With the console chart's
   `registryCheck.copyToTeams` on, the console copies the platform's
@@ -546,7 +616,7 @@ without going through the console:
 
 | Guardrail | What it refuses | Where |
 | --- | --- | --- |
-| Dispatch namespaces | Jobs in any namespace not labelled `vertra/team=true`, and in the platform's own namespace (`DISPATCH_REJECTED`) | `helm/charts/execution-kernel/templates/dispatch-policy.yaml` |
+| Dispatch namespaces | Jobs in any namespace not labelled `vertra/team=true`, and in the platform's own namespace (`DISPATCH_REJECTED`), unless `dispatchPolicy.allowReleaseNamespace` is on: only for an install whose platform namespace is also a team's, as the GKE reference install's `default` is (`helm/values/gke/kernel.yaml`) | `helm/charts/execution-kernel/templates/dispatch-policy.yaml` |
 | Image sources | Images outside the allowed registries (`IMAGE_NOT_ALLOWED`) | `templates/image-policy.yaml` |
 | Image signatures | Unsigned images, where policy-controller is installed (`IMAGE_NOT_SIGNED`) | `templates/image-signature.yaml` |
 | Image scans | An image not pinned by digest (`IMAGE_NOT_PINNED`), or one whose digest failed its security scan unless an admin accepted it (`IMAGE_SCAN_FAILED`). The console scans every image before it's registered or run, and daily while in use | `templates/scan-policy.yaml` |
@@ -554,6 +624,13 @@ without going through the console:
 | Team deletion | A configured purger deleting a team namespace that isn't labelled retired. None is configured by default: the console leaves a purged team's namespace, labelled retired, for a cluster administrator to delete, so the identity that retires a namespace can't also delete it (`teamNamespaces.purge` would let it) | `templates/purge-policy.yaml` |
 | Console namespaces | The console creating a namespace that isn't labelled a team's, adopting one that isn't a team's, changing anything about a team namespace but its team label, or touching kube-* or the platform's own | console chart, `templates/namespace-policy.yaml` |
 | Console write fence | The console's ServiceAccount creating, changing or deleting Secrets, ServiceAccounts, Roles, RoleBindings or ExternalSecrets outside team namespaces (kube-system, the platform's own) | console chart, `templates/write-fence-policy.yaml` |
+
+The dispatch, image, scan and identity policies check the scheduler's own
+requests and nobody else's (their `matchConditions`). Anyone else the
+cluster lets create Pods in a team namespace, such as a cluster
+administrator, isn't checked by them: only Pod Security
+([What a step can reach](#what-a-step-can-reach)) and, where it's installed,
+policy-controller's signature check apply to every Pod there.
 
 An install `vertra` makes sets up signing itself when its catalog is signed
 (`signing` in vertra.yaml, asked at `vertra init`): `kms`, a key in the
@@ -591,6 +668,149 @@ stop the platform, not change it.
 
 And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in both charts) let only the platform's own Pods connect to its Postgres, and only the console connect to kernel-api: a step's Pod can reach neither. Every team namespace also holds `vertra-default-deny`, which the console writes with the namespace and rewrites on every policy resync (`console/src/teamNetwork.ts`): its Pods accept connections only from Pods in the same namespace, so one team's steps can't reach another team's Pods or Services. With the gateway on, it also writes `vertra-gateway-ingress`: the gateway's Pods (this release's namespace and the gateway's own labels) may reach the Pods the team labels `vertra/api-backend: "true"`, its API products' in-cluster backends, and nothing else of the team's (proven on kind 2026-10-28: through the gateway, 200; from another team's namespace, no connection; from its own namespace without the gateway's signed `Vertra-Caller`, the sample backend's 401). The console's write fence accepts no other NetworkPolicy from it, and only those two shapes (a broader selector, any namespace, any Pod of the platform's, or an extra peer is refused), and its RBAC can't delete one, so a compromised console can't open a team namespace up. Outgoing traffic isn't restricted: steps call their clouds. Every team namespace also holds a ResourceQuota (`vertra-team-quota`) and LimitRange (`vertra-team-limits`) when limits are set (`console/src/teamQuota.ts`: the chart's `teamNamespaces.quota`, or a team's own set by an admin), so one team's steps can't take the cluster's capacity from the others; the cluster refuses a Pod over them, and the write fence accepts no other quota or limits from the console. They need a CNI that enforces NetworkPolicy, and they select Pods by label, so creating Pods in the platform namespace must stay limited to administrators. The bundled databases' passwords are generated on install.
 
+## What a step can reach
+
+**Its Pod.** With the kernel chart's `scheduler.taskPodHardening` on (the
+default), every step Pod meets Pod Security's `restricted`
+(`kernel/internal/executor/kubernetes.go`): it runs as a non-root user (the
+image must name a numeric non-root `USER`), on a read-only root filesystem
+with a writable `/tmp`, with every capability dropped, no privilege
+escalation, the runtime's seccomp profile, and no Kubernetes API token
+(`automountServiceAccountToken: false`). It's never privileged. Turned off,
+for images that can't run that way, a step runs as its image's user on a
+writable filesystem and gets its ServiceAccount's API token.
+
+The cluster holds a step to that only where the namespace enforces Pod
+Security: the console labels each namespace it creates
+`pod-security.kubernetes.io/enforce: restricted` (the console chart's
+`teamNamespaces.podSecurity`; `console/src/k8s.ts`, `setTeamNamespace`), and
+the namespace policy won't let it remove the label. A team namespace the
+console adopted rather than created, or one made with `podSecurity` empty,
+has no such label; there only the scheduler's setting holds, since no
+admission policy checks these fields.
+
+**The network.** In, only Pods of its own namespace (and the gateway, to a
+team's API backends). Out, anything: the internet, its cloud, the
+Kubernetes API server (with no token to call it, while hardening is on),
+the console's and the gateway's public ports, Services in namespaces with
+no ingress policy, and the cloud's metadata server. It can't reach either
+Postgres, kernel-api, the image scanner, Loki, or any metrics port.
+
+**The metadata server**, so the node's own cloud identity:
+
+- On GKE clusters `vertra` makes, the metadata server is Workload
+  Identity's (`GKE_METADATA`, `cli/internal/modules/gcp/main.tf`): a step
+  gets only the Google identity bound to its own ServiceAccount, and none
+  as `default`; never the node's.
+- On EKS, `vertra` sets no instance-metadata options on its node groups
+  (`cli/internal/modules/aws/main.tf`), so whether a step can reach the
+  node role through IMDS is EKS's default for the cluster's mode. That
+  hasn't been verified. Until it is, treat what the node role may do as
+  reachable from a step, or add an egress NetworkPolicy of your own to
+  team namespaces refusing `169.254.169.254`.
+- On any other cluster, it's the cluster operator's to close.
+
+## If a component is compromised
+
+What each platform identity could do if its process or credentials were
+taken, and what would still hold.
+
+- **The console** can, through its role
+  (`helm/charts/execution-console/templates/rbac.yaml`): create, replace
+  and delete Secrets, product ServiceAccounts, ExternalSecrets,
+  SecretStores, NetworkPolicies and quotas in team namespaces (the write
+  fence keeps it to those); read every Pod in the cluster, specs included;
+  and update the image, identity and scan policies. Kubernetes doesn't
+  apply admission policies to admission policies, so nothing narrows that
+  last right: the console only ever writes their lists, and every kernel
+  upgrade resets the rest, but a compromised console could rewrite them to
+  allow any image, ServiceAccount or Secret, then submit through kernel-api,
+  which trusts it, a step that mounts any team's Secret. This is a known,
+  deliberate trade-off (the comment in that file). It also holds its
+  database (every account, and the values it seals) and `JWT_SECRET`, so it
+  can make a session as anyone. Still holding: steps run only in team
+  namespaces, never the platform's (the dispatch policy, which it can't
+  edit); it can't write outside team namespaces, change a team namespace's
+  labels beyond its team label, delete a namespace (unless
+  `teamNamespaces.purge`), widen a team's NetworkPolicy, create RBAC, or
+  read a Secret through the API; policy-controller's signature check, where
+  installed; Pod Security in the namespaces it created.
+- **kernel-api**'s ServiceAccount may only ask the API server who a token
+  belongs to (`system:auth-delegator`). It holds the kernel's database: every run's
+  inputs, outputs and logs, and the task rows the scheduler runs. A task it
+  wrote there still passes all four Job policies when the scheduler starts
+  it: a registered product of the team, as its own ServiceAccount, with
+  only the team's registered secrets, from an allowed, pinned, scanned
+  image, in a team namespace.
+- **The scheduler** has the kernel's database too, and a ClusterRole
+  (`helm/charts/execution-kernel/templates/rbac.yaml`): create Jobs and
+  ConfigMaps (the dispatch policy keeps them to team namespaces, and the
+  Job policies check every Job); list and watch every Pod in the cluster
+  and read any Pod's logs, the platform's and kube-system's included;
+  delete any Job or ConfigMap in any namespace (the dispatch policy fences
+  only creating them); list events.
+- **The gateway** may mint ServiceAccount tokens only for `*-api`
+  ServiceAccounts in team namespaces ([The API gateway](#the-api-gateway)).
+  But it signs in to the console's database with the console's own
+  credentials and holds `JWT_SECRET`: it could make a session as anyone,
+  admins included, do through the console's API whatever they may, and
+  unseal what the console seals. Its Kubernetes rights stay its own.
+- **The sleeper** can change replica counts and stop the platform, not
+  change it (above).
+
+## Vertra's own supply chain
+
+On each version tag, the release workflow (`.github/workflows/release.yml`)
+builds the kernel, console and gateway images, scans them with CI's gate
+(`.github/scripts/scan-image.sh`: a HIGH or CRITICAL vulnerability with a
+fix, a secret in a layer, or a known-malicious package fails the release),
+pushes them to GHCR and signs each digest with cosign, keyless, as the
+workflow's own GitHub identity. The charts and the `vertra` binaries are
+signed the same way, and a catalog's `./vertra` downloads its binary by
+SHA-256. Every pull request also runs Semgrep, gitleaks, and the same scan
+of the three platform images (`.github/workflows/security.yml`, `ci.yml`).
+
+Nothing verifies those signatures when installing: `vertra` pulls the
+charts by version, the charts run their images by tag unless
+`image.digest` pins them, and policy-controller doesn't cover the platform's
+own namespace. To check one by hand:
+
+```console
+$ cosign verify ghcr.io/<owner>/<repo>/execution-kernel:<version> \
+    --certificate-identity-regexp 'https://github.com/<owner>/<repo>/.github/workflows/release.yml@.*' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+## Audit
+
+The console records every call that can change something, allowed or
+refused, once it's answered (`console/src/audit.ts`, by one interceptor):
+who (a user or bot id), the method, the fields that name what it acted on
+(team, secret name, image, email, ...; never a value, password or token)
+and the outcome, with the request's id. Each entry is in the `audit_log`
+table, hash-chained so a change or removal shows, and in the console's log
+as `event: "audit"`. A catalog release's changes are recorded too.
+Entries are kept `retention.auditDays` (365 by default); `audit.export`
+copies them to write-once storage ([operations](operations.md)). On
+Observe, admins see every entry; anyone else their own, and what was done
+to their teams or to runs in them.
+
+Not recorded:
+
+- **Signing in and passwords.** Sign-ins, keyless ones, registration and
+  password changes are never audited. A failed sign-in appears only as
+  the request's own log line (address, method, status, not the email) and
+  in the `console_rpc_requests_total` metric; a successful one only as the
+  account's last sign-in time. Keyless sign-ins and password changes get
+  a log line of their own.
+- **Reads.** Who looked at a run, its outputs or logs, or a team's secrets'
+  names, isn't recorded.
+- **The client's address**, in an entry.
+- **What the console does on its own**, such as a schedule's runs: the
+  schedule's creation is in the log, and each run in its own records.
+- **Anything done to the cluster directly**, outside the console: that's
+  the cluster's audit log.
+
 ## What Vertra stores
 
 | Where | What | Notes |
@@ -598,6 +818,23 @@ And at the network level, NetworkPolicies (`templates/networkpolicy.yaml` in bot
 | Console database | Users (argon2id password hashes), teams, memberships, bots (hashed API tokens), registered secrets (names and key names, no values), products, a record of submitted executions including their DAG, and what runs made (each resource with its step's resolved inputs and outputs) | Sessions are signed tokens that expire (8 hours by default). What runs made is kept past run retention, until it's deleted |
 | Kernel database | Each execution's DAG, step inputs (as submitted and as resolved), outputs, logs and events | Never put a secret in a step's `inputs`: inputs are stored and shown to the execution's viewers. When the console's database shares this Postgres instance (`postgres.consoleDatabase`), the console signs in as its own role, which owns only its database and is refused a connection to the kernel's |
 | Team namespace | A ConfigMap per step attempt holding its `request.json` (its resolved inputs), deleted with the step's Job | Readable by anyone with ConfigMap access in that namespace |
+
+**At rest**, the console seals the few credentials it keeps and uses
+itself (chat webhook and callback URLs, the single sign-on client's
+secret, the chat model's key) with AES-256-GCM, under keys derived from
+`JWT_SECRET` (`console/src/sealed.ts`), so a copy of the database alone
+doesn't give them away. Everything else above is plain in Postgres, on its
+volume, and in its backups: step inputs, outputs and logs, what runs made,
+and the audit log. Encrypting those disks and the backup bucket is the
+cluster operator's.
+
+**In transit**, a person or bot reaches the console over HTTPS
+([operations](operations.md)). Inside the cluster nothing is encrypted:
+the console calls kernel-api over plain HTTP, carrying its ServiceAccount
+token, and the bundled Postgres takes plain connections (an external
+database is whatever its `externalDatabaseUrl` says). NetworkPolicies are
+what keep others off those connections; a service mesh, if you need more,
+is yours to add.
 
 ## Rules for product authors
 
@@ -626,10 +863,19 @@ Vertra isn't production-ready yet.
 
 | Gap | Impact | Plan |
 | --- | --- | --- |
-| The console can still create and replace Secrets in any team namespace | A compromised console could plant or overwrite a team's secret values (it can't read them) | Bind its Secret rights per team namespace as teams are created |
+| A compromised console can loosen the image, identity and scan policies, and write any team's Secrets | It could run a step of its choosing with any team's secrets ([If a component is compromised](#if-a-component-is-compromised)) | Accepted for now: Kubernetes can't guard admission policies from their editor; treat the console as the most privileged component |
+| The gateway holds the console's database credentials and `JWT_SECRET` | A compromised gateway could act as anyone through the console's API | Not decided |
+| Signing out doesn't end a session | A copied session token works until it expires (8 hours by default) | Not decided; meanwhile shorter sessions (`JWT_TTL`), and a password reset or deleting the account ends them all |
+| Bot tokens don't expire | A leaked team bot's token acts as a maintainer until someone revokes it | Not decided; meanwhile keyless sign-in where the CI supports it |
 | Groups from an ID token's claim are read at sign-in only | Someone who leaves a group the provider reports in its token stays in its team until their session ends (8 hours by default) or they sign in again; Google Workspace groups are read again every hour | Shorter sessions where that matters (`JWT_TTL`) |
+| Sign-ins and password changes aren't audited, and reads aren't either ([Audit](#audit)) | A failed sign-in leaves only a request log line | Not decided |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
-| Any member of one team in a multi-team execution can read all of its outputs (its steps' logs are filtered by level: other teams see INFO lines only) | Cross-team visibility of outputs within shared executions | Decide: filter outputs by team, or require every team for reads |
+| The sign-in limits are in memory in each console copy | Two copies double them; a restart clears them | Not decided; meanwhile run one copy |
+| Traffic inside the cluster is plain (console to kernel-api, every Postgres connection) | Anyone who can watch the cluster's network sees the console's token and the data | Not decided; meanwhile a service mesh where NetworkPolicy isn't enough |
+| The scheduler may read every Pod's logs and delete any Job or ConfigMap, cluster-wide | A stolen scheduler identity reaches well beyond team namespaces | Not decided |
+| Step Pod hardening is enforced by the cluster only through Pod Security, set on namespaces the console created | In an adopted namespace, `scheduler.taskPodHardening: false` runs steps as root with an API token | Not decided; meanwhile keep `taskPodHardening` on and let the console create team namespaces |
+| Whether an EKS step can reach the node role through IMDS isn't verified | A step might act as the node | Verify; meanwhile an egress NetworkPolicy refusing `169.254.169.254` in team namespaces |
+| Every team named in a raw DAG sees all of its steps' outputs (a template run's providers see only their own steps in full; other teams see only a step's INFO log lines) | Cross-team visibility of outputs within a shared raw DAG | Decide: filter outputs by team, or require every team for reads |
 
 ## Out of scope
 

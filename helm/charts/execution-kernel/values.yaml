@@ -258,7 +258,7 @@ scheduler:
   imagePullGraceSeconds: 120
   # kernel-scheduler has no other HTTP server (unlike kernel-api, which
   # serves /metrics on its normal port) — this is the port it starts one on
-  # just for Prometheus-compatible scraping. See kernel/cmd/kernel-scheduler.
+  # just for Prometheus-compatible scraping. See kernel/cmd/kernel.
   metricsPort: 9090
   # -- Arbitrary env vars applied uniformly to every dispatched task
   # container, regardless of which product image it runs (TASK_EXTRA_ENVIRONMENT,

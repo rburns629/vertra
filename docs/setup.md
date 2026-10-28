@@ -104,8 +104,18 @@ disk, the backups and logs buckets, and the task registry. The audit copy's
 bucket is always kept: it's the record, and its retention refuses deletion
 until it lapses. A local registry another kind cluster still uses is kept too.
 
+**Upgrading.** The release an install runs is the `vertra` setting
+(`vertra init --release <x.y.z>` chooses it; `source` builds your checkout
+instead). To upgrade, `vertra config set -e <env> vertra <x.y.z>`, then
+`vertra apply <env>`. Back up first: going back across a database
+migration means restoring the databases, not just applying the older
+release ([Rolling back](operations.md#rolling-back)).
+
 ## Where to read more
 
-- [Operations](operations.md): every setting, what each feature does on each
-  cloud, upgrades, backups, troubleshooting.
+- [Operations](operations.md): what each feature does on each cloud,
+  upgrades and rolling back, backups, monitoring, troubleshooting. Every
+  chart setting, with its default, is documented in the charts'
+  `values.yaml` (`helm/charts/execution-kernel/`,
+  `helm/charts/execution-console/`).
 - [Security model](security-model.md): what's enforced, and by which part.

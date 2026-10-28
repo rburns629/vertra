@@ -8,11 +8,13 @@ In the examples, the console is `https://vertra.example.com` and the team is `te
 
 ## 1. Get a token
 
-In the console, open your team → **Automation → Add a bot**, say what will use it, and copy the token: it's shown only once. The bot acts as a maintainer of your team, and of nothing else: it can submit and retry your team's DAGs. Store the token as a secret in your pipeline, for example:
+In the console, open your team → **Automation → Add a bot**, say what will use it, and copy the token: it's shown only once. Only a maintainer of the team can add a bot. The bot acts as a maintainer of your team, and of nothing else: it can submit and retry your team's DAGs. Store the token as a secret in your pipeline, for example:
 
 ```console
 $ gh secret set VERTRA_TOKEN --repo <your-org>/<your-repo>
 ```
+
+A token doesn't expire: it works until it's revoked. To rotate one, add a bot again with the same answer to "What will use it?": that gives the same bot a second token. Put the new token in your pipeline, then revoke the old one on the bot's card. Revoking stops a token at once.
 
 ### Or no token at all: sign in from CI
 
@@ -41,7 +43,7 @@ $ call AuthService/GetMe
 
 ## 2. Submit a DAG
 
-Send the DAG as `dag`. A pipeline that might retry after a timeout should set a `requestId` it can repeat, for example its run id: the same `requestId` returns the run already started instead of starting a second one.
+Send the DAG as `dag`. A pipeline that might retry after a timeout should set a `requestId` it can repeat, for example its run id: the same `requestId` returns the run already started instead of starting a second one. Each team's `requestId`s are its own, and a finished run is kept 90 days (unless your install says otherwise); after that, its `requestId` starts a new run.
 
 ```console
 $ cat dag.json
@@ -121,6 +123,8 @@ A client generated from the protos can call `ExecutionService/WatchExecution` in
 $ call ExecutionService/GetExecutionLogs "{\"executionId\":\"$ID\"}"
 {"tasks":[{"taskId":"say-hello","lines":["greeting Anna"]}]}
 ```
+
+A running step's logs can be up to a minute behind, only its last 5000 lines are kept, and on another team's step you get its info lines only: [Runs, explained](09-runs-explained.md#where-are-a-steps-logs-and-why-dont-i-see-all-of-them) has the details. A step's `failure.code` is explained in [its failure codes](09-runs-explained.md#what-does-each-failure-code-mean).
 
 To list executions, newest first, a page at a time (pass `nextCursor` back as `page.cursor` for the next page; it's empty on the last; `team`, `search` and `since` narrow it):
 
@@ -255,11 +259,11 @@ $ call ExecutionService/SubmitExecution "$(jq -c '{dag: .}' dag.json)" | jq '{co
 | --- | --- |
 | `invalid_argument` (400) | The request or the DAG is invalid; `message` says where, and a `Problem` detail names each field |
 | `unauthenticated` (401) | The token is missing, wrong or revoked |
-| `permission_denied` (403) | The bot isn't allowed this, e.g. a task for another team or a secret it wasn't given |
-| `not_found` (404) | No such execution, or not one your team can see |
+| `permission_denied` (403) | The bot isn't allowed this, e.g. a task for another team, a secret it wasn't given, or an execution none of its teams can see |
+| `not_found` (404) | No such execution |
 | `already_exists` (409) | It exists already, e.g. a team of that name |
 | `failed_precondition` (400) | Not possible right now, e.g. the team is retired (`TEAM_RETIRED`) |
 | `resource_exhausted` (429) | Too many attempts; wait the number of seconds in `Retry-After` |
 | `unavailable` (503) | The console can't reach something it needs; try again |
 
-Revoking the bot's token (Team page → **Automation**) stops it working immediately.
+Revoking the bot's token (Team page → **Automation**) stops it working immediately. Retrying, cancelling or running again an execution takes a maintainer of every team in it, which a pipeline's bot is for its own team only.

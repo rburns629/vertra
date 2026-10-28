@@ -23,7 +23,7 @@ back.
 ## Step 1 — registering one
 
 The simple, common path: open the console's Secrets tab (or call
-`POST /secrets` directly), and paste in a name and a value. That's it —
+`SecretService/PutSecret` directly), and paste in a name and a value. That's it —
 no approval, no PR, no waiting. The only requirement is that you're a
 maintainer of the team you're registering it for (or a platform admin).
 A member who isn't a maintainer sees the team's secrets' names, but can't
@@ -125,12 +125,14 @@ Being direct about what's true and what isn't, rather than a blanket
   (who has `kubectl` access to the real cluster at all).
 - **A product's own code is trusted not to leak it back out.** The one
   rule every product author is held to: never echo a secret's raw value
-  into a task's `outputs`, which flow back through an ordinary,
-  otherwise-unprotected API response. This is a real rule, enforced by
-  convention and code review, not something the platform re-checks
-  automatically at that boundary today — a mistake in a product's own
-  code *could* leak a value it read. Worth knowing, not something to
-  overstate as already airtight.
+  into a task's `outputs` or logs, which anyone who can see the run can
+  read. The platform catches the common mistakes: a step whose outputs
+  contain something shaped like a credential (a private key, a cloud
+  access key, a GitHub token, a JWT) fails with
+  `OUTPUT_CONTAINS_CREDENTIAL` and its outputs aren't stored, and the same
+  shapes are blanked out of its logs. But it can only recognize shapes,
+  never your actual value, so a plain password a product prints or returns
+  *is* stored. Worth knowing, not something to overstate as airtight.
 
 ## If a secret gets wiped, can it come back?
 

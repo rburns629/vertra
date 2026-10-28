@@ -46,7 +46,7 @@ flowchart LR
 
 - **People and pipelines** only ever talk to the console.
 - **The platform** is the console, kernel-api, kernel-scheduler and their databases. Only it reads or writes the databases.
-- **A product's container** is given exactly two things: the file `request.json`, and the secrets its step lists (its platform's, registered in the console), mounted at `/platform/secrets/<name>`. It gives back exactly one: the file `result.json`. It has no password to any Vertra database and no reason to call the platform. (Kubernetes also mounts the Pod's ServiceAccount token, which Vertra grants nothing: no Kubernetes API access. A cloud identity bound to the product's ServiceAccount is the platform team's own.)
+- **A product's container** is given exactly two things: the file `request.json`, and the secrets its step lists (its platform's, registered in the console), mounted at `/platform/secrets/<name>`. It gives back exactly one: the file `result.json`. It has no password to any Vertra database and no reason to call the platform. (By default the Pod's Kubernetes ServiceAccount token isn't mounted either, so it has no Kubernetes API access. A cloud identity bound to the product's ServiceAccount is the platform team's own.)
 
 Everything below is about how a file gets across that last line, in each direction, without the container ever touching the platform.
 
@@ -192,12 +192,12 @@ The scheduler asks the API server for the Pod record, the same way `kubectl get 
    | --- | --- |
    | make-name | `{"name": "Anna Berg"}` |
 
-3. **deletes** the Job and its ConfigMap. The Pod, its record and the copy of `result.json` go with them, so the database is now the only place the result exists.
+3. **deletes** the Job and its ConfigMap, about 30 seconds later (so a log collector can still read the Pod's output). The Pod, its record and the copy of `result.json` go with them, so the database is then the only place the result exists.
 4. **releases** say-hello: all of its dependencies have succeeded, so it moves from `BLOCKED` to `READY`.
 
 ### 8. kernel-scheduler fills in say-hello's input
 
-**Who:** kernel-scheduler. **Where:** `_dispatch_task` → `input_resolution.resolve_task_inputs`.
+**Who:** kernel-scheduler. **Where:** `resolveInputs` (`kernel/internal/scheduler/tick.go`) → `ResolveInputs` (`kernel/internal/domain/task.go`).
 
 Before starting say-hello, the scheduler reads the saved outputs of say-hello's dependencies from Postgres and replaces every reference with the real value:
 
@@ -253,8 +253,10 @@ The whole run took about five seconds.
 
 **Can two tasks talk to each other directly?** No. Values only move through the scheduler and Postgres, between a task finishing and the next one starting. Two tasks are never guaranteed to run at the same time, or even on the same machine.
 
+**What if a step fails?** The run fails, and every step that hasn't started is cancelled, not only the ones waiting on it. [Runs, explained](09-runs-explained.md) covers failures, retries and cancelling.
+
 **What if the scheduler stops between reading a result and saving it?** The task's claim (its lease) runs out after a minute, and a scheduler picks the task up again, so it runs again. That's why products must be safe to run twice.
 
-**Where can I see this for my own run?** The execution's page in the console shows each task's state, outputs and logs. To watch the Kubernetes side on kind, run `kubectl -n <team> get configmaps,pods -w`, then submit a DAG; the `ek-…` objects appear and are deleted within seconds.
+**Where can I see this for my own run?** The execution's page in the console shows each task's state, outputs and logs. To watch the Kubernetes side on kind, run `kubectl -n <team> get configmaps,pods -w`, then submit a DAG; the `ek-…` objects appear and are deleted about half a minute after each step ends.
 
 **Want more?** [What's a DAG?](03-what-is-a-dag.md) explains `dependsOn` and `$fromTask`. [How Vertra works under the hood](08-under-the-hood.md) lists every Kubernetes feature used here and why. [Where Vertra keeps its data](06-database-schemas.md) describes the tables named above.

@@ -26,37 +26,37 @@ flowchart TB
 ### A ConfigMap as a one-off input file
 - **Normally:** a ConfigMap holds an application's settings.
 - **Here:** each task gets a ConfigMap named after its Job, holding a single file, `request.json` (execution id, task id, action, attempt, and the inputs with every `$fromTask` reference already replaced by a real value). It's mounted read-only at `/platform/input` and deleted with the Job.
-- **Why:** a team's inputs never pass through a shell command, so they can't inject one, and a product in any language only has to read a file. If the Job itself is refused, the kernel deletes the ConfigMap at once so it isn't left behind.
-- **Code:** `_create_config_map`, and `start` for the clean-up.
+- **Why:** a team's inputs never pass through a shell command, so they can't inject one, and a product in any language only has to read a file. The ConfigMap is created after its Job and owned by it, so deleting the Job deletes it too, and a start that fails leaves nothing behind.
+- **Code:** `kernel/internal/executor/kubernetes.go` (`Start`, `createConfigMap`, and `Discard` for the clean-up).
 
 ### The termination message as the output channel
 - **Normally:** a container writes a short "why I stopped" note to `/dev/termination-log`.
 - **Here:** `terminationMessagePath` points at `/platform/output/result.json`, with `terminationMessagePolicy: File`. When the container exits, the kubelet copies the file into the Pod's status, where the scheduler reads it.
 - **Why:** it needs no sidecar, no shared disk, and no database password or network path back to the platform in the product. The product writes a file and exits. [How a value moves from one task to the next](07-how-data-moves.md) follows a real result through every step.
 - **Limit:** Kubernetes keeps at most **4096 bytes**, the whole file included. Products should output small values (IDs, names, URIs) and put large data in storage, outputting its URI. Today an oversized file is truncated and fails as `PRODUCT_RESULT_INVALID`.
-- **Code:** `_create_job`, `_build_status`.
+- **Code:** `jobFor`, `buildStatus`.
 
 ### An emptyDir as the only writable folder
 - **Normally:** scratch space for a Pod.
 - **Here:** `/platform/output` is an empty folder that exists only as long as the Pod does. It's the one place the product is meant to write.
-- **Code:** `_create_job` (the `output` volume).
+- **Code:** `jobFor` (the `output` volume).
 
 ### Pod status as an early-warning system
 - **Normally:** you watch Pod status for health.
-- **Here:** while a Job hasn't finished, the scheduler checks its Pod. If the container has been stuck in `ErrImagePull` or `ImagePullBackOff` for longer than a grace period (120 s by default), or the image name is invalid, the task fails right away.
+- **Here:** while a Job hasn't finished, the scheduler checks its Pod. An image that doesn't exist (`IMAGE_NOT_FOUND`) or an invalid image name (`IMAGE_INVALID`) fails the task right away; any other pull error fails it once it has lasted longer than a grace period (120 s by default, `IMAGE_PULL_FAILED`).
 - **Why:** otherwise a task whose image was deleted would wait out its whole timeout.
-- **Code:** `image_pull_failure`, `_image_pull_error`.
+- **Code:** `ImagePullFailure`, `imagePullError`.
 
 ### Deleting Jobs eagerly, with a TTL as a backstop
 - **Normally:** `ttlSecondsAfterFinished` cleans up finished Jobs after a while.
-- **Here:** the scheduler deletes a Job and its ConfigMap the moment it has read the result and logs. The TTL (1 hour) only catches Jobs it missed, for example after a scheduler crash.
-- **Why:** each team's namespace stays clean, and nothing is left holding a task's inputs. That's also why logs are copied into Postgres (`task_logs`): the Pod is gone seconds later.
-- **Code:** `_finalize`, `_delete_job`.
+- **Here:** once the result and logs are committed, the scheduler keeps the Job for 30 seconds (`scheduler.releaseFinishedAfterSeconds`), so a log collector can still read the Pod's output, then deletes the Job and its ConfigMap. The TTL (1 hour) only catches Jobs it missed, for example after a scheduler crash.
+- **Why:** each team's namespace stays clean, and nothing is left holding a task's inputs. That's also why logs are copied into Postgres (`task_logs`): the Pod is gone half a minute later.
+- **Code:** `kernel/internal/scheduler/run.go` (`ReleaseFinished`), the executor's `Release` and `deleteJob`.
 
 ### Labels as a query index
 - **Normally:** labels group and select objects.
 - **Here:** every task Pod carries `vertra.dev/execution-id` and `vertra.dev/attempt`, plus the annotation `vertra.dev/task`. The Team page's **Running now** finds a team's live Pods by these labels, straight from Kubernetes, without asking the kernel.
-- **Code:** `kubernetes.py` (`_create_job`), `console/src/k8s.ts` (`listTaskPods`).
+- **Code:** `kernel/internal/executor/kubernetes.go` (`jobFor`), `console/src/k8s.ts` (`listTaskPods`).
 
 ## Isolation and security
 
@@ -72,11 +72,13 @@ flowchart TB
 
 ### Admission policies as the last line of defence
 - **Normally:** a ValidatingAdmissionPolicy enforces cluster-wide rules, written in CEL and run by the API server itself, with no webhook server to operate.
-- **Here:** three policies back up what the console already checks, so a bug in, or a way around, the console still can't cause harm:
+- **Here:** five policies back up what the console already checks, so a bug in, or a way around, the console still can't cause harm:
   - **dispatch-policy:** the scheduler may create Jobs and ConfigMaps only in namespaces labelled `vertra/team=true`, never in its own (GKE allows its own for now, until the platform moves out of `default`). `matchConditions` limits the rule to the scheduler's own identity.
   - **image-policy:** a task's image must come from an allowed source.
+  - **identity-policy:** a task runs as `default` with no secrets, unless it's a registered product of its team, which runs as the ServiceAccount its product declares and may mount only secrets its team registered.
+  - **scan-policy:** a task's image must be pinned to a digest, and that digest mustn't have failed its security scan.
   - **purge-policy:** a configured purger may delete only a retired team namespace. None by default: a purged team's namespace is left, labelled retired, for a cluster administrator.
-- **Errors:** a refusal fails the task with `DISPATCH_REJECTED`, `IMAGE_NOT_ALLOWED` or `IDENTITY_NOT_ALLOWED`, and it isn't retried.
+- **Errors:** a refusal fails the task with `DISPATCH_REJECTED`, `IMAGE_NOT_ALLOWED`, `IDENTITY_NOT_ALLOWED`, `IMAGE_NOT_PINNED` or `IMAGE_SCAN_FAILED`, and it isn't retried. [Runs, explained](09-runs-explained.md#what-does-each-failure-code-mean) says what to do about each.
 - **Code:** `helm/charts/execution-kernel/templates/*-policy.yaml`.
 
 ### The image policy is its own database
@@ -85,10 +87,10 @@ flowchart TB
 - **Why:** on Kubernetes 1.36, once a policy using a ConfigMap parameter had been deleted and recreated, later edits to the ConfigMap stopped taking effect. A security rule can't depend on that.
 - **Code:** `image-policy.yaml`, `console/src/imagePolicy.ts`, `console/src/k8s.ts` (`readImagePolicyData`, `writeImagePolicyData`).
 
-### Signed images (GKE)
+### Signed images
 - **Normally:** images are trusted because they're in your registry.
-- **Here:** the catalog's CI signs each product image with a Cloud KMS key, only after it passes its security scans. Sigstore's policy-controller, an admission webhook, refuses unsigned catalog images with `IMAGE_NOT_SIGNED`.
-- **Code:** `helm/charts/execution-kernel/templates/image-signature.yaml`, `helm/values/gke/policy-controller.yaml`, the catalog's `ci.yml`.
+- **Here:** the catalog's CI signs each product image only after it passes its security scans: with a generated key pair, a cloud KMS key, or keyless (its own OIDC identity, no key anywhere). When an install turns on `imageSignature`, Sigstore's policy-controller, an admission webhook, refuses unsigned catalog images with `IMAGE_NOT_SIGNED`, on any cluster it's installed on (the GKE and EKS values turn it on; it isn't installed on kind, which can't reach its local registry).
+- **Code:** `helm/charts/execution-kernel/templates/image-signature.yaml`, `helm/values/{gke,eks}/policy-controller.yaml`, the catalog's `ci.yml`.
 
 ### Cloud access without keys
 - **Normally:** an app reads a downloaded service-account key.
@@ -97,8 +99,8 @@ flowchart TB
 
 ### Catalog CI with no cluster credentials
 - **Normally:** a GitOps pipeline holds credentials to apply what it merges.
-- **Here:** the catalog's workflows only call the console with a bot token. The console creates, retires and purges team namespaces and applies a team's reviewed SecretStore file after checking it holds nothing outside that team. Admission policies limit what the console itself may do to namespaces.
-- **Code:** `console/src/core/teams.ts`, `console/src/secretStores.ts`, `vertra catalog secret-stores check` (`cli/internal/catalogtool/teams.go`).
+- **Here:** the catalog's workflows hold no console or cluster credential. They push images and a signed catalog release to the registry; each console pulls that release, verifies it, and applies it: it creates and retires team namespaces, registers products, and applies a team's reviewed SecretStore file after checking it holds nothing outside that team. Admission policies limit what the console itself may do to namespaces.
+- **Code:** `console/src/catalogSync.ts`, `console/src/core/teams.ts`, `console/src/secretStores.ts`, `vertra catalog secret-stores check` (`cli/internal/catalogtool/teams.go`).
 
 ### Secrets synced from the cloud
 - **Normally:** Secrets are created by hand or by CI.
@@ -160,12 +162,12 @@ flowchart TB
 - **Code:** `console/src/auth/plugin.ts`, `apiToken.ts`, `password.ts`.
 
 ### Login that gives nothing away
-- **Here:** a login for an email that doesn't exist still checks the password against a dummy hash, so a wrong guess takes the same time either way and response times don't reveal which emails exist. After 10 failures in an hour for one IP and email, each further attempt must wait. On GKE the console's Service uses `externalTrafficPolicy: Local`, so it sees each client's real IP instead of a node's, and one attacker can't lock everyone out.
-- **Code:** `console/src/auth/password.ts` (`verifyAgainstNothing`), `loginThrottle.ts`, `helm/values/gke/console.yaml`.
+- **Here:** a login for an email that doesn't exist still checks the password against a dummy hash, so a wrong guess takes the same time either way and response times don't reveal which emails exist. Two limits slow guessing. One client may try one email 10 times in 15 minutes, then is refused until the window ends. And across all clients, after 10 failed sign-ins in an hour for one email, each further attempt must wait, 1 second doubling up to a minute, so its real owner waits at most a minute instead of being locked out. Both are counted in memory, per console. On GKE the console's Service uses `externalTrafficPolicy: Local`, so it sees each client's real IP instead of a node's, and one attacker can't lock everyone out.
+- **Code:** `console/src/auth/password.ts` (`verifyAgainstNothing`), `console/src/auth/loginThrottle.ts`, `console/src/rpc/services/auth.ts`, `helm/values/gke/console.yaml`.
 
 ### Errors that don't leak the cluster
-- **Here:** one global error handler turns every server error into a generic message, because Kubernetes client errors carry cluster responses and headers. Routes don't catch errors themselves.
-- **Code:** `console/src/index.ts` (`setErrorHandler`).
+- **Here:** the `maskErrors` interceptor answers every API error that isn't a deliberate refusal (`ApiError`) with a generic `internal` error and logs it in full, because Kubernetes client errors carry cluster responses and headers. A Fastify error handler does the same outside the API. Methods don't catch errors themselves.
+- **Code:** `console/src/rpc/interceptors.ts` (`maskErrors`), `console/src/index.ts` (`setErrorHandler`).
 
 ### Checking an image exists before running it
 - **Here:** before a submission or rerun, the console asks the registry whether each image still exists, using the registry's own HTTP API and its token handshake (a short-lived Workload Identity token on GKE). Answers are cached for a minute. A missing image is refused up front (`IMAGE_NOT_FOUND`) instead of failing later in the cluster.

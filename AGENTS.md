@@ -97,8 +97,8 @@ its own directory.
   (decision 20, `docs/assessment.md`), forwarding to each API product's
   backend exactly what its OpenAPI document describes. It reads the
   console's database (published APIs; who callers are, checked exactly as
-  `console/src/auth/plugin.ts` does, and kept in step with it) and never
-  writes it. The console chart deploys it (`gateway.enabled`); it may mint
+  `console/src/auth/plugin.ts` does, and kept in step with it), writing
+  only its own traffic counts (`api_traffic`). The console chart deploys it (`gateway.enabled`); it may mint
   ServiceAccount tokens only for `*-api` ServiceAccounts in team namespaces
   (an admission policy). Its tests read the console's migrated test
   database (`TEST_DATABASE_URL`).

@@ -82,10 +82,14 @@ reconciling a desired state* — its `.tfstate` file is the durable record
 of what *should* exist, `plan` shows you the diff between that and
 reality, and re-running `apply` after nothing changed is a deliberate
 no-op check. This system doesn't do that. A DAG submission here runs a
-*specific sequence of steps, once* (or replays identically if resubmitted
-with the same `requestId`) — there's no ongoing reconciliation loop
-checking "does this Cloud SQL instance still match what was asked for
-six months ago," and no `terraform destroy` equivalent. Idempotency here
+*specific sequence of steps, once* (resubmitting it with the same
+`requestId` returns the run already started, rather than running it
+again) — there's no ongoing reconciliation loop checking "does this
+Cloud SQL instance still match what was asked for six months ago." The
+nearest thing to `terraform destroy` is per resource, not per DAG: a step
+can report what it made, the console keeps a record of it (**Runs → What
+runs made**), and deleting one runs its product's `cleanup` action as a
+run of its own. Idempotency here
 means "resubmitting the same task never double-creates the same
 resource," not "this system will notice and fix drift on its own." If
 someone's expecting Terraform's continuous-reconciliation behavior from
@@ -124,3 +128,5 @@ a ready-to-run five-task chain to watch it live.
   tasks, and the definitions (`Task`, `Execution`, their states).
 - `01-getting-started.md` — the whole path from a new team to a
   running DAG, with real payloads to submit.
+- `09-runs-explained.md` — a run's states, what a failed step does to the
+  rest of the DAG, retrying, cancelling, and every failure code.

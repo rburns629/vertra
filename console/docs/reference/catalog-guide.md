@@ -106,6 +106,7 @@ tokenAudiences: [sts.amazonaws.com]  # optional: tokens for another cloud (below
 check: check                # optional: the action that says whether it's ready on an install (below)
 maxRunning: 5               # optional: at most 5 of its steps (all its actions) at once, per install
 capacity: onDemand          # optional: spot or onDemand, where the install offers both (below)
+resources: {cpu: 250m, memory: 512Mi}   # optional: what each step asks for (below)
 actions:
   - name: create
     script: actions/create.py
@@ -135,6 +136,13 @@ them to what the action really takes and returns, and self-contained (no
 [tools/product.schema.json](tools/product.schema.json); `./vertra catalog validate`
 checks against it. There's no image field: the image comes from the folder.
 
+Both are JSON Schema draft 2020-12, and each must be an object at the top
+(`type: object`). Everything that constrains a value is enforced (`type`,
+`required`, `enum`, `pattern`, lengths, limits, `additionalProperties`,
+`oneOf` and the rest), but `format` (`email`, `uri`, `date-time`) is only a
+label: nothing checks it, so use a `pattern` for what must hold. A `$ref`
+may point within the same schema (`#/$defs/...`), nothing else.
+
 The console builds the form someone fills in to run an action (or a
 template, from its `parameters`) from the same schema: `title` and
 `description` label and explain each field, `default` fills it, `enum`
@@ -157,11 +165,15 @@ properties:
 ```
 
 An action's `secretRefs` are its bindings, reviewed with the code that
-reads them: the team secrets it uses, each mounted at
-`/platform/secrets/<name>/<key>`. Today a DAG still lists the secrets a step
-mounts (only secrets the team registered can be mounted, only into its
-registered products' steps); once other teams run your templates, each
-step will use its action's own `secretRefs`. `shareWith` says which other
+reads them: the team secrets it uses. Each is mounted read-only as files,
+one per key, at `/platform/secrets/<name>/<key>`, never as environment
+variables. A template's steps, and the action run on its own from the
+Catalog, get exactly their action's `secretRefs`; a hand-written `kind:
+Dag` lists a step's secrets itself (only secrets the team registered, and
+only into its registered products' steps). `keys` and `description` are
+for the people registering the secret: nothing checks that it holds those
+keys, so a key that's missing is just a file that isn't there, and your
+action should say so plainly. `shareWith` says which other
 teams may run the action or put it in their templates, and `deprecated`
 says what to use instead while it keeps working: the console records both
 and shows them. `idempotent` and `maxAttempts` are your retry policy: a step
@@ -182,6 +194,22 @@ install offers a choice (GKE Autopilot, EKS): `spot` is cheaper but may be
 reclaimed (the step fails as retryable, so make the actions idempotent);
 `onDemand` isn't reclaimed, for a step that mustn't be cut short. Left out,
 the install's own, usually Spot.
+
+`resources` (`cpu`, `memory`, and optionally `memoryLimit`, as Kubernetes
+quantities) is what each of the product's steps asks the cluster for; a
+`kind: Dag` step may set its own instead. Left out, the step gets the
+install's default, which is often nothing, so the cluster's own applies
+(on GKE Autopilot, 0.5 vCPU and 2 GiB). Memory is also the limit, unless
+`memoryLimit` says more; a step that goes over it is killed and fails as
+`PRODUCT_RESULT_MISSING`. CPU has no limit. Asking for more than the
+team's namespace allows fails the step as `RESOURCES_NOT_ALLOWED`.
+
+A step may run for 300 seconds by default, counted from when its container
+starts (waiting for a node doesn't count; after ten minutes of that it
+fails as `TASK_NOT_STARTED`). product.yaml can't change it: a template
+step or a DAG task sets `timeoutSeconds`, so an action that needs longer
+belongs in a template that says so. Run on its own from the Catalog, an
+action gets the 300 seconds. Over its time, a step fails as `TASK_TIMEOUT`.
 
 An action that makes or changes something lists it in its outputs as
 `resources`, each a `type`, an `id`, and optionally a `name` and an http(s)
@@ -276,7 +304,16 @@ refuses a change that could break them:
 - a team no longer in `shareWith`.
 
 If the change is meant, raise the product's `version`: that's the breaking
-change, visible in the diff for its reviewers. To retire an action or a
+change, visible in the diff for its reviewers. It doesn't keep the old
+contract for anyone: an install holds one version of each action, the
+newest released, and every template using it gets the new one at the next
+sync. Tell the teams that use it (the console shows who) before you merge.
+
+Runs already submitted keep the image digest they were pinned to, but each
+step is checked against what's registered when it starts. A step (or a
+retry) of an action that's been removed, or of a product whose
+`serviceAccount` or `tokenAudiences` changed since, is refused as
+`IDENTITY_NOT_ALLOWED` and not retried; the run has to be run again. To retire an action or a
 product, mark it `deprecated: <what to use instead>` first and publish that
 (templates using it get a warning); a later pull request may then remove
 it. Adding things (an action, an optional input, an output, a team to
@@ -446,23 +483,52 @@ Run, `googleIdToken`) and `samples/aws/apis/orders` (a Lambda function URL,
 - The step's request is `/platform/input/request.json`; the action is the
   container's argument. `entrypoint.sh` runs `actions/<action>.*` by its
   shebang, or fails with `UNSUPPORTED_ACTION`, so language support lives
-  entirely in the Dockerfile.
-- The action writes `/platform/output/result.json`:
-  `{"status": "succeeded", "outputs": {...}}` or
-  `{"status": "failed", "error": {"code", "message", "retryable"}}`, at most
-  4 KB. Output references (IDs, names, URIs), not data. What a step made
-  goes in `outputs.resources` (see `cleanup` above).
+  entirely in the Dockerfile. The request is
+  `{"executionId", "taskId", "action", "attempt", "inputs"}`, `inputs`
+  always an object, with every `$fromStep` already replaced by its value.
+  `executionId` and `taskId` together make a good idempotency key.
+- The action writes `/platform/output/result.json`, at most 4 KB, exactly
+  one of:
+  `{"status": "succeeded", "outputs": {...}}` (`outputs` may be left out)
+  or `{"status": "failed", "error": {"code": "...", "message": "...",
+  "retryable": false}}` (`code` and `message` not empty; `retryable`
+  optional, false if left out). Nothing else: any other field, at the top
+  or in `error`, anything after the object, or a `failed` without an
+  `error`, fails the step as `PRODUCT_RESULT_INVALID`. Output references
+  (IDs, names, URIs), not data. What a step made goes in
+  `outputs.resources` (see `cleanup` above).
+- The exit code doesn't matter once result.json is written: it decides.
+  With no result.json (a crash, or killed for memory), the step fails as
+  `PRODUCT_RESULT_MISSING`, with the last lines of its log in the message.
+  Both are retried, if the action is idempotent.
 - Steps run at least once: an action must be safe to run again (look up
   before creating).
+- Cancelling a run, or a step running out of time, deletes its Job: the
+  container gets SIGTERM, then is killed 30 seconds later, and isn't told
+  why. Leave what you were doing in a state the next attempt can pick up.
+  A failure is retried only when it's retryable (your `retryable`, or the
+  platform's: a timeout, a reclaimed node, an image that wouldn't pull),
+  the action is idempotent and attempts remain, after 5 seconds, then 10,
+  doubling up to 5 minutes.
 - Log JSON lines with a `level`: `{"level": "info", "msg": "Created the
   project"}`. INFO lines are shown to everyone who can see the run, so
   write them for the person who ran it; `debug`, `warn` and `error` lines,
   and any plain line, only your team (and admins) sees. Every sample does.
+  The platform keeps the last 5,000 lines (at most 1 MiB) of a step's log,
+  refreshed every minute while it runs.
 - Never print or return a credential. Logs and outputs are stored; the
   kernel redacts recognizable credentials from logs and fails a step whose
-  outputs contain one.
+  outputs contain one (`OUTPUT_CONTAINS_CREDENTIAL`, not retried).
+  Recognizable means: a private key (PEM), an AWS access key, a GitHub
+  token, a Google API key, a Slack or Stripe key, an Azure account key, a
+  bearer token, or a JWT. So an action can't output an ID token, even on
+  purpose.
 - The image runs as non-root with a read-only filesystem (`/tmp` is
-  writable) and no Kubernetes token.
+  writable), every capability dropped, and no Kubernetes token. Its final
+  `USER` must be numeric (`USER 65532:65532`, as the templates have):
+  Kubernetes can't tell that a name like `app` isn't root, so it refuses
+  to start the container, and the step waits out the ten minutes and fails
+  as `TASK_NOT_STARTED`.
 
 ## Testing
 
@@ -470,8 +536,18 @@ Test a product before publishing it: `./vertra catalog check` builds it and
 runs its tests on your machine, as CI does before anything is published.
 A product's tests are contract tests: `tests/<action>/<case>/request.json`
 and the `expected.json` its result must contain. `./vertra catalog check` runs
-each against the built image the way the platform runs a step, with no
-network. A succeeding case must also match the action's schemas. A case that
+each against the built image with the request mounted where the platform
+mounts it, with no network. A succeeding case must also match the action's
+schemas. A case's request.json may be just `{"inputs": {...}}`: the rest
+is filled in (`executionId: contract-test`, `taskId` the case's name,
+`attempt: 1`).
+
+The local run is `docker run`, not the cluster, so it doesn't check
+everything the platform does. On an install, a step also has a read-only
+root filesystem (only `/tmp` is writable), no capabilities, a numeric
+non-root `USER` required, a result.json held to 4 KB and read strictly
+(above), and no `/platform/tokens`. A product that passes here and fails
+there almost always trips one of those. A case that
 needs a secret puts a placeholder in `secrets/<name>/<key>` beside it (the
 case fails if the result contains it). Logic that calls a cloud API is tested
 in the image with the client mocked, as `actions/test_<action>.py`. Every
@@ -496,9 +572,9 @@ Per product (`./vertra catalog check`, in `ci.yml`):
 | A base image not pinned by digest | `./vertra catalog bases` pins it; `./vertra catalog bases --update` moves every pin to its tag's current image |
 
 Across the repository (`security.yml`): committed secrets (gitleaks; rotate
-anything it finds), and Semgrep's rules plus
-[.semgrep/malicious.yml](.semgrep/malicious.yml), including a Dockerfile's
-final `USER` being non-root.
+anything it finds), and Semgrep: its Dockerfile rules (including the
+final `USER` being non-root, though not that it's numeric) plus the
+catalog's own [.semgrep/malicious.yml](.semgrep/malicious.yml).
 
 An accepted finding gets its exception where it applies, with the reason, so
 the pull request's review decides: a vulnerability ID in the product's
@@ -553,6 +629,15 @@ install points its console at the release (the console chart's
 
 From a laptop: `./vertra catalog publish [teams/<team>/products/<product> ...]`,
 then `./vertra catalog release`, signed in to the registry with `docker login`.
+
+If a merged product doesn't show up on an install, the install refused
+it: each console applies a release item by item, and keeps a list of what
+it couldn't apply, with why (Admin → Catalog & images, which only admins
+see, so ask one). The usual reasons: the install's own scan failed the
+image (`IMAGE_SCAN_FAILED`: a vulnerability published since your CI ran),
+the release's signature isn't one the install trusts, or the team's
+namespace isn't there. Fix it in the catalog and merge again; the next
+release retries everything.
 
 ### Base images
 

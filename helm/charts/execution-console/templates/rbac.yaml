@@ -96,15 +96,17 @@ subjects:
     name: {{ include "execution-console.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 ---
-# Two of the kernel's admission policies, by name and nothing else: the
-# image policy (the Admin page's image sources) and the identity policy
-# (the registered products, productPolicy.ts). Updating them lets the
-# console rewrite those whole policies, not just their lists (Kubernetes
-# doesn't apply admission policies to admission policies, so no guard can
-# narrow it further); the console itself only ever writes the lists, and
-# every kernel upgrade resets the rest to the chart's version. A compromised
-# console could loosen them, but it could already read every team's Secrets
-# (docs/security-model.md); against everything else they still hold.
+# Three of the kernel's admission policies, by name and nothing else: the
+# image policy (the Admin page's image sources), the identity policy (the
+# registered products, productPolicy.ts) and the scan policy (the digests
+# that failed). Updating them lets the console rewrite those whole
+# policies, not just their lists (Kubernetes doesn't apply admission
+# policies to admission policies, so no guard can narrow it further); the
+# console itself only ever writes the lists, and every kernel upgrade resets
+# the rest to the chart's version. A compromised console could loosen them,
+# and so run any image with any team's Secrets: an accepted trade-off
+# (docs/security-model.md, "If a component is compromised"). The dispatch
+# policy, the namespace policy and the write fence still hold.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

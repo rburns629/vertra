@@ -64,8 +64,9 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
   {
     id: "concepts",
     title: "Concepts",
-    blurb: "How values pass between steps, and how secrets stay with their team.",
+    blurb: "How a run goes, how values pass between steps, and how secrets stay with their team.",
     items: [
+      { doc: "09-runs-explained", label: "Runs, explained", sections: "all" },
       ["07-how-data-moves", "How values move between steps"],
       ["04-secrets-explained", "Secrets, explained"],
     ],
@@ -115,7 +116,7 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
         label: "Operations",
         sections: [
           ["Install", ["local-install-with-kind", "installing-on-a-cluster-with-helm"]],
-          ["Run it", ["upgrading", "databases", "backups", "network-policies", "the-chat-agent", "throughput"]],
+          ["Run it", ["upgrading", "databases", "rotating-secrets", "backups", "network-policies", "the-chat-agent", "throughput"]],
           "troubleshooting",
         ],
       },
@@ -134,11 +135,11 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
         label: "Security model",
         sections: [
           "at-a-glance",
-          ["Identity and signing in", ["who-is-trusted", "signing-in", "in-the-browser", "how-kernel-api-knows-its-caller", "keyless-bots", "ordering-bots", "tokens-for-another-cloud"]],
+          ["Identity and signing in", ["who-is-trusted", "signing-in", "in-the-browser", "how-kernel-api-knows-its-caller", "bot-tokens", "keyless-bots", "ordering-bots", "tokens-for-another-cloud"]],
           ["Secrets", ["where-secret-values-live", "how-a-secret-reaches-a-step", "who-can-read-a-secret"]],
           ["Runs and what they make", ["consumers-and-templates", "who-sees-a-run-that-spans-teams", "who-sees-a-steps-logs", "what-a-run-made-and-deleting-it", "schedules"]],
           ["Notifications", ["notifications-and-chat-webhooks", "email"]],
-          ["What the platform enforces", ["guardrails-the-cluster-enforces", "the-consoles-writes", "the-api-gateway", "what-vertra-stores", "rules-for-product-authors"]],
+          ["What the platform enforces", ["guardrails-the-cluster-enforces", "what-a-step-can-reach", "if-a-component-is-compromised", "the-consoles-writes", "the-api-gateway", "vertras-own-supply-chain", "audit", "what-vertra-stores", "rules-for-product-authors"]],
           ["Limits", ["not-yet-enforced", "out-of-scope", "reporting-a-vulnerability"]],
         ],
       },

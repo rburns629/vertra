@@ -159,8 +159,9 @@ type Settings struct {
 	ImagePullGrace time.Duration
 	// Longest any one Kubernetes API call may take before it fails.
 	KubernetesTimeout time.Duration
-	// A Job's activeDeadlineSeconds is its task's timeout plus this: a
-	// backstop for a Job the scheduler lost track of. The scheduler relies
+	// A Job's activeDeadlineSeconds is its task's timeout, plus
+	// TaskStartTimeout, plus this: a backstop for a Job the scheduler lost
+	// track of. The scheduler relies
 	// on it too: a timed-out task whose Job it can't stop is failed (and
 	// maybe retried) only once this deadline has passed.
 	JobDeadlineGrace time.Duration
