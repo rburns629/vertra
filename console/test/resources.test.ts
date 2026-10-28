@@ -17,10 +17,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { cleanupInputs } from "../src/core/resources.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, upsertProduct } from "../src/db/queries.js";
-import { products, resources, submittedExecutions, teams } from "../src/db/schema.js";
+import { notificationEvents, products, resourceDeleteRequests, resources, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { submitExecution, type KernelExecution } from "../src/kernel/client.js";
-import { recordFinishedRuns, reportedResources, resolvedInputs } from "../src/resourceRecorder.js";
+import { providedBy, recordFinishedRuns, recordRun, reportedResources, resolvedInputs } from "../src/resourceRecorder.js";
 import { caller, rpcClient } from "./rpc.js";
 
 /** The runs kernel-api knows: what each answers. */
@@ -72,6 +72,7 @@ let providerToken: string;
 let outsiderToken: string;
 
 const anyObject = { type: "object" };
+const PROJECT = `${prefix}.project`;
 
 /** A step's status as kernel-api gives it. */
 function step(taskId: string, state: string, outputs: Record<string, unknown> | null = null) {
@@ -143,6 +144,18 @@ beforeAll(async () => {
   await register("project", "create", { cleanup: { action: "remove", inputs: { project: { $input: "project" }, id: { $resource: "id" }, zone: { $output: "zone" }, force: true } } });
   await register("project", "remove");
   await register("note", "create");
+  // A project and a service in it, typed: the service needs what the project provides.
+  const removeResource = { inputSchema: { type: "object", required: ["resource"], properties: { resource: { type: "object" } } } };
+  await register("proj", "create", {
+    outputSchema: { type: "object", properties: { projectId: { type: "string", "x-vertra-provides": PROJECT } } },
+    cleanup: { action: "delete", inputs: null },
+  });
+  await register("proj", "delete", removeResource);
+  await register("svc", "create", {
+    inputSchema: { type: "object", properties: { project: { type: "string", "x-vertra-needs": PROJECT } } },
+    cleanup: { action: "delete", inputs: null },
+  });
+  await register("svc", "delete", removeResource);
 
   const consumer = await users.makeUser();
   const provider = await users.makeUser();
@@ -158,6 +171,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  await db.delete(resourceDeleteRequests).where(inArray(resourceDeleteRequests.ownerTeam, [cons, prov]));
   await db.delete(resources).where(like(resources.productTeam, `${prefix}%`));
   await db.delete(submittedExecutions).where(inArray(submittedExecutions.onBehalfOf, [cons]));
   await db.delete(products).where(like(products.name, `${prefix}%`));
@@ -298,5 +312,96 @@ describe("what runs made", () => {
     const refused = await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [note?.id] });
     expect(refused.failure).toBe("NO_CLEANUP");
     expect(vi.mocked(submitExecution)).toHaveBeenCalledTimes(1); // only the run that made it
+  });
+});
+
+type Ref = { id: string; externalId: string; input: string };
+type Linked = { id: string; externalId: string; state: string; provides?: { type: string; value: string; output: string }[]; dependsOn?: Ref[]; dependents?: Ref[] };
+const linked = async (token: string, query: string) =>
+  ((await call<{ resources?: Linked[] }>(token, "ResourceService/ListResources", { team: cons, query })).body.resources ?? []).filter((r) => r.state !== "deleted");
+
+describe("what depends on what (decision 25)", () => {
+  it("keeps what a step provided, by wiring type", () => {
+    const schema = { properties: { projectId: { "x-vertra-provides": "gcp.project" }, size: {}, nested: { "x-vertra-provides": "x.y" } } };
+    expect(providedBy(schema, { projectId: "p-1", size: 3, nested: { a: 1 } })).toEqual([{ type: "gcp.project", value: "p-1", output: "projectId" }]);
+  });
+
+  it("links a resource to one an earlier run made, by the value its input needs", async () => {
+    await ranAndFinished(`${prov}-proj-create`, {}, { projectId: `${prefix}-p1`, resources: [{ type: "demo/project", id: `${prefix}-p1` }] });
+    await ranAndFinished(`${prov}-svc-create`, { project: `${prefix}-p1` }, { resources: [{ type: "demo/service", id: `${prefix}-s1` }] });
+    const [project] = await linked(consumerToken, `${prefix}-p1`);
+    const [service] = await linked(consumerToken, `${prefix}-s1`);
+    expect(project?.provides).toEqual([{ type: PROJECT, value: `${prefix}-p1`, output: "projectId" }]);
+    expect(project?.dependents).toMatchObject([{ externalId: `${prefix}-s1`, input: "project" }]);
+    expect(service?.dependsOn).toMatchObject([{ externalId: `${prefix}-p1`, input: "project" }]);
+    // The outsider sees neither, nor the link.
+    expect(await linked(outsiderToken, `${prefix}-p1`)).toEqual([]);
+  });
+
+  it("links a step to the one its input was wired from in the same run", async () => {
+    const executionId = randomUUID();
+    const task = (id: string, name: string, inputs: Record<string, unknown> = {}) => ({ id, team: prov, image: `registry.example/${prov}/${name}:1`, action: "create", inputs });
+    await recordRun(
+      {
+        executionId,
+        submittedBy: null,
+        template: null,
+        onBehalfOf: null,
+        payload: { tasks: [task("p", "proj"), { ...task("s", "svc", { project: { $fromTask: "p", $output: "projectId" } }), dependsOn: ["p"] }] },
+      },
+      {
+        executionId,
+        name: "x",
+        state: "SUCCEEDED",
+        tasks: [
+          step("p", "SUCCEEDED", { projectId: `${prefix}-p2`, resources: [{ type: "demo/project", id: `${prefix}-p2` }] }),
+          step("s", "SUCCEEDED", { resources: [{ type: "demo/service", id: `${prefix}-s2` }] }),
+        ],
+      },
+    );
+    const [service] = (await call<{ resources?: Linked[] }>(providerToken, "ResourceService/ListResources", { query: `${prefix}-s2` })).body.resources ?? [];
+    expect(service?.dependsOn).toMatchObject([{ externalId: `${prefix}-p2`, input: "project" }]);
+  });
+
+  it("refuses deleting what others depend on, asks the admins once, and deletes it when one approves", async () => {
+    const [project] = await linked(consumerToken, `${prefix}-p1`);
+    const refused = await call<unknown>(consumerToken, "ResourceService/DeleteResources", { resourceIds: [project?.id] });
+    expect(refused.code).toBe("failed_precondition");
+    expect(refused.failure).toBe("HAS_DEPENDENTS");
+    expect(vi.mocked(submitExecution)).not.toHaveBeenCalled();
+    // Asking again is the same request.
+    await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [project?.id] });
+    type Requests = { requests?: { id: string; decision: string; resources: Ref[]; dependents: Ref[]; requestedBy: string }[] };
+    const mine = (await call<Requests>(consumerToken, "ResourceService/ListDeleteRequests", {})).body.requests ?? [];
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ decision: "", resources: [{ externalId: `${prefix}-p1` }], dependents: [{ externalId: `${prefix}-s1` }] });
+    const id = mine[0]?.id ?? "";
+    expect(await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:resource-delete:${id}`))).toHaveLength(1);
+
+    // Not the asker's to approve; an admin's.
+    expect((await call(consumerToken, "ResourceService/DecideDeleteRequest", { id, approve: true })).failure).toBe("FORBIDDEN");
+    const admin = await users.signIn((await users.makeUser({ admin: true })).email);
+    const approved = await call<{ executionId: string }>(admin, "ResourceService/DecideDeleteRequest", { id, approve: true });
+    expect(approved.code).toBe("ok");
+    expect(approved.body.executionId).not.toBe("");
+    expect((await call(admin, "ResourceService/DecideDeleteRequest", { id, approve: true })).failure).toBe("ALREADY_DECIDED");
+    const [deleting] = await linked(consumerToken, `${prefix}-p1`);
+    expect(deleting?.state).toBe("deleting");
+  });
+
+  it("deletes the dependents with it, first, without asking", async () => {
+    await ranAndFinished(`${prov}-proj-create`, {}, { projectId: `${prefix}-p3`, resources: [{ type: "demo/project", id: `${prefix}-p3` }] });
+    await ranAndFinished(`${prov}-svc-create`, { project: `${prefix}-p3` }, { resources: [{ type: "demo/service", id: `${prefix}-s3` }] });
+    const [project] = await linked(consumerToken, `${prefix}-p3`);
+    const [service] = await linked(consumerToken, `${prefix}-s3`);
+    vi.mocked(submitExecution).mockClear();
+    // Asked project first: the service still goes first.
+    const deleted = await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [project?.id, service?.id] });
+    expect(deleted.code).toBe("ok");
+    const { dag } = lastSubmitted();
+    expect(dag.tasks.map((t) => t["image"])).toEqual([
+      expect.stringContaining(`${prov}/svc`),
+      expect.stringContaining(`${prov}/proj`),
+    ]);
   });
 });

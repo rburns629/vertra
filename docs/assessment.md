@@ -939,6 +939,10 @@ what they need only with a maintainer's help).
 Open, for review: whether a cart can be saved and shared before checkout
 (proposed: later, as drafts are).
 
+Built so far: the catalog's wiring types (1, 2026-10-27) and what each
+resource provides and depends on, with deletes of what others depend on
+waiting for an admin (3, 2026-10-28).
+
 Decided on review (2026-10-27): members check out carts (5), without a
 maintainer; ordering bots still order templates only. Every existing
 resource of a needed type that the caller may see is offered, none chosen

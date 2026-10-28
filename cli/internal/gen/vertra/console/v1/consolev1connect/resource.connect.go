@@ -44,6 +44,12 @@ const (
 	// ResourceServiceDeleteRunResourcesProcedure is the fully-qualified name of the ResourceService's
 	// DeleteRunResources RPC.
 	ResourceServiceDeleteRunResourcesProcedure = "/vertra.console.v1.ResourceService/DeleteRunResources"
+	// ResourceServiceListDeleteRequestsProcedure is the fully-qualified name of the ResourceService's
+	// ListDeleteRequests RPC.
+	ResourceServiceListDeleteRequestsProcedure = "/vertra.console.v1.ResourceService/ListDeleteRequests"
+	// ResourceServiceDecideDeleteRequestProcedure is the fully-qualified name of the ResourceService's
+	// DecideDeleteRequest RPC.
+	ResourceServiceDecideDeleteRequestProcedure = "/vertra.console.v1.ResourceService/DecideDeleteRequest"
 )
 
 // ResourceServiceClient is a client for the vertra.console.v1.ResourceService service.
@@ -52,12 +58,21 @@ type ResourceServiceClient interface {
 	// those matching a search.
 	ListResources(context.Context, *connect.Request[v1.ListResourcesRequest]) (*connect.Response[v1.ListResourcesResponse], error)
 	// Deletes resources made for one team: a run of their products' cleanup
-	// actions (product.yaml's cleanup), newest first, for that team. Each is
-	// deleted once its step succeeds.
+	// actions (product.yaml's cleanup), newest first and anything depending on
+	// another of them before it, for that team. Each is deleted once its step
+	// succeeds. Refused with HAS_DEPENDENTS while other resources still depend
+	// on them: the delete is recorded as a request (its id in the Failure
+	// detail's requestId) and the admins are alerted; it runs once one
+	// approves it.
 	DeleteResources(context.Context, *connect.Request[v1.DeleteResourcesRequest]) (*connect.Response[v1.DeleteResourcesResponse], error)
 	// Deletes what a run made that's still there, in the reverse of the
 	// order it was made.
 	DeleteRunResources(context.Context, *connect.Request[v1.DeleteRunResourcesRequest]) (*connect.Response[v1.DeleteRunResourcesResponse], error)
+	// Deletes waiting for an admin because others depended on them, and the
+	// recent decisions: every one for an admin, else your own.
+	ListDeleteRequests(context.Context, *connect.Request[v1.ListDeleteRequestsRequest]) (*connect.Response[v1.ListDeleteRequestsResponse], error)
+	// Approves a waiting delete (it runs now, as yours) or denies it. Admins only.
+	DecideDeleteRequest(context.Context, *connect.Request[v1.DecideDeleteRequestRequest]) (*connect.Response[v1.DecideDeleteRequestResponse], error)
 }
 
 // NewResourceServiceClient constructs a client for the vertra.console.v1.ResourceService service.
@@ -90,14 +105,29 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("DeleteRunResources")),
 			connect.WithClientOptions(opts...),
 		),
+		listDeleteRequests: connect.NewClient[v1.ListDeleteRequestsRequest, v1.ListDeleteRequestsResponse](
+			httpClient,
+			baseURL+ResourceServiceListDeleteRequestsProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("ListDeleteRequests")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		decideDeleteRequest: connect.NewClient[v1.DecideDeleteRequestRequest, v1.DecideDeleteRequestResponse](
+			httpClient,
+			baseURL+ResourceServiceDecideDeleteRequestProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("DecideDeleteRequest")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // resourceServiceClient implements ResourceServiceClient.
 type resourceServiceClient struct {
-	listResources      *connect.Client[v1.ListResourcesRequest, v1.ListResourcesResponse]
-	deleteResources    *connect.Client[v1.DeleteResourcesRequest, v1.DeleteResourcesResponse]
-	deleteRunResources *connect.Client[v1.DeleteRunResourcesRequest, v1.DeleteRunResourcesResponse]
+	listResources       *connect.Client[v1.ListResourcesRequest, v1.ListResourcesResponse]
+	deleteResources     *connect.Client[v1.DeleteResourcesRequest, v1.DeleteResourcesResponse]
+	deleteRunResources  *connect.Client[v1.DeleteRunResourcesRequest, v1.DeleteRunResourcesResponse]
+	listDeleteRequests  *connect.Client[v1.ListDeleteRequestsRequest, v1.ListDeleteRequestsResponse]
+	decideDeleteRequest *connect.Client[v1.DecideDeleteRequestRequest, v1.DecideDeleteRequestResponse]
 }
 
 // ListResources calls vertra.console.v1.ResourceService.ListResources.
@@ -115,18 +145,37 @@ func (c *resourceServiceClient) DeleteRunResources(ctx context.Context, req *con
 	return c.deleteRunResources.CallUnary(ctx, req)
 }
 
+// ListDeleteRequests calls vertra.console.v1.ResourceService.ListDeleteRequests.
+func (c *resourceServiceClient) ListDeleteRequests(ctx context.Context, req *connect.Request[v1.ListDeleteRequestsRequest]) (*connect.Response[v1.ListDeleteRequestsResponse], error) {
+	return c.listDeleteRequests.CallUnary(ctx, req)
+}
+
+// DecideDeleteRequest calls vertra.console.v1.ResourceService.DecideDeleteRequest.
+func (c *resourceServiceClient) DecideDeleteRequest(ctx context.Context, req *connect.Request[v1.DecideDeleteRequestRequest]) (*connect.Response[v1.DecideDeleteRequestResponse], error) {
+	return c.decideDeleteRequest.CallUnary(ctx, req)
+}
+
 // ResourceServiceHandler is an implementation of the vertra.console.v1.ResourceService service.
 type ResourceServiceHandler interface {
 	// What you may see, newest first, at most 200: a run's, a team's, or
 	// those matching a search.
 	ListResources(context.Context, *connect.Request[v1.ListResourcesRequest]) (*connect.Response[v1.ListResourcesResponse], error)
 	// Deletes resources made for one team: a run of their products' cleanup
-	// actions (product.yaml's cleanup), newest first, for that team. Each is
-	// deleted once its step succeeds.
+	// actions (product.yaml's cleanup), newest first and anything depending on
+	// another of them before it, for that team. Each is deleted once its step
+	// succeeds. Refused with HAS_DEPENDENTS while other resources still depend
+	// on them: the delete is recorded as a request (its id in the Failure
+	// detail's requestId) and the admins are alerted; it runs once one
+	// approves it.
 	DeleteResources(context.Context, *connect.Request[v1.DeleteResourcesRequest]) (*connect.Response[v1.DeleteResourcesResponse], error)
 	// Deletes what a run made that's still there, in the reverse of the
 	// order it was made.
 	DeleteRunResources(context.Context, *connect.Request[v1.DeleteRunResourcesRequest]) (*connect.Response[v1.DeleteRunResourcesResponse], error)
+	// Deletes waiting for an admin because others depended on them, and the
+	// recent decisions: every one for an admin, else your own.
+	ListDeleteRequests(context.Context, *connect.Request[v1.ListDeleteRequestsRequest]) (*connect.Response[v1.ListDeleteRequestsResponse], error)
+	// Approves a waiting delete (it runs now, as yours) or denies it. Admins only.
+	DecideDeleteRequest(context.Context, *connect.Request[v1.DecideDeleteRequestRequest]) (*connect.Response[v1.DecideDeleteRequestResponse], error)
 }
 
 // NewResourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -155,6 +204,19 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(resourceServiceMethods.ByName("DeleteRunResources")),
 		connect.WithHandlerOptions(opts...),
 	)
+	resourceServiceListDeleteRequestsHandler := connect.NewUnaryHandler(
+		ResourceServiceListDeleteRequestsProcedure,
+		svc.ListDeleteRequests,
+		connect.WithSchema(resourceServiceMethods.ByName("ListDeleteRequests")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceDecideDeleteRequestHandler := connect.NewUnaryHandler(
+		ResourceServiceDecideDeleteRequestProcedure,
+		svc.DecideDeleteRequest,
+		connect.WithSchema(resourceServiceMethods.ByName("DecideDeleteRequest")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vertra.console.v1.ResourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ResourceServiceListResourcesProcedure:
@@ -163,6 +225,10 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceDeleteResourcesHandler.ServeHTTP(w, r)
 		case ResourceServiceDeleteRunResourcesProcedure:
 			resourceServiceDeleteRunResourcesHandler.ServeHTTP(w, r)
+		case ResourceServiceListDeleteRequestsProcedure:
+			resourceServiceListDeleteRequestsHandler.ServeHTTP(w, r)
+		case ResourceServiceDecideDeleteRequestProcedure:
+			resourceServiceDecideDeleteRequestHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -182,4 +248,12 @@ func (UnimplementedResourceServiceHandler) DeleteResources(context.Context, *con
 
 func (UnimplementedResourceServiceHandler) DeleteRunResources(context.Context, *connect.Request[v1.DeleteRunResourcesRequest]) (*connect.Response[v1.DeleteRunResourcesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ResourceService.DeleteRunResources is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) ListDeleteRequests(context.Context, *connect.Request[v1.ListDeleteRequestsRequest]) (*connect.Response[v1.ListDeleteRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ResourceService.ListDeleteRequests is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) DecideDeleteRequest(context.Context, *connect.Request[v1.DecideDeleteRequestRequest]) (*connect.Response[v1.DecideDeleteRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ResourceService.DecideDeleteRequest is not implemented"))
 }

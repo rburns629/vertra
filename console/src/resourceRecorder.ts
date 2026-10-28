@@ -8,15 +8,19 @@
  * its run is gone. A run that ran a delete (core/resources.ts) marks what it
  * deleted. A retried run is recorded again once it finishes. A run the kernel no longer has
  * is passed over. A failed pass is logged and the next one tries again:
- * nothing is marked recorded until it is. Each finished run is also told to
+ * nothing is marked recorded until it is. Each resource also keeps what
+ * its step provided (each output typed x-vertra-provides) and links to the
+ * resources its step took inputs from (resourceLinks: an input wired from
+ * another step of the run, or one whose value a live resource provides, of
+ * the input's wiring type), decision 25. Each finished run is also told to
  * notifier.ts, which says so to whoever ran it, and to callbacks.ts, which
  * posts it to its ordering bot's callback and its teams' outcome webhooks.
  */
 import type { FastifyBaseLogger } from "fastify";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { productLookup, productOfTask } from "./core/executions.js";
 import { db } from "./db/client.js";
-import { resources, submittedExecutions } from "./db/schema.js";
+import { resourceLinks, resources, submittedExecutions, type Provided } from "./db/schema.js";
 import { getExecution, getExecutionStates, type KernelExecution } from "./kernel/client.js";
 import { runFinished } from "./notifier.js";
 import { runFinishedCallbacks } from "./callbacks.js";
@@ -72,6 +76,31 @@ export function resolvedInputs(inputs: unknown, outputs: Map<string, Record<stri
   );
 }
 
+/** A schema's top-level property `name`'s wiring hint (x-vertra-needs or x-vertra-provides), or null. */
+function hintOf(schema: unknown, name: string, hint: "x-vertra-needs" | "x-vertra-provides"): string | null {
+  const properties = isRecord(schema) && isRecord(schema["properties"]) ? schema["properties"] : {};
+  const property = properties[name];
+  const wiring = isRecord(property) ? property[hint] : undefined;
+  return typeof wiring === "string" && wiring.length > 0 ? wiring : null;
+}
+
+/** A wiring type's value as provides keeps it: a scalar, as text; anything else isn't one. */
+function scalar(value: unknown): string | null {
+  return typeof value === "string" ? text(value, 2048) : typeof value === "number" || typeof value === "boolean" ? String(value) : null;
+}
+
+/** What a step provided: each of its outputs its product types with x-vertra-provides, with a scalar value. */
+export function providedBy(outputSchema: unknown, outputs: Record<string, unknown>): Provided[] {
+  return Object.entries(outputs).flatMap(([output, raw]) => {
+    const type = hintOf(outputSchema, output, "x-vertra-provides");
+    const value = scalar(raw);
+    return type && value !== null ? [{ type, value, output }] : [];
+  });
+}
+
+const isReference = (value: unknown): value is { $fromTask: string; $output: string } =>
+  isRecord(value) && typeof value["$fromTask"] === "string" && typeof value["$output"] === "string" && Object.keys(value).length === 2;
+
 /** Each task's place in its run: after everything it depends on. */
 function positions(tasks: Record<string, unknown>[]): Map<string, number> {
   const order = new Map<string, number>();
@@ -96,6 +125,8 @@ export async function recordRun(run: Run, detail: KernelExecution): Promise<numb
   const order = positions(tasks);
   const products = productLookup();
   const rows: (typeof resources.$inferInsert)[] = [];
+  // The steps that reported something: their tasks and products, for links.
+  const reporters = new Map<string, { task: Record<string, unknown>; inputSchema: unknown }>();
   for (const task of tasks) {
     const id = typeof task["id"] === "string" ? task["id"] : "";
     if (state.get(id) !== "SUCCEEDED") continue;
@@ -107,6 +138,8 @@ export async function recordRun(run: Run, detail: KernelExecution): Promise<numb
     // (or the platform's, which have no team), so that's the step's team.
     const team = typeof task["team"] === "string" ? task["team"] : null;
     if (!product?.teamId || !team) continue;
+    reporters.set(id, { task, inputSchema: product.inputSchema });
+    const provides = providedBy(product.outputSchema, outputs.get(id) ?? {});
     for (const r of reported) {
       rows.push({
         product: product.name,
@@ -124,12 +157,16 @@ export async function recordRun(run: Run, detail: KernelExecution): Promise<numb
         inputs: resolvedInputs(task["inputs"], outputs),
         outputs: outputs.get(id) ?? {},
         position: order.get(id) ?? 0,
+        provides,
       });
     }
   }
   await db.transaction(async (tx) => {
+    // The resources each step reported that this run now has: those it
+    // made, or updated as their owner (not one another owner keeps).
+    const recorded = new Map<string, string[]>();
     for (const row of rows) {
-      await tx
+      const [kept] = await tx
         .insert(resources)
         .values(row)
         .onConflictDoUpdate({
@@ -153,10 +190,47 @@ export async function recordRun(run: Run, detail: KernelExecution): Promise<numb
             inputs: row.inputs,
             outputs: row.outputs,
             position: row.position,
+            provides: row.provides,
             reportedAt: sql`now()`,
             deletedAt: null,
           },
-        });
+        })
+        .returning({ id: resources.id });
+      if (kept) recorded.set(row.taskId, [...(recorded.get(row.taskId) ?? []), kept.id]);
+    }
+    // What each depends on, as of this run: replaced, so a resource reported
+    // again depends on what its latest step took.
+    for (const [taskId, ids] of recorded) {
+      const reporter = reporters.get(taskId);
+      if (!reporter) continue;
+      const links = new Map<string, { dependsOnId: string; input: string; wiringType: string | null }>();
+      const inputs = isRecord(reporter.task["inputs"]) ? reporter.task["inputs"] : {};
+      for (const [input, raw] of Object.entries(inputs)) {
+        const wiringType = hintOf(reporter.inputSchema, input, "x-vertra-needs");
+        let found: { id: string }[] = [];
+        if (isReference(raw)) {
+          // Wired from another step of this run: what that step reported.
+          found = await tx
+            .select({ id: resources.id })
+            .from(resources)
+            .where(and(eq(resources.executionId, run.executionId), eq(resources.taskId, raw.$fromTask), isNull(resources.deletedAt)));
+        } else if (wiringType && scalar(raw) !== null) {
+          // A value of its type: whatever live resource provides it, from
+          // any run (the project an earlier order made).
+          const wanted = JSON.stringify([{ type: wiringType, value: scalar(raw) }]);
+          found = await tx
+            .select({ id: resources.id })
+            .from(resources)
+            .where(and(isNull(resources.deletedAt), sql`${resources.provides} @> ${wanted}::jsonb`));
+        }
+        for (const { id } of found) {
+          // Never its own step's (a project.create given the id it makes).
+          if (!ids.includes(id)) links.set(`${id}/${input}`, { dependsOnId: id, input, wiringType });
+        }
+      }
+      await tx.delete(resourceLinks).where(inArray(resourceLinks.resourceId, ids));
+      const values = ids.flatMap((resourceId) => [...links.values()].map((link) => ({ resourceId, ...link })));
+      if (values.length > 0) await tx.insert(resourceLinks).values(values).onConflictDoNothing();
     }
     // This run's deletes: done where their step succeeded. One that didn't
     // stays this run's last attempt, free to be asked for again, or to

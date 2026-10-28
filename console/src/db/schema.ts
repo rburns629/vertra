@@ -559,12 +559,83 @@ export const resources = pgTable(
     deleteRequestedBy: uuid("delete_requested_by").references(() => users.id, { onDelete: "set null" }),
     // Once its cleanup step succeeded.
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // What its step provided, by wiring type (decision 25): each output its
+    // product types with x-vertra-provides, and its value. How a later run
+    // that's given the value is linked to it (resourceLinks), and how a
+    // cart offers it.
+    provides: jsonb("provides").$type<Provided[]>().notNull().default([]),
   },
   (table) => [
     unique("resources_product_team_type_external_id").on(table.productTeam, table.type, table.externalId),
     index("resources_execution_id_idx").on(table.executionId),
     index("resources_deleting_execution_id_idx").on(table.deletingExecutionId),
     index("resources_owner_team_idx").on(table.ownerTeam),
+    index("resources_provides_idx").using("gin", table.provides),
+  ],
+);
+
+/** One output a resource's step provided: its wiring type, value and name. */
+export interface Provided {
+  type: string;
+  value: string;
+  output: string;
+}
+
+/**
+ * What each resource depends on (decision 25), recorded when its run
+ * finishes (resourceRecorder.ts): a resource its step took an input from,
+ * in the same run (the input wired from that step) or an earlier one (the
+ * input's value is what a resource there provides, of the input's wiring
+ * type). Replaced each time the resource is reported again. Deleting
+ * something others depend on waits for an admin (resourceDeleteRequests).
+ */
+export const resourceLinks = pgTable(
+  "resource_links",
+  {
+    resourceId: uuid("resource_id")
+      .notNull()
+      .references(() => resources.id, { onDelete: "cascade" }),
+    dependsOnId: uuid("depends_on_id")
+      .notNull()
+      .references(() => resources.id, { onDelete: "cascade" }),
+    // The input of the resource's step it came in through, and that input's
+    // wiring type (null: an untyped input wired from a step).
+    input: text("input").notNull(),
+    wiringType: text("wiring_type"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.resourceId, table.dependsOnId, table.input] }),
+    index("resource_links_depends_on_id_idx").on(table.dependsOnId),
+    check("resource_links_not_itself", sql`${table.resourceId} <> ${table.dependsOnId}`),
+  ],
+);
+
+/**
+ * A delete refused because other resources depend on what it would delete
+ * (decision 25): the admins are alerted, and it runs only once one approves
+ * it (core/resources.ts). Who asked, what for, and what depended on it
+ * then; kept with its decision.
+ */
+export const resourceDeleteRequests = pgTable(
+  "resource_delete_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    resourceIds: uuid("resource_ids").array().notNull(),
+    ownerTeam: text("owner_team"),
+    requestedBy: uuid("requested_by").references(() => users.id, { onDelete: "set null" }),
+    // The live resources depending on them when it was asked: their ids.
+    dependentIds: uuid("dependent_ids").array().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // approved or denied; null while it waits.
+    decision: text("decision").$type<"approved" | "denied">(),
+    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    // The cleanup run an approval started.
+    executionId: uuid("execution_id"),
+  },
+  (table) => [
+    index("resource_delete_requests_waiting_idx").on(table.createdAt).where(sql`${table.decision} IS NULL`),
+    check("resource_delete_requests_decision", sql`${table.decision} IS NULL OR ${table.decision} IN ('approved', 'denied')`),
   ],
 );
 

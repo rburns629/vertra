@@ -2,7 +2,7 @@
 /** ResourceService (proto/vertra/console/v1/resource.proto): core/resources.ts over Connect. */
 import type { ServiceImpl } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
-import { deleteResources, deleteRunResources, listResources } from "../../core/resources.js";
+import { decideDeleteRequest, deleteResources, deleteRunResources, listDeleteRequests, listResources, type ResourceRef } from "../../core/resources.js";
 import type { ResourceService } from "../../gen/vertra/console/v1/resource_pb.js";
 import { callerOf, logOf } from "../context.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
@@ -10,6 +10,10 @@ import { check } from "../validate.js";
 import { viaKernel } from "./execution.js";
 
 const Uuid = Type.String({ format: "uuid" });
+
+function ref(r: ResourceRef) {
+  return { id: r.id, type: r.type, externalId: r.externalId, name: r.name ?? "", executionId: r.executionId, input: r.input };
+}
 
 export function resourceService(): ServiceImpl<typeof ResourceService> {
   return {
@@ -43,6 +47,10 @@ export function resourceService(): ServiceImpl<typeof ResourceService> {
           deletingExecutionId: r.deletingExecutionId ?? "",
           deletedAt: timestamp(r.deletedAt),
           canDelete: r.canDelete,
+          provides: r.provides,
+          dependsOn: r.dependsOn.map(ref),
+          dependents: r.dependents.map(ref),
+          hiddenDependents: r.hiddenDependents,
         })),
       };
     },
@@ -55,6 +63,30 @@ export function resourceService(): ServiceImpl<typeof ResourceService> {
     async deleteRunResources(req, ctx) {
       const { executionId } = check({ executionId: Uuid }, req);
       return viaKernel(ctx, () => deleteRunResources(callerOf(ctx), executionId, logOf(ctx)));
+    },
+
+    async listDeleteRequests(_req, ctx) {
+      const requests = await listDeleteRequests(callerOf(ctx));
+      return {
+        requests: requests.map((r) => ({
+          id: r.id,
+          resources: r.resources.map(ref),
+          dependents: r.dependents.map(ref),
+          ownerTeam: r.ownerTeam ?? "",
+          requestedBy: r.requestedBy ?? "",
+          createdAt: timestamp(r.createdAt),
+          decision: r.decision ?? "",
+          decidedBy: r.decidedBy ?? "",
+          decidedAt: timestamp(r.decidedAt),
+          executionId: r.executionId ?? "",
+        })),
+      };
+    },
+
+    async decideDeleteRequest(req, ctx) {
+      const { id } = check({ id: Uuid }, { id: req.id });
+      const { executionId } = await viaKernel(ctx, () => decideDeleteRequest(callerOf(ctx), id, req.approve, logOf(ctx)));
+      return { executionId: executionId ?? "" };
     },
   };
 }

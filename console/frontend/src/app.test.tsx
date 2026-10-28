@@ -267,6 +267,31 @@ describe("a run", () => {
     await waitFor(() => { expect(retried).toEqual([{ executionId: FAILED_RUN.executionId, taskId: "deploy" }]); });
   });
 
+  it("shows what uses what, and lets an admin approve a delete that others depended on", async () => {
+    const project = { id: "a1b2c3d4-0000-4000-8000-0000000000a1", type: "gcp/project", externalId: "web-prod", executionId: FAILED_RUN.executionId, input: "" };
+    const service = { id: "a1b2c3d4-0000-4000-8000-0000000000a2", type: "gcp/cloud-run-service", externalId: "shop-api", executionId: FAILED_RUN.executionId, input: "projectId" };
+    const decided: Record<string, unknown>[] = [];
+    await renderAt("/runs/made", ADMIN, {
+      "ResourceService/ListResources": {
+        resources: [
+          { ...project, name: "", product: "gcp-project-create", productTeam: "gcp", ownerTeam: "azure-apps", taskId: "project", firstReportedAt: "2026-10-21T16:21:00Z", state: "exists", canDelete: true, dependents: [service] },
+        ],
+      },
+      "ResourceService/ListDeleteRequests": {
+        requests: [{ id: "d1d1d1d1-0000-4000-8000-000000000001", resources: [project], dependents: [service], requestedBy: "bo@acme.com", createdAt: "2026-10-27T10:00:00Z" }],
+      },
+      "ResourceService/DecideDeleteRequest": (request: Record<string, unknown>) => {
+        decided.push(request);
+        return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
+      },
+    });
+    // In the table, and on the request.
+    expect(await screen.findAllByText("Used by shop-api")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Waiting for an admin" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Approve and delete" }));
+    await waitFor(() => { expect(decided).toEqual([{ id: "d1d1d1d1-0000-4000-8000-000000000001", approve: true }]); });
+  });
+
   it("shows what it made, and deletes it all as a cleanup run", async () => {
     const made = (id: string, name: string) => ({
       id,

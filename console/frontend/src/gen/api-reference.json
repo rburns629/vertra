@@ -723,7 +723,7 @@
     },
     {
      "name": "DeleteResources",
-     "comment": "Deletes resources made for one team: a run of their products' cleanup\nactions (product.yaml's cleanup), newest first, for that team. Each is\ndeleted once its step succeeds.",
+     "comment": "Deletes resources made for one team: a run of their products' cleanup\nactions (product.yaml's cleanup), newest first and anything depending on\nanother of them before it, for that team. Each is deleted once its step\nsucceeds. Refused with HAS_DEPENDENTS while other resources still depend\non them: the delete is recorded as a request (its id in the Failure\ndetail's requestId) and the admins are alerted; it runs once one\napproves it.",
      "input": "vertra.console.v1.DeleteResourcesRequest",
      "output": "vertra.console.v1.DeleteResourcesResponse",
      "streaming": false,
@@ -735,6 +735,24 @@
      "comment": "Deletes what a run made that's still there, in the reverse of the\norder it was made.",
      "input": "vertra.console.v1.DeleteRunResourcesRequest",
      "output": "vertra.console.v1.DeleteRunResourcesResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
+     "name": "ListDeleteRequests",
+     "comment": "Deletes waiting for an admin because others depended on them, and the\nrecent decisions: every one for an admin, else your own.",
+     "input": "vertra.console.v1.ListDeleteRequestsRequest",
+     "output": "vertra.console.v1.ListDeleteRequestsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
+     "name": "DecideDeleteRequest",
+     "comment": "Approves a waiting delete (it runs now, as yours) or denies it. Admins only.",
+     "input": "vertra.console.v1.DecideDeleteRequestRequest",
+     "output": "vertra.console.v1.DecideDeleteRequestResponse",
      "streaming": false,
      "idempotency": "",
      "public": false
@@ -6459,6 +6477,81 @@
     }
    ]
   },
+  "vertra.console.v1.Provided": {
+   "name": "Provided",
+   "comment": "What a resource's step provided: an output its product types as a wiring\ntype (x-vertra-provides), and its value.",
+   "fields": [
+    {
+     "name": "type",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "value",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "output",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ResourceRef": {
+   "name": "ResourceRef",
+   "comment": "Another resource, at the end of a dependency.",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "type",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "externalId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The run that last reported it."
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The input of the dependent's step it came in through."
+    }
+   ]
+  },
   "vertra.console.v1.Resource": {
    "name": "Resource",
    "comment": "",
@@ -6581,6 +6674,167 @@
      "repeated": false,
      "optional": false,
      "comment": "Whether you may delete it now."
+    },
+    {
+     "name": "provides",
+     "type": "Provided",
+     "ref": "vertra.console.v1.Provided",
+     "repeated": true,
+     "optional": false,
+     "comment": "What its step provided, by wiring type: what a later order can use."
+    },
+    {
+     "name": "dependsOn",
+     "type": "ResourceRef",
+     "ref": "vertra.console.v1.ResourceRef",
+     "repeated": true,
+     "optional": false,
+     "comment": "What it depends on, and what still depends on it, of what you may see:\nrecorded when each run finished, across runs."
+    },
+    {
+     "name": "dependents",
+     "type": "ResourceRef",
+     "ref": "vertra.console.v1.ResourceRef",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "hiddenDependents",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "Live dependents you may not see."
+    }
+   ]
+  },
+  "vertra.console.v1.ResourceDeleteRequest": {
+   "name": "ResourceDeleteRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "resources",
+     "type": "ResourceRef",
+     "ref": "vertra.console.v1.ResourceRef",
+     "repeated": true,
+     "optional": false,
+     "comment": "What it would delete, and what depended on it when asked (what you may see)."
+    },
+    {
+     "name": "dependents",
+     "type": "ResourceRef",
+     "ref": "vertra.console.v1.ResourceRef",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "ownerTeam",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "requestedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "createdAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "decision",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"approved\", \"denied\", or empty while it waits."
+    },
+    {
+     "name": "decidedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "decidedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The cleanup run an approval started."
+    }
+   ]
+  },
+  "vertra.console.v1.ListDeleteRequestsRequest": {
+   "name": "ListDeleteRequestsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListDeleteRequestsResponse": {
+   "name": "ListDeleteRequestsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "requests",
+     "type": "ResourceDeleteRequest",
+     "ref": "vertra.console.v1.ResourceDeleteRequest",
+     "repeated": true,
+     "optional": false,
+     "comment": "Waiting first, then decided, newest first; at most 100."
+    }
+   ]
+  },
+  "vertra.console.v1.DecideDeleteRequestRequest": {
+   "name": "DecideDeleteRequestRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "approve",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DecideDeleteRequestResponse": {
+   "name": "DecideDeleteRequestResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The cleanup run, when approved."
     }
    ]
   },

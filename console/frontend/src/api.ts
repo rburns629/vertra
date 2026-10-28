@@ -1920,6 +1920,27 @@ export interface MadeResource {
   deletingExecutionId: string | null;
   deletedAt: string | null;
   canDelete: boolean;
+  /** What its step provided, by wiring type. */
+  provides: { type: string; value: string; output: string }[];
+  /** What it depends on, and what still depends on it (decision 25), of what you may see. */
+  dependsOn: ResourceRef[];
+  dependents: ResourceRef[];
+  /** Live dependents you may not see. */
+  hiddenDependents: number;
+}
+
+/** Another resource, at the end of a dependency. */
+export interface ResourceRef {
+  id: string;
+  type: string;
+  externalId: string;
+  name: string | null;
+  executionId: string;
+  input: string;
+}
+
+function resourceRef(r: { id: string; type: string; externalId: string; name: string; executionId: string; input: string }): ResourceRef {
+  return { id: r.id, type: r.type, externalId: r.externalId, name: r.name || null, executionId: r.executionId, input: r.input };
 }
 
 export async function listResources(filter: { executionId?: string; team?: string; query?: string; includeDeleted?: boolean }): Promise<MadeResource[]> {
@@ -1941,7 +1962,45 @@ export async function listResources(filter: { executionId?: string; team?: strin
     deletingExecutionId: r.deletingExecutionId || null,
     deletedAt: iso(r.deletedAt),
     canDelete: r.canDelete,
+    provides: r.provides.map((p) => ({ type: p.type, value: p.value, output: p.output })),
+    dependsOn: r.dependsOn.map(resourceRef),
+    dependents: r.dependents.map(resourceRef),
+    hiddenDependents: r.hiddenDependents,
   }));
+}
+
+/** A delete waiting for an admin because others depended on it, or one decided. */
+export interface DeleteRequest {
+  id: string;
+  resources: ResourceRef[];
+  dependents: ResourceRef[];
+  ownerTeam: string | null;
+  requestedBy: string | null;
+  createdAt: string;
+  decision: "approved" | "denied" | null;
+  decidedBy: string | null;
+  executionId: string | null;
+}
+
+/** Waiting deletes and recent decisions: every one for an admin, else your own. */
+export async function listDeleteRequests(): Promise<DeleteRequest[]> {
+  const { requests } = await call(() => resourcesApi.listDeleteRequests({}));
+  return requests.map((r) => ({
+    id: r.id,
+    resources: r.resources.map(resourceRef),
+    dependents: r.dependents.map(resourceRef),
+    ownerTeam: r.ownerTeam || null,
+    requestedBy: r.requestedBy || null,
+    createdAt: iso(r.createdAt) ?? "",
+    decision: (r.decision || null) as DeleteRequest["decision"],
+    decidedBy: r.decidedBy || null,
+    executionId: r.executionId || null,
+  }));
+}
+
+/** An admin approves (the cleanup run's id) or denies a waiting delete. */
+export async function decideDeleteRequest(id: string, approve: boolean): Promise<string | null> {
+  return (await call(() => resourcesApi.decideDeleteRequest({ id, approve }))).executionId || null;
 }
 
 /** Deletes resources made for one team; returns the cleanup run. */

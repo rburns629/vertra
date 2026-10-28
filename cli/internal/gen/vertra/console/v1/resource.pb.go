@@ -24,6 +24,155 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// What a resource's step provided: an output its product types as a wiring
+// type (x-vertra-provides), and its value.
+type Provided struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Output        string                 `protobuf:"bytes,3,opt,name=output,proto3" json:"output,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Provided) Reset() {
+	*x = Provided{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Provided) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Provided) ProtoMessage() {}
+
+func (x *Provided) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Provided.ProtoReflect.Descriptor instead.
+func (*Provided) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Provided) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *Provided) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *Provided) GetOutput() string {
+	if x != nil {
+		return x.Output
+	}
+	return ""
+}
+
+// Another resource, at the end of a dependency.
+type ResourceRef struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type       string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	ExternalId string                 `protobuf:"bytes,3,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	Name       string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// The run that last reported it.
+	ExecutionId string `protobuf:"bytes,5,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	// The input of the dependent's step it came in through.
+	Input         string `protobuf:"bytes,6,opt,name=input,proto3" json:"input,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResourceRef) Reset() {
+	*x = ResourceRef{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceRef) ProtoMessage() {}
+
+func (x *ResourceRef) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceRef.ProtoReflect.Descriptor instead.
+func (*ResourceRef) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ResourceRef) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ResourceRef) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ResourceRef) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *ResourceRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ResourceRef) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *ResourceRef) GetInput() string {
+	if x != nil {
+		return x.Input
+	}
+	return ""
+}
+
 type Resource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -53,14 +202,22 @@ type Resource struct {
 	DeletingExecutionId string                 `protobuf:"bytes,15,opt,name=deleting_execution_id,json=deletingExecutionId,proto3" json:"deleting_execution_id,omitempty"`
 	DeletedAt           *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
 	// Whether you may delete it now.
-	CanDelete     bool `protobuf:"varint,17,opt,name=can_delete,json=canDelete,proto3" json:"can_delete,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CanDelete bool `protobuf:"varint,17,opt,name=can_delete,json=canDelete,proto3" json:"can_delete,omitempty"`
+	// What its step provided, by wiring type: what a later order can use.
+	Provides []*Provided `protobuf:"bytes,18,rep,name=provides,proto3" json:"provides,omitempty"`
+	// What it depends on, and what still depends on it, of what you may see:
+	// recorded when each run finished, across runs.
+	DependsOn  []*ResourceRef `protobuf:"bytes,19,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	Dependents []*ResourceRef `protobuf:"bytes,20,rep,name=dependents,proto3" json:"dependents,omitempty"`
+	// Live dependents you may not see.
+	HiddenDependents int32 `protobuf:"varint,21,opt,name=hidden_dependents,json=hiddenDependents,proto3" json:"hidden_dependents,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Resource) Reset() {
 	*x = Resource{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[0]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -72,7 +229,7 @@ func (x *Resource) String() string {
 func (*Resource) ProtoMessage() {}
 
 func (x *Resource) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[0]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -85,7 +242,7 @@ func (x *Resource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resource.ProtoReflect.Descriptor instead.
 func (*Resource) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{0}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Resource) GetId() string {
@@ -207,6 +364,331 @@ func (x *Resource) GetCanDelete() bool {
 	return false
 }
 
+func (x *Resource) GetProvides() []*Provided {
+	if x != nil {
+		return x.Provides
+	}
+	return nil
+}
+
+func (x *Resource) GetDependsOn() []*ResourceRef {
+	if x != nil {
+		return x.DependsOn
+	}
+	return nil
+}
+
+func (x *Resource) GetDependents() []*ResourceRef {
+	if x != nil {
+		return x.Dependents
+	}
+	return nil
+}
+
+func (x *Resource) GetHiddenDependents() int32 {
+	if x != nil {
+		return x.HiddenDependents
+	}
+	return 0
+}
+
+type ResourceDeleteRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// What it would delete, and what depended on it when asked (what you may see).
+	Resources   []*ResourceRef         `protobuf:"bytes,2,rep,name=resources,proto3" json:"resources,omitempty"`
+	Dependents  []*ResourceRef         `protobuf:"bytes,3,rep,name=dependents,proto3" json:"dependents,omitempty"`
+	OwnerTeam   string                 `protobuf:"bytes,4,opt,name=owner_team,json=ownerTeam,proto3" json:"owner_team,omitempty"`
+	RequestedBy string                 `protobuf:"bytes,5,opt,name=requested_by,json=requestedBy,proto3" json:"requested_by,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// "approved", "denied", or empty while it waits.
+	Decision  string                 `protobuf:"bytes,7,opt,name=decision,proto3" json:"decision,omitempty"`
+	DecidedBy string                 `protobuf:"bytes,8,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
+	DecidedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=decided_at,json=decidedAt,proto3" json:"decided_at,omitempty"`
+	// The cleanup run an approval started.
+	ExecutionId   string `protobuf:"bytes,10,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResourceDeleteRequest) Reset() {
+	*x = ResourceDeleteRequest{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceDeleteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceDeleteRequest) ProtoMessage() {}
+
+func (x *ResourceDeleteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceDeleteRequest.ProtoReflect.Descriptor instead.
+func (*ResourceDeleteRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ResourceDeleteRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ResourceDeleteRequest) GetResources() []*ResourceRef {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *ResourceDeleteRequest) GetDependents() []*ResourceRef {
+	if x != nil {
+		return x.Dependents
+	}
+	return nil
+}
+
+func (x *ResourceDeleteRequest) GetOwnerTeam() string {
+	if x != nil {
+		return x.OwnerTeam
+	}
+	return ""
+}
+
+func (x *ResourceDeleteRequest) GetRequestedBy() string {
+	if x != nil {
+		return x.RequestedBy
+	}
+	return ""
+}
+
+func (x *ResourceDeleteRequest) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *ResourceDeleteRequest) GetDecision() string {
+	if x != nil {
+		return x.Decision
+	}
+	return ""
+}
+
+func (x *ResourceDeleteRequest) GetDecidedBy() string {
+	if x != nil {
+		return x.DecidedBy
+	}
+	return ""
+}
+
+func (x *ResourceDeleteRequest) GetDecidedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DecidedAt
+	}
+	return nil
+}
+
+func (x *ResourceDeleteRequest) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+type ListDeleteRequestsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDeleteRequestsRequest) Reset() {
+	*x = ListDeleteRequestsRequest{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDeleteRequestsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDeleteRequestsRequest) ProtoMessage() {}
+
+func (x *ListDeleteRequestsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDeleteRequestsRequest.ProtoReflect.Descriptor instead.
+func (*ListDeleteRequestsRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{4}
+}
+
+type ListDeleteRequestsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Waiting first, then decided, newest first; at most 100.
+	Requests      []*ResourceDeleteRequest `protobuf:"bytes,1,rep,name=requests,proto3" json:"requests,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDeleteRequestsResponse) Reset() {
+	*x = ListDeleteRequestsResponse{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDeleteRequestsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDeleteRequestsResponse) ProtoMessage() {}
+
+func (x *ListDeleteRequestsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDeleteRequestsResponse.ProtoReflect.Descriptor instead.
+func (*ListDeleteRequestsResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListDeleteRequestsResponse) GetRequests() []*ResourceDeleteRequest {
+	if x != nil {
+		return x.Requests
+	}
+	return nil
+}
+
+type DecideDeleteRequestRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Approve       bool                   `protobuf:"varint,2,opt,name=approve,proto3" json:"approve,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecideDeleteRequestRequest) Reset() {
+	*x = DecideDeleteRequestRequest{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecideDeleteRequestRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecideDeleteRequestRequest) ProtoMessage() {}
+
+func (x *DecideDeleteRequestRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecideDeleteRequestRequest.ProtoReflect.Descriptor instead.
+func (*DecideDeleteRequestRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DecideDeleteRequestRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DecideDeleteRequestRequest) GetApprove() bool {
+	if x != nil {
+		return x.Approve
+	}
+	return false
+}
+
+type DecideDeleteRequestResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The cleanup run, when approved.
+	ExecutionId   string `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecideDeleteRequestResponse) Reset() {
+	*x = DecideDeleteRequestResponse{}
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecideDeleteRequestResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecideDeleteRequestResponse) ProtoMessage() {}
+
+func (x *DecideDeleteRequestResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecideDeleteRequestResponse.ProtoReflect.Descriptor instead.
+func (*DecideDeleteRequestResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DecideDeleteRequestResponse) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
 type ListResourcesRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	ExecutionId string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
@@ -220,7 +702,7 @@ type ListResourcesRequest struct {
 
 func (x *ListResourcesRequest) Reset() {
 	*x = ListResourcesRequest{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -232,7 +714,7 @@ func (x *ListResourcesRequest) String() string {
 func (*ListResourcesRequest) ProtoMessage() {}
 
 func (x *ListResourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -245,7 +727,7 @@ func (x *ListResourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResourcesRequest.ProtoReflect.Descriptor instead.
 func (*ListResourcesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{1}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListResourcesRequest) GetExecutionId() string {
@@ -285,7 +767,7 @@ type ListResourcesResponse struct {
 
 func (x *ListResourcesResponse) Reset() {
 	*x = ListResourcesResponse{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +779,7 @@ func (x *ListResourcesResponse) String() string {
 func (*ListResourcesResponse) ProtoMessage() {}
 
 func (x *ListResourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +792,7 @@ func (x *ListResourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResourcesResponse.ProtoReflect.Descriptor instead.
 func (*ListResourcesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{2}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListResourcesResponse) GetResources() []*Resource {
@@ -330,7 +812,7 @@ type DeleteResourcesRequest struct {
 
 func (x *DeleteResourcesRequest) Reset() {
 	*x = DeleteResourcesRequest{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -342,7 +824,7 @@ func (x *DeleteResourcesRequest) String() string {
 func (*DeleteResourcesRequest) ProtoMessage() {}
 
 func (x *DeleteResourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -355,7 +837,7 @@ func (x *DeleteResourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResourcesRequest.ProtoReflect.Descriptor instead.
 func (*DeleteResourcesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteResourcesRequest) GetResourceIds() []string {
@@ -375,7 +857,7 @@ type DeleteResourcesResponse struct {
 
 func (x *DeleteResourcesResponse) Reset() {
 	*x = DeleteResourcesResponse{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -387,7 +869,7 @@ func (x *DeleteResourcesResponse) String() string {
 func (*DeleteResourcesResponse) ProtoMessage() {}
 
 func (x *DeleteResourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -400,7 +882,7 @@ func (x *DeleteResourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResourcesResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResourcesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *DeleteResourcesResponse) GetExecutionId() string {
@@ -419,7 +901,7 @@ type DeleteRunResourcesRequest struct {
 
 func (x *DeleteRunResourcesRequest) Reset() {
 	*x = DeleteRunResourcesRequest{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -431,7 +913,7 @@ func (x *DeleteRunResourcesRequest) String() string {
 func (*DeleteRunResourcesRequest) ProtoMessage() {}
 
 func (x *DeleteRunResourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -444,7 +926,7 @@ func (x *DeleteRunResourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRunResourcesRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRunResourcesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DeleteRunResourcesRequest) GetExecutionId() string {
@@ -464,7 +946,7 @@ type DeleteRunResourcesResponse struct {
 
 func (x *DeleteRunResourcesResponse) Reset() {
 	*x = DeleteRunResourcesResponse{}
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -476,7 +958,7 @@ func (x *DeleteRunResourcesResponse) String() string {
 func (*DeleteRunResourcesResponse) ProtoMessage() {}
 
 func (x *DeleteRunResourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_resource_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_resource_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -489,7 +971,7 @@ func (x *DeleteRunResourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRunResourcesResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRunResourcesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_resource_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DeleteRunResourcesResponse) GetExecutionId() string {
@@ -503,7 +985,19 @@ var File_vertra_console_v1_resource_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_resource_proto_rawDesc = "" +
 	"\n" +
-	" vertra/console/v1/resource.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd9\x04\n" +
+	" vertra/console/v1/resource.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"L\n" +
+	"\bProvided\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12\x16\n" +
+	"\x06output\x18\x03 \x01(\tR\x06output\"\x9f\x01\n" +
+	"\vResourceRef\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1f\n" +
+	"\vexternal_id\x18\x03 \x01(\tR\n" +
+	"externalId\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12!\n" +
+	"\fexecution_id\x18\x05 \x01(\tR\vexecutionId\x12\x14\n" +
+	"\x05input\x18\x06 \x01(\tR\x05input\"\xbe\x06\n" +
 	"\bResource\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1f\n" +
@@ -528,7 +1022,40 @@ const file_vertra_console_v1_resource_proto_rawDesc = "" +
 	"\n" +
 	"deleted_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x1d\n" +
 	"\n" +
-	"can_delete\x18\x11 \x01(\bR\tcanDelete\"\x8c\x01\n" +
+	"can_delete\x18\x11 \x01(\bR\tcanDelete\x127\n" +
+	"\bprovides\x18\x12 \x03(\v2\x1b.vertra.console.v1.ProvidedR\bprovides\x12=\n" +
+	"\n" +
+	"depends_on\x18\x13 \x03(\v2\x1e.vertra.console.v1.ResourceRefR\tdependsOn\x12>\n" +
+	"\n" +
+	"dependents\x18\x14 \x03(\v2\x1e.vertra.console.v1.ResourceRefR\n" +
+	"dependents\x12+\n" +
+	"\x11hidden_dependents\x18\x15 \x01(\x05R\x10hiddenDependents\"\xbb\x03\n" +
+	"\x15ResourceDeleteRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12<\n" +
+	"\tresources\x18\x02 \x03(\v2\x1e.vertra.console.v1.ResourceRefR\tresources\x12>\n" +
+	"\n" +
+	"dependents\x18\x03 \x03(\v2\x1e.vertra.console.v1.ResourceRefR\n" +
+	"dependents\x12\x1d\n" +
+	"\n" +
+	"owner_team\x18\x04 \x01(\tR\townerTeam\x12!\n" +
+	"\frequested_by\x18\x05 \x01(\tR\vrequestedBy\x129\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1a\n" +
+	"\bdecision\x18\a \x01(\tR\bdecision\x12\x1d\n" +
+	"\n" +
+	"decided_by\x18\b \x01(\tR\tdecidedBy\x129\n" +
+	"\n" +
+	"decided_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tdecidedAt\x12!\n" +
+	"\fexecution_id\x18\n" +
+	" \x01(\tR\vexecutionId\"\x1b\n" +
+	"\x19ListDeleteRequestsRequest\"b\n" +
+	"\x1aListDeleteRequestsResponse\x12D\n" +
+	"\brequests\x18\x01 \x03(\v2(.vertra.console.v1.ResourceDeleteRequestR\brequests\"F\n" +
+	"\x1aDecideDeleteRequestRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aapprove\x18\x02 \x01(\bR\aapprove\"@\n" +
+	"\x1bDecideDeleteRequestResponse\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"\x8c\x01\n" +
 	"\x14ListResourcesRequest\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x14\n" +
@@ -543,11 +1070,13 @@ const file_vertra_console_v1_resource_proto_rawDesc = "" +
 	"\x19DeleteRunResourcesRequest\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"?\n" +
 	"\x1aDeleteRunResourcesResponse\x12!\n" +
-	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId2\xd7\x02\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId2\xc5\x04\n" +
 	"\x0fResourceService\x12g\n" +
 	"\rListResources\x12'.vertra.console.v1.ListResourcesRequest\x1a(.vertra.console.v1.ListResourcesResponse\"\x03\x90\x02\x01\x12h\n" +
 	"\x0fDeleteResources\x12).vertra.console.v1.DeleteResourcesRequest\x1a*.vertra.console.v1.DeleteResourcesResponse\x12q\n" +
-	"\x12DeleteRunResources\x12,.vertra.console.v1.DeleteRunResourcesRequest\x1a-.vertra.console.v1.DeleteRunResourcesResponseB\xd6\x01\n" +
+	"\x12DeleteRunResources\x12,.vertra.console.v1.DeleteRunResourcesRequest\x1a-.vertra.console.v1.DeleteRunResourcesResponse\x12v\n" +
+	"\x12ListDeleteRequests\x12,.vertra.console.v1.ListDeleteRequestsRequest\x1a-.vertra.console.v1.ListDeleteRequestsResponse\"\x03\x90\x02\x01\x12t\n" +
+	"\x13DecideDeleteRequest\x12-.vertra.console.v1.DecideDeleteRequestRequest\x1a..vertra.console.v1.DecideDeleteRequestResponseB\xd6\x01\n" +
 	"\x15com.vertra.console.v1B\rResourceProtoP\x01ZHgithub.com/rburns629/vertra/cli/internal/gen/vertra/console/v1;consolev1\xa2\x02\x03VCX\xaa\x02\x11Vertra.Console.V1\xca\x02\x11Vertra\\Console\\V1\xe2\x02\x1dVertra\\Console\\V1\\GPBMetadata\xea\x02\x13Vertra::Console::V1b\x06proto3"
 
 var (
@@ -562,33 +1091,52 @@ func file_vertra_console_v1_resource_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_resource_proto_rawDescData
 }
 
-var file_vertra_console_v1_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_vertra_console_v1_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_vertra_console_v1_resource_proto_goTypes = []any{
-	(*Resource)(nil),                   // 0: vertra.console.v1.Resource
-	(*ListResourcesRequest)(nil),       // 1: vertra.console.v1.ListResourcesRequest
-	(*ListResourcesResponse)(nil),      // 2: vertra.console.v1.ListResourcesResponse
-	(*DeleteResourcesRequest)(nil),     // 3: vertra.console.v1.DeleteResourcesRequest
-	(*DeleteResourcesResponse)(nil),    // 4: vertra.console.v1.DeleteResourcesResponse
-	(*DeleteRunResourcesRequest)(nil),  // 5: vertra.console.v1.DeleteRunResourcesRequest
-	(*DeleteRunResourcesResponse)(nil), // 6: vertra.console.v1.DeleteRunResourcesResponse
-	(*timestamppb.Timestamp)(nil),      // 7: google.protobuf.Timestamp
+	(*Provided)(nil),                    // 0: vertra.console.v1.Provided
+	(*ResourceRef)(nil),                 // 1: vertra.console.v1.ResourceRef
+	(*Resource)(nil),                    // 2: vertra.console.v1.Resource
+	(*ResourceDeleteRequest)(nil),       // 3: vertra.console.v1.ResourceDeleteRequest
+	(*ListDeleteRequestsRequest)(nil),   // 4: vertra.console.v1.ListDeleteRequestsRequest
+	(*ListDeleteRequestsResponse)(nil),  // 5: vertra.console.v1.ListDeleteRequestsResponse
+	(*DecideDeleteRequestRequest)(nil),  // 6: vertra.console.v1.DecideDeleteRequestRequest
+	(*DecideDeleteRequestResponse)(nil), // 7: vertra.console.v1.DecideDeleteRequestResponse
+	(*ListResourcesRequest)(nil),        // 8: vertra.console.v1.ListResourcesRequest
+	(*ListResourcesResponse)(nil),       // 9: vertra.console.v1.ListResourcesResponse
+	(*DeleteResourcesRequest)(nil),      // 10: vertra.console.v1.DeleteResourcesRequest
+	(*DeleteResourcesResponse)(nil),     // 11: vertra.console.v1.DeleteResourcesResponse
+	(*DeleteRunResourcesRequest)(nil),   // 12: vertra.console.v1.DeleteRunResourcesRequest
+	(*DeleteRunResourcesResponse)(nil),  // 13: vertra.console.v1.DeleteRunResourcesResponse
+	(*timestamppb.Timestamp)(nil),       // 14: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_resource_proto_depIdxs = []int32{
-	7, // 0: vertra.console.v1.Resource.first_reported_at:type_name -> google.protobuf.Timestamp
-	7, // 1: vertra.console.v1.Resource.reported_at:type_name -> google.protobuf.Timestamp
-	7, // 2: vertra.console.v1.Resource.deleted_at:type_name -> google.protobuf.Timestamp
-	0, // 3: vertra.console.v1.ListResourcesResponse.resources:type_name -> vertra.console.v1.Resource
-	1, // 4: vertra.console.v1.ResourceService.ListResources:input_type -> vertra.console.v1.ListResourcesRequest
-	3, // 5: vertra.console.v1.ResourceService.DeleteResources:input_type -> vertra.console.v1.DeleteResourcesRequest
-	5, // 6: vertra.console.v1.ResourceService.DeleteRunResources:input_type -> vertra.console.v1.DeleteRunResourcesRequest
-	2, // 7: vertra.console.v1.ResourceService.ListResources:output_type -> vertra.console.v1.ListResourcesResponse
-	4, // 8: vertra.console.v1.ResourceService.DeleteResources:output_type -> vertra.console.v1.DeleteResourcesResponse
-	6, // 9: vertra.console.v1.ResourceService.DeleteRunResources:output_type -> vertra.console.v1.DeleteRunResourcesResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	14, // 0: vertra.console.v1.Resource.first_reported_at:type_name -> google.protobuf.Timestamp
+	14, // 1: vertra.console.v1.Resource.reported_at:type_name -> google.protobuf.Timestamp
+	14, // 2: vertra.console.v1.Resource.deleted_at:type_name -> google.protobuf.Timestamp
+	0,  // 3: vertra.console.v1.Resource.provides:type_name -> vertra.console.v1.Provided
+	1,  // 4: vertra.console.v1.Resource.depends_on:type_name -> vertra.console.v1.ResourceRef
+	1,  // 5: vertra.console.v1.Resource.dependents:type_name -> vertra.console.v1.ResourceRef
+	1,  // 6: vertra.console.v1.ResourceDeleteRequest.resources:type_name -> vertra.console.v1.ResourceRef
+	1,  // 7: vertra.console.v1.ResourceDeleteRequest.dependents:type_name -> vertra.console.v1.ResourceRef
+	14, // 8: vertra.console.v1.ResourceDeleteRequest.created_at:type_name -> google.protobuf.Timestamp
+	14, // 9: vertra.console.v1.ResourceDeleteRequest.decided_at:type_name -> google.protobuf.Timestamp
+	3,  // 10: vertra.console.v1.ListDeleteRequestsResponse.requests:type_name -> vertra.console.v1.ResourceDeleteRequest
+	2,  // 11: vertra.console.v1.ListResourcesResponse.resources:type_name -> vertra.console.v1.Resource
+	8,  // 12: vertra.console.v1.ResourceService.ListResources:input_type -> vertra.console.v1.ListResourcesRequest
+	10, // 13: vertra.console.v1.ResourceService.DeleteResources:input_type -> vertra.console.v1.DeleteResourcesRequest
+	12, // 14: vertra.console.v1.ResourceService.DeleteRunResources:input_type -> vertra.console.v1.DeleteRunResourcesRequest
+	4,  // 15: vertra.console.v1.ResourceService.ListDeleteRequests:input_type -> vertra.console.v1.ListDeleteRequestsRequest
+	6,  // 16: vertra.console.v1.ResourceService.DecideDeleteRequest:input_type -> vertra.console.v1.DecideDeleteRequestRequest
+	9,  // 17: vertra.console.v1.ResourceService.ListResources:output_type -> vertra.console.v1.ListResourcesResponse
+	11, // 18: vertra.console.v1.ResourceService.DeleteResources:output_type -> vertra.console.v1.DeleteResourcesResponse
+	13, // 19: vertra.console.v1.ResourceService.DeleteRunResources:output_type -> vertra.console.v1.DeleteRunResourcesResponse
+	5,  // 20: vertra.console.v1.ResourceService.ListDeleteRequests:output_type -> vertra.console.v1.ListDeleteRequestsResponse
+	7,  // 21: vertra.console.v1.ResourceService.DecideDeleteRequest:output_type -> vertra.console.v1.DecideDeleteRequestResponse
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_resource_proto_init() }
@@ -602,7 +1150,7 @@ func file_vertra_console_v1_resource_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_resource_proto_rawDesc), len(file_vertra_console_v1_resource_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

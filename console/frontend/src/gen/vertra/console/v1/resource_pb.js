@@ -11,56 +11,105 @@ import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
  * Describes the file vertra/console/v1/resource.proto.
  */
 export const file_vertra_console_v1_resource = /*@__PURE__*/
-  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS9yZXNvdXJjZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEipgMKCFJlc291cmNlEgoKAmlkGAEgASgJEgwKBHR5cGUYAiABKAkSEwoLZXh0ZXJuYWxfaWQYAyABKAkSDAoEbmFtZRgEIAEoCRIMCgRsaW5rGAUgASgJEg8KB3Byb2R1Y3QYBiABKAkSFAoMcHJvZHVjdF90ZWFtGAcgASgJEhIKCm93bmVyX3RlYW0YCCABKAkSEwoLb3duZXJfZW1haWwYCSABKAkSFAoMZXhlY3V0aW9uX2lkGAogASgJEg8KB3Rhc2tfaWQYCyABKAkSNQoRZmlyc3RfcmVwb3J0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC3JlcG9ydGVkX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVzdGF0ZRgOIAEoCRIdChVkZWxldGluZ19leGVjdXRpb25faWQYDyABKAkSLgoKZGVsZXRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKY2FuX2RlbGV0ZRgRIAEoCCJiChRMaXN0UmVzb3VyY2VzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSDAoEdGVhbRgCIAEoCRINCgVxdWVyeRgDIAEoCRIXCg9pbmNsdWRlX2RlbGV0ZWQYBCABKAgiRwoVTGlzdFJlc291cmNlc1Jlc3BvbnNlEi4KCXJlc291cmNlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJlc291cmNlIi4KFkRlbGV0ZVJlc291cmNlc1JlcXVlc3QSFAoMcmVzb3VyY2VfaWRzGAEgAygJIi8KF0RlbGV0ZVJlc291cmNlc1Jlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSIxChlEZWxldGVSdW5SZXNvdXJjZXNSZXF1ZXN0EhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSIyChpEZWxldGVSdW5SZXNvdXJjZXNSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAky1wIKD1Jlc291cmNlU2VydmljZRJnCg1MaXN0UmVzb3VyY2VzEicudmVydHJhLmNvbnNvbGUudjEuTGlzdFJlc291cmNlc1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5MaXN0UmVzb3VyY2VzUmVzcG9uc2UiA5ACARJoCg9EZWxldGVSZXNvdXJjZXMSKS52ZXJ0cmEuY29uc29sZS52MS5EZWxldGVSZXNvdXJjZXNSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlUmVzb3VyY2VzUmVzcG9uc2UScQoSRGVsZXRlUnVuUmVzb3VyY2VzEiwudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlUnVuUmVzb3VyY2VzUmVxdWVzdBotLnZlcnRyYS5jb25zb2xlLnYxLkRlbGV0ZVJ1blJlc291cmNlc1Jlc3BvbnNlYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CiB2ZXJ0cmEvY29uc29sZS92MS9yZXNvdXJjZS5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiNwoIUHJvdmlkZWQSDAoEdHlwZRgBIAEoCRINCgV2YWx1ZRgCIAEoCRIOCgZvdXRwdXQYAyABKAkibwoLUmVzb3VyY2VSZWYSCgoCaWQYASABKAkSDAoEdHlwZRgCIAEoCRITCgtleHRlcm5hbF9pZBgDIAEoCRIMCgRuYW1lGAQgASgJEhQKDGV4ZWN1dGlvbl9pZBgFIAEoCRINCgVpbnB1dBgGIAEoCSLYBAoIUmVzb3VyY2USCgoCaWQYASABKAkSDAoEdHlwZRgCIAEoCRITCgtleHRlcm5hbF9pZBgDIAEoCRIMCgRuYW1lGAQgASgJEgwKBGxpbmsYBSABKAkSDwoHcHJvZHVjdBgGIAEoCRIUCgxwcm9kdWN0X3RlYW0YByABKAkSEgoKb3duZXJfdGVhbRgIIAEoCRITCgtvd25lcl9lbWFpbBgJIAEoCRIUCgxleGVjdXRpb25faWQYCiABKAkSDwoHdGFza19pZBgLIAEoCRI1ChFmaXJzdF9yZXBvcnRlZF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLcmVwb3J0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXN0YXRlGA4gASgJEh0KFWRlbGV0aW5nX2V4ZWN1dGlvbl9pZBgPIAEoCRIuCgpkZWxldGVkX2F0GBAgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgpjYW5fZGVsZXRlGBEgASgIEi0KCHByb3ZpZGVzGBIgAygLMhsudmVydHJhLmNvbnNvbGUudjEuUHJvdmlkZWQSMgoKZGVwZW5kc19vbhgTIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLlJlc291cmNlUmVmEjIKCmRlcGVuZGVudHMYFCADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5SZXNvdXJjZVJlZhIZChFoaWRkZW5fZGVwZW5kZW50cxgVIAEoBSLQAgoVUmVzb3VyY2VEZWxldGVSZXF1ZXN0EgoKAmlkGAEgASgJEjEKCXJlc291cmNlcxgCIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLlJlc291cmNlUmVmEjIKCmRlcGVuZGVudHMYAyADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5SZXNvdXJjZVJlZhISCgpvd25lcl90ZWFtGAQgASgJEhQKDHJlcXVlc3RlZF9ieRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIQCghkZWNpc2lvbhgHIAEoCRISCgpkZWNpZGVkX2J5GAggASgJEi4KCmRlY2lkZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGV4ZWN1dGlvbl9pZBgKIAEoCSIbChlMaXN0RGVsZXRlUmVxdWVzdHNSZXF1ZXN0IlgKGkxpc3REZWxldGVSZXF1ZXN0c1Jlc3BvbnNlEjoKCHJlcXVlc3RzGAEgAygLMigudmVydHJhLmNvbnNvbGUudjEuUmVzb3VyY2VEZWxldGVSZXF1ZXN0IjkKGkRlY2lkZURlbGV0ZVJlcXVlc3RSZXF1ZXN0EgoKAmlkGAEgASgJEg8KB2FwcHJvdmUYAiABKAgiMwobRGVjaWRlRGVsZXRlUmVxdWVzdFJlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSJiChRMaXN0UmVzb3VyY2VzUmVxdWVzdBIUCgxleGVjdXRpb25faWQYASABKAkSDAoEdGVhbRgCIAEoCRINCgVxdWVyeRgDIAEoCRIXCg9pbmNsdWRlX2RlbGV0ZWQYBCABKAgiRwoVTGlzdFJlc291cmNlc1Jlc3BvbnNlEi4KCXJlc291cmNlcxgBIAMoCzIbLnZlcnRyYS5jb25zb2xlLnYxLlJlc291cmNlIi4KFkRlbGV0ZVJlc291cmNlc1JlcXVlc3QSFAoMcmVzb3VyY2VfaWRzGAEgAygJIi8KF0RlbGV0ZVJlc291cmNlc1Jlc3BvbnNlEhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSIxChlEZWxldGVSdW5SZXNvdXJjZXNSZXF1ZXN0EhQKDGV4ZWN1dGlvbl9pZBgBIAEoCSIyChpEZWxldGVSdW5SZXNvdXJjZXNSZXNwb25zZRIUCgxleGVjdXRpb25faWQYASABKAkyxQQKD1Jlc291cmNlU2VydmljZRJnCg1MaXN0UmVzb3VyY2VzEicudmVydHJhLmNvbnNvbGUudjEuTGlzdFJlc291cmNlc1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5MaXN0UmVzb3VyY2VzUmVzcG9uc2UiA5ACARJoCg9EZWxldGVSZXNvdXJjZXMSKS52ZXJ0cmEuY29uc29sZS52MS5EZWxldGVSZXNvdXJjZXNSZXF1ZXN0GioudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlUmVzb3VyY2VzUmVzcG9uc2UScQoSRGVsZXRlUnVuUmVzb3VyY2VzEiwudmVydHJhLmNvbnNvbGUudjEuRGVsZXRlUnVuUmVzb3VyY2VzUmVxdWVzdBotLnZlcnRyYS5jb25zb2xlLnYxLkRlbGV0ZVJ1blJlc291cmNlc1Jlc3BvbnNlEnYKEkxpc3REZWxldGVSZXF1ZXN0cxIsLnZlcnRyYS5jb25zb2xlLnYxLkxpc3REZWxldGVSZXF1ZXN0c1JlcXVlc3QaLS52ZXJ0cmEuY29uc29sZS52MS5MaXN0RGVsZXRlUmVxdWVzdHNSZXNwb25zZSIDkAIBEnQKE0RlY2lkZURlbGV0ZVJlcXVlc3QSLS52ZXJ0cmEuY29uc29sZS52MS5EZWNpZGVEZWxldGVSZXF1ZXN0UmVxdWVzdBouLnZlcnRyYS5jb25zb2xlLnYxLkRlY2lkZURlbGV0ZVJlcXVlc3RSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+
+/**
+ * Describes the message vertra.console.v1.Provided.
+ * Use `create(ProvidedSchema)` to create a new message.
+ */
+export const ProvidedSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 0);
+
+/**
+ * Describes the message vertra.console.v1.ResourceRef.
+ * Use `create(ResourceRefSchema)` to create a new message.
+ */
+export const ResourceRefSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 1);
 
 /**
  * Describes the message vertra.console.v1.Resource.
  * Use `create(ResourceSchema)` to create a new message.
  */
 export const ResourceSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 0);
+  messageDesc(file_vertra_console_v1_resource, 2);
+
+/**
+ * Describes the message vertra.console.v1.ResourceDeleteRequest.
+ * Use `create(ResourceDeleteRequestSchema)` to create a new message.
+ */
+export const ResourceDeleteRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 3);
+
+/**
+ * Describes the message vertra.console.v1.ListDeleteRequestsRequest.
+ * Use `create(ListDeleteRequestsRequestSchema)` to create a new message.
+ */
+export const ListDeleteRequestsRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 4);
+
+/**
+ * Describes the message vertra.console.v1.ListDeleteRequestsResponse.
+ * Use `create(ListDeleteRequestsResponseSchema)` to create a new message.
+ */
+export const ListDeleteRequestsResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 5);
+
+/**
+ * Describes the message vertra.console.v1.DecideDeleteRequestRequest.
+ * Use `create(DecideDeleteRequestRequestSchema)` to create a new message.
+ */
+export const DecideDeleteRequestRequestSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 6);
+
+/**
+ * Describes the message vertra.console.v1.DecideDeleteRequestResponse.
+ * Use `create(DecideDeleteRequestResponseSchema)` to create a new message.
+ */
+export const DecideDeleteRequestResponseSchema = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_resource, 7);
 
 /**
  * Describes the message vertra.console.v1.ListResourcesRequest.
  * Use `create(ListResourcesRequestSchema)` to create a new message.
  */
 export const ListResourcesRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 1);
+  messageDesc(file_vertra_console_v1_resource, 8);
 
 /**
  * Describes the message vertra.console.v1.ListResourcesResponse.
  * Use `create(ListResourcesResponseSchema)` to create a new message.
  */
 export const ListResourcesResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 2);
+  messageDesc(file_vertra_console_v1_resource, 9);
 
 /**
  * Describes the message vertra.console.v1.DeleteResourcesRequest.
  * Use `create(DeleteResourcesRequestSchema)` to create a new message.
  */
 export const DeleteResourcesRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 3);
+  messageDesc(file_vertra_console_v1_resource, 10);
 
 /**
  * Describes the message vertra.console.v1.DeleteResourcesResponse.
  * Use `create(DeleteResourcesResponseSchema)` to create a new message.
  */
 export const DeleteResourcesResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 4);
+  messageDesc(file_vertra_console_v1_resource, 11);
 
 /**
  * Describes the message vertra.console.v1.DeleteRunResourcesRequest.
  * Use `create(DeleteRunResourcesRequestSchema)` to create a new message.
  */
 export const DeleteRunResourcesRequestSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 5);
+  messageDesc(file_vertra_console_v1_resource, 12);
 
 /**
  * Describes the message vertra.console.v1.DeleteRunResourcesResponse.
  * Use `create(DeleteRunResourcesResponseSchema)` to create a new message.
  */
 export const DeleteRunResourcesResponseSchema = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_resource, 6);
+  messageDesc(file_vertra_console_v1_resource, 13);
 
 /**
  * What runs made, and deleting it (decision 21, docs/assessment.md). A step

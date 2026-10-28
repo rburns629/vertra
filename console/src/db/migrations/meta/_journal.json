@@ -302,6 +302,13 @@
       "when": 1793143912122,
       "tag": "0042_wiring_type_teams",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793148459781,
+      "tag": "0043_resource_links",
+      "breakpoints": true
     }
   ]
 }

@@ -273,6 +273,12 @@ erDiagram
     text type UK
     text external_id UK
   }
+  resources ||--o{ resource_links : "depends on"
+  resource_links {
+    uuid resource_id PK
+    uuid depends_on_id PK
+    text input PK
+  }
 ```
 
 A team's name is also its Kubernetes namespace; there is no separate column for it. `submitted_executions.teams` holds team *names*, which is why a purged team's row is kept: a new team reusing the name would otherwise see the old team's executions.
@@ -638,6 +644,35 @@ What runs made: each resource a step reported in its outputs (`resources: [{type
 | `deleting_task_id` | text | yes | Its step for this resource. |
 | `delete_requested_by` | uuid | yes | Who asked. |
 | `deleted_at` | timestamptz | yes | When its cleanup step succeeded. |
+| `provides` | jsonb | no | What its step provided, by wiring type: `[{type, value, output}]`, each output its product types `x-vertra-provides` with a scalar value. A later run given that value is linked to it (`resource_links`), and an order can offer it. |
+
+### resource_links
+
+What each resource depends on (decision 25), recorded when its run finishes: a resource its step took an input from, in the same run (the input wired from that step) or an earlier one (the input's value is what a live resource provides, of the input's wiring type). Replaced each time the resource is reported again. Deleting something others depend on waits for an admin (`resource_delete_requests`).
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `resource_id` | uuid | no | The resource that depends. With the next two, the key. Goes with it. |
+| `depends_on_id` | uuid | no | What it depends on; never itself. Goes with it. |
+| `input` | text | no | The input of the dependent's step it came in through. |
+| `wiring_type` | text | yes | That input's wiring type (`x-vertra-needs`); null for an untyped input wired from a step. |
+
+### resource_delete_requests
+
+A delete refused because other resources still depended on what it would delete: the admins are alerted, and it runs only once one approves it (`ResourceService/DecideDeleteRequest`), as that admin's.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | |
+| `resource_ids` | uuid[] | no | What it would delete. One waiting request per asker and set. |
+| `owner_team` | text | yes | The team they were made for. |
+| `requested_by` | uuid | yes | Who asked. Emptied if the account is deleted. |
+| `dependent_ids` | uuid[] | no | The live resources depending on them when it was asked. |
+| `created_at` | timestamptz | no | |
+| `decision` | text | yes | `approved` or `denied`; null while it waits. |
+| `decided_by` | uuid | yes | The admin who decided. |
+| `decided_at` | timestamptz | yes | |
+| `execution_id` | uuid | yes | The cleanup run an approval started. |
 
 ### bot_identities
 

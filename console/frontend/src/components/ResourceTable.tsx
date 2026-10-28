@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
-import { ApiError, deleteResources, type MadeResource } from "../api";
+import { ApiError, deleteResources, type MadeResource, type ResourceRef } from "../api";
 import { when } from "../time";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DataTable, type DataTableColumn } from "./DataTable";
@@ -34,28 +34,55 @@ function State({ resource }: { resource: MadeResource }) {
   }
 }
 
+/** What it depends on and what uses it, one line each, when there's any. */
+function Links({ resource }: { resource: MadeResource }) {
+  const names = (refs: ResourceRef[]) => refs.map((r) => r.name ?? r.externalId).join(", ");
+  const usedBy = resource.dependents.length + resource.hiddenDependents;
+  return (
+    <>
+      {resource.dependsOn.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+          Uses {names(resource.dependsOn)}
+        </Typography>
+      )}
+      {usedBy > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+          Used by {names(resource.dependents)}
+          {resource.hiddenDependents > 0 &&
+            `${resource.dependents.length > 0 ? " and " : ""}${String(resource.hiddenDependents)} you can't see`}
+        </Typography>
+      )}
+    </>
+  );
+}
+
 /**
  * What runs made (ResourceService), with Delete where you may: it runs the
- * product's cleanup action and opens that run. `showRun` adds the run that
- * made each.
+ * product's cleanup action and opens that run. One that others still use
+ * isn't deleted on your say: deleting asks an admin to approve it
+ * (decision 25). `showRun` adds the run that made each.
  */
 export function ResourceTable({ resources, showRun = false, emptyMessage }: { resources: MadeResource[] | null; showRun?: boolean; emptyMessage?: ReactNode }) {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState<MadeResource | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [asked, setAsked] = useState<string | null>(null);
 
   async function remove(resource: MadeResource): Promise<void> {
     setBusy(true);
     setError(null);
+    setAsked(null);
     try {
       navigate(`/runs/${await deleteResources([resource.id])}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't delete it.");
+      if (err instanceof ApiError && err.code === "HAS_DEPENDENTS") setAsked(err.message);
+      else setError(err instanceof ApiError ? err.message : "Couldn't delete it.");
       setBusy(false);
       setConfirming(null);
     }
   }
+  const inUse = (r: MadeResource | null) => (r?.dependents.length ?? 0) + (r?.hiddenDependents ?? 0) > 0;
 
   const columns: DataTableColumn<MadeResource>[] = [
     {
@@ -76,6 +103,7 @@ export function ResourceTable({ resources, showRun = false, emptyMessage }: { re
             {r.type}
             {r.name ? ` · ${r.externalId}` : ""}
           </Typography>
+          {r.state !== "deleted" && <Links resource={r} />}
         </Box>
       ),
     },
@@ -116,12 +144,21 @@ export function ResourceTable({ resources, showRun = false, emptyMessage }: { re
           {error}
         </Alert>
       )}
+      {asked && (
+        <Alert severity="info" sx={{ mb: 1.5 }}>
+          {asked}
+        </Alert>
+      )}
       <DataTable columns={columns} rows={resources} getRowKey={(r) => r.id} emptyMessage={emptyMessage} />
       <ConfirmDialog
         open={confirming !== null}
         title={`Delete ${confirming?.name ?? confirming?.externalId ?? ""}?`}
-        description={`This runs ${confirming?.productTeam ?? "its team"}'s cleanup for this ${confirming?.type ?? "resource"}, which deletes it where it lives. You'll see the run.`}
-        confirmLabel="Delete"
+        description={
+          inUse(confirming)
+            ? `Other resources still use this ${confirming?.type ?? "resource"}, so it's deleted only if an admin approves it. Ask them now? (To skip that, delete what uses it first.)`
+            : `This runs ${confirming?.productTeam ?? "its team"}'s cleanup for this ${confirming?.type ?? "resource"}, which deletes it where it lives. You'll see the run.`
+        }
+        confirmLabel={inUse(confirming) ? "Ask an admin" : "Delete"}
         destructive
         busy={busy}
         onConfirm={() => { if (confirming) void remove(confirming); }}

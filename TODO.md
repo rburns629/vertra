@@ -1012,10 +1012,18 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      own and providing the type, every type a product names defined) in
      the release's `wiring_types`, replacing the install's; the gcp sample
      typed (project, region, database, image).
-  2. Resources remember what their step provided (wiring type and value),
-     and links to what they took inputs from, across runs. Deleting
-     something others depend on is refused, alerts the admins, and goes
-     ahead only on an admin's approval.
+  2. Resources remember what their step provided, and what they depend on
+     (done 2026-10-28, `resourceRecorder.ts`, `core/resources.ts`):
+     `resources.provides` (each output typed `x-vertra-provides`) and
+     `resource_links` (an input wired from another step of the run, or one
+     whose value a live resource provides, of its wiring type: across
+     runs). Deleting something others depend on is refused
+     (`HAS_DEPENDENTS`), recorded (`resource_delete_requests`) and alerts
+     the admins; it runs once an admin approves it
+     (`ResourceService/DecideDeleteRequest`; What runs made, Waiting for
+     an admin). Deleting the dependents with it needs no approval, and they
+     go first. Tested on the real database; not yet seen on kind with a
+     product that types its outputs (the local sample's don't).
   3. `PreviewOrder` offers existing resources (all the caller may see,
      none chosen; never a gateway API) and optional suggestions.
   4. `OrderService/PlaceOrder`: a member checks out a cart (decided), each step as

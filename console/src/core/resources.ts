@@ -12,15 +12,23 @@
  * action: it must be shared with them, and approvals apply. Several are
  * deleted in one run, newest first, one after another. A resource is
  * deleted once its step succeeds (resourceRecorder.ts).
+ *
+ * What depends on what (decision 25, resourceLinks): a resource others
+ * still depend on isn't deleted on its own say. Deleting it is refused
+ * (HAS_DEPENDENTS), recorded as a request, and the admins are alerted; it
+ * runs once an admin approves the request. Deleting the dependents with it
+ * needs no approval: they're deleted first.
  */
 import type { FastifyBaseLogger } from "fastify";
 import { Code } from "@connectrpc/connect";
-import { and, desc, eq, ilike, inArray, isNotNull, isNull, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ApiError } from "../apiError.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { db } from "../db/client.js";
 import { findRunnableProduct } from "../db/queries.js";
-import { resources, submittedExecutions, users } from "../db/schema.js";
+import { resourceDeleteRequests, resourceLinks, resources, submittedExecutions, users, type Provided } from "../db/schema.js";
+import { platformAlert } from "../notifier.js";
 import { getExecutionStates } from "../kernel/client.js";
 import { runCleanup, siblingAction, type ProductStep, type TeamProduct } from "./templates.js";
 
@@ -49,6 +57,23 @@ export interface ResourceView {
   deletedAt: Date | null;
   /** Whether the caller may delete it now: theirs to delete, there, and its product says how. */
   canDelete: boolean;
+  /** What its step provided, by wiring type. */
+  provides: Provided[];
+  /** What it depends on, and what still depends on it, of what the caller may see. */
+  dependsOn: ResourceRef[];
+  dependents: ResourceRef[];
+  /** Live dependents the caller may not see. */
+  hiddenDependents: number;
+}
+
+export interface ResourceRef {
+  id: string;
+  type: string;
+  externalId: string;
+  name: string | null;
+  executionId: string;
+  /** The input of the dependent's step it came in through. */
+  input: string;
 }
 
 export interface ResourceFilter {
@@ -106,11 +131,40 @@ function stateOf(row: Row): ResourceState {
   return "deleting";
 }
 
+/** The links into and out of `ids`, with the resource at the other end, live ones only. */
+async function linksOf(ids: string[]) {
+  if (ids.length === 0) return { out: [], into: [] };
+  const other = (column: typeof resourceLinks.resourceId | typeof resourceLinks.dependsOnId) =>
+    db
+      .select({
+        from: resourceLinks.resourceId,
+        to: resourceLinks.dependsOnId,
+        input: resourceLinks.input,
+        other: resources,
+      })
+      .from(resourceLinks)
+      .innerJoin(resources, and(eq(resources.id, column), isNull(resources.deletedAt)));
+  const [out, into] = await Promise.all([
+    other(resourceLinks.dependsOnId).where(inArray(resourceLinks.resourceId, ids)),
+    other(resourceLinks.resourceId).where(inArray(resourceLinks.dependsOnId, ids)),
+  ]);
+  return { out, into };
+}
+
+function seenBy(who: AuthUser, r: { ownerTeam: string | null; productTeam: string; ownerUserId: string | null }): boolean {
+  return who.isAdmin || r.ownerUserId === who.id || (r.ownerTeam !== null && who.teamNames.includes(r.ownerTeam)) || who.teamNames.includes(r.productTeam);
+}
+
+function refOf(r: typeof resources.$inferSelect, input: string): ResourceRef {
+  return { id: r.id, type: r.type, externalId: r.externalId, name: r.name, executionId: r.executionId, input };
+}
+
 async function view(who: AuthUser, rows: Row[]): Promise<ResourceView[]> {
   const cleanable = new Map<string, boolean>();
   for (const name of new Set(rows.map((row) => row.resource.product))) {
     cleanable.set(name, (await findRunnableProduct(name))?.cleanup != null);
   }
+  const { out, into } = await linksOf(rows.map((row) => row.resource.id));
   return rows.map((row) => {
     const r = row.resource;
     const state = stateOf(row);
@@ -132,6 +186,10 @@ async function view(who: AuthUser, rows: Row[]): Promise<ResourceView[]> {
       deletingExecutionId: r.deletingExecutionId,
       deletedAt: r.deletedAt,
       canDelete: (state === "exists" || state === "delete_failed") && mayDelete(who, r) && (cleanable.get(r.product) ?? false),
+      provides: r.provides,
+      dependsOn: out.filter((l) => l.from === r.id && seenBy(who, l.other)).map((l) => refOf(l.other, l.input)),
+      dependents: into.filter((l) => l.to === r.id && seenBy(who, l.other)).map((l) => refOf(l.other, l.input)),
+      hiddenDependents: new Set(into.filter((l) => l.to === r.id && !seenBy(who, l.other)).map((l) => l.other.id)).size,
     };
   });
 }
@@ -216,7 +274,11 @@ const FINISHED = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
  * delete, there now, and made for the same team.
  */
 export async function deleteResources(caller: AuthUser | undefined, ids: string[], log: FastifyBaseLogger): Promise<{ executionId: string }> {
-  const who = signedIn(caller);
+  return deleteChecked(signedIn(caller), ids, log, null);
+}
+
+/** deleteResources, or (approved: the request's id) an admin's approval of a delete others depended on. */
+async function deleteChecked(who: AuthUser, ids: string[], log: FastifyBaseLogger, approved: string | null): Promise<{ executionId: string }> {
   const unique = [...new Set(ids)];
   if (unique.length === 0 || unique.length > DELETE_LIMIT) {
     throw new ApiError(400, "BAD_REQUEST", `Name 1 to ${String(DELETE_LIMIT)} resources to delete.`);
@@ -244,6 +306,37 @@ export async function deleteResources(caller: AuthUser | undefined, ids: string[
     if (state === "deleting" && !finishedRuns.has(r.deletingExecutionId ?? "")) {
       throw new ApiError(409, "DELETE_IN_PROGRESS", `${label} is being deleted already.`);
     }
+  }
+  // What still depends on them, besides each other: refused, unless an
+  // admin approved it.
+  const asked = rows.map((row) => row.resource.id);
+  const dependents = await db
+    .selectDistinct({ id: resources.id, type: resources.type, externalId: resources.externalId })
+    .from(resourceLinks)
+    .innerJoin(resources, and(eq(resources.id, resourceLinks.resourceId), isNull(resources.deletedAt)))
+    .where(and(inArray(resourceLinks.dependsOnId, asked), notInArray(resourceLinks.resourceId, asked)));
+  if (dependents.length > 0 && approved === null) {
+    const request = await requestApproval(who, rows.map((row) => row.resource), dependents.map((d) => d.id), log);
+    throw new ApiError(
+      409,
+      "HAS_DEPENDENTS",
+      `${String(dependents.length)} other resource(s) still depend on this (${dependents
+        .slice(0, 3)
+        .map((d) => `${d.type} ${d.externalId}`)
+        .join(", ")}${dependents.length > 3 ? ", ..." : ""}). Delete them with it, or wait for an admin to approve deleting it anyway: they've been asked.`,
+      Code.FailedPrecondition,
+      { requestId: request, dependents: dependents.map((d) => d.id) },
+    );
+  }
+  // Newest first, but whatever depends on another of them before it.
+  const { into } = await linksOf(asked);
+  const ordered = dependentsFirst(
+    rows,
+    into.filter((l) => asked.includes(l.from)),
+  );
+  for (const row of ordered) {
+    const r = row.resource;
+    const label = `${r.type} ${r.externalId}`;
     const { product, mapping } = await cleanupOf(r.product, label);
     steps.push({ product, inputs: cleanupInputs(mapping, r), label });
   }
@@ -251,17 +344,135 @@ export async function deleteResources(caller: AuthUser | undefined, ids: string[
   // For the team it was made for, when the caller is in it (else an admin or the person alone).
   const forTeam = ownerTeam && who.teamNames.includes(ownerTeam) ? ownerTeam : undefined;
   const name = rows.length === 1 ? `Delete ${rows[0]?.resource.type ?? ""} ${rows[0]?.resource.externalId ?? ""}` : `Delete ${String(rows.length)} resources`;
-  const { executionId, stepIds } = await runCleanup(who, name.slice(0, 200), steps, forTeam, rows.map((row) => row.resource.id), log);
+  const { executionId, stepIds } = await runCleanup(who, name.slice(0, 200), steps, forTeam, ordered.map((row) => row.resource.id), log);
   await db.transaction(async (tx) => {
-    for (const [i, row] of rows.entries()) {
+    for (const [i, row] of ordered.entries()) {
       await tx
         .update(resources)
         .set({ deletingExecutionId: executionId, deletingTaskId: stepIds[i] ?? null, deleteRequestedBy: who.id })
         .where(eq(resources.id, row.resource.id));
     }
   });
-  log.info({ event: "resources_delete_requested", executionId, resources: rows.map((row) => row.resource.id) }, "asked to delete resources");
+  log.info({ event: "resources_delete_requested", executionId, resources: ordered.map((row) => row.resource.id), approved }, "asked to delete resources");
   return { executionId };
+}
+
+/** `rows` (newest first) with each one that depends on another of them moved before it. */
+export function dependentsFirst<T extends { resource: { id: string } }>(rows: T[], links: { from: string; to: string }[]): T[] {
+  const out: T[] = [];
+  const left = [...rows];
+  while (left.length > 0) {
+    // The first whose dependents among those left are all placed already.
+    const next = left.findIndex((row) => !links.some((l) => l.to === row.resource.id && left.some((o) => o !== row && o.resource.id === l.from)));
+    out.push(...left.splice(next === -1 ? 0 : next, 1));
+  }
+  return out;
+}
+
+/** Records a delete others depend on, once per asker and set, and alerts the admins. Its id. */
+async function requestApproval(
+  who: AuthUser,
+  asked: (typeof resources.$inferSelect)[],
+  dependentIds: string[],
+  log: FastifyBaseLogger,
+): Promise<string> {
+  const ids = asked.map((r) => r.id).sort();
+  // One parameter, as Postgres writes an array (ids are UUIDs from the database).
+  const same = `{${ids.join(",")}}`;
+  const [waiting] = await db
+    .select({ id: resourceDeleteRequests.id, resourceIds: resourceDeleteRequests.resourceIds })
+    .from(resourceDeleteRequests)
+    .where(and(isNull(resourceDeleteRequests.decision), eq(resourceDeleteRequests.requestedBy, who.id), sql`${resourceDeleteRequests.resourceIds} @> ${same}::uuid[] AND ${resourceDeleteRequests.resourceIds} <@ ${same}::uuid[]`));
+  if (waiting) return waiting.id;
+  const [made] = await db
+    .insert(resourceDeleteRequests)
+    .values({ resourceIds: ids, ownerTeam: asked[0]?.ownerTeam ?? null, requestedBy: who.id, dependentIds })
+    .returning({ id: resourceDeleteRequests.id });
+  const id = made?.id ?? "";
+  const what = asked.length === 1 ? `${asked[0]?.type ?? ""} ${asked[0]?.externalId ?? ""}` : `${String(asked.length)} resources`;
+  await platformAlert(
+    `resource-delete:${id}`,
+    `Approve deleting ${what}?`,
+    `${String(dependentIds.length)} other resource(s) still depend on it. It's deleted only if an admin approves it (What runs made, Waiting for an admin).`,
+    who.id,
+    "/runs/made",
+    log,
+  );
+  log.info({ event: "resource_delete_needs_approval", request: id, resources: ids, dependents: dependentIds }, "a delete others depend on waits for an admin");
+  return id;
+}
+
+export interface DeleteRequestView {
+  id: string;
+  resources: ResourceRef[];
+  dependents: ResourceRef[];
+  ownerTeam: string | null;
+  requestedBy: string | null;
+  createdAt: Date;
+  decision: "approved" | "denied" | null;
+  decidedBy: string | null;
+  decidedAt: Date | null;
+  executionId: string | null;
+}
+
+/** Deletes waiting for an admin, and recent decisions: every one for admins, else the caller's own. */
+export async function listDeleteRequests(caller: AuthUser | undefined): Promise<DeleteRequestView[]> {
+  const who = signedIn(caller);
+  const requester = alias(users, "requester");
+  const decider = alias(users, "decider");
+  const rows = await db
+    .select({ request: resourceDeleteRequests, requestedBy: requester.email, decidedBy: decider.email })
+    .from(resourceDeleteRequests)
+    .leftJoin(requester, eq(requester.id, resourceDeleteRequests.requestedBy))
+    .leftJoin(decider, eq(decider.id, resourceDeleteRequests.decidedBy))
+    .where(who.isAdmin ? undefined : eq(resourceDeleteRequests.requestedBy, who.id))
+    .orderBy(sql`${resourceDeleteRequests.decision} IS NOT NULL`, desc(resourceDeleteRequests.createdAt))
+    .limit(100);
+  const ids = [...new Set(rows.flatMap((r) => [...r.request.resourceIds, ...r.request.dependentIds]))];
+  const found = ids.length === 0 ? [] : await db.select().from(resources).where(inArray(resources.id, ids));
+  const byId = new Map(found.map((r) => [r.id, r]));
+  const refs = (list: string[]) => list.flatMap((id) => {
+    const r = byId.get(id);
+    return r && seenBy(who, r) ? [refOf(r, "")] : [];
+  });
+  return rows.map(({ request, requestedBy, decidedBy }) => ({
+    id: request.id,
+    resources: refs(request.resourceIds),
+    dependents: refs(request.dependentIds),
+    ownerTeam: request.ownerTeam,
+    requestedBy,
+    createdAt: request.createdAt,
+    decision: request.decision,
+    decidedBy,
+    decidedAt: request.decidedAt,
+    executionId: request.executionId,
+  }));
+}
+
+/** An admin approves a waiting delete (it runs now, as theirs) or denies it. */
+export async function decideDeleteRequest(caller: AuthUser | undefined, id: string, approve: boolean, log: FastifyBaseLogger): Promise<{ executionId: string | null }> {
+  const who = signedIn(caller);
+  if (!who.isAdmin) throw new ApiError(403, "FORBIDDEN", "Only an admin approves deleting what others depend on.");
+  const [request] = await db.select().from(resourceDeleteRequests).where(eq(resourceDeleteRequests.id, id));
+  if (!request) throw new ApiError(404, "NOT_FOUND", "No such delete request.");
+  if (request.decision) throw new ApiError(409, "ALREADY_DECIDED", `It was ${request.decision} already.`);
+  // Claimed first, so two admins can't both run it.
+  const [claimed] = await db
+    .update(resourceDeleteRequests)
+    .set({ decision: approve ? "approved" : "denied", decidedBy: who.id, decidedAt: sql`now()` })
+    .where(and(eq(resourceDeleteRequests.id, id), isNull(resourceDeleteRequests.decision)))
+    .returning({ id: resourceDeleteRequests.id });
+  if (!claimed) throw new ApiError(409, "ALREADY_DECIDED", "Another admin decided it already.");
+  if (!approve) return { executionId: null };
+  try {
+    const { executionId } = await deleteChecked(who, request.resourceIds, log, id);
+    await db.update(resourceDeleteRequests).set({ executionId }).where(eq(resourceDeleteRequests.id, id));
+    return { executionId };
+  } catch (error) {
+    // Not run (deleted since, say): waiting again, for the admin to see why.
+    await db.update(resourceDeleteRequests).set({ decision: null, decidedBy: null, decidedAt: null }).where(eq(resourceDeleteRequests.id, id));
+    throw error;
+  }
 }
 
 /** Deletes what a run made that's still there and the caller may delete (its product says how), in the reverse of the order it was made. */
