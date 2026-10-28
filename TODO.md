@@ -1086,12 +1086,18 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   question about 7,900 in, an order about 25,000, Vertex's implicit
   cache only 4 to 10% (Haiku's explicit one 45 to 78%): explicit context
   caching on Vertex is worth a look. The window's estimate runs 1.8 times
-  Gemini's count (safe). Not proven: the console's own Workload Identity
-  signing in, which needs a GKE install.
+  Gemini's count (safe). The console's own Workload Identity proven on a
+  minimal GKE Autopilot install in acyclix-dev (2026-10-28, `vertra apply`
+  from source, chat on Vertex by default, then destroyed): no key in the
+  console at all, its ServiceAccount bound to `vertra-ch-console` (the only
+  one with roles/aiplatform.user) and the scanner to its own
+  `vertra-ch-scanner`; Gemini 3.5 Flash answered 10 of 10 questions cited
+  and refused 10 of 10 off-topic, median 6 s. (The first apply met a
+  us-central1 capacity shortage; the retry went through.)
   Next: Claude or Gemini
   on Vertex for an install that must keep its data in its cloud; prompt
   caching measured (done, above). Left:
-  Workload Identity's sign-in on a GKE install; then MCP) (proposed
+  an admin's chat settings in the console; Claude on Bedrock; then MCP) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the
@@ -1192,7 +1198,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   deleted mid-pass (another test file's, or anyone's) failed the whole pass
   on its membership's foreign key, leaving everyone after them unsynced for
   another hour; a deleted person is now skipped, anything else still fails
-  the pass. `readiness.test.ts`'s product check failed once and not in 13
+  the pass. `readiness.test.ts`'s product check failed once and not in 28
   full runs since; its failure wasn't kept, so the cause is unknown.
 
 - [x] **`vertra catalog publish` from a laptop builds for the laptop's
