@@ -197,7 +197,8 @@ type Chat struct {
 	Model string `yaml:"model,omitempty"`
 }
 
-// DefaultChatModel answers on gcp unless chat.model says otherwise.
+// DefaultChatModel answers on gcp unless chat.model says otherwise: the
+// one scored, and the console's own default on Vertex.
 const DefaultChatModel = "google/gemini-3.5-flash"
 
 // ChatOnVertex: the chat agent answers through Vertex AI in the install's project.

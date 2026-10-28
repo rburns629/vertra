@@ -553,12 +553,13 @@ rbac:
 # operator to delete with their own identity.
 # -- The chat agent (decision 24): a panel on every page whose agent answers
 # from the docs and the catalog, looks at what the person's teams have, and
-# fills their cart (they place the order). Off unless `model` is set.
+# fills their cart (they place the order). Off unless `model` is set, or
+# `provider` is vertex (its model then google/gemini-3.5-flash, the one
+# scored: name another only after scoring it, `npm run chat-eval`).
 # `provider`: openai-compatible (LM Studio, Ollama; `endpoint` its base
 # URL, http(s)://.../v1), anthropic (Claude through Anthropic's API, `model`
 # such as claude-haiku-5-5; `endpoint` empty for Anthropic's own), or vertex
-# (Gemini through Vertex AI in `vertex.project`, `model` such as
-# google/gemini-3.5-flash, signed in as the console's Workload Identity:
+# (Gemini through Vertex AI in `vertex.project`, signed in as the console's Workload Identity:
 # no key; its Google service account needs roles/aiplatform.user there;
 # a key given anyway is an access token used instead, for trying it off
 # GKE, good for an hour). A key, when one's needed: a Secret's name, key

@@ -67,10 +67,14 @@ function positiveInt(name: string, fallback: number): number {
   return n;
 }
 
+/** Vertex's model unless another's named: the one scored (decision 24, 2026-10-28). */
+export const VERTEX_MODEL = "google/gemini-3.5-flash";
+
 function loadChat() {
-  const model = process.env["CHAT_MODEL"] ?? "";
   const endpoint = (process.env["CHAT_ENDPOINT"] ?? "").replace(/\/+$/, "");
   const provider = process.env["CHAT_PROVIDER"] || "openai-compatible";
+  // On Vertex, choosing it is choosing chat: Gemini 3.5 Flash unless another's named.
+  const model = process.env["CHAT_MODEL"] || (provider === "vertex" ? VERTEX_MODEL : "");
   if (!model) return null;
   if (provider !== "openai-compatible" && provider !== "anthropic" && provider !== "vertex") {
     throw new Error(`CHAT_PROVIDER "${provider}": openai-compatible, anthropic or vertex`);

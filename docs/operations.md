@@ -610,7 +610,9 @@ The console's **Ask** panel (decision 24) answers from the docs, citing
 them, looks at what a person's teams have, and fills a cart for them to
 place. It's off until the console chart's `chat.model` is set, with
 `chat.provider` one of three: `vertex`, Gemini through Vertex AI in
-`chat.vertex.project` (`chat.model` such as `google/gemini-3.5-flash`;
+`chat.vertex.project` (on with no `chat.model`: Gemini 3.5 Flash,
+`google/gemini-3.5-flash`, the one scored; name another only after
+scoring it;
 `chat.vertex.location` global, or a region to keep requests in it),
 signed in as the console's Workload Identity with no key, its Google
 service account needing `roles/aiplatform.user` there: what `vertra`

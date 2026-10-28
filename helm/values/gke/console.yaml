@@ -69,7 +69,6 @@ teamNamespaces:
 # needs roles/aiplatform.user in that project). Nothing it's sent leaves
 # the install's cloud.
 chat:
-  model: google/gemini-3.5-flash
   provider: vertex
   vertex:
     project: my-gcp-project
