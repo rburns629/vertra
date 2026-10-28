@@ -133,6 +133,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 
 | Path | What it's for |
 | --- | --- |
+| `chat-eval.ts` | Scores the chat agent's answers on the question set against a console's model (`npm run chat-eval`): cites an answering section, flagged uncited, `mustSay`/`mustNotSay`, seconds; results in `chat-eval-results/`, not in git. |
 | `api-reference.ts` | Turns the protos (a `buf build` image, comments included) into the API reference's data, `frontend/src/gen/api-reference.json`; run by `make proto`. |
 
 ### `console/src/`: the backend

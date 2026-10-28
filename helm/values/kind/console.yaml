@@ -72,8 +72,8 @@ teamNamespaces:
     stepMemory: "2Gi"
 
 # The chat agent, on the laptop's own model: LM Studio (or Bionic) serving
-# qwen3.8-27b on port 1234 (lms server start; lms load qwen3.8-27b-uncensored
-# --identifier qwen3.8-27b). Off there, the panel says the model's away.
+# qwen3-14b on port 1234 (lms server start; lms load qwen3-14b-uncensored
+# --identifier qwen3-14b). Off there, the panel says the model's away.
 chat:
-  model: qwen3.8-27b
+  model: qwen3-14b
   endpoint: http://host.docker.internal:1234/v1
