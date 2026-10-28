@@ -5,43 +5,51 @@ import Typography from "@mui/material/Typography";
 import { keyframes } from "@mui/material/styles";
 import { useEnvironment } from "../environment";
 
-// Drawn in, held, faded, and again: a run that keeps running.
-const draw = keyframes`
-  0% { stroke-dashoffset: 1; opacity: 1; }
-  35% { stroke-dashoffset: 0; opacity: 1; }
-  85% { stroke-dashoffset: 0; opacity: 1; }
-  100% { stroke-dashoffset: 0; opacity: 0; }
+// A run, over and over, on one 6 s clock: the two steps run (the second
+// starting later), each line connects as the step it leaves finishes, the
+// third runs once both its inputs are connected, then the lines fade and
+// it starts again. Times in seconds of the cycle.
+const CYCLE = 6;
+const pct = (seconds: number) => `${String(Math.round((seconds / CYCLE) * 1000) / 10)}%`;
+const FADE = { from: 4.8, to: 5.4 };
+
+/** A line drawn from `from` to `to`, held, then faded with the others. */
+const drawn = (from: number, to: number) => keyframes`
+  0%, ${pct(from)} { stroke-dashoffset: 1; opacity: 1; }
+  ${pct(to)}, ${pct(FADE.from)} { stroke-dashoffset: 0; opacity: 1; }
+  ${pct(FADE.to)}, 100% { stroke-dashoffset: 0; opacity: 0; }
 `;
-// While its line is connected (35% to 85% of the line's cycle), a step
-// grows and runs: its ring dims to a track, and a thick arc spins round it.
-const grow = keyframes`
-  0%, 30% { transform: scale(1); }
-  38%, 82% { transform: scale(1.3); }
-  90%, 100% { transform: scale(1); }
-`;
-const track = keyframes`
-  0%, 30% { stroke-opacity: 1; }
-  38%, 82% { stroke-opacity: 0.3; }
-  90%, 100% { stroke-opacity: 1; }
-`;
-const running = keyframes`
-  0%, 32% { opacity: 0; }
-  38%, 82% { opacity: 1; }
-  88%, 100% { opacity: 0; }
-`;
+
+/** While a step runs (`from` to `to`): it grows, its ring dims to a track, and an arc spins round it. */
+function running(from: number, to: number) {
+  const ease = 0.15;
+  const window = (rest: string, on: string) => keyframes`
+    0%, ${pct(from)} { ${rest} }
+    ${pct(from + ease)}, ${pct(to - ease)} { ${on} }
+    ${pct(to)}, 100% { ${rest} }
+  `;
+  return {
+    grow: window("transform: scale(1);", "transform: scale(1.25);"),
+    track: window("stroke-opacity: 1;", "stroke-opacity: 0.3;"),
+    arc: window("opacity: 0;", "opacity: 1;"),
+  };
+}
+
 const spin = keyframes`to { transform: rotate(360deg); }`;
 const rise = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; }`;
 
-const CYCLE = "4s";
-const still = { "@media (prefers-reduced-motion: reduce)": { animation: "none" } };
+const RUNS = { left: running(0.3, 1.5), right: running(0.8, 2.0), last: running(2.6, 4.1) };
+const LINES = { left: drawn(1.5, 2.1), right: drawn(2.0, 2.6) };
 
-/** A step: a ring that, while its line is connected, grows into a spinning status wheel. */
-function Step({ cx, cy, delay }: { cx: number; cy: number; delay: string }) {
-  const phase = (name: string, timing = "cubic-bezier(.4,0,.2,1)") => `${name} ${CYCLE} ${timing} ${delay} infinite`;
+const still = { "@media (prefers-reduced-motion: reduce)": { animation: "none" } };
+const loop = (frames: string) => `${frames} ${String(CYCLE)}s cubic-bezier(.4,0,.2,1) infinite`;
+
+/** A step: a ring that, while it runs, grows into a spinning status wheel. */
+function Step({ cx, cy, run }: { cx: number; cy: number; run: ReturnType<typeof running> }) {
   return (
-    <Box component="g" sx={{ transformBox: "fill-box", transformOrigin: "center", animation: phase(grow), ...still }}>
-      <Box component="circle" cx={cx} cy={cy} r={16} fill="#232833" stroke="currentColor" strokeWidth={3} sx={{ animation: phase(track), ...still }} />
-      <Box component="g" sx={{ opacity: 0, animation: phase(running), ...still }}>
+    <Box component="g" sx={{ transformBox: "fill-box", transformOrigin: "center", animation: loop(run.grow), ...still }}>
+      <Box component="circle" cx={cx} cy={cy} r={16} fill="#232833" stroke="currentColor" strokeWidth={3} sx={{ animation: loop(run.track), ...still }} />
+      <Box component="g" sx={{ opacity: 0, animation: loop(run.arc), ...still }}>
         <Box
           component="circle"
           cx={cx}
@@ -49,7 +57,7 @@ function Step({ cx, cy, delay }: { cx: number; cy: number; delay: string }) {
           r={16}
           fill="none"
           stroke="currentColor"
-          strokeWidth={5}
+          strokeWidth={4}
           strokeLinecap="round"
           pathLength={1}
           strokeDasharray="0.28 0.72"
@@ -60,22 +68,21 @@ function Step({ cx, cy, delay }: { cx: number; cy: number; delay: string }) {
   );
 }
 
-/** Two steps feeding a third, over and over: each runs while it's connected. Still for reduced motion. */
+/** Two steps feeding a third, run over and over as a DAG runs. Still for reduced motion. */
 function Dag() {
-  const edge = (delay: string) => ({
+  const edge = (frames: string) => ({
     strokeDasharray: 1,
     strokeDashoffset: 1,
-    animation: `${draw} ${CYCLE} cubic-bezier(.4,0,.2,1) ${delay} infinite`,
+    animation: loop(frames),
     "@media (prefers-reduced-motion: reduce)": { strokeDashoffset: 0, animation: "none" },
   });
   return (
     <Box component="svg" viewBox="0 0 240 200" sx={{ width: 200, height: "auto", color: "sidebar.accent", overflow: "visible" }} aria-hidden="true">
-      <Box component="path" pathLength={1} d="M40 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge("0.2s")} />
-      <Box component="path" pathLength={1} d="M200 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge("0.55s")} />
-      <Step cx={40} cy={40} delay="0.2s" />
-      <Step cx={200} cy={40} delay="0.55s" />
-      {/* The third runs once both its inputs are connected: with the second line. */}
-      <Step cx={120} cy={160} delay="0.55s" />
+      <Box component="path" pathLength={1} d="M40 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge(LINES.left)} />
+      <Box component="path" pathLength={1} d="M200 40 L120 160" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" sx={edge(LINES.right)} />
+      <Step cx={40} cy={40} run={RUNS.left} />
+      <Step cx={200} cy={40} run={RUNS.right} />
+      <Step cx={120} cy={160} run={RUNS.last} />
     </Box>
   );
 }

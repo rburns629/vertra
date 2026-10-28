@@ -173,6 +173,8 @@ export function AppLayout() {
           })}
         </List>
 
+        {isDesktop && <ChatLauncher placement="sidebar" />}
+
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mx: 1.5, pt: 1.25, px: 0.75, borderTop: 1, borderColor: "sidebar.border" }}>
           <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12, fontWeight: 600 }} aria-hidden="true">
             {user.email.slice(0, 2).toUpperCase()}
@@ -243,6 +245,7 @@ export function AppLayout() {
                 <MenuIcon />
               </IconButton>
               <Typography sx={{ fontWeight: 600, fontSize: 16, flexGrow: 1 }}>Vertra</Typography>
+              <ChatLauncher placement="toolbar" />
               <NotificationBell />
             </Toolbar>
           </AppBar>
@@ -265,7 +268,6 @@ export function AppLayout() {
           </Suspense>
         </Box>
       </Box>
-      <ChatLauncher />
     </Box>
   );
 }

@@ -495,10 +495,11 @@ describe("the chat panel", () => {
     expect(screen.queryByText(/too long for the chat model/)).toBeNull();
   });
 
-  it("isn't offered when the install has no model", async () => {
+  it("is there but off when no model is set, saying who sets one", async () => {
     await renderAt("/", MEMBER, { "ChatService/GetChatSettings": { enabled: false } });
-    await screen.findByRole("navigation", { name: /main/i }).catch(() => undefined);
-    expect(screen.queryByRole("button", { name: "Ask Vertra" })).toBeNull();
+    const ask = await screen.findByRole("button", { name: "Ask Vertra" });
+    expect(ask.hasAttribute("disabled") || ask.getAttribute("aria-disabled") === "true").toBe(true);
+    expect(screen.getByLabelText("Not set up yet: an admin chooses its model")).toBeTruthy();
   });
 });
 
