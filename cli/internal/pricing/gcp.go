@@ -27,6 +27,7 @@ const (
 	gcpKubernetes    = "CCD8-9BF1-090E"
 	gcpCompute       = "6F81-5844-456A"
 	gcpNetworking    = "E505-1604-58F8"
+	gcpCloudSQL      = "9662-B51E-5089"
 	gcpCacheLifetime = 24 * time.Hour
 )
 
@@ -47,7 +48,15 @@ type GCPPrices struct {
 	BalancedDisk float64
 	// A global load balancer's forwarding rule (the public console), per hour.
 	ForwardingRule float64
+	// Cloud SQL for PostgreSQL (Enterprise), when a managed database is
+	// priced: [0] a zonal instance, [1] a regional (highly available) one.
+	// The shared-core small instance, per hour; vCPU and RAM (GiB), per
+	// hour; SSD storage, per GiB-month.
+	SQLSmall, SQLCPU, SQLRam, SQLStorage [2]float64
 }
+
+// HasSQL says the Cloud SQL prices are there.
+func (p *GCPPrices) HasSQL() bool { return p.SQLSmall[0] > 0 }
 
 // sku is one catalog entry, as much of it as matching needs.
 type sku struct {
@@ -96,9 +105,11 @@ func match(skus []sku, region, desc string) (float64, bool) {
 // FetchGCP returns the region's list prices: from the cache when it's less
 // than a day old, otherwise from the catalog with token (your gcloud
 // sign-in's).
-func FetchGCP(ctx context.Context, token, region string) (*GCPPrices, error) {
+// With withSQL, Cloud SQL's too (its catalog is large, so only when a
+// managed database is priced).
+func FetchGCP(ctx context.Context, token, region string, withSQL bool) (*GCPPrices, error) {
 	cache := cachePath("gcp-" + region + ".json")
-	if p := readCache(cache); p != nil && time.Since(p.Fetched) < gcpCacheLifetime {
+	if p := readCache(cache); p != nil && time.Since(p.Fetched) < gcpCacheLifetime && (!withSQL || p.HasSQL()) {
 		return p, nil
 	}
 	gke, err := listSKUs(ctx, token, gcpKubernetes)
@@ -116,6 +127,15 @@ func FetchGCP(ctx context.Context, token, region string) (*GCPPrices, error) {
 	p, err := PricesFromGCP(gke, append(compute, networking...), region)
 	if err != nil {
 		return nil, err
+	}
+	if withSQL {
+		sql, err := listSKUs(ctx, token, gcpCloudSQL)
+		if err != nil {
+			return nil, err
+		}
+		if err := p.addSQL(sql); err != nil {
+			return nil, err
+		}
 	}
 	p.Fetched = time.Now()
 	writeCache(cache, p)
@@ -153,6 +173,30 @@ func PricesFromGCP(gke, compute []sku, region string) (*GCPPrices, error) {
 		return nil, fmt.Errorf("the price catalog has no %q for %s", missing, region)
 	}
 	return p, nil
+}
+
+// addSQL picks Cloud SQL for PostgreSQL's prices out of its SKUs, named by
+// region group ("Cloud SQL for PostgreSQL: Zonal - vCPU in Americas").
+func (p *GCPPrices) addSQL(skus []sku) error {
+	var missing []string
+	for i, kind := range []string{"Zonal", "Regional"} {
+		for _, want := range []struct {
+			what string
+			into *float64
+		}{{"Small instance", &p.SQLSmall[i]}, {"vCPU", &p.SQLCPU[i]}, {"RAM", &p.SQLRam[i]}, {"Standard storage", &p.SQLStorage[i]}} {
+			desc := regionGroup(skus, p.Region, fmt.Sprintf("Cloud SQL for PostgreSQL: %s - %s in ", kind, want.what))
+			v, ok := match(skus, p.Region, desc)
+			if !ok {
+				missing = append(missing, desc)
+				continue
+			}
+			*want.into = v
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("the price catalog has no %q for %s", missing, p.Region)
+	}
+	return nil
 }
 
 // regionGroup is the full description of the SKU starting with prefix that

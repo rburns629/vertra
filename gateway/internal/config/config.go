@@ -21,6 +21,14 @@ type Settings struct {
 	DatabaseURL string
 	// Most connections it holds: each request checks who's calling there.
 	DatabaseMaxConnections int
+	// DatabaseIAMAuth signs in with its own cloud identity, no password:
+	// "gcp" (Cloud SQL's IAM database authentication), or "".
+	DatabaseIAMAuth string
+	// With DatabaseIAMAuth: the Google service account it signs in as, and
+	// its own projected ServiceAccount token to federate from (the
+	// NetworkPolicy keeps it from the metadata server). Without them, the
+	// metadata server's token.
+	DatabaseIAMAccount, DatabaseIAMTokenFile string
 	// The console, inside the cluster, whose session keys (its JWKS) check
 	// sessions as it does.
 	ConsoleURL string
@@ -74,6 +82,9 @@ func Load(getenv func(string) string) (*Settings, error) {
 	s := &Settings{
 		DatabaseURL:            need("DATABASE_URL"),
 		DatabaseMaxConnections: number("DATABASE_MAX_CONNECTIONS", 10),
+		DatabaseIAMAuth:        getenv("DATABASE_IAM_AUTH"),
+		DatabaseIAMAccount:     getenv("DATABASE_IAM_ACCOUNT"),
+		DatabaseIAMTokenFile:   getenv("DATABASE_IAM_TOKEN_FILE"),
 		ConsoleURL:             strings.TrimSuffix(need("CONSOLE_URL"), "/"),
 		SSO:                    getenv("SSO_ENABLED") == "true",
 		Issuer:                 need("GATEWAY_ISSUER"),
@@ -87,6 +98,15 @@ func Load(getenv func(string) string) (*Settings, error) {
 		GCPTokenAudience:       getenv("GCP_TOKEN_AUDIENCE"),
 		Closed:                 getenv("CLOSED") == "true",
 		Refresh:                time.Duration(number("REFRESH_SECONDS", 5)) * time.Second,
+	}
+	if (s.DatabaseIAMAccount == "") != (s.DatabaseIAMTokenFile == "") {
+		problems = append(problems, "DATABASE_IAM_ACCOUNT and DATABASE_IAM_TOKEN_FILE: both, or neither")
+	}
+	if s.DatabaseIAMAccount != "" && s.GCPAudience == "" {
+		problems = append(problems, "DATABASE_IAM_ACCOUNT: needs GCP_STS_AUDIENCE, what its token is exchanged for")
+	}
+	if s.DatabaseIAMAuth != "" && s.DatabaseIAMAuth != "gcp" {
+		problems = append(problems, fmt.Sprintf("DATABASE_IAM_AUTH: gcp, or empty for a password, got %q", s.DatabaseIAMAuth))
 	}
 	if path := need("SIGNING_KEY_FILE"); path != "" {
 		seed, err := os.ReadFile(path)

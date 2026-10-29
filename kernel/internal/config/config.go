@@ -37,6 +37,13 @@ type Toleration struct {
 	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty"`
 }
 
+// DatabaseGrant opens one database to the role it's for (dbsetup.Grant).
+type DatabaseGrant struct {
+	Database string `json:"database"`
+	Role     string `json:"role"`
+	Regrant  bool   `json:"regrant,omitempty"`
+}
+
 // Settings is every process's settings.
 type Settings struct {
 	DatabaseURL string
@@ -46,6 +53,13 @@ type Settings struct {
 	// takes one); the size keeps every process's sum under Postgres's
 	// max_connections.
 	DatabaseMaxConnections int
+	// DatabaseIAMAuth signs in with the workload's own cloud identity
+	// instead of a password: "gcp" (Cloud SQL's IAM database
+	// authentication), or "" (the URL's password, if any).
+	DatabaseIAMAuth string
+	// DatabaseSetup is what `kernel database-setup` grants, as a managed
+	// server's administrator (DATABASE_URL names its maintenance database).
+	DatabaseSetup []DatabaseGrant
 
 	// kernel-api. Who may call it: each request carries a Kubernetes
 	// ServiceAccount token issued for APITokenAudience; a TokenReview checks
@@ -281,6 +295,7 @@ func Load(getenv func(string) string) (Settings, error) {
 		DatabaseURL:                     r.str("DATABASE_URL", "postgresql://localhost/execution_kernel"),
 		DatabaseCommandTimeout:          r.seconds("DATABASE_COMMAND_TIMEOUT_SECONDS", 60, true),
 		DatabaseMaxConnections:          r.integer("DATABASE_MAX_CONNECTIONS", 10, true),
+		DatabaseIAMAuth:                 r.str("DATABASE_IAM_AUTH", ""),
 		APIAuth:                         r.str("API_AUTH", "tokenreview"),
 		APITokenAudience:                r.str("API_TOKEN_AUDIENCE", "vertra-kernel-api"),
 		APIPort:                         r.integer("API_PORT", 8000, true),
@@ -333,6 +348,10 @@ func Load(getenv func(string) string) (Settings, error) {
 		r.problems = append(r.problems, fmt.Sprintf("API_AUTH: tokenreview or disabled, got %q", s.APIAuth))
 	}
 	r.jsonValue("API_ALLOWED_CALLERS", &s.APIAllowedCallers)
+	r.jsonValue("DATABASE_SETUP", &s.DatabaseSetup)
+	if s.DatabaseIAMAuth != "" && s.DatabaseIAMAuth != "gcp" {
+		r.problems = append(r.problems, fmt.Sprintf("DATABASE_IAM_AUTH: gcp, or empty for a password, got %q", s.DatabaseIAMAuth))
+	}
 	r.jsonValue("SLEEPER_DEPLOYMENTS", &s.SleeperDeployments)
 	r.jsonValue("SLEEPER_DATABASE_DEPLOYMENTS", &s.SleeperDatabases)
 	r.jsonValue("TASK_EXTRA_ENVIRONMENT", &s.TaskExtraEnvironment)

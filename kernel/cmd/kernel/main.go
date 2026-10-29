@@ -36,6 +36,8 @@ import (
 
 	"github.com/rburns629/vertra/kernel/internal/api"
 	"github.com/rburns629/vertra/kernel/internal/config"
+	"github.com/rburns629/vertra/kernel/internal/dbauth"
+	"github.com/rburns629/vertra/kernel/internal/dbsetup"
 	"github.com/rburns629/vertra/kernel/internal/executor"
 	"github.com/rburns629/vertra/kernel/internal/logging"
 	"github.com/rburns629/vertra/kernel/internal/metrics"
@@ -44,7 +46,7 @@ import (
 	"github.com/rburns629/vertra/kernel/internal/sleeper"
 )
 
-const usage = `usage: kernel api | scheduler | migrate | sleep [--now] | wake | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`
+const usage = `usage: kernel api | scheduler | migrate | database-setup | sleep [--now] | wake | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -67,8 +69,10 @@ func main() {
 		"api":       {"kernel-api", "app.api"},
 		"scheduler": {"kernel-scheduler", "app.scheduler"},
 		"migrate":   {"kernel-migrate", "app.migrate"},
-		"sleep":     {"kernel-sleeper", "app.sleeper"},
-		"wake":      {"kernel-sleeper", "app.sleeper"},
+		// A managed server's databases opened to their services (dbsetup).
+		"database-setup": {"kernel-database-setup", "app.database_setup"},
+		"sleep":          {"kernel-sleeper", "app.sleeper"},
+		"wake":           {"kernel-sleeper", "app.sleeper"},
 	}[command]
 	if !ok {
 		fail(usage)
@@ -86,6 +90,8 @@ func main() {
 			err = runScheduler(ctx, settings, log)
 		case "migrate":
 			err = runMigrate(ctx, settings, log)
+		case "database-setup":
+			err = runDatabaseSetup(ctx, settings, log)
 		case "sleep":
 			err = runSleep(ctx, settings, len(args) == 1 && args[0] == "--now", log)
 		case "wake":
@@ -151,7 +157,63 @@ func poolFor(ctx context.Context, s config.Settings) (*pgxpool.Pool, error) {
 	// Not pgx's default (the node's CPUs, at least 4): a 2-CPU node's 4
 	// would queue a burst of requests while Postgres sits idle.
 	poolConfig.MaxConns = int32(s.DatabaseMaxConnections)
+	if password := passwordFor(s); password != nil {
+		poolConfig.BeforeConnect = func(ctx context.Context, c *pgx.ConnConfig) error {
+			p, err := password(ctx)
+			c.Password = p
+			return err
+		}
+	}
 	return pgxpool.NewWithConfig(ctx, poolConfig)
+}
+
+// passwordFor is how each new connection gets its password with
+// DATABASE_IAM_AUTH (the workload's token, short-lived); nil without it.
+func passwordFor(s config.Settings) func(context.Context) (string, error) {
+	if s.DatabaseIAMAuth == "gcp" {
+		return dbauth.GCP().Password
+	}
+	return nil
+}
+
+// connect is one connection (migrations, setup), signed in as poolFor's are.
+func connect(ctx context.Context, s config.Settings, database string) (*pgx.Conn, error) {
+	c, err := pgx.ParseConfig(s.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("DATABASE_URL: %w", err)
+	}
+	// No statement_timeout: a migration may build an index for longer.
+	if database != "" {
+		c.Database = database
+	}
+	if password := passwordFor(s); password != nil {
+		if c.Password, err = password(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return pgx.ConnectConfig(ctx, c)
+}
+
+// runDatabaseSetup opens each DATABASE_SETUP database to its service, as
+// the managed server's administrator (dbsetup).
+func runDatabaseSetup(ctx context.Context, s config.Settings, log *slog.Logger) error {
+	if len(s.DatabaseSetup) == 0 {
+		return fmt.Errorf("DATABASE_SETUP: nothing to set up")
+	}
+	c, err := pgx.ParseConfig(s.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("DATABASE_URL: %w", err)
+	}
+	grants := make([]dbsetup.Grant, 0, len(s.DatabaseSetup))
+	for _, g := range s.DatabaseSetup {
+		grants = append(grants, dbsetup.Grant{Database: g.Database, Role: g.Role, Regrant: g.Regrant})
+	}
+	open := func(ctx context.Context, database string) (*pgx.Conn, error) { return connect(ctx, s, database) }
+	if err := dbsetup.Run(ctx, open, c.Database, grants); err != nil {
+		return err
+	}
+	log.Info("databases set up", "databases", len(grants))
+	return nil
 }
 
 // kubeClient is in-cluster when running as a Pod, else the local kubeconfig,
@@ -187,7 +249,7 @@ func (w *onceWarnings) HandleWarningHeader(code int, agent, text string) {
 }
 
 func runMigrate(ctx context.Context, s config.Settings, log *slog.Logger) error {
-	conn, err := pgx.Connect(ctx, s.DatabaseURL)
+	conn, err := connect(ctx, s, "")
 	if err != nil {
 		return err
 	}

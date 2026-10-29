@@ -272,14 +272,26 @@ func TestGCP(t *testing.T) {
 	if !c.TaskImages.Create || !c.Database.Backups.Enabled || c.Cluster.Mode != "auto" {
 		t.Errorf("gcp defaults: %+v", c)
 	}
+	// A managed database (Cloud SQL) is gcp's to make.
+	c.Database.Type, c.Database.HighAvailability = "managed", true
+	if err := c.Validate(); err != nil {
+		t.Errorf("a managed database on gcp: %v", err)
+	}
 	c.GCP.Project = "My_Project"
 	c.Cluster.Mode = "existing"
-	c.Database.Type = "managed"
 	err := c.Validate()
-	for _, want := range []string{"gcp.project", "cluster.mode", "managed isn't supported"} {
+	for _, want := range []string{"gcp.project", "cluster.mode"} {
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("missing %q in %v", want, err)
 		}
+	}
+}
+
+func TestAManagedDatabaseIsNotOnAWSYet(t *testing.T) {
+	c := Default("aws")
+	c.Database.Type = "managed"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "isn't supported on aws") {
+		t.Errorf("managed on aws: %v", err)
 	}
 }
 

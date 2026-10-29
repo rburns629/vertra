@@ -93,3 +93,19 @@ output "signing" {
   }
 }
 
+
+# The managed database: where it is, its server CA (public), and the user
+# each service signs in as (no passwords: IAM database authentication).
+output "database" {
+  value = var.managed_database ? {
+    instance = google_sql_database_instance.this[0].name
+    host     = google_sql_database_instance.this[0].private_ip_address
+    # A CA certificate, public (every client is given it); the provider
+    # marks the whole block sensitive.
+    ca_cert    = nonsensitive(google_sql_database_instance.this[0].server_ca_cert[0].cert)
+    users      = local.database_users
+    kernel_sa  = google_service_account.kernel_db[0].email
+    gateway_sa = google_service_account.gateway_db[0].email
+    admin_sa   = google_service_account.database_admin[0].email
+  } : null
+}

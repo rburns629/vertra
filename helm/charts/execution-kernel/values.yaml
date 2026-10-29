@@ -15,6 +15,10 @@ maxTasksPerExecution: 500
 serviceAccount:
   create: true
   name: ""
+  # -- Annotations on every kernel ServiceAccount (the scheduler's,
+  # kernel-api's, the sleeper's): with a managed database on GKE, the
+  # Workload Identity it signs in as (iam.gke.io/gcp-service-account).
+  annotations: {}
 
 # kernel-scheduler needs a ClusterRole (Jobs/Pods/ConfigMaps) to run the
 # Kubernetes executor: each task declares its own owning `team`, which
@@ -458,6 +462,17 @@ postgres:
 # existingSecret over this where possible — this value is visible in
 # `helm get values` / `helm history`.
 externalDatabaseUrl: ""
+
+# A managed database (postgres.enabled=false, externalDatabaseUrl):
+database:
+  # -- Sign in with the workload's own cloud identity instead of a
+  # password: "gcp", Cloud SQL's IAM database authentication (the
+  # ServiceAccounts' Workload Identity, serviceAccount.annotations). The
+  # URL then names a user and no password.
+  iamAuth: ""
+  # -- A Secret holding the server's CA (ca.crt), mounted at
+  # /etc/vertra/tls-db for the URL's sslrootcert.
+  caSecret: ""
 
 # -- Only used when postgres.enabled is false: the name of a pre-existing
 # Secret (in the release namespace) holding the database URL. Takes

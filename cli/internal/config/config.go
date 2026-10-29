@@ -630,10 +630,11 @@ func (c *Config) Validate() error {
 	switch c.Database.Type {
 	case "in-cluster":
 	case "managed":
-		if c.Target == "kind" || c.Target == "existing" {
+		switch c.Target {
+		case "kind", "existing":
 			add("database.type: managed needs a cloud target; kind and existing use the in-cluster database")
-		} else {
-			add("database.type: managed isn't supported by this vertra yet: use in-cluster (backed up to a bucket)")
+		case "aws":
+			add("database.type: managed isn't supported on aws by this vertra yet (gcp's Cloud SQL is): use in-cluster (backed up to a bucket)")
 		}
 	default:
 		add("database.type: %q isn't in-cluster or managed", c.Database.Type)

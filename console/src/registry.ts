@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 
 import { ECRClient, GetAuthorizationTokenCommand } from "@aws-sdk/client-ecr";
 import { config } from "./config.js";
+import { gcpMetadataToken } from "./gcpMetadata.js";
 import { federatedGcpToken, federatedHost } from "./registryFederation.js";
 import { isImageAllowed, normalizeImage } from "./imagePolicy.js";
 
@@ -61,9 +62,6 @@ const MANIFEST_TYPES = [
 const GOOGLE_REGISTRY = /^([a-z0-9-]+-docker\.pkg\.dev|([a-z]+\.)?gcr\.io)$/;
 /** An ECR registry: <account>.dkr.ecr.<region>.amazonaws.com. */
 const ECR_REGISTRY = /^(\d{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?$/;
-const GCP_METADATA_TOKEN_URL =
-  "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
-
 /** Null for a reference without a registry host (e.g. `demo-product:local`,
  * or Docker Hub's `nginx` shorthand): there's nothing to ask. */
 export function parseImageRef(image: string): ImageRef | null {
@@ -90,23 +88,6 @@ export function parseImageRef(image: string): ImageRef | null {
   const host = first === "docker.io" ? "registry-1.docker.io" : first;
   const repository = host === "registry-1.docker.io" && !rest.includes("/") ? `library/${rest}` : rest;
   return { host, repository, reference };
-}
-
-let gcpToken: { value: string; expiresAt: number } | null = null;
-
-/** The console's own Google access token (Workload Identity), from the node's metadata server; also auditExport.ts's, sso.ts's and the chat's on Vertex. */
-export async function gcpMetadataToken(): Promise<string> {
-  if (gcpToken && gcpToken.expiresAt > Date.now()) return gcpToken.value;
-  // The metadata server is node-local and only speaks plain HTTP.
-  // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request
-  const response = await fetch(GCP_METADATA_TOKEN_URL, {
-    headers: { "Metadata-Flavor": "Google" },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-  if (!response.ok) throw new Error(`metadata server returned ${String(response.status)}`);
-  const body = (await response.json()) as { access_token: string; expires_in: number };
-  gcpToken = { value: body.access_token, expiresAt: Date.now() + (body.expires_in - 60) * 1000 };
-  return gcpToken.value;
 }
 
 const ecrTokens = new Map<string, Credential & { expiresAt: number }>();

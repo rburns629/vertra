@@ -19,6 +19,25 @@ design.
   subnets would replace the group, and its volumes may be in the zone
   dropped). Validated, not yet seen on a cluster.
 
+- [x] **A managed database on gcp: Cloud SQL (2026-10-29)**:
+  `database.type: managed` (`vertra init --database managed`, asked on gcp),
+  `database.highAvailability`. Cloud SQL for PostgreSQL 16 at a private IP,
+  SSL only, tier and connections by size, Google's backups with
+  point-in-time recovery; no passwords: the kernel, console and gateway
+  each sign in as their own Google identity (IAM database authentication),
+  the gateway by federating its own ServiceAccount token (its NetworkPolicy
+  keeps it from the metadata server), after `kernel database-setup`, as an
+  administrator identity, opened each database to its own service alone.
+  Proven on GKE Autopilot in acyclix-dev (us-east1): installed, a team and
+  a step run, the console refused the kernel's database; then destroyed.
+  Found doing it: node-postgres let its parsed URL's empty password replace
+  the token; destroy couldn't delete a protected instance, nor drop a user
+  that owns tables (the instance's protection lifted and its databases and
+  users abandoned to go with it, applied first, as the buckets' are); the
+  gateway can't reach the metadata server.
+  Still to do: RDS on aws (refused there for now), and moving an existing
+  install's data from the in-cluster Postgres (apply refuses the switch).
+
 - [x] **Postgres sized to the install (2026-10-29)**: each size sets its
   memory, settings to match and every process's connection pool (all under
   `max_connections`), with no CPU limit and a /dev/shm of its own; measured

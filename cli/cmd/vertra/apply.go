@@ -71,6 +71,11 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			installed[r] = install.Installed(ctx, a.runner, c, r)
 		}
 		now.volume = install.DatabaseVolume(ctx, a.runner, c)
+		if c.Database.Type == "managed" && now.volume != "" {
+			// The platform would start on an empty server, its data left in
+			// the in-cluster Postgres's volume.
+			return fmt.Errorf("this install's data is in its in-cluster Postgres: moving it to a managed database isn't done by vertra yet. Keep database.type in-cluster (`vertra config set -e %s database.type in-cluster`), or install anew with a managed one", envName(dir))
+		}
 		if deps, err := platform.Deployments(ctx, a.runner, c); err == nil {
 			now.asleep = platform.Asleep(deps)
 		}
@@ -172,6 +177,12 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 		// Before the kernel chart, whose image policy is its kind.
 		fmt.Fprintln(out, "Installing policy-controller", install.PolicyControllerChart, "(only images catalog CI signed run)...")
 		if err := install.PolicyController(ctx, a.runner, c, made); err != nil {
+			return err
+		}
+	}
+	if made != nil && made.Database != nil {
+		fmt.Fprintln(out, "Opening the managed database to the kernel and the console...")
+		if err := install.EnsureManagedDatabase(ctx, a.runner, c, made.Database, install.KernelImage(c, images)); err != nil {
 			return err
 		}
 	}
@@ -322,6 +333,13 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		if c.Database.Backups.Enabled {
 			database += fmt.Sprintf("; backed up daily to a bucket, kept %d days", c.Database.Backups.RetentionDays)
 		}
+	}
+	if c.Database.Type == "managed" {
+		database = "Cloud SQL for PostgreSQL 16 (" + install.ManagedDatabaseTier(c.Size) + "), private IP only, each service signing in as its own identity (no passwords)"
+		if c.Database.HighAvailability {
+			database += "; a standby in a second zone"
+		}
+		database += fmt.Sprintf("; backed up daily with point-in-time recovery, kept %d days", c.Database.Backups.RetentionDays)
 	}
 	if c.Target == "aws" {
 		taskImages = fmt.Sprintf("from ECR under %s/ (each product's repository made on its first push)", c.TaskImages.Name)

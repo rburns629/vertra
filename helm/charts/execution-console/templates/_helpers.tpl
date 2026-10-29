@@ -200,6 +200,12 @@ the kernel's for kernel-api.
     # The upgrade that turns tls on runs its migration before the Secret
     # exists; it still connects as before then, without TLS.
     optional: true
+{{- else if .Values.database.caSecret }}
+# A managed database's server CA (database.caSecret), which the URL's
+# sslrootcert names.
+- name: db-ca
+  secret:
+    secretName: {{ .Values.database.caSecret }}
 {{- end }}
 {{- end -}}
 
@@ -207,7 +213,7 @@ the kernel's for kernel-api.
 {{- if .Values.tls.kernelCaSecret }}
 - {name: kernel-ca, mountPath: /etc/vertra/tls, readOnly: true}
 {{- end }}
-{{- if and .Values.tls.enabled .Values.postgres.enabled }}
+{{- if or (and .Values.tls.enabled .Values.postgres.enabled) .Values.database.caSecret }}
 - {name: db-ca, mountPath: /etc/vertra/tls-db, readOnly: true}
 {{- end }}
 {{- end -}}

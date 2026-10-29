@@ -27,7 +27,8 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "storage.googleapis.com",
-  ], var.google_groups ? ["cloudidentity.googleapis.com"] : [], var.signing == "kms" ? ["cloudkms.googleapis.com"] : [], var.chat ? ["aiplatform.googleapis.com"] : []))
+    ], var.managed_database ? ["servicenetworking.googleapis.com", "sqladmin.googleapis.com"] : [],
+  var.google_groups ? ["cloudidentity.googleapis.com"] : [], var.signing == "kms" ? ["cloudkms.googleapis.com"] : [], var.chat ? ["aiplatform.googleapis.com"] : []))
   service = each.value
   # Other things in the project may use them.
   disable_on_destroy = false
@@ -312,6 +313,174 @@ resource "google_service_account_iam_member" "backup_workload_identity" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "${local.ksa}/vertra-pg-backup]"
   depends_on         = [google_container_cluster.this]
+}
+
+# --- a managed database: Cloud SQL for PostgreSQL ---------------------------
+# Private IP only, in this network (private services access); SSL required.
+# No passwords: the kernel, the console and the gateway each sign in as
+# their own Google identity (IAM database authentication), and an
+# administrator identity, used only by `kernel database-setup`, opens each
+# database to its service alone. The tier and connections follow the size,
+# as the in-cluster Postgres's do. Cloud SQL backs it up (daily, with
+# point-in-time recovery) instead of the backup Jobs.
+
+locals {
+  database = {
+    minimal   = { tier = "db-g1-small", max_connections = 100 }
+    resilient = { tier = "db-custom-1-3840", max_connections = 200 }
+    scaled    = { tier = "db-custom-2-7680", max_connections = 300 }
+    auto      = { tier = "db-custom-1-3840", max_connections = 200 }
+  }[var.size]
+  # An IAM database user is its service account's email without the domain.
+  database_users = var.managed_database ? {
+    kernel  = trimsuffix(google_service_account.kernel_db[0].email, ".gserviceaccount.com")
+    console = trimsuffix(google_service_account.console.email, ".gserviceaccount.com")
+    gateway = trimsuffix(google_service_account.gateway_db[0].email, ".gserviceaccount.com")
+    admin   = trimsuffix(google_service_account.database_admin[0].email, ".gserviceaccount.com")
+  } : {}
+}
+
+resource "google_compute_global_address" "database" {
+  count         = var.managed_database ? 1 : 0
+  name          = "${var.name}-database"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 20
+  network       = google_compute_network.this.id
+}
+
+resource "google_service_networking_connection" "database" {
+  count                   = var.managed_database ? 1 : 0
+  network                 = google_compute_network.this.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.database[0].name]
+  # Removing the peering fails while Google still tears the instance down;
+  # it goes with the network.
+  deletion_policy = "ABANDON"
+}
+
+# A deleted instance's name can't be used again for a week.
+resource "random_id" "database" {
+  count       = var.managed_database ? 1 : 0
+  byte_length = 2
+}
+
+resource "google_sql_database_instance" "this" {
+  count            = var.managed_database ? 1 : 0
+  name             = "${var.name}-${random_id.database[0].hex}"
+  database_version = "POSTGRES_16"
+  region           = var.region
+  # Only when destroy is told to delete data (vertra destroy asks first).
+  deletion_protection = !var.delete_data
+  settings {
+    edition                     = "ENTERPRISE"
+    tier                        = local.database.tier
+    availability_type           = var.database_high_availability ? "REGIONAL" : "ZONAL"
+    disk_type                   = "PD_SSD"
+    disk_size                   = 10
+    disk_autoresize             = true
+    deletion_protection_enabled = !var.delete_data
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.this.id
+      ssl_mode        = "ENCRYPTED_ONLY"
+    }
+    backup_configuration {
+      enabled                        = true
+      point_in_time_recovery_enabled = true
+      transaction_log_retention_days = 7
+      backup_retention_settings {
+        retained_backups = min(var.backup_retention_days, 365)
+      }
+    }
+    database_flags {
+      name  = "cloudsql.iam_authentication"
+      value = "on"
+    }
+    database_flags {
+      name  = "max_connections"
+      value = tostring(local.database.max_connections)
+    }
+    user_labels = { vertra-environment = var.name }
+  }
+  depends_on = [google_service_networking_connection.database]
+}
+
+# Databases and users go with the instance: a role that owns tables or holds
+# grants can't be dropped on its own.
+resource "google_sql_database" "this" {
+  for_each        = var.managed_database ? toset(["execution_kernel", "execution_console"]) : toset([])
+  name            = each.value
+  instance        = google_sql_database_instance.this[0].name
+  deletion_policy = "ABANDON"
+}
+
+# The kernel's and the gateway's identities (the console's is above), and
+# the administrator's.
+resource "google_service_account" "kernel_db" {
+  count        = var.managed_database ? 1 : 0
+  account_id   = "${var.name}-kernel"
+  display_name = "Vertra ${var.name}: the kernel's database identity"
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_service_account" "gateway_db" {
+  count        = var.managed_database ? 1 : 0
+  account_id   = "${var.name}-gateway"
+  display_name = "Vertra ${var.name}: the gateway's database identity"
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_service_account" "database_admin" {
+  count        = var.managed_database ? 1 : 0
+  account_id   = "${var.name}-db-admin"
+  display_name = "Vertra ${var.name}: opens each database to its service (kernel database-setup)"
+  depends_on   = [google_project_service.apis]
+}
+
+# Connecting (cloudsql.client) and signing in (cloudsql.instanceUser).
+resource "google_project_iam_member" "database" {
+  for_each = var.managed_database ? merge([for who, sa in {
+    kernel  = google_service_account.kernel_db[0].member
+    console = google_service_account.console.member
+    gateway = google_service_account.gateway_db[0].member
+    admin   = google_service_account.database_admin[0].member
+    } : {
+    "${who}-client" = { member = sa, role = "roles/cloudsql.client" }
+    "${who}-user"   = { member = sa, role = "roles/cloudsql.instanceUser" }
+  }]...) : {}
+  project = var.project
+  role    = each.value.role
+  member  = each.value.member
+}
+
+# Which Kubernetes ServiceAccounts sign in as which: every kernel Pod that
+# connects (the scheduler, kernel-api and its migration, the sleeper), the
+# gateway, and database-setup's Job. The console's is bound above.
+resource "google_service_account_iam_member" "database_workload_identity" {
+  for_each = var.managed_database ? {
+    "kernel-execution-kernel"           = google_service_account.kernel_db[0].name
+    "kernel-execution-kernel-api"       = google_service_account.kernel_db[0].name
+    "kernel-execution-kernel-sleeper"   = google_service_account.kernel_db[0].name
+    "console-execution-console-gateway" = google_service_account.gateway_db[0].name
+    "vertra-db-admin"                   = google_service_account.database_admin[0].name
+  } : {}
+  service_account_id = each.value
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "${local.ksa}/${each.key}]"
+  depends_on         = [google_container_cluster.this]
+}
+
+resource "google_sql_user" "this" {
+  for_each = local.database_users
+  instance = google_sql_database_instance.this[0].name
+  name     = each.value
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+  # See google_sql_database.
+  deletion_policy = "ABANDON"
+  # Only the administrator may grant: database-setup opens each database to
+  # its service and to no one else.
+  database_roles = each.key == "admin" ? ["cloudsqlsuperuser"] : []
 }
 
 # --- logs: Loki's bucket, archived after log_search_days --------------------

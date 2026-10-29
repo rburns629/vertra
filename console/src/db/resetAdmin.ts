@@ -17,11 +17,12 @@ import { Pool } from "pg";
 import { appendAuditEntry } from "../audit.js";
 import { hashPassword } from "../auth/password.js";
 import { config } from "../config.js";
+import { poolConfig } from "./connection.js";
 import * as schema from "./schema.js";
 
 async function main(): Promise<void> {
   const email = process.argv[2] ?? config.bootstrapAdminEmail;
-  const pool = new Pool({ connectionString: config.databaseUrl });
+  const pool = new Pool(poolConfig());
   const db = drizzle(pool);
   try {
     const password = randomBytes(18).toString("base64url");

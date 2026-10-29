@@ -73,6 +73,14 @@ func GCP(p *GCPPrices, c *config.Config, fetched string) []plan.Line {
 			always += float64(c.StepHeadroom) * stepHour * hoursPerMonth
 		}
 	}
+	sqlMonth := 0.0
+	if c.Database.Type == "managed" {
+		// No Postgres volume in the cluster; the instance runs whether or
+		// not the platform sleeps.
+		always -= f.VolumeGiB * p.BalancedDisk
+		sqlMonth = CloudSQLMonth(p, c)
+		always += sqlMonth
+	}
 	always += disks
 	if c.Console.Public {
 		always += p.ForwardingRule * hoursPerMonth
@@ -89,11 +97,14 @@ func GCP(p *GCPPrices, c *config.Config, fetched string) []plan.Line {
 		{Label: "Estimated cost", Text: fmt.Sprintf("a month, list prices in USD, %s, %s", p.Region, fetched)},
 		{Label: "  Cluster fee", Text: fmt.Sprintf("%s (GKE's free tier credit covers one Autopilot or zonal cluster per billing account)", money(fee))},
 	}
+	if sqlMonth > 0 {
+		lines = append(lines, plan.Line{Label: "  Database", Text: fmt.Sprintf("%s: Cloud SQL, its %d GB of SSD and backups' first copy, awake or asleep (in Always below)", money(sqlMonth), sqlDiskGiB)})
+	}
 	if standard {
-		lines = append(lines, plan.Line{Label: "  Always", Text: fmt.Sprintf("%s: the platform's node and disks%s, awake or asleep", money(always), lbNote(c))})
+		lines = append(lines, plan.Line{Label: "  Always", Text: fmt.Sprintf("%s: the platform's node and %s%s, awake or asleep", money(always), alwaysWhat(c), lbNote(c))})
 	} else {
 		lines = append(lines,
-			plan.Line{Label: "  Always", Text: fmt.Sprintf("%s: disks%s%s", money(always), lbNote(c), headroomNote(c))},
+			plan.Line{Label: "  Always", Text: fmt.Sprintf("%s: %s%s%s", money(always), alwaysWhat(c), lbNote(c), headroomNote(c))},
 			plan.Line{Label: "  While awake", Text: fmt.Sprintf("%s a month if never asleep (the platform's Pods)", moneyRange(platformHour[0]*hoursPerMonth, platformHour[1]*hoursPerMonth))},
 			plan.Line{Label: "  While asleep", Text: "nothing more: Autopilot bills Pods, and asleep there are none"},
 		)
@@ -106,6 +117,35 @@ func GCP(p *GCPPrices, c *config.Config, fetched string) []plan.Line {
 		plan.Line{Label: "  Not included", Text: "discounts, taxes, network egress, backups and images in storage (cents a GB), your products' own cloud usage"},
 	)
 	return lines
+}
+
+// sqlDiskGiB is the managed database's disk as the gcp module makes it
+// (it grows itself as needed).
+const sqlDiskGiB = 10
+
+// CloudSQLMonth is the managed database's monthly list price: its machine
+// (the gcp module's tier for the size), zonal or regional, and its disk.
+func CloudSQLMonth(p *GCPPrices, c *config.Config) float64 {
+	i := 0
+	if c.Database.HighAvailability {
+		i = 1
+	}
+	hour := map[string]float64{
+		"minimal":   p.SQLSmall[i],
+		"resilient": p.SQLCPU[i] + 3.75*p.SQLRam[i],
+		"auto":      p.SQLCPU[i] + 3.75*p.SQLRam[i],
+		"scaled":    2*p.SQLCPU[i] + 7.5*p.SQLRam[i],
+	}[c.Size]
+	return hour*hoursPerMonth + sqlDiskGiB*p.SQLStorage[i]
+}
+
+// alwaysWhat is what's billed awake or asleep besides nodes and the
+// load balancer.
+func alwaysWhat(c *config.Config) string {
+	if c.Database.Type == "managed" {
+		return "the database and disks"
+	}
+	return "disks"
 }
 
 func lbNote(c *config.Config) string {

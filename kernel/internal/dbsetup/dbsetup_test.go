@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+
+package dbsetup
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/rburns629/vertra/kernel/internal/dbtest"
+)
+
+// The test server's superuser stands in for the managed server's
+// administrator; the three roles for the kernel's, console's and gateway's.
+func TestEachServiceGetsItsOwnDatabaseAndNoOther(t *testing.T) {
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, dbtest.URL())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close(ctx)
+	suffix := fmt.Sprint(time.Now().UnixNano())
+	kernelDB, consoleDB := "setup_kernel_"+suffix, "setup_console_"+suffix
+	kernel, console, gateway := "setup_k_"+suffix, "setup_c_"+suffix, "setup_g_"+suffix
+	for _, s := range []string{
+		"CREATE DATABASE " + kernelDB, "CREATE DATABASE " + consoleDB,
+		"CREATE ROLE " + kernel + " LOGIN", "CREATE ROLE " + console + " LOGIN", "CREATE ROLE " + gateway + " LOGIN",
+	} {
+		if _, err := admin.Exec(ctx, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, s := range []string{
+			"DROP DATABASE IF EXISTS " + kernelDB + " WITH (FORCE)", "DROP DATABASE IF EXISTS " + consoleDB + " WITH (FORCE)",
+			"DROP ROLE IF EXISTS " + kernel, "DROP ROLE IF EXISTS " + console, "DROP ROLE IF EXISTS " + gateway,
+		} {
+			_, _ = admin.Exec(context.Background(), s)
+		}
+	})
+	as := func(role, database string) (*pgx.Conn, error) {
+		config, err := pgx.ParseConfig(dbtest.URL())
+		if err != nil {
+			return nil, err
+		}
+		config.User, config.Database = role, database
+		return pgx.ConnectConfig(ctx, config)
+	}
+	connect := func(ctx context.Context, database string) (*pgx.Conn, error) {
+		return as(admin.Config().User, database)
+	}
+	grants := []Grant{{Database: kernelDB, Role: kernel}, {Database: consoleDB, Role: console, Regrant: true}}
+	for range 2 { // again: no change, no error
+		if err := Run(ctx, connect, admin.Config().Database, grants); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	run := func(role, database string, statements ...string) error {
+		conn, err := as(role, database)
+		if err != nil {
+			return err
+		}
+		defer conn.Close(ctx)
+		for _, s := range statements {
+			if _, err := conn.Exec(ctx, s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	refused := func(err error) bool { return err != nil && strings.Contains(err.Error(), "permission denied") }
+
+	if err := run(kernel, kernelDB, "CREATE TABLE tasks (id int)"); err != nil {
+		t.Fatalf("the kernel in its own database: %v", err)
+	}
+	// The console migrates its own, and gives the gateway what it reads.
+	if err := run(console, consoleDB,
+		"CREATE TABLE users (id int)",
+		"GRANT CONNECT ON DATABASE "+consoleDB+" TO "+gateway,
+		"GRANT USAGE ON SCHEMA public TO "+gateway,
+		"GRANT SELECT ON users TO "+gateway,
+	); err != nil {
+		t.Fatalf("the console in its own database: %v", err)
+	}
+	if err := run(gateway, consoleDB, "SELECT * FROM users"); err != nil {
+		t.Fatalf("the gateway reading what it was given: %v", err)
+	}
+	// And no one in anyone else's.
+	for _, c := range []struct{ role, database string }{{console, kernelDB}, {gateway, kernelDB}, {kernel, consoleDB}} {
+		if err := run(c.role, c.database, "SELECT 1"); !refused(err) {
+			t.Errorf("%s in %s: %v, want permission denied", c.role, c.database, err)
+		}
+	}
+}

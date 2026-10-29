@@ -34,7 +34,8 @@ was Python until 2026-10-20 (decision 17 in `docs/assessment.md`).
 
 ```
 cmd/kernel/        The binary: a subcommand per process (api, scheduler, migrate,
-                   sleep), plus wait-for-postgres and check-heartbeat for the chart.
+                   sleep, database-setup), plus wait-for-postgres and check-heartbeat
+                   for the chart.
 internal/          Its packages (one Go module: go.mod here).
 ├── domain/        States, retry backoff, the result.json contract, input references,
 │                  DAG validation, credential shapes. No I/O.
@@ -45,6 +46,8 @@ internal/          Its packages (one Go module: go.mod here).
 ├── scheduler/     The pass (claim → dispatch → poll → settle), the loop around it,
 │                  retention, the orphan sweep.
 ├── migrate/       The schema: sql/NNNN_name.sql, applied in order, each once.
+├── dbauth/        A managed database's sign-in: the workload's own token as the password.
+├── dbsetup/       database-setup: each database opened to its own service alone.
 ├── sleeper/       Putting an idle platform to sleep (a CronJob).
 ├── logging/       JSON logs.
 ├── metrics/       Prometheus metrics.

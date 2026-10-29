@@ -65,7 +65,10 @@ its own directory.
     applied in order by the chart's hook Job; a released file never
     changes. kernel-api and the scheduler wait until the database is at
     the newest. `kernel sleep` (`internal/sleeper`) scales an idle
-    platform to zero.
+    platform to zero. With a managed database (Cloud SQL), every process
+    signs in with its own Workload Identity token, no password
+    (`internal/dbauth`), after `kernel database-setup` (`internal/dbsetup`)
+    opened its database to it alone.
   - Layering points one way: `domain → executor → scheduler`, `domain →
     api`, all `→ cmd`; `domain` has no I/O, `scheduler` knows only the
     `Executor` interface, and `api` and `scheduler` never import each

@@ -154,11 +154,21 @@ every Pod that connects to it or to kernel-api.
     # the Secret exists; it still connects as before then, without TLS.
     optional: true
 {{- end }}
+{{- if .Values.database.caSecret }}
+# A managed database's server CA (database.caSecret), which the URL's
+# sslrootcert names.
+- name: db-ca
+  secret:
+    secretName: {{ .Values.database.caSecret }}
+{{- end }}
 {{- end -}}
 
 {{- define "execution-kernel.tlsCaMount" -}}
 {{- if .Values.tls.enabled }}
 - {name: tls-ca, mountPath: /etc/vertra/tls, readOnly: true}
+{{- end }}
+{{- if .Values.database.caSecret }}
+- {name: db-ca, mountPath: /etc/vertra/tls-db, readOnly: true}
 {{- end }}
 {{- end -}}
 

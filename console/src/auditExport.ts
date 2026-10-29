@@ -17,7 +17,7 @@ import { chainHash } from "./audit.js";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
 import { auditExport, auditLog } from "./db/schema.js";
-import { gcpMetadataToken } from "./registry.js";
+import { gcpMetadataToken } from "./gcpMetadata.js";
 
 const LOCK = 0x7665727465787074; // "vertexpt"
 /** The most entries in one object. */

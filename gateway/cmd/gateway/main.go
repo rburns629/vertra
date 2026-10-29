@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,6 +26,7 @@ import (
 	"github.com/rburns629/vertra/gateway/internal/caller"
 	"github.com/rburns629/vertra/gateway/internal/config"
 	"github.com/rburns629/vertra/gateway/internal/credentials"
+	"github.com/rburns629/vertra/gateway/internal/dbauth"
 	"github.com/rburns629/vertra/gateway/internal/gateway"
 	"github.com/rburns629/vertra/gateway/internal/limits"
 	"github.com/rburns629/vertra/gateway/internal/store"
@@ -53,6 +55,25 @@ func run(log *slog.Logger) error {
 	// Not pgx's default (the node's CPUs, at least 4), which would queue a
 	// burst of calls on a small node.
 	poolConfig.MaxConns = int32(max(s.DatabaseMaxConnections, 1))
+	if s.DatabaseIAMAuth == "gcp" {
+		// Its Workload Identity's token, short-lived, as each connection's
+		// password (Cloud SQL's IAM database authentication): federated from
+		// its own ServiceAccount token, since its NetworkPolicy keeps it from
+		// the metadata server.
+		password := dbauth.GCP().Password
+		if s.DatabaseIAMAccount != "" {
+			password = (&dbauth.Federated{
+				TokenFile: s.DatabaseIAMTokenFile, STSAudience: s.GCPAudience, Account: s.DatabaseIAMAccount,
+				STS: "https://sts.googleapis.com/v1/token", IAMCredentials: "https://iamcredentials.googleapis.com",
+				Client: &http.Client{Timeout: 10 * time.Second}, Now: time.Now,
+			}).Password
+		}
+		poolConfig.BeforeConnect = func(ctx context.Context, c *pgx.ConnConfig) error {
+			p, err := password(ctx)
+			c.Password = p
+			return err
+		}
+	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return err

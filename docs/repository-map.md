@@ -77,6 +77,8 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `.dockerignore`, `.gcloudignore` | Keep test binaries and local files out of the image and the Cloud Build upload. |
 | `cmd/kernel/main.go` | The binary: `api`, `scheduler`, `migrate`, `sleep [--now]`, and for the chart `wait-for-postgres` (init containers) and `check-heartbeat` (the scheduler's liveness probe). |
 | `internal/config/config.go` | Every setting, for every process, read from the environment (the chart's ConfigMap) and checked at startup. |
+| `internal/dbauth/` | Signing in to a managed database with the workload's own identity: on GKE, its Workload Identity token from the metadata server as the password (Cloud SQL's IAM database authentication), kept until a minute before it expires. |
+| `internal/dbsetup/` | `kernel database-setup`: as a managed server's administrator, opens each database to its own service alone (the console's with the grant option, for the gateway). |
 | **`internal/domain/`** | **The rules, with no I/O.** |
 | `internal/domain/states.go` | Task and execution states, the retry rule and its backoff. |
 | `internal/domain/dag.go` | Checks a DAG before it's stored: duplicate ids, unknown or repeated dependencies, cycles, `$fromTask` references, credentials in inputs; topological order. |
@@ -170,6 +172,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `callbacks.ts` | Callbacks for systems (decision 23): a finished run queued for its ordering bot's callback (`order.finished`) and its owning teams' outcome webhooks (`run.finished`, with steps' outputs), posted signed (`Vertra-Signature`), allowed hosts only, five tries. |
 | `resourceRecorder.ts` | Every 30 seconds, copies what finished runs' steps reported as `resources` (with each step's inputs and outputs) into the `resources` table, and marks what cleanup runs deleted. |
 | `productPolicy.ts` | Writes the registered products into the cluster's identity policy, after every product change and at startup. |
+| `gcpMetadata.ts` | The console's own Google access token, from the node's metadata server (Workload Identity): the registry's, the audit export's, single sign-on's, Vertex's and the database's. |
 | `registry.ts` | Asks a container registry whether an image still exists, before a run, pins tags to digests, and fetches the catalog's release (digest-checked) and lists its tags, for its newest version. |
 | `apiError.ts` | `ApiError`: a refusal (HTTP status, stable code, message, Connect code, extra fields) thrown by `core/` and turned into a Connect error (its code, a `Failure` detail with any extra fields) by Connect's interceptor. |
 | `guides.ts` | The guides in `console/docs/` and the reference: listing them with their sections, reading them, and the figures they draw (`GuideService`). |
@@ -222,6 +225,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `db/queries.ts` | Every database query the routes use. |
 | `db/client.ts` | The database connection. |
 | `db/migrate.ts` | Applies migrations, creates the first admin and grants the gateway's role; run by the migration Job on deploy. |
+| `db/connection.ts` | How every pool connects: `DATABASE_URL`, and with `DATABASE_IAM_AUTH=gcp` the console's Workload Identity token as each connection's password. |
 | `db/gatewayAccess.ts` | The gateway's own database role: the columns it reads and its traffic counts, nothing else; created here on the console's own Postgres. |
 | `db/bootstrapAdmin.ts` | Creates the first admin once: a generated password is printed once and must be changed at the first sign-in; one the operator set isn't. |
 | `db/resetAdmin.ts` | Gives an admin a new random password from inside the console's Pod (`vertra admin reset-password`): printed once, every session revoked, audited. |
@@ -370,6 +374,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `internal/caller/` | The `Vertra-Caller` header (an EdDSA JWT) and its public key at `/.vertra/jwks.json`. |
 | `internal/limits/` | A token bucket per API and calling team. |
 | `internal/config/` | Its settings, checked at startup. |
+| `internal/dbauth/` | Signing in to a managed database with its own Workload Identity token (the kernel's, copied: the projects share no code). |
 | `Dockerfile` | One static binary on distroless, cross-compiled on the builder's platform. |
 
 ## `helm/`: Kubernetes packaging
@@ -504,7 +509,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/tools/` | Required tools per target, version checks, and pinned, checksum-verified downloads into `~/.vertra/bin` (`pins.go`). |
 | `internal/run/` | Runs the external commands (kubectl, helm, docker, kind), printing them with `-v`. |
 | `internal/cluster/` | The kind cluster and its local registry: inspect, create, delete; namespaces. |
-| `internal/install/` | The platform images (built from source or released), the generated Helm values, and `helm upgrade`. |
+| `internal/install/` | The platform images (built from source or released), the generated Helm values, and `helm upgrade`; `database.go`, a managed database's values, Secrets and `kernel database-setup` Job. |
 | `internal/platform/` | The installed platform: deployments, sleep, wake, running steps, console access. |
 | `internal/plan/` | The approval screen and the sizes' platform floors. |
 | `internal/gcp/` | What a gcp install needs from gcloud, as you: the project's checks, the cluster's credentials, a short-lived Docker sign-in, the module's inputs and the registry paths. |

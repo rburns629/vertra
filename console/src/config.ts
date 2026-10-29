@@ -92,6 +92,13 @@ export interface ChatInput {
   contextTokens: number | null;
 }
 
+/** DATABASE_IAM_AUTH: "gcp", or "" for the URL's password. */
+function databaseIamAuth(): "" | "gcp" {
+  const value = process.env["DATABASE_IAM_AUTH"] ?? "";
+  if (value !== "" && value !== "gcp") throw new Error(`Invalid DATABASE_IAM_AUTH "${value}": expected "gcp", or nothing for a password.`);
+  return value;
+}
+
 export const CHAT_PROVIDERS = ["vertex", "bedrock", "anthropic", "openai-compatible"] as const;
 export type ChatProvider = (typeof CHAT_PROVIDERS)[number];
 
@@ -327,6 +334,10 @@ export const config = {
   // Most connections this process holds (each request it serves may take
   // one); the size keeps every process's sum under Postgres's limit.
   databasePoolSize: positiveInt("DATABASE_POOL_SIZE", 10),
+  // Sign in with its own cloud identity instead of a password: "gcp"
+  // (Cloud SQL's IAM database authentication, its Workload Identity's
+  // token), or "" (the URL's password).
+  databaseIamAuth: databaseIamAuth(),
   // With the gateway on: its own database role (db/gatewayAccess.ts), which
   // the migration Job grants what the gateway reads, and creates with this
   // password when the console runs as its Postgres's superuser. Empty: no

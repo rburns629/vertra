@@ -38,6 +38,11 @@ spec:
         {{- include "execution-console.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: migrate
     spec:
+      {{- if .Values.database.iamAuth }}
+      # Signs in to the database as the console does: its ServiceAccount's
+      # cloud identity (it exists by then: the hook runs post-install).
+      serviceAccountName: {{ include "execution-console.serviceAccountName" . }}
+      {{- end }}
       securityContext:
         {{- include "execution-console.podSecurityContext" . | nindent 8 }}
       volumes:

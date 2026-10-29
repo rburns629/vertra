@@ -8,11 +8,12 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { config } from "../config.js";
+import { poolConfig } from "./connection.js";
 import { seedBootstrapAdmin } from "./bootstrapAdmin.js";
 import { ensureGatewayAccess } from "./gatewayAccess.js";
 
 async function main(): Promise<void> {
-  const pool = new Pool({ connectionString: config.databaseUrl });
+  const pool = new Pool(poolConfig());
   const db = drizzle(pool);
   await migrate(db, { migrationsFolder: "./src/db/migrations" });
   console.log("Migrations applied.");

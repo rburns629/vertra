@@ -647,7 +647,8 @@ To go back: install the previous release's charts, then restore that backup
 ## Databases
 
 Each chart can run its own Postgres (`postgres.enabled`), a single replica
-on a volume; or use an external database. On a small install the kernel's
+on a volume; or use an external database, such as the managed one `vertra`
+makes on Google Cloud (below). On a small install the kernel's
 Postgres can also hold the console's database (`postgres.consoleDatabase`),
 where the console signs in as its own role, which owns only its database.
 
@@ -690,6 +691,42 @@ kubectl -n $NS rollout restart deployment console-execution-console   # and cons
 Checking a password from inside the Postgres Pod proves nothing: local
 connections are trusted there. The console's other secret, the one that
 signs sessions, is under [Rotating secrets](#rotating-secrets).
+
+**A managed database (gcp).** With `database.type: managed` (asked by
+`vertra init` on gcp, or `--database managed`), the gcp module makes Cloud SQL
+for PostgreSQL 16 instead of the in-cluster Postgres: both databases on one
+instance, its machine and `max_connections` following the size
+(`minimal`: `db-g1-small`; `resilient` and `auto`: 1 vCPU, 3.75 GB;
+`scaled`: 2 vCPU, 7.5 GB; 100, 200, 300 connections), a standby in a
+second zone with `database.highAvailability` (`--database-ha`, on by
+default for `resilient` and `scaled`). It has a private IP only, in the
+install's own network, and accepts only TLS, which each service checks
+against the instance's own CA (`vertra-db-ca`).
+
+There are no database passwords. The kernel, the console and the gateway
+each sign in as their own Google service account (Cloud SQL's IAM database
+authentication): the password is the workload's access token, an hour long,
+from GKE Workload Identity (`database.iamAuth: gcp` in the charts, which
+mount the CA from `database.caSecret`). Before the charts, every apply runs
+`kernel database-setup` once as a fourth identity, the database
+administrator (`vertra-db-admin`), the only one in `cloudsqlsuperuser`: it
+opens `execution_kernel` to the kernel alone and `execution_console` to the
+console alone, which gives the gateway what it reads, as with the in-cluster
+Postgres. Each service then owns its own tables; none can read another's.
+
+Cloud SQL backs it up daily, with point-in-time recovery (7 days of
+transaction logs), keeping `database.backups.retentionDays` backups; the
+backup Jobs and their bucket aren't made. It runs whether or not the
+platform sleeps, and the approval screen prices it. `vertra destroy`
+deletes it only when told to delete data. An install whose data is already
+in the in-cluster Postgres can't be switched by `vertra config set`: apply
+refuses, rather than starting the platform on an empty server. To restore:
+
+```
+gcloud sql backups list --instance <instance> --project <project>
+gcloud sql backups restore <backup-id> --restore-instance <instance> --project <project>
+# or to a moment: gcloud sql instances clone <instance> <new> --point-in-time <RFC 3339 time>
+```
 
 **Connecting.** Neither database is exposed outside the cluster, and
 NetworkPolicies admit only the platform's own Pods. To look at one:

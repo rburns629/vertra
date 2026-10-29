@@ -122,3 +122,46 @@ func TestAPublicConsoleCostsItsLoadBalancer(t *testing.T) {
 		t.Errorf("want the load balancer always:\n%s", out)
 	}
 }
+
+// testdata/gcp-cloudsql.json: Cloud SQL for PostgreSQL's real entries
+// (October 2026) for the Americas and EMEA groups.
+func TestCloudSQLPricesFromTheCatalog(t *testing.T) {
+	data, err := os.ReadFile("testdata/gcp-cloudsql.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct{ CloudSQL []sku }
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatal(err)
+	}
+	p := &GCPPrices{Region: "us-central1"}
+	if err := p.addSQL(f.CloudSQL); err != nil {
+		t.Fatal(err)
+	}
+	if !p.HasSQL() || p.SQLSmall != [2]float64{0.035, 0.07} || p.SQLCPU != [2]float64{0.0413, 0.0826} || p.SQLStorage != [2]float64{0.17, 0.34} {
+		t.Errorf("prices = %+v", p)
+	}
+	if err := (&GCPPrices{Region: "asia-east1"}).addSQL(f.CloudSQL); err == nil {
+		t.Error("a region the catalog doesn't price should fail")
+	}
+}
+
+func TestAManagedDatabaseIsPricedAndItsVolumeIsNot(t *testing.T) {
+	p := prices()
+	p.SQLSmall, p.SQLCPU, p.SQLRam, p.SQLStorage = [2]float64{0.035, 0.07}, [2]float64{0.0413, 0.0826}, [2]float64{0.007, 0.014}, [2]float64{0.17, 0.34}
+	c := config.Default("gcp")
+	c.Console.Public = false
+	c.Database.Type = "managed"
+	// minimal: the shared-core instance, 730 h, and 10 GB of SSD.
+	if got := CloudSQLMonth(p, c); math.Abs(got-(0.035*730+1.7)) > 0.001 {
+		t.Errorf("minimal, zonal: %v", got)
+	}
+	out := text(GCP(p, c, "fetched now"))
+	if !strings.Contains(out, "Database: $27.25: Cloud SQL") || !strings.Contains(out, "Always: $27.25: the database and disks") {
+		t.Errorf("the database, and no 10 GB volume beside it:\n%s", out)
+	}
+	c.Size, c.Database.HighAvailability = "scaled", true
+	if got := CloudSQLMonth(p, c); math.Abs(got-((2*0.0826+7.5*0.014)*730+3.4)) > 0.001 {
+		t.Errorf("scaled, regional: %v", got)
+	}
+}

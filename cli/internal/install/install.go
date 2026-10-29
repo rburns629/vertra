@@ -75,6 +75,8 @@ type Cloud struct {
 	ConsoleZoneID      string
 	ConsoleNameServers []string
 	VPCCIDR            string
+	// Database is the managed database, when database.type is managed.
+	Database *ManagedDatabase
 }
 
 // googleFrontEnds are where Google's load balancers connect from.
@@ -348,6 +350,9 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 			}
 		}
 	}
+	if cloud != nil && cloud.Database != nil {
+		managedKernelValues(v, cloud.Database)
+	}
 	if e := c.ExternalCatalog; e.Registry != "" {
 		// Steps run the other install's catalog images.
 		v["imagePolicy"] = map[string]any{"sourceRegistry": e.Registry}
@@ -387,6 +392,9 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		"existingSecretKey": "database-url",
 		// No password: one is generated and shown once (Password).
 		"bootstrapAdmin": map[string]any{"email": c.Admin.Email},
+	}
+	if cloud != nil && cloud.Database != nil {
+		managedConsoleValues(v, cloud.Database)
 	}
 	if c.Target == "kind" {
 		// Pinning images asks the local registry by its in-cluster name.
@@ -530,6 +538,9 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		}
 		if img.Gateway != "" {
 			gateway["image"] = map[string]any{"repository": img.Gateway, "tag": img.Tag}
+		}
+		if cloud != nil && cloud.Database != nil {
+			managedGatewayValues(gateway, cloud.Database)
 		}
 		if cloud != nil && cloud.Provider == "gcp" {
 			// API ServiceAccounts federate through the cluster's own

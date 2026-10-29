@@ -53,6 +53,17 @@ func TestCloudFromGCPOutputs(t *testing.T) {
 	if cloud, err := cloudFromGCP(outputs); err != nil || cloud.BackupBucket != "" {
 		t.Errorf("optional outputs may be absent: %+v, %v", cloud, err)
 	}
+	if cloud.Database != nil {
+		t.Errorf("no managed database: %+v", cloud.Database)
+	}
+	outputs["database"] = json.RawMessage(`{"instance":"vertra-ab12","host":"10.40.0.3","ca_cert":"PEM",
+	  "users":{"kernel":"vertra-kernel@p.iam","console":"vertra-console@p.iam","gateway":"vertra-gateway@p.iam","admin":"vertra-db-admin@p.iam"},
+	  "kernel_sa":"vertra-kernel@p.iam.gserviceaccount.com","gateway_sa":"vertra-gateway@p.iam.gserviceaccount.com","admin_sa":"vertra-db-admin@p.iam.gserviceaccount.com"}`)
+	cloud, err = cloudFromGCP(outputs)
+	if err != nil || cloud.Database == nil || cloud.Database.Host != "10.40.0.3" || cloud.Database.GatewayUser != "vertra-gateway@p.iam" ||
+		cloud.Database.AdminServiceAccount != "vertra-db-admin@p.iam.gserviceaccount.com" {
+		t.Errorf("a managed database: %+v, %v", cloud.Database, err)
+	}
 	delete(outputs, "task_registry")
 	if _, err := cloudFromGCP(outputs); err == nil {
 		t.Error("a missing required output should fail")

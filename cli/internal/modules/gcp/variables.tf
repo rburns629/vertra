@@ -74,6 +74,18 @@ variable "backups" {
   default     = true
 }
 
+variable "managed_database" {
+  description = "Cloud SQL for PostgreSQL instead of the in-cluster Postgres: private IP only, every service signing in with its own identity (IAM database authentication), no passwords."
+  type        = bool
+  default     = false
+}
+
+variable "database_high_availability" {
+  description = "A standby in a second zone, failed over to automatically (REGIONAL)."
+  type        = bool
+  default     = false
+}
+
 variable "backup_retention_days" {
   type    = number
   default = 30

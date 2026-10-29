@@ -21,7 +21,7 @@ import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db/client.js";
 import { ssoGroupMappings, ssoSettings, teamMemberships, teams, users, type TeamRole } from "./db/schema.js";
-import { gcpMetadataToken } from "./registry.js";
+import { gcpMetadataToken } from "./gcpMetadata.js";
 import { unseal } from "./sealed.js";
 
 export const SECRET_PURPOSE = "sso client secret";

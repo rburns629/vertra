@@ -89,7 +89,7 @@ func (a *app) gcpCost(ctx context.Context, c *config.Config) []plan.Line {
 	if err != nil {
 		return unavailable(err)
 	}
-	prices, err := pricing.FetchGCP(ctx, token, c.GCP.Region)
+	prices, err := pricing.FetchGCP(ctx, token, c.GCP.Region, c.Database.Type == "managed")
 	if err != nil {
 		return unavailable(err)
 	}
@@ -127,7 +127,7 @@ func sameIdentity(recorded, now string) error {
 
 // optionalOutputs are the modules' outputs that are null when not used
 // (no backups, no catalog, no public console), which `tofu output` omits.
-var optionalOutputs = map[string]bool{"scanner_service_account": true, "backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true, "capacity_placements": true}
+var optionalOutputs = map[string]bool{"database": true, "scanner_service_account": true, "backup": true, "logs": true, "audit": true, "catalog": true, "console_address": true, "signing": true, "capacity_placements": true}
 
 // cloudFromGCP reads the module's outputs.
 func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
@@ -164,11 +164,20 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 			Key      string `json:"key"`
 			Verifier string `json:"verifier"`
 		}
+		Database *struct {
+			Instance  string            `json:"instance"`
+			Host      string            `json:"host"`
+			CACert    string            `json:"ca_cert"`
+			Users     map[string]string `json:"users"`
+			KernelSA  string            `json:"kernel_sa"`
+			GatewaySA string            `json:"gateway_sa"`
+			AdminSA   string            `json:"admin_sa"`
+		}
 	}
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "workload_identity_pool": &v.WorkloadPool, "task_registry": &v.TaskRegistry,
 		"console_service_account": &v.ConsoleAccount, "scanner_service_account": &v.ScannerAccount, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities,
-		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog, "signing": &v.Signing,
+		"console_address": &v.ConsoleAddress, "catalog": &v.Catalog, "signing": &v.Signing, "database": &v.Database,
 	} {
 		raw, ok := outputs[name]
 		if !ok {
@@ -211,6 +220,13 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	if v.Signing != nil {
 		cloud.SigningKey, cloud.SigningVerifier = v.Signing.Key, v.Signing.Verifier
+	}
+	if d := v.Database; d != nil {
+		cloud.Database = &install.ManagedDatabase{
+			Instance: d.Instance, Host: d.Host, CACert: d.CACert,
+			KernelUser: d.Users["kernel"], ConsoleUser: d.Users["console"], GatewayUser: d.Users["gateway"], AdminUser: d.Users["admin"],
+			KernelServiceAccount: d.KernelSA, GatewayServiceAccount: d.GatewaySA, AdminServiceAccount: d.AdminSA,
+		}
 	}
 	return cloud, nil
 }
@@ -328,6 +344,18 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 	if c.Audit.Export {
 		keep = append(keep, "google_storage_bucket.audit[0]")
 	}
+	const instance = "google_sql_database_instance.this[0]"
+	managed := c.Database.Type == "managed" && tf.Has(ctx, instance)
+	if managed && !deleteData {
+		// A managed database keeps its data, and the network it's peered
+		// into, which can't go while the peering does.
+		keep = append(keep, instance, `google_sql_database.this["execution_kernel"]`, `google_sql_database.this["execution_console"]`,
+			"google_service_networking_connection.database[0]", "google_compute_global_address.database[0]", "google_compute_network.this")
+		for _, u := range []string{"kernel", "console", "gateway", "admin"} {
+			keep = append(keep, fmt.Sprintf(`google_sql_user.this[%q]`, u))
+		}
+		fmt.Fprintf(out, "Keeping the database (Cloud SQL, in project %s) and its network: `gcloud sql instances list`, or `vertra destroy --all` to delete them too.\n", c.GCP.Project)
+	}
 	if tf.HasState(ctx) {
 		var emptied []string
 		if c.Database.Backups.Enabled && deleteData {
@@ -335,6 +363,11 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 		}
 		if c.Logs.Enabled && deleteData {
 			emptied = append(emptied, logsBucket)
+		}
+		if managed && deleteData {
+			// Its deletion protection is lifted, and its databases and users
+			// left to go with it, only once the state says so.
+			emptied = append(emptied, instance, "google_sql_database.this", "google_sql_user.this")
 		}
 		if len(emptied) > 0 {
 			// A bucket with data in it is deleted only once the state says

@@ -11,7 +11,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import type { ChatConfig } from "../config.js";
-import { gcpMetadataToken } from "../registry.js";
+import { gcpMetadataToken } from "../gcpMetadata.js";
 import { bedrockFetch } from "./bedrock.js";
 import { currentChat } from "./settings.js";
 

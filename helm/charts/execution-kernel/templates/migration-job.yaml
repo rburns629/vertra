@@ -29,6 +29,11 @@ spec:
         {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: migrate
     spec:
+      {{- if .Values.database.iamAuth }}
+      # Signs in to the database as kernel-api does: its ServiceAccount's
+      # cloud identity (it exists by then: the hook runs post-install).
+      serviceAccountName: {{ include "execution-kernel.apiServiceAccountName" . }}
+      {{- end }}
       securityContext:
         {{- include "execution-kernel.podSecurityContext" . | nindent 8 }}
       volumes:
@@ -48,6 +53,8 @@ spec:
             {{- toYaml .Values.migration.resources | nindent 12 }}
           command: ["/usr/local/bin/kernel", "migrate"]
           env:
+            - name: DATABASE_IAM_AUTH
+              value: {{ .Values.database.iamAuth | quote }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

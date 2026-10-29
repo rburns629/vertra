@@ -268,6 +268,9 @@ gateway:
   # -- Most database connections each gateway holds (each request checks
   # who's calling there).
   databaseMaxConnections: 10
+  # -- On its ServiceAccount: with a managed database on GKE, the Workload
+  # Identity it signs in as (iam.gke.io/gcp-service-account).
+  serviceAccountAnnotations: {}
   image:
     repository: ghcr.io/rburns629/vertra/execution-gateway
     tag: ""
@@ -737,6 +740,19 @@ externalDatabaseUrl: ""
 # release history.
 existingSecret: ""
 existingSecretKey: "database-url"
+
+# A managed database (postgres.enabled=false, its URL in existingSecret or
+# externalDatabaseUrl):
+database:
+  # -- Sign in with the workload's own cloud identity instead of a
+  # password: "gcp", Cloud SQL's IAM database authentication (the console's
+  # and the gateway's Workload Identity: serviceAccount.annotations,
+  # gateway.serviceAccountAnnotations). The URLs then name a user and no
+  # password.
+  iamAuth: ""
+  # -- A Secret holding the server's CA (ca.crt), mounted at
+  # /etc/vertra/tls-db for the URLs' sslrootcert.
+  caSecret: ""
 
 # -- A scheduled pg_dump of this chart's own Postgres (when the kernel's
 # instance hosts the console's database, the kernel chart backs it up), checked with

@@ -1,0 +1,388 @@
+{
+  "CloudSQL": [
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - vCPU in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 82600000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - vCPU in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 41300000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - Small instance in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 35000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - Small instance in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 35000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - Small instance in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 70000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - vCPU in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 82600000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - RAM in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 7000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - RAM in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 7000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - vCPU in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 41300000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - RAM in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 14000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - Standard storage in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.mo",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 170000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Zonal - Standard storage in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.mo",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 170000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - RAM in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 14000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - Standard storage in EMEA",
+      "serviceRegions": [
+        "europe-west1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.mo",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 340000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - Small instance in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "h",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 70000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "description": "Cloud SQL for PostgreSQL: Regional - Standard storage in Americas",
+      "serviceRegions": [
+        "us-central1"
+      ],
+      "category": {
+        "usageType": "OnDemand"
+      },
+      "pricingInfo": [
+        {
+          "pricingExpression": {
+            "usageUnit": "GiBy.mo",
+            "tieredRates": [
+              {
+                "unitPrice": {
+                  "units": "0",
+                  "nanos": 340000000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
