@@ -52,6 +52,8 @@ func (a *app) planGCP(ctx context.Context, out io.Writer, dir string, c *config.
 	if err := problemsError(check.Report); err != nil {
 		return nil, err
 	}
+	// Prices are fetched while OpenTofu plans.
+	cost := later(!destroy, func() []plan.Line { return a.gcpCost(ctx, c) })
 	if state.ClusterStatus == "RUNNING" {
 		if err := gcp.Credentials(ctx, a.runner, c); err != nil {
 			return nil, err
@@ -72,11 +74,19 @@ func (a *app) planGCP(ctx context.Context, out io.Writer, dir string, c *config.
 	if err != nil {
 		return nil, err
 	}
-	p.changes = changes
-	if !destroy {
-		p.cost = a.gcpCost(ctx, c)
-	}
+	p.changes, p.cost = changes, cost()
 	return p, nil
+}
+
+// later runs f in the background when it should, and returns a wait for
+// its answer (nil when it shouldn't).
+func later(should bool, f func() []plan.Line) func() []plan.Line {
+	if !should {
+		return func() []plan.Line { return nil }
+	}
+	done := make(chan []plan.Line, 1)
+	go func() { done <- f() }()
+	return func() []plan.Line { return <-done }
 }
 
 // gcpCost prices the install from Google's catalog; when that fails the
@@ -93,11 +103,21 @@ func (a *app) gcpCost(ctx context.Context, c *config.Config) []plan.Line {
 	if err != nil {
 		return unavailable(err)
 	}
+	// Your billing account's prices, its discounts applied, when you may
+	// read them; list prices otherwise, and the screen says which.
+	var note []plan.Line
+	if account := gcp.BillingAccount(ctx, a.runner, c); account != "" {
+		if mine, err := pricing.ForAccount(ctx, token, account, prices); err == nil {
+			prices = mine
+		} else {
+			note = []plan.Line{{Label: "  Prices", Text: "list prices: " + err.Error()}}
+		}
+	}
 	fetched := "fetched now"
 	if time.Since(prices.Fetched) > time.Minute {
 		fetched = "fetched " + prices.Fetched.Local().Format("Jan 2 15:04")
 	}
-	return pricing.GCP(prices, c, fetched)
+	return append(pricing.GCP(prices, c, fetched), note...)
 }
 
 // changeLines are the approval screen's lines for what OpenTofu changes,

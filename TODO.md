@@ -129,7 +129,7 @@ design.
   sleeper, the idle scanner, headroom, PodDisruptionBudgets and the `auto`
   autoscalers. Step 3, gcp, is in: the OpenTofu module (Autopilot and
   Standard), live list prices, apply and destroy; signing (2026-10-26) and
-  catalog federation are in, and Cloud SQL (2026-10-29); still to do there: account prices. Step 4, the catalog on GitHub, is proven (repository,
+  catalog federation are in, and Cloud SQL and account prices (2026-10-29). Step 4, the catalog on GitHub, is proven (repository,
   federation, CI publishing, a starter run on Spot). Step 5, aws, is proven
   on EKS Auto Mode in us-east-2 (2026-10-18): install, ECR pinning and scans
   through Pod Identity, S3 backups, sleep (nodes gone in about a minute) and

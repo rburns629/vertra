@@ -58,7 +58,8 @@ defaults answer. --force replaces an environment's settings.`,
 	"vertra apply": {
 		long: `Plans everything and shows it on one screen: what it will create, change or
 delete in the cloud and the cluster, what it builds and installs, and an
-estimate of the monthly cost from the cloud's list prices. Nothing happens
+estimate of the monthly cost (gcp: your billing account's prices when you
+may read them; otherwise list prices, and it says which). Nothing happens
 until you approve. Then it creates the cloud side (OpenTofu), readies the
 cluster and installs or upgrades both charts. Run it again after any
 change: it makes the install match vertra.yaml, and does nothing more

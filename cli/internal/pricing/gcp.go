@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -53,6 +54,29 @@ type GCPPrices struct {
 	// The shared-core small instance, per hour; vCPU and RAM (GiB), per
 	// hour; SSD storage, per GiB-month.
 	SQLSmall, SQLCPU, SQLRam, SQLStorage [2]float64
+
+	// SKUs: each price's catalog SKU id, by its name (prices' keys), so
+	// your billing account's prices can be asked for.
+	SKUs map[string]string
+	// Basis says whose prices these are: Google's list prices, or your
+	// billing account's (with its discounts).
+	Basis string `json:"-"`
+}
+
+// prices is every price, by a name for it.
+func (p *GCPPrices) prices() map[string]*float64 {
+	m := map[string]*float64{
+		"AutopilotCPU": &p.AutopilotCPU, "AutopilotMem": &p.AutopilotMem,
+		"AutopilotSpotCPU": &p.AutopilotSpotCPU, "AutopilotSpotMem": &p.AutopilotSpotMem,
+		"ClusterFee": &p.ClusterFee, "E2Core": &p.E2Core, "E2Ram": &p.E2Ram,
+		"E2SpotCore": &p.E2SpotCore, "E2SpotRam": &p.E2SpotRam,
+		"BalancedDisk": &p.BalancedDisk, "ForwardingRule": &p.ForwardingRule,
+	}
+	for i, kind := range []string{"Zonal", "Regional"} {
+		m["SQLSmall"+kind], m["SQLCPU"+kind] = &p.SQLSmall[i], &p.SQLCPU[i]
+		m["SQLRam"+kind], m["SQLStorage"+kind] = &p.SQLRam[i], &p.SQLStorage[i]
+	}
+	return m
 }
 
 // HasSQL says the Cloud SQL prices are there.
@@ -60,6 +84,7 @@ func (p *GCPPrices) HasSQL() bool { return p.SQLSmall[0] > 0 }
 
 // sku is one catalog entry, as much of it as matching needs.
 type sku struct {
+	SkuID          string   `json:"skuId"`
 	Description    string   `json:"description"`
 	ServiceRegions []string `json:"serviceRegions"`
 	Category       struct {
@@ -93,13 +118,13 @@ func (s sku) price() float64 {
 
 // match finds the SKU whose description is exactly desc (in region, or
 // global), or one whose description starts with prefix and covers region.
-func match(skus []sku, region, desc string) (float64, bool) {
+func match(skus []sku, region, desc string) (sku, bool) {
 	for _, s := range skus {
 		if s.Description == desc && (slices.Contains(s.ServiceRegions, region) || slices.Contains(s.ServiceRegions, "global")) {
-			return s.price(), true
+			return s, true
 		}
 	}
-	return 0, false
+	return sku{}, false
 }
 
 // FetchGCP returns the region's list prices: from the cache when it's less
@@ -109,66 +134,69 @@ func match(skus []sku, region, desc string) (float64, bool) {
 // managed database is priced).
 func FetchGCP(ctx context.Context, token, region string, withSQL bool) (*GCPPrices, error) {
 	cache := cachePath("gcp-" + region + ".json")
-	if p := readCache(cache); p != nil && time.Since(p.Fetched) < gcpCacheLifetime && (!withSQL || p.HasSQL()) {
+	// A cache from before SKU ids were kept is read again, for account prices.
+	if p := readCache(cache); p != nil && time.Since(p.Fetched) < gcpCacheLifetime && (!withSQL || p.HasSQL()) && len(p.SKUs) > 0 {
+		p.Basis = "list prices"
 		return p, nil
 	}
-	gke, err := listSKUs(ctx, token, gcpKubernetes)
-	if err != nil {
+	// The catalogs are read at once: Compute Engine's alone is several pages.
+	services := []string{gcpKubernetes, gcpCompute, gcpNetworking}
+	if withSQL {
+		services = append(services, gcpCloudSQL)
+	}
+	lists := make([][]sku, len(services))
+	errs := make([]error, len(services))
+	var wg sync.WaitGroup
+	for i, service := range services {
+		wg.Go(func() { lists[i], errs[i] = listSKUs(ctx, token, service) })
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
 		return nil, err
 	}
-	compute, err := listSKUs(ctx, token, gcpCompute)
-	if err != nil {
-		return nil, err
-	}
-	networking, err := listSKUs(ctx, token, gcpNetworking)
-	if err != nil {
-		return nil, err
-	}
-	p, err := PricesFromGCP(gke, append(compute, networking...), region)
+	p, err := PricesFromGCP(lists[0], append(lists[1], lists[2]...), region)
 	if err != nil {
 		return nil, err
 	}
 	if withSQL {
-		sql, err := listSKUs(ctx, token, gcpCloudSQL)
-		if err != nil {
-			return nil, err
-		}
-		if err := p.addSQL(sql); err != nil {
+		if err := p.addSQL(lists[3]); err != nil {
 			return nil, err
 		}
 	}
 	p.Fetched = time.Now()
 	writeCache(cache, p)
+	p.Basis = "list prices"
 	return p, nil
 }
 
 // PricesFromGCP picks the prices out of Kubernetes Engine's SKUs and the
 // rest (Compute Engine's and Networking's).
 func PricesFromGCP(gke, compute []sku, region string) (*GCPPrices, error) {
-	p := &GCPPrices{Region: region}
+	p := &GCPPrices{Region: region, SKUs: map[string]string{}}
 	var missing []string
-	need := func(skus []sku, desc string, scale float64, into *float64) {
-		v, ok := match(skus, region, desc)
+	into := p.prices()
+	need := func(skus []sku, desc string, scale float64, name string) {
+		s, ok := match(skus, region, desc)
 		if !ok {
 			missing = append(missing, desc)
 			return
 		}
-		*into = v * scale
+		*into[name], p.SKUs[name] = s.price()*scale, s.SkuID
 	}
 	// Autopilot prices CPU per mCPU-hour: ×1000 for a vCPU.
-	need(gke, fmt.Sprintf("Autopilot Pod mCPU Requests (%s)", region), 1000, &p.AutopilotCPU)
-	need(gke, fmt.Sprintf("Autopilot Pod Memory Requests (%s)", region), 1, &p.AutopilotMem)
-	need(gke, fmt.Sprintf("Autopilot Spot Pod mCPU Requests (%s)", region), 1000, &p.AutopilotSpotCPU)
-	need(gke, fmt.Sprintf("Autopilot Spot Pod Memory Requests (%s)", region), 1, &p.AutopilotSpotMem)
-	need(gke, "Autopilot Kubernetes Clusters", 1, &p.ClusterFee)
+	need(gke, fmt.Sprintf("Autopilot Pod mCPU Requests (%s)", region), 1000, "AutopilotCPU")
+	need(gke, fmt.Sprintf("Autopilot Pod Memory Requests (%s)", region), 1, "AutopilotMem")
+	need(gke, fmt.Sprintf("Autopilot Spot Pod mCPU Requests (%s)", region), 1000, "AutopilotSpotCPU")
+	need(gke, fmt.Sprintf("Autopilot Spot Pod Memory Requests (%s)", region), 1, "AutopilotSpotMem")
+	need(gke, "Autopilot Kubernetes Clusters", 1, "ClusterFee")
 	// E2's are named by region group ("running in Americas"), listing the
 	// regions they cover.
-	need(compute, regionGroup(compute, region, "E2 Instance Core running in "), 1, &p.E2Core)
-	need(compute, regionGroup(compute, region, "E2 Instance Ram running in "), 1, &p.E2Ram)
-	need(compute, regionGroup(compute, region, "Spot Preemptible E2 Instance Core running in "), 1, &p.E2SpotCore)
-	need(compute, regionGroup(compute, region, "Spot Preemptible E2 Instance Ram running in "), 1, &p.E2SpotRam)
-	need(compute, "Balanced PD Capacity", 1, &p.BalancedDisk)
-	need(compute, "Cloud Load Balancer Forwarding Rule Minimum Global", 1, &p.ForwardingRule)
+	need(compute, regionGroup(compute, region, "E2 Instance Core running in "), 1, "E2Core")
+	need(compute, regionGroup(compute, region, "E2 Instance Ram running in "), 1, "E2Ram")
+	need(compute, regionGroup(compute, region, "Spot Preemptible E2 Instance Core running in "), 1, "E2SpotCore")
+	need(compute, regionGroup(compute, region, "Spot Preemptible E2 Instance Ram running in "), 1, "E2SpotRam")
+	need(compute, "Balanced PD Capacity", 1, "BalancedDisk")
+	need(compute, "Cloud Load Balancer Forwarding Rule Minimum Global", 1, "ForwardingRule")
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("the price catalog has no %q for %s", missing, region)
 	}
@@ -179,18 +207,21 @@ func PricesFromGCP(gke, compute []sku, region string) (*GCPPrices, error) {
 // region group ("Cloud SQL for PostgreSQL: Zonal - vCPU in Americas").
 func (p *GCPPrices) addSQL(skus []sku) error {
 	var missing []string
-	for i, kind := range []string{"Zonal", "Regional"} {
-		for _, want := range []struct {
-			what string
-			into *float64
-		}{{"Small instance", &p.SQLSmall[i]}, {"vCPU", &p.SQLCPU[i]}, {"RAM", &p.SQLRam[i]}, {"Standard storage", &p.SQLStorage[i]}} {
+	into := p.prices()
+	if p.SKUs == nil {
+		p.SKUs = map[string]string{}
+	}
+	for _, kind := range []string{"Zonal", "Regional"} {
+		for _, want := range []struct{ what, name string }{
+			{"Small instance", "SQLSmall"}, {"vCPU", "SQLCPU"}, {"RAM", "SQLRam"}, {"Standard storage", "SQLStorage"},
+		} {
 			desc := regionGroup(skus, p.Region, fmt.Sprintf("Cloud SQL for PostgreSQL: %s - %s in ", kind, want.what))
-			v, ok := match(skus, p.Region, desc)
+			s, ok := match(skus, p.Region, desc)
 			if !ok {
 				missing = append(missing, desc)
 				continue
 			}
-			*want.into = v
+			*into[want.name+kind], p.SKUs[want.name+kind] = s.price(), s.SkuID
 		}
 	}
 	if len(missing) > 0 {

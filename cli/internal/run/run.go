@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
 // Runner runs commands. Tool names are resolved through Resolve, so a tool
@@ -122,4 +123,14 @@ func firstArg(args []string) string {
 		return ""
 	}
 	return args[0]
+}
+
+// Together runs fs at once and waits for them all: independent lookups,
+// each a second or more against a cloud cluster, made side by side.
+func Together(fs ...func()) {
+	var wg sync.WaitGroup
+	for _, f := range fs {
+		wg.Go(f)
+	}
+	wg.Wait()
 }

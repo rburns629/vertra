@@ -11,7 +11,8 @@ import (
 )
 
 // Every command says more than its one line and shows how it's used, and
-// no flag's text has <...>, which manual pages would drop.
+// no flag's text has <...> (which manual pages would drop) or backticks
+// around anything but its value's name.
 func TestEveryCommandHasItsHelp(t *testing.T) {
 	var walk func(c *cobra.Command)
 	walk = func(c *cobra.Command) {
@@ -29,6 +30,11 @@ func TestEveryCommandHasItsHelp(t *testing.T) {
 		c.LocalFlags().VisitAll(func(f *pflag.Flag) {
 			if strings.ContainsAny(f.Usage, "<>") {
 				t.Errorf("%s --%s: <...> in its text, which man pages drop", path, f.Name)
+			}
+			// Backticks name the flag's value (`REF`): anything else shows
+			// up as the value's name in the flag list.
+			if name, _ := pflag.UnquoteUsage(f); strings.Contains(f.Usage, "`") && strings.ToUpper(name) != name {
+				t.Errorf("%s --%s: backticks around %q make it the value's name", path, f.Name, name)
 			}
 		})
 		for _, sub := range c.Commands() {

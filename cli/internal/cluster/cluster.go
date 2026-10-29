@@ -68,13 +68,16 @@ type State struct {
 func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 	var s State
 	if c.Target == "kind" {
-		status, err := r.Output(ctx, "docker", "inspect", "-f", "{{.State.Running}}", c.Kind.RegistryName)
-		s.RegistryExists = err == nil
-		s.RegistryRunning = err == nil && status == "true"
-		node := c.Cluster.Name + "-control-plane"
-		status, err = r.Output(ctx, "docker", "inspect", "-f", "{{.State.Running}}", node)
-		s.ClusterExists = err == nil
-		s.ClusterRunning = err == nil && status == "true"
+		running := func(container string, exists, running *bool) func() {
+			return func() {
+				status, err := r.Output(ctx, "docker", "inspect", "-f", "{{.State.Running}}", container)
+				*exists, *running = err == nil, err == nil && status == "true"
+			}
+		}
+		run.Together(
+			running(c.Kind.RegistryName, &s.RegistryExists, &s.RegistryRunning),
+			running(c.Cluster.Name+"-control-plane", &s.ClusterExists, &s.ClusterRunning),
+		)
 		if !s.ClusterRunning {
 			return s
 		}
@@ -90,11 +93,19 @@ func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 	if minor := minorOf(version); minor < MinKubernetesMinor {
 		s.Problems = append(s.Problems, fmt.Sprintf("Kubernetes %s is too old: Vertra needs 1.%d or later", version, MinKubernetesMinor))
 	}
-	s.NamespaceExists = r.Succeeds(ctx, "kubectl", "--context", Context(c), "get", "namespace", c.Namespace)
-	s.CertManager = r.Succeeds(ctx, "kubectl", "--context", Context(c), "get", "crd", "certificates.cert-manager.io")
-	if arch, err := r.Output(ctx, "kubectl", "--context", Context(c), "get", "nodes", "-o", "jsonpath={.items[0].status.nodeInfo.architecture}"); err == nil {
-		s.NodeArch = strings.TrimSpace(arch)
-	}
+	run.Together(
+		func() {
+			s.NamespaceExists = r.Succeeds(ctx, "kubectl", "--context", Context(c), "get", "namespace", c.Namespace)
+		},
+		func() {
+			s.CertManager = r.Succeeds(ctx, "kubectl", "--context", Context(c), "get", "crd", "certificates.cert-manager.io")
+		},
+		func() {
+			if arch, err := r.Output(ctx, "kubectl", "--context", Context(c), "get", "nodes", "-o", "jsonpath={.items[0].status.nodeInfo.architecture}"); err == nil {
+				s.NodeArch = strings.TrimSpace(arch)
+			}
+		},
+	)
 	return s
 }
 

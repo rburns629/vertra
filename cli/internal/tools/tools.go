@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rburns629/vertra/cli/internal/run"
 )
 
 // Dir is where downloaded tools live: ~/.vertra/bin.
@@ -159,34 +161,40 @@ type Status struct {
 func (s Status) OK() bool { return s.Problem == "" }
 
 // CheckAll returns each requirement's status.
+// The tools are asked side by side: gcloud alone takes a second or more.
 func CheckAll(ctx context.Context, reqs []Requirement) []Status {
-	out := make([]Status, 0, len(reqs))
-	for _, r := range reqs {
-		s := Status{Requirement: r}
-		path := Path(r.Tool)
-		if path == r.Tool { // not found anywhere
-			s.Problem = "not installed"
-			if _, ok := pins[r.Tool]; ok {
-				s.Downloadable = true
-			} else {
-				s.Install = installHint(r.Tool)
-			}
-			out = append(out, s)
-			continue
-		}
-		s.Path = path
-		s.Version = versionOf(ctx, r.Tool, path)
-		if r.Check != nil {
-			if err := r.Check(ctx, path); err != nil {
-				s.Problem = err.Error()
-				if _, ok := pins[r.Tool]; ok && r.Tool == "helm" {
-					s.Downloadable = true
-				}
-			}
-		}
-		out = append(out, s)
+	out := make([]Status, len(reqs))
+	checks := make([]func(), len(reqs))
+	for i, r := range reqs {
+		checks[i] = func() { out[i] = check(ctx, r) }
 	}
+	run.Together(checks...)
 	return out
+}
+
+func check(ctx context.Context, r Requirement) Status {
+	s := Status{Requirement: r}
+	path := Path(r.Tool)
+	if path == r.Tool { // not found anywhere
+		s.Problem = "not installed"
+		if _, ok := pins[r.Tool]; ok {
+			s.Downloadable = true
+		} else {
+			s.Install = installHint(r.Tool)
+		}
+		return s
+	}
+	s.Path = path
+	s.Version = versionOf(ctx, r.Tool, path)
+	if r.Check != nil {
+		if err := r.Check(ctx, path); err != nil {
+			s.Problem = err.Error()
+			if _, ok := pins[r.Tool]; ok && r.Tool == "helm" {
+				s.Downloadable = true
+			}
+		}
+	}
+	return s
 }
 
 // Summary is a one-line account of the statuses, for the approval screen.

@@ -509,7 +509,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/config/` | The config file: defaults, validation, load and save, dotted-key get and set (any setting, lists included); `settings.go` describes every setting, kept complete by a test. |
 | `internal/prompt/` | The questions on a terminal; defaults when non-interactive. |
 | `internal/tools/` | Required tools per target, version checks, and pinned, checksum-verified downloads into `~/.vertra/bin` (`pins.go`). |
-| `internal/run/` | Runs the external commands (kubectl, helm, docker, kind), printing them with `-v`. |
+| `internal/run/` | Runs the external commands (kubectl, helm, docker, kind), printing them with `-v`; `Together` runs independent lookups side by side. |
 | `internal/cluster/` | The kind cluster and its local registry: inspect, create, delete; namespaces. |
 | `internal/install/` | The platform images (built from source or released), the generated Helm values, and `helm upgrade`; `database.go`, a managed database's values, Secrets and `kernel database-setup` Job. |
 | `internal/platform/` | The installed platform: deployments, sleep, wake, running steps, console access. |
@@ -525,7 +525,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
 | `internal/consoleapi/` | The console's API as vertra uses it, over the generated Connect clients: signing in as the admin, revoking the tokens catalogs once held, syncing the catalog, running a DAG and watching it finish. Tested against fake Connect handlers. |
 | `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
-| `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in) and AWS's Price List and Spot price history (with your AWS sign-in), each cached a day, and their cost models; `testdata/` holds real price entries. |
+| `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in; `gcp_account.go`: your billing account's prices, when you may read them) and AWS's Price List and Spot price history (with your AWS sign-in), fetched a few calls at a time and each cached a day, and their cost models; `testdata/` holds real price entries. |
 
 ## `catalog-template/`: what a new catalog starts as
 

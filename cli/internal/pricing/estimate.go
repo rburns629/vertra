@@ -94,7 +94,7 @@ func GCP(p *GCPPrices, c *config.Config, fetched string) []plan.Line {
 	likelyHigh := likelyLow + fee + (platformHour[1]-platformHour[0])*awakeHours
 
 	lines := []plan.Line{
-		{Label: "Estimated cost", Text: fmt.Sprintf("a month, list prices in USD, %s, %s", p.Region, fetched)},
+		{Label: "Estimated cost", Text: fmt.Sprintf("a month, %s in USD, %s, %s", orList(p.Basis), p.Region, fetched)},
 		{Label: "  Cluster fee", Text: fmt.Sprintf("%s (GKE's free tier credit covers one Autopilot or zonal cluster per billing account)", money(fee))},
 	}
 	if sqlMonth > 0 {
@@ -167,6 +167,14 @@ func awakeWords(c *config.Config) string {
 		return "awake about 4 hours a weekday"
 	}
 	return "always awake"
+}
+
+// orList is whose prices an estimate used, list prices unless it says.
+func orList(basis string) string {
+	if basis == "" {
+		return "list prices"
+	}
+	return basis
 }
 
 func money(v float64) string {

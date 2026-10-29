@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rburns629/vertra/cli/internal/run"
@@ -70,77 +71,82 @@ func FetchAWS(ctx context.Context, r *run.Runner, profile, region string, withRD
 		return p, nil
 	}
 	p := &AWSPrices{Region: region, Instances: map[string]InstancePrice{}}
-	var err error
-	if p.ClusterFee, err = awsPrice(ctx, r, profile, "AmazonEKS", region,
+	// Each price is its own call to the price list (a second or so each,
+	// mostly the aws CLI starting): made a few at a time, not in a row.
+	var prices []priceCall
+	price := func(into *float64, service string, filters ...string) {
+		prices = append(prices, priceCall{into: into, get: func() (float64, error) {
+			return awsPrice(ctx, r, profile, service, region, filters...)
+		}})
+	}
+	price(&p.ClusterFee, "AmazonEKS",
 		"Type=TERM_MATCH,Field=operation,Value=CreateOperation",
 		"Type=TERM_MATCH,Field=locationType,Value=AWS Region",
-		"Type=CONTAINS,Field=usagetype,Value=AmazonEKS-Hours:perCluster"); err != nil {
-		return nil, err
-	}
-	if p.GP3, err = awsPrice(ctx, r, profile, "AmazonEC2", region,
+		"Type=CONTAINS,Field=usagetype,Value=AmazonEKS-Hours:perCluster")
+	price(&p.GP3, "AmazonEC2",
 		"Type=TERM_MATCH,Field=productFamily,Value=Storage",
-		"Type=TERM_MATCH,Field=volumeApiName,Value=gp3"); err != nil {
-		return nil, err
-	}
-	if p.PublicIP, err = awsPrice(ctx, r, profile, "AmazonVPC", region,
-		"Type=CONTAINS,Field=usagetype,Value=PublicIPv4:InUseAddress"); err != nil {
-		return nil, err
-	}
-	if p.LoadBalancer, err = awsPrice(ctx, r, profile, "AWSELB", region,
+		"Type=TERM_MATCH,Field=volumeApiName,Value=gp3")
+	price(&p.PublicIP, "AmazonVPC",
+		"Type=CONTAINS,Field=usagetype,Value=PublicIPv4:InUseAddress")
+	price(&p.LoadBalancer, "AWSELB",
 		"Type=TERM_MATCH,Field=productFamily,Value=Load Balancer-Application",
 		"Type=TERM_MATCH,Field=locationType,Value=AWS Region",
-		"Type=CONTAINS,Field=usagetype,Value=LoadBalancerUsage"); err != nil {
-		return nil, err
-	}
+		"Type=CONTAINS,Field=usagetype,Value=LoadBalancerUsage")
 	// Route 53 is priced globally: no region filter.
-	if p.HostedZone, err = awsGlobalPrice(ctx, r, profile, "AmazonRoute53", "Type=TERM_MATCH,Field=usagetype,Value=HostedZone"); err != nil {
-		return nil, err
-	}
+	prices = append(prices, priceCall{into: &p.HostedZone, get: func() (float64, error) {
+		return awsGlobalPrice(ctx, r, profile, "AmazonRoute53", "Type=TERM_MATCH,Field=usagetype,Value=HostedZone")
+	}})
+	instances := map[string]*InstancePrice{}
 	for name, size := range awsInstances {
-		ip := InstancePrice{VCPU: size[0], MemGiB: size[1]}
-		if ip.OnDemand, err = awsPrice(ctx, r, profile, "AmazonEC2", region,
+		ip := &InstancePrice{VCPU: size[0], MemGiB: size[1]}
+		instances[name] = ip
+		price(&ip.OnDemand, "AmazonEC2",
 			"Type=TERM_MATCH,Field=instanceType,Value="+name,
 			"Type=TERM_MATCH,Field=operatingSystem,Value=Linux",
 			"Type=TERM_MATCH,Field=tenancy,Value=Shared",
 			"Type=TERM_MATCH,Field=preInstalledSw,Value=NA",
-			"Type=TERM_MATCH,Field=capacitystatus,Value=Used"); err != nil {
-			return nil, err
-		}
-		if ip.Fee, err = awsPrice(ctx, r, profile, "AmazonEKS", region,
+			"Type=TERM_MATCH,Field=capacitystatus,Value=Used")
+		price(&ip.Fee, "AmazonEKS",
 			"Type=TERM_MATCH,Field=operation,Value=EKSAutoUsage",
-			"Type=CONTAINS,Field=usagetype,Value=EKS-Auto:"+name+"-management-hours"); err != nil {
-			return nil, err
-		}
+			"Type=CONTAINS,Field=usagetype,Value=EKS-Auto:"+name+"-management-hours")
 		// Spot prices can be off limits (an organization's policy may deny
 		// reading them): then steps are priced on-demand, and the screen says so.
-		if ip.Spot, err = spotPrice(ctx, r, profile, region, name); err != nil {
-			ip.Spot = 0
-			p.SpotUnavailable = true
-		}
-		p.Instances[name] = ip
+		prices = append(prices, priceCall{into: &ip.Spot, optional: true, get: func() (float64, error) {
+			return spotPrice(ctx, r, profile, region, name)
+		}})
 	}
+	rds := map[string]*[2]float64{}
 	if withRDS {
-		p.RDS = map[string][2]float64{}
 		for _, class := range RDSClasses {
-			var both [2]float64
+			both := &[2]float64{}
+			rds[class] = both
 			for i, deployment := range []string{"Single-AZ", "Multi-AZ"} {
-				if both[i], err = awsPrice(ctx, r, profile, "AmazonRDS", region,
+				price(&both[i], "AmazonRDS",
 					"Type=TERM_MATCH,Field=instanceType,Value="+class,
 					"Type=TERM_MATCH,Field=databaseEngine,Value=PostgreSQL",
-					"Type=TERM_MATCH,Field=deploymentOption,Value="+deployment); err != nil {
-					return nil, err
-				}
+					"Type=TERM_MATCH,Field=deploymentOption,Value="+deployment)
 			}
-			p.RDS[class] = both
 		}
 		for i, deployment := range []string{"Single-AZ", "Multi-AZ"} {
-			if p.RDSStorage[i], err = awsPrice(ctx, r, profile, "AmazonRDS", region,
+			price(&p.RDSStorage[i], "AmazonRDS",
 				"Type=TERM_MATCH,Field=productFamily,Value=Database Storage",
 				"Type=TERM_MATCH,Field=volumeType,Value=General Purpose-GP3",
 				"Type=TERM_MATCH,Field=databaseEngine,Value=PostgreSQL",
-				"Type=TERM_MATCH,Field=deploymentOption,Value="+deployment); err != nil {
-				return nil, err
-			}
+				"Type=TERM_MATCH,Field=deploymentOption,Value="+deployment)
+		}
+	}
+	unavailable, err := getAll(prices, 8)
+	if err != nil {
+		return nil, err
+	}
+	p.SpotUnavailable = unavailable
+	for name, ip := range instances {
+		p.Instances[name] = *ip
+	}
+	if withRDS {
+		p.RDS = map[string][2]float64{}
+		for class, both := range rds {
+			p.RDS[class] = *both
 		}
 	}
 	p.Fetched = time.Now()
@@ -148,6 +154,40 @@ func FetchAWS(ctx context.Context, r *run.Runner, profile, region string, withRD
 		writeRaw(cache, data)
 	}
 	return p, nil
+}
+
+// priceCall is one price to fetch, and where it goes. An optional one that
+// fails is left at zero.
+type priceCall struct {
+	into     *float64
+	get      func() (float64, error)
+	optional bool
+}
+
+// getAll makes the calls, limit at a time. It returns the first required
+// call's error, and whether an optional one failed.
+func getAll(calls []priceCall, limit int) (optionalFailed bool, err error) {
+	errs := make([]error, len(calls))
+	slots := make(chan struct{}, limit)
+	var wg sync.WaitGroup
+	for i, call := range calls {
+		wg.Go(func() {
+			slots <- struct{}{}
+			defer func() { <-slots }()
+			*call.into, errs[i] = call.get()
+		})
+	}
+	wg.Wait()
+	for i, call := range calls {
+		switch {
+		case errs[i] == nil:
+		case call.optional:
+			*call.into, optionalFailed = 0, true
+		default:
+			return optionalFailed, errs[i]
+		}
+	}
+	return optionalFailed, nil
 }
 
 // awsPrice is the one on-demand price matching filters in region.

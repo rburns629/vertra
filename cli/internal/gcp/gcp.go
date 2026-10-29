@@ -73,29 +73,48 @@ func SSDQuotaWarning(regionJSON, region string) string {
 // it, and billing is on.
 func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 	var s State
-	s.Account, _ = r.Output(ctx, "gcloud", "auth", "list", "--filter=status:ACTIVE", "--format=value(account)")
 	project := c.GCP.Project
-	if _, err := r.Output(ctx, "gcloud", "projects", "describe", project, "--format=value(projectId)"); err != nil {
+	// Each gcloud call is a second or two: they're made side by side, and
+	// what they found is only used once the project is known to be visible.
+	var projectErr, billingErr error
+	var billing, regionJSON string
+	run.Together(
+		func() {
+			s.Account, _ = r.Output(ctx, "gcloud", "auth", "list", "--filter=status:ACTIVE", "--format=value(account)")
+		},
+		func() {
+			_, projectErr = r.Output(ctx, "gcloud", "projects", "describe", project, "--format=value(projectId)")
+		},
+		func() {
+			billing, billingErr = r.Output(ctx, "gcloud", "billing", "projects", "describe", project, "--format=value(billingEnabled)")
+		},
+		func() {
+			// Only once Compute Engine's API is on (a new project's isn't): apply enables it.
+			if c.Cluster.Mode == "auto" {
+				regionJSON, _ = r.Output(ctx, "gcloud", "compute", "regions", "describe", c.GCP.Region, "--project", project, "--format=json(quotas)")
+			}
+		},
+		func() {
+			s.ClusterStatus, _ = r.Output(ctx, "gcloud", "container", "clusters", "list", "--project", project,
+				"--filter=name="+c.Cluster.Name+" AND location="+cluster.GKELocation(c), "--format=value(status)")
+		},
+	)
+	if projectErr != nil {
 		s.Problems = append(s.Problems, fmt.Sprintf("can't see project %s as %s: check the id, or ask for access (`gcloud auth login` to switch accounts)", project, orUnknown(s.Account)))
+		s.ClusterStatus = ""
 		return s
 	}
-	billing, err := r.Output(ctx, "gcloud", "billing", "projects", "describe", project, "--format=value(billingEnabled)")
 	switch {
-	case err != nil:
-		s.Problems = append(s.Problems, fmt.Sprintf("can't read project %s's billing (you need billing.resourceAssociations.list, e.g. Project Billing Manager or Viewer): %v", project, err))
+	case billingErr != nil:
+		s.Problems = append(s.Problems, fmt.Sprintf("can't read project %s's billing (you need billing.resourceAssociations.list, e.g. Project Billing Manager or Viewer): %v", project, billingErr))
 	case !strings.EqualFold(billing, "true"):
 		s.Problems = append(s.Problems, fmt.Sprintf("project %s has no billing account: link one (`gcloud billing projects link %s --billing-account=...`)", project, project))
 	}
-	// Only once Compute Engine's API is on (a new project's isn't): apply enables it.
-	if c.Cluster.Mode == "auto" {
-		if regionJSON, err := r.Output(ctx, "gcloud", "compute", "regions", "describe", c.GCP.Region, "--project", project, "--format=json(quotas)"); err == nil {
-			if w := SSDQuotaWarning(regionJSON, c.GCP.Region); w != "" {
-				s.Warnings = append(s.Warnings, w)
-			}
+	if regionJSON != "" {
+		if w := SSDQuotaWarning(regionJSON, c.GCP.Region); w != "" {
+			s.Warnings = append(s.Warnings, w)
 		}
 	}
-	s.ClusterStatus, _ = r.Output(ctx, "gcloud", "container", "clusters", "list", "--project", project,
-		"--filter=name="+c.Cluster.Name+" AND location="+cluster.GKELocation(c), "--format=value(status)")
 	return s
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/install"
 	"github.com/rburns629/vertra/cli/internal/plan"
 	"github.com/rburns629/vertra/cli/internal/platform"
+	"github.com/rburns629/vertra/cli/internal/run"
 	"github.com/rburns629/vertra/cli/internal/tools"
 )
 
@@ -67,16 +68,19 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	installed := map[string]string{}
 	var now current
 	if state.Reachable {
-		for _, r := range []string{install.KernelRelease, install.ConsoleRelease} {
-			installed[r] = install.Installed(ctx, a.runner, c, r)
-		}
-		now.volume = install.DatabaseVolume(ctx, a.runner, c)
+		var deps []platform.Deployment
+		var depsErr error
+		run.Together(
+			func() { installed = install.Releases(ctx, a.runner, c) },
+			func() { now.volume = install.DatabaseVolume(ctx, a.runner, c) },
+			func() { deps, depsErr = platform.Deployments(ctx, a.runner, c) },
+		)
 		if c.Database.Type == "managed" && now.volume != "" {
 			// The platform would start on an empty server, its data left in
 			// the in-cluster Postgres's volume.
 			return fmt.Errorf("this install's data is in its in-cluster Postgres: moving it to a managed database isn't done by vertra yet. Keep database.type in-cluster (`vertra config set -e %s database.type in-cluster`), or install anew with a managed one", envName(dir))
 		}
-		if deps, err := platform.Deployments(ctx, a.runner, c); err == nil {
+		if depsErr == nil {
 			now.asleep = platform.Asleep(deps)
 		}
 	}

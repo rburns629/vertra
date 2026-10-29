@@ -12,6 +12,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/gcp"
 	"github.com/rburns629/vertra/cli/internal/install"
 	"github.com/rburns629/vertra/cli/internal/platform"
+	"github.com/rburns629/vertra/cli/internal/run"
 	"github.com/rburns629/vertra/cli/internal/tools"
 )
 
@@ -67,8 +68,9 @@ func (a *app) checkCmd() *cobra.Command {
 			if st.Reachable {
 				fmt.Fprintf(out, "  reachable through %s (Kubernetes %s)\n", cluster.Context(c), st.ServerVersion)
 				fmt.Fprintf(out, "  namespace %s: %s\n", c.Namespace, map[bool]string{true: "exists", false: "not yet"}[st.NamespaceExists])
+				installed := install.Releases(ctx, a.runner, c)
 				for _, r := range []string{install.KernelRelease, install.ConsoleRelease} {
-					fmt.Fprintf(out, "  release %-8s %s\n", r, orDefault(install.Installed(ctx, a.runner, c, r), "not installed"))
+					fmt.Fprintf(out, "  release %-8s %s\n", r, orDefault(installed[r], "not installed"))
 				}
 			}
 			for _, p := range st.Problems {
@@ -111,12 +113,17 @@ func (a *app) statusCmd() *cobra.Command {
 				fmt.Fprintln(out, "The cluster isn't reachable (", cluster.Context(c), "): run `vertra apply` or `vertra check`.")
 				return nil
 			}
-			for _, r := range []string{install.KernelRelease, install.ConsoleRelease} {
-				fmt.Fprintf(out, "%-8s %s\n", r, orDefault(install.Installed(ctx, a.runner, c, r), "not installed"))
-			}
-			deps, err := platform.Deployments(ctx, a.runner, c)
+			var installed map[string]string
+			var deps []platform.Deployment
+			run.Together(
+				func() { installed = install.Releases(ctx, a.runner, c) },
+				func() { deps, err = platform.Deployments(ctx, a.runner, c) },
+			)
 			if err != nil {
 				return err
+			}
+			for _, r := range []string{install.KernelRelease, install.ConsoleRelease} {
+				fmt.Fprintf(out, "%-8s %s\n", r, orDefault(installed[r], "not installed"))
 			}
 			for _, d := range deps {
 				fmt.Fprintf(out, "  %-42s %d/%d ready\n", d.Name, d.Ready, d.Replicas)

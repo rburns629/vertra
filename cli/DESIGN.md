@@ -347,8 +347,12 @@ Apply? [y/N]
     (<region>)", "Autopilot Pod Memory Requests (<region>)", their "Spot"
     versions, "Autopilot Kubernetes Clusters" (the fee), "E2 Instance
     Core/Ram running in <group>" (and "Spot Preemptible ..."), and
-    "Balanced PD Capacity". Account prices (Billing Account Viewer) are
-    still to do.
+    "Balanced PD Capacity". Account prices are in (2026-10-29): each
+    priced SKU's account price from the Pricing API (`billingAccounts.skus.
+    price`, v1beta), as a ratio to its list price that scales the list
+    price (so units never need converting), cached a day per billing
+    account. Without Billing Account Viewer the screen says list prices,
+    and why.
 - **The model follows the cluster mode:** per Pod request on Autopilot; per
   node (the nodes the requests need, including the platform pool's floor)
   for EKS Auto Mode, AKS Automatic and standard; the control plane and
@@ -571,7 +575,7 @@ names a binary built from a checkout (`.github/scripts/build-vertra.sh`).
   nip.io) and with it the catalog step on aws come next.
 - **gcp, still to do:** signing (a Cloud KMS key) and catalog CI's
   federation come with the catalog step; Cloud SQL (managed database);
-  account prices; private nodes with Cloud NAT. Standard mode is zonal
+  account prices (all three since done); private nodes with Cloud NAT. Standard mode is zonal
   (one platform node, inside GKE's free tier), Autopilot regional.
 
 Decided 2026-10-18: sizes `minimal`, `resilient`, `scaled` and `auto`; a managed database is an option for every size (else the

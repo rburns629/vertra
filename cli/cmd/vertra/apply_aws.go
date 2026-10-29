@@ -40,6 +40,8 @@ func (a *app) planAWS(ctx context.Context, out io.Writer, dir string, c *config.
 		// Where images built from source go: known once the account is.
 		c.PlatformImages.Registry = awscloud.Registry(state.Identity.Account, c) + "/" + awscloud.PlatformPrefix(c)
 	}
+	// Prices are fetched while OpenTofu plans.
+	cost := later(!destroy, func() []plan.Line { return a.awsCost(ctx, c) })
 	if state.ClusterStatus == "ACTIVE" {
 		if err := awscloud.Credentials(ctx, a.runner, c); err != nil {
 			return nil, err
@@ -61,10 +63,7 @@ func (a *app) planAWS(ctx context.Context, out io.Writer, dir string, c *config.
 	if err != nil {
 		return nil, err
 	}
-	p.changes = changes
-	if !destroy {
-		p.cost = a.awsCost(ctx, c)
-	}
+	p.changes, p.cost = changes, cost()
 	return p, nil
 }
 

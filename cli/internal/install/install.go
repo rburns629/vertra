@@ -908,6 +908,17 @@ func Installed(ctx context.Context, r *run.Runner, c *config.Config, release str
 	return m[1]
 }
 
+// Releases is each platform release's installed chart (KernelRelease,
+// ConsoleRelease), "" when it isn't installed: looked up side by side.
+func Releases(ctx context.Context, r *run.Runner, c *config.Config) map[string]string {
+	var kernel, console string
+	run.Together(
+		func() { kernel = Installed(ctx, r, c, KernelRelease) },
+		func() { console = Installed(ctx, r, c, ConsoleRelease) },
+	)
+	return map[string]string{KernelRelease: kernel, ConsoleRelease: console}
+}
+
 // Password returns the first admin's generated password, from the console's
 // migration Job's log, if this install created it.
 func Password(ctx context.Context, r *run.Runner, c *config.Config) string {
