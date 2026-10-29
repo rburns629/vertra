@@ -20,7 +20,7 @@ import { addTeamMember, createTeam, upsertProduct } from "../src/db/queries.js";
 import { notificationEvents, products, resourceDeleteRequests, resources, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { submitExecution, type KernelExecution } from "../src/kernel/client.js";
-import { providedBy, recordFinishedRuns, recordRun, reportedResources, resolvedInputs } from "../src/resourceRecorder.js";
+import { providedBy, recordFinishedRuns, recordRun, refreshProvides, reportedResources, resolvedInputs } from "../src/resourceRecorder.js";
 import { caller, rpcClient } from "./rpc.js";
 
 /** The runs kernel-api knows: what each answers. */
@@ -324,6 +324,21 @@ describe("what depends on what (decision 25)", () => {
   it("keeps what a step provided, by wiring type", () => {
     const schema = { properties: { projectId: { "x-vertra-provides": "gcp.project" }, size: {}, nested: { "x-vertra-provides": "x.y" } } };
     expect(providedBy(schema, { projectId: "p-1", size: 3, nested: { a: 1 } })).toEqual([{ type: "gcp.project", value: "p-1", output: "projectId" }]);
+  });
+
+  it("is offered by type once its product types the output, though made before", async () => {
+    // The note product types nothing: what it made provides nothing.
+    await ranAndFinished(`${prov}-note-create`, {}, { noteId: `${prefix}-n1`, resources: [{ type: "demo/note", id: `${prefix}-n1` }] });
+    const [before] = await linked(consumerToken, `${prefix}-n1`);
+    expect(before?.provides).toEqual([]);
+    // Typed later (a new catalog release): what it made is brought up to it.
+    const typed = { type: "object", properties: { noteId: { type: "string", "x-vertra-provides": PROJECT } } };
+    expect(await refreshProvides(`${prov}-note-create`, typed)).toBe(1);
+    expect(await refreshProvides(`${prov}-note-create`, typed)).toBe(0);
+    const [after] = await linked(consumerToken, `${prefix}-n1`);
+    expect(after?.provides).toEqual([{ type: PROJECT, value: `${prefix}-n1`, output: "noteId" }]);
+    // And untyped again, it provides nothing.
+    expect(await refreshProvides(`${prov}-note-create`, {})).toBe(1);
   });
 
   it("links a resource to one an earlier run made, by the value its input needs", async () => {

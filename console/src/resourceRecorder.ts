@@ -98,6 +98,27 @@ export function providedBy(outputSchema: unknown, outputs: Record<string, unknow
   });
 }
 
+/**
+ * Brings what a product's live resources provide up to its output schema:
+ * a product that types an output later (or stops) has its resources made
+ * before then offered by that type too, from the outputs kept with each.
+ * Only rows that change are written. How many changed.
+ */
+export async function refreshProvides(product: string, outputSchema: unknown): Promise<number> {
+  const live = await db
+    .select({ id: resources.id, outputs: resources.outputs, provides: resources.provides })
+    .from(resources)
+    .where(and(eq(resources.product, product), isNull(resources.deletedAt)));
+  let changed = 0;
+  for (const r of live) {
+    const provides = providedBy(outputSchema, isRecord(r.outputs) ? r.outputs : {});
+    if (JSON.stringify(provides) === JSON.stringify(r.provides)) continue;
+    await db.update(resources).set({ provides }).where(eq(resources.id, r.id));
+    changed += 1;
+  }
+  return changed;
+}
+
 const isReference = (value: unknown): value is { $fromTask: string; $output: string } =>
   isRecord(value) && typeof value["$fromTask"] === "string" && typeof value["$output"] === "string" && Object.keys(value).length === 2;
 

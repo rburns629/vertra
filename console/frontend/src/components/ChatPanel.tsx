@@ -267,7 +267,7 @@ export function ChatPanel({ model, onClose }: { model: string; onClose: () => vo
               <Answer
                 turn={t}
                 onOpenCart={(c) => {
-                  cart.replace(c.team, c.actions);
+                  cart.replace(c.team, c.actions, c.choices, c.values);
                   navigate("/catalog/cart");
                   // The cart is the page now; the conversation stays for Ask.
                   onClose();

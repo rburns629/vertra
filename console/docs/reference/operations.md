@@ -887,7 +887,8 @@ served at that address.
 
 The console's **Ask** panel (decision 24) answers from the docs, citing
 them, looks at what a person's teams have, and fills a cart for them to
-place. It's off until the console chart's `chat.model` is set, with
+check and place (with the choices they made and the values they gave; it
+never places one). It's off until the console chart's `chat.model` is set, with
 `chat.provider` one of four: `vertex`, Gemini through Vertex AI in
 `chat.vertex.project` (on with no `chat.model`: Gemini 3.5 Flash,
 `google/gemini-3.5-flash`, the one scored; name another only after

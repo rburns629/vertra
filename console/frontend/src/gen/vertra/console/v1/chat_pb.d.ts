@@ -5,8 +5,9 @@
 /* eslint-disable */
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
+import type { JsonObject, Message } from "@bufbuild/protobuf";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { OrderChoice } from "./order_pb";
 
 /**
  * Describes the file vertra/console/v1/chat.proto.
@@ -322,6 +323,8 @@ export declare type ChatCitation = Message<"vertra.console.v1.ChatCitation"> & {
 export declare const ChatCitationSchema: GenMessage<ChatCitation>;
 
 /**
+ * A cart for the person to open, check and place: never placed by the agent.
+ *
  * @generated from message vertra.console.v1.ProposedCart
  */
 export declare type ProposedCart = Message<"vertra.console.v1.ProposedCart"> & {
@@ -334,6 +337,20 @@ export declare type ProposedCart = Message<"vertra.console.v1.ProposedCart"> & {
    * @generated from field: repeated string actions = 2;
    */
   actions: string[];
+
+  /**
+   * What the person chose, of the plan's options (PreviewOrder's).
+   *
+   * @generated from field: repeated vertra.console.v1.OrderChoice choices = 3;
+   */
+  choices: OrderChoice[];
+
+  /**
+   * What they said to fill in, by step, then input, as PlaceOrder's values.
+   *
+   * @generated from field: google.protobuf.Struct values = 4;
+   */
+  values?: JsonObject | undefined;
 };
 
 /**

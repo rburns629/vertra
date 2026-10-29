@@ -508,7 +508,12 @@ describe("the chat panel", () => {
             { id: "S1", guide: "reference-operations", title: "Operations", heading: "Backups", kind: "operating", link: "/docs/reference-operations#backups" },
             { id: "S2", guide: "reference-assessment", title: "Assessment", heading: "17. Decisions", kind: "history", link: "/docs/reference-assessment#17-decisions" },
           ],
-          cart: { team: "azure-apps", actions: ["azure-apps-bucket-create"] },
+          cart: {
+            team: "azure-apps",
+            actions: ["azure-apps-bucket-create"],
+            choices: [{ step: "bucket", input: "account", resourceId: "r-1", label: "shop (storage)" }],
+            values: { bucket: { name: "shop-assets" } },
+          },
           steps: [{ tool: "search_docs", ok: true }, { tool: "propose_cart", ok: true }],
         };
         // Its steps as it takes them, then the answer.
@@ -546,6 +551,13 @@ describe("the chat panel", () => {
     expect(rated[0]?.citations).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Open in cart" }));
     expect(await screen.findByRole("heading", { name: "Cart" })).toBeTruthy();
+    // With what the answer filled in, for the cart page to start from.
+    expect(JSON.parse(localStorage.getItem("vertra.cart") ?? "{}")).toMatchObject({
+      team: "azure-apps",
+      actions: ["azure-apps-bucket-create"],
+      choices: [{ step: "bucket", input: "account", resourceId: "r-1" }],
+      values: { bucket: { name: "shop-assets" } },
+    });
     const { cart } = await import("./cart");
     cart.clear();
   });

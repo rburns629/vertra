@@ -11,6 +11,7 @@ package consolev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -670,10 +671,15 @@ func (x *ChatCitation) GetLink() string {
 	return ""
 }
 
+// A cart for the person to open, check and place: never placed by the agent.
 type ProposedCart struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Team          string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
-	Actions       []string               `protobuf:"bytes,2,rep,name=actions,proto3" json:"actions,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Team    string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	Actions []string               `protobuf:"bytes,2,rep,name=actions,proto3" json:"actions,omitempty"`
+	// What the person chose, of the plan's options (PreviewOrder's).
+	Choices []*OrderChoice `protobuf:"bytes,3,rep,name=choices,proto3" json:"choices,omitempty"`
+	// What they said to fill in, by step, then input, as PlaceOrder's values.
+	Values        *structpb.Struct `protobuf:"bytes,4,opt,name=values,proto3" json:"values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -718,6 +724,20 @@ func (x *ProposedCart) GetTeam() string {
 func (x *ProposedCart) GetActions() []string {
 	if x != nil {
 		return x.Actions
+	}
+	return nil
+}
+
+func (x *ProposedCart) GetChoices() []*OrderChoice {
+	if x != nil {
+		return x.Choices
+	}
+	return nil
+}
+
+func (x *ProposedCart) GetValues() *structpb.Struct {
+	if x != nil {
+		return x.Values
 	}
 	return nil
 }
@@ -1731,7 +1751,7 @@ var File_vertra_console_v1_chat_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\n" +
-	"\x1cvertra/console/v1/chat.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf8\x01\n" +
+	"\x1cvertra/console/v1/chat.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dvertra/console/v1/order.proto\"\xf8\x01\n" +
 	"\x11RateAnswerRequest\x12\x16\n" +
 	"\x06rating\x18\x01 \x01(\tR\x06rating\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x1a\n" +
@@ -1779,10 +1799,12 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x18\n" +
 	"\aheading\x18\x04 \x01(\tR\aheading\x12\x12\n" +
 	"\x04kind\x18\x05 \x01(\tR\x04kind\x12\x12\n" +
-	"\x04link\x18\x06 \x01(\tR\x04link\"<\n" +
+	"\x04link\x18\x06 \x01(\tR\x04link\"\xa7\x01\n" +
 	"\fProposedCart\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x18\n" +
-	"\aactions\x18\x02 \x03(\tR\aactions\".\n" +
+	"\aactions\x18\x02 \x03(\tR\aactions\x128\n" +
+	"\achoices\x18\x03 \x03(\v2\x1e.vertra.console.v1.OrderChoiceR\achoices\x12/\n" +
+	"\x06values\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x06values\".\n" +
 	"\bChatStep\x12\x12\n" +
 	"\x04tool\x18\x01 \x01(\tR\x04tool\x12\x0e\n" +
 	"\x02ok\x18\x02 \x01(\bR\x02ok\"_\n" +
@@ -1914,6 +1936,8 @@ var file_vertra_console_v1_chat_proto_goTypes = []any{
 	(*TestChatConfigRequest)(nil),    // 23: vertra.console.v1.TestChatConfigRequest
 	(*TestChatConfigResponse)(nil),   // 24: vertra.console.v1.TestChatConfigResponse
 	(*timestamppb.Timestamp)(nil),    // 25: google.protobuf.Timestamp
+	(*OrderChoice)(nil),              // 26: vertra.console.v1.OrderChoice
+	(*structpb.Struct)(nil),          // 27: google.protobuf.Struct
 }
 var file_vertra_console_v1_chat_proto_depIdxs = []int32{
 	9,  // 0: vertra.console.v1.RateAnswerRequest.citations:type_name -> vertra.console.v1.ChatCitation
@@ -1921,41 +1945,43 @@ var file_vertra_console_v1_chat_proto_depIdxs = []int32{
 	25, // 2: vertra.console.v1.ChatRating.created_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: vertra.console.v1.ListChatFeedbackResponse.ratings:type_name -> vertra.console.v1.ChatRating
 	7,  // 4: vertra.console.v1.AskRequest.messages:type_name -> vertra.console.v1.ChatTurn
-	7,  // 5: vertra.console.v1.AskStreamRequest.messages:type_name -> vertra.console.v1.ChatTurn
-	11, // 6: vertra.console.v1.AskStreamResponse.step:type_name -> vertra.console.v1.ChatStep
-	14, // 7: vertra.console.v1.AskStreamResponse.answer:type_name -> vertra.console.v1.AskResponse
-	9,  // 8: vertra.console.v1.AskResponse.citations:type_name -> vertra.console.v1.ChatCitation
-	10, // 9: vertra.console.v1.AskResponse.cart:type_name -> vertra.console.v1.ProposedCart
-	11, // 10: vertra.console.v1.AskResponse.steps:type_name -> vertra.console.v1.ChatStep
-	25, // 11: vertra.console.v1.ChatConfig.updated_at:type_name -> google.protobuf.Timestamp
-	15, // 12: vertra.console.v1.GetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
-	16, // 13: vertra.console.v1.SetChatConfigRequest.config:type_name -> vertra.console.v1.ChatConfigInput
-	15, // 14: vertra.console.v1.SetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
-	15, // 15: vertra.console.v1.ResetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
-	16, // 16: vertra.console.v1.TestChatConfigRequest.config:type_name -> vertra.console.v1.ChatConfigInput
-	5,  // 17: vertra.console.v1.ChatService.GetChatSettings:input_type -> vertra.console.v1.GetChatSettingsRequest
-	8,  // 18: vertra.console.v1.ChatService.Ask:input_type -> vertra.console.v1.AskRequest
-	12, // 19: vertra.console.v1.ChatService.AskStream:input_type -> vertra.console.v1.AskStreamRequest
-	17, // 20: vertra.console.v1.ChatService.GetChatConfig:input_type -> vertra.console.v1.GetChatConfigRequest
-	19, // 21: vertra.console.v1.ChatService.SetChatConfig:input_type -> vertra.console.v1.SetChatConfigRequest
-	21, // 22: vertra.console.v1.ChatService.ResetChatConfig:input_type -> vertra.console.v1.ResetChatConfigRequest
-	23, // 23: vertra.console.v1.ChatService.TestChatConfig:input_type -> vertra.console.v1.TestChatConfigRequest
-	0,  // 24: vertra.console.v1.ChatService.RateAnswer:input_type -> vertra.console.v1.RateAnswerRequest
-	2,  // 25: vertra.console.v1.ChatService.ListChatFeedback:input_type -> vertra.console.v1.ListChatFeedbackRequest
-	6,  // 26: vertra.console.v1.ChatService.GetChatSettings:output_type -> vertra.console.v1.GetChatSettingsResponse
-	14, // 27: vertra.console.v1.ChatService.Ask:output_type -> vertra.console.v1.AskResponse
-	13, // 28: vertra.console.v1.ChatService.AskStream:output_type -> vertra.console.v1.AskStreamResponse
-	18, // 29: vertra.console.v1.ChatService.GetChatConfig:output_type -> vertra.console.v1.GetChatConfigResponse
-	20, // 30: vertra.console.v1.ChatService.SetChatConfig:output_type -> vertra.console.v1.SetChatConfigResponse
-	22, // 31: vertra.console.v1.ChatService.ResetChatConfig:output_type -> vertra.console.v1.ResetChatConfigResponse
-	24, // 32: vertra.console.v1.ChatService.TestChatConfig:output_type -> vertra.console.v1.TestChatConfigResponse
-	1,  // 33: vertra.console.v1.ChatService.RateAnswer:output_type -> vertra.console.v1.RateAnswerResponse
-	4,  // 34: vertra.console.v1.ChatService.ListChatFeedback:output_type -> vertra.console.v1.ListChatFeedbackResponse
-	26, // [26:35] is the sub-list for method output_type
-	17, // [17:26] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	26, // 5: vertra.console.v1.ProposedCart.choices:type_name -> vertra.console.v1.OrderChoice
+	27, // 6: vertra.console.v1.ProposedCart.values:type_name -> google.protobuf.Struct
+	7,  // 7: vertra.console.v1.AskStreamRequest.messages:type_name -> vertra.console.v1.ChatTurn
+	11, // 8: vertra.console.v1.AskStreamResponse.step:type_name -> vertra.console.v1.ChatStep
+	14, // 9: vertra.console.v1.AskStreamResponse.answer:type_name -> vertra.console.v1.AskResponse
+	9,  // 10: vertra.console.v1.AskResponse.citations:type_name -> vertra.console.v1.ChatCitation
+	10, // 11: vertra.console.v1.AskResponse.cart:type_name -> vertra.console.v1.ProposedCart
+	11, // 12: vertra.console.v1.AskResponse.steps:type_name -> vertra.console.v1.ChatStep
+	25, // 13: vertra.console.v1.ChatConfig.updated_at:type_name -> google.protobuf.Timestamp
+	15, // 14: vertra.console.v1.GetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
+	16, // 15: vertra.console.v1.SetChatConfigRequest.config:type_name -> vertra.console.v1.ChatConfigInput
+	15, // 16: vertra.console.v1.SetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
+	15, // 17: vertra.console.v1.ResetChatConfigResponse.config:type_name -> vertra.console.v1.ChatConfig
+	16, // 18: vertra.console.v1.TestChatConfigRequest.config:type_name -> vertra.console.v1.ChatConfigInput
+	5,  // 19: vertra.console.v1.ChatService.GetChatSettings:input_type -> vertra.console.v1.GetChatSettingsRequest
+	8,  // 20: vertra.console.v1.ChatService.Ask:input_type -> vertra.console.v1.AskRequest
+	12, // 21: vertra.console.v1.ChatService.AskStream:input_type -> vertra.console.v1.AskStreamRequest
+	17, // 22: vertra.console.v1.ChatService.GetChatConfig:input_type -> vertra.console.v1.GetChatConfigRequest
+	19, // 23: vertra.console.v1.ChatService.SetChatConfig:input_type -> vertra.console.v1.SetChatConfigRequest
+	21, // 24: vertra.console.v1.ChatService.ResetChatConfig:input_type -> vertra.console.v1.ResetChatConfigRequest
+	23, // 25: vertra.console.v1.ChatService.TestChatConfig:input_type -> vertra.console.v1.TestChatConfigRequest
+	0,  // 26: vertra.console.v1.ChatService.RateAnswer:input_type -> vertra.console.v1.RateAnswerRequest
+	2,  // 27: vertra.console.v1.ChatService.ListChatFeedback:input_type -> vertra.console.v1.ListChatFeedbackRequest
+	6,  // 28: vertra.console.v1.ChatService.GetChatSettings:output_type -> vertra.console.v1.GetChatSettingsResponse
+	14, // 29: vertra.console.v1.ChatService.Ask:output_type -> vertra.console.v1.AskResponse
+	13, // 30: vertra.console.v1.ChatService.AskStream:output_type -> vertra.console.v1.AskStreamResponse
+	18, // 31: vertra.console.v1.ChatService.GetChatConfig:output_type -> vertra.console.v1.GetChatConfigResponse
+	20, // 32: vertra.console.v1.ChatService.SetChatConfig:output_type -> vertra.console.v1.SetChatConfigResponse
+	22, // 33: vertra.console.v1.ChatService.ResetChatConfig:output_type -> vertra.console.v1.ResetChatConfigResponse
+	24, // 34: vertra.console.v1.ChatService.TestChatConfig:output_type -> vertra.console.v1.TestChatConfigResponse
+	1,  // 35: vertra.console.v1.ChatService.RateAnswer:output_type -> vertra.console.v1.RateAnswerResponse
+	4,  // 36: vertra.console.v1.ChatService.ListChatFeedback:output_type -> vertra.console.v1.ListChatFeedbackResponse
+	28, // [28:37] is the sub-list for method output_type
+	19, // [19:28] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_chat_proto_init() }
@@ -1963,6 +1989,7 @@ func file_vertra_console_v1_chat_proto_init() {
 	if File_vertra_console_v1_chat_proto != nil {
 		return
 	}
+	file_vertra_console_v1_order_proto_init()
 	file_vertra_console_v1_chat_proto_msgTypes[13].OneofWrappers = []any{
 		(*AskStreamResponse_Step)(nil),
 		(*AskStreamResponse_Answer)(nil),

@@ -2797,805 +2797,6 @@
     }
    ]
   },
-  "vertra.console.v1.RateAnswerRequest": {
-   "name": "RateAnswerRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "rating",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "\"up\" or \"down\"."
-    },
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "question",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "At most 4,000 characters."
-    },
-    {
-     "name": "answer",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "At most 20,000 characters."
-    },
-    {
-     "name": "citations",
-     "type": "ChatCitation",
-     "ref": "vertra.console.v1.ChatCitation",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "steps",
-     "type": "string",
-     "repeated": true,
-     "optional": false,
-     "comment": "The tools it used, in order."
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "comment",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "What was wrong, or right; at most 2,000 characters."
-    }
-   ]
-  },
-  "vertra.console.v1.RateAnswerResponse": {
-   "name": "RateAnswerResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "id",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.ListChatFeedbackRequest": {
-   "name": "ListChatFeedbackRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "rating",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "\"up\", \"down\", or empty for both."
-    }
-   ]
-  },
-  "vertra.console.v1.ChatRating": {
-   "name": "ChatRating",
-   "comment": "",
-   "fields": [
-    {
-     "name": "id",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "rating",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "question",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "answer",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "citations",
-     "type": "ChatCitation",
-     "ref": "vertra.console.v1.ChatCitation",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "steps",
-     "type": "string",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "comment",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "email",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Who rated it; empty once their account is gone."
-    },
-    {
-     "name": "createdAt",
-     "type": "timestamp (RFC 3339 string)",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.ListChatFeedbackResponse": {
-   "name": "ListChatFeedbackResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "ratings",
-     "type": "ChatRating",
-     "ref": "vertra.console.v1.ChatRating",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.GetChatSettingsRequest": {
-   "name": "GetChatSettingsRequest",
-   "comment": "",
-   "fields": []
-  },
-  "vertra.console.v1.GetChatSettingsResponse": {
-   "name": "GetChatSettingsResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "enabled",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.ChatTurn": {
-   "name": "ChatTurn",
-   "comment": "",
-   "fields": [
-    {
-     "name": "role",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "\"user\" or \"assistant\"."
-    },
-    {
-     "name": "content",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.AskRequest": {
-   "name": "AskRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The team they're working for; empty for none chosen."
-    },
-    {
-     "name": "messages",
-     "type": "ChatTurn",
-     "ref": "vertra.console.v1.ChatTurn",
-     "repeated": true,
-     "optional": false,
-     "comment": "Oldest first, the question last; at most 40, each at most 4,000\ncharacters."
-    }
-   ]
-  },
-  "vertra.console.v1.ChatCitation": {
-   "name": "ChatCitation",
-   "comment": "",
-   "fields": [
-    {
-     "name": "id",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "As the answer cites it: [S1]."
-    },
-    {
-     "name": "guide",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "title",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "heading",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "kind",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The doc's kind: guide, current, operating or history."
-    },
-    {
-     "name": "link",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The console's page for it, built by the console, never by the model."
-    }
-   ]
-  },
-  "vertra.console.v1.ProposedCart": {
-   "name": "ProposedCart",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "actions",
-     "type": "string",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.ChatStep": {
-   "name": "ChatStep",
-   "comment": "",
-   "fields": [
-    {
-     "name": "tool",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "ok",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.AskStreamRequest": {
-   "name": "AskStreamRequest",
-   "comment": "As AskRequest.",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "messages",
-     "type": "ChatTurn",
-     "ref": "vertra.console.v1.ChatTurn",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.AskStreamResponse": {
-   "name": "AskStreamResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "step",
-     "type": "ChatStep",
-     "ref": "vertra.console.v1.ChatStep",
-     "repeated": false,
-     "optional": false,
-     "comment": "A step it took: the tool, and whether it worked."
-    },
-    {
-     "name": "answer",
-     "type": "AskResponse",
-     "ref": "vertra.console.v1.AskResponse",
-     "repeated": false,
-     "optional": false,
-     "comment": "The answer, as Ask gives it: the last message."
-    }
-   ]
-  },
-  "vertra.console.v1.AskResponse": {
-   "name": "AskResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "text",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Markdown, with citations like [S1] kept only when they name a section\nretrieved for this answer."
-    },
-    {
-     "name": "citations",
-     "type": "ChatCitation",
-     "ref": "vertra.console.v1.ChatCitation",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "uncited",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": "It found nothing to answer from, in the docs or the platform: the text\nsays so, in the console's words, not the model's."
-    },
-    {
-     "name": "cart",
-     "type": "ProposedCart",
-     "ref": "vertra.console.v1.ProposedCart",
-     "repeated": false,
-     "optional": true,
-     "comment": ""
-    },
-    {
-     "name": "steps",
-     "type": "ChatStep",
-     "ref": "vertra.console.v1.ChatStep",
-     "repeated": true,
-     "optional": false,
-     "comment": "What it did: each tool, in order, and whether it worked."
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "offTopic",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": "Not about Vertra: the text says what it helps with, and the model\nwasn't asked."
-    },
-    {
-     "name": "contextPercent",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": "How much of the chat's context window the conversation takes, with this\nanswer: 0 to 100. At 100 the next question is refused\n(CONVERSATION_TOO_LONG): start a new conversation."
-    }
-   ]
-  },
-  "vertra.console.v1.ChatConfig": {
-   "name": "ChatConfig",
-   "comment": "The chat agent's model, as it's set.",
-   "fields": [
-    {
-     "name": "source",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "install (the chart's chat values) or admins (set here)."
-    },
-    {
-     "name": "enabled",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "provider",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "vertex, bedrock, anthropic or openai-compatible."
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "endpoint",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "openai-compatible's base URL (.../v1), or Anthropic's when not its own."
-    },
-    {
-     "name": "vertexProject",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "vertexLocation",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "effort",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "low, medium, high; empty: the model's own."
-    },
-    {
-     "name": "maxSteps",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "contextTokens",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "maxTokens",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "keySet",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": "A key is kept (sealed) or comes from the install: it's never sent."
-    },
-    {
-     "name": "problem",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Why an admin's settings can't be used now (chat is off meanwhile)."
-    },
-    {
-     "name": "updatedBy",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "updatedAt",
-     "type": "timestamp (RFC 3339 string)",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "installProvider",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "What Reset returns to: the install's provider and model, empty for none."
-    },
-    {
-     "name": "installModel",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "bedrockRegion",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "bedrock's AWS region (Claude in Amazon Bedrock, as the console's own\nAWS identity)."
-    }
-   ]
-  },
-  "vertra.console.v1.ChatConfigInput": {
-   "name": "ChatConfigInput",
-   "comment": "Settings to save or try.",
-   "fields": [
-    {
-     "name": "enabled",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "provider",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "endpoint",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "vertexProject",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "vertexLocation",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "effort",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "maxSteps",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": "0: the default."
-    },
-    {
-     "name": "contextTokens",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "maxTokens",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "apiKey",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Empty: keep the one kept, or use the install's for its own provider.\nIgnored on Vertex, which signs in as the console."
-    },
-    {
-     "name": "bedrockRegion",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.GetChatConfigRequest": {
-   "name": "GetChatConfigRequest",
-   "comment": "",
-   "fields": []
-  },
-  "vertra.console.v1.GetChatConfigResponse": {
-   "name": "GetChatConfigResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "config",
-     "type": "ChatConfig",
-     "ref": "vertra.console.v1.ChatConfig",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.SetChatConfigRequest": {
-   "name": "SetChatConfigRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "config",
-     "type": "ChatConfigInput",
-     "ref": "vertra.console.v1.ChatConfigInput",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.SetChatConfigResponse": {
-   "name": "SetChatConfigResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "config",
-     "type": "ChatConfig",
-     "ref": "vertra.console.v1.ChatConfig",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.ResetChatConfigRequest": {
-   "name": "ResetChatConfigRequest",
-   "comment": "",
-   "fields": []
-  },
-  "vertra.console.v1.ResetChatConfigResponse": {
-   "name": "ResetChatConfigResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "config",
-     "type": "ChatConfig",
-     "ref": "vertra.console.v1.ChatConfig",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.TestChatConfigRequest": {
-   "name": "TestChatConfigRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "config",
-     "type": "ChatConfigInput",
-     "ref": "vertra.console.v1.ChatConfigInput",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.TestChatConfigResponse": {
-   "name": "TestChatConfigResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "ok",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": "The model answered."
-    },
-    {
-     "name": "problem",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Why it didn't, when it didn't."
-    },
-    {
-     "name": "seconds",
-     "type": "number",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "model",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "answer",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The start of its answer to the test question."
-    },
-    {
-     "name": "citations",
-     "type": "integer",
-     "repeated": false,
-     "optional": false,
-     "comment": "How many sections it cited."
-    }
-   ]
-  },
   "vertra.console.v1.Failure": {
    "name": "Failure",
    "comment": "Why something went wrong, in a form a caller can act on: a stable code,\na message for a person, and whether trying again may work. A task's\nfailure, a product's error, and the details of an error response all\ntake this shape.",
@@ -3703,154 +2904,6 @@
      "comment": ""
     }
    ]
-  },
-  "vertra.console.v1.Draft": {
-   "name": "Draft",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "name",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Its template's name, and so its file's: lowercase letters, digits and\ndashes."
-    },
-    {
-     "name": "body",
-     "type": "object",
-     "repeated": false,
-     "optional": false,
-     "comment": "The page's own state, kept as it is."
-    },
-    {
-     "name": "version",
-     "type": "integer (as a string)",
-     "repeated": false,
-     "optional": false,
-     "comment": "Counts up with each save."
-    },
-    {
-     "name": "updatedBy",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Who saved it last; empty once their account is gone."
-    },
-    {
-     "name": "updatedAt",
-     "type": "timestamp (RFC 3339 string)",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.ListDraftsRequest": {
-   "name": "ListDraftsRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Empty: every team you're in."
-    }
-   ]
-  },
-  "vertra.console.v1.ListDraftsResponse": {
-   "name": "ListDraftsResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "drafts",
-     "type": "Draft",
-     "ref": "vertra.console.v1.Draft",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.SaveDraftRequest": {
-   "name": "SaveDraftRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "name",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "body",
-     "type": "object",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "version",
-     "type": "integer (as a string)",
-     "repeated": false,
-     "optional": false,
-     "comment": "The version this changes; 0 for a new draft."
-    }
-   ]
-  },
-  "vertra.console.v1.SaveDraftResponse": {
-   "name": "SaveDraftResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "draft",
-     "type": "Draft",
-     "ref": "vertra.console.v1.Draft",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.DeleteDraftRequest": {
-   "name": "DeleteDraftRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "name",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.DeleteDraftResponse": {
-   "name": "DeleteDraftResponse",
-   "comment": "",
-   "fields": []
   },
   "vertra.console.v1.Dag": {
    "name": "Dag",
@@ -5016,6 +4069,1318 @@
      "comment": "False when the caller submitted the run: someone else decides."
     }
    ]
+  },
+  "vertra.console.v1.PlaceOrderRequest": {
+   "name": "PlaceOrderRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "choices",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "values",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "What you fill in: {\"<step>\": {\"<input>\": value}}, for inputs nothing in\nthe order fills."
+    },
+    {
+     "name": "parameters",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "A shared type's value, by the type's name: {\"gcp.region\": \"us-central1\"}."
+    },
+    {
+     "name": "requestId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Sent again (a retry after a timeout), the same run."
+    }
+   ]
+  },
+  "vertra.console.v1.PlaceOrderResponse": {
+   "name": "PlaceOrderResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "executionId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "state",
+     "type": "ExecutionState",
+     "ref": "vertra.console.v1.ExecutionState",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewOrderRequest": {
+   "name": "PreviewOrderRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team it's for: Compose's \"for team\"."
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The cart: registered actions (<team>-<product>-<action>, as the\ncatalog lists them), at most 50. One may be in it twice."
+    },
+    {
+     "name": "choices",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "Which output fills an input two could, from an earlier answer's options."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderChoice": {
+   "name": "OrderChoice",
+   "comment": "How an input is filled: one of another step's output (from_step and\nfrom_output), a resource already there (resource_id), or a new one, the\ntype's default provider (add_new). Send back one of an answer's options.",
+   "fields": [
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "fromStep",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "fromOutput",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "resourceId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "addNew",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "label",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "For people: what the option is."
+    }
+   ]
+  },
+  "vertra.console.v1.PreviewOrderResponse": {
+   "name": "PreviewOrderResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "steps",
+     "type": "OrderStep",
+     "ref": "vertra.console.v1.OrderStep",
+     "repeated": true,
+     "optional": false,
+     "comment": "In an order they can run in: each after the steps it takes outputs from."
+    },
+    {
+     "name": "problems",
+     "type": "OrderProblem",
+     "ref": "vertra.console.v1.OrderProblem",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "suggestions",
+     "type": "OrderSuggestion",
+     "ref": "vertra.console.v1.OrderSuggestion",
+     "repeated": true,
+     "optional": false,
+     "comment": "Optional inputs nothing fills, and what could: add the provider to the\ncart, or choose an existing one."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderSuggestion": {
+   "name": "OrderSuggestion",
+   "comment": "",
+   "fields": [
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "wiringType",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The type's default provider (a registered action) to add; empty when\nthere's none you may use."
+    },
+    {
+     "name": "existing",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "What you already have of it, as choices."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderStep": {
+   "name": "OrderStep",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The registered action."
+    },
+    {
+     "name": "inputs",
+     "type": "map of string to OrderInput",
+     "ref": "vertra.console.v1.OrderInput",
+     "repeated": false,
+     "optional": false,
+     "comment": "Every input of the action, by name."
+    },
+    {
+     "name": "added",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Added as a wiring type's default provider: it wasn't in the cart."
+    }
+   ]
+  },
+  "vertra.console.v1.OrderInput": {
+   "name": "OrderInput",
+   "comment": "",
+   "fields": [
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"step\": another step's output; \"parameter\": asked when it runs (a\nshared type's, once, named for the type); \"resource\": something already\nthere, its value; \"unset\": for the person."
+    },
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "output",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "parameter",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "resourceId",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "value",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.OrderProblem": {
+   "name": "OrderProblem",
+   "comment": "",
+   "fields": [
+    {
+     "name": "code",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE."
+    },
+    {
+     "name": "step",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "input",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "message",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "options",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's\nthere, and a new one."
+    }
+   ]
+  },
+  "vertra.console.v1.RateAnswerRequest": {
+   "name": "RateAnswerRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "rating",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"up\" or \"down\"."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "question",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "At most 4,000 characters."
+    },
+    {
+     "name": "answer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "At most 20,000 characters."
+    },
+    {
+     "name": "citations",
+     "type": "ChatCitation",
+     "ref": "vertra.console.v1.ChatCitation",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "The tools it used, in order."
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "comment",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What was wrong, or right; at most 2,000 characters."
+    }
+   ]
+  },
+  "vertra.console.v1.RateAnswerResponse": {
+   "name": "RateAnswerResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListChatFeedbackRequest": {
+   "name": "ListChatFeedbackRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "rating",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"up\", \"down\", or empty for both."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatRating": {
+   "name": "ChatRating",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "rating",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "question",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "answer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "citations",
+     "type": "ChatCitation",
+     "ref": "vertra.console.v1.ChatCitation",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "comment",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who rated it; empty once their account is gone."
+    },
+    {
+     "name": "createdAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListChatFeedbackResponse": {
+   "name": "ListChatFeedbackResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "ratings",
+     "type": "ChatRating",
+     "ref": "vertra.console.v1.ChatRating",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetChatSettingsRequest": {
+   "name": "GetChatSettingsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetChatSettingsResponse": {
+   "name": "GetChatSettingsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ChatTurn": {
+   "name": "ChatTurn",
+   "comment": "",
+   "fields": [
+    {
+     "name": "role",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "\"user\" or \"assistant\"."
+    },
+    {
+     "name": "content",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskRequest": {
+   "name": "AskRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The team they're working for; empty for none chosen."
+    },
+    {
+     "name": "messages",
+     "type": "ChatTurn",
+     "ref": "vertra.console.v1.ChatTurn",
+     "repeated": true,
+     "optional": false,
+     "comment": "Oldest first, the question last; at most 40, each at most 4,000\ncharacters."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatCitation": {
+   "name": "ChatCitation",
+   "comment": "",
+   "fields": [
+    {
+     "name": "id",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "As the answer cites it: [S1]."
+    },
+    {
+     "name": "guide",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "title",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "heading",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "kind",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The doc's kind: guide, current, operating or history."
+    },
+    {
+     "name": "link",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The console's page for it, built by the console, never by the model."
+    }
+   ]
+  },
+  "vertra.console.v1.ProposedCart": {
+   "name": "ProposedCart",
+   "comment": "A cart for the person to open, check and place: never placed by the agent.",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "actions",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "choices",
+     "type": "OrderChoice",
+     "ref": "vertra.console.v1.OrderChoice",
+     "repeated": true,
+     "optional": false,
+     "comment": "What the person chose, of the plan's options (PreviewOrder's)."
+    },
+    {
+     "name": "values",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "What they said to fill in, by step, then input, as PlaceOrder's values."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatStep": {
+   "name": "ChatStep",
+   "comment": "",
+   "fields": [
+    {
+     "name": "tool",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "ok",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskStreamRequest": {
+   "name": "AskStreamRequest",
+   "comment": "As AskRequest.",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "messages",
+     "type": "ChatTurn",
+     "ref": "vertra.console.v1.ChatTurn",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AskStreamResponse": {
+   "name": "AskStreamResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "step",
+     "type": "ChatStep",
+     "ref": "vertra.console.v1.ChatStep",
+     "repeated": false,
+     "optional": false,
+     "comment": "A step it took: the tool, and whether it worked."
+    },
+    {
+     "name": "answer",
+     "type": "AskResponse",
+     "ref": "vertra.console.v1.AskResponse",
+     "repeated": false,
+     "optional": false,
+     "comment": "The answer, as Ask gives it: the last message."
+    }
+   ]
+  },
+  "vertra.console.v1.AskResponse": {
+   "name": "AskResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "text",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Markdown, with citations like [S1] kept only when they name a section\nretrieved for this answer."
+    },
+    {
+     "name": "citations",
+     "type": "ChatCitation",
+     "ref": "vertra.console.v1.ChatCitation",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "uncited",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "It found nothing to answer from, in the docs or the platform: the text\nsays so, in the console's words, not the model's."
+    },
+    {
+     "name": "cart",
+     "type": "ProposedCart",
+     "ref": "vertra.console.v1.ProposedCart",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "ChatStep",
+     "ref": "vertra.console.v1.ChatStep",
+     "repeated": true,
+     "optional": false,
+     "comment": "What it did: each tool, in order, and whether it worked."
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "offTopic",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Not about Vertra: the text says what it helps with, and the model\nwasn't asked."
+    },
+    {
+     "name": "contextPercent",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How much of the chat's context window the conversation takes, with this\nanswer: 0 to 100. At 100 the next question is refused\n(CONVERSATION_TOO_LONG): start a new conversation."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatConfig": {
+   "name": "ChatConfig",
+   "comment": "The chat agent's model, as it's set.",
+   "fields": [
+    {
+     "name": "source",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "install (the chart's chat values) or admins (set here)."
+    },
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "vertex, bedrock, anthropic or openai-compatible."
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "endpoint",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "openai-compatible's base URL (.../v1), or Anthropic's when not its own."
+    },
+    {
+     "name": "vertexProject",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "vertexLocation",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "low, medium, high; empty: the model's own."
+    },
+    {
+     "name": "maxSteps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "contextTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "keySet",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "A key is kept (sealed) or comes from the install: it's never sent."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why an admin's settings can't be used now (chat is off meanwhile)."
+    },
+    {
+     "name": "updatedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "installProvider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "What Reset returns to: the install's provider and model, empty for none."
+    },
+    {
+     "name": "installModel",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "bedrockRegion",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "bedrock's AWS region (Claude in Amazon Bedrock, as the console's own\nAWS identity)."
+    }
+   ]
+  },
+  "vertra.console.v1.ChatConfigInput": {
+   "name": "ChatConfigInput",
+   "comment": "Settings to save or try.",
+   "fields": [
+    {
+     "name": "enabled",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "provider",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "endpoint",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "vertexProject",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "vertexLocation",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "effort",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxSteps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "0: the default."
+    },
+    {
+     "name": "contextTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "maxTokens",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "apiKey",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: keep the one kept, or use the install's for its own provider.\nIgnored on Vertex, which signs in as the console."
+    },
+    {
+     "name": "bedrockRegion",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetChatConfigRequest": {
+   "name": "GetChatConfigRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.GetChatConfigResponse": {
+   "name": "GetChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfig",
+     "ref": "vertra.console.v1.ChatConfig",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetChatConfigRequest": {
+   "name": "SetChatConfigRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfigInput",
+     "ref": "vertra.console.v1.ChatConfigInput",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SetChatConfigResponse": {
+   "name": "SetChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfig",
+     "ref": "vertra.console.v1.ChatConfig",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ResetChatConfigRequest": {
+   "name": "ResetChatConfigRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ResetChatConfigResponse": {
+   "name": "ResetChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfig",
+     "ref": "vertra.console.v1.ChatConfig",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TestChatConfigRequest": {
+   "name": "TestChatConfigRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "config",
+     "type": "ChatConfigInput",
+     "ref": "vertra.console.v1.ChatConfigInput",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TestChatConfigResponse": {
+   "name": "TestChatConfigResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "ok",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "The model answered."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why it didn't, when it didn't."
+    },
+    {
+     "name": "seconds",
+     "type": "number",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "model",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "answer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The start of its answer to the test question."
+    },
+    {
+     "name": "citations",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "How many sections it cited."
+    }
+   ]
+  },
+  "vertra.console.v1.Draft": {
+   "name": "Draft",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its template's name, and so its file's: lowercase letters, digits and\ndashes."
+    },
+    {
+     "name": "body",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": "The page's own state, kept as it is."
+    },
+    {
+     "name": "version",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Counts up with each save."
+    },
+    {
+     "name": "updatedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who saved it last; empty once their account is gone."
+    },
+    {
+     "name": "updatedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListDraftsRequest": {
+   "name": "ListDraftsRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty: every team you're in."
+    }
+   ]
+  },
+  "vertra.console.v1.ListDraftsResponse": {
+   "name": "ListDraftsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "drafts",
+     "type": "Draft",
+     "ref": "vertra.console.v1.Draft",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.SaveDraftRequest": {
+   "name": "SaveDraftRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "body",
+     "type": "object",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "version",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The version this changes; 0 for a new draft."
+    }
+   ]
+  },
+  "vertra.console.v1.SaveDraftResponse": {
+   "name": "SaveDraftResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "draft",
+     "type": "Draft",
+     "ref": "vertra.console.v1.Draft",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteDraftRequest": {
+   "name": "DeleteDraftRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.DeleteDraftResponse": {
+   "name": "DeleteDraftResponse",
+   "comment": "",
+   "fields": []
   },
   "vertra.console.v1.SearchGuidesRequest": {
    "name": "SearchGuidesRequest",
@@ -6770,356 +7135,6 @@
      "repeated": false,
      "optional": false,
      "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.PlaceOrderRequest": {
-   "name": "PlaceOrderRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "actions",
-     "type": "string",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "choices",
-     "type": "OrderChoice",
-     "ref": "vertra.console.v1.OrderChoice",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "values",
-     "type": "object",
-     "repeated": false,
-     "optional": false,
-     "comment": "What you fill in: {\"<step>\": {\"<input>\": value}}, for inputs nothing in\nthe order fills."
-    },
-    {
-     "name": "parameters",
-     "type": "object",
-     "repeated": false,
-     "optional": false,
-     "comment": "A shared type's value, by the type's name: {\"gcp.region\": \"us-central1\"}."
-    },
-    {
-     "name": "requestId",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "Sent again (a retry after a timeout), the same run."
-    }
-   ]
-  },
-  "vertra.console.v1.PlaceOrderResponse": {
-   "name": "PlaceOrderResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "executionId",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "state",
-     "type": "ExecutionState",
-     "ref": "vertra.console.v1.ExecutionState",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.PreviewOrderRequest": {
-   "name": "PreviewOrderRequest",
-   "comment": "",
-   "fields": [
-    {
-     "name": "team",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The team it's for: Compose's \"for team\"."
-    },
-    {
-     "name": "actions",
-     "type": "string",
-     "repeated": true,
-     "optional": false,
-     "comment": "The cart: registered actions (<team>-<product>-<action>, as the\ncatalog lists them), at most 50. One may be in it twice."
-    },
-    {
-     "name": "choices",
-     "type": "OrderChoice",
-     "ref": "vertra.console.v1.OrderChoice",
-     "repeated": true,
-     "optional": false,
-     "comment": "Which output fills an input two could, from an earlier answer's options."
-    }
-   ]
-  },
-  "vertra.console.v1.OrderChoice": {
-   "name": "OrderChoice",
-   "comment": "How an input is filled: one of another step's output (from_step and\nfrom_output), a resource already there (resource_id), or a new one, the\ntype's default provider (add_new). Send back one of an answer's options.",
-   "fields": [
-    {
-     "name": "step",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "input",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "fromStep",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "fromOutput",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "resourceId",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "addNew",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "label",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "For people: what the option is."
-    }
-   ]
-  },
-  "vertra.console.v1.PreviewOrderResponse": {
-   "name": "PreviewOrderResponse",
-   "comment": "",
-   "fields": [
-    {
-     "name": "steps",
-     "type": "OrderStep",
-     "ref": "vertra.console.v1.OrderStep",
-     "repeated": true,
-     "optional": false,
-     "comment": "In an order they can run in: each after the steps it takes outputs from."
-    },
-    {
-     "name": "problems",
-     "type": "OrderProblem",
-     "ref": "vertra.console.v1.OrderProblem",
-     "repeated": true,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "suggestions",
-     "type": "OrderSuggestion",
-     "ref": "vertra.console.v1.OrderSuggestion",
-     "repeated": true,
-     "optional": false,
-     "comment": "Optional inputs nothing fills, and what could: add the provider to the\ncart, or choose an existing one."
-    }
-   ]
-  },
-  "vertra.console.v1.OrderSuggestion": {
-   "name": "OrderSuggestion",
-   "comment": "",
-   "fields": [
-    {
-     "name": "step",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "input",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "wiringType",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "provider",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The type's default provider (a registered action) to add; empty when\nthere's none you may use."
-    },
-    {
-     "name": "existing",
-     "type": "OrderChoice",
-     "ref": "vertra.console.v1.OrderChoice",
-     "repeated": true,
-     "optional": false,
-     "comment": "What you already have of it, as choices."
-    }
-   ]
-  },
-  "vertra.console.v1.OrderStep": {
-   "name": "OrderStep",
-   "comment": "",
-   "fields": [
-    {
-     "name": "id",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "product",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "The registered action."
-    },
-    {
-     "name": "inputs",
-     "type": "map of string to OrderInput",
-     "ref": "vertra.console.v1.OrderInput",
-     "repeated": false,
-     "optional": false,
-     "comment": "Every input of the action, by name."
-    },
-    {
-     "name": "added",
-     "type": "boolean",
-     "repeated": false,
-     "optional": false,
-     "comment": "Added as a wiring type's default provider: it wasn't in the cart."
-    }
-   ]
-  },
-  "vertra.console.v1.OrderInput": {
-   "name": "OrderInput",
-   "comment": "",
-   "fields": [
-    {
-     "name": "kind",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "\"step\": another step's output; \"parameter\": asked when it runs (a\nshared type's, once, named for the type); \"resource\": something already\nthere, its value; \"unset\": for the person."
-    },
-    {
-     "name": "step",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "output",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "parameter",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "resourceId",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "value",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    }
-   ]
-  },
-  "vertra.console.v1.OrderProblem": {
-   "name": "OrderProblem",
-   "comment": "",
-   "fields": [
-    {
-     "name": "code",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": "AMBIGUOUS, NO_PROVIDER, CHOOSE_EXISTING or CYCLE."
-    },
-    {
-     "name": "step",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "input",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "message",
-     "type": "string",
-     "repeated": false,
-     "optional": false,
-     "comment": ""
-    },
-    {
-     "name": "options",
-     "type": "OrderChoice",
-     "ref": "vertra.console.v1.OrderChoice",
-     "repeated": true,
-     "optional": false,
-     "comment": "AMBIGUOUS: the outputs that could fill it; CHOOSE_EXISTING: what's\nthere, and a new one."
     }
    ]
   },

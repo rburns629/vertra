@@ -2552,8 +2552,17 @@ export interface ChatAnswer {
   offTopic: boolean;
   /** How much of the chat's context window the conversation takes, 0 to 100. */
   contextPercent: number;
-  cart: { team: string; actions: string[] } | null;
+  cart: ProposedCart | null;
   steps: { tool: string; ok: boolean }[];
+}
+
+/** A cart the chat agent proposes: its actions, and the choices and values the person gave, for them to check and place. */
+export interface ProposedCart {
+  team: string;
+  actions: string[];
+  choices: OrderOption[];
+  /** By step, then input. */
+  values: Record<string, Record<string, unknown>>;
 }
 
 /**
@@ -2589,7 +2598,18 @@ function chatAnswer(r: AskResponse): ChatAnswer {
     uncited: r.uncited,
     offTopic: r.offTopic,
     contextPercent: r.contextPercent,
-    cart: r.cart ? { team: r.cart.team, actions: r.cart.actions } : null,
+    cart: r.cart
+      ? {
+          team: r.cart.team,
+          actions: r.cart.actions,
+          choices: r.cart.choices.map(option),
+          values: Object.fromEntries(
+            Object.entries(r.cart.values ?? {}).flatMap(([step, inputs]) =>
+              typeof inputs === "object" && inputs !== null && !Array.isArray(inputs) ? [[step, inputs as Record<string, unknown>]] : [],
+            ),
+          ),
+        }
+      : null,
     steps: r.steps.map((s) => ({ tool: s.tool, ok: s.ok })),
   };
 }

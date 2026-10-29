@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ask, askStream, CHARS_PER_TOKEN, NOT_FOUND, OFF_TOPIC, tokensOf, windowOf } from "../src/chat/agent.js";
 import Anthropic from "@anthropic-ai/sdk";
-import { AnthropicMessages, ModelUnavailable, OpenAICompatible, withoutThinking, type ChatMessage, type ChatModel, type CompleteOptions, type ModelReply } from "../src/chat/model.js";
+import { AnthropicMessages, ModelUnavailable, OpenAICompatible, quickCall, withoutThinking, type ChatMessage, type ChatModel, type CompleteOptions, type ModelReply } from "../src/chat/model.js";
 import type { AuthUser } from "../src/auth/plugin.js";
 import { db } from "../src/db/client.js";
 import { createTeam, upsertProduct } from "../src/db/queries.js";
@@ -290,7 +290,23 @@ describe("what it sees and does", () => {
 
   it("proposes a cart of actions shared with them, and refuses one that isn't", async () => {
     const ok = await ask(person([mine]), question("A bucket please"), log, new Scripted([call("propose_cart", { actions: [`${mine}-bucket-create`] }), say("Open the cart."), say("Open the cart.")]));
-    expect(ok.cart).toEqual({ team: mine, actions: [`${mine}-bucket-create`] });
+    expect(ok.cart).toEqual({ team: mine, actions: [`${mine}-bucket-create`], choices: [], values: {} });
+
+    // What they said goes in, for them to check: a value for an input left
+    // to them; not one for a step or input the plan hasn't, nor a choice it
+    // didn't offer.
+    const filled = new Scripted([
+      call("propose_cart", {
+        actions: [`${mine}-bucket-create`],
+        values: { bucket: { name: "shop-assets", other: "x" }, nowhere: { name: "y" } },
+        choices: [{ step: "bucket", input: "name", resourceId: randomUUID() }],
+      }),
+      say("Open the cart."),
+      say("Open the cart."),
+    ]);
+    const withValues = await ask(person([mine]), question("A bucket called shop-assets"), log, filled);
+    expect(withValues.cart).toEqual({ team: mine, actions: [`${mine}-bucket-create`], choices: [], values: { bucket: { name: "shop-assets" } } });
+    expect(lastResult(filled.seen[1] ?? [])).toMatchObject({ ignoredChoices: 1 });
 
     const outsider = new Scripted([call("propose_cart", { actions: [`${mine}-bucket-create`] }), say("Couldn't.")]);
     const refused = await ask(person([theirs]), question("A bucket please", theirs), log, outsider);
@@ -513,6 +529,18 @@ describe("the anthropic model", () => {
     // The scope check: no thinking, a short reply.
     await model.complete([{ role: "user", content: "hi" }], [], { quick: true });
     expect(sent[2]).toMatchObject({ max_tokens: 64, thinking: { type: "disabled" } });
+  });
+
+  it("turns thinking down for a quick call as each model takes it", () => {
+    expect(quickCall("claude-haiku-5-5")).toEqual({ max_tokens: 64, thinking: { type: "disabled" } });
+    // Sonnet 5.5 refuses "disabled".
+    expect(quickCall("claude-sonnet-5-5")).toEqual({ max_tokens: 64, thinking: { type: "between_tools" } });
+    expect(quickCall("anthropic.claude-sonnet-5-5")).toEqual({ max_tokens: 64, thinking: { type: "between_tools" } });
+    // These always think: least, with room for it.
+    for (const always of ["claude-opus-5-5", "claude-fable-5-1", "anthropic.claude-fable-5"]) {
+      expect(quickCall(always)).toEqual({ max_tokens: 2048, output_config: { effort: "low" } });
+    }
+    expect(quickCall("claude-sonnet-5")).toEqual({ max_tokens: 64, thinking: { type: "disabled" } });
   });
 
   it("says a refusal, and an API it can't reach", async () => {

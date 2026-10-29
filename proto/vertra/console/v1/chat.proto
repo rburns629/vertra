@@ -4,7 +4,9 @@ syntax = "proto3";
 
 package vertra.console.v1;
 
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "vertra/console/v1/order.proto";
 
 // The chat agent (decision 24): answers from the docs and the catalog,
 // looks at what the person's teams have, and proposes carts, all as the
@@ -126,9 +128,14 @@ message ChatCitation {
   string link = 6;
 }
 
+// A cart for the person to open, check and place: never placed by the agent.
 message ProposedCart {
   string team = 1;
   repeated string actions = 2;
+  // What the person chose, of the plan's options (PreviewOrder's).
+  repeated OrderChoice choices = 3;
+  // What they said to fill in, by step, then input, as PlaceOrder's values.
+  google.protobuf.Struct values = 4;
 }
 
 message ChatStep {

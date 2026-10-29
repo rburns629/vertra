@@ -78,16 +78,17 @@ function Choose({ problem, chosen, onChoose }: { problem: OrderProblem; chosen: 
  * Catalog, planned together for one of your teams (PreviewOrder): what each
  * needs added, what you already have that it could use, what's suggested,
  * and what you fill in. Place order runs it as one run for the team
- * (PlaceOrder). Choices aren't kept: they're made here, for this order.
+ * (PlaceOrder). Choices aren't kept: they're made here, for this order,
+ * starting from what a chat answer filled in, if one did.
  */
 export function CartPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { team: chosenTeam, actions } = useCart();
+  const { team: chosenTeam, actions, choices: proposedChoices, values: proposedValues } = useCart();
   const teams = user?.teamNames ?? [];
   const team = chosenTeam && teams.includes(chosenTeam) ? chosenTeam : (teams[0] ?? null);
   const [runnables, setRunnables] = useState<Runnable[]>([]);
-  const [choices, setChoices] = useState<OrderOption[]>([]);
+  const [choices, setChoices] = useState<OrderOption[]>(proposedChoices);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [values, setValues] = useState<Record<string, Values>>({});
   const [shared, setShared] = useState<Record<string, string>>({});
@@ -96,6 +97,12 @@ export function CartPage() {
   const [placing, setPlacing] = useState(false);
   // One per visit: placing it again after a timeout is the same order.
   const [requestId] = useState(() => crypto.randomUUID());
+
+  // A chat answer's cart opened here: start again from what it filled in.
+  useEffect(() => {
+    setChoices(proposedChoices);
+    setValues({});
+  }, [proposedChoices, proposedValues]);
 
   useEffect(() => {
     listRunnables()
@@ -131,7 +138,8 @@ export function CartPage() {
   const parameters = useMemo(() => [...new Set((plan?.steps ?? []).flatMap((s) => Object.values(s.inputs).filter((i) => i.kind === "parameter").map((i) => i.parameter ?? "")))], [plan]);
 
   const choose = (o: OrderOption) => { setChoices((list) => [...list.filter((c) => !sameInput(c, o)), o]); };
-  const valuesOf = (step: string): Values => values[step] ?? initialValues(action(plan?.steps.find((s) => s.id === step)?.product ?? "")?.parameters ?? {}, fields[step] ?? []);
+  const valuesOf = (step: string): Values =>
+    values[step] ?? initialValues(action(plan?.steps.find((s) => s.id === step)?.product ?? "")?.parameters ?? {}, fields[step] ?? [], proposedValues[step]);
   const set = (step: string) => (name: string, value: FieldValue) => {
     setValues((all) => ({ ...all, [step]: { ...valuesOf(step), [name]: value } }));
   };

@@ -37,6 +37,7 @@ import { allowedPrefixes, readImagePolicy } from "../imagePolicy.js";
 import { ensureServiceAccount, NamespaceNotFoundError } from "../k8s.js";
 import { syncIdentityPolicy } from "../productPolicy.js";
 import { checkNow } from "../readiness.js";
+import { refreshProvides } from "../resourceRecorder.js";
 import { pinImages } from "../registry.js";
 import { ensureNotRetired } from "./retired.js";
 import { digestOf, requestScan } from "../scanning.js";
@@ -320,6 +321,8 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       resources: input.resources,
     });
     await syncIdentityPolicy();
+    // What it made before typed its outputs this way is offered by type too.
+    await refreshProvides(product.name, product.outputSchema);
     return product;
   } catch (error) {
     if (error instanceof ProductOwnershipError) {

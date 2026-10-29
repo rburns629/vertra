@@ -1168,7 +1168,15 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `host.docker.internal:1234` from kind). Then the same tools as an MCP
   server at `/mcp` for engineers' own agents (bots, then people through
   OAuth 2.1). Groundwork for Vertex AI, Bedrock, Azure AI Foundry. Builds
-  on decision 25's cart. The MCP server waits (decided 2026-10-29) until the
+  on decision 25's cart. Its cart tools seen with Claude Sonnet 5.5 on kind
+  (2026-10-29): it found the offering, planned, proposed the cart with the
+  existing ticket chosen and the watcher filled in (placed as proposed, it
+  ran), declined to place an order itself, explained a failed run, and
+  questioned a run said to have failed that hadn't. Found doing it: Sonnet
+  5.5 refuses `thinking: disabled` (the scope check now turns thinking down
+  per model), a proposed cart couldn't carry values or choices (it can now),
+  and resources made before their product typed its outputs weren't offered
+  (registering a product now updates them). The MCP server waits (decided 2026-10-29) until the
   platform is solid and a team asks for it: its tools proven first in the
   Ask panel with a capable model, and the cart seen end to end on a cluster.
 - [ ] **The cart (decision 25, proposed 2026-10-27)**, what the agent and

@@ -27,7 +27,16 @@ export interface TurnState {
   /** Doc sections retrieved, numbered: what the answer may cite. */
   sources: Source[];
   /** The cart the agent proposes, for the person to open. */
-  cart: { team: string; actions: string[] } | null;
+  cart: ProposedCart | null;
+}
+
+/** A cart for the person to open: its actions, and the choices and values they gave, for them to check and place. */
+export interface ProposedCart {
+  team: string;
+  actions: string[];
+  choices: OrderChoice[];
+  /** By step, then input: what the person said to fill in. */
+  values: Record<string, Record<string, string | number | boolean>>;
 }
 
 interface Tool {
@@ -58,6 +67,56 @@ function fieldsOf(schema: unknown, hint: "x-vertra-needs" | "x-vertra-provides")
     ...(p["default"] !== undefined ? { default: p["default"] } : {}),
     description: text(p["description"], 300),
   }));
+}
+
+const CHOICE = {
+  type: "object",
+  required: ["step", "input"],
+  properties: {
+    step: { type: "string" },
+    input: { type: "string" },
+    resourceId: { type: "string" },
+    addNew: { type: "boolean" },
+    fromStep: { type: "string" },
+    fromOutput: { type: "string" },
+  },
+  description: "One of plan_order's options for an input, as it gave it.",
+};
+
+/** The model's choices, in OrderChoice's shape: only the fields an option has. */
+function choicesOf(given: unknown): OrderChoice[] {
+  if (!Array.isArray(given)) return [];
+  return given.slice(0, 50).flatMap((c: unknown) => {
+    if (typeof c !== "object" || c === null) return [];
+    const r = c as Record<string, unknown>;
+    const step = text(r["step"], 100);
+    const input = text(r["input"], 100);
+    if (!step || !input) return [];
+    return [{
+      step,
+      input,
+      ...(text(r["resourceId"], 64) ? { resourceId: text(r["resourceId"], 64) } : {}),
+      ...(r["addNew"] === true ? { addNew: true } : {}),
+      ...(text(r["fromStep"], 100) ? { fromStep: text(r["fromStep"], 100), fromOutput: text(r["fromOutput"], 100) } : {}),
+    }];
+  });
+}
+
+/** The values the model fills in: for the plan's steps and their unfilled inputs only, scalars, kept short. */
+function valuesOf(given: unknown, unset: Map<string, Set<string>>): ProposedCart["values"] {
+  const out: ProposedCart["values"] = {};
+  if (typeof given !== "object" || given === null) return out;
+  for (const [step, inputs] of Object.entries(given as Record<string, unknown>)) {
+    const names = unset.get(step);
+    if (!names || typeof inputs !== "object" || inputs === null) continue;
+    for (const [input, value] of Object.entries(inputs as Record<string, unknown>)) {
+      if (!names.has(input)) continue;
+      if ((typeof value === "string" && value.length <= 1000) || typeof value === "number" || typeof value === "boolean") {
+        (out[step] ??= {})[input] = value;
+      }
+    }
+  }
+  return out;
 }
 
 function teamFor(state: TurnState, given: unknown): string {
@@ -214,17 +273,24 @@ const TOOLS: Tool[] = [
         properties: {
           team: { type: "string" },
           actions: { type: "array", items: { type: "string" }, description: "Actions' names, as find_offerings gave them." },
+          choices: { type: "array", items: CHOICE, description: "Choices already made: plan again to see what's left." },
         },
       },
     },
     async run(state, args) {
       const team = teamFor(state, args["team"]);
       const actions = Array.isArray(args["actions"]) ? args["actions"].map((a) => text(a, 253)).filter(Boolean).slice(0, 20) : [];
-      const plan = await previewOrder(state.caller, { team, actions, choices: [] as OrderChoice[] });
+      const plan = await previewOrder(state.caller, { team, actions, choices: choicesOf(args["choices"]) });
       return {
         team,
         steps: plan.steps.map((s) => ({ id: s.id, action: s.product, addedBecauseNeeded: s.added, inputs: s.inputs })),
-        toChoose: plan.problems.map((p) => ({ code: p.code, step: p.step, input: p.input, message: p.message, options: p.options.map((o) => o.label ?? "") })),
+        toChoose: plan.problems.map((p) => ({
+          code: p.code,
+          step: p.step,
+          input: p.input,
+          message: p.message,
+          options: p.options.map(({ label, ...choice }) => ({ label: label ?? "", choice })),
+        })),
         suggested: plan.suggestions,
       };
     },
@@ -233,20 +299,42 @@ const TOOLS: Tool[] = [
     spec: {
       name: "propose_cart",
       description:
-        "Put actions in a cart for the person: they open it, make its choices, fill in its values and place the order themselves. Nothing is ordered by this. Use plan_order first, and say what they'll need to choose and fill in.",
+        "Put actions in a cart for the person: they open it, check it, make any choices left, fill in any values left and place the order themselves. Nothing is ordered by this. Use plan_order first. Pass the choices the person made (plan_order's options, as given) and the values they told you (by step id, then input); never invent a value they didn't give. Then say what's still theirs to choose and fill in.",
       parameters: {
         type: "object",
         required: ["actions"],
-        properties: { team: { type: "string" }, actions: { type: "array", items: { type: "string" } } },
+        properties: {
+          team: { type: "string" },
+          actions: { type: "array", items: { type: "string" } },
+          choices: { type: "array", items: CHOICE },
+          values: {
+            type: "object",
+            description: 'What the person said to fill in, by plan_order\'s step id, then input: {"ticket-2": {"title": "Printer jam"}}.',
+            additionalProperties: { type: "object", additionalProperties: { type: ["string", "number", "boolean"] } },
+          },
+        },
       },
     },
     async run(state, args) {
       const team = teamFor(state, args["team"]);
       const actions = Array.isArray(args["actions"]) ? args["actions"].map((a) => text(a, 253)).filter(Boolean).slice(0, 20) : [];
-      // Checked as the order builder checks it: shared with them, for their team.
-      await previewOrder(state.caller, { team, actions, choices: [] });
-      state.cart = { team, actions };
-      return { proposed: { team, actions }, note: "The person sees an Open in cart button; they place the order." };
+      // Checked as the order builder checks it: shared with them, for their
+      // team; a choice kept only where it's one the plan offered.
+      const asked = choicesOf(args["choices"]);
+      const plan = await previewOrder(state.caller, { team, actions, choices: asked });
+      const offered = await previewOrder(state.caller, { team, actions, choices: [] });
+      const same = (a: OrderChoice, b: OrderChoice) =>
+        a.step === b.step && a.input === b.input && (a.resourceId ?? "") === (b.resourceId ?? "") && (a.addNew ?? false) === (b.addNew ?? false) && (a.fromStep ?? "") === (b.fromStep ?? "") && (a.fromOutput ?? "") === (b.fromOutput ?? "");
+      const choices = asked.filter((c) => [...offered.problems, ...plan.problems].some((p) => p.options.some((o) => same(o, c))));
+      const unset = new Map(plan.steps.map((s) => [s.id, new Set(Object.entries(s.inputs).filter(([, i]) => i.kind === "unset").map(([name]) => name))]));
+      const values = valuesOf(args["values"], unset);
+      state.cart = { team, actions, choices, values };
+      return {
+        proposed: state.cart,
+        ...(choices.length < asked.length ? { ignoredChoices: asked.length - choices.length, why: "Not among plan_order's options." } : {}),
+        stillToChoose: plan.problems.filter((p) => !choices.some((c) => c.step === p.step && c.input === p.input)).map((p) => ({ step: p.step, input: p.input })),
+        note: "The person sees an Open in cart button with these filled in; they check it and place the order.",
+      };
     },
   },
 ];

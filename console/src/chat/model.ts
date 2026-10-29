@@ -210,6 +210,19 @@ export class OpenAICompatible implements ChatModel {
 }
 
 /**
+ * A quick call's thinking and length, for a one-word reply. Most Claude
+ * models turn thinking off with `disabled`; Sonnet 5.5 refuses that and
+ * takes `between_tools`; Opus 5.5 and Fable (and Mythos) always think, so
+ * they think least (low effort) with room for it before the word. By the
+ * model's name, which on Bedrock carries an `anthropic.` prefix.
+ */
+export function quickCall(model: string): Pick<Anthropic.MessageCreateParamsNonStreaming, "max_tokens" | "thinking" | "output_config"> {
+  if (/claude-sonnet-5-5/.test(model)) return { max_tokens: 64, thinking: { type: "between_tools" } };
+  if (/claude-(opus-5-5|fable-|mythos-)/.test(model)) return { max_tokens: 2048, output_config: { effort: "low" } };
+  return { max_tokens: 64, thinking: { type: "disabled" } };
+}
+
+/**
  * Claude, through Anthropic's Messages API. The system prompt goes in
  * `system`; each assistant turn of the loop goes back as Claude wrote it
  * (raw, thinking blocks included, as the API requires within a turn); tool
@@ -279,8 +292,7 @@ export class AnthropicMessages implements ChatModel {
       response = await this.client.messages.create(
         {
           model: this.options.model,
-          max_tokens: options.quick ? 64 : this.options.maxTokens,
-          ...(options.quick ? { thinking: { type: "disabled" as const } } : {}),
+          ...(options.quick ? quickCall(this.options.model) : { max_tokens: this.options.maxTokens }),
           ...(system ? { system } : {}),
           messages: converted,
           ...(tools.length > 0
