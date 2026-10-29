@@ -21,6 +21,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/cluster"
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/gcp"
+	"github.com/rburns629/vertra/cli/internal/plan"
 	"github.com/rburns629/vertra/cli/internal/run"
 )
 
@@ -299,15 +300,32 @@ func IdleMinutes(c *config.Config) int {
 	return max(1, int(d.Minutes()))
 }
 
+// gibibytes is a volume size such as "10Gi" in GiB; 0 for another unit.
+func gibibytes(size string) float64 {
+	var n float64
+	if _, err := fmt.Sscanf(size, "%gGi", &n); err != nil {
+		return 0
+	}
+	return n
+}
+
+// KeepsVolume says the database volume stays at its current size (volume,
+// "" when there's none yet) rather than the size's: when it's larger (a
+// volume can't shrink), and on kind (whose volumes can't grow).
+func KeepsVolume(c *config.Config, volume string) bool {
+	return volume != "" && (c.Target == "kind" || gibibytes(volume) > plan.Floors[c.Size].VolumeGiB)
+}
+
 // KernelValues are the values vertra generates for the kernel chart.
-// volume, when set, is the database volume's current size: kept, since a
-// volume can't shrink and kind's can't grow.
+// volume, when set, is the database volume's current size: kept when it's
+// larger than the size's (a volume can't shrink), and on kind (whose
+// volumes can't grow); otherwise the size's grows it.
 func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map[string]any {
 	postgres := map[string]any{
 		// One Postgres for both databases, each with its own role.
 		"consoleDatabase": map[string]any{"enabled": true},
 	}
-	if volume != "" {
+	if KeepsVolume(c, volume) {
 		postgres["persistence"] = map[string]any{"size": volume}
 	}
 	scaleDown := map[string]any{"enabled": c.ScaleDown.Enabled}

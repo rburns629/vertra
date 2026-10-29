@@ -160,6 +160,18 @@ writes are bound by the laptop's disk flushes and shared CPU, and pgbench's
 end (`burst`, the `scaled` settings, one copy of each) was unchanged at 3.15
 steps/s, correct: Kubernetes, not Postgres, still sets steps a second.
 
+On EKS (standard mode, c6a.large nodes, gp3, us-east-2, 2026-10-29), the
+same run, writes then reads, transactions a second:
+
+| | 8 clients, writes | 64 clients, writes | 8 clients, reads | 64 clients, reads |
+| --- | ---: | ---: | ---: | ---: |
+| `minimal` | 1,534, 5.2 ms | 1,710, 37 ms | 10,936 | 5,381 |
+| `resilient` | 1,530, 5.2 ms | 1,803, 35 ms | 11,416 | 12,201 |
+
+Writes are gp3's: each commit waits for the volume, whatever the size.
+Reads under load double at `resilient` (its CPU and memory): `minimal`'s
+quarter vCPU, on a node it shares, is what 64 clients at once run out of.
+
 ## Next (TODO.md)
 
 Whether to read a

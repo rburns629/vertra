@@ -36,15 +36,15 @@ var Floors = map[string]Floor{
 	"minimal": {CPU: "0.55 vCPU", Memory: "1.75 GiB", Copies: "one copy of everything", Volume: "10Gi",
 		Steps:    "up to 10 at once (5 per team), 0.25 vCPU and 512 MiB each unless a product says",
 		CPUCores: [2]float64{0.55, 0.55}, MemGiB: [2]float64{1.75, 1.75}, StepCPU: 0.25, StepMemGiB: 0.5, StepCap: 10, Spot: true, VolumeGiB: 10},
-	"resilient": {CPU: "0.75 vCPU", Memory: "2.5 GiB", Copies: "two copies of the console and API", Volume: "50Gi",
+	"resilient": {CPU: "1 vCPU", Memory: "3 GiB", Copies: "two copies of the console and API", Volume: "50Gi",
 		Steps:    "up to 50 at once (20 per team), 0.5 vCPU and 1 GiB each unless a product says",
-		CPUCores: [2]float64{0.75, 0.75}, MemGiB: [2]float64{2.5, 2.5}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 50, Spot: true, VolumeGiB: 50},
-	"scaled": {CPU: "1.05 vCPU", Memory: "3.75 GiB", Copies: "three copies of the console and API, two schedulers", Volume: "100Gi",
+		CPUCores: [2]float64{1, 1}, MemGiB: [2]float64{3, 3}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 50, Spot: true, VolumeGiB: 50},
+	"scaled": {CPU: "1.8 vCPU", Memory: "5.25 GiB", Copies: "three copies of the console and API, two schedulers", Volume: "100Gi",
 		Steps:    "up to 200 at once (50 per team), 0.5 vCPU and 1 GiB each unless a product says",
-		CPUCores: [2]float64{1.05, 1.05}, MemGiB: [2]float64{3.75, 3.75}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 200, Spot: false, VolumeGiB: 100},
-	"auto": {CPU: "0.55–0.95 vCPU", Memory: "1.75–3.25 GiB", Copies: "one to three copies of the console and API, on load", Volume: "50Gi",
+		CPUCores: [2]float64{1.8, 1.8}, MemGiB: [2]float64{5.25, 5.25}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 200, Spot: false, VolumeGiB: 100},
+	"auto": {CPU: "0.8–1.2 vCPU", Memory: "2.25–3.75 GiB", Copies: "one to three copies of the console and API, on load", Volume: "50Gi",
 		Steps:    "up to 50 at once (20 per team), 0.5 vCPU and 1 GiB each unless a product says",
-		CPUCores: [2]float64{0.55, 0.95}, MemGiB: [2]float64{1.75, 3.25}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 50, Spot: true, VolumeGiB: 50},
+		CPUCores: [2]float64{0.8, 1.2}, MemGiB: [2]float64{2.25, 3.75}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 50, Spot: true, VolumeGiB: 50},
 }
 
 // Line is one labelled line of the screen.

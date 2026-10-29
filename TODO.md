@@ -17,7 +17,13 @@ design.
   every node it adds is where the platform's volumes are; steps keep both.
   An install made before keeps its two-zone group (`ignore_changes`: new
   subnets would replace the group, and its volumes may be in the zone
-  dropped). Validated, not yet seen on a cluster.
+  dropped). Seen on standard-mode EKS (2026-10-29): minimal to resilient,
+  Postgres restarting with more memory and two copies of the rest, two
+  nodes added, both in Postgres's zone, done in 3m10s unattended. Found
+  doing it: a cloud install's database volume never grew with its size
+  (kept at its current size, as kind's must be); it grows now (10 to 50
+  GiB, online), and the size table (approval screen, cost) has Postgres's
+  new requests.
 
 - [x] **A managed database on gcp: Cloud SQL (2026-10-29)**:
   `database.type: managed` (`vertra init --database managed`, asked on gcp),

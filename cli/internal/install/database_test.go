@@ -77,3 +77,22 @@ func TestDatabaseSetupRunsAsTheAdministratorAndOpensEachDatabaseToItsService(t *
 		}
 	}
 }
+
+// The database volume grows with the size on a cloud, never shrinks, and
+// stays as it is on kind (whose volumes can't grow).
+func TestTheDatabaseVolumeGrowsWithTheSize(t *testing.T) {
+	persistence := func(target, size, volume string) any {
+		c := kindConfig()
+		c.Target, c.Size = target, size
+		return KernelValues(c, Images{}, volume, nil)["postgres"].(map[string]any)["persistence"]
+	}
+	if got := persistence("aws", "resilient", "10Gi"); got != nil {
+		t.Errorf("10Gi to resilient on aws: %v, want the size's 50Gi", got)
+	}
+	if got := fmt.Sprint(persistence("aws", "resilient", "200Gi")); got != "map[size:200Gi]" {
+		t.Errorf("a larger volume is kept: %s", got)
+	}
+	if got := fmt.Sprint(persistence("kind", "resilient", "10Gi")); got != "map[size:10Gi]" {
+		t.Errorf("kind's can't grow: %s", got)
+	}
+}

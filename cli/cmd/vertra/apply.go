@@ -319,8 +319,10 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		admin = c.Admin.Email + " (set up at the first install)"
 	}
 	volume := floor.Volume
-	if now.volume != "" {
+	if install.KeepsVolume(c, now.volume) {
 		volume = now.volume
+	} else if now.volume != "" && now.volume != floor.Volume {
+		volume = fmt.Sprintf("%s (grown from %s)", floor.Volume, now.volume)
 	}
 	taskImages := "from " + c.TaskImages.Registry
 	database := fmt.Sprintf("in-cluster Postgres (both databases on one instance), %s volume; no backups yet", volume)
@@ -457,8 +459,12 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		p.Settings = append(p.Settings, plan.Line{Label: "Public", Text: fmt.Sprintf("https://%s through Ingress class %s; certificate from %s", c.Console.Hostname, c.Console.IngressClass, cert)})
 	}
 
-	if now.volume != "" && now.volume != floor.Volume {
-		p.Notes = append(p.Notes, fmt.Sprintf("The database volume stays at %s (the %s size's is %s): volumes can't shrink, and growing one is up to its storage class.", now.volume, c.Size, floor.Volume))
+	if install.KeepsVolume(c, now.volume) && now.volume != floor.Volume {
+		why := "volumes can't shrink"
+		if c.Target == "kind" {
+			why = "kind's volumes can't grow"
+		}
+		p.Notes = append(p.Notes, fmt.Sprintf("The database volume stays at %s (the %s size's is %s): %s.", now.volume, c.Size, floor.Volume, why))
 	}
 	if now.asleep {
 		p.Notes = append(p.Notes, "It's asleep: applying wakes it.")
