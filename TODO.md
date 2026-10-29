@@ -7,14 +7,17 @@ design.
 
 ## Installing and operating
 
-- [ ] **An upgrade of a minimal standard-mode EKS install can stall**
+- [x] **An upgrade of a minimal standard-mode EKS install can stall**
   (found 2026-10-29): rolling kernel-api and the scheduler runs old and new
   copies at once, the one platform node in Postgres's zone runs out of
   memory, and the autoscaler's extra node may come up in the other zone,
   where Postgres's EBS volume can't follow. Helm times out; scaling
-  kernel-api and the scheduler to 0 until Postgres is up recovers it. Make
-  the platform node group zone-aware (one per zone, or the volume's zone
-  only), or the kernel's Deployments Recreate at `minimal`.
+  kernel-api and the scheduler to 0 until Postgres is up recovers it. Fixed
+  2026-10-29: standard mode's platform group is in one zone (the first), so
+  every node it adds is where the platform's volumes are; steps keep both.
+  An install made before keeps its two-zone group (`ignore_changes`: new
+  subnets would replace the group, and its volumes may be in the zone
+  dropped). Validated, not yet seen on a cluster.
 
 - [ ] **Observe: security checks, logs and metrics for everyone**
   (mocked up 2026-10-21, boards 17–19). One console section with tabs:
@@ -1165,7 +1168,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `host.docker.internal:1234` from kind). Then the same tools as an MCP
   server at `/mcp` for engineers' own agents (bots, then people through
   OAuth 2.1). Groundwork for Vertex AI, Bedrock, Azure AI Foundry. Builds
-  on decision 25's cart.
+  on decision 25's cart. The MCP server waits (decided 2026-10-29) until the
+  platform is solid and a team asks for it: its tools proven first in the
+  Ask panel with a capable model, and the cart seen end to end on a cluster.
 - [ ] **The cart (decision 25, proposed 2026-10-27)**, what the agent and
   people order with, in this order:
   1. The catalog carries its wiring types (done 2026-10-27): each team's

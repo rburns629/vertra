@@ -267,7 +267,7 @@ nodes follow the Pods, and with scale-down.
 | | auto | standard |
 | --- | --- | --- |
 | gcp | GKE Autopilot: billed per Pod request | GKE Standard: a `platform` pool (min 1) and a `steps` pool (min 0, or the headroom; Spot) with the cluster autoscaler |
-| aws | EKS Auto Mode (Karpenter): billed per node; empty nodes removed | EKS with managed node groups (`platform` min 1; `steps` min 0, Spot) and the Cluster Autoscaler |
+| aws | EKS Auto Mode (Karpenter): billed per node; empty nodes removed | EKS with managed node groups (`platform` min 1, in one zone, its volumes'; `steps` min 0, Spot) and the Cluster Autoscaler |
 | azure | AKS Automatic: billed per node; node autoprovisioning | AKS with a system pool (min 1, required) and a `steps` user pool (min 0, Spot) |
 
 ## The cloud side: OpenTofu modules

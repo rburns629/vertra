@@ -183,12 +183,18 @@ resource "aws_eks_cluster" "this" {
 
 # --- standard mode: node groups, add-ons, the Cluster Autoscaler's identity --
 
+# In one zone: Postgres's EBS volume (and every other platform volume) lives
+# in the zone its Pod first ran in and can't leave it, and the Cluster
+# Autoscaler can't choose which zone a two-zone group's next node comes up
+# in. With both zones, an upgrade that needed a second node could get it in
+# the other zone, leaving Postgres Pending and Helm timing out. Steps keep
+# both zones (no volumes; more places for Spot).
 resource "aws_eks_node_group" "platform" {
   count           = local.standard ? 1 : 0
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "platform"
   node_role_arn   = aws_iam_role.nodes.arn
-  subnet_ids      = aws_subnet.public[*].id
+  subnet_ids      = [aws_subnet.public[0].id]
   instance_types  = [local.groups.platform]
   capacity_type   = "ON_DEMAND"
   disk_size       = 20
@@ -197,9 +203,11 @@ resource "aws_eks_node_group" "platform" {
     desired_size = 1
     max_size     = local.groups.platform_max
   }
-  # The Cluster Autoscaler moves desired_size.
+  # The Cluster Autoscaler moves desired_size. An install made with the
+  # group in both zones keeps it: changing a group's subnets replaces it,
+  # and its volumes may be in the zone this one drops.
   lifecycle {
-    ignore_changes = [scaling_config[0].desired_size]
+    ignore_changes = [scaling_config[0].desired_size, subnet_ids]
   }
   depends_on = [aws_iam_role_policy_attachment.nodes, aws_eks_addon.cni]
 }
