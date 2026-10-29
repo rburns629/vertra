@@ -104,6 +104,43 @@ console keeps logs longer, and searchable (with logs on).`,
   vertra logs dev migrate --since 24h
   vertra logs dev --execution 3f2c9a7e-0b1d-4a51-9c6e-2d8f4b7a1e05`,
 	},
+	"vertra backup": {
+		long: `Backs up both databases now, the kernel's and the console's, as one pair
+with one timestamp:
+  - With backups on (gcp, aws), it runs the backup Job now and waits: the
+    dumps go to the bucket, as the daily ones do.
+  - With --to a folder, it dumps them into that folder instead, from any
+    install's in-cluster Postgres, kind included. They hold everything in
+    the console: keep them safe.
+  - With a managed database, it takes an on-demand backup with your own
+    sign-in: a Cloud SQL backup, or an RDS snapshot.
+Before an upgrade is a good time.`,
+		example: `  vertra backup dev
+  vertra backup dev --to ~/vertra-dumps`,
+	},
+	"vertra backups": {
+		long: `Lists the backups: the pairs in the bucket (each the kernel's and the
+console's database, by its time), or a managed database's, as its cloud
+lists them.`,
+		example: `  vertra backups dev`,
+	},
+	"vertra restore": {
+		long: `Replaces both databases of the in-cluster Postgres with a backup: one from
+the bucket, by its time (vertra backups lists them), or from a folder of
+dumps (--from, its newest unless a time is given). Everything since the
+backup is lost, so it asks first, and dumps the databases as they are into
+~/.vertra/backups/<env>/before-restore.
+
+It stops what writes to the databases (and the sleeper), restores both,
+then starts them again at the copies they had. If it fails partway they
+stay stopped, and running it again finishes. When the backup's schema is
+older than the one it replaced, it says to run vertra apply, which
+migrates it forward.
+
+A managed database is restored by its cloud; it says how.`,
+		example: `  vertra restore dev 2026-10-29T03-00-00Z
+  vertra restore dev --from ~/vertra-dumps`,
+	},
 	"vertra console": {
 		long: `Port-forwards the console to http://localhost:18080 (or --port) until
 Ctrl-C: for a console that isn't public, or to reach one directly.`,

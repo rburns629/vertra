@@ -22,8 +22,10 @@ spec:
       labels:
         {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: postgres
-      {{- if .Values.tls.enabled }}
       annotations:
+        # kubectl logs and exec (and vertra's) reach this one, not the init container.
+        kubectl.kubernetes.io/default-container: postgres
+        {{- if .Values.tls.enabled }}
         # A rotated certificate (tls.yaml) or a changed pg_hba restarts it.
         checksum/tls: {{ (lookup "v1" "Secret" .Release.Namespace (printf "%s-tls" (include "execution-kernel.fullname" .))).data | toJson | sha256sum }}
         checksum/hba: {{ include "execution-kernel.pgHba" . | sha256sum }}

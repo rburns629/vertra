@@ -641,9 +641,9 @@ databases:
 - The console doesn't check its schema. Older console code against a newer
   schema isn't tested; don't rely on it.
 
-So take a backup before an upgrade, by running the backup CronJob by hand
-(and the console's, `console-execution-console-pg-backup`, when it has its
-own Postgres):
+So take a backup before an upgrade: `vertra backup <env>`, or by running
+the backup CronJob by hand (and the console's,
+`console-execution-console-pg-backup`, when it has its own Postgres):
 `kubectl -n vertra-system create job --from=cronjob/kernel-execution-kernel-pg-backup pre-upgrade`.
 To go back: install the previous release's charts, then restore that backup
 ([Restoring](#backups)).
@@ -856,8 +856,22 @@ lifecycle rule on the bucket. For `pvc`, create the claim yourself
 (`backup.pvc.claimName`): most storage classes bind a volume only once a Pod
 uses it, which would hang `helm upgrade --wait`.
 
-**Restoring** (proven on kind, replacing both live databases on a shared
-instance; with two instances, restore each on its own):
+**With `vertra`:** `vertra backup <env>` runs the backup Job now and waits
+(or, with `--to <folder>`, dumps both databases to this machine, from any
+install's in-cluster Postgres, kind included); `vertra backups <env>` lists
+the bucket's; `vertra restore <env> <time>` (or `--from <folder>`) does
+everything below: it checks both dumps in the Postgres Pod before stopping
+anything, dumps the databases as they are to `~/.vertra/backups/<env>/` first,
+stops the writers and the sleeper, restores, grants, and starts them again
+at their copies (proven on kind, 2026-10-29, a failed restore resumed
+included). A restore that fails partway leaves the writers stopped; running
+it again finishes. If the backup's schema is older than the one it replaced,
+`vertra apply` migrates it forward. With a managed database, `vertra backup`
+takes the cloud's on-demand backup and `vertra backups` lists them;
+restoring one is the cloud's (`vertra restore` says how).
+
+**Restoring by hand** (proven on kind, replacing both live databases on a
+shared instance; with two instances, restore each on its own):
 
 ```
 # 1. Download a matching pair (gcloud storage cp, aws s3 cp, az storage blob download).
@@ -877,6 +891,8 @@ pg_restore --exit-on-error --no-owner --role=console -d execution_console /tmp/c
 psql -c 'REVOKE CONNECT ON DATABASE execution_kernel FROM PUBLIC' \
      -c 'REVOKE CONNECT ON DATABASE execution_console FROM PUBLIC' \
      -c 'GRANT CONNECT ON DATABASE execution_console TO console'
+# With the API gateway on, its role reads the console's database too:
+psql -c 'GRANT CONNECT ON DATABASE execution_console TO vertra_gateway'
 rm /tmp/*.pgdump
 # 5. Start everything again, each at the copies noted in step 2.
 kubectl -n $NS scale deployment kernel-execution-kernel-api --replicas=<as before>

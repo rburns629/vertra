@@ -153,9 +153,11 @@ design.
   (Cloud SQL, RDS) is proven (2026-10-29). Help (2026-10-29): every command
   has its own, with examples; `vertra help settings` and `vertra help
   sizes`; `vertra man` writes man pages, and each release attaches them. `vertra
-logs`; upgrade advice (newer releases, releases passed over, no
-downgrades) (2026-10-29). Still to do: measuring the sizes'
-  figures, which are first estimates (a billed run).
+  logs`; upgrade advice (newer releases, releases passed over, no
+  downgrades); `vertra backup`, `backups` and `restore` (2026-10-29,
+  proven on kind; the bucket and managed paths not yet on a cloud). Still
+  to do: measuring the sizes' figures, which are first estimates (a billed
+  run).
   Decided 2026-10-18:
   - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster
     mode when the CLI creates one: `auto` (GKE Autopilot, EKS Auto Mode, AKS

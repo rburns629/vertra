@@ -95,6 +95,8 @@ covers adding teams and products.
 | --- | --- |
 | `vertra status <env>` | what's installed, awake or asleep; a public console's address and certificate |
 | `vertra console <env>` | reach the console from your machine |
+| `vertra backup <env>` / `vertra backups <env>` | back up the databases now (`--to <folder>`: here); list the backups |
+| `vertra restore <env> <time>` | replace the databases with a backup (`--from <folder>`); asks first |
 | `vertra logs <env> [component] [-f]` | the platform's logs; `--execution <id>` for a run's steps |
 | `vertra sleep` / `vertra wake <env>` | scale to zero and back (data kept) |
 | `vertra config set -e <env> <key> <value>` | change a setting, then `vertra apply` |

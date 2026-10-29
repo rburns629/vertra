@@ -96,6 +96,34 @@ func (r *Runner) OutputInput(ctx context.Context, input string, name string, arg
 	return strings.TrimSpace(stdout.String()), nil
 }
 
+// ToWriter runs a command with its standard output written to w (a file:
+// a database dump, too big to hold). On failure the error carries its
+// standard error.
+func (r *Runner) ToWriter(ctx context.Context, w io.Writer, name string, args ...string) error {
+	cmd := r.command(ctx, name, args)
+	var stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = w, &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return fmt.Errorf("%s %s: %s", name, firstArg(args), msg)
+	}
+	return nil
+}
+
+// FromReader runs a command with in as its standard input (a file, too big
+// to hold) and its output shown.
+func (r *Runner) FromReader(ctx context.Context, in io.Reader, name string, args ...string) error {
+	cmd := r.command(ctx, name, args)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, r.Out, r.Err
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s %s: %w", name, firstArg(args), err)
+	}
+	return nil
+}
+
 // Output runs a command and returns its standard output, trimmed. On
 // failure the error carries the command's standard error.
 func (r *Runner) Output(ctx context.Context, name string, args ...string) (string, error) {
@@ -118,12 +146,30 @@ func (r *Runner) Succeeds(ctx context.Context, name string, args ...string) bool
 	return cmd.Run() == nil
 }
 
+// firstArg names a command for its errors: its first word that isn't a
+// flag or a flag's value (kubectl --context x --namespace y exec: exec).
 func firstArg(args []string) string {
-	if len(args) == 0 {
-		return ""
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "--" || a == "-":
+			return a
+		case strings.HasPrefix(a, "-"):
+			if !strings.Contains(a, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") && valued[a] {
+				i++ // its value
+			}
+		default:
+			return a
+		}
 	}
-	return args[0]
+	if len(args) > 0 {
+		return args[0]
+	}
+	return ""
 }
+
+// valued are the flags vertra puts before a command's word that take a
+// value.
+var valued = map[string]bool{"--context": true, "--namespace": true, "-n": true, "--kube-context": true, "--profile": true, "--region": true, "--project": true}
 
 // Together runs fs at once and waits for them all: independent lookups,
 // each a second or more against a cloud cluster, made side by side.
