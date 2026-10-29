@@ -527,8 +527,8 @@ Run, `googleIdToken`) and `samples/aws/apis/orders` (a Lambda function URL,
   writable), every capability dropped, and no Kubernetes token. Its final
   `USER` must be numeric (`USER 65532:65532`, as the templates have):
   Kubernetes can't tell that a name like `app` isn't root, so it refuses
-  to start the container, and the step waits out the ten minutes and fails
-  as `TASK_NOT_STARTED`.
+  to start the container, and the step fails as `IMAGE_USER_NOT_ALLOWED`.
+  `./vertra catalog check` refuses such a Dockerfile before that.
 
 ## Testing
 
@@ -542,12 +542,13 @@ schemas. A case's request.json may be just `{"inputs": {...}}`: the rest
 is filled in (`executionId: contract-test`, `taskId` the case's name,
 `attempt: 1`).
 
-The local run is `docker run`, not the cluster, so it doesn't check
-everything the platform does. On an install, a step also has a read-only
-root filesystem (only `/tmp` is writable), no capabilities, a numeric
-non-root `USER` required, a result.json held to 4 KB and read strictly
-(above), and no `/platform/tokens`. A product that passes here and fails
-there almost always trips one of those. A case that
+Each case runs hardened as a step does on an install: a read-only root
+filesystem (only `/tmp` is writable), no capabilities, no privilege
+escalation, and result.json held to 4 KB and read as strictly as the
+platform reads it (above); `./vertra catalog validate` refuses a
+Dockerfile whose final stage doesn't end with a numeric, non-root `USER`.
+What it can't give a case is `/platform/tokens`, or the cluster's network
+and quotas. A case that
 needs a secret puts a placeholder in `secrets/<name>/<key>` beside it (the
 case fails if the result contains it). Logic that calls a cloud API is tested
 in the image with the client mocked, as `actions/test_<action>.py`. Every

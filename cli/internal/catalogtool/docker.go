@@ -152,6 +152,42 @@ func baseProblems(path string) []string {
 	return problems
 }
 
+// userLine is a Dockerfile's USER instruction.
+var userLine = regexp.MustCompile(`(?i)^USER\s+(\S+)`)
+
+// numericUser is a non-root user (and group) by number: 65532, 65532:65532.
+var numericUser = regexp.MustCompile(`^[0-9]+(:[0-9]+)?$`)
+
+// userProblems: a step runs with runAsNonRoot, which Kubernetes can only
+// check against a number, so the final stage must end with a numeric,
+// non-root USER (the kubelet refuses to start a named user's or root's
+// container: IMAGE_USER_NOT_ALLOWED).
+func userProblems(path string) []string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	user, line := "", 0
+	for i, l := range strings.Split(string(data), "\n") {
+		l = strings.TrimSpace(l)
+		if fromLine.MatchString(l) {
+			user, line = "", 0
+		}
+		if m := userLine.FindStringSubmatch(l); m != nil {
+			user, line = m[1], i+1
+		}
+	}
+	switch {
+	case user == "":
+		return []string{"Dockerfile: the final stage sets no USER; end it with a numeric, non-root one, such as USER 65532:65532 (the platform runs steps as non-root and can only check a number)"}
+	case !numericUser.MatchString(user):
+		return []string{fmt.Sprintf("Dockerfile line %d: USER %s isn't numeric; the platform can only check a number is non-root (USER 65532:65532)", line, user)}
+	case strings.SplitN(user, ":", 2)[0] == "0":
+		return []string{fmt.Sprintf("Dockerfile line %d: USER %s is root; steps run as non-root", line, user)}
+	}
+	return nil
+}
+
 // Dockerfiles are every product's and starter's, and the samples' (never
 // published from there, but copied as starters).
 func (c *Catalog) Dockerfiles() []string {

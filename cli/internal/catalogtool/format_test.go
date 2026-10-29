@@ -167,7 +167,7 @@ func TestMigrate(t *testing.T) {
 		"teams/a/products/mine/product.yaml": "# Mine.\n" + v1Product,
 		"teams/a/dags/try.yaml":              "name: try\ntasks:\n  - {id: one, image: r/x:1, action: run, team: a}\n",
 		// The rest of a valid product, which migrate doesn't touch.
-		"teams/a/products/mine/Dockerfile":                      "FROM alpine:3@sha256:" + strings.Repeat("a", 64) + "\n",
+		"teams/a/products/mine/Dockerfile":                      "FROM alpine:3@sha256:" + strings.Repeat("a", 64) + "\nUSER 65532:65532\n",
 		"teams/a/products/mine/tests/run/says-hi/request.json":  `{"inputs": {"text": "hi"}}`,
 		"teams/a/products/mine/tests/run/says-hi/expected.json": `{"status": "succeeded"}`,
 	})
@@ -209,7 +209,7 @@ func TestMigrateFromBeforeTheRename(t *testing.T) {
 	old := strings.Replace(productFile("mine", "a", "[]"), "apiVersion: "+APIVersion, "apiVersion: "+FormerAPIVersion, 1)
 	c := catalogWith(t, map[string]string{
 		"teams/a/products/mine/product.yaml":                    "# Mine.\n" + old,
-		"teams/a/products/mine/Dockerfile":                      "FROM alpine:3@sha256:" + strings.Repeat("a", 64) + "\n",
+		"teams/a/products/mine/Dockerfile":                      "FROM alpine:3@sha256:" + strings.Repeat("a", 64) + "\nUSER 65532:65532\n",
 		"teams/a/products/mine/tests/run/says-hi/request.json":  `{"inputs": {"text": "hi"}}`,
 		"teams/a/products/mine/tests/run/says-hi/expected.json": `{"status": "succeeded"}`,
 		FormerSettingsFile:                                      "registry: registry.example/catalog\n",

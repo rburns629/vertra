@@ -64,7 +64,7 @@ func product(name, shareWith string) map[string]string {
 	dir := "teams/a/products/" + name + "/"
 	return map[string]string{
 		dir + "product.yaml":                    productFile(name, "a", shareWith),
-		dir + "Dockerfile":                      "FROM scratch\n",
+		dir + "Dockerfile":                      "FROM scratch\nUSER 65532:65532\n",
 		dir + "tests/run/says-hi/request.json":  `{"inputs": {"text": "hi"}}`,
 		dir + "tests/run/says-hi/expected.json": `{"status": "succeeded"}`,
 	}

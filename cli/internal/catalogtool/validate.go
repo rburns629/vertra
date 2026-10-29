@@ -372,6 +372,7 @@ func (c *Catalog) ValidateProduct(p *Product) bool {
 		problems = append(problems, "no Dockerfile")
 	} else {
 		problems = append(problems, baseProblems(dockerfile)...)
+		problems = append(problems, userProblems(dockerfile)...)
 	}
 	for _, problem := range problems {
 		c.errorAt(path, problem)

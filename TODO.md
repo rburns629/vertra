@@ -731,20 +731,21 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **Gaps the 2026-10-28 docs audit found** (documented in
   `docs/security-model.md`): console → kernel-api and every Postgres
   connection are plain inside the cluster, relying on NetworkPolicy; the
-  scheduler's ClusterRole may read every Pod's logs and delete any Job or
-  ConfigMap cluster-wide (the dispatch policy fences only CREATE); whether
-  an EKS step can reach the node role through IMDS isn't settled (the node
-  groups set no hop limit); the gateway holds the console's database
-  credentials and `JWT_SECRET`; Pod hardening is the scheduler's choice
-  (`taskPodHardening`), backed by Pod Security `restricted` only on
-  namespaces the console created; and a compromised console can loosen the
-  image, identity and scan policies (accepted: Kubernetes can't fence an
-  admission policy's own edits). Done 2026-10-28: sign-ins and password
-  changes audited (with the client's address), failed ones logged; the
-  sign-in limits counted in Postgres, shared by every console copy; signing
-  out ends the session (`revoked_sessions`, checked by the gateway too);
-  bot and automation tokens expire (90 days by default).
-
+  scheduler may read every Pod's logs cluster-wide; the gateway holds the
+  console's database credentials and `JWT_SECRET`; and a compromised
+  console can loosen the image, identity and scan policies (accepted:
+  Kubernetes can't fence an admission policy's own edits). The EKS
+  metadata block and NetworkPolicy enforcement are proven on kind only:
+  prove both on the next EKS install (a step's `curl 169.254.169.254`
+  refused; another team's Pod unreachable). Done 2026-10-28: sign-ins and
+  password changes audited (with the client's address), failed ones logged;
+  the sign-in limits counted in Postgres, shared by every console copy;
+  signing out ends the session (`revoked_sessions`, checked by the gateway
+  too); bot and automation tokens expire (90 days by default); the
+  scheduler's deletes fenced to its own Jobs and ConfigMaps in team
+  namespaces, and its Jobs required to be hardened (the dispatch policy);
+  EKS: the VPC CNI's NetworkPolicy enforcement turned on (it was off: no
+  policy held there) and `teamNamespaces.blockMetadata`.
 - [x] **TLS in front of the console** in the charts. Done 2026-10-22, proven
   on kind (`make kind-tls`): the Ingress takes a certificate from
   cert-manager (an issuer of yours, or Let's Encrypt through the chart's own
@@ -910,19 +911,6 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   frontend's `dagCheck.ts`.
 
 ## Products and catalog
-
-- [ ] **A product whose `USER` isn't numeric fails ten minutes later as
-  `TASK_NOT_STARTED`** ("the cluster had no room"), found by the
-  2026-10-28 docs audit: `runAsNonRoot` makes the kubelet refuse it
-  (CreateContainerConfigError), which the executor doesn't recognize. Fail
-  it at once with its own code, and have `vertra catalog check` refuse a
-  non-numeric final `USER`.
-- [ ] **`vertra catalog check` runs a case looser than the platform**:
-  plain `docker run --network none`, so no read-only root, capabilities
-  kept, no 4 KB limit, and result.json matched loosely rather than by the
-  kernel's strict parser. Run it with `--read-only --tmpfs /tmp
-  --cap-drop ALL`, the 4 KB limit and the same parse (documented in the
-  catalog guide's Testing meanwhile).
 
 - [ ] **API products and the gateway** (decision 20, `docs/assessment.md`;
   mocked up 2026-10-21 in the console mockups, boards 12–16). A team

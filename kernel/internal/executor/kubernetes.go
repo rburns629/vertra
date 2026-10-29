@@ -664,7 +664,9 @@ func truncate(s string, n int) string {
 // ImagePullFailure is the failure for a container stuck on its image, or
 // nil to keep waiting. A missing or malformed image can't recover, so it
 // fails at once and isn't retried; anything else (registry auth, network)
-// gets grace to clear up first.
+// gets grace to clear up first. So does an image whose user the kubelet
+// can't run under the step's runAsNonRoot (a USER that's a name, or root):
+// it never will, and waiting would only end, ten minutes later, as "no room".
 func ImagePullFailure(reason, message, image string, podAge, grace time.Duration) *domain.StructuredError {
 	short := truncate(message, kubeletMessageLimit)
 	pulling := reason == "ErrImagePull" || reason == "ImagePullBackOff"
@@ -673,6 +675,8 @@ func ImagePullFailure(reason, message, image string, podAge, grace time.Duration
 		return &domain.StructuredError{Code: "IMAGE_INVALID", Message: fmt.Sprintf("Image reference %q is invalid: %s", image, short)}
 	case reason == "ErrImageNeverPull" || (pulling && imageNotFound.MatchString(message)):
 		return &domain.StructuredError{Code: "IMAGE_NOT_FOUND", Message: fmt.Sprintf("Image %q no longer exists or was never published: %s", image, short)}
+	case reason == "CreateContainerConfigError" && strings.Contains(message, "runAsNonRoot"):
+		return &domain.StructuredError{Code: "IMAGE_USER_NOT_ALLOWED", Message: fmt.Sprintf("Image %q must run as a numeric, non-root user (a Dockerfile's last USER, such as USER 65532:65532), so the cluster can tell it isn't root: %s", image, short)}
 	case pulling && podAge > grace:
 		return &domain.StructuredError{Code: "IMAGE_PULL_FAILED", Message: fmt.Sprintf("Image %q couldn't be pulled for %ds: %s", image, int(podAge.Seconds()), short), Retryable: true}
 	}

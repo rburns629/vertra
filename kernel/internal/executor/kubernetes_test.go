@@ -580,6 +580,9 @@ func TestImagePullFailures(t *testing.T) {
 	check(t, "denied, in grace", classify("ErrImagePull", dockerHubDenied, 30*s), "")
 	check(t, "timeout, in grace", classify("ImagePullBackOff", "dial tcp: i/o timeout", 30*s), "")
 	check(t, "past grace", classify("ImagePullBackOff", dockerHubDenied, 121*s), "IMAGE_PULL_FAILED/retryable")
+	check(t, "a named user", classify("CreateContainerConfigError", "container has runAsNonRoot and image has non-numeric user (app), cannot verify user is non-root (pod: \"ek-x\", container: product)", 5*s), "IMAGE_USER_NOT_ALLOWED")
+	check(t, "root", classify("CreateContainerConfigError", "container has runAsNonRoot and image will run as root (pod: \"ek-x\", container: product)", 5*s), "IMAGE_USER_NOT_ALLOWED")
+	check(t, "a secret not there yet", classify("CreateContainerConfigError", "secret \"api-key\" not found", 5*s), "")
 	check(t, "creating", classify("ContainerCreating", "", 999*s), "")
 	check(t, "initializing", classify("PodInitializing", "", 999*s), "")
 }

@@ -63,8 +63,12 @@ func containsAll(actual, expected any) bool {
 // runContractCase runs one case the way the kernel runs a step:
 // request.json mounted at /platform/input, the action as the container's
 // argument, result.json read back from /platform/output, and the case's
-// secrets/<name>/<key> files, if any, at /platform/secrets. No network: a
-// test must not depend on (or change) anything outside the container.
+// secrets/<name>/<key> files, if any, at /platform/secrets. Hardened as a
+// step's Pod is (kernel/internal/executor/kubernetes.go): a read-only root
+// filesystem with a writable /tmp, no capabilities, no privilege
+// escalation; and result.json is held to the 4 KB and the strict reading
+// the kernel applies. No network: a test must not depend on (or change)
+// anything outside the container.
 func (c *Catalog) runContractCase(p *Product, tc contractCase, action map[string]any) []string {
 	read := func(name string) (any, error) {
 		data, err := os.ReadFile(filepath.Join(tc.dir, name))
@@ -122,7 +126,8 @@ func (c *Catalog) runContractCase(p *Product, tc contractCase, action map[string
 	if err != nil {
 		return []string{err.Error()}
 	}
-	args := append(append([]string{"run", "--rm", "--network", "none"}, mounts...), p.LocalImage(), tc.action())
+	hardened := []string{"--read-only", "--tmpfs", "/tmp", "--cap-drop", "ALL", "--security-opt", "no-new-privileges"}
+	args := append(append(append([]string{"run", "--rm", "--network", "none"}, hardened...), mounts...), p.LocalImage(), tc.action())
 	run, err := c.run(contractTestTimeout, true, binary, args...)
 	if err != nil {
 		return []string{err.Error()}
@@ -137,6 +142,9 @@ func (c *Catalog) runContractCase(p *Product, tc contractCase, action map[string
 	result, err := loadJSON(raw)
 	if err != nil {
 		return []string{fmt.Sprintf("result.json isn't valid JSON: %v", err)}
+	}
+	if problem := resultProblem(raw); problem != "" {
+		return []string{problem}
 	}
 
 	var problems []string

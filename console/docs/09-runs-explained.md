@@ -97,6 +97,7 @@ A failed step shows a code, a message, what the code means and what to do. When 
 | `EXECUTOR_START_FAILED` | The cluster couldn't start it, after several tries | Yes | Retry it; if it keeps happening, tell an admin |
 | `IMAGE_PULL_FAILED` | The cluster couldn't download its image for 2 minutes (registry sign-in, network) | Yes | Retry it; if it keeps happening, tell an admin |
 | `IMAGE_NOT_FOUND` | Its image isn't in the registry | No | Ask the product's team to publish it, or copy the exact image from the product's page |
+| `IMAGE_USER_NOT_ALLOWED` | Its image runs as a user the cluster can't confirm isn't root: a named `USER`, or root | No | Ask the product's team to end its Dockerfile with a numeric `USER`, such as `USER 65532:65532` |
 | `IMAGE_INVALID` | Its image name isn't a valid image reference | No | Fix the `image` in the DAG |
 | `PRODUCT_RESULT_MISSING` | It ended without writing its result | Yes | Ask the product's team; the message has the end of its logs |
 | `PRODUCT_RESULT_INVALID` | It wrote a result the platform couldn't read (not JSON, the wrong shape, or over 4 KB) | Yes | Ask the product's team |
