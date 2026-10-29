@@ -879,8 +879,8 @@ namespace the console doesn't manage needs the same policies from whoever
 made it. Outbound traffic isn't restricted, except, with
 `teamNamespaces.blockMetadata` (on EKS), a third policy,
 `vertra-no-metadata`, which lets a team's Pods out anywhere but the
-instance metadata server (`169.254.169.254`, `fd00:ec2::254`), so a step
-can't take its node's role. Never turn it on for GKE: Workload Identity is
+instance metadata server (`169.254.169.254`; IPv4 clusters, which are
+what `vertra` makes), so a step can't take its node's role. Never turn it on for GKE: Workload Identity is
 served at that address.
 
 ## The chat agent

@@ -626,7 +626,7 @@ teamNamespaces:
   defaultDenyIngress: true
   # -- With defaultDenyIngress, a third NetworkPolicy (vertra-no-metadata)
   # refusing connections from a team's Pods to the instance metadata server
-  # (169.254.169.254, fd00:ec2::254), so a step can't take its node's
+  # (169.254.169.254; IPv4 clusters only), so a step can't take its node's
   # cloud credentials; everything else outward stays open. For EKS (on in
   # helm/values/eks). Never on GKE: Workload Identity, steps' own cloud
   # identity, is served at that address. Turning it off later leaves the

@@ -116,7 +116,7 @@ spec:
           has(object.spec.egress) && object.spec.egress.all(rule,
             !has(rule.ports) && has(rule.to) && rule.to.all(peer,
               has(peer.ipBlock) && !has(peer.podSelector) && !has(peer.namespaceSelector) &&
-              peer.ipBlock.cidr in ["0.0.0.0/0", "::/0"]))
+              peer.ipBlock.cidr == "0.0.0.0/0"))
           ){{ end }}))
       message: >-
         The console's NetworkPolicies are a team namespace's vertra-default-deny, selecting every

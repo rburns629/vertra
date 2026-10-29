@@ -423,13 +423,8 @@ describe("the no-metadata network policy", () => {
     expect(policy.spec?.podSelector).toEqual({});
     expect(policy.spec?.policyTypes).toEqual(["Egress"]);
     expect(policy.spec?.ingress).toBeUndefined();
-    expect(policy.spec?.egress).toEqual([
-      {
-        to: [
-          { ipBlock: { cidr: "0.0.0.0/0", except: ["169.254.169.254/32"] } },
-          { ipBlock: { cidr: "::/0", except: ["fd00:ec2::254/128"] } },
-        ],
-      },
-    ]);
+    // IPv4 only: an IPv6 block made the AWS VPC CNI enforce none of the
+    // namespace's policies on an IPv4 cluster.
+    expect(policy.spec?.egress).toEqual([{ to: [{ ipBlock: { cidr: "0.0.0.0/0", except: ["169.254.169.254/32"] } }] }]);
   });
 });

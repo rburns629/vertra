@@ -727,15 +727,20 @@ Auto Mode), off by default there.
 - On EKS, the console writes `vertra-no-metadata` into every team
   namespace (the console chart's `teamNamespaces.blockMetadata`, on in the
   EKS values and in what `vertra` installs there): every Pod may connect
-  anywhere but `169.254.169.254` and `fd00:ec2::254`, so a step can't ask
-  for the node role's credentials. Steps that need AWS get their own role
+  anywhere but `169.254.169.254`, so a step can't ask for the node role's
+  credentials. IPv4 only: on an IPv4 cluster the VPC CNI's policy agent
+  can't hold an IPv6 block, and failing to, it enforced none of the
+  namespace's policies, the default deny included (found on standard-mode
+  EKS 2026-10-29, and fixed). Steps that need AWS get their own role
   through EKS Pod Identity (`169.254.170.23`, still open) or a web-identity
   token. The write fence accepts that policy only in a shape that lets out
   everything less what it excepts. Proven on EKS Auto Mode 2026-10-28: a
   Pod in a team namespace gets no connection to the metadata server, while
   the internet answers; there, Auto Mode's nodes already refuse Pods the
-  metadata server, so the policy is a second barrier. On standard-mode
-  node groups, where it's the one that holds, not yet proven.
+  metadata server, so the policy is a second barrier. Proven on
+  standard-mode EKS 2026-10-29 too: another team's Pod refused, the
+  metadata server refused, the internet open, and the policy agent
+  programming every rule without error.
 - On any other cluster, it's the cluster operator's to close.
 
 ## If a component is compromised
@@ -912,7 +917,6 @@ Vertra isn't production-ready yet.
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
 | The scheduler may read every Pod's logs, cluster-wide (reading isn't something an admission policy can check) | A stolen scheduler identity can read the platform's and kube-system's logs | Not decided: per-namespace Roles would need something to create RBAC in each team namespace, which the console deliberately can't |
 | Step Pod hardening is a chart setting: with `scheduler.taskPodHardening: false`, the dispatch policy no longer requires it, and only Pod Security, on namespaces the console created, holds a step to `restricted` | Steps run as root with an API token in an adopted namespace | Keep `taskPodHardening` on and let the console create team namespaces |
-| On standard-mode EKS, NetworkPolicy enforcement (the VPC CNI add-on's) and the metadata block aren't yet proven (Auto Mode's are, 2026-10-28) | Until then, a step there might reach another team's Pods or act as its node | Prove on the next standard-mode EKS install |
 | Every team named in a raw DAG sees all of its steps' outputs (a template run's providers see only their own steps in full; other teams see only a step's INFO log lines) | Cross-team visibility of outputs within a shared raw DAG | Decide: filter outputs by team, or require every team for reads |
 
 ## Out of scope

@@ -7,6 +7,15 @@ design.
 
 ## Installing and operating
 
+- [ ] **An upgrade of a minimal standard-mode EKS install can stall**
+  (found 2026-10-29): rolling kernel-api and the scheduler runs old and new
+  copies at once, the one platform node in Postgres's zone runs out of
+  memory, and the autoscaler's extra node may come up in the other zone,
+  where Postgres's EBS volume can't follow. Helm times out; scaling
+  kernel-api and the scheduler to 0 until Postgres is up recovers it. Make
+  the platform node group zone-aware (one per zone, or the volume's zone
+  only), or the kernel's Deployments Recreate at `minimal`.
+
 - [ ] **Observe: security checks, logs and metrics for everyone**
   (mocked up 2026-10-21, boards 17–19). One console section with tabs:
   - Security checks (done 2026-10-22: `ObserveService.GetSecurity`, the
@@ -735,8 +744,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Kubernetes can't fence an admission policy's own edits). Proven on EKS
   Auto Mode 2026-10-28 (NetworkPolicy enforced: another team's Pod
   unreachable, the metadata server refused, TLS everywhere, kernel-api
-  HTTPS only); still to prove on a standard-mode EKS install, where the
-  VPC CNI add-on's setting and the metadata block are what hold. Done 2026-10-28: sign-ins and
+  HTTPS only), and on standard-mode EKS 2026-10-29, after a fix: the
+  no-metadata policy's IPv6 block made the VPC CNI's agent fail to program
+  any of a team's policies there (egress map: invalid argument). Done 2026-10-28: sign-ins and
   password changes audited (with the client's address), failed ones logged;
   the sign-in limits counted in Postgres, shared by every console copy;
   signing out ends the session (`revoked_sessions`, checked by the gateway

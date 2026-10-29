@@ -521,8 +521,11 @@ export const TEAM_GATEWAY_INGRESS = "vertra-gateway-ingress";
  * the node's credentials; everything else outward stays open. */
 export const TEAM_NO_METADATA = "vertra-no-metadata";
 
-/** The instance metadata server's addresses (EC2's, IPv4 and IPv6). */
-const METADATA_ADDRESSES = { v4: "169.254.169.254/32", v6: "fd00:ec2::254/128" };
+/** The instance metadata server's address (EC2's). IPv4 only: the AWS VPC
+ * CNI's policy agent on an IPv4 cluster can't hold an IPv6 block, and on
+ * failing to it enforced none of the namespace's policies (proven on
+ * standard-mode EKS, 2026-10-29); vertra's clusters are IPv4. */
+const METADATA_ADDRESS = "169.254.169.254/32";
 
 export function noMetadataPolicy(namespace: string): k8s.V1NetworkPolicy {
   return {
@@ -530,14 +533,7 @@ export function noMetadataPolicy(namespace: string): k8s.V1NetworkPolicy {
     spec: {
       podSelector: {},
       policyTypes: ["Egress"],
-      egress: [
-        {
-          to: [
-            { ipBlock: { cidr: "0.0.0.0/0", except: [METADATA_ADDRESSES.v4] } },
-            { ipBlock: { cidr: "::/0", except: [METADATA_ADDRESSES.v6] } },
-          ],
-        },
-      ],
+      egress: [{ to: [{ ipBlock: { cidr: "0.0.0.0/0", except: [METADATA_ADDRESS] } }] }],
     },
   };
 }
