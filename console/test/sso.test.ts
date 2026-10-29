@@ -27,6 +27,10 @@ const prefix = `ssoa-${randomUUID().slice(0, 6)}`;
 const domain = `${prefix}.example.com`;
 const teamA = `${prefix}-a`;
 const teamB = `${prefix}-b`;
+// Whether a membership check asks about one of this file's people: a
+// resync reads every SSO account in the database, other test files' too,
+// which mustn't join these teams.
+const ours = (url: string) => decodeURIComponent(url).includes(`@${domain}'`);
 const teamC = `${prefix}-c`;
 let app: FastifyInstance;
 let provider: Awaited<ReturnType<typeof startProvider>>;
@@ -164,7 +168,7 @@ describe("signing in", () => {
       }
       if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups/ops1/memberships:checkTransitiveMembership")) {
         seen.push(new URL(url).searchParams.get("query") ?? "");
-        return Promise.resolve(Response.json({ hasMembership: true }));
+        return Promise.resolve(Response.json({ hasMembership: ours(url) }));
       }
       return real(input, init);
     });
@@ -210,7 +214,7 @@ describe("Google Workspace groups", () => {
         return Promise.resolve(group === `ops@${domain}` ? Response.json({ name: "groups/ops1" }) : new Response("{}", { status: 404 }));
       }
       if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups/ops1/memberships:checkTransitiveMembership")) {
-        return Promise.resolve(Response.json({ hasMembership: member }));
+        return Promise.resolve(Response.json({ hasMembership: member && ours(url) }));
       }
       return real(input, init);
     });
@@ -240,7 +244,7 @@ describe("Google Workspace groups", () => {
       if (url.startsWith("https://cloudidentity.googleapis.com/v1/groups/ops1/memberships:checkTransitiveMembership")) {
         // Their account goes while the pass reads their groups.
         if (decodeURIComponent(url).includes(`gone@${domain}`)) await db.delete(users).where(eq(users.id, gone.id));
-        return Response.json({ hasMembership: true });
+        return Response.json({ hasMembership: ours(url) });
       }
       return real(input, init);
     });
