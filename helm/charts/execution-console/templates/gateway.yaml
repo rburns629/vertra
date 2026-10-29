@@ -170,6 +170,12 @@ spec:
             - name: PUBLIC_LISTEN
               value: ":8081"
             {{- end }}
+          # Up to ten minutes to start: on a fresh install it waits for the
+          # console's migration to make its database role.
+          startupProbe:
+            httpGet: {path: /.vertra/health, port: http}
+            periodSeconds: 5
+            failureThreshold: 120
           readinessProbe:
             httpGet: {path: /.vertra/health, port: http}
             periodSeconds: 5

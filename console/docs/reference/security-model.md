@@ -873,8 +873,9 @@ Postgres: every connection there is TLS, a plain one is refused by
 `pg_hba`, kernel-api refuses a client that doesn't trust its CA, and a run
 goes through end to end. That's the layout of every install `vertra`
 makes (EKS and GKE too): one Postgres, in a Pod, for both databases. The
-console's own Postgres, which only the hand-written GKE values use, is only
-rendered so far. To
+console's own Postgres, which the hand-written GKE values use, is proven
+too (2026-10-29, those charts' layout on a kind cluster of its own): every
+connection to it TLS, the gateway's as its own role, a plain one refused. To
 rotate, delete a chart's `-tls` and `-tls-ca` Secrets and upgrade
 ([operations](operations.md#rotating-secrets)).
 

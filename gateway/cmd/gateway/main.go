@@ -51,8 +51,23 @@ func run(log *slog.Logger) error {
 	}
 	defer pool.Close()
 	apis := &store.Store{DB: pool, Log: log}
-	if err := apis.Refresh(ctx); err != nil {
-		return err
+	// The database may not let it in yet: on a fresh install the console's
+	// migration makes its role (console/src/db/gatewayAccess.ts) after the
+	// gateway has started. It waits, rather than crash-looping meanwhile.
+	for wait := time.Now().Add(10 * time.Minute); ; {
+		err := apis.Refresh(ctx)
+		if err == nil {
+			break
+		}
+		if time.Now().After(wait) || ctx.Err() != nil {
+			return err
+		}
+		log.Warn("the console's database isn't ready for the gateway yet; trying again", "error", err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
 	}
 	go apis.Run(ctx, s.Refresh)
 	tokenRequest, err := credentials.InCluster()
