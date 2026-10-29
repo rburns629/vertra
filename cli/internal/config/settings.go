@@ -40,7 +40,7 @@ var Settings = []Setting{
 	{"scaleDown.schedule", "With scaleDown: also sleep at these times however recently used, a cron schedule (e.g. \"0 20 * * 1-5\", weekday evenings)."},
 	{"minReplicas", "Without scaleDown: always-on copies of the console and kernel-api."},
 	{"stepHeadroom", "Without scaleDown: steps that can start without waiting for a node (kept around the clock)."},
-	{"database.type", "in-cluster (Postgres in a Pod, backed up to a bucket) or managed (gcp: Cloud SQL; aws: Amazon RDS)."},
+	{"database.type", "in-cluster (Postgres in a Pod, backed up to a bucket) or managed (gcp: Cloud SQL; aws: Amazon RDS); changing it to managed moves the data at apply."},
 	{"database.highAvailability", "managed: a standby in a second zone, failed over to automatically."},
 	{"database.backups.enabled", "Daily backups: of the in-cluster Postgres to a bucket; a managed database's are the cloud's."},
 	{"database.backups.retentionDays", "How many days of backups are kept (at most 35 on RDS)."},

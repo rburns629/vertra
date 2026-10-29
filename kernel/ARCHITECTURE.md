@@ -35,7 +35,8 @@ was Python until 2026-10-20 (decision 17 in `docs/assessment.md`).
 ```
 cmd/kernel/        The binary: a subcommand per process (api, scheduler, migrate,
                    sleep, database-setup), plus wait-for-postgres and check-heartbeat
-                   for the chart.
+                   for the chart, and database-token (a managed database's sign-in,
+                   written to a file for pg_restore, when vertra moves data in).
 internal/          Its packages (one Go module: go.mod here).
 ├── domain/        States, retry backoff, the result.json contract, input references,
 │                  DAG validation, credential shapes. No I/O.

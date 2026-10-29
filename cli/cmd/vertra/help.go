@@ -65,6 +65,10 @@ cluster and installs or upgrades both charts. Run it again after any
 change: it makes the install match vertra.yaml, and does nothing more
 when it already does. The approved screen is saved as last-plan.txt.
 
+Changing database.type from in-cluster to managed moves the data: the
+screen says so, the platform stops while both databases are copied in the
+cluster, and starts on the managed server (vertra help settings).
+
 Upgrading is setting vertra to a newer release (vertra config set vertra
 0.6.0), then apply. Its screen names the releases an upgrade passes over
 (read their notes), and says when this vertra is older than the release

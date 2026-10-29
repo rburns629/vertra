@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rburns629/vertra/cli/internal/backup"
 	"github.com/rburns629/vertra/cli/internal/cluster"
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/gcp"
@@ -81,14 +82,13 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			func() { installed = install.Releases(ctx, a.runner, c) },
 			func() { now.volume = install.DatabaseVolume(ctx, a.runner, c) },
 			func() { deps, depsErr = platform.Deployments(ctx, a.runner, c) },
+			func() { now.move = c.Database.Type == "managed" && backup.NeedsMove(ctx, a.runner, c) },
 		)
-		if c.Database.Type == "managed" && now.volume != "" {
-			// The platform would start on an empty server, its data left in
-			// the in-cluster Postgres's volume.
-			return fmt.Errorf("this install's data is in its in-cluster Postgres: moving it to a managed database isn't done by vertra yet. Keep database.type in-cluster (`vertra config set -e %s database.type in-cluster`), or install anew with a managed one", envName(dir))
-		}
 		if depsErr == nil {
 			now.asleep = platform.Asleep(deps)
+		}
+		if now.move && now.asleep {
+			return fmt.Errorf("this install's data is in its in-cluster Postgres, to be moved into the managed database while it's awake: `vertra wake %s`, then apply", envName(dir))
 		}
 	}
 
@@ -201,6 +201,11 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 		if err := install.EnsureManagedDatabase(ctx, a.runner, c, made.Database, install.KernelImage(c, images)); err != nil {
 			return err
 		}
+		if now.move {
+			if err := backup.MoveToManaged(ctx, a.runner, c, out, made.Database, install.KernelImage(c, images), made.ConsoleServiceAccount); err != nil {
+				return fmt.Errorf("moving the data into the managed database: %w", err)
+			}
+		}
 	}
 	fmt.Fprintln(out, "Installing execution-kernel...")
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.KernelRelease, kernelChart, kernelValues); err != nil {
@@ -221,6 +226,14 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	fmt.Fprintln(out, "Installing execution-console...")
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.ConsoleRelease, consoleChart, consoleValues); err != nil {
 		return err
+	}
+	if now.move {
+		fmt.Fprintln(out, "Starting the platform on the managed database...")
+		if err := backup.FinishMove(ctx, a.runner, c); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Moved. The in-cluster Postgres's volume (%s) is kept, the way back: once you're sure, `kubectl --context %s -n %s delete pvc %s`.\n",
+			install.KernelRelease+"-execution-kernel-postgres", cluster.Context(c), c.Namespace, install.KernelRelease+"-execution-kernel-postgres")
 	}
 
 	if made != nil && made.Provider == "aws" && made.ConsoleHost != "" {
@@ -289,6 +302,9 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 type current struct {
 	volume string // the database volume's size, if it exists
 	asleep bool
+	// move: the data is in the in-cluster Postgres, and the database is
+	// now managed: apply copies it over.
+	move bool
 }
 
 // buildPlan assembles the approval screen.
@@ -446,6 +462,12 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 	}
 	if len(upgrades) > 0 {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will upgrade", Text: strings.Join(upgrades, "; ")})
+	}
+	if now.move {
+		server := map[string]string{"gcp": "Cloud SQL", "aws": "Amazon RDS"}[c.Target]
+		p.Changes = append(p.Changes, plan.Line{Label: "Will move", Text: fmt.Sprintf(
+			"both databases from the in-cluster Postgres into %s, copied in the cluster. The platform stops while they're copied (minutes for most installs) and starts on %s; if the copy fails, it starts again as it was", server, server)})
+		p.Notes = append(p.Notes, "The in-cluster Postgres's volume is kept after the move: the way back, until you delete it. `vertra backup --to <folder>` first keeps a copy here too.")
 	}
 
 	switch c.Target {

@@ -46,7 +46,7 @@ import (
 	"github.com/rburns629/vertra/kernel/internal/sleeper"
 )
 
-const usage = `usage: kernel api | scheduler | migrate | database-setup | sleep [--now] | wake | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`
+const usage = `usage: kernel api | scheduler | migrate | database-setup | database-token FILE | sleep [--now] | wake | wait-for-postgres HOST:PORT | check-heartbeat SECONDS`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -71,6 +71,8 @@ func main() {
 		"migrate":   {"kernel-migrate", "app.migrate"},
 		// A managed server's databases opened to their services (dbsetup).
 		"database-setup": {"kernel-database-setup", "app.database_setup"},
+		// Its sign-in for pg_dump and pg_restore (moving into a managed server).
+		"database-token": {"kernel-database-token", "app.database_token"},
 		"sleep":          {"kernel-sleeper", "app.sleeper"},
 		"wake":           {"kernel-sleeper", "app.sleeper"},
 	}[command]
@@ -92,6 +94,11 @@ func main() {
 			err = runMigrate(ctx, settings, log)
 		case "database-setup":
 			err = runDatabaseSetup(ctx, settings, log)
+		case "database-token":
+			if len(args) != 1 {
+				fail(usage)
+			}
+			err = runDatabaseToken(ctx, settings, args[0])
 		case "sleep":
 			err = runSleep(ctx, settings, len(args) == 1 && args[0] == "--now", log)
 		case "wake":
@@ -243,6 +250,30 @@ func runDatabaseSetup(ctx context.Context, s config.Settings, log *slog.Logger) 
 	}
 	log.Info("databases set up", "databases", len(setup.Grants))
 	return nil
+}
+
+// runDatabaseToken writes the password this workload signs in to
+// DATABASE_URL with now (its IAM token, or RDS's administrator password)
+// to path, readable only by it: for libpq's tools (pg_dump, pg_restore)
+// in the same Pod, which can't fetch one. Never to its output, which is
+// logged. A token lasts minutes: it's for connecting, not for keeping.
+func runDatabaseToken(ctx context.Context, s config.Settings, path string) error {
+	c, err := pgx.ParseConfig(s.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("DATABASE_URL: %w", err)
+	}
+	password, err := passwordFor(ctx, s)
+	if err != nil {
+		return err
+	}
+	if password == nil {
+		return fmt.Errorf("database-token: neither DATABASE_IAM_AUTH nor DATABASE_ADMIN_SECRET is set")
+	}
+	token, err := password(ctx, c)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(token), 0o600)
 }
 
 // kubeClient is in-cluster when running as a Pod, else the local kubeconfig,

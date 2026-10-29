@@ -75,7 +75,7 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `go.mod`, `go.sum` | The kernel's Go module (`github.com/rburns629/vertra/kernel`). |
 | `Dockerfile` | The image: a Go stage builds the binary; it runs on distroless (no shell) as a non-root user. |
 | `.dockerignore`, `.gcloudignore` | Keep test binaries and local files out of the image and the Cloud Build upload. |
-| `cmd/kernel/main.go` | The binary: `api`, `scheduler`, `migrate`, `sleep [--now]`, and for the chart `wait-for-postgres` (init containers) and `check-heartbeat` (the scheduler's liveness probe). |
+| `cmd/kernel/main.go` | The binary: `api`, `scheduler`, `migrate`, `database-setup`, `sleep [--now]`, `wake`; for the chart `wait-for-postgres` (init containers) and `check-heartbeat` (the scheduler's liveness probe); and `database-token FILE` (a managed database's sign-in for pg_restore, when vertra moves an install's data in). |
 | `internal/config/config.go` | Every setting, for every process, read from the environment (the chart's ConfigMap) and checked at startup. |
 | `internal/dbauth/` | Signing in to a managed database with the workload's own identity: on GKE, its Workload Identity token from the metadata server (Cloud SQL's IAM database authentication); on EKS, an RDS token its Pod Identity role signs (`rds.go`), and the RDS administrator's password from Secrets Manager, for database-setup. |
 | `internal/dbsetup/` | `kernel database-setup`: as a managed server's administrator, makes what the cloud didn't (on RDS, the databases and the services' `rds_iam` users), then opens each database to its own service alone (the console's with the grant option, for the gateway). |
@@ -527,7 +527,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
 | `internal/consoleapi/` | The console's API as vertra uses it, over the generated Connect clients: signing in as the admin, revoking the tokens catalogs once held, syncing the catalog, running a DAG and watching it finish. Tested against fake Connect handlers. |
 | `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
-| `internal/backup/` | The databases' backups: the backup Job run now, dumps to and from this machine, the bucket's pairs, the restore (writers stopped, both databases replaced, started again), and a managed database's on-demand backups. |
+| `internal/backup/` | The databases' backups: the backup Job run now, dumps to and from this machine, the bucket's pairs, the restore (writers stopped, both databases replaced, started again), a managed database's on-demand backups, and moving an install's data into a managed database (`move.go`). |
 | `internal/releases/` | Vertra's releases (GitHub's list, cached a day): the newest, what an upgrade passes over, and whether a version change can be applied. |
 | `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in; `gcp_account.go`: your billing account's prices, when you may read them) and AWS's Price List and Spot price history (with your AWS sign-in), fetched a few calls at a time and each cached a day, and their cost models; `testdata/` holds real price entries. |
 

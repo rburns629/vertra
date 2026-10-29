@@ -78,6 +78,10 @@ func (db *ManagedDatabase) url(user, database string, node bool) string {
 	return u.String()
 }
 
+// URL is a service's libpq URL for the managed server (no password: its
+// token is the password), for tools such as pg_restore.
+func (db *ManagedDatabase) URL(user, database string) string { return db.url(user, database, false) }
+
 // chartDatabase is the charts' database values.
 func (db *ManagedDatabase) chartDatabase() map[string]any {
 	v := map[string]any{"iamAuth": db.Provider, "caSecret": DatabaseCASecret}

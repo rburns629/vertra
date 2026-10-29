@@ -155,7 +155,9 @@ design.
   sizes`; `vertra man` writes man pages, and each release attaches them. `vertra
   logs`; upgrade advice (newer releases, releases passed over, no
   downgrades); `vertra backup`, `backups` and `restore` (2026-10-29,
-  proven on kind; the bucket and managed paths not yet on a cloud). Still
+  proven on kind; the bucket and managed paths not yet on a cloud); moving
+  an install's data into a managed database at apply (2026-10-29, not yet
+  proven on a cloud). Still
   to do: measuring the sizes' figures, which are first estimates (a billed
   run).
   Decided 2026-10-18:

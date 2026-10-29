@@ -735,9 +735,24 @@ Cloud SQL and RDS back it up daily, with point-in-time recovery, keeping
 `database.backups.retentionDays` backups (at most 35 on RDS); the
 backup Jobs and their bucket aren't made. It runs whether or not the
 platform sleeps, and the approval screen prices it. `vertra destroy`
-deletes it only when told to delete data. An install whose data is already
-in the in-cluster Postgres can't be switched by `vertra config set`: apply
-refuses, rather than starting the platform on an empty server. To restore:
+deletes it only when told to delete data.
+
+**Moving an install onto it.** For an install whose data is in the
+in-cluster Postgres, `vertra config set -e <env> database.type managed`,
+then `vertra apply`, moves it: once the server is made and opened to the
+services, the writers stop and a Job in the cluster per database pipes
+`pg_dump` from the in-cluster Postgres into `pg_restore` on the server,
+signed in as that database's own service (`kernel database-token` writes
+its token for `pg_restore`), so the service owns what's restored, in one
+transaction; then the charts start on the server. The data never leaves the
+cluster. A server database that already has tables is never copied over. If
+a copy fails, the platform starts again on the in-cluster Postgres and
+nothing has switched. The in-cluster Postgres's volume is kept as the way
+back, until you delete its claim. (`vertra backup --to <folder>` first keeps
+a copy on your machine too.)
+
+`vertra backup` takes an on-demand backup of the server, and `vertra
+backups` lists them. To restore:
 
 ```
 gcloud sql backups list --instance <instance> --project <project>
