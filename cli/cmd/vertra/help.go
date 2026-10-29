@@ -78,8 +78,9 @@ Amazon Bedrock whether the account may still use the chat's model.`,
 	"vertra status": {
 		long: `Says what's installed (each release and its version), each of the
 platform's Deployments and how many of its copies are ready, and whether
-it's asleep. On an existing cluster with a public console, it also checks
-the console's DNS record and certificate.`,
+it's asleep. With a public console: its address (on gcp, with its
+certificate's state); on an existing cluster, a check of its DNS record
+and certificate.`,
 		example: `  vertra status dev`,
 	},
 	"vertra console": {

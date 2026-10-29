@@ -93,14 +93,14 @@ covers adding teams and products.
 
 | Command | What it does |
 | --- | --- |
-| `vertra status <env>` | what's installed, awake or asleep; a public console's DNS and certificate |
+| `vertra status <env>` | what's installed, awake or asleep; a public console's address and certificate |
 | `vertra console <env>` | reach the console from your machine |
 | `vertra sleep` / `vertra wake <env>` | scale to zero and back (data kept) |
 | `vertra config set -e <env> <key> <value>` | change a setting, then `vertra apply` |
 | `vertra apply <env>` | upgrade, or make the install match the settings again |
 | `vertra destroy <env>` | remove it; asks about data |
 | `vertra help settings` / `vertra help sizes` | every setting, and what each size gets |
-| `vertra man ~/.local/share/man` | write the man pages (`man vertra`) |
+| `vertra man ~/.local/share/man` | write the man pages (`man vertra`); each release also attaches them, `vertra-man.tar.gz` |
 
 **What `destroy` keeps.** Unless you choose to delete data: the database's
 disk, the backups and logs buckets, and the task registry. The audit copy's

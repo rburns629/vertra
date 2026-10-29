@@ -16,7 +16,8 @@ name: release
 #           tag, pushes each binary to ghcr.io/<owner>/<repo>/cli as one
 #           blob (tag <version>-<os>-<arch>; its digest is the binary's
 #           SHA-256), signs each, and attaches the binaries and
-#           vertra-checksums.txt to the release. A catalog's ./vertra
+#           vertra-checksums.txt and the manual pages (vertra-man.tar.gz)
+#           to the release. A catalog's ./vertra
 #           downloads its platform's blob anonymously by that SHA-256:
 #           pin a release with .github/scripts/pin-vertra.sh <version>.
 #
@@ -149,6 +150,9 @@ jobs:
               -e GOOS="${platform%-*}" -e GOARCH="${platform#*-}" "$image" \
               go build -trimpath -ldflags "-s -w -X main.Version=$TAG" -o "/repo/dist/vertra-$platform" ./cmd/vertra
           done
+          # The manual pages, the same for every platform: man1/*.1.
+          dist/vertra-linux-amd64 man dist/man
+          tar -C dist/man -czf dist/vertra-man.tar.gz man1
           (cd dist && sha256sum vertra-* > vertra-checksums.txt && cat vertra-checksums.txt)
       - name: Sign in to GHCR
         env:

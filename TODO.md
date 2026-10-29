@@ -152,7 +152,7 @@ design.
   now. The AWS sample's SecretStore is proven (2026-10-27). A managed database
   (Cloud SQL, RDS) is proven (2026-10-29). Help (2026-10-29): every command
   has its own, with examples; `vertra help settings` and `vertra help
-  sizes`; `vertra man` writes man pages. Still to do: measuring the sizes'
+  sizes`; `vertra man` writes man pages, and each release attaches them. Still to do: measuring the sizes'
   figures, which are first estimates (a billed run).
   Decided 2026-10-18:
   - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster

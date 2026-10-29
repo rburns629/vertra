@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/rburns629/vertra/cli/internal/awscloud"
 	"github.com/rburns629/vertra/cli/internal/cluster"
+	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/gcp"
 	"github.com/rburns629/vertra/cli/internal/install"
 	"github.com/rburns629/vertra/cli/internal/platform"
@@ -134,9 +136,15 @@ func (a *app) statusCmd() *cobra.Command {
 			}
 			var installed map[string]string
 			var deps []platform.Deployment
+			var public string // a cloud install's public console
 			run.Together(
 				func() { installed = install.Releases(ctx, a.runner, c) },
 				func() { deps, err = platform.Deployments(ctx, a.runner, c) },
+				func() {
+					if c.Console.Public && (c.Target == "gcp" || c.Target == "aws") {
+						public = a.publicConsole(ctx, c)
+					}
+				},
 			)
 			if err != nil {
 				return err
@@ -154,6 +162,9 @@ func (a *app) statusCmd() *cobra.Command {
 				fmt.Fprintln(out, "Asleep: `vertra wake` brings it back.")
 			default:
 				fmt.Fprintln(out, "Awake. Console:", platform.ConsoleAccess(c, envName(dir)))
+			}
+			if public != "" {
+				fmt.Fprintln(out, "Public: ", public)
 			}
 			// An existing cluster's public console: its record and certificate.
 			if c.Target == "existing" && c.Console.Public {
@@ -415,4 +426,29 @@ func (a *app) consoleCmd() *cobra.Command {
 	}
 	cmd.Flags().IntVar(&port, "port", 18080, "the local port")
 	return cmd
+}
+
+// publicConsole is a cloud install's public console address, from its
+// Ingress, and on gcp its certificate's state (Google's, issued once the
+// name resolves).
+func (a *app) publicConsole(ctx context.Context, c *config.Config) string {
+	var host, cert string
+	run.Together(
+		func() {
+			host, _ = a.runner.Output(ctx, "kubectl", "--context", cluster.Context(c), "--namespace", c.Namespace,
+				"get", "ingress", install.ConsoleRelease+"-execution-console", "--ignore-not-found", "-o", "jsonpath={.spec.rules[0].host}")
+		},
+		func() {
+			if c.Target == "gcp" {
+				cert = install.CertificateStatus(ctx, a.runner, c)
+			}
+		},
+	)
+	if host == "" {
+		return ""
+	}
+	if cert != "" {
+		return fmt.Sprintf("https://%s (certificate %s)", host, cert)
+	}
+	return "https://" + host
 }
