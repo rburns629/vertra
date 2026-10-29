@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rburns629/vertra/cli/internal/awscloud"
 	"github.com/rburns629/vertra/cli/internal/cluster"
 	"github.com/rburns629/vertra/cli/internal/gcp"
 	"github.com/rburns629/vertra/cli/internal/install"
@@ -57,6 +58,24 @@ func (a *app) checkCmd() *cobra.Command {
 				}
 				if gs.ClusterStatus == "RUNNING" {
 					_ = gcp.Credentials(ctx, a.runner, c)
+				}
+			}
+			if c.Target == "aws" {
+				as := awscloud.Inspect(ctx, a.runner, c)
+				fmt.Fprintln(out, "AWS")
+				fmt.Fprintf(out, "  signed in as %s; region %s\n", orDefault(as.Identity.Arn, "nobody"), c.AWS.Region)
+				if len(as.Problems) == 0 {
+					fmt.Fprintf(out, "  cluster %s: %s\n", c.Cluster.Name, orDefault(as.ClusterStatus, "not yet (apply creates it)"))
+				}
+				for _, p := range as.Problems {
+					problems++
+					fmt.Fprintln(out, "  problem:", p)
+				}
+				for _, w := range as.Warnings {
+					fmt.Fprintln(out, "  warning:", w)
+				}
+				if as.ClusterStatus == "ACTIVE" {
+					_ = awscloud.Credentials(ctx, a.runner, c)
 				}
 			}
 			st := cluster.Inspect(ctx, a.runner, c)

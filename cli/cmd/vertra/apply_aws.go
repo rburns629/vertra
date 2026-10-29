@@ -29,6 +29,9 @@ func (a *app) planAWS(ctx context.Context, out io.Writer, dir string, c *config.
 	if len(state.Problems) > 0 {
 		return nil, fmt.Errorf("AWS isn't ready:\n  - %s", strings.Join(state.Problems, "\n  - "))
 	}
+	for _, w := range state.Warnings {
+		fmt.Fprintln(out, "Warning:", w)
+	}
 	check := access.CheckAWS(ctx, a.runner.Exec, c.AWS.Profile, c.AWS.Region)
 	if err := sameIdentity(c.Access.Cloud, check.Identity); err != nil {
 		return nil, err

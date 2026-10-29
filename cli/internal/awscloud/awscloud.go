@@ -40,6 +40,8 @@ type State struct {
 	Identity      Identity
 	ClusterStatus string // ACTIVE, CREATING, ... or "" if it doesn't exist
 	Problems      []string
+	// Warnings don't stop an apply (the chat's model not authorized yet).
+	Warnings []string
 }
 
 // Inspect checks the profile signs in, and whether the cluster exists.
@@ -60,19 +62,51 @@ func Inspect(ctx context.Context, r *run.Runner, c *config.Config) State {
 	}
 	// One regional call: an organization's policy may deny the region
 	// (a region restriction), which would otherwise surface halfway
-	// through OpenTofu's plan.
-	if _, err := r.Output(ctx, "aws", args(c, "ec2", "describe-availability-zones", "--query", "AvailabilityZones[0].ZoneName")...); err != nil {
-		if strings.Contains(err.Error(), "service control policy") {
+	// through OpenTofu's plan. The cluster and the chat's model are asked
+	// about at the same time.
+	var regionErr error
+	var chat string
+	run.Together(
+		func() {
+			_, regionErr = r.Output(ctx, "aws", args(c, "ec2", "describe-availability-zones", "--query", "AvailabilityZones[0].ZoneName")...)
+		},
+		func() {
+			if out, err := r.Output(ctx, "aws", args(c, "eks", "describe-cluster", "--name", c.Cluster.Name, "--query", "cluster.status")...); err == nil {
+				s.ClusterStatus = strings.Trim(strings.TrimSpace(out), `"`)
+			}
+		},
+		func() { chat = chatWarning(ctx, r, c) },
+	)
+	if regionErr != nil {
+		if strings.Contains(regionErr.Error(), "service control policy") {
 			s.Problems = append(s.Problems, fmt.Sprintf("your AWS organization's policy (an SCP) denies %s to this account: choose a region it allows (`vertra config set aws.region <region>`), or have the organization's management account allow it", c.AWS.Region))
 		} else {
-			s.Problems = append(s.Problems, fmt.Sprintf("can't use %s: %v", c.AWS.Region, err))
+			s.Problems = append(s.Problems, fmt.Sprintf("can't use %s: %v", c.AWS.Region, regionErr))
 		}
+		s.ClusterStatus = ""
 		return s
 	}
-	if out, err := r.Output(ctx, "aws", args(c, "eks", "describe-cluster", "--name", c.Cluster.Name, "--query", "cluster.status")...); err == nil {
-		s.ClusterStatus = strings.Trim(strings.TrimSpace(out), `"`)
+	if chat != "" {
+		s.Warnings = append(s.Warnings, chat)
 	}
 	return s
+}
+
+// chatWarning is what's wrong with the console's chat on Bedrock, if
+// anything: access to a model can be refused or withdrawn after init.
+func chatWarning(ctx context.Context, r *run.Runner, c *config.Config) string {
+	if !c.ChatOnBedrock() {
+		return ""
+	}
+	model := c.ChatModel()
+	authorized, err := BedrockAuthorized(ctx, r, c, model)
+	switch {
+	case err != nil:
+		return fmt.Sprintf("couldn't ask Amazon Bedrock whether this account may use %s, the chat's model: %v", model, err)
+	case !authorized:
+		return fmt.Sprintf("this account isn't authorized for %s in Amazon Bedrock, so the console's chat fails: request access (Bedrock console: Model catalog, the model), have an admin answer with an Anthropic API key (Admin, Chat), or `vertra config set chat.off true`", model)
+	}
+	return ""
 }
 
 // Credentials adds the cluster to your kubeconfig (as cluster.Context, which

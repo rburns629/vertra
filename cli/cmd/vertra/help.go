@@ -71,7 +71,8 @@ when it already does. The approved screen is saved as last-plan.txt.`,
 	"vertra check": {
 		long: `Checks without changing anything: the tools, your sign-in to the cloud,
 the cluster, and what's installed. What a run of apply would need, and
-what's wrong if it would fail.`,
+what's wrong if it would fail. On aws with the chat on, it also asks
+Amazon Bedrock whether the account may still use the chat's model.`,
 		example: `  vertra check dev`,
 	},
 	"vertra status": {

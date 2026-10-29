@@ -113,7 +113,9 @@ cents a conversation.
 AWS may refuse an account Anthropic's models (often a new or low-spend
 one; replying on the case with the use case can change that). `vertra init`
 asks Bedrock whether the account may use the model, and leaves the chat off
-when it may not (`--chat true` turns it on anyway). The chat then works
+when it may not (`--chat true` turns it on anyway); with the chat on,
+`vertra check` and `vertra apply` ask again and warn if access was refused
+or withdrawn since. The chat then works
 another way: an admin sets the provider to Anthropic, with an API key, on
 the Admin page's Chat settings (the key is kept sealed in the console's
 database), so its conversations go to Anthropic's API rather than staying
