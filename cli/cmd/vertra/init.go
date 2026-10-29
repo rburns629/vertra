@@ -71,7 +71,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.platformImages, "platform-images", "", "existing, from source: the registry to push the built images to")
 	fl.StringVar(&f.size, "size", "", "minimal, resilient, scaled or auto")
 	fl.StringVar(&f.scaleDown, "scale-down", "", "true or false: sleep when idle")
-	fl.StringVar(&f.database, "database", "", "gcp: in-cluster (Postgres in a Pod, backed up to a bucket) or managed (Cloud SQL)")
+	fl.StringVar(&f.database, "database", "", "gcp, aws: in-cluster (Postgres in a Pod, backed up to a bucket) or managed (Cloud SQL, Amazon RDS)")
 	fl.StringVar(&f.chat, "chat", "", "aws: true or false: the console's chat answers with Claude in Amazon Bedrock (default: on when this account may use it)")
 	fl.StringVar(&f.databaseHA, "database-ha", "", "with a managed database: true or false: a standby in a second zone (default: on for resilient and scaled)")
 	fl.StringVar(&f.logs, "logs", "", "true or false: keep steps' and the platform's logs for Observe's search (Loki)")
@@ -257,10 +257,14 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 	}
 
 	// 6. Database, then the admin.
-	if c.Target == "gcp" {
+	if c.Target == "gcp" || c.Target == "aws" {
+		managed := "Cloud SQL: Google patches and backs it up (point-in-time recovery), private IP, no passwords; billed while asleep too"
+		if c.Target == "aws" {
+			managed = "Amazon RDS: AWS patches and backs it up (point-in-time recovery), no public access, no passwords of Vertra's; billed while asleep too"
+		}
 		if c.Database.Type, err = a.ask.Choose("Database:", []prompt.Option{
 			{Value: "in-cluster", Label: "in-cluster", Note: "Postgres in a Pod, backed up daily to a bucket (kept 30 days); sleeps with the install"},
-			{Value: "managed", Label: "managed", Note: "Cloud SQL: Google patches and backs it up (point-in-time recovery), private IP, no passwords; billed while asleep too"},
+			{Value: "managed", Label: "managed", Note: managed},
 		}, orDefault(f.database, "in-cluster")); err != nil {
 			return err
 		}

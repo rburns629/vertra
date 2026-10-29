@@ -336,19 +336,22 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 			database += fmt.Sprintf("; backed up daily to a bucket, kept %d days", c.Database.Backups.RetentionDays)
 		}
 	}
-	if c.Database.Type == "managed" {
-		database = "Cloud SQL for PostgreSQL 16 (" + install.ManagedDatabaseTier(c.Size) + "), private IP only, each service signing in as its own identity (no passwords)"
-		if c.Database.HighAvailability {
-			database += "; a standby in a second zone"
-		}
-		database += fmt.Sprintf("; backed up daily with point-in-time recovery, kept %d days", c.Database.Backups.RetentionDays)
-	}
 	if c.Target == "aws" {
 		taskImages = fmt.Sprintf("from ECR under %s/ (each product's repository made on its first push)", c.TaskImages.Name)
 		database = fmt.Sprintf("in-cluster Postgres (both databases on one instance), %s volume", volume)
 		if c.Database.Backups.Enabled {
 			database += fmt.Sprintf("; backed up daily to an S3 bucket, kept %d days", c.Database.Backups.RetentionDays)
 		}
+	}
+	if c.Database.Type == "managed" {
+		database = "Cloud SQL for PostgreSQL 16 (" + install.ManagedDatabaseTier(c.Target, c.Size) + "), private IP only, each service signing in as its own identity (no passwords)"
+		if c.Target == "aws" {
+			database = "Amazon RDS for PostgreSQL 16 (" + install.ManagedDatabaseTier(c.Target, c.Size) + "), in the install's VPC with no public access, each service signing in as its own role (no passwords of Vertra's; RDS keeps its administrator's in Secrets Manager)"
+		}
+		if c.Database.HighAvailability {
+			database += "; a standby in a second zone"
+		}
+		database += fmt.Sprintf("; backed up daily with point-in-time recovery, kept %d days", c.Database.Backups.RetentionDays)
 	}
 	p.Settings = []plan.Line{
 		{Label: "Tools", Text: tools.Summary(tools.CheckAll(ctx, tools.For(c.Target, c.Vertra == "source")))},

@@ -287,11 +287,14 @@ func TestGCP(t *testing.T) {
 	}
 }
 
-func TestAManagedDatabaseIsNotOnAWSYet(t *testing.T) {
-	c := Default("aws")
-	c.Database.Type = "managed"
-	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "isn't supported on aws") {
-		t.Errorf("managed on aws: %v", err)
+func TestAManagedDatabaseIsOnGCPAndAWS(t *testing.T) {
+	for _, target := range []string{"gcp", "aws", "kind"} {
+		c := Default(target)
+		c.Database.Type = "managed"
+		err := c.Validate()
+		if refused := err != nil && strings.Contains(err.Error(), "database.type"); refused != (target == "kind") {
+			t.Errorf("managed on %s: %v", target, err)
+		}
 	}
 }
 

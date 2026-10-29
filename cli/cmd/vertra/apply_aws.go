@@ -98,6 +98,14 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		Signing *struct {
 			Key string `json:"key"`
 		}
+		Database *struct {
+			Instance    string            `json:"instance"`
+			Host        string            `json:"host"`
+			Region      string            `json:"region"`
+			Users       map[string]string `json:"users"`
+			AdminUser   string            `json:"admin_user"`
+			AdminSecret string            `json:"admin_secret"`
+		}
 		ConsoleAddress *struct {
 			Host           string   `json:"host"`
 			ZoneID         string   `json:"zone_id"`
@@ -109,7 +117,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	for name, into := range map[string]any{
 		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit,
 		"step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities, "spot": &v.Spot, "catalog": &v.Catalog,
-		"console_address": &v.ConsoleAddress, "signing": &v.Signing,
+		"console_address": &v.ConsoleAddress, "signing": &v.Signing, "database": &v.Database,
 	} {
 		raw, ok := outputs[name]
 		if !ok {
@@ -151,6 +159,13 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		cloud.ConsoleHost, cloud.ConsoleZoneID, cloud.ConsoleNameServers = a.Host, a.ZoneID, a.NameServers
 		cloud.ConsoleCertificate, cloud.VPCCIDR = a.CertificateArn, a.VPCCIDR
 	}
+	if d := v.Database; d != nil {
+		cloud.Database = &install.ManagedDatabase{
+			Provider: "aws", Instance: d.Instance, Host: d.Host, Region: d.Region,
+			KernelUser: d.Users["kernel"], ConsoleUser: d.Users["console"], GatewayUser: d.Users["gateway"],
+			AdminUser: d.AdminUser, AdminSecret: d.AdminSecret,
+		}
+	}
 	return cloud, v.Spot, nil
 }
 
@@ -169,6 +184,13 @@ func (a *app) applyAWS(ctx context.Context, out io.Writer, c *config.Config, p *
 	cloud, spot, err := cloudFromAWS(outputs)
 	if err != nil {
 		return nil, err
+	}
+	if cloud.Database != nil {
+		// What clients check RDS's certificate against: Amazon's bundle for
+		// the region, public.
+		if cloud.Database.CACert, err = awscloud.RDSCertificates(ctx, cloud.Database.Region); err != nil {
+			return nil, err
+		}
 	}
 	if err := awscloud.Credentials(ctx, a.runner, c); err != nil {
 		return nil, err
@@ -280,6 +302,17 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 	if c.Logs.Enabled && !deleteData {
 		keep = append(keep, logsBucket, "aws_s3_bucket_public_access_block.logs[0]", "aws_s3_bucket_lifecycle_configuration.logs[0]")
 	}
+	const instance = "aws_db_instance.this[0]"
+	managed := c.Database.Type == "managed" && tf.Has(ctx, instance)
+	if managed && !deleteData {
+		// A managed database keeps its data, and the network it's in (its
+		// subnets can't go while it's there). Its rule letting the cluster
+		// in goes, or the cluster's security group couldn't.
+		keep = append(keep, instance, "aws_db_subnet_group.this[0]", "aws_db_parameter_group.this[0]", "aws_security_group.database[0]",
+			"aws_vpc.this", "aws_subnet.public[0]", "aws_subnet.public[1]", "aws_internet_gateway.this", "aws_route_table.public",
+			"aws_route_table_association.public[0]", "aws_route_table_association.public[1]")
+		fmt.Fprintf(out, "Keeping the database (Amazon RDS, %s) and its VPC: `aws rds describe-db-instances`, or `vertra destroy --all` to delete them too.\n", c.AWS.Region)
+	}
 	if tf.HasState(ctx) {
 		var emptied []string
 		if c.Database.Backups.Enabled && deleteData {
@@ -287,6 +320,10 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 		}
 		if c.Logs.Enabled && deleteData {
 			emptied = append(emptied, logsBucket)
+		}
+		if managed && deleteData {
+			// Its deletion protection is lifted only once the state says so.
+			emptied = append(emptied, instance)
 		}
 		if len(emptied) > 0 {
 			// A bucket with data in it is deleted only once the state says
@@ -325,7 +362,7 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 // awsCost prices the install from AWS's price list; when that fails the
 // screen says so and shows no figure.
 func (a *app) awsCost(ctx context.Context, c *config.Config) []plan.Line {
-	prices, err := pricing.FetchAWS(ctx, a.runner, c.AWS.Profile, c.AWS.Region)
+	prices, err := pricing.FetchAWS(ctx, a.runner, c.AWS.Profile, c.AWS.Region, c.Database.Type == "managed")
 	if err != nil {
 		return []plan.Line{{Label: "Estimated cost", Text: "unavailable (" + err.Error() + "): the resources above are what it would be for"}}
 	}

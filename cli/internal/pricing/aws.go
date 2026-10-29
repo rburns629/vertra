@@ -33,7 +33,16 @@ type AWSPrices struct {
 	// The public console: an Application Load Balancer, per hour, and its
 	// Route 53 zone, per month.
 	LoadBalancer, HostedZone float64
+	// RDS for PostgreSQL, when a managed database is priced: per instance
+	// class, [0] Single-AZ and [1] Multi-AZ, per hour; gp3 storage likewise,
+	// per GiB-month.
+	RDS        map[string][2]float64
+	RDSStorage [2]float64
 }
+
+// RDSClasses are the instance classes the aws module picks by size (keep
+// in step with its locals).
+var RDSClasses = map[string]string{"minimal": "db.t4g.small", "resilient": "db.t4g.medium", "auto": "db.t4g.medium", "scaled": "db.m7g.large"}
 
 // InstancePrice is one instance type's hourly prices.
 type InstancePrice struct {
@@ -54,10 +63,10 @@ func awsArgs(profile string, a ...string) []string {
 }
 
 // FetchAWS returns the region's prices, from the cache when it's less than a
-// day old.
-func FetchAWS(ctx context.Context, r *run.Runner, profile, region string) (*AWSPrices, error) {
+// day old; with withRDS, RDS's too.
+func FetchAWS(ctx context.Context, r *run.Runner, profile, region string, withRDS bool) (*AWSPrices, error) {
 	cache := cachePath("aws-" + region + ".json")
-	if p := readAWSCache(cache); p != nil && time.Since(p.Fetched) < 24*time.Hour {
+	if p := readAWSCache(cache); p != nil && time.Since(p.Fetched) < 24*time.Hour && (!withRDS || len(p.RDS) > 0) {
 		return p, nil
 	}
 	p := &AWSPrices{Region: region, Instances: map[string]InstancePrice{}}
@@ -109,6 +118,30 @@ func FetchAWS(ctx context.Context, r *run.Runner, profile, region string) (*AWSP
 			p.SpotUnavailable = true
 		}
 		p.Instances[name] = ip
+	}
+	if withRDS {
+		p.RDS = map[string][2]float64{}
+		for _, class := range RDSClasses {
+			var both [2]float64
+			for i, deployment := range []string{"Single-AZ", "Multi-AZ"} {
+				if both[i], err = awsPrice(ctx, r, profile, "AmazonRDS", region,
+					"Type=TERM_MATCH,Field=instanceType,Value="+class,
+					"Type=TERM_MATCH,Field=databaseEngine,Value=PostgreSQL",
+					"Type=TERM_MATCH,Field=deploymentOption,Value="+deployment); err != nil {
+					return nil, err
+				}
+			}
+			p.RDS[class] = both
+		}
+		for i, deployment := range []string{"Single-AZ", "Multi-AZ"} {
+			if p.RDSStorage[i], err = awsPrice(ctx, r, profile, "AmazonRDS", region,
+				"Type=TERM_MATCH,Field=productFamily,Value=Database Storage",
+				"Type=TERM_MATCH,Field=volumeType,Value=General Purpose-GP3",
+				"Type=TERM_MATCH,Field=databaseEngine,Value=PostgreSQL",
+				"Type=TERM_MATCH,Field=deploymentOption,Value="+deployment); err != nil {
+				return nil, err
+			}
+		}
 	}
 	p.Fetched = time.Now()
 	if data, err := json.Marshal(p); err == nil {

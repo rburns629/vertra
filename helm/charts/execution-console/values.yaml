@@ -745,11 +745,13 @@ existingSecretKey: "database-url"
 # externalDatabaseUrl):
 database:
   # -- Sign in with the workload's own cloud identity instead of a
-  # password: "gcp", Cloud SQL's IAM database authentication (the console's
-  # and the gateway's Workload Identity: serviceAccount.annotations,
-  # gateway.serviceAccountAnnotations). The URLs then name a user and no
-  # password.
+  # password: "gcp", Cloud SQL's IAM database authentication (Workload
+  # Identity: serviceAccount.annotations, gateway.serviceAccountAnnotations),
+  # or "aws", Amazon RDS's (EKS Pod Identity's roles, bound by
+  # ServiceAccount name). The URLs then name a user and no password.
   iamAuth: ""
+  # -- With iamAuth aws: the database's AWS region.
+  region: ""
   # -- A Secret holding the server's CA (ca.crt), mounted at
   # /etc/vertra/tls-db for the URLs' sslrootcert.
   caSecret: ""

@@ -93,3 +93,17 @@ output "signing" {
   }
 }
 
+# The managed database: where it is, the users the services sign in as (no
+# passwords of Vertra's), and the administrator's password's secret, which
+# only database-setup's role may read.
+output "database" {
+  value = var.managed_database ? {
+    instance     = aws_db_instance.this[0].identifier
+    host         = aws_db_instance.this[0].address
+    port         = aws_db_instance.this[0].port
+    region       = var.region
+    users        = local.database_users
+    admin_user   = aws_db_instance.this[0].username
+    admin_secret = aws_db_instance.this[0].master_user_secret[0].secret_arn
+  } : null
+}

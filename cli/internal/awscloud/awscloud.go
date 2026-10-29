@@ -11,7 +11,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/rburns629/vertra/cli/internal/cluster"
 	"github.com/rburns629/vertra/cli/internal/config"
@@ -139,32 +142,35 @@ func GitHubProvider(ctx context.Context, r *run.Runner, c *config.Config, ownSta
 // Vars are the module's inputs, from the config.
 func Vars(c *config.Config, deleteData bool, githubProvider string) map[string]any {
 	return map[string]any{
-		"profile":                  c.AWS.Profile,
-		"region":                   c.AWS.Region,
-		"name":                     c.Cluster.Name,
-		"mode":                     c.Cluster.Mode,
-		"size":                     c.Size,
-		"namespace":                c.Namespace,
-		"task_registry":            c.TaskImages.Name,
-		"platform_registry":        PlatformPrefix(c),
-		"backups":                  c.Database.Backups.Enabled,
-		"backup_retention_days":    c.Database.Backups.RetentionDays,
-		"logs":                     c.Logs.Enabled,
-		"log_search_days":          c.Logs.SearchDays,
-		"log_keep_days":            c.Logs.KeepDays,
-		"audit_export":             c.Audit.Export,
-		"audit_keep_days":          c.Audit.KeepDays,
-		"audit_lock":               c.Audit.Lock,
-		"delete_data":              deleteData,
-		"catalog_repository":       c.Catalog.Repo(),
-		"signing":                  signingOrNone(c.ModuleSigning()),
-		"kubernetes_version":       KubernetesVersion,
-		"console_zone":             consoleZone(c),
-		"console_hostname":         c.Console.Hostname,
-		"step_headroom":            c.StepHeadroom,
-		"github_oidc_provider_arn": githubProvider,
-		"catalog_subject_prefix":   c.Catalog.SubjectPrefix,
-		"chat_model":               chatModel(c),
+		"profile":           c.AWS.Profile,
+		"region":            c.AWS.Region,
+		"name":              c.Cluster.Name,
+		"mode":              c.Cluster.Mode,
+		"size":              c.Size,
+		"namespace":         c.Namespace,
+		"task_registry":     c.TaskImages.Name,
+		"platform_registry": PlatformPrefix(c),
+		// A managed database backs itself up: no bucket, no backup Jobs.
+		"backups":                    c.Database.Backups.Enabled && c.Database.Type != "managed",
+		"managed_database":           c.Database.Type == "managed",
+		"database_high_availability": c.Database.Type == "managed" && c.Database.HighAvailability,
+		"backup_retention_days":      c.Database.Backups.RetentionDays,
+		"logs":                       c.Logs.Enabled,
+		"log_search_days":            c.Logs.SearchDays,
+		"log_keep_days":              c.Logs.KeepDays,
+		"audit_export":               c.Audit.Export,
+		"audit_keep_days":            c.Audit.KeepDays,
+		"audit_lock":                 c.Audit.Lock,
+		"delete_data":                deleteData,
+		"catalog_repository":         c.Catalog.Repo(),
+		"signing":                    signingOrNone(c.ModuleSigning()),
+		"kubernetes_version":         KubernetesVersion,
+		"console_zone":               consoleZone(c),
+		"console_hostname":           c.Console.Hostname,
+		"step_headroom":              c.StepHeadroom,
+		"github_oidc_provider_arn":   githubProvider,
+		"catalog_subject_prefix":     c.Catalog.SubjectPrefix,
+		"chat_model":                 chatModel(c),
 	}
 }
 
@@ -479,4 +485,24 @@ func BedrockAuthorized(ctx context.Context, r *run.Runner, c *config.Config, mod
 		return false, fmt.Errorf("Bedrock's answer: %w", err)
 	}
 	return v.AuthorizationStatus == "AUTHORIZED", nil
+}
+
+// RDSCertificates are Amazon's RDS certificate authorities for region
+// (PEM): what a client checks an RDS instance's certificate against.
+func RDSCertificates(ctx context.Context, region string) (string, error) {
+	u := fmt.Sprintf("https://truststore.pki.rds.amazonaws.com/%s/%s-bundle.pem", region, region)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Amazon's RDS certificates (%s): %w", u, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil || resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "BEGIN CERTIFICATE") {
+		return "", fmt.Errorf("Amazon's RDS certificates (%s): %d, %v", u, resp.StatusCode, err)
+	}
+	return string(body), nil
 }

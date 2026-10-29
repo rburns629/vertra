@@ -155,6 +155,8 @@ spec:
               value: {{ .Values.gateway.databaseMaxConnections | quote }}
             - name: DATABASE_IAM_AUTH
               value: {{ .Values.database.iamAuth | quote }}
+            - name: DATABASE_IAM_REGION
+              value: {{ .Values.database.region | quote }}
             {{- with $dbAccount }}
             # Its database token federated from its own ServiceAccount
             # token: its NetworkPolicy keeps it from the metadata server.

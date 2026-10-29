@@ -52,9 +52,9 @@ func TestEachServiceGetsItsOwnDatabaseAndNoOther(t *testing.T) {
 	connect := func(ctx context.Context, database string) (*pgx.Conn, error) {
 		return as(admin.Config().User, database)
 	}
-	grants := []Grant{{Database: kernelDB, Role: kernel}, {Database: consoleDB, Role: console, Regrant: true}}
+	setup := Setup{Grants: []Grant{{Database: kernelDB, Role: kernel}, {Database: consoleDB, Role: console, Regrant: true}}}
 	for range 2 { // again: no change, no error
-		if err := Run(ctx, connect, admin.Config().Database, grants); err != nil {
+		if err := Run(ctx, connect, admin.Config().Database, setup); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -94,5 +94,44 @@ func TestEachServiceGetsItsOwnDatabaseAndNoOther(t *testing.T) {
 		if err := run(c.role, c.database, "SELECT 1"); !refused(err) {
 			t.Errorf("%s in %s: %v, want permission denied", c.role, c.database, err)
 		}
+	}
+}
+
+// On RDS the databases and roles aren't the cloud's: setup makes what's
+// missing, members of what they need, and again changes nothing.
+func TestMissingDatabasesAndRolesAreMade(t *testing.T) {
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, dbtest.URL())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close(ctx)
+	suffix := fmt.Sprint(time.Now().UnixNano())
+	db, role, group := "made_db_"+suffix, "made_role_"+suffix, "made_group_"+suffix
+	if _, err := admin.Exec(ctx, "CREATE ROLE "+group); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		for _, s := range []string{"DROP DATABASE IF EXISTS " + db + " WITH (FORCE)", "DROP ROLE IF EXISTS " + role, "DROP ROLE IF EXISTS " + group} {
+			_, _ = admin.Exec(context.Background(), s)
+		}
+	})
+	connect := func(ctx context.Context, database string) (*pgx.Conn, error) {
+		config, err := pgx.ParseConfig(dbtest.URL())
+		if err != nil {
+			return nil, err
+		}
+		config.Database = database
+		return pgx.ConnectConfig(ctx, config)
+	}
+	setup := Setup{Databases: []string{db}, Roles: []Role{{Name: role, MemberOf: []string{group}}}, Grants: []Grant{{Database: db, Role: role}}}
+	for range 2 {
+		if err := Run(ctx, connect, admin.Config().Database, setup); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var member, login bool
+	if err := admin.QueryRow(ctx, "SELECT pg_has_role($1, $2, 'MEMBER'), (SELECT rolcanlogin FROM pg_roles WHERE rolname = $1)", role, group).Scan(&member, &login); err != nil || !member || !login {
+		t.Errorf("role: member %v, login %v, %v", member, login, err)
 	}
 }

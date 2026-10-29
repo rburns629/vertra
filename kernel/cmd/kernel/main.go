@@ -157,9 +157,13 @@ func poolFor(ctx context.Context, s config.Settings) (*pgxpool.Pool, error) {
 	// Not pgx's default (the node's CPUs, at least 4): a 2-CPU node's 4
 	// would queue a burst of requests while Postgres sits idle.
 	poolConfig.MaxConns = int32(s.DatabaseMaxConnections)
-	if password := passwordFor(s); password != nil {
+	password, err := passwordFor(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+	if password != nil {
 		poolConfig.BeforeConnect = func(ctx context.Context, c *pgx.ConnConfig) error {
-			p, err := password(ctx)
+			p, err := password(ctx, c)
 			c.Password = p
 			return err
 		}
@@ -168,12 +172,30 @@ func poolFor(ctx context.Context, s config.Settings) (*pgxpool.Pool, error) {
 }
 
 // passwordFor is how each new connection gets its password with
-// DATABASE_IAM_AUTH (the workload's token, short-lived); nil without it.
-func passwordFor(s config.Settings) func(context.Context) (string, error) {
-	if s.DatabaseIAMAuth == "gcp" {
-		return dbauth.GCP().Password
+// DATABASE_IAM_AUTH (the workload's token, short-lived), or with
+// DATABASE_ADMIN_SECRET (database-setup on RDS: the administrator's, from
+// Secrets Manager); nil with neither.
+func passwordFor(ctx context.Context, s config.Settings) (func(context.Context, *pgx.ConnConfig) (string, error), error) {
+	switch {
+	case s.DatabaseAdminSecret != "":
+		password, err := dbauth.SecretPassword(ctx, s.DatabaseIAMRegion, s.DatabaseAdminSecret)
+		if err != nil {
+			return nil, err
+		}
+		return func(context.Context, *pgx.ConnConfig) (string, error) { return password, nil }, nil
+	case s.DatabaseIAMAuth == "gcp":
+		tokens := dbauth.GCP()
+		return func(ctx context.Context, _ *pgx.ConnConfig) (string, error) { return tokens.Password(ctx) }, nil
+	case s.DatabaseIAMAuth == "aws":
+		tokens, err := dbauth.AWS(ctx, s.DatabaseIAMRegion)
+		if err != nil {
+			return nil, err
+		}
+		return func(ctx context.Context, c *pgx.ConnConfig) (string, error) {
+			return tokens.Password(ctx, c.Host, c.Port, c.User)
+		}, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // connect is one connection (migrations, setup), signed in as poolFor's are.
@@ -186,8 +208,12 @@ func connect(ctx context.Context, s config.Settings, database string) (*pgx.Conn
 	if database != "" {
 		c.Database = database
 	}
-	if password := passwordFor(s); password != nil {
-		if c.Password, err = password(ctx); err != nil {
+	password, err := passwordFor(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+	if password != nil {
+		if c.Password, err = password(ctx, c); err != nil {
 			return nil, err
 		}
 	}
@@ -197,22 +223,25 @@ func connect(ctx context.Context, s config.Settings, database string) (*pgx.Conn
 // runDatabaseSetup opens each DATABASE_SETUP database to its service, as
 // the managed server's administrator (dbsetup).
 func runDatabaseSetup(ctx context.Context, s config.Settings, log *slog.Logger) error {
-	if len(s.DatabaseSetup) == 0 {
+	if len(s.DatabaseSetup.Grants) == 0 {
 		return fmt.Errorf("DATABASE_SETUP: nothing to set up")
 	}
 	c, err := pgx.ParseConfig(s.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("DATABASE_URL: %w", err)
 	}
-	grants := make([]dbsetup.Grant, 0, len(s.DatabaseSetup))
-	for _, g := range s.DatabaseSetup {
-		grants = append(grants, dbsetup.Grant{Database: g.Database, Role: g.Role, Regrant: g.Regrant})
+	setup := dbsetup.Setup{Databases: s.DatabaseSetup.Databases}
+	for _, r := range s.DatabaseSetup.Roles {
+		setup.Roles = append(setup.Roles, dbsetup.Role{Name: r.Name, MemberOf: r.MemberOf})
+	}
+	for _, g := range s.DatabaseSetup.Grants {
+		setup.Grants = append(setup.Grants, dbsetup.Grant{Database: g.Database, Role: g.Role, Regrant: g.Regrant})
 	}
 	open := func(ctx context.Context, database string) (*pgx.Conn, error) { return connect(ctx, s, database) }
-	if err := dbsetup.Run(ctx, open, c.Database, grants); err != nil {
+	if err := dbsetup.Run(ctx, open, c.Database, setup); err != nil {
 		return err
 	}
-	log.Info("databases set up", "databases", len(grants))
+	log.Info("databases set up", "databases", len(setup.Grants))
 	return nil
 }
 

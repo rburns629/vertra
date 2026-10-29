@@ -34,6 +34,7 @@ data:
   DATABASE_COMMAND_TIMEOUT_SECONDS: {{ .Values.databaseCommandTimeoutSeconds | quote }}
   DATABASE_MAX_CONNECTIONS: {{ .Values.databaseMaxConnections | quote }}
   DATABASE_IAM_AUTH: {{ .Values.database.iamAuth | quote }}
+  DATABASE_IAM_REGION: {{ .Values.database.region | quote }}
   SCHEDULER_RETRY_BACKOFF_SECONDS: {{ .Values.scheduler.retryBackoffSeconds | quote }}
   SCHEDULER_RETRY_BACKOFF_MAX_SECONDS: {{ .Values.scheduler.retryBackoffMaxSeconds | quote }}
   KUBERNETES_WATCH_RESYNC_SECONDS: {{ .Values.scheduler.watchResyncSeconds | quote }}

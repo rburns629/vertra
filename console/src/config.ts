@@ -92,10 +92,11 @@ export interface ChatInput {
   contextTokens: number | null;
 }
 
-/** DATABASE_IAM_AUTH: "gcp", or "" for the URL's password. */
-function databaseIamAuth(): "" | "gcp" {
+/** DATABASE_IAM_AUTH: "gcp", "aws" (with DATABASE_IAM_REGION), or "" for the URL's password. */
+function databaseIamAuth(): "" | "gcp" | "aws" {
   const value = process.env["DATABASE_IAM_AUTH"] ?? "";
-  if (value !== "" && value !== "gcp") throw new Error(`Invalid DATABASE_IAM_AUTH "${value}": expected "gcp", or nothing for a password.`);
+  if (value !== "" && value !== "gcp" && value !== "aws") throw new Error(`Invalid DATABASE_IAM_AUTH "${value}": expected "gcp", "aws", or nothing for a password.`);
+  if (value === "aws" && !process.env["DATABASE_IAM_REGION"]) throw new Error("DATABASE_IAM_REGION is needed with DATABASE_IAM_AUTH=aws.");
   return value;
 }
 
@@ -338,6 +339,7 @@ export const config = {
   // (Cloud SQL's IAM database authentication, its Workload Identity's
   // token), or "" (the URL's password).
   databaseIamAuth: databaseIamAuth(),
+  databaseIamRegion: process.env["DATABASE_IAM_REGION"] ?? "",
   // With the gateway on: its own database role (db/gatewayAccess.ts), which
   // the migration Job grants what the gateway reads, and creates with this
   // password when the console runs as its Postgres's superuser. Empty: no

@@ -648,7 +648,7 @@ To go back: install the previous release's charts, then restore that backup
 
 Each chart can run its own Postgres (`postgres.enabled`), a single replica
 on a volume; or use an external database, such as the managed one `vertra`
-makes on Google Cloud (below). On a small install the kernel's
+makes on Google Cloud or AWS (below). On a small install the kernel's
 Postgres can also hold the console's database (`postgres.consoleDatabase`),
 where the console signs in as its own role, which owns only its database.
 
@@ -714,8 +714,21 @@ opens `execution_kernel` to the kernel alone and `execution_console` to the
 console alone, which gives the gateway what it reads, as with the in-cluster
 Postgres. Each service then owns its own tables; none can read another's.
 
-Cloud SQL backs it up daily, with point-in-time recovery (7 days of
-transaction logs), keeping `database.backups.retentionDays` backups; the
+**On AWS** it's Amazon RDS for PostgreSQL 16 (`db.t4g.small` at
+`minimal`, `db.t4g.medium` at `resilient` and `auto`, `db.m7g.large` at
+`scaled`; Multi-AZ with `database.highAvailability`), in the install's VPC
+with no public access, reachable only from the cluster's security group,
+TLS forced and checked in full (`verify-full`) against Amazon's RDS
+certificates for the region. Each service signs in as its own role (EKS
+Pod Identity) with a 15-minute token signed locally (`database.iamAuth:
+aws`, `database.region`). RDS requires an administrator with a password: it
+keeps it in Secrets Manager itself (it's in no state file of Vertra's), and
+only `kernel database-setup`'s role may read it, to make the two databases
+and the services' users (members of `rds_iam`) and open each database to
+its own service alone.
+
+Cloud SQL and RDS back it up daily, with point-in-time recovery, keeping
+`database.backups.retentionDays` backups (at most 35 on RDS); the
 backup Jobs and their bucket aren't made. It runs whether or not the
 platform sleeps, and the approval screen prices it. `vertra destroy`
 deletes it only when told to delete data. An install whose data is already
@@ -726,6 +739,10 @@ refuses, rather than starting the platform on an empty server. To restore:
 gcloud sql backups list --instance <instance> --project <project>
 gcloud sql backups restore <backup-id> --restore-instance <instance> --project <project>
 # or to a moment: gcloud sql instances clone <instance> <new> --point-in-time <RFC 3339 time>
+
+# RDS restores to a new instance, which then replaces the old one's name:
+aws rds restore-db-instance-to-point-in-time --source-db-instance-identifier <name> \
+  --target-db-instance-identifier <name>-restored --restore-time <RFC 3339 time>
 ```
 
 **Connecting.** Neither database is exposed outside the cluster, and

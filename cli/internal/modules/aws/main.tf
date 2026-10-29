@@ -344,7 +344,8 @@ resource "aws_ecr_repository_creation_template" "tasks" {
 }
 
 resource "aws_ecr_repository" "platform" {
-  for_each             = var.platform_registry != "" ? toset(["execution-kernel", "execution-console"]) : toset([])
+  # The gateway's too, whether or not it runs: an empty repository costs nothing.
+  for_each             = var.platform_registry != "" ? toset(["execution-kernel", "execution-console", "execution-gateway"]) : toset([])
   name                 = "${var.platform_registry}/${each.value}"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
@@ -837,3 +838,157 @@ resource "aws_eks_pod_identity_association" "verifier" {
   role_arn        = aws_iam_role.verifier[0].arn
 }
 
+# --- a managed database: Amazon RDS for PostgreSQL --------------------------
+# In the install's VPC with no public access, reachable only from the
+# cluster's own security group; TLS forced. No passwords of Vertra's: the
+# kernel, the console and the gateway each sign in as their own role (IAM
+# database authentication, a 15-minute token their Pod Identity signs).
+# RDS keeps its administrator's password in Secrets Manager itself (so it's
+# in no state file), readable only by `kernel database-setup`'s role, which
+# makes the databases and the services' users and opens each database to
+# its service alone. Sized as the in-cluster Postgres is; RDS backs it up
+# (daily, with point-in-time recovery) instead of the backup Jobs.
+
+locals {
+  database_class = {
+    minimal   = { class = "db.t4g.small", max_connections = 100 }
+    resilient = { class = "db.t4g.medium", max_connections = 200 }
+    scaled    = { class = "db.m7g.large", max_connections = 300 }
+    auto      = { class = "db.t4g.medium", max_connections = 200 }
+  }[var.size]
+  # Its users: made by database-setup, signed in to by IAM.
+  database_users = { kernel = "vertra_kernel", console = "vertra_console", gateway = "vertra_gateway" }
+}
+
+resource "aws_db_subnet_group" "this" {
+  count      = var.managed_database ? 1 : 0
+  name       = var.name
+  subnet_ids = aws_subnet.public[*].id
+}
+
+resource "aws_security_group" "database" {
+  count       = var.managed_database ? 1 : 0
+  name        = "${var.name}-database"
+  description = "Vertra ${var.name}: Postgres, from the cluster only"
+  vpc_id      = aws_vpc.this.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "database" {
+  count                        = var.managed_database ? 1 : 0
+  security_group_id            = aws_security_group.database[0].id
+  referenced_security_group_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+}
+
+resource "aws_db_parameter_group" "this" {
+  count  = var.managed_database ? 1 : 0
+  name   = var.name
+  family = "postgres16"
+  parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
+  parameter {
+    name         = "max_connections"
+    value        = tostring(local.database_class.max_connections)
+    apply_method = "pending-reboot"
+  }
+}
+
+resource "aws_db_instance" "this" {
+  count                               = var.managed_database ? 1 : 0
+  identifier                          = var.name
+  engine                              = "postgres"
+  engine_version                      = "16"
+  instance_class                      = local.database_class.class
+  allocated_storage                   = 20
+  max_allocated_storage               = 1000
+  storage_type                        = "gp3"
+  storage_encrypted                   = true
+  db_subnet_group_name                = aws_db_subnet_group.this[0].name
+  vpc_security_group_ids              = [aws_security_group.database[0].id]
+  parameter_group_name                = aws_db_parameter_group.this[0].name
+  publicly_accessible                 = false
+  multi_az                            = var.database_high_availability
+  iam_database_authentication_enabled = true
+  username                            = "vertra_admin"
+  manage_master_user_password         = true
+  backup_retention_period             = min(var.backup_retention_days, 35)
+  copy_tags_to_snapshot               = true
+  auto_minor_version_upgrade          = true
+  apply_immediately                   = true
+  # Only when destroy is told to delete data (vertra destroy asks first).
+  deletion_protection = !var.delete_data
+  skip_final_snapshot = true
+}
+
+# The kernel's and the gateway's roles (the console's is above), and the
+# administrator's; each may sign in as its own database user and no other.
+resource "aws_iam_role" "kernel_db" {
+  count              = var.managed_database ? 1 : 0
+  name               = "${var.name}-kernel"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+resource "aws_iam_role" "gateway_db" {
+  count              = var.managed_database ? 1 : 0
+  name               = "${var.name}-gateway"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+resource "aws_iam_role" "database_admin" {
+  count              = var.managed_database ? 1 : 0
+  name               = "${var.name}-db-admin"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+resource "aws_iam_role_policy" "database_connect" {
+  for_each = var.managed_database ? {
+    kernel  = aws_iam_role.kernel_db[0].id
+    console = aws_iam_role.console.id
+    gateway = aws_iam_role.gateway_db[0].id
+  } : {}
+  name = "connect-to-the-database"
+  role = each.value
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "rds-db:connect"
+      Resource = "arn:${local.partition}:rds-db:${var.region}:${local.account}:dbuser:${aws_db_instance.this[0].resource_id}/${local.database_users[each.key]}"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "database_admin" {
+  count = var.managed_database ? 1 : 0
+  name  = "read-the-administrators-password"
+  role  = aws_iam_role.database_admin[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "secretsmanager:GetSecretValue"
+      Resource = aws_db_instance.this[0].master_user_secret[0].secret_arn
+    }]
+  })
+}
+
+# Which ServiceAccounts sign in as which role: every kernel Pod that
+# connects (the scheduler, kernel-api and its migration, the sleeper), the
+# gateway, and database-setup's Job. The console's is bound above.
+resource "aws_eks_pod_identity_association" "database" {
+  for_each = var.managed_database ? {
+    "kernel-execution-kernel"           = aws_iam_role.kernel_db[0].arn
+    "kernel-execution-kernel-api"       = aws_iam_role.kernel_db[0].arn
+    "kernel-execution-kernel-sleeper"   = aws_iam_role.kernel_db[0].arn
+    "console-execution-console-gateway" = aws_iam_role.gateway_db[0].arn
+    "vertra-db-admin"                   = aws_iam_role.database_admin[0].arn
+  } : {}
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = var.namespace
+  service_account = each.key
+  role_arn        = each.value
+}

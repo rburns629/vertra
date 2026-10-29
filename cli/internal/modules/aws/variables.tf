@@ -76,6 +76,18 @@ variable "backups" {
   default     = true
 }
 
+variable "managed_database" {
+  description = "Amazon RDS for PostgreSQL instead of the in-cluster Postgres: in the install's VPC, no public access, every service signing in with its own role (IAM database authentication), no passwords of Vertra's."
+  type        = bool
+  default     = false
+}
+
+variable "database_high_availability" {
+  description = "A standby in a second zone, failed over to automatically (Multi-AZ)."
+  type        = bool
+  default     = false
+}
+
 variable "backup_retention_days" {
   type    = number
   default = 30

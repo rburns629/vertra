@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 // Package dbsetup prepares a managed database server's databases for
-// their services, once per install, as an administrator: each database is
+// their services, once per install, as an administrator: on RDS it first
+// makes the databases and the services' login roles (Cloud SQL's are the
+// cloud's); then each database is
 // opened to its own service alone (CONNECT and CREATE on it and its public
 // schema), and to no one else (PUBLIC's default CONNECT is revoked). The
 // services then make and own their own tables, as with the in-cluster
@@ -26,18 +28,38 @@ type Grant struct {
 	Regrant bool
 }
 
+// Role is a login role to make when it's missing (on RDS, whose users the
+// cloud doesn't make), and the roles it's a member of (rds_iam, for its
+// IAM sign-in).
+type Role struct {
+	Name     string   `json:"name"`
+	MemberOf []string `json:"memberOf,omitempty"`
+}
+
+// Setup is everything database-setup does: the databases to make when
+// missing, the roles likewise, then the grants.
+type Setup struct {
+	Databases []string
+	Roles     []Role
+	Grants    []Grant
+}
+
 // Connect opens a connection to a database by name, as the administrator.
 type Connect func(ctx context.Context, database string) (*pgx.Conn, error)
 
-// Run applies each grant: the database's privileges from the server's
-// maintenance database, its public schema's from the database itself.
-func Run(ctx context.Context, connect Connect, maintenance string, grants []Grant) error {
+// Run makes what's missing, then applies each grant: the database's
+// privileges from the server's maintenance database, its public schema's
+// from the database itself.
+func Run(ctx context.Context, connect Connect, maintenance string, setup Setup) error {
 	admin, err := connect(ctx, maintenance)
 	if err != nil {
 		return err
 	}
 	defer admin.Close(context.WithoutCancel(ctx))
-	for _, g := range grants {
+	if err := prepare(ctx, admin, setup); err != nil {
+		return err
+	}
+	for _, g := range setup.Grants {
 		database, role := pgx.Identifier{g.Database}.Sanitize(), pgx.Identifier{g.Role}.Sanitize()
 		option := ""
 		if g.Regrant {
@@ -53,6 +75,44 @@ func Run(ctx context.Context, connect Connect, maintenance string, grants []Gran
 		}
 		if err := grantSchema(ctx, connect, g, role, option); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// prepare makes the databases and roles that are missing.
+func prepare(ctx context.Context, admin *pgx.Conn, setup Setup) error {
+	exists := func(query, name string) (bool, error) {
+		var found bool
+		err := admin.QueryRow(ctx, "SELECT EXISTS ("+query+")", name).Scan(&found)
+		return found, err
+	}
+	for _, d := range setup.Databases {
+		found, err := exists("SELECT FROM pg_database WHERE datname = $1", d)
+		if err != nil {
+			return err
+		}
+		if !found {
+			if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{d}.Sanitize()); err != nil {
+				return fmt.Errorf("making database %s: %w", d, err)
+			}
+		}
+	}
+	for _, r := range setup.Roles {
+		found, err := exists("SELECT FROM pg_roles WHERE rolname = $1", r.Name)
+		if err != nil {
+			return err
+		}
+		role := pgx.Identifier{r.Name}.Sanitize()
+		if !found {
+			if _, err := admin.Exec(ctx, "CREATE ROLE "+role+" LOGIN"); err != nil {
+				return fmt.Errorf("making role %s: %w", r.Name, err)
+			}
+		}
+		for _, m := range r.MemberOf {
+			if _, err := admin.Exec(ctx, "GRANT "+pgx.Identifier{m}.Sanitize()+" TO "+role); err != nil {
+				return fmt.Errorf("making %s a member of %s: %w", r.Name, m, err)
+			}
 		}
 	}
 	return nil

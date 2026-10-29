@@ -75,6 +75,17 @@ management account allow another (AWS Organizations → Policies → Service
 control policies). us-east-2 costs the same as us-east-1 for everything
 Vertra uses.
 
+## A managed database
+
+`vertra init --database managed` (or the question it asks) makes Amazon RDS
+for PostgreSQL instead of Postgres in the cluster: in the install's VPC with
+no public access, each service signing in as its own role, AWS's backups
+with point-in-time recovery, Multi-AZ if chosen. About $26 a month at
+`minimal`, priced on the approval screen. The IAM user `vertra` signs in as
+needs RDS, Secrets Manager (RDS keeps its administrator's password there)
+and EC2 security groups, which the policy above has. How it works, and how to
+restore: [Databases](../operations.md#databases).
+
 ## The chat agent
 
 On AWS the console's **Ask** panel answers with Claude in Amazon Bedrock,

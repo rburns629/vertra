@@ -55,6 +55,8 @@ spec:
           env:
             - name: DATABASE_IAM_AUTH
               value: {{ .Values.database.iamAuth | quote }}
+            - name: DATABASE_IAM_REGION
+              value: {{ .Values.database.region | quote }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

@@ -9,8 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 )
 
 func TestTheTokenIsKeptUntilAMinuteBeforeItExpires(t *testing.T) {
@@ -90,4 +94,46 @@ func TestFederatedExchangesItsOwnTokenForTheAccountsAndKeepsIt(t *testing.T) {
 	if got, _ := f.Password(context.Background()); got != "db-token-2" {
 		t.Fatalf("after 59 minutes: %q", got)
 	}
+}
+
+// A token is signed for its server and user, by the role's credentials,
+// and kept ten minutes.
+func TestRDSTokensAreSignedForTheirServerAndUserAndKept(t *testing.T) {
+	now := time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)
+	signings := &counting{CredentialsProvider: credentials.NewStaticCredentialsProvider("AKIDEXAMPLE", "secret", "")}
+	r := &RDS{Region: "us-east-2", Credentials: signings, Now: func() time.Time { return now }}
+	first, err := r.Password(context.Background(), "db.example.us-east-2.rds.amazonaws.com", 5432, "vertra_kernel")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"db.example.us-east-2.rds.amazonaws.com:5432?Action=connect", "DBUser=vertra_kernel", "X-Amz-Credential=AKIDEXAMPLE%2F", "us-east-2%2Frds-db%2Faws4_request", "X-Amz-Signature="} {
+		if !strings.Contains(first, want) {
+			t.Errorf("token %q lacks %q", first, want)
+		}
+	}
+	if again, _ := r.Password(context.Background(), "db.example.us-east-2.rds.amazonaws.com", 5432, "vertra_kernel"); again != first {
+		t.Error("a token isn't kept")
+	}
+	other, _ := r.Password(context.Background(), "db.example.us-east-2.rds.amazonaws.com", 5432, "vertra_console")
+	if !strings.Contains(other, "DBUser=vertra_console") {
+		t.Errorf("another user's token: %q", other)
+	}
+	if signings.n != 2 {
+		t.Errorf("signed %d times for two users, want 2", signings.n)
+	}
+	now = now.Add(11 * time.Minute)
+	if _, err := r.Password(context.Background(), "db.example.us-east-2.rds.amazonaws.com", 5432, "vertra_kernel"); err != nil || signings.n != 3 {
+		t.Errorf("past ten minutes, signed %d times (want 3): %v", signings.n, err)
+	}
+}
+
+// counting counts how often a token is signed.
+type counting struct {
+	aws.CredentialsProvider
+	n int
+}
+
+func (c *counting) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	c.n++
+	return c.CredentialsProvider.Retrieve(ctx)
 }

@@ -22,8 +22,9 @@ type Settings struct {
 	// Most connections it holds: each request checks who's calling there.
 	DatabaseMaxConnections int
 	// DatabaseIAMAuth signs in with its own cloud identity, no password:
-	// "gcp" (Cloud SQL's IAM database authentication), or "".
-	DatabaseIAMAuth string
+	// "gcp" (Cloud SQL's IAM database authentication), "aws" (Amazon RDS's,
+	// in DatabaseIAMRegion), or "".
+	DatabaseIAMAuth, DatabaseIAMRegion string
 	// With DatabaseIAMAuth: the Google service account it signs in as, and
 	// its own projected ServiceAccount token to federate from (the
 	// NetworkPolicy keeps it from the metadata server). Without them, the
@@ -83,6 +84,7 @@ func Load(getenv func(string) string) (*Settings, error) {
 		DatabaseURL:            need("DATABASE_URL"),
 		DatabaseMaxConnections: number("DATABASE_MAX_CONNECTIONS", 10),
 		DatabaseIAMAuth:        getenv("DATABASE_IAM_AUTH"),
+		DatabaseIAMRegion:      getenv("DATABASE_IAM_REGION"),
 		DatabaseIAMAccount:     getenv("DATABASE_IAM_ACCOUNT"),
 		DatabaseIAMTokenFile:   getenv("DATABASE_IAM_TOKEN_FILE"),
 		ConsoleURL:             strings.TrimSuffix(need("CONSOLE_URL"), "/"),
@@ -105,8 +107,14 @@ func Load(getenv func(string) string) (*Settings, error) {
 	if s.DatabaseIAMAccount != "" && s.GCPAudience == "" {
 		problems = append(problems, "DATABASE_IAM_ACCOUNT: needs GCP_STS_AUDIENCE, what its token is exchanged for")
 	}
-	if s.DatabaseIAMAuth != "" && s.DatabaseIAMAuth != "gcp" {
-		problems = append(problems, fmt.Sprintf("DATABASE_IAM_AUTH: gcp, or empty for a password, got %q", s.DatabaseIAMAuth))
+	switch s.DatabaseIAMAuth {
+	case "", "gcp":
+	case "aws":
+		if s.DatabaseIAMRegion == "" {
+			problems = append(problems, "DATABASE_IAM_REGION: needed with DATABASE_IAM_AUTH=aws")
+		}
+	default:
+		problems = append(problems, fmt.Sprintf("DATABASE_IAM_AUTH: gcp, aws, or empty for a password, got %q", s.DatabaseIAMAuth))
 	}
 	if path := need("SIGNING_KEY_FILE"); path != "" {
 		seed, err := os.ReadFile(path)

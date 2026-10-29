@@ -37,6 +37,19 @@ type Toleration struct {
 	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty"`
 }
 
+// DatabaseSetup is dbsetup.Setup, as DATABASE_SETUP gives it.
+type DatabaseSetup struct {
+	Databases []string        `json:"databases,omitempty"`
+	Roles     []DatabaseRole  `json:"roles,omitempty"`
+	Grants    []DatabaseGrant `json:"grants"`
+}
+
+// DatabaseRole is a login role to make when missing (dbsetup.Role).
+type DatabaseRole struct {
+	Name     string   `json:"name"`
+	MemberOf []string `json:"memberOf,omitempty"`
+}
+
 // DatabaseGrant opens one database to the role it's for (dbsetup.Grant).
 type DatabaseGrant struct {
 	Database string `json:"database"`
@@ -55,11 +68,16 @@ type Settings struct {
 	DatabaseMaxConnections int
 	// DatabaseIAMAuth signs in with the workload's own cloud identity
 	// instead of a password: "gcp" (Cloud SQL's IAM database
-	// authentication), or "" (the URL's password, if any).
-	DatabaseIAMAuth string
-	// DatabaseSetup is what `kernel database-setup` grants, as a managed
-	// server's administrator (DATABASE_URL names its maintenance database).
-	DatabaseSetup []DatabaseGrant
+	// authentication), "aws" (Amazon RDS's, in DatabaseIAMRegion), or ""
+	// (the URL's password, if any).
+	DatabaseIAMAuth   string
+	DatabaseIAMRegion string
+	// DatabaseSetup is what `kernel database-setup` does, as a managed
+	// server's administrator (DATABASE_URL names its maintenance database);
+	// on RDS signing in with the password in DatabaseAdminSecret, a Secrets
+	// Manager secret's ARN (RDS keeps it there; nothing else of Vertra's).
+	DatabaseSetup       DatabaseSetup
+	DatabaseAdminSecret string
 
 	// kernel-api. Who may call it: each request carries a Kubernetes
 	// ServiceAccount token issued for APITokenAudience; a TokenReview checks
@@ -296,6 +314,8 @@ func Load(getenv func(string) string) (Settings, error) {
 		DatabaseCommandTimeout:          r.seconds("DATABASE_COMMAND_TIMEOUT_SECONDS", 60, true),
 		DatabaseMaxConnections:          r.integer("DATABASE_MAX_CONNECTIONS", 10, true),
 		DatabaseIAMAuth:                 r.str("DATABASE_IAM_AUTH", ""),
+		DatabaseIAMRegion:               r.str("DATABASE_IAM_REGION", ""),
+		DatabaseAdminSecret:             r.str("DATABASE_ADMIN_SECRET", ""),
 		APIAuth:                         r.str("API_AUTH", "tokenreview"),
 		APITokenAudience:                r.str("API_TOKEN_AUDIENCE", "vertra-kernel-api"),
 		APIPort:                         r.integer("API_PORT", 8000, true),
@@ -349,8 +369,17 @@ func Load(getenv func(string) string) (Settings, error) {
 	}
 	r.jsonValue("API_ALLOWED_CALLERS", &s.APIAllowedCallers)
 	r.jsonValue("DATABASE_SETUP", &s.DatabaseSetup)
-	if s.DatabaseIAMAuth != "" && s.DatabaseIAMAuth != "gcp" {
-		r.problems = append(r.problems, fmt.Sprintf("DATABASE_IAM_AUTH: gcp, or empty for a password, got %q", s.DatabaseIAMAuth))
+	switch s.DatabaseIAMAuth {
+	case "", "gcp":
+	case "aws":
+		if s.DatabaseIAMRegion == "" {
+			r.problems = append(r.problems, "DATABASE_IAM_REGION: needed with DATABASE_IAM_AUTH=aws")
+		}
+	default:
+		r.problems = append(r.problems, fmt.Sprintf("DATABASE_IAM_AUTH: gcp, aws, or empty for a password, got %q", s.DatabaseIAMAuth))
+	}
+	if s.DatabaseAdminSecret != "" && s.DatabaseIAMRegion == "" {
+		r.problems = append(r.problems, "DATABASE_IAM_REGION: needed with DATABASE_ADMIN_SECRET (the secret's region)")
 	}
 	r.jsonValue("SLEEPER_DEPLOYMENTS", &s.SleeperDeployments)
 	r.jsonValue("SLEEPER_DATABASE_DEPLOYMENTS", &s.SleeperDatabases)

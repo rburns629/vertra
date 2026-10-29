@@ -43,6 +43,13 @@ func AWS(p *AWSPrices, c *config.Config, fetched string) []plan.Line {
 
 	fee := p.ClusterFee * hoursPerMonth
 	always := fee + f.VolumeGiB*p.GP3
+	database := "the database's volume"
+	if c.Database.Type == "managed" {
+		// No Postgres volume in the cluster; the instance runs whether or
+		// not the platform sleeps.
+		always = fee + RDSMonth(p, c)
+		database = "the database (RDS)"
+	}
 	if c.Console.Public {
 		always += p.LoadBalancer*hoursPerMonth + p.HostedZone
 	}
@@ -50,7 +57,7 @@ func AWS(p *AWSPrices, c *config.Config, fetched string) []plan.Line {
 		always += float64(c.StepHeadroom) * stepHour * hoursPerMonth
 	}
 	if c.Cluster.Mode == "standard" {
-		return awsStandard(p, c, f, fetched, fee, always)
+		return withRDS(awsStandard(p, c, f, fetched, fee, always), p, c)
 	}
 	awakeHours := float64(hoursPerMonth)
 	if c.ScaleDown.Enabled {
@@ -58,10 +65,10 @@ func AWS(p *AWSPrices, c *config.Config, fetched string) []plan.Line {
 	}
 	likely := always + awake*awakeHours + stepHour*lightStepHours
 
-	return []plan.Line{
+	return withRDS([]plan.Line{
 		{Label: "Estimated cost", Text: fmt.Sprintf("a month, list prices in USD, %s, %s", p.Region, fetched)},
-		{Label: "  Always", Text: fmt.Sprintf("%s: the EKS cluster fee (%s; EKS has no free tier), the database's volume%s%s",
-			money(always), money(fee), awsConsoleNote(c), headroomNote(c))},
+		{Label: "  Always", Text: fmt.Sprintf("%s: the EKS cluster fee (%s; EKS has no free tier), %s%s%s",
+			money(always), money(fee), database, awsConsoleNote(c), headroomNote(c))},
 		{Label: "  While awake", Text: fmt.Sprintf("%s a month if never asleep: about one %s (Auto Mode picks the instance), with its Auto Mode fee, public address and disk",
 			money(awake*hoursPerMonth), awsPlatformInstance[c.Size])},
 		{Label: "  While asleep", Text: "nothing more: Auto Mode removes nodes nothing runs on"},
@@ -69,7 +76,7 @@ func AWS(p *AWSPrices, c *config.Config, fetched string) []plan.Line {
 			money(stepHour), capacity, money(stepHour*float64(f.StepCap)*hoursPerMonth), f.StepCap)},
 		{Label: "  Likely", Text: fmt.Sprintf("%s for light use (%s, %d step-hours)", money(likely), awakeWords(c), lightStepHours)},
 		{Label: "  Not included", Text: "discounts, credits, taxes, data transfer, backups and images in storage (cents a GB), your products' own AWS usage"},
-	}
+	}, p, c)
 }
 
 // awsStandardDiskGiB is each node group node's disk (the module's disk_size).
@@ -114,4 +121,27 @@ func awsConsoleNote(c *config.Config) string {
 		return ", the console's load balancer and DNS zone (plus a little per use)"
 	}
 	return ""
+}
+
+// rdsStorageGiB is the managed database's storage as the aws module makes
+// it (it grows itself as needed).
+const rdsStorageGiB = 20
+
+// RDSMonth is the managed database's monthly list price: its instance (the
+// aws module's class for the size), Single-AZ or Multi-AZ, and its storage.
+func RDSMonth(p *AWSPrices, c *config.Config) float64 {
+	i := 0
+	if c.Database.HighAvailability {
+		i = 1
+	}
+	return p.RDS[RDSClasses[c.Size]][i]*hoursPerMonth + rdsStorageGiB*p.RDSStorage[i]
+}
+
+// withRDS adds the managed database's own line, after the first.
+func withRDS(lines []plan.Line, p *AWSPrices, c *config.Config) []plan.Line {
+	if c.Database.Type != "managed" {
+		return lines
+	}
+	line := plan.Line{Label: "  Database", Text: fmt.Sprintf("%s: RDS (%s) and its %d GB, awake or asleep (in Always below)", money(RDSMonth(p, c)), RDSClasses[c.Size], rdsStorageGiB)}
+	return append(lines[:1], append([]plan.Line{line}, lines[1:]...)...)
 }

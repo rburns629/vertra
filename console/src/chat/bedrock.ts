@@ -11,38 +11,9 @@
  * because its release for the client the console runs is days old. AWS's
  * own signer and credential chain are already the console's (ECR, S3).
  */
-import { createHash, createHmac, type Hash } from "node:crypto";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { SignatureV4 } from "@smithy/signature-v4";
-
-type Hmac = ReturnType<typeof createHmac>;
-
-/** SigV4's hash: SHA-256, or HMAC-SHA-256 with a secret. */
-class Sha256 {
-  private hash: Hash | Hmac;
-
-  constructor(private readonly secret?: string | ArrayBuffer | ArrayBufferView) {
-    this.hash = this.fresh();
-  }
-
-  private fresh(): Hash | Hmac {
-    if (this.secret === undefined) return createHash("sha256");
-    const key = typeof this.secret === "string" ? this.secret : Buffer.from(this.secret as ArrayBuffer);
-    return createHmac("sha256", key);
-  }
-
-  update(data: string | ArrayBuffer | ArrayBufferView): void {
-    this.hash.update(typeof data === "string" ? data : Buffer.from(data as ArrayBuffer));
-  }
-
-  digest(): Promise<Uint8Array> {
-    return Promise.resolve(new Uint8Array(this.hash.digest()));
-  }
-
-  reset(): void {
-    this.hash = this.fresh();
-  }
-}
+import { Sha256 } from "../awsSha256.js";
 
 /** Headers the SDK sends that aren't Bedrock's: its placeholder key, and ones a proxy may change. */
 const UNSIGNED = new Set(["x-api-key", "authorization", "connection", "content-length"]);

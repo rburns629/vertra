@@ -25,7 +25,7 @@ design.
   GiB, online), and the size table (approval screen, cost) has Postgres's
   new requests.
 
-- [x] **A managed database on gcp: Cloud SQL (2026-10-29)**:
+- [x] **A managed database: Cloud SQL on gcp, RDS on aws (2026-10-29)**:
   `database.type: managed` (`vertra init --database managed`, asked on gcp),
   `database.highAvailability`. Cloud SQL for PostgreSQL 16 at a private IP,
   SSL only, tier and connections by size, Google's backups with
@@ -41,8 +41,16 @@ design.
   that owns tables (the instance's protection lifted and its databases and
   users abandoned to go with it, applied first, as the buckets' are); the
   gateway can't reach the metadata server.
-  Still to do: RDS on aws (refused there for now), and moving an existing
-  install's data from the in-cluster Postgres (apply refuses the switch).
+  On aws (2026-10-29): Amazon RDS for PostgreSQL 16 in the install's VPC,
+  no public access, TLS checked in full against Amazon's RDS certificates;
+  each service's role signs a 15-minute token (EKS Pod Identity); RDS keeps
+  its administrator's password in Secrets Manager, read only by
+  database-setup's role, which makes the databases and the rds_iam users.
+  Proven on standard-mode EKS in us-east-2 the same way (a team, a step, the
+  console refused the kernel's database), then destroyed. Found doing it:
+  the gateway's ECR repository was never made (no install had run it on
+  aws). Still to do: moving an existing install's data from the in-cluster
+  Postgres (apply refuses the switch).
 
 - [x] **Postgres sized to the install (2026-10-29)**: each size sets its
   memory, settings to match and every process's connection pool (all under

@@ -77,8 +77,8 @@ Go (pgx, client-go, Connect). One binary, `kernel`, run as processes that never 
 | `.dockerignore`, `.gcloudignore` | Keep test binaries and local files out of the image and the Cloud Build upload. |
 | `cmd/kernel/main.go` | The binary: `api`, `scheduler`, `migrate`, `sleep [--now]`, and for the chart `wait-for-postgres` (init containers) and `check-heartbeat` (the scheduler's liveness probe). |
 | `internal/config/config.go` | Every setting, for every process, read from the environment (the chart's ConfigMap) and checked at startup. |
-| `internal/dbauth/` | Signing in to a managed database with the workload's own identity: on GKE, its Workload Identity token from the metadata server as the password (Cloud SQL's IAM database authentication), kept until a minute before it expires. |
-| `internal/dbsetup/` | `kernel database-setup`: as a managed server's administrator, opens each database to its own service alone (the console's with the grant option, for the gateway). |
+| `internal/dbauth/` | Signing in to a managed database with the workload's own identity: on GKE, its Workload Identity token from the metadata server (Cloud SQL's IAM database authentication); on EKS, an RDS token its Pod Identity role signs (`rds.go`), and the RDS administrator's password from Secrets Manager, for database-setup. |
+| `internal/dbsetup/` | `kernel database-setup`: as a managed server's administrator, makes what the cloud didn't (on RDS, the databases and the services' `rds_iam` users), then opens each database to its own service alone (the console's with the grant option, for the gateway). |
 | **`internal/domain/`** | **The rules, with no I/O.** |
 | `internal/domain/states.go` | Task and execution states, the retry rule and its backoff. |
 | `internal/domain/dag.go` | Checks a DAG before it's stored: duplicate ids, unknown or repeated dependencies, cycles, `$fromTask` references, credentials in inputs; topological order. |
@@ -225,7 +225,8 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `db/queries.ts` | Every database query the routes use. |
 | `db/client.ts` | The database connection. |
 | `db/migrate.ts` | Applies migrations, creates the first admin and grants the gateway's role; run by the migration Job on deploy. |
-| `db/connection.ts` | How every pool connects: `DATABASE_URL`, and with `DATABASE_IAM_AUTH=gcp` the console's Workload Identity token as each connection's password. |
+| `db/connection.ts` | How every pool connects: `DATABASE_URL`, and with `DATABASE_IAM_AUTH` a short-lived token as each connection's password (gcp: its Workload Identity's; aws: `db/rds.ts`, an RDS token its role signs). |
+| `awsSha256.ts` | SHA-256 for AWS's SigV4 signer: the Bedrock chat's requests and RDS tokens. |
 | `db/gatewayAccess.ts` | The gateway's own database role: the columns it reads and its traffic counts, nothing else; created here on the console's own Postgres. |
 | `db/bootstrapAdmin.ts` | Creates the first admin once: a generated password is printed once and must be changed at the first sign-in; one the operator set isn't. |
 | `db/resetAdmin.ts` | Gives an admin a new random password from inside the console's Pod (`vertra admin reset-password`): printed once, every session revoked, audited. |
@@ -374,7 +375,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `internal/caller/` | The `Vertra-Caller` header (an EdDSA JWT) and its public key at `/.vertra/jwks.json`. |
 | `internal/limits/` | A token bucket per API and calling team. |
 | `internal/config/` | Its settings, checked at startup. |
-| `internal/dbauth/` | Signing in to a managed database with its own Workload Identity token (the kernel's, copied: the projects share no code). |
+| `internal/dbauth/` | Signing in to a managed database as itself (the kernel's, copied: the projects share no code): an RDS token, or on GKE a Google token federated from its own ServiceAccount token, since its NetworkPolicy keeps it from the metadata server. |
 | `Dockerfile` | One static binary on distroless, cross-compiled on the builder's platform. |
 
 ## `helm/`: Kubernetes packaging

@@ -223,7 +223,7 @@ func cloudFromGCP(outputs map[string]json.RawMessage) (*install.Cloud, error) {
 	}
 	if d := v.Database; d != nil {
 		cloud.Database = &install.ManagedDatabase{
-			Instance: d.Instance, Host: d.Host, CACert: d.CACert,
+			Provider: "gcp", Instance: d.Instance, Host: d.Host, CACert: d.CACert,
 			KernelUser: d.Users["kernel"], ConsoleUser: d.Users["console"], GatewayUser: d.Users["gateway"], AdminUser: d.Users["admin"],
 			KernelServiceAccount: d.KernelSA, GatewayServiceAccount: d.GatewaySA, AdminServiceAccount: d.AdminSA,
 		}

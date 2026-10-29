@@ -3,6 +3,7 @@
 package pricing
 
 import (
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -87,5 +88,31 @@ func TestAWSPublicConsoleCostsItsLoadBalancerAndZone(t *testing.T) {
 	if !strings.Contains(out, "Always: "+money(73+10*0.08+0.0225*hoursPerMonth+0.5)+": the EKS cluster fee") ||
 		!strings.Contains(out, "the console's load balancer and DNS zone") {
 		t.Errorf("want the load balancer and zone always:\n%s", out)
+	}
+}
+
+// RDS's real us-east-2 prices (October 2026): db.t4g.small, Single-AZ and
+// Multi-AZ, and gp3 storage.
+func TestAManagedDatabaseOnAWSIsPricedAndItsVolumeIsNot(t *testing.T) {
+	p := awsPrices()
+	p.RDS = map[string][2]float64{"db.t4g.small": {0.032, 0.065}}
+	p.RDSStorage = [2]float64{0.115, 0.23}
+	c := config.Default("aws")
+	c.Database.Type = "managed"
+	if got := RDSMonth(p, c); math.Abs(got-(0.032*730+20*0.115)) > 0.001 {
+		t.Errorf("minimal, Single-AZ: %v", got)
+	}
+	c.Database.HighAvailability = true
+	if got := RDSMonth(p, c); math.Abs(got-(0.065*730+20*0.23)) > 0.001 {
+		t.Errorf("minimal, Multi-AZ: %v", got)
+	}
+	c.Database.HighAvailability = false
+	out := text(AWS(p, c, "fetched now"))
+	if !strings.Contains(out, "  Database: $25.66: RDS (db.t4g.small)") || !strings.Contains(out, "the database (RDS)") {
+		t.Errorf("the database's line, and no volume beside it:\n%s", out)
+	}
+	c.Cluster.Mode = "standard"
+	if out := text(AWS(p, c, "fetched now")); !strings.Contains(out, "  Database: $25.66") {
+		t.Errorf("standard mode too:\n%s", out)
 	}
 }

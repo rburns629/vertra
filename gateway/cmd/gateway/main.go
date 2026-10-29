@@ -55,6 +55,20 @@ func run(log *slog.Logger) error {
 	// Not pgx's default (the node's CPUs, at least 4), which would queue a
 	// burst of calls on a small node.
 	poolConfig.MaxConns = int32(max(s.DatabaseMaxConnections, 1))
+	if s.DatabaseIAMAuth == "aws" {
+		// Its role's token for Amazon RDS, signed locally with its Pod
+		// Identity's credentials (the agent's address, which its
+		// NetworkPolicy leaves open; the instance metadata service's isn't).
+		tokens, err := dbauth.AWS(ctx, s.DatabaseIAMRegion)
+		if err != nil {
+			return err
+		}
+		poolConfig.BeforeConnect = func(ctx context.Context, c *pgx.ConnConfig) error {
+			p, err := tokens.Password(ctx, c.Host, c.Port, c.User)
+			c.Password = p
+			return err
+		}
+	}
 	if s.DatabaseIAMAuth == "gcp" {
 		// Its Workload Identity's token, short-lived, as each connection's
 		// password (Cloud SQL's IAM database authentication): federated from
