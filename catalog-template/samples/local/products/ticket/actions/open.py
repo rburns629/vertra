@@ -24,8 +24,15 @@ def write_result(result: dict[str, Any]) -> None:
 def main() -> int:
     inputs = json.loads(INPUT_PATH.read_text()).get("inputs", {})
     title = inputs.get("title")
-    if not isinstance(title, str) or not title.strip() or len(title) > MAX_LENGTH:
-        write_result({"status": "failed", "error": {"code": "MISSING_INPUT", "message": f"inputs.title is required, up to {MAX_LENGTH} characters.", "retryable": False}})
+    problem = None
+    if not isinstance(title, str):
+        problem = "inputs.title is required: what the ticket is about."
+    elif not title.strip():
+        problem = "inputs.title is blank: say what the ticket is about."
+    elif len(title) > MAX_LENGTH:
+        problem = f"inputs.title is too long: at most {MAX_LENGTH} characters."
+    if problem:
+        write_result({"status": "failed", "error": {"code": "MISSING_INPUT", "message": problem, "retryable": False}})
         return 1
 
     # From the title, so running it again opens the same ticket.

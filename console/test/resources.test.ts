@@ -329,14 +329,19 @@ describe("what depends on what (decision 25)", () => {
   it("is offered by type once its product types the output, though made before", async () => {
     // The note product types nothing: what it made provides nothing.
     await ranAndFinished(`${prov}-note-create`, {}, { noteId: `${prefix}-n1`, resources: [{ type: "demo/note", id: `${prefix}-n1` }] });
+    // A service given its id meanwhile: nothing provided it, so no link.
+    await ranAndFinished(`${prov}-svc-create`, { project: `${prefix}-n1` }, { resources: [{ type: "demo/service", id: `${prefix}-s4` }] });
     const [before] = await linked(consumerToken, `${prefix}-n1`);
     expect(before?.provides).toEqual([]);
-    // Typed later (a new catalog release): what it made is brought up to it.
+    expect(before?.dependents).toEqual([]);
+    // Typed later (a new catalog release): what it made is brought up to it,
+    // and what took its value as that type now depends on it.
     const typed = { type: "object", properties: { noteId: { type: "string", "x-vertra-provides": PROJECT } } };
     expect(await refreshProvides(`${prov}-note-create`, typed)).toBe(1);
     expect(await refreshProvides(`${prov}-note-create`, typed)).toBe(0);
     const [after] = await linked(consumerToken, `${prefix}-n1`);
     expect(after?.provides).toEqual([{ type: PROJECT, value: `${prefix}-n1`, output: "noteId" }]);
+    expect(after?.dependents).toMatchObject([{ externalId: `${prefix}-s4`, input: "project" }]);
     // And untyped again, it provides nothing.
     expect(await refreshProvides(`${prov}-note-create`, {})).toBe(1);
   });

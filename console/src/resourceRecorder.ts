@@ -17,10 +17,10 @@
  * posts it to its ordering bot's callback and its teams' outcome webhooks.
  */
 import type { FastifyBaseLogger } from "fastify";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { productLookup, productOfTask } from "./core/executions.js";
 import { db } from "./db/client.js";
-import { resourceDeleteRequests, resourceLinks, resources, submittedExecutions, type Provided } from "./db/schema.js";
+import { products, resourceDeleteRequests, resourceLinks, resources, submittedExecutions, type Provided } from "./db/schema.js";
 import { getExecution, getExecutionStates, type KernelExecution } from "./kernel/client.js";
 import { runFinished } from "./notifier.js";
 import { runFinishedCallbacks } from "./callbacks.js";
@@ -102,7 +102,11 @@ export function providedBy(outputSchema: unknown, outputs: Record<string, unknow
  * Brings what a product's live resources provide up to its output schema:
  * a product that types an output later (or stops) has its resources made
  * before then offered by that type too, from the outputs kept with each.
- * Only rows that change are written. How many changed.
+ * What newly provides a value is linked to the live resources that took
+ * that value as an input needing its type, as the recorder would have
+ * (links aren't removed when a type is: a step wired in its run still
+ * depends on what it was wired from). Only rows that change are written.
+ * How many changed.
  */
 export async function refreshProvides(product: string, outputSchema: unknown): Promise<number> {
   const live = await db
@@ -110,11 +114,36 @@ export async function refreshProvides(product: string, outputSchema: unknown): P
     .from(resources)
     .where(and(eq(resources.product, product), isNull(resources.deletedAt)));
   let changed = 0;
+  let needers: { product: string; input: string; wiringType: string }[] | null = null;
   for (const r of live) {
     const provides = providedBy(outputSchema, isRecord(r.outputs) ? r.outputs : {});
     if (JSON.stringify(provides) === JSON.stringify(r.provides)) continue;
     await db.update(resources).set({ provides }).where(eq(resources.id, r.id));
     changed += 1;
+    const gained = provides.filter((p) => !r.provides.some((q) => q.type === p.type && q.value === p.value));
+    if (gained.length === 0) continue;
+    // The registered actions with an input that needs a type, read once.
+    needers ??= (await db.select({ name: products.name, inputSchema: products.inputSchema }).from(products)).flatMap((p) => {
+      const properties = isRecord(p.inputSchema) && isRecord(p.inputSchema["properties"]) ? p.inputSchema["properties"] : {};
+      return Object.keys(properties).flatMap((input) => {
+        const wiringType = hintOf(p.inputSchema, input, "x-vertra-needs");
+        return wiringType ? [{ product: p.name, input, wiringType }] : [];
+      });
+    });
+    for (const { type, value } of gained) {
+      for (const n of needers.filter((x) => x.wiringType === type)) {
+        const using = await db
+          .select({ id: resources.id })
+          .from(resources)
+          .where(and(eq(resources.product, n.product), isNull(resources.deletedAt), ne(resources.id, r.id), sql`${resources.inputs} @> ${JSON.stringify({ [n.input]: value })}::jsonb`));
+        if (using.length > 0) {
+          await db
+            .insert(resourceLinks)
+            .values(using.map((u) => ({ resourceId: u.id, dependsOnId: r.id, input: n.input, wiringType: type })))
+            .onConflictDoNothing();
+        }
+      }
+    }
   }
   return changed;
 }

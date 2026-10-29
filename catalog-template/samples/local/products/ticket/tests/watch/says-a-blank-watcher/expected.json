@@ -1,0 +1,8 @@
+{
+  "status": "failed",
+  "error": {
+    "code": "MISSING_INPUT",
+    "message": "inputs.watcher is blank: say who is told when it changes.",
+    "retryable": false
+  }
+}

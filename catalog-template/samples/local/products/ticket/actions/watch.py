@@ -29,8 +29,15 @@ def main() -> int:
     if not isinstance(ticket, str) or not re.fullmatch(r"T-[0-9a-f]{8}", ticket):
         write_result({"status": "failed", "error": {"code": "MISSING_INPUT", "message": "inputs.ticket is required: a ticket's id, such as T-1a2b3c4d.", "retryable": False}})
         return 1
-    if not isinstance(watcher, str) or not watcher.strip() or len(watcher) > MAX_LENGTH:
-        write_result({"status": "failed", "error": {"code": "MISSING_INPUT", "message": f"inputs.watcher is required, up to {MAX_LENGTH} characters.", "retryable": False}})
+    problem = None
+    if not isinstance(watcher, str):
+        problem = "inputs.watcher is required: who is told when it changes."
+    elif not watcher.strip():
+        problem = "inputs.watcher is blank: say who is told when it changes."
+    elif len(watcher) > MAX_LENGTH:
+        problem = f"inputs.watcher is too long: at most {MAX_LENGTH} characters."
+    if problem:
+        write_result({"status": "failed", "error": {"code": "MISSING_INPUT", "message": problem, "retryable": False}})
         return 1
 
     # From the ticket and watcher, so running it again makes the same watch.
