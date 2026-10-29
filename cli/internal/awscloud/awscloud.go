@@ -463,3 +463,20 @@ func LeftVolumes(ctx context.Context, r *run.Runner, c *config.Config, namespace
 	_ = json.Unmarshal([]byte(out), &ids)
 	return ids, nil
 }
+
+// BedrockAuthorized says whether this account may call model in Amazon
+// Bedrock (an account's first use of Anthropic's models needs its use-case
+// form accepted, and AWS may refuse it). An error, when it can't tell.
+func BedrockAuthorized(ctx context.Context, r *run.Runner, c *config.Config, model string) (bool, error) {
+	out, err := r.Output(ctx, "aws", args(c, "bedrock", "get-foundation-model-availability", "--model-id", model)...)
+	if err != nil {
+		return false, err
+	}
+	var v struct {
+		AuthorizationStatus string `json:"authorizationStatus"`
+	}
+	if err := json.Unmarshal([]byte(out), &v); err != nil {
+		return false, fmt.Errorf("Bedrock's answer: %w", err)
+	}
+	return v.AuthorizationStatus == "AUTHORIZED", nil
+}

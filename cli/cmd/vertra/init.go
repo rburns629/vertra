@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rburns629/vertra/cli/internal/access"
+	"github.com/rburns629/vertra/cli/internal/awscloud"
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/githost"
 	"github.com/rburns629/vertra/cli/internal/plan"
@@ -36,6 +37,7 @@ type initFlags struct {
 	noCatalog, useExistingCatalog          bool
 	scaleDown                              string
 	database, databaseHA                   string
+	chat                                   string
 	logs, auditExport, auditLock, gateway  string
 	monitoring                             string
 	registryPort, minReplicas, headroom    int
@@ -70,6 +72,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.size, "size", "", "minimal, resilient, scaled or auto")
 	fl.StringVar(&f.scaleDown, "scale-down", "", "true or false: sleep when idle")
 	fl.StringVar(&f.database, "database", "", "gcp: in-cluster (Postgres in a Pod, backed up to a bucket) or managed (Cloud SQL)")
+	fl.StringVar(&f.chat, "chat", "", "aws: true or false: the console's chat answers with Claude in Amazon Bedrock (default: on when this account may use it)")
 	fl.StringVar(&f.databaseHA, "database-ha", "", "with a managed database: true or false: a standby in a second zone (default: on for resilient and scaled)")
 	fl.StringVar(&f.logs, "logs", "", "true or false: keep steps' and the platform's logs for Observe's search (Loki)")
 	fl.StringVar(&f.auditExport, "audit-export", "", "gcp, aws: true or false: copy the audit log to a bucket that refuses deletes")
@@ -279,6 +282,11 @@ func (a *app) runInit(cmd *cobra.Command, env string, f *initFlags) error {
 	if err := a.offerBudget(ctx, out, c, awsCheck); err != nil {
 		return err
 	}
+	if c.Target == "aws" {
+		if err := a.askBedrockChat(ctx, out, c, f); err != nil {
+			return err
+		}
+	}
 
 	if c.Target == "existing" && a.ask.Interactive {
 		if err := a.askExistingConsole(ctx, out, c); err != nil {
@@ -452,5 +460,39 @@ func (a *app) askCatalog(ctx context.Context, out io.Writer, c *config.Config, f
 			return err
 		}
 	}
+	return nil
+}
+
+// askBedrockChat decides the console's chat on aws: Claude in Amazon
+// Bedrock as the console's own identity, when this account may use it.
+// AWS may refuse an account Anthropic's models (its use-case form), and a
+// chat on a model it can't call only fails, so then it's left off, with
+// another way to have one.
+func (a *app) askBedrockChat(ctx context.Context, out io.Writer, c *config.Config, f *initFlags) error {
+	model := c.Chat.Model
+	if model == "" {
+		model = config.DefaultBedrockModel
+	}
+	authorized, err := awscloud.BedrockAuthorized(ctx, a.runner, c, model)
+	switch {
+	case f.chat != "":
+		c.Chat.Off = f.chat != "true"
+		if !c.Chat.Off && err == nil && !authorized {
+			fmt.Fprintf(out, "Warning: this account isn't authorized for %s in Amazon Bedrock yet: the chat fails until it is (Bedrock console: Model catalog, the model, Submit use case details).\n", model)
+		}
+		return nil
+	case err != nil:
+		fmt.Fprintf(out, "Couldn't ask Amazon Bedrock whether this account may use %s (%v).\n", model, err)
+	case !authorized:
+		fmt.Fprintf(out, "Chat: this account isn't authorized for %s in Amazon Bedrock (AWS asks for Anthropic's use-case form, and may refuse it).\n", model)
+		fmt.Fprintln(out, "It's left off. An admin can answer with an Anthropic API key instead (Admin, Chat), or turn Bedrock on once access is granted: `vertra config set chat.off false`.")
+		c.Chat.Off = true
+		return nil
+	}
+	on, err := a.ask.Confirm(fmt.Sprintf("Answer the console's chat with Claude in Amazon Bedrock (%s, as the console's own AWS identity)?", model), err == nil)
+	if err != nil {
+		return err
+	}
+	c.Chat.Off = !on
 	return nil
 }

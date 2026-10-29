@@ -4,13 +4,20 @@
 # lets only those reach it), over TLS, in a scratch database it drops after.
 #
 #   perf/pgbench/run.sh <label>      on vertra-perf (KUBE_CONTEXT to change)
+#   PGBENCH_ALLOW=<context> KUBE_CONTEXT=<context> perf/pgbench/run.sh <label>
+#                                    a throwaway cloud test install, named
+#                                    twice so it's never one by mistake
 #
 # Prints, for 8 and 64 clients at once: transactions a second and latency,
 # for pgbench's TPC-B-like mix (writes) and select-only (reads).
 set -euo pipefail
 label=${1:?usage: run.sh <label>}
 ctx=${KUBE_CONTEXT:-kind-vertra-perf}
-case "$ctx" in kind-vertra-perf*) ;; *) echo "run.sh: only on a vertra-perf cluster, not $ctx" >&2; exit 1;; esac
+case "$ctx" in
+  kind-vertra-perf*) ;;
+  "${PGBENCH_ALLOW:-}") ;;
+  *) echo "run.sh: only on a vertra-perf cluster, or one named in PGBENCH_ALLOW, not $ctx" >&2; exit 1;;
+esac
 ns=vertra-system
 release=kernel
 image=$(kubectl --context "$ctx" -n "$ns" get deploy "$release-execution-kernel-postgres" -o jsonpath='{.spec.template.spec.containers[0].image}')

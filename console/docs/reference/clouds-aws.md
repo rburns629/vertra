@@ -99,6 +99,16 @@ exist" or "Too many tokens per day". Ask AWS Support to raise them, naming
 the model. You pay Bedrock for what it's asked, a few
 cents a conversation.
 
+AWS may refuse an account Anthropic's models (often a new or low-spend
+one; replying on the case with the use case can change that). `vertra init`
+asks Bedrock whether the account may use the model, and leaves the chat off
+when it may not (`--chat true` turns it on anyway). The chat then works
+another way: an admin sets the provider to Anthropic, with an API key, on
+the Admin page's Chat settings (the key is kept sealed in the console's
+database), so its conversations go to Anthropic's API rather than staying
+in AWS. Once Bedrock access is granted, `vertra config set -e <env> chat.off
+false` and `vertra apply`.
+
 ## Next
 
 [Setting up Vertra](../setup.md): `vertra init`, what each question decides, and what to expect from `vertra apply`.
