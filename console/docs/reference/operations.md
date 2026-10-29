@@ -619,6 +619,10 @@ Check what's really running with
 With `vertra`, the release an install runs is the `vertra` key in
 vertra.yaml (`source` builds the working copy instead):
 `vertra config set -e <env> vertra <x.y.z>`, then `vertra apply <env>`.
+`vertra check` says when a newer release is out; `apply`'s screen names
+the releases an upgrade passes over (their migrations run in order, but
+read their notes) and says when `vertra` itself is older than the release;
+it refuses an older release than the one installed.
 With Helm, it's the charts' `--version`; each chart defaults to the images
 released with it. Upgrade the kernel first, as on install.
 

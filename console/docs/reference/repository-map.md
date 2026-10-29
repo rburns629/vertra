@@ -526,6 +526,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
 | `internal/consoleapi/` | The console's API as vertra uses it, over the generated Connect clients: signing in as the admin, revoking the tokens catalogs once held, syncing the catalog, running a DAG and watching it finish. Tested against fake Connect handlers. |
 | `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
+| `internal/releases/` | Vertra's releases (GitHub's list, cached a day): the newest, what an upgrade passes over, and whether a version change can be applied. |
 | `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in; `gcp_account.go`: your billing account's prices, when you may read them) and AWS's Price List and Spot price history (with your AWS sign-in), fetched a few calls at a time and each cached a day, and their cost models; `testdata/` holds real price entries. |
 
 ## `catalog-template/`: what a new catalog starts as

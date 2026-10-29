@@ -18,6 +18,7 @@ import (
 
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/prompt"
+	"github.com/rburns629/vertra/cli/internal/releases"
 	"github.com/rburns629/vertra/cli/internal/run"
 	"github.com/rburns629/vertra/cli/internal/tools"
 )
@@ -100,7 +101,12 @@ func versionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print vertra's version",
 		Args:  cobra.NoArgs,
-		Run:   func(*cobra.Command, []string) { fmt.Println("vertra", Version) },
+		Run: func(cmd *cobra.Command, _ []string) {
+			fmt.Println("vertra", Version)
+			if newest := releases.Newest(cmd.Context()); newest != "" && releases.Valid(Version) && releases.Compare(Version, newest) < 0 {
+				fmt.Printf("Vertra %s is out: %s\n", newest, releases.NotesURL(newest))
+			}
+		},
 	}
 }
 

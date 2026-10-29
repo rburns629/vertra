@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/gcp"
 	"github.com/rburns629/vertra/cli/internal/install"
 	"github.com/rburns629/vertra/cli/internal/platform"
+	"github.com/rburns629/vertra/cli/internal/releases"
 	"github.com/rburns629/vertra/cli/internal/run"
 	"github.com/rburns629/vertra/cli/internal/tools"
 )
@@ -89,9 +91,20 @@ func (a *app) checkCmd() *cobra.Command {
 			if st.Reachable {
 				fmt.Fprintf(out, "  reachable through %s (Kubernetes %s)\n", cluster.Context(c), st.ServerVersion)
 				fmt.Fprintf(out, "  namespace %s: %s\n", c.Namespace, map[bool]string{true: "exists", false: "not yet"}[st.NamespaceExists])
-				installed := install.Releases(ctx, a.runner, c)
+				var installed map[string]string
+				var versions []string
+				run.Together(
+					func() { installed = install.Releases(ctx, a.runner, c) },
+					func() { versions, _ = releases.List(ctx) },
+				)
 				for _, r := range []string{install.KernelRelease, install.ConsoleRelease} {
 					fmt.Fprintf(out, "  release %-8s %s\n", r, orDefault(installed[r], "not installed"))
+				}
+				// A chart version never released is a build from source: nothing to say.
+				if now := releases.ChartVersion(installed[install.KernelRelease]); len(versions) > 0 && slices.Contains(versions, now) {
+					if newest := versions[0]; releases.Compare(now, newest) < 0 {
+						fmt.Fprintf(out, "  Vertra %s is out (this runs %s): `vertra config set vertra %s`, then `vertra apply` (%s)\n", newest, now, newest, releases.NotesURL(newest))
+					}
 				}
 			}
 			for _, p := range st.Problems {

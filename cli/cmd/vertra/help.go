@@ -63,7 +63,13 @@ may read them; otherwise list prices, and it says which). Nothing happens
 until you approve. Then it creates the cloud side (OpenTofu), readies the
 cluster and installs or upgrades both charts. Run it again after any
 change: it makes the install match vertra.yaml, and does nothing more
-when it already does. The approved screen is saved as last-plan.txt.`,
+when it already does. The approved screen is saved as last-plan.txt.
+
+Upgrading is setting vertra to a newer release (vertra config set vertra
+0.6.0), then apply. Its screen names the releases an upgrade passes over
+(read their notes), and says when this vertra is older than the release
+it installs. It refuses to go to an older release: migrations only go
+forward.`,
 		example: `  vertra apply dev
   vertra apply dev --plan-only     # the screen only
   vertra apply dev --yes           # no question (CI, scripts)`,
@@ -71,7 +77,8 @@ when it already does. The approved screen is saved as last-plan.txt.`,
 	"vertra check": {
 		long: `Checks without changing anything: the tools, your sign-in to the cloud,
 the cluster, and what's installed. What a run of apply would need, and
-what's wrong if it would fail. On aws with the chat on, it also asks
+what's wrong if it would fail. It says when a newer release than the
+installed one is out. On aws with the chat on, it also asks
 Amazon Bedrock whether the account may still use the chat's model.`,
 		example: `  vertra check dev`,
 	},
@@ -155,7 +162,8 @@ install.`,
   vertra tools --target aws --install`,
 	},
 	"vertra version": {
-		long:    `Prints vertra's version: a release's, or dev for one built from a checkout.`,
+		long:    `Prints vertra's version: a release's, or dev for one built from a checkout;
+and when a newer release is out, which (GitHub's list, cached a day).`,
 		example: `  vertra version`,
 	},
 	"vertra admin": {

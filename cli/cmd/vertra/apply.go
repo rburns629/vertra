@@ -19,6 +19,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/install"
 	"github.com/rburns629/vertra/cli/internal/plan"
 	"github.com/rburns629/vertra/cli/internal/platform"
+	"github.com/rburns629/vertra/cli/internal/releases"
 	"github.com/rburns629/vertra/cli/internal/run"
 	"github.com/rburns629/vertra/cli/internal/tools"
 )
@@ -47,6 +48,12 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	if err := a.requireTools(ctx, out, c.Target, c.Vertra == "source"); err != nil {
 		return err
 	}
+	// The release list (cached a day) is read while the rest is checked.
+	versions := make(chan []string, 1)
+	go func() {
+		list, _ := releases.List(ctx)
+		versions <- list
+	}()
 	var cloud *cloudPlan
 	switch c.Target {
 	case "gcp":
@@ -85,7 +92,12 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 		}
 	}
 
+	upgrade, err := releases.Upgrade(releases.ChartVersion(installed[install.KernelRelease]), c.Vertra, Version, <-versions)
+	if err != nil {
+		return err
+	}
 	p := buildPlan(ctx, c, envName(dir), state, images, installed, now, cloud)
+	p.Notes = append(p.Notes, upgrade...)
 	var screen bytes.Buffer
 	p.Render(&screen)
 	fmt.Fprint(out, screen.String())
