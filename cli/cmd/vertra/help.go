@@ -162,7 +162,7 @@ install.`,
   vertra tools --target aws --install`,
 	},
 	"vertra version": {
-		long:    `Prints vertra's version: a release's, or dev for one built from a checkout;
+		long: `Prints vertra's version: a release's, or dev for one built from a checkout;
 and when a newer release is out, which (GitHub's list, cached a day).`,
 		example: `  vertra version`,
 	},
