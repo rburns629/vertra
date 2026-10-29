@@ -72,7 +72,8 @@ spec:
         object.metadata.name + "."
       reason: Forbidden
     # Its NetworkPolicies are each team's default deny (teamNetwork.ts),
-    # never deleted, and only ever refusing more: every Pod selected, and
+    # never deleted, and only ever refusing more (the no-metadata one may
+    # only let out everything, less what it excepts): every Pod selected, and
     # connections let in from this namespace's own Pods alone. So the
     # console can't open a team namespace to anything outside it, except,
     # with the gateway on, exactly one opening: this release's gateway Pods
@@ -106,12 +107,23 @@ spec:
           has(object.spec.ingress[0].from[0].podSelector.matchLabels) &&
           object.spec.ingress[0].from[0].podSelector.matchLabels == {{ include "execution-console.gatewaySelectorLabels" . | fromYaml | toJson }} &&
           !has(object.spec.ingress[0].from[0].podSelector.matchExpressions)
+          ){{ end }}{{ if .Values.teamNamespaces.blockMetadata }} || (
+          object.metadata.name == "vertra-no-metadata" &&
+          (!has(object.spec.podSelector.matchLabels) || size(object.spec.podSelector.matchLabels) == 0) &&
+          !has(object.spec.podSelector.matchExpressions) &&
+          object.spec.policyTypes == ["Egress"] &&
+          !has(object.spec.ingress) &&
+          has(object.spec.egress) && object.spec.egress.all(rule,
+            !has(rule.ports) && has(rule.to) && rule.to.all(peer,
+              has(peer.ipBlock) && !has(peer.podSelector) && !has(peer.namespaceSelector) &&
+              peer.ipBlock.cidr in ["0.0.0.0/0", "::/0"]))
           ){{ end }}))
       message: >-
         The console's NetworkPolicies are a team namespace's vertra-default-deny, selecting every
         Pod and letting in nothing from outside the namespace, and (with the gateway on)
-        vertra-gateway-ingress, letting only the gateway's Pods reach the team's API backends; it
-        never deletes one.
+        vertra-gateway-ingress, letting only the gateway's Pods reach the team's API backends, and
+        (with teamNamespaces.blockMetadata) vertra-no-metadata, letting out everything but what
+        it excepts; it never deletes one.
       reason: Forbidden
     # Its only quota and limits are each team's (teamQuota.ts). (Deleting
     # one is checked by its name in the request: there's no object then.)

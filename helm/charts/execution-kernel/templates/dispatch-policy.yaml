@@ -20,7 +20,19 @@ it never affects anything else in the cluster -- including the kernel's own
 integration tests, which create Jobs as the developer's kubeconfig user.
 Covers ConfigMaps as well as Jobs, the two things the scheduler's executor
 creates (the Job, then its request.json ConfigMap), so the scheduler can't
-create either in a namespace a task doesn't belong in.
+create either in a namespace a task doesn't belong in. It deletes them too
+(cancelling, cleaning up), so deleting is fenced the same way: only its own
+(labelled app=execution-kernel, named ek-...), only in a team namespace,
+retired ones included (a retired team's running steps still finish and are
+cleaned up). Its ClusterRole would otherwise let it delete any Job or
+ConfigMap in the cluster.
+
+With scheduler.taskPodHardening on, a Job must also be hardened as the
+executor makes it (kernel/internal/executor/kubernetes.go): no Kubernetes
+token, non-root, no privilege escalation, a read-only root filesystem, no
+capabilities, nothing of the host's. The cluster then holds this even in a
+team namespace without Pod Security's restricted label (one the console
+didn't create), and for a Job the scheduler was tricked into making.
 */}}
 {{- if .Values.dispatchPolicy.enabled }}
 {{- $scheduler := printf "system:serviceaccount:%s:%s" .Release.Namespace (include "execution-kernel.serviceAccountName" .) }}
@@ -37,28 +49,79 @@ spec:
     resourceRules:
       - apiGroups: ["batch"]
         apiVersions: ["v1"]
-        operations: ["CREATE"]
+        operations: ["CREATE", "DELETE"]
         resources: ["jobs"]
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["CREATE"]
+        operations: ["CREATE", "DELETE"]
         resources: ["configmaps"]
   matchConditions:
     - name: from-kernel-scheduler
       expression: request.userInfo.username == {{ $scheduler | quote }}
+  variables:
+    - name: labelled
+      expression: >-
+        has(namespaceObject.metadata.labels) &&
+        {{ $label | quote }} in namespaceObject.metadata.labels
   validations:
+    # Creating: only into a team namespace that isn't retired.
     - expression: >-
+        request.operation != "CREATE" || (
         {{- if not .Values.dispatchPolicy.allowReleaseNamespace }}
         namespaceObject.metadata.name != {{ .Release.Namespace | quote }} &&
         {{- end }}
-        has(namespaceObject.metadata.labels) &&
-        {{ $label | quote }} in namespaceObject.metadata.labels &&
-        namespaceObject.metadata.labels[{{ $label | quote }}] == "true"
+        variables.labelled &&
+        namespaceObject.metadata.labels[{{ $label | quote }}] == "true")
       messageExpression: >-
         "namespace " + namespaceObject.metadata.name + " is not a Vertra team
         namespace (it needs the label {{ $label }}=true), so tasks can't be
         dispatched into it"
       reason: Forbidden
+    # Deleting: only what the executor made, in a team namespace, live or retired.
+    - expression: >-
+        request.operation != "DELETE" || (
+        {{- if not .Values.dispatchPolicy.allowReleaseNamespace }}
+        namespaceObject.metadata.name != {{ .Release.Namespace | quote }} &&
+        {{- end }}
+        variables.labelled &&
+        namespaceObject.metadata.labels[{{ $label | quote }}] in ["true", "retired"] &&
+        oldObject.metadata.name.startsWith("ek-") &&
+        has(oldObject.metadata.labels) && "app" in oldObject.metadata.labels &&
+        oldObject.metadata.labels["app"] == "execution-kernel")
+      messageExpression: >-
+        "the scheduler may delete only its own Jobs and ConfigMaps, in team
+        namespaces; not " + oldObject.metadata.name + " in " + namespaceObject.metadata.name
+      reason: Forbidden
+    {{- if .Values.scheduler.taskPodHardening }}
+    # A step's Job, hardened as the executor makes it (scheduler.taskPodHardening).
+    - expression: >-
+        request.operation != "CREATE" || request.resource.resource != "jobs" || (
+        has(object.spec.template.spec.automountServiceAccountToken) &&
+        object.spec.template.spec.automountServiceAccountToken == false &&
+        has(object.spec.template.spec.securityContext) &&
+        has(object.spec.template.spec.securityContext.runAsNonRoot) &&
+        object.spec.template.spec.securityContext.runAsNonRoot == true &&
+        (!has(object.spec.template.spec.hostNetwork) || object.spec.template.spec.hostNetwork == false) &&
+        (!has(object.spec.template.spec.hostPID) || object.spec.template.spec.hostPID == false) &&
+        (!has(object.spec.template.spec.hostIPC) || object.spec.template.spec.hostIPC == false) &&
+        (!has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(v, !has(v.hostPath))) &&
+        (!has(object.spec.template.spec.initContainers) || object.spec.template.spec.initContainers.size() == 0) &&
+        object.spec.template.spec.containers.all(c,
+          has(c.securityContext) &&
+          (!has(c.securityContext.privileged) || c.securityContext.privileged == false) &&
+          has(c.securityContext.allowPrivilegeEscalation) &&
+          c.securityContext.allowPrivilegeEscalation == false &&
+          has(c.securityContext.readOnlyRootFilesystem) &&
+          c.securityContext.readOnlyRootFilesystem == true &&
+          has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+          "ALL" in c.securityContext.capabilities.drop &&
+          (!has(c.securityContext.capabilities.add) || c.securityContext.capabilities.add.size() == 0)))
+      message: >-
+        a step's Job must run hardened (scheduler.taskPodHardening): no
+        Kubernetes token, non-root, a read-only root filesystem, no
+        capabilities or privilege, nothing of the host's
+      reason: Forbidden
+    {{- end }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

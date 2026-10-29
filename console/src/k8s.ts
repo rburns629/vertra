@@ -515,6 +515,32 @@ export const TEAM_NETWORK_POLICY = "vertra-default-deny";
  * a team labels as API backends (API_BACKEND_LABEL: "true"), and nothing
  * else of the team's. */
 export const TEAM_GATEWAY_INGRESS = "vertra-gateway-ingress";
+
+/** With teamNamespaces.blockMetadata (EKS), a third: no Pod in the namespace
+ * may connect to the cloud's instance metadata server, so a step can't take
+ * the node's credentials; everything else outward stays open. */
+export const TEAM_NO_METADATA = "vertra-no-metadata";
+
+/** The instance metadata server's addresses (EC2's, IPv4 and IPv6). */
+const METADATA_ADDRESSES = { v4: "169.254.169.254/32", v6: "fd00:ec2::254/128" };
+
+export function noMetadataPolicy(namespace: string): k8s.V1NetworkPolicy {
+  return {
+    metadata: { name: TEAM_NO_METADATA, namespace, labels: MANAGED_LABELS },
+    spec: {
+      podSelector: {},
+      policyTypes: ["Egress"],
+      egress: [
+        {
+          to: [
+            { ipBlock: { cidr: "0.0.0.0/0", except: [METADATA_ADDRESSES.v4] } },
+            { ipBlock: { cidr: "::/0", except: [METADATA_ADDRESSES.v6] } },
+          ],
+        },
+      ],
+    },
+  };
+}
 export const API_BACKEND_LABEL = "vertra/api-backend";
 
 /** The gateway-ingress policy for a team namespace. */
@@ -549,10 +575,10 @@ export function gatewayIngressPolicy(namespace: string, gateway: GatewayPods): k
  * namespace, so another team's steps can't reach it. Outgoing traffic is
  * left alone (steps call their clouds); the platform's own Pods refuse
  * steps with policies of their own. With `gateway`, also
- * TEAM_GATEWAY_INGRESS. Returns false when the namespace doesn't exist
- * (yet).
+ * TEAM_GATEWAY_INGRESS; with `blockMetadata`, also TEAM_NO_METADATA.
+ * Returns false when the namespace doesn't exist (yet).
  */
-export async function writeTeamNetworkPolicy(namespace: string, gateway: GatewayPods | null): Promise<boolean> {
+export async function writeTeamNetworkPolicy(namespace: string, gateway: GatewayPods | null, blockMetadata: boolean): Promise<boolean> {
   const body: k8s.V1NetworkPolicy = {
     metadata: { name: TEAM_NETWORK_POLICY, namespace, labels: MANAGED_LABELS },
     // The client's model calls `from` `_from`, and sends it as `from`.
@@ -560,6 +586,7 @@ export async function writeTeamNetworkPolicy(namespace: string, gateway: Gateway
   };
   if (!(await writeNetworkPolicy(namespace, body))) return false;
   if (gateway) await writeNetworkPolicy(namespace, gatewayIngressPolicy(namespace, gateway));
+  if (blockMetadata) await writeNetworkPolicy(namespace, noMetadataPolicy(namespace));
   return true;
 }
 

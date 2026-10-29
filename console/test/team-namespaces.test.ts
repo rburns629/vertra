@@ -373,7 +373,7 @@ describe("the default-deny network policy", () => {
 
   it("is written into a new team's namespace", async () => {
     expect((await call(admin, "TeamService/CreateTeam", { name: name("net") })).code).toBe("ok");
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net"), null);
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net"), null, false);
   });
 
   it("isn't written when a team is retired, and is again when it comes back", async () => {
@@ -382,19 +382,24 @@ describe("the default-deny network policy", () => {
     await retire(name("net-retire"));
     expect(writeTeamNetworkPolicy).not.toHaveBeenCalled();
     await call(admin, "TeamService/UnretireTeam", { name: name("net-retire") });
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-retire"), null);
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-retire"), null, false);
   });
 
   it("is written into every team on a resync, and a failure is reported", async () => {
     await createTeam(name("net-sync"));
     expect(await syncTeamNetworkPolicies()).toBe(true);
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), null);
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), null, false);
     // With the gateway on, its Pods go with it.
     const gateway = { namespace: "vertra-system", labels: { "app.kubernetes.io/component": "gateway" } };
     config.teamNamespaces.gatewayIngress = gateway;
     await syncTeamNetworkPolicies();
     config.teamNamespaces.gatewayIngress = null;
-    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), gateway);
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), gateway, false);
+    // With blockMetadata (EKS), the no-metadata policy goes too.
+    config.teamNamespaces.blockMetadata = true;
+    await syncTeamNetworkPolicies();
+    config.teamNamespaces.blockMetadata = false;
+    expect(writeTeamNetworkPolicy).toHaveBeenCalledWith(name("net-sync"), null, true);
     vi.mocked(writeTeamNetworkPolicy).mockImplementationOnce(() => Promise.reject(new Error("boom")));
     await expect(syncTeamNetworkPolicies()).rejects.toThrow("Couldn't write the network policy");
   });
@@ -407,5 +412,24 @@ describe("the default-deny network policy", () => {
     expect(await syncTeamNetworkPolicies()).toBe(false);
     config.teamNamespaces.manage = true;
     expect(writeTeamNetworkPolicy).not.toHaveBeenCalled();
+  });
+});
+
+describe("the no-metadata network policy", () => {
+  it("lets every Pod out anywhere but the instance metadata server", async () => {
+    const { noMetadataPolicy } = await vi.importActual<typeof import("../src/k8s.js")>("../src/k8s.js");
+    const policy = noMetadataPolicy("web");
+    expect(policy.metadata?.name).toBe("vertra-no-metadata");
+    expect(policy.spec?.podSelector).toEqual({});
+    expect(policy.spec?.policyTypes).toEqual(["Egress"]);
+    expect(policy.spec?.ingress).toBeUndefined();
+    expect(policy.spec?.egress).toEqual([
+      {
+        to: [
+          { ipBlock: { cidr: "0.0.0.0/0", except: ["169.254.169.254/32"] } },
+          { ipBlock: { cidr: "::/0", except: ["fd00:ec2::254/128"] } },
+        ],
+      },
+    ]);
   });
 });

@@ -605,6 +605,14 @@ teamNamespaces:
   # write fence accepts no other policy from the console. Needs a CNI that
   # enforces NetworkPolicy.
   defaultDenyIngress: true
+  # -- With defaultDenyIngress, a third NetworkPolicy (vertra-no-metadata)
+  # refusing connections from a team's Pods to the instance metadata server
+  # (169.254.169.254, fd00:ec2::254), so a step can't take its node's
+  # cloud credentials; everything else outward stays open. For EKS (on in
+  # helm/values/eks). Never on GKE: Workload Identity, steps' own cloud
+  # identity, is served at that address. Turning it off later leaves the
+  # policies in place (the console never deletes one).
+  blockMetadata: false
   # -- What each team's steps may use together, as a ResourceQuota
   # (vertra-team-quota) and LimitRange (vertra-team-limits) in its
   # namespace, unless an admin sets the team's own on its Settings tab.

@@ -17,6 +17,10 @@ existingSecretKey: database-url
 # checking images; the scanner's Jobs use the same.
 registryCheck:
   ecrToken: true
+# Steps can't reach the instance metadata server, so not the node's role
+# either (a NetworkPolicy in each team namespace).
+teamNamespaces:
+  blockMetadata: true
 # The catalog's release, beside its images, and who may sign it (the same
 # signer as the kernel's imageSignature).
 catalog:

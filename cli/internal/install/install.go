@@ -398,6 +398,9 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		// Reading ECR with the console's own role (EKS Pod Identity, bound
 		// to its ServiceAccounts by name: no annotations).
 		v["registryCheck"] = map[string]any{"ecrToken": true}
+		// Steps can't reach the instance metadata server, so not the node's
+		// role either (a NetworkPolicy in each team namespace).
+		v["teamNamespaces"] = map[string]any{"blockMetadata": true}
 		if cloud.ConsoleHost != "" {
 			// HTTPS only, on an Application Load Balancer with ACM's
 			// certificate; the load balancer connects from inside the VPC.

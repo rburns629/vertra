@@ -3,7 +3,9 @@
  * Keeps a default-deny NetworkPolicy in every team namespace (k8s.ts's
  * TEAM_NETWORK_POLICY), so one team's steps can't reach another team's
  * Pods, and, with the gateway on, one letting the gateway reach the Pods
- * the team labels as API backends (TEAM_GATEWAY_INGRESS). Written when a team is created or un-retired, and again in every
+ * the team labels as API backends (TEAM_GATEWAY_INGRESS), and, with
+ * teamNamespaces.blockMetadata, one refusing the instance metadata server
+ * (TEAM_NO_METADATA). Written when a team is created or un-retired, and again in every
  * policy resync (policySync.ts), which puts it into namespaces made before
  * it existed and undoes any edit within one interval. Only when the console
  * manages team namespaces (config.teamNamespaces); otherwise whoever makes
@@ -19,7 +21,7 @@ function applies(): boolean {
 
 /** Writes it into one team's namespace, when the console keeps them. */
 export async function ensureTeamNetworkPolicy(team: string): Promise<void> {
-  if (applies()) await writeTeamNetworkPolicy(team, config.teamNamespaces.gatewayIngress);
+  if (applies()) await writeTeamNetworkPolicy(team, config.teamNamespaces.gatewayIngress, config.teamNamespaces.blockMetadata);
 }
 
 /** Writes it into every team's namespace that exists. Returns whether it
@@ -29,7 +31,7 @@ export async function syncTeamNetworkPolicies(): Promise<boolean> {
   const failed: string[] = [];
   for (const team of await listAllTeams()) {
     try {
-      await writeTeamNetworkPolicy(team.name, config.teamNamespaces.gatewayIngress);
+      await writeTeamNetworkPolicy(team.name, config.teamNamespaces.gatewayIngress, config.teamNamespaces.blockMetadata);
     } catch {
       failed.push(team.name);
     }

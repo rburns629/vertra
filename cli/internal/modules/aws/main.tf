@@ -238,6 +238,11 @@ resource "aws_eks_addon" "cni" {
   for_each     = local.standard ? toset(["vpc-cni", "kube-proxy", "eks-pod-identity-agent"]) : toset([])
   cluster_name = aws_eks_cluster.this.name
   addon_name   = each.value
+  # The VPC CNI enforces NetworkPolicies only when asked: every one the
+  # charts and the console write (Postgres, kernel-api, each team's
+  # default deny, no metadata server) depends on it. Auto Mode's is turned
+  # on by a ConfigMap (awscloud.InCluster).
+  configuration_values = each.value == "vpc-cni" ? jsonencode({ enableNetworkPolicy = "true" }) : null
 }
 
 # CoreDNS and the EBS driver run as Pods: after the platform's node.

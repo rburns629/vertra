@@ -219,9 +219,11 @@ func InstallAutoscaler(ctx context.Context, r *run.Runner, c *config.Config) err
 }
 
 // InCluster is what the cluster needs before the charts. Auto Mode: a
-// default StorageClass (its EBS driver ships none) and a node pool for steps
-// (Spot unless the size is scaled), tainted so only steps land on it, empty
-// when nothing runs. Standard mode: a default StorageClass for the EBS CSI
+// default StorageClass (its EBS driver ships none), its network policy
+// controller turned on (off by default, and every NetworkPolicy the charts
+// and the console write depends on it), and a node pool for steps (Spot
+// unless the size is scaled), tainted so only steps land on it, empty when
+// nothing runs. Standard mode: a default StorageClass for the EBS CSI
 // add-on (its steps group comes from the module).
 func InCluster(mode string, spot bool) string {
 	if mode == "standard" {
@@ -259,6 +261,14 @@ allowVolumeExpansion: true
 parameters:
   type: gp3
   encrypted: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amazon-vpc-cni
+  namespace: kube-system
+data:
+  enable-network-policy-controller: "true"
 ---
 apiVersion: karpenter.sh/v1
 kind: NodePool

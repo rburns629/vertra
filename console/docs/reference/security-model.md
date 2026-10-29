@@ -692,15 +692,22 @@ Security: the console labels each namespace it creates
 `teamNamespaces.podSecurity`; `console/src/k8s.ts`, `setTeamNamespace`), and
 the namespace policy won't let it remove the label. A team namespace the
 console adopted rather than created, or one made with `podSecurity` empty,
-has no such label; there only the scheduler's setting holds, since no
-admission policy checks these fields.
+has no such label. Either way, while `taskPodHardening` is on the kernel's
+dispatch policy refuses any Job of the scheduler's that isn't hardened
+that way (no API token, non-root, a read-only root filesystem, no
+capabilities or privilege, nothing of the host's: proven on kind
+2026-10-28), so a scheduler tricked into making another Job still can't.
 
 **The network.** In, only Pods of its own namespace (and the gateway, to a
 team's API backends). Out, anything: the internet, its cloud, the
 Kubernetes API server (with no token to call it, while hardening is on),
-the console's and the gateway's public ports, Services in namespaces with
-no ingress policy, and the cloud's metadata server. It can't reach either
-Postgres, kernel-api, the image scanner, Loki, or any metrics port.
+the console's and the gateway's public ports, and Services in namespaces
+with no ingress policy; the cloud's metadata server too, except on EKS
+(below). It can't reach either Postgres, kernel-api, the image scanner,
+Loki, or any metrics port. All of this needs a CNI that enforces
+NetworkPolicy: on EKS, `vertra` turns enforcement on (the VPC CNI's
+`enableNetworkPolicy` in standard mode, the `amazon-vpc-cni` ConfigMap in
+Auto Mode), off by default there.
 
 **The metadata server**, so the node's own cloud identity:
 
@@ -708,12 +715,14 @@ Postgres, kernel-api, the image scanner, Loki, or any metrics port.
   Identity's (`GKE_METADATA`, `cli/internal/modules/gcp/main.tf`): a step
   gets only the Google identity bound to its own ServiceAccount, and none
   as `default`; never the node's.
-- On EKS, `vertra` sets no instance-metadata options on its node groups
-  (`cli/internal/modules/aws/main.tf`), so whether a step can reach the
-  node role through IMDS is EKS's default for the cluster's mode. That
-  hasn't been verified. Until it is, treat what the node role may do as
-  reachable from a step, or add an egress NetworkPolicy of your own to
-  team namespaces refusing `169.254.169.254`.
+- On EKS, the console writes `vertra-no-metadata` into every team
+  namespace (the console chart's `teamNamespaces.blockMetadata`, on in the
+  EKS values and in what `vertra` installs there): every Pod may connect
+  anywhere but `169.254.169.254` and `fd00:ec2::254`, so a step can't ask
+  for the node role's credentials. Steps that need AWS get their own role
+  through EKS Pod Identity (`169.254.170.23`, still open) or a web-identity
+  token. The write fence accepts that policy only in a shape that lets out
+  everything less what it excepts. Not yet proven on EKS.
 - On any other cluster, it's the cluster operator's to close.
 
 ## If a component is compromised
@@ -753,8 +762,9 @@ taken, and what would still hold.
   ConfigMaps (the dispatch policy keeps them to team namespaces, and the
   Job policies check every Job); list and watch every Pod in the cluster
   and read any Pod's logs, the platform's and kube-system's included;
-  delete any Job or ConfigMap in any namespace (the dispatch policy fences
-  only creating them); list events.
+  delete Jobs and ConfigMaps, which the dispatch policy keeps to its own
+  (labelled `app=execution-kernel`, named `ek-…`) in team namespaces,
+  retired ones included (proven on kind 2026-10-28); list events.
 - **The gateway** may mint ServiceAccount tokens only for `*-api`
   ServiceAccounts in team namespaces ([The API gateway](#the-api-gateway)).
   But it signs in to the console's database with the console's own
@@ -872,9 +882,9 @@ Vertra isn't production-ready yet.
 | Reads aren't audited ([Audit](#audit)) | Who looked at a run's outputs or logs isn't recorded | Not decided |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
 | Traffic inside the cluster is plain (console to kernel-api, every Postgres connection) | Anyone who can watch the cluster's network sees the console's token and the data | Not decided; meanwhile a service mesh where NetworkPolicy isn't enough |
-| The scheduler may read every Pod's logs and delete any Job or ConfigMap, cluster-wide | A stolen scheduler identity reaches well beyond team namespaces | Not decided |
-| Step Pod hardening is enforced by the cluster only through Pod Security, set on namespaces the console created | In an adopted namespace, `scheduler.taskPodHardening: false` runs steps as root with an API token | Not decided; meanwhile keep `taskPodHardening` on and let the console create team namespaces |
-| Whether an EKS step can reach the node role through IMDS isn't verified | A step might act as the node | Verify; meanwhile an egress NetworkPolicy refusing `169.254.169.254` in team namespaces |
+| The scheduler may read every Pod's logs, cluster-wide (reading isn't something an admission policy can check) | A stolen scheduler identity can read the platform's and kube-system's logs | Not decided: per-namespace Roles would need something to create RBAC in each team namespace, which the console deliberately can't |
+| Step Pod hardening is a chart setting: with `scheduler.taskPodHardening: false`, the dispatch policy no longer requires it, and only Pod Security, on namespaces the console created, holds a step to `restricted` | Steps run as root with an API token in an adopted namespace | Keep `taskPodHardening` on and let the console create team namespaces |
+| The EKS metadata block is proven on kind only (the policy is written and accepted), not yet on EKS | A step might act as the node until it is | Prove on the next EKS install |
 | Every team named in a raw DAG sees all of its steps' outputs (a template run's providers see only their own steps in full; other teams see only a step's INFO log lines) | Cross-team visibility of outputs within a shared raw DAG | Decide: filter outputs by team, or require every team for reads |
 
 ## Out of scope

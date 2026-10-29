@@ -49,7 +49,11 @@ Each step is the same product in another language, chained with
 
 Needs Kubernetes 1.30 or later, Helm 4, and a CNI that enforces
 NetworkPolicy (GKE Dataplane V2, which Autopilot always has; on EKS the
-network policy agent or Calico; on AKS a network policy engine).
+VPC CNI's network policy agent, off until asked for: `vertra` turns it on,
+and on a cluster of your own set the `vpc-cni` add-on's
+`{"enableNetworkPolicy": "true"}`, or in Auto Mode the `kube-system`
+ConfigMap `amazon-vpc-cni` with `enable-network-policy-controller: "true"`;
+on AKS a network policy engine). Without it, no policy below holds.
 
 1. **Images and charts.** Each release publishes both images (amd64 and
    arm64, scanned, signed keyless by the release workflow) and both charts
@@ -853,7 +857,12 @@ gateway on, a second one, `vertra-gateway-ingress`, lets the gateway's Pods
 an API product whose backend runs in the team's own namespace
 (`samples/local/apis/greetings`; on kind, `make kind-sample-api`). A
 namespace the console doesn't manage needs the same policies from whoever
-made it. Outbound traffic isn't restricted.
+made it. Outbound traffic isn't restricted, except, with
+`teamNamespaces.blockMetadata` (on EKS), a third policy,
+`vertra-no-metadata`, which lets a team's Pods out anywhere but the
+instance metadata server (`169.254.169.254`, `fd00:ec2::254`), so a step
+can't take its node's role. Never turn it on for GKE: Workload Identity is
+served at that address.
 
 ## The chat agent
 

@@ -560,6 +560,11 @@ export const config = {
     // A NetworkPolicy in each one refusing connections from outside it
     // (teamNetwork.ts).
     defaultDenyIngress: process.env["TEAM_NAMESPACE_DEFAULT_DENY_INGRESS"] === "true",
+    // With it, a NetworkPolicy refusing the instance metadata server
+    // (k8s.ts's TEAM_NO_METADATA): on EKS, where a step could otherwise
+    // take its node's credentials. Never on GKE, whose Workload Identity
+    // is served there.
+    blockMetadata: process.env["TEAM_NAMESPACE_BLOCK_METADATA"] === "true",
     // With the gateway on: its Pods (their namespace and labels), which a
     // second NetworkPolicy lets reach the Pods a team labels as API
     // backends (k8s.ts's TEAM_GATEWAY_INGRESS). Null: the gateway is off.
