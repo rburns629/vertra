@@ -391,9 +391,10 @@ postgres:
   enabled: true
   image:
     repository: postgres
-    tag: "16"
-    # -- Pin by digest ("sha256:…"), as for image.digest.
-    digest: ""
+    # Pinned, as every image the charts run is; the backup Jobs run it too
+    # (pg_dump and pg_restore of the same major).
+    tag: "16.15"
+    digest: sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c
   auth:
     username: postgres
     # -- Empty: generated on install and kept on upgrades (it lives in this

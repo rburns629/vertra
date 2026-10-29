@@ -42,7 +42,7 @@ import {
   listAllTeams,
 } from "../db/queries.js";
 import type { ProductExample, TargetRule, TemplateStep } from "../db/schema.js";
-import { errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
+import { errorMessage, errorPath, schemaErrors, schemaProblem } from "../jsonSchema.js";
 import { UNREGISTERED_SERVICE_ACCOUNT } from "../productPolicy.js";
 import { allowedValues, targetInputs, targetProblems } from "../targets.js";
 import { readinessOf, type ReadinessView } from "../readiness.js";
@@ -57,7 +57,7 @@ export const parameterSchemaProblem = schemaProblem;
 function checkParameters(schema: unknown, parameters: Record<string, unknown>, label: string): void {
   const errors = schemaErrors(schema, parameters);
   if (errors.length === 0) return;
-  const problems = errors.map((e) => ({ field: "parameters" + errorPath(e), message: e.message ?? "is invalid" }));
+  const problems = errors.map((e) => ({ field: "parameters" + errorPath(e), message: errorMessage(e) }));
   throw new ApiError(
     422,
     "INVALID_PARAMETERS",

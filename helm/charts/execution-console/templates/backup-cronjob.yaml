@@ -71,7 +71,7 @@ spec:
           {{- end }}
           initContainers:
             - name: pg-dump
-              image: "postgres:16"
+              image: {{ include "execution-console.image" $.Values.postgres.image | quote }}
               # Explicit, not left for Autopilot's own resource-defaulting
               # webhook to fill in -- confirmed directly that its mutation
               # of this CronJob's doubly-nested pod template
@@ -126,7 +126,7 @@ spec:
               {{- else if eq $destination "azure" }}
               image: {{ $backup.azure.image | quote }}
               {{- else }}
-              image: "postgres:16"
+              image: {{ include "execution-console.image" $.Values.postgres.image | quote }}
               {{- end }}
               resources:
                 requests:

@@ -55,7 +55,7 @@ import { ensureStillRunnable, rerunTemplate } from "./templates.js";
 import { mayDecide, taskTeams } from "./approvals.js";
 import { visibleLines } from "../logLevels.js";
 import { failureCodeOnly, runView, visibleEvent, visiblePayload } from "./runView.js";
-import { errorPath, schemaErrors } from "../jsonSchema.js";
+import { errorMessage, errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { platformAlert } from "../notifier.js";
 import { scanBlocker } from "../scanning.js";
@@ -593,7 +593,7 @@ async function withProductContract(submission: Record<string, unknown>, runner: 
       for (const e of schemaErrors(product.inputSchema, known)) {
         const missing = e.keyword === "required" ? String((e.params as { missingProperty?: unknown }).missingProperty) : undefined;
         if (missing !== undefined && references.has(missing)) continue; // an upstream output, checked when resolved
-        problems.push({ field: `tasks.${String(task["id"])}.inputs${errorPath(e)}`, message: e.message ?? "is invalid" });
+        problems.push({ field: `tasks.${String(task["id"])}.inputs${errorPath(e)}`, message: errorMessage(e) });
       }
     }
     out.push({

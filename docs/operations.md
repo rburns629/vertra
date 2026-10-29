@@ -1089,7 +1089,7 @@ the current release even if it hasn't changed.
   itself fails, restart Docker Desktop.
 - The console stopped answering after a redeploy: its port-forward was on
   the old Pod; `make up`.
-- `postgres:16` won't load with a TLS error on some networks: `docker save`
+- The Postgres image (`postgres:16.15`, by digest) won't load with a TLS error on some networks: `docker save`
   it, `docker cp` it onto the node, and import it with
   `ctr --namespace=k8s.io images import` there.
 - Forgotten local admin password:

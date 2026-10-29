@@ -10,7 +10,8 @@ import ajv2020 from "ajv/dist/2020.js";
 import type { ErrorObject, ValidateFunction } from "ajv";
 
 // A CommonJS module: its class is module.exports, and its .default too.
-const ajv = new ajv2020.default({ allErrors: true, strict: false });
+// verbose: each error carries the schema it failed, for its own message.
+const ajv = new ajv2020.default({ allErrors: true, strict: false, verbose: true });
 /** Compiled schemas, by their JSON; ajv's own cache would keep every schema object it sees. */
 const compiledSchemas = new Map<string, ValidateFunction>();
 
@@ -40,6 +41,16 @@ export function schemaProblem(schema: unknown): string | null {
 export function schemaErrors(schema: unknown, value: unknown): ErrorObject[] {
   const validate = compiled(schema);
   return validate(value) ? [] : [...(validate.errors ?? [])];
+}
+
+/**
+ * What's wrong, in the schema's own words where it gives them (a pattern's
+ * x-vertra-pattern-message, as the console's forms show it), else ajv's.
+ */
+export function errorMessage(e: ErrorObject): string {
+  const parent: unknown = e.parentSchema;
+  const own = e.keyword === "pattern" && typeof parent === "object" && parent !== null ? (parent as Record<string, unknown>)["x-vertra-pattern-message"] : undefined;
+  return typeof own === "string" && own ? own : (e.message ?? "is invalid");
 }
 
 /** An error's place in the value, dotted (".text", or "" for the value itself). */

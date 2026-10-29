@@ -328,6 +328,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `image-policy.test.ts`, `registry.test.ts` | Allowed image sources; the registry check. |
 | `product-releases.test.ts`, `product-catalog.test.ts` | Product registration, releases, full descriptions, wiring types. |
 | `docs.test.ts`, `schemaDoc.test.ts` | The guides load and link correctly; the database guide matches the schema. |
+| `jsonSchema.test.ts` | What a schema refuses, in its own words (a pattern's `x-vertra-pattern-message`) or ajv's. |
 | `secrets.test.ts` | Registering and revoking secrets: other teams refused, names Kubernetes would refuse, a Secret the console didn't create. |
 | `apis.test.ts` | API products from releases (with their ServiceAccounts), who sees and may call them, held backends, pausing. |
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a target rule), and who may decide. |

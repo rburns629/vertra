@@ -46,7 +46,8 @@ actions:
           title: Title
           description: What the ticket is about, up to 200 characters.
           maxLength: 200
-          pattern: "\\S"  # not blank
+          pattern: "\\S"
+          x-vertra-pattern-message: can't be blank
     output:
       type: object
       additionalProperties: false
@@ -124,7 +125,8 @@ actions:
           title: Watcher
           description: Who is told when it changes, up to 100 characters.
           maxLength: 100
-          pattern: "\\S"  # not blank
+          pattern: "\\S"
+          x-vertra-pattern-message: can't be blank
     output:
       type: object
       additionalProperties: false
@@ -189,7 +191,8 @@ actions:
           type: string
           title: Title
           maxLength: 200
-          pattern: "\\S"  # not blank
+          pattern: "\\S"
+          x-vertra-pattern-message: can't be blank
     output:
       type: object
       additionalProperties: false

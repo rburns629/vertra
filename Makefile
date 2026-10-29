@@ -461,7 +461,7 @@ proto:
 # ---------------------------------------------------------------------------
 TEST_DB_CONTAINER ?= vertra-test-db
 TEST_DB_PORT ?= 55432
-TEST_DB_IMAGE ?= postgres:16
+TEST_DB_IMAGE ?= postgres:16.15@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c
 TEST_DB_HOST := postgres@127.0.0.1:$(TEST_DB_PORT)
 KERNEL_TEST_DB := execution_kernel_test
 CONSOLE_TEST_DB := execution_console_test

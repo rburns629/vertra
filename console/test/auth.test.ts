@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
 import { db } from "../src/db/client.js";
@@ -171,6 +171,13 @@ describe("login rate limiting", () => {
 });
 
 describe("guessing one account from many IPs", () => {
+  // The clock stands still, so a one-second wait can't run out while a
+  // loaded machine is still hashing the next attempt.
+  let t0 = 0;
+  beforeEach(() => {
+    t0 = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(t0);
+  });
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -196,8 +203,7 @@ describe("guessing one account from many IPs", () => {
   it("lets the owner in once the gap has passed, which clears the count", async () => {
     const { email } = await makeUser();
     await failFromManyIps(email, 11, "10.21.0");
-    const later = Date.now() + 2_000;
-    vi.spyOn(Date, "now").mockReturnValue(later);
+    vi.spyOn(Date, "now").mockReturnValue(t0 + 2_000);
     expect((await login(email, PASSWORD, "10.21.1.1")).statusCode).toBe(200);
     // Cleared: the next wrong guess is an ordinary 401, not a wait.
     expect((await login(email, "wrong-password", "10.21.1.2")).statusCode).toBe(401);
@@ -212,22 +218,23 @@ describe("guessing one account from many IPs", () => {
 });
 
 describe("login timing", () => {
-  async function averageMs(email: string, ipPrefix: string): Promise<number> {
-    let total = 0;
-    for (let n = 0; n < 4; n++) {
+  /** The quickest of a few attempts: other work on the machine only ever adds time. */
+  async function fastestMs(email: string, ipPrefix: string): Promise<number> {
+    let fastest = Infinity;
+    for (let n = 0; n < 5; n++) {
       const started = performance.now();
       await login(email, "wrong-password", `${ipPrefix}.${String(n)}`);
-      total += performance.now() - started;
+      fastest = Math.min(fastest, performance.now() - started);
     }
-    return total / 4;
+    return fastest;
   }
 
   it("takes as long for an email with no account as for a wrong password", async () => {
     const { email } = await makeUser();
     const missing = `${randomUUID()}@nobody.example.com`;
-    await averageMs(missing, "10.23.9"); // warm the throwaway hash
-    const real = await averageMs(email, "10.23.0");
-    const none = await averageMs(missing, "10.23.1");
+    await fastestMs(missing, "10.23.9"); // warm the throwaway hash
+    const real = await fastestMs(email, "10.23.0");
+    const none = await fastestMs(missing, "10.23.1");
     // Both pay for one argon2 check; without it a missing account answered
     // about seven times faster.
     expect(none).toBeGreaterThan(real * 0.5);

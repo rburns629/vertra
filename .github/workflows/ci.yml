@@ -54,7 +54,7 @@ jobs:
         working-directory: kernel
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.15@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c
         env:
           POSTGRES_USER: runner
           POSTGRES_DB: execution_kernel_test
@@ -82,7 +82,7 @@ jobs:
     container: golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.15@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c
         env:
           POSTGRES_USER: runner
           POSTGRES_DB: execution_console_test
@@ -114,7 +114,7 @@ jobs:
         working-directory: console
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.15@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c
         env:
           POSTGRES_USER: runner
           POSTGRES_DB: execution_console_test
@@ -227,7 +227,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.15@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c
         env:
           POSTGRES_USER: runner
           POSTGRES_DB: execution_kernel_test
