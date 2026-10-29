@@ -1,6 +1,7 @@
 # What a run made, and deleting it later: open reports the ticket it opens
 # as a resource, and cleanup names close as what removes one; plan says what
-# open would do, for Preview. The console
+# open would do, for Preview. watch shows wiring: it needs a ticket
+# (types.yaml), and its watch depends on it. The console
 # keeps the ticket after the run is gone, and its Delete runs close. Nothing
 # is really created here (a no-cloud sample): the ticket's id comes from its
 # title, so opening the same one twice gives the same ticket.
@@ -54,6 +55,7 @@ actions:
           type: string
           title: Ticket
           description: Its id, such as T-1a2b3c4d.
+          x-vertra-provides: local.ticket  # what watch's ticket is wired from
         resources:
           type: array
           title: Resources
@@ -95,6 +97,82 @@ actions:
           type: string
           title: Closed
           description: The ticket it closed.
+  - name: watch
+    idempotent: true   # the same ticket and watcher, the same watch
+    maxAttempts: 2
+    shareWith: ["*"]
+    script: actions/watch.py
+    # Unwatch removes what watch reports. The watch depends on its ticket
+    # (the input typed local.ticket), so deleting a watched ticket waits for
+    # an admin, unless its watches are deleted with it.
+    cleanup:
+      action: unwatch
+    input:
+      type: object
+      additionalProperties: false
+      required: [ticket, watcher]
+      properties:
+        ticket:
+          type: string
+          title: Ticket
+          description: The ticket to watch.
+          x-vertra-needs: local.ticket  # one of yours, or open added to the order
+          pattern: "^T-[0-9a-f]{8}$"
+        watcher:
+          type: string
+          title: Watcher
+          description: Who is told when it changes, up to 100 characters.
+          maxLength: 100
+    output:
+      type: object
+      additionalProperties: false
+      required: [watch, resources]
+      properties:
+        watch:
+          type: string
+          title: Watch
+          description: Its id, such as W-1a2b3c4d.
+        resources:
+          type: array
+          title: Resources
+          description: What it made, for the console to keep.
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: {type: string}
+              id: {type: string}
+              name: {type: string}
+              link: {type: string}
+  - name: unwatch
+    idempotent: true   # removing a removed watch removes nothing
+    maxAttempts: 2
+    shareWith: ["*"]
+    script: actions/unwatch.py
+    input:
+      type: object
+      additionalProperties: false
+      required: [resource]
+      properties:
+        resource:
+          type: object
+          title: Resource
+          description: The watch, as watch reported it.
+          required: [type, id]
+          properties:
+            type: {type: string}
+            id: {type: string}
+            name: {type: string}
+            link: {type: string}
+    output:
+      type: object
+      additionalProperties: false
+      required: [unwatched]
+      properties:
+        unwatched:
+          type: string
+          title: Unwatched
+          description: The watch it removed.
   - name: plan
     idempotent: true   # it only reports
     maxAttempts: 2

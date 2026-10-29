@@ -658,8 +658,9 @@ export const resourceDeleteRequests = pgTable(
     // The live resources depending on them when it was asked: their ids.
     dependentIds: uuid("dependent_ids").array().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    // approved or denied; null while it waits.
-    decision: text("decision").$type<"approved" | "denied">(),
+    // approved or denied; deleted when all it would delete was deleted
+    // another way first (with what depended on it); null while it waits.
+    decision: text("decision").$type<"approved" | "denied" | "deleted">(),
     decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     // The cleanup run an approval started.
@@ -667,7 +668,7 @@ export const resourceDeleteRequests = pgTable(
   },
   (table) => [
     index("resource_delete_requests_waiting_idx").on(table.createdAt).where(sql`${table.decision} IS NULL`),
-    check("resource_delete_requests_decision", sql`${table.decision} IS NULL OR ${table.decision} IN ('approved', 'denied')`),
+    check("resource_delete_requests_decision", sql`${table.decision} IS NULL OR ${table.decision} IN ('approved', 'denied', 'deleted')`),
   ],
 );
 

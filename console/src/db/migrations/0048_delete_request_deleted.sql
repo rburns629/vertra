@@ -1,0 +1,2 @@
+ALTER TABLE "resource_delete_requests" DROP CONSTRAINT "resource_delete_requests_decision";--> statement-breakpoint
+ALTER TABLE "resource_delete_requests" ADD CONSTRAINT "resource_delete_requests_decision" CHECK ("resource_delete_requests"."decision" IS NULL OR "resource_delete_requests"."decision" IN ('approved', 'denied', 'deleted'));

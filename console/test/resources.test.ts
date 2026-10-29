@@ -394,14 +394,27 @@ describe("what depends on what (decision 25)", () => {
     await ranAndFinished(`${prov}-svc-create`, { project: `${prefix}-p3` }, { resources: [{ type: "demo/service", id: `${prefix}-s3` }] });
     const [project] = await linked(consumerToken, `${prefix}-p3`);
     const [service] = await linked(consumerToken, `${prefix}-s3`);
+    // Asked alone first: waiting for an admin.
+    expect((await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [project?.id] })).failure).toBe("HAS_DEPENDENTS");
     vi.mocked(submitExecution).mockClear();
     // Asked project first: the service still goes first.
-    const deleted = await call(consumerToken, "ResourceService/DeleteResources", { resourceIds: [project?.id, service?.id] });
+    const deleted = await call<{ executionId: string }>(consumerToken, "ResourceService/DeleteResources", { resourceIds: [project?.id, service?.id] });
     expect(deleted.code).toBe("ok");
     const { dag } = lastSubmitted();
     expect(dag.tasks.map((t) => t["image"])).toEqual([
       expect.stringContaining(`${prov}/svc`),
       expect.stringContaining(`${prov}/proj`),
     ]);
+
+    // Once both are gone, the waiting request has nothing left to approve.
+    const cleanup = deleted.body.executionId;
+    kernelRuns.set(cleanup, { executionId: cleanup, name: "x", state: "SUCCEEDED", tasks: dag.tasks.map((t) => step(String(t["id"]), "SUCCEEDED")) });
+    await recorded(cleanup);
+    type Requests = { requests?: { id: string; decision: string; resources: Ref[] }[] };
+    const requests = (await call<Requests>(consumerToken, "ResourceService/ListDeleteRequests", {})).body.requests ?? [];
+    const request = requests.find((r) => r.resources.some((x) => x.externalId === `${prefix}-p3`));
+    expect(request?.decision).toBe("deleted");
+    const admin = await users.signIn((await users.makeUser({ admin: true })).email);
+    expect((await call(admin, "ResourceService/DecideDeleteRequest", { id: request?.id, approve: true })).failure).toBe("ALREADY_DECIDED");
   });
 });

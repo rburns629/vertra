@@ -8006,7 +8006,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "\"approved\", \"denied\", or empty while it waits."
+     "comment": "\"approved\", \"denied\", \"deleted\" (all it would delete was deleted\nanother way first, with what depended on it), or empty while it waits."
     },
     {
      "name": "decidedBy",

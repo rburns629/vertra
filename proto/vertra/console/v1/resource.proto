@@ -105,7 +105,8 @@ message ResourceDeleteRequest {
   string owner_team = 4;
   string requested_by = 5;
   google.protobuf.Timestamp created_at = 6;
-  // "approved", "denied", or empty while it waits.
+  // "approved", "denied", "deleted" (all it would delete was deleted
+  // another way first, with what depended on it), or empty while it waits.
   string decision = 7;
   string decided_by = 8;
   google.protobuf.Timestamp decided_at = 9;

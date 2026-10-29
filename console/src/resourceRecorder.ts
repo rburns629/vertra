@@ -20,7 +20,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { productLookup, productOfTask } from "./core/executions.js";
 import { db } from "./db/client.js";
-import { resourceLinks, resources, submittedExecutions, type Provided } from "./db/schema.js";
+import { resourceDeleteRequests, resourceLinks, resources, submittedExecutions, type Provided } from "./db/schema.js";
 import { getExecution, getExecutionStates, type KernelExecution } from "./kernel/client.js";
 import { runFinished } from "./notifier.js";
 import { runFinishedCallbacks } from "./callbacks.js";
@@ -236,10 +236,20 @@ export async function recordRun(run: Run, detail: KernelExecution): Promise<numb
     // stays this run's last attempt, free to be asked for again, or to
     // succeed if the run is retried (and so recorded again).
     const deleting = await tx.select({ id: resources.id, taskId: resources.deletingTaskId }).from(resources).where(eq(resources.deletingExecutionId, run.executionId));
-    for (const r of deleting) {
-      if (state.get(r.taskId ?? "") === "SUCCEEDED") {
-        await tx.update(resources).set({ deletedAt: sql`now()` }).where(and(eq(resources.id, r.id), isNull(resources.deletedAt)));
-      }
+    const deleted = deleting.filter((r) => state.get(r.taskId ?? "") === "SUCCEEDED").map((r) => r.id);
+    if (deleted.length > 0) {
+      await tx.update(resources).set({ deletedAt: sql`now()` }).where(and(inArray(resources.id, deleted), isNull(resources.deletedAt)));
+      // A delete waiting for an admin, of what's all gone now (deleted with
+      // what depended on it): nothing left to approve.
+      await tx
+        .update(resourceDeleteRequests)
+        .set({ decision: "deleted", decidedAt: sql`now()` })
+        .where(
+          and(
+            isNull(resourceDeleteRequests.decision),
+            sql`NOT EXISTS (SELECT 1 FROM ${resources} WHERE ${resources.id} = ANY(${resourceDeleteRequests.resourceIds}) AND ${resources.deletedAt} IS NULL)`,
+          ),
+        );
     }
     await tx.update(submittedExecutions).set({ resourcesRecordedAt: sql`now()` }).where(eq(submittedExecutions.executionId, run.executionId));
   });

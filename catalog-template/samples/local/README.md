@@ -26,6 +26,12 @@ someone deletes that ticket from **What runs made**; and its `plan` names
 says it's ready, as every install asks. Nothing is really
 created; the ticket's id comes from its title.
 
+Its `watch` shows wiring (`types.yaml`): `open`'s `ticket` output provides a
+`local.ticket`, and `watch`'s `ticket` input needs one. Put a watch alone in
+the cart and the order adds `open` for it, or offers a ticket you already
+have; the watch it reports depends on that ticket, so deleting the ticket
+waits for an admin unless its watches go with it (`unwatch` removes one).
+
 ## Tests
 
 Each product's tests are contract tests in `tests/transform/<case>/`: a

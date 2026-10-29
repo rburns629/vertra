@@ -337,6 +337,13 @@
       "when": 1793237498771,
       "tag": "0047_chat_bedrock",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793280510670,
+      "tag": "0048_delete_request_deleted",
+      "breakpoints": true
     }
   ]
 }

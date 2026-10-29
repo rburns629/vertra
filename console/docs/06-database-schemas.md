@@ -700,7 +700,7 @@ A delete refused because other resources still depended on what it would delete:
 | `requested_by` | uuid | yes | Who asked. Emptied if the account is deleted. |
 | `dependent_ids` | uuid[] | no | The live resources depending on them when it was asked. |
 | `created_at` | timestamptz | no | |
-| `decision` | text | yes | `approved` or `denied`; null while it waits. |
+| `decision` | text | yes | `approved` or `denied`; `deleted` when all it would delete was deleted another way first (with what depended on it); null while it waits. |
 | `decided_by` | uuid | yes | The admin who decided. |
 | `decided_at` | timestamptz | yes | |
 | `execution_id` | uuid | yes | The cleanup run an approval started. |

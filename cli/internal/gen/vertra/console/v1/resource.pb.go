@@ -401,7 +401,8 @@ type ResourceDeleteRequest struct {
 	OwnerTeam   string                 `protobuf:"bytes,4,opt,name=owner_team,json=ownerTeam,proto3" json:"owner_team,omitempty"`
 	RequestedBy string                 `protobuf:"bytes,5,opt,name=requested_by,json=requestedBy,proto3" json:"requested_by,omitempty"`
 	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// "approved", "denied", or empty while it waits.
+	// "approved", "denied", "deleted" (all it would delete was deleted
+	// another way first, with what depended on it), or empty while it waits.
 	Decision  string                 `protobuf:"bytes,7,opt,name=decision,proto3" json:"decision,omitempty"`
 	DecidedBy string                 `protobuf:"bytes,8,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
 	DecidedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=decided_at,json=decidedAt,proto3" json:"decided_at,omitempty"`

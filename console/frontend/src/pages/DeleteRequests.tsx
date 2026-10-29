@@ -82,6 +82,7 @@ export function DeleteRequests() {
           );
         }
         if (r.decision === "denied") return <Pill tone="neutral">Denied by {r.decidedBy ?? "an admin"}</Pill>;
+        if (r.decision === "deleted") return <Pill tone="neutral">Deleted with what used it</Pill>;
         if (!user?.isAdmin) return <Pill tone="warning">Waiting for an admin</Pill>;
         return (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>

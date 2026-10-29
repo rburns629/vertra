@@ -409,7 +409,7 @@ export interface DeleteRequestView {
   ownerTeam: string | null;
   requestedBy: string | null;
   createdAt: Date;
-  decision: "approved" | "denied" | null;
+  decision: "approved" | "denied" | "deleted" | null;
   decidedBy: string | null;
   decidedAt: Date | null;
   executionId: string | null;

@@ -1,0 +1,13 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "watch": "W-fe0062c4",
+    "resources": [
+      {
+        "type": "local/ticket-watch",
+        "id": "W-fe0062c4",
+        "name": "ops on T-d3f3719d"
+      }
+    ]
+  }
+}

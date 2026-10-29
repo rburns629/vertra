@@ -2031,7 +2031,7 @@ export interface DeleteRequest {
   ownerTeam: string | null;
   requestedBy: string | null;
   createdAt: string;
-  decision: "approved" | "denied" | null;
+  decision: "approved" | "denied" | "deleted" | null;
   decidedBy: string | null;
   executionId: string | null;
 }

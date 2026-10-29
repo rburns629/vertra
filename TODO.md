@@ -1189,8 +1189,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      the admins; it runs once an admin approves it
      (`ResourceService/DecideDeleteRequest`; What runs made, Waiting for
      an admin). Deleting the dependents with it needs no approval, and they
-     go first. Tested on the real database; not yet seen on kind with a
-     product that types its outputs (the local sample's don't).
+     go first. Seen on kind (2026-10-29) with the local sample's ticket,
+     now typed (`local.ticket`; `watch` needs one): a watch alone added
+     open, the next was offered the ticket; the ticket, with two watches
+     from two runs, was refused alone (HAS_DEPENDENTS) and deleted with
+     them, watches first. A waiting request whose resources all go another
+     way is now closed (decision `deleted`), not left to approve.
   3. `PreviewOrder` offers existing resources and optional suggestions
      (done 2026-10-28, `core/orders.ts`): a required input nothing in the
      cart provides is offered the team's and the caller's live resources

@@ -274,7 +274,8 @@ export type ResourceDeleteRequest = Message<"vertra.console.v1.ResourceDeleteReq
   createdAt?: Timestamp | undefined;
 
   /**
-   * "approved", "denied", or empty while it waits.
+   * "approved", "denied", "deleted" (all it would delete was deleted
+   * another way first, with what depended on it), or empty while it waits.
    *
    * @generated from field: string decision = 7;
    */
