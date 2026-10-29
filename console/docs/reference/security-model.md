@@ -863,8 +863,10 @@ the metrics ports, the scanner's, Loki's, which NetworkPolicies limit.
 Proven on kind 2026-10-28 with the console's database on the kernel's
 Postgres: every connection there is TLS, a plain one is refused by
 `pg_hba`, kernel-api refuses a client that doesn't trust its CA, and a run
-goes through end to end; the console's own Postgres (GKE's) only rendered
-so far. To
+goes through end to end. That's the layout of every install `vertra`
+makes (EKS and GKE too): one Postgres, in a Pod, for both databases. The
+console's own Postgres, which only the hand-written GKE values use, is only
+rendered so far. To
 rotate, delete a chart's `-tls` and `-tls-ca` Secrets and upgrade
 ([operations](operations.md#rotating-secrets)).
 

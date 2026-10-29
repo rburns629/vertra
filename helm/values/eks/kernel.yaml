@@ -8,6 +8,12 @@
 # The release's own image (appVersion): no image block.
 backup:
   enabled: false
+# One Postgres (in a Pod, on an EBS volume) for both databases, each with its
+# own role: the console's console.yaml reads kernel-execution-kernel-console-db,
+# and its gateway kernel-execution-kernel-gateway-db, both made here.
+postgres:
+  consoleDatabase:
+    enabled: true
 # Where catalog CI publishes product images (ECR, under one prefix). The
 # image policy seeds from this on first install; afterwards the Admin page
 # owns the list.

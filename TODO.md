@@ -749,7 +749,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   holds neither the console's credentials nor `JWT_SECRET`; TLS inside the
   cluster (each chart's own CA: kernel-api HTTPS, Postgres TLS-only,
   clients `verify-full`). Still to prove: the console's own Postgres with
-  TLS (GKE), on the next GKE deploy.
+  TLS, which only the hand-written GKE values use (helm/values/gke; a
+  vertra install shares the kernel's, as EKS and kind do), on the next
+  `make gke-deploy`.
 - [x] **TLS in front of the console** in the charts. Done 2026-10-22, proven
   on kind (`make kind-tls`): the Ingress takes a certificate from
   cert-manager (an issuer of yours, or Let's Encrypt through the chart's own
