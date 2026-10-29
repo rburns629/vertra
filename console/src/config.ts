@@ -304,6 +304,14 @@ export const config = {
   // never serves it (metrics.ts). 0 turns it off.
   metricsPort: Number(process.env["METRICS_PORT"] ?? 9090),
   databaseUrl: requireEnv("DATABASE_URL"),
+  // With the gateway on: its own database role (db/gatewayAccess.ts), which
+  // the migration Job grants what the gateway reads, and creates with this
+  // password when the console runs as its Postgres's superuser. Empty: no
+  // gateway.
+  gatewayDatabase: {
+    role: process.env["GATEWAY_DB_ROLE"] ?? "",
+    password: process.env["GATEWAY_DB_PASSWORD"] || undefined,
+  },
   // Signs and verifies session JWTs. Must be long and random in any real
   // deployment — this is not a value with a safe default.
   jwtSecret: requireEnv("JWT_SECRET"),

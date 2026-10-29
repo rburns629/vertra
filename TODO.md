@@ -731,8 +731,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **Gaps the 2026-10-28 docs audit found** (documented in
   `docs/security-model.md`): console → kernel-api and every Postgres
   connection are plain inside the cluster, relying on NetworkPolicy; the
-  scheduler may read every Pod's logs cluster-wide; the gateway holds the
-  console's database credentials and `JWT_SECRET`; and a compromised
+  scheduler may read every Pod's logs cluster-wide; and a compromised
   console can loosen the image, identity and scan policies (accepted:
   Kubernetes can't fence an admission policy's own edits). The EKS
   metadata block and NetworkPolicy enforcement are proven on kind only:
@@ -745,7 +744,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   scheduler's deletes fenced to its own Jobs and ConfigMaps in team
   namespaces, and its Jobs required to be hardened (the dispatch policy);
   EKS: the VPC CNI's NetworkPolicy enforcement turned on (it was off: no
-  policy held there) and `teamNamespaces.blockMetadata`.
+  policy held there) and `teamNamespaces.blockMetadata`; the gateway signs
+  in to the database as its own role (`vertra_gateway`, column grants) and
+  checks sessions with the console's public key (sessions now EdDSA), so it
+  holds neither the console's credentials nor `JWT_SECRET`.
 - [x] **TLS in front of the console** in the charts. Done 2026-10-22, proven
   on kind (`make kind-tls`): the Ingress takes a certificate from
   cert-manager (an issuer of yours, or Let's Encrypt through the chart's own

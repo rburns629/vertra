@@ -2,8 +2,9 @@
 
 // Package auth signs a gateway caller in exactly as the console does
 // (console/src/auth/plugin.ts, kept in step): a person's session JWT
-// (HS256, the console's JWT_SECRET; one issued before the account's last
-// password change, or signed out, is revoked), or a bot's API token
+// (EdDSA, checked with the console's public key, keys.go: the gateway can
+// verify a session but never make one; one issued before the account's
+// last password change, or signed out, is revoked), or a bot's API token
 // (mp_..., found by its SHA-256 in api_tokens, unless revoked or expired). The caller's teams are read from
 // the console's database on every request, so a membership change counts at
 // once. A token is never logged or kept.
@@ -11,7 +12,7 @@ package auth
 
 import (
 	"context"
-	"crypto/hmac"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -47,8 +48,9 @@ type DB interface {
 
 // Resolver signs callers in.
 type Resolver struct {
-	DB        DB
-	JWTSecret []byte
+	DB DB
+	// The console's session keys (ConsoleKeys).
+	Keys Keys
 	// SSO: the console signs people in with single sign-on, so a password's
 	// session is refused for someone a team requires it of (as the
 	// console's auth/plugin.ts does; admins are exempt).
@@ -79,9 +81,13 @@ func (r *Resolver) Resolve(ctx context.Context, authorization string) (*Caller, 
 			return nil, err
 		}
 	} else {
-		claims, err := r.verifyJWT(bearer)
-		if err != nil {
+		claims, err := r.verifyJWT(ctx, bearer)
+		if errors.Is(err, ErrUnauthenticated) {
 			return nil, ErrUnauthenticated
+		}
+		if err != nil {
+			// The console's keys couldn't be read: not the caller's fault.
+			return nil, err
 		}
 		err = r.DB.QueryRow(ctx, `SELECT id::text, email, is_admin, is_bot, password_changed_at, must_change_password FROM users WHERE id::text = $1`, claims.UserID).
 			Scan(&c.UserID, &c.Email, &c.IsAdmin, &c.IsBot, &passwordChanged, &mustChangePassword)
@@ -148,23 +154,26 @@ type claims struct {
 	ExpiresAt int64  `json:"exp"`
 }
 
-// verifyJWT checks an HS256 JWT signed with the console's secret, and that
-// it hasn't expired.
-func (r *Resolver) verifyJWT(token string) (*claims, error) {
+// verifyJWT checks an EdDSA JWT signed with the console's session key, and
+// that it hasn't expired.
+func (r *Resolver) verifyJWT(ctx context.Context, token string) (*claims, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return nil, ErrUnauthenticated
 	}
 	var header struct {
 		Alg string `json:"alg"`
+		Kid string `json:"kid"`
 	}
-	if err := decodeSegment(parts[0], &header); err != nil || header.Alg != "HS256" {
+	if err := decodeSegment(parts[0], &header); err != nil || header.Alg != "EdDSA" || header.Kid == "" {
 		return nil, ErrUnauthenticated
 	}
-	mac := hmac.New(sha256.New, r.JWTSecret)
-	mac.Write([]byte(parts[0] + "." + parts[1]))
+	key, err := r.Keys.Key(ctx, header.Kid)
+	if err != nil {
+		return nil, err
+	}
 	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
-	if err != nil || !hmac.Equal(signature, mac.Sum(nil)) {
+	if err != nil || !ed25519.Verify(key, []byte(parts[0]+"."+parts[1]), signature) {
 		return nil, ErrUnauthenticated
 	}
 	var c claims

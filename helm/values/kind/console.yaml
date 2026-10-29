@@ -41,6 +41,9 @@ secretSources:
 # (kubectl port-forward svc/console-execution-console-gateway 18090:8080).
 gateway:
   enabled: true
+  # Its own role on the kernel's Postgres, made by the kernel chart.
+  database:
+    existingSecret: kernel-execution-kernel-gateway-db
   image:
     repository: execution-gateway
     tag: latest

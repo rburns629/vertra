@@ -10,7 +10,13 @@ databases is revoked from PUBLIC, so the console's role can't reach the
 kernel's data (the kernel connects as the instance's superuser, which
 REVOKE doesn't limit).
 
-The Secret is an ordinary release resource, so it exists before the Job
+The console's API gateway gets a login role of its own too
+(consoleDatabase.gatewayUsername), with a Secret of its own: the console's
+migration Job grants it only what the gateway reads
+(console/src/db/gatewayAccess.ts), so the gateway never holds the console's
+credentials. Unused while the console chart's gateway is off.
+
+The Secrets are ordinary release resources, so they exist before the Job
 below runs. The Job is a post-install/post-upgrade hook: on an upgrade that
 turns this on, the Secret has to be applied first.
 */}}
@@ -21,6 +27,12 @@ turns this on, the Secret has to be applied first.
 {{- $password := randAlphaNum 32 }}
 {{- if and $existing (hasKey (($existing).data | default dict) "password") }}
   {{- $password = index $existing.data "password" | b64dec }}
+{{- end }}
+{{- $gatewaySecretName := printf "%s-gateway-db" (include "execution-kernel.fullname" .) }}
+{{- $existingGateway := lookup "v1" "Secret" .Release.Namespace $gatewaySecretName }}
+{{- $gatewayPassword := randAlphaNum 32 }}
+{{- if and $existingGateway (hasKey (($existingGateway).data | default dict) "password") }}
+  {{- $gatewayPassword = index $existingGateway.data "password" | b64dec }}
 {{- end }}
 apiVersion: v1
 kind: Secret
@@ -34,6 +46,19 @@ stringData:
   # The console chart's DATABASE_URL (its existingSecret, key database-url).
   database-url: "postgresql://{{ $db.username }}:{{ $password }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}"
   password: {{ $password | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $gatewaySecretName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  # The console chart's gateway.database.existingSecret.
+  database-url: "postgresql://{{ $db.gatewayUsername }}:{{ $gatewayPassword }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}"
+  password: {{ $gatewayPassword | quote }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -77,6 +102,11 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: password
+            - name: GATEWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $gatewaySecretName }}
+                  key: password
           command:
             - sh
             - -c
@@ -86,7 +116,8 @@ spec:
               psql -v ON_ERROR_STOP=1 -d postgres \
                 -v role={{ $db.username | quote }} -v db={{ $db.database | quote }} \
                 -v kernel_db={{ .Values.postgres.auth.database | quote }} \
-                -v password="$CONSOLE_PASSWORD" <<'SQL'
+                -v password="$CONSOLE_PASSWORD" \
+                -v gateway_role={{ $db.gatewayUsername | quote }} -v gateway_password="$GATEWAY_PASSWORD" <<'SQL'
               SELECT format('CREATE ROLE %I LOGIN', :'role')
                 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'role') \gexec
               SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'role', :'password') \gexec
@@ -95,6 +126,10 @@ spec:
               SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', :'db') \gexec
               SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', :'role') \gexec
               SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', :'kernel_db') \gexec
+              SELECT format('CREATE ROLE %I LOGIN', :'gateway_role')
+                WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'gateway_role') \gexec
+              SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'gateway_role', :'gateway_password') \gexec
+              SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', :'gateway_role') \gexec
               SQL
               echo "console database {{ $db.database }} ready, owned by {{ $db.username }}"
 {{- end }}

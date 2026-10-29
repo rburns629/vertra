@@ -7,6 +7,7 @@ import { config } from "../config.js";
 import { randomUUID } from "node:crypto";
 import { findApiTokenPrincipal, findUserById, isSessionRevoked, teamRolesForUser, touchApiToken } from "../db/queries.js";
 import { API_TOKEN_PREFIX, hashApiToken } from "./apiToken.js";
+import { sessionJwks, sessionKeyId, sessionKeys } from "../sessionKeys.js";
 
 /** How stale an API token's "last used" time may get before a request
  * rewrites it: precise enough for "is anything still using this?". */
@@ -174,8 +175,16 @@ export async function callerForUser(userId: string): Promise<AuthUser | undefine
 }
 
 const authPlugin: FastifyPluginAsync = async (app) => {
-  // jwtVerify() rejects an expired token on its own once `exp` is set.
-  await app.register(fastifyJwt, { secret: config.jwtSecret, sign: { expiresIn: config.jwtTtl } });
+  // Ed25519 (sessionKeys.ts), so the gateway, holding the public key only,
+  // can check a session but never make one. jwtVerify() rejects an expired
+  // token on its own once `exp` is set, and any other algorithm.
+  await app.register(fastifyJwt, {
+    secret: sessionKeys,
+    sign: { algorithm: "EdDSA", expiresIn: config.jwtTtl, kid: sessionKeyId },
+    verify: { algorithms: ["EdDSA"] },
+  });
+  // The public key, for the gateway; anyone may read it.
+  app.get("/api/auth/jwks", () => sessionJwks());
 };
 
 export default fp(authPlugin);

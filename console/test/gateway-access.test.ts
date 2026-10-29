@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: MIT
+import { afterAll, describe, expect, it } from "vitest";
+import pg from "pg";
+import { ensureGatewayAccess } from "../src/db/gatewayAccess.js";
+
+// Against the real test database, as its superuser: the role is made, then
+// used, as the gateway would use it.
+const url = process.env["DATABASE_URL"] ?? "";
+const owner = new pg.Pool({ connectionString: url });
+const ROLE = "vertra_gateway_test";
+const PASSWORD = "gateway-test-only";
+
+afterAll(async () => {
+  await owner.end();
+});
+
+function asGateway(): pg.Client {
+  const target = new URL(url);
+  target.username = ROLE;
+  target.password = PASSWORD;
+  return new pg.Client({ connectionString: target.toString() });
+}
+
+describe("the gateway's database role", () => {
+  it("is made when missing, and can read what the gateway reads and nothing more", async () => {
+    await owner.query(`DROP OWNED BY ${ROLE}`).catch(() => undefined);
+    await owner.query(`DROP ROLE IF EXISTS ${ROLE}`);
+    await ensureGatewayAccess(owner, ROLE, PASSWORD);
+    // Again: idempotent, and without a password it keeps the role as it is.
+    await ensureGatewayAccess(owner, ROLE, undefined);
+
+    const gateway = asGateway();
+    await gateway.connect();
+    try {
+      // What the gateway's own queries read (gateway/internal/auth, store).
+      await gateway.query("SELECT id, email, is_admin, is_bot, password_changed_at, must_change_password FROM users LIMIT 1");
+      await gateway.query("SELECT user_id, token_hash, revoked_at, expires_at FROM api_tokens LIMIT 1");
+      await gateway.query("SELECT t.name, t.require_sso FROM team_memberships m JOIN teams t ON t.id = m.team_id LIMIT 1");
+      await gateway.query("SELECT a.id FROM apis a JOIN teams t ON t.id = a.team_id WHERE t.retired_at IS NULL AND t.deleted_at IS NULL LIMIT 1");
+      await gateway.query("SELECT sid FROM revoked_sessions LIMIT 1");
+      await gateway.query("SELECT closed_message FROM gateway_state LIMIT 1");
+      const { rows } = await gateway.query<{ write: boolean }>("SELECT has_table_privilege('api_traffic', 'INSERT, UPDATE') AS write");
+      expect(rows[0]?.write).toBe(true);
+      // And never what it doesn't.
+      for (const refused of [
+        "SELECT password_hash FROM users LIMIT 1",
+        "SELECT label FROM api_tokens LIMIT 1",
+        "SELECT * FROM secret_grants LIMIT 1",
+        "SELECT * FROM audit_log LIMIT 1",
+        "SELECT * FROM sso_settings LIMIT 1",
+        "UPDATE users SET is_admin = true WHERE false",
+      ]) {
+        await expect(gateway.query(refused), refused).rejects.toThrow(/permission denied/);
+      }
+    } finally {
+      await gateway.end();
+    }
+  });
+
+  it("refuses to go on without a role it can sign in as", async () => {
+    await expect(ensureGatewayAccess(owner, "vertra_gateway_missing", undefined)).rejects.toThrow("doesn't exist");
+  });
+});

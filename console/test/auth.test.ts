@@ -282,3 +282,26 @@ describe("limits shared by every copy of the console", () => {
     expect(row?.failures).toBe(3);
   });
 });
+
+describe("session signing", () => {
+  it("signs with Ed25519 and publishes only the public key", async () => {
+    const { email } = await makeUser();
+    const token = await tokenFor(email);
+    const header = JSON.parse(Buffer.from(token.split(".")[0] ?? "", "base64url").toString()) as { alg: string; kid: string };
+    expect(header.alg).toBe("EdDSA");
+    const jwks = (await app.inject({ method: "GET", url: "/api/auth/jwks" })).json<{ keys: Record<string, string>[] }>();
+    expect(jwks.keys).toHaveLength(1);
+    expect(jwks.keys[0]).toMatchObject({ kty: "OKP", crv: "Ed25519", alg: "EdDSA", kid: header.kid });
+    expect(jwks.keys[0]?.["d"]).toBeUndefined();
+  });
+
+  it("refuses a session signed any other way, such as HS256 with the old secret", async () => {
+    const { id } = await makeUser();
+    const { createHmac } = await import("node:crypto");
+    const part = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const now = Math.floor(Date.now() / 1000);
+    const unsigned = `${part({ alg: "HS256", typ: "JWT" })}.${part({ userId: id, iat: now, exp: now + 60 })}`;
+    const forged = `${unsigned}.${createHmac("sha256", "test-only-jwt-secret").update(unsigned).digest("base64url")}`;
+    expect((await me(forged)).statusCode).toBe(401);
+  });
+});

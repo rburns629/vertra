@@ -151,3 +151,21 @@ namespace's vertra-gateway-ingress lets them reach the team's API backends.
 {{ include "execution-console.selectorLabels" . }}
 app.kubernetes.io/component: gateway
 {{- end -}}
+
+{{/*
+The gateway's database credentials: gateway.database.existingSecret's
+database-url, or, with this chart's own Postgres, keys in its own Secret.
+*/}}
+{{- define "execution-console.gatewayDatabaseSecretName" -}}
+{{- if .Values.gateway.database.existingSecret -}}
+{{- .Values.gateway.database.existingSecret -}}
+{{- else if .Values.postgres.enabled -}}
+{{- include "execution-console.secretName" . -}}
+{{- else -}}
+{{- fail "gateway.enabled needs gateway.database.existingSecret (the kernel chart's <release>-execution-kernel-gateway-db, or one of yours), unless postgres.enabled" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "execution-console.gatewayDatabaseSecretKey" -}}
+{{- if .Values.gateway.database.existingSecret -}}database-url{{- else -}}gateway-database-url{{- end -}}
+{{- end -}}

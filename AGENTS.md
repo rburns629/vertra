@@ -96,9 +96,12 @@ its own directory.
 - **`gateway/`** (Go 1.26+, pgx, libopenapi-validator): the API gateway
   (decision 20, `docs/assessment.md`), forwarding to each API product's
   backend exactly what its OpenAPI document describes. It reads the
-  console's database (published APIs; who callers are, checked exactly as
+  console's database as a role of its own (`vertra_gateway`, granted by
+  `console/src/db/gatewayAccess.ts`: a column it starts to read is granted
+  there) (published APIs; who callers are, checked exactly as
   `console/src/auth/plugin.ts` does, and kept in step with it), writing
-  only its own traffic counts (`api_traffic`). The console chart deploys it (`gateway.enabled`); it may mint
+  only its own traffic counts (`api_traffic`). It checks sessions with the
+  console's public key (`/api/auth/jwks`), never `JWT_SECRET`. The console chart deploys it (`gateway.enabled`); it may mint
   ServiceAccount tokens only for `*-api` ServiceAccounts in team namespaces
   (an admission policy). Its tests read the console's migrated test
   database (`TEST_DATABASE_URL`).

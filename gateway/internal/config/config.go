@@ -16,10 +16,12 @@ import (
 
 // Settings are every setting.
 type Settings struct {
-	// The console's database, read only: published APIs, and who callers are.
+	// The console's database, as the gateway's own role: published APIs and
+	// who callers are, read; its traffic counts, written.
 	DatabaseURL string
-	// The console's session secret, to check sessions as it does.
-	JWTSecret []byte
+	// The console, inside the cluster, whose session keys (its JWKS) check
+	// sessions as it does.
+	ConsoleURL string
 	// The console signs people in with single sign-on, so a team may
 	// refuse password sessions (teams.require_sso).
 	SSO bool
@@ -69,7 +71,7 @@ func Load(getenv func(string) string) (*Settings, error) {
 	}
 	s := &Settings{
 		DatabaseURL:      need("DATABASE_URL"),
-		JWTSecret:        []byte(need("JWT_SECRET")),
+		ConsoleURL:       strings.TrimSuffix(need("CONSOLE_URL"), "/"),
 		SSO:              getenv("SSO_ENABLED") == "true",
 		Issuer:           need("GATEWAY_ISSUER"),
 		Listen:           or("LISTEN", ":8080"),

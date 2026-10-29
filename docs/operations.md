@@ -724,8 +724,8 @@ The databases' passwords: [Databases](#databases). The registry pull
 Secret (`registryCheck.pullSecretName`): replace it, and the next policy
 sync copies it to every team.
 
-**The console's `JWT_SECRET`** signs every session, and the console and
-the gateway both check sessions with it. It also seals the values the
+**The console's `JWT_SECRET`** signs every session (through an Ed25519 key
+derived from it, whose public half the gateway reads from the console). It also seals the values the
 console keeps in its database to use itself: teams' chat webhook URLs,
 order callbacks and their signing secrets, the Google sign-in client secret
 set on the Admin page, and the chat agent's key set there. It's generated on
@@ -736,10 +736,12 @@ it. To rotate it:
 ```
 kubectl -n vertra-system patch secret console-execution-console --type json -p '[{"op":"remove","path":"/data/jwt-secret"}]'
 helm upgrade console ...   # your usual upgrade: a new one is generated
-kubectl -n vertra-system rollout restart deployment console-execution-console   # and console-execution-console-gateway, if it runs
+kubectl -n vertra-system rollout restart deployment console-execution-console
 ```
 
-A changed Secret restarts nothing by itself, hence the restart. Then:
+A changed Secret restarts nothing by itself, hence the restart. The
+gateway needs none: it reads the new public key the first time a session
+names it. Then:
 
 - every session ends, so everyone signs in again;
 - every sealed value becomes unreadable and has to be entered again: each

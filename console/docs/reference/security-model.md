@@ -412,11 +412,15 @@ the API is held: the gateway can't be pointed anywhere a catalog says. Its
 only Kubernetes right is minting ServiceAccount tokens, and an admission
 policy limits that to API ServiceAccounts (`*-api`) in team namespaces, so
 it can't mint the platform's or a team's other identities. It reads the
-console's database and writes only its traffic counts (`api_traffic`), but
-it signs in with the console's own database credentials and holds
-`JWT_SECRET` to check sessions, so a compromised gateway is as strong as
-the console's API (see [If a component is
-compromised](#if-a-component-is-compromised)). Requests are logged and counted by
+console's database as a role of its own (`vertra_gateway`,
+`console/src/db/gatewayAccess.ts`): it may read the columns it needs to
+sign callers in and find APIs (never a password hash, a sealed value, a
+secret's name or the audit log) and write only its traffic counts
+(`api_traffic`). It checks sessions with the console's public key (its
+JWKS, `/api/auth/jwks`), so it can verify a session but never make one,
+and never holds `JWT_SECRET` (proven on kind 2026-10-28: the gateway
+connects as `vertra_gateway`, accepts a console session, refuses one signed
+any other way). Requests are logged and counted by
 API, team, caller and outcome, never with bodies, header values or
 credentials; the counts kept for each API's page (`api_traffic`, a week)
 hold only the calling team, never who. What it refused there is also in
@@ -559,7 +563,8 @@ and a restart forgets nothing. A failed sign-in is logged (`event:
 "sign_in_failed"`, with the email and address) and audited. The client
 address is the connection's unless `trustProxy` names the load balancer.
 
-**Sessions** are JWTs signed with `JWT_SECRET` (HS256), lasting `JWT_TTL`
+**Sessions** are JWTs signed with an Ed25519 key derived from `JWT_SECRET`
+(`console/src/sessionKeys.ts`; EdDSA, any other algorithm refused), lasting `JWT_TTL`
 (8 hours by default; single sign-on's too, a keyless bot's an hour). The
 browser keeps one in `localStorage` and sends it as a bearer header, never
 a cookie, so there's no cross-site request forgery to defend. The token
@@ -572,8 +577,8 @@ on. Every session of a person ends when their password is changed or
 reset, or their account is deleted
 (`console/src/auth/plugin.ts`); disabling someone at the single sign-on
 provider ends nothing until their session expires. Anyone with
-`JWT_SECRET` can make a session for anyone: the console and the gateway
-hold it.
+`JWT_SECRET` can make a session for anyone: only the console holds it. The
+gateway gets the public key alone.
 
 ## In the browser
 
@@ -767,10 +772,11 @@ taken, and what would still hold.
   retired ones included (proven on kind 2026-10-28); list events.
 - **The gateway** may mint ServiceAccount tokens only for `*-api`
   ServiceAccounts in team namespaces ([The API gateway](#the-api-gateway)).
-  But it signs in to the console's database with the console's own
-  credentials and holds `JWT_SECRET`: it could make a session as anyone,
-  admins included, do through the console's API whatever they may, and
-  unseal what the console seals. Its Kubernetes rights stay its own.
+  Its database role reads who callers are and the published APIs, and
+  writes its traffic counts; it holds no `JWT_SECRET`, so it can't make a
+  session, and can't read a password hash or unseal anything. It could
+  forward requests it shouldn't to the APIs' backends, as any of their
+  callers.
 - **The sleeper** can change replica counts and stop the platform, not
   change it (above).
 
@@ -877,7 +883,6 @@ Vertra isn't production-ready yet.
 | Gap | Impact | Plan |
 | --- | --- | --- |
 | A compromised console can loosen the image, identity and scan policies, and write any team's Secrets | It could run a step of its choosing with any team's secrets ([If a component is compromised](#if-a-component-is-compromised)) | Accepted for now: Kubernetes can't guard admission policies from their editor; treat the console as the most privileged component |
-| The gateway holds the console's database credentials and `JWT_SECRET` | A compromised gateway could act as anyone through the console's API | Not decided |
 | Groups from an ID token's claim are read at sign-in only | Someone who leaves a group the provider reports in its token stays in its team until their session ends (8 hours by default) or they sign in again; Google Workspace groups are read again every hour | Shorter sessions where that matters (`JWT_TTL`) |
 | Reads aren't audited ([Audit](#audit)) | Who looked at a run's outputs or logs isn't recorded | Not decided |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |

@@ -3,7 +3,9 @@
 package auth
 
 import (
+	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -20,16 +22,41 @@ import (
 // execution_console_test), in a transaction rolled back after: the same
 // rules as console/src/auth/plugin.ts.
 
-var secret = []byte("test-secret")
+// The console's session key, as a test makes one; "other" signs as nobody
+// the gateway trusts.
+var (
+	secret = ed25519.NewKeyFromSeed(bytes.Repeat([]byte{1}, ed25519.SeedSize))
+	other  = ed25519.NewKeyFromSeed(bytes.Repeat([]byte{2}, ed25519.SeedSize))
+)
 
-func jwt(t *testing.T, key []byte, alg string, claims map[string]any) string {
+// staticKeys is the console's one key, as its JWKS would give it.
+type staticKeys map[string]ed25519.PublicKey
+
+func (k staticKeys) Key(_ context.Context, kid string) (ed25519.PublicKey, error) {
+	if key, ok := k[kid]; ok {
+		return key, nil
+	}
+	return nil, ErrUnauthenticated
+}
+
+var keys = staticKeys{"console": secret.Public().(ed25519.PublicKey)}
+
+// jwt signs claims as the console does (EdDSA, kid "console"), or with
+// another key or algorithm: "HS256" signs with an HMAC of key's seed.
+func jwt(t *testing.T, key ed25519.PrivateKey, alg string, claims map[string]any) string {
 	t.Helper()
-	header, _ := json.Marshal(map[string]string{"alg": alg, "typ": "JWT"})
+	header, _ := json.Marshal(map[string]string{"alg": alg, "typ": "JWT", "kid": "console"})
 	payload, _ := json.Marshal(claims)
 	signing := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload)
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(signing))
-	return signing + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	var signature []byte
+	if alg == "HS256" {
+		mac := hmac.New(sha256.New, key.Seed())
+		mac.Write([]byte(signing))
+		signature = mac.Sum(nil)
+	} else {
+		signature = ed25519.Sign(key, []byte(signing))
+	}
+	return signing + "." + base64.RawURLEncoding.EncodeToString(signature)
 }
 
 func tx(t *testing.T) pgx.Tx {
@@ -76,8 +103,8 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 	must(err)
 
 	now := time.Now()
-	r := &Resolver{DB: db, JWTSecret: secret, Now: func() time.Time { return now }}
-	session := jwt(t, secret, "HS256", map[string]any{"userId": userID, "iat": now.Unix() - 60, "exp": now.Unix() + 3600})
+	r := &Resolver{DB: db, Keys: keys, Now: func() time.Time { return now }}
+	session := jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "iat": now.Unix() - 60, "exp": now.Unix() + 3600})
 	who, err := r.Resolve(ctx, "Bearer "+session)
 	if err != nil || who.UserID != userID || who.Email != "gw-person@example.com" || len(who.Teams) != 1 || who.Teams[0] != "gw-test-web" {
 		t.Fatalf("a session: %+v, %v", who, err)
@@ -90,12 +117,13 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 	for name, header := range map[string]string{
 		"nothing":            "",
 		"not a bearer":       "Basic " + session,
-		"another secret":     "Bearer " + jwt(t, []byte("other"), "HS256", map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60}),
-		"expired":            "Bearer " + jwt(t, secret, "HS256", map[string]any{"userId": userID, "iat": now.Unix() - 7200, "exp": now.Unix() - 1}),
-		"no expiry":          "Bearer " + jwt(t, secret, "HS256", map[string]any{"userId": userID, "iat": now.Unix()}),
+		"another key":        "Bearer " + jwt(t, other, "EdDSA", map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60}),
+		"HS256":              "Bearer " + jwt(t, secret, "HS256", map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60}),
+		"expired":            "Bearer " + jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "iat": now.Unix() - 7200, "exp": now.Unix() - 1}),
+		"no expiry":          "Bearer " + jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "iat": now.Unix()}),
 		"alg none":           "Bearer " + jwt(t, secret, "none", map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60}),
 		"an unknown token":   "Bearer " + APITokenPrefix + "nope",
-		"an unknown account": "Bearer " + jwt(t, secret, "HS256", map[string]any{"userId": "00000000-0000-0000-0000-000000000000", "iat": now.Unix(), "exp": now.Unix() + 60}),
+		"an unknown account": "Bearer " + jwt(t, secret, "EdDSA", map[string]any{"userId": "00000000-0000-0000-0000-000000000000", "iat": now.Unix(), "exp": now.Unix() + 60}),
 	} {
 		if _, err := r.Resolve(ctx, header); err != ErrUnauthenticated {
 			t.Errorf("%s: %v", name, err)
@@ -108,7 +136,7 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 	if _, err := r.Resolve(ctx, "Bearer "+session); err != ErrUnauthenticated {
 		t.Errorf("a session from before the password change: %v", err)
 	}
-	same := jwt(t, secret, "HS256", map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60})
+	same := jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "iat": now.Unix(), "exp": now.Unix() + 60})
 	if _, err := r.Resolve(ctx, "Bearer "+same); err != nil {
 		t.Errorf("the session the change issued, in the same second: %v", err)
 	}
@@ -118,13 +146,13 @@ func TestCallersSignInAsTheyDoAtTheConsole(t *testing.T) {
 	if _, err := r.Resolve(ctx, "Bearer "+same); err != ErrUnauthenticated {
 		t.Errorf("a session whose password must be changed: %v", err)
 	}
-	ssoSession := jwt(t, secret, "HS256", map[string]any{"userId": userID, "sso": true, "iat": now.Unix(), "exp": now.Unix() + 60})
+	ssoSession := jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "sso": true, "iat": now.Unix(), "exp": now.Unix() + 60})
 	if _, err := r.Resolve(ctx, "Bearer "+ssoSession); err != nil {
 		t.Errorf("a single sign-on session, whatever the password: %v", err)
 	}
 	// A session signed out at the console, and not another of the same person's.
-	signedOut := jwt(t, secret, "HS256", map[string]any{"userId": userID, "sso": true, "sid": "gw-signed-out", "iat": now.Unix(), "exp": now.Unix() + 60})
-	other := jwt(t, secret, "HS256", map[string]any{"userId": userID, "sso": true, "sid": "gw-still-in", "iat": now.Unix(), "exp": now.Unix() + 60})
+	signedOut := jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "sso": true, "sid": "gw-signed-out", "iat": now.Unix(), "exp": now.Unix() + 60})
+	other := jwt(t, secret, "EdDSA", map[string]any{"userId": userID, "sso": true, "sid": "gw-still-in", "iat": now.Unix(), "exp": now.Unix() + 60})
 	_, err = db.Exec(ctx, `INSERT INTO revoked_sessions (sid, expires_at) VALUES ('gw-signed-out', now() + interval '1 minute')`)
 	must(err)
 	if _, err := r.Resolve(ctx, "Bearer "+signedOut); err != ErrUnauthenticated {
@@ -178,10 +206,10 @@ func TestATeamRequiringSingleSignOnRefusesPasswordSessions(t *testing.T) {
 		if sso {
 			claims["sso"] = true
 		}
-		return "Bearer " + jwt(t, secret, "HS256", claims)
+		return "Bearer " + jwt(t, secret, "EdDSA", claims)
 	}
-	on := &Resolver{DB: db, JWTSecret: secret, SSO: true, Now: func() time.Time { return now }}
-	off := &Resolver{DB: db, JWTSecret: secret, Now: func() time.Time { return now }}
+	on := &Resolver{DB: db, Keys: keys, SSO: true, Now: func() time.Time { return now }}
+	off := &Resolver{DB: db, Keys: keys, Now: func() time.Time { return now }}
 
 	if _, err := on.Resolve(ctx, session(personID, false)); err != ErrUnauthenticated {
 		t.Errorf("a member's password session: %v", err)

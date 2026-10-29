@@ -69,6 +69,20 @@ spec:
                 secretKeyRef:
                   name: {{ include "execution-console.secretName" . }}
                   key: jwt-secret
+            {{- if .Values.gateway.enabled }}
+            # The gateway's role: granted what it reads; made here (with this
+            # password) on this chart's own Postgres, where this runs as its
+            # superuser.
+            - name: GATEWAY_DB_ROLE
+              value: {{ .Values.gateway.database.role | quote }}
+            {{- if and .Values.postgres.enabled (not .Values.gateway.database.existingSecret) }}
+            - name: GATEWAY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "execution-console.secretName" . }}
+                  key: gateway-db-password
+            {{- end }}
+            {{- end }}
             {{- if .Values.bootstrapAdmin.password }}
             - name: BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:

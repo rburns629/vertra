@@ -136,16 +136,16 @@ spec:
             {{- end }}
             - {name: metrics, containerPort: 9090}
           env:
+            # Its own role, granted only what it reads (gateway.database).
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "execution-console.databaseSecretName" . }}
-                  key: {{ include "execution-console.databaseSecretKey" . }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "execution-console.secretName" . }}
-                  key: jwt-secret
+                  name: {{ include "execution-console.gatewayDatabaseSecretName" . }}
+                  key: {{ include "execution-console.gatewayDatabaseSecretKey" . }}
+            # Sessions are checked with the console's public key (its JWKS,
+            # GET /api/auth/jwks): the gateway never holds JWT_SECRET.
+            - name: CONSOLE_URL
+              value: "http://{{ include "execution-console.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}"
             - name: SIGNING_KEY_FILE
               value: /var/run/secrets/vertra/signing/seed
             - name: GATEWAY_ISSUER

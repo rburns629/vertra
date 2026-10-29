@@ -508,7 +508,10 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	}
 	if c.Gateway.Enabled {
 		gateway := map[string]any{
-			"enabled":       true,
+			"enabled": true,
+			// Its own role on the kernel's Postgres, which the kernel chart
+			// makes beside the console's.
+			"database":      map[string]any{"existingSecret": KernelRelease + "-execution-kernel-gateway-db"},
 			"backendHosts":  c.Gateway.BackendHosts,
 			"internetTeams": c.Gateway.InternetTeams,
 			"url":           fmt.Sprintf("http://%s-execution-console-gateway.%s.svc.cluster.local:8080", ConsoleRelease, c.Namespace),

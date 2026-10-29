@@ -403,6 +403,9 @@ postgres:
     enabled: false
     database: execution_console
     username: console
+    # The console's API gateway's own role, which reads only what it needs
+    # (the console chart's gateway.database.existingSecret: <release>-execution-kernel-gateway-db).
+    gatewayUsername: vertra_gateway
     # Where its backups go under backup.bucket: the same prefix the console
     # chart's own backups would use (its release name).
     backupPrefix: console
