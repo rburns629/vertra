@@ -270,8 +270,14 @@ describe("an idle scanner", () => {
     expect(scaleScanner).not.toHaveBeenCalledWith(expect.any(String), expect.any(String), 0);
 
     config.scanning.idleMinutes = 0.005; // 300 ms
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await reconcileScans();
+    // Any scan counts, so another test file's (retention, observe) written
+    // meanwhile keeps it up a moment longer, as it should: checked again
+    // until every scan is older than that.
+    for (let tries = 0; tries < 20; tries++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await reconcileScans();
+      if (vi.mocked(scaleScanner).mock.calls.some((call) => call[2] === 0)) break;
+    }
     expect(scaleScanner).toHaveBeenCalledWith(expect.any(String), "console-execution-console-trivy", 0);
     expect(scanner.replicas).toBe(0);
   });
