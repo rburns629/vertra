@@ -63,7 +63,7 @@ func newRoot() *cobra.Command {
 	if defaultBase == "" {
 		defaultBase = "deploy"
 	}
-	root.PersistentFlags().StringVar(&a.base, "config", defaultBase, "where environments live (each in <dir>/<env>); or VERTRA_CONFIG")
+	root.PersistentFlags().StringVar(&a.base, "config", defaultBase, "where environments live, each in a folder named for it; or VERTRA_CONFIG")
 	root.PersistentFlags().BoolVarP(&a.verbose, "verbose", "v", false, "show every command vertra runs")
 	root.PersistentFlags().BoolVar(&a.nonInteractive, "non-interactive", false, "never prompt: answers come from flags and defaults")
 
@@ -72,7 +72,7 @@ func newRoot() *cobra.Command {
 		a.sleepCmd(), a.wakeCmd(), a.destroyCmd(), a.configCmd(),
 		a.catalogCmd(), a.toolsCmd(), a.consoleCmd(), a.adminCmd(), a.ssoCmd(), versionCmd(),
 	)
-	return root
+	return withHelp(root)
 }
 
 // load finds an environment's directory and reads its config.

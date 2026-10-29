@@ -99,6 +99,8 @@ covers adding teams and products.
 | `vertra config set -e <env> <key> <value>` | change a setting, then `vertra apply` |
 | `vertra apply <env>` | upgrade, or make the install match the settings again |
 | `vertra destroy <env>` | remove it; asks about data |
+| `vertra help settings` / `vertra help sizes` | every setting, and what each size gets |
+| `vertra man ~/.local/share/man` | write the man pages (`man vertra`) |
 
 **What `destroy` keeps.** Unless you choose to delete data: the database's
 disk, the backups and logs buckets, and the task registry. The audit copy's

@@ -497,6 +497,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `cmd/vertra/catalog_commands.go` | A catalog's own commands, `vertra catalog validate`, `check`, `publish`, `release`, `changed`, `secret-stores check`, `bases`, `migrate`: what every catalog's `./vertra` runs. `vertra catalog create` (making the repository) is `catalog.go`. |
 | `internal/catalogtool/` | What `vertra catalog` does in a catalog: validating teams, CODEOWNERS, products, `dags/` templates and DAGs, `apis/` API products and their OpenAPI files (`apis.go`), and teams' wiring types and the types products name (`types.go`) in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing and signing products; building, pushing and signing the catalog's release (`release.go`), and tagging a commit's release as a version (`promote.go`). It never calls a console. |
 | `cmd/vertra/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
+| `cmd/vertra/help.go` | Every command's help and examples, the `settings` and `sizes` help topics, and `vertra man`; a test checks every command has its help. |
 | `cmd/vertra/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/vertra.yaml`. |
 | `cmd/vertra/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
 | `cmd/vertra/operate.go` | `check`, `status`, `sleep`, `wake`, `console` and `destroy`. |
@@ -505,7 +506,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `cmd/vertra/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
 | `cmd/vertra/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
 | `cmd/vertra/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |
-| `internal/config/` | The config file: defaults, validation, load and save, dotted-key get and set. |
+| `internal/config/` | The config file: defaults, validation, load and save, dotted-key get and set (any setting, lists included); `settings.go` describes every setting, kept complete by a test. |
 | `internal/prompt/` | The questions on a terminal; defaults when non-interactive. |
 | `internal/tools/` | Required tools per target, version checks, and pinned, checksum-verified downloads into `~/.vertra/bin` (`pins.go`). |
 | `internal/run/` | Runs the external commands (kubectl, helm, docker, kind), printing them with `-v`. |

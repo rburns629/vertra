@@ -84,7 +84,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.IntVar(&f.minReplicas, "min-replicas", 0, "without scale-down: always-on copies of the console and API")
 	fl.IntVar(&f.headroom, "step-headroom", -1, "without scale-down: steps that can start without waiting")
 	fl.StringVar(&f.adminEmail, "admin-email", "", "the first admin's email")
-	fl.StringVar(&f.hostname, "hostname", "", "the console's public hostname (gcp default: a nip.io name; aws default: console.<zone>)")
+	fl.StringVar(&f.hostname, "hostname", "", "the console's public hostname (gcp default: a nip.io name; aws default: console in the zone, e.g. console.vertra.example.com)")
 	fl.StringVar(&f.console, "console", "", "gcp, aws: private (reached with `vertra console`) or public (HTTPS from the internet)")
 	fl.StringVar(&f.zone, "zone", "", "aws: a DNS zone for the console's public address, created in Route 53 for you to delegate (e.g. vertra.example.com)")
 	fl.BoolVar(&f.noCatalog, "no-catalog", false, "gcp, aws: no catalog repository (`vertra catalog create` creates one)")

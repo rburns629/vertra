@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -772,18 +773,30 @@ func Set(c *Config, key, value string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	found := find(node, strings.Split(key, "."))
-	if found == nil {
-		// An empty optional setting isn't in the marshalled node: add it.
-		if err := addScalar(node, strings.Split(key, "."), value); err != nil {
-			return nil, err
+	kind, ok := settingKind(key)
+	switch {
+	case !ok:
+		return nil, fmt.Errorf("no setting %q (`vertra help settings` lists every key)", key)
+	case kind == reflect.Map:
+		return nil, fmt.Errorf("%q is a map of labels: edit vertra.yaml, then apply", key)
+	case key == "version":
+		return nil, fmt.Errorf("version is the file's format, which vertra writes")
+	}
+	// A list is given comma-separated; empty is none.
+	set := &yaml.Node{Kind: yaml.ScalarNode, Value: value, Tag: scalarTag(value)}
+	if kind == reflect.Slice {
+		set = &yaml.Node{Kind: yaml.SequenceNode}
+		for _, item := range strings.Split(value, ",") {
+			if item = strings.TrimSpace(item); item != "" {
+				set.Content = append(set.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: item, Tag: "!!str"})
+			}
 		}
-	} else if found.Kind != yaml.ScalarNode {
-		return nil, fmt.Errorf("%q is a group of settings; set one of its keys", key)
-	} else {
-		found.Value = value
-		found.Tag = scalarTag(value)
-		found.Style = 0
+	}
+	if found := find(node, strings.Split(key, ".")); found != nil {
+		*found = *set
+	} else if err := addSetting(node, strings.Split(key, "."), set); err != nil {
+		// An empty optional setting isn't in the marshalled node: add it.
+		return nil, err
 	}
 	var out Config
 	if err := node.Decode(&out); err != nil {
@@ -846,22 +859,9 @@ func find(n *yaml.Node, path []string) *yaml.Node {
 	return nil
 }
 
-func addScalar(n *yaml.Node, path []string, value string) error {
-	known := map[string]bool{
-		"source": true, "values": true, "cluster.name": true, "cluster.context": true,
-		"platformImages.registry": true, "scaleDown.idleAfter": true, "scaleDown.schedule": true,
-		"kind.registryName": true, "kind.registryPort": true,
-		"console.hostname": true, "console.zone": true, "console.public": true, "catalog.owner": true, "catalog.repository": true, "catalog.visibility": true, "catalog.team": true, "catalog.host": true, "catalog.useExisting": true, "access.cloud": true, "access.github": true,
-		"externalCatalog.registry": true, "externalCatalog.gcpWorkloadIdentityProvider": true, "externalCatalog.gcpServiceAccount": true,
-		"catalogSignature.publicKeyFile": true, "catalogSignature.repository": true, "catalogVersion": true, "externalSecrets": true, "gateway.enabled": true, "signing": true,
-		"console.ingressClass": true, "console.tls.issuer": true, "console.tls.letsEncryptEmail": true, "console.tls.installCertManager": true,
-		"logs.enabled": true, "logs.searchDays": true, "logs.keepDays": true,
-		"audit.export": true, "audit.keepDays": true, "audit.lock": true,
-		"gcp.project": true, "gcp.region": true, "aws.profile": true, "aws.region": true, "taskImages.registry": true, "taskImages.name": true,
-	}
-	if !known[strings.Join(path, ".")] {
-		return fmt.Errorf("no setting %q (see `vertra config get` for every key)", strings.Join(path, "."))
-	}
+// addSetting adds a setting the file hasn't got (an empty optional one),
+// with the groups on its path.
+func addSetting(n *yaml.Node, path []string, value *yaml.Node) error {
 	for i, part := range path {
 		var next *yaml.Node
 		for j := 0; j+1 < len(n.Content); j += 2 {
@@ -872,7 +872,7 @@ func addScalar(n *yaml.Node, path []string, value string) error {
 		if next == nil {
 			key := &yaml.Node{Kind: yaml.ScalarNode, Value: part}
 			if i == len(path)-1 {
-				next = &yaml.Node{Kind: yaml.ScalarNode, Value: value, Tag: scalarTag(value)}
+				next = value
 			} else {
 				next = &yaml.Node{Kind: yaml.MappingNode}
 			}
