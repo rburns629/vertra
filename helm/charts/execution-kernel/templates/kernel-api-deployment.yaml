@@ -20,6 +20,8 @@ spec:
         {{- include "execution-kernel.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: api
       annotations:
+        # kubectl logs (and vertra logs) read this one, not the init container.
+        kubectl.kubernetes.io/default-container: api
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"

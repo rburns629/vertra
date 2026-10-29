@@ -83,6 +83,20 @@ certificate's state); on an existing cluster, a check of its DNS record
 and certificate.`,
 		example: `  vertra status dev`,
 	},
+	"vertra logs": {
+		long: `Shows the platform's logs, each line with its Pod and time: by default the
+console, the gateway, kernel-api and the scheduler, the last hour, at most
+200 lines a Pod. Name components to choose others: console, gateway, api,
+scheduler, postgres, migrate, backup, sleeper, scanner, loki.
+
+With --execution, an execution's steps' logs instead, from the team
+namespaces they ran in, while their Pods are still there. Observe in the
+console keeps logs longer, and searchable (with logs on).`,
+		example: `  vertra logs dev
+  vertra logs dev scheduler -f
+  vertra logs dev migrate --since 24h
+  vertra logs dev --execution 3f2c9a7e-0b1d-4a51-9c6e-2d8f4b7a1e05`,
+	},
 	"vertra console": {
 		long: `Port-forwards the console to http://localhost:18080 (or --port) until
 Ctrl-C: for a console that isn't public, or to reach one directly.`,

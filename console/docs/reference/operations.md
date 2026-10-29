@@ -35,7 +35,7 @@ Every day:
 | --- | --- |
 | `make up` | Resumes the node, clears Pods stuck as Unknown, port-forwards the console |
 | `make down` | Stops the node and keeps everything (never `kind delete cluster` unless you mean to start over) |
-| `make logs` | Tails kernel-api, the scheduler and the console together |
+| `make logs` | Tails kernel-api, the scheduler and the console together (any install: `vertra logs <env> -f`) |
 | `make catalog-publish` | Publishes `catalog-template/` with its `local` sample team (one product in five languages); `CATALOG=<folder>` publishes your own catalog, `SAMPLES=` other samples |
 | `make kind-deploy` | Rebuilds both platform images and upgrades both releases (`kind-deploy-kernel`, `kind-deploy-console` for one) |
 | `make test` | Starts a throwaway Postgres on `127.0.0.1:55432` and runs both projects' tests |

@@ -28,6 +28,8 @@ spec:
         {{- include "execution-console.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: app
       annotations:
+        # kubectl logs (and vertra logs) read this one, not the init container.
+        kubectl.kubernetes.io/default-container: execution-console
         # A ConfigMap change alone doesn't restart the Pods consuming it
         # via envFrom -- env vars are injected once at container start,
         # not live-reloaded. Without this, `helm upgrade` after only a

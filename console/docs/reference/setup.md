@@ -95,6 +95,7 @@ covers adding teams and products.
 | --- | --- |
 | `vertra status <env>` | what's installed, awake or asleep; a public console's address and certificate |
 | `vertra console <env>` | reach the console from your machine |
+| `vertra logs <env> [component] [-f]` | the platform's logs; `--execution <id>` for a run's steps |
 | `vertra sleep` / `vertra wake <env>` | scale to zero and back (data kept) |
 | `vertra config set -e <env> <key> <value>` | change a setting, then `vertra apply` |
 | `vertra apply <env>` | upgrade, or make the install match the settings again |
