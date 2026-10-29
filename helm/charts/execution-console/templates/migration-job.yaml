@@ -42,6 +42,7 @@ spec:
         {{- include "execution-console.podSecurityContext" . | nindent 8 }}
       volumes:
         - {name: tmp, emptyDir: {}}
+        {{- include "execution-console.tlsVolumes" . | nindent 8 }}
       restartPolicy: Never
       containers:
         - name: migrate
@@ -50,6 +51,7 @@ spec:
             {{- include "execution-console.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
+            {{- include "execution-console.tlsMounts" . | nindent 12 }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.migration.resources | nindent 12 }}
@@ -59,6 +61,7 @@ spec:
                 name: {{ include "execution-console.fullname" . }}-migrate-config
           env:
             {{- include "execution-console.ssoEnv" . | nindent 12 }}
+            {{- include "execution-console.tlsEnv" . | nindent 12 }}
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

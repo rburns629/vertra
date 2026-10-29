@@ -724,6 +724,23 @@ The databases' passwords: [Databases](#databases). The registry pull
 Secret (`registryCheck.pullSecretName`): replace it, and the next policy
 sync copies it to every team.
 
+**The certificates inside the cluster** (`tls` in each chart, on by
+default) come from a CA each chart makes at install and keeps; each lasts
+`tls.days` (ten years by default). To rotate them, delete the Secrets and
+upgrade, the kernel first:
+
+```
+kubectl -n vertra-system delete secret kernel-execution-kernel-tls kernel-execution-kernel-tls-ca
+helm upgrade kernel ...    # a new CA and certificates; Postgres and kernel-api restart with them
+kubectl -n vertra-system rollout restart deployment kernel-execution-kernel-scheduler
+helm upgrade console ...   # then restart the console and the gateway, which read the CA at start
+kubectl -n vertra-system rollout restart deployment console-execution-console console-execution-console-gateway
+```
+
+For the console's own Postgres (when it has one), the same with
+`console-execution-console-tls` and `-tls-ca`. Until everything has
+restarted, a client holding the old CA refuses the new certificates.
+
 **The console's `JWT_SECRET`** signs every session (through an Ed25519 key
 derived from it, whose public half the gateway reads from the console). It also seals the values the
 console keeps in its database to use itself: teams' chat webhook URLs,

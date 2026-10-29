@@ -26,11 +26,25 @@ spec:
         # See kernel-scheduler-deployment.yaml's identical annotation --
         # same ConfigMap, same fix.
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.tls.enabled }}
+        # A rotated certificate restarts it (tls.yaml).
+        checksum/tls: {{ (lookup "v1" "Secret" .Release.Namespace (printf "%s-tls" (include "execution-kernel.fullname" .))).data | toJson | sha256sum }}
+        {{- end }}
     spec:
       securityContext:
         {{- include "execution-kernel.podSecurityContext" . | nindent 8 }}
       volumes:
         - {name: tmp, emptyDir: {}}
+        {{- include "execution-kernel.tlsCaVolume" . | nindent 8 }}
+        {{- if .Values.tls.enabled }}
+        # Its own certificate and key alone (tls.yaml), for HTTPS.
+        - name: tls-server
+          secret:
+            secretName: {{ include "execution-kernel.fullname" . }}-tls
+            items:
+              - {key: api.crt, path: tls.crt}
+              - {key: api.key, path: tls.key}
+        {{- end }}
       serviceAccountName: {{ include "execution-kernel.apiServiceAccountName" . }}
       # Copies on different nodes where there's a choice, so one node's
       # maintenance doesn't take them all.
@@ -67,6 +81,10 @@ spec:
             {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
+            {{- include "execution-kernel.tlsCaMount" . | nindent 12 }}
+            {{- if .Values.tls.enabled }}
+            - {name: tls-server, mountPath: /etc/vertra/tls-server, readOnly: true}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           # KernelService over Connect, /health and /metrics, on API_PORT (8000).
           command: ["/usr/local/bin/kernel", "api"]
@@ -82,16 +100,26 @@ spec:
                 secretKeyRef:
                   name: {{ include "execution-kernel.databaseSecretName" . }}
                   key: {{ include "execution-kernel.databaseSecretKey" . }}
+            {{- if .Values.tls.enabled }}
+            - {name: API_TLS_CERT_FILE, value: /etc/vertra/tls-server/tls.crt}
+            - {name: API_TLS_KEY_FILE, value: /etc/vertra/tls-server/tls.key}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /health/ready
               port: 8000
+              {{- if .Values.tls.enabled }}
+              scheme: HTTPS
+              {{- end }}
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health/live
               port: 8000
+              {{- if .Values.tls.enabled }}
+              scheme: HTTPS
+              {{- end }}
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:

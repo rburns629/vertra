@@ -22,7 +22,7 @@ gaps in [Not yet enforced](#not-yet-enforced) are why.
 | Is anything enforced if the console is bypassed? | Yes: which namespaces steps may run in, which image sources they may use, that images are pinned and passed their scan, which ServiceAccount and Secrets a step may have, image signatures (with Sigstore's policy-controller installed) and who may delete a team namespace. These are admission policies the Kubernetes API server applies to the scheduler's Jobs. They don't hold if the console itself is compromised: it can rewrite three of them. See [If a component is compromised](#if-a-component-is-compromised). |
 | Are secrets encrypted at rest? | That depends on the cluster. Enabling encryption of Secrets at rest in etcd, ideally with a KMS provider, is the cluster operator's responsibility and a prerequisite for production. |
 | Is Vertra's own data encrypted at rest? | Only the few credentials the console keeps itself. Step inputs, outputs and logs, and the audit log, are plain in Postgres; encrypting its disks and backups is the operator's. See [What Vertra stores](#what-vertra-stores). |
-| Is traffic inside the cluster encrypted? | No. The console calls kernel-api over plain HTTP, and the bundled Postgres takes plain connections; NetworkPolicies limit who can connect. |
+| Is traffic inside the cluster encrypted? | Yes, with each chart's `tls` (on by default): kernel-api serves HTTPS and the bundled Postgres instances accept only TLS, each with a certificate from its chart's own CA, which every client checks (`verify-full`). Metrics ports and the scanner's are plain; NetworkPolicies limit who reaches them. See [What Vertra stores](#what-vertra-stores). |
 | What reaches logs and outputs? | Whatever a step prints or returns. Vertra stores step outputs and logs; a product must never print or return a secret. |
 
 ## Who is trusted
@@ -848,12 +848,25 @@ and the audit log. Encrypting those disks and the backup bucket is the
 cluster operator's.
 
 **In transit**, a person or bot reaches the console over HTTPS
-([operations](operations.md)). Inside the cluster nothing is encrypted:
-the console calls kernel-api over plain HTTP, carrying its ServiceAccount
-token, and the bundled Postgres takes plain connections (an external
-database is whatever its `externalDatabaseUrl` says). NetworkPolicies are
-what keep others off those connections; a service mesh, if you need more,
-is yours to add.
+([operations](operations.md)). Inside the cluster, with each chart's `tls`
+(on by default), the kernel chart makes a CA of its own once
+(`templates/tls.yaml`, kept across upgrades) and signs a certificate for
+kernel-api and one for its Postgres; the console chart does the same for
+its own Postgres, when it has one. kernel-api serves only HTTPS, so the
+console's ServiceAccount token never crosses the network in the clear; each
+bundled Postgres accepts network connections only over TLS (its
+`pg_hba.conf`, `hostssl`), and every client (the kernel, the console, the
+gateway, the migration and backup Jobs) checks the server against the CA
+(`sslmode=verify-full`), so a Pod impersonating either gets nothing. An
+external database is whatever its `externalDatabaseUrl` says. Still plain:
+the metrics ports, the scanner's, Loki's, which NetworkPolicies limit.
+Proven on kind 2026-10-28 with the console's database on the kernel's
+Postgres: every connection there is TLS, a plain one is refused by
+`pg_hba`, kernel-api refuses a client that doesn't trust its CA, and a run
+goes through end to end; the console's own Postgres (GKE's) only rendered
+so far. To
+rotate, delete a chart's `-tls` and `-tls-ca` Secrets and upgrade
+([operations](operations.md#rotating-secrets)).
 
 ## Rules for product authors
 
@@ -886,7 +899,6 @@ Vertra isn't production-ready yet.
 | Groups from an ID token's claim are read at sign-in only | Someone who leaves a group the provider reports in its token stays in its team until their session ends (8 hours by default) or they sign in again; Google Workspace groups are read again every hour | Shorter sessions where that matters (`JWT_TTL`) |
 | Reads aren't audited ([Audit](#audit)) | Who looked at a run's outputs or logs isn't recorded | Not decided |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
-| Traffic inside the cluster is plain (console to kernel-api, every Postgres connection) | Anyone who can watch the cluster's network sees the console's token and the data | Not decided; meanwhile a service mesh where NetworkPolicy isn't enough |
 | The scheduler may read every Pod's logs, cluster-wide (reading isn't something an admission policy can check) | A stolen scheduler identity can read the platform's and kube-system's logs | Not decided: per-namespace Roles would need something to create RBAC in each team namespace, which the console deliberately can't |
 | Step Pod hardening is a chart setting: with `scheduler.taskPodHardening: false`, the dispatch policy no longer requires it, and only Pod Security, on namespaces the console created, holds a step to `restricted` | Steps run as root with an API token in an adopted namespace | Keep `taskPodHardening` on and let the console create team namespaces |
 | The EKS metadata block is proven on kind only (the policy is written and accepted), not yet on EKS | A step might act as the node until it is | Prove on the next EKS install |

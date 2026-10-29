@@ -13,7 +13,11 @@ image:
   pullPolicy: IfNotPresent
 backup:
   enabled: false
-kernelApiUrl: http://kernel-execution-kernel-api.default.svc.cluster.local:8000
+kernelApiUrl: https://kernel-execution-kernel-api.default.svc.cluster.local:8000
+# kernel-api's HTTPS, and the kernel's Postgres, are checked against the
+# kernel chart's own CA.
+tls:
+  kernelCaSecret: kernel-execution-kernel-tls-ca
 # Public, over plain HTTP: put TLS in front of it before real use (TODO.md).
 service:
   type: LoadBalancer

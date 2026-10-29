@@ -36,6 +36,7 @@ spec:
         {{- include "execution-kernel.podSecurityContext" . | nindent 8 }}
       volumes:
         - {name: tmp, emptyDir: {}}
+        {{- include "execution-kernel.tlsCaVolume" . | nindent 8 }}
       serviceAccountName: {{ include "execution-kernel.serviceAccountName" . }}
       topologySpreadConstraints:
         - maxSkew: 1
@@ -53,6 +54,7 @@ spec:
             {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
+            {{- include "execution-kernel.tlsCaMount" . | nindent 12 }}
           # See kernel-api-deployment.yaml's identical comment -- an
           # unset imagePullPolicy defaults to Always for a "latest" tag.
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -65,6 +67,7 @@ spec:
             {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
+            {{- include "execution-kernel.tlsCaMount" . | nindent 12 }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/usr/local/bin/kernel", "scheduler"]
           ports:

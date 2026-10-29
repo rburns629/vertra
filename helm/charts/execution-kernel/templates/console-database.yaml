@@ -44,7 +44,7 @@ metadata:
 type: Opaque
 stringData:
   # The console chart's DATABASE_URL (its existingSecret, key database-url).
-  database-url: "postgresql://{{ $db.username }}:{{ $password }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}"
+  database-url: "postgresql://{{ $db.username }}:{{ $password }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}{{ include "execution-kernel.databaseTls" . }}"
   password: {{ $password | quote }}
 ---
 apiVersion: v1
@@ -57,7 +57,7 @@ metadata:
 type: Opaque
 stringData:
   # The console chart's gateway.database.existingSecret.
-  database-url: "postgresql://{{ $db.gatewayUsername }}:{{ $gatewayPassword }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}"
+  database-url: "postgresql://{{ $db.gatewayUsername }}:{{ $gatewayPassword }}@{{ include "execution-kernel.fullname" . }}-postgres:5432/{{ $db.database }}{{ include "execution-kernel.databaseTls" . }}"
   password: {{ $gatewayPassword | quote }}
 ---
 apiVersion: batch/v1
@@ -80,6 +80,10 @@ spec:
         app.kubernetes.io/component: console-db
     spec:
       restartPolicy: Never
+      {{- if .Values.tls.enabled }}
+      volumes:
+        {{- include "execution-kernel.tlsCaVolume" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: ensure-console-database
           image: {{ include "execution-kernel.image" .Values.postgres.image | quote }}
@@ -90,6 +94,10 @@ spec:
           env:
             - name: PGHOST
               value: "{{ include "execution-kernel.fullname" . }}-postgres"
+            {{- if .Values.tls.enabled }}
+            - {name: PGSSLMODE, value: verify-full}
+            - {name: PGSSLROOTCERT, value: /etc/vertra/tls/ca.crt}
+            {{- end }}
             - name: PGUSER
               value: {{ .Values.postgres.auth.username | quote }}
             - name: PGPASSWORD
@@ -107,6 +115,10 @@ spec:
                 secretKeyRef:
                   name: {{ $gatewaySecretName }}
                   key: password
+          {{- if .Values.tls.enabled }}
+          volumeMounts:
+            {{- include "execution-kernel.tlsCaMount" . | nindent 12 }}
+          {{- end }}
           command:
             - sh
             - -c

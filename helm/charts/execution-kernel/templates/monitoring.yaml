@@ -21,8 +21,18 @@ spec:
     matchExpressions:
       - {key: app.kubernetes.io/component, operator: In, values: [api, scheduler]}
   podMetricsEndpoints:
-    # kernel-api serves /metrics beside its API; the scheduler on its own port.
-    - {port: http, path: /metrics, interval: {{ $mon.podMonitor.interval }}}
+    # kernel-api serves /metrics beside its API (over HTTPS with tls, checked
+    # against this release's CA under its Service's name); the scheduler on
+    # its own port.
+    - port: http
+      path: /metrics
+      interval: {{ $mon.podMonitor.interval }}
+      {{- if .Values.tls.enabled }}
+      scheme: https
+      tlsConfig:
+        ca: {secret: {name: {{ include "execution-kernel.fullname" . }}-tls-ca, key: ca.crt}}
+        serverName: {{ include "execution-kernel.fullname" . }}-api.{{ .Release.Namespace }}.svc
+      {{- end }}
     - {port: metrics, path: /metrics, interval: {{ $mon.podMonitor.interval }}}
 ---
 {{- end }}

@@ -114,8 +114,11 @@ func TestValues(t *testing.T) {
 	}
 
 	v := ConsoleValues(c, "dev", img, nil)
-	if v["kernelApiUrl"] != "http://kernel-execution-kernel-api.vertra-system.svc.cluster.local:8000" {
+	if v["kernelApiUrl"] != "https://kernel-execution-kernel-api.vertra-system.svc.cluster.local:8000" {
 		t.Errorf("kernelApiUrl: %v", v["kernelApiUrl"])
+	}
+	if tls, _ := v["tls"].(map[string]any); tls["kernelCaSecret"] != "kernel-execution-kernel-tls-ca" {
+		t.Errorf("tls: %v", v["tls"])
 	}
 	if v["environmentLabel"] != "dev" || v["existingSecret"] != "kernel-execution-kernel-console-db" {
 		t.Errorf("console: %v", v)

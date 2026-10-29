@@ -649,6 +649,17 @@ writeFence:
 # -- Bundled Postgres, matching execution-kernel's own chart. To use your
 # own instead, set postgres.enabled=false and either externalDatabaseUrl
 # or existingSecret.
+# -- TLS inside the cluster. enabled: this chart's own Postgres requires
+# TLS, with a CA and certificate this chart makes once and keeps
+# (templates/tls.yaml). kernelCaSecret: the kernel chart's CA
+# (<release>-execution-kernel-tls-ca), which the console, its migration
+# and the gateway trust for kernel-api (then https in kernelApiUrl) and the
+# kernel's Postgres.
+tls:
+  enabled: true
+  days: 3650
+  kernelCaSecret: ""
+
 postgres:
   enabled: true
   image:

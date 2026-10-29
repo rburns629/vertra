@@ -376,7 +376,10 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 // ConsoleValues are the values vertra generates for the console chart.
 func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[string]any {
 	v := map[string]any{
-		"kernelApiUrl":     fmt.Sprintf("http://%s-execution-kernel-api.%s.svc.cluster.local:8000", KernelRelease, c.Namespace),
+		"kernelApiUrl": fmt.Sprintf("https://%s-execution-kernel-api.%s.svc.cluster.local:8000", KernelRelease, c.Namespace),
+		// kernel-api's HTTPS and the kernel's Postgres, checked against the
+		// kernel chart's own CA.
+		"tls":              map[string]any{"kernelCaSecret": KernelRelease + "-execution-kernel-tls-ca"},
 		"environmentLabel": env,
 		// Its database lives on the kernel's Postgres, whose chart makes this Secret.
 		"postgres":          map[string]any{"enabled": false},

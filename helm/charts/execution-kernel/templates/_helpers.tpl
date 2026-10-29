@@ -58,7 +58,7 @@ that Secret is referenced directly instead of one this chart creates.
 {{- define "execution-kernel.databaseUrl" -}}
 {{- $root := .root -}}
 {{- if $root.Values.postgres.enabled -}}
-postgresql://{{ $root.Values.postgres.auth.username }}:{{ .password }}@{{ include "execution-kernel.fullname" $root }}-postgres:5432/{{ $root.Values.postgres.auth.database }}
+postgresql://{{ $root.Values.postgres.auth.username }}:{{ .password }}@{{ include "execution-kernel.fullname" $root }}-postgres:5432/{{ $root.Values.postgres.auth.database }}{{ include "execution-kernel.databaseTls" $root }}
 {{- else -}}
 {{- $root.Values.externalDatabaseUrl -}}
 {{- end -}}
@@ -132,3 +132,40 @@ allowPrivilegeEscalation: false
 readOnlyRootFilesystem: true
 capabilities: {drop: ["ALL"]}
 {{- end }}
+
+{{/*
+TLS inside the cluster (tls.yaml). databaseTls ends a URL for the bundled
+Postgres: TLS required, the server checked against this release's CA
+(verify-full), which tlsCaVolume and tlsCaMount put at /etc/vertra/tls in
+every Pod that connects to it or to kernel-api.
+*/}}
+{{- define "execution-kernel.databaseTls" -}}
+{{- if and .Values.tls.enabled .Values.postgres.enabled -}}
+?sslmode=verify-full&sslrootcert=/etc/vertra/tls/ca.crt
+{{- end -}}
+{{- end -}}
+
+{{- define "execution-kernel.tlsCaVolume" -}}
+{{- if .Values.tls.enabled }}
+- name: tls-ca
+  secret:
+    secretName: {{ include "execution-kernel.fullname" . }}-tls-ca
+    # The upgrade that turns tls on runs its pre-upgrade migration before
+    # the Secret exists; it still connects as before then, without TLS.
+    optional: true
+{{- end }}
+{{- end -}}
+
+{{- define "execution-kernel.tlsCaMount" -}}
+{{- if .Values.tls.enabled }}
+- {name: tls-ca, mountPath: /etc/vertra/tls, readOnly: true}
+{{- end }}
+{{- end -}}
+
+{{/* The bundled Postgres's pg_hba with tls: the Pod's own tools over its
+socket as before; from the network, TLS and a password only. */}}
+{{- define "execution-kernel.pgHba" -}}
+local   all  all            trust
+hostssl all  all  0.0.0.0/0 scram-sha-256
+hostssl all  all  ::/0      scram-sha-256
+{{- end -}}

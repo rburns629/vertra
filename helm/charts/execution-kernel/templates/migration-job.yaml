@@ -33,6 +33,7 @@ spec:
         {{- include "execution-kernel.podSecurityContext" . | nindent 8 }}
       volumes:
         - {name: tmp, emptyDir: {}}
+        {{- include "execution-kernel.tlsCaVolume" . | nindent 8 }}
       restartPolicy: Never
       containers:
         - name: migrate
@@ -41,6 +42,7 @@ spec:
             {{- include "execution-kernel.containerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
+            {{- include "execution-kernel.tlsCaMount" . | nindent 12 }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.migration.resources | nindent 12 }}

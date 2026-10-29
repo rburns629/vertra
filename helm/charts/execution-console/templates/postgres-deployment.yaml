@@ -23,10 +23,47 @@ spec:
       labels:
         {{- include "execution-console.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: postgres
+      {{- if .Values.tls.enabled }}
+      annotations:
+        # A rotated certificate (tls.yaml) or a changed pg_hba restarts it.
+        checksum/tls: {{ (lookup "v1" "Secret" .Release.Namespace (printf "%s-tls" (include "execution-console.fullname" .))).data | toJson | sha256sum }}
+        checksum/hba: {{ include "execution-console.pgHba" . | sha256sum }}
+      {{- end }}
     spec:
+      {{- if .Values.tls.enabled }}
+      # Postgres reads its key only if no one else can: copied from the
+      # Secret into a directory of its own, owned by its user (999), 0600.
+      # (fsGroup would do it for the Secret, but would also open the data
+      # directory's permissions, which Postgres refuses.)
+      initContainers:
+        - name: tls-key
+          image: {{ include "execution-console.image" .Values.postgres.image | quote }}
+          command: ["sh", "-c", "install -o 999 -g 999 -m 0644 /tls-secret/tls.crt /tls/tls.crt && install -o 999 -g 999 -m 0600 /tls-secret/tls.key /tls/tls.key"]
+          volumeMounts:
+            - {name: tls-secret, mountPath: /tls-secret, readOnly: true}
+            - {name: tls, mountPath: /tls}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+      {{- end }}
       containers:
         - name: postgres
           image: {{ include "execution-console.image" .Values.postgres.image | quote }}
+          {{- if .Values.tls.enabled }}
+          # TLS on, and pg_hba accepting only TLS connections from the
+          # network (local ones, the Pod's own tools, stay as they were).
+          args:
+            - postgres
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/tls/tls.crt
+            - -c
+            - ssl_key_file=/tls/tls.key
+            - -c
+            - hba_file=/etc/vertra/pg/pg_hba.conf
+          {{- end }}
           ports:
             - containerPort: 5432
           env:
@@ -39,15 +76,19 @@ spec:
                   key: postgres-password
             - name: POSTGRES_DB
               value: {{ .Values.postgres.auth.database | quote }}
-          {{- if .Values.postgres.persistence.enabled }}
           volumeMounts:
+            {{- if .Values.postgres.persistence.enabled }}
             - name: data
               mountPath: /var/lib/postgresql/data
               # Not the PVC root directly: initdb refuses to run in a
               # non-empty directory, and a fresh PVC on some storage
               # classes already contains a lost+found directory.
               subPath: pgdata
-          {{- end }}
+            {{- end }}
+            {{- if .Values.tls.enabled }}
+            - {name: tls, mountPath: /tls, readOnly: true}
+            - {name: hba, mountPath: /etc/vertra/pg, readOnly: true}
+            {{- end }}
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", {{ .Values.postgres.auth.username | quote }}]
@@ -55,10 +96,35 @@ spec:
             periodSeconds: 5
           resources:
             {{- toYaml .Values.postgres.resources | nindent 12 }}
-      {{- if .Values.postgres.persistence.enabled }}
       volumes:
+        {{- if .Values.postgres.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "execution-console.fullname" . }}-postgres
-      {{- end }}
+        {{- end }}
+        {{- if .Values.tls.enabled }}
+        - name: tls-secret
+          secret:
+            secretName: {{ include "execution-console.fullname" . }}-tls
+            items:
+              - {key: postgres.crt, path: tls.crt}
+              - {key: postgres.key, path: tls.key}
+        - {name: tls, emptyDir: {medium: Memory}}
+        - name: hba
+          configMap:
+            name: {{ include "execution-console.fullname" . }}-postgres-hba
+        {{- end }}
+{{- if .Values.tls.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "execution-console.fullname" . }}-postgres-hba
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+data:
+  pg_hba.conf: |
+    {{- include "execution-console.pgHba" . | nindent 4 }}
+{{- end }}
 {{- end }}

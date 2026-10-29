@@ -63,7 +63,7 @@ A plain "postgresql://" URL, as execution-kernel's.
 {{- define "execution-console.databaseUrl" -}}
 {{- $root := .root -}}
 {{- if $root.Values.postgres.enabled -}}
-postgresql://{{ $root.Values.postgres.auth.username }}:{{ .password }}@{{ include "execution-console.fullname" $root }}-postgres:5432/{{ $root.Values.postgres.auth.database }}
+postgresql://{{ $root.Values.postgres.auth.username }}:{{ .password }}@{{ include "execution-console.fullname" $root }}-postgres:5432/{{ $root.Values.postgres.auth.database }}{{ include "execution-console.databaseTls" $root }}
 {{- else -}}
 {{- $root.Values.externalDatabaseUrl -}}
 {{- end -}}
@@ -168,4 +168,57 @@ database-url, or, with this chart's own Postgres, keys in its own Secret.
 
 {{- define "execution-console.gatewayDatabaseSecretKey" -}}
 {{- if .Values.gateway.database.existingSecret -}}database-url{{- else -}}gateway-database-url{{- end -}}
+{{- end -}}
+
+{{/*
+TLS inside the cluster. databaseTls ends a URL for this chart's own Postgres
+(tls.yaml): TLS required, checked against its CA at /etc/vertra/tls-db.
+tlsVolumes/tlsMounts give a Pod that CA and the kernel chart's
+(tls.kernelCaSecret: kernel-api's, and the kernel's Postgres's when the
+console's database is there) at /etc/vertra/tls; tlsEnv makes Node trust
+the kernel's for kernel-api.
+*/}}
+{{- define "execution-console.databaseTls" -}}
+{{- if and .Values.tls.enabled .Values.postgres.enabled -}}
+?sslmode=verify-full&sslrootcert=/etc/vertra/tls-db/ca.crt
+{{- end -}}
+{{- end -}}
+
+{{- define "execution-console.tlsVolumes" -}}
+{{- if .Values.tls.kernelCaSecret }}
+- name: kernel-ca
+  secret:
+    secretName: {{ .Values.tls.kernelCaSecret }}
+{{- end }}
+{{- if and .Values.tls.enabled .Values.postgres.enabled }}
+- name: db-ca
+  secret:
+    secretName: {{ include "execution-console.fullname" . }}-tls-ca
+    # The upgrade that turns tls on runs its migration before the Secret
+    # exists; it still connects as before then, without TLS.
+    optional: true
+{{- end }}
+{{- end -}}
+
+{{- define "execution-console.tlsMounts" -}}
+{{- if .Values.tls.kernelCaSecret }}
+- {name: kernel-ca, mountPath: /etc/vertra/tls, readOnly: true}
+{{- end }}
+{{- if and .Values.tls.enabled .Values.postgres.enabled }}
+- {name: db-ca, mountPath: /etc/vertra/tls-db, readOnly: true}
+{{- end }}
+{{- end -}}
+
+{{- define "execution-console.tlsEnv" -}}
+{{- if .Values.tls.kernelCaSecret }}
+- {name: NODE_EXTRA_CA_CERTS, value: /etc/vertra/tls/ca.crt}
+{{- end }}
+{{- end -}}
+
+{{/* This chart's own Postgres's pg_hba with tls: the Pod's own tools over
+its socket as before; from the network, TLS and a password only. */}}
+{{- define "execution-console.pgHba" -}}
+local   all  all            trust
+hostssl all  all  0.0.0.0/0 scram-sha-256
+hostssl all  all  ::/0      scram-sha-256
 {{- end -}}

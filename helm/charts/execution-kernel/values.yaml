@@ -376,6 +376,15 @@ podDisruptionBudget:
 # own PodMonitoring/ClusterPodMonitoring CRDs instead of these annotations.
 
 # -- Bundled Postgres, the default per the brief ("Postgres should ship as
+# -- TLS inside the cluster (templates/tls.yaml): a CA of this release's
+# own and the certificates it signs, so the bundled Postgres requires TLS
+# and kernel-api serves HTTPS, and every client checks it reached the real
+# one. Made once and kept; days is how long each lasts. The console chart
+# reads the CA from <release>-execution-kernel-tls-ca (its kernelTls.caSecret).
+tls:
+  enabled: true
+  days: 3650
+
 # part of the default Helm installation"). To use your own instead, set
 # postgres.enabled=false and either externalDatabaseUrl or existingSecret.
 postgres:

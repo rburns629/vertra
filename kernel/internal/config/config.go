@@ -49,10 +49,14 @@ type Settings struct {
 	// ("system:serviceaccount:<namespace>:<name>": the console's). An empty
 	// list refuses everyone. APIAuth "disabled" skips the check, for running
 	// kernel-api outside a cluster in development only.
-	APIAuth              string
-	APITokenAudience     string
-	APIAllowedCallers    []string
-	APIPort              int
+	APIAuth           string
+	APITokenAudience  string
+	APIAllowedCallers []string
+	APIPort           int
+	// kernel-api serves HTTPS with this certificate and key (the chart's
+	// tls, signed by its own CA); both empty: plain HTTP, for development.
+	APITLSCertFile       string
+	APITLSKeyFile        string
 	MaxTasksPerExecution int
 
 	// The sleeper (`kernel sleep`, the chart's scaleDown CronJob): scales
@@ -275,6 +279,8 @@ func Load(getenv func(string) string) (Settings, error) {
 		APIAuth:                         r.str("API_AUTH", "tokenreview"),
 		APITokenAudience:                r.str("API_TOKEN_AUDIENCE", "vertra-kernel-api"),
 		APIPort:                         r.integer("API_PORT", 8000, true),
+		APITLSCertFile:                  r.str("API_TLS_CERT_FILE", ""),
+		APITLSKeyFile:                   r.str("API_TLS_KEY_FILE", ""),
 		MaxTasksPerExecution:            r.integer("MAX_TASKS_PER_EXECUTION", 500, true),
 		SleeperNamespace:                r.str("SLEEPER_NAMESPACE", ""),
 		SleeperIdleAfter:                r.seconds("SLEEPER_IDLE_AFTER_SECONDS", 7200, true),
@@ -314,6 +320,9 @@ func Load(getenv func(string) string) (Settings, error) {
 		ExecutionRetentionDays: r.integer("EXECUTION_RETENTION_DAYS", 90, false),
 		HeartbeatFile:          r.str("SCHEDULER_HEARTBEAT_FILE", "/tmp/vertra-scheduler-heartbeat"),
 		MetricsPort:            r.integer("METRICS_PORT", 9090, true),
+	}
+	if (s.APITLSCertFile == "") != (s.APITLSKeyFile == "") {
+		r.problems = append(r.problems, "API_TLS_CERT_FILE and API_TLS_KEY_FILE: both, or neither")
 	}
 	if s.APIAuth != "tokenreview" && s.APIAuth != "disabled" {
 		r.problems = append(r.problems, fmt.Sprintf("API_AUTH: tokenreview or disabled, got %q", s.APIAuth))

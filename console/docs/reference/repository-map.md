@@ -386,12 +386,13 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/kernel-api-deployment.yaml`, `kernel-api-service.yaml` | kernel-api, reachable only inside the cluster. |
 | `templates/monitoring.yaml` | With the Prometheus Operator (`monitoring`): a PodMonitor for kernel-api and the scheduler, and alerts (scheduler down or failing, steps waiting). |
 | `templates/kernel-scheduler-deployment.yaml` | kernel-scheduler. |
-| `templates/postgres-*.yaml` | The kernel's Postgres: Deployment, storage, Service. |
+| `templates/postgres-*.yaml` | The kernel's Postgres: Deployment, storage, Service, and (with `tls`) its `pg_hba` accepting only TLS from the network. |
+| `templates/tls.yaml` | TLS inside the cluster (`tls`): a CA of the release's own, made once and kept, and the certificates it signs for Postgres and kernel-api; the CA alone in `-tls-ca` for clients, the console's included. |
 | `templates/migration-job.yaml` | Runs database migrations before an upgrade (a Helm hook). |
 | `templates/backup-cronjob.yaml` | Scheduled database backup (both databases when they share the instance) to GCS, S3, Azure Blob or a volume. |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, the database password, the kernel's identity. |
 | `templates/rbac.yaml` | What the scheduler may do: create and delete Jobs and ConfigMaps, read Pods and their logs. |
-| `templates/dispatch-policy.yaml` | Admission policy: the scheduler may only create Jobs in namespaces labelled `vertra/team=true`. |
+| `templates/dispatch-policy.yaml` | Admission policy: the scheduler may only create Jobs (hardened, with `taskPodHardening`) in namespaces labelled `vertra/team=true`, and delete only its own Jobs and ConfigMaps there. |
 | `templates/image-policy.yaml` | Admission policy: task images only from allowed sources (the console edits the list). |
 | `templates/image-signature.yaml` | On GKE: catalog images must be signed (Sigstore's ClusterImagePolicy). |
 | `templates/purge-policy.yaml` | Admission policy: only the purge identity may delete a team's namespace. |
@@ -415,6 +416,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/activity.yaml` | The ConfigMap the console records its last use in (for the kernel's sleeper), and the Role that lets it update that one. |
 | `templates/deployment.yaml`, `service.yaml` | The console, and how it's reached (LoadBalancer on GKE, port-forward on kind). |
 | `templates/postgres-*.yaml`, `migration-job.yaml`, `backup-cronjob.yaml` | Its own Postgres, migrations and backups. |
+| `templates/tls.yaml` | With its own Postgres and `tls`: that Postgres's CA and certificate, made once and kept. |
 | `templates/networkpolicy.yaml` | The console's metrics port only from `metricsFrom`; when it runs its own Postgres, only this release's Pods may reach it. |
 | `templates/write-fence-policy.yaml` | Admission policy: the console may write Secrets, ServiceAccounts, Roles, RoleBindings and ExternalSecrets only in team namespaces. |
 | `templates/gateway.yaml` | The API gateway (`gateway.enabled`): its Deployment and Service, its signing key (generated once, kept), its one RBAC verb (ServiceAccount tokens), the admission policy limiting that to `*-api` ServiceAccounts in team namespaces, its egress (anywhere but the cloud metadata server, by default) and ingress (its metrics port only from `metricsFrom`), and an Ingress for its public listener. |

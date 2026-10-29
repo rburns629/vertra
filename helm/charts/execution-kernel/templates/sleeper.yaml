@@ -119,6 +119,10 @@ spec:
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
+          {{- if $.Values.tls.enabled }}
+          volumes:
+            {{- include "execution-kernel.tlsCaVolume" $ | nindent 12 }}
+          {{- end }}
           containers:
             - name: sleeper
               image: {{ include "execution-kernel.appImage" $ | quote }}
@@ -131,6 +135,10 @@ spec:
                 readOnlyRootFilesystem: true
                 capabilities:
                   drop: [ALL]
+              {{- if $.Values.tls.enabled }}
+              volumeMounts:
+                {{- include "execution-kernel.tlsCaMount" $ | nindent 16 }}
+              {{- end }}
               env:
                 - name: DATABASE_URL
                   valueFrom:

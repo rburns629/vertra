@@ -221,8 +221,12 @@ func runAPI(ctx context.Context, s config.Settings, log *slog.Logger) error {
 	server := &http.Server{Addr: fmt.Sprintf(":%d", s.APIPort), Handler: api.Handler(service, callers, pool, logging.New("kernel-api", "app.access")),
 		ReadHeaderTimeout: 10 * time.Second}
 	errs := make(chan error, 1)
-	go func() { errs <- server.ListenAndServe() }()
-	log.Info("kernel-api listening", "port", s.APIPort)
+	if s.APITLSCertFile != "" {
+		go func() { errs <- server.ListenAndServeTLS(s.APITLSCertFile, s.APITLSKeyFile) }()
+	} else {
+		go func() { errs <- server.ListenAndServe() }()
+	}
+	log.Info("kernel-api listening", "port", s.APIPort, "tls", s.APITLSCertFile != "")
 	select {
 	case err := <-errs:
 		return err
