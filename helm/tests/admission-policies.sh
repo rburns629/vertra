@@ -128,16 +128,23 @@ for variable in policy["spec"]["variables"]:
 print(json.dumps(policy))' "$BLOCKED_DIGEST" \
   | k replace -f - > /dev/null
 
-job() {  # namespace, image, action, serviceAccount, secret ("" for none), extra container JSON
+# Hardened as the executor makes a step's Job (scheduler.taskPodHardening),
+# unless the seventh argument is "unhardened" (neither), or "own" (the
+# container's securityContext is the sixth argument's).
+job() {  # namespace, image, action, serviceAccount, secret ("" for none), extra container JSON, hardening
   local volumes='{"name":"x","emptyDir":{}}' mounts=""
+  local pod=',"automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true}'
+  local container=',"securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":true,"capabilities":{"drop":["ALL"]}}'
+  if [ "${7:-}" = unhardened ]; then pod="" container=""; fi
+  if [ "${7:-}" = own ]; then container=""; fi
   if [ -n "$5" ]; then
     volumes+=',{"name":"s","secret":{"secretName":"'$5'"}}'
     mounts=',"volumeMounts":[{"name":"s","mountPath":"/platform/secrets/'$5'"}]'
   fi
   k --as="$SCHEDULER" -n "$1" create --dry-run=server -f - 2>&1 <<EOF
 {"apiVersion":"batch/v1","kind":"Job","metadata":{"name":"policy-check"},
- "spec":{"template":{"spec":{"restartPolicy":"Never","serviceAccountName":"$4",
-   "containers":[{"name":"product","image":"$2","args":["$3"]$mounts${6:-}}],
+ "spec":{"template":{"spec":{"restartPolicy":"Never","serviceAccountName":"$4"$pod,
+   "containers":[{"name":"product","image":"$2","args":["$3"]$mounts$container${6:-}}],
    "volumes":[$volumes]}}}}
 EOF
 }
@@ -177,6 +184,8 @@ echo "Dispatch:"
 expect "a team namespace"                     allowed                        "$(job "$TEAM_A" $SOURCE/app:1 run default "")"
 expect "a namespace without the team label"   "not a Vertra team namespace" "$(job "$OTHER_NS" $SOURCE/app:1 run default "")"
 expect "the platform's own namespace"         "not a Vertra team namespace" "$(job "$PLATFORM_NS" $SOURCE/app:1 run default "")"
+expect "a Job not hardened"                   "must run hardened"           "$(job "$TEAM_A" $SOURCE/app:1 run default "" "" unhardened)"
+expect "a Job that adds a capability"         "must run hardened"           "$(job "$TEAM_A" $SOURCE/app:1 run default "" ',"securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":true,"capabilities":{"drop":["ALL"],"add":["NET_ADMIN"]}}' own)"
 
 echo "Image sources:"
 expect "an image from another registry"       IMAGE_NOT_ALLOWED              "$(job "$TEAM_A" busybox:1.36 run default "")"

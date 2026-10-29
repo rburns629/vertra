@@ -118,10 +118,18 @@ export async function notify(event: NewEvent): Promise<boolean> {
     const userIds = [...new Set(event.userIds)];
     if (userIds.length > 0) {
       // Only accounts that still exist: one deleted since its id was read
-      // isn't told (nor fails the event for everyone else).
+      // isn't told (nor fails the event for everyone else). Locked until
+      // this commits, so one deleted meanwhile is skipped, not a foreign key
+      // error.
       await tx
         .insert(userNotifications)
-        .select(tx.select({ eventId: sql<string>`${made.id}::uuid`.as("event_id"), userId: users.id, readAt: sql<null>`null`.as("read_at") }).from(users).where(inArray(users.id, userIds)))
+        .select(
+          tx
+            .select({ eventId: sql<string>`${made.id}::uuid`.as("event_id"), userId: users.id, readAt: sql<null>`null`.as("read_at") })
+            .from(users)
+            .where(inArray(users.id, userIds))
+            .for("key share"),
+        )
         .onConflictDoNothing();
       // By email too, to those who want this kind, when the install sends email.
       if (config.notifications.email.host) {

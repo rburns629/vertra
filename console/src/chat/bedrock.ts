@@ -11,9 +11,11 @@
  * because its release for the client the console runs is days old. AWS's
  * own signer and credential chain are already the console's (ECR, S3).
  */
-import { createHash, createHmac, type Hash, type Hmac } from "node:crypto";
+import { createHash, createHmac, type Hash } from "node:crypto";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { SignatureV4 } from "@smithy/signature-v4";
+
+type Hmac = ReturnType<typeof createHmac>;
 
 /** SigV4's hash: SHA-256, or HMAC-SHA-256 with a secret. */
 class Sha256 {

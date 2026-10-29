@@ -15,7 +15,7 @@ import { planOrder } from "../src/core/orders.js";
 import type { TeamProduct } from "../src/core/templates.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, findTeamByName, upsertProduct } from "../src/db/queries.js";
-import { resources, submittedExecutions, wiringTypes } from "../src/db/schema.js";
+import { products, resources, submittedExecutions, teams, users as usersTable, wiringTypes } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
 import { submitExecution } from "../src/kernel/client.js";
 import { caller, rpcClient } from "./rpc.js";
@@ -221,6 +221,12 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.delete(submittedExecutions).where(inArray(submittedExecutions.onBehalfOf, [team]));
   await db.delete(wiringTypes).where(inArray(wiringTypes.name, [`${prefix}.project`]));
+  await db.delete(resources).where(like(resources.productTeam, `${prefix}%`));
+  await db.delete(products).where(like(products.name, `${prefix}%`));
+  await db.delete(teams).where(like(teams.name, `${prefix}%`));
+  // The ordering bot made through the API, and the people.
+  await db.delete(usersTable).where(like(usersTable.email, `${prefix}-%`));
+  await users.cleanUp();
   await app.close();
   await unlock();
 });
