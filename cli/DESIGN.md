@@ -223,8 +223,8 @@ per-Pod minimums).
 | kernel-api | 0.1 vCPU, 256 MiB | 1 | 2 | 3 | 1 → 3 on load |
 | kernel-scheduler | 0.1 vCPU, 512 MiB | 1 | 1 | 2 | 1 |
 | console | 0.1 vCPU, 512 MiB | 1 | 2 | 3 | 1 → 3 on load |
-| Postgres (both databases, one instance) | 0.25 vCPU, 512 MiB | 1 | 1 | 1 | 1 |
-| **Total** | | **0.55 vCPU, 1.75 GiB** | **0.75 vCPU, 2.5 GiB** | **1.05 vCPU, 3.75 GiB** | **0.55–0.95 vCPU, 1.75–3.25 GiB** |
+| Postgres (both databases, one instance; no CPU limit) | minimal 0.25 vCPU, 512 MiB; resilient and auto 0.5 vCPU, 1 GiB; scaled 1 vCPU, 2 GiB | 1 | 1 | 1 | 1 |
+| **Total** | | **0.55 vCPU, 1.75 GiB** | **1 vCPU, 3 GiB** | **1.8 vCPU, 5.25 GiB** | **0.8–1.2 vCPU, 2.25–3.75 GiB** |
 | Database volume | | 10 GiB | 50 GiB | 100 GiB | 50 GiB |
 | Survives upgrades and node maintenance | | No (a brief interruption) | Yes (PodDisruptionBudgets) | Yes | Only while at 2+ copies |
 | Retention | | 30 days | 90 days | 90 days | 90 days |

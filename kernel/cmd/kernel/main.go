@@ -148,6 +148,9 @@ func poolFor(ctx context.Context, s config.Settings) (*pgxpool.Pool, error) {
 	}
 	// Longest any one statement may run before it fails.
 	poolConfig.ConnConfig.RuntimeParams["statement_timeout"] = fmt.Sprint(s.DatabaseCommandTimeout.Milliseconds())
+	// Not pgx's default (the node's CPUs, at least 4): a 2-CPU node's 4
+	// would queue a burst of requests while Postgres sits idle.
+	poolConfig.MaxConns = int32(s.DatabaseMaxConnections)
 	return pgxpool.NewWithConfig(ctx, poolConfig)
 }
 

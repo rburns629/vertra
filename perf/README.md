@@ -29,6 +29,10 @@ container sharing the laptop's CPUs, memory and disk with everything else.
   alone, with the fake executor (steps finish as they start), 1, 2 and 4
   schedulers, committed transactions on the test database; checks every run
   succeeds and no step starts twice. Only with `VERTRA_PERF=1`.
+- `pgbench/run.sh <label>`: Postgres alone, as it's sized in the cluster:
+  pgbench from a Pod of the kernel release (the NetworkPolicy admits only
+  those), over TLS, in a scratch database it drops after, with 8 and 64
+  clients at once, writes (TPC-B-like) and reads (select-only).
 - `kind-kernel.yaml`, `kind-console.yaml`: the perf cluster's settings on
   top of `helm/values/kind/`: at most 40 steps running at once (so a large
   scenario queues instead of starting hundreds of Pods on a laptop), and a
@@ -44,8 +48,8 @@ else heavy (a local model: `lms unload --all`), while measuring:
 ```console
 $ make down                                   # vertra-local, data kept
 $ make quickstart KIND_CLUSTER=vertra-perf    # once; rerunnable
-$ make kind-deploy-console KIND_CLUSTER=vertra-perf KIND_CONSOLE_VALUES=perf/kind-console.yaml
 $ make kind-deploy-kernel KIND_CLUSTER=vertra-perf KIND_KERNEL_VALUES=perf/kind-kernel.yaml
+$ make kind-deploy-console KIND_CLUSTER=vertra-perf KIND_CONSOLE_VALUES=perf/kind-console.yaml
 $ make up KIND_CLUSTER=vertra-perf
 $ make catalog-publish KIND_CLUSTER=vertra-perf SAMPLES=perf CATALOG_REGISTRY=localhost:5001/perf-catalog
 ```
@@ -131,6 +135,30 @@ records with the time it began, so under a long pass a step can be recorded
 done before its container finished (the burst at 5/s: a negative completion
 lag at p50). Harmless to correctness; it makes the kernel's own completion
 times early by up to one pass, which the driver's completion lag inherits.
+
+## Postgres sized (2026-10-29)
+
+Postgres ran with a 1-CPU limit and stock settings at every size, and each
+process held pgx's or node-postgres's default pool (pgx's is the node's CPUs,
+4 on a 2-CPU node). Now each size gives it memory with settings to match,
+no CPU limit, a /dev/shm of its own, and each process a pool the size sets,
+every process's together under `max_connections`. `pgbench/run.sh` on
+vertra-perf, same machine, 30 s each (transactions a second, mean latency):
+
+| | 8 clients, writes | 64 clients, writes | 8 clients, reads | 64 clients, reads |
+| --- | ---: | ---: | ---: | ---: |
+| before (1-CPU limit, stock settings) | 1,912, 4.2 ms | 1,494, 42.8 ms | 13,601 | 10,091 |
+| `minimal` (512Mi) | 3,028, 2.6 ms | 3,725, 17.2 ms | 18,742 | 23,619 |
+| `resilient` (1Gi) | 3,083, 2.6 ms | 3,580, 17.9 ms | 22,430 | 24,669 |
+| `scaled` (2Gi) | 3,144, 2.5 ms | 3,709, 17.3 ms | 22,806 | 24,827 |
+
+Before, more clients at once got less done (the CPU limit throttled it);
+now 64 at once get more done than 8. Past `minimal`, kind shows little:
+writes are bound by the laptop's disk flushes and shared CPU, and pgbench's
+300 MB fits each size's memory. A cloud's disk, and a database bigger than
+`minimal`'s memory, are where the larger sizes tell. The platform end to
+end (`burst`, the `scaled` settings, one copy of each) was unchanged at 3.15
+steps/s, correct: Kubernetes, not Postgres, still sets steps a second.
 
 ## Next (TODO.md)
 

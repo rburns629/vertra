@@ -189,6 +189,9 @@ the kernel's for kernel-api.
 - name: kernel-ca
   secret:
     secretName: {{ .Values.tls.kernelCaSecret }}
+    # Made by the kernel chart's upgrade that turns tls on: a console
+    # upgraded first still migrates, connecting as before until then.
+    optional: true
 {{- end }}
 {{- if and .Values.tls.enabled .Values.postgres.enabled }}
 - name: db-ca

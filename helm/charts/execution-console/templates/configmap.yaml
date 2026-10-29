@@ -14,6 +14,7 @@ metadata:
     {{- include "execution-console.labels" . | nindent 4 }}
 data:
 {{- include "execution-console.configData" . }}
+  DATABASE_POOL_SIZE: {{ .Values.databasePoolSize | quote }}
   # The chat agent (values.yaml's chat): off without a model. The console's
   # alone: the migration Job has no use for it, nor its key.
   CHAT_MODEL: {{ .Values.chat.model | quote }}

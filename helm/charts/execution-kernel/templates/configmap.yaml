@@ -32,6 +32,7 @@ data:
   SCHEDULER_APPROVAL_TIMEOUT_SECONDS: {{ .Values.scheduler.approvalTimeoutSeconds | quote }}
   SCHEDULER_HEARTBEAT_FILE: {{ .Values.scheduler.heartbeatFile | quote }}
   DATABASE_COMMAND_TIMEOUT_SECONDS: {{ .Values.databaseCommandTimeoutSeconds | quote }}
+  DATABASE_MAX_CONNECTIONS: {{ .Values.databaseMaxConnections | quote }}
   SCHEDULER_RETRY_BACKOFF_SECONDS: {{ .Values.scheduler.retryBackoffSeconds | quote }}
   SCHEDULER_RETRY_BACKOFF_MAX_SECONDS: {{ .Values.scheduler.retryBackoffMaxSeconds | quote }}
   KUBERNETES_WATCH_RESYNC_SECONDS: {{ .Values.scheduler.watchResyncSeconds | quote }}

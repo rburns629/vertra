@@ -42,6 +42,10 @@ type Settings struct {
 	DatabaseURL string
 	// Longest any one statement may run before it fails.
 	DatabaseCommandTimeout time.Duration
+	// Most connections this process holds (each request kernel-api serves
+	// takes one); the size keeps every process's sum under Postgres's
+	// max_connections.
+	DatabaseMaxConnections int
 
 	// kernel-api. Who may call it: each request carries a Kubernetes
 	// ServiceAccount token issued for APITokenAudience; a TokenReview checks
@@ -276,6 +280,7 @@ func Load(getenv func(string) string) (Settings, error) {
 	s := Settings{
 		DatabaseURL:                     r.str("DATABASE_URL", "postgresql://localhost/execution_kernel"),
 		DatabaseCommandTimeout:          r.seconds("DATABASE_COMMAND_TIMEOUT_SECONDS", 60, true),
+		DatabaseMaxConnections:          r.integer("DATABASE_MAX_CONNECTIONS", 10, true),
 		APIAuth:                         r.str("API_AUTH", "tokenreview"),
 		APITokenAudience:                r.str("API_TOKEN_AUDIENCE", "vertra-kernel-api"),
 		APIPort:                         r.integer("API_PORT", 8000, true),

@@ -19,6 +19,13 @@ design.
   subnets would replace the group, and its volumes may be in the zone
   dropped). Validated, not yet seen on a cluster.
 
+- [x] **Postgres sized to the install (2026-10-29)**: each size sets its
+  memory, settings to match and every process's connection pool (all under
+  `max_connections`), with no CPU limit and a /dev/shm of its own; measured
+  with `perf/pgbench/run.sh` (`perf/README.md`): writes at 64 clients 2.5
+  times the old, latency 43 → 17 ms. Still one instance in one zone: past
+  `scaled`, or for failover, a managed database (below).
+
 - [ ] **Observe: security checks, logs and metrics for everyone**
   (mocked up 2026-10-21, boards 17–19). One console section with tabs:
   - Security checks (done 2026-10-22: `ObserveService.GetSecurity`, the

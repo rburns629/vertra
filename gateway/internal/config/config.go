@@ -19,6 +19,8 @@ type Settings struct {
 	// The console's database, as the gateway's own role: published APIs and
 	// who callers are, read; its traffic counts, written.
 	DatabaseURL string
+	// Most connections it holds: each request checks who's calling there.
+	DatabaseMaxConnections int
 	// The console, inside the cluster, whose session keys (its JWKS) check
 	// sessions as it does.
 	ConsoleURL string
@@ -70,20 +72,21 @@ func Load(getenv func(string) string) (*Settings, error) {
 		return n
 	}
 	s := &Settings{
-		DatabaseURL:      need("DATABASE_URL"),
-		ConsoleURL:       strings.TrimSuffix(need("CONSOLE_URL"), "/"),
-		SSO:              getenv("SSO_ENABLED") == "true",
-		Issuer:           need("GATEWAY_ISSUER"),
-		Listen:           or("LISTEN", ":8080"),
-		PublicListen:     getenv("PUBLIC_LISTEN"),
-		MetricsListen:    or("METRICS_LISTEN", ":9090"),
-		BackendHosts:     list(getenv("BACKEND_HOSTS")),
-		InternetTeams:    list(getenv("INTERNET_TEAMS")),
-		DefaultPerMinute: number("DEFAULT_PER_MINUTE", 600),
-		GCPAudience:      getenv("GCP_STS_AUDIENCE"),
-		GCPTokenAudience: getenv("GCP_TOKEN_AUDIENCE"),
-		Closed:           getenv("CLOSED") == "true",
-		Refresh:          time.Duration(number("REFRESH_SECONDS", 5)) * time.Second,
+		DatabaseURL:            need("DATABASE_URL"),
+		DatabaseMaxConnections: number("DATABASE_MAX_CONNECTIONS", 10),
+		ConsoleURL:             strings.TrimSuffix(need("CONSOLE_URL"), "/"),
+		SSO:                    getenv("SSO_ENABLED") == "true",
+		Issuer:                 need("GATEWAY_ISSUER"),
+		Listen:                 or("LISTEN", ":8080"),
+		PublicListen:           getenv("PUBLIC_LISTEN"),
+		MetricsListen:          or("METRICS_LISTEN", ":9090"),
+		BackendHosts:           list(getenv("BACKEND_HOSTS")),
+		InternetTeams:          list(getenv("INTERNET_TEAMS")),
+		DefaultPerMinute:       number("DEFAULT_PER_MINUTE", 600),
+		GCPAudience:            getenv("GCP_STS_AUDIENCE"),
+		GCPTokenAudience:       getenv("GCP_TOKEN_AUDIENCE"),
+		Closed:                 getenv("CLOSED") == "true",
+		Refresh:                time.Duration(number("REFRESH_SECONDS", 5)) * time.Second,
 	}
 	if path := need("SIGNING_KEY_FILE"); path != "" {
 		seed, err := os.ReadFile(path)

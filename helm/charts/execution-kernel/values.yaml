@@ -426,13 +426,31 @@ postgres:
     # it explicitly when you mean to.
     keepOnUninstall: true
     storageClassName: ""
+  # The `minimal` size's: each size (sizes/) sets these three together,
+  # the settings to the memory. No CPU limit, so it can take a burst; memory
+  # is limited to what's asked, and /dev/shm counts against it.
   resources:
     requests:
       cpu: 250m
       memory: 512Mi
     limits:
-      cpu: "1"
       memory: 512Mi
+  # -- /dev/shm, for parallel queries (memory, counted in the limit above).
+  sharedMemory: 128Mi
+  # -- Postgres settings (postgres -c name=value). shared_buffers about a
+  # quarter of the memory, effective_cache_size about three quarters; the
+  # rest suit an SSD-backed volume. A key set here is added or replaces one.
+  settings:
+    shared_buffers: 128MB
+    effective_cache_size: 384MB
+    work_mem: 4MB
+    maintenance_work_mem: 64MB
+    max_connections: 100
+    max_wal_size: 1GB
+    checkpoint_completion_target: 0.9
+    wal_compression: "on"
+    random_page_cost: 1.1
+    effective_io_concurrency: 200
 
 # -- Only used when postgres.enabled is false: a Postgres URL, e.g.
 # postgresql://user:pass@host:5432/dbname (the Python kernel's
@@ -507,6 +525,10 @@ backup:
 # -- Longest any one database statement may run, for kernel-api and the
 # scheduler (Postgres's default is to wait forever).
 databaseCommandTimeoutSeconds: 60
+# -- Most database connections each kernel process holds. Every size keeps
+# the sum over all processes (and the console's, when its database is here)
+# under postgres.settings.max_connections.
+databaseMaxConnections: 10
 
 # -- NetworkPolicies (templates/networkpolicy.yaml): only this release's Pods
 # (and the console's, when this instance hosts its database) may reach

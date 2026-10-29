@@ -20,8 +20,26 @@ scheduler:
     cpu: 500m
     memory: 1Gi
 executionRetentionDays: 90
+# Connections each kernel process holds; with every process's, under
+# postgres.settings.max_connections below.
+databaseMaxConnections: 15
 postgres:
   persistence:
     # Volumes grow but never shrink: a smaller figure than an existing
     # volume's is refused by Kubernetes.
     size: 50Gi
+  # Its memory, and settings sized to it (values.yaml says how).
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+  sharedMemory: 256Mi
+  settings:
+    shared_buffers: 256MB
+    effective_cache_size: 768MB
+    work_mem: 8MB
+    maintenance_work_mem: 128MB
+    max_connections: 200
+    max_wal_size: 2GB

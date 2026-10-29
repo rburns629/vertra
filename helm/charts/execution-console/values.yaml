@@ -13,6 +13,12 @@ image:
 
 replicaCount: 1
 
+# -- Most database connections each console process holds; the gateway's
+# is gateway.databaseMaxConnections. Every size keeps the sum over all
+# processes (the kernel's too, when they share a database) under
+# postgres.settings.max_connections.
+databasePoolSize: 10
+
 # -- Copies on CPU load instead of replicaCount: a HorizontalPodAutoscaler
 # (the `auto` size, sizes/auto.yaml). Needs the cluster's metrics API
 # (metrics-server; built into GKE, EKS Auto Mode and AKS Automatic).
@@ -259,6 +265,9 @@ gateway:
   database:
     existingSecret: ""
     role: vertra_gateway
+  # -- Most database connections each gateway holds (each request checks
+  # who's calling there).
+  databaseMaxConnections: 10
   image:
     repository: ghcr.io/rburns629/vertra/execution-gateway
     tag: ""
@@ -691,13 +700,31 @@ postgres:
     # it explicitly when you mean to.
     keepOnUninstall: true
     storageClassName: ""
+  # The `minimal` size's: each size (sizes/) sets these three together,
+  # the settings to the memory. No CPU limit, so it can take a burst; memory
+  # is limited to what's asked, and /dev/shm counts against it.
   resources:
     requests:
       cpu: 250m
       memory: 512Mi
     limits:
-      cpu: "1"
       memory: 512Mi
+  # -- /dev/shm, for parallel queries (memory, counted in the limit above).
+  sharedMemory: 128Mi
+  # -- Postgres settings (postgres -c name=value). shared_buffers about a
+  # quarter of the memory, effective_cache_size about three quarters; the
+  # rest suit an SSD-backed volume. A key set here is added or replaces one.
+  settings:
+    shared_buffers: 128MB
+    effective_cache_size: 384MB
+    work_mem: 4MB
+    maintenance_work_mem: 64MB
+    max_connections: 100
+    max_wal_size: 1GB
+    checkpoint_completion_target: 0.9
+    wal_compression: "on"
+    random_page_cost: 1.1
+    effective_io_concurrency: 200
 
 # -- Only used when postgres.enabled is false: a full node-postgres URL,
 # e.g. postgresql://user:pass@host:5432/dbname. Prefer existingSecret over

@@ -378,8 +378,14 @@ Each chart ships four presets in `sizes/` (`minimal`, `resilient`,
 copies of the console, kernel-api and the scheduler (with
 PodDisruptionBudgets from two copies, so drains and upgrades take one at a
 time), the scheduler's step caps and default step size (and, in `scaled`,
-its `claimLimit` and `executorConcurrency`), how long executions are kept
-and the database volume's size; `auto` scales the console and kernel-api from one to three
+its `claimLimit` and `executorConcurrency`), how long executions are kept,
+and the in-cluster Postgres: its volume, its memory with settings sized to
+it (`postgres.settings`: shared buffers, cache size, working memory,
+connections), and how many connections each process holds (the kernel's
+`databaseMaxConnections`, the console's `databasePoolSize`, the gateway's
+`gateway.databaseMaxConnections`), so every process's together stay under
+Postgres's `max_connections`. Postgres has no CPU limit, so it can take a
+burst. `auto` scales the console and kernel-api from one to three
 copies on CPU load, and needs the cluster's metrics API (metrics-server;
 built into GKE, EKS Auto Mode and AKS Automatic). `vertra` picks one
 from its `size` setting. A preset doesn't say where steps run: Spot is
@@ -387,13 +393,13 @@ from its `size` setting. A preset doesn't say where steps run: Spot is
 Workload Identity's `azure.workload.identity/use: "true"`, go in
 `scheduler.taskPodLabels`.
 
-| Preset | Console | kernel-api | Scheduler | Steps at once (all, per team) | Executions kept | Kernel database volume |
-| --- | --- | --- | --- | --- | --- | --- |
-| None (the charts' defaults) | 1 | 1 | 1 | no cap | 90 days | 1Gi |
-| `minimal` | 1 | 1 | 1 | 10, 5 | 30 days | 10Gi |
-| `resilient` | 2 | 2 | 1 | 50, 20 | 90 days | 50Gi |
-| `scaled` | 3 | 3 | 2 | 200, 50 | 90 days | 100Gi |
-| `auto` | 1 to 3 | 1 to 3 | 1 | 50, 20 | 90 days | 50Gi |
+| Preset | Console | kernel-api | Scheduler | Steps at once (all, per team) | Executions kept | Kernel database volume | Postgres memory (connections) | Each process's connections |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| None (the charts' defaults) | 1 | 1 | 1 | no cap | 90 days | 1Gi | 512Mi (100) | 10 |
+| `minimal` | 1 | 1 | 1 | 10, 5 | 30 days | 10Gi | 512Mi (100) | 10 |
+| `resilient` | 2 | 2 | 1 | 50, 20 | 90 days | 50Gi | 1Gi (200) | 15 |
+| `scaled` | 3 | 3 | 2 | 200, 50 | 90 days | 100Gi | 2Gi (300) | 20 |
+| `auto` | 1 to 3 | 1 to 3 | 1 | 50, 20 | 90 days | 50Gi | 1Gi (200) | 15 |
 
 **More than one copy.** kernel-api holds no state, so any number of
 copies is safe. So is more than one scheduler: each claims steps with

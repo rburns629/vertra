@@ -324,6 +324,9 @@ export const config = {
   // never serves it (metrics.ts). 0 turns it off.
   metricsPort: Number(process.env["METRICS_PORT"] ?? 9090),
   databaseUrl: requireEnv("DATABASE_URL"),
+  // Most connections this process holds (each request it serves may take
+  // one); the size keeps every process's sum under Postgres's limit.
+  databasePoolSize: positiveInt("DATABASE_POOL_SIZE", 10),
   // With the gateway on: its own database role (db/gatewayAccess.ts), which
   // the migration Job grants what the gateway reads, and creates with this
   // password when the console runs as its Postgres's superuser. Empty: no

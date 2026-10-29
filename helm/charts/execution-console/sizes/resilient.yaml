@@ -8,3 +8,25 @@ replicaCount: 2
 retention:
   # Keep it the kernel's executionRetentionDays.
   executionDays: 90
+# Connections each console process and gateway holds; with every
+# process's, under postgres.settings.max_connections below.
+databasePoolSize: 15
+gateway:
+  databaseMaxConnections: 15
+# The console's own Postgres, when it has one (postgres.enabled).
+postgres:
+  # Its memory, and settings sized to it (values.yaml says how).
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+  sharedMemory: 256Mi
+  settings:
+    shared_buffers: 256MB
+    effective_cache_size: 768MB
+    work_mem: 8MB
+    maintenance_work_mem: 128MB
+    max_connections: 200
+    max_wal_size: 2GB

@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -45,7 +46,14 @@ func run(log *slog.Logger) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	pool, err := pgxpool.New(ctx, s.DatabaseURL)
+	poolConfig, err := pgxpool.ParseConfig(s.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("DATABASE_URL: %w", err)
+	}
+	// Not pgx's default (the node's CPUs, at least 4), which would queue a
+	// burst of calls on a small node.
+	poolConfig.MaxConns = int32(max(s.DatabaseMaxConnections, 1))
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return err
 	}
