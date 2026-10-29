@@ -732,10 +732,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `docs/security-model.md`): the scheduler may read every Pod's logs
   cluster-wide; and a compromised
   console can loosen the image, identity and scan policies (accepted:
-  Kubernetes can't fence an admission policy's own edits). The EKS
-  metadata block and NetworkPolicy enforcement are proven on kind only:
-  prove both on the next EKS install (a step's `curl 169.254.169.254`
-  refused; another team's Pod unreachable). Done 2026-10-28: sign-ins and
+  Kubernetes can't fence an admission policy's own edits). Proven on EKS
+  Auto Mode 2026-10-28 (NetworkPolicy enforced: another team's Pod
+  unreachable, the metadata server refused, TLS everywhere, kernel-api
+  HTTPS only); still to prove on a standard-mode EKS install, where the
+  VPC CNI add-on's setting and the metadata block are what hold. Done 2026-10-28: sign-ins and
   password changes audited (with the client's address), failed ones logged;
   the sign-in limits counted in Postgres, shared by every console copy;
   signing out ends the session (`revoked_sessions`, checked by the gateway
@@ -917,6 +918,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   frontend's `dagCheck.ts`.
 
 ## Products and catalog
+
+- [ ] **Prove the chat agent answering through Bedrock** once the acyclix
+  account can: it has the Anthropic use-case form to submit, and every
+  Bedrock daily token quota is 0 (AWS Support raises those). Proven so far
+  (EKS Auto Mode, 2026-10-28): the console signs each request as its Pod
+  Identity role, which passes IAM for its own model and is refused for any
+  other; what's left is one answer.
 
 - [ ] **API products and the gateway** (decision 20, `docs/assessment.md`;
   mocked up 2026-10-21 in the console mockups, boards 12–16). A team

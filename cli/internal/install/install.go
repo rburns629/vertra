@@ -401,6 +401,15 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		// Reading ECR with the console's own role (EKS Pod Identity, bound
 		// to its ServiceAccounts by name: no annotations).
 		v["registryCheck"] = map[string]any{"ecrToken": true}
+		if c.ChatOnBedrock() {
+			// The chat agent: Claude in Amazon Bedrock in the install's
+			// region, signed as the console's role (the module grants it this model).
+			v["chat"] = map[string]any{
+				"model":    c.ChatModel(),
+				"provider": "bedrock",
+				"bedrock":  map[string]any{"region": c.AWS.Region},
+			}
+		}
 		// Steps can't reach the instance metadata server, so not the node's
 		// role either (a NetworkPolicy in each team namespace).
 		v["teamNamespaces"] = map[string]any{"blockMetadata": true}

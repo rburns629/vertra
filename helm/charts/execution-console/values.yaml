@@ -565,15 +565,18 @@ rbac:
 # -- The chat agent (decision 24): a panel on every page whose agent answers
 # from the docs and the catalog, looks at what the person's teams have, and
 # fills their cart (they place the order). Off unless `model` is set, or
-# `provider` is vertex (its model then google/gemini-3.5-flash, the one
+# `provider` is vertex or bedrock (vertex's model then google/gemini-3.5-flash, the one
 # scored: name another only after scoring it, `npm run chat-eval`).
 # `provider`: openai-compatible (LM Studio, Ollama; `endpoint` its base
 # URL, http(s)://.../v1), anthropic (Claude through Anthropic's API, `model`
-# such as claude-haiku-5-5; `endpoint` empty for Anthropic's own), or vertex
+# such as claude-haiku-5-5; `endpoint` empty for Anthropic's own), vertex
 # (Gemini through Vertex AI in `vertex.project`, signed in as the console's Workload Identity:
 # no key; its Google service account needs roles/aiplatform.user there;
 # a key given anyway is an access token used instead, for trying it off
-# GKE, good for an hour). A key, when one's needed: a Secret's name, key
+# GKE, good for an hour), or bedrock (Claude in Amazon Bedrock in
+# `bedrock.region`, each request signed as the console's own AWS identity,
+# its EKS Pod Identity: no key; its model, Bedrock's name, defaults to
+# anthropic.claude-sonnet-5). A key, when one's needed: a Secret's name, key
 # `api-key`, never the key itself.
 # What it's sent reaches the model's provider: on a cloud, choose one in
 # the install's own cloud.
@@ -599,6 +602,11 @@ chat:
   vertex:
     project: ""
     location: global
+  # With provider bedrock: the AWS region whose Bedrock answers. The
+  # console's role needs bedrock-mantle:CreateInference on the model there
+  # (vertra's aws module grants it, for that model only).
+  bedrock:
+    region: ""
 
 teamNamespaces:
   manage: true

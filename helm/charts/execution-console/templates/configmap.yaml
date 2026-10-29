@@ -26,6 +26,7 @@ data:
   CHAT_CONTEXT_TOKENS: {{ .Values.chat.contextTokens | quote }}
   CHAT_VERTEX_PROJECT: {{ .Values.chat.vertex.project | quote }}
   CHAT_VERTEX_LOCATION: {{ .Values.chat.vertex.location | quote }}
+  CHAT_BEDROCK_REGION: {{ .Values.chat.bedrock.region | quote }}
 ---
 # The migration Job's own copy, made by the same hook just before it: a
 # pre-upgrade Job reading the ConfigMap above would get the previous

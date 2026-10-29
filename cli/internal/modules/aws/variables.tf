@@ -163,3 +163,13 @@ variable "signing" {
   }
 }
 
+
+variable "chat_model" {
+  description = "The console's chat agent answers with this Claude model in Amazon Bedrock (Bedrock's name, such as anthropic.claude-sonnet-5), as the console's own role; empty: chat off, no grant."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.chat_model == "" || can(regex("^anthropic\\.claude-[a-z0-9][a-z0-9.-]*$", var.chat_model))
+    error_message = "Bedrock's name for a Claude model, such as anthropic.claude-sonnet-5, or empty."
+  }
+}

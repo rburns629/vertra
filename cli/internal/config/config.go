@@ -94,8 +94,8 @@ type Config struct {
 	// SSO: signing in with Google (vertra sso google sets it up).
 	SSO SSO `yaml:"sso,omitempty"`
 	// Chat: the console's chat agent. On gcp, Gemini through Vertex AI in
-	// the install's own project, unless it's off; elsewhere, the console
-	// chart's chat values.
+	// the install's own project; on aws, Claude in Amazon Bedrock in its
+	// region; unless it's off. Elsewhere, the console chart's chat values.
 	Chat Chat `yaml:"chat,omitempty"`
 	// Monitoring: the charts' PodMonitors, alerts and Grafana dashboard,
 	// for a Prometheus Operator already in the cluster.
@@ -190,10 +190,11 @@ type Audit struct {
 	Lock     bool `yaml:"lock,omitempty"`
 }
 
-// Chat is the console's chat agent on gcp.
+// Chat is the console's chat agent on gcp and aws.
 type Chat struct {
 	Off bool `yaml:"off,omitempty"`
-	// Model is Vertex's name for it; empty for DefaultChatModel.
+	// Model is the cloud's name for it (Vertex's, Bedrock's); empty for
+	// DefaultChatModel or DefaultBedrockModel.
 	Model string `yaml:"model,omitempty"`
 }
 
@@ -201,13 +202,23 @@ type Chat struct {
 // one scored, and the console's own default on Vertex.
 const DefaultChatModel = "google/gemini-3.5-flash"
 
+// DefaultBedrockModel answers on aws unless chat.model says otherwise: a
+// Claude open to every Bedrock account, and the console's own default there.
+const DefaultBedrockModel = "anthropic.claude-sonnet-5"
+
 // ChatOnVertex: the chat agent answers through Vertex AI in the install's project.
 func (c *Config) ChatOnVertex() bool { return c.Target == "gcp" && !c.Chat.Off }
+
+// ChatOnBedrock: the chat agent answers through Amazon Bedrock in the install's region.
+func (c *Config) ChatOnBedrock() bool { return c.Target == "aws" && !c.Chat.Off }
 
 // ChatModel is the model it answers with.
 func (c *Config) ChatModel() string {
 	if c.Chat.Model != "" {
 		return c.Chat.Model
+	}
+	if c.Target == "aws" {
+		return DefaultBedrockModel
 	}
 	return DefaultChatModel
 }
@@ -430,6 +441,7 @@ var (
 	// <host>/<path>: a registry and repository path, no tag.
 	registryPath = regexp.MustCompile(`^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+)+$`)
 	chatModel    = regexp.MustCompile(`^google/[a-z0-9][a-z0-9.-]*$`)
+	bedrockModel = regexp.MustCompile(`^anthropic\.claude-[a-z0-9][a-z0-9.-]*$`)
 	wifProvider  = regexp.MustCompile(`^projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]{4,32}/providers/[a-z0-9-]{4,32}$`)
 	gcpProject   = regexp.MustCompile(`^[a-z][-a-z0-9]{4,28}[a-z0-9]$`)
 	gcpRegion    = regexp.MustCompile(`^[a-z]+-[a-z]+[0-9]$`)
@@ -573,10 +585,13 @@ func (c *Config) Validate() error {
 		add("signing: %q: none, kms or keyless", c.Signing)
 	}
 	if c.Chat.Model != "" {
-		if c.Target != "gcp" {
-			add("chat.model: gcp only (elsewhere, set the console chart's chat values)")
-		} else if !chatModel.MatchString(c.Chat.Model) {
+		switch {
+		case c.Target == "gcp" && !chatModel.MatchString(c.Chat.Model):
 			add("chat.model: %q: Vertex's name for a Gemini model, such as %s", c.Chat.Model, DefaultChatModel)
+		case c.Target == "aws" && !bedrockModel.MatchString(c.Chat.Model):
+			add("chat.model: %q: Bedrock's name for a Claude model, such as %s", c.Chat.Model, DefaultBedrockModel)
+		case c.Target != "gcp" && c.Target != "aws":
+			add("chat.model: gcp and aws only (elsewhere, set the console chart's chat values)")
 		}
 	}
 	if c.SSO.GoogleGroups && c.Target != "gcp" {

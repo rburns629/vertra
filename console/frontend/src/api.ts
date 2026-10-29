@@ -2624,6 +2624,8 @@ export interface ChatConfig {
   endpoint: string;
   vertexProject: string;
   vertexLocation: string;
+  /** Bedrock's AWS region. */
+  bedrockRegion: string;
   effort: string;
   maxSteps: number;
   contextTokens: number;
@@ -2645,6 +2647,8 @@ export interface ChatConfigInput {
   endpoint: string;
   vertexProject: string;
   vertexLocation: string;
+  /** Bedrock's AWS region. */
+  bedrockRegion: string;
   effort: string;
   maxSteps: number;
   contextTokens: number;
@@ -2670,6 +2674,7 @@ function chatConfig(c: ChatConfigMessage | undefined): ChatConfig {
     endpoint: c?.endpoint ?? "",
     vertexProject: c?.vertexProject ?? "",
     vertexLocation: c?.vertexLocation ?? "",
+    bedrockRegion: c?.bedrockRegion ?? "",
     effort: c?.effort ?? "",
     maxSteps: c?.maxSteps ?? 0,
     contextTokens: c?.contextTokens ?? 0,

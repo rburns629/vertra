@@ -32,6 +32,7 @@ export interface ChatConfigInput {
   endpoint: string;
   vertexProject: string;
   vertexLocation: string;
+  bedrockRegion: string;
   effort: string;
   /** Null: the default. */
   maxSteps: number | null;
@@ -49,6 +50,7 @@ export interface ChatConfigView {
   endpoint: string;
   vertexProject: string;
   vertexLocation: string;
+  bedrockRegion: string;
   effort: string;
   maxSteps: number;
   contextTokens: number;
@@ -64,9 +66,12 @@ export interface ChatConfigView {
 
 const bad = (message: string) => new ApiError(400, "BAD_CHAT_SETTINGS", message);
 
+/** Providers that sign in as the console's own cloud identity: no key kept. */
+const keyless = (provider: string) => provider === "vertex" || provider === "bedrock";
+
 /** The key these settings use: the one given, the one kept for this provider, or the install's for its own. */
 function keyFor(input: Pick<ChatConfigInput, "provider" | "apiKey">, stored: typeof chatSettings.$inferSelect | undefined): string {
-  if (input.provider === "vertex") return "";
+  if (keyless(input.provider)) return "";
   if (input.apiKey) return input.apiKey;
   if (stored?.apiKeyEncrypted && stored.provider === input.provider) return unseal(stored.apiKeyEncrypted, KEY_PURPOSE) ?? "";
   return config.chat?.provider === input.provider ? config.chat.apiKey : "";
@@ -102,10 +107,11 @@ export async function getChatConfig(caller: AuthUser | undefined): Promise<ChatC
       enabled: c !== null,
       provider: c?.provider ?? "",
       model: c?.model ?? "",
-      // Vertex's is built from its project: nothing to show.
-      endpoint: c?.provider === "vertex" ? "" : (c?.endpoint ?? ""),
+      // Vertex's and Bedrock's are built from their project or region: nothing to show.
+      endpoint: c && keyless(c.provider) ? "" : (c?.endpoint ?? ""),
       vertexProject: c?.vertexProject ?? "",
       vertexLocation: c?.vertexLocation ?? "",
+      bedrockRegion: c?.bedrockRegion ?? "",
       effort: c?.effort ?? "",
       maxSteps: c?.maxSteps ?? 0,
       contextTokens: c?.contextTokens ?? 0,
@@ -127,11 +133,12 @@ export async function getChatConfig(caller: AuthUser | undefined): Promise<ChatC
     endpoint: s.endpoint,
     vertexProject: s.vertexProject,
     vertexLocation: effective?.vertexLocation ?? s.vertexLocation,
+    bedrockRegion: s.bedrockRegion,
     effort: s.effort,
     maxSteps: effective?.maxSteps ?? s.maxSteps ?? 0,
     contextTokens: effective?.contextTokens ?? s.contextTokens ?? 0,
     maxTokens: effective?.maxTokens ?? s.maxTokens ?? 0,
-    keySet: Boolean(s.apiKeyEncrypted) || (s.provider !== "vertex" && config.chat?.provider === s.provider && Boolean(config.chat.apiKey)),
+    keySet: Boolean(s.apiKeyEncrypted) || (!keyless(s.provider) && config.chat?.provider === s.provider && Boolean(config.chat.apiKey)),
     problem,
     updatedBy: row.updatedBy ?? "",
     updatedAt: s.updatedAt,
@@ -145,9 +152,9 @@ export async function setChatConfig(caller: AuthUser | undefined, input: ChatCon
   // Off needs nothing else; on is checked whole.
   if (input.enabled) checked(input, keyFor(input, stored));
   else if (!(CHAT_PROVIDERS as readonly string[]).includes(input.provider)) input = { ...input, provider: "openai-compatible" };
-  // A key given is kept; one kept for another provider goes; Vertex keeps none.
+  // A key given is kept; one kept for another provider goes; Vertex and Bedrock keep none.
   const apiKeyEncrypted =
-    input.provider === "vertex" ? null : input.apiKey ? seal(input.apiKey, KEY_PURPOSE) : stored?.provider === input.provider ? (stored.apiKeyEncrypted ?? null) : null;
+    keyless(input.provider) ? null : input.apiKey ? seal(input.apiKey, KEY_PURPOSE) : stored?.provider === input.provider ? (stored.apiKeyEncrypted ?? null) : null;
   const values = {
     enabled: input.enabled,
     provider: input.provider,
@@ -155,6 +162,7 @@ export async function setChatConfig(caller: AuthUser | undefined, input: ChatCon
     endpoint: input.endpoint.trim(),
     vertexProject: input.vertexProject.trim(),
     vertexLocation: input.vertexLocation.trim(),
+    bedrockRegion: input.bedrockRegion.trim(),
     apiKeyEncrypted,
     effort: input.effort,
     maxSteps: input.maxSteps,

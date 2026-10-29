@@ -69,6 +69,8 @@ function positiveInt(name: string, fallback: number): number {
 
 /** Vertex's model unless another's named: the one scored (decision 24, 2026-10-28). */
 export const VERTEX_MODEL = "google/gemini-3.5-flash";
+/** Bedrock's unless another's named: a Claude open to every Bedrock account. */
+export const BEDROCK_MODEL = "anthropic.claude-sonnet-5";
 
 /**
  * The chat agent's settings, as given: from the install (the chart's chat
@@ -82,6 +84,7 @@ export interface ChatInput {
   apiKey: string;
   vertexProject: string;
   vertexLocation: string;
+  bedrockRegion: string;
   effort: string;
   maxSteps: number | null;
   timeoutSeconds: number | null;
@@ -89,15 +92,15 @@ export interface ChatInput {
   contextTokens: number | null;
 }
 
-export const CHAT_PROVIDERS = ["vertex", "anthropic", "openai-compatible"] as const;
+export const CHAT_PROVIDERS = ["vertex", "bedrock", "anthropic", "openai-compatible"] as const;
 export type ChatProvider = (typeof CHAT_PROVIDERS)[number];
 
 /** The chat agent's settings checked, or null when it's off (no model). Throws, naming the setting, when one's wrong. */
 export function chatFrom(input: ChatInput) {
   const endpoint = input.endpoint.trim().replace(/\/+$/, "");
   const provider = input.provider || "openai-compatible";
-  // On Vertex, choosing it is choosing chat: Gemini 3.5 Flash unless another's named.
-  const model = input.model.trim() || (provider === "vertex" ? VERTEX_MODEL : "");
+  // On a cloud's own, choosing it is choosing chat: its model unless another's named.
+  const model = input.model.trim() || (provider === "vertex" ? VERTEX_MODEL : provider === "bedrock" ? BEDROCK_MODEL : "");
   if (!model) return null;
   if (!(CHAT_PROVIDERS as readonly string[]).includes(provider)) {
     throw new Error(`chat.provider "${provider}": ${CHAT_PROVIDERS.join(", ")}`);
@@ -110,6 +113,15 @@ export function chatFrom(input: ChatInput) {
     throw new Error(`chat.vertex.project "${vertexProject}": the Google Cloud project whose Vertex AI answers`);
   }
   if (!/^[a-z0-9-]+$/.test(vertexLocation)) throw new Error(`chat.vertex.location "${vertexLocation}": global, or a region`);
+  // Bedrock: Claude through Amazon Bedrock's Messages API in this region,
+  // signed as the console's own AWS identity (EKS Pod Identity; no key).
+  const bedrockRegion = input.bedrockRegion.trim();
+  if (provider === "bedrock" && !/^[a-z]{2}(-[a-z]+)+-\d$/.test(bedrockRegion)) {
+    throw new Error(`chat.bedrock.region "${bedrockRegion}": the AWS region whose Bedrock answers, such as us-east-2`);
+  }
+  if (provider === "bedrock" && !/^anthropic\.claude-[a-z0-9.-]+$/.test(model)) {
+    throw new Error(`chat.model "${model}": Bedrock's name for a Claude model, such as ${BEDROCK_MODEL}`);
+  }
   // Anthropic's API is the SDK's own address unless given, Vertex's built
   // from its project and location; any other needs one.
   if (endpoint ? !/^https?:\/\/[^\s]+$/.test(endpoint) : provider === "openai-compatible") {
@@ -131,11 +143,18 @@ export function chatFrom(input: ChatInput) {
   const vertexHost = vertexLocation === "global" ? "aiplatform.googleapis.com" : `${vertexLocation}-aiplatform.googleapis.com`;
   return {
     provider: provider as ChatProvider,
-    endpoint: endpoint || (provider === "vertex" ? `https://${vertexHost}/v1/projects/${vertexProject}/locations/${vertexLocation}/endpoints/openapi` : ""),
+    endpoint:
+      endpoint ||
+      (provider === "vertex"
+        ? `https://${vertexHost}/v1/projects/${vertexProject}/locations/${vertexLocation}/endpoints/openapi`
+        : provider === "bedrock"
+          ? `https://bedrock-mantle.${bedrockRegion}.api.aws/anthropic`
+          : ""),
     model,
     apiKey: input.apiKey,
     vertexProject,
     vertexLocation,
+    bedrockRegion,
     // Model calls and tool calls in one answer, at most.
     maxSteps: input.maxSteps ?? 8,
     // How long one model call may take: a local model is slow.
@@ -146,7 +165,7 @@ export function chatFrom(input: ChatInput) {
     // conversation that can't fit is refused; a tool result that won't fit
     // is held back. Claude takes far more; this bounds the cost.
     contextTokens,
-    // How hard the model thinks, where it takes one (Anthropic, Vertex); unset, its own default.
+    // How hard the model thinks, where it takes one (Anthropic, Bedrock, Vertex); unset, its own default.
     effort: (input.effort || null) as "low" | "medium" | "high" | null,
   };
 }
@@ -168,6 +187,7 @@ function loadChat(): ChatConfig | null {
     apiKey: process.env["CHAT_API_KEY"] ?? "",
     vertexProject: process.env["CHAT_VERTEX_PROJECT"] ?? "",
     vertexLocation: process.env["CHAT_VERTEX_LOCATION"] ?? "",
+    bedrockRegion: process.env["CHAT_BEDROCK_REGION"] ?? "",
     effort: process.env["CHAT_EFFORT"] ?? "",
     maxSteps: optionalInt("CHAT_MAX_STEPS"),
     timeoutSeconds: optionalInt("CHAT_TIMEOUT_SECONDS"),

@@ -1027,7 +1027,7 @@ type ChatConfig struct {
 	// install (the chart's chat values) or admins (set here).
 	Source  string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
 	Enabled bool   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// vertex, anthropic or openai-compatible.
+	// vertex, bedrock, anthropic or openai-compatible.
 	Provider string `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
 	Model    string `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
 	// openai-compatible's base URL (.../v1), or Anthropic's when not its own.
@@ -1048,8 +1048,11 @@ type ChatConfig struct {
 	// What Reset returns to: the install's provider and model, empty for none.
 	InstallProvider string `protobuf:"bytes,16,opt,name=install_provider,json=installProvider,proto3" json:"install_provider,omitempty"`
 	InstallModel    string `protobuf:"bytes,17,opt,name=install_model,json=installModel,proto3" json:"install_model,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// bedrock's AWS region (Claude in Amazon Bedrock, as the console's own
+	// AWS identity).
+	BedrockRegion string `protobuf:"bytes,18,opt,name=bedrock_region,json=bedrockRegion,proto3" json:"bedrock_region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatConfig) Reset() {
@@ -1201,6 +1204,13 @@ func (x *ChatConfig) GetInstallModel() string {
 	return ""
 }
 
+func (x *ChatConfig) GetBedrockRegion() string {
+	if x != nil {
+		return x.BedrockRegion
+	}
+	return ""
+}
+
 // Settings to save or try.
 type ChatConfigInput struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -1218,6 +1228,7 @@ type ChatConfigInput struct {
 	// Empty: keep the one kept, or use the install's for its own provider.
 	// Ignored on Vertex, which signs in as the console.
 	ApiKey        string `protobuf:"bytes,11,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	BedrockRegion string `protobuf:"bytes,12,opt,name=bedrock_region,json=bedrockRegion,proto3" json:"bedrock_region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1325,6 +1336,13 @@ func (x *ChatConfigInput) GetMaxTokens() int32 {
 func (x *ChatConfigInput) GetApiKey() string {
 	if x != nil {
 		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *ChatConfigInput) GetBedrockRegion() string {
+	if x != nil {
+		return x.BedrockRegion
 	}
 	return ""
 }
@@ -1784,7 +1802,7 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\x05model\x18\x06 \x01(\tR\x05model\x12\x1b\n" +
 	"\toff_topic\x18\a \x01(\bR\boffTopic\x12'\n" +
 	"\x0fcontext_percent\x18\b \x01(\x05R\x0econtextPercentB\a\n" +
-	"\x05_cart\"\xb4\x04\n" +
+	"\x05_cart\"\xdb\x04\n" +
 	"\n" +
 	"ChatConfig\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x18\n" +
@@ -1807,7 +1825,8 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12)\n" +
 	"\x10install_provider\x18\x10 \x01(\tR\x0finstallProvider\x12#\n" +
-	"\rinstall_model\x18\x11 \x01(\tR\finstallModel\"\xdd\x02\n" +
+	"\rinstall_model\x18\x11 \x01(\tR\finstallModel\x12%\n" +
+	"\x0ebedrock_region\x18\x12 \x01(\tR\rbedrockRegion\"\x84\x03\n" +
 	"\x0fChatConfigInput\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
@@ -1821,7 +1840,8 @@ const file_vertra_console_v1_chat_proto_rawDesc = "" +
 	"\n" +
 	"max_tokens\x18\n" +
 	" \x01(\x05R\tmaxTokens\x12\x17\n" +
-	"\aapi_key\x18\v \x01(\tR\x06apiKey\"\x16\n" +
+	"\aapi_key\x18\v \x01(\tR\x06apiKey\x12%\n" +
+	"\x0ebedrock_region\x18\f \x01(\tR\rbedrockRegion\"\x16\n" +
 	"\x14GetChatConfigRequest\"N\n" +
 	"\x15GetChatConfigResponse\x125\n" +
 	"\x06config\x18\x01 \x01(\v2\x1d.vertra.console.v1.ChatConfigR\x06config\"R\n" +

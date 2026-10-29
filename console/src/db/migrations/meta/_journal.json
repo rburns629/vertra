@@ -330,6 +330,13 @@
       "when": 1793231124251,
       "tag": "0046_sign_in_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793237498771,
+      "tag": "0047_chat_bedrock",
+      "breakpoints": true
     }
   ]
 }

@@ -247,7 +247,7 @@ of the values it writes):
 
 | | GKE (Workload Identity) | EKS |
 | --- | --- | --- |
-| The console, the scanner | Each its own Google service account with `roles/artifactregistry.reader` on the registry, bound to its ServiceAccount (`roles/iam.workloadIdentityUser`), named by its `iam.gke.io/gcp-service-account` annotation; the console's also `roles/aiplatform.user` on the project with the chat agent on Vertex (the scanner, reading images anyone can publish, gets nothing more) | A role that may read the ECR repositories, bound by an EKS Pod Identity association (no annotation); `registryCheck.ecrToken: true` |
+| The console, the scanner | Each its own Google service account with `roles/artifactregistry.reader` on the registry, bound to its ServiceAccount (`roles/iam.workloadIdentityUser`), named by its `iam.gke.io/gcp-service-account` annotation; the console's also `roles/aiplatform.user` on the project with the chat agent on Vertex (the scanner, reading images anyone can publish, gets nothing more) | Each its own role that may read the ECR repositories, bound by an EKS Pod Identity association (no annotation); the console's also `bedrock-mantle:CreateInference` on the chat model with the chat agent on Bedrock (the scanner gets nothing more); `registryCheck.ecrToken: true` |
 | policy-controller (`policy-controller-webhook`) | The same, read-only on the products' registry | The same, by Pod Identity |
 | A team's `eso-<cloud>` (its SecretStore) | Its Google service account, by the annotation in the store file | IRSA: the `eks.amazonaws.com/role-arn` annotation, a role trusting the cluster's OIDC issuer (registered in IAM once per cluster) for `system:serviceaccount:<team>:eso-aws` only. Pod Identity doesn't work for a store |
 | A product's own | Its Google service account, by the annotation an admin adds | A Pod Identity association for `<team>/<serviceAccount>`, which an admin adds |
@@ -888,7 +888,7 @@ served at that address.
 The console's **Ask** panel (decision 24) answers from the docs, citing
 them, looks at what a person's teams have, and fills a cart for them to
 place. It's off until the console chart's `chat.model` is set, with
-`chat.provider` one of three: `vertex`, Gemini through Vertex AI in
+`chat.provider` one of four: `vertex`, Gemini through Vertex AI in
 `chat.vertex.project` (on with no `chat.model`: Gemini 3.5 Flash,
 `google/gemini-3.5-flash`, the one scored; name another only after
 scoring it;
@@ -896,7 +896,14 @@ scoring it;
 signed in as the console's Workload Identity with no key, its Google
 service account needing `roles/aiplatform.user` there: what `vertra`
 sets up on GCP (`chat.off` in vertra.yaml turns it off, `chat.model`
-picks another); `openai-compatible`, with `chat.endpoint` the
+picks another); `bedrock`, Claude in Amazon Bedrock in
+`chat.bedrock.region` (on with no `chat.model`: Claude Sonnet 5,
+`anthropic.claude-sonnet-5`, open to every Bedrock account), each
+request signed (SigV4) as the console's own AWS identity, its EKS Pod
+Identity, with no key: its role needs `bedrock-mantle:CreateInference`
+there, which `vertra` grants on AWS for that one model (the condition
+`bedrock-mantle:Model`; the scanner's Jobs have a role of their own,
+without it); `openai-compatible`, with `chat.endpoint` the
 model's base URL (`.../v1`): LM Studio or Ollama on a laptop (kind's values
 point at `host.docker.internal:1234`), any other server of
 `/chat/completions`; or `anthropic`, Claude
@@ -906,9 +913,9 @@ when one's needed, is a Secret named in `chat.apiKeySecret` (key
 --from-file=api-key=<file>`. What a person asks, and what
 the agent's tools find for them, goes to the model: on a cloud, use one in
 the install's own. `chat.maxSteps` (8), `timeoutSeconds` (180) and
-`maxTokens` (8000 on anthropic and vertex, where thinking counts toward
+`maxTokens` (8000 on anthropic, bedrock and vertex, where thinking counts toward
 it; else 1500) bound one answer; `chat.effort` sets how hard Claude or
-Gemini thinks. `chat.contextTokens` (64000 on anthropic and vertex, else 16000; at most the model's
+Gemini thinks. `chat.contextTokens` (64000 on anthropic, bedrock and vertex, else 16000; at most the model's
 own window) bounds what one model call is sent, and so its cost (Claude
 Haiku 5.5 costs five times as much for a prompt over 100K tokens: keep it
 under): a

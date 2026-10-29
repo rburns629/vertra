@@ -75,6 +75,30 @@ management account allow another (AWS Organizations → Policies → Service
 control policies). us-east-2 costs the same as us-east-1 for everything
 Vertra uses.
 
+## The chat agent
+
+On AWS the console's **Ask** panel answers with Claude in Amazon Bedrock,
+in the install's region, as the console's own role: no key. `vertra
+apply` grants that role `bedrock-mantle:CreateInference` on the one model
+(`anthropic.claude-sonnet-5` unless `chat.model` names another of Bedrock's
+Claude models; `chat.off: true` turns it off and grants nothing).
+
+Before an account's first use of Anthropic's models, AWS asks for its use
+case once: Amazon Bedrock → Model catalog → any Claude model → **Submit use
+case details** (who you are and what it's for), then accept the model's
+terms. Until then every call is refused ("not available for this account";
+`aws bedrock get-foundation-model-availability --model-id
+anthropic.claude-sonnet-4-5-20250929-v1:0` says `NOT_AUTHORIZED`), and the
+Admin page's **Test** says so.
+
+A newer or little-used account may also start with every Bedrock daily
+token quota at 0, for every model of every provider, which Service Quotas
+won't let you raise (`aws service-quotas list-service-quotas
+--service-code bedrock` shows them); calls then fail as "model does not
+exist" or "Too many tokens per day". Ask AWS Support to raise them, naming
+the model. You pay Bedrock for what it's asked, a few
+cents a conversation.
+
 ## Next
 
 [Setting up Vertra](../setup.md): `vertra init`, what each question decides, and what to expect from `vertra apply`.

@@ -3269,7 +3269,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "vertex, anthropic or openai-compatible."
+     "comment": "vertex, bedrock, anthropic or openai-compatible."
     },
     {
      "name": "model",
@@ -3368,6 +3368,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "bedrockRegion",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "bedrock's AWS region (Claude in Amazon Bedrock, as the console's own\nAWS identity)."
     }
    ]
   },
@@ -3451,6 +3458,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Empty: keep the one kept, or use the install's for its own provider.\nIgnored on Vertex, which signs in as the console."
+    },
+    {
+     "name": "bedrockRegion",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

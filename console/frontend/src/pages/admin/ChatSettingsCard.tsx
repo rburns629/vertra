@@ -17,6 +17,7 @@ import { Pill } from "../../components/Pill";
 
 const PROVIDERS: { id: string; label: string; model: string }[] = [
   { id: "vertex", label: "Gemini on Vertex AI (Google Cloud)", model: "google/gemini-3.5-flash" },
+  { id: "bedrock", label: "Claude in Amazon Bedrock (AWS)", model: "anthropic.claude-sonnet-5" },
   { id: "anthropic", label: "Claude through Anthropic's API", model: "claude-haiku-5-5" },
   { id: "openai-compatible", label: "An OpenAI-compatible server (LM Studio, Ollama…)", model: "qwen3-14b" },
 ];
@@ -31,6 +32,7 @@ function formOf(c: ChatConfig): ChatConfigInput {
     endpoint: c.endpoint,
     vertexProject: c.vertexProject,
     vertexLocation: c.vertexLocation || "global",
+    bedrockRegion: c.bedrockRegion,
     effort: c.effort,
     // Left blank, the default; shown only when an admin set one.
     maxSteps: c.source === "admins" ? c.maxSteps : 0,
@@ -49,7 +51,7 @@ function Field({ children }: { children: ReactNode }) {
 /**
  * The chat agent's model (decision 24): what answers in Ask, set here in
  * place of the install's, or the install's. A key is typed once and kept
- * encrypted; Vertex needs none (it signs in as the console). Test tries the
+ * encrypted; Vertex and Bedrock need none (they sign in as the console). Test tries the
  * form as it is, before saving it.
  */
 export function ChatSettingsCard() {
@@ -154,7 +156,13 @@ export function ChatSettingsCard() {
           value={form.model}
           placeholder={example}
           onChange={(e) => { set({ model: e.target.value }); }}
-          helperText={form.provider === "vertex" ? "Empty: Gemini 3.5 Flash, the one scored" : `Its name there, such as ${example}`}
+          helperText={
+            form.provider === "vertex"
+              ? "Empty: Gemini 3.5 Flash, the one scored"
+              : form.provider === "bedrock"
+                ? "Bedrock's name; empty: Claude Sonnet 5"
+                : `Its name there, such as ${example}`
+          }
         />
         {form.provider === "vertex" && (
           <>
@@ -162,7 +170,10 @@ export function ChatSettingsCard() {
             <TextField size="small" label="Location" value={form.vertexLocation} onChange={(e) => { set({ vertexLocation: e.target.value }); }} helperText="global, or a region to keep requests in it" />
           </>
         )}
-        {form.provider !== "vertex" && (
+        {form.provider === "bedrock" && (
+          <TextField size="small" label="AWS region" value={form.bedrockRegion} placeholder="us-east-2" onChange={(e) => { set({ bedrockRegion: e.target.value }); }} helperText="Whose Bedrock answers: the install's own" />
+        )}
+        {form.provider !== "vertex" && form.provider !== "bedrock" && (
           <>
             <TextField
               size="small"
@@ -188,6 +199,12 @@ export function ChatSettingsCard() {
         <Typography variant="caption" color="text.secondary">
           No key: the console signs in as its own Google identity, which needs <Mono>roles/aiplatform.user</Mono> in this project
           (<Mono>vertra apply</Mono> grants it on GCP).
+        </Typography>
+      )}
+      {form.provider === "bedrock" && (
+        <Typography variant="caption" color="text.secondary">
+          No key: each request is signed as the console's own AWS identity, which needs <Mono>bedrock-mantle:CreateInference</Mono> on
+          this model in this region (<Mono>vertra apply</Mono> grants it on AWS, for the model it sets up).
         </Typography>
       )}
 

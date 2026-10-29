@@ -86,6 +86,8 @@ describe("the chat agent's settings", () => {
       [{ endpoint: "" }, "chat.endpoint"],
       [{ provider: "anthropic", apiKey: "" }, "needs a key"],
       [{ provider: "vertex", vertexProject: "X" }, "chat.vertex.project"],
+      [{ provider: "bedrock", bedrockRegion: "nowhere" }, "chat.bedrock.region"],
+      [{ provider: "bedrock", bedrockRegion: "us-east-2", model: "gpt-5" }, "Bedrock's name for a Claude model"],
       [{ maxTokens: 50000, contextTokens: 20000 }, "chat.contextTokens"],
     ] as const) {
       const refused = await call(admin, "ChatService/SetChatConfig", { config: input(extra) });
@@ -110,11 +112,16 @@ describe("the chat agent's settings", () => {
     const vertex = (await call<Config>(admin, "ChatService/SetChatConfig", { config: input({ provider: "vertex", model: "", apiKey: "sk-not-kept", vertexProject: "acyclix-dev" }) })).body.config;
     expect(vertex).toMatchObject({ provider: "vertex", model: "google/gemini-3.5-flash", keySet: false });
     expect((await db.select().from(chatSettings))[0]?.apiKeyEncrypted).toBeNull();
+    // Bedrock signs in as the console's AWS identity: no key either, its model by default.
+    const bedrock = (await call<Config>(admin, "ChatService/SetChatConfig", { config: input({ provider: "bedrock", model: "", endpoint: "", apiKey: "sk-not-kept", bedrockRegion: "us-east-2" }) })).body.config;
+    expect(bedrock).toMatchObject({ provider: "bedrock", model: "anthropic.claude-sonnet-5", bedrockRegion: "us-east-2", keySet: false });
+    expect((await db.select().from(chatSettings))[0]?.apiKeyEncrypted).toBeNull();
+    expect(currentChat()).toMatchObject({ provider: "bedrock", endpoint: "https://bedrock-mantle.us-east-2.api.aws/anthropic", apiKey: "" });
   });
 
   it("use the install's key for the install's own provider when none is given", async () => {
     const install = config.chat;
-    config.chat = { ...(chatFrom({ ...input(), apiKey: "sk-install", timeoutSeconds: null, maxSteps: null, maxTokens: null, contextTokens: null, vertexProject: "", vertexLocation: "", effort: "" }) as ChatConfig) };
+    config.chat = { ...(chatFrom({ ...input(), apiKey: "sk-install", timeoutSeconds: null, maxSteps: null, maxTokens: null, contextTokens: null, vertexProject: "", vertexLocation: "", bedrockRegion: "", effort: "" }) as ChatConfig) };
     try {
       await call(admin, "ChatService/ResetChatConfig");
       const saved = (await call<Config>(admin, "ChatService/SetChatConfig", { config: input({ apiKey: "", model: "stand-in-3" }) })).body.config;

@@ -164,7 +164,16 @@ func Vars(c *config.Config, deleteData bool, githubProvider string) map[string]a
 		"step_headroom":            c.StepHeadroom,
 		"github_oidc_provider_arn": githubProvider,
 		"catalog_subject_prefix":   c.Catalog.SubjectPrefix,
+		"chat_model":               chatModel(c),
 	}
+}
+
+// chatModel is the Bedrock model the console may call, or "" with chat off.
+func chatModel(c *config.Config) string {
+	if !c.ChatOnBedrock() {
+		return ""
+	}
+	return c.ChatModel()
 }
 
 // DeleteTaskRepositories deletes the ECR repositories under the task

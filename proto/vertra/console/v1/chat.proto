@@ -177,7 +177,7 @@ message ChatConfig {
   // install (the chart's chat values) or admins (set here).
   string source = 1;
   bool enabled = 2;
-  // vertex, anthropic or openai-compatible.
+  // vertex, bedrock, anthropic or openai-compatible.
   string provider = 3;
   string model = 4;
   // openai-compatible's base URL (.../v1), or Anthropic's when not its own.
@@ -198,6 +198,9 @@ message ChatConfig {
   // What Reset returns to: the install's provider and model, empty for none.
   string install_provider = 16;
   string install_model = 17;
+  // bedrock's AWS region (Claude in Amazon Bedrock, as the console's own
+  // AWS identity).
+  string bedrock_region = 18;
 }
 
 // Settings to save or try.
@@ -216,6 +219,7 @@ message ChatConfigInput {
   // Empty: keep the one kept, or use the install's for its own provider.
   // Ignored on Vertex, which signs in as the console.
   string api_key = 11;
+  string bedrock_region = 12;
 }
 
 message GetChatConfigRequest {}

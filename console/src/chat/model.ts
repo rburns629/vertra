@@ -4,13 +4,15 @@
  * its tools and its checks are the same whatever answers. Behind it, one
  * adapter per API shape, not per cloud: openai-compatible (LM Studio,
  * Ollama; and `vertex`, Gemini on Vertex AI's compatible endpoint) and
- * Anthropic's Messages API (Claude, with an API key). A cloud's sign-in (a
- * key from a Secret; on Vertex, the console's Workload Identity) is the
- * adapter's, never the agent's.
+ * Anthropic's Messages API (Claude, with an API key; and `bedrock`, Claude in
+ * Amazon Bedrock, its requests signed as the console's AWS identity). A
+ * cloud's sign-in (a key from a Secret; on Vertex, the console's Workload
+ * Identity; on Bedrock, its Pod Identity) is the adapter's, never the agent's.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import type { ChatConfig } from "../config.js";
 import { gcpMetadataToken } from "../registry.js";
+import { bedrockFetch } from "./bedrock.js";
 import { currentChat } from "./settings.js";
 
 export interface ToolCall {
@@ -325,6 +327,15 @@ export function chatModel(): ChatModel | null {
 /** A model for these settings: the one in effect, or ones an admin is trying. */
 export function modelFor(c: ChatConfig): ChatModel {
   if (c.provider === "anthropic") return new AnthropicMessages(c);
+  // Bedrock: the same Messages API, at Bedrock's address, each request
+  // signed (SigV4) instead of a key. The SDK insists on a key: a
+  // placeholder, which the signer drops.
+  if (c.provider === "bedrock") {
+    return new AnthropicMessages(
+      c,
+      new Anthropic({ apiKey: "bedrock-signed", baseURL: c.endpoint, fetch: bedrockFetch(c.bedrockRegion), maxRetries: 2 }),
+    );
+  }
   // On Vertex, a key is an access token used instead of the console's
   // identity: for proving it off GKE (it lasts an hour).
   if (c.provider === "vertex") return new OpenAICompatible(c, fetch, { token: c.apiKey ? () => Promise.resolve(c.apiKey) : gcpMetadataToken, effort: c.effort });

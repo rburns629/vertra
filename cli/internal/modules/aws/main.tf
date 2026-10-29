@@ -379,11 +379,66 @@ resource "aws_iam_role_policy" "console" {
 }
 
 resource "aws_eks_pod_identity_association" "console" {
-  for_each        = toset(["console-execution-console", "console-execution-console-scanner"])
   cluster_name    = aws_eks_cluster.this.name
   namespace       = var.namespace
-  service_account = each.value
+  service_account = "console-execution-console"
   role_arn        = aws_iam_role.console.arn
+}
+
+# The scan Jobs run Trivy, a third-party image: a role of their own that
+# reads the task registry and nothing else of the console's (its audit
+# copy, its chat model).
+resource "aws_iam_role" "scanner" {
+  name               = "${var.name}-scanner"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+resource "aws_iam_role_policy" "scanner" {
+  name   = "read-task-registry"
+  role   = aws_iam_role.scanner.id
+  policy = data.aws_iam_policy_document.console.json
+}
+
+resource "aws_eks_pod_identity_association" "scanner" {
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = var.namespace
+  service_account = "console-execution-console-scanner"
+  role_arn        = aws_iam_role.scanner.arn
+}
+
+# Both were one for_each of the console's role: moved, not made again
+# (a second association for a ServiceAccount is refused), the scanner's
+# then given its own role in place.
+moved {
+  from = aws_eks_pod_identity_association.console["console-execution-console"]
+  to   = aws_eks_pod_identity_association.console
+}
+
+moved {
+  from = aws_eks_pod_identity_association.console["console-execution-console-scanner"]
+  to   = aws_eks_pod_identity_association.scanner
+}
+
+# The chat agent: Claude in Amazon Bedrock (Messages API, the bedrock-mantle
+# endpoint), this one model in this region, as the console's own role.
+data "aws_iam_policy_document" "console_chat" {
+  count = var.chat_model != "" ? 1 : 0
+  statement {
+    actions   = ["bedrock-mantle:CreateInference"]
+    resources = ["arn:${local.partition}:bedrock-mantle:${var.region}:${local.account}:project/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "bedrock-mantle:Model"
+      values   = [var.chat_model]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "console_chat" {
+  count  = var.chat_model != "" ? 1 : 0
+  name   = "call-chat-model"
+  role   = aws_iam_role.console.id
+  policy = data.aws_iam_policy_document.console_chat[0].json
 }
 
 # --- backups of the in-cluster database: one bucket, one writer --------------

@@ -1,0 +1,1 @@
+ALTER TABLE "chat_settings" ADD COLUMN "bedrock_region" text DEFAULT '' NOT NULL;

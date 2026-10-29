@@ -40,6 +40,7 @@ export function inputOf(row: Row, apiKey: string): ChatInput {
     apiKey,
     vertexProject: row.vertexProject,
     vertexLocation: row.vertexLocation,
+    bedrockRegion: row.bedrockRegion,
     effort: row.effort,
     maxSteps: row.maxSteps,
     timeoutSeconds: null,
@@ -59,7 +60,7 @@ export async function refreshChatSettings(log?: FastifyBaseLogger): Promise<void
     return;
   }
   // None kept for the install's own provider: the install's (its Secret's).
-  let apiKey = row.provider !== "vertex" && config.chat?.provider === row.provider ? config.chat.apiKey : "";
+  let apiKey = row.provider !== "vertex" && row.provider !== "bedrock" && config.chat?.provider === row.provider ? config.chat.apiKey : "";
   if (row.apiKeyEncrypted) {
     const key = unseal(row.apiKeyEncrypted, KEY_PURPOSE);
     if (key === null) {

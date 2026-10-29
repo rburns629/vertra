@@ -503,7 +503,7 @@ export declare type ChatConfig = Message<"vertra.console.v1.ChatConfig"> & {
   enabled: boolean;
 
   /**
-   * vertex, anthropic or openai-compatible.
+   * vertex, bedrock, anthropic or openai-compatible.
    *
    * @generated from field: string provider = 3;
    */
@@ -588,6 +588,14 @@ export declare type ChatConfig = Message<"vertra.console.v1.ChatConfig"> & {
    * @generated from field: string install_model = 17;
    */
   installModel: string;
+
+  /**
+   * bedrock's AWS region (Claude in Amazon Bedrock, as the console's own
+   * AWS identity).
+   *
+   * @generated from field: string bedrock_region = 18;
+   */
+  bedrockRegion: string;
 };
 
 /**
@@ -661,6 +669,11 @@ export declare type ChatConfigInput = Message<"vertra.console.v1.ChatConfigInput
    * @generated from field: string api_key = 11;
    */
   apiKey: string;
+
+  /**
+   * @generated from field: string bedrock_region = 12;
+   */
+  bedrockRegion: string;
 };
 
 /**

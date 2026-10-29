@@ -1184,6 +1184,7 @@ export const chatSettings = pgTable(
     endpoint: text("endpoint").notNull().default(""),
     vertexProject: text("vertex_project").notNull().default(""),
     vertexLocation: text("vertex_location").notNull().default(""),
+    bedrockRegion: text("bedrock_region").notNull().default(""),
     apiKeyEncrypted: text("api_key_encrypted"),
     effort: text("effort").notNull().default(""),
     // Null: the default.
