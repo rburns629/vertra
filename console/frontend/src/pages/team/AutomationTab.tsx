@@ -228,8 +228,8 @@ export function AutomationTab({ teamName, readOnly }: { teamName: string; readOn
             <CardContent>
               <Typography sx={{ fontWeight: 600, mb: 0.5 }}>What a bot can do</Typography>
               <Typography variant="body2" color="text.secondary">
-                It acts as a member of {teamName}: it can submit and read this team's executions and register secrets, and
-                nothing outside {teamName}. Give each pipeline its own bot, so revoking one doesn't break the others.
+                It acts as a maintainer of {teamName}: it can submit and read this team's executions and register secrets, and
+                nothing outside {teamName}. An ordering bot is a member instead, and may order only the templates listed for it. Give each pipeline its own bot, so revoking one doesn't break the others.
               </Typography>
             </CardContent>
           </Card>

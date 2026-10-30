@@ -11,7 +11,6 @@ import { ApiError, getAuditCopy, getPolicySync, syncPolicies, type AuditCopy, ty
 import { Pill } from "../../components/Pill";
 import { when } from "../../time";
 import { CatalogCard } from "./CatalogCard";
-import { ImageSourcesCard } from "./ImageSourcesCard";
 import { FirstRunChecklist, InstallCard } from "./InstallCards";
 
 /** What each policy holds, as people say it. */
@@ -98,7 +97,7 @@ export function PoliciesCard() {
 }
 
 /** The audit log's write-once copy: how far it has gone, and whether its chain held. */
-function AuditCopyCard() {
+export function AuditCopyCard() {
   const [copy, setCopy] = useState<AuditCopy | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,26 +191,19 @@ export function OverviewTab() {
   );
 }
 
-/** What the cluster enforces, and the audit trail's copy. */
-export function PoliciesSection() {
-  return (
-    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, alignItems: "start" }}>
-      <PoliciesCard />
-      <AuditCopyCard />
-    </Box>
-  );
-}
-
-/** Where teams, products and their images come from. */
+/** Where teams, products and templates come from; the images they run are in Image sources and Image scans. */
 export function CatalogSection() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <CatalogCard />
-      <ImageSourcesCard />
       <Typography variant="body2" color="text.secondary">
-        Every image allowed to run here, with its last scan, is on{" "}
-        <Link component={RouterLink} to="/observe">
-          Observe
+        Where the catalog&apos;s images may come from is in{" "}
+        <Link component={RouterLink} to="/admin/images">
+          Image sources
+        </Link>
+        ; every image allowed to run here, with its last scan, is in{" "}
+        <Link component={RouterLink} to="/admin/scans">
+          Image scans
         </Link>
         .
       </Typography>

@@ -112,7 +112,7 @@ export function TeamsPage() {
           message={
             user.isAdmin
               ? "You're not a member of any team. As an admin, you can open any of them below."
-              : "You're not a member of any team yet. Ask a member of your team, or an admin, to add you."
+              : "You're not a member of any team yet. Ask a maintainer of the team you work on, or an admin, to add you."
           }
         />
       ) : (

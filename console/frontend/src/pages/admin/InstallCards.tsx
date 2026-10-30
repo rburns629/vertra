@@ -56,7 +56,7 @@ export function InstallCard() {
           {install.environmentLabel} · {code(install.version)}
         </Typography>
       </Box>
-      <Part name="Signing in with single sign-on" to="/admin/sign-in" on={install.ssoProvider !== ""} detail={install.ssoProvider} howTo="Set up in Sign-in & groups" />
+      <Part name="Signing in with single sign-on" to="/admin/sign-in" on={install.ssoProvider !== ""} detail={install.ssoProvider} howTo="Set up in Single sign-on and groups" />
       <Part name="The chat agent" to="/admin/chat" on={chat?.enabled ?? false} detail={chat?.model} howTo="Choose its model in Chat agent" />
       <Part name="The catalog" to="/admin/catalog" on={install.catalog} detail={install.catalogSigned ? "Releases' signatures checked" : "Releases read, signatures not checked"} howTo={<>{code("vertra catalog create")}</>} />
       <Part name="Images scanned before they run" to="/admin/scans" on={install.scanning} detail="Fixable high and critical findings block a run" howTo="The console chart's scanning.enabled" />
@@ -101,7 +101,7 @@ export function FirstRunChecklist() {
         {
           done: Boolean(p && p.allowed.length > 0),
           title: "Allow an image source",
-          how: <>The registry your catalog&apos;s CI pushes to: set at install, or under Image sources below.</>,
+          how: <>The registry your catalog&apos;s CI pushes to: set at install, or in Image sources.</>,
         },
         {
           done: Boolean(t && t.length > 0),
@@ -116,7 +116,7 @@ export function FirstRunChecklist() {
         {
           done: Boolean(i?.ssoProvider),
           title: "Optional: single sign-on",
-          how: <>In <Link component={RouterLink} to="/admin/sign-in">Sign-in &amp; groups</Link> (Google, Entra ID, Okta…), or {code("vertra sso google")}. Passwords keep working.</>,
+          how: <>In <Link component={RouterLink} to="/admin/sign-in">Single sign-on and groups</Link> (Google, Entra ID, Okta…), or {code("vertra sso google")}. Passwords keep working.</>,
         },
       ]);
     });
@@ -153,7 +153,11 @@ export function FirstRunChecklist() {
         ))}
       </Box>
       <Typography variant="caption" color="text.secondary">
-        The whole of it is in the setup guide: docs/setup.md.
+        The whole of it is in the guide{" "}
+        <Link component={RouterLink} to="/docs/reference-setup">
+          Set up Vertra
+        </Link>
+        .
       </Typography>
     </Card>
   );

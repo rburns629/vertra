@@ -752,6 +752,16 @@ describe("admin", () => {
     expect(within(nav).getByRole("link", { name: "Chat agent" }).getAttribute("href")).toBe("/admin/chat");
   });
 
+  it("says where each section is set, and gives image sources and the audit copy sections of their own", async () => {
+    await renderAt("/admin/images", ADMIN, { "ImageService/GetImagePolicy": { policy: { exists: true, source: "registry.example/", allowed: ["registry.example/"] } } });
+    expect(await screen.findByRole("heading", { name: "Image sources" })).toBeTruthy();
+    expect(screen.getByText("Install and here")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "About Image sources" }).getAttribute("href")).toBe("/docs/16-admin-settings#image-sources");
+    const nav = screen.getByRole("navigation", { name: "Admin sections" });
+    expect(within(nav).getByRole("link", { name: "Audit log copy" }).getAttribute("href")).toBe("/admin/audit");
+    expect(within(nav).getByRole("link", { name: "Single sign-on and groups" }).getAttribute("href")).toBe("/admin/sign-in");
+  });
+
   it("sets the chat agent's model in place of the install's, keeps its key unshown, and tries it first", async () => {
     const saved: Record<string, unknown>[] = [];
     const tried: Record<string, unknown>[] = [];
@@ -1007,9 +1017,9 @@ describe("a new install", () => {
     expect(screen.getByText("1 of 4 done")).toBeTruthy();
     expect(screen.getByText("Connect the catalog")).toBeTruthy();
     expect(await screen.findByText("0.4.0")).toBeTruthy();
-    // Single sign-on: set in Sign-in & groups, or with vertra; each part leads to its section.
+    // Single sign-on: set in Single sign-on and groups, or with vertra; each part leads to its section.
     expect(screen.getAllByText(/vertra sso google/, { selector: "span" }).length).toBe(1);
-    expect(screen.getByText("Set up in Sign-in & groups")).toBeTruthy();
+    expect(screen.getByText("Set up in Single sign-on and groups")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Signing in with single sign-on" }).getAttribute("href")).toBe("/admin/sign-in");
     expect(screen.getByRole("link", { name: "The chat agent" }).getAttribute("href")).toBe("/admin/chat");
   });

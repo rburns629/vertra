@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -12,6 +13,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
+import Link from "@mui/material/Link";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
@@ -69,8 +71,12 @@ function SigningIn({ teams }: { teams: Team[] }) {
         <Typography variant="body2">Everyone signs in with a password: an admin adds them below.</Typography>
       )}
       <Typography variant="body2" sx={{ p: 1.5, bgcolor: "background.default", borderRadius: 2, color: "text.secondary" }}>
-        Set by the installer, not here: <Box component="span" sx={mono}>vertra sso google</Box> to set it up or change its domains,{" "}
-        <Box component="span" sx={mono}>vertra sso off</Box> to stop.
+        The provider and its group mappings are in{" "}
+        <Link component={RouterLink} to="/admin/sign-in">
+          Single sign-on and groups
+        </Link>
+        , unless the install sets the provider (<Box component="span" sx={mono}>vertra sso google</Box>, or{" "}
+        <Box component="span" sx={mono}>vertra sso off</Box> to stop).
       </Typography>
     </Card>
   );

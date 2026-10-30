@@ -109,8 +109,8 @@ export function AutomationTokensCard() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           For platform automation of your own. A token can do only what's ticked below. It
           belongs to no team, so it can't read secrets, submit tasks, or create other tokens.
-          The catalog needs none: this console reads the catalog's release itself (Catalog,
-          above).
+          The catalog needs none: this console reads the catalog's release itself (Admin,
+          Catalog).
         </Typography>
 
         {justIssued && (

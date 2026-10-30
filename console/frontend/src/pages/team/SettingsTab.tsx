@@ -118,7 +118,7 @@ export function SettingsTab({
             {isAdmin && (
               <>
                 {" "}
-                To set it up: Admin, People, Single sign-on (or <Box component="span" sx={mono}>vertra sso google</Box>).
+                To set it up: Admin, Single sign-on and groups (or <Box component="span" sx={mono}>vertra sso google</Box>).
               </>
             )}
           </Typography>
