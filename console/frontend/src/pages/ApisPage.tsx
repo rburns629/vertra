@@ -1,51 +1,184 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import Chip from "@mui/material/Chip";
+import Link from "@mui/material/Link";
+import Skeleton from "@mui/material/Skeleton";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { HelpLink } from "../components/HelpLink";
+import { Mono } from "../components/Mono";
 import { PageHeader } from "../components/PageHeader";
+import { Pill } from "../components/Pill";
 import { ApiError, listApis, type ApiProduct } from "../api";
+import { useAuth } from "../auth/AuthContext";
+import { size } from "./api/ApiOverview";
 import { ApiStatePill } from "./api/ApiStatePill";
 
-const COLUMNS: DataTableColumn<ApiProduct>[] = [
-  {
-    key: "api",
-    header: "API",
-    render: (a) => (
-      <Box>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {a.displayName}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "fontFamilyMono" }}>
-          {a.team}/{a.name}
-        </Typography>
-      </Box>
-    ),
-  },
-  { key: "state", header: "State", render: (a) => <ApiStatePill state={a.state} /> },
-  { key: "endpoints", header: "Endpoints", render: (a) => a.endpoints.length, align: "right", hideBelow: "sm" },
-  {
-    key: "you",
-    header: "You",
-    render: (a) => (a.mayCall ? `may call, ${String(a.perMinute)} a minute` : "not shared with your teams"),
-    hideBelow: "sm",
-  },
-  { key: "reach", header: "Reachable", render: (a) => (a.internet ? "Internet" : "In the cluster"), hideBelow: "md" },
+type Filter = "all" | "call" | "mine" | "stopped";
+const FILTERS: [Filter, string, (a: ApiProduct, mine: boolean) => boolean][] = [
+  ["all", "All", () => true],
+  ["call", "You can call", (a) => a.mayCall],
+  ["mine", "Your teams’", (_a, mine) => mine],
+  ["stopped", "Paused or held", (a) => a.state === "PAUSED" || a.state === "HELD"],
 ];
+
+/** Where the gateway answers, from an API's own address: what's before /<team>/<name>. */
+function gatewayBase(address: string, a: ApiProduct): string {
+  const suffix = `/${a.team}/${a.name}`;
+  return address.endsWith(suffix) ? address.slice(0, -suffix.length) : "";
+}
+
+/** The You column: whether you may call it, and on what terms. */
+function You({ api, mine }: { api: ApiProduct; mine: boolean }) {
+  const terms = `${String(api.perMinute)} a minute · ${size(api.maxRequestBytes)} · ${String(api.timeoutSeconds)} s`;
+  const [label, note] = mine
+    ? ["Your team’s", api.state === "PAUSED" ? "every call gets 503 while paused" : terms]
+    : api.mayCall
+      ? ["May call", terms]
+      : ["Not shared", "the gateway answers your calls with 403"];
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+      <Typography variant="body2" sx={{ fontWeight: 500, color: api.mayCall || mine ? "text.primary" : "warning.main" }}>
+        {label}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {note}
+      </Typography>
+      {!api.mayCall && !mine && (
+        <Link component={RouterLink} to={`/teams/${encodeURIComponent(api.team)}`} variant="body2" sx={{ fontSize: 12.5 }}>
+          Ask {api.team} for access
+        </Link>
+      )}
+    </Box>
+  );
+}
+
+function ApiRow({ api, mine }: { api: ApiProduct; mine: boolean }) {
+  const note = api.state === "HELD" ? api.heldReason : api.state === "PAUSED" && api.pausedMessage ? `“${api.pausedMessage}”` : "";
+  return (
+    <TableRow>
+      <TableCell sx={{ pl: { sm: 2.75 } }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.375, minWidth: { md: 280 } }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 1 }}>
+            <Link
+              component={RouterLink}
+              to={`/apis/${encodeURIComponent(api.team)}/${encodeURIComponent(api.name)}`}
+              underline="hover"
+              sx={{ fontWeight: 600, fontSize: 14, color: "text.primary" }}
+            >
+              {api.displayName || api.name}
+            </Link>
+            <Mono sx={{ fontSize: 12, color: "text.secondary" }}>
+              {api.team}/{api.name}
+            </Mono>
+          </Box>
+          {api.description && (
+            <Typography variant="body2" sx={{ fontSize: 12.5, lineHeight: 1.45 }}>
+              {api.description}
+            </Typography>
+          )}
+          {api.deprecated && (
+            <Typography variant="caption" sx={{ color: "warning.main" }}>
+              Deprecated: {api.deprecated}
+            </Typography>
+          )}
+        </Box>
+      </TableCell>
+      <TableCell>
+        <ApiStatePill state={api.state} />
+        {note && (
+          <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5, maxWidth: 180 }}>
+            {note}
+          </Typography>
+        )}
+      </TableCell>
+      <TableCell align="right" sx={{ display: { xs: "none", sm: "table-cell" } }}>
+        {api.endpoints.length}
+      </TableCell>
+      <TableCell sx={{ display: { xs: "none", sm: "table-cell" }, minWidth: 170 }}>
+        <You api={api} mine={mine} />
+      </TableCell>
+      <TableCell sx={{ display: { xs: "none", md: "table-cell" }, pr: 2.75, whiteSpace: "nowrap" }}>
+        <Pill tone={api.internet ? "info" : "neutral"}>{api.internet ? "Internet" : "In the cluster"}</Pill>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/** One group of rows under its own heading row. */
+function Group({ title, note, apis, mine }: { title: string; note: string; apis: ApiProduct[]; mine: boolean }) {
+  if (apis.length === 0) return null;
+  return (
+    <TableBody>
+      <TableRow>
+        <TableCell component="th" scope="rowgroup" colSpan={5} sx={{ pt: 2.25, pb: 1, pl: { sm: 2.75 } }}>
+          <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: "text.secondary" }}>
+            {title}
+          </Typography>
+          <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+            {" "}
+            · {note}
+          </Typography>
+        </TableCell>
+      </TableRow>
+      {apis.map((a) => (
+        <ApiRow key={`${a.team}/${a.name}`} api={a} mine={mine} />
+      ))}
+    </TableBody>
+  );
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <Box component="li" sx={{ display: "flex", gap: 1.25 }}>
+      <Box
+        aria-hidden="true"
+        sx={{ flex: "0 0 22px", height: 22, borderRadius: "50%", bgcolor: "info.light", color: "info.main", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
+        {n}
+      </Box>
+      <Typography variant="body2" component="span" sx={{ fontSize: 13, lineHeight: 1.5 }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.375 }}>
+      <Typography component="dt" variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+        {label}
+      </Typography>
+      <Typography component="dd" variant="body2" sx={{ m: 0, fontSize: 13, lineHeight: 1.5, overflowWrap: "anywhere" }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
 
 /**
  * Every API product the signed-in user may see (ApiService.ListApis):
  * backends teams already run, published through the gateway, which
- * forwards only what each one's OpenAPI document describes.
+ * forwards only what each one's OpenAPI document describes. Grouped as
+ * your teams' own, shared with your teams, and not shared.
  */
 export function ApisPage() {
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [apis, setApis] = useState<ApiProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -61,11 +194,24 @@ export function ApisPage() {
     };
   }, []);
 
-  const shown = useMemo(() => {
+  const teams = useMemo(() => user?.teamNames ?? [], [user]);
+  const isMine = (a: ApiProduct) => teams.includes(a.team);
+  const searched = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!apis || !q) return apis;
     return apis.filter((a) => [a.team, a.name, a.displayName, a.description].some((s) => s.toLowerCase().includes(q)));
   }, [apis, search]);
+  const test = FILTERS.find(([id]) => id === filter)?.[2] ?? (() => true);
+  const shown = searched?.filter((a) => test(a, isMine(a))) ?? null;
+  const mine = shown?.filter(isMine) ?? [];
+  const shared = shown?.filter((a) => !isMine(a) && a.mayCall) ?? [];
+  const others = shown?.filter((a) => !isMine(a) && !a.mayCall) ?? [];
+  const myTeamsWithApis = [...new Set((apis ?? []).filter(isMine).map((a) => a.team))];
+
+  // The gateway's two addresses, from any API that carries them.
+  const inCluster = apis?.map((a) => gatewayBase(a.url, a)).find(Boolean) ?? "";
+  const internet = apis?.map((a) => gatewayBase(a.publicUrl, a)).find(Boolean) ?? "";
+  const botTeam = user?.maintainerOf[0];
 
   return (
     <Box>
@@ -79,25 +225,148 @@ export function ApisPage() {
           {error}
         </Alert>
       )}
-      <TextField
-        size="small"
-        placeholder="Search APIs"
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-        }}
-        sx={{ mb: 2, width: { xs: "100%", sm: 320 } }}
-        slotProps={{ htmlInput: { "aria-label": "Search APIs" } }}
-      />
-      <DataTable
-        columns={COLUMNS}
-        rows={shown}
-        getRowKey={(a) => `${a.team}/${a.name}`}
-        onRowClick={(a) => {
-          navigate(`/apis/${a.team}/${a.name}`);
-        }}
-        emptyMessage="No APIs yet. A team publishes one with an api.yaml and its OpenAPI file in its catalog folder."
-      />
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, alignItems: "center", mb: 2.5 }}>
+        <TextField
+          size="small"
+          type="search"
+          placeholder="Search by name, team or what it does"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+          }}
+          sx={{ flex: "0 1 340px", minWidth: 0, width: { xs: "100%", sm: "auto" }, "& .MuiInputBase-root": { minHeight: 44, bgcolor: "background.paper" } }}
+          slotProps={{ htmlInput: { "aria-label": "Search APIs" } }}
+        />
+        <Box role="group" aria-label="Show" sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          {FILTERS.map(([id, label, matches]) => (
+            <Chip
+              key={id}
+              clickable
+              aria-pressed={filter === id}
+              color={filter === id ? "primary" : "default"}
+              variant={filter === id ? "filled" : "outlined"}
+              onClick={() => {
+                setFilter(id);
+              }}
+              label={
+                <>
+                  {label}{" "}
+                  <Box component="span" sx={{ fontWeight: 400, opacity: 0.8 }}>
+                    {searched ? searched.filter((a) => matches(a, isMine(a))).length : ""}
+                  </Box>
+                </>
+              }
+              sx={{ height: 36, fontWeight: filter === id ? 500 : 400 }}
+            />
+          ))}
+        </Box>
+      </Box>
+
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, alignItems: "flex-start" }}>
+        <Card component="section" aria-label="APIs you can see" sx={{ flex: "3 1 680px", minWidth: 0, overflowX: "auto" }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ pl: { sm: 2.75 } }}>API</TableCell>
+                <TableCell>State</TableCell>
+                <TableCell align="right" sx={{ display: { xs: "none", sm: "table-cell" } }}>
+                  Endpoints
+                </TableCell>
+                <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>You</TableCell>
+                <TableCell sx={{ display: { xs: "none", md: "table-cell" }, pr: 2.75 }}>Reachable</TableCell>
+              </TableRow>
+            </TableHead>
+            {shown === null && !error && (
+              <TableBody>
+                {[0, 1, 2].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={5}>
+                      <Skeleton variant="text" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            )}
+            {shown?.length === 0 && (
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={5} sx={{ py: 4, textAlign: "center", color: "text.secondary" }}>
+                    {apis?.length
+                      ? "No API matches."
+                      : "No APIs yet. A team publishes one with an api.yaml and its OpenAPI file in its catalog folder."}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            )}
+            <Group
+              title="Your teams’"
+              note={`${myTeamsWithApis.join(", ")}: you see their traffic and backends`}
+              apis={mine}
+              mine
+            />
+            <Group title="Shared with your teams" note="you may call these" apis={shared} mine={false} />
+            <Group
+              title="Not shared with your teams"
+              note="listed so you know they exist; the gateway refuses your calls"
+              apis={others}
+              mine={false}
+            />
+          </Table>
+        </Card>
+
+        <Box component="aside" sx={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Card component="section" aria-label="Calling an API" sx={{ p: 2.75, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Typography variant="h6" component="h2">
+              Calling any of them
+            </Typography>
+            <Box component="dl" sx={{ m: 0, display: "flex", flexDirection: "column", gap: 1.25 }}>
+              {internet && (
+                <Fact label="From the internet">
+                  <Mono sx={{ fontSize: 12.5 }}>{internet}/&lt;team&gt;/&lt;api&gt;</Mono>
+                </Fact>
+              )}
+              {inCluster && (
+                <Fact label="In the cluster">
+                  <Mono sx={{ fontSize: 12.5 }}>{inCluster}/&lt;team&gt;/&lt;api&gt;</Mono>
+                </Fact>
+              )}
+              <Fact label="Signed in as">
+                You, or one of your team’s bots: <Mono sx={{ fontSize: 12 }}>Authorization: Bearer $VERTRA_TOKEN</Mono>. It stops at the
+                gateway; the backend gets who called in <Mono sx={{ fontSize: 12 }}>Vertra-Caller</Mono>.
+              </Fact>
+              <Fact label="Limits">
+                Counted per calling team, a minute at a time: the API’s own limit for your team, or the gateway’s default.
+              </Fact>
+            </Box>
+            {botTeam && (
+              <Button
+                component={RouterLink}
+                to={`/teams/${encodeURIComponent(botTeam)}?tab=automation`}
+                variant="outlined"
+                size="large"
+                sx={{ alignSelf: "flex-start" }}
+              >
+                A bot for {botTeam}
+              </Button>
+            )}
+          </Card>
+
+          <Card component="section" aria-label="Publishing an API" sx={{ p: 2.75, display: "flex", flexDirection: "column", gap: 1.25 }}>
+            <Typography variant="h6" component="h2">
+              Publishing one of yours
+            </Typography>
+            <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 1.25 }}>
+              <Step n={1}>
+                Add <Mono sx={{ fontSize: 12 }}>api.yaml</Mono> and its OpenAPI file under{" "}
+                <Mono sx={{ fontSize: 12 }}>teams/&lt;team&gt;/apis/</Mono> in your catalog repository.
+              </Step>
+              <Step n={2}>It’s reviewed like a product, and goes live with the next catalog release.</Step>
+              <Step n={3}>Its backend’s host must be one the admins allow; until then it’s Held.</Step>
+            </Box>
+            <HelpLink guide="11-apis" section="publishing-or-changing-an-api" label="Publishing an API" />
+          </Card>
+        </Box>
+      </Box>
     </Box>
   );
 }

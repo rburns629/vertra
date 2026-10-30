@@ -3,36 +3,47 @@ import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
 import CircularProgress from "@mui/material/CircularProgress";
 import Link from "@mui/material/Link";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
+import DownloadIcon from "@mui/icons-material/FileDownloadOutlined";
 import { ApiError, getApi, pauseApi, resumeApi, type ApiProduct } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { HelpLink } from "../components/HelpLink";
+import { Mono } from "../components/Mono";
 import { Pill } from "../components/Pill";
-import { ApiDefinition } from "./api/ApiDefinition";
-import { ApiOverview } from "./api/ApiOverview";
+import { ApiBackend, ApiPause, RequestSteps } from "./api/ApiDefinition";
+import { ApiLogs } from "./api/ApiLogs";
+import { ApiEndpoints, Fact, sharedWith, size } from "./api/ApiOverview";
 import { ApiStatePill } from "./api/ApiStatePill";
-import { ApiTraffic } from "./api/ApiTraffic";
+import { BlockedRequests, CallingTeams, PeriodToggle, TrafficTiles, useApiTraffic } from "./api/ApiTraffic";
 
-type TabId = "overview" | "traffic" | "definition";
+/** The page's parts, for its own team: what "On this page" links to. Old ?tab= links land on theirs. */
+const SECTIONS: [string, string][] = [
+  ["endpoints", "Endpoints and traffic"],
+  ["backend", "Backend and pausing"],
+  ["logs", "Backend logs"],
+];
+const OLD_TABS: Record<string, string> = { traffic: "endpoints", definition: "backend" };
 
 /**
- * One API product (ApiService.GetApi). Overview for anyone who may see it:
- * its endpoints and how to call them. Traffic and Definition for its own
- * team and admins, the only ones the console shows its backend to; its
- * maintainers pause it there. The tab is in the address (?tab=traffic).
+ * One API product (ApiService.GetApi), on one page. Anyone who may see it
+ * gets where to call it, its endpoints and how to call each. Its own team
+ * and admins, the only ones the console shows its backend to, also get each
+ * endpoint's traffic, who calls it, what the gateway blocked, its backend as
+ * the catalog says, pausing it (maintainers), and its backend's logs.
  */
 export function ApiPage() {
   const { team = "", name = "" } = useParams();
   const { user } = useAuth();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const [api, setApi] = useState<ApiProduct | null>(null);
   const [openapi, setOpenapi] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hours, setHours] = useState(24);
 
   const load = useCallback(() => {
     getApi(team, name)
@@ -50,9 +61,13 @@ export function ApiPage() {
   const ownTeam = Boolean(api?.backendUrl);
   const maintains = !!user && (user.isAdmin || user.maintainerOf.includes(team));
   const inTeam = user?.teamNames.includes(team) ?? false;
-  const requested = params.get("tab");
-  const tab: TabId = ownTeam && (requested === "traffic" || requested === "definition") ? requested : "overview";
-  const setTab = (next: TabId) => { setParams(next === "overview" ? {} : { tab: next }, { replace: true }); };
+  const { traffic, error: trafficError } = useApiTraffic(team, name, hours, ownTeam);
+
+  // A link to an old tab scrolls to its part, once the page is there.
+  const jump = OLD_TABS[params.get("tab") ?? ""];
+  useEffect(() => {
+    if (ownTeam && jump) document.getElementById(jump)?.scrollIntoView?.();
+  }, [ownTeam, jump]);
 
   async function change(action: () => Promise<void>): Promise<void> {
     setBusy(true);
@@ -67,19 +82,28 @@ export function ApiPage() {
     }
   }
 
+  function download(): void {
+    if (!api) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(JSON.parse(openapi), null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${api.team}-${api.name}-openapi.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const owner = !inTeam ? "Viewing as admin" : user?.maintainerOf.includes(team) ? "You maintain it" : "Your team's";
+  const sharedNote = api && !api.shareWith.includes("*") && api.shareWith.length > 0 ? `and ${api.team}, its own team` : undefined;
+
   return (
-    <Box>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Typography variant="body2" color="text.secondary">
         <Link component={RouterLink} to="/apis">
           APIs
         </Link>{" "}
         / {team} / {api?.displayName ?? name}
       </Typography>
-      {error && (
-        <Alert severity="error" sx={{ my: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error">{error}</Alert>}
       {!api && !error && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
           <CircularProgress size={28} aria-label="Loading the API" />
@@ -87,56 +111,129 @@ export function ApiPage() {
       )}
       {api && (
         <>
-          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.25, mt: 0.75, mb: 0.5 }}>
-            <Typography variant="h4" component="h1" sx={{ overflowWrap: "anywhere" }}>
-              {api.displayName}
-            </Typography>
-            <ApiStatePill state={api.state} />
-            <Pill tone={api.internet ? "info" : "neutral"}>{api.internet ? "Internet" : "In the cluster"}</Pill>
-            {ownTeam && (
-              <Pill tone="neutral">{!inTeam ? "Viewing as admin" : user?.maintainerOf.includes(team) ? "You maintain it" : "Your team's"}</Pill>
-            )}
-          </Box>
-          {api.description && (
-            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 840, mb: 1 }}>
-              {api.description}
-            </Typography>
-          )}
-          <Box sx={{ mb: 2 }}>
-            <HelpLink guide="11-apis" section="how-do-i-call-an-api-through-the-gateway" label="Calling an API through the gateway" />
+          <Box component="header" sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 2 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, maxWidth: 820, minWidth: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.25 }}>
+                <Typography variant="h4" component="h1" sx={{ fontSize: { xs: 24, sm: 28 }, overflowWrap: "anywhere" }}>
+                  {api.displayName}
+                </Typography>
+                <ApiStatePill state={api.state} />
+                <Pill tone={api.internet ? "info" : "neutral"}>{api.internet ? "Internet" : "In the cluster"}</Pill>
+                {ownTeam && <Pill tone="neutral">{owner}</Pill>}
+              </Box>
+              {api.description && (
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14, lineHeight: 1.5 }}>
+                  {api.description}
+                </Typography>
+              )}
+              <Box>
+                <HelpLink guide="11-apis" section="how-do-i-call-an-api-through-the-gateway" label="Calling an API through the gateway" />
+              </Box>
+            </Box>
+            <Button variant="outlined" size="large" startIcon={<DownloadIcon />} onClick={download} disabled={!openapi}>
+              Download its OpenAPI file
+            </Button>
           </Box>
 
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 2 }}>
-            {api.state === "PAUSED" && (
-              <Alert severity="warning">Paused by its team: every request gets 503 with “{api.pausedMessage}”, and nothing reaches the backend.</Alert>
-            )}
-            {api.state === "HELD" && <Alert severity="warning">Held: {api.heldReason}</Alert>}
-            {api.deprecated && <Alert severity="info">Deprecated: {api.deprecated}</Alert>}
-            {!api.mayCall && (
-              <Alert severity="info">
-                It isn&apos;t shared with your teams: the gateway refuses your calls (403). Its team decides who may call it, in its api.yaml.
-              </Alert>
+          {(api.state !== "LIVE" || api.deprecated || !api.mayCall) && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+              {api.state === "PAUSED" && (
+                <Alert severity="warning">Paused by its team: every request gets 503 with “{api.pausedMessage}”, and nothing reaches the backend.</Alert>
+              )}
+              {api.state === "HELD" && <Alert severity="warning">Held: {api.heldReason}</Alert>}
+              {api.deprecated && <Alert severity="info">Deprecated: {api.deprecated}</Alert>}
+              {!api.mayCall && (
+                <Alert severity="info">
+                  It isn&apos;t shared with your teams: the gateway refuses your calls (403). Its team decides who may call it, in its api.yaml.
+                </Alert>
+              )}
+            </Box>
+          )}
+
+          <Card
+            component="section"
+            aria-label="Where and how much"
+            sx={{ px: 2.75, py: 2, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", columnGap: 3.5, rowGap: 1.75 }}
+          >
+            <Fact
+              label="Call it at"
+              note={api.publicUrl && api.url ? <Mono sx={{ fontSize: 12 }}>in the cluster: {api.url}</Mono> : undefined}
+            >
+              <Mono sx={{ fontSize: 12.5 }}>{api.publicUrl || api.url || `<the gateway>/${api.team}/${api.name}`}</Mono>
+            </Fact>
+            <Fact label="Spec">{`${api.specTitle} ${api.specVersion} · ${String(api.endpoints.length)} endpoint${api.endpoints.length === 1 ? "" : "s"}`}</Fact>
+            <Fact label="Your team's limit">
+              {api.mayCall
+                ? `${String(api.perMinute)} a minute · ${size(api.maxRequestBytes)} a request · ${String(api.timeoutSeconds)} s`
+                : "None: it isn't shared with your teams"}
+            </Fact>
+            <Fact label="Shared with" note={sharedNote}>
+              {sharedWith(api)}
+            </Fact>
+          </Card>
+
+          {ownTeam && (
+            <Box component="nav" aria-label="On this page" sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.5, borderBottom: 1, borderColor: "divider" }}>
+              {SECTIONS.map(([id, label]) => (
+                <Link
+                  key={id}
+                  href={`#${id}`}
+                  underline="none"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(id)?.scrollIntoView?.({ behavior: "smooth" });
+                  }}
+                  sx={{ display: "inline-flex", alignItems: "center", minHeight: 44, px: 1.75, fontSize: 14, color: "text.secondary", borderBottom: 2, borderColor: "transparent", "&:hover": { color: "text.primary", borderColor: "divider" } }}
+                >
+                  {label}
+                </Link>
+              ))}
+              <Typography variant="caption" color="text.secondary" sx={{ ml: { sm: "auto" }, py: 1 }}>
+                Traffic, backend and logs: {api.team}’s members and admins only. Callers see the endpoints.
+              </Typography>
+            </Box>
+          )}
+
+          {ownTeam && (
+            <>
+              <Box id="endpoints" sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1.5, scrollMarginTop: 16 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, maxWidth: 720 }}>
+                  What callers sent, what the gateway stopped, and what the backend answered. Bodies are never recorded; callers only by team.
+                </Typography>
+                <PeriodToggle hours={hours} onChange={setHours} />
+              </Box>
+              {trafficError && <Alert severity="error">{trafficError}</Alert>}
+              <TrafficTiles traffic={traffic} />
+            </>
+          )}
+
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, alignItems: "flex-start" }}>
+            <ApiEndpoints key={`${team}/${name}`} api={api} traffic={ownTeam ? traffic : undefined} />
+            {ownTeam && (
+              <Box component="aside" sx={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                <CallingTeams traffic={traffic} />
+                <BlockedRequests traffic={traffic} />
+              </Box>
             )}
           </Box>
 
           {ownTeam && (
-            <Tabs value={tab} onChange={(_e, value: TabId) => { setTab(value); }} sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
-              <Tab value="overview" label="Overview" />
-              <Tab value="traffic" label="Traffic" />
-              <Tab value="definition" label="Definition" />
-            </Tabs>
+            <Box id="backend" sx={{ display: "flex", flexWrap: "wrap", gap: 3, alignItems: "stretch", scrollMarginTop: 16 }}>
+              <ApiBackend api={api} />
+              {maintains && (
+                <ApiPause
+                  api={api}
+                  busy={busy}
+                  onPause={(message) => change(() => pauseApi(team, name, message))}
+                  onResume={() => change(() => resumeApi(team, name))}
+                />
+              )}
+            </Box>
           )}
-          {tab === "overview" && <ApiOverview key={`${team}/${name}`} api={api} openapi={openapi} />}
-          {tab === "traffic" && <ApiTraffic team={team} name={name} />}
-          {tab === "definition" && (
-            <ApiDefinition
-              api={api}
-              canPause={maintains}
-              busy={busy}
-              onPause={(message) => change(() => pauseApi(team, name, message))}
-              onResume={() => change(() => resumeApi(team, name))}
-            />
-          )}
+
+          <RequestSteps />
+
+          {ownTeam && <ApiLogs team={team} />}
         </>
       )}
     </Box>
