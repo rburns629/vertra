@@ -476,6 +476,23 @@ func TestReadingAFinishedJobsResultLeavesTheJob(t *testing.T) {
 	check(t, "deleted", c.deleted("configmaps"), []string(nil))
 }
 
+// The Job controller marks a Job complete seconds after its container
+// exits: the container's own end is read first.
+func TestAStepIsDoneWhenItsContainerIsNotWhenItsJobIsMarked(t *testing.T) {
+	ns, name := "demo-3", "ek-greet-1"
+	c := newCluster(options(),
+		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}, // not yet marked
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name + "-abcde", Namespace: ns, Labels: map[string]string{"job-name": name}},
+			Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "product",
+				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{Message: `{"status": "succeeded", "outputs": {"greeting": "hello"}}`}}}}}})
+	s, err := c.k.Status(context.Background(), Handle{"namespace": ns, "jobName": name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(t, "state", s.State, Succeeded)
+	check(t, "outputs", s.Outputs, map[string]any{"greeting": "hello"})
+}
+
 func TestReleaseRemovesTheJobAndConfigMapAndKeepsTheResult(t *testing.T) {
 	c, handle := finishedJob(t, `{"status": "succeeded", "outputs": {"greeting": "hello"}}`, options())
 	first, _ := c.k.Status(context.Background(), handle)

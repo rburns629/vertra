@@ -76,11 +76,15 @@ type Outcome struct {
 }
 
 type pass struct {
-	ctx    context.Context
-	db     DB
-	exec   executor.Executor
-	opts   Options
-	now    time.Time
+	ctx  context.Context
+	db   DB
+	exec executor.Executor
+	opts Options
+	now  time.Time
+	// When the pass began, by the wall clock: what it records is stamped
+	// now plus the time since (clock), not the pass's start, so a step's
+	// end isn't early by however long the pass has run.
+	began  time.Time
 	log    *slog.Logger
 	events []domain.EventType
 	// Read for every running task at once before polling them (preload),
@@ -100,6 +104,9 @@ type pass struct {
 	startedExecutions map[string]bool
 }
 
+// clock is the pass's time as it goes: its start plus the time since.
+func (p *pass) clock() time.Time { return p.now.Add(time.Since(p.began)) }
+
 type pendingEvent struct {
 	executionID string
 	taskID      *string
@@ -112,7 +119,7 @@ type pendingEvent struct {
 // transaction rolls back, so running the next from scratch is always safe.
 // Only executor calls overlap; every row read and write is in order.
 func RunTick(ctx context.Context, db DB, exec executor.Executor, opts Options, now time.Time, log *slog.Logger) (Outcome, error) {
-	p := &pass{ctx: ctx, db: db, exec: exec, opts: opts, now: now, log: log, pendingEvents: &[]pendingEvent{}}
+	p := &pass{ctx: ctx, db: db, exec: exec, opts: opts, now: now, began: time.Now(), log: log, pendingEvents: &[]pendingEvent{}}
 	if err := p.expireApprovals(); err != nil {
 		return Outcome{}, fmt.Errorf("expiring approvals: %w", err)
 	}
@@ -448,7 +455,7 @@ func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, err
 		// Cancelled through kernel-api, which only marks rows: only the
 		// scheduler can stop an in-flight attempt.
 		_ = p.exec.Cancel(p.ctx, handle)
-		attempt.CompletedAt = ptr(p.now)
+		attempt.CompletedAt = ptr(p.clock())
 		if err := saveAttempt(p.ctx, p.db, attempt); err != nil {
 			return false, err
 		}
@@ -468,7 +475,7 @@ func (p *pass) poll(t *Task, status executor.Status, statusErr error) (bool, err
 			return true, p.handleFailure(t, attempt, domain.StructuredError{
 				Code: "OUTPUT_INVALID", Message: "its outputs don't fit its product's output schema: " + strings.Join(problems, "; ")}, handle)
 		}
-		attempt.CompletedAt = ptr(p.now)
+		attempt.CompletedAt = ptr(p.clock())
 		if err := saveAttempt(p.ctx, p.db, attempt); err != nil {
 			return false, err
 		}
@@ -585,7 +592,7 @@ func (p *pass) handleFailure(t *Task, attempt *Attempt, failure domain.Structure
 			return err
 		}
 	}
-	attempt.CompletedAt = ptr(p.now)
+	attempt.CompletedAt = ptr(p.clock())
 	attempt.Failure = failure.AsMap()
 	if err := saveAttempt(p.ctx, p.db, attempt); err != nil {
 		return err

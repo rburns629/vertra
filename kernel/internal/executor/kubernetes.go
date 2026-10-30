@@ -501,10 +501,22 @@ func (k *Kubernetes) Status(ctx context.Context, handle Handle) (Status, error) 
 			k.mu.Unlock()
 			return Status{State: Running, StartedAt: started}, nil
 		}
-		failure, podless, err := k.imagePullError(ctx, namespace, name)
+		pods, err := k.pods(ctx, namespace, name)
 		if err != nil {
 			return Status{}, err
 		}
+		// Its container has finished: that's final (one Pod, never restarted:
+		// backoffLimit 0, restartPolicy Never), so it's read now, not when the
+		// Job controller next marks the Job (about 2.5 s later).
+		if finished(pods) {
+			record, err := k.finalize(ctx, namespace, name)
+			if err != nil {
+				return Status{}, err
+			}
+			k.remember(name, record)
+			return record.status, nil
+		}
+		failure, podless := k.imagePullError(pods)
 		if failure == nil && podless {
 			// No Pod yet: refused one that can never fit its team's limits?
 			if failure, err = k.createRefusal(ctx, namespace, name); err != nil {
@@ -574,11 +586,7 @@ func (k *Kubernetes) pods(ctx context.Context, namespace, job string) ([]corev1.
 
 // imagePullError is the failure of a Pod stuck on its image, if any, and
 // whether the Job has no Pod at all.
-func (k *Kubernetes) imagePullError(ctx context.Context, namespace, job string) (*domain.StructuredError, bool, error) {
-	pods, err := k.pods(ctx, namespace, job)
-	if err != nil {
-		return nil, false, err
-	}
+func (k *Kubernetes) imagePullError(pods []corev1.Pod) (*domain.StructuredError, bool) {
 	for _, pod := range pods {
 		age := time.Since(pod.CreationTimestamp.Time)
 		for _, cs := range pod.Status.ContainerStatuses {
@@ -586,11 +594,23 @@ func (k *Kubernetes) imagePullError(ctx context.Context, namespace, job string) 
 				continue
 			}
 			if e := ImagePullFailure(cs.State.Waiting.Reason, cs.State.Waiting.Message, cs.Image, age, k.opts.ImagePullGrace); e != nil {
-				return e, false, nil
+				return e, false
 			}
 		}
 	}
-	return nil, len(pods) == 0, nil
+	return nil, len(pods) == 0
+}
+
+// finished says a Job's Pod's step container has terminated.
+func finished(pods []corev1.Pod) bool {
+	for _, pod := range pods {
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.Name == containerName && cs.State.Terminated != nil {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // createRefusal is the failure for a Job whose Pod the cluster refuses and
