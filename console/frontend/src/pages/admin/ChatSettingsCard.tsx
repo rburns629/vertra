@@ -3,9 +3,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import Collapse from "@mui/material/Collapse";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
 import MenuItem from "@mui/material/MenuItem";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
@@ -14,14 +14,49 @@ import { ApiError, getChatConfig, resetChatConfig, setChatConfig, testChatConfig
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
+import { AdminCard } from "./parts";
 
-const PROVIDERS: { id: string; label: string; model: string }[] = [
-  { id: "vertex", label: "Gemini on Vertex AI (Google Cloud)", model: "google/gemini-3.5-flash" },
-  { id: "bedrock", label: "Claude in Amazon Bedrock (AWS)", model: "anthropic.claude-sonnet-5" },
-  { id: "anthropic", label: "Claude through Anthropic's API", model: "claude-haiku-5-5" },
-  { id: "openai-compatible", label: "An OpenAI-compatible server (LM Studio, Ollama…)", model: "qwen3-14b" },
+const PROVIDERS: { id: string; name: string; note: string; label: string; model: string }[] = [
+  { id: "vertex", name: "Gemini on Vertex AI", note: "Google Cloud. No key: the console signs in as itself", label: "Gemini on Vertex AI (Google Cloud)", model: "google/gemini-3.5-flash" },
+  { id: "bedrock", name: "Claude in Amazon Bedrock", note: "AWS. No key: signed as the console's AWS identity", label: "Claude in Amazon Bedrock (AWS)", model: "anthropic.claude-sonnet-5" },
+  { id: "anthropic", name: "Claude through Anthropic's API", note: "An API key, kept encrypted", label: "Claude through Anthropic's API", model: "claude-haiku-5-5" },
+  { id: "openai-compatible", name: "An OpenAI-compatible server", note: "LM Studio, Ollama… at an address you give", label: "An OpenAI-compatible server (LM Studio, Ollama…)", model: "qwen3-14b" },
 ];
 const nameOf = (provider: string) => PROVIDERS.find((p) => p.id === provider)?.label ?? provider;
+
+/** The providers as cards to choose from: a radio group, each with what it needs. */
+function ProviderChoice({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  return (
+    <Box component="fieldset" sx={{ border: 0, m: 0, p: 0, minWidth: 0 }}>
+      <Typography component="legend" variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+        Provider
+      </Typography>
+      <RadioGroup value={value} onChange={(e) => { onChange(e.target.value); }} sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+        {PROVIDERS.map((p) => {
+          const on = p.id === value;
+          return (
+            <FormControlLabel
+              key={p.id}
+              value={p.id}
+              control={<Radio size="small" sx={{ mt: -0.5 }} />}
+              label={
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {p.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {p.note}
+                  </Typography>
+                </Box>
+              }
+              sx={{ m: 0, alignItems: "flex-start", p: 1.5, border: 1, borderRadius: 2, borderColor: on ? "primary.main" : "divider", bgcolor: on ? "info.light" : "background.paper", boxShadow: on ? (t) => `inset 0 0 0 1px ${t.palette.primary.main}` : "none" }}
+            />
+          );
+        })}
+      </RadioGroup>
+    </Box>
+  );
+}
 
 /** The form's values from settings as they're set: a key is never among them. */
 function formOf(c: ChatConfig): ChatConfigInput {
@@ -44,8 +79,8 @@ function formOf(c: ChatConfig): ChatConfigInput {
 
 const whole = (value: string) => (/^\d+$/.test(value) ? Number(value) : 0);
 
-function Field({ children }: { children: ReactNode }) {
-  return <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>{children}</Box>;
+function Field({ children, columns = 3 }: { children: ReactNode; columns?: number }) {
+  return <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: `repeat(${String(columns)}, minmax(0, 1fr))` } }}>{children}</Box>;
 }
 
 /**
@@ -57,7 +92,6 @@ function Field({ children }: { children: ReactNode }) {
 export function ChatSettingsCard() {
   const [saved, setSaved] = useState<ChatConfig | null>(null);
   const [form, setForm] = useState<ChatConfigInput | null>(null);
-  const [limits, setLimits] = useState(false);
   const [busy, setBusy] = useState<"save" | "test" | "reset" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -76,7 +110,7 @@ export function ChatSettingsCard() {
   }, []);
 
   if (!saved || !form) {
-    return <Card sx={{ p: 3 }}>{error ? <Alert severity="error">{error}</Alert> : <Typography color="text.secondary">Loading…</Typography>}</Card>;
+    return <AdminCard title="The model">{error ? <Alert severity="error">{error}</Alert> : <Typography color="text.secondary">Loading…</Typography>}</AdminCard>;
   }
   const set = (patch: Partial<ChatConfigInput>) => {
     setForm({ ...form, ...patch });
@@ -120,13 +154,18 @@ export function ChatSettingsCard() {
     );
 
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1, flexWrap: "wrap" }}>
-        <Typography variant="h6" component="h2">
-          Chat agent
-        </Typography>
-        {saved.enabled && !saved.problem ? <Pill tone="success">On · {saved.model}</Pill> : <Pill tone="neutral">Off</Pill>}
-      </Box>
+    <AdminCard
+      title="The model"
+      status={
+        saved.enabled && !saved.problem ? (
+          <Pill tone="success" dot="success.main">
+            On · {saved.source === "admins" ? "set here" : "the install's"}
+          </Pill>
+        ) : (
+          <Pill tone="neutral">Off</Pill>
+        )
+      }
+    >
       <Typography variant="body2" color="text.secondary">
         The model that answers in Ask: questions from the docs, and carts from the catalog.{" "}
         {saved.source === "install"
@@ -142,14 +181,8 @@ export function ChatSettingsCard() {
       )}
 
       <FormControlLabel control={<Switch checked={form.enabled} onChange={(e) => { set({ enabled: e.target.checked }); }} />} label="People may ask the chat agent" />
+      <ProviderChoice value={form.provider} onChange={(provider) => { set({ provider, model: "" }); }} />
       <Field>
-        <TextField select size="small" label="Provider" value={form.provider} onChange={(e) => { set({ provider: e.target.value, model: "" }); }}>
-          {PROVIDERS.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.label}
-            </MenuItem>
-          ))}
-        </TextField>
         <TextField
           size="small"
           label="Model"
@@ -208,19 +241,18 @@ export function ChatSettingsCard() {
         </Typography>
       )}
 
-      <Box>
-        <Button size="small" onClick={() => { setLimits(!limits); }}>
-          {limits ? "Hide limits" : "Limits"}
-        </Button>
-        <Collapse in={limits}>
-          <Field>
-            <TextField select size="small" label="Thinking" value={form.effort} onChange={(e) => { set({ effort: e.target.value }); }} sx={{ mt: 1 }}>
+      <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Limits: what each answer may cost
+        </Typography>
+          <Field columns={4}>
+            <TextField select size="small" label="Thinking" value={form.effort} onChange={(e) => { set({ effort: e.target.value }); }} slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true } }}>
               <MenuItem value="">The model&apos;s own</MenuItem>
               <MenuItem value="low">Low</MenuItem>
               <MenuItem value="medium">Medium</MenuItem>
               <MenuItem value="high">High</MenuItem>
             </TextField>
-            <TextField size="small" label="Steps per answer" value={form.maxSteps || ""} placeholder="8" onChange={(e) => { set({ maxSteps: whole(e.target.value) }); }} sx={{ mt: 1 }} />
+            <TextField size="small" label="Steps per answer" value={form.maxSteps || ""} placeholder="8" onChange={(e) => { set({ maxSteps: whole(e.target.value) }); }} helperText="8 by default" />
             <TextField
               size="small"
               label="Context window (tokens)"
@@ -238,7 +270,6 @@ export function ChatSettingsCard() {
               helperText="Thinking counts toward it"
             />
           </Field>
-        </Collapse>
       </Box>
 
       {tested &&
@@ -255,15 +286,15 @@ export function ChatSettingsCard() {
       {error && <Alert severity="error">{error}</Alert>}
       {notice && <Alert severity="success">{notice}</Alert>}
 
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-        <Button variant="contained" disabled={busy !== null} onClick={() => { void save(); }}>
+      <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center", borderTop: 1, borderColor: "divider", pt: 2 }}>
+        <Button variant="contained" disabled={busy !== null} onClick={() => { void save(); }} sx={{ minHeight: 44 }}>
           {busy === "save" ? "Saving…" : "Save"}
         </Button>
-        <Button variant="outlined" disabled={busy !== null} onClick={() => { void test(); }}>
+        <Button variant="outlined" disabled={busy !== null} onClick={() => { void test(); }} sx={{ minHeight: 44 }}>
           {busy === "test" ? "Asking it…" : "Test"}
         </Button>
         {saved.source === "admins" && (
-          <Button disabled={busy !== null} onClick={() => { setResetting(true); }}>
+          <Button disabled={busy !== null} onClick={() => { setResetting(true); }} sx={{ minHeight: 44 }}>
             Use the install&apos;s
           </Button>
         )}
@@ -282,6 +313,6 @@ export function ChatSettingsCard() {
         onConfirm={() => { void reset(); }}
         onCancel={() => { setResetting(false); }}
       />
-    </Card>
+    </AdminCard>
   );
 }

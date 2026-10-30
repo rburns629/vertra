@@ -3,17 +3,17 @@ import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { when } from "../../time";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { DEFAULT_TOKEN_DAYS, expiryText, TokenLifetime } from "../../components/TokenLifetime";
+import { AdminCard, Aside } from "./parts";
 import { AUTOMATION_SCOPES, ApiError, createAutomationToken, listAutomationTokens, revokeToken, type AutomationToken } from "../../api";
 
 /** Platform-wide tokens for automation: each holds
@@ -86,7 +86,7 @@ export function AutomationTokensCard() {
         </Box>
       ),
     },
-    { key: "created", header: "Created", render: (t) => new Date(t.createdAt).toLocaleString() },
+    { key: "created", header: "Created", render: (t) => when(t.createdAt), hideBelow: "sm" },
     { key: "expires", header: "Expiry", render: (t) => expiryText(t.expiresAt) },
     {
       key: "actions",
@@ -101,12 +101,9 @@ export function AutomationTokensCard() {
   ];
 
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
-          Automation tokens
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+    <>
+    <AdminCard title="Tokens" status={tokens && <Aside>{tokens.length} active</Aside>}>
+        <Typography variant="body2" color="text.secondary">
           For platform automation of your own. A token can do only what's ticked below. It
           belongs to no team, so it can't read secrets, submit tasks, or create other tokens.
           The catalog needs none: this console reads the catalog's release itself (Admin,
@@ -114,20 +111,20 @@ export function AutomationTokensCard() {
         </Typography>
 
         {justIssued && (
-          <Alert severity="success" sx={{ mb: 2 }}>
+          <Alert severity="success">
             Token for "{justIssued.label}": <code style={{ wordBreak: "break-all" }}>{justIssued.token}</code>
             <br />
             Copy it now; it won't be shown again. Store it as a secret wherever the automation
             runs.
           </Alert>
         )}
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {error && <Alert severity="error">{error}</Alert>}
 
-        <Box sx={{ mb: 2 }}>
-          <DataTable columns={columns} rows={tokens} getRowKey={(t) => t.id} emptyMessage="No automation tokens yet." />
-        </Box>
+        <DataTable columns={columns} rows={tokens} getRowKey={(t) => t.id} emptyMessage="No automation tokens yet." />
+      </AdminCard>
 
-        <Stack spacing={1} sx={{ maxWidth: 480 }}>
+      <AdminCard title="Issue a token">
+        <Stack spacing={1} sx={{ maxWidth: 560 }}>
           <TextField
             size="small"
             label="Label"
@@ -162,12 +159,12 @@ export function AutomationTokensCard() {
               variant="contained"
               disabled={submitting || !label.trim() || scopes.length === 0}
               onClick={() => void handleCreate()}
+              sx={{ minHeight: 44 }}
             >
               {submitting ? "Creating…" : "Create token"}
             </Button>
           </Box>
         </Stack>
-      </CardContent>
       <ConfirmDialog
         open={revoking !== null}
         title="Revoke this token?"
@@ -178,6 +175,7 @@ export function AutomationTokensCard() {
         onConfirm={() => void handleRevoke()}
         onCancel={() => { setRevoking(null); }}
       />
-    </Card>
+    </AdminCard>
+    </>
   );
 }

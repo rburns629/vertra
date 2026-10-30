@@ -7,6 +7,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
+import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -38,6 +39,7 @@ import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { Pill } from "../../components/Pill";
 import { useEnvironment } from "../../environment";
 import { when } from "../../time";
+import { AdminCard, KeyValues } from "./parts";
 
 const mono = { fontFamily: "fontFamilyMono", fontSize: 13 } as const;
 
@@ -48,37 +50,54 @@ function signsInWith(u: UserAccount, sso: string): string {
   return "—";
 }
 
-/** How people sign in here: set by the installer, so this only says how. */
+/** How people sign in here: set by the provider and each team, so this only says how. */
 function SigningIn({ teams }: { teams: Team[] }) {
   const sso = useEnvironment()?.ssoLabel ?? "";
-  const requiring = teams.filter((t) => t.requireSso && !t.retiredAt).map((t) => t.name);
+  const live = teams.filter((t) => !t.retiredAt && !t.deletedAt);
+  const requiring = live.filter((t) => t.requireSso).map((t) => t.name);
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1 }}>
-        <Typography variant="h6" component="h2">
-          Signing in
-        </Typography>
-        {sso ? <Pill tone="success">{sso} on</Pill> : <Pill tone="neutral">Passwords only</Pill>}
-      </Box>
-      {sso ? (
-        <Typography variant="body2">
-          People sign in with {sso}; someone signing in for the first time gets an account with no team. Passwords are allowed
-          except for members of a team that requires {sso}
-          {requiring.length > 0 ? ` (${requiring.join(", ")})` : ""}; admins can always use theirs, in case {sso} can&apos;t be reached.
-          Each team&apos;s Settings tab sets that.
-        </Typography>
-      ) : (
-        <Typography variant="body2">Everyone signs in with a password: an admin adds them below.</Typography>
-      )}
-      <Typography variant="body2" sx={{ p: 1.5, bgcolor: "background.default", borderRadius: 2, color: "text.secondary" }}>
+    <AdminCard title="Signing in" status={sso ? <Pill tone="success" dot="success.main">{sso} and passwords</Pill> : <Pill tone="neutral">Passwords only</Pill>}>
+      <KeyValues
+        nameWidth={120}
+        rows={
+          sso
+            ? [
+                ["Single sign-on", `${sso}. Someone signing in for the first time gets an account in no team.`],
+                ["Passwords", `Allowed, except for members of a team that requires single sign-on. Admins can always use theirs, in case ${sso} can't be reached.`],
+                [
+                  "Requiring it",
+                  requiring.length === 0 ? (
+                    "No team. Each team's Settings tab sets it."
+                  ) : (
+                    <>
+                      {requiring.map((t, i) => (
+                        <span key={t}>
+                          {i > 0 && ", "}
+                          <Link component={RouterLink} to={`/teams/${t}?tab=settings`}>
+                            {t}
+                          </Link>
+                        </span>
+                      ))}
+                      : {requiring.length} of {live.length} teams, each on its Settings tab.
+                    </>
+                  ),
+                ],
+              ]
+            : [
+                ["Single sign-on", "Off."],
+                ["Passwords", "Everyone signs in with one: an admin adds them here."],
+              ]
+        }
+      />
+      <Typography variant="body2" color="text.secondary">
         The provider and its group mappings are in{" "}
         <Link component={RouterLink} to="/admin/sign-in">
-          Single sign-on and groups
+          Single sign-on and groups →
         </Link>
         , unless the install sets the provider (<Box component="span" sx={mono}>vertra sso google</Box>, or{" "}
         <Box component="span" sx={mono}>vertra sso off</Box> to stop).
       </Typography>
-    </Card>
+    </AdminCard>
   );
 }
 
@@ -110,18 +129,15 @@ function AddPerson({ teams, onAdded }: { teams: Team[]; onAdded: () => void }) {
   }
 
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography variant="h6" component="h2">
-        Add a person
-      </Typography>
-      <TextField size="small" type="email" label="Email" value={email} onChange={(e) => { setEmail(e.target.value); }} />
+    <AdminCard title="Add a person">
+      <TextField size="small" type="email" label="Email" placeholder="name@example.com" value={email} onChange={(e) => { setEmail(e.target.value); }} />
       <Autocomplete
         multiple
         size="small"
         options={joinable}
         value={chosen}
         onChange={(_e, value) => { setChosen(value); }}
-        renderInput={(params) => <TextField {...params} label="Teams" placeholder="The teams they work on" />}
+        renderInput={(params) => <TextField {...params} label="Teams" placeholder="The teams they work on" helperText="They join each one as a maintainer. Retired teams can't be chosen." />}
       />
       <FormControlLabel control={<Checkbox checked={admin} onChange={(e) => { setAdmin(e.target.checked); }} />} label="Admin of this install" />
       <Typography variant="body2" color="text.secondary">
@@ -129,7 +145,7 @@ function AddPerson({ teams, onAdded }: { teams: Team[]; onAdded: () => void }) {
         password, shown once, which they replace when they first sign in.
       </Typography>
       <Box>
-        <Button variant="contained" disabled={busy || !email.trim()} onClick={() => void add()}>
+        <Button variant="contained" disabled={busy || !email.trim()} onClick={() => void add()} sx={{ minHeight: 44 }}>
           {busy ? "Adding…" : "Add"}
         </Button>
       </Box>
@@ -146,7 +162,7 @@ function AddPerson({ teams, onAdded }: { teams: Team[]; onAdded: () => void }) {
         </Alert>
       )}
       {error && <Alert severity="error">{error}</Alert>}
-    </Card>
+    </AdminCard>
   );
 }
 
@@ -195,6 +211,14 @@ function ResetPasswordDialog({ email, onClose }: { email: string; onClose: (done
   );
 }
 
+/** Who the list shows: everyone, admins, or people who haven't chosen a password yet. */
+type Kind = "all" | "admins" | "unfinished";
+const KINDS: Record<Kind, { label: string; test: (p: UserAccount) => boolean }> = {
+  all: { label: "All", test: () => true },
+  admins: { label: "Admins", test: (p) => p.isAdmin },
+  unfinished: { label: "To finish", test: (p) => p.mustChangePassword },
+};
+
 type Pending = { kind: "delete" | "revoke"; email: string } | { kind: "reset"; email: string };
 
 /**
@@ -208,6 +232,7 @@ export function PeopleTab() {
   const [people, setPeople] = useState<UserAccount[] | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<Kind>("all");
   const [menu, setMenu] = useState<{ anchor: HTMLElement; person: UserAccount } | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -242,8 +267,8 @@ export function PeopleTab() {
 
   const query = search.trim().toLowerCase();
   const shown = useMemo(
-    () => (people && query ? people.filter((p) => [p.email, ...p.teamNames].some((s) => s.toLowerCase().includes(query))) : people),
-    [people, query],
+    () => people?.filter((p) => KINDS[kind].test(p) && (!query || [p.email, ...p.teamNames].some((s) => s.toLowerCase().includes(query)))) ?? null,
+    [people, query, kind],
   );
 
   const columns: DataTableColumn<UserAccount>[] = [
@@ -285,27 +310,50 @@ export function PeopleTab() {
         <AddPerson teams={teams} onAdded={load} />
       </Box>
 
-      <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
-          <Typography variant="h6" component="h2">
-            People
-          </Typography>
-          <TextField
-            size="small"
-            placeholder="Find a person or team"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); }}
-            slotProps={{ htmlInput: { "aria-label": "Find a person or team" } }}
-            sx={{ width: { xs: "100%", sm: 280 } }}
-          />
-        </Box>
+      <AdminCard
+        label="Everyone"
+        title={people ? `Everyone: ${String(people.length)} ${people.length === 1 ? "person" : "people"}` : "Everyone"}
+        status={
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Box role="group" aria-label="Show" sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              {(Object.keys(KINDS) as Kind[]).map((k) => (
+                <Chip
+                  key={k}
+                  label={`${KINDS[k].label} ${people ? String(people.filter(KINDS[k].test).length) : ""}`}
+                  clickable
+                  aria-pressed={kind === k}
+                  color={kind === k ? "primary" : "default"}
+                  variant={kind === k ? "filled" : "outlined"}
+                  onClick={() => { setKind(k); }}
+                  sx={{ height: 36 }}
+                />
+              ))}
+            </Box>
+            <TextField
+              size="small"
+              placeholder="Find a person or team"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); }}
+              slotProps={{ htmlInput: { "aria-label": "Find a person or team" } }}
+              sx={{ width: { xs: "100%", sm: 240 } }}
+            />
+          </Box>
+        }
+      >
         {notice && (
           <Alert severity="success" onClose={() => { setNotice(null); }}>
             {notice}
           </Alert>
         )}
         {error && <Alert severity="error">{error}</Alert>}
-        <DataTable columns={columns} rows={shown} getRowKey={(p) => p.email} emptyMessage={query ? "Nobody matches." : "No accounts yet."} />
+        <DataTable columns={columns} rows={shown} getRowKey={(p) => p.email} emptyMessage={query || kind !== "all" ? "Nobody matches." : "No accounts yet."} />
+      </AdminCard>
+
+      <Card sx={{ px: 3, py: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          If no admin can sign in: from a machine that can reach the cluster, <Box component="span" sx={mono}>vertra admin reset-password &lt;env&gt;</Box>. It
+          gives the install&apos;s first admin (or <Box component="span" sx={mono}>--email</Box>&apos;s) a new password, shown once.
+        </Typography>
       </Card>
 
       <Menu anchorEl={menu?.anchor} open={menu !== null} onClose={() => { setMenu(null); }}>
@@ -323,6 +371,11 @@ export function PeopleTab() {
         {person?.hasPassword && (
           <MenuItem onClick={() => { setMenu(null); setPending({ kind: "reset", email: person.email }); }}>Reset password…</MenuItem>
         )}
+        {person?.teamNames.map((t) => (
+          <MenuItem key={t} component={RouterLink} to={`/teams/${t}`} onClick={() => { setMenu(null); }}>
+            Open {t}&apos;s members
+          </MenuItem>
+        ))}
         {person && person.email !== user?.email && (
           <MenuItem sx={{ color: "error.main" }} onClick={() => { setMenu(null); setPending({ kind: "delete", email: person.email }); }}>
             Delete…

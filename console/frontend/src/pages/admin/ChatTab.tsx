@@ -5,14 +5,15 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ApiError, listChatFeedback, type ChatRating } from "../../api";
+import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
+import { when } from "../../time";
+import { AdminCard, Aside } from "./parts";
 
 type Shown = "all" | "down" | "up";
 
@@ -29,8 +30,8 @@ function Rating({ r }: { r: ChatRating }) {
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
         <Pill tone={r.rating === "down" ? "error" : "success"}>{r.rating === "down" ? "Wrong" : "Good"}</Pill>
         <Typography variant="caption" color="text.secondary">
-          {new Date(r.createdAt).toLocaleString()} · {r.email ?? "a deleted account"}
-          {r.team ? ` · ${r.team}` : ""} · {r.model}
+          {when(r.createdAt)} · {r.email ?? "a deleted account"}
+          {r.team ? ` · ${r.team}` : ""} · <Mono>{r.model}</Mono>
         </Typography>
       </Stack>
       <Typography variant="body2" sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
@@ -92,21 +93,13 @@ export function ChatTab() {
   const rows = (ratings ?? []).filter((r) => shown === "all" || r.rating === shown);
 
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="h6" component="h2">
-          Chat answers
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+    <AdminCard title="Chat answers" status={<Aside>Kept 90 days</Aside>}>
+        <Typography variant="body2" color="text.secondary">
           What people rated in Ask Vertra, with the question and answer. A wrong answer is usually a doc to fix (the agent answers from the
           docs), or a question to add to the agent&apos;s question set. Kept 90 days.
         </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Box role="group" aria-label="Rating" sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1.5 }}>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Box role="group" aria-label="Rating" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           {FILTERS.map(([id, label]) => (
             <Chip
               key={id}
@@ -116,6 +109,7 @@ export function ChatTab() {
               color={shown === id ? "primary" : "default"}
               variant={shown === id ? "filled" : "outlined"}
               onClick={() => { setShown(id); }}
+              sx={{ height: 36 }}
             />
           ))}
         </Box>
@@ -129,7 +123,6 @@ export function ChatTab() {
             <Rating key={r.id} r={r} />
           ))}
         </Box>
-      </CardContent>
-    </Card>
+    </AdminCard>
   );
 }

@@ -1,6 +1,6 @@
 # Admin settings
 
-This page is for the install's admins. It goes through every section of the **Admin** page in order: what each setting does, what it affects, and whether you change it in the console or it's set by the install. Install settings live in the environment's `vertra.yaml` (change one with `vertra config set -e <env> <key> <value>`, then `vertra apply <env>`) or, without `vertra`, in the console chart's Helm values. Each section has its own address, `/admin/<id>`, shown next to its name below. Only admins can open the Admin page; anyone else sees "Admins only".
+This page is for the install's admins. It goes through every section of the **Admin** page in order: what each setting does, what it affects, and whether you change it in the console or it's set by the install. Install settings live in the environment's `vertra.yaml` (change one with `vertra config set -e <env> <key> <value>`, then `vertra apply <env>`) or, without `vertra`, in the console chart's Helm values. Each section has its own address, `/admin/<id>`, shown next to its name below. The list of sections down the side shows each one's state in a few words where the console knows it (such as **3 to finish**, **1 to adopt**, **In sync**). Each section opens with what it does, what's **Set here** and what's **Set by the install**. Only admins can open the Admin page; anyone else sees "Admins only".
 
 | Section | Changed here | Set by the install |
 | --- | --- | --- |
@@ -21,7 +21,11 @@ This page is for the install's admins. It goes through every section of the **Ad
 
 ### Overview
 
-`/admin/overview`. The install at a glance.
+`/admin/overview`. The install at a glance. Nothing is changed here.
+
+Across the top: the console's version and environment, how many **Teams** (and how many the catalog didn't make), **People** (and admins), **Products** (and the catalog version they came from), and how long **Runs** are kept.
+
+**Needs you** lists what needs an admin now, each with a button to the section that settles it: images that failed their scan, no image source allowed, a catalog release that wasn't applied or a team it found but didn't make, cluster policies that weren't written, a problem with the audit log's copy, a chat agent whose settings can't be used, a closed gateway, and people who haven't chosen a password yet. With single sign-on reading groups, it also suggests (optionally) mapping a group to teams nothing maps.
 
 **Getting this install ready** is a checklist shown until its required steps are done:
 
@@ -33,19 +37,16 @@ This page is for the install's admins. It goes through every section of the **Ad
 | Add people | More than one account exists | In [People](#people) |
 | Optional: single sign-on | A provider is set | In [Single sign-on and groups](#single-sign-on-and-groups), or `vertra sso google <env>` |
 
-**This install** shows the console's version, the environment's name, and whether each optional part is **On** or **Off**. When a part is on, its name links to its section. When it's off, the card says what turns it on:
+Once they're done, a **Ready to run** line says so instead.
 
-| Part | Turned on by |
+**Every part, and where it's set** lists each part of the install by group, with its state and whether it's set **Here** (in this console), by the **Install** (vertra.yaml, then `vertra apply`), or **Both** (the install turns it on; it's run here). Each part with a section links to it:
+
+| Group | Parts |
 | --- | --- |
-| Signing in with single sign-on | [Single sign-on and groups](#single-sign-on-and-groups), or `sso` in vertra.yaml |
-| The chat agent | [Chat agent](#chat-agent), or `chat` in vertra.yaml (gcp, aws) |
-| The catalog | `vertra catalog create`. The card also says whether releases' signatures are checked |
-| Images scanned before they run | The console chart's `scanning.enabled` (on by default) |
-| Log search | `logs.enabled` in vertra.yaml. When on, it says how many days back Observe's **Logs** tab searches (`logs.searchDays`, 30) |
-| The audit log's write-once copy | `audit.export` in vertra.yaml (gcp, aws) |
-| The API gateway | `gateway.enabled` in vertra.yaml |
-
-The card also says how long runs are kept (90 days unless the console chart's `retention.executionDays` says otherwise; keep it equal to the kernel chart's `executionRetentionDays`).
+| People and access | Single sign-on, groups from the directory, automation tokens, self-registration (`allowSelfRegistration`) |
+| Catalog and images | The catalog release, its signature, image sources, image scans |
+| Integrations | The API gateway, the chat agent, admins' alerts, log search (`logs.enabled`, `logs.searchDays`) |
+| Security and audit | Cluster policies, the audit log's copy, run records (kept 90 days unless the console chart's `retention.executionDays` says otherwise; keep it equal to the kernel chart's `executionRetentionDays`) |
 
 Two install settings don't appear on this page:
 
@@ -68,12 +69,13 @@ Two install settings don't appear on this page:
 
 They get a temporary password, shown once. Copy it and send it to them privately: they must choose their own (at least 12 characters) when they first sign in. If single sign-on is on and one of the chosen teams requires it, a non-admin gets no password and signs in with single sign-on as that email.
 
-**People** lists every account: how each signs in, their teams, whether they're an admin, and when they last signed in. **Find a person or team** filters the list. A person can be marked "Hasn't chosen a password yet" or "No team yet". The **⋮** menu next to each person has:
+**Everyone** lists every account: how each signs in, their teams, whether they're an admin, and when they last signed in. **All**, **Admins** and **To finish** (people who haven't chosen a password yet) choose who's shown, and **Find a person or team** filters the list. A person can be marked "Hasn't chosen a password yet" or "No team yet". The **⋮** menu next to each person has:
 
 | Action | What it does |
 | --- | --- |
 | **Make admin** / **Remove admin…** | Gives or takes admin access at once; their teams stay. The last admin can't be removed |
 | **Reset password…** | Sets a temporary password and signs them out everywhere. They choose their own when they next sign in. Only for accounts that have a password |
+| **Open *team*'s members** | Opens one of their teams |
 | **Delete…** | Removes the account, its team memberships and its tokens. Runs they started stay in the history, shown as from a deleted account. Can't be undone, and you can't delete yourself or the last admin |
 
 Bots aren't managed here. They're on each team's **Automation** tab.
@@ -114,6 +116,8 @@ A sign-in whose groups can't be read is refused. It is never treated as "no grou
 
 **Groups mapped to teams.** Enter a **Group** (as the provider sends it, or a Google group's email), a **Team** and a **Role**, then click **Map**. At each sign-in, a mapped team's membership follows the person's groups: they're added with the best role their groups give, or removed. When Google Workspace is the only source, the console also rereads groups every hour. Teams with no mapping, bots, and password users are managed by hand. A retired team can't be mapped. See [single sign-on groups](13-teams-and-roles.md#how-do-single-sign-on-groups-decide-who-is-in-a-team).
 
+**Save**, under where groups come from, saves the provider and the group sources together; **Discard changes** puts back what's saved. Each mapping is saved when you click **Map**, and the teams nothing maps are listed under them.
+
 Whether a team requires single sign-on is set on that team's **Settings** tab ([team settings](13-teams-and-roles.md#what-are-a-teams-settings)).
 
 ### Automation tokens
@@ -138,13 +142,15 @@ The catalog needs no token: the console reads the catalog's release itself. Toke
 
 `/admin/catalog`. Where teams, products, templates and SecretStores come from. Catalog CI publishes a release from the catalog repository's `main`. The console reads it every few minutes, checks its signature, and applies it. Products, teams or SecretStores a release no longer has are unregistered or retired here, never purged.
 
-The card shows:
+**The release** shows:
 
-- **Release**: the release followed, or "the newest version of" its repository.
-- **Applied**: the version and commit applied, the repository, and when.
-- **Last looked**: when the console last read it.
+- **Published**: the version and commit applied, and the repository.
+- **Signature**: whether each release's signature is checked before it's applied.
+- **Applied**: when.
+- **Release**: the release followed, or "the newest version of" its repository; **Last looked**: when the console last read it.
 - An error, if the last attempt failed. Nothing is applied from a release that failed its signature check.
-- **The last release was applied except:** each item that wasn't applied, and why.
+
+**The last release was applied except** lists each item that wasn't applied, and why.
 
 **Sync now** reads and applies the release at once.
 
@@ -168,7 +174,7 @@ Admins are alerted when the catalog hasn't been pulled for 30 minutes.
 
 - **Source registry**: where catalog CI publishes product images, such as `us-central1-docker.pkg.dev/my-project/catalog-products`. Required.
 - **Add a source**: more allowed paths, such as `docker.io/library`. Base images a Dockerfile builds from don't need listing: they're part of the published image.
-- **Save image sources** saves both.
+- **Save image sources** saves both; **Discard changes** puts back what's saved.
 
 Each entry is a path prefix. Saving a whole registry host, such as `docker.io`, asks you to confirm: any image anyone has published there could run. Prefer a specific path.
 
@@ -177,6 +183,8 @@ If no source is set, no task can run. If the card says the cluster's image polic
 Set by the install: the first value only. `taskImages.registry` in vertra.yaml (or `externalCatalog.registry`), or the kernel chart's `imagePolicy.sourceRegistry` and `imagePolicy.additionalSources`, seeds the list when the kernel is installed. Upgrades keep whatever you saved here.
 
 Admins are alerted when the image sources change.
+
+**What an image passes before it runs** lists the four checks the cluster makes when a step starts: it comes from an allowed source (`IMAGE_NOT_ALLOWED`), it's pinned to a digest (`IMAGE_NOT_PINNED`), it passed its scan (`IMAGE_SCAN_FAILED`), and, when the install requires it (the kernel chart's `imageSignature`), a catalog image is signed (`IMAGE_NOT_SIGNED`).
 
 ### Image scans
 
@@ -197,7 +205,7 @@ Set by the install, in the console chart's `scanning`: `enabled` (on by default)
 
 `/admin/gateway`. One front door for every team's API products. It signs callers in, lets through only what each API's reviewed OpenAPI file describes, and forwards the request to the API's backend.
 
-If the gateway isn't running, the section says so: turn it on with `gateway.enabled` in vertra.yaml.
+If the gateway isn't running, the section says so: turn it on with `gateway.enabled` in vertra.yaml. Otherwise it shows its state, the APIs published, the requests in the last 24 hours, and how many were refused at the door.
 
 **This install's settings** shows, read-only:
 
@@ -207,22 +215,23 @@ If the gateway isn't running, the section says so: turn it on with `gateway.enab
 | **May publish to the internet** | `gateway.internetTeams` |
 | **Inside the cluster** | `gateway.url` |
 | **From the internet** | `gateway.publicUrl`, with `gateway.publicListener` |
-| **Last 24 hours** | Requests, APIs, and how many were refused at the door, with a link to Observe |
 
 These change with `vertra apply`, not here. See [operations](operations.md#the-api-gateway).
 
-**Close the gateway** takes a **Message to every caller**. While it's closed, every API answers 503 with that message and nothing is forwarded. The console and runs carry on. **Reopen** undoes it. Both are recorded in the audit log. The console chart's `gateway.closed` keeps it closed from the install's side. A team's maintainers can pause one of their own APIs from its page.
+**Close the gateway…** takes a **Message to every caller**, and asks you to confirm. While it's closed, every API answers 503 with that message and nothing is forwarded. The console and runs carry on. **Reopen** undoes it. Both are recorded in the audit log. The console chart's `gateway.closed` keeps it closed from the install's side. A team's maintainers can pause one of their own APIs from its page.
+
+**Refused at the door, last 24 hours** lists why requests were stopped (not in the API's spec, didn't match it, not signed in, not shared with the caller's team, over a limit, paused, and so on), what the gateway answered, how many, and the team most of them came from. Each one, with its caller, is in Observe.
 
 ### Chat agent
 
 `/admin/chat`. The model that answers in Ask: questions from the docs, and carts from the catalog.
 
-**Chat agent** sets the model. The card says whether these are the install's settings or ones set here, and by whom. Saving your own replaces the install's until you click **Use the install's**.
+**The model** sets it. The card says whether these are the install's settings or ones set here, and by whom. Saving your own replaces the install's until you click **Use the install's**.
 
 | Field | What it is |
 | --- | --- |
 | **People may ask the chat agent** | Turns it on or off |
-| **Provider** | Gemini on Vertex AI, Claude in Amazon Bedrock, Claude through Anthropic's API, or an OpenAI-compatible server (LM Studio, Ollama…) |
+| **Provider** | Choose one: Gemini on Vertex AI, Claude in Amazon Bedrock, Claude through Anthropic's API, or an OpenAI-compatible server (LM Studio, Ollama…) |
 | **Model** | Its name at that provider. Empty on Vertex AI means Gemini 3.5 Flash; on Bedrock, Claude Sonnet 5 |
 | **Google Cloud project**, **Location** | Vertex AI only. No key: the console signs in as its own Google identity, which needs `roles/aiplatform.user` there |
 | **AWS region** | Bedrock only. No key: requests are signed as the console's own AWS identity |
@@ -249,16 +258,24 @@ Set by the install: `notifications.email` (an SMTP server) and `notifications.we
 
 ### Cluster policies
 
-`/admin/policies`. The cluster's admission policies, which the console writes and the cluster enforces. The cluster refuses any step these don't allow, whatever the console says:
+`/admin/policies`. The cluster's admission policies. The cluster refuses any step these don't allow, whatever the console says.
+
+**Written by the console** lists the ones the console writes, with the code a step it stops fails with and when each was last written:
 
 | Policy | What it holds |
 | --- | --- |
-| Products, and the identities and secrets each may use | Which ServiceAccount each product runs as, and each team's secrets (`IDENTITY_NOT_ALLOWED`) |
-| Where images may come from | [Image sources](#image-sources) (`IMAGE_NOT_ALLOWED`) |
+| Products, and the identities and secrets each may use | Which ServiceAccount each product runs as, and which of its team's Secrets a step may mount (`IDENTITY_NOT_ALLOWED`) |
 | Images that failed their scan | [Image scans](#image-scans) (`IMAGE_SCAN_FAILED`) |
-| What each team's steps may reach in the cluster | Each team namespace's network policies |
+| Registry sign-in for each team | The pull secret each team namespace uses to fetch images from private registries |
+| What each team's steps may reach | Each team namespace's network policies: no other team's Pods, and only the gateway into its API backends |
+| The scheduler's log reading | Lets the kernel's scheduler read its steps' logs in team namespaces, and nothing else |
+| What each team may use together | Each team namespace's quota and per-step memory ceiling: its own, or the install's |
 
-The card shows **In sync**, or how many weren't written, with each one's error. The console rewrites them when products, secrets or image sources change, at startup, and every 5 minutes (the console chart's `policySyncIntervalSeconds`). **Write them again** rewrites them now. Admins are alerted when one has been failing for 10 minutes.
+One this install doesn't have the console keep says **Not used here**. The card shows **In sync**, or how many weren't written, with each one's error. The console rewrites them when products, secrets or image sources change, at startup, and every 5 minutes (the console chart's `policySyncIntervalSeconds`). **Write them again** rewrites them now. Admins are alerted when one has been failing for 10 minutes. Where images may come from ([Image sources](#image-sources), `IMAGE_NOT_ALLOWED`) is written when they're saved.
+
+**Installed with the kernel** lists the admission policies the kernel chart installs, which hold however the console is set: where steps may run (`DISPATCH_REJECTED`), where images may come from (`IMAGE_NOT_ALLOWED`), images pinned (`IMAGE_NOT_PINNED`), catalog images signed when the install requires it (`IMAGE_NOT_SIGNED`), and who may delete a team's namespace. An upgrade changes them, not this page.
+
+**Steps the cluster refused** says how many steps it refused in the last 24 hours, and leads to them in Observe.
 
 ### Audit log copy
 
@@ -266,12 +283,12 @@ The card shows **In sync**, or how many weren't written, with each one's error. 
 
 | Status | Means |
 | --- | --- |
-| **Off** | No copy. Turn it on with `audit.export` in vertra.yaml (gcp, aws), or the console chart's `audit.export.bucket` |
+| **Off** | No copy: the log is only in the console's database, and nothing checks its chain. Turn it on with `audit.export` in vertra.yaml (gcp, aws), or the console chart's `audit.export.bucket` |
 | **Intact** | The chain held, and the copies match the database |
 | **Not copying** | The last copy failed. The reason is shown |
 | **Chain broken** | An entry was changed, removed or added after it was written. Nothing from there on is copied |
 | **Changed since copied** | An entry differs from its copy in the bucket |
 
-It also shows **Copied to**, **Last copy**, how many entries are **Waiting**, when the **Chain checked**, and how far it's **Compared with the copy**. **Read the audit log in Observe →** opens the log itself.
+It also shows how many entries are copied and how many are waiting for the next copy, **Copied to**, **Last copy**, when the **Chain checked**, and how far it's **Compared with the copy**. **Read the audit log in Observe →** opens the log itself.
 
 Set by the install: `audit.export`, `audit.keepDays` and `audit.lock` in vertra.yaml. `audit.lock` makes the bucket's retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it. See [operations](operations.md#the-audit-logs-copy).
