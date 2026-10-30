@@ -30,7 +30,9 @@ func TestStatsAreWhatTheStepsDid(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := res.Msg
-	if len(s.Hours) < 24 || s.Hours[len(s.Hours)-1].Started < 2 {
+	// Both attempts started in the last 30 seconds: in the newest hour, or
+	// across the turn of an hour, the one before it too.
+	if n := len(s.Hours); n < 24 || s.Hours[n-1].Started+s.Hours[n-2].Started < 2 {
 		t.Errorf("hours = %v", s.Hours)
 	}
 	var boom *kernelv1.FailureCount
