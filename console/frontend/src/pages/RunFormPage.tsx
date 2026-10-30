@@ -102,6 +102,13 @@ function RunForm({ runnable, from, schedule }: { runnable: Runnable; from: RunFr
   const [running, setRunning] = useState(false);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
+  /** Enter: runs it, or, editing a schedule, saves its inputs. */
+  async function submit(event: FormEvent): Promise<void> {
+    if (!schedule) return run(event);
+    event.preventDefault();
+    return saveToSchedule();
+  }
+
   /** Saves the form's inputs to the schedule being edited, then back to its team's schedules. */
   async function saveToSchedule(): Promise<void> {
     if (!schedule) return;
@@ -211,11 +218,7 @@ function RunForm({ runnable, from, schedule }: { runnable: Runnable; from: RunFr
   const steps = runnable.actions.map(stepOf);
   return (
     <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start" }}>
-      <Card component="form" noValidate onSubmit={(event: FormEvent) => {
-          if (!schedule) return void run(event);
-          event.preventDefault();
-          void saveToSchedule();
-        }} sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Card component="form" noValidate onSubmit={(event: FormEvent) => void submit(event)} sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2.5 }}>
         <Typography variant="h6" component="h2">
           Inputs
         </Typography>
@@ -279,24 +282,24 @@ function RunForm({ runnable, from, schedule }: { runnable: Runnable; from: RunFr
             </Typography>
           </Box>
         ) : (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-          <Button type="submit" variant="contained" size="large" disabled={running}>
-            {running ? "Starting…" : "Run"}
-          </Button>
-          {runnable.previewable && (
-            <Button variant="outlined" size="large" disabled={previewing || running} onClick={() => void preview()}>
-              {previewing ? "Asking…" : "Preview"}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+            <Button type="submit" variant="contained" size="large" disabled={running}>
+              {running ? "Starting…" : "Run"}
             </Button>
-          )}
-          {scheduleTeams.length > 0 && (
-            <Button size="large" onClick={() => { setScheduling(true); }}>
-              Schedule…
-            </Button>
-          )}
-          <Typography variant="body2" color="text.secondary">
-            Checked against its schema before anything runs.{runnable.previewable && " Preview says what it would change, first."}
-          </Typography>
-        </Box>
+            {runnable.previewable && (
+              <Button variant="outlined" size="large" disabled={previewing || running} onClick={() => void preview()}>
+                {previewing ? "Asking…" : "Preview"}
+              </Button>
+            )}
+            {scheduleTeams.length > 0 && (
+              <Button size="large" onClick={() => { setScheduling(true); }}>
+                Schedule…
+              </Button>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              Checked against its schema before anything runs.{runnable.previewable && " Preview says what it would change, first."}
+            </Typography>
+          </Box>
         )}
         {scheduling && (
           <ScheduleDialog open onClose={() => { setScheduling(false); }} runnable={runnable} teams={scheduleTeams} parameters={() => checkedParameters(false)} />
