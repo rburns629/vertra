@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -160,6 +160,12 @@ export function ExecutionsListPage() {
   const [query, setQuery] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  // A week tile was pressed: the table shows that state over the week's runs
+  // (those the tiles count), not over the pages loaded.
+  const [fromTile, setFromTile] = useState(false);
+  const [weekFailed, setWeekFailed] = useState(false);
+  // Each new filter's number: a Load more for an older one is dropped.
+  const listing = useRef(0);
   const [kindFilter, setKindFilter] = useState<Kind | "">("");
   const [allTeams, setAllTeams] = useState<string[]>([]);
   const [retentionDays, setRetentionDays] = useState<number | null>(null);
@@ -173,10 +179,14 @@ export function ExecutionsListPage() {
   // Whose, name and team are filtered on the server; a new filter starts over.
   useEffect(() => {
     let cancelled = false;
+    listing.current += 1;
     setExecutions(null);
+    setNextCursor(null);
+    setLoadingMore(false);
     listExecutions({ limit: PAGE_SIZE, search: query, team: teamFilter, mine: whose === "mine" })
       .then((page) => {
         if (cancelled) return;
+        setError(null);
         setExecutions(page.executions);
         setNextCursor(page.nextCursor);
         setRetentionDays(page.runRetentionDays);
@@ -191,9 +201,10 @@ export function ExecutionsListPage() {
   useEffect(() => {
     let cancelled = false;
     setWeek(null);
+    setWeekFailed(false);
     listExecutions({ limit: WEEK_LIMIT, since: new Date(now - WEEK_MS).toISOString(), team: teamFilter, mine: whose === "mine" })
       .then((page) => { if (!cancelled) setWeek(page.executions); })
-      .catch(() => { if (!cancelled) setWeek([]); }); // Display only: the list says if runs can't load.
+      .catch(() => { if (!cancelled) setWeekFailed(true); }); // The tiles say — ; the list says if runs can't load.
     return () => { cancelled = true; };
   }, [now, teamFilter, whose]);
 
@@ -220,26 +231,31 @@ export function ExecutionsListPage() {
 
   async function loadMore(): Promise<void> {
     if (!nextCursor) return;
+    const mine = listing.current;
     setLoadingMore(true);
     try {
       const page = await listExecutions({ limit: PAGE_SIZE, cursor: nextCursor, search: query, team: teamFilter, mine: whose === "mine" });
+      if (mine !== listing.current) return; // the filters changed meanwhile
       setExecutions((loaded) => [...(loaded ?? []), ...page.executions]);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't load more runs.");
+      if (mine === listing.current) setError(err instanceof ApiError ? err.message : "Couldn't load more runs.");
     } finally {
-      setLoadingMore(false);
+      if (mine === listing.current) setLoadingMore(false);
     }
   }
 
   // State comes from kernel-api per page, so it's filtered here, over what's loaded; kind too.
   const filtered = useMemo(() => {
-    if (!executions) return null;
-    return executions.filter((e) => (!statusFilter || e.state === statusFilter) && (!kindFilter || kindOf(e) === kindFilter));
-  }, [executions, statusFilter, kindFilter]);
+    // A tile's state, over the week the tiles count (its search applied here: the week's list isn't searched).
+    const source = fromTile && week ? week.filter((e) => !query || e.name.toLowerCase().includes(query.toLowerCase())) : executions;
+    if (!source) return null;
+    return source.filter((e) => (!statusFilter || e.state === statusFilter) && (!kindFilter || kindOf(e) === kindFilter));
+  }, [executions, week, fromTile, query, statusFilter, kindFilter]);
 
   const tiles = useMemo(() => {
-    if (!week) return null;
+    // No week, or no run's state known (kernel-api didn't answer): no numbers, rather than zeros.
+    if (!week || (week.length > 0 && week.every((e) => !e.state))) return null;
     const count = (state: string) => week.filter((e) => e.state === state).length;
     const running = week.filter((e) => e.state === "RUNNING");
     const longest = running.at(-1); // Newest first: the last started longest ago.
@@ -264,7 +280,12 @@ export function ExecutionsListPage() {
   const toApprove = approvals?.length ?? 0;
   // Yours is "you"; anyone else's by their email.
   const byWhom = (e: ExecutionSummary) => (!e.submittedBy ? "a deleted account" : e.submittedBy === user?.id ? "you" : e.submittedByEmail || "someone else");
-  const toggleState = (state: string) => { setStatusFilter((current) => (current === state ? "" : state)); };
+  const toggleState = (state: string) => {
+    const off = statusFilter === state && fromTile;
+    setStatusFilter(off ? "" : state);
+    setFromTile(!off);
+  };
+  const unknown = tiles === null && (weekFailed || week !== null) ? "—" : "…";
 
   const columns: DataTableColumn<ExecutionSummary>[] = [
     {
@@ -379,7 +400,7 @@ export function ExecutionsListPage() {
           <QuickTiles label="This week at a glance">
             <QuickTile
               label="Running"
-              value={tiles?.running ?? "…"}
+              value={tiles?.running ?? unknown}
               note={tiles?.runningNote}
               dot={theme.palette.primary.main}
               pressed={statusFilter === "RUNNING"}
@@ -387,15 +408,15 @@ export function ExecutionsListPage() {
             />
             <QuickTile
               label="Waiting for approval"
-              value={tiles?.waiting ?? "…"}
-              note={approvals ? (toApprove > 0 ? `${String(toApprove)} you can decide` : "none you can decide") : undefined}
+              value={tiles?.waiting ?? unknown}
+              note={approvals ? (toApprove > 0 ? `${String(toApprove)} ${toApprove === 1 ? "step" : "steps"} you can decide` : "no step you can decide") : undefined}
               dot={statusFill(theme, "AWAITING_APPROVAL")}
               pressed={statusFilter === "AWAITING_APPROVAL"}
               onClick={() => { toggleState("AWAITING_APPROVAL"); }}
             />
             <QuickTile
               label="Failed this week"
-              value={tiles?.failed ?? "…"}
+              value={tiles?.failed ?? unknown}
               note={tiles && `of ${String(tiles.finished)} finished${tiles.more ? ", in the latest 1000" : ""}`}
               dot={theme.palette.error.main}
               pressed={statusFilter === "FAILED"}
@@ -403,7 +424,7 @@ export function ExecutionsListPage() {
             />
             <QuickTile
               label="Succeeded this week"
-              value={tiles?.succeeded ?? "…"}
+              value={tiles?.succeeded ?? unknown}
               note={tiles && (tiles.finished > 0 ? `${String(Math.round((tiles.succeeded / tiles.finished) * 100))}% of those finished` : "none finished yet")}
               dot={theme.palette.success.main}
               pressed={statusFilter === "SUCCEEDED"}
@@ -436,7 +457,7 @@ export function ExecutionsListPage() {
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 150, ...fieldSx }}>
               <InputLabel id="status-filter-label">State</InputLabel>
-              <Select labelId="status-filter-label" label="State" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); }}>
+              <Select labelId="status-filter-label" label="State" value={statusFilter} onChange={(event) => { setFromTile(false); setStatusFilter(event.target.value); }}>
                 <MenuItem value="">Any state</MenuItem>
                 {STATUS_OPTIONS.map((status) => (
                   <MenuItem key={status} value={status}>
@@ -498,7 +519,7 @@ export function ExecutionsListPage() {
                 {retentionDays !== null &&
                   `Runs are kept ${retentionDays > 0 ? `${String(retentionDays)} days` : "with no time limit"}${environment?.label ? ` on ${environment.label}` : ""}. What they made is kept until it's deleted.`}
               </Typography>
-              {nextCursor && (
+              {nextCursor && !fromTile && (
                 <Button variant="outlined" onClick={() => void loadMore()} disabled={loadingMore}>
                   {loadingMore ? "Loading…" : "Load more"}
                 </Button>

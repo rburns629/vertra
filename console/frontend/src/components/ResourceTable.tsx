@@ -70,9 +70,10 @@ export function ResourceLinks({ resource }: { resource: MadeResource }) {
  * Deleting what runs made: a confirm, then the product's cleanup as one run,
  * which opens. Something others still use isn't deleted on your say: asking
  * sends it to an admin (decision 25), and says so. `ask` takes one or several
- * (one team's); `ui` is the dialog and what happened.
+ * (one team's); `ui` is the dialog and what happened; `onAsked`, called once
+ * an admin has been asked, so a list of those waiting can show it.
  */
-export function useResourceDelete(): { ask: (resources: MadeResource[]) => void; ui: ReactNode } {
+export function useResourceDelete(onAsked?: () => void): { ask: (resources: MadeResource[]) => void; ui: ReactNode } {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState<MadeResource[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -86,8 +87,10 @@ export function useResourceDelete(): { ask: (resources: MadeResource[]) => void;
     try {
       navigate(`/runs/${await deleteResources(resources.map((r) => r.id))}`);
     } catch (err) {
-      if (err instanceof ApiError && err.code === "HAS_DEPENDENTS") setAsked(err.message);
-      else setError(err instanceof ApiError ? err.message : "Couldn't delete it.");
+      if (err instanceof ApiError && err.code === "HAS_DEPENDENTS") {
+        setAsked(err.message);
+        onAsked?.();
+      } else setError(err instanceof ApiError ? err.message : "Couldn't delete it.");
       setBusy(false);
       setConfirming(null);
     }
@@ -152,6 +155,7 @@ export function ResourceTable({
   waiting = new Set<string>(),
   selection,
   userEmail,
+  onAsked,
 }: {
   resources: MadeResource[] | null;
   showRun?: boolean;
@@ -160,8 +164,10 @@ export function ResourceTable({
   selection?: { selected: Set<string>; onChange: (next: Set<string>) => void };
   /** Whose "just you" a resource made for one person is. */
   userEmail?: string;
+  /** A delete was sent to an admin (it had dependents). */
+  onAsked?: () => void;
 }) {
-  const remove = useResourceDelete();
+  const remove = useResourceDelete(onAsked);
 
   const toggle = (id: string) => {
     if (!selection) return;

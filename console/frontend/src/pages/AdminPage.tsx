@@ -27,7 +27,7 @@ import { AuditCopyCard, CatalogSection, OverviewTab, PoliciesCard } from "./admi
 import { PeopleTab } from "./admin/PeopleTab";
 import { SsoCard } from "./admin/SsoCard";
 import { AdminCard, Dot, SrOnly, TONE_WORD } from "./admin/parts";
-import { sectionStates, useAdminSummary, type AdminSummary, type State } from "./admin/summary";
+import { AdminChanged, sectionStates, useAdminSummary, type AdminSummary, type State } from "./admin/summary";
 
 /** The guide that explains every section (console/docs/16-admin-settings.md). */
 const GUIDE = "16-admin-settings";
@@ -428,7 +428,6 @@ export function AdminPage() {
   const { section: id } = useParams();
   const [params] = useSearchParams();
   const current = id ?? "overview";
-  const summary = useAdminSummary(current);
 
   if (!user?.isAdmin) {
     return <ErrorPage title="Admins only" message="This page holds the install's settings, for its admins. Ask one if you need something changed." />;
@@ -437,8 +436,16 @@ export function AdminPage() {
   if (!id && tab && SECTIONS.some((s) => s.id === tab)) return <Navigate to={`/admin/${tab}`} replace />;
   const section = SECTIONS.find((s) => s.id === current);
   if (!section) return <Navigate to="/admin" replace />;
+  return <AdminSections section={section} onSection={(next) => { navigate(`/admin/${next}`); }} />;
+}
+
+/** The sections, for an admin: the summary is read once here (not for anyone
+ * else), and again when a section says it changed something. */
+function AdminSections({ section, onSection }: { section: Section; onSection: (id: string) => void }) {
+  const { summary, reload } = useAdminSummary();
   const states = summary ? sectionStates(summary) : {};
   return (
+    <AdminChanged.Provider value={reload}>
     <Box>
       <PageHeader
         title="Admin"
@@ -452,7 +459,7 @@ export function AdminPage() {
           size="small"
           label="Section"
           value={section.id}
-          onChange={(e) => { navigate(`/admin/${e.target.value}`); }}
+          onChange={(e) => { onSection(e.target.value); }}
           sx={{ display: { xs: "flex", md: "none" } }}
         >
           {GROUPS.flatMap((g) => [
@@ -473,5 +480,6 @@ export function AdminPage() {
         </Box>
       </Box>
     </Box>
+    </AdminChanged.Provider>
   );
 }

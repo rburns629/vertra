@@ -420,7 +420,10 @@ function Shell() {
               </Box>
             }
           >
-            <PageErrorBoundary key={location.pathname}>
+            {/* A new page starts afresh (its state and any error), except moving
+                within help (its open contents, loaded guides) or Admin (its summary,
+                read once); an error still clears on any move. */}
+            <PageErrorBoundary key={KEEPS_STATE.find((p) => location.pathname === p || location.pathname.startsWith(`${p}/`)) ?? location.pathname} resetOn={location.pathname}>
               <Outlet />
             </PageErrorBoundary>
           </Suspense>
@@ -431,6 +434,9 @@ function Shell() {
 }
 
 /** The shell, with Ask Vertra for every page in it. */
+/** Pages that keep their state moving between their own sub-pages. */
+const KEEPS_STATE = ["/docs", "/admin"];
+
 export function AppLayout() {
   return (
     <AskProvider>

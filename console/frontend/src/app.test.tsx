@@ -279,6 +279,22 @@ describe("runs", () => {
     expect(screen.getByText("kafka topics backfill")).toBeTruthy();
   });
 
+  it("shows a pressed tile's runs from the week it counts, and no numbers when states are unknown", async () => {
+    const OLDER = { ...RUN, executionId: "3b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a14", name: "monday's failed backfill", state: "EXECUTION_STATE_FAILED" };
+    // The first page holds only the newest run; the week (asked with since) holds the failure too.
+    await renderAt("/runs", MEMBER, {
+      "ExecutionService/ListExecutions": (request: Record<string, unknown>) => ({ executions: request["since"] ? [RUN, OLDER] : [RUN] }),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^Failed this week 1/ }));
+    expect(await screen.findByText("monday's failed backfill")).toBeTruthy();
+    expect(screen.queryByText("orders-api first deploy")).toBeNull();
+    cleanup();
+
+    // kernel-api didn't say any run's state: the tiles don't claim zero.
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, state: undefined }] } });
+    expect(await screen.findByRole("button", { name: /^Failed this week —/ })).toBeTruthy();
+  });
+
   it("lists every one of your teams' schedules together", async () => {
     const asked: string[] = [];
     await renderAt("/runs?view=schedules", { ...MEMBER, teamNames: ["payments", "ml"] }, {
@@ -310,6 +326,30 @@ describe("what runs made", () => {
     firstReportedAt: "2026-10-21T16:21:00Z",
     state,
     canDelete: true,
+  });
+
+  it("lists a delete sent to an admin at once, and picks at most 50 to delete together", async () => {
+    let requested = 0;
+    const many = Array.from({ length: 51 }, (_, i) => made(`a1b2c3d4-0000-4000-8000-${String(i).padStart(12, "0")}`, `bucket-${String(i)}`));
+    await renderAt("/runs/made", MEMBER, {
+      "ResourceService/ListResources": { resources: many },
+      "ResourceService/ListDeleteRequests": () => {
+        requested++;
+        return { requests: [] };
+      },
+      "ResourceService/DeleteResources": () => refused(409, "failed_precondition", "It's used: an admin has been asked.", "HAS_DEPENDENTS"),
+    });
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select bucket-0" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete 1…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("It's used: an admin has been asked.")).toBeTruthy();
+    await waitFor(() => { expect(requested).toBe(2); }); // loaded again once asked
+    await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
+
+    // Every row's box at once (looking each up by name is slow on 51 rows).
+    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if (!box.checked && (box.getAttribute("aria-label") ?? "").startsWith("Select bucket-")) fireEvent.click(box);
+    expect(screen.getByText(/At most 50 at once: unselect 1/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete 51…" })).toHaveProperty("disabled", true);
   });
 
   it("counts by state, and deletes the ones picked in one cleanup run", async () => {
@@ -436,6 +476,22 @@ describe("a run", () => {
     expect(screen.getByRole("heading", { name: /^Waiting for an admin/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve and delete" }));
     await waitFor(() => { expect(decided).toEqual([{ id: "d1d1d1d1-0000-4000-8000-000000000001", approve: true }]); });
+  });
+
+  it("asks an admin when something else still uses what Delete all would delete", async () => {
+    const outside = { id: "c1c1c1c1-0000-4000-8000-0000000000c1", type: "gcp/cloud-run-service", externalId: "shop-api", executionId: "other", input: "projectId" };
+    const project = { id: "a1b2c3d4-0000-4000-8000-000000000001", type: "gcp/project", externalId: "web-prod", name: "web-prod", product: "gcp-platform-project-create", productTeam: "gcp-platform", ownerTeam: "azure-apps", executionId: FAILED_RUN.executionId, taskId: "project", firstReportedAt: "2026-10-21T16:21:00Z", state: "exists", canDelete: true, dependents: [outside] };
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, {
+      "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }],
+      "ResourceService/ListResources": { resources: [project, { ...project, id: "a1b2c3d4-0000-4000-8000-000000000002", externalId: "web-db", name: "web-db", dependents: [] }] },
+      "ResourceService/DeleteRunResources": () => refused(409, "failed_precondition", "Other resources use these: an admin has been asked.", "HAS_DEPENDENTS"),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Delete all 2…" }));
+    expect(await screen.findByText(/still use some of these, so they're deleted only if an admin approves/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ask an admin" }));
+    // Said as what happened, not as an error.
+    const said = await screen.findByText("Other resources use these: an admin has been asked.");
+    expect(said.closest(".MuiAlert-colorInfo")).toBeTruthy();
   });
 
   it("shows what it made, and deletes it all as a cleanup run", async () => {
@@ -623,6 +679,55 @@ describe("the docs", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     expect(await screen.findByText("Its step ran out of memory.")).toBeTruthy();
     expect(asked).toBe(1);
+  });
+
+  it("never drops a question asked while one is being answered: it waits in the box", async () => {
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      // The first answer never comes, so it's busy.
+      "ChatService/AskStream": () => new Promise(() => {}),
+    });
+    const box = await screen.findByRole("textbox", { name: "Ask Vertra" });
+    fireEvent.change(box, { target: { value: "Why did my run fail?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    const question = (await screen.findByLabelText("Your question")) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "And what should I do?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask", hidden: true }));
+    await waitFor(() => { expect(question.value).toBe("And what should I do?"); });
+  });
+
+  it("opens the console's own pages from an answer in the console, and others in a new tab", async () => {
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "ChatService/AskStream": () => [{ answer: { text: "See [your runs](/runs) or [the status page](https://status.example.com)." } }],
+    });
+    fireEvent.change(await screen.findByRole("textbox", { name: "Ask Vertra" }), { target: { value: "Where are my runs?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    const external = await screen.findByRole("link", { name: "the status page" });
+    expect(external.getAttribute("target")).toBe("_blank");
+    expect(external.getAttribute("rel")).toContain("noopener");
+    fireEvent.click(screen.getByRole("link", { name: "your runs" }));
+    // The Runs page, in the console (no reload), with the panel closed for it.
+    expect(await screen.findByRole("heading", { level: 1, name: "Runs" })).toBeTruthy();
+    await waitFor(() => { expect(screen.queryByRole("dialog", { name: "Ask Vertra" })).toBeNull(); });
+  });
+
+  it("keeps the help's contents loaded moving from one guide to another", async () => {
+    const titles: Record<string, string> = { "01-getting-started": "Try Vertra end to end" };
+    await renderAt("/docs/01-getting-started", MEMBER, {
+      ...DOCS,
+      "GuideService/GetGuide": (request: Record<string, unknown>) => ({ markdown: `# ${titles[String(request["id"])] ?? "?"}\n\nIts text.` }),
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Try Vertra end to end" })).toBeTruthy();
+    const listed = calls.filter((c) => c === "GuideService/ListGuides").length;
+    // Any link to another guide (the side contents, or Next).
+    const other = screen.getAllByRole("link").find((l) => (l.getAttribute("href") ?? "").startsWith("/docs/0") && !(l.getAttribute("href") ?? "").startsWith("/docs/01-"));
+    expect(other).toBeTruthy();
+    const guides = calls.filter((c) => c === "GuideService/GetGuide").length;
+    fireEvent.click(other!);
+    await waitFor(() => { expect(calls.filter((c) => c === "GuideService/GetGuide").length).toBe(guides + 1); });
+    // The new guide is fetched; the list of guides isn't fetched again.
+    expect(calls.filter((c) => c === "GuideService/ListGuides").length).toBe(listed);
   });
 
   it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {
@@ -878,9 +983,16 @@ describe("an API", () => {
         requests: "120",
         forwarded: "100",
         stopped: "20",
-        endpoints: [{ endpoint: "GET /orders/{id}", requests: "4321", backend5xx: "7" }],
+        endpoints: [
+          { endpoint: "GET /orders/{id}", requests: "4321", backend5xx: "7" },
+          // Unauthenticated probes on a path the spec never had.
+          { endpoint: "GET /wp-login.php", requests: "5000" },
+        ],
         blocked: [{ request: "DELETE /orders/x", count: "9", teams: ["growth"] }],
-        teams: [{ team: "growth", requests: "120", peakPerMinute: "57", limitPerMinute: 60 }],
+        teams: [
+          { team: "growth", requests: "120", peakPerMinute: "57", limitPerMinute: 60 },
+          { team: "", requests: "5000", peakPerMinute: "900" },
+        ],
       },
       "ObserveService/SearchLogs": { lines: [{ team: "payments", app: "orders-api", level: "error", line: "ledger answered 503" }], searchDays: 30 },
       "ApiService/PauseApi": (request: Record<string, unknown>) => {
@@ -894,9 +1006,15 @@ describe("an API", () => {
     expect(await screen.findByText("4,321")).toBeTruthy();
     expect(screen.getByText("DELETE /orders/x")).toBeTruthy();
     expect(screen.getByText("busiest minute 57 of 60")).toBeTruthy();
+    // Traffic to paths not in the spec has its row; refusals before a team was known aren't called "not signed in".
+    expect(screen.getByText("GET /wp-login.php")).toBeTruthy();
+    expect(screen.getByText("not in its current spec")).toBeTruthy();
+    expect(screen.getByText("(no calling team)")).toBeTruthy();
+    expect(screen.queryByText(/not signed in, so no limit/)).toBeNull();
     expect(await screen.findByText("ledger answered 503")).toBeTruthy();
     expect(calls).toContain("ObserveService/SearchLogs");
-    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments");
+    // Over the same day the card shows.
+    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments&hours=24");
 
     fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
     fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
@@ -1211,7 +1329,7 @@ describe("observe", () => {
 
   it("opens the logs on an API's backends when linked from one, and says who sees which lines", async () => {
     const searched: Record<string, unknown>[] = [];
-    await renderAt("/observe?tab=logs&from=api&team=payments", MEMBER, {
+    await renderAt("/observe?tab=logs&from=api&team=payments&hours=24", MEMBER, {
       "ObserveService/SearchLogs": (request: Record<string, unknown>) => {
         searched.push(request);
         return { lines: [{ team: "payments", app: "orders-api", level: "warn", line: "ledger call slow" }], searchDays: 30 };
@@ -1219,6 +1337,8 @@ describe("observe", () => {
     });
     expect(await screen.findByText("ledger call slow")).toBeTruthy();
     expect(searched[0]).toMatchObject({ source: "api", team: "payments" });
+    // Over the last day, as the link said.
+    expect(Math.round((Date.now() - Date.parse(String(searched[0]?.["since"]))) / 3_600_000)).toBe(24);
     expect(screen.getByRole("button", { name: "API backends" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/1 line/)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Who sees which lines" })).toBeTruthy();
@@ -1236,13 +1356,32 @@ describe("observe", () => {
       },
     });
     expect(await screen.findByText("Teams from the directory: not yet")).toBeTruthy();
-    expect(screen.getByText("1 by the cluster · 2 by the gateway")).toBeTruthy();
+    // Calls, not rows: the gateway's two rows are 2 and 3 calls.
+    expect(screen.getByText("1 by the cluster · 5 by the gateway")).toBeTruthy();
     const refused = screen.getByRole("region", { name: "Refused, last 7 days" });
     expect(within(refused).getAllByText("NOT_IN_SPEC").length).toBeGreaterThan(1);
   });
 });
 
 describe("home", () => {
+  it("lists only what was made for you or your teams, and picks up your own draft", async () => {
+    const made = (id: string, name: string, ownerEmail: string) => ({ id, type: "gcp/bucket", externalId: name, name, product: "storage-bucket", productTeam: "storage", ownerEmail, executionId: "r1", taskId: "t", firstReportedAt: "2026-10-21T16:21:00Z", state: "exists" });
+    await renderAt("/", MEMBER, {
+      "ResourceService/ListResources": { resources: [made("a1", "my-bucket", MEMBER.email), made("a2", "bobs-bucket", "bob@acme.com")] },
+      "DraftService/ListDrafts": {
+        drafts: [
+          { team: "azure-apps", name: "theirs", version: "3", body: { steps: [] }, updatedBy: "bob@acme.com", updatedAt: "2026-10-30T10:00:00Z" },
+          { team: "azure-apps", name: "mine", version: "1", body: { steps: [] }, updatedBy: MEMBER.email, updatedAt: "2026-10-29T10:00:00Z" },
+        ],
+      },
+    });
+    expect(await screen.findByText("my-bucket")).toBeTruthy();
+    expect(screen.queryByText("bobs-bucket")).toBeNull();
+    const pickUp = await screen.findByRole("link", { name: /mine/ });
+    expect(pickUp.getAttribute("href")).toContain("draft=azure-apps%2Fmine");
+    expect(screen.queryByRole("link", { name: /theirs/ })).toBeNull();
+  });
+
   it("shows your runs that are going, and what waits for you", async () => {
     await renderAt("/", MEMBER, {
       "ExecutionService/ListExecutions": {
@@ -1432,6 +1571,34 @@ describe("pages that can't be shown", () => {
   it("keep Admin to admins", async () => {
     await renderAt("/admin", MEMBER);
     expect(await screen.findByRole("heading", { name: "Admins only" })).toBeTruthy();
+  });
+});
+
+describe("the Admin page's summary", () => {
+  it("is read once, for admins only, and says which parts it couldn't read", async () => {
+    await renderAt("/admin", MEMBER);
+    expect(await screen.findByText(/Admins only/)).toBeTruthy();
+    expect(calls).not.toContain("ObserveService/GetSecurity");
+    expect(calls).not.toContain("AdminService/GetInstall");
+    cleanup();
+    calls.length = 0;
+
+    await renderAt("/admin", ADMIN, {
+      "UserService/ListUsers": refused(503, "unavailable", "Down."),
+      "TokenService/ListAutomationTokens": { tokens: [{ id: "k1", label: "nightly", expiresAt: "2020-01-01T00:00:00Z" }] },
+    });
+    const needs = await screen.findByRole("region", { name: "Needs you" });
+    // Not "every part reads as it should": People couldn't be read.
+    expect(await within(needs).findByText(/Couldn't read People/)).toBeTruthy();
+    expect(within(needs).queryByText(/every part reads as it should/)).toBeNull();
+    // An expired token isn't a working one.
+    const parts = screen.getByRole("region", { name: "Every part, and where it's set" });
+    expect(within(parts).getByText("None working: every one has expired.")).toBeTruthy();
+    // Moving between sections doesn't read every part again.
+    const read = calls.filter((c) => c === "ObserveService/GetSecurity").length;
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Admin sections" })).getByRole("link", { name: /^Image sources/ }));
+    expect((await screen.findAllByRole("heading", { name: /Image sources/ })).length).toBeGreaterThan(0);
+    expect(calls.filter((c) => c === "ObserveService/GetSecurity").length).toBe(read);
   });
 });
 
@@ -1652,6 +1819,36 @@ describe("a team's members", () => {
     // The role a new person gets: Member until Maintainer is chosen.
     fireEvent.click(screen.getByRole("button", { name: /^Maintainer/ }));
     expect(screen.getByRole("button", { name: /^Maintainer/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("offer no role change or removal for someone whose groups decide it", async () => {
+    await renderAt("/teams/payments", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TeamService/ListMembers": {
+        members: [
+          { id: "u1", email: "ana@acme.com", hasPassword: true, role: "TEAM_ROLE_MAINTAINER" },
+          { id: "u3", email: "sam@acme.com", usesSso: true, followsGroups: true, role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "2 people" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "ana@acme.com's role" })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: "sam@acme.com's role" })).toBeNull();
+    expect(screen.getByText("Set by their groups")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
+  });
+});
+
+describe("a team's bots", () => {
+  it("call a bot whose only token has expired not active", async () => {
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": {
+        bots: [{ id: "b1", email: "payments-ci@bots.vertra.local", tokens: [{ tokenId: "k1", label: "ci", expiresAt: "2020-01-01T00:00:00Z" }] }],
+      },
+    });
+    expect(await screen.findByText(/No working token/)).toBeTruthy();
+    expect(screen.queryByText("Active")).toBeNull();
   });
 });
 
@@ -1968,6 +2165,12 @@ describe("Compose's drafts", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Deploy/, pressed: true })).toBeTruthy();
+  });
+
+  it("says beside Run now why it can't run yet", async () => {
+    await renderAt("/catalog/compose", MEMBER);
+    expect(await screen.findByText("Add a step to run it.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Run now" }).getAttribute("aria-describedby")).toBe("run-why");
   });
 
   it("drops wiring started for one draft when another is opened before it answers", async () => {

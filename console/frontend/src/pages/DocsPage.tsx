@@ -592,7 +592,7 @@ function HelpHome({ categories, served }: { categories: Category[]; served: Read
             The{" "}
             <HelpIcon sx={{ fontSize: 16, verticalAlign: "-0.2em", color: "primary.main" }} aria-label="question mark" role="img" aria-hidden={false} /> link
             beside each page&apos;s title opens the guide for that page, at the right section.
-            {typeof ask.model === "string" && " Ask Vertra, at the foot of the side menu, answers from these guides and your catalog, and says which sections it used."}
+            {typeof ask.model === "string" && " Ask Vertra (in the side menu, or the top bar on a phone) answers from these guides and your catalog, and says which sections it used."}
           </Box>
         </Card>
         {deeper.length > 0 && (

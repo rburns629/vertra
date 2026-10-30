@@ -346,8 +346,11 @@ type Member struct {
 	Role    TeamRole               `protobuf:"varint,6,opt,name=role,proto3,enum=vertra.console.v1.TeamRole" json:"role,omitempty"`
 	// How it signs in (a bot has neither): what requiring single sign-on
 	// would change for it.
-	HasPassword   bool `protobuf:"varint,7,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
-	UsesSso       bool `protobuf:"varint,8,opt,name=uses_sso,json=usesSso,proto3" json:"uses_sso,omitempty"`
+	HasPassword bool `protobuf:"varint,7,opt,name=has_password,json=hasPassword,proto3" json:"has_password,omitempty"`
+	UsesSso     bool `protobuf:"varint,8,opt,name=uses_sso,json=usesSso,proto3" json:"uses_sso,omitempty"`
+	// Their membership follows their single sign-on groups (the team is
+	// mapped to one): their role isn't changed, nor are they removed, here.
+	FollowsGroups bool `protobuf:"varint,9,opt,name=follows_groups,json=followsGroups,proto3" json:"follows_groups,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -434,6 +437,13 @@ func (x *Member) GetHasPassword() bool {
 func (x *Member) GetUsesSso() bool {
 	if x != nil {
 		return x.UsesSso
+	}
+	return false
+}
+
+func (x *Member) GetFollowsGroups() bool {
+	if x != nil {
+		return x.FollowsGroups
 	}
 	return false
 }
@@ -2337,7 +2347,7 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\x12\x12\n" +
 	"\x04pods\x18\x03 \x01(\tR\x04pods\x12\x1f\n" +
 	"\vstep_memory\x18\x04 \x01(\tR\n" +
-	"stepMemory\"\x86\x02\n" +
+	"stepMemory\"\xad\x02\n" +
 	"\x06Member\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x15\n" +
@@ -2346,7 +2356,8 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\badded_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12/\n" +
 	"\x04role\x18\x06 \x01(\x0e2\x1b.vertra.console.v1.TeamRoleR\x04role\x12!\n" +
 	"\fhas_password\x18\a \x01(\bR\vhasPassword\x12\x19\n" +
-	"\buses_sso\x18\b \x01(\bR\ausesSso\"\x12\n" +
+	"\buses_sso\x18\b \x01(\bR\ausesSso\x12%\n" +
+	"\x0efollows_groups\x18\t \x01(\bR\rfollowsGroups\"\x12\n" +
 	"\x10ListTeamsRequest\"B\n" +
 	"\x11ListTeamsResponse\x12-\n" +
 	"\x05teams\x18\x01 \x03(\v2\x17.vertra.console.v1.TeamR\x05teams\"$\n" +

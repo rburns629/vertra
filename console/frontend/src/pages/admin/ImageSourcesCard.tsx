@@ -15,7 +15,7 @@ import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
 import { ApiError, getImagePolicy, updateImagePolicy, type ImagePolicy } from "../../api";
 import { AdminCard, Dot, SrOnly, TONE_WORD, type Tone } from "./parts";
-import { failingInUse, type AdminSummary } from "./summary";
+import { failingInUse, type AdminSummary, useAdminChanged } from "./summary";
 
 /** A whole registry host (every project or user on it), not one path in
  * it. Same rule as ../../src/imagePolicy.ts's isBroadSource. */
@@ -149,6 +149,7 @@ export function ImageSourcesCard({ summary = null }: { summary?: AdminSummary | 
   const broad = [source, ...entries].filter((entry) => entry.trim() !== "" && isBroadSource(entry));
   const changed = policy !== null && (source !== policy.source || additional.join("\n") !== policy.additional.join("\n"));
 
+  const summaryChanged = useAdminChanged();
   async function save(): Promise<void> {
     if (!policy) return;
     setError(null);
@@ -156,6 +157,7 @@ export function ImageSourcesCard({ summary = null }: { summary?: AdminSummary | 
     setSaving(true);
     try {
       show(await updateImagePolicy(source, entries, policy.version));
+      summaryChanged();
       setSuccess("Saved. The cluster enforces the new list for every task from now on.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");

@@ -149,6 +149,7 @@ export function teamService(): ServiceImpl<typeof TeamService> {
           role: toRole[member.role],
           hasPassword: member.hasPassword,
           usesSso: member.usesSso,
+          followsGroups: member.followsGroups,
         })),
       };
     },

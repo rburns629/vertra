@@ -131,7 +131,9 @@ function BotCard({
   onRevoke: (token: { tokenId: string; label: string; email: string }) => void;
 }) {
   const identities = keyless?.identities.filter((i) => i.botId === bot.id) ?? [];
-  const keylessOnly = bot.tokens.length === 0 && identities.length > 0;
+  // Tokens that still sign in: an expired one is listed (as expired) but doesn't count.
+  const working = bot.tokens.filter((t) => !t.expiresAt || new Date(t.expiresAt).getTime() > Date.now()).length;
+  const keylessOnly = working === 0 && identities.length > 0;
   return (
     <Card component="article" sx={{ p: { xs: 2, sm: 2.5 }, display: "flex", flexDirection: "column", gap: 2 }}>
       <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
@@ -149,7 +151,7 @@ function BotCard({
           </Typography>
           <Box sx={{ display: "flex", gap: 0.75, mt: 1, flexWrap: "wrap" }}>
             {bot.ordering ? <Pill tone="warning">Ordering</Pill> : <Pill tone="info">Pipeline</Pill>}
-            {bot.tokens.length > 0 ? (
+            {working > 0 ? (
               <Pill tone="success">Active</Pill>
             ) : keylessOnly ? (
               <Pill tone="success">Keyless</Pill>
@@ -159,7 +161,7 @@ function BotCard({
           </Box>
         </Box>
       </Box>
-      {bot.tokens.length === 0 && !keylessOnly && (
+      {working === 0 && !keylessOnly && (
         <Typography variant="body2" color="text.secondary">
           No working token. Anything still using an old one fails to sign in.
         </Typography>

@@ -12,6 +12,7 @@ import { ApiError, getGateway, setGatewayClosed, type GatewayInfo } from "../../
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Mono } from "../../components/Mono";
 import { when } from "../../time";
+import { useAdminChanged } from "./summary";
 import { AdminCard, Aside, KeyValues, TABLE_SX } from "./parts";
 
 /** Why the gateway stopped a request, as people say it, and what it answered (the gateway's own outcomes). */
@@ -62,6 +63,7 @@ export function GatewayTab() {
   }, []);
   useEffect(load, [load]);
 
+  const changed = useAdminChanged();
   async function toggle(): Promise<void> {
     if (!gateway) return;
     setBusy(true);
@@ -71,8 +73,11 @@ export function GatewayTab() {
       setMessage("");
       setConfirming(false);
       load();
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "That didn't work.");
+      // The dialog closes, so the error shows on the page, not behind it.
+      setConfirming(false);
     } finally {
       setBusy(false);
     }

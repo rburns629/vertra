@@ -207,10 +207,11 @@ export function SecurityTab() {
 
   const refusals = view?.refusals ?? [];
   const shownRefusals = view ? refusals.filter((r) => !source || r.source === source) : null;
-  // How many of each code, among those shown, most first.
+  // How many of each code, among those shown, most first. A gateway row is a
+  // group of `count` calls; a step's or a release's is one.
   const codes = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const r of shownRefusals ?? []) counts.set(r.code, (counts.get(r.code) ?? 0) + 1);
+    for (const r of shownRefusals ?? []) counts.set(r.code, (counts.get(r.code) ?? 0) + r.count);
     return [...counts].sort((a, b) => b[1] - a[1]);
   }, [shownRefusals]);
 
@@ -218,7 +219,8 @@ export function SecurityTab() {
   const notEnforced = view?.checks.filter((c) => c.state !== "enforced") ?? [];
   const failing = view?.images.filter((i) => i.scan === "failed" && !i.acceptedReason) ?? [];
   const accepted = view?.images.filter((i) => i.acceptedReason).length ?? 0;
-  const bySource = (id: string) => refusals.filter((r) => r.source === id).length;
+  const total = (rows: typeof refusals) => rows.reduce((n, r) => n + r.count, 0);
+  const bySource = (id: string) => total(refusals.filter((r) => r.source === id));
   const shown = (n: number) => (view ? n.toLocaleString() : "—");
 
   return (
@@ -238,7 +240,7 @@ export function SecurityTab() {
         />
         <MetricCard
           label="Refused, 7 days"
-          value={shown(refusals.length)}
+          value={shown(total(refusals))}
           note={
             view &&
             (joined(
@@ -297,7 +299,7 @@ export function SecurityTab() {
                       <>
                         {label}{" "}
                         <Box component="span" sx={{ fontWeight: 400, opacity: 0.8 }}>
-                          {view ? (id ? bySource(id) : refusals.length) : ""}
+                          {view ? (id ? bySource(id) : total(refusals)) : ""}
                         </Box>
                       </>
                     }

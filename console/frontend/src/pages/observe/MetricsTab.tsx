@@ -226,7 +226,7 @@ export function MetricsTab() {
       {error && <Alert severity="error">{error}</Alert>}
       <Box component="section" aria-label="Summary" sx={{ display: "grid", gap: 1.75, gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(auto-fit, minmax(200px, 1fr))" } }}>
         <MetricCard label="Waiting to start now" value={shown(view?.ready)} note={view && "ready, not yet running"} />
-        <MetricCard label="Running now" value={shown(view?.running)} note={view && "steps whose Pods are running"} />
+        <MetricCard label="Running now" value={shown(view?.running)} note={view && "steps started, or being started"} />
         <MetricCard
           label="Started, 24 hours"
           value={shown(started)}

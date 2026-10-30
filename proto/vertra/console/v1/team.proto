@@ -155,6 +155,9 @@ message Member {
   // would change for it.
   bool has_password = 7;
   bool uses_sso = 8;
+  // Their membership follows their single sign-on groups (the team is
+  // mapped to one): their role isn't changed, nor are they removed, here.
+  bool follows_groups = 9;
 }
 
 message ListTeamsRequest {}

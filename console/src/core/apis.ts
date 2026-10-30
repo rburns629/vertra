@@ -223,7 +223,9 @@ export async function getApiTraffic(caller: AuthUser | undefined, team: string, 
     }
     endpoints.set(r.endpoint, e);
   }
-  const fallback = api.perMinute["default"] ?? 0;
+  // What the gateway holds a team to without a limit of its own: the API's
+  // default, else the gateway's (as perMinuteFor says it to callers).
+  const fallback = api.perMinute["default"] || config.gateway.defaultPerMinute;
   return {
     requests,
     forwarded,
@@ -247,7 +249,7 @@ export async function getApiTraffic(caller: AuthUser | undefined, team: string, 
         team: name,
         requests: t.requests,
         peakPerMinute: Math.max(0, ...t.minutes.values()),
-        limitPerMinute: name ? (api.perMinute[name] ?? fallback) : 0,
+        limitPerMinute: name ? api.perMinute[name] || fallback : 0,
       }))
       .sort((a, b) => b.requests - a.requests),
   };

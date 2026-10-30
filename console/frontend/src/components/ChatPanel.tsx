@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -61,7 +61,9 @@ function numberCitations(text: string, citations: ChatAnswer["citations"]): stri
   );
 }
 
-function Answer({ turn, onOpenCart }: { turn: Extract<Turn, { role: "assistant" }>; onOpenCart: (c: NonNullable<ChatAnswer["cart"]>) => void }) {
+/** `onLeave`: a link to one of the console's pages is followed, so the panel closes for it. */
+function Answer({ turn, onOpenCart, onLeave }: { turn: Extract<Turn, { role: "assistant" }>; onOpenCart: (c: NonNullable<ChatAnswer["cart"]>) => void; onLeave: () => void }) {
+  const navigate = useNavigate();
   const looked = [...new Set(turn.steps.map((s) => TOOL_NAMES[s.tool] ?? s.tool))];
   // Each answer's sources have their own ids: a conversation has several lists.
   const prefix = useId().replace(/:/g, "");
@@ -69,7 +71,23 @@ function Answer({ turn, onOpenCart }: { turn: Extract<Turn, { role: "assistant" 
     () => ({
       a: ({ href, children }) => {
         const cited = href?.startsWith("#source-") ? href.slice("#source-".length) : null;
-        if (!cited) return <a href={href}>{children}</a>;
+        if (!cited) {
+          // The console's own pages open in it (a reload would lose the conversation);
+          // anything else in a new tab, never in place of the console.
+          // A path on this console: "/" then not another "/" or a "\\" (which browsers read as another host).
+          if (href && /^\/(?![/\\])/.test(href)) {
+            return (
+              <Link href={href} onClick={(e) => { e.preventDefault(); navigate(href); onLeave(); }}>
+                {children}
+              </Link>
+            );
+          }
+          return (
+            <Link href={href} target="_blank" rel="noopener noreferrer">
+              {children}
+            </Link>
+          );
+        }
         const target = `${prefix}-${cited}`;
         return (
           <Link
@@ -87,7 +105,7 @@ function Answer({ turn, onOpenCart }: { turn: Extract<Turn, { role: "assistant" 
         );
       },
     }),
-    [prefix],
+    [prefix, navigate, onLeave],
   );
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -149,7 +167,7 @@ function Answer({ turn, onOpenCart }: { turn: Extract<Turn, { role: "assistant" 
                   [{i + 1}]
                 </Typography>
                 <span>
-                  <Link component={RouterLink} to={c.link} underline="hover">
+                  <Link component={RouterLink} to={c.link} underline="hover" onClick={onLeave}>
                     {c.title} ·{" "}
                     <Box component="span" sx={{ color: "text.primary" }}>
                       {c.heading}
@@ -248,10 +266,13 @@ export function ChatPanel({
   model,
   width,
   question,
+  inputRef,
   onClose,
 }: {
   model: string;
   width: { xs: string; sm: number };
+  /** The question box, for the panel's opener to focus. */
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
   /** A question a page opened the panel with: put in the box, for the person to send or change, or sent at once (`send`). */
   question?: { text: string; send: boolean } | null;
   onClose: () => void;
@@ -281,8 +302,12 @@ export function ChatPanel({
 
   useEffect(() => {
     if (!question) return;
-    if (question.send) void send(question.text);
-    else setDraft(question.text);
+    // Sent at once unless one is being answered: then it waits in the box, never dropped.
+    if (question.send && !busy) void send(question.text);
+    else {
+      setDraft(question.text);
+      inputRef?.current?.focus();
+    }
     // send changes every render; only a new question should ask.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question]);
@@ -401,6 +426,7 @@ export function ChatPanel({
             <Box key={i} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
               <Answer
                 turn={t}
+                onLeave={onClose}
                 onOpenCart={(c) => {
                   cart.replace(c.team, c.actions, c.choices, c.values);
                   navigate("/catalog/cart");
@@ -449,6 +475,7 @@ export function ChatPanel({
             fullWidth
             placeholder="Ask, or say what you need"
             slotProps={{ htmlInput: { "aria-label": "Your question", maxLength: 4000 } }}
+            inputRef={inputRef}
             value={draft}
             onChange={(e) => { setDraft(e.target.value); }}
             onKeyDown={onKey}

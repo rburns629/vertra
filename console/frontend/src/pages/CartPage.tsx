@@ -101,9 +101,15 @@ export function CartPage() {
 
   const actionsByName = useMemo(() => new Map(runnables.filter((r) => r.kind === "action").map((r) => [r.name, r])), [runnables]);
   const action = (name: string) => actionsByName.get(name);
-  const stepName = (id: string) => {
+  // A step's name, with its number when another step has the same name (an action in the cart twice).
+  const nameOf = (id: string) => {
     const product = plan?.steps.find((s) => s.id === id)?.product ?? id;
     return action(product)?.displayName || id;
+  };
+  const stepName = (id: string) => {
+    const name = nameOf(id);
+    const steps = plan?.steps ?? [];
+    return steps.filter((s) => nameOf(s.id) === name).length > 1 ? `${name} (step ${String(steps.findIndex((s) => s.id === id) + 1)})` : name;
   };
   // Each step's inputs left for you, as form fields.
   const fields = useMemo(() => {

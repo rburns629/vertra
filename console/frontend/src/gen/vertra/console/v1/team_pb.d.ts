@@ -180,6 +180,14 @@ export declare type Member = Message<"vertra.console.v1.Member"> & {
    * @generated from field: bool uses_sso = 8;
    */
   usesSso: boolean;
+
+  /**
+   * Their membership follows their single sign-on groups (the team is
+   * mapped to one): their role isn't changed, nor are they removed, here.
+   *
+   * @generated from field: bool follows_groups = 9;
+   */
+  followsGroups: boolean;
 };
 
 /**

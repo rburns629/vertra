@@ -11,7 +11,7 @@ import { Pill } from "../../components/Pill";
 import { ApiError, adoptCatalogTeam, getCatalogStatus, getInstall, syncCatalog, type CatalogStatus } from "../../api";
 import { when } from "../../time";
 import { AdminCard, Dot, KeyValues, PILL_TONE, SrOnly, TONE_WORD, type Tone } from "./parts";
-import { catalogState } from "./summary";
+import { catalogState, useAdminChanged } from "./summary";
 
 /** One of the release's three facts: published, its signature, applied. */
 function Tile({ tone, label, value, children }: { tone: Tone; label: string; value: ReactNode; children?: ReactNode }) {
@@ -60,11 +60,13 @@ export function CatalogCard() {
       .catch(() => undefined);
   }, []);
 
+  const changed = useAdminChanged();
   async function sync(): Promise<void> {
     setError(null);
     setSyncing(true);
     try {
       setStatus(await syncCatalog());
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
@@ -78,6 +80,7 @@ export function CatalogCard() {
     try {
       setStatus(await adoptCatalogTeam(name));
       setAdopting(null);
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
@@ -110,7 +113,7 @@ export function CatalogCard() {
         {status?.release && (
           <>
             <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-              <Tile tone={status.commit ? "ok" : "off"} label="Published" value={status.version || (commit ? <Mono>{commit}</Mono> : "Nothing yet")}>
+              <Tile tone={status.commit ? "ok" : "off"} label="Applied release" value={status.version || (commit ? <Mono>{commit}</Mono> : "Nothing yet")}>
                 {status.commit && (
                   <>
                     {status.repository ? <>by {status.repository}, </> : null}commit <Mono>{commit}</Mono>

@@ -15,6 +15,7 @@ import { ApiError, acceptImageScan, listImageScans, rescanImage, type ImageScan 
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { Mono } from "../../components/Mono";
 import { Pill, type PillTone } from "../../components/Pill";
+import { useAdminChanged } from "./summary";
 import { AdminCard } from "./parts";
 
 type Shown = "all" | "failed" | "error" | "pending" | "passed" | "accepted";
@@ -81,12 +82,16 @@ function ScanDialog({ scan, onClose, onChanged }: { scan: ImageScan; onClose: ()
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
+  const summaryChanged = useAdminChanged();
   async function act(what: () => Promise<ImageScan | null>, done: string): Promise<void> {
     setBusy(true);
     setError(null);
     try {
       const changed = await what();
-      if (changed) onChanged(changed);
+      if (changed) {
+        onChanged(changed);
+        summaryChanged();
+      }
       setNote(changed ? done : "Scanning is off on this install.");
       setReason("");
     } catch (err) {

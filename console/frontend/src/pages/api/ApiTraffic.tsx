@@ -54,6 +54,17 @@ export function PeriodToggle({ hours, onChange }: { hours: number; onChange: (ho
   );
 }
 
+/** What the gateway stopped, by why: what the spec doesn't have, what didn't fit it, and the rest (sign-in, sharing, limits, pauses…). */
+function stoppedNote(blocked: number, invalid: number, other: number): string {
+  return [
+    blocked > 0 && `${blocked.toLocaleString()} not in the spec`,
+    invalid > 0 && `${invalid.toLocaleString()} didn’t fit`,
+    other > 0 && `${other.toLocaleString()} refused otherwise (sign-in, sharing, limits, pauses)`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** Requests, forwarded, stopped and backend errors, each with what's behind it. */
 export function TrafficTiles({ traffic }: { traffic: Traffic | null }) {
   const named = traffic?.teams.filter((t) => t.team) ?? [];
@@ -66,7 +77,7 @@ export function TrafficTiles({ traffic }: { traffic: Traffic | null }) {
       <MetricCard
         label="Requests"
         value={num(traffic?.requests)}
-        note={traffic && `from ${plural(named.length, "team")}${anonymous ? `, and ${anonymous.toLocaleString()} not signed in` : ""}`}
+        note={traffic && `from ${plural(named.length, "team")}${anonymous ? `, and ${anonymous.toLocaleString()} refused before a team was known` : ""}`}
       />
       <MetricCard
         label="Forwarded to the backend"
@@ -76,7 +87,7 @@ export function TrafficTiles({ traffic }: { traffic: Traffic | null }) {
       <MetricCard
         label="Stopped at the gateway"
         value={num(traffic?.stopped)}
-        note={traffic && (blocked || invalid) ? `${blocked.toLocaleString()} not in the spec · ${invalid.toLocaleString()} didn’t fit` : undefined}
+        note={traffic && traffic.stopped > 0 ? stoppedNote(blocked, invalid, traffic.stopped - blocked - invalid) : undefined}
       />
       <MetricCard
         label="Backend errors"
@@ -101,7 +112,7 @@ export function CallingTeams({ traffic }: { traffic: Traffic | null }) {
       )}
       {traffic?.teams.map((t) => {
         const pct = t.limitPerMinute ? Math.min(100, Math.round((100 * t.peakPerMinute) / t.limitPerMinute)) : 0;
-        const name = t.team || "(not signed in)";
+        const name = t.team || "(no calling team)";
         return (
           <Box key={t.team || "-"} sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.5 }}>
@@ -123,9 +134,11 @@ export function CallingTeams({ traffic }: { traffic: Traffic | null }) {
               <Box sx={{ height: "100%", borderRadius: 1, width: `${String(t.limitPerMinute ? Math.max(pct, 1) : 3)}%`, bgcolor: pct >= 90 ? "warning.main" : "primary.main" }} />
             </Box>
             <Typography variant="caption" color="text.secondary">
-              {t.limitPerMinute
-                ? `busiest minute ${t.peakPerMinute.toLocaleString()} of ${t.limitPerMinute.toLocaleString()}`
-                : `busiest minute ${t.peakPerMinute.toLocaleString()}; not signed in, so no limit applies`}
+              {!t.team
+                ? `busiest minute ${t.peakPerMinute.toLocaleString()}; refused before a calling team was known (not signed in, not shared, or the API paused, held or closed)`
+                : t.limitPerMinute
+                  ? `busiest minute ${t.peakPerMinute.toLocaleString()} of ${t.limitPerMinute.toLocaleString()}`
+                  : `busiest minute ${t.peakPerMinute.toLocaleString()}`}
             </Typography>
           </Box>
         );

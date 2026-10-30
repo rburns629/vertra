@@ -14,6 +14,7 @@ import { ApiError, getChatConfig, resetChatConfig, setChatConfig, testChatConfig
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
+import { useAdminChanged } from "./summary";
 import { AdminCard } from "./parts";
 
 const PROVIDERS: { id: string; name: string; note: string; label: string; model: string }[] = [
@@ -90,6 +91,7 @@ function Field({ children, columns = 3 }: { children: ReactNode; columns?: numbe
  * form as it is, before saving it.
  */
 export function ChatSettingsCard() {
+  const changed = useAdminChanged();
   const [saved, setSaved] = useState<ChatConfig | null>(null);
   const [form, setForm] = useState<ChatConfigInput | null>(null);
   const [busy, setBusy] = useState<"save" | "test" | "reset" | null>(null);
@@ -126,6 +128,7 @@ export function ChatSettingsCard() {
     setNotice(null);
     try {
       await run();
+      if (what !== "test") changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : failed);
     } finally {

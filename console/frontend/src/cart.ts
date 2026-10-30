@@ -120,7 +120,10 @@ export function useOrderPlan(team: string | null, actions: string[], choices: Or
         }
       })
       .catch((err: unknown) => {
-        if (current) setError(err instanceof ApiError ? err.message : "Couldn't plan the order.");
+        if (!current) return;
+        // The last plan was for other choices (another team, say): it isn't this order's.
+        setPlan(null);
+        setError(err instanceof ApiError ? err.message : "Couldn't plan the order.");
       });
     return () => {
       current = false;

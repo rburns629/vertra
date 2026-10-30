@@ -15,7 +15,7 @@ import { when } from "../../time";
 import { CatalogCard } from "./CatalogCard";
 import { EveryPart, FirstRunChecklist, InstallStats, NeedsYou } from "./InstallCards";
 import { AdminCard, Aside, Dot, KeyValues, PILL_TONE, SrOnly, TABLE_SX, TONE_WORD, type Tone } from "./parts";
-import { auditState, policiesState, type AdminSummary } from "./summary";
+import { auditState, policiesState, type AdminSummary, useAdminChanged } from "./summary";
 
 /**
  * What each policy the console writes holds, as people say it, and the code
@@ -93,11 +93,13 @@ export function PoliciesCard() {
       .catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't read the policies."); });
   }, []);
 
+  const changed = useAdminChanged();
   async function sync(): Promise<void> {
     setBusy(true);
     setError(null);
     try {
       setPolicies(await syncPolicies());
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't write them.");
     } finally {

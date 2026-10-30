@@ -14,9 +14,10 @@ import { createContext, useContext } from "react";
  */
 export interface Ask {
   model: string | null | undefined;
-  open: (question?: string, options?: { send?: boolean }) => void;
+  /** False when there's no model to open it for (then nothing was asked). */
+  open: (question?: string, options?: { send?: boolean }) => boolean;
 }
 
-export const AskContext = createContext<Ask>({ model: null, open: () => {} });
+export const AskContext = createContext<Ask>({ model: null, open: () => false });
 
 export const useAsk = () => useContext(AskContext);

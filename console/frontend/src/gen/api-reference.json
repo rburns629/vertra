@@ -9237,6 +9237,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "followsGroups",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Their membership follows their single sign-on groups (the team is\nmapped to one): their role isn't changed, nor are they removed, here."
     }
    ]
   },

@@ -37,6 +37,8 @@ const listed = (items: string[]) => (items.length < 2 ? (items[0] ?? "") : `${it
  */
 /** The most the server lists at once (console/src/core/resources.ts, LIST_LIMIT). */
 const LIST_LIMIT = 200;
+/** The most one cleanup run deletes (the same file's DELETE_LIMIT). */
+const DELETE_LIMIT = 50;
 
 export function ResourcesPage() {
   const { user } = useAuth();
@@ -51,7 +53,6 @@ export function ResourcesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const search = useDeferredValue(query.trim());
-  const bulk = useResourceDelete();
 
   // Deleted ones only when asked for (Show deleted, or their tile): the
   // server sends the newest LIST_LIMIT, and deleted ones would crowd out
@@ -72,6 +73,8 @@ export function ResourcesPage() {
       .catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't load the deletes waiting for an admin."); });
   }, []);
   useEffect(loadRequests, [loadRequests]);
+  // A delete sent to an admin shows under Waiting for an admin at once.
+  const bulk = useResourceDelete(loadRequests);
 
   const waiting = useMemo(() => new Set((requests ?? []).filter((r) => r.decision === null).flatMap((r) => r.resources.map((res) => res.id))), [requests]);
   const count = (state: State) => found?.filter((r) => r.state === state).length ?? 0;
@@ -93,6 +96,7 @@ export function ResourcesPage() {
   // What's picked and still there to delete.
   const picked = (rows ?? []).filter((r) => selected.has(r.id) && selectable(r, waiting));
   const mixed = new Set(picked.map((r) => r.ownerTeam ?? "")).size > 1;
+  const tooMany = picked.length > DELETE_LIMIT;
 
   const tile = (state: State) => ({
     pressed: stateFilter === state,
@@ -218,11 +222,13 @@ export function ResourcesPage() {
             <Typography component="span" sx={{ fontSize: 13, overflowWrap: "anywhere", minWidth: 0 }}>
               {mixed
                 ? "These were made for different teams: delete each team's separately."
-                : `${listNames(picked)}: each one's cleanup runs, in one run, newest first.`}
+                : tooMany
+                  ? `At most ${String(DELETE_LIMIT)} at once: unselect ${String(picked.length - DELETE_LIMIT)}.`
+                  : `${listNames(picked)}: each one's cleanup runs, in one run, newest first.`}
             </Typography>
             <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
               <Button onClick={() => { setSelected(new Set()); }}>Clear</Button>
-              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} disabled={mixed} onClick={() => { bulk.ask(picked); }}>
+              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} disabled={mixed || tooMany} onClick={() => { bulk.ask(picked); }}>
                 Delete {picked.length}…
               </Button>
             </Box>
@@ -239,6 +245,7 @@ export function ResourcesPage() {
           showRun
           waiting={waiting}
           userEmail={user?.email}
+          onAsked={loadRequests}
           selection={{ selected, onChange: setSelected }}
           emptyMessage={
             found && found.length > 0

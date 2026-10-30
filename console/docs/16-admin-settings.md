@@ -144,7 +144,7 @@ The catalog needs no token: the console reads the catalog's release itself. Toke
 
 **The release** shows:
 
-- **Published**: the version and commit applied, and the repository.
+- **Applied release**: the version and commit applied last, and the repository (a newer one that failed its checks shows under Applied).
 - **Signature**: whether each release's signature is checked before it's applied.
 - **Applied**: when.
 - **Release**: the release followed, or "the newest version of" its repository; **Last looked**: when the console last read it.
