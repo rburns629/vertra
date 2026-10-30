@@ -328,6 +328,30 @@ describe("what runs made", () => {
     canDelete: true,
   });
 
+  it("lists a delete sent to an admin at once, and picks at most 50 to delete together", async () => {
+    let requested = 0;
+    const many = Array.from({ length: 51 }, (_, i) => made(`a1b2c3d4-0000-4000-8000-${String(i).padStart(12, "0")}`, `bucket-${String(i)}`));
+    await renderAt("/runs/made", MEMBER, {
+      "ResourceService/ListResources": { resources: many },
+      "ResourceService/ListDeleteRequests": () => {
+        requested++;
+        return { requests: [] };
+      },
+      "ResourceService/DeleteResources": () => refused(409, "failed_precondition", "It's used: an admin has been asked.", "HAS_DEPENDENTS"),
+    });
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select bucket-0" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete 1…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("It's used: an admin has been asked.")).toBeTruthy();
+    await waitFor(() => { expect(requested).toBe(2); }); // loaded again once asked
+    await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
+
+    // Every row's box at once (looking each up by name is slow on 51 rows).
+    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if (!box.checked && /^Select bucket-/.test(box.getAttribute("aria-label") ?? "")) fireEvent.click(box);
+    expect(screen.getByText(/At most 50 at once: unselect 1/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete 51…" })).toHaveProperty("disabled", true);
+  });
+
   it("counts by state, and deletes the ones picked in one cleanup run", async () => {
     const asked: Record<string, unknown>[] = [];
     const listed: Record<string, unknown>[] = [];
@@ -452,6 +476,22 @@ describe("a run", () => {
     expect(screen.getByRole("heading", { name: /^Waiting for an admin/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve and delete" }));
     await waitFor(() => { expect(decided).toEqual([{ id: "d1d1d1d1-0000-4000-8000-000000000001", approve: true }]); });
+  });
+
+  it("asks an admin when something else still uses what Delete all would delete", async () => {
+    const outside = { id: "c1c1c1c1-0000-4000-8000-0000000000c1", type: "gcp/cloud-run-service", externalId: "shop-api", executionId: "other", input: "projectId" };
+    const project = { id: "a1b2c3d4-0000-4000-8000-000000000001", type: "gcp/project", externalId: "web-prod", name: "web-prod", product: "gcp-platform-project-create", productTeam: "gcp-platform", ownerTeam: "azure-apps", executionId: FAILED_RUN.executionId, taskId: "project", firstReportedAt: "2026-10-21T16:21:00Z", state: "exists", canDelete: true, dependents: [outside] };
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, {
+      "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }],
+      "ResourceService/ListResources": { resources: [project, { ...project, id: "a1b2c3d4-0000-4000-8000-000000000002", externalId: "web-db", name: "web-db", dependents: [] }] },
+      "ResourceService/DeleteRunResources": () => refused(409, "failed_precondition", "Other resources use these: an admin has been asked.", "HAS_DEPENDENTS"),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Delete all 2…" }));
+    expect(await screen.findByText(/still use some of these, so they're deleted only if an admin approves/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ask an admin" }));
+    // Said as what happened, not as an error.
+    const said = await screen.findByText("Other resources use these: an admin has been asked.");
+    expect(said.closest(".MuiAlert-colorInfo")).toBeTruthy();
   });
 
   it("shows what it made, and deletes it all as a cleanup run", async () => {

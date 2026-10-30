@@ -26,6 +26,7 @@ export function WhatItMade({ executionId, watching, failed }: { executionId: str
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [asked, setAsked] = useState<string | null>(null);
   const remove = useResourceDelete();
   const deleting = made.some((r) => r.state === "deleting");
 
@@ -47,10 +48,13 @@ export function WhatItMade({ executionId, watching, failed }: { executionId: str
   async function deleteAll(): Promise<void> {
     setBusy(true);
     setError(null);
+    setAsked(null);
     try {
       navigate(`/runs/${await deleteRunResources(executionId)}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't delete them.");
+      // Something else still uses one: an admin has been asked (decision 25).
+      if (err instanceof ApiError && err.code === "HAS_DEPENDENTS") setAsked(err.message);
+      else setError(err instanceof ApiError ? err.message : "Couldn't delete them.");
       setBusy(false);
       setConfirming(false);
     }
@@ -58,6 +62,9 @@ export function WhatItMade({ executionId, watching, failed }: { executionId: str
 
   if (made.length === 0) return null;
   const left = made.filter((r) => r.canDelete && r.state !== "deleted");
+  // Used by something this run didn't make: deleted only if an admin approves.
+  const ids = new Set(left.map((r) => r.id));
+  const inUse = left.some((r) => r.hiddenDependents > 0 || r.dependents.some((d) => !ids.has(d.id)));
   return (
     <Card component="section" aria-labelledby="made-heading" sx={{ p: { xs: 2, sm: 2.75 }, display: "flex", flexDirection: "column", gap: 1.5 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1, flexWrap: "wrap" }}>
@@ -69,6 +76,7 @@ export function WhatItMade({ executionId, watching, failed }: { executionId: str
         </Link>
       </Box>
       {error && <Alert severity="error">{error}</Alert>}
+      {asked && <Alert severity="info">{asked}</Alert>}
       {remove.ui}
       {made.map((r) => (
         <Box
@@ -116,8 +124,12 @@ export function WhatItMade({ executionId, watching, failed }: { executionId: str
       <ConfirmDialog
         open={confirming}
         title={`Delete all ${String(left.length)}?`}
-        description="This runs each one's cleanup, newest first, one after another, which deletes them where they live. You'll see the run."
-        confirmLabel="Delete all"
+        description={
+          inUse
+            ? "Other resources still use some of these, so they're deleted only if an admin approves it. Ask them now? (To skip that, delete what uses them first.)"
+            : "This runs each one's cleanup, newest first, one after another, which deletes them where they live. You'll see the run."
+        }
+        confirmLabel={inUse ? "Ask an admin" : "Delete all"}
         destructive
         busy={busy}
         onConfirm={() => void deleteAll()}
