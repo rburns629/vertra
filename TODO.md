@@ -467,8 +467,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   <version>` for `catalog-template/vertra` and each catalog's wrapper. A
   signing step that fails with Rekor's 409 "equivalent entry" is a retried
   upload that had succeeded: rerun the job.
-- [ ] **`buf breaking` in CI at the first release**, against the released
-  protos: until then contracts change freely (decided 2026-10-19).
+- [x] **`buf breaking` in CI** (done 2026-10-29): the proto job compares
+  `proto/` with the newest `v*` release tag's (FILE rules); a break fails
+  the pull request.
 - [x] **P0: pull-based catalog registration (M1, S1)** (done 2026-10-20).
   Catalog CI publishes, then `./vertra catalog release` pushes the whole
   catalog (teams, their SecretStore files, every product action pinned by
