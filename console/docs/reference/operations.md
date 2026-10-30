@@ -326,36 +326,52 @@ where its release lives) and the owner's signer in `catalogSignature`:
 `cosign public-key --key <kms uri>`), and/or `repository` (the catalog
 repository, `owner/name`, whose `ci.yml` on main signs keyless). On gcp and
 aws the reader then refuses what that signer didn't sign as the owner does,
-releases and images: `vertra apply` installs policy-controller, and on the
-same cloud prints the grant the registry's owner runs for its identity
-(across clouds it reads with the steps' pull Secret). Elsewhere (kind, an
-existing cluster) only releases are checked. On the same cloud, also grant
-the install's console and scanner identities read on that registry.
+releases and images: `vertra apply` installs policy-controller. Elsewhere
+(kind, an existing cluster) only releases are checked.
 
-For a Google Artifact Registry read from another cloud (EKS, AKS, any
-cluster with an OIDC issuer), nothing is stored: the console exchanges its
-own ServiceAccount token for an hour's Google token (Workload Identity
-Federation) and hands it to the kubelet (`vertra-pull` in each team
-namespace) and its Jobs (`vertra-registry-token`), renewed every policy
-sync. After the first `vertra apply`, the registry's owner runs, in its
-project, the commands apply prints:
+The registry's owner then lets the reader in, with no key stored anywhere:
+after the reader's first `vertra apply`, which prints the command with its
+flags filled in, the owner runs `vertra catalog grant` in its own
+environment (it shows what it will change and asks; `--yes` doesn't). It
+grants read on the catalog's registry (its products' images and its
+release) and nothing else, to exactly the reader's identity:
+
+| Owner | Reader | Granted to | `vertra catalog grant` makes |
+| --- | --- | --- | --- |
+| gcp | gcp, another project | its console, scanner, nodes and (verifying) policy-controller service accounts (`--service-account`) | `roles/artifactregistry.reader` on the repository for each |
+| gcp | aws, or any cluster with an OIDC issuer | its console's ServiceAccount from its issuer (`--issuer`, `--subject`) | in the pool `vertra-installs`, a provider `vertra-<reader>` trusting that issuer for that subject alone, mapped to the subject `<reader>:<subject>`; `roles/artifactregistry.reader` on the repository for that principal |
+| aws | gcp, another AWS account, or any cluster with an OIDC issuer | its console's ServiceAccount from its issuer (`--issuer`, `--subject`) | an IAM OIDC provider for the issuer (audience `sts.amazonaws.com`), and a role `vertra-reader-<reader>` only that subject may assume by web identity, whose one policy may `ecr:GetAuthorizationToken` and pull and list tags in `<prefix>/*` |
 
 ```
-gcloud iam workload-identity-pools create vertra-installs --location=global --project=<project>
-gcloud iam workload-identity-pools providers create-oidc <cluster> --location=global \
-  --workload-identity-pool=vertra-installs --project=<project> --issuer-uri=<cluster's OIDC issuer> \
-  --attribute-mapping=google.subject=assertion.sub \
-  --attribute-condition="assertion.sub=='system:serviceaccount:vertra-system:console-execution-console'"
-gcloud artifacts repositories add-iam-policy-binding <repository> --location=<region> --project=<project> \
-  --role=roles/artifactregistry.reader \
-  --member=principal://iam.googleapis.com/projects/<number>/locations/global/workloadIdentityPools/vertra-installs/subject/system:serviceaccount:vertra-system:console-execution-console
+vertra catalog grant prod --reader vertra-eks \
+  --issuer https://oidc.eks.us-east-2.amazonaws.com/id/<id> \
+  --subject system:serviceaccount:vertra-system:console-execution-console
 ```
 
-then sets `externalCatalog.gcpWorkloadIdentityProvider` to
-`projects/<number>/locations/global/workloadIdentityPools/vertra-installs/providers/<cluster>`
-and applies again. The provider trusts only that cluster's issuer, and only
-the console's ServiceAccount from it. Revoke the install by deleting its
-provider.
+A federated reader then sets what the grant prints and applies again:
+`vertra config set externalCatalog.gcpWorkloadIdentityProvider
+projects/<number>/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-<reader>`
+(an Artifact Registry), or `externalCatalog.awsRoleArn
+arn:aws:iam::<owner's account>:role/vertra-reader-<reader>` (ECR). Its
+console exchanges its own ServiceAccount token, projected for the other
+side, for a short-lived credential: an hour's Google token (Workload
+Identity Federation), or the role's credentials (AWS
+`AssumeRoleWithWebIdentity`) and with them ECR's registry token. It uses
+it itself and hands it, renewed every policy sync, to the kubelet and
+policy-controller (`vertra-pull` in each team namespace) and its verify
+and scan Jobs (`vertra-registry-token`). An EKS reader of another
+account's ECR reads the same way, so its own roles (the verifier's
+included) still read only its own registry. On aws the grant is a role
+rather than a repository policy: ECR creates each product's repository on
+its first push, and a role scoped to the prefix covers those too.
+
+Running the grant again changes nothing; `--revoke` takes it away (the
+binding and the provider; the role and its policy). The pool, and an IAM
+OIDC provider, stay: neither lets anyone in by itself. Readers set up with
+the gcloud commands earlier versions printed (the bare subject, shared by
+every reader in the pool) keep working; the grant moves a reader's
+provider to its own subject in place, and says when the old binding can
+go.
 
 ### Catalog versions
 

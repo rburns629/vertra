@@ -41,6 +41,8 @@ vertra init <env>        ask the questions, write deploy/<env>/vertra.yaml
 vertra check [<env>]     read-only: tools, sign-ins, policies, what exists, what's missing
 vertra apply [<env>]     plan, show the approval screen, then create or change and install
 vertra catalog create [<env>]   create the catalog repository and the first team, smoke-test it
+vertra catalog grant [<env>] --reader <name> ...   (the owner's install) let another install read the catalog,
+                             as exactly its identity; --revoke takes it away
 vertra catalog check|publish|release|...   a catalog's own commands, run in it (its CI runs them through ./vertra)
 vertra status [<env>]    what's running, awake or asleep, versions, last plan
 vertra sleep|wake [<env>]

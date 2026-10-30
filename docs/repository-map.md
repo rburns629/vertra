@@ -160,7 +160,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `tokenAudiences.ts` | Which audiences a product's steps may get a projected token for: refuses the Kubernetes API's (from the console's own token) and kernel-api's, and names each token's file. |
 | `policySync.ts` | Rewrites the identity and scan policies and the teams' pull Secrets every few minutes, so drift doesn't last; keeps each sync's outcome for admins. |
 | `logLevels.ts` | Who sees which of a step's log lines: INFO to everyone who can see the run, the rest to the step's team. |
-| `registryFederation.ts` | Reading a Google Artifact Registry from another cloud: the console's projected token exchanged at Google's STS (Workload Identity Federation), and the Docker config it hands out. |
+| `registryFederation.ts` | Reading another install's registry with no stored key: the console's projected token exchanged at Google's STS (Workload Identity Federation, an Artifact Registry) or AWS STS (the owner's role by web identity, then ECR's token), and the Docker config it hands out. |
 | `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`vertra-pull`), for steps' images in private registries. |
 | `failureHelp.ts` | What a failed step's error means, what to do, whether a retry is safe and whom to ask: the owner's words, else the platform's. |
 | `targets.ts` | Allowed targets (X1): which projects, folders, accounts or subscriptions another team may aim a team's products at, from its `allowedTargets`. |
@@ -339,6 +339,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `apis.test.ts` | API products from releases (with their ServiceAccounts), who sees and may call them, held backends, pausing. |
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a list of teams, a target rule), and who may decide. |
 | `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
+| `registry-federation-aws.test.ts` | The same for Amazon ECR: assuming the owner's role by web identity, ECR's token as that role, caching to the session, STS's refusal, image checks and the Docker config. |
 | `observe.test.ts` | The security checks: what's enforced, refusals linked only for those who may see the run, images (a hidden product's for its team); the metrics, named by product, a hidden one's only for its team. |
 | `logs.test.ts` | The LogQL the log search sends (a stand-in Loki records it): each caller's visibility, names checked, typed text quoted; LOGS_OFF. |
 | `metrics.test.ts` | The console's Prometheus metrics: calls counted by procedure and code, served on their own port and not on the console's. |
@@ -500,6 +501,8 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `go.mod`, `go.sum` | The Go module (`github.com/rburns629/vertra/cli`): cobra and yaml.v3, protobuf and Connect for the console's API, and `make proto`'s two plugins as `tool` dependencies. |
 | `internal/gen/` | Generated from `proto/` by `make proto` (messages and Connect clients); never edited. |
 | `cmd/vertra/catalog_commands.go` | A catalog's own commands, `vertra catalog validate`, `check`, `publish`, `release`, `changed`, `secret-stores check`, `bases`, `migrate`: what every catalog's `./vertra` runs. `vertra catalog create` (making the repository) is `catalog.go`. |
+| `cmd/vertra/catalog_grant.go` | `vertra catalog grant`: the catalog owner's install lets another read its catalog, as exactly that reader's identity (its screen, confirmation, `--revoke`). |
+| `internal/grant/` | What `vertra catalog grant` finds and changes, through gcloud or the AWS CLI as you: a Workload Identity provider and the repository's reader binding, or a reader's service accounts (gcp); an IAM OIDC provider and a role reading only the catalog's ECR prefix (aws). |
 | `internal/catalogtool/` | What `vertra catalog` does in a catalog: validating teams, CODEOWNERS, products, `dags/` templates and DAGs, `apis/` API products and their OpenAPI files (`apis.go`), and teams' wiring types and the types products name (`types.go`) in catalog format v2 (against the schemas it embeds, `schemas/`, kept equal to the template's `tools/` by a test), and `migrate` from before v2; the compatibility check against the base (`compat.go`: breaking changes need a raised `version`, removals a deprecation first); pinning base images; building, contract-testing, scanning (Trivy, OSV-Scanner), pushing and signing products; building, pushing and signing the catalog's release (`release.go`), and tagging a commit's release as a version (`promote.go`). It never calls a console. |
 | `cmd/vertra/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
 | `cmd/vertra/help.go` | Every command's help and examples, the `settings` and `sizes` help topics, and `vertra man`; a test checks every command has its help. |

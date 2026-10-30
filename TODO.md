@@ -670,9 +670,30 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (us-east-2) by federation. Both applied the signed release, pinned,
   scanned and ran a step from it (the EKS kubelet pulling from Google), and
   both refused a release signed with another key and an unsigned one. Torn
-  down after. Left: the reverse direction (ECR read from GKE, by AWS web
-  identity), a `vertra` command for the owner's grant, and policy-controller
-  (step image signatures) on EKS.
+  down after. Policy-controller on EKS: proven 2026-10-27 (below).
+  Built 2026-10-30, not yet proven on a cloud:
+  - The reverse direction: an install reads an Amazon ECR by AWS web
+    identity (`externalCatalog.awsRoleArn`; the console chart's
+    `registryCheck.awsFederation`): its projected token (audience
+    `sts.amazonaws.com`) assumes the owner's role, whose credentials get
+    ECR's token, handed out as the Artifact Registry federation's is.
+    Unit-tested with STS and ECR faked; chart rendered.
+  - `vertra catalog grant` (the owner's install; `cli/internal/grant`): a
+    provider in `vertra-installs` mapped to the reader's own subject
+    (`<reader>:<subject>`), or a reader's service accounts, on gcp; an IAM
+    OIDC provider and a role `vertra-reader-<reader>` reading only
+    `<prefix>/*` on aws. Shows, asks, changes only what differs,
+    `--revoke`. apply prints it in place of the gcloud commands. Tested
+    against a faked gcloud and AWS CLI only.
+  - To prove (one billed run): a GKE reader of an EKS owner's ECR and an
+    EKS reader in a second account (release applied, step pulled by the
+    kubelet, policy-controller verifying through `vertra-pull`, the scan
+    Job signing in), each granted, re-granted (no change) and revoked
+    (refused within the hour); the GKE issuer accepted as an IAM OIDC
+    provider with no thumbprint; gcloud accepting the prefixed
+    `google.subject` mapping; ECR's token lasting no longer than the
+    role's session (it's cached to the shorter); `ecr:ListImages` being
+    what ECR's tags list needs (`catalogVersion: newest`).
 - [x] **P1: recovering the first admin's password** (done 2026-10-22):
   `vertra admin reset-password` runs the console's `dist/db/resetAdmin.js`
   in its Pod (cluster access required): a new random password for an
@@ -860,8 +881,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
     of the GKE owner's Artifact Registry (federation, policy-controller
     signing in with the steps' pull Secret) ran a signed step and refused an
     unsigned one, and its admin got the `step_refused` alert.
-  - An aws reader of another account's ECR (its verifier role reads only its
-    own task registry).
+  - (Built 2026-10-30, not yet proven on a cloud.) An aws reader of another
+    account's ECR: it reads by web identity as any other cloud's reader does
+    (the owner's role from `vertra catalog grant`), policy-controller with
+    the steps' pull Secret, so its verifier role still reads only its own
+    task registry.
   - (Fixed 2026-10-27, not yet seen on a cloud.) `vertra destroy` stopped
     when the cluster's API didn't answer (the reader's was torn down with
     `tofu destroy` on its state): it now skips what's inside an unanswering

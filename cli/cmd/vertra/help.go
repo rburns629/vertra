@@ -233,7 +233,8 @@ and when a newer release is out, which (GitHub's list, cached a day).`,
 	},
 	"vertra catalog": {
 		long: `A catalog is a repository of your teams' products, templates and APIs.
-` + "`vertra catalog create`" + ` makes one; the rest run inside it, through its ./vertra
+` + "`vertra catalog create`" + ` makes one, and ` + "`vertra catalog grant`" + ` lets another install
+read it; the rest run inside it, through its ./vertra
 (which pins vertra's version): locally while writing a product, and in
 its CI, which publishes what's merged as a signed release each install
 pulls.`,

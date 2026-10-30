@@ -624,6 +624,15 @@ violations).
   the copy is a token the console minted that hour by Workload Identity
   Federation, renewed every resync; it reads the catalog's repository and
   nothing else, and lapses within the hour once the provider is deleted.
+  Reading another account's (or another cloud's) Amazon ECR
+  (`registryCheck.awsFederation`), it's ECR's registry token for the
+  owner's role, which the console assumed that hour by web identity
+  (`AssumeRoleWithWebIdentity` with its projected token, audience
+  `sts.amazonaws.com`); the role trusts that cluster's console
+  ServiceAccount alone and may only pull and list tags in the catalog's
+  `<prefix>/*`, and the token lapses within the hour once the role is
+  deleted. The owner makes either with `vertra catalog grant`, which names
+  exactly one reader's identity.
 - **Cluster administrators**, and anyone else the cluster's own RBAC lets read
   Secrets in a team namespace. Vertra doesn't grant people Kubernetes
   access, but doesn't prevent a cluster operator from doing so.
@@ -674,7 +683,11 @@ An install reading another's catalog (`externalCatalog`) holds no signing
 right: it trusts the owner's signer (`catalogSignature`: its public key, or
 its repository's keyless identity) and, on gcp and aws, enforces it on
 releases and images the same way, its policy-controller reading the
-owner's registry. A catalog version (decision 22) is a tag on a release
+owner's registry (as its own identity in another Google Cloud project;
+across clouds or AWS accounts, with the steps' pull Secret). The owner
+grants that read with `vertra catalog grant`, to the reader's identity
+alone and on the catalog's registry alone: its service accounts, or its
+console's ServiceAccount from its cluster's issuer, never a key. A catalog version (decision 22) is a tag on a release
 main already signed, so it needs no signature of its own, and the tag's
 own CI run holds no credential: it asks main to make it.
 
