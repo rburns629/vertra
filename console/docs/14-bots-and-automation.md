@@ -68,7 +68,7 @@ An ordering bot is for a system that should only ever run a few published templa
 2. List **Templates it may order**: `<team>/<name>`, one per line, as the Catalog shows them.
 3. **Create bot and token**, and store the token as above.
 
-The list stays editable on the bot's card (**Save**), by the team's maintainers.
+The list stays editable on the bot's card (**Edit**, then **Save**), by the team's maintainers.
 
 An ordering bot is a member of your team, not a maintainer. It can't submit raw DAGs, run single actions, or rerun anything (`ORDERS_ONLY`), and a template not on its list is refused (`TEMPLATE_NOT_ORDERABLE`). Each order runs for your team, under your team's limits, quota and approvals.
 

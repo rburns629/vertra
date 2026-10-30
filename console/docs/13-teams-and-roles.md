@@ -15,7 +15,7 @@ A new team has nobody in it. Whoever creates it doesn't become a member. An admi
 
 ## What do the Teams page and a team's page show?
 
-**Teams** lists the teams you're in, one card each. An admin also sees **Every other team** below their own and can open any of them. If you're in no team yet, the page says so and tells you who to ask.
+**Teams** lists the teams you're in, one card each: your role, how many people it has, what's running, its secrets and bots (or schedules), what it offers, and what needs it (steps waiting for its approval, secrets that don't sync). Below them, **Who can do what** and **Joining a team** explain the roles and how people get in. An admin also sees **Create a team** and **Every other team**: each other team's state, owner in the catalog, people and what's running, with **Adopt…** for a team the catalog can take over and **Restore or purge** for a retired one. If you're in no team yet, the page says so and tells you who to ask.
 
 Click a team to open its page. The header shows the team's name, its namespace, whether it came from the catalog, and your role there: "You maintain it", "You're a member" or "Viewing as admin". A retired team shows a **Retired** pill. A team that requires single sign-on shows "<provider> sign-in only".
 
@@ -23,7 +23,7 @@ A team's page has these tabs. The tab you're on is part of the address (`?tab=se
 
 | Tab | What it shows | Who can change it |
 | --- | --- | --- |
-| **Members** | Everyone in the team, their role, and when they were added | Maintainers and admins |
+| **Members** | Everyone in the team, their role, how they sign in, and when they were added; for an admin, which single sign-on groups put people in it | Maintainers and admins |
 | **What it offers** | The team's templates, actions and APIs, as other people see them | Nobody here: it comes from the catalog |
 | **Secrets** | The team's secrets: names, where each comes from, and its status. Values are never shown | Maintainers and admins |
 | **Automation** | The team's bots, for its own pipelines (only maintainers and admins see this tab) | Maintainers and admins |
@@ -32,7 +32,7 @@ A team's page has these tabs. The tab you're on is part of the address (`?tab=se
 | **Running now** | The team's steps in the cluster right now, including ones that can't start and why | Nobody: it's a live view |
 | **Settings** | Sign-in, resource limits, chat notifications, the outcome webhook, where the team came from, and (for admins) retiring and purging | See [team settings](#what-are-a-teams-settings) |
 
-Members see every tab except **Automation**, read-only. The counts on **Members**, **Secrets** and **Running now** show how many there are.
+Members see every tab except **Automation**, read-only. The counts on the tabs show how many there are.
 
 ## What may a member, a maintainer and an admin do?
 
@@ -133,9 +133,9 @@ The **Settings** tab has these sections. Members see them read-only.
 | **Resource limits** | How much CPU, memory and how many Pods the team's steps may use together, and the most memory one step may ask for. The cluster enforces it. Shows whether these are the install's defaults or the team's own | Admins |
 | **Chat notifications** | Posts the team's notifications to a Slack, Google Chat or Teams channel through an incoming webhook | Maintainers and admins |
 | **Outcome webhook** | When one of the team's runs finishes, posts its outcome as signed JSON to the team's own systems, under the install's allowed hosts | Maintainers and admins |
-| **Where it comes from** | Whether the catalog made it, its namespace, and when it was created | Nobody |
-| **Retire it** / **Restore it** | See [retiring](#what-does-retiring-a-team-do) | Admins |
-| **Purge it** | See [purging](#what-does-purging-a-team-do) | Admins |
+| **Where it comes from** | Whether the catalog made it, its owner and contact there, its namespace, and when it was created | Nobody |
+| **Retire <team>** / **Restore <team>** | Under **Admins only: ending a team**. See [retiring](#what-does-retiring-a-team-do) | Admins |
+| **Purge <team>** | Under **Admins only: ending a team**. See [purging](#what-does-purging-a-team-do) | Admins |
 
 About requiring single sign-on:
 
@@ -150,7 +150,7 @@ A step that asks for more than the team's limits allow fails with `RESOURCES_NOT
 
 Retiring is for a team that's going away. It can be undone.
 
-- **Who:** an admin, from **Settings → Retire it** (**Retire <team>…**). A catalog release that no longer has the team's folder retires it too.
+- **Who:** an admin, from **Settings → Admins only: ending a team** (**Retire <team>…**). A catalog release that no longer has the team's folder retires it too.
 - **What happens:**
   - The team becomes read-only. Nothing new can be run, retried, added or changed for it (`TEAM_RETIRED`).
   - Its products are unregistered, so templates that use them stop working.
@@ -164,7 +164,7 @@ For what members see while their team is retired, see [If your team is retired](
 
 Purging removes a team for good. It can't be undone.
 
-- **Who:** an admin, from **Settings → Purge it** (**Purge <team>…**). You confirm by typing the team's name. A catalog release never purges a team.
+- **Who:** an admin, from **Settings → Admins only: ending a team** (**Purge <team>…**). You confirm by typing the team's name. A catalog release never purges a team.
 - **When:** only for a retired team with no unfinished runs. Otherwise it's refused with `NOT_RETIRED` or `EXECUTIONS_RUNNING`. Cancel or wait for those runs, then try again.
 - **What it removes:** the team's members, its secrets' grants, its products, and any bots that belonged only to this team (their tokens stop working).
 - **What it keeps:**

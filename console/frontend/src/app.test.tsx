@@ -1183,6 +1183,75 @@ describe("signing in", () => {
   });
 });
 
+describe("the Teams page", () => {
+  it("sums up your teams, what needs them, and every other team for an admin", async () => {
+    await renderAt("/teams", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t1", name: "payments", fromCatalog: true } },
+      "TeamService/GetTeamProfile": (request: Record<string, unknown>) =>
+        request["name"] === "payments" ? { name: "payments", people: 7 } : { name: String(request["name"]), owner: "@acme/growth", people: 14 },
+      "TeamService/ListPods": { pods: [{ podName: "ek-1", state: "TASK_POD_STATE_RUNNING" }] },
+      "SecretService/ListSecrets": { secrets: [{ id: "s1", secretName: "stripe-webhook", external: { status: "error" } }, { id: "s2", secretName: "db" }] },
+      "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-ci@bots.vertra.local" }] },
+      "TemplateService/ListTemplates": { runnables: [{ kind: "KIND_TEMPLATE", team: "payments", name: "merchant-onboarding", shared: true }] },
+      "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "refund-ledger for growth", taskId: "t", team: "payments", canDecide: true }] },
+      "TeamService/ListTeams": {
+        teams: [
+          { id: "t1", name: "payments", fromCatalog: true },
+          { id: "t2", name: "growth", fromCatalog: true },
+          { id: "t3", name: "sandbox" },
+          { id: "t4", name: "legacy", fromCatalog: true, retiredAt: "2026-10-21T12:00:00Z" },
+        ],
+      },
+      "AdminService/GetCatalogStatus": { status: { problems: [{ item: "teams/sandbox", message: "made here", adoptableTeam: "sandbox" }] } },
+    });
+    const card = (await screen.findByRole("link", { name: "payments" })).closest("article") as HTMLElement;
+    expect(within(card).getByText("You maintain it")).toBeTruthy();
+    expect(await within(card).findByText("merchant-onboarding")).toBeTruthy();
+    expect(await within(card).findByText(/1 step waits for payments to approve/)).toBeTruthy();
+    expect(within(card).getByRole("link", { name: "refund-ledger for growth" }).getAttribute("href")).toBe("/runs/r9");
+    expect(await within(card).findByText("stripe-webhook")).toBeTruthy();
+    expect(within(card).getByRole("link", { name: /^Bots/ }).getAttribute("href")).toBe("/teams/payments?tab=automation");
+
+    const others = screen.getByRole("region", { name: /every other team · 3/i });
+    expect(within(others).getByRole("link", { name: "Adopt…" }).getAttribute("href")).toBe("/admin/catalog");
+    expect(within(others).getByRole("link", { name: "Restore or purge" }).getAttribute("href")).toBe("/teams/legacy?tab=settings");
+    expect((await within(others).findAllByText("@acme/growth")).length).toBeGreaterThan(0);
+    fireEvent.change(within(others).getByRole("searchbox", { name: "Find a team" }), { target: { value: "sand" } });
+    expect(within(others).queryByRole("link", { name: "growth" })).toBeNull();
+    expect(within(others).getByRole("link", { name: "sandbox" })).toBeTruthy();
+  });
+});
+
+describe("a team's members", () => {
+  it("say how each signs in, flag passwords a Google-only team refuses, and show an admin who joins by group", async () => {
+    await renderAt("/teams/payments", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" },
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments", requireSso: true } },
+      "TeamService/ListMembers": {
+        members: [
+          { id: "u1", email: "ana@acme.com", hasPassword: true, usesSso: true, role: "TEAM_ROLE_MAINTAINER", isAdmin: true },
+          { id: "u2", email: "lee@acme.com", hasPassword: true, role: "TEAM_ROLE_MEMBER" },
+          { id: "u3", email: "sam@acme.com", usesSso: true, role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+      "SsoService/ListSsoGroupMappings": {
+        mappings: [
+          { id: "m1", group: "payments-eng@acme.com", team: "payments", role: "TEAM_ROLE_MEMBER" },
+          { id: "m2", group: "data-eng@acme.com", team: "data", role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "3 people" })).toBeTruthy();
+    expect(screen.getByText("Password only")).toBeTruthy();
+    expect(screen.getByText(/1 signs in with a password only, while payments requires Google/)).toBeTruthy();
+    expect(await screen.findByText("payments-eng@acme.com")).toBeTruthy();
+    expect(screen.queryByText("data-eng@acme.com")).toBeNull();
+    // The role a new person gets: Member until Maintainer is chosen.
+    fireEvent.click(screen.getByRole("button", { name: /^Maintainer/ }));
+    expect(screen.getByRole("button", { name: /^Maintainer/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
 describe("a team's settings", () => {
   it("say a retired team is read-only, and offer an admin to restore it", async () => {
     await renderAt("/teams/old-team?tab=settings", ADMIN, {
@@ -1191,7 +1260,9 @@ describe("a team's settings", () => {
     expect(await screen.findByText(/this team is retired: it's read-only/i)).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Restore old-team" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /purge old-team/i })).toHaveProperty("disabled", false);
-    expect(screen.getByText("teams/old-team/")).toBeTruthy();
+    // In the header, and in "Where it comes from".
+    expect(screen.getAllByText("teams/old-team/")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Restore it" })).toBeTruthy();
   });
 
   it("name the members a Google-only rule would lock out, and keep the controls from non-admins", async () => {
@@ -1288,6 +1359,31 @@ describe("keyless bots", () => {
         { team: "payments", botId: "b0b0b0b0-0000-4000-8000-000000000001", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/release", ref: "refs/heads/main" } },
       ]);
     });
+  });
+});
+
+describe("ordering bots", () => {
+  it("list what they may order, and change it only after Edit", async () => {
+    const saved: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": {
+        bots: [{ id: "b1", email: "payments-shop@bots.vertra.local", ordering: true, orderTemplates: ["payments/onboarding"], tokens: [{ id: "k1", label: "Shop" }] }],
+      },
+      "TokenService/SetBotOrders": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return { templates: request["templates"] };
+      },
+    });
+    const card = (await screen.findByRole("heading", { name: "payments-shop@bots.vertra.local" })).closest("article") as HTMLElement;
+    expect(within(card).getByText("Ordering")).toBeTruthy();
+    expect(within(card).getByText("payments/onboarding")).toBeTruthy();
+    expect(within(card).queryByLabelText("Templates it may order")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
+    fireEvent.change(within(card).getByLabelText("Templates it may order"), { target: { value: "payments/onboarding\ndata/postgres-db" } });
+    // The templates' Save, before the callback's.
+    fireEvent.click(within(card).getAllByRole("button", { name: "Save" })[0] as HTMLElement);
+    await waitFor(() => { expect(saved).toEqual([{ team: "payments", email: "payments-shop@bots.vertra.local", templates: ["payments/onboarding", "data/postgres-db"] }]); });
   });
 });
 

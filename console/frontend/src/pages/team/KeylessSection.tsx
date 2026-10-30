@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
 import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import LinkIcon from "@mui/icons-material/LinkOutlined";
 import { addBotIdentity, removeBotIdentity, type BotIdentity } from "../../api";
 import { CodeBlock } from "../../components/CodeBlock";
-import { errorMessage, relativeTime } from "./shared";
+import { Mono } from "../../components/Mono";
+import { BotPart, errorMessage, relativeTime } from "./shared";
 
 const GITHUB = "https://token.actions.githubusercontent.com";
 const GITLAB = "https://gitlab.com";
 
 /** What each CI calls the repository its job runs in, and how its job gets an ID token. */
-const CI: Record<string, { name: string; repo: string; repoLabel: string; snippet: (audience: string, consoleUrl: string) => string }> = {
+export const CI: Record<string, { name: string; repo: string; repoLabel: string; snippet: (audience: string, consoleUrl: string) => string }> = {
   [GITHUB]: {
     name: "GitHub Actions",
     repo: "repository",
@@ -41,6 +43,12 @@ const CI: Record<string, { name: string; repo: string; repoLabel: string; snippe
       ].join("\n"),
   },
 };
+
+/** An identity's claims as one line: "repository acme/infra · ref refs/heads/main". */
+export const claimsText = (claims: Record<string, string>) =>
+  Object.entries(claims)
+    .map(([k, v]) => `${k} ${v}`)
+    .join(" · ");
 
 /**
  * A bot signing in from CI with no stored token: its identities (which
@@ -88,25 +96,40 @@ export function KeylessSection({
   }
 
   return (
-    <Stack spacing={1}>
-      <Typography variant="subtitle2">Signs in from CI, with no token</Typography>
-      {identities.length === 0 && (
+    <BotPart
+      title="Signs in from CI, with no token"
+      action={
+        !readOnly && !adding ? (
+          <Button size="small" variant="outlined" color="inherit" onClick={() => { setAdding(true); }}>
+            Sign in from CI…
+          </Button>
+        ) : undefined
+      }
+    >
+      {identities.length === 0 && !adding && (
         <Typography variant="body2" color="text.secondary">
           None yet: a job can sign in as this bot with its own identity instead of a stored token.
         </Typography>
       )}
       {identities.map((i) => (
-        <Box key={i.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
-            {CI[i.issuer]?.name ?? i.issuer}:{" "}
-            {Object.entries(i.claims)
-              .map(([k, v]) => `${k} ${v}`)
-              .join(", ")}
-            <Typography component="span" variant="caption" color="text.secondary">
-              {" "}
-              · last used {relativeTime(i.lastUsedAt)}
-            </Typography>
-          </Typography>
+        <Box
+          key={i.id}
+          sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1.5, p: 1.5, borderRadius: 2, bgcolor: "background.default", flexWrap: "wrap" }}
+        >
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", minWidth: 0 }}>
+            <LinkIcon fontSize="small" sx={{ color: "text.secondary" }} aria-hidden="true" />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {CI[i.issuer]?.name ?? i.issuer}
+              </Typography>
+              <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                <Mono>{claimsText(i.claims)}</Mono>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                last used {relativeTime(i.lastUsedAt)}
+              </Typography>
+            </Box>
+          </Box>
           {!readOnly && (
             <Button size="small" color="error" onClick={() => void removeBotIdentity(i.id).then(onChanged, (err: unknown) => { setError(errorMessage(err, "Couldn't remove it.")); })}>
               Remove
@@ -114,13 +137,8 @@ export function KeylessSection({
           )}
         </Box>
       ))}
-      {!readOnly && !adding && (
-        <Button size="small" variant="outlined" sx={{ alignSelf: "flex-start" }} onClick={() => { setAdding(true); }}>
-          Sign in from CI…
-        </Button>
-      )}
       {adding && ci && (
-        <Stack spacing={1.5} sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2 }}>
+        <Stack spacing={1.5} sx={{ p: 1.5, bgcolor: "background.default", borderRadius: 2 }}>
           <TextField select size="small" label="CI" value={issuer} onChange={(e) => { setIssuer(e.target.value); }}>
             {known.map((i) => (
               <MenuItem key={i} value={i}>
@@ -145,6 +163,7 @@ export function KeylessSection({
           <CodeBlock code={ci.snippet(audience, window.location.origin)} />
         </Stack>
       )}
-    </Stack>
+      {!adding && error && <Alert severity="error">{error}</Alert>}
+    </BotPart>
   );
 }

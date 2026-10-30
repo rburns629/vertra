@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { useState } from "react";
-import { Alert, Button, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { CodeBlock } from "./CodeBlock";
 import { Mono } from "./Mono";
 import { ApiError } from "../api";
@@ -54,16 +54,27 @@ export function SignedCallback({
 
   return (
     <Stack spacing={1}>
-      <Typography variant="body2">
-        {current ? (
-          <>
+      {current ? (
+        <Box
+          role="status"
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: current.lastError ? "warning.light" : "background.default",
+          }}
+        >
+          <Typography variant="body2">
             Posts to <Mono>{current.host}</Mono>, signed{current.lastSentAt ? `; last ${when(current.lastSentAt)}` : "; nothing posted yet"}.
-          </>
-        ) : (
-          none
-        )}
-      </Typography>
-      {current?.lastError && <Alert severity="warning">The last post didn&apos;t go: {current.lastError}</Alert>}
+          </Typography>
+          {current.lastError && (
+            <Typography variant="body2" sx={{ color: "warning.main" }}>
+              The last post didn&apos;t go: {current.lastError}
+            </Typography>
+          )}
+        </Box>
+      ) : (
+        <Typography variant="body2">{none}</Typography>
+      )}
       {editable && (
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { sm: "flex-start" } }}>
           <TextField
@@ -76,12 +87,12 @@ export function SignedCallback({
             helperText="https://, under a host this install allows; never shown again"
             sx={{ flexGrow: 1 }}
           />
-          <Button size="small" variant="outlined" disabled={busy || url.trim() === ""} onClick={() => void submit(url.trim())}>
+          <Button variant="outlined" color="inherit" disabled={busy || url.trim() === ""} onClick={() => void submit(url.trim())}>
             Save
           </Button>
           {current && (
             <>
-              <Button size="small" disabled={busy || url.trim() === ""} onClick={() => void submit(url.trim(), true)}>
+              <Button variant="outlined" color="inherit" sx={{ whiteSpace: "nowrap" }} disabled={busy || url.trim() === ""} onClick={() => void submit(url.trim(), true)}>
                 Save with a new secret
               </Button>
               <Button size="small" color="error" disabled={busy} onClick={() => void submit("")}>
