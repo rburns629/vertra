@@ -2211,7 +2211,9 @@ type GetTeamProfileResponse struct {
 	People   int32  `protobuf:"varint,7,opt,name=people,proto3" json:"people,omitempty"`
 	// team.yaml's owner in the catalog (a GitHub user or team); membership
 	// here is the console's, not the catalog's.
-	Owner         string `protobuf:"bytes,8,opt,name=owner,proto3" json:"owner,omitempty"`
+	Owner string `protobuf:"bytes,8,opt,name=owner,proto3" json:"owner,omitempty"`
+	// team.yaml's description, from the catalog; empty for a team made here.
+	Description   string `protobuf:"bytes,9,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2298,6 +2300,13 @@ func (x *GetTeamProfileResponse) GetPeople() int32 {
 func (x *GetTeamProfileResponse) GetOwner() string {
 	if x != nil {
 		return x.Owner
+	}
+	return ""
+}
+
+func (x *GetTeamProfileResponse) GetDescription() string {
+	if x != nil {
+		return x.Description
 	}
 	return ""
 }
@@ -2455,7 +2464,7 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\f_task_numberB\r\n" +
 	"\v_task_count\"+\n" +
 	"\x15GetTeamProfileRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\xe9\x01\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\x8b\x02\n" +
 	"\x16GetTeamProfileResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\ffrom_catalog\x18\x02 \x01(\bR\vfromCatalog\x12\x18\n" +
@@ -2464,7 +2473,8 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
 	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\x12\x16\n" +
 	"\x06people\x18\a \x01(\x05R\x06people\x12\x14\n" +
-	"\x05owner\x18\b \x01(\tR\x05owner*U\n" +
+	"\x05owner\x18\b \x01(\tR\x05owner\x12 \n" +
+	"\vdescription\x18\t \x01(\tR\vdescription*U\n" +
 	"\bTeamRole\x12\x19\n" +
 	"\x15TEAM_ROLE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14TEAM_ROLE_MAINTAINER\x10\x01\x12\x14\n" +

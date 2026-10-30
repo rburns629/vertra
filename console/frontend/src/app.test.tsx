@@ -1511,7 +1511,9 @@ describe("the Teams page", () => {
     await renderAt("/teams", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
       "TeamService/GetTeam": { team: { id: "t1", name: "payments", fromCatalog: true } },
       "TeamService/GetTeamProfile": (request: Record<string, unknown>) =>
-        request["name"] === "payments" ? { name: "payments", people: 7 } : { name: String(request["name"]), owner: "@acme/growth", people: 14 },
+        request["name"] === "payments"
+          ? { name: "payments", people: 7, description: "Takes card payments." }
+          : { name: String(request["name"]), owner: "@acme/growth", people: 14, description: `What ${String(request["name"])} does.` },
       "TeamService/ListPods": { pods: [{ podName: "ek-1", state: "TASK_POD_STATE_RUNNING" }] },
       "SecretService/ListSecrets": { secrets: [{ id: "s1", secretName: "stripe-webhook", external: { status: "error" } }, { id: "s2", secretName: "db" }] },
       "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-ci@bots.vertra.local" }] },
@@ -1529,6 +1531,7 @@ describe("the Teams page", () => {
     });
     const card = (await screen.findByRole("link", { name: "payments" })).closest("article") as HTMLElement;
     expect(within(card).getByText("You maintain it")).toBeTruthy();
+    expect(await within(card).findByText("Takes card payments.")).toBeTruthy();
     expect(await within(card).findByText("merchant-onboarding")).toBeTruthy();
     expect(await within(card).findByText(/1 step waits for payments to approve/)).toBeTruthy();
     expect(within(card).getByRole("link", { name: "refund-ledger for growth" }).getAttribute("href")).toBe("/runs/r9");
@@ -1539,6 +1542,7 @@ describe("the Teams page", () => {
     expect(within(others).getByRole("link", { name: "Adopt…" }).getAttribute("href")).toBe("/admin/catalog");
     expect(within(others).getByRole("link", { name: "Restore or purge" }).getAttribute("href")).toBe("/teams/legacy?tab=settings");
     expect((await within(others).findAllByText("@acme/growth")).length).toBeGreaterThan(0);
+    expect(within(others).getByText("What growth does.")).toBeTruthy();
     fireEvent.change(within(others).getByRole("searchbox", { name: "Find a team" }), { target: { value: "sand" } });
     expect(within(others).queryByRole("link", { name: "growth" })).toBeNull();
     expect(within(others).getByRole("link", { name: "sandbox" })).toBeTruthy();
@@ -1603,6 +1607,15 @@ describe("a team's settings", () => {
     expect(await screen.findByText(/1 member signs in with a password only: lee@acme.com/i)).toBeTruthy();
     expect(screen.getByRole("switch", { name: /require google sign-in/i })).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: /retire payments/i })).toBeNull();
+  });
+
+  it("say what the team does, from the catalog, under its name", async () => {
+    await renderAt("/teams/payments", { ...MEMBER, teamNames: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments", fromCatalog: true } },
+      "TeamService/GetTeamProfile": { name: "payments", fromCatalog: true, people: 3, description: "Takes card payments." },
+    });
+    expect(await screen.findByRole("heading", { name: "payments", level: 1 })).toBeTruthy();
+    expect(await screen.findByText("Takes card payments.")).toBeTruthy();
   });
 
   it("show the install's limits beside a team's own", async () => {

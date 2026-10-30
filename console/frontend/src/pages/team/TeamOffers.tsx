@@ -87,6 +87,7 @@ export function TeamOffers({ teamName, showProfile }: { teamName: string; showPr
             Asking {teamName}
           </Typography>
           {profile.retired && <Alert severity="warning">{teamName} is retired: what it offers no longer runs.</Alert>}
+          {profile.description && <Typography variant="body2">{profile.description}</Typography>}
           <Typography variant="body2">
             {profile.people} {profile.people === 1 ? "person" : "people"}
             {profile.fromCatalog ? ", from the catalog" : ""}.

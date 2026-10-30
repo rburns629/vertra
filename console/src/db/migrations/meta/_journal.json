@@ -365,6 +365,13 @@
       "when": 1793330958770,
       "tag": "0051_approval_teams",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793380936508,
+      "tag": "0052_team_description",
+      "breakpoints": true
     }
   ]
 }

@@ -71,6 +71,8 @@ export const teams = pgTable("teams", {
   contact: text("contact"),
   // team.yaml's owner (a GitHub user or team): shown, never a grant.
   owner: text("owner"),
+  // team.yaml's description, from the release. Null: a team made here, or none said.
+  description: text("description"),
   helpChat: text("help_chat"),
   helpUrl: text("help_url"),
 });

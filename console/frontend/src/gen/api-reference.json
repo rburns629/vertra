@@ -9912,6 +9912,13 @@
      "repeated": false,
      "optional": false,
      "comment": "team.yaml's owner in the catalog (a GitHub user or team); membership\nhere is the console's, not the catalog's."
+    },
+    {
+     "name": "description",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "team.yaml's description, from the catalog; empty for a team made here."
     }
    ]
   },

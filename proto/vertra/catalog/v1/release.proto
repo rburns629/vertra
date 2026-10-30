@@ -79,6 +79,8 @@ message Team {
   // user or team, as its CODEOWNERS names it). Shown, never a grant:
   // membership is the console's (and single sign-on's).
   string owner = 7;
+  // team.yaml's description: what the team does, in its own words.
+  string description = 8;
 }
 
 // One rule of a team's allowedTargets: the teams it covers ("*" for every

@@ -301,7 +301,9 @@ type Team struct {
 	// team.yaml's owner: who owns the team in the catalog (usually a GitHub
 	// user or team, as its CODEOWNERS names it). Shown, never a grant:
 	// membership is the console's (and single sign-on's).
-	Owner         string `protobuf:"bytes,7,opt,name=owner,proto3" json:"owner,omitempty"`
+	Owner string `protobuf:"bytes,7,opt,name=owner,proto3" json:"owner,omitempty"`
+	// team.yaml's description: what the team does, in its own words.
+	Description   string `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -381,6 +383,13 @@ func (x *Team) GetHelpUrl() string {
 func (x *Team) GetOwner() string {
 	if x != nil {
 		return x.Owner
+	}
+	return ""
+}
+
+func (x *Team) GetDescription() string {
+	if x != nil {
+		return x.Description
 	}
 	return ""
 }
@@ -1726,7 +1735,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\tjson_type\x18\x03 \x01(\tR\bjsonType\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x16\n" +
 	"\x06shared\x18\x05 \x01(\bR\x06shared\x12)\n" +
-	"\x10default_provider\x18\x06 \x01(\tR\x0fdefaultProvider\"\x99\x02\n" +
+	"\x10default_provider\x18\x06 \x01(\tR\x0fdefaultProvider\"\xbb\x02\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12M\n" +
 	"\x16secret_store_documents\x18\x02 \x03(\v2\x17.google.protobuf.StructR\x14secretStoreDocuments\x12F\n" +
@@ -1734,7 +1743,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\acontact\x18\x04 \x01(\tR\acontact\x12\x1b\n" +
 	"\thelp_chat\x18\x05 \x01(\tR\bhelpChat\x12\x19\n" +
 	"\bhelp_url\x18\x06 \x01(\tR\ahelpUrl\x12\x14\n" +
-	"\x05owner\x18\a \x01(\tR\x05owner\"t\n" +
+	"\x05owner\x18\a \x01(\tR\x05owner\x12 \n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\"t\n" +
 	"\n" +
 	"TargetRule\x12\x14\n" +
 	"\x05teams\x18\x01 \x03(\tR\x05teams\x124\n" +

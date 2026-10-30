@@ -950,6 +950,13 @@ export declare type GetTeamProfileResponse = Message<"vertra.console.v1.GetTeamP
    * @generated from field: string owner = 8;
    */
   owner: string;
+
+  /**
+   * team.yaml's description, from the catalog; empty for a team made here.
+   *
+   * @generated from field: string description = 9;
+   */
+  description: string;
 };
 
 /**

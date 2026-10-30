@@ -132,9 +132,16 @@ export function TeamsPage() {
       key: "team",
       header: "Team",
       render: (t) => (
-        <Link component={RouterLink} to={teamHref(t.name)} sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
-          {t.name}
-        </Link>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+          <Link component={RouterLink} to={teamHref(t.name)} sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
+            {t.name}
+          </Link>
+          {facts[t.name]?.profile?.description && (
+            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere" }}>
+              {facts[t.name]?.profile?.description}
+            </Typography>
+          )}
+        </Box>
       ),
     },
     {

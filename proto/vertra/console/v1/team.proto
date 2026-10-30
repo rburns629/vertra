@@ -351,4 +351,6 @@ message GetTeamProfileResponse {
   // team.yaml's owner in the catalog (a GitHub user or team); membership
   // here is the console's, not the catalog's.
   string owner = 8;
+  // team.yaml's description, from the catalog; empty for a team made here.
+  string description = 9;
 }

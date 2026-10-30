@@ -198,6 +198,11 @@ export function TeamCard({
             Namespace <Mono>{name}</Mono>
             {team && (team.fromCatalog ? " · from the catalog" : " · made here")}
           </Typography>
+          {profile?.description && (
+            <Typography variant="body2" sx={{ mt: 0.75, overflowWrap: "anywhere" }}>
+              {profile.description}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
           <Pill tone={maintains ? "info" : "neutral"}>{maintains ? "You maintain it" : "You're a member"}</Pill>
