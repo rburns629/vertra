@@ -37,6 +37,9 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
         waiting: BigInt(copy.waiting),
         checkedAt: timestamp(copy.checkedAt),
         brokenAt: BigInt(copy.brokenAt),
+        comparedThrough: BigInt(copy.comparedThrough),
+        comparedAt: timestamp(copy.comparedAt),
+        differsAt: BigInt(copy.differsAt),
       };
     },
 

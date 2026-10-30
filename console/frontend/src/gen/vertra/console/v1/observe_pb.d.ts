@@ -548,6 +548,35 @@ export declare type GetAuditCopyResponse = Message<"vertra.console.v1.GetAuditCo
    * @generated from field: string problem = 8;
    */
   problem: string;
+
+  /**
+   * The database compared with the copy, entry by entry, a few copies an
+   * hour, round and round (the chain alone misses a change whose hashes
+   * were all rewritten after it): how far this round has gone, and when.
+   *
+   * @generated from field: int64 compared_through = 9;
+   */
+  comparedThrough: bigint;
+
+  /**
+   * @generated from field: optional google.protobuf.Timestamp compared_at = 10;
+   */
+  comparedAt?: Timestamp | undefined;
+
+  /**
+   * The first entry the database has changed (or lost) since it was
+   * copied; 0 while they agree.
+   *
+   * @generated from field: int64 differs_at = 11;
+   */
+  differsAt: bigint;
+
+  /**
+   * Why the last comparison didn't finish, or what it found.
+   *
+   * @generated from field: string compare_problem = 12;
+   */
+  compareProblem: string;
 };
 
 /**

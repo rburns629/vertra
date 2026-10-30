@@ -134,6 +134,7 @@ async function auditCheck(): Promise<Check> {
     return { name: "A write-once copy of the audit log", state: "off", text: "The audit log lives in the console's own database only; its entries are hash-chained, so a change shows once it's exported." };
   }
   if (status.error) return { name: "A write-once copy of the audit log", state: "off", text: `The last export stopped: ${status.error}` };
+  if (status.differsAt) return { name: "A write-once copy of the audit log", state: "off", text: status.compareProblem ?? `Entry ${String(status.differsAt)} differs from its copy.` };
   return {
     name: "A write-once copy of the audit log",
     state: "enforced",
@@ -145,7 +146,9 @@ async function auditCheck(): Promise<Check> {
 export async function getAuditCopy(caller: AuthUser | undefined) {
   const who = signedIn(caller);
   const status = await auditExportStatus();
-  if (!status) return { enabled: false, destination: "", copiedThrough: 0, copiedAt: null, waiting: 0, checkedAt: null, brokenAt: 0, problem: "" };
+  if (!status) {
+    return { enabled: false, destination: "", copiedThrough: 0, copiedAt: null, waiting: 0, checkedAt: null, brokenAt: 0, problem: "", comparedThrough: 0, comparedAt: null, differsAt: 0, compareProblem: "" };
+  }
   return {
     enabled: true,
     destination: who.isAdmin ? auditExportDestination() : "",
@@ -155,6 +158,10 @@ export async function getAuditCopy(caller: AuthUser | undefined) {
     checkedAt: status.checkedAt,
     brokenAt: status.brokenAt ?? 0,
     problem: status.error ?? "",
+    comparedThrough: status.comparedThrough,
+    comparedAt: status.comparedAt,
+    differsAt: status.differsAt ?? 0,
+    compareProblem: status.compareProblem ?? "",
   };
 }
 

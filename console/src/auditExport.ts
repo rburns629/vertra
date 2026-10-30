@@ -9,9 +9,15 @@
  * inserted in the database) stops the export where it breaks, loudly: what
  * was shipped stays the record. The bucket and its lock are vertra's
  * (docs/operations.md, "The audit log's copy").
+ *
+ * The chain shows a change only if it wasn't rewritten after the change:
+ * someone who can write the database could change an entry and every hash
+ * after it. So the database is also compared with what was shipped
+ * (compareWithCopy): each copied entry against its row, serialized the same
+ * way, a few objects an hour, round and round.
  */
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { asc, count, eq, gt, sql } from "drizzle-orm";
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { and, asc, count, eq, gt, gte, lte, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import { chainHash } from "./audit.js";
 import { config } from "./config.js";
@@ -64,13 +70,126 @@ async function put(name: string, body: string): Promise<void> {
     if (!response.ok) throw new Error(`GCS answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
     return;
   }
-  const s3 = new S3Client({
+  // Create-only: If-None-Match refuses an object that exists. The bucket's
+  // default retention (Object Lock) applies to it.
+  await s3Client().send(new PutObjectCommand({ Bucket: target.bucket, Key: name, Body: body, IfNoneMatch: "*", ContentType: "application/x-ndjson" }));
+}
+
+function s3Client(): S3Client {
+  const target = config.audit.export;
+  return new S3Client({
     region: target.region || "us-east-1",
     ...(target.endpoint ? { endpoint: target.endpoint, forcePathStyle: true } : {}),
   });
-  // Create-only: If-None-Match refuses an object that exists. The bucket's
-  // default retention (Object Lock) applies to it.
-  await s3.send(new PutObjectCommand({ Bucket: target.bucket, Key: name, Body: body, IfNoneMatch: "*", ContentType: "application/x-ndjson" }));
+}
+
+/** A copy's name says which entries it holds: <first>-<last>.jsonl. */
+const COPY_NAME = /(\d{12})-(\d{12})\.jsonl$/;
+
+interface Copy {
+  name: string;
+  first: number;
+  last: number;
+}
+
+/** Every copy in the bucket, oldest first. */
+async function listCopies(): Promise<Copy[]> {
+  const target = config.audit.export;
+  const names: string[] = [];
+  if (target.provider === "gcs") {
+    let page = "";
+    do {
+      const url = new URL(`https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(target.bucket)}/o`);
+      url.search = new URLSearchParams({ prefix: target.prefix, fields: "items(name),nextPageToken", ...(page ? { pageToken: page } : {}) }).toString();
+      const response = await fetch(url, { headers: { authorization: `Bearer ${await gcpMetadataToken()}` }, signal: AbortSignal.timeout(30_000) });
+      if (!response.ok) throw new Error(`GCS answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
+      const listed = (await response.json()) as { items?: { name: string }[]; nextPageToken?: string };
+      names.push(...(listed.items ?? []).map((item) => item.name));
+      page = listed.nextPageToken ?? "";
+    } while (page);
+  } else {
+    let token: string | undefined;
+    do {
+      const listed = await s3Client().send(new ListObjectsV2Command({ Bucket: target.bucket, Prefix: target.prefix, ContinuationToken: token }));
+      names.push(...(listed.Contents ?? []).flatMap((object) => (object.Key ? [object.Key] : [])));
+      token = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+    } while (token);
+  }
+  return names
+    .flatMap((name) => {
+      const m = COPY_NAME.exec(name);
+      return m ? [{ name, first: Number(m[1]), last: Number(m[2]) }] : [];
+    })
+    .sort((a, b) => a.first - b.first);
+}
+
+async function readCopy(name: string): Promise<string> {
+  const target = config.audit.export;
+  if (target.provider === "gcs") {
+    const url = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(target.bucket)}/o/${encodeURIComponent(name)}?alt=media`;
+    const response = await fetch(url, { headers: { authorization: `Bearer ${await gcpMetadataToken()}` }, signal: AbortSignal.timeout(60_000) });
+    if (!response.ok) throw new Error(`GCS answered ${String(response.status)}: ${(await response.text()).slice(0, 300)}`);
+    return response.text();
+  }
+  const object = await s3Client().send(new GetObjectCommand({ Bucket: target.bucket, Key: name }));
+  return (await object.Body?.transformToString()) ?? "";
+}
+
+/** How many copies one look compares. */
+const COPIES_A_LOOK = 10;
+
+/**
+ * One look comparing the database with its copy: the next few copies after
+ * the last one compared (from the first again once it reaches the end).
+ * Each copied entry must be its row, serialized as the export serialized
+ * it; the first that isn't (changed, or gone from the database) is
+ * recorded, loudly, and the look stops there.
+ */
+export async function compareWithCopy(log: FastifyBaseLogger): Promise<void> {
+  if (!config.audit.export.bucket) return;
+  const now = new Date();
+  const [state] = await db.select().from(auditExport).where(eq(auditExport.id, 1));
+  let copies: Copy[];
+  try {
+    copies = await listCopies();
+  } catch (error) {
+    await record({ comparedAt: now, compareProblem: `couldn't list the copy: ${error instanceof Error ? error.message : String(error)}` });
+    return;
+  }
+  let through = state?.comparedThrough ?? 0;
+  let next = copies.filter((c) => c.first > through).slice(0, COPIES_A_LOOK);
+  if (next.length === 0) {
+    // The end of a round: from the first copy again.
+    through = 0;
+    next = copies.slice(0, COPIES_A_LOOK);
+  }
+  for (const copy of next) {
+    let lines: string[];
+    try {
+      lines = (await readCopy(copy.name)).split("\n").filter((line) => line !== "");
+    } catch (error) {
+      await record({ comparedAt: now, compareProblem: `couldn't read ${copy.name}: ${error instanceof Error ? error.message : String(error)}` });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(auditLog)
+      .where(and(gte(auditLog.id, copy.first), lte(auditLog.id, copy.last)))
+      .orderBy(asc(auditLog.id));
+    const stored = new Map(rows.map((row) => [row.id, JSON.stringify(row)]));
+    for (const line of lines) {
+      const { id } = JSON.parse(line) as { id: number };
+      const row = stored.get(id);
+      if (row === line) continue;
+      const how = row === undefined ? "is gone from the database" : "differs in the database";
+      const problem = `audit entry ${String(id)} ${how} from its write-once copy (${copy.name}): it was changed after it was copied.`;
+      log.error({ event: "audit_copy_differs", entryId: id, object: copy.name }, problem);
+      await record({ comparedAt: now, differsAt: id, compareProblem: problem });
+      return;
+    }
+    through = copy.last;
+  }
+  await record({ comparedThrough: through, comparedAt: now, differsAt: null, compareProblem: null });
 }
 
 async function record(values: Partial<typeof auditExport.$inferInsert>): Promise<void> {
@@ -122,7 +241,20 @@ export async function exportAudit(log: FastifyBaseLogger): Promise<boolean> {
 export async function auditExportStatus() {
   if (!config.audit.export.bucket) return null;
   const [state] = await db.select().from(auditExport).where(eq(auditExport.id, 1));
-  return state ?? { lastId: 0, lastHash: "", exportedAt: null, checkedAt: null, error: null, brokenAt: null };
+  return (
+    state ?? {
+      lastId: 0,
+      lastHash: "",
+      exportedAt: null,
+      checkedAt: null,
+      error: null,
+      brokenAt: null,
+      comparedThrough: 0,
+      comparedAt: null,
+      differsAt: null,
+      compareProblem: null,
+    }
+  );
 }
 
 /** Where the copy goes, as a URL: gs://bucket/prefix or s3://bucket/prefix. */
@@ -146,4 +278,11 @@ export function startAuditExport(log: FastifyBaseLogger): void {
   };
   run();
   setInterval(run, config.audit.export.minutes * 60_000).unref();
+  const compare = () => {
+    compareWithCopy(log).catch((error: unknown) => {
+      log.error({ event: "audit_compare_failed", err: error }, "couldn't compare the audit log with its copy");
+    });
+  };
+  setTimeout(compare, 60_000).unref();
+  setInterval(compare, 60 * 60_000).unref();
 }

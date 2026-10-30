@@ -189,6 +189,16 @@ message GetAuditCopyResponse {
   int64 broken_at = 7;
   // Why the last look didn't copy, if it didn't.
   string problem = 8;
+  // The database compared with the copy, entry by entry, a few copies an
+  // hour, round and round (the chain alone misses a change whose hashes
+  // were all rewritten after it): how far this round has gone, and when.
+  int64 compared_through = 9;
+  optional google.protobuf.Timestamp compared_at = 10;
+  // The first entry the database has changed (or lost) since it was
+  // copied; 0 while they agree.
+  int64 differs_at = 11;
+  // Why the last comparison didn't finish, or what it found.
+  string compare_problem = 12;
 }
 
 message SearchLogsRequest {

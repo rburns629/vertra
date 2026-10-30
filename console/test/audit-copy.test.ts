@@ -5,10 +5,10 @@
  * where the chain broke, for everyone signed in; where it goes, for admins.
  */
 import { randomUUID } from "node:crypto";
-import { desc, eq, like } from "drizzle-orm";
+import { asc, desc, eq, inArray, like } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { exportAudit } from "../src/auditExport.js";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { compareWithCopy, exportAudit } from "../src/auditExport.js";
 import { config } from "../src/config.js";
 import { db } from "../src/db/client.js";
 import { auditExport, auditLog } from "../src/db/schema.js";
@@ -89,5 +89,76 @@ describe("the audit log's copy", () => {
     expect(copy.problem).toContain(`breaks at entry ${String(forged!.id)}`);
     expect(copy.copiedThrough).toBe(String(newest!.id));
     expect(copy.checkedAt).toBeDefined();
+  });
+});
+
+describe("the database compared with its copy", () => {
+  const real = globalThis.fetch;
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Three entries of this file's, and a GCS bucket holding them as one copy (as the export writes it). */
+  async function copied(tag: string) {
+    Object.assign(config.audit.export, { bucket: "acme-audit", provider: "gcs", prefix: "vertra-audit/" });
+    const rows = await db
+      .insert(auditLog)
+      .values([1, 2, 3].map((n) => ({ actorId: null, method: "RPC", route: `${tag}-${String(n)}`, target: { n }, status: 200, requestId: `${prefix}-${tag}` })))
+      .returning();
+    const ids = rows.map((r) => r.id);
+    const stored = await db.select().from(auditLog).where(inArray(auditLog.id, ids)).orderBy(asc(auditLog.id));
+    const body = stored.map((row) => JSON.stringify(row)).join("\n") + "\n";
+    const name = `vertra-audit/2026/10/29/${String(ids[0]).padStart(12, "0")}-${String(ids[2]).padStart(12, "0")}.jsonl`;
+    await db.delete(auditExport);
+    await db.insert(auditExport).values({ id: 1, comparedThrough: 0 });
+    return { ids, name, body };
+  }
+
+  function bucket(name: string, body: string | null) {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.startsWith("http://metadata.google.internal/")) return Promise.resolve(Response.json({ access_token: "t", expires_in: 3600 }));
+      if (url.includes("/storage/v1/b/acme-audit/o?")) return Promise.resolve(Response.json({ items: [{ name }] }));
+      if (url.includes(`/o/${encodeURIComponent(name)}?alt=media`)) {
+        return Promise.resolve(body === null ? new Response("forbidden", { status: 403 }) : new Response(body));
+      }
+      return real(input, init);
+    });
+  }
+
+  const state = async () => (await db.select().from(auditExport).where(eq(auditExport.id, 1)))[0];
+
+  it("moves on while they agree", async () => {
+    const { ids, name, body } = await copied("same");
+    bucket(name, body);
+    await compareWithCopy(app.log);
+    expect(await state()).toMatchObject({ comparedThrough: ids[2], differsAt: null, compareProblem: null });
+  });
+
+  it("names an entry changed after it was copied, its hashes rewritten or not", async () => {
+    const { ids, name, body } = await copied("changed");
+    bucket(name, body);
+    await db.update(auditLog).set({ route: "rewritten", hash: "recomputed" }).where(eq(auditLog.id, ids[1]!));
+    await compareWithCopy(app.log);
+    const after = await state();
+    expect(after?.differsAt).toBe(ids[1]);
+    expect(after?.compareProblem).toContain(`entry ${String(ids[1])} differs in the database`);
+  });
+
+  it("names an entry gone from the database", async () => {
+    const { ids, name, body } = await copied("gone");
+    bucket(name, body);
+    await db.delete(auditLog).where(eq(auditLog.id, ids[0]!));
+    await compareWithCopy(app.log);
+    expect((await state())?.compareProblem).toContain(`entry ${String(ids[0])} is gone from the database`);
+  });
+
+  it("says when it can't read the copy, without calling that a difference", async () => {
+    const { name } = await copied("unread");
+    bucket(name, null);
+    await compareWithCopy(app.log);
+    const after = await state();
+    expect(after?.differsAt).toBeNull();
+    expect(after?.compareProblem).toContain(`couldn't read ${name}`);
   });
 });

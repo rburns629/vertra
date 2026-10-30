@@ -453,7 +453,7 @@ Who changed what (`src/audit.ts`): one row per call that tried to change somethi
 
 ### audit_export
 
-The audit log's write-once copy (`src/auditExport.ts`), one row: how far the copy has gone.
+The audit log's write-once copy (`src/auditExport.ts`), one row: how far the copy has gone, and how the database compares with it.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -464,6 +464,10 @@ The audit log's write-once copy (`src/auditExport.ts`), one row: how far the cop
 | `checked_at` | timestamptz | yes | When the export last looked. |
 | `error` | text | yes | Why the last look didn't copy: a broken chain (where), or the bucket. |
 | `broken_at` | bigint | yes | The entry where the chain broke at the last look; empty while it holds. |
+| `compared_through` | bigint | no | The last entry compared with the copy this round (each look compares a few copies, round and round). |
+| `compared_at` | timestamptz | yes | When the database was last compared with the copy. |
+| `differs_at` | bigint | yes | The first entry changed or gone in the database since it was copied; empty while they agree. |
+| `compare_problem` | text | yes | What the last comparison found, or why it couldn't finish (the copy unreadable). |
 
 ### image_scans
 

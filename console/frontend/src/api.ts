@@ -542,6 +542,12 @@ export interface AuditCopy {
   /** The entry where the chain broke; 0 while it holds. */
   brokenAt: number;
   problem: string;
+  /** The database compared with the copy, entry by entry: this round's progress. */
+  comparedThrough: number;
+  comparedAt: string | null;
+  /** The first entry the database changed since it was copied; 0 while they agree. */
+  differsAt: number;
+  compareProblem: string;
 }
 
 export async function getAuditCopy(): Promise<AuditCopy> {
@@ -555,6 +561,10 @@ export async function getAuditCopy(): Promise<AuditCopy> {
     checkedAt: iso(c.checkedAt),
     brokenAt: Number(c.brokenAt),
     problem: c.problem,
+    comparedThrough: Number(c.comparedThrough),
+    comparedAt: iso(c.comparedAt),
+    differsAt: Number(c.differsAt),
+    compareProblem: c.compareProblem,
   };
 }
 

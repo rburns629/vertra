@@ -6983,6 +6983,34 @@
      "repeated": false,
      "optional": false,
      "comment": "Why the last look didn't copy, if it didn't."
+    },
+    {
+     "name": "comparedThrough",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The database compared with the copy, entry by entry, a few copies an\nhour, round and round (the chain alone misses a change whose hashes\nwere all rewritten after it): how far this round has gone, and when."
+    },
+    {
+     "name": "comparedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": true,
+     "comment": ""
+    },
+    {
+     "name": "differsAt",
+     "type": "integer (as a string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "The first entry the database has changed (or lost) since it was\ncopied; 0 while they agree."
+    },
+    {
+     "name": "compareProblem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why the last comparison didn't finish, or what it found."
     }
    ]
   },

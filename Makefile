@@ -281,6 +281,9 @@ kind-tls:
 # (SeaweedFS, S3 with Object Lock). Then deploy the console with audit.export
 # pointing at it (docs/operations.md, "The audit log's copy").
 kind-audit-store:
+	@# Rerunnable: the bucket's Job is immutable, and the store's data is an
+	@# emptyDir, so the bucket is made again whenever the store restarts.
+	$(KUBECTL) -n vertra-audit-store delete job audit-bucket --ignore-not-found
 	$(KUBECTL) apply -f helm/values/kind/audit-store.yaml
 	$(KUBECTL) -n vertra-audit-store rollout status deployment seaweedfs --timeout=5m
 	$(KUBECTL) -n vertra-audit-store wait --for=condition=complete job/audit-bucket --timeout=5m

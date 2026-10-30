@@ -45,6 +45,13 @@ function ChainStatus() {
     getAuditCopy().then(setCopy).catch(() => undefined);
   }, []);
   if (!copy?.enabled) return null;
+  if (copy.differsAt > 0) {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {copy.compareProblem || `Entry ${String(copy.differsAt)} in the database differs from its write-once copy.`}
+      </Alert>
+    );
+  }
   if (copy.brokenAt > 0) {
     return (
       <Alert severity="error" sx={{ mb: 2 }}>
@@ -59,6 +66,7 @@ function ChainStatus() {
       <Typography variant="body2" color="text.secondary">
         {copy.checkedAt ? `checked ${when(copy.checkedAt)}` : "not checked yet"}
         {copy.copiedAt ? ` · copied to write-once storage ${when(copy.copiedAt)}` : ""}
+        {copy.comparedAt ? ` · compared with the copy ${when(copy.comparedAt)}` : ""}
       </Typography>
     </Box>
   );

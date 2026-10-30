@@ -922,8 +922,14 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   copies written, an overwrite and a locked delete refused, a forged entry
   stopping the copy and Observe saying where. On GCS (GKE, 2026-10-22):
   copied by the console's own identity (objectCreator only), and a delete
-  by the project's owner refused by the retention policy. Left: the S3
-  bucket proven on EKS; checking the database against the copies.
+  by the project's owner refused by the retention policy. Checking the
+  database against the copies (done 2026-10-29): each hour the console
+  compares a few copies with the database, entry by entry, round and round;
+  a changed or removed entry is named (the chain misses one whose later
+  hashes were rewritten too). The console's identity may now read its
+  copies (GCS objectViewer; S3 GetObject and ListBucket). Proven on kind
+  with SeaweedFS. Left: the S3 bucket proven on EKS, and the comparison on
+  GCS and S3 in the billed batch.
 - [x] **Decide who may read a multi-team execution** (decided and done
   2026-10-22, `console/src/core/runView.ts`): a run's owners (admins, its
   submitter, the team a template run was for; a raw DAG's every team) see

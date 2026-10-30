@@ -407,6 +407,14 @@ export const auditExport = pgTable("audit_export", {
   error: text("error"),
   // The entry where the chain broke at the last look; null while it holds.
   brokenAt: bigint("broken_at", { mode: "number" }),
+  // The database compared with its copy (auditExport.ts, compareWithCopy),
+  // a few objects a look, round and round: the last entry compared this
+  // round, when, the first entry found different (null while they agree),
+  // and why the last look didn't finish, if it didn't.
+  comparedThrough: bigint("compared_through", { mode: "number" }).notNull().default(0),
+  comparedAt: timestamp("compared_at", { withTimezone: true }),
+  differsAt: bigint("differs_at", { mode: "number" }),
+  compareProblem: text("compare_problem"),
 });
 
 /**

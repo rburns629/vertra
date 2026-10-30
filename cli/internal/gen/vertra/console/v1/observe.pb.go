@@ -1019,9 +1019,19 @@ type GetAuditCopyResponse struct {
 	// slipped in); 0 while it holds. Nothing from there on is copied.
 	BrokenAt int64 `protobuf:"varint,7,opt,name=broken_at,json=brokenAt,proto3" json:"broken_at,omitempty"`
 	// Why the last look didn't copy, if it didn't.
-	Problem       string `protobuf:"bytes,8,opt,name=problem,proto3" json:"problem,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Problem string `protobuf:"bytes,8,opt,name=problem,proto3" json:"problem,omitempty"`
+	// The database compared with the copy, entry by entry, a few copies an
+	// hour, round and round (the chain alone misses a change whose hashes
+	// were all rewritten after it): how far this round has gone, and when.
+	ComparedThrough int64                  `protobuf:"varint,9,opt,name=compared_through,json=comparedThrough,proto3" json:"compared_through,omitempty"`
+	ComparedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=compared_at,json=comparedAt,proto3,oneof" json:"compared_at,omitempty"`
+	// The first entry the database has changed (or lost) since it was
+	// copied; 0 while they agree.
+	DiffersAt int64 `protobuf:"varint,11,opt,name=differs_at,json=differsAt,proto3" json:"differs_at,omitempty"`
+	// Why the last comparison didn't finish, or what it found.
+	CompareProblem string `protobuf:"bytes,12,opt,name=compare_problem,json=compareProblem,proto3" json:"compare_problem,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetAuditCopyResponse) Reset() {
@@ -1106,6 +1116,34 @@ func (x *GetAuditCopyResponse) GetBrokenAt() int64 {
 func (x *GetAuditCopyResponse) GetProblem() string {
 	if x != nil {
 		return x.Problem
+	}
+	return ""
+}
+
+func (x *GetAuditCopyResponse) GetComparedThrough() int64 {
+	if x != nil {
+		return x.ComparedThrough
+	}
+	return 0
+}
+
+func (x *GetAuditCopyResponse) GetComparedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ComparedAt
+	}
+	return nil
+}
+
+func (x *GetAuditCopyResponse) GetDiffersAt() int64 {
+	if x != nil {
+		return x.DiffersAt
+	}
+	return 0
+}
+
+func (x *GetAuditCopyResponse) GetCompareProblem() string {
+	if x != nil {
+		return x.CompareProblem
 	}
 	return ""
 }
@@ -1456,7 +1494,7 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\aentries\x18\x01 \x03(\v2\x1d.vertra.console.v1.AuditEntryR\aentries\x12\x1f\n" +
 	"\vnext_before\x18\x02 \x01(\x03R\n" +
 	"nextBefore\"\x15\n" +
-	"\x13GetAuditCopyRequest\"\xe5\x02\n" +
+	"\x13GetAuditCopyRequest\"\xaa\x04\n" +
 	"\x14GetAuditCopyResponse\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12 \n" +
 	"\vdestination\x18\x02 \x01(\tR\vdestination\x12%\n" +
@@ -1466,10 +1504,18 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\n" +
 	"checked_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\tcheckedAt\x88\x01\x01\x12\x1b\n" +
 	"\tbroken_at\x18\a \x01(\x03R\bbrokenAt\x12\x18\n" +
-	"\aproblem\x18\b \x01(\tR\aproblemB\f\n" +
+	"\aproblem\x18\b \x01(\tR\aproblem\x12)\n" +
+	"\x10compared_through\x18\t \x01(\x03R\x0fcomparedThrough\x12@\n" +
+	"\vcompared_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampH\x02R\n" +
+	"comparedAt\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"differs_at\x18\v \x01(\x03R\tdiffersAt\x12'\n" +
+	"\x0fcompare_problem\x18\f \x01(\tR\x0ecompareProblemB\f\n" +
 	"\n" +
 	"_copied_atB\r\n" +
-	"\v_checked_at\"\x86\x02\n" +
+	"\v_checked_atB\x0e\n" +
+	"\f_compared_at\"\x86\x02\n" +
 	"\x11SearchLogsRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
@@ -1553,27 +1599,28 @@ var file_vertra_console_v1_observe_proto_depIdxs = []int32{
 	20, // 9: vertra.console.v1.ListAuditResponse.entries:type_name -> vertra.console.v1.AuditEntry
 	19, // 10: vertra.console.v1.GetAuditCopyResponse.copied_at:type_name -> google.protobuf.Timestamp
 	19, // 11: vertra.console.v1.GetAuditCopyResponse.checked_at:type_name -> google.protobuf.Timestamp
-	19, // 12: vertra.console.v1.SearchLogsRequest.since:type_name -> google.protobuf.Timestamp
-	19, // 13: vertra.console.v1.SearchLogsRequest.until:type_name -> google.protobuf.Timestamp
-	18, // 14: vertra.console.v1.SearchLogsResponse.lines:type_name -> vertra.console.v1.LogLine
-	19, // 15: vertra.console.v1.LogLine.at:type_name -> google.protobuf.Timestamp
-	0,  // 16: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
-	1,  // 17: vertra.console.v1.ObserveService.GetImageSbom:input_type -> vertra.console.v1.GetImageSbomRequest
-	7,  // 18: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
-	12, // 19: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
-	14, // 20: vertra.console.v1.ObserveService.GetAuditCopy:input_type -> vertra.console.v1.GetAuditCopyRequest
-	16, // 21: vertra.console.v1.ObserveService.SearchLogs:input_type -> vertra.console.v1.SearchLogsRequest
-	3,  // 22: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
-	2,  // 23: vertra.console.v1.ObserveService.GetImageSbom:output_type -> vertra.console.v1.GetImageSbomResponse
-	8,  // 24: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
-	13, // 25: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
-	15, // 26: vertra.console.v1.ObserveService.GetAuditCopy:output_type -> vertra.console.v1.GetAuditCopyResponse
-	17, // 27: vertra.console.v1.ObserveService.SearchLogs:output_type -> vertra.console.v1.SearchLogsResponse
-	22, // [22:28] is the sub-list for method output_type
-	16, // [16:22] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	19, // 12: vertra.console.v1.GetAuditCopyResponse.compared_at:type_name -> google.protobuf.Timestamp
+	19, // 13: vertra.console.v1.SearchLogsRequest.since:type_name -> google.protobuf.Timestamp
+	19, // 14: vertra.console.v1.SearchLogsRequest.until:type_name -> google.protobuf.Timestamp
+	18, // 15: vertra.console.v1.SearchLogsResponse.lines:type_name -> vertra.console.v1.LogLine
+	19, // 16: vertra.console.v1.LogLine.at:type_name -> google.protobuf.Timestamp
+	0,  // 17: vertra.console.v1.ObserveService.GetSecurity:input_type -> vertra.console.v1.GetSecurityRequest
+	1,  // 18: vertra.console.v1.ObserveService.GetImageSbom:input_type -> vertra.console.v1.GetImageSbomRequest
+	7,  // 19: vertra.console.v1.ObserveService.GetMetrics:input_type -> vertra.console.v1.GetMetricsRequest
+	12, // 20: vertra.console.v1.ObserveService.ListAudit:input_type -> vertra.console.v1.ListAuditRequest
+	14, // 21: vertra.console.v1.ObserveService.GetAuditCopy:input_type -> vertra.console.v1.GetAuditCopyRequest
+	16, // 22: vertra.console.v1.ObserveService.SearchLogs:input_type -> vertra.console.v1.SearchLogsRequest
+	3,  // 23: vertra.console.v1.ObserveService.GetSecurity:output_type -> vertra.console.v1.GetSecurityResponse
+	2,  // 24: vertra.console.v1.ObserveService.GetImageSbom:output_type -> vertra.console.v1.GetImageSbomResponse
+	8,  // 25: vertra.console.v1.ObserveService.GetMetrics:output_type -> vertra.console.v1.GetMetricsResponse
+	13, // 26: vertra.console.v1.ObserveService.ListAudit:output_type -> vertra.console.v1.ListAuditResponse
+	15, // 27: vertra.console.v1.ObserveService.GetAuditCopy:output_type -> vertra.console.v1.GetAuditCopyResponse
+	17, // 28: vertra.console.v1.ObserveService.SearchLogs:output_type -> vertra.console.v1.SearchLogsResponse
+	23, // [23:29] is the sub-list for method output_type
+	17, // [17:23] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_observe_proto_init() }

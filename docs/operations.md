@@ -525,10 +525,19 @@ checks say where, and `ObserveService/GetAuditCopy` gives the copy's state
 (how far it has gone, what's waiting, the entry where the chain broke; the
 bucket to admins).
 
+The chain alone misses a change whose every later hash was rewritten too
+(someone who can write the database can). So every hour the console also
+compares a few copies with the database, entry by entry, round and round
+through the whole copy: an entry changed or gone since it was copied is
+named, in Observe's security checks, the Admin page and the log
+(`audit_copy_differs`). Proven on kind with SeaweedFS (2026-10-29): a
+copied entry rewritten with a new hash was caught within the minute after
+a restart.
+
 - **gcs**: a retention policy of `audit.keepDays`; the console's Google
-  identity may only create objects.
+  identity may create and read objects, never replace or delete them.
 - **s3**: Object Lock, governance mode, `audit.keepDays`; the console's role
-  may only put objects.
+  may put, read and list objects, never delete them.
 - `audit.lock: true` locks it: GCS locked retention, S3 compliance mode.
   Nobody, the cloud account's owners included, can then shorten it, and the
   bucket can't be deleted until the last object's retention lapses. That's

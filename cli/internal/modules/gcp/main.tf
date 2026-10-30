@@ -563,6 +563,15 @@ resource "google_storage_bucket_iam_member" "audit" {
   member = google_service_account.console.member
 }
 
+# Reading its copies back, to compare the database with them (no delete:
+# the retention policy refuses that anyway).
+resource "google_storage_bucket_iam_member" "audit_read" {
+  count  = var.audit_export ? 1 : 0
+  bucket = google_storage_bucket.audit[0].name
+  role   = "roles/storage.objectViewer"
+  member = google_service_account.console.member
+}
+
 # --- reaching the console: an address for its load balancer -----------------
 
 resource "google_compute_global_address" "console" {

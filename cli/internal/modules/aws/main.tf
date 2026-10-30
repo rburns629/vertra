@@ -632,8 +632,13 @@ resource "aws_s3_bucket_object_lock_configuration" "audit" {
 data "aws_iam_policy_document" "console_audit" {
   count = var.audit_export ? 1 : 0
   statement {
-    actions   = ["s3:PutObject"]
+    actions   = ["s3:PutObject", "s3:GetObject"]
     resources = ["${aws_s3_bucket.audit[0].arn}/*"]
+  }
+  # Reading its copies back, to compare the database with them.
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.audit[0].arn]
   }
 }
 

@@ -112,7 +112,9 @@ function AuditCopyCard() {
     ? null
     : !copy.enabled
       ? <Pill tone="neutral">Off</Pill>
-      : copy.brokenAt > 0
+      : copy.differsAt > 0
+        ? <Pill tone="error">Changed since copied</Pill>
+        : copy.brokenAt > 0
         ? <Pill tone="error">Chain broken</Pill>
         : copy.problem
           ? <Pill tone="warning">Not copying</Pill>
@@ -137,6 +139,8 @@ function AuditCopyCard() {
             </Alert>
           )}
           {copy.problem && copy.brokenAt === 0 && <Alert severity="warning">{copy.problem}</Alert>}
+          {copy.differsAt > 0 && <Alert severity="error">{copy.compareProblem}</Alert>}
+          {copy.compareProblem && copy.differsAt === 0 && <Alert severity="warning">{copy.compareProblem}</Alert>}
           <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 2, rowGap: 0.75 }}>
             <Typography component="dt" variant="body2" color="text.secondary">
               Copied to
@@ -161,6 +165,12 @@ function AuditCopyCard() {
             </Typography>
             <Typography component="dd" variant="body2" sx={{ m: 0 }}>
               {copy.checkedAt ? when(copy.checkedAt) : "not yet"}
+            </Typography>
+            <Typography component="dt" variant="body2" color="text.secondary">
+              Compared with the copy
+            </Typography>
+            <Typography component="dd" variant="body2" sx={{ m: 0 }}>
+              {copy.comparedAt ? `${when(copy.comparedAt)}, through entry ${String(copy.comparedThrough)} this round` : "not yet"}
             </Typography>
           </Box>
         </>
