@@ -480,8 +480,7 @@ func (x *CreateBotTokenRequest) GetExpiresInDays() int32 {
 type CreateKeylessBotRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Team  string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
-	// The bot's account: a new one (an existing bot gets an identity with
-	// AddBotIdentity).
+	// The bot's account; created if it doesn't exist.
 	Email string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
 	// As CreateBotTokenRequest's.
 	Ordering       bool     `protobuf:"varint,3,opt,name=ordering,proto3" json:"ordering,omitempty"`

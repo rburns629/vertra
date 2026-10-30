@@ -259,8 +259,7 @@ export type CreateKeylessBotRequest = Message<"vertra.console.v1.CreateKeylessBo
   team: string;
 
   /**
-   * The bot's account: a new one (an existing bot gets an identity with
-   * AddBotIdentity).
+   * The bot's account; created if it doesn't exist.
    *
    * @generated from field: string email = 2;
    */

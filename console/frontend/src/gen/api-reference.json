@@ -10963,7 +10963,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "The bot's account: a new one (an existing bot gets an identity with\nAddBotIdentity)."
+     "comment": "The bot's account; created if it doesn't exist."
     },
     {
      "name": "ordering",
