@@ -25,8 +25,8 @@ const jwk = publicKey.export({ format: "jwk" });
 export const sessionKeyId = createHash("sha256").update(jwk.x ?? "").digest("hex").slice(0, 16);
 
 export const sessionKeys = {
-  private: privateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-  public: publicKey.export({ format: "pem", type: "spki" }).toString(),
+  private: privateKey.export({ format: "pem", type: "pkcs8" }),
+  public: publicKey.export({ format: "pem", type: "spki" }),
 };
 
 /** The public key as a JSON Web Key Set. */
