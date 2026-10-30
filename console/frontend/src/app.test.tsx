@@ -372,6 +372,23 @@ describe("a run", () => {
     await waitFor(() => { expect(retried).toEqual([{ executionId: FAILED_RUN.executionId, taskId: "deploy" }]); });
   });
 
+  it("offers Ask Vertra about a failure, with the question in its box to send", async () => {
+    let asked = 0;
+    await renderAt(`/runs/${FAILED_RUN.executionId}`, MEMBER, {
+      "ExecutionService/WatchExecution": [{ execution: FAILED_RUN }],
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "ChatService/AskStream": () => {
+        asked++;
+        return [];
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra about it" }));
+    const box = (await screen.findByLabelText("Your question")) as HTMLTextAreaElement;
+    // Only what Vertra itself says: the run's id and the step's position, never the product's code or the step's id.
+    await waitFor(() => { expect(box.value).toBe(`Why did run ${FAILED_RUN.executionId} fail at step 2, and what should I do?`); });
+    expect(asked).toBe(0);
+  });
+
   it("shows what uses what, and lets an admin approve a delete that others depended on", async () => {
     const project = { id: "a1b2c3d4-0000-4000-8000-0000000000a1", type: "gcp/project", externalId: "web-prod", executionId: FAILED_RUN.executionId, input: "" };
     const service = { id: "a1b2c3d4-0000-4000-8000-0000000000a2", type: "gcp/cloud-run-service", externalId: "shop-api", executionId: FAILED_RUN.executionId, input: "projectId" };

@@ -226,6 +226,7 @@ export function ExecutionDetailPage() {
 
       {failed && (
         <FailureCard
+          runId={execution.executionId}
           task={failed}
           position={`Step ${String(failedIndex + 1)}`}
           busy={busy === failed.taskId}
