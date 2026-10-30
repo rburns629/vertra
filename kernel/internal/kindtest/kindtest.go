@@ -137,7 +137,21 @@ func buildAndLoad(tag string) (string, error) {
 		if err := run("docker", "tag", tag, ref); err != nil {
 			return "", err
 		}
-		return ref, run("docker", "push", "-q", ref)
+		if err := run("docker", "push", "-q", ref); err != nil {
+			return "", err
+		}
+		// By digest: a node keeps what it pulled under a tag, so a fixture
+		// changed since would otherwise run as it was.
+		out, err := exec.Command("docker", "inspect", "-f", "{{range .RepoDigests}}{{println .}}{{end}}", ref).Output()
+		if err != nil {
+			return "", fmt.Errorf("docker inspect %s: %v", ref, err)
+		}
+		for _, digest := range strings.Fields(string(out)) {
+			if strings.HasPrefix(digest, localRegistry+"/vertra-test/") {
+				return digest, nil
+			}
+		}
+		return "", fmt.Errorf("%s was pushed, but docker names no digest for it", ref)
 	}
 	return tag, run("kind", "load", "docker-image", tag, "--name", kindName)
 }

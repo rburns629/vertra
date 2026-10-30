@@ -4,9 +4,12 @@ package executor_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os/exec"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -265,6 +268,31 @@ func TestKindATaskRunsInItsTeamAsItsServiceAccount(t *testing.T) {
 	if out, _ := exec.Command("kubectl", "auth", "can-i", "get", "secrets", "-n", team,
 		"--as", "system:serviceaccount:"+team+":gcp-demo-sa").Output(); strings.TrimSpace(string(out)) != "no" {
 		t.Errorf("can-i get secrets = %q", out)
+	}
+}
+
+// A step reads the Secrets it names, mounted, and none of its team's others.
+func TestKindATaskReadsTheSecretsItNamesAndNoOthers(t *testing.T) {
+	k, client := kindExecutor(t)
+	image := kindtest.Image(t, kindtest.FixtureImage)
+	team := secondTeam(t, client)
+	value := fmt.Sprintf("token-%d", time.Now().UnixNano())
+	for name, data := range map[string]string{"e2e-token": value, "not-asked-for": "elsewhere"} {
+		if _, err := client.CoreV1().Secrets(team).Create(context.Background(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: name}, StringData: map[string]string{"token": data}}, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	task := fixtureTask(t, "secret-digest", nil, image)
+	task.Team, task.SecretRefs = team, []string{"e2e-token"}
+	s := waitForTerminal(t, k, start(t, k, task), 60*time.Second)
+	if s.State != executor.Succeeded {
+		t.Fatalf("status = %+v", s)
+	}
+	sum := sha256.Sum256([]byte(value))
+	want := map[string]any{"e2e-token/token": hex.EncodeToString(sum[:])}
+	if got, _ := s.Outputs["digests"].(map[string]any); !reflect.DeepEqual(got, want) {
+		t.Errorf("digests = %v, want %v; status: %+v", got, want, s)
 	}
 }
 
