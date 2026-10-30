@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "approval_teams" text[] DEFAULT '{}' NOT NULL;

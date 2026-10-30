@@ -120,7 +120,7 @@ actions:
     idempotent: true          # optional: running it again with the same inputs does no harm
     maxAttempts: 3            # optional: attempts in all (default 1); more than 1 needs idempotent
     concurrencyKey: [projectId]   # optional: one step per projectId at a time
-    approval: otherTeams      # optional: a maintainer approves each step first: always, or otherTeams
+    approval: otherTeams      # optional: a maintainer approves each step first: always, otherTeams, or [team, …]
     cleanup:                  # optional: what removes the resources its steps report (below)
       action: delete
     plan: preview             # optional: the action that says what this one would do (below)
@@ -257,8 +257,10 @@ shows the answer with the product and in the catalog, and tells your team's
 maintainers (and its chat webhook) when it isn't ready. Ask your cloud who
 you are and whether you may do what your actions do; change nothing.
 
-`approval` makes a step wait for a person before it runs: `always`, or
-`otherTeams` (only when another team runs the action). A maintainer of your
+`approval` makes a step wait for a person before it runs: `always`,
+`otherTeams` (only when another team runs the action), or a list of teams
+(`approval: [payments, web]`: only when one of them runs it, so one
+consumer team needs an approval and another doesn't). A maintainer of your
 team approves or declines it on the run's page (the home page lists what's
 waiting), never whoever ran it. A declined step fails with
 `APPROVAL_DECLINED`; one nobody decides on within the install's approval

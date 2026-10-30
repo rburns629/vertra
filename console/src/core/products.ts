@@ -169,6 +169,8 @@ export type RegisterProductInput = {
   examples?: ProductExample[];
   /** When a step waits for a maintainer of its team to approve it; "": never. */
   approval?: Approval | "";
+  /** Teams whose runs wait for an approval (product.yaml's approval as a list). */
+  approvalTeams?: string[];
   /** What its error codes mean, and what to do about each. */
   errorHelp?: Record<string, { means: string; do?: string }>;
   /** Empty: not deprecated. */
@@ -316,6 +318,7 @@ export async function registerProduct(caller: AuthUser | undefined, input: Regis
       check: input.check,
       examples: input.examples,
       approval: input.approval === undefined ? undefined : input.approval || null,
+      approvalTeams: input.approvalTeams,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated === undefined ? undefined : input.deprecated || null,
       resources: input.resources,

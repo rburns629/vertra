@@ -359,8 +359,8 @@ func TestConcurrencyKeys(t *testing.T) {
 	}
 }
 
-// An action may wait for an approval, always or for other teams' runs, and
-// a release carries which.
+// An action may wait for an approval, always, for other teams' runs, or for
+// some teams' runs, and a release carries which.
 func TestApprovals(t *testing.T) {
 	check := func(extra string) (string, *Product) {
 		files := product("mine", "[]")
@@ -379,6 +379,21 @@ func TestApprovals(t *testing.T) {
 	}
 	if out, _ := check("    approval: sometimes\n"); !strings.Contains(out, "product.yaml") {
 		t.Errorf("an unknown approval was accepted:\n%s", out)
+	}
+	// For some consumer teams, not others.
+	out, p = check("    approval: [payments, web]\n")
+	if out != "" {
+		t.Fatalf("an approval for some teams was refused:\n%s", out)
+	}
+	actions, err = p.ReleaseActions("registry/a/mine@sha256:abc")
+	if err != nil || actions[0].GetApproval() != "" || strings.Join(actions[0].GetApprovalTeams(), ",") != "payments,web" {
+		t.Errorf("actions = %v, %v", actions, err)
+	}
+	if out, _ := check("    approval: [Not A Team]\n"); !strings.Contains(out, "product.yaml") {
+		t.Errorf("a team name that can't be one was accepted:\n%s", out)
+	}
+	if out, _ := check("    approval: []\n"); !strings.Contains(out, "product.yaml") {
+		t.Errorf("an empty list was accepted:\n%s", out)
 	}
 }
 

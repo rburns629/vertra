@@ -552,6 +552,7 @@ export interface Product {
   check: string | null;
   examples: ProductExample[];
   approval: Approval | null;
+  approvalTeams: string[];
   errorHelp: Record<string, ErrorHelp>;
   deprecated: string | null;
   resources: ProductResources | null;
@@ -599,6 +600,7 @@ export interface ProductInput {
   check?: string | null | undefined;
   examples?: ProductExample[] | undefined;
   approval?: Approval | null | undefined;
+  approvalTeams?: string[] | undefined;
   errorHelp?: Record<string, ErrorHelp> | undefined;
   deprecated?: string | null | undefined;
   resources?: ProductResources | undefined;
@@ -653,6 +655,7 @@ export async function upsertProduct(input: ProductInput): Promise<Product> {
       check: input.check,
       examples: input.examples,
       approval: input.approval,
+      approvalTeams: input.approvalTeams,
       errorHelp: input.errorHelp,
       deprecated: input.deprecated,
       resources: input.resources,

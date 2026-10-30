@@ -303,6 +303,9 @@ export const products = pgTable(
     // (product.yaml's approval): always, or only when another team runs it.
     // Null: never, unless an allowedTargets rule asks (core/approvals.ts).
     approval: text("approval").$type<Approval>(),
+    // product.yaml's approval as a list of teams: a step waits for one when
+    // its run is for one of them (not its own team's). Empty: by approval.
+    approvalTeams: text("approval_teams").array().notNull().default([]),
     // product.yaml's errors: what each error code its actions report means
     // and what to do, shown when a step fails with one (failureHelp.ts).
     errorHelp: jsonb("error_help").$type<Record<string, ErrorHelp>>().notNull().default({}),

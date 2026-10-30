@@ -406,7 +406,8 @@ What a DAG step can run: one row per image and action.
 | `check` | text | yes | product.yaml's `check` (the product's): the action that says whether it's ready on this install. Null: none. |
 | `plan` | text | yes | product.yaml's `plan`: the action of the same product that says what a step of this one would do. **Preview** runs it. Null: none. |
 | `cleanup` | jsonb | yes | product.yaml's `cleanup`: `{ action, inputs }`, the action of the same product that removes a resource its steps report, and its inputs (null: `{"resource": ...}`). Null: nothing removes them. |
-| `approval` | text | yes | product.yaml's `approval`: `always`, or `otherTeams` (only when another team runs it). A step of it then waits for a maintainer of its team to approve it. Null: never, unless an `allowedTargets` rule asks. |
+| `approval` | text | yes | product.yaml's `approval`: `always`, or `otherTeams` (only when another team runs it). A step of it then waits for a maintainer of its team to approve it. Null: never, unless an `allowedTargets` rule asks, or `approval_teams` names the run's team. |
+| `approval_teams` | text[] | no | product.yaml's `approval` as a list of teams: a step of it waits for an approval when its run is for one of them (never its own team's). Empty: by `approval` alone. |
 | `error_help` | jsonb | no | product.yaml's `errors`: `{ CODE: { means, do } }`, shown when a step fails with that code. |
 | `deprecated` | text | yes | Why it's deprecated and what to use instead; null when it isn't. |
 | `from_catalog` | boolean | no | Registered from a catalog release: unregistered when a release no longer has it. One an admin registered by hand isn't. |

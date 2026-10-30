@@ -288,10 +288,24 @@
           }
         },
         "approval": {
-          "description": "When a step of this action waits for a person to approve it before it runs: always, or otherTeams (only when another team runs it). A maintainer of this team approves or declines it on the run's page, never the person who ran it; nobody deciding within the install's approval timeout (3 days by default) fails it with APPROVAL_EXPIRED. Left out: never, unless a rule of your team.yaml's allowedTargets asks for one.",
-          "enum": [
-            "always",
-            "otherTeams"
+          "description": "When a step of this action waits for a person to approve it before it runs: always; otherTeams (only when another team runs it); or a list of teams (only when one of them runs it, so one consumer team needs an approval and another doesn't). A maintainer of this team approves or declines it on the run's page, never the person who ran it; nobody deciding within the install's approval timeout (3 days by default) fails it with APPROVAL_EXPIRED. Left out: never, unless a rule of your team.yaml's allowedTargets asks for one.",
+          "oneOf": [
+            {
+              "enum": [
+                "always",
+                "otherTeams"
+              ]
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              }
+            }
           ]
         },
         "cleanup": {

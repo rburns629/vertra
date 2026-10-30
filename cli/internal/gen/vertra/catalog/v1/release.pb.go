@@ -545,7 +545,8 @@ type ProductAction struct {
 	Errors map[string]*ErrorHelp `protobuf:"bytes,20,rep,name=errors,proto3" json:"errors,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// When a step of it waits for a maintainer of its team to approve it:
 	// "always", "otherTeams" (only when another team runs it), or empty
-	// (never, unless an allowedTargets rule asks).
+	// (never, unless an allowedTargets rule asks, or approval_teams names
+	// the team the run is for).
 	Approval string `protobuf:"bytes,21,opt,name=approval,proto3" json:"approval,omitempty"`
 	// What removes the resources its steps report (product.yaml's cleanup):
 	// unset when nothing does.
@@ -564,7 +565,10 @@ type ProductAction struct {
 	// its actions share it) claimed or running at once; 0: no cap of its own.
 	MaxRunning int32 `protobuf:"varint,26,opt,name=max_running,json=maxRunning,proto3" json:"max_running,omitempty"`
 	// product.yaml's capacity: "spot" or "onDemand"; empty, the install's own.
-	Capacity      string `protobuf:"bytes,27,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Capacity string `protobuf:"bytes,27,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	// product.yaml's approval as a list of teams: a step of it waits for an
+	// approval when its run is for one of them (and not its own team's).
+	ApprovalTeams []string `protobuf:"bytes,28,rep,name=approval_teams,json=approvalTeams,proto3" json:"approval_teams,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -786,6 +790,13 @@ func (x *ProductAction) GetCapacity() string {
 		return x.Capacity
 	}
 	return ""
+}
+
+func (x *ProductAction) GetApprovalTeams() []string {
+	if x != nil {
+		return x.ApprovalTeams
+	}
+	return nil
 }
 
 type Example struct {
@@ -1731,7 +1742,7 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\bapproval\x18\x03 \x01(\bR\bapproval\"5\n" +
 	"\aTargets\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xba\b\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xe1\b\n" +
 	"\rProductAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12\x16\n" +
@@ -1767,7 +1778,8 @@ const file_vertra_catalog_v1_release_proto_rawDesc = "" +
 	"\bexamples\x18\x19 \x03(\v2\x1a.vertra.catalog.v1.ExampleR\bexamples\x12\x1f\n" +
 	"\vmax_running\x18\x1a \x01(\x05R\n" +
 	"maxRunning\x12\x1a\n" +
-	"\bcapacity\x18\x1b \x01(\tR\bcapacity\x1aW\n" +
+	"\bcapacity\x18\x1b \x01(\tR\bcapacity\x12%\n" +
+	"\x0eapproval_teams\x18\x1c \x03(\tR\rapprovalTeams\x1aW\n" +
 	"\vErrorsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
 	"\x05value\x18\x02 \x01(\v2\x1c.vertra.catalog.v1.ErrorHelpR\x05value:\x028\x01\"\x81\x01\n" +

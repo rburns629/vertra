@@ -680,8 +680,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `APPROVAL_EXPIRED`. An approval lasts across retries; a declined step
   asks again. Proven on kind with the local sample's rot13
   (`approval: otherTeams`). Approvers are notified, and can preview the
-  step (both 2026-10-24). Left: approval for one consumer team and not
-  another without a target rule.
+  step (both 2026-10-24). And for some consumer teams and not others,
+  without a target rule (2026-10-29): `approval: [team, …]`, carried by
+  releases (`approval_teams`, console migration 0051).
 - [x] **P1: failure help from the owner** (done 2026-10-21): product.yaml's
   `errors` (CODE: means, do) and team.yaml's `help` (chat, url) beside
   `contact`, carried by releases (console migration 0010). A failed step's

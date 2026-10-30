@@ -230,7 +230,8 @@ secrets, its targets checked as above), so it's no more than they could run
 step by step; no raw DAG, and ordering bots still order templates only.
 
 A team can also make a step wait for a person (approvals): product.yaml's
-`approval` (`always`, or `otherTeams` for another team's runs), or an
+`approval` (`always`, `otherTeams` for another team's runs, or a list of
+the teams whose runs need one), or an
 `allowedTargets` rule's `approval: true`. The console marks such a step
 `approvalRequired` (a submitter can't set or clear it), and the kernel holds
 it in `AWAITING_APPROVAL`, never claimed, until a maintainer of the step's

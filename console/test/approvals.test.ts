@@ -154,6 +154,31 @@ describe("which steps wait for an approval", () => {
     expect((await run("member", deploy)).waits).toBe(false);
   });
 
+  it("a list of teams: their runs wait, another consumer's and the owning team's don't", async () => {
+    const [ownerTeam] = await db.select().from(teams).where(eq(teams.name, owner));
+    const audit = `${owner}-audit-run`;
+    await upsertProduct({
+      name: audit,
+      image: `registry.example/${owner}/${audit}:1`,
+      action: "run",
+      teamId: ownerTeam!.id,
+      // No target in it: only the approval decides.
+      inputSchema: { type: "object", properties: { projectId: { type: "string" } } },
+      shareWith: ["*"],
+      approvalTeams: [apps],
+    });
+    const web = await createTeam(`${prefix}-web`);
+    const webUser = await users.makeUser();
+    await addTeamMember(webUser.id, web.id, "member");
+    const webToken = await users.signIn(webUser.email);
+    expect((await run("apps", audit)).waits).toBe(true);
+    expect((await run("member", audit)).waits).toBe(false);
+    const result = await call<{ executionId: string }>(webToken, "TemplateService/RunAction", { product: audit, inputs: { projectId: `${apps}-dev` } });
+    expect(result.code).toBe("ok");
+    const submitted = vi.mocked(submitExecution).mock.lastCall?.[0] as { tasks: { approvalRequired?: boolean }[] };
+    expect(submitted.tasks[0]?.approvalRequired === true).toBe(false);
+  });
+
   it("always: every run waits, the owning team's too", async () => {
     expect((await run("member", wipe)).waits).toBe(true);
   });

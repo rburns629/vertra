@@ -540,13 +540,16 @@ interface Runner {
  * Whether a step of `product`, in its team `team`, waits for a maintainer of
  * that team to approve it: always, if its product.yaml says so; for another
  * team's run (the caller isn't in the product's team), if it says
- * otherTeams, or if a target it's aimed at is one the team's allowedTargets
- * let through only with an approval (targets.ts).
+ * otherTeams, or names the team the run is for (approval as a list), or if
+ * a target it's aimed at is one the team's allowedTargets let through only
+ * with an approval (targets.ts).
  */
 async function approvalRequired(product: Product, team: string, inputs: Record<string, unknown>, runner: Runner): Promise<boolean> {
   if (product.approval === "always") return true;
   if (runner.teamNames.includes(team)) return false;
   if (product.approval === "otherTeams") return true;
+  const runFor = runner.forTeam ? [runner.forTeam] : runner.teamNames;
+  if (runFor.some((t) => product.approvalTeams.includes(t))) return true;
   const owner = await findTeamByName(team);
   return owner !== undefined && targetsNeedApproval(owner, product.inputSchema, inputs, runner.forTeam ? [runner.forTeam] : runner.teamNames);
 }
