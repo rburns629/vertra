@@ -299,6 +299,7 @@ KERNEL_LAYERS = [
     ("executor", "internal/executor/  (the Executor interface; Kubernetes Jobs)", RED),
     ("scheduler", "internal/scheduler/  (kernel-scheduler: the pass and the loop)", ORANGE),
     ("migrate", "internal/migrate/  (the schema)", YELLOW),
+    ("database", "internal/dbauth/, internal/dbsetup/  (signing in to a managed database; opening it to each process)", YELLOW),
     ("sleeper", "internal/sleeper/  (sleeping an idle platform, a CronJob)", ORANGE),
     ("observability", "internal/logging/, internal/metrics/", GREY),
     ("cmd", "cmd/kernel/  (the binary: a subcommand per process)", BLUE),
@@ -316,6 +317,8 @@ def kernel_package(relative: Path) -> str | None:
         return None
     if parts[1] in ("logging", "metrics"):
         return "observability"
+    if parts[1] in ("dbauth", "dbsetup"):
+        return "database"
     return parts[1]
 
 
