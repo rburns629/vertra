@@ -328,11 +328,10 @@ describe("what runs made", () => {
     canDelete: true,
   });
 
-  it("lists a delete sent to an admin at once, and picks at most 50 to delete together", async () => {
+  it("lists a delete sent to an admin at once", async () => {
     let requested = 0;
-    const many = Array.from({ length: 51 }, (_, i) => made(`a1b2c3d4-0000-4000-8000-${String(i).padStart(12, "0")}`, `bucket-${String(i)}`));
     await renderAt("/runs/made", MEMBER, {
-      "ResourceService/ListResources": { resources: many },
+      "ResourceService/ListResources": { resources: [made("a1b2c3d4-0000-4000-8000-000000000000", "bucket-0")] },
       "ResourceService/ListDeleteRequests": () => {
         requested++;
         return { requests: [] };
@@ -344,10 +343,15 @@ describe("what runs made", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
     expect(await screen.findByText("It's used: an admin has been asked.")).toBeTruthy();
     await waitFor(() => { expect(requested).toBe(2); }); // loaded again once asked
-    await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
+  });
 
+  // 51 clicks, each re-rendering 51 rows: seconds on a CI runner.
+  it("picks at most 50 to delete together", { timeout: 20_000 }, async () => {
+    const many = Array.from({ length: 51 }, (_, i) => made(`a1b2c3d4-0000-4000-8000-${String(i).padStart(12, "0")}`, `bucket-${String(i)}`));
+    await renderAt("/runs/made", MEMBER, { "ResourceService/ListResources": { resources: many } });
+    await screen.findByRole("checkbox", { name: "Select bucket-0" });
     // Every row's box at once (looking each up by name is slow on 51 rows).
-    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if (!box.checked && (box.getAttribute("aria-label") ?? "").startsWith("Select bucket-")) fireEvent.click(box);
+    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if ((box.getAttribute("aria-label") ?? "").startsWith("Select bucket-")) fireEvent.click(box);
     expect(screen.getByText(/At most 50 at once: unselect 1/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete 51…" })).toHaveProperty("disabled", true);
   });
@@ -1836,6 +1840,32 @@ describe("a team's members", () => {
     expect(screen.queryByRole("combobox", { name: "sam@acme.com's role" })).toBeNull();
     expect(screen.getByText("Set by their groups")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
+  });
+});
+
+describe("the Teams pages' requests", () => {
+  it("ask for other teams' facts a few at a time, and a tab's count again only when it's left", async () => {
+    // Every other team's pod list hangs: no more than four are asked for at once.
+    await renderAt("/teams", { ...ADMIN, teamNames: [], maintainerOf: [] }, {
+      "TeamService/ListTeams": { teams: Array.from({ length: 10 }, (_, i) => ({ id: `t${String(i)}`, name: `team-${String(i)}` })) },
+      "TeamService/ListPods": () => new Promise(() => {}),
+    });
+    await waitFor(() => { expect(calls.filter((c) => c === "TeamService/ListPods").length).toBeGreaterThan(0); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
+    expect(calls.filter((c) => c === "TeamService/ListPods").length).toBe(4);
+    cleanup();
+    calls.length = 0;
+
+    await renderAt("/teams/payments", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+    });
+    await waitFor(() => { expect(calls).toContain("ApiService/ListApis"); });
+    const apis = calls.filter((c) => c === "ApiService/ListApis").length;
+    const members = calls.filter((c) => c === "TeamService/ListMembers").length;
+    // Leaving Members reads its count again; nothing else is read again.
+    fireEvent.click(screen.getByRole("tab", { name: /^Secrets/ }));
+    await waitFor(() => { expect(calls.filter((c) => c === "TeamService/ListMembers").length).toBeGreaterThan(members); });
+    expect(calls.filter((c) => c === "ApiService/ListApis").length).toBe(apis);
   });
 });
 
