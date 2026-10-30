@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"slices"
 	"strconv"
@@ -228,6 +229,10 @@ type Settings struct {
 	HeartbeatFile string
 	// The port /metrics is served on (the scheduler has no other server).
 	MetricsPort int
+	// Where Go's profiler (net/http/pprof) listens, empty for nowhere: a
+	// loopback address only (127.0.0.1:6060), reached with kubectl
+	// port-forward, never a Service.
+	ProfilingAddress string
 }
 
 type reader struct {
@@ -360,6 +365,10 @@ func Load(getenv func(string) string) (Settings, error) {
 		ExecutionRetentionDays: r.integer("EXECUTION_RETENTION_DAYS", 90, false),
 		HeartbeatFile:          r.str("SCHEDULER_HEARTBEAT_FILE", "/tmp/vertra-scheduler-heartbeat"),
 		MetricsPort:            r.integer("METRICS_PORT", 9090, true),
+		ProfilingAddress:       r.str("PROFILING_ADDRESS", ""),
+	}
+	if s.ProfilingAddress != "" && !loopback(s.ProfilingAddress) {
+		r.problems = append(r.problems, fmt.Sprintf("PROFILING_ADDRESS: a loopback address and port (127.0.0.1:6060), got %q", s.ProfilingAddress))
 	}
 	if (s.APITLSCertFile == "") != (s.APITLSKeyFile == "") {
 		r.problems = append(r.problems, "API_TLS_CERT_FILE and API_TLS_KEY_FILE: both, or neither")
@@ -433,3 +442,17 @@ func podLabelProblem(key, value string) string {
 
 // FromEnv is Load(os.Getenv).
 func FromEnv() (Settings, error) { return Load(os.Getenv) }
+
+// loopback says an address listens on this machine alone (127.0.0.1:6060,
+// [::1]:6060, localhost:6060).
+func loopback(address string) bool {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || port == "" {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}

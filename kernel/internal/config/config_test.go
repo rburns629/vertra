@@ -79,6 +79,9 @@ func TestAMisconfigurationStopsTheSchedulerAtStartup(t *testing.T) {
 		"bad label key":       {"TASK_POD_LABELS": `{"has space": "true"}`},
 		"bad label value":     {"TASK_POD_LABELS": `{"team": "not/valid"}`},
 		"unknown capacity":    {"TASK_CAPACITY_PLACEMENTS": `{"preemptible": {"nodeSelector": {"a": "b"}}}`},
+		"profiler for all":    {"PROFILING_ADDRESS": ":6060"},
+		"profiler outward":    {"PROFILING_ADDRESS": "0.0.0.0:6060"},
+		"profiler no port":    {"PROFILING_ADDRESS": "127.0.0.1"},
 	} {
 		_, err := load(t, env)
 		if err == nil {
@@ -109,5 +112,17 @@ func TestTheAPIAndSleeperSettings(t *testing.T) {
 		!reflect.DeepEqual(s.SleeperDatabases, []string{"kernel-postgres"}) ||
 		s.SleeperIdleAfter != 10*time.Minute || s.SleeperScheduledWait != 6*time.Hour {
 		t.Errorf("settings = %+v", s)
+	}
+}
+
+func TestTheProfilerListensOnLoopbackOnly(t *testing.T) {
+	for _, address := range []string{"127.0.0.1:6060", "[::1]:6060", "localhost:6060"} {
+		s, err := load(t, map[string]string{"PROFILING_ADDRESS": address})
+		if err != nil || s.ProfilingAddress != address {
+			t.Errorf("%s: %v", address, err)
+		}
+	}
+	if s, err := load(t, nil); err != nil || s.ProfilingAddress != "" {
+		t.Errorf("off by default: %q, %v", s.ProfilingAddress, err)
 	}
 }

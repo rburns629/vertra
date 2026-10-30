@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -323,6 +324,7 @@ func runMigrate(ctx context.Context, s config.Settings, log *slog.Logger) error 
 }
 
 func runAPI(ctx context.Context, s config.Settings, log *slog.Logger) error {
+	serveProfiler(s, log)
 	pool, err := poolFor(ctx, s)
 	if err != nil {
 		return err
@@ -367,6 +369,7 @@ func runAPI(ctx context.Context, s config.Settings, log *slog.Logger) error {
 }
 
 func runScheduler(ctx context.Context, s config.Settings, log *slog.Logger) error {
+	serveProfiler(s, log)
 	// The scheduler has no other HTTP server: /metrics on its own port.
 	go func() {
 		server := &http.Server{Addr: fmt.Sprintf(":%d", s.MetricsPort), Handler: metrics.Handler(), ReadHeaderTimeout: 10 * time.Second}
@@ -455,4 +458,26 @@ func podTolerations(from []config.Toleration) []corev1.Toleration {
 			Value: t.Value, Effect: corev1.TaintEffect(t.Effect), TolerationSeconds: t.TolerationSeconds})
 	}
 	return out
+}
+
+// serveProfiler serves Go's profiler on PROFILING_ADDRESS, a loopback
+// address (config checks), when it's set: kubectl port-forward to the Pod,
+// then go tool pprof http://localhost:6060/debug/pprof/profile.
+func serveProfiler(s config.Settings, log *slog.Logger) {
+	if s.ProfilingAddress == "" {
+		return
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	go func() {
+		server := &http.Server{Addr: s.ProfilingAddress, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("profiler failed", "error", err.Error())
+		}
+	}()
+	log.Info("profiler listening", "address", s.ProfilingAddress)
 }

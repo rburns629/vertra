@@ -47,6 +47,9 @@ data:
   # dedicated metrics HTTP server on it); kernel-api ignores it and serves
   # /metrics on its normal port instead.
   METRICS_PORT: {{ .Values.scheduler.metricsPort | quote }}
+  {{- if .Values.profiling.enabled }}
+  PROFILING_ADDRESS: "127.0.0.1:6060"
+  {{- end }}
   TASK_EXTRA_ENVIRONMENT: {{ .Values.scheduler.taskExtraEnvironment | toJson | quote }}
   TASK_DEFAULT_RESOURCES: {{ .Values.scheduler.taskDefaultResources | toJson | quote }}
   TASK_NODE_SELECTOR: {{ .Values.scheduler.taskPlacement.nodeSelector | toJson | quote }}

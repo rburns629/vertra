@@ -197,6 +197,12 @@ kubernetesClient:
   qps: 50
   burst: 100
 
+# -- Go's profiler (net/http/pprof) in kernel-api and the scheduler, on
+# 127.0.0.1:6060 inside each Pod: never a Service, reached only with
+# kubectl port-forward (perf/README.md). Off by default.
+profiling:
+  enabled: false
+
 scheduler:
   replicaCount: 1
   # The longest the scheduler waits between passes when nothing happens; a
