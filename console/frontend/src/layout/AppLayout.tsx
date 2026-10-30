@@ -37,8 +37,9 @@ import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { PageErrorBoundary } from "../components/ErrorPage";
 import { useEnvironment } from "../environment";
-import { ChatLauncher } from "./ChatLauncher";
+import { AskProvider, ChatLauncher } from "./ChatLauncher";
 import { NotificationBell } from "./NotificationBell";
+import { SIDEBAR_TIP } from "./sidebarTip";
 
 /** The sidebar's width: dragged between these; under COMPACT_BELOW it keeps just the icons (Motion board). */
 const WIDTH = { default: 248, min: 72, max: 360, compactBelow: 150 } as const;
@@ -192,7 +193,7 @@ function ResizeHandle({ width, onWidth }: { width: number; onWidth: (w: number) 
   );
 }
 
-export function AppLayout() {
+function Shell() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -254,17 +255,17 @@ export function AppLayout() {
             {!compact && "Vertra"}
           </Box>
           {isDesktop && !compact && (
-            <Tooltip title="Collapse the sidebar">
-              <IconButton size="small" aria-label="Collapse the sidebar" onClick={() => { setWidth(WIDTH.min); }} sx={onDarkButton}>
+            <Tooltip title="Collapse the side menu to icons">
+              <IconButton aria-label="Collapse the side menu to icons" onClick={() => { setWidth(WIDTH.min); }} sx={{ ...onDarkButton, color: "sidebar.textMuted" }}>
                 <CollapseIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
         </Box>
         {compact && (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: -1.5 }}>
-            <Tooltip title="Expand the sidebar" placement="right">
-              <IconButton size="small" aria-label="Expand the sidebar" onClick={() => { setWidth(WIDTH.default); }} sx={onDarkButton}>
+          <Box sx={{ display: "flex", justifyContent: "center", mt: -1.25 }}>
+            <Tooltip title="Expand the side menu" {...SIDEBAR_TIP}>
+              <IconButton aria-label="Expand the side menu" onClick={() => { setWidth(WIDTH.default); }} sx={{ ...onDarkButton, color: "sidebar.textMuted" }}>
                 <ExpandIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -305,7 +306,7 @@ export function AppLayout() {
               </ListItemButton>
             );
             return compact ? (
-              <Tooltip key={item.to} title={item.label} placement="right">
+              <Tooltip key={item.to} title={item.label} {...SIDEBAR_TIP}>
                 {button}
               </Tooltip>
             ) : (
@@ -321,7 +322,7 @@ export function AppLayout() {
             display: "flex",
             flexDirection: compact ? "column" : "row",
             alignItems: "center",
-            gap: compact ? 0.5 : 1.25,
+            gap: compact ? 1 : 1.25,
             mx: 1.5,
             pt: 1.25,
             px: compact ? 0 : 0.75,
@@ -329,14 +330,15 @@ export function AppLayout() {
             borderColor: "sidebar.border",
           }}
         >
-          <Avatar
-            sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12, fontWeight: 600 }}
-            aria-hidden={compact ? undefined : "true"}
-            aria-label={compact ? user.email : undefined}
-            title={compact ? `${user.email} (${roleLine(user)})` : undefined}
-          >
-            {user.email.slice(0, 2).toUpperCase()}
-          </Avatar>
+          <Tooltip title={compact ? `${user.email} (${roleLine(user)})` : ""} {...SIDEBAR_TIP}>
+            <Avatar
+              sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12, fontWeight: 600 }}
+              aria-hidden={compact ? undefined : "true"}
+              aria-label={compact ? user.email : undefined}
+            >
+              {user.email.slice(0, 2).toUpperCase()}
+            </Avatar>
+          </Tooltip>
           {!compact && (
             <Box sx={{ minWidth: 0, flexGrow: 1 }}>
               <Typography noWrap sx={{ fontSize: 13, color: "sidebar.textStrong", lineHeight: 1.35 }}>
@@ -425,5 +427,14 @@ export function AppLayout() {
         </Box>
       </Box>
     </Box>
+  );
+}
+
+/** The shell, with Ask Vertra for every page in it. */
+export function AppLayout() {
+  return (
+    <AskProvider>
+      <Shell />
+    </AskProvider>
   );
 }

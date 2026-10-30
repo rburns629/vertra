@@ -408,9 +408,11 @@ describe("the docs", () => {
       "GuideService/SearchGuides": { hits: [{ guide: "reference-operations", title: "Operations", heading: "Databases > Backups", excerpt: "Back up both databases nightly." }] },
     });
     expect(await screen.findByText("Reference")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Search the docs"), { target: { value: "back up" } });
-    const hit = await screen.findByRole("link", { name: /Operations · Databases > Backups/ });
+    fireEvent.change(screen.getByLabelText("Search the guides"), { target: { value: "back up" } });
+    const hit = await screen.findByRole("link", { name: /^Backups\s*in Operations/ });
     expect(hit.getAttribute("href")).toBe("/docs/reference-operations#backups");
+    // The words searched for, marked in the excerpt.
+    expect(within(hit).getByText("Back").tagName).toBe("MARK");
   });
 
   const DOCS = {
@@ -437,13 +439,56 @@ describe("the docs", () => {
     },
   };
 
-  it("opens on a home with where to start and every category, a new doc under More", async () => {
+  it("opens on a home by task, linking only the guides this console serves", async () => {
     await renderAt("/docs", MEMBER, DOCS);
-    const start = await screen.findByRole("region", { name: "Start here" });
+    const start = await screen.findByRole("region", { name: "New here? Start with these two" });
     expect(within(start).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["/docs/01-getting-started", "/docs/03-what-is-a-dag"]);
-    expect(screen.getByRole("heading", { name: "Install and operate" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "More" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Something new" }).getAttribute("href")).toBe("/docs/09-something-new");
+    const tasks = screen.getByRole("region", { name: "What are you trying to do?" });
+    // Of the tasks, only Install and operate has a guide served here.
+    expect(within(tasks).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Install and operate"]);
+    expect(within(tasks).getByRole("link", { name: "Upgrading, backups, rotating secrets" }).getAttribute("href")).toBe("/docs/reference-operations#upgrading");
+    expect(within(tasks).getByRole("link", { name: "All guides, in reading order" }).getAttribute("href")).toBe("/docs/01-getting-started");
+    // Nothing to offer without a model.
+    expect(screen.queryByRole("button", { name: "Ask Vertra instead" })).toBeNull();
+  });
+
+  it("offers Ask Vertra from the help when there's a model", async () => {
+    await renderAt("/docs", MEMBER, { ...DOCS, "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra instead" }));
+    expect(((await screen.findByLabelText("Your question")) as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("opens Ask with a page's question in the box (useAsk().open(question)): the help's search", async () => {
+    await renderAt("/docs", MEMBER, {
+      ...DOCS,
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "GuideService/SearchGuides": { hits: [] },
+    });
+    fireEvent.change(await screen.findByLabelText("Search the guides"), { target: { value: "rotate a bot token" } });
+    const results = await screen.findByRole("region", { name: "Search results" });
+    fireEvent.click(within(results).getByRole("button", { name: "Ask Vertra" }));
+    await waitFor(() => { expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe("rotate a bot token"); });
+  });
+
+  it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {
+    await renderAt("/docs/15-troubleshooting", MEMBER, {
+      "GuideService/ListGuides": { guides: [{ id: "15-troubleshooting", title: "Troubleshooting", section: "guides", kind: "guide" }] },
+      "GuideService/GetGuide": {
+        markdown: "# Troubleshooting\n\nBy what you see.\n\n## My step is Ready but not running\n\n**What you see:** the step stays **Ready**.\n\n**Why:** something holds it.\n\n**What to do:** wait.\n\n## I can't sign in\n\nAsk.",
+      },
+    });
+    const symptoms = await screen.findByRole("region", { name: "What do you see?" });
+    // The symptoms whose sections the guide has, each to its section.
+    expect(within(symptoms).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#my-step-is-ready-but-not-running", "#i-cant-sign-in"]);
+    expect(screen.getByText("What you see").nextElementSibling?.textContent).toBe("The step stays Ready.");
+    expect(screen.getByText("What to do").nextElementSibling?.textContent).toBe("Wait.");
+  });
+
+  it("lists a doc the contents don't place under More", async () => {
+    await renderAt("/docs/01-getting-started", MEMBER, { ...DOCS, "GuideService/GetGuide": { markdown: "# Try Vertra end to end\n\nHello." } });
+    const contents = await screen.findByRole("navigation", { name: "Docs contents" });
+    fireEvent.click(await within(contents).findByRole("button", { name: "More" }));
+    expect((await within(contents).findByRole("link", { name: "Something new" })).getAttribute("href")).toBe("/docs/09-something-new");
   });
 
   it("shows a long doc a section to a page, nested under it, with the pages before and after", async () => {
@@ -463,9 +508,10 @@ describe("the docs", () => {
     expect(within(contents).getByRole("link", { name: "Upgrading" }).getAttribute("aria-current")).toBe("page");
     const sections = screen.getByRole("navigation", { name: "On this page" });
     expect(within(sections).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#reused-tags", "#rolling-back"]);
+    expect(within(trail).getByText("Upgrading").getAttribute("aria-current")).toBe("page");
     const onward = screen.getByRole("navigation", { name: "Previous and next" });
-    expect(within(onward).getByRole("link", { name: /Previous · Install and operate\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
-    expect(within(onward).getByRole("link", { name: /Next · Install and operate › Operations\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
+    expect(within(onward).getByRole("link", { name: /Previous\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
+    expect(within(onward).getByRole("link", { name: /Next\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
   });
 
   it("draws a doc's figure, and opens it and a linked one at full size", async () => {
@@ -528,9 +574,11 @@ describe("the chat panel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra" }));
     fireEvent.change(await screen.findByLabelText("Your question"), { target: { value: "How do I back up?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    expect((await screen.findByRole("link", { name: "[S1] Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    expect((await screen.findByRole("link", { name: "Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    // Cited in the answer by the number it has in the list.
+    expect(screen.getByRole("link", { name: "Source 1" }).textContent).toBe("[1]");
     expect(screen.getByText(/design history: why, not how it works now/)).toBeTruthy();
-    expect(screen.getByText(/searched the docs, filled a cart/)).toBeTruthy();
+    expect(screen.getByText("Searched the guides, filled a cart")).toBeTruthy();
     expect(asked).toMatchObject([{ team: "azure-apps", messages: [{ role: "user", content: "How do I back up?" }] }]);
     // A wrong answer goes to the admins with its question, and what was wrong.
     fireEvent.click(screen.getByRole("button", { name: "Wrong answer" }));
@@ -1213,6 +1261,75 @@ describe("signing in", () => {
   });
 });
 
+describe("the Teams page", () => {
+  it("sums up your teams, what needs them, and every other team for an admin", async () => {
+    await renderAt("/teams", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t1", name: "payments", fromCatalog: true } },
+      "TeamService/GetTeamProfile": (request: Record<string, unknown>) =>
+        request["name"] === "payments" ? { name: "payments", people: 7 } : { name: String(request["name"]), owner: "@acme/growth", people: 14 },
+      "TeamService/ListPods": { pods: [{ podName: "ek-1", state: "TASK_POD_STATE_RUNNING" }] },
+      "SecretService/ListSecrets": { secrets: [{ id: "s1", secretName: "stripe-webhook", external: { status: "error" } }, { id: "s2", secretName: "db" }] },
+      "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-ci@bots.vertra.local" }] },
+      "TemplateService/ListTemplates": { runnables: [{ kind: "KIND_TEMPLATE", team: "payments", name: "merchant-onboarding", shared: true }] },
+      "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "refund-ledger for growth", taskId: "t", team: "payments", canDecide: true }] },
+      "TeamService/ListTeams": {
+        teams: [
+          { id: "t1", name: "payments", fromCatalog: true },
+          { id: "t2", name: "growth", fromCatalog: true },
+          { id: "t3", name: "sandbox" },
+          { id: "t4", name: "legacy", fromCatalog: true, retiredAt: "2026-10-21T12:00:00Z" },
+        ],
+      },
+      "AdminService/GetCatalogStatus": { status: { problems: [{ item: "teams/sandbox", message: "made here", adoptableTeam: "sandbox" }] } },
+    });
+    const card = (await screen.findByRole("link", { name: "payments" })).closest("article") as HTMLElement;
+    expect(within(card).getByText("You maintain it")).toBeTruthy();
+    expect(await within(card).findByText("merchant-onboarding")).toBeTruthy();
+    expect(await within(card).findByText(/1 step waits for payments to approve/)).toBeTruthy();
+    expect(within(card).getByRole("link", { name: "refund-ledger for growth" }).getAttribute("href")).toBe("/runs/r9");
+    expect(await within(card).findByText("stripe-webhook")).toBeTruthy();
+    expect(within(card).getByRole("link", { name: /^Bots/ }).getAttribute("href")).toBe("/teams/payments?tab=automation");
+
+    const others = screen.getByRole("region", { name: /every other team · 3/i });
+    expect(within(others).getByRole("link", { name: "Adopt…" }).getAttribute("href")).toBe("/admin/catalog");
+    expect(within(others).getByRole("link", { name: "Restore or purge" }).getAttribute("href")).toBe("/teams/legacy?tab=settings");
+    expect((await within(others).findAllByText("@acme/growth")).length).toBeGreaterThan(0);
+    fireEvent.change(within(others).getByRole("searchbox", { name: "Find a team" }), { target: { value: "sand" } });
+    expect(within(others).queryByRole("link", { name: "growth" })).toBeNull();
+    expect(within(others).getByRole("link", { name: "sandbox" })).toBeTruthy();
+  });
+});
+
+describe("a team's members", () => {
+  it("say how each signs in, flag passwords a Google-only team refuses, and show an admin who joins by group", async () => {
+    await renderAt("/teams/payments", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" },
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments", requireSso: true } },
+      "TeamService/ListMembers": {
+        members: [
+          { id: "u1", email: "ana@acme.com", hasPassword: true, usesSso: true, role: "TEAM_ROLE_MAINTAINER", isAdmin: true },
+          { id: "u2", email: "lee@acme.com", hasPassword: true, role: "TEAM_ROLE_MEMBER" },
+          { id: "u3", email: "sam@acme.com", usesSso: true, role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+      "SsoService/ListSsoGroupMappings": {
+        mappings: [
+          { id: "m1", group: "payments-eng@acme.com", team: "payments", role: "TEAM_ROLE_MEMBER" },
+          { id: "m2", group: "data-eng@acme.com", team: "data", role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "3 people" })).toBeTruthy();
+    expect(screen.getByText("Password only")).toBeTruthy();
+    expect(screen.getByText(/1 signs in with a password only, while payments requires Google/)).toBeTruthy();
+    expect(await screen.findByText("payments-eng@acme.com")).toBeTruthy();
+    expect(screen.queryByText("data-eng@acme.com")).toBeNull();
+    // The role a new person gets: Member until Maintainer is chosen.
+    fireEvent.click(screen.getByRole("button", { name: /^Maintainer/ }));
+    expect(screen.getByRole("button", { name: /^Maintainer/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
 describe("a team's settings", () => {
   it("say a retired team is read-only, and offer an admin to restore it", async () => {
     await renderAt("/teams/old-team?tab=settings", ADMIN, {
@@ -1221,7 +1338,9 @@ describe("a team's settings", () => {
     expect(await screen.findByText(/this team is retired: it's read-only/i)).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Restore old-team" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /purge old-team/i })).toHaveProperty("disabled", false);
-    expect(screen.getByText("teams/old-team/")).toBeTruthy();
+    // In the header, and in "Where it comes from".
+    expect(screen.getAllByText("teams/old-team/")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Restore it" })).toBeTruthy();
   });
 
   it("name the members a Google-only rule would lock out, and keep the controls from non-admins", async () => {
@@ -1318,6 +1437,31 @@ describe("keyless bots", () => {
         { team: "payments", botId: "b0b0b0b0-0000-4000-8000-000000000001", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/release", ref: "refs/heads/main" } },
       ]);
     });
+  });
+});
+
+describe("ordering bots", () => {
+  it("list what they may order, and change it only after Edit", async () => {
+    const saved: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": {
+        bots: [{ id: "b1", email: "payments-shop@bots.vertra.local", ordering: true, orderTemplates: ["payments/onboarding"], tokens: [{ id: "k1", label: "Shop" }] }],
+      },
+      "TokenService/SetBotOrders": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return { templates: request["templates"] };
+      },
+    });
+    const card = (await screen.findByRole("heading", { name: "payments-shop@bots.vertra.local" })).closest("article") as HTMLElement;
+    expect(within(card).getByText("Ordering")).toBeTruthy();
+    expect(within(card).getByText("payments/onboarding")).toBeTruthy();
+    expect(within(card).queryByLabelText("Templates it may order")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
+    fireEvent.change(within(card).getByLabelText("Templates it may order"), { target: { value: "payments/onboarding\ndata/postgres-db" } });
+    // The templates' Save, before the callback's.
+    fireEvent.click(within(card).getAllByRole("button", { name: "Save" })[0] as HTMLElement);
+    await waitFor(() => { expect(saved).toEqual([{ team: "payments", email: "payments-shop@bots.vertra.local", templates: ["payments/onboarding", "data/postgres-db"] }]); });
   });
 });
 

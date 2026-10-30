@@ -197,8 +197,157 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
   },
 ];
 
-/** The first steps, in order, on the docs' home. */
-export const START_HERE = ["01-getting-started", "03-what-is-a-dag", "07-how-data-moves", "04-secrets-explained"];
+/** The first steps, in order, on the help's home: each guide, and what it gives you. */
+export const START_HERE: { guide: string; blurb: string }[] = [
+  { guide: "01-getting-started", blurb: "A product that reads a secret and feeds another" },
+  { guide: "03-what-is-a-dag", blurb: "The one idea everything builds on" },
+  { guide: "07-how-data-moves", blurb: "One value, followed through a real run" },
+  { guide: "04-secrets-explained", blurb: "Where a secret lives, and who can read it" },
+];
+
+/** A question, and the guide (and section) that answers it. */
+export interface Answered {
+  label: string;
+  guide: string;
+  section?: string;
+}
+
+/** What people often look for: chips under the help's search. */
+export const POPULAR: Answered[] = [
+  { label: "My step is Ready but not running", guide: "15-troubleshooting", section: "my-step-is-ready-but-not-running" },
+  { label: "Retry or Run again?", guide: "09-runs-explained", section: "how-do-retries-work-automatic-retry-and-run-again" },
+  { label: "Add a bot and get its token", guide: "14-bots-and-automation", section: "how-do-i-add-a-bot-and-get-its-token" },
+  { label: "I can't sign in", guide: "15-troubleshooting", section: "i-cant-sign-in" },
+];
+
+/** The help's home by what you're trying to do: each task's questions, answered by a guide's section. */
+export const TASKS: { id: string; title: string; blurb: string; questions: Answered[] }[] = [
+  {
+    id: "run",
+    title: "Find and run something",
+    blurb: "Order from the catalog, preview it, get it approved, and find what it made.",
+    questions: [
+      { label: "How do I order several actions with the cart?", guide: "10-ordering-and-the-cart", section: "how-do-i-order-several-actions-together-with-the-cart" },
+      { label: "Why is my run waiting for an approval?", guide: "10-ordering-and-the-cart", section: "why-is-my-run-waiting-for-an-approval" },
+      { label: "Can I see what a run would change first?", guide: "10-ordering-and-the-cart", section: "can-i-see-what-a-run-would-change-before-it-runs" },
+      { label: "Run something on a schedule", guide: "10-ordering-and-the-cart", section: "how-do-i-run-something-on-a-schedule" },
+    ],
+  },
+  {
+    id: "fix",
+    title: "Fix a run that failed",
+    blurb: "Organized by what you see: a refused submission, a step that won't start, a missing secret.",
+    questions: [
+      { label: "Where do I start when a run fails?", guide: "15-troubleshooting", section: "where-do-i-start-when-a-run-fails" },
+      { label: "What does each failure code mean?", guide: "09-runs-explained", section: "what-does-each-failure-code-mean" },
+      { label: "An image was refused", guide: "15-troubleshooting", section: "an-image-was-refused" },
+      { label: "My step doesn't get its secret", guide: "15-troubleshooting", section: "my-step-doesnt-get-its-secret" },
+    ],
+  },
+  {
+    id: "team",
+    title: "Work with your team",
+    blurb: "Members and maintainers, joining a team, groups, and retiring one.",
+    questions: [
+      { label: "What may a member, a maintainer and an admin do?", guide: "13-teams-and-roles", section: "what-may-a-member-a-maintainer-and-an-admin-do" },
+      { label: "How do I join a team?", guide: "13-teams-and-roles", section: "how-do-i-join-a-team" },
+      { label: "How do sign-in groups decide who is in a team?", guide: "13-teams-and-roles", section: "how-do-single-sign-on-groups-decide-who-is-in-a-team" },
+    ],
+  },
+  {
+    id: "automate",
+    title: "Automate",
+    blurb: "Bots for pipelines and storefronts, keyless CI, webhooks, the API.",
+    questions: [
+      { label: "Which kind of bot do I need?", guide: "14-bots-and-automation", section: "which-kind-of-bot-do-i-need" },
+      { label: "Sign in from CI without a stored token", guide: "14-bots-and-automation", section: "how-do-i-sign-in-from-ci-without-a-stored-token" },
+      { label: "Get every run's outcome posted to our systems", guide: "14-bots-and-automation", section: "how-do-i-get-every-runs-outcome-posted-to-our-systems" },
+      { label: "Call the API from a pipeline", guide: "05-calling-the-api" },
+    ],
+  },
+  {
+    id: "secrets",
+    title: "Keep and use secrets",
+    blurb: "How a secret reaches a step, and only that step, and syncing from your vault.",
+    questions: [
+      { label: "Secrets, explained", guide: "04-secrets-explained" },
+      { label: "Sync secrets from GCP Secret Manager", guide: "02-sync-secrets-gcp" },
+      { label: "If a secret gets wiped, can it come back?", guide: "04-secrets-explained", section: "if-a-secret-gets-wiped-can-it-come-back" },
+    ],
+  },
+  {
+    id: "apis",
+    title: "Call or publish an API",
+    blurb: "Find another team's API, get access, call it through the gateway, read your traffic.",
+    questions: [
+      { label: "How do I call an API through the gateway?", guide: "11-apis", section: "how-do-i-call-an-api-through-the-gateway" },
+      { label: "What does each gateway error mean?", guide: "11-apis", section: "what-does-each-gateway-error-mean" },
+      { label: "Pausing an API during an incident", guide: "11-apis", section: "pausing-an-api-during-an-incident" },
+    ],
+  },
+  {
+    id: "observe",
+    title: "See what's happening",
+    blurb: "Security checks, scans, logs, metrics and the audit log.",
+    questions: [
+      { label: "What does each security check mean?", guide: "12-observe", section: "what-does-each-security-check-mean" },
+      { label: "Whose logs can I see?", guide: "12-observe", section: "whose-logs-can-i-see" },
+      { label: "Reading the audit log", guide: "12-observe", section: "reading-the-audit-log" },
+    ],
+  },
+  {
+    id: "build",
+    title: "Build products",
+    blurb: "For platform teams: publish products, templates and APIs to the catalog.",
+    questions: [
+      { label: "The catalog: layout and product.yaml", guide: "reference-catalog-guide", section: "layout" },
+      { label: "What CI blocks, and who approves what", guide: "reference-catalog-guide", section: "what-ci-blocks" },
+      { label: "Onboard with an AI assistant", guide: "reference-catalog-onboarding-with-ai" },
+    ],
+  },
+  {
+    id: "operate",
+    title: "Install and operate",
+    blurb: "For admins: set Vertra up, connect your cloud, and run it day to day.",
+    questions: [
+      { label: "Set up Vertra", guide: "reference-setup" },
+      { label: "The Admin page, setting by setting", guide: "16-admin-settings" },
+      { label: "Upgrading, backups, rotating secrets", guide: "reference-operations", section: "upgrading" },
+    ],
+  },
+];
+
+/** The help's home, for going deeper: the reference and how it all works. */
+export const IN_DEPTH: Answered[] = [
+  { label: "API reference: every method", guide: API_REFERENCE_ID },
+  { label: "Architecture", guide: "reference-architecture" },
+  { label: "Security model", guide: "reference-security-model" },
+  { label: "Under the hood", guide: "08-under-the-hood" },
+  { label: "Where Vertra keeps its data", guide: "06-database-schemas" },
+  { label: "Repository map", guide: "reference-repository-map" },
+];
+
+/**
+ * A guide organized by symptom opens with a grid of them, each to its
+ * section: what you see, in a few words, and what it's about.
+ */
+export const SYMPTOMS: Record<string, { heading: string; items: (Answered & { hint: string })[] }> = {
+  "15-troubleshooting": {
+    heading: "What do you see?",
+    items: [
+      { label: "A run failed", hint: "Read its failure card, then its logs", guide: "15-troubleshooting", section: "where-do-i-start-when-a-run-fails" },
+      { label: "Submitting returns an error", hint: "Nothing ran: the console refused it", guide: "15-troubleshooting", section: "my-submission-was-refused-before-anything-ran" },
+      { label: "A step stays Ready", hint: "Something is holding it back", guide: "15-troubleshooting", section: "my-step-is-ready-but-not-running" },
+      { label: "Awaiting approval", hint: "Who decides, and when it expires", guide: "15-troubleshooting", section: "my-step-is-awaiting-approval" },
+      { label: "An image was refused", hint: "IMAGE_NOT_ALLOWED, scans, signatures", guide: "15-troubleshooting", section: "an-image-was-refused" },
+      { label: "A secret is missing", hint: "MISSING_SECRET, or no file in /platform/secrets/", guide: "15-troubleshooting", section: "my-step-doesnt-get-its-secret" },
+      { label: "Not ready on this install", hint: "A product's check found something missing", guide: "15-troubleshooting", section: "a-product-says-it-isnt-ready-here" },
+      { label: "I can't sign in", hint: "Passwords, Google, groups, sessions", guide: "15-troubleshooting", section: "i-cant-sign-in" },
+      { label: "A merge doesn't show up", hint: "The catalog release isn't applied", guide: "15-troubleshooting", section: "the-catalog-isnt-syncing" },
+      { label: "Who to ask", hint: "An admin, the product's team, or your maintainer", guide: "15-troubleshooting", section: "when-should-i-ask-an-admin" },
+    ],
+  },
+};
 
 const keyOf = (doc: string, section?: string) => (section ? `${doc}/${section}` : doc);
 
@@ -309,8 +458,8 @@ export function slug(heading: string): string {
     .replace(/\s/g, "-");
 }
 
-/** A heading as it reads, without the markdown around its words. */
-const plain = (heading: string) =>
+/** A heading (or any text) as it reads, without the markdown around its words. */
+export const plain = (heading: string) =>
   heading
     .replace(/`([^`]*)`/g, "$1")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
