@@ -1364,6 +1364,24 @@ describe("observe", () => {
 });
 
 describe("home", () => {
+  it("lists only what was made for you or your teams, and picks up your own draft", async () => {
+    const made = (id: string, name: string, ownerEmail: string) => ({ id, type: "gcp/bucket", externalId: name, name, product: "storage-bucket", productTeam: "storage", ownerEmail, executionId: "r1", taskId: "t", firstReportedAt: "2026-10-21T16:21:00Z", state: "exists" });
+    await renderAt("/", MEMBER, {
+      "ResourceService/ListResources": { resources: [made("a1", "my-bucket", MEMBER.email), made("a2", "bobs-bucket", "bob@acme.com")] },
+      "DraftService/ListDrafts": {
+        drafts: [
+          { team: "azure-apps", name: "theirs", version: "3", body: { steps: [] }, updatedBy: "bob@acme.com", updatedAt: "2026-10-30T10:00:00Z" },
+          { team: "azure-apps", name: "mine", version: "1", body: { steps: [] }, updatedBy: MEMBER.email, updatedAt: "2026-10-29T10:00:00Z" },
+        ],
+      },
+    });
+    expect(await screen.findByText("my-bucket")).toBeTruthy();
+    expect(screen.queryByText("bobs-bucket")).toBeNull();
+    const pickUp = await screen.findByRole("link", { name: /mine/ });
+    expect(pickUp.getAttribute("href")).toContain("draft=azure-apps%2Fmine");
+    expect(screen.queryByRole("link", { name: /theirs/ })).toBeNull();
+  });
+
   it("shows your runs that are going, and what waits for you", async () => {
     await renderAt("/", MEMBER, {
       "ExecutionService/ListExecutions": {
@@ -2147,6 +2165,12 @@ describe("Compose's drafts", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Deploy/, pressed: true })).toBeTruthy();
+  });
+
+  it("says beside Run now why it can't run yet", async () => {
+    await renderAt("/catalog/compose", MEMBER);
+    expect(await screen.findByText("Add a step to run it.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Run now" }).getAttribute("aria-describedby")).toBe("run-why");
   });
 
   it("drops wiring started for one draft when another is opened before it answers", async () => {

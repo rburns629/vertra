@@ -482,7 +482,7 @@ export function ComposePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const install = useEnvironment()?.label || "this install";
-  const cartActions = useCart().actions;
+  const { actions: cartActions, team: cartTeam } = useCart();
   const [params] = useSearchParams();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [runnables, setRunnables] = useState<Runnable[]>([]);
@@ -490,7 +490,11 @@ export function ComposePage() {
   const [repository, setRepository] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const blank = (name: string): Draft => ({ name, displayName: "", description: "", team: user?.teamNames[0] ?? "", steps: [] });
-  const [draft, setDraft] = useState<Draft>(() => blank("my-template"));
+  // From the cart (?cart=1), it's for the cart's team, as the cart was planned.
+  const [draft, setDraft] = useState<Draft>(() => {
+    const first = blank("my-template");
+    return params.get("cart") === "1" && cartTeam && user?.teamNames.includes(cartTeam) ? { ...first, team: cartTeam } : first;
+  });
   const stored = useComposeDrafts(draft);
   const [moved, setMoved] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -578,11 +582,16 @@ export function ComposePage() {
   if (deprecated > 0) checks.push({ tone: "warning", text: `${String(deprecated)} ${deprecated === 1 ? "step" : "steps"} deprecated` });
   if (asked.length > 0) checks.push({ tone: "info", text: `Asks ${asked.join(", ")} when it runs` });
 
+  // Why Run now is off, said beside it (a tooltip reaches neither a keyboard nor a touch).
   const runWhy = runnable
     ? undefined
-    : hasParameters(draft)
-      ? `It asks for ${asked.join(", ")} when it runs, so propose it as a template`
-      : "It runs now only when nothing's asked and every step is a team you maintain";
+    : draft.steps.length === 0
+      ? "Add a step to run it."
+      : hasParameters(draft)
+        ? `It asks for ${asked.join(", ")} when it runs, so propose it as a template.`
+        : found.length > 0
+          ? `Not until its checks pass: ${String(found.length)} ${found.length === 1 ? "thing" : "things"} to fix, under Checks.`
+          : "Every step must be a product of a team you maintain to run it from here.";
   const status = stored.status === "saving" ? "saving…" : stored.status === "saved" ? "saved for the team" : null;
   const openDraft = stored.drafts?.find((d) => d.team === draft.team && d.name === draft.name);
 
@@ -615,12 +624,15 @@ export function ComposePage() {
           <Button component="a" variant="outlined" size="large" disabled={found.length > 0 || !propose} href={propose ?? undefined} target="_blank" rel="noopener noreferrer" title="Opens the catalog repository's new-file page with it filled in">
             Propose as a template ↗
           </Button>
-          <Box component="span" title={runWhy}>
-            <Button variant="contained" size="large" disabled={!runnable || running} onClick={() => void run()}>
-              {running ? "Starting…" : "Run now"}
-            </Button>
-          </Box>
+          <Button variant="contained" size="large" disabled={!runnable || running} onClick={() => void run()} aria-describedby={runWhy ? "run-why" : undefined}>
+            {running ? "Starting…" : "Run now"}
+          </Button>
         </Box>
+        {runWhy && (
+          <Typography id="run-why" variant="caption" color="text.secondary" sx={{ flexBasis: "100%", textAlign: { sm: "right" } }}>
+            {runWhy}
+          </Typography>
+        )}
       </Box>
 
       {error && <Alert severity="error">{error}</Alert>}

@@ -374,8 +374,10 @@ function YourRuns({ runs }: { runs: ExecutionSummary[] | null }) {
   );
 }
 
-function WhatYouMade({ resources }: { resources: MadeResource[] }) {
-  const live = resources.filter((r) => r.state !== "deleted").sort((a, b) => b.firstReportedAt.localeCompare(a.firstReportedAt));
+/** What was made for your teams or for you alone (the list has more: a product team's, or every one for an admin). */
+function WhatYouMade({ resources, teams, email }: { resources: MadeResource[]; teams: string[]; email: string }) {
+  const yours = (r: MadeResource) => (r.ownerTeam ? teams.includes(r.ownerTeam) : r.ownerEmail === email);
+  const live = resources.filter((r) => r.state !== "deleted" && yours(r)).sort((a, b) => b.firstReportedAt.localeCompare(a.firstReportedAt));
   if (live.length === 0) return null;
   const names = (refs: { name: string | null; externalId: string }[]) => refs.map((x) => x.name ?? x.externalId).join(", ");
   return (
@@ -398,7 +400,7 @@ function WhatYouMade({ resources }: { resources: MadeResource[] }) {
               {r.dependents.length > 0 && <Muted>Used by {names(r.dependents)}</Muted>}
             </Box>
             <Typography variant="body2" sx={{ fontSize: 13, display: { xs: "none", sm: "block" } }}>
-              {r.ownerTeam ?? "you alone"}
+              {r.ownerTeam ?? (r.ownerEmail === email ? "you alone" : r.ownerEmail)}
             </Typography>
             <Link component={RouterLink} to="/products" variant="body2" sx={{ fontSize: 13, display: { xs: "none", sm: "block" }, overflowWrap: "anywhere" }}>
               {r.product}
@@ -904,7 +906,13 @@ export function HomePage() {
         throw err;
       }),
   );
-  const [visible] = useLoaded(() => listExecutions({ since, limit: 500 }).then((p) => p.executions));
+  // What could be running for you: your newest runs and each of your teams' (not the install's newest,
+  // which on a busy one can leave out a long-running run of yours; nor a cutoff, which leaves out an old approval).
+  const [visible] = useLoaded(() =>
+    Promise.all([listExecutions({ mine: true, limit: 100 }), ...teams.slice(0, 10).map((team) => listExecutions({ team, limit: 100 }))]).then((pages) => [
+      ...new Map(pages.flatMap((p) => p.executions).map((r) => [r.executionId, r])).values(),
+    ]),
+  );
   const [approvals] = useLoaded(() => listPendingApprovals().then((list) => list.filter((a) => a.canDecide)));
   const [deletes] = useLoaded(isAdmin ? listDeleteRequests : null);
   const [schedules] = useLoaded(() => Promise.all(teams.slice(0, 10).map((t) => listSchedules(t).catch(() => []))).then((all) => all.flat()));
@@ -938,7 +946,8 @@ export function HomePage() {
   const news = useMemo(() => (products && runnables ? newsOf(products, runnables) : []), [products, runnables]);
   const alerts = (notes?.notifications ?? []).filter((n) => n.kind === "platform_alert" && !n.read);
   const health = catalog === undefined || security === undefined || metrics === undefined ? null : healthOf(catalog, security, metrics, alerts);
-  const latestDraft = drafts?.[0] ?? null;
+  // Yours: the newest draft you saved last (a teammate's would be theirs to pick up).
+  const latestDraft = drafts?.find((d) => d.updatedBy === user?.email) ?? null;
   const lastFailed = mine?.find((r) => r.state === "FAILED");
   const suggestions = [lastFailed && `Why did ${lastFailed.name} fail?`, teams[0] && `What can I order for ${teams[0]}?`].filter((s): s is string => Boolean(s));
 
@@ -1005,7 +1014,7 @@ export function HomePage() {
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, minWidth: 0 }}>
           <RunningNow live={live} now={now} />
           <YourRuns runs={mine === undefined ? null : (mine ?? [])} />
-          {resources && <WhatYouMade resources={resources} />}
+          {resources && <WhatYouMade resources={resources} teams={teams} email={user.email} />}
           {runnables && <YourProducts runnables={runnables} install={install} />}
           <CatalogNews news={news} />
         </Box>
