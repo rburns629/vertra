@@ -408,9 +408,11 @@ describe("the docs", () => {
       "GuideService/SearchGuides": { hits: [{ guide: "reference-operations", title: "Operations", heading: "Databases > Backups", excerpt: "Back up both databases nightly." }] },
     });
     expect(await screen.findByText("Reference")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Search the docs"), { target: { value: "back up" } });
-    const hit = await screen.findByRole("link", { name: /Operations · Databases > Backups/ });
+    fireEvent.change(screen.getByLabelText("Search the guides"), { target: { value: "back up" } });
+    const hit = await screen.findByRole("link", { name: /^Backups\s*in Operations/ });
     expect(hit.getAttribute("href")).toBe("/docs/reference-operations#backups");
+    // The words searched for, marked in the excerpt.
+    expect(within(hit).getByText("Back").tagName).toBe("MARK");
   });
 
   const DOCS = {
@@ -437,13 +439,44 @@ describe("the docs", () => {
     },
   };
 
-  it("opens on a home with where to start and every category, a new doc under More", async () => {
+  it("opens on a home by task, linking only the guides this console serves", async () => {
     await renderAt("/docs", MEMBER, DOCS);
-    const start = await screen.findByRole("region", { name: "Start here" });
+    const start = await screen.findByRole("region", { name: "New here? Start with these two" });
     expect(within(start).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["/docs/01-getting-started", "/docs/03-what-is-a-dag"]);
-    expect(screen.getByRole("heading", { name: "Install and operate" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "More" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Something new" }).getAttribute("href")).toBe("/docs/09-something-new");
+    const tasks = screen.getByRole("region", { name: "What are you trying to do?" });
+    // Of the tasks, only Install and operate has a guide served here.
+    expect(within(tasks).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Install and operate"]);
+    expect(within(tasks).getByRole("link", { name: "Upgrading, backups, rotating secrets" }).getAttribute("href")).toBe("/docs/reference-operations#upgrading");
+    expect(within(tasks).getByRole("link", { name: "All guides, in reading order" }).getAttribute("href")).toBe("/docs/01-getting-started");
+    // Nothing to offer without a model.
+    expect(screen.queryByRole("button", { name: "Ask Vertra instead" })).toBeNull();
+  });
+
+  it("offers Ask Vertra from the help when there's a model", async () => {
+    await renderAt("/docs", MEMBER, { ...DOCS, "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra instead" }));
+    expect(await screen.findByLabelText("Your question")).toBeTruthy();
+  });
+
+  it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {
+    await renderAt("/docs/15-troubleshooting", MEMBER, {
+      "GuideService/ListGuides": { guides: [{ id: "15-troubleshooting", title: "Troubleshooting", section: "guides", kind: "guide" }] },
+      "GuideService/GetGuide": {
+        markdown: "# Troubleshooting\n\nBy what you see.\n\n## My step is Ready but not running\n\n**What you see:** the step stays **Ready**.\n\n**Why:** something holds it.\n\n**What to do:** wait.\n\n## I can't sign in\n\nAsk.",
+      },
+    });
+    const symptoms = await screen.findByRole("region", { name: "What do you see?" });
+    // The symptoms whose sections the guide has, each to its section.
+    expect(within(symptoms).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#my-step-is-ready-but-not-running", "#i-cant-sign-in"]);
+    expect(screen.getByText("What you see").nextElementSibling?.textContent).toBe("The step stays Ready.");
+    expect(screen.getByText("What to do").nextElementSibling?.textContent).toBe("Wait.");
+  });
+
+  it("lists a doc the contents don't place under More", async () => {
+    await renderAt("/docs/01-getting-started", MEMBER, { ...DOCS, "GuideService/GetGuide": { markdown: "# Try Vertra end to end\n\nHello." } });
+    const contents = await screen.findByRole("navigation", { name: "Docs contents" });
+    fireEvent.click(await within(contents).findByRole("button", { name: "More" }));
+    expect((await within(contents).findByRole("link", { name: "Something new" })).getAttribute("href")).toBe("/docs/09-something-new");
   });
 
   it("shows a long doc a section to a page, nested under it, with the pages before and after", async () => {
@@ -463,9 +496,10 @@ describe("the docs", () => {
     expect(within(contents).getByRole("link", { name: "Upgrading" }).getAttribute("aria-current")).toBe("page");
     const sections = screen.getByRole("navigation", { name: "On this page" });
     expect(within(sections).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#reused-tags", "#rolling-back"]);
+    expect(within(trail).getByText("Upgrading").getAttribute("aria-current")).toBe("page");
     const onward = screen.getByRole("navigation", { name: "Previous and next" });
-    expect(within(onward).getByRole("link", { name: /Previous · Install and operate\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
-    expect(within(onward).getByRole("link", { name: /Next · Install and operate › Operations\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
+    expect(within(onward).getByRole("link", { name: /Previous\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
+    expect(within(onward).getByRole("link", { name: /Next\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
   });
 
   it("draws a doc's figure, and opens it and a linked one at full size", async () => {
@@ -528,9 +562,11 @@ describe("the chat panel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra" }));
     fireEvent.change(await screen.findByLabelText("Your question"), { target: { value: "How do I back up?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    expect((await screen.findByRole("link", { name: "[S1] Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    expect((await screen.findByRole("link", { name: "Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    // Cited in the answer by the number it has in the list.
+    expect(screen.getByRole("link", { name: "Source 1" }).textContent).toBe("[1]");
     expect(screen.getByText(/design history: why, not how it works now/)).toBeTruthy();
-    expect(screen.getByText(/searched the docs, filled a cart/)).toBeTruthy();
+    expect(screen.getByText("Searched the guides, filled a cart")).toBeTruthy();
     expect(asked).toMatchObject([{ team: "azure-apps", messages: [{ role: "user", content: "How do I back up?" }] }]);
     // A wrong answer goes to the admins with its question, and what was wrong.
     fireEvent.click(screen.getByRole("button", { name: "Wrong answer" }));
