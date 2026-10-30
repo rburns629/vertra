@@ -160,7 +160,7 @@ What a maintainer should know:
 - **Deleting the bot deletes its schedules.** Revoking its token doesn't: the schedule doesn't use a token.
 - An ordering bot's rate limit doesn't apply to its schedules' runs: the schedule is your team's, made by its maintainers.
 
-On the **Schedules** tab, **On** pauses and resumes one, and **Delete** removes it; the runs it started stay. To change a schedule's inputs or time, delete it and make it again.
+On the **Schedules** tab, **On** pauses and resumes one, **Edit** changes it, and **Delete** removes it; the runs it started stay. **Edit** changes **When**, the time zone and **Runs as**; **Change inputs…** opens the run form filled in with its inputs, and **Save to schedule** keeps the new ones. What it runs doesn't change: for something else, make another schedule. Saving a schedule that's on checks that its bot may run it with those inputs, as its next start would; a paused one is checked when it's turned back on. A run it already started finishes as it began. Maintainers can also **Edit** from **Runs → Schedules**.
 
 ## What are automation tokens, for admins?
 

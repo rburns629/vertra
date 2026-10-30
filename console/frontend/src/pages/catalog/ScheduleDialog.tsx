@@ -11,7 +11,10 @@ import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { ApiError, createSchedule, listBots, type Bot, type Runnable } from "../../api";
+import Box from "@mui/material/Box";
+import { ApiError, createSchedule, listBots, updateSchedule, type Bot, type Runnable, type Schedule } from "../../api";
+import { Mono } from "../../components/Mono";
+import { runLink } from "../RunFormPage";
 
 /** Common times, and the cron each is. */
 export const PRESETS: { label: string; cron: string }[] = [
@@ -100,46 +103,155 @@ export function ScheduleDialog({
             </MenuItem>
           ))}
         </TextField>
-        <TextField select label="When" value={PRESETS.some((p) => p.cron === cron) ? cron : "custom"} onChange={(e) => { if (e.target.value !== "custom") setCron(e.target.value); }} size="small">
-          {PRESETS.map((p) => (
-            <MenuItem key={p.cron} value={p.cron}>
-              {p.label}
-            </MenuItem>
-          ))}
-          <MenuItem value="custom">Another time (cron)</MenuItem>
-        </TextField>
-        <TextField
-          label="Cron"
-          value={cron}
-          onChange={(e) => { setCron(e.target.value); }}
-          size="small"
-          helperText="Minute, hour, day of the month, month, day of the week. At most every five minutes."
-          slotProps={{ htmlInput: { spellCheck: false, style: { fontFamily: "monospace" } } }}
-        />
-        <TextField label="Time zone" value={timeZone} onChange={(e) => { setTimeZone(e.target.value); }} size="small" helperText="Such as Europe/Berlin, or UTC." />
-        {bots && bots.length === 0 ? (
-          <Alert severity="info">
-            {team} has no bot to run it as.{" "}
-            <Link component={RouterLink} to={`/teams/${encodeURIComponent(team)}?tab=automation`}>
-              Add one on its Automation tab
-            </Link>
-            .
-          </Alert>
-        ) : (
-          <TextField select label="Runs as" value={botId} onChange={(e) => { setBotId(e.target.value); }} size="small" disabled={!bots}>
-            {(bots ?? []).map((b) => (
-              <MenuItem key={b.id} value={b.id}>
-                {b.email}
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
+        <WhenFields cron={cron} timeZone={timeZone} onCron={setCron} onTimeZone={setTimeZone} />
+        <BotField team={team} bots={bots} botId={botId} onBot={setBotId} />
         {error && <Alert severity="error">{error}</Alert>}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" disabled={saving || !botId || !name.trim()} onClick={() => void save()}>
           {saving ? "Saving…" : "Schedule it"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** When it runs: a preset or a cron, in a time zone. */
+function WhenFields({ cron, timeZone, onCron, onTimeZone }: { cron: string; timeZone: string; onCron: (cron: string) => void; onTimeZone: (zone: string) => void }) {
+  return (
+    <>
+      <TextField select label="When" value={PRESETS.some((p) => p.cron === cron) ? cron : "custom"} onChange={(e) => { if (e.target.value !== "custom") onCron(e.target.value); }} size="small">
+        {PRESETS.map((p) => (
+          <MenuItem key={p.cron} value={p.cron}>
+            {p.label}
+          </MenuItem>
+        ))}
+        <MenuItem value="custom">Another time (cron)</MenuItem>
+      </TextField>
+      <TextField
+        label="Cron"
+        value={cron}
+        onChange={(e) => { onCron(e.target.value); }}
+        size="small"
+        helperText="Minute, hour, day of the month, month, day of the week. At most every five minutes."
+        slotProps={{ htmlInput: { spellCheck: false, style: { fontFamily: "monospace" } } }}
+      />
+      <TextField label="Time zone" value={timeZone} onChange={(e) => { onTimeZone(e.target.value); }} size="small" helperText="Such as Europe/Berlin, or UTC." />
+    </>
+  );
+}
+
+/** Which of the team's bots it runs as; a link to add one when it has none. */
+function BotField({ team, bots, botId, onBot }: { team: string; bots: Bot[] | null; botId: string; onBot: (id: string) => void }) {
+  return bots && bots.length === 0 ? (
+    <Alert severity="info">
+      {team} has no bot to run it as.{" "}
+      <Link component={RouterLink} to={`/teams/${encodeURIComponent(team)}?tab=automation`}>
+        Add one on its Automation tab
+      </Link>
+      .
+    </Alert>
+  ) : (
+    <TextField select label="Runs as" value={bots ? botId : ""} onChange={(e) => { onBot(e.target.value); }} size="small" disabled={!bots}>
+      {(bots ?? []).map((b) => (
+        <MenuItem key={b.id} value={b.id}>
+          {b.email}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
+}
+
+/** A schedule's runnable, as the run form's address names it. */
+export const scheduleRunnable = (s: Schedule) => ({ kind: s.kind, team: s.runnableTeam, name: s.runnableName });
+
+/**
+ * Editing a schedule: when, in which time zone, and as which bot. What it
+ * runs stays (another schedule runs something else); its inputs change on
+ * the run form ("Change inputs…"), checked as a run's are.
+ */
+export function EditScheduleDialog({ schedule, onClose, onSaved }: { schedule: Schedule; onClose: () => void; onSaved: (saved: Schedule) => void }) {
+  const [cron, setCron] = useState(schedule.cron);
+  const [timeZone, setTimeZone] = useState(schedule.timeZone);
+  const [bots, setBots] = useState<Bot[] | null>(null);
+  const [botId, setBotId] = useState(schedule.botId);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    listBots(schedule.team)
+      .then(setBots)
+      .catch(() => { setBots([]); });
+  }, [schedule.team]);
+
+  async function save(): Promise<void> {
+    setSaving(true);
+    setError(null);
+    try {
+      onSaved(await updateSchedule(schedule.id, { cron, timeZone, botId }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save the schedule.");
+      setSaving(false);
+    }
+  }
+
+  const inputs = Object.entries(schedule.parameters);
+  const changed = cron !== schedule.cron || timeZone !== schedule.timeZone || botId !== schedule.botId;
+  return (
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Edit {schedule.name}</DialogTitle>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "8px !important" }}>
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            What it runs
+          </Typography>
+          <Typography variant="body2">{schedule.kind === "template" ? `${schedule.runnableName} by ${schedule.runnableTeam}` : schedule.runnableName}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            To run something else, make another schedule.
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+            Inputs
+          </Typography>
+          <Box sx={{ bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: 2, px: 1.5, py: 1, maxHeight: 160, overflow: "auto" }}>
+            {inputs.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                None
+              </Typography>
+            ) : (
+              inputs.map(([name, value]) => (
+                <Mono key={name} sx={{ display: "block", fontSize: 12.5, overflowWrap: "anywhere" }}>
+                  {name}: {JSON.stringify(value)}
+                </Mono>
+              ))
+            )}
+          </Box>
+          <Link
+            component={RouterLink}
+            to={runLink(scheduleRunnable(schedule))}
+            state={{ from: { name: schedule.name, parameters: schedule.parameters, onBehalfOf: schedule.team }, schedule: { id: schedule.id, name: schedule.name, team: schedule.team } }}
+            variant="body2"
+            sx={{ display: "inline-block", mt: 0.75 }}
+          >
+            Change inputs…
+          </Link>
+          <Typography variant="caption" color="text.secondary" component="div">
+            Opens the run form with these filled in, checked as a run's are; Save to schedule keeps them.
+          </Typography>
+        </Box>
+        <WhenFields cron={cron} timeZone={timeZone} onCron={setCron} onTimeZone={setTimeZone} />
+        <BotField team={schedule.team} bots={bots} botId={botId} onBot={setBotId} />
+        <Typography variant="caption" color="text.secondary">
+          A run it already started finishes as it began.
+        </Typography>
+        {error && <Alert severity="error">{error}</Alert>}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" disabled={saving || !changed || !botId} onClick={() => void save()}>
+          {saving ? "Saving…" : "Save changes"}
         </Button>
       </DialogActions>
     </Dialog>

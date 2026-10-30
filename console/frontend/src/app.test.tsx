@@ -2107,6 +2107,50 @@ describe("schedules", () => {
     fireEvent.click(screen.getByRole("switch", { name: "nightly on" }));
     await waitFor(() => { expect(changed).toEqual([{ id: "s1", enabled: false }]); });
   });
+
+  it("are edited there: when and as which bot, and their inputs on the run form", async () => {
+    const changed: Record<string, unknown>[] = [];
+    const nightly = {
+      id: "s1", team: "payments", name: "nightly", kind: "template", runnableTeam: "gcp-platform", runnableName: "app-on-cloud-run",
+      parameters: { projectId: "orders-api" }, cron: "0 2 * * *", timeZone: "Europe/Berlin", botId: "b1", botEmail: "payments-nightly@bots.vertra.local", enabled: true,
+    };
+    await renderAt("/teams/payments?tab=schedules", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "ScheduleService/ListSchedules": { schedules: [nightly] },
+      "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-nightly@bots.vertra.local" }, { id: "b2", email: "payments-release@bots.vertra.local" }] },
+      "TemplateService/ListTemplates": {
+        runnables: [{ kind: "KIND_TEMPLATE", team: "gcp-platform", name: "app-on-cloud-run", displayName: "App on Cloud Run", shared: true, actions: [],
+          parameters: { type: "object", required: ["projectId"], properties: { projectId: { type: "string", title: "Project ID" } } } }],
+      },
+      "ScheduleService/UpdateSchedule": (request: Record<string, unknown>) => {
+        changed.push(request);
+        return { schedule: { ...nightly, ...request } };
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Edit nightly" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit nightly" });
+    expect(within(dialog).getByText("projectId: \"orders-api\"")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true); // nothing changed yet
+    fireEvent.mouseDown(within(dialog).getByRole("combobox", { name: "When" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Weekdays at 09:00" }));
+    fireEvent.mouseDown(within(dialog).getByRole("combobox", { name: "Runs as" }));
+    fireEvent.click(await screen.findByRole("option", { name: "payments-release@bots.vertra.local" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => { expect(changed).toEqual([{ id: "s1", cron: "0 9 * * 1-5", timeZone: "Europe/Berlin", botId: "b2" }]); });
+    await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
+
+    // Its inputs: on the run form, filled in, saved back to it rather than run.
+    fireEvent.click(screen.getByRole("button", { name: "Edit nightly" }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Edit nightly" })).getByRole("link", { name: "Change inputs…" }));
+    expect(await screen.findByText(/Changing the inputs of the schedule/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Run" })).toBeNull();
+    const project = screen.getByLabelText(/project id/i);
+    expect((project as HTMLInputElement).value).toBe("orders-api");
+    fireEvent.change(project, { target: { value: "orders-api-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to schedule" }));
+    await waitFor(() => { expect(changed[1]).toEqual({ id: "s1", parameters: { projectId: "orders-api-2" } }); });
+    expect(await screen.findByRole("button", { name: "Edit nightly" })).toBeTruthy(); // back on the team's schedules
+  });
 });
 
 describe("Compose's cart", () => {

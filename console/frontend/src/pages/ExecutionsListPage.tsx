@@ -541,7 +541,12 @@ export function ExecutionsListPage() {
         </Card>
       )}
 
-      {view === "schedules" && <RunsSchedules schedules={schedules} />}
+      {view === "schedules" && (
+        <RunsSchedules
+          schedules={schedules}
+          onSaved={(saved) => { setSchedules((current) => current?.map((s) => (s.id === saved.id ? saved : s)) ?? null); }}
+        />
+      )}
     </Box>
   );
 }

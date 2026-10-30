@@ -2347,8 +2347,12 @@ export async function createSchedule(input: {
   return scheduleOf(schedule);
 }
 
-export async function updateSchedule(id: string, change: { enabled?: boolean; cron?: string; timeZone?: string }): Promise<Schedule> {
-  return scheduleOf((await call(() => schedulesApi.updateSchedule({ id, ...change }))).schedule);
+export async function updateSchedule(
+  id: string,
+  change: { enabled?: boolean; cron?: string; timeZone?: string; botId?: string; parameters?: Record<string, unknown> },
+): Promise<Schedule> {
+  const { parameters, ...rest } = change;
+  return scheduleOf((await call(() => schedulesApi.updateSchedule({ id, ...rest, ...(parameters ? { parameters: parameters as JsonObject } : {}) }))).schedule);
 }
 
 export async function deleteSchedule(id: string): Promise<void> {

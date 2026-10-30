@@ -12,18 +12,19 @@ import { ApiError, deleteSchedule, listSchedules, updateSchedule, type Schedule 
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { when } from "../../time";
-import { describeCron } from "../catalog/ScheduleDialog";
+import { describeCron, EditScheduleDialog } from "../catalog/ScheduleDialog";
 import { TabIntro } from "./shared";
 
 /**
  * The team's schedules: what each runs, when, as which bot, how its last
- * start went. Its maintainers pause, resume and delete them; a schedule is
+ * start went. Its maintainers pause, resume, edit and delete them; a schedule is
  * made from a template's or action's run form (Schedule…).
  */
 export function SchedulesTab({ teamName, readOnly }: { teamName: string; readOnly: boolean }) {
   const [rows, setRows] = useState<Schedule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Schedule | null>(null);
+  const [editing, setEditing] = useState<Schedule | null>(null);
 
   const load = useCallback(() => {
     listSchedules(teamName)
@@ -106,9 +107,14 @@ export function SchedulesTab({ teamName, readOnly }: { teamName: string; readOnl
       align: "right",
       render: (s) =>
         !readOnly && (
-          <Button size="small" color="error" onClick={() => { setDeleting(s); }}>
-            Delete
-          </Button>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
+            <Button size="small" aria-label={`Edit ${s.name}`} onClick={() => { setEditing(s); }}>
+              Edit
+            </Button>
+            <Button size="small" color="error" aria-label={`Delete ${s.name}`} onClick={() => { setDeleting(s); }}>
+              Delete
+            </Button>
+          </Box>
         ),
     },
   ];
@@ -130,6 +136,16 @@ export function SchedulesTab({ teamName, readOnly }: { teamName: string; readOnl
       <Card>
         <DataTable columns={columns} rows={rows} getRowKey={(s) => s.id} emptyMessage="No schedules yet." />
       </Card>
+      {editing && (
+        <EditScheduleDialog
+          schedule={editing}
+          onClose={() => { setEditing(null); }}
+          onSaved={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
       <ConfirmDialog
         open={deleting !== null}
         title={`Delete ${deleting?.name ?? ""}?`}
