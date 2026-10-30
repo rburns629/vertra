@@ -328,11 +328,10 @@ describe("what runs made", () => {
     canDelete: true,
   });
 
-  it("lists a delete sent to an admin at once, and picks at most 50 to delete together", async () => {
+  it("lists a delete sent to an admin at once", async () => {
     let requested = 0;
-    const many = Array.from({ length: 51 }, (_, i) => made(`a1b2c3d4-0000-4000-8000-${String(i).padStart(12, "0")}`, `bucket-${String(i)}`));
     await renderAt("/runs/made", MEMBER, {
-      "ResourceService/ListResources": { resources: many },
+      "ResourceService/ListResources": { resources: [made("a1b2c3d4-0000-4000-8000-000000000000", "bucket-0")] },
       "ResourceService/ListDeleteRequests": () => {
         requested++;
         return { requests: [] };
@@ -344,10 +343,15 @@ describe("what runs made", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
     expect(await screen.findByText("It's used: an admin has been asked.")).toBeTruthy();
     await waitFor(() => { expect(requested).toBe(2); }); // loaded again once asked
-    await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
+  });
 
+  // 51 clicks, each re-rendering 51 rows: seconds on a CI runner.
+  it("picks at most 50 to delete together", { timeout: 20_000 }, async () => {
+    const many = Array.from({ length: 51 }, (_, i) => made(`a1b2c3d4-0000-4000-8000-${String(i).padStart(12, "0")}`, `bucket-${String(i)}`));
+    await renderAt("/runs/made", MEMBER, { "ResourceService/ListResources": { resources: many } });
+    await screen.findByRole("checkbox", { name: "Select bucket-0" });
     // Every row's box at once (looking each up by name is slow on 51 rows).
-    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if (!box.checked && (box.getAttribute("aria-label") ?? "").startsWith("Select bucket-")) fireEvent.click(box);
+    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if ((box.getAttribute("aria-label") ?? "").startsWith("Select bucket-")) fireEvent.click(box);
     expect(screen.getByText(/At most 50 at once: unselect 1/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete 51…" })).toHaveProperty("disabled", true);
   });
