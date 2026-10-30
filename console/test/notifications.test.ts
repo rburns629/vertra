@@ -96,8 +96,10 @@ describe("a webhook URL", () => {
     const stored = encryptUrl(SLACK);
     expect(stored).not.toContain("s3cr3t");
     expect(decryptUrl(stored)).toBe(SLACK);
-    const [v, iv, tag, data] = stored.split(".");
-    expect(decryptUrl([v, iv, tag, `A${data?.slice(1) ?? ""}`].join("."))).toBeNull();
+    const [v, iv, tag, data = ""] = stored.split(".");
+    // One character changed (to another one: "A" when it was already "A" would be no change).
+    const changed = `${data.startsWith("A") ? "B" : "A"}${data.slice(1)}`;
+    expect(decryptUrl([v, iv, tag, changed].join("."))).toBeNull();
   });
 
   it("goes only to an allowed chat host, over https", () => {

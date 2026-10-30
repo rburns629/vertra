@@ -1025,8 +1025,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      metrics without bodies or credentials. Proven on kind with an echo
      backend: forwarded, blocked, invalid, limited, not shared, paused, and
      its token fence. Keyless bots' sessions are ordinary console
-     sessions, so it takes them as is (2026-10-24). Left: a read-only
-     database role for it.
+     sessions, so it takes them as is (2026-10-24). Its database role is
+     its own, read-only but for its traffic counts
+     (`console/src/db/gatewayAccess.ts`).
   4. Backend credentials, minted per request (done and proven
      2026-10-22: a GKE install's gateway called a Cloud Run service that
      requires Google sign-in with an ID token for its invoker account, and
@@ -1060,8 +1061,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the samples' API products: `samples/local/apis/greetings` (its backend
   `examples/greetings-api`, `make kind-sample-api`), `gcp/apis/hello-world`
   (Cloud Run, Google ID token) and `aws/apis/orders` (Lambda URL, SigV4),
-  the last two validated, not deployed. Left: a read-only database role for
-  the gateway (it only writes api_traffic).
+  the last two validated, not deployed. The gateway's database role reads
+  only what it needs and writes only api_traffic (`gatewayAccess.ts`).
 
 - [ ] **Orders from outside the cluster** (decision 23, `docs/assessment.md`,
   decided 2026-10-27). Through the console's public `/api`, as a bot signed
@@ -1353,7 +1354,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   mocks answered for every account, so a resync added oidc.test's person
   to its team); then 32 full runs in a row passed. The tests' broad
   cleanups were checked (wiring types are locked; the rest are each one
-  file's). Keep a failing run's whole output when one is seen.
+  file's). Then CI caught notifications.test's webhook check failing:
+  it tampered with a ciphertext by setting its first character to "A", a
+  no-op one time in 64; oidc.test's cookie tamper had the same flaw. Both
+  now always change it. Keep a failing run's whole output when one is
+  seen.
 - [x] **An end-to-end secret test** (done 2026-10-29): `make
   kind-e2e-secrets` (helm/tests/secrets-e2e.sh) on the kind install: a
   SecretStore (ESO's fake provider) syncs a value, a registered product's

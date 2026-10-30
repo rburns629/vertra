@@ -118,7 +118,7 @@ async function signInWith(claims: Record<string, unknown>, options: { key?: Cryp
   const callback = await app.inject({
     method: "GET",
     url: `/api/auth/oidc/callback?state=${String(state)}&code=c`,
-    headers: { cookie: options.tamper === "cookie" ? cookie.replace(/.$/, "x") : cookie },
+    headers: { cookie: options.tamper === "cookie" ? cookie.replace(/.$/, (last) => (last === "x" ? "y" : "x")) : cookie },
   });
   expect(callback.statusCode).toBe(302);
   const fragment = new URLSearchParams((callback.headers.location as string).split("#")[1]);
