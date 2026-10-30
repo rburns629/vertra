@@ -227,6 +227,27 @@ describe("what a verdict allows", () => {
     }
   });
 
+  it("asks for the scan's output to be waited for, and says when it couldn't be read", async () => {
+    const img = image();
+    const digest = img.split("@")[1] ?? "";
+    expect((await scanBlocker([img]))?.error).toBe("IMAGE_SCAN_PENDING");
+    vi.mocked(readScanJob).mockClear();
+    vi.mocked(readScanJob).mockImplementation(() => Promise.resolve({ state: "succeeded", output: "", unread: "scan-x-abcde: Running" }));
+    try {
+      await reconcileScans();
+      // Scans expect output (a log readable a little after the Job says it's done).
+      expect(vi.mocked(readScanJob).mock.calls.some((c) => c[3] === true)).toBe(true);
+      const [row] = await db.select().from(imageScans).where(eq(imageScans.digest, digest));
+      expect(row?.status).toBe("error");
+      expect((row?.findings as { error?: string } | null)?.error).toContain("couldn't be read (scan-x-abcde: Running)");
+    } finally {
+      vi.mocked(readScanJob).mockImplementation((_namespace: string, name: string) => {
+        const output = outputs.get(jobs.get(name) ?? "");
+        return Promise.resolve(output === undefined ? { state: "running" } : { state: "succeeded", output });
+      });
+    }
+  });
+
   it("rescans an image now, its time unset until the new scan finishes", async () => {
     const img = image();
     const digest = img.split("@")[1] ?? "";

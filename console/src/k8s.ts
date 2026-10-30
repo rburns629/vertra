@@ -1316,11 +1316,17 @@ export async function createVerifyJob(spec: VerifyJobSpec): Promise<void> {
 export type ScanJobState =
   | { state: "running" }
   | { state: "missing" }
-  | { state: "succeeded"; output: string }
+  | { state: "succeeded"; output: string; unread?: string }
   | { state: "failed"; output: string };
 
 /** Where a scan (or verification) Job is, with its Pod's output once it has finished. */
-export async function readScanJob(namespace: string, name: string, container = "trivy"): Promise<ScanJobState> {
+export async function readScanJob(
+  namespace: string,
+  name: string,
+  container = "trivy",
+  /** Its finished Pod always prints something (a scan's END): until that can be read, it's still running (a while at most). */
+  expectOutput = false,
+): Promise<ScanJobState> {
   const { batch, core } = getApis();
   let job: k8s.V1Job;
   try {
@@ -1344,8 +1350,19 @@ export async function readScanJob(namespace: string, name: string, container = "
       if (!isNotFound(error)) throw error;
     }
   }
+  if (succeeded && expectOutput && output.trim() === "") {
+    // A Job can say it succeeded a moment before its Pod does, or before
+    // its log can be read: read it again next time, rather than calling an
+    // empty output the result, for a few minutes after it finished.
+    const finished = job.status?.completionTime ? new Date(job.status.completionTime).getTime() : Date.now();
+    if (Date.now() - finished < OUTPUT_GRACE_MS) return { state: "running" };
+    return { state: "succeeded", output, unread: (pods.items.map((p) => `${p.metadata?.name ?? "?"}: ${p.status?.phase ?? "?"}`).join(", ") || "no Pod") };
+  }
   return succeeded ? { state: "succeeded", output } : { state: "failed", output };
 }
+
+/** How long a finished Job's output may take to be readable. */
+const OUTPUT_GRACE_MS = 5 * 60_000;
 
 export async function deleteScanJob(namespace: string, name: string): Promise<void> {
   const { batch } = getApis();

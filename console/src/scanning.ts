@@ -226,7 +226,7 @@ export async function reconcileScans(): Promise<boolean> {
   const running = await db.select().from(imageScans).where(isNotNull(imageScans.jobName));
   for (const row of running) {
     if (!row.jobName) continue;
-    const job = await readScanJob(namespace, row.jobName);
+    const job = await readScanJob(namespace, row.jobName, "trivy", true);
     if (job.state === "running") continue;
     if (job.state === "failed" && IMAGE_GONE.test(job.output)) {
       // The registry no longer has it: scanning again can never work. It
@@ -244,7 +244,12 @@ export async function reconcileScans(): Promise<boolean> {
       unfixable: 0,
       secrets: 0,
       findings: [],
-      error: job.state === "missing" ? "The scan Job disappeared." : (job.output.trim().split("\n").slice(-5).join("\n") || "The scan failed."),
+      error:
+        job.state === "missing"
+          ? "The scan Job disappeared."
+          : job.state === "succeeded" && job.unread
+            ? `The scan finished, but its output couldn't be read (${job.unread}).`
+            : job.output.trim().split("\n").slice(-5).join("\n") || "The scan failed.",
     };
     // An accepted verdict stays accepted only while it finds nothing the
     // admin didn't see.
