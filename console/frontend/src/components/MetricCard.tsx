@@ -6,8 +6,9 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 
 /** Extracted from HomePage's own stat cards -- the one place a raw number
- * (teams, executions, ...) gets presented as a headline metric. */
-export function MetricCard({ label, value, icon }: { label: string; value: ReactNode; icon: ReactNode }) {
+ * (teams, executions, ...) gets presented as a headline metric. `note`
+ * says what's behind the number, under it. */
+export function MetricCard({ label, value, icon, note }: { label: string; value: ReactNode; icon?: ReactNode; note?: ReactNode }) {
   return (
     <Card variant="outlined">
       <CardContent>
@@ -18,6 +19,11 @@ export function MetricCard({ label, value, icon }: { label: string; value: React
         <Typography variant="h4" sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
           {value}
         </Typography>
+        {note && (
+          <Typography variant="caption" component="div" sx={{ mt: 0.5, overflowWrap: "anywhere" }}>
+            {note}
+          </Typography>
+        )}
       </CardContent>
     </Card>
   );

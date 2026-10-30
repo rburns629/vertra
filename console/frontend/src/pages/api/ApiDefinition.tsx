@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -7,7 +7,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import type { ApiProduct } from "../../api";
 import { Mono } from "../../components/Mono";
-import { Fact } from "./ApiOverview";
+import { sharedWith } from "./ApiOverview";
 
 const AUTH: Record<string, string> = {
   service_account_token: "a token for the API's own ServiceAccount, minted per request",
@@ -27,107 +27,149 @@ const STEPS: [string, string][] = [
   ["Answer", "The backend's response, passed back unchanged."],
 ];
 
-/**
- * What the catalog says an API is (its api.yaml: backend, how the gateway
- * signs in there, who it's shared with, where it's reachable), what the
- * gateway does with each request, and pausing it. For its own team.
- */
-export function ApiDefinition({
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <Typography component="dt" variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+        {label}
+      </Typography>
+      <Typography component="dd" variant="body2" sx={{ m: 0, fontSize: 13, overflowWrap: "anywhere" }}>
+        {children}
+      </Typography>
+    </>
+  );
+}
+
+/** What the catalog says an API is (its api.yaml): backend, how the gateway signs in there, who it's shared with, where it's reachable. For its own team. */
+export function ApiBackend({ api }: { api: ApiProduct }) {
+  return (
+    <Card component="section" aria-label="As the catalog says" sx={{ flex: "3 1 560px", minWidth: 0, p: 2.75, display: "flex", flexDirection: "column", gap: 1.75 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+        <Typography variant="h6" component="h2">
+          Its backend, as the catalog says
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+          It changes in the catalog, reviewed like any product: propose a change to its file there. Pausing it is the only thing changed
+          here.
+        </Typography>
+      </Box>
+      <Box
+        component="dl"
+        sx={{ m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(150px, auto) minmax(0, 1fr)" }, columnGap: 2.5, rowGap: { xs: 0.25, sm: 1.25 } }}
+      >
+        <Row label="Its file">
+          <Mono sx={{ fontSize: 12.5 }}>{api.sourcePath}</Mono>
+        </Row>
+        <Row label="Backend">
+          <Mono sx={{ fontSize: 12.5 }}>{api.backendUrl}</Mono>
+        </Row>
+        <Row label="The gateway signs in there with">{AUTH[api.backendAuth] ?? api.backendAuth}</Row>
+        <Row label="Reachable">{api.internet ? "From the internet, and in the cluster" : "In the cluster only"}</Row>
+        <Row label="Shared with">{sharedWith(api)}</Row>
+      </Box>
+    </Card>
+  );
+}
+
+/** Pausing it for an incident, or resuming it: its team's maintainers and admins. */
+export function ApiPause({
   api,
-  canPause,
   busy,
   onPause,
   onResume,
 }: {
   api: ApiProduct;
-  canPause: boolean;
   busy: boolean;
   onPause: (message: string) => Promise<void>;
   onResume: () => Promise<void>;
 }) {
   const [message, setMessage] = useState("");
   const paused = api.state === "PAUSED";
-
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start" }}>
-        <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Typography variant="h6" component="h2">
-            As the catalog says
-          </Typography>
-          <Fact label="Its file">
-            <Mono>{api.sourcePath}</Mono>
-          </Fact>
-          <Fact label="Backend">
-            <Mono>{api.backendUrl}</Mono>
-          </Fact>
-          <Fact label="The gateway signs in there with">{AUTH[api.backendAuth] ?? api.backendAuth}</Fact>
-          <Fact label="Reachable">{api.internet ? "From the internet, and in the cluster" : "In the cluster only"}</Fact>
-          <Fact label="Shared with">{api.shareWith.length > 0 ? api.shareWith.join(", ") : "its own team only"}</Fact>
-          <Typography variant="body2" color="text.secondary">
-            It changes in the catalog, reviewed like any product: propose a change to its file there. Pausing it is the only thing
-            changed here.
-          </Typography>
-        </Card>
-
-        {canPause && (
-          <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5, borderColor: paused ? undefined : "warning.light" }}>
-            <Typography variant="h6" component="h2">
-              {paused ? "Resume it" : "Pause it"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              For an incident: every request gets 503 with your message until you resume it, and nothing reaches the backend.
-              Recorded in the audit log.
-            </Typography>
-            {!paused && (
-              <TextField
-                size="small"
-                fullWidth
-                label="Message to callers"
-                placeholder="Database failover; back by 15:00 UTC"
-                value={message}
-                onChange={(e) => { setMessage(e.target.value); }}
-                slotProps={{ htmlInput: { maxLength: 500 } }}
-              />
-            )}
-            <Box>
-              <Button
-                variant="contained"
-                color={paused ? "primary" : "warning"}
-                disabled={busy || (!paused && !message.trim())}
-                onClick={() => void (paused ? onResume() : onPause(message).then(() => { setMessage(""); }))}
-              >
-                {paused ? "Resume" : "Pause this API"}
-              </Button>
-            </Box>
-          </Card>
-        )}
+    <Card component="section" aria-label={paused ? "Resume it" : "Pause it"} sx={{ flex: "2 1 340px", minWidth: 0, p: 2.75, display: "flex", flexDirection: "column", gap: 1.5, borderColor: "warning.light" }}>
+      <Typography variant="h6" component="h2">
+        {paused ? "Resume it" : "Pause it"}
+      </Typography>
+      <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.5 }}>
+        {paused
+          ? `Paused: every request gets 503 with “${api.pausedMessage}”, and nothing reaches the backend, until you resume it. Recorded in the audit log.`
+          : `For an incident: every request gets 503 with your message until you resume it, and nothing reaches the backend. Recorded in the audit log. ${api.team}’s maintainers and admins can.`}
+      </Typography>
+      {!paused && (
+        <TextField
+          size="small"
+          fullWidth
+          label="Message to callers"
+          placeholder="Database failover; back by 15:00 UTC"
+          value={message}
+          onChange={(e) => {
+            setMessage(e.target.value);
+          }}
+          slotProps={{ htmlInput: { maxLength: 500 } }}
+          sx={{ "& .MuiInputBase-root": { minHeight: 44 } }}
+        />
+      )}
+      <Box>
+        <Button
+          variant="contained"
+          size="large"
+          color={paused ? "primary" : "warning"}
+          disabled={busy || (!paused && !message.trim())}
+          onClick={() =>
+            void (paused
+              ? onResume()
+              : onPause(message).then(() => {
+                  setMessage("");
+                }))
+          }
+        >
+          {paused ? "Resume" : "Pause this API"}
+        </Button>
       </Box>
-
-      <Card sx={{ p: 3 }}>
-        <Typography variant="h6" component="h2" sx={{ mb: 1.5 }}>
-          What happens to a request
+      {!paused && !message.trim() && (
+        <Typography variant="caption" color="text.secondary">
+          Write a message first; callers see it in every 503.
         </Typography>
-        <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gap: 1.25, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
-          {STEPS.map(([title, text], i) => (
-            <Box
-              component="li"
-              key={title}
-              sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: i === 2 ? "warning.light" : "divider", bgcolor: i === 2 ? "warning.light" : "background.default", display: "flex", flexDirection: "column", gap: 0.5 }}
-            >
-              <Typography variant="caption" sx={{ fontFamily: "fontFamilyMono", color: "text.secondary" }}>
-                {i + 1}
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {title}
-              </Typography>
-              <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.45 }}>
-                {text}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Card>
-    </Box>
+      )}
+    </Card>
+  );
+}
+
+/** What the gateway does with each request, in order; the step that blocks what isn't in the spec stands out. */
+export function RequestSteps() {
+  return (
+    <Card component="section" aria-label="What happens to a request" sx={{ p: 2.75, display: "flex", flexDirection: "column", gap: 1.75 }}>
+      <Typography variant="h6" component="h2">
+        What happens to a request
+      </Typography>
+      <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gap: 1.25, gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+        {STEPS.map(([title, text], i) => (
+          <Box
+            component="li"
+            key={title}
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: 1,
+              borderColor: i === 2 ? "warning.light" : "divider",
+              bgcolor: i === 2 ? "warning.light" : "background.default",
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+            }}
+          >
+            <Typography variant="caption" sx={{ fontFamily: "fontFamilyMono", fontSize: 11, color: "text.secondary" }}>
+              {i + 1}
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500 }}>
+              {title}
+            </Typography>
+            <Typography variant="caption" sx={{ lineHeight: 1.45 }}>
+              {text}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Card>
   );
 }

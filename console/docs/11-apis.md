@@ -18,15 +18,17 @@ The OpenAPI file is the allowlist. The gateway forwards a request only when its 
 
 ## Finding an API: the APIs page
 
-**APIs** in the side menu lists every API you may see, with a search box (**Search APIs**). Each row shows:
+**APIs** in the side menu lists every API you may see, with a search box (**Search APIs**) and filters (**All**, **You can call**, **Your teams’**, **Paused or held**), in three groups: **Your teams’**, **Shared with your teams** and **Not shared with your teams**. Each row shows:
 
 | Column | Means |
 | --- | --- |
-| **API** | Its display name, and `<team>/<name>` |
-| **State** | **Live**, **Held** or **Paused** ([states](#what-do-live-held-and-paused-mean)) |
+| **API** | Its display name, `<team>/<name>`, what it does, and whether it's deprecated |
+| **State** | **Live**, **Held** or **Paused** ([states](#what-do-live-held-and-paused-mean)), with why it's held or the pause message |
 | **Endpoints** | How many operations its spec describes |
-| **You** | `may call, N a minute` when it's shared with one of your teams; `not shared with your teams` when it isn't |
+| **You** | **Your team’s** or **May call**, with your team's limit (requests a minute, request size, timeout); **Not shared** when the gateway refuses your calls, with a link to ask its team |
 | **Reachable** | **In the cluster**, or **Internet** when it's also on the gateway's public address |
+
+Beside the list, **Calling any of them** gives the gateway's addresses and how to sign in (and, for a team's maintainer, a link to its bots), and **Publishing one of yours** how an API gets here.
 
 Everyone signed in sees the listed APIs, including ones they may not call. An API whose `api.yaml` says `visibility: hidden` is seen only by its own team and admins; to anyone else it looks the same as one that doesn't exist.
 
@@ -44,20 +46,19 @@ An API can also be marked deprecated in its `api.yaml`. It keeps working; its pa
 
 ## What's on an API's page?
 
-Click an API to open its page. Everyone who can see it gets the **Overview**. Its own team and admins also get **Traffic** and **Definition** tabs, and a pill saying **You maintain it**, **Your team's** or **Viewing as admin**.
+Click an API to open its page, one page from top to bottom. Everyone who can see it gets what they need to call it:
 
-**Overview** is what you need to call it:
-
-- **Endpoints, from its OpenAPI file**: each method, path and summary. Click one to see a sample `curl` call under **Calling `<method>` `<path>`**.
-- **Call it at**: the address to use. Inside the cluster it's the gateway's address followed by `/<team>/<name>`; for an API reachable from the internet, it's the public address.
+- **Call it at**: the address to use. Inside the cluster it's the gateway's address followed by `/<team>/<name>`; for an API reachable from the internet, it's the public address, with the in-cluster one under it.
 - **Spec**: the spec's title, version and number of endpoints.
 - **Your team's limit**: requests a minute, the largest request body, and how long the gateway waits for the backend, or `None: it isn't shared with your teams`.
 - **Shared with**: the teams that may call it, or `its own team only`.
+- **Endpoints, from its OpenAPI file**: each method, path and summary. Pick one to see a sample `curl` call under **Calling `<method>` `<path>`**.
+- **What happens to a request**: the gateway's checks, in order.
 - **Download its OpenAPI file**: the spec as JSON, to generate a client or read the schemas.
 
 If the API isn't shared with your teams, the page says so: the gateway refuses your calls with 403.
 
-**Traffic** and **Definition** are for the owning team ([traffic](#watching-your-apis-traffic), [pausing](#pausing-an-api-during-an-incident)).
+Its own team and admins also get a pill saying **You maintain it**, **Your team's** or **Viewing as admin**, and the parts only they see, linked from **On this page**: **Endpoints and traffic** (each endpoint's traffic, [traffic](#watching-your-apis-traffic)), **Backend and pausing** ([pausing](#pausing-an-api-during-an-incident)) and **Backend logs** ([logs](#where-are-my-api-backends-logs)).
 
 ## How do I get access to an API?
 
@@ -104,7 +105,7 @@ For each request to `/<team>/<name>/<path>`:
 
 A path with an encoded slash (`%2F`) or a `.` or `..` segment is refused with 404 before any of this, so the path that's checked is the path that's forwarded.
 
-The API's **Definition** tab shows these steps too, as **What happens to a request**.
+The API's page shows these steps too, as **What happens to a request**.
 
 ## What does each gateway error mean?
 
@@ -146,17 +147,17 @@ The gateway never records a body, a header's value or a credential. Its logs and
 
 ## Watching your API's traffic
 
-On your API's page, **Traffic** shows what callers sent, what the gateway stopped and what your backend answered, for **Last 24 hours** or **Last 7 days**. Bodies are never recorded, and callers only by team.
+On your API's page, **Endpoints and traffic** shows what callers sent, what the gateway stopped and what your backend answered, for **Last 24 hours** or **Last 7 days**. Bodies are never recorded, and callers only by team.
 
 | Card or table | Shows |
 | --- | --- |
 | **Requests** | Every request, forwarded or not |
-| **Forwarded** | Requests that reached your backend |
+| **Forwarded to the backend** | Requests that reached your backend |
 | **Stopped at the gateway** | Not in the spec, didn't fit, over the rate, not signed in or not shared, paused, held or closed |
 | **Backend errors** | Your backend answered 5xx, or couldn't be reached |
-| **By endpoint** | Per operation: **Requests**, **Stopped: didn't fit**, **Backend 4xx**, **Backend 5xx**, **Backend, average** |
+| **Endpoints, from its OpenAPI file** | Per operation: **Requests**, **Didn’t fit**, **Backend 4xx**, **Backend 5xx**, **Backend, avg** |
 | **Blocked: not in the spec** | Methods and paths your spec doesn't describe, how often, from which teams, and when last |
-| **By calling team** | Each team's requests, and its **Busiest minute** against its limit |
+| **By calling team** | Each team's requests, and a bar of its busiest minute against its limit |
 
 A caller that keeps showing up under **Blocked: not in the spec** may be relying on an endpoint you never published: add it to the spec, or tell them. A team whose busiest minute is at its limit is being refused with 429.
 
@@ -164,13 +165,13 @@ What the gateway refused also appears on Observe, under **Refused, last 7 days**
 
 ## Pausing an API during an incident
 
-A maintainer of the API's team, or an admin, can pause it: on its page, **Definition → Pause it**, write a **Message to callers** (for example, `Database failover; back by 15:00 UTC`) and press **Pause this API**. Until you press **Resume**:
+A maintainer of the API's team, or an admin, can pause it: on its page, under **Backend and pausing → Pause it**, write a **Message to callers** (for example, `Database failover; back by 15:00 UTC`) and press **Pause this API**. Until you press **Resume**:
 
 - every request gets 503 `API_PAUSED` with your message;
 - nothing reaches the backend;
 - the API shows **Paused** everywhere.
 
-Pausing and resuming are recorded in the audit log. Pausing is the only change made in the console; everything else about an API (its backend, spec, sharing and limits) changes in the catalog. **Definition** shows those as **As the catalog says**, with the path of its `api.yaml`.
+Pausing and resuming are recorded in the audit log. Pausing is the only change made in the console; everything else about an API (its backend, spec, sharing and limits) changes in the catalog. The page shows those as **Its backend, as the catalog says**, with the path of its `api.yaml`.
 
 ## Why is my API Held?
 
@@ -180,7 +181,7 @@ To release it, ask an admin to add the host (or a `*.` pattern above it) to the 
 
 ## Where are my API backend's logs?
 
-When the install keeps logs, a backend running in your team's namespace has its output on Observe: **Logs**, then **From: API backends**. Only Pods labelled `vertra/api-backend: "true"` are collected. Those lines, at every level, are seen by your team and admins only: they belong to no run, so no caller sees them ([Observe's logs](12-observe.md#whose-logs-can-i-see)).
+When the install keeps logs, a backend running in your team's namespace has its output on Observe: **Logs**, then **From: API backends**. The API's own page shows the newest of them, from all your team's API backends, under **Its backend’s logs**, with **Search them in Observe**. Only Pods labelled `vertra/api-backend: "true"` are collected. Those lines, at every level, are seen by your team and admins only: they belong to no run, so no caller sees them ([Observe's logs](12-observe.md#whose-logs-can-i-see)).
 
 A backend outside the cluster (Cloud Run, Lambda) logs where it runs. Use `Vertra-Request-Id` to find a request on both sides.
 
@@ -193,7 +194,7 @@ Admins open **Admin → API gateway**. It shows:
 
 If the gateway isn't running on the install, the section says so (`gateway.enabled`).
 
-Admins also see every API, hidden ones included, with its **Traffic** and **Definition** tabs, and may pause any of them. On Observe, they see every gateway refusal.
+Admins also see every API, hidden ones included, with its traffic, backend and logs, and may pause any of them. On Observe, they see every gateway refusal.
 
 ## Publishing or changing an API
 

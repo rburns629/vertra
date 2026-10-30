@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
-import Card from "@mui/material/Card";
 import Typography from "@mui/material/Typography";
 import { ApiError, getTeamCallback, setTeamCallback, type TeamCallback } from "../../api";
+import { Mono } from "../../components/Mono";
 import { SignedCallback } from "../../components/SignedCallback";
+import { SettingsCard } from "./shared";
 
 /**
  * The team's outcome webhook: each of its runs' outcomes (its steps'
@@ -29,13 +30,10 @@ export function OutcomeWebhookSection({ team, canManage, retired }: { team: stri
   // An install that allows no hosts can't have one: say nothing unless one is set.
   if (callback && !callback.configured && allowed.length === 0) return null;
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography variant="h6" component="h2">
-        Outcome webhook
-      </Typography>
+    <SettingsCard title="Outcome webhook">
       <Typography variant="body2" color="text.secondary">
-        For the team&apos;s own systems: when one of its runs finishes, its outcome (each step&apos;s state and outputs) is posted
-        here as signed JSON. Allowed hosts: {allowed.join(", ") || "none"}.
+        For {team}&apos;s own systems: when one of its runs finishes, its outcome (each step&apos;s state and outputs) is posted
+        as signed JSON.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       {callback && (
@@ -47,6 +45,10 @@ export function OutcomeWebhookSection({ team, canManage, retired }: { team: stri
           onSaved={load}
         />
       )}
-    </Card>
+      <Typography variant="caption" color="text.secondary">
+        Each post carries <Mono>Vertra-Signature: t=…,v1=…</Mono>: HMAC-SHA256 of <Mono>{"<t>.<body>"}</Mono> with its secret.
+        Allowed hosts: {allowed.join(", ") || "none"}.
+      </Typography>
+    </SettingsCard>
   );
 }

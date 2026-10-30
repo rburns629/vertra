@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ApiError, setTeamQuota, type Team, type TeamQuota } from "../../api";
+import { Mono } from "../../components/Mono";
+import { Pill } from "../../components/Pill";
+import { SettingsCard } from "./shared";
 
 const FIELDS: { key: keyof TeamQuota; label: string; help: string }[] = [
   { key: "cpu", label: "CPU, all steps together", help: "Such as 8 or 500m" },
@@ -14,8 +16,6 @@ const FIELDS: { key: keyof TeamQuota; label: string; help: string }[] = [
   { key: "pods", label: "Steps running at once", help: "A whole number" },
   { key: "stepMemory", label: "Memory, one step at most", help: "Such as 8Gi" },
 ];
-
-const shown = (value: string) => value || "no limit";
 
 /**
  * What a team's steps may use together, as its namespace's quota holds it:
@@ -41,15 +41,15 @@ export function QuotaSection({ team, isAdmin, onChanged }: { team: Team; isAdmin
   }
 
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography variant="h6" component="h2">
-        Resource limits
-      </Typography>
+    <SettingsCard title="Resource limits">
       <Typography variant="body2" color="text.secondary">
-        What the team&apos;s steps may use together, which the cluster itself enforces: a step that can never fit fails at once, one
-        waiting for the team&apos;s other steps to finish waits. {team.quotaIsDefault ? "These are the install's." : "These are the team's own."}
+        What {team.name}&apos;s steps may use together; the cluster enforces it. A step that can never fit fails with{" "}
+        <Mono>RESOURCES_NOT_ALLOWED</Mono>; one waiting for the team&apos;s other steps waits.
         {!isAdmin && " Only admins change them."}
       </Typography>
+      <Box>
+        {team.quotaIsDefault ? <Pill tone="neutral">The install&apos;s</Pill> : <Pill tone="info">{team.name}&apos;s own, not the install&apos;s</Pill>}
+      </Box>
       {isAdmin ? (
         <>
           <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
@@ -63,6 +63,7 @@ export function QuotaSection({ team, isAdmin, onChanged }: { team: Team; isAdmin
                 onChange={(e) => { setForm({ ...form, [f.key]: e.target.value.trim() }); }}
                 helperText={f.help}
                 slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ "& input": { fontFamily: "fontFamilyMono" } }}
               />
             ))}
           </Box>
@@ -72,7 +73,7 @@ export function QuotaSection({ team, isAdmin, onChanged }: { team: Team; isAdmin
               Save the team&apos;s own
             </Button>
             {!team.quotaIsDefault && (
-              <Button disabled={saving} onClick={() => void save(null)}>
+              <Button variant="outlined" color="inherit" disabled={saving} onClick={() => void save(null)}>
                 Use the install&apos;s again
               </Button>
             )}
@@ -86,12 +87,12 @@ export function QuotaSection({ team, isAdmin, onChanged }: { team: Team; isAdmin
                 {f.label}
               </Typography>
               <Typography component="dd" variant="body2" sx={{ m: 0 }}>
-                {shown(team.quota[f.key])}
+                {team.quota[f.key] ? <Mono>{team.quota[f.key]}</Mono> : "no limit"}
               </Typography>
             </Box>
           ))}
         </Box>
       )}
-    </Card>
+    </SettingsCard>
   );
 }
