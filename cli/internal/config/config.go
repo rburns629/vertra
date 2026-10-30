@@ -322,6 +322,37 @@ type ExternalCatalog struct {
 	// GCPServiceAccount, if the federated identity should impersonate one
 	// rather than be granted the repository itself.
 	GCPServiceAccount string `yaml:"gcpServiceAccount,omitempty"`
+	// AWSRoleArn, for an Amazon ECR registry this install can't read as
+	// itself (another account's, or read from another cloud): the owner's
+	// role that trusts this cluster's OIDC issuer for the console's
+	// ServiceAccount alone (`vertra catalog grant`). The console assumes it
+	// with its projected token (AWS web identity), with no stored key, and
+	// hands the kubelet and its Jobs ECR's short-lived token.
+	AWSRoleArn string `yaml:"awsRoleArn,omitempty"`
+}
+
+// Federated says whether the console signs in to the catalog's registry
+// by federation (another cloud's or account's identity) rather than as
+// itself.
+func (e ExternalCatalog) Federated() bool {
+	return e.GCPWorkloadIdentityProvider != "" || e.AWSRoleArn != ""
+}
+
+// IsArtifactRegistry says whether a registry path is in Google Artifact
+// Registry (<region>-docker.pkg.dev/...).
+func IsArtifactRegistry(registry string) bool {
+	return strings.HasSuffix(strings.SplitN(registry, "/", 2)[0], "-docker.pkg.dev")
+}
+
+// ECRRegistry is an Amazon ECR registry path's account, region and
+// repository prefix; all empty when it isn't ECR.
+func ECRRegistry(registry string) (account, region, prefix string) {
+	host, path, _ := strings.Cut(registry, "/")
+	m := ecrHost.FindStringSubmatch(host)
+	if m == nil {
+		return "", "", ""
+	}
+	return m[1], m[2], path
 }
 
 // Gateway is the API gateway's settings (the console chart's gateway).
@@ -454,6 +485,8 @@ var (
 	registryPath = regexp.MustCompile(`^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+)+$`)
 	chatModel    = regexp.MustCompile(`^google/[a-z0-9][a-z0-9.-]*$`)
 	bedrockModel = regexp.MustCompile(`^anthropic\.claude-[a-z0-9][a-z0-9.-]*$`)
+	ecrHost      = regexp.MustCompile(`^([0-9]{12})\.dkr\.ecr\.([a-z]{2}(?:-gov)?-[a-z]+-[0-9])\.amazonaws\.com$`)
+	awsRole      = regexp.MustCompile(`^arn:aws(?:-us-gov)?:iam::([0-9]{12}):role/[A-Za-z0-9+=,.@_/-]{1,64}$`)
 	wifProvider  = regexp.MustCompile(`^projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]{4,32}/providers/[a-z0-9-]{4,32}$`)
 	gcpProject   = regexp.MustCompile(`^[a-z][-a-z0-9]{4,28}[a-z0-9]$`)
 	gcpRegion    = regexp.MustCompile(`^[a-z]+-[a-z]+[0-9]$`)
@@ -707,7 +740,7 @@ func (c *Config) Validate() error {
 			add("catalog: only gcp and aws installs give its CI a registry to publish to so far")
 		}
 	}
-	if e := c.ExternalCatalog; e.Registry != "" || e.GCPWorkloadIdentityProvider != "" || e.GCPServiceAccount != "" {
+	if e := c.ExternalCatalog; e.Registry != "" || e.GCPWorkloadIdentityProvider != "" || e.GCPServiceAccount != "" || e.AWSRoleArn != "" {
 		if c.Catalog.Repo() != "" {
 			add("externalCatalog: an install reads its own catalog or another's, not both (catalog.owner is set)")
 		}
@@ -717,11 +750,27 @@ func (c *Config) Validate() error {
 		if e.GCPWorkloadIdentityProvider != "" && !wifProvider.MatchString(e.GCPWorkloadIdentityProvider) {
 			add("externalCatalog.gcpWorkloadIdentityProvider: %q isn't projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>", e.GCPWorkloadIdentityProvider)
 		}
-		if e.GCPWorkloadIdentityProvider != "" && !strings.HasSuffix(strings.SplitN(e.Registry, "/", 2)[0], "-docker.pkg.dev") {
+		if e.GCPWorkloadIdentityProvider != "" && !IsArtifactRegistry(e.Registry) {
 			add("externalCatalog.gcpWorkloadIdentityProvider: only for an Artifact Registry (<region>-docker.pkg.dev/...)")
 		}
 		if e.GCPServiceAccount != "" && e.GCPWorkloadIdentityProvider == "" {
 			add("externalCatalog.gcpServiceAccount: needs gcpWorkloadIdentityProvider")
+		}
+		if e.AWSRoleArn != "" {
+			account, _, _ := ECRRegistry(e.Registry)
+			m := awsRole.FindStringSubmatch(e.AWSRoleArn)
+			switch {
+			case m == nil:
+				add("externalCatalog.awsRoleArn: %q isn't arn:aws:iam::<account>:role/<name>", e.AWSRoleArn)
+			case account == "":
+				add("externalCatalog.awsRoleArn: only for an Amazon ECR registry (<account>.dkr.ecr.<region>.amazonaws.com/...)")
+			case m[1] != account:
+				// The owner's role reads its own account's registry.
+				add("externalCatalog.awsRoleArn: the role is in account %s and the registry in %s: it must be the registry owner's", m[1], account)
+			}
+			if e.GCPWorkloadIdentityProvider != "" {
+				add("externalCatalog: gcpWorkloadIdentityProvider or awsRoleArn, not both")
+			}
 		}
 	}
 	if !strings.Contains(c.Admin.Email, "@") {

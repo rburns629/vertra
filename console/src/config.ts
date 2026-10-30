@@ -473,17 +473,20 @@ export const config = {
     url: process.env["GATEWAY_URL"] ?? "",
     publicUrl: process.env["GATEWAY_PUBLIC_URL"] ?? "",
   },
-  // A registry on another cloud, read with no stored key
-  // (registryFederation.ts): Google Artifact Registry hosts read through
-  // Workload Identity Federation, exchanging the console's projected token
-  // (tokenFile, with the provider as its audience) for an access token,
-  // used directly or to impersonate gcpServiceAccount. tokenSecret is the
-  // Docker config Secret written in this namespace for the verify and scan
-  // Jobs. gcpProvider: projects/<number>/locations/global/
-  // workloadIdentityPools/<pool>/providers/<provider>; empty: off.
+  // A registry on another cloud (or another AWS account), read with no
+  // stored key (registryFederation.ts), exchanging the console's projected
+  // token (tokenFile, with the other side as its audience): Google Artifact
+  // Registry hosts through Workload Identity Federation for an access token,
+  // used directly or to impersonate gcpServiceAccount (gcpProvider:
+  // projects/<number>/locations/global/workloadIdentityPools/<pool>/
+  // providers/<provider>); or Amazon ECR hosts by assuming awsRoleArn by web
+  // identity, for ECR's registry token. One or the other; both empty: off.
+  // tokenSecret is the Docker config Secret written in this namespace for
+  // the verify and scan Jobs.
   registryFederation: {
     gcpProvider: process.env["REGISTRY_GCP_WIF_PROVIDER"] ?? "",
     gcpServiceAccount: process.env["REGISTRY_GCP_SERVICE_ACCOUNT"] ?? "",
+    awsRoleArn: process.env["REGISTRY_AWS_ROLE_ARN"] ?? "",
     hosts: (process.env["REGISTRY_FEDERATED_HOSTS"] ?? "").split(",").map((s) => s.trim()).filter(Boolean),
     tokenFile: process.env["REGISTRY_FEDERATION_TOKEN_FILE"] ?? "/var/run/secrets/vertra/registry/token",
     tokenSecret: process.env["REGISTRY_TOKEN_SECRET"] ?? "",

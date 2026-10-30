@@ -29,6 +29,12 @@ func args(c *config.Config, a ...string) []string {
 	return append(a, "--region", c.AWS.Region, "--output", "json")
 }
 
+// Args is args for other packages: an aws command with the config's
+// profile and region.
+func Args(c *config.Config) func(a ...string) []string {
+	return func(a ...string) []string { return args(c, a...) }
+}
+
 // Identity is who the profile signs in as.
 type Identity struct {
 	Account string `json:"Account"`

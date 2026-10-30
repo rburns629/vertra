@@ -404,6 +404,20 @@ registryCheck:
     serviceAccount: ""
     # Such as us-central1-docker.pkg.dev.
     hosts: []
+  # -- An Amazon ECR in another account, or read from another cloud
+  # (another install's catalog), with no stored key: the console's
+  # ServiceAccount token, projected for sts.amazonaws.com, assumes roleArn
+  # (AssumeRoleWithWebIdentity), whose credentials get ECR's registry
+  # token. It signs in to `hosts` with it and writes it, as gcpFederation
+  # does, as `vertra-pull` in every team namespace and `vertra-registry-token`
+  # here. The owner's role trusts this cluster's OIDC issuer for the
+  # console's ServiceAccount alone, and may read only the catalog's
+  # repositories (`vertra catalog grant`). Not with gcpFederation.
+  awsFederation:
+    # arn:aws:iam::<owner's account>:role/<name>
+    roleArn: ""
+    # Such as 123456789012.dkr.ecr.us-east-2.amazonaws.com.
+    hosts: []
   # -- Where to reach a registry from inside the cluster when that differs
   # from its name in image references, as {host: url}. On kind:
   # {"localhost:5001": "http://kind-registry:5000"}.

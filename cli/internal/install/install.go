@@ -386,7 +386,7 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 	if e := c.ExternalCatalog; e.Registry != "" {
 		// Steps run the other install's catalog images.
 		v["imagePolicy"] = map[string]any{"sourceRegistry": e.Registry}
-		if e.GCPWorkloadIdentityProvider != "" {
+		if e.Federated() {
 			// The kubelet pulls them with the console's federated token.
 			scheduler["taskImagePullSecret"] = "vertra-pull"
 		}
@@ -524,17 +524,22 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	}
 	if e := c.ExternalCatalog; e.Registry != "" {
 		catalog["release"] = e.Registry + "/catalog-release:" + releaseTag(c)
-		if e.GCPWorkloadIdentityProvider != "" {
-			// Another cloud's Artifact Registry, read by federation
-			// (console/src/registryFederation.ts).
+		if e.Federated() {
+			// Another cloud's (or AWS account's) registry, read by
+			// federation (console/src/registryFederation.ts).
 			check, _ := v["registryCheck"].(map[string]any)
 			if check == nil {
 				check = map[string]any{}
 			}
-			check["gcpFederation"] = map[string]any{
-				"workloadIdentityProvider": e.GCPWorkloadIdentityProvider,
-				"serviceAccount":           e.GCPServiceAccount,
-				"hosts":                    []string{strings.SplitN(e.Registry, "/", 2)[0]},
+			hosts := []string{strings.SplitN(e.Registry, "/", 2)[0]}
+			if e.GCPWorkloadIdentityProvider != "" {
+				check["gcpFederation"] = map[string]any{
+					"workloadIdentityProvider": e.GCPWorkloadIdentityProvider,
+					"serviceAccount":           e.GCPServiceAccount,
+					"hosts":                    hosts,
+				}
+			} else {
+				check["awsFederation"] = map[string]any{"roleArn": e.AWSRoleArn, "hosts": hosts}
 			}
 			v["registryCheck"] = check
 		}
@@ -996,66 +1001,79 @@ func Uninstall(ctx context.Context, r *run.Runner, c *config.Config, release str
 	return r.Run(ctx, "helm", "uninstall", release, "--kube-context", cluster.Context(c), "--namespace", c.Namespace, "--wait")
 }
 
-// VerifierGrant is what the catalog registry's owner runs to let this
-// install's policy-controller (as verifier, a Google service account) read
-// signatures from it, when it reads an Artifact Registry on its own cloud:
-// across clouds it signs in with the steps' pull Secret instead. Empty when
-// there's nothing to grant.
-func VerifierGrant(c *config.Config, verifier string) string {
-	e := c.ExternalCatalog
-	host, path, _ := strings.Cut(e.Registry, "/")
-	project, repository, _ := strings.Cut(path, "/")
-	repository, _, _ = strings.Cut(repository, "/")
-	region, isAR := strings.CutSuffix(host, "-docker.pkg.dev")
-	if !c.VerifiesCatalog() || verifier == "" || !isAR || e.GCPWorkloadIdentityProvider != "" || repository == "" {
-		return ""
-	}
-	return fmt.Sprintf("gcloud artifacts repositories add-iam-policy-binding %s --location=%s --project=%s --role=roles/artifactregistry.reader --member=serviceAccount:%s",
-		repository, region, project, verifier)
+// ConsoleSubject is the console's ServiceAccount as its cluster's OIDC
+// tokens name it: the one identity another cloud's grant trusts.
+func ConsoleSubject(c *config.Config) string {
+	return fmt.Sprintf("system:serviceaccount:%s:%s-execution-console", c.Namespace, ConsoleRelease)
 }
 
-// FederationSteps is what the catalog registry's owner runs, in its Google
-// Cloud project, to let this install read it with no stored key: a pool,
-// a provider trusting this cluster's OIDC issuer for the console's
-// ServiceAccount alone, and read access to the repository for that
-// identity. Then the provider is set here and applied again. Empty when
-// the install doesn't read an Artifact Registry on another cloud.
-func FederationSteps(c *config.Config, issuer string) []string {
+// Grant is what the catalog registry's owner runs, in its own environment,
+// to let this install read the catalog (`vertra catalog grant`), and what
+// this install does after.
+type Grant struct {
+	// Why: what the grant lets this install do.
+	Why     string
+	Command string
+	// Then is run here after the grant (setting what it printed), if
+	// anything.
+	Then []string
+}
+
+// CatalogGrant is the owner's grant this install needs to read another
+// install's catalog, or nil when it needs none (it reads no other catalog,
+// or already signs in by federation, or the registry is its own project's):
+//   - another cloud's registry, or another AWS account's ECR: its cluster's
+//     OIDC identity, the console's ServiceAccount alone, which the owner
+//     trusts (a Workload Identity provider, or an IAM role); the console then
+//     hands the kubelet, policy-controller and its Jobs short-lived tokens.
+//   - another project's Artifact Registry, on Google Cloud: its own service
+//     accounts (the console, the scanner, the nodes, policy-controller's),
+//     each given read on the repository.
+func CatalogGrant(c *config.Config, cloud *Cloud) *Grant {
 	e := c.ExternalCatalog
-	host, path, _ := strings.Cut(e.Registry, "/")
-	project, repository, _ := strings.Cut(path, "/")
-	region, isAR := strings.CutSuffix(host, "-docker.pkg.dev")
-	if !isAR || issuer == "" || repository == "" {
+	if e.Registry == "" || cloud == nil || e.Federated() {
 		return nil
 	}
-	subject := fmt.Sprintf("system:serviceaccount:%s:%s-execution-console", c.Namespace, ConsoleRelease)
-	provider := envProviderName(c)
-	if !strings.HasPrefix(provider, "vertra") {
-		provider = "vertra-" + provider
+	reader := strings.ToLower(c.Cluster.Name)
+	if config.IsArtifactRegistry(e.Registry) && cloud.Provider == "gcp" {
+		project := strings.SplitN(e.Registry, "/", 3)[1]
+		if project == c.GCP.Project {
+			return nil
+		}
+		accounts := []string{cloud.ConsoleServiceAccount}
+		if cloud.ScannerServiceAccount != "" && cloud.ScannerServiceAccount != cloud.ConsoleServiceAccount {
+			accounts = append(accounts, cloud.ScannerServiceAccount)
+		}
+		// The nodes' identity (the module's ${name}-nodes) pulls steps' images.
+		accounts = append(accounts, fmt.Sprintf("%s-nodes@%s.iam.gserviceaccount.com", c.Cluster.Name, c.GCP.Project))
+		if c.VerifiesCatalog() && cloud.SigningVerifier != "" {
+			accounts = append(accounts, cloud.SigningVerifier)
+		}
+		command := "vertra catalog grant --reader " + reader
+		for _, a := range accounts {
+			command += " --service-account " + a
+		}
+		return &Grant{Why: "read it as this install's own service accounts", Command: command}
 	}
-	pool := "vertra-installs"
-	return []string{
-		fmt.Sprintf("gcloud iam workload-identity-pools create %s --location=global --project=%s", pool, project),
-		fmt.Sprintf("gcloud iam workload-identity-pools providers create-oidc %s --location=global --workload-identity-pool=%s --project=%s --issuer-uri=%s --attribute-mapping=google.subject=assertion.sub --attribute-condition=\"assertion.sub=='%s'\"",
-			provider, pool, project, issuer, subject),
-		fmt.Sprintf("gcloud artifacts repositories add-iam-policy-binding %s --location=%s --project=%s --role=roles/artifactregistry.reader --member=principal://iam.googleapis.com/projects/$(gcloud projects describe %s --format='value(projectNumber)')/locations/global/workloadIdentityPools/%s/subject/%s",
-			repository, region, project, project, pool, subject),
-		fmt.Sprintf("vertra config set externalCatalog.gcpWorkloadIdentityProvider projects/$(gcloud projects describe %s --format='value(projectNumber)')/locations/global/workloadIdentityPools/%s/providers/%s", project, pool, provider),
-		"vertra apply",
+	if cloud.ClusterIssuer == "" {
+		return nil
 	}
-}
-
-// envProviderName is a provider id for this install's cluster (4 to 32
-// lowercase letters, digits and dashes).
-func envProviderName(c *config.Config) string {
-	name := strings.ToLower(c.Cluster.Name)
-	if name == "" {
-		name = "cluster"
+	set := ""
+	switch {
+	case config.IsArtifactRegistry(e.Registry):
+		set = "vertra config set externalCatalog.gcpWorkloadIdentityProvider <the provider it prints>"
+	default:
+		if account, _, _ := config.ECRRegistry(e.Registry); account == "" {
+			return nil
+		}
+		set = "vertra config set externalCatalog.awsRoleArn <the role it prints>"
 	}
-	if len(name) > 25 {
-		name = strings.TrimRight(name[:25], "-")
+	return &Grant{
+		Why: "sign in to it with no stored key, as this cluster's console alone",
+		Command: fmt.Sprintf("vertra catalog grant --reader %s --issuer %s --subject %s",
+			reader, cloud.ClusterIssuer, ConsoleSubject(c)),
+		Then: []string{set, "vertra apply"},
 	}
-	return name
 }
 
 // releaseTag is the tag of the catalog's release the console reads: a

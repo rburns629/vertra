@@ -273,20 +273,15 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 		fmt.Fprintln(out, "  https://admin.google.com/ac/roles: Groups Reader, Admins, Assign service accounts:", made.ConsoleServiceAccount)
 		fmt.Fprintln(out, "Then, on the console's Admin page (People, Single sign-on): Google Workspace groups, and map groups to teams.")
 	}
-	if made != nil && made.Provider == "aws" && c.ExternalCatalog.Registry != "" && c.ExternalCatalog.GCPWorkloadIdentityProvider == "" {
-		if steps := install.FederationSteps(c, made.ClusterIssuer); steps != nil {
-			fmt.Fprintln(out, "\nThis install reads the catalog in", c.ExternalCatalog.Registry, "but can't sign in to it yet.")
-			fmt.Fprintln(out, "Its owner lets it, in that Google Cloud project (no key is stored anywhere):")
-			for _, step := range steps {
+	if grant := install.CatalogGrant(c, made); grant != nil {
+		fmt.Fprintln(out, "\nThis install reads the catalog in", c.ExternalCatalog.Registry+": its owner lets it", grant.Why+",")
+		fmt.Fprintln(out, "in the owner's environment (it shows what it will do, then asks; no key is stored anywhere):")
+		fmt.Fprintln(out, "  "+grant.Command)
+		if len(grant.Then) > 0 {
+			fmt.Fprintln(out, "Then here:")
+			for _, step := range grant.Then {
 				fmt.Fprintln(out, "  "+step)
 			}
-		}
-	}
-	if made != nil && made.Provider == "gcp" {
-		if grant := install.VerifierGrant(c, made.SigningVerifier); grant != "" {
-			fmt.Fprintln(out, "\npolicy-controller checks the catalog's signatures in", c.ExternalCatalog.Registry, "as", made.SigningVerifier+".")
-			fmt.Fprintln(out, "Until its owner lets it read them, steps there are refused:")
-			fmt.Fprintln(out, "  "+grant)
 		}
 	}
 	if installed[install.ConsoleRelease] == "" {

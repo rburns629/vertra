@@ -344,6 +344,47 @@ func TestExternalCatalog(t *testing.T) {
 	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "only for an Artifact Registry") {
 		t.Errorf("an ECR registry with a Google provider: %v", err)
 	}
+
+	// Another account's ECR, or one read from another cloud: the owner's role.
+	c.Target, c.GCP = "gcp", GCP{Project: "reader-project", Region: "us-central1"}
+	c.ExternalCatalog = ExternalCatalog{Registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/vertra-products",
+		AWSRoleArn: "arn:aws:iam::123456789012:role/vertra-reader-gke"}
+	if err := c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if !c.ExternalCatalog.Federated() {
+		t.Error("a role is federation")
+	}
+	for role, want := range map[string]string{
+		"arn:aws:iam::210987654321:role/vertra-reader-gke": "it must be the registry owner's",
+		"vertra-reader-gke": "isn't arn:aws:iam::",
+	} {
+		c.ExternalCatalog.AWSRoleArn = role
+		if err := c.Validate(); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", role, err, want)
+		}
+	}
+	c.ExternalCatalog = ExternalCatalog{Registry: "us-central1-docker.pkg.dev/acyclix-dev/vertra-products",
+		AWSRoleArn: "arn:aws:iam::123456789012:role/vertra-reader-gke"}
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "only for an Amazon ECR registry") {
+		t.Errorf("an Artifact Registry with a role: %v", err)
+	}
+	c.ExternalCatalog = ExternalCatalog{Registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/vertra-products",
+		AWSRoleArn:                  "arn:aws:iam::123456789012:role/vertra-reader-gke",
+		GCPWorkloadIdentityProvider: "projects/123/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-eks"}
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "not both") {
+		t.Errorf("both: %v", err)
+	}
+}
+
+func TestECRRegistry(t *testing.T) {
+	account, region, prefix := ECRRegistry("123456789012.dkr.ecr.eu-west-2.amazonaws.com/vertra-products")
+	if account != "123456789012" || region != "eu-west-2" || prefix != "vertra-products" {
+		t.Errorf("got %q %q %q", account, region, prefix)
+	}
+	if account, _, _ := ECRRegistry("us-central1-docker.pkg.dev/p/r"); account != "" {
+		t.Errorf("Artifact Registry: %q", account)
+	}
 }
 
 func TestLoadReadsTheCatalogsPublicKey(t *testing.T) {

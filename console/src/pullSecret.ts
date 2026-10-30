@@ -17,10 +17,10 @@ import { readFile } from "node:fs/promises";
 import { config } from "./config.js";
 import { listAllTeams } from "./db/queries.js";
 import { writeRegistryTokenSecret, writeTeamPullSecret } from "./k8s.js";
-import { federatedDockerConfig } from "./registryFederation.js";
+import { federatedDockerConfig, federationEnabled } from "./registryFederation.js";
 
 async function readPullSecret(): Promise<string | null> {
-  if (config.registryFederation.gcpProvider) return federatedDockerConfig();
+  if (federationEnabled()) return federatedDockerConfig();
   if (!config.teamPullSecretFile) return null;
   return readFile(config.teamPullSecretFile, "utf8");
 }
@@ -36,7 +36,7 @@ export async function copyPullSecret(team: string): Promise<void> {
 export async function syncPullSecrets(): Promise<boolean> {
   const dockerConfigJson = await readPullSecret();
   if (dockerConfigJson === null) return false;
-  if (config.registryFederation.gcpProvider && config.registryFederation.tokenSecret) {
+  if (federationEnabled() && config.registryFederation.tokenSecret) {
     await writeRegistryTokenSecret(config.platformNamespace, config.registryFederation.tokenSecret, dockerConfigJson);
   }
   const failed: string[] = [];

@@ -184,15 +184,16 @@ func TestAnExternalCatalogIsReadByFederation(t *testing.T) {
 	c := kindConfig()
 	c.Namespace = "vertra-system"
 	c.Cluster.Name = "vertra-eks"
-	cloud := &Cloud{Provider: "aws", TaskRegistry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/vertra-products"}
+	cloud := &Cloud{Provider: "aws", TaskRegistry: "123456789012.dkr.ecr.us-east-1.amazonaws.com/vertra-products",
+		ClusterIssuer: "https://oidc.eks.us-east-1.amazonaws.com/id/ABC"}
 	c.ExternalCatalog.Registry = "us-central1-docker.pkg.dev/acyclix-dev/vertra-products"
 	c.CatalogSignature.PublicKey = "-----BEGIN PUBLIC KEY-----\nk\n-----END PUBLIC KEY-----\n"
 
-	steps := FederationSteps(c, "https://oidc.eks.us-east-1.amazonaws.com/id/ABC")
-	if len(steps) != 5 || !strings.Contains(steps[1], "--issuer-uri=https://oidc.eks.us-east-1.amazonaws.com/id/ABC") ||
-		!strings.Contains(steps[1], "assertion.sub=='system:serviceaccount:vertra-system:console-execution-console'") ||
-		!strings.Contains(steps[2], "repositories add-iam-policy-binding vertra-products --location=us-central1 --project=acyclix-dev") {
-		t.Errorf("steps: %q", steps)
+	grant := CatalogGrant(c, cloud)
+	if grant == nil || grant.Command != "vertra catalog grant --reader vertra-eks --issuer https://oidc.eks.us-east-1.amazonaws.com/id/ABC "+
+		"--subject system:serviceaccount:vertra-system:console-execution-console" ||
+		!strings.Contains(fmt.Sprint(grant.Then), "externalCatalog.gcpWorkloadIdentityProvider") {
+		t.Errorf("grant: %+v", grant)
 	}
 
 	c.ExternalCatalog.GCPWorkloadIdentityProvider = "projects/1/locations/global/workloadIdentityPools/vertra-installs/providers/vertra-eks"
@@ -211,6 +212,40 @@ func TestAnExternalCatalogIsReadByFederation(t *testing.T) {
 	if catalog["release"] != "us-central1-docker.pkg.dev/acyclix-dev/vertra-products/catalog-release:latest" ||
 		!strings.Contains(fmt.Sprint(catalog["signature"]), "BEGIN PUBLIC KEY") {
 		t.Errorf("catalog: %v", catalog)
+	}
+}
+
+// A GKE install (or an EKS one in another account) reading an Amazon ECR:
+// the owner's grant trusts its console's ServiceAccount, and with the
+// owner's role set the console assumes it, the kubelet pulling with ECR's
+// token.
+func TestAnExternalECRIsReadByWebIdentity(t *testing.T) {
+	c := kindConfig()
+	c.Target, c.Namespace, c.Cluster.Name, c.GCP.Project = "gcp", "vertra-system", "vertra-gke", "reader"
+	cloud := &Cloud{Provider: "gcp", ClusterIssuer: "https://container.googleapis.com/v1/projects/reader/locations/us-central1/clusters/vertra-gke"}
+	c.ExternalCatalog.Registry = "123456789012.dkr.ecr.us-east-2.amazonaws.com/vertra-products"
+
+	grant := CatalogGrant(c, cloud)
+	if grant == nil || grant.Command != "vertra catalog grant --reader vertra-gke --issuer "+cloud.ClusterIssuer+
+		" --subject system:serviceaccount:vertra-system:console-execution-console" ||
+		!strings.Contains(fmt.Sprint(grant.Then), "externalCatalog.awsRoleArn") {
+		t.Errorf("grant: %+v", grant)
+	}
+	if KernelValues(c, Images{}, "", cloud)["scheduler"] != nil {
+		t.Error("no pull Secret before the role is set")
+	}
+
+	c.ExternalCatalog.AWSRoleArn = "arn:aws:iam::123456789012:role/vertra-reader-vertra-gke"
+	if CatalogGrant(c, cloud) != nil {
+		t.Error("granted: nothing more to print")
+	}
+	if fmt.Sprint(KernelValues(c, Images{}, "", cloud)["scheduler"]) != "map[taskImagePullSecret:vertra-pull]" {
+		t.Errorf("kernel: %v", KernelValues(c, Images{}, "", cloud)["scheduler"])
+	}
+	check, _ := ConsoleValues(c, "dev", Images{}, cloud)["registryCheck"].(map[string]any)
+	if fmt.Sprint(check["awsFederation"]) != "map[hosts:[123456789012.dkr.ecr.us-east-2.amazonaws.com] roleArn:arn:aws:iam::123456789012:role/vertra-reader-vertra-gke]" ||
+		check["gcpFederation"] != nil {
+		t.Errorf("registryCheck: %v", check)
 	}
 }
 
@@ -245,15 +280,20 @@ func TestAReaderTrustsTheCatalogsSigner(t *testing.T) {
 	if !strings.Contains(fmt.Sprint(catalog["signature"]), subject) {
 		t.Errorf("console: %v", catalog)
 	}
-	grant := VerifierGrant(c, cloud.SigningVerifier)
-	if grant != "gcloud artifacts repositories add-iam-policy-binding vertra-products --location=us-central1 --project=acyclix-dev "+
-		"--role=roles/artifactregistry.reader --member=serviceAccount:vertra-r-verifier@p.iam.gserviceaccount.com" {
-		t.Errorf("grant: %q", grant)
+	// The owner grants this install's own service accounts read, the
+	// verifier's among them.
+	c.Cluster.Name, c.GCP.Project = "vertra-r", "p"
+	cloud.ConsoleServiceAccount, cloud.ScannerServiceAccount = "vertra-r-console@p.iam.gserviceaccount.com", "vertra-r-scanner@p.iam.gserviceaccount.com"
+	grant := CatalogGrant(c, cloud)
+	if grant == nil || grant.Command != "vertra catalog grant --reader vertra-r --service-account vertra-r-console@p.iam.gserviceaccount.com "+
+		"--service-account vertra-r-scanner@p.iam.gserviceaccount.com --service-account vertra-r-nodes@p.iam.gserviceaccount.com "+
+		"--service-account vertra-r-verifier@p.iam.gserviceaccount.com" || len(grant.Then) != 0 {
+		t.Errorf("grant: %+v", grant)
 	}
-	// Across clouds it reads with the steps' pull Secret: nothing to grant.
-	c.ExternalCatalog.GCPWorkloadIdentityProvider = "projects/1/locations/global/workloadIdentityPools/vertra-installs/providers/r"
-	if g := VerifierGrant(c, cloud.SigningVerifier); g != "" {
-		t.Errorf("federated: %q", g)
+	// In its own project: nothing to grant.
+	c.GCP.Project = "acyclix-dev"
+	if g := CatalogGrant(c, cloud); g != nil {
+		t.Errorf("own project: %+v", g)
 	}
 
 	// A key as well: either signer passes.

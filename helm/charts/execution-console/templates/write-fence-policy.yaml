@@ -53,7 +53,7 @@ spec:
     - expression: >-
         (has(namespaceObject.metadata.labels) &&
         {{ .Values.writeFence.teamNamespaceLabel | quote }} in namespaceObject.metadata.labels)
-        {{- if .Values.registryCheck.gcpFederation.workloadIdentityProvider }} || (
+        {{- if include "execution-console.registryFederationAudience" . }} || (
         request.namespace == {{ .Release.Namespace | quote }} && request.resource.resource == "secrets" &&
         request.operation != "DELETE" && object.metadata.name == "vertra-registry-token")
         {{- end }}

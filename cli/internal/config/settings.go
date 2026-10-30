@@ -63,6 +63,7 @@ var Settings = []Setting{
 	{"externalCatalog.registry", "Read another install's catalog: the registry holding its images and releases."},
 	{"externalCatalog.gcpWorkloadIdentityProvider", "That catalog's Artifact Registry on another cloud: the provider this cluster federates through."},
 	{"externalCatalog.gcpServiceAccount", "That catalog: a service account to impersonate, if not granted directly."},
+	{"externalCatalog.awsRoleArn", "That catalog's Amazon ECR in another account or read from another cloud: the owner's role this cluster assumes (vertra catalog grant)."},
 	{"catalogSignature.publicKeyFile", "That catalog's signing key (cosign, PEM), whose releases alone are applied."},
 	{"catalogSignature.repository", "That catalog's repository, when its CI signs keyless."},
 	{"externalSecrets", "Install External Secrets Operator, so teams' SecretStores sync their vaults' secrets."},

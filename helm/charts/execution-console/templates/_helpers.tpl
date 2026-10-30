@@ -249,3 +249,21 @@ is empty).
 {}
 {{- end -}}
 {{- end -}}
+
+{{/*
+The audience of the console's projected token for reading another install's
+registry with no stored key (registryFederation.ts), or "" when that's off:
+Google's Workload Identity provider (registryCheck.gcpFederation), or AWS
+STS (registryCheck.awsFederation). One or the other.
+*/}}
+{{- define "execution-console.registryFederationAudience" -}}
+{{- $gcp := .Values.registryCheck.gcpFederation.workloadIdentityProvider -}}
+{{- $aws := .Values.registryCheck.awsFederation.roleArn -}}
+{{- if and $gcp $aws -}}
+{{- fail "registryCheck: gcpFederation or awsFederation, not both (an install reads one other catalog)." -}}
+{{- else if $gcp -}}
+{{- printf "https://iam.googleapis.com/%s" $gcp -}}
+{{- else if $aws -}}
+sts.amazonaws.com
+{{- end -}}
+{{- end -}}

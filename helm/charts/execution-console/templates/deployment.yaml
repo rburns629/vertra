@@ -151,6 +151,7 @@ spec:
               value: {{ .Values.gateway.url | quote }}
             - name: GATEWAY_PUBLIC_URL
               value: {{ .Values.gateway.publicUrl | quote }}
+            {{- if include "execution-console.registryFederationAudience" . }}
             {{- with .Values.registryCheck.gcpFederation }}
             {{- if .workloadIdentityProvider }}
             - name: REGISTRY_GCP_WIF_PROVIDER
@@ -159,11 +160,20 @@ spec:
               value: {{ .serviceAccount | quote }}
             - name: REGISTRY_FEDERATED_HOSTS
               value: {{ join "," .hosts | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.registryCheck.awsFederation }}
+            {{- if .roleArn }}
+            - name: REGISTRY_AWS_ROLE_ARN
+              value: {{ .roleArn | quote }}
+            - name: REGISTRY_FEDERATED_HOSTS
+              value: {{ join "," .hosts | quote }}
+            {{- end }}
+            {{- end }}
             - name: REGISTRY_FEDERATION_TOKEN_FILE
               value: /var/run/secrets/vertra/registry/token
             - name: REGISTRY_TOKEN_SECRET
               value: vertra-registry-token
-            {{- end }}
             {{- end }}
             {{- if .Values.kernelApiToken.enabled }}
             - name: KERNEL_API_TOKEN_FILE
@@ -208,7 +218,7 @@ spec:
               mountPath: /var/run/secrets/vertra/smtp
               readOnly: true
             {{- end }}
-            {{- if .Values.registryCheck.gcpFederation.workloadIdentityProvider }}
+            {{- if include "execution-console.registryFederationAudience" . }}
             - name: registry-federation-token
               mountPath: /var/run/secrets/vertra/registry
               readOnly: true
@@ -228,15 +238,16 @@ spec:
                   expirationSeconds: 3600
                   path: token
         {{- end }}
-        {{- with .Values.registryCheck.gcpFederation.workloadIdentityProvider }}
-        # This Pod's ServiceAccount token, issued for Google's Workload
-        # Identity provider only (its audience): exchanged at Google's STS for
-        # a registry token, and no use against the Kubernetes API.
+        {{- with include "execution-console.registryFederationAudience" . }}
+        # This Pod's ServiceAccount token, issued for the other side only (its
+        # audience: Google's Workload Identity provider, or AWS STS):
+        # exchanged there for a registry token, and no use against the
+        # Kubernetes API.
         - name: registry-federation-token
           projected:
             sources:
               - serviceAccountToken:
-                  audience: {{ printf "https://iam.googleapis.com/%s" . | quote }}
+                  audience: {{ . | quote }}
                   expirationSeconds: 3600
                   path: token
         {{- end }}

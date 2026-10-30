@@ -245,6 +245,33 @@ pulls.`,
 		example: `  vertra catalog create dev
   vertra catalog create dev --plan-only`,
 	},
+	"vertra catalog grant": {
+		long: `Run in the environment of the install that owns the catalog: lets another
+install read it (its images and its release, nothing else), granted to
+exactly that install's identity, with no key stored anywhere. The reader's
+` + "`vertra apply`" + ` prints the command to run, its flags filled in.
+
+  --issuer and --subject: a reader on another cloud, or another AWS
+  account, by its cluster's OIDC identity (its console's ServiceAccount).
+  gcp: a provider in the pool vertra-installs trusting that issuer for
+  that subject alone, given roles/artifactregistry.reader on the
+  repository. aws: an IAM OIDC provider for the issuer, and a role
+  (vertra-reader-NAME) only that subject may assume by web identity,
+  which may pull and list tags in the catalog's repositories alone.
+  --service-account: a reader on Google Cloud reading an Artifact
+  Registry, by its own service accounts, each given read on the
+  repository.
+
+It looks first and shows what it will change, then asks (--yes doesn't);
+running it again changes nothing. It runs gcloud or aws as you. Then the
+reader sets what it prints (the provider or the role) and applies.
+--revoke takes the grant away.`,
+		example: `  vertra catalog grant prod --reader vertra-eks --issuer https://oidc.eks.us-east-2.amazonaws.com/id/EXAMPLE \
+    --subject system:serviceaccount:vertra-system:console-execution-console
+  vertra catalog grant prod --reader vertra-gke --service-account vertra-gke-console@reader.iam.gserviceaccount.com \
+    --service-account vertra-gke-nodes@reader.iam.gserviceaccount.com
+  vertra catalog grant prod --reader vertra-eks --issuer ... --subject ... --revoke`,
+	},
 	"vertra catalog validate": {
 		long: `Checks product.yaml and team.yaml against the catalog's schemas, the types
 products wire by, and that each product has tests. No Docker needed.`,

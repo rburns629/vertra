@@ -52,7 +52,7 @@ func (a *app) catalogCmd() *cobra.Command {
 		Use:   "catalog",
 		Short: "A catalog: create its repository; validate, test, publish and release its products",
 	}
-	cmd.AddCommand(a.catalogCreateCmd())
+	cmd.AddCommand(a.catalogCreateCmd(), a.catalogGrantCmd())
 	cmd.AddCommand(catalogCommands()...)
 	return cmd
 }
