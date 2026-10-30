@@ -147,6 +147,10 @@ func openapiProblems(data []byte, backendURL string) []string {
 			problems = append(problems, fmt.Sprintf("path %s doesn't start with /", quote(path)))
 			continue
 		}
+		if !pathChars.MatchString(path) {
+			problems = append(problems, fmt.Sprintf("path %s has a character a path doesn't need: letters, digits, -._~/{}:@%%+,;=!* only", quote(path)))
+			continue
+		}
 		if strings.HasPrefix(path+"/", reservedPrefix) {
 			problems = append(problems, fmt.Sprintf("path %s is under %s, the gateway's own", quote(path), reservedPrefix))
 		}
@@ -230,6 +234,12 @@ func serverListed(servers []*v3.Server, backendURL string) bool {
 }
 
 var templateSegment = regexp.MustCompile(`\{[^}/]*\}`)
+
+// What a path may be made of: a URL path's own characters and templates'
+// braces, nothing a shell or a page would read as more than text (quotes,
+// $, backticks, spaces, <>), since the console shows each path in a curl
+// command people paste.
+var pathChars = regexp.MustCompile(`^[A-Za-z0-9\-._~/{}:@%+,;=!*]+$`)
 
 // templateShape is a path with every {parameter} alike, so /a/{x} and
 // /a/{y} are seen to be the same path.

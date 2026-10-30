@@ -27,6 +27,15 @@ function sample(path: string): string {
   return path.replace(/\{([^}]+)\}/g, (_, name: string) => `<${name}>`);
 }
 
+/**
+ * One shell word, single-quoted with any ' in it closed, escaped and
+ * reopened: a path comes from the catalog, and people paste the curl
+ * command into a terminal, so nothing in it may run.
+ */
+export function shellWord(text: string): string {
+  return `'${text.replace(/'/g, `'\\''`)}'`;
+}
+
 export function Fact({ label, children, note }: { label: string; children: ReactNode; note?: ReactNode }) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.375, minWidth: 0 }}>
@@ -91,7 +100,7 @@ export function ApiEndpoints({ api, traffic }: { api: ApiProduct; traffic?: ApiT
   const curl =
     selected &&
     [
-      `curl -X ${selected.method} '${base}${sample(selected.path)}' \\`,
+      `curl -X ${selected.method} ${shellWord(base + sample(selected.path))} \\`,
       `  -H "Authorization: Bearer $VERTRA_TOKEN"`,
       ...(["POST", "PUT", "PATCH"].includes(selected.method) ? [`  -H 'Content-Type: application/json' -d '{...}'`] : []),
     ].join("\n");

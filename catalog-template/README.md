@@ -458,7 +458,10 @@ maxRequest: 1MiB
 `./vertra catalog validate` checks the OpenAPI file: 3.0 or 3.1, every
 `$ref` inside the file, `servers` including `backend.url`, a schema for
 every parameter and request body, no two paths matching the same requests,
-and nothing under `/.vertra/` (the gateway's own). Every field of
+paths made only of a URL path's characters (letters, digits, `-._~/{}:@%+,;=!*`:
+no quotes, `$`, backticks or spaces, since the console shows each one in a
+`curl` command people paste), and nothing under `/.vertra/` (the gateway's
+own). Every field of
 `api.yaml` is in [tools/api.schema.json](tools/api.schema.json). The
 backend's host must be one the install's admins allow, or the API is held,
 not published. `backend.auth` is minted per request from the API's own
