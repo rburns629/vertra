@@ -384,7 +384,8 @@ describe("a run", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra about it" }));
     const box = (await screen.findByLabelText("Your question")) as HTMLTextAreaElement;
-    await waitFor(() => { expect(box.value).toBe(`Why did step deploy of run ${FAILED_RUN.executionId} fail with REGION_QUOTA_EXCEEDED, and what should I do?`); });
+    // Only what Vertra itself says: the run's id and the step's position, never the product's code or the step's id.
+    await waitFor(() => { expect(box.value).toBe(`Why did run ${FAILED_RUN.executionId} fail at step 2, and what should I do?`); });
     expect(asked).toBe(0);
   });
 

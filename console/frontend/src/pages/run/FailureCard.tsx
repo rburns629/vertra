@@ -18,6 +18,9 @@ function retriedNote(task: TaskStatus): string {
  * Why a failed run stopped, at the top of its page: the step, its error
  * code and message, and what that means and what to do about it, and
  * Ask Vertra about it when there's a model (the question in its box, to send).
+ * The question names the run and the step's position only: the step's id and
+ * its error code come from a DAG's author and a product, so they stay out of
+ * what the person sends as their own words (the agent reads them with get_run).
  */
 export function FailureCard({
   runId,
@@ -69,7 +72,7 @@ export function FailureCard({
         {typeof ask.model === "string" && (
           <Button
             variant="text"
-            onClick={() => { ask.open(`Why did step ${task.taskId} of run ${runId} fail with ${task.failure?.code ?? "an error"}, and what should I do?`); }}
+            onClick={() => { ask.open(`Why did run ${runId} fail at ${position.toLowerCase()}, and what should I do?`); }}
           >
             Ask Vertra about it
           </Button>
