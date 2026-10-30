@@ -279,6 +279,22 @@ describe("runs", () => {
     expect(screen.getByText("kafka topics backfill")).toBeTruthy();
   });
 
+  it("shows a pressed tile's runs from the week it counts, and no numbers when states are unknown", async () => {
+    const OLDER = { ...RUN, executionId: "3b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a14", name: "monday's failed backfill", state: "EXECUTION_STATE_FAILED" };
+    // The first page holds only the newest run; the week (asked with since) holds the failure too.
+    await renderAt("/runs", MEMBER, {
+      "ExecutionService/ListExecutions": (request: Record<string, unknown>) => ({ executions: request["since"] ? [RUN, OLDER] : [RUN] }),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^Failed this week 1/ }));
+    expect(await screen.findByText("monday's failed backfill")).toBeTruthy();
+    expect(screen.queryByText("orders-api first deploy")).toBeNull();
+    cleanup();
+
+    // kernel-api didn't say any run's state: the tiles don't claim zero.
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, state: undefined }] } });
+    expect(await screen.findByRole("button", { name: /^Failed this week —/ })).toBeTruthy();
+  });
+
   it("lists every one of your teams' schedules together", async () => {
     const asked: string[] = [];
     await renderAt("/runs?view=schedules", { ...MEMBER, teamNames: ["payments", "ml"] }, {
