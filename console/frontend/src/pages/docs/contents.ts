@@ -62,6 +62,18 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
     ],
   },
   {
+    id: "use",
+    title: "Use the console",
+    blurb: "Order from the catalog, call APIs, watch what's running, work with your team, and fix a run that failed.",
+    items: [
+      ["10-ordering-and-the-cart", "Ordering and the cart"],
+      ["11-apis", "APIs and the gateway"],
+      ["12-observe", "Observe: checks, logs, metrics, audit"],
+      ["13-teams-and-roles", "Teams and roles"],
+      ["15-troubleshooting", "Troubleshooting"],
+    ],
+  },
+  {
     id: "concepts",
     title: "Concepts",
     blurb: "How a run goes, how values pass between steps, and how secrets stay with their team.",
@@ -74,8 +86,9 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
   {
     id: "how-to",
     title: "How-to guides",
-    blurb: "Things you'll do once you're running: automate runs and bring in secrets.",
+    blurb: "Things you'll do once you're running: automate runs with bots, and bring in secrets.",
     items: [
+      ["14-bots-and-automation", "Bots and automation"],
       ["05-calling-the-api", "Call the API from a pipeline"],
       ["02-sync-secrets-gcp", "Sync secrets from Secret Manager"],
     ],
@@ -111,6 +124,7 @@ const CONTENTS: { id: string; title: string; blurb: string; items: Item[] }[] = 
           ["reference-clouds-github", "Get GitHub ready"],
         ],
       },
+      ["16-admin-settings", "The Admin page, setting by setting"],
       {
         doc: "reference-operations",
         label: "Operations",

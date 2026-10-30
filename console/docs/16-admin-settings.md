@@ -1,0 +1,277 @@
+# Admin settings
+
+This page is for the install's admins. It goes through every section of the **Admin** page in order: what each setting does, what it affects, and whether you change it in the console or it's set by the install. Install settings live in the environment's `vertra.yaml` (change one with `vertra config set -e <env> <key> <value>`, then `vertra apply <env>`) or, without `vertra`, in the console chart's Helm values. Each section has its own address, `/admin/<id>`, shown next to its name below. Only admins can open the Admin page; anyone else sees "Admins only".
+
+| Section | Changed here | Set by the install |
+| --- | --- | --- |
+| [Overview](#overview) | Nothing: it shows status | Each optional part |
+| [People](#people) | Accounts, admins, password resets | Self-registration, session length, the first admin |
+| [Single sign-on and groups](#single-sign-on-and-groups) | The provider (unless the install sets it), group sources, group mappings | The provider, when `sso` is set |
+| [Automation tokens](#automation-tokens) | Everything | Nothing |
+| [Catalog](#catalog) | **Sync now**, **Adopt** | The release, its versions, its signature, an external catalog |
+| [Image sources](#image-sources) | The allowed sources | Their first value, at install |
+| [Image scans](#image-scans) | **Rescan now**, **Accept** | Whether scanning is on, how often |
+| [API gateway](#api-gateway) | Closing and reopening it | Everything else |
+| [Chat agent](#chat-agent) | The model, its provider and limits | A default model |
+| [Admins' alerts](#admins-alerts) | Which team's chat gets them | Email, webhook hosts |
+| [Cluster policies](#cluster-policies) | **Write them again** | How often they're rewritten |
+| [Audit log copy](#audit-log-copy) | Nothing: it shows status | The bucket |
+
+## Install
+
+### Overview
+
+`/admin/overview`. The install at a glance.
+
+**Getting this install ready** is a checklist shown until its required steps are done:
+
+| Step | Done when | How |
+| --- | --- | --- |
+| Connect the catalog | A catalog release has been applied | `vertra catalog create <env>`. The first release is pulled within minutes |
+| Allow an image source | At least one image source is allowed | Set at install, or in [Image sources](#image-sources) |
+| Have a team | At least one team exists | A team folder in the catalog, or **Create team** on the **Teams** page |
+| Add people | More than one account exists | In [People](#people) |
+| Optional: single sign-on | A provider is set | In [Single sign-on and groups](#single-sign-on-and-groups), or `vertra sso google <env>` |
+
+**This install** shows the console's version, the environment's name, and whether each optional part is **On** or **Off**. When a part is on, its name links to its section. When it's off, the card says what turns it on:
+
+| Part | Turned on by |
+| --- | --- |
+| Signing in with single sign-on | [Single sign-on and groups](#single-sign-on-and-groups), or `sso` in vertra.yaml |
+| The chat agent | [Chat agent](#chat-agent), or `chat` in vertra.yaml (gcp, aws) |
+| The catalog | `vertra catalog create`. The card also says whether releases' signatures are checked |
+| Images scanned before they run | The console chart's `scanning.enabled` (on by default) |
+| Log search | `logs.enabled` in vertra.yaml. When on, it says how many days back Observe's **Logs** tab searches (`logs.searchDays`, 30) |
+| The audit log's write-once copy | `audit.export` in vertra.yaml (gcp, aws) |
+| The API gateway | `gateway.enabled` in vertra.yaml |
+
+The card also says how long runs are kept (90 days unless the console chart's `retention.executionDays` says otherwise; keep it equal to the kernel chart's `executionRetentionDays`).
+
+Two install settings don't appear on this page:
+
+- **Monitoring.** Observe's **Metrics** tab works with nothing installed. For Prometheus, `monitoring` in vertra.yaml chooses the cluster's Prometheus Operator (`operator`), GKE's managed one (`google`), or one the console chart runs (`bundled`). The console chart's `monitoring.dashboard.enabled` adds a Grafana dashboard. See [operations](operations.md#metrics-and-alerts).
+- **Email.** Notifications go by email only when the console chart's `notifications.email` names an SMTP server. Each person chooses which kinds they get in their preferences.
+
+## People and access
+
+### People
+
+`/admin/people`. Who has an account, and how they sign in.
+
+**Signing in** says whether single sign-on is on, and lists the teams that require it.
+
+**Add a person** creates an account:
+
+- **Email**: the email they sign in with.
+- **Teams**: the teams they work on. Retired teams can't be chosen. They join each team chosen as a maintainer, so a new team's first person can manage it. Its maintainers can change roles later.
+- **Admin of this install**: makes them an admin.
+
+They get a temporary password, shown once. Copy it and send it to them privately: they must choose their own (at least 12 characters) when they first sign in. If single sign-on is on and one of the chosen teams requires it, a non-admin gets no password and signs in with single sign-on as that email.
+
+**People** lists every account: how each signs in, their teams, whether they're an admin, and when they last signed in. **Find a person or team** filters the list. A person can be marked "Hasn't chosen a password yet" or "No team yet". The **⋮** menu next to each person has:
+
+| Action | What it does |
+| --- | --- |
+| **Make admin** / **Remove admin…** | Gives or takes admin access at once; their teams stay. The last admin can't be removed |
+| **Reset password…** | Sets a temporary password and signs them out everywhere. They choose their own when they next sign in. Only for accounts that have a password |
+| **Delete…** | Removes the account, its team memberships and its tokens. Runs they started stay in the history, shown as from a deleted account. Can't be undone, and you can't delete yourself or the last admin |
+
+Bots aren't managed here. They're on each team's **Automation** tab.
+
+Set by the install:
+
+| Setting | What it does |
+| --- | --- |
+| `admin.email` (vertra.yaml), `bootstrapAdmin` (chart) | The first admin account |
+| `jwtTtl` (chart) | How long a session lasts, `8h` by default |
+| `allowSelfRegistration` (chart) | Lets anyone who can reach the console sign up. Off by default; only for a console behind a trusted network |
+
+If no admin can sign in, run `vertra admin reset-password <env>` from a machine with access to the cluster.
+
+### Single sign-on and groups
+
+`/admin/sign-in`. Optional. People may sign in with an OpenID Connect provider (Google, Entra ID, Okta, Keycloak and others). Passwords keep working, except for members of teams that require single sign-on. Admins can always use their password, in case the provider can't be reached.
+
+**The provider.** If the install sets one (`sso` in vertra.yaml, made with `vertra sso google <env>`; or the console chart's `sso`), this section shows it read-only: change it with `vertra sso` and `vertra apply`. Otherwise you set it here:
+
+| Field | What it is |
+| --- | --- |
+| **People may sign in with single sign-on** | Turns it on or off. Turning it off stops people who have no password from signing in, and teams that require it accept passwords again meanwhile |
+| **Button's name** | The sign-in button's label, such as Google or Okta (at most 40 characters) |
+| **Issuer** | The provider's `https://` URL, such as `https://accounts.google.com`. Saving checks that its discovery document answers |
+| **Client ID**, **Client secret** | The OAuth client registered with the provider. The secret is kept encrypted and never shown again; type a new one to replace it |
+| **Redirect URL** | The console's address + `/api/auth/oidc/callback`. Register exactly this with the provider |
+| **Email domains allowed** | Comma-separated, such as `example.com`. Only these accounts may sign in |
+
+Saved settings reach every copy of the console within seconds. Someone signing in for the first time gets an account in no team.
+
+**Where groups come from.** Always set here, whoever set the provider:
+
+- **Groups claim**: the ID token claim listing a person's groups, usually `groups` for Entra ID, Okta and Keycloak. Empty means none.
+- **Google Workspace groups too**: reads Google groups with Cloud Identity's Groups API, as the console's own Google account. A Workspace admin must make that account a Groups Reader. On GCP, `vertra sso google-groups <env>` then `vertra apply` enables the API and names the account.
+
+A sign-in whose groups can't be read is refused. It is never treated as "no groups".
+
+**Groups mapped to teams.** Enter a **Group** (as the provider sends it, or a Google group's email), a **Team** and a **Role**, then click **Map**. At each sign-in, a mapped team's membership follows the person's groups: they're added with the best role their groups give, or removed. When Google Workspace is the only source, the console also rereads groups every hour. Teams with no mapping, bots, and password users are managed by hand. A retired team can't be mapped. See [single sign-on groups](13-teams-and-roles.md#how-do-single-sign-on-groups-decide-who-is-in-a-team).
+
+Whether a team requires single sign-on is set on that team's **Settings** tab ([team settings](13-teams-and-roles.md#what-are-a-teams-settings)).
+
+### Automation tokens
+
+`/admin/tokens`. Install-wide tokens for automation of your own. A token belongs to no team, so it can't read secrets, submit tasks or create other tokens. It can do only what's ticked:
+
+| Permission | Lets it |
+| --- | --- |
+| `teams:create` | Create teams and their namespaces |
+| `products:register` | Register and update any team's products |
+| `teams:retire` | Retire or restore a team |
+| `teams:delete` | Purge a retired team for good. Give this to a token of its own |
+| `secret-stores:apply` | Apply a team's reviewed SecretStore file |
+
+Give it a **Label** and choose when it **Expires after**: 30 days, 90 days (the default), 1 year, 2 years, or **Until revoked**. **Create token** shows the token once; store it as a secret wherever the automation runs. **Revoke** stops it immediately.
+
+The catalog needs no token: the console reads the catalog's release itself. Tokens for a team's own pipelines are bots, on the team's **Automation** tab.
+
+## Catalog and images
+
+### Catalog
+
+`/admin/catalog`. Where teams, products, templates and SecretStores come from. Catalog CI publishes a release from the catalog repository's `main`. The console reads it every few minutes, checks its signature, and applies it. Products, teams or SecretStores a release no longer has are unregistered or retired here, never purged.
+
+The card shows:
+
+- **Release**: the release followed, or "the newest version of" its repository.
+- **Applied**: the version and commit applied, the repository, and when.
+- **Last looked**: when the console last read it.
+- An error, if the last attempt failed. Nothing is applied from a release that failed its signature check.
+- **The last release was applied except:** each item that wasn't applied, and why.
+
+**Sync now** reads and applies the release at once.
+
+**Adopt** appears next to a team the catalog found already here but didn't make (`a team named … already exists here and the catalog didn't make it`). Adopting lets the catalog manage it: releases register its products, apply its SecretStores, and retire it if its folder goes. Its members, secrets and history stay. Adopt only if the catalog's folder is meant to be this team; otherwise rename the folder.
+
+Set by the install:
+
+| Setting | What it does |
+| --- | --- |
+| `catalog` (vertra.yaml, made by `vertra catalog create`); `catalog.release` (chart) | The catalog repository and the release this console reads. Empty: no catalog, so teams and products are only what admins make |
+| `catalogVersion` (vertra.yaml); `catalog.newestVersion` (chart) | Which releases to apply: every one `main` publishes (`latest`), the newest `vX.Y.Z` (`newest`), or one version pinned. See [operations](operations.md#catalog-versions) |
+| `signing` (vertra.yaml); `catalog.signature` (chart) | Who may sign releases: a key (`kms`), or catalog CI's own identity (`keyless`). With none, releases aren't verified |
+| `externalCatalog.registry` and `catalogSignature` (vertra.yaml) | Read another install's catalog instead of owning one, and trust its signer. See [operations](operations.md#reading-another-installs-catalog) |
+| `catalog.pollSeconds` (chart) | How often the release is read, 300 seconds by default |
+
+Admins are alerted when the catalog hasn't been pulled for 30 minutes.
+
+### Image sources
+
+`/admin/images`. The registry paths task images may come from. The cluster refuses any other image when a step starts, however it was submitted (`IMAGE_NOT_ALLOWED`). A save takes effect for every team at once.
+
+- **Source registry**: where catalog CI publishes product images, such as `us-central1-docker.pkg.dev/my-project/catalog-products`. Required.
+- **Add a source**: more allowed paths, such as `docker.io/library`. Base images a Dockerfile builds from don't need listing: they're part of the published image.
+- **Save image sources** saves both.
+
+Each entry is a path prefix. Saving a whole registry host, such as `docker.io`, asks you to confirm: any image anyone has published there could run. Prefer a specific path.
+
+If no source is set, no task can run. If the card says the cluster's image policy doesn't exist, the kernel chart isn't installed: installing or upgrading it creates the policy.
+
+Set by the install: the first value only. `taskImages.registry` in vertra.yaml (or `externalCatalog.registry`), or the kernel chart's `imagePolicy.sourceRegistry` and `imagePolicy.additionalSources`, seeds the list when the kernel is installed. Upgrades keep whatever you saved here.
+
+Admins are alerted when the image sources change.
+
+### Image scans
+
+`/admin/scans`. Every image is scanned before it's registered or run, and again daily while it's in use. A scan fails on a HIGH or CRITICAL vulnerability with a fix available, or a secret in the image. A failed image can't run: the console refuses it, and so does the cluster (`IMAGE_SCAN_FAILED`). Steps already running aren't stopped.
+
+Filter the list by verdict: **Failed**, **Couldn't scan**, **Scanning**, **Accepted** or **Passed**. You can also filter by image or digest. Click a scan to see its findings: severity, finding, package, and the version that fixes it. In the scan you can:
+
+- **Rescan now**: scan it again.
+- **Accept**: let a failed image run anyway. Enter **Why it may run anyway** (10 to 2,000 characters), which is kept in the audit log. It may run until a rescan finds something new.
+
+Every image allowed to run, with its last scan, is also on Observe's **Security checks** for everyone.
+
+Set by the install, in the console chart's `scanning`: `enabled` (on by default), `rescanHours` (24), and `waitSeconds` (60): how long a submission waits for an image's first scan before asking the caller to try again.
+
+## Integrations
+
+### API gateway
+
+`/admin/gateway`. One front door for every team's API products. It signs callers in, lets through only what each API's reviewed OpenAPI file describes, and forwards the request to the API's backend.
+
+If the gateway isn't running, the section says so: turn it on with `gateway.enabled` in vertra.yaml.
+
+**This install's settings** shows, read-only:
+
+| Shown | Install setting |
+| --- | --- |
+| **Backends may be under** | `gateway.backendHosts`: an API whose backend isn't under one is held, not published |
+| **May publish to the internet** | `gateway.internetTeams` |
+| **Inside the cluster** | `gateway.url` |
+| **From the internet** | `gateway.publicUrl`, with `gateway.publicListener` |
+| **Last 24 hours** | Requests, APIs, and how many were refused at the door, with a link to Observe |
+
+These change with `vertra apply`, not here. See [operations](operations.md#the-api-gateway).
+
+**Close the gateway** takes a **Message to every caller**. While it's closed, every API answers 503 with that message and nothing is forwarded. The console and runs carry on. **Reopen** undoes it. Both are recorded in the audit log. The console chart's `gateway.closed` keeps it closed from the install's side. A team's maintainers can pause one of their own APIs from its page.
+
+### Chat agent
+
+`/admin/chat`. The model that answers in Ask: questions from the docs, and carts from the catalog.
+
+**Chat agent** sets the model. The card says whether these are the install's settings or ones set here, and by whom. Saving your own replaces the install's until you click **Use the install's**.
+
+| Field | What it is |
+| --- | --- |
+| **People may ask the chat agent** | Turns it on or off |
+| **Provider** | Gemini on Vertex AI, Claude in Amazon Bedrock, Claude through Anthropic's API, or an OpenAI-compatible server (LM Studio, Ollama…) |
+| **Model** | Its name at that provider. Empty on Vertex AI means Gemini 3.5 Flash; on Bedrock, Claude Sonnet 5 |
+| **Google Cloud project**, **Location** | Vertex AI only. No key: the console signs in as its own Google identity, which needs `roles/aiplatform.user` there |
+| **AWS region** | Bedrock only. No key: requests are signed as the console's own AWS identity |
+| **Server's address** / **Address (optional)**, **API key** | Anthropic's API or an OpenAI-compatible server. The key is kept encrypted and never shown again |
+| **Limits** | **Thinking**, **Steps per answer** (8 by default), **Context window (tokens)**, **Reply length (tokens)**. These bound each answer's cost |
+
+**Test** asks the model one question through the agent, as you, before you save. **Save** applies it within seconds. If the saved settings can't be used, the card says why and the chat agent is off.
+
+What the agent is sent reaches the model's provider. On a cloud, choose the install's own cloud.
+
+**Chat answers** lists what people rated in Ask, filtered by **Wrong**, **Good** or **All**, with the question, comment, answer and the docs it cited. A wrong answer is usually a doc to fix, because the agent answers from the docs. Ratings are kept 90 days.
+
+Set by the install: `chat` in vertra.yaml on gcp and aws (`chat.off`, `chat.model`); elsewhere, the console chart's `chat` values (`provider`, `model`, `endpoint`, `apiKeySecret`). See [operations](operations.md#the-chat-agent).
+
+### Admins' alerts
+
+`/admin/alerts`. Admins get alerts in the console, such as a team purged, the image sources changed, a policy not syncing, the catalog not pulled, or a step the cluster refused. They also get them by email, if they chose that kind and the install sends email.
+
+**Team** chooses a team whose chat webhook gets them too, then **Save**. That team's maintainers set the webhook, and which alerts it gets, on its **Settings** tab. **None** posts them nowhere else.
+
+Set by the install: `notifications.email` (an SMTP server) and `notifications.webhookHosts` (the hosts a team's chat webhook may be under) in the console chart.
+
+## Security and audit
+
+### Cluster policies
+
+`/admin/policies`. The cluster's admission policies, which the console writes and the cluster enforces. The cluster refuses any step these don't allow, whatever the console says:
+
+| Policy | What it holds |
+| --- | --- |
+| Products, and the identities and secrets each may use | Which ServiceAccount each product runs as, and each team's secrets (`IDENTITY_NOT_ALLOWED`) |
+| Where images may come from | [Image sources](#image-sources) (`IMAGE_NOT_ALLOWED`) |
+| Images that failed their scan | [Image scans](#image-scans) (`IMAGE_SCAN_FAILED`) |
+| What each team's steps may reach in the cluster | Each team namespace's network policies |
+
+The card shows **In sync**, or how many weren't written, with each one's error. The console rewrites them when products, secrets or image sources change, at startup, and every 5 minutes (the console chart's `policySyncIntervalSeconds`). **Write them again** rewrites them now. Admins are alerted when one has been failing for 10 minutes.
+
+### Audit log copy
+
+`/admin/audit`. The console's audit log is hash-chained: changing, removing or adding an entry breaks every later hash. Nothing checks the chain until it's copied to a bucket that refuses deletes and overwrites. **The audit log's copy** shows that copy's state:
+
+| Status | Means |
+| --- | --- |
+| **Off** | No copy. Turn it on with `audit.export` in vertra.yaml (gcp, aws), or the console chart's `audit.export.bucket` |
+| **Intact** | The chain held, and the copies match the database |
+| **Not copying** | The last copy failed. The reason is shown |
+| **Chain broken** | An entry was changed, removed or added after it was written. Nothing from there on is copied |
+| **Changed since copied** | An entry differs from its copy in the bucket |
+
+It also shows **Copied to**, **Last copy**, how many entries are **Waiting**, when the **Chain checked**, and how far it's **Compared with the copy**. **Read the audit log in Observe →** opens the log itself.
+
+Set by the install: `audit.export`, `audit.keepDays` and `audit.lock` in vertra.yaml. `audit.lock` makes the bucket's retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it. See [operations](operations.md#the-audit-logs-copy).
