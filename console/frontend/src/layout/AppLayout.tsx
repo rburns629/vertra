@@ -420,7 +420,9 @@ function Shell() {
               </Box>
             }
           >
-            <PageErrorBoundary key={location.pathname}>
+            {/* A new page starts afresh (its state and any error), except moving
+                between help pages, which keep their open contents and loaded guides. */}
+            <PageErrorBoundary key={location.pathname.startsWith("/docs") ? "/docs" : location.pathname} resetOn={location.pathname}>
               <Outlet />
             </PageErrorBoundary>
           </Suspense>

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
@@ -32,6 +32,8 @@ export function AskProvider({ children }: { children: ReactNode }) {
   const [opened, setOpened] = useState(false);
   // A question a page opened it with: a new object each time, so the same words twice still fill the box.
   const [question, setQuestion] = useState<{ text: string; send: boolean } | null>(null);
+  // The question box, focused whenever the panel has opened.
+  const input = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     getChatSettings()
@@ -43,10 +45,11 @@ export function AskProvider({ children }: { children: ReactNode }) {
     () => ({
       model,
       open: (text?: string, options?: { send?: boolean }) => {
-        if (typeof model !== "string") return;
+        if (typeof model !== "string") return false;
         if (text) setQuestion({ text, send: options?.send ?? false });
         setOpen(true);
         setOpened(true);
+        return true;
       },
     }),
     [model],
@@ -61,7 +64,7 @@ export function AskProvider({ children }: { children: ReactNode }) {
           open={open}
           onClose={() => { setOpen(false); }}
           keepMounted={opened}
-          slotProps={{ paper: { role: "dialog", "aria-label": "Ask Vertra", "aria-modal": true } }}
+          slotProps={{ paper: { role: "dialog", "aria-label": "Ask Vertra", "aria-modal": true }, transition: { onEntered: () => { input.current?.focus(); } } }}
         >
           {opened && (
             <Suspense
@@ -71,7 +74,7 @@ export function AskProvider({ children }: { children: ReactNode }) {
                 </Box>
               }
             >
-              <ChatPanel model={model} width={PANEL_WIDTH} question={question} onClose={() => { setOpen(false); }} />
+              <ChatPanel model={model} width={PANEL_WIDTH} question={question} inputRef={input} onClose={() => { setOpen(false); }} />
             </Suspense>
           )}
         </Drawer>

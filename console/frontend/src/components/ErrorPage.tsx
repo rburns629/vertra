@@ -33,11 +33,15 @@ export function NotFoundPage() {
 
 /**
  * A page that broke while rendering: its error said instead of a blank
- * screen, the rest of the console still working. Reset by its key (the
- * page's address), so moving on clears it.
+ * screen, the rest of the console still working. Cleared when `resetOn`
+ * (the page's address) changes, so moving on clears it.
  */
-export class PageErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+export class PageErrorBoundary extends Component<{ children: ReactNode; resetOn: string }, { error: Error | null }> {
   state = { error: null as Error | null };
+
+  componentDidUpdate(previous: { resetOn: string }) {
+    if (previous.resetOn !== this.props.resetOn && this.state.error) this.setState({ error: null });
+  }
 
   static getDerivedStateFromError(error: Error) {
     return { error };

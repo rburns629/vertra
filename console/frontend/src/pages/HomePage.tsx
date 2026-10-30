@@ -667,10 +667,8 @@ function AskBox({ suggestions }: { suggestions: string[] }) {
   const [question, setQuestion] = useState("");
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (question.trim()) {
-      ask.open(question.trim(), { send: true });
-      setQuestion("");
-    }
+    // Cleared only once it's asked: with no model to ask, it stays in the box.
+    if (question.trim() && ask.open(question.trim(), { send: true })) setQuestion("");
   };
   return (
     <Panel tone="info" icon={<ChatIcon sx={{ color: "primary.main" }} />} title="Ask Vertra">

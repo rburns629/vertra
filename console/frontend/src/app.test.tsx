@@ -347,7 +347,7 @@ describe("what runs made", () => {
     await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
 
     // Every row's box at once (looking each up by name is slow on 51 rows).
-    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if (!box.checked && /^Select bucket-/.test(box.getAttribute("aria-label") ?? "")) fireEvent.click(box);
+    for (const box of screen.getAllByRole("checkbox") as HTMLInputElement[]) if (!box.checked && (box.getAttribute("aria-label") ?? "").startsWith("Select bucket-")) fireEvent.click(box);
     expect(screen.getByText(/At most 50 at once: unselect 1/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete 51…" })).toHaveProperty("disabled", true);
   });
@@ -679,6 +679,55 @@ describe("the docs", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     expect(await screen.findByText("Its step ran out of memory.")).toBeTruthy();
     expect(asked).toBe(1);
+  });
+
+  it("never drops a question asked while one is being answered: it waits in the box", async () => {
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      // The first answer never comes, so it's busy.
+      "ChatService/AskStream": () => new Promise(() => {}),
+    });
+    const box = await screen.findByRole("textbox", { name: "Ask Vertra" });
+    fireEvent.change(box, { target: { value: "Why did my run fail?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    const question = (await screen.findByLabelText("Your question")) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "And what should I do?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask", hidden: true }));
+    await waitFor(() => { expect(question.value).toBe("And what should I do?"); });
+  });
+
+  it("opens the console's own pages from an answer in the console, and others in a new tab", async () => {
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "ChatService/AskStream": () => [{ answer: { text: "See [your runs](/runs) or [the status page](https://status.example.com)." } }],
+    });
+    fireEvent.change(await screen.findByRole("textbox", { name: "Ask Vertra" }), { target: { value: "Where are my runs?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    const external = await screen.findByRole("link", { name: "the status page" });
+    expect(external.getAttribute("target")).toBe("_blank");
+    expect(external.getAttribute("rel")).toContain("noopener");
+    fireEvent.click(screen.getByRole("link", { name: "your runs" }));
+    // The Runs page, in the console (no reload), with the panel closed for it.
+    expect(await screen.findByRole("heading", { level: 1, name: "Runs" })).toBeTruthy();
+    await waitFor(() => { expect(screen.queryByRole("dialog", { name: "Ask Vertra" })).toBeNull(); });
+  });
+
+  it("keeps the help's contents loaded moving from one guide to another", async () => {
+    const titles: Record<string, string> = { "01-getting-started": "Try Vertra end to end" };
+    await renderAt("/docs/01-getting-started", MEMBER, {
+      ...DOCS,
+      "GuideService/GetGuide": (request: Record<string, unknown>) => ({ markdown: `# ${titles[String(request["id"])] ?? "?"}\n\nIts text.` }),
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Try Vertra end to end" })).toBeTruthy();
+    const listed = calls.filter((c) => c === "GuideService/ListGuides").length;
+    // Any link to another guide (the side contents, or Next).
+    const other = screen.getAllByRole("link").find((l) => (l.getAttribute("href") ?? "").startsWith("/docs/0") && !(l.getAttribute("href") ?? "").startsWith("/docs/01-"));
+    expect(other).toBeTruthy();
+    const guides = calls.filter((c) => c === "GuideService/GetGuide").length;
+    fireEvent.click(other!);
+    await waitFor(() => { expect(calls.filter((c) => c === "GuideService/GetGuide").length).toBe(guides + 1); });
+    // The new guide is fetched; the list of guides isn't fetched again.
+    expect(calls.filter((c) => c === "GuideService/ListGuides").length).toBe(listed);
   });
 
   it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {
