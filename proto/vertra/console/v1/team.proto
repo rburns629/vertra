@@ -115,6 +115,8 @@ message Team {
   TeamQuota quota = 8;
   // True when the quota is the install's, not one an admin set for it.
   bool quota_is_default = 9;
+  // The install's limits, which a team without its own has.
+  TeamQuota install_quota = 10;
 }
 
 // A team's resource limits, as Kubernetes quantities ("4", "500m",

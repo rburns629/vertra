@@ -524,6 +524,8 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	}
 	if e := c.ExternalCatalog; e.Registry != "" {
 		catalog["release"] = e.Registry + "/catalog-release:" + releaseTag(c)
+		// For the Admin page: another install's catalog.
+		catalog["external"] = true
 		if e.Federated() {
 			// Another cloud's (or AWS account's) registry, read by
 			// federation (console/src/registryFederation.ts).
@@ -550,6 +552,8 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 	if trust := SignatureTrust(c, cloud); trust != nil {
 		// Only releases catalog CI signed are applied.
 		catalog["signature"] = trust
+		// And the kernel's imageSignature is on: the Admin page says so.
+		v["imageSignature"] = map[string]any{"required": true}
 	} else if trust := CatalogSignerTrust(c); trust != nil {
 		// Only releases the catalog's signer signed are applied (images
 		// aren't checked: off a cloud, policy-controller can't read them).
@@ -626,6 +630,8 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		if cloud.Provider == "aws" {
 			export = map[string]any{"bucket": cloud.AuditBucket, "provider": "s3", "region": cloud.AuditRegion}
 		}
+		// What the bucket keeps, as made: shown on the Admin page.
+		export["keepDays"], export["lock"] = c.Audit.KeepDays, c.Audit.Lock
 		v["audit"] = map[string]any{"export": export}
 	}
 	return v

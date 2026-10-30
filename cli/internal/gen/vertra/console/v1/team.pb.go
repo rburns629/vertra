@@ -153,8 +153,10 @@ type Team struct {
 	Quota *TeamQuota `protobuf:"bytes,8,opt,name=quota,proto3" json:"quota,omitempty"`
 	// True when the quota is the install's, not one an admin set for it.
 	QuotaIsDefault bool `protobuf:"varint,9,opt,name=quota_is_default,json=quotaIsDefault,proto3" json:"quota_is_default,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The install's limits, which a team without its own has.
+	InstallQuota  *TeamQuota `protobuf:"bytes,10,opt,name=install_quota,json=installQuota,proto3" json:"install_quota,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Team) Reset() {
@@ -248,6 +250,13 @@ func (x *Team) GetQuotaIsDefault() bool {
 		return x.QuotaIsDefault
 	}
 	return false
+}
+
+func (x *Team) GetInstallQuota() *TeamQuota {
+	if x != nil {
+		return x.InstallQuota
+	}
+	return nil
 }
 
 // A team's resource limits, as Kubernetes quantities ("4", "500m",
@@ -2297,7 +2306,7 @@ var File_vertra_console_v1_team_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\n" +
-	"\x1cvertra/console/v1/team.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfd\x02\n" +
+	"\x1cvertra/console/v1/team.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc0\x03\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x129\n" +
@@ -2311,7 +2320,9 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"requireSso\x12!\n" +
 	"\ffrom_catalog\x18\a \x01(\bR\vfromCatalog\x122\n" +
 	"\x05quota\x18\b \x01(\v2\x1c.vertra.console.v1.TeamQuotaR\x05quota\x12(\n" +
-	"\x10quota_is_default\x18\t \x01(\bR\x0equotaIsDefault\"j\n" +
+	"\x10quota_is_default\x18\t \x01(\bR\x0equotaIsDefault\x12A\n" +
+	"\rinstall_quota\x18\n" +
+	" \x01(\v2\x1c.vertra.console.v1.TeamQuotaR\finstallQuota\"j\n" +
 	"\tTeamQuota\x12\x10\n" +
 	"\x03cpu\x18\x01 \x01(\tR\x03cpu\x12\x16\n" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\x12\x12\n" +
@@ -2553,63 +2564,64 @@ var file_vertra_console_v1_team_proto_depIdxs = []int32{
 	42, // 1: vertra.console.v1.Team.retired_at:type_name -> google.protobuf.Timestamp
 	42, // 2: vertra.console.v1.Team.deleted_at:type_name -> google.protobuf.Timestamp
 	3,  // 3: vertra.console.v1.Team.quota:type_name -> vertra.console.v1.TeamQuota
-	42, // 4: vertra.console.v1.Member.added_at:type_name -> google.protobuf.Timestamp
-	0,  // 5: vertra.console.v1.Member.role:type_name -> vertra.console.v1.TeamRole
-	2,  // 6: vertra.console.v1.ListTeamsResponse.teams:type_name -> vertra.console.v1.Team
-	2,  // 7: vertra.console.v1.GetTeamResponse.team:type_name -> vertra.console.v1.Team
-	2,  // 8: vertra.console.v1.CreateTeamResponse.team:type_name -> vertra.console.v1.Team
-	2,  // 9: vertra.console.v1.EnsureTeamResponse.team:type_name -> vertra.console.v1.Team
-	4,  // 10: vertra.console.v1.ListMembersResponse.members:type_name -> vertra.console.v1.Member
-	0,  // 11: vertra.console.v1.AddMemberRequest.role:type_name -> vertra.console.v1.TeamRole
-	0,  // 12: vertra.console.v1.SetMemberRoleRequest.role:type_name -> vertra.console.v1.TeamRole
-	3,  // 13: vertra.console.v1.SetTeamQuotaRequest.quota:type_name -> vertra.console.v1.TeamQuota
-	2,  // 14: vertra.console.v1.SetTeamQuotaResponse.team:type_name -> vertra.console.v1.Team
-	43, // 15: vertra.console.v1.ApplySecretStoreRequest.documents:type_name -> google.protobuf.Struct
-	37, // 16: vertra.console.v1.ListPodsResponse.pods:type_name -> vertra.console.v1.TaskPod
-	1,  // 17: vertra.console.v1.TaskPod.state:type_name -> vertra.console.v1.TaskPodState
-	38, // 18: vertra.console.v1.TaskPod.problem:type_name -> vertra.console.v1.PodProblem
-	42, // 19: vertra.console.v1.TaskPod.started_at:type_name -> google.protobuf.Timestamp
-	42, // 20: vertra.console.v1.TaskPod.finished_at:type_name -> google.protobuf.Timestamp
-	39, // 21: vertra.console.v1.TaskPod.execution:type_name -> vertra.console.v1.PodExecution
-	5,  // 22: vertra.console.v1.TeamService.ListTeams:input_type -> vertra.console.v1.ListTeamsRequest
-	7,  // 23: vertra.console.v1.TeamService.GetTeam:input_type -> vertra.console.v1.GetTeamRequest
-	40, // 24: vertra.console.v1.TeamService.GetTeamProfile:input_type -> vertra.console.v1.GetTeamProfileRequest
-	9,  // 25: vertra.console.v1.TeamService.CreateTeam:input_type -> vertra.console.v1.CreateTeamRequest
-	11, // 26: vertra.console.v1.TeamService.EnsureTeam:input_type -> vertra.console.v1.EnsureTeamRequest
-	13, // 27: vertra.console.v1.TeamService.RetireTeam:input_type -> vertra.console.v1.RetireTeamRequest
-	15, // 28: vertra.console.v1.TeamService.UnretireTeam:input_type -> vertra.console.v1.UnretireTeamRequest
-	17, // 29: vertra.console.v1.TeamService.PurgeTeam:input_type -> vertra.console.v1.PurgeTeamRequest
-	19, // 30: vertra.console.v1.TeamService.ListMembers:input_type -> vertra.console.v1.ListMembersRequest
-	21, // 31: vertra.console.v1.TeamService.AddMember:input_type -> vertra.console.v1.AddMemberRequest
-	23, // 32: vertra.console.v1.TeamService.RemoveMember:input_type -> vertra.console.v1.RemoveMemberRequest
-	25, // 33: vertra.console.v1.TeamService.SetMemberRole:input_type -> vertra.console.v1.SetMemberRoleRequest
-	27, // 34: vertra.console.v1.TeamService.SetTeamSignIn:input_type -> vertra.console.v1.SetTeamSignInRequest
-	29, // 35: vertra.console.v1.TeamService.SetTeamQuota:input_type -> vertra.console.v1.SetTeamQuotaRequest
-	31, // 36: vertra.console.v1.TeamService.ApplySecretStore:input_type -> vertra.console.v1.ApplySecretStoreRequest
-	33, // 37: vertra.console.v1.TeamService.SetSecretStoreCredential:input_type -> vertra.console.v1.SetSecretStoreCredentialRequest
-	35, // 38: vertra.console.v1.TeamService.ListPods:input_type -> vertra.console.v1.ListPodsRequest
-	6,  // 39: vertra.console.v1.TeamService.ListTeams:output_type -> vertra.console.v1.ListTeamsResponse
-	8,  // 40: vertra.console.v1.TeamService.GetTeam:output_type -> vertra.console.v1.GetTeamResponse
-	41, // 41: vertra.console.v1.TeamService.GetTeamProfile:output_type -> vertra.console.v1.GetTeamProfileResponse
-	10, // 42: vertra.console.v1.TeamService.CreateTeam:output_type -> vertra.console.v1.CreateTeamResponse
-	12, // 43: vertra.console.v1.TeamService.EnsureTeam:output_type -> vertra.console.v1.EnsureTeamResponse
-	14, // 44: vertra.console.v1.TeamService.RetireTeam:output_type -> vertra.console.v1.RetireTeamResponse
-	16, // 45: vertra.console.v1.TeamService.UnretireTeam:output_type -> vertra.console.v1.UnretireTeamResponse
-	18, // 46: vertra.console.v1.TeamService.PurgeTeam:output_type -> vertra.console.v1.PurgeTeamResponse
-	20, // 47: vertra.console.v1.TeamService.ListMembers:output_type -> vertra.console.v1.ListMembersResponse
-	22, // 48: vertra.console.v1.TeamService.AddMember:output_type -> vertra.console.v1.AddMemberResponse
-	24, // 49: vertra.console.v1.TeamService.RemoveMember:output_type -> vertra.console.v1.RemoveMemberResponse
-	26, // 50: vertra.console.v1.TeamService.SetMemberRole:output_type -> vertra.console.v1.SetMemberRoleResponse
-	28, // 51: vertra.console.v1.TeamService.SetTeamSignIn:output_type -> vertra.console.v1.SetTeamSignInResponse
-	30, // 52: vertra.console.v1.TeamService.SetTeamQuota:output_type -> vertra.console.v1.SetTeamQuotaResponse
-	32, // 53: vertra.console.v1.TeamService.ApplySecretStore:output_type -> vertra.console.v1.ApplySecretStoreResponse
-	34, // 54: vertra.console.v1.TeamService.SetSecretStoreCredential:output_type -> vertra.console.v1.SetSecretStoreCredentialResponse
-	36, // 55: vertra.console.v1.TeamService.ListPods:output_type -> vertra.console.v1.ListPodsResponse
-	39, // [39:56] is the sub-list for method output_type
-	22, // [22:39] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	3,  // 4: vertra.console.v1.Team.install_quota:type_name -> vertra.console.v1.TeamQuota
+	42, // 5: vertra.console.v1.Member.added_at:type_name -> google.protobuf.Timestamp
+	0,  // 6: vertra.console.v1.Member.role:type_name -> vertra.console.v1.TeamRole
+	2,  // 7: vertra.console.v1.ListTeamsResponse.teams:type_name -> vertra.console.v1.Team
+	2,  // 8: vertra.console.v1.GetTeamResponse.team:type_name -> vertra.console.v1.Team
+	2,  // 9: vertra.console.v1.CreateTeamResponse.team:type_name -> vertra.console.v1.Team
+	2,  // 10: vertra.console.v1.EnsureTeamResponse.team:type_name -> vertra.console.v1.Team
+	4,  // 11: vertra.console.v1.ListMembersResponse.members:type_name -> vertra.console.v1.Member
+	0,  // 12: vertra.console.v1.AddMemberRequest.role:type_name -> vertra.console.v1.TeamRole
+	0,  // 13: vertra.console.v1.SetMemberRoleRequest.role:type_name -> vertra.console.v1.TeamRole
+	3,  // 14: vertra.console.v1.SetTeamQuotaRequest.quota:type_name -> vertra.console.v1.TeamQuota
+	2,  // 15: vertra.console.v1.SetTeamQuotaResponse.team:type_name -> vertra.console.v1.Team
+	43, // 16: vertra.console.v1.ApplySecretStoreRequest.documents:type_name -> google.protobuf.Struct
+	37, // 17: vertra.console.v1.ListPodsResponse.pods:type_name -> vertra.console.v1.TaskPod
+	1,  // 18: vertra.console.v1.TaskPod.state:type_name -> vertra.console.v1.TaskPodState
+	38, // 19: vertra.console.v1.TaskPod.problem:type_name -> vertra.console.v1.PodProblem
+	42, // 20: vertra.console.v1.TaskPod.started_at:type_name -> google.protobuf.Timestamp
+	42, // 21: vertra.console.v1.TaskPod.finished_at:type_name -> google.protobuf.Timestamp
+	39, // 22: vertra.console.v1.TaskPod.execution:type_name -> vertra.console.v1.PodExecution
+	5,  // 23: vertra.console.v1.TeamService.ListTeams:input_type -> vertra.console.v1.ListTeamsRequest
+	7,  // 24: vertra.console.v1.TeamService.GetTeam:input_type -> vertra.console.v1.GetTeamRequest
+	40, // 25: vertra.console.v1.TeamService.GetTeamProfile:input_type -> vertra.console.v1.GetTeamProfileRequest
+	9,  // 26: vertra.console.v1.TeamService.CreateTeam:input_type -> vertra.console.v1.CreateTeamRequest
+	11, // 27: vertra.console.v1.TeamService.EnsureTeam:input_type -> vertra.console.v1.EnsureTeamRequest
+	13, // 28: vertra.console.v1.TeamService.RetireTeam:input_type -> vertra.console.v1.RetireTeamRequest
+	15, // 29: vertra.console.v1.TeamService.UnretireTeam:input_type -> vertra.console.v1.UnretireTeamRequest
+	17, // 30: vertra.console.v1.TeamService.PurgeTeam:input_type -> vertra.console.v1.PurgeTeamRequest
+	19, // 31: vertra.console.v1.TeamService.ListMembers:input_type -> vertra.console.v1.ListMembersRequest
+	21, // 32: vertra.console.v1.TeamService.AddMember:input_type -> vertra.console.v1.AddMemberRequest
+	23, // 33: vertra.console.v1.TeamService.RemoveMember:input_type -> vertra.console.v1.RemoveMemberRequest
+	25, // 34: vertra.console.v1.TeamService.SetMemberRole:input_type -> vertra.console.v1.SetMemberRoleRequest
+	27, // 35: vertra.console.v1.TeamService.SetTeamSignIn:input_type -> vertra.console.v1.SetTeamSignInRequest
+	29, // 36: vertra.console.v1.TeamService.SetTeamQuota:input_type -> vertra.console.v1.SetTeamQuotaRequest
+	31, // 37: vertra.console.v1.TeamService.ApplySecretStore:input_type -> vertra.console.v1.ApplySecretStoreRequest
+	33, // 38: vertra.console.v1.TeamService.SetSecretStoreCredential:input_type -> vertra.console.v1.SetSecretStoreCredentialRequest
+	35, // 39: vertra.console.v1.TeamService.ListPods:input_type -> vertra.console.v1.ListPodsRequest
+	6,  // 40: vertra.console.v1.TeamService.ListTeams:output_type -> vertra.console.v1.ListTeamsResponse
+	8,  // 41: vertra.console.v1.TeamService.GetTeam:output_type -> vertra.console.v1.GetTeamResponse
+	41, // 42: vertra.console.v1.TeamService.GetTeamProfile:output_type -> vertra.console.v1.GetTeamProfileResponse
+	10, // 43: vertra.console.v1.TeamService.CreateTeam:output_type -> vertra.console.v1.CreateTeamResponse
+	12, // 44: vertra.console.v1.TeamService.EnsureTeam:output_type -> vertra.console.v1.EnsureTeamResponse
+	14, // 45: vertra.console.v1.TeamService.RetireTeam:output_type -> vertra.console.v1.RetireTeamResponse
+	16, // 46: vertra.console.v1.TeamService.UnretireTeam:output_type -> vertra.console.v1.UnretireTeamResponse
+	18, // 47: vertra.console.v1.TeamService.PurgeTeam:output_type -> vertra.console.v1.PurgeTeamResponse
+	20, // 48: vertra.console.v1.TeamService.ListMembers:output_type -> vertra.console.v1.ListMembersResponse
+	22, // 49: vertra.console.v1.TeamService.AddMember:output_type -> vertra.console.v1.AddMemberResponse
+	24, // 50: vertra.console.v1.TeamService.RemoveMember:output_type -> vertra.console.v1.RemoveMemberResponse
+	26, // 51: vertra.console.v1.TeamService.SetMemberRole:output_type -> vertra.console.v1.SetMemberRoleResponse
+	28, // 52: vertra.console.v1.TeamService.SetTeamSignIn:output_type -> vertra.console.v1.SetTeamSignInResponse
+	30, // 53: vertra.console.v1.TeamService.SetTeamQuota:output_type -> vertra.console.v1.SetTeamQuotaResponse
+	32, // 54: vertra.console.v1.TeamService.ApplySecretStore:output_type -> vertra.console.v1.ApplySecretStoreResponse
+	34, // 55: vertra.console.v1.TeamService.SetSecretStoreCredential:output_type -> vertra.console.v1.SetSecretStoreCredentialResponse
+	36, // 56: vertra.console.v1.TeamService.ListPods:output_type -> vertra.console.v1.ListPodsResponse
+	40, // [40:57] is the sub-list for method output_type
+	23, // [23:40] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_team_proto_init() }

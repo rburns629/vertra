@@ -323,6 +323,8 @@ export interface ExecutionStateEntry {
   createdAt: string | null;
   /** Its last change: when it finished, once it has. */
   updatedAt: string | null;
+  /** The steps claimed or running now, in the order they were submitted. */
+  running: { taskId: string; action: string; attempt: number; maxAttempts: number }[];
 }
 
 /** Per call to kernel-api, which takes at most 1000. */
@@ -341,6 +343,7 @@ export async function getExecutionStates(executionIds: string[]): Promise<Execut
         steps: { ...entry.steps },
         createdAt: iso(entry.createdAt),
         updatedAt: iso(entry.updatedAt),
+        running: entry.running.map((r) => ({ taskId: r.taskId, action: r.action, attempt: r.attempt, maxAttempts: r.maxAttempts })),
       })),
     );
   }

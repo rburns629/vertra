@@ -195,6 +195,21 @@ export declare type ExecutionSummary = Message<"vertra.console.v1.ExecutionSumma
    * @generated from field: optional google.protobuf.Timestamp finished_at = 9;
    */
   finishedAt?: Timestamp | undefined;
+
+  /**
+   * The submitter's email; unset if that account was deleted.
+   *
+   * @generated from field: optional string submitted_by_email = 10;
+   */
+  submittedByEmail?: string | undefined;
+
+  /**
+   * The steps claimed or running now, in the order they were submitted;
+   * empty if the kernel couldn't be asked.
+   *
+   * @generated from field: repeated vertra.console.v1.RunningStep running = 11;
+   */
+  running: RunningStep[];
 };
 
 /**
@@ -202,6 +217,43 @@ export declare type ExecutionSummary = Message<"vertra.console.v1.ExecutionSumma
  * Use `create(ExecutionSummarySchema)` to create a new message.
  */
 export declare const ExecutionSummarySchema: GenMessage<ExecutionSummary>;
+
+/**
+ * A step claimed or running: which, and which attempt.
+ *
+ * @generated from message vertra.console.v1.RunningStep
+ */
+export declare type RunningStep = Message<"vertra.console.v1.RunningStep"> & {
+  /**
+   * The task's id from the DAG.
+   *
+   * @generated from field: string task_id = 1;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string action = 2;
+   */
+  action: string;
+
+  /**
+   * From 1.
+   *
+   * @generated from field: int32 attempt = 3;
+   */
+  attempt: number;
+
+  /**
+   * @generated from field: int32 max_attempts = 4;
+   */
+  maxAttempts: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.RunningStep.
+ * Use `create(RunningStepSchema)` to create a new message.
+ */
+export declare const RunningStepSchema: GenMessage<RunningStep>;
 
 /**
  * @generated from message vertra.console.v1.Execution
@@ -648,6 +700,13 @@ export declare type ListExecutionsResponse = Message<"vertra.console.v1.ListExec
    * @generated from field: string next_cursor = 2;
    */
   nextCursor: string;
+
+  /**
+   * How many days runs' records are kept; 0 keeps them forever.
+   *
+   * @generated from field: int32 run_retention_days = 3;
+   */
+  runRetentionDays: number;
 };
 
 /**

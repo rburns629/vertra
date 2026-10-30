@@ -101,6 +101,120 @@ export declare type GetInstallResponse = Message<"vertra.console.v1.GetInstallRe
    * @generated from field: int32 run_retention_days = 11;
    */
   runRetentionDays: number;
+
+  /**
+   * Which catalog releases are applied: latest, newest (the newest vX.Y.Z)
+   * or one version; empty with no catalog.
+   *
+   * @generated from field: string catalog_version = 12;
+   */
+  catalogVersion: string;
+
+  /**
+   * How often the console looks for a new release, in seconds.
+   *
+   * @generated from field: int32 catalog_poll_seconds = 13;
+   */
+  catalogPollSeconds: number;
+
+  /**
+   * Who may sign a release: how many public keys are trusted, and a
+   * keyless identity's issuer and subject pattern (empty: none).
+   *
+   * @generated from field: int32 catalog_signer_keys = 14;
+   */
+  catalogSignerKeys: number;
+
+  /**
+   * @generated from field: string catalog_keyless_issuer = 15;
+   */
+  catalogKeylessIssuer: string;
+
+  /**
+   * @generated from field: string catalog_keyless_subject = 16;
+   */
+  catalogKeylessSubject: string;
+
+  /**
+   * Another install's catalog, read from its registry; empty when this
+   * install's own (or none).
+   *
+   * @generated from field: string external_catalog = 17;
+   */
+  externalCatalog: string;
+
+  /**
+   * Email: whether it's sent, through which SMTP host, from which address.
+   * Never its credentials.
+   *
+   * @generated from field: bool email = 18;
+   */
+  email: boolean;
+
+  /**
+   * @generated from field: string email_host = 19;
+   */
+  emailHost: string;
+
+  /**
+   * @generated from field: string email_from = 20;
+   */
+  emailFrom: string;
+
+  /**
+   * Prometheus: operator, google or bundled; empty when monitoring is off.
+   *
+   * @generated from field: string monitoring_provider = 21;
+   */
+  monitoringProvider: string;
+
+  /**
+   * Where the install's Grafana is, for its dashboard; empty when unknown.
+   *
+   * @generated from field: string grafana_url = 22;
+   */
+  grafanaUrl: string;
+
+  /**
+   * How long a session lasts before signing in again: 8h, 30m, 1d.
+   *
+   * @generated from field: string session_length = 23;
+   */
+  sessionLength: string;
+
+  /**
+   * The audit copy's bucket: how many days it keeps each copy (0: not
+   * known here), and whether that retention is locked.
+   *
+   * @generated from field: int32 audit_keep_days = 24;
+   */
+  auditKeepDays: number;
+
+  /**
+   * @generated from field: bool audit_lock = 25;
+   */
+  auditLock: boolean;
+
+  /**
+   * How often the cluster policies are rewritten whatever changed, in seconds.
+   *
+   * @generated from field: int32 policy_sync_seconds = 26;
+   */
+  policySyncSeconds: number;
+
+  /**
+   * Catalog images run only if signed (the kernel chart's imageSignature).
+   *
+   * @generated from field: bool image_signatures_required = 27;
+   */
+  imageSignaturesRequired: boolean;
+
+  /**
+   * Images in use are scanned again once their verdict is this old, in hours.
+   *
+   * @generated from field: int32 rescan_hours = 28;
+   */
+  rescanHours: number;
 };
 
 /**

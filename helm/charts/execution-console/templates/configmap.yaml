@@ -67,8 +67,16 @@ data:
   AUDIT_EXPORT_ENDPOINT: {{ .endpoint | quote }}
   AUDIT_EXPORT_PREFIX: {{ .prefix | quote }}
   AUDIT_EXPORT_MINUTES: {{ .minutes | quote }}
+  AUDIT_EXPORT_KEEP_DAYS: {{ .keepDays | quote }}
+  AUDIT_EXPORT_LOCK: {{ .lock | quote }}
   {{- end }}
   {{- end }}
+  {{- with .Values.monitoring }}
+  # Which Prometheus scrapes it (empty: none), and where Grafana is: shown only.
+  MONITORING_PROVIDER: {{ ternary .provider "" (or .podMonitor.enabled .alerts.enabled .dashboard.enabled .prometheus.enabled) | quote }}
+  GRAFANA_URL: {{ .grafanaUrl | quote }}
+  {{- end }}
+  IMAGE_SIGNATURES_REQUIRED: {{ .Values.imageSignature.required | quote }}
   KERNEL_API_URL: {{ .Values.kernelApiUrl | quote }}
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   # The console's own version: its image's tag, for the Admin page.
@@ -144,6 +152,7 @@ data:
   CATALOG_RELEASE: {{ .Values.catalog.release | quote }}
   CATALOG_NEWEST_VERSION: {{ .Values.catalog.newestVersion | quote }}
   CATALOG_POLL_SECONDS: {{ .Values.catalog.pollSeconds | quote }}
+  CATALOG_EXTERNAL: {{ .Values.catalog.external | quote }}
   CATALOG_SIGNATURE_PUBLIC_KEYS: {{ .Values.catalog.signature.publicKeys | toJson | quote }}
   CATALOG_SIGNATURE_KEYLESS_ISSUER: {{ .Values.catalog.signature.keyless.issuer | quote }}
   CATALOG_SIGNATURE_KEYLESS_SUBJECT_REGEXP: {{ .Values.catalog.signature.keyless.subjectRegExp | quote }}

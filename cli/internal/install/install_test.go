@@ -210,7 +210,7 @@ func TestAnExternalCatalogIsReadByFederation(t *testing.T) {
 	}
 	catalog, _ := console["catalog"].(map[string]any)
 	if catalog["release"] != "us-central1-docker.pkg.dev/acyclix-dev/vertra-products/catalog-release:latest" ||
-		!strings.Contains(fmt.Sprint(catalog["signature"]), "BEGIN PUBLIC KEY") {
+		!strings.Contains(fmt.Sprint(catalog["signature"]), "BEGIN PUBLIC KEY") || catalog["external"] != true {
 		t.Errorf("catalog: %v", catalog)
 	}
 }
@@ -275,6 +275,10 @@ func TestAReaderTrustsTheCatalogsSigner(t *testing.T) {
 	images := fmt.Sprint(KernelValues(c, Images{}, "", cloud)["imageSignature"])
 	if !strings.Contains(images, "enabled:true") || !strings.Contains(images, subject) || !strings.Contains(images, GitHubActionsIssuer) {
 		t.Errorf("imageSignature: %v", images)
+	}
+	// The console says so on its Admin page.
+	if got := fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["imageSignature"]); got != "map[required:true]" {
+		t.Errorf("console's imageSignature: %v", got)
 	}
 	catalog, _ = ConsoleValues(c, "dev", Images{}, cloud)["catalog"].(map[string]any)
 	if !strings.Contains(fmt.Sprint(catalog["signature"]), subject) {

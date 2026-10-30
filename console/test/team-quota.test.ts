@@ -37,7 +37,7 @@ let admin: string;
 let maintainer: string;
 
 interface TeamBody {
-  team?: { quota?: Record<string, string>; quotaIsDefault?: boolean };
+  team?: { quota?: Record<string, string>; quotaIsDefault?: boolean; installQuota?: Record<string, string> };
 }
 
 beforeAll(async () => {
@@ -76,6 +76,9 @@ describe("a team's resource limits", () => {
     expect(set.code).toBe("ok");
     expect(set.body.team).toMatchObject({ quotaIsDefault: false, quota: { cpu: "16", pods: "50", stepMemory: "8Gi" } });
     expect(writeTeamQuota).toHaveBeenLastCalledWith(`${prefix}-own`, own);
+    // The install's beside the team's own, for its members to compare.
+    const seen = await call<TeamBody>(maintainer, "TeamService/GetTeam", { name: `${prefix}-own` });
+    expect(seen.body.team).toMatchObject({ quotaIsDefault: false, quota: { cpu: "16" }, installQuota: INSTALL });
 
     const back = await call<TeamBody>(admin, "TeamService/SetTeamQuota", { team: `${prefix}-own`, useDefault: true });
     expect(back.body.team).toMatchObject({ quota: INSTALL, quotaIsDefault: true });

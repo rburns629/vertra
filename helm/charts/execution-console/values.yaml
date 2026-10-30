@@ -198,6 +198,12 @@ audit:
     credentialsSecret: ""
     prefix: vertra-audit/
     minutes: 5
+    # -- What the bucket keeps each copy for, in days, and whether that
+    # retention is locked (vertra.yaml's audit.keepDays and audit.lock). The
+    # bucket enforces them; here they're only shown on the Admin page. 0: not
+    # known.
+    keepDays: 0
+    lock: false
 
 # -- Log search (Observe's Logs tab, console/src/core/logs.ts): Grafana
 # Alloy reads every step's output, the API backends teams run (Pods
@@ -330,6 +336,9 @@ catalog:
   # <registry>/catalog-release:v1.4.0.
   newestVersion: false
   pollSeconds: 300
+  # -- release is another install's catalog (vertra.yaml's externalCatalog),
+  # not this install's own. Shown on the Admin page only.
+  external: false
   # -- Who may sign a release: any of these cosign public keys (PEM), and/or
   # a keyless identity (both issuer and subjectRegExp). Usually the same as
   # the kernel chart's imageSignature. Empty: releases aren't verified, and
@@ -837,6 +846,12 @@ backup:
   failedJobsHistoryLimit: 3
 
 
+# -- Whether catalog images must be signed to run: set it as the kernel
+# chart's imageSignature.enabled. Shown on the Admin page only; the kernel
+# chart (policy-controller) enforces it.
+imageSignature:
+  required: false
+
 # -- A NetworkPolicy (templates/networkpolicy.yaml): when the console runs its
 # own Postgres, only this release's Pods may reach it. Needs a CNI that
 # enforces NetworkPolicy; others ignore it silently.
@@ -858,6 +873,9 @@ monitoring:
   # -- The console's /metrics port, never served by its Ingress. 0: off.
   port: 9090
   provider: operator
+  # -- Where the install's Grafana is (https://...), linked from the Admin
+  # page and Observe's Metrics for its dashboard. Empty: not linked.
+  grafanaUrl: ""
   google:
     # -- Where GKE's managed collector runs: gmp-system, or gke-gmp-system on
     # Autopilot.

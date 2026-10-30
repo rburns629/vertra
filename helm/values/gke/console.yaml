@@ -51,6 +51,9 @@ catalog:
         MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaDo0mkZuGxOGub0gDZwZoWQnqL0t
         WwmAwv/QbAbjM8xn8prY+E+0b9cf4WaxdVdqaqC+G87jHxa4XNvgcCweKg==
         -----END PUBLIC KEY-----
+# The kernel values' imageSignature is on: said on the Admin page.
+imageSignature:
+  required: true
 # The "Connect a source" wizard: where the PR goes, and what GCP, Azure and
 # AWS must trust for this cluster's ServiceAccounts.
 secretSources:

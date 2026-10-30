@@ -812,10 +812,13 @@ export async function listExecutions(
         ...row,
         state: kernel?.state ?? null,
         steps: kernel?.steps ?? {},
+        running: kernel?.running ?? [],
         finishedAt: finished && kernel.updatedAt ? new Date(kernel.updatedAt) : null,
       };
     }),
     nextCursor: page.nextCursor,
+    // Anyone signed in may know how long runs are kept (the Runs page says so).
+    runRetentionDays: config.retention.executionDays,
   };
 }
 

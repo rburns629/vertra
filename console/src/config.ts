@@ -337,6 +337,22 @@ function loadEmail() {
   return email;
 }
 
+/** MONITORING_PROVIDER: operator, google, bundled, or "" when monitoring is off. */
+function monitoringProvider(): "" | "operator" | "google" | "bundled" {
+  const value = process.env["MONITORING_PROVIDER"] ?? "";
+  if (value !== "" && value !== "operator" && value !== "google" && value !== "bundled") {
+    throw new Error(`Invalid MONITORING_PROVIDER "${value}": expected operator, google, bundled, or nothing for off.`);
+  }
+  return value;
+}
+
+/** GRAFANA_URL: an http(s) address, or "" for none. */
+function grafanaUrl(): string {
+  const value = (process.env["GRAFANA_URL"] ?? "").trim().replace(/\/+$/, "");
+  if (value && !/^https?:\/\/[^\s]+$/.test(value)) throw new Error(`Invalid GRAFANA_URL "${value}": expected http(s)://...`);
+  return value;
+}
+
 export const config = {
   port: Number(process.env["PORT"] ?? 8080),
   // /metrics for Prometheus, on a port of its own so the console's Ingress
@@ -571,8 +587,24 @@ export const config = {
       endpoint: process.env["AUDIT_EXPORT_ENDPOINT"] ?? "",
       prefix: process.env["AUDIT_EXPORT_PREFIX"] ?? "vertra-audit/",
       minutes: Number(process.env["AUDIT_EXPORT_MINUTES"] ?? "5"),
+      // What the bucket keeps, as the install made it (vertra.yaml's
+      // audit.keepDays and audit.lock), for the Admin page only: the bucket
+      // enforces them, not the console. 0: not known here.
+      keepDays: Number(process.env["AUDIT_EXPORT_KEEP_DAYS"] || "0"),
+      lock: parseBoolean("AUDIT_EXPORT_LOCK"),
     },
   },
+  // Prometheus, as the charts' monitoring values set it (operator, google or
+  // bundled; empty: off), and where the install's Grafana is. Shown on the
+  // Admin page and Observe; the console reads neither.
+  monitoring: {
+    provider: monitoringProvider(),
+    grafanaUrl: grafanaUrl(),
+  },
+  // Catalog images run only if signed: the kernel chart's
+  // imageSignature.enabled, as the console chart is told it (display only;
+  // policy-controller enforces it).
+  imageSignaturesRequired: parseBoolean("IMAGE_SIGNATURES_REQUIRED"),
   // Log search (core/logs.ts): the chart's Loki, which the console queries
   // with each caller's visibility added. Empty: this install keeps no logs.
   // Older than searchDays, logs are archived and not searched.
@@ -591,6 +623,9 @@ export const config = {
     // `vertra catalog promote`) instead of release's own tag.
     newestVersion: process.env["CATALOG_NEWEST_VERSION"] === "true",
     pollSeconds: Number(process.env["CATALOG_POLL_SECONDS"] ?? "300"),
+    // release is another install's catalog (vertra.yaml's externalCatalog),
+    // not this install's own. Display only.
+    external: parseBoolean("CATALOG_EXTERNAL"),
     // Who may sign a release: the same as the kernel chart's imageSignature
     // (PEM public keys, a JSON list; and/or a keyless identity). None: the
     // release isn't verified, its trust being the registry's main-only

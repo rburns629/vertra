@@ -977,7 +977,8 @@ export interface ExecutionPageQuery {
 }
 
 export interface ExecutionPage {
-  rows: SubmittedExecutionSummary[];
+  /** With the submitter's email: null once that account is deleted. */
+  rows: (SubmittedExecutionSummary & { submittedByEmail: string | null })[];
   /** Where the next page starts; null on the last page. */
   nextCursor: string | null;
 }
@@ -1017,8 +1018,9 @@ export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Pr
     );
   }
   const rows = await db
-    .select({ ...summaryColumns, cursorTime: sql<string>`${submittedExecutions.createdAt}::text` })
+    .select({ ...summaryColumns, submittedByEmail: users.email, cursorTime: sql<string>`${submittedExecutions.createdAt}::text` })
     .from(submittedExecutions)
+    .leftJoin(users, eq(users.id, submittedExecutions.submittedBy))
     .where(and(...conditions))
     .orderBy(desc(submittedExecutions.createdAt), desc(submittedExecutions.executionId))
     .limit(query.limit + 1);
@@ -1029,6 +1031,7 @@ export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Pr
       executionId: row.executionId,
       teams: row.teams,
       submittedBy: row.submittedBy,
+      submittedByEmail: row.submittedByEmail,
       name: row.name,
       createdAt: row.createdAt,
       template: row.template,

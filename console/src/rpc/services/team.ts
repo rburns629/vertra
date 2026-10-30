@@ -81,6 +81,7 @@ function team(row: {
     fromCatalog: row.fromCatalog ?? false,
     quota,
     quotaIsDefault: (row.quota ?? null) === null,
+    installQuota: effectiveQuota({ quota: null }),
   };
 }
 

@@ -10,6 +10,7 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ImagePolicyConflictError, writeImagePolicyData } from "../src/k8s.js";
 import { buildApp } from "../src/index.js";
+import { config } from "../src/config.js";
 import { failureCode, rpcClient, type RpcError } from "./rpc.js";
 
 // The cluster's image policy is the only thing faked: `stored` plays it.
@@ -73,6 +74,59 @@ describe("AdminService", () => {
     // The tests' settings: built locally, no catalog, no logs, no copy.
     expect(install).toMatchObject({ version: "development", catalog: false, logs: false, auditCopy: false });
     expect(Number(install["runRetentionDays"])).toBeGreaterThan(0);
+  });
+
+  it("names the install's settings, never a credential", async () => {
+    const token = await signIn((await makeUser({ admin: true })).email);
+    // As a chart would set them; restored after.
+    const saved = structuredClone({ catalog: config.catalog, email: config.notifications.email, audit: config.audit, monitoring: config.monitoring });
+    const savedSignatures = config.imageSignaturesRequired;
+    Object.assign(config.catalog, {
+      release: "us-docker.pkg.dev/other/vertra-products/catalog-release:v1.4.0",
+      newestVersion: false,
+      external: true,
+      pollSeconds: 120,
+      signature: { publicKeys: ["-----BEGIN PUBLIC KEY-----\nkey\n-----END PUBLIC KEY-----"], keylessIssuer: "https://token.actions.githubusercontent.com", keylessSubjectRegExp: "^https://github.com/acme/catalog/" },
+    });
+    Object.assign(config.notifications.email, { host: "smtp.example.com", from: "Vertra <vertra@example.com>", username: "smtp-user", passwordFile: "/var/run/secrets/vertra/smtp/password" });
+    Object.assign(config.audit.export, { bucket: "acme-audit", keepDays: 400, lock: true });
+    Object.assign(config.monitoring, { provider: "google", grafanaUrl: "https://grafana.example.com" });
+    config.imageSignaturesRequired = true;
+    try {
+      const response = await rpc("AdminService", "GetInstall", {}, { token });
+      const install = response.json<Record<string, unknown>>();
+      expect(install).toMatchObject({
+        catalogVersion: "v1.4.0",
+        catalogPollSeconds: 120,
+        catalogSignerKeys: 1,
+        catalogKeylessIssuer: "https://token.actions.githubusercontent.com",
+        catalogKeylessSubject: "^https://github.com/acme/catalog/",
+        externalCatalog: "us-docker.pkg.dev/other/vertra-products",
+        email: true,
+        emailHost: "smtp.example.com",
+        emailFrom: "Vertra <vertra@example.com>",
+        monitoringProvider: "google",
+        grafanaUrl: "https://grafana.example.com",
+        sessionLength: config.jwtTtl,
+        auditKeepDays: 400,
+        auditLock: true,
+        imageSignaturesRequired: true,
+      });
+      expect(Number(install["policySyncSeconds"])).toBeGreaterThan(0);
+      // Never the SMTP sign-in, the public keys themselves, or anything like a secret.
+      expect(response.body).not.toContain("smtp-user");
+      expect(response.body).not.toContain("/var/run/secrets");
+      expect(response.body).not.toContain("BEGIN PUBLIC KEY");
+      // Following the newest version instead of a tag.
+      config.catalog.newestVersion = true;
+      expect((await rpc("AdminService", "GetInstall", {}, { token })).json<Record<string, unknown>>()["catalogVersion"]).toBe("newest");
+    } finally {
+      Object.assign(config.catalog, saved.catalog);
+      Object.assign(config.notifications.email, saved.email);
+      Object.assign(config.audit.export, saved.audit.export);
+      Object.assign(config.monitoring, saved.monitoring);
+      config.imageSignaturesRequired = savedSignatures;
+    }
   });
 
   it("checks the audit query", async () => {

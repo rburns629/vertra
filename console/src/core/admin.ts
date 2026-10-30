@@ -52,6 +52,39 @@ export function install(caller: AuthUser | undefined) {
     catalogSigned: signature.publicKeys.length > 0 || signature.keylessIssuer !== "",
     scanning: config.scanning.enabled,
     runRetentionDays: config.retention.executionDays,
+    ...catalogSettings(),
+    // Email: whether, where through and from whom; never its sign-in.
+    email: config.notifications.email.host !== "",
+    emailHost: config.notifications.email.host,
+    emailFrom: config.notifications.email.from,
+    monitoringProvider: config.monitoring.provider,
+    grafanaUrl: config.monitoring.grafanaUrl,
+    sessionLength: config.jwtTtl,
+    auditKeepDays: config.audit.export.bucket ? config.audit.export.keepDays : 0,
+    auditLock: config.audit.export.bucket !== "" && config.audit.export.lock,
+    policySyncSeconds: config.policySyncIntervalSeconds,
+    imageSignaturesRequired: config.imageSignaturesRequired,
+    rescanHours: config.scanning.enabled ? config.scanning.rescanHours : 0,
+  };
+}
+
+/** The catalog release's settings, as the install named them; all empty with no catalog. */
+function catalogSettings() {
+  const { release, newestVersion, pollSeconds, external, signature } = config.catalog;
+  if (!release) {
+    return { catalogVersion: "", catalogPollSeconds: 0, catalogSignerKeys: 0, catalogKeylessIssuer: "", catalogKeylessSubject: "", externalCatalog: "" };
+  }
+  // <registry>/catalog-release:<tag>: the tag is latest or a version (vertra's releaseTag).
+  const at = release.lastIndexOf(":");
+  const slash = release.lastIndexOf("/");
+  const tag = at > slash ? release.slice(at + 1) : "latest";
+  return {
+    catalogVersion: newestVersion ? "newest" : tag,
+    catalogPollSeconds: pollSeconds,
+    catalogSignerKeys: signature.publicKeys.length,
+    catalogKeylessIssuer: signature.keylessIssuer,
+    catalogKeylessSubject: signature.keylessSubjectRegExp,
+    externalCatalog: external && slash > 0 ? release.slice(0, slash) : "",
   };
 }
 

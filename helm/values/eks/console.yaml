@@ -35,6 +35,9 @@ catalog:
         -----BEGIN PUBLIC KEY-----
         <the KMS key's public half>
         -----END PUBLIC KEY-----
+# The kernel values' imageSignature is on: said on the Admin page.
+imageSignature:
+  required: true
 # The cluster's issuer, which IAM trusts for a team's AWS SecretStore (IRSA;
 # register it with `aws iam create-open-id-connect-provider`, once per
 # cluster: vertra does for a cluster it makes).

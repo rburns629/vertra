@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/admin.proto.
  */
 export const file_vertra_console_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9hZG1pbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiEwoRR2V0SW5zdGFsbFJlcXVlc3Qi+QEKEkdldEluc3RhbGxSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJEhkKEWVudmlyb25tZW50X2xhYmVsGAIgASgJEhQKDHNzb19wcm92aWRlchgDIAEoCRIMCgRsb2dzGAQgASgIEhcKD2xvZ19zZWFyY2hfZGF5cxgFIAEoBRISCgphdWRpdF9jb3B5GAYgASgIEg8KB2dhdGV3YXkYByABKAgSDwoHY2F0YWxvZxgIIAEoCBIWCg5jYXRhbG9nX3NpZ25lZBgJIAEoCBIQCghzY2FubmluZxgKIAEoCBIaChJydW5fcmV0ZW50aW9uX2RheXMYCyABKAUiGQoXR2V0Q2F0YWxvZ1N0YXR1c1JlcXVlc3QiTAoYR2V0Q2F0YWxvZ1N0YXR1c1Jlc3BvbnNlEjAKBnN0YXR1cxgBIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLkNhdGFsb2dTdGF0dXMiFAoSU3luY0NhdGFsb2dSZXF1ZXN0IkcKE1N5bmNDYXRhbG9nUmVzcG9uc2USMAoGc3RhdHVzGAEgASgLMiAudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1N0YXR1cyInChdBZG9wdENhdGFsb2dUZWFtUmVxdWVzdBIMCgRuYW1lGAEgASgJIkwKGEFkb3B0Q2F0YWxvZ1RlYW1SZXNwb25zZRIwCgZzdGF0dXMYASABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nU3RhdHVzIqECCg1DYXRhbG9nU3RhdHVzEg8KB3JlbGVhc2UYASABKAkSDgoGZGlnZXN0GAIgASgJEg4KBmNvbW1pdBgDIAEoCRISCgpyZXBvc2l0b3J5GAQgASgJEi4KCmFwcGxpZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKCHByb2JsZW1zGAYgAygLMiEudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1Byb2JsZW0SLgoKY2hlY2tlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDQoFZXJyb3IYCCABKAkSFgoObmV3ZXN0X3ZlcnNpb24YCSABKAgSDwoHdmVyc2lvbhgKIAEoCSJHCg5DYXRhbG9nUHJvYmxlbRIMCgRpdGVtGAEgASgJEg8KB21lc3NhZ2UYAiABKAkSFgoOYWRvcHRhYmxlX3RlYW0YAyABKAkiEQoPR2V0U3RhdHNSZXF1ZXN0IlYKEEdldFN0YXRzUmVzcG9uc2USDQoFdGVhbXMYASABKAMSDQoFdXNlcnMYAiABKAMSEAoIcHJvZHVjdHMYAyABKAMSEgoKZXhlY3V0aW9ucxgEIAEoAyKkAgoKQXVkaXRFbnRyeRIKCgJpZBgBIAEoAxImCgJhdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoIYWN0b3JfaWQYAyABKAlIAIgBARIYCgthY3Rvcl9lbWFpbBgEIAEoCUgBiAEBEhQKDGFjdG9yX2lzX2JvdBgFIAEoCBIOCgZtZXRob2QYBiABKAkSDQoFcm91dGUYByABKAkSJwoGdGFyZ2V0GAggASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIOCgZzdGF0dXMYCSABKAUSFwoKcmVxdWVzdF9pZBgKIAEoCUgCiAEBQgsKCV9hY3Rvcl9pZEIOCgxfYWN0b3JfZW1haWxCDQoLX3JlcXVlc3RfaWQiSgoXTGlzdEF1ZGl0RW50cmllc1JlcXVlc3QSDgoGYmVmb3JlGAEgASgDEhAKCGFjdG9yX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFIl8KGExpc3RBdWRpdEVudHJpZXNSZXNwb25zZRIuCgdlbnRyaWVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXVkaXRFbnRyeRITCgtuZXh0X2JlZm9yZRgCIAEoAyJ2ChFQb2xpY3lTeW5jT3V0Y29tZRIPCgdhcHBsaWVzGAEgASgIEgoKAm9rGAIgASgIEiYKAmF0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgVlcnJvchgEIAEoCUgAiAEBQggKBl9lcnJvciIWChRHZXRQb2xpY3lTeW5jUmVxdWVzdCK4AQoVR2V0UG9saWN5U3luY1Jlc3BvbnNlEkgKCG91dGNvbWVzGAEgAygLMjYudmVydHJhLmNvbnNvbGUudjEuR2V0UG9saWN5U3luY1Jlc3BvbnNlLk91dGNvbWVzRW50cnkaVQoNT3V0Y29tZXNFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC52ZXJ0cmEuY29uc29sZS52MS5Qb2xpY3lTeW5jT3V0Y29tZToCOAEiFQoTU3luY1BvbGljaWVzUmVxdWVzdCK2AQoUU3luY1BvbGljaWVzUmVzcG9uc2USRwoIb3V0Y29tZXMYASADKAsyNS52ZXJ0cmEuY29uc29sZS52MS5TeW5jUG9saWNpZXNSZXNwb25zZS5PdXRjb21lc0VudHJ5GlUKDU91dGNvbWVzRW50cnkSCwoDa2V5GAEgASgJEjMKBXZhbHVlGAIgASgLMiQudmVydHJhLmNvbnNvbGUudjEuUG9saWN5U3luY091dGNvbWU6AjgBMtAGCgxBZG1pblNlcnZpY2USWAoIR2V0U3RhdHMSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRTdGF0c1JlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRTdGF0c1Jlc3BvbnNlIgOQAgEScAoQTGlzdEF1ZGl0RW50cmllcxIqLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdEVudHJpZXNSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0RW50cmllc1Jlc3BvbnNlIgOQAgESZwoNR2V0UG9saWN5U3luYxInLnZlcnRyYS5jb25zb2xlLnYxLkdldFBvbGljeVN5bmNSZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuR2V0UG9saWN5U3luY1Jlc3BvbnNlIgOQAgESZAoMU3luY1BvbGljaWVzEiYudmVydHJhLmNvbnNvbGUudjEuU3luY1BvbGljaWVzUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNQb2xpY2llc1Jlc3BvbnNlIgOQAgIScAoQR2V0Q2F0YWxvZ1N0YXR1cxIqLnZlcnRyYS5jb25zb2xlLnYxLkdldENhdGFsb2dTdGF0dXNSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuR2V0Q2F0YWxvZ1N0YXR1c1Jlc3BvbnNlIgOQAgESYQoLU3luY0NhdGFsb2cSJS52ZXJ0cmEuY29uc29sZS52MS5TeW5jQ2F0YWxvZ1JlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5TeW5jQ2F0YWxvZ1Jlc3BvbnNlIgOQAgIScAoQQWRvcHRDYXRhbG9nVGVhbRIqLnZlcnRyYS5jb25zb2xlLnYxLkFkb3B0Q2F0YWxvZ1RlYW1SZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuQWRvcHRDYXRhbG9nVGVhbVJlc3BvbnNlIgOQAgISXgoKR2V0SW5zdGFsbBIkLnZlcnRyYS5jb25zb2xlLnYxLkdldEluc3RhbGxSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuR2V0SW5zdGFsbFJlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9hZG1pbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiEwoRR2V0SW5zdGFsbFJlcXVlc3QirAUKEkdldEluc3RhbGxSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJEhkKEWVudmlyb25tZW50X2xhYmVsGAIgASgJEhQKDHNzb19wcm92aWRlchgDIAEoCRIMCgRsb2dzGAQgASgIEhcKD2xvZ19zZWFyY2hfZGF5cxgFIAEoBRISCgphdWRpdF9jb3B5GAYgASgIEg8KB2dhdGV3YXkYByABKAgSDwoHY2F0YWxvZxgIIAEoCBIWCg5jYXRhbG9nX3NpZ25lZBgJIAEoCBIQCghzY2FubmluZxgKIAEoCBIaChJydW5fcmV0ZW50aW9uX2RheXMYCyABKAUSFwoPY2F0YWxvZ192ZXJzaW9uGAwgASgJEhwKFGNhdGFsb2dfcG9sbF9zZWNvbmRzGA0gASgFEhsKE2NhdGFsb2dfc2lnbmVyX2tleXMYDiABKAUSHgoWY2F0YWxvZ19rZXlsZXNzX2lzc3VlchgPIAEoCRIfChdjYXRhbG9nX2tleWxlc3Nfc3ViamVjdBgQIAEoCRIYChBleHRlcm5hbF9jYXRhbG9nGBEgASgJEg0KBWVtYWlsGBIgASgIEhIKCmVtYWlsX2hvc3QYEyABKAkSEgoKZW1haWxfZnJvbRgUIAEoCRIbChNtb25pdG9yaW5nX3Byb3ZpZGVyGBUgASgJEhMKC2dyYWZhbmFfdXJsGBYgASgJEhYKDnNlc3Npb25fbGVuZ3RoGBcgASgJEhcKD2F1ZGl0X2tlZXBfZGF5cxgYIAEoBRISCgphdWRpdF9sb2NrGBkgASgIEhsKE3BvbGljeV9zeW5jX3NlY29uZHMYGiABKAUSIQoZaW1hZ2Vfc2lnbmF0dXJlc19yZXF1aXJlZBgbIAEoCBIUCgxyZXNjYW5faG91cnMYHCABKAUiGQoXR2V0Q2F0YWxvZ1N0YXR1c1JlcXVlc3QiTAoYR2V0Q2F0YWxvZ1N0YXR1c1Jlc3BvbnNlEjAKBnN0YXR1cxgBIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLkNhdGFsb2dTdGF0dXMiFAoSU3luY0NhdGFsb2dSZXF1ZXN0IkcKE1N5bmNDYXRhbG9nUmVzcG9uc2USMAoGc3RhdHVzGAEgASgLMiAudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1N0YXR1cyInChdBZG9wdENhdGFsb2dUZWFtUmVxdWVzdBIMCgRuYW1lGAEgASgJIkwKGEFkb3B0Q2F0YWxvZ1RlYW1SZXNwb25zZRIwCgZzdGF0dXMYASABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nU3RhdHVzIqECCg1DYXRhbG9nU3RhdHVzEg8KB3JlbGVhc2UYASABKAkSDgoGZGlnZXN0GAIgASgJEg4KBmNvbW1pdBgDIAEoCRISCgpyZXBvc2l0b3J5GAQgASgJEi4KCmFwcGxpZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjMKCHByb2JsZW1zGAYgAygLMiEudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1Byb2JsZW0SLgoKY2hlY2tlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDQoFZXJyb3IYCCABKAkSFgoObmV3ZXN0X3ZlcnNpb24YCSABKAgSDwoHdmVyc2lvbhgKIAEoCSJHCg5DYXRhbG9nUHJvYmxlbRIMCgRpdGVtGAEgASgJEg8KB21lc3NhZ2UYAiABKAkSFgoOYWRvcHRhYmxlX3RlYW0YAyABKAkiEQoPR2V0U3RhdHNSZXF1ZXN0IlYKEEdldFN0YXRzUmVzcG9uc2USDQoFdGVhbXMYASABKAMSDQoFdXNlcnMYAiABKAMSEAoIcHJvZHVjdHMYAyABKAMSEgoKZXhlY3V0aW9ucxgEIAEoAyKkAgoKQXVkaXRFbnRyeRIKCgJpZBgBIAEoAxImCgJhdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoIYWN0b3JfaWQYAyABKAlIAIgBARIYCgthY3Rvcl9lbWFpbBgEIAEoCUgBiAEBEhQKDGFjdG9yX2lzX2JvdBgFIAEoCBIOCgZtZXRob2QYBiABKAkSDQoFcm91dGUYByABKAkSJwoGdGFyZ2V0GAggASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIOCgZzdGF0dXMYCSABKAUSFwoKcmVxdWVzdF9pZBgKIAEoCUgCiAEBQgsKCV9hY3Rvcl9pZEIOCgxfYWN0b3JfZW1haWxCDQoLX3JlcXVlc3RfaWQiSgoXTGlzdEF1ZGl0RW50cmllc1JlcXVlc3QSDgoGYmVmb3JlGAEgASgDEhAKCGFjdG9yX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFIl8KGExpc3RBdWRpdEVudHJpZXNSZXNwb25zZRIuCgdlbnRyaWVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXVkaXRFbnRyeRITCgtuZXh0X2JlZm9yZRgCIAEoAyJ2ChFQb2xpY3lTeW5jT3V0Y29tZRIPCgdhcHBsaWVzGAEgASgIEgoKAm9rGAIgASgIEiYKAmF0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgVlcnJvchgEIAEoCUgAiAEBQggKBl9lcnJvciIWChRHZXRQb2xpY3lTeW5jUmVxdWVzdCK4AQoVR2V0UG9saWN5U3luY1Jlc3BvbnNlEkgKCG91dGNvbWVzGAEgAygLMjYudmVydHJhLmNvbnNvbGUudjEuR2V0UG9saWN5U3luY1Jlc3BvbnNlLk91dGNvbWVzRW50cnkaVQoNT3V0Y29tZXNFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC52ZXJ0cmEuY29uc29sZS52MS5Qb2xpY3lTeW5jT3V0Y29tZToCOAEiFQoTU3luY1BvbGljaWVzUmVxdWVzdCK2AQoUU3luY1BvbGljaWVzUmVzcG9uc2USRwoIb3V0Y29tZXMYASADKAsyNS52ZXJ0cmEuY29uc29sZS52MS5TeW5jUG9saWNpZXNSZXNwb25zZS5PdXRjb21lc0VudHJ5GlUKDU91dGNvbWVzRW50cnkSCwoDa2V5GAEgASgJEjMKBXZhbHVlGAIgASgLMiQudmVydHJhLmNvbnNvbGUudjEuUG9saWN5U3luY091dGNvbWU6AjgBMtAGCgxBZG1pblNlcnZpY2USWAoIR2V0U3RhdHMSIi52ZXJ0cmEuY29uc29sZS52MS5HZXRTdGF0c1JlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5HZXRTdGF0c1Jlc3BvbnNlIgOQAgEScAoQTGlzdEF1ZGl0RW50cmllcxIqLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdEVudHJpZXNSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0RW50cmllc1Jlc3BvbnNlIgOQAgESZwoNR2V0UG9saWN5U3luYxInLnZlcnRyYS5jb25zb2xlLnYxLkdldFBvbGljeVN5bmNSZXF1ZXN0GigudmVydHJhLmNvbnNvbGUudjEuR2V0UG9saWN5U3luY1Jlc3BvbnNlIgOQAgESZAoMU3luY1BvbGljaWVzEiYudmVydHJhLmNvbnNvbGUudjEuU3luY1BvbGljaWVzUmVxdWVzdBonLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNQb2xpY2llc1Jlc3BvbnNlIgOQAgIScAoQR2V0Q2F0YWxvZ1N0YXR1cxIqLnZlcnRyYS5jb25zb2xlLnYxLkdldENhdGFsb2dTdGF0dXNSZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuR2V0Q2F0YWxvZ1N0YXR1c1Jlc3BvbnNlIgOQAgESYQoLU3luY0NhdGFsb2cSJS52ZXJ0cmEuY29uc29sZS52MS5TeW5jQ2F0YWxvZ1JlcXVlc3QaJi52ZXJ0cmEuY29uc29sZS52MS5TeW5jQ2F0YWxvZ1Jlc3BvbnNlIgOQAgIScAoQQWRvcHRDYXRhbG9nVGVhbRIqLnZlcnRyYS5jb25zb2xlLnYxLkFkb3B0Q2F0YWxvZ1RlYW1SZXF1ZXN0GisudmVydHJhLmNvbnNvbGUudjEuQWRvcHRDYXRhbG9nVGVhbVJlc3BvbnNlIgOQAgISXgoKR2V0SW5zdGFsbBIkLnZlcnRyYS5jb25zb2xlLnYxLkdldEluc3RhbGxSZXF1ZXN0GiUudmVydHJhLmNvbnNvbGUudjEuR2V0SW5zdGFsbFJlc3BvbnNlIgOQAgFiBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.GetInstallRequest
@@ -105,6 +105,120 @@ export type GetInstallResponse = Message<"vertra.console.v1.GetInstallResponse">
    * @generated from field: int32 run_retention_days = 11;
    */
   runRetentionDays: number;
+
+  /**
+   * Which catalog releases are applied: latest, newest (the newest vX.Y.Z)
+   * or one version; empty with no catalog.
+   *
+   * @generated from field: string catalog_version = 12;
+   */
+  catalogVersion: string;
+
+  /**
+   * How often the console looks for a new release, in seconds.
+   *
+   * @generated from field: int32 catalog_poll_seconds = 13;
+   */
+  catalogPollSeconds: number;
+
+  /**
+   * Who may sign a release: how many public keys are trusted, and a
+   * keyless identity's issuer and subject pattern (empty: none).
+   *
+   * @generated from field: int32 catalog_signer_keys = 14;
+   */
+  catalogSignerKeys: number;
+
+  /**
+   * @generated from field: string catalog_keyless_issuer = 15;
+   */
+  catalogKeylessIssuer: string;
+
+  /**
+   * @generated from field: string catalog_keyless_subject = 16;
+   */
+  catalogKeylessSubject: string;
+
+  /**
+   * Another install's catalog, read from its registry; empty when this
+   * install's own (or none).
+   *
+   * @generated from field: string external_catalog = 17;
+   */
+  externalCatalog: string;
+
+  /**
+   * Email: whether it's sent, through which SMTP host, from which address.
+   * Never its credentials.
+   *
+   * @generated from field: bool email = 18;
+   */
+  email: boolean;
+
+  /**
+   * @generated from field: string email_host = 19;
+   */
+  emailHost: string;
+
+  /**
+   * @generated from field: string email_from = 20;
+   */
+  emailFrom: string;
+
+  /**
+   * Prometheus: operator, google or bundled; empty when monitoring is off.
+   *
+   * @generated from field: string monitoring_provider = 21;
+   */
+  monitoringProvider: string;
+
+  /**
+   * Where the install's Grafana is, for its dashboard; empty when unknown.
+   *
+   * @generated from field: string grafana_url = 22;
+   */
+  grafanaUrl: string;
+
+  /**
+   * How long a session lasts before signing in again: 8h, 30m, 1d.
+   *
+   * @generated from field: string session_length = 23;
+   */
+  sessionLength: string;
+
+  /**
+   * The audit copy's bucket: how many days it keeps each copy (0: not
+   * known here), and whether that retention is locked.
+   *
+   * @generated from field: int32 audit_keep_days = 24;
+   */
+  auditKeepDays: number;
+
+  /**
+   * @generated from field: bool audit_lock = 25;
+   */
+  auditLock: boolean;
+
+  /**
+   * How often the cluster policies are rewritten whatever changed, in seconds.
+   *
+   * @generated from field: int32 policy_sync_seconds = 26;
+   */
+  policySyncSeconds: number;
+
+  /**
+   * Catalog images run only if signed (the kernel chart's imageSignature).
+   *
+   * @generated from field: bool image_signatures_required = 27;
+   */
+  imageSignaturesRequired: boolean;
+
+  /**
+   * Images in use are scanned again once their verdict is this old, in hours.
+   *
+   * @generated from field: int32 rescan_hours = 28;
+   */
+  rescanHours: number;
 };
 
 /**
