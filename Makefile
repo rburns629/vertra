@@ -1,6 +1,6 @@
 .PHONY: gke-verify-release gke-deploy-console-from-source gke-deploy-kernel-from-source kind-tls kind-audit-store quickstart _quickstart-prereqs kind-cluster kind-namespaces \
 	build-products kind-sample-api console-docs catalog-publish kind-registry kind-deploy kind-deploy-kernel kind-deploy-console kind-deploy-eso \
-	up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
+	kind-e2e-secrets up down logs gke-logs test test-db test-db-down proto gke-deploy-policy-controller \
 	gke-deploy gke-deploy-console gke-deploy-kernel gke-deploy-eso _gke-confirm
 
 # Docker Desktop on macOS doesn't always put its command-line tools on PATH
@@ -630,3 +630,10 @@ gke-deploy: GKE_WHAT = the kernel and the console, release $(VERSION)
 gke-deploy: gke-verify-release _gke-confirm
 	@$(MAKE) --no-print-directory gke-deploy-kernel CONFIRM=$(GKE_CLUSTER) VERSION=$(VERSION)
 	@$(MAKE) --no-print-directory gke-deploy-console CONFIRM=$(GKE_CLUSTER) VERSION=$(VERSION)
+
+# A team's secret end to end on the kind install (helm/tests/secrets-e2e.sh):
+# a SecretStore (ESO's fake provider) syncs it, a registered product's step
+# reads it, and a step that isn't one, or another team's, is refused. Needs
+# make up's port-forward; it cleans up after itself.
+kind-e2e-secrets:
+	CONSOLE_URL=$(CONSOLE_URL) ADMIN_PASSWORD=$(ADMIN_PASSWORD) KUBE_CONTEXT=$(KIND_CONTEXT) bash helm/tests/secrets-e2e.sh

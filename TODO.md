@@ -1346,10 +1346,18 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **Rare console test failures in a full parallel run** (2026-10-27):
   one at a time, in different files (apis, team-lifecycle, readiness), each
   passing alone and in most full runs; likely two files sharing database
-  state. Find which.
-- [ ] **An end-to-end secret test** with a product registered by catalog CI:
-  proven by hand on EKS (2026-10-27: a catalog-registered product mounting
-  a secret ESO synced); an automated one, on kind, remains.
+  state. 2026-10-29: one cause found and fixed (sso.test's Google groups
+  mocks answered for every account, so a resync added oidc.test's person
+  to its team); then 32 full runs in a row passed. The tests' broad
+  cleanups were checked (wiring types are locked; the rest are each one
+  file's). Keep a failing run's whole output when one is seen.
+- [x] **An end-to-end secret test** (done 2026-10-29): `make
+  kind-e2e-secrets` (helm/tests/secrets-e2e.sh) on the kind install: a
+  SecretStore (ESO's fake provider) syncs a value, a registered product's
+  step reads it (its SHA-256), and an unregistered image or another team
+  naming the Secret is refused; and a kernel kind test in CI checks a step
+  gets exactly the Secrets it names. Proven by hand on EKS before
+  (2026-10-27).
 - [ ] **Re-pin `rot13`'s distroless base** once Google rebuilds
   `cc-debian12` with Debian's libssl3 fix (CVE-2026-84782), and delete its
   `.trivyignore` line (it expires 2026-11-27 by itself, failing the check

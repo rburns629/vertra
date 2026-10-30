@@ -438,6 +438,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 
 | Path | What it's for |
 | --- | --- |
+| `secrets-e2e.sh` | A team's secret end to end on a kind install (`make kind-e2e-secrets`): a SecretStore (ESO's fake provider) syncs it, a registered product's step reads it (its SHA-256, never the value), and a step that isn't one, or another team's, is refused. |
 | `admission-policies.sh` | Proves the charts' admission policies on a real cluster (dispatch, image sources, step identity, the console's write fence), case by case with server-side dry runs. Run by CI's kubernetes job. |
 
 ### `helm/values/`: each cluster's settings
