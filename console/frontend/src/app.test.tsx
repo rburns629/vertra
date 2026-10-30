@@ -570,6 +570,21 @@ describe("the docs", () => {
     await waitFor(() => { expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe("rotate a bot token"); });
   });
 
+  it("sends what's asked in Home's Ask box at once (useAsk().open(question, { send: true }))", async () => {
+    let asked = 0;
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "ChatService/AskStream": () => {
+        asked++;
+        return [{ answer: { text: "Its step ran out of memory." } }];
+      },
+    });
+    fireEvent.change(await screen.findByRole("textbox", { name: "Ask Vertra" }), { target: { value: "Why did my run fail?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    expect(await screen.findByText("Its step ran out of memory.")).toBeTruthy();
+    expect(asked).toBe(1);
+  });
+
   it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {
     await renderAt("/docs/15-troubleshooting", MEMBER, {
       "GuideService/ListGuides": { guides: [{ id: "15-troubleshooting", title: "Troubleshooting", section: "guides", kind: "guide" }] },
