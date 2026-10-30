@@ -5,6 +5,45 @@ an item may be partly done. When you finish one, remove it; when you find a
 new one, add it. Larger items are worth an issue first, to agree on the
 design.
 
+## Next, in order (agreed 2026-10-29 and 2026-10-30)
+
+Solid before features: housekeeping and tests first, then features with
+steps left, then one billed proof run per cloud, and the MCP server and
+Azure last.
+
+1. Managed Prometheus on AWS (approved 2026-10-30): Amazon Managed Service
+   for Prometheus as a `monitoring.provider`, beside operator, google and
+   bundled.
+2. The bundled Prometheus's firing alerts on the Observe page (it has no
+   Alertmanager, so today they need a port-forward).
+3. The run page saying whether a manual retry is safe (the action's
+   `idempotent`).
+4. Readiness checks (`check`) for the gcp and aws samples' products.
+5. What can be built before the billed run: the reverse cross-cloud
+   catalog read (ECR from GKE), an aws reader of another account's ECR,
+   `vertra`'s command for the catalog owner's grant, policy-controller on
+   EKS, a sample federating with its product token, and moving an existing
+   Postgres volume to non-root.
+6. The rest of the performance work (below): sustained and higher
+   scenarios, failure cases, API load through the console.
+7. The billed proof run, one session per cloud, destroyed after (decided
+   2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
+   Service for Prometheus, the bundled Prometheus on a cloud volume, the
+   audit copy compared on GCS, the gcp sample's API product and per-product
+   grants, catalog CI's SBOM attestation, the scheduler at scale (relists,
+   rate limits at 50/100, Spot retries), the client limits, why a minimal
+   Autopilot install had three nodes, size figures. EKS: SecretStores set up
+   by `vertra`, the S3 audit bucket and its comparison, Amazon Managed
+   Prometheus, the aws sample's API product, products choosing Spot,
+   non-root Postgres on EBS, `vertra destroy` with an unanswering cluster,
+   the scheduler at scale, size figures.
+8. Last: the MCP server, then Azure (its target, its managed Prometheus,
+   the Azure sample signing in).
+
+Blocked: the chat agent on Bedrock (the account's model access) and
+Sigstore's newer signature format (policy-controller). Needs a decision:
+masking Secret values in logs (suggested: leave it, documented).
+
 ## Installing and operating
 
 - [x] **An upgrade of a minimal standard-mode EKS install can stall**
@@ -59,8 +98,9 @@ design.
   times the old, latency 43 → 17 ms. Still one instance in one zone: past
   `scaled`, or for failover, a managed database (below).
 
-- [ ] **Observe: security checks, logs and metrics for everyone**
-  (mocked up 2026-10-21, boards 17–19). One console section with tabs:
+- [x] **Observe: security checks, logs and metrics for everyone**
+  (done 2026-10-22, added to through 2026-10-30; mocked up 2026-10-21,
+  boards 17–19). One console section with tabs:
   - Security checks (done 2026-10-22: `ObserveService.GetSecurity`, the
     Observe page's first tab): what the cluster enforces (and what it
     doesn't yet), every allowed image with its scan, and every refusal
@@ -91,8 +131,8 @@ design.
     volume losing nothing. API backends' logs (done 2026-10-29): Pods a
     team labels `vertra/api-backend` are collected as `component="api"`,
     every level to their own team only (Logs tab, From: API backends);
-    proven on kind with the greetings backend. Left: Secret values
-    (not just credential shapes) masked. Needs a decision (2026-10-29):
+    proven on kind with the greetings backend. Left, needing a decision
+    (2026-10-29): Secret values (not just credential shapes) masked:
     masking a value needs its value, so something would have to read
     every team's Secrets (the collector, or the scheduler), which the
     platform deliberately lets nothing do; credential shapes are redacted,
@@ -173,9 +213,11 @@ design.
   install's data into a managed database at apply (2026-10-29: proven on
   kind, and on GKE Autopilot with Cloud SQL and EKS standard with RDS: a
   bucket backup, its restore, the move with a run seeded before it found
-  after and a new step run, and an on-demand managed backup). Still
-  to do: measuring the sizes' figures, which are first estimates (a billed
-  run).
+  after and a new step run, and an on-demand managed backup). Monitoring
+  (2026-10-30): `init` offers the cluster's Prometheus Operator, GKE's
+  managed Prometheus or a bundled one. Left: measuring the sizes' figures,
+  which are first estimates (the billed run); GitLab as a second git host
+  (decided below, not started); the azure target (last).
   Decided 2026-10-18:
   - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster
     mode when the CLI creates one: `auto` (GKE Autopilot, EKS Auto Mode, AKS
@@ -779,7 +821,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   team's step claimed in the same pass runs on. Un-retiring and retrying
   resumes it.
 
-- [ ] **Catalog versions, and installs reading another's catalog**
+- [x] **Catalog versions, and installs reading another's catalog**
   (decision 22, `docs/assessment.md`; vertra 0.4.0). Done 2026-10-26:
   - Versions: a `vX.Y.Z` tag in the catalog repository asks CI on main
     (`version.yml`) to tag that commit's release `catalog-release:vX.Y.Z`
@@ -813,7 +855,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Security
 
-- [ ] **Gaps the 2026-10-28 docs audit found** (documented in
+- [x] **Gaps the 2026-10-28 docs audit found** (closed 2026-10-29; documented in
   `docs/security-model.md`): the scheduler may read every Pod's logs
   cluster-wide (fixed 2026-10-29: a logs-only ClusterRole the console
   binds per team namespace, its only RBAC write, fenced to exactly that;
@@ -1235,10 +1277,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   question before saving. The Admin page is now sections down the side
   (Install, Access, Integrations, Security), each its own address, with
   room for MCP and Bedrock.
-  Next: Claude or Gemini
-  on Vertex for an install that must keep its data in its cloud; prompt
-  caching measured (done, above). Left:
-  Claude on Bedrock; then MCP) (proposed
+  Gemini on Vertex keeps an install's questions in its own cloud (done and
+  proven on GKE, above); prompt caching measured (done, above). Left:
+  Claude on Bedrock (blocked on the account's model access), Claude on
+  Vertex if an install asks for it; then MCP, last) (proposed
   2026-10-27)**: a chat panel in the console whose agent works as the
   signed-in person over `core/` (describe an offering, what the team has
   and what depends on what, plan and change the cart; never place it: the
@@ -1270,7 +1312,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (registering a product now updates them). The MCP server waits (decided 2026-10-29) until the
   platform is solid and a team asks for it: its tools proven first in the
   Ask panel with a capable model, and the cart seen end to end on a cluster.
-- [ ] **The cart (decision 25, proposed 2026-10-27)**, what the agent and
+- [x] **The cart (decision 25, done 2026-10-28)**, what the agent and
   people order with, in this order:
   1. The catalog carries its wiring types (done 2026-10-27): each team's
      `teams/<team>/types.yaml` (`tools/types.schema.json`, checked by
@@ -1315,9 +1357,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      are now held to allowedTargets for every submission (the attached
      schema narrowed; the kernel refuses with INPUT_INVALID). Proven on
      kind: a two-step order of local actions ran as the team's order; an
-     incomplete cart was refused, saying what's missing. The narrowed
-     schema's refusal is tested in the kernel, not seen on kind (no runnable
-     sample provides a target type). Was: a
+     incomplete cart was refused, saying what's missing. Left: the narrowed
+     schema's refusal seen on a cluster (tested in the kernel; no runnable
+     sample provides a target type yet). Was: a
      member checks out a cart (decided), each step as
      `RunAction` would run it; a wired target re-checked when its step
      starts. The Catalog's cart.
@@ -1348,14 +1390,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Testing and housekeeping
 
-- [ ] **A console test fails now and then in the full parallel run**
-  (found 2026-10-28). `sso.test.ts`'s was a real bug (fixed 2026-10-28):
-  the hourly Google groups re-read reads every single sign-on user, and one
-  deleted mid-pass (another test file's, or anyone's) failed the whole pass
-  on its membership's foreign key, leaving everyone after them unsynced for
-  another hour; a deleted person is now skipped, anything else still fails
-  the pass. `readiness.test.ts`'s product check failed once and not in 28
-  full runs since; its failure wasn't kept, so the cause is unknown.
+- [x] **Console tests failing now and then in a full parallel run**
+  (2026-10-27 to 2026-10-29): one at a time, in different files (apis,
+  team-lifecycle, readiness, sso), each passing alone. Causes found and
+  fixed: the hourly Google groups re-read failed its whole pass on a
+  person deleted mid-pass (now skipped); sso.test's groups mocks answered
+  for every account, so a resync added oidc.test's person to its team;
+  notifications.test's and oidc.test's tampering was a no-op one time in
+  64. 32 full runs in a row passed after. readiness.test's one failure
+  wasn't kept, so its cause is unknown: keep a failing run's whole output
+  when one is seen, and reopen this.
 
 - [x] **`vertra catalog publish` from a laptop builds for the laptop's
   platform** (done 2026-10-25): a catalog's `platform` (`VERTRA_PLATFORM`)
@@ -1383,18 +1427,6 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   every one parses under 12.2.0, and a frontend test
   (`src/docsDiagrams.test.ts`) keeps it so for the next bump. How they look
   hasn't been checked by eye.
-- [ ] **Rare console test failures in a full parallel run** (2026-10-27):
-  one at a time, in different files (apis, team-lifecycle, readiness), each
-  passing alone and in most full runs; likely two files sharing database
-  state. 2026-10-29: one cause found and fixed (sso.test's Google groups
-  mocks answered for every account, so a resync added oidc.test's person
-  to its team); then 32 full runs in a row passed. The tests' broad
-  cleanups were checked (wiring types are locked; the rest are each one
-  file's). Then CI caught notifications.test's webhook check failing:
-  it tampered with a ciphertext by setting its first character to "A", a
-  no-op one time in 64; oidc.test's cookie tamper had the same flaw. Both
-  now always change it. Keep a failing run's whole output when one is
-  seen.
 - [x] **An end-to-end secret test** (done 2026-10-29): `make
   kind-e2e-secrets` (helm/tests/secrets-e2e.sh) on the kind install: a
   SecretStore (ESO's fake provider) syncs a value, a registered product's
