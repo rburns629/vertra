@@ -1556,6 +1556,34 @@ describe("pages that can't be shown", () => {
   });
 });
 
+describe("the Admin page's summary", () => {
+  it("is read once, for admins only, and says which parts it couldn't read", async () => {
+    await renderAt("/admin", MEMBER);
+    expect(await screen.findByText(/Admins only/)).toBeTruthy();
+    expect(calls).not.toContain("ObserveService/GetSecurity");
+    expect(calls).not.toContain("AdminService/GetInstall");
+    cleanup();
+    calls.length = 0;
+
+    await renderAt("/admin", ADMIN, {
+      "UserService/ListUsers": refused(503, "unavailable", "Down."),
+      "TokenService/ListAutomationTokens": { tokens: [{ id: "k1", label: "nightly", expiresAt: "2020-01-01T00:00:00Z" }] },
+    });
+    const needs = await screen.findByRole("region", { name: "Needs you" });
+    // Not "every part reads as it should": People couldn't be read.
+    expect(await within(needs).findByText(/Couldn't read People/)).toBeTruthy();
+    expect(within(needs).queryByText(/every part reads as it should/)).toBeNull();
+    // An expired token isn't a working one.
+    const parts = screen.getByRole("region", { name: "Every part, and where it's set" });
+    expect(within(parts).getByText("None working: every one has expired.")).toBeTruthy();
+    // Moving between sections doesn't read every part again.
+    const read = calls.filter((c) => c === "ObserveService/GetSecurity").length;
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Admin sections" })).getByRole("link", { name: /^Image sources/ }));
+    expect((await screen.findAllByRole("heading", { name: /Image sources/ })).length).toBeGreaterThan(0);
+    expect(calls.filter((c) => c === "ObserveService/GetSecurity").length).toBe(read);
+  });
+});
+
 describe("a new install", () => {
   it("shows its admin what's left to set up, and what's on", async () => {
     await renderAt("/admin", ADMIN, {

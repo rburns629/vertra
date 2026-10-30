@@ -30,6 +30,7 @@ import {
 } from "../../api";
 import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
+import { useAdminChanged } from "./summary";
 import { AdminCard, Aside, Dot, SrOnly, TABLE_SX } from "./parts";
 
 const message = (err: unknown, fallback: string) => (err instanceof ApiError ? err.message : fallback);
@@ -49,6 +50,7 @@ function GroupMappings({ teams }: { teams: Team[] }) {
   };
   useEffect(load, []);
 
+  const changed = useAdminChanged();
   async function add(): Promise<void> {
     if (!team) return;
     setError(null);
@@ -56,6 +58,7 @@ function GroupMappings({ teams }: { teams: Team[] }) {
       await setSsoGroupMapping(group.trim(), team, role);
       setGroup("");
       load();
+      changed();
     } catch (err) {
       setError(message(err, "Couldn't map it."));
     }
@@ -111,7 +114,7 @@ function GroupMappings({ teams }: { teams: Team[] }) {
                       color="error"
                       onClick={() => {
                         deleteSsoGroupMapping(m.id)
-                          .then(load)
+                          .then(() => { load(); changed(); })
                           .catch((err: unknown) => { setError(message(err, "Couldn't unmap it.")); });
                       }}
                     >
@@ -159,6 +162,7 @@ function GroupMappings({ teams }: { teams: Team[] }) {
  * from, and which groups make whom a member of which team.
  */
 export function SsoCard() {
+  const changed = useAdminChanged();
   const [saved, setSaved] = useState<SsoSettings | null>(null);
   const [form, setForm] = useState<SsoSettings | null>(null);
   const [secret, setSecret] = useState("");
@@ -207,6 +211,7 @@ export function SsoCard() {
         : { issuer: form.issuer.trim(), clientId: form.clientId.trim(), clientSecret: secret, redirectUrl: form.redirectUrl.trim(), allowedDomains: domains.split(/[\s,]+/).filter(Boolean), label: form.label.trim() };
       show(await setSsoSettings({ ...provider, enabled: form.enabled, groupsClaim: form.groupsClaim.trim(), googleGroups: form.googleGroups }));
       setNote("Saved: every console uses it within seconds.");
+      changed();
     } catch (err) {
       setError(message(err, "Couldn't save it."));
     } finally {

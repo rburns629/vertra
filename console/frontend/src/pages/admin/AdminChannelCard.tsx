@@ -8,6 +8,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Pill } from "../../components/Pill";
 import { AdminCard } from "./parts";
+import { useAdminChanged } from "./summary";
 import { ApiError, getAdminChannel, listAllTeams, setAdminChannel, type Team } from "../../api";
 
 /**
@@ -32,11 +33,13 @@ export function AdminChannelCard() {
       .catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't load the admins' channel."); });
   }, []);
 
+  const changed = useAdminChanged();
   async function save(): Promise<void> {
     setBusy(true);
     setError(null);
     try {
       setSaved(await setAdminChannel(chosen));
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
   getAdminChannel,
   getAuditCopy,
@@ -65,9 +65,18 @@ export interface State {
 
 const value = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === "fulfilled" ? r.value : null);
 
-/** Reads every part at once; again whenever `key` changes (the section shown), so the states follow what was just done. */
-export function useAdminSummary(key: string): AdminSummary | null {
+/**
+ * A section changed something: the summary (the navigation's states, the
+ * overview) is read again. AdminPage provides it; a card calls it after a
+ * change of its own succeeds.
+ */
+export const AdminChanged = createContext<() => void>(() => {});
+export const useAdminChanged = () => useContext(AdminChanged);
+
+/** Reads every part at once (admins only: AdminPage calls it after its check), and again on `reload`. */
+export function useAdminSummary(): { summary: AdminSummary | null; reload: () => void } {
   const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [round, setRound] = useState(0);
   useEffect(() => {
     let live = true;
     void Promise.allSettled([
@@ -109,9 +118,14 @@ export function useAdminSummary(key: string): AdminSummary | null {
     return () => {
       live = false;
     };
-  }, [key]);
-  return summary;
+  }, [round]);
+  const reload = useCallback(() => { setRound((n) => n + 1); }, []);
+  return { summary, reload };
 }
+
+/** Tokens that still sign in: the list includes expired ones (only revoked ones are left out). */
+export const workingTokens = <T extends { expiresAt: string | null }>(tokens: T[]): T[] =>
+  tokens.filter((t) => !t.expiresAt || new Date(t.expiresAt).getTime() > Date.now());
 
 /** A failed scan nobody accepted: the image can't run. */
 export const blocksRun = (s: ImageScan) => s.status === "failed" && !s.acceptedReason;
@@ -126,10 +140,18 @@ const hex = (ref: string) => (ref.split("@").at(-1) ?? ref).replace(/^sha256:/, 
  * Observe's images couldn't be read, every failed scan counts.
  */
 export function failingInUse(s: AdminSummary): ImageScan[] {
-  const failed = (s.scans ?? []).filter(blocksRun);
-  if (!s.security) return failed;
+  return inUse(s, (s.scans ?? []).filter(blocksRun));
+}
+
+/** Scans that couldn't run (an image that can't be submitted until one does), of images in use, the same way. */
+export function unscannedInUse(s: AdminSummary): ImageScan[] {
+  return inUse(s, (s.scans ?? []).filter((x) => x.status === "error"));
+}
+
+function inUse(s: AdminSummary, scans: ImageScan[]): ImageScan[] {
+  if (!s.security) return scans;
   const used = new Set(s.security.images.map((i) => hex(i.image)));
-  return failed.filter((f) => used.has(hex(f.digest)));
+  return scans.filter((f) => used.has(hex(f.digest)));
 }
 
 /** Teams that still exist (retired ones included). */
@@ -175,7 +197,10 @@ export function sectionStates(s: AdminSummary): Partial<Record<string, State>> {
     states.people = toFinish > 0 ? { tone: "warn", text: `${String(toFinish)} to finish` } : { tone: "ok", text: String(s.people.length) };
   }
   if (s.sso) states["sign-in"] = s.sso.enabled ? { tone: "ok", text: s.sso.label || "On" } : { tone: "off", text: "Off" };
-  if (s.tokens) states.tokens = s.tokens.length > 0 ? { tone: "ok", text: String(s.tokens.length) } : { tone: "off", text: "None" };
+  if (s.tokens) {
+    const working = workingTokens(s.tokens).length;
+    states.tokens = working > 0 ? { tone: "ok", text: String(working) } : { tone: "off", text: "None" };
+  }
   if (s.catalog) states.catalog = catalogState(s.catalog);
   if (s.imagePolicy) {
     states.images = !s.imagePolicy.exists
@@ -187,7 +212,7 @@ export function sectionStates(s: AdminSummary): Partial<Record<string, State>> {
   if (s.install && !s.install.scanning) states.scans = { tone: "off", text: "Off" };
   else if (s.scans) {
     const failed = failingInUse(s).length;
-    const unscanned = s.scans.filter((x) => x.status === "error").length;
+    const unscanned = unscannedInUse(s).length;
     states.scans = failed > 0 ? { tone: "err", text: `${String(failed)} failed` } : unscanned > 0 ? { tone: "warn", text: `${String(unscanned)} not scanned` } : { tone: "ok", text: "Passing" };
   }
   if (s.gateway) states.gateway = !s.gateway.enabled ? { tone: "off", text: "Off" } : s.gateway.closedMessage ? { tone: "warn", text: "Closed" } : { tone: "ok", text: "Open" };

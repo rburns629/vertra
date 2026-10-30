@@ -39,6 +39,7 @@ import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { Pill } from "../../components/Pill";
 import { useEnvironment } from "../../environment";
 import { when } from "../../time";
+import { useAdminChanged } from "./summary";
 import { AdminCard, KeyValues } from "./parts";
 
 const mono = { fontFamily: "fontFamilyMono", fontSize: 13 } as const;
@@ -111,6 +112,7 @@ function AddPerson({ teams, onAdded }: { teams: Team[]; onAdded: () => void }) {
   // Only teams someone can still join.
   const joinable = teams.filter((t) => !t.retiredAt && !t.deletedAt).map((t) => t.name);
 
+  const changed = useAdminChanged();
   async function add(): Promise<void> {
     setError(null);
     setCreated(null);
@@ -121,6 +123,7 @@ function AddPerson({ teams, onAdded }: { teams: Team[]; onAdded: () => void }) {
       setChosen([]);
       setAdmin(false);
       onAdded();
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't add them.");
     } finally {
@@ -250,6 +253,7 @@ export function PeopleTab() {
     listAllTeams().then(setTeams).catch(() => undefined);
   }, [load]);
 
+  const changed = useAdminChanged();
   async function act(action: () => Promise<void>, done: string): Promise<void> {
     setBusy(true);
     setError(null);
@@ -257,6 +261,7 @@ export function PeopleTab() {
       await action();
       setNotice(done);
       load();
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "That didn't work.");
     } finally {

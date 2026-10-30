@@ -14,6 +14,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { DEFAULT_TOKEN_DAYS, expiryText, TokenLifetime } from "../../components/TokenLifetime";
 import { AdminCard, Aside } from "./parts";
+import { useAdminChanged, workingTokens } from "./summary";
 import { AUTOMATION_SCOPES, ApiError, createAutomationToken, listAutomationTokens, revokeToken, type AutomationToken } from "../../api";
 
 /** Platform-wide tokens for automation: each holds
@@ -43,6 +44,7 @@ export function AutomationTokensCard() {
 
   useEffect(reload, []);
 
+  const changed = useAdminChanged();
   async function handleCreate(): Promise<void> {
     setError(null);
     setJustIssued(null);
@@ -52,6 +54,7 @@ export function AutomationTokensCard() {
       setJustIssued({ label: result.label, token: result.token });
       setLabel("");
       reload();
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
@@ -65,6 +68,7 @@ export function AutomationTokensCard() {
     try {
       await revokeToken(revoking.id);
       reload();
+      changed();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Revoke failed.");
     } finally {
@@ -102,7 +106,7 @@ export function AutomationTokensCard() {
 
   return (
     <>
-    <AdminCard title="Tokens" status={tokens && <Aside>{tokens.length} active</Aside>}>
+    <AdminCard title="Tokens" status={tokens && <Aside>{workingTokens(tokens).length} active</Aside>}>
         <Typography variant="body2" color="text.secondary">
           For platform automation of your own. A token can do only what's ticked below. It
           belongs to no team, so it can't read secrets, submit tasks, or create other tokens.

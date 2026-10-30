@@ -15,7 +15,7 @@ import { Pill } from "../../components/Pill";
 import { useEnvironment } from "../../environment";
 import { when } from "../../time";
 import { AdminCard, Dot, PILL_TONE, SrOnly, TONE_WORD, type Tone } from "./parts";
-import { auditState, blocksRun, catalogState, failingInUse, liveTeams, policiesState, type AdminSummary } from "./summary";
+import { auditState, blocksRun, catalogState, failingInUse, unscannedInUse, workingTokens, liveTeams, policiesState, type AdminSummary } from "./summary";
 
 const code = (text: string) => (
   <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: "0.92em" }}>
@@ -99,6 +99,17 @@ function needs(s: AdminSummary, ssoLabel: string): Need[] {
   } else if (failed.length > 1) {
     out.push({ tone: "err", part: "Image scans", title: `${String(failed.length)} images failed their scan`, detail: "They can't run until they're rebuilt, or an admin accepts each with a reason.", action: "Review the scans", to: "/admin/scans" });
   }
+  const unscanned = s.install?.scanning === false ? [] : unscannedInUse(s);
+  if (unscanned.length > 0) {
+    out.push({
+      tone: "warn",
+      part: "Image scans",
+      title: `${plural(unscanned.length, "image")} in use couldn't be scanned`,
+      detail: "A step can't start with one until a scan succeeds: the reason is on each, with Rescan.",
+      action: "See the scans",
+      to: "/admin/scans",
+    });
+  }
   if (s.imagePolicy && (!s.imagePolicy.exists || s.imagePolicy.allowed.length === 0)) {
     out.push({
       tone: "err",
@@ -170,19 +181,46 @@ function needs(s: AdminSummary, ssoLabel: string): Need[] {
   return out;
 }
 
+/** The parts Needs you reads, by name: one that couldn't be read is said. */
+const UNREAD_PARTS: [keyof AdminSummary, string][] = [
+  ["people", "People"],
+  ["catalog", "the catalog"],
+  ["imagePolicy", "image sources"],
+  ["scans", "image scans"],
+  ["policies", "cluster policies"],
+  ["audit", "the audit log's copy"],
+  ["chat", "the chat agent"],
+  ["gateway", "the gateway"],
+];
+
 /** What needs an admin: each with what it means and the section that settles it. */
 export function NeedsYou({ summary }: { summary: AdminSummary }) {
   const ssoLabel = summary.sso?.label ?? "";
   const items = needs(summary, ssoLabel);
   const urgent = items.filter((i) => i.tone !== "off").length;
   const worst: Tone = items.some((i) => i.tone === "err") ? "err" : urgent > 0 ? "warn" : "ok";
+  // Parts it couldn't read: it can't say they're fine.
+  const unread = UNREAD_PARTS.filter(([key]) => summary[key] === null).map(([, name]) => name);
   return (
     <AdminCard
       title="Needs you"
       accent={urgent > 0 ? "warning" : undefined}
-      status={urgent > 0 ? <Pill tone={PILL_TONE[worst]}>{plural(urgent, "thing")}</Pill> : <Pill tone="success">Nothing now</Pill>}
+      status={
+        urgent > 0 ? (
+          <Pill tone={PILL_TONE[worst]}>{plural(urgent, "thing")}</Pill>
+        ) : unread.length > 0 ? (
+          <Pill tone="warning">Couldn&apos;t read {unread.length}</Pill>
+        ) : (
+          <Pill tone="success">Nothing now</Pill>
+        )
+      }
     >
-      {items.length === 0 && (
+      {unread.length > 0 && (
+        <Typography variant="body2" color="text.secondary">
+          Couldn&apos;t read {unread.join(", ")}, so this can&apos;t say {unread.length === 1 ? "it's" : "they're"} fine. Reload to try again.
+        </Typography>
+      )}
+      {items.length === 0 && unread.length === 0 && (
         <Typography variant="body2" color="text.secondary">
           Nothing needs you: every part reads as it should.
         </Typography>
@@ -220,7 +258,8 @@ export function NeedsYou({ summary }: { summary: AdminSummary }) {
 }
 
 interface Step {
-  done: boolean;
+  /** null: its part couldn't be read, so it isn't said either way. */
+  done: boolean | null;
   title: string;
   /** Said once it's done, in the strip that replaces the checklist. */
   doneText: string;
@@ -233,35 +272,35 @@ function stepsOf(s: AdminSummary): Step[] {
   const people = s.people?.length ?? 0;
   return [
     {
-      done: Boolean(s.catalog?.release && s.catalog.appliedAt),
+      done: s.catalog === null ? null : Boolean(s.catalog.release && s.catalog.appliedAt),
       title: "Connect the catalog",
       doneText: "Catalog connected",
       to: "/admin/catalog",
       how: <>Make the repository your teams publish from: {code("vertra catalog create")}. Its first release is pulled within minutes.</>,
     },
     {
-      done: Boolean(s.imagePolicy && s.imagePolicy.allowed.length > 0),
+      done: s.imagePolicy === null ? null : s.imagePolicy.allowed.length > 0,
       title: "Allow an image source",
       doneText: "An image source allowed",
       to: "/admin/images",
       how: <>The registry your catalog&apos;s CI pushes to: set at install, or in Image sources.</>,
     },
     {
-      done: teams > 0,
+      done: s.teams === null ? null : teams > 0,
       title: "Have a team",
       doneText: plural(teams, "team"),
       to: "/teams",
       how: <>A team folder in the catalog makes one; or create one on the <Link component={RouterLink} to="/teams">Teams</Link> page.</>,
     },
     {
-      done: people > 1,
+      done: s.people === null ? null : people > 1,
       title: "Add people",
       doneText: plural(people, "person", "people"),
       to: "/admin/people",
       how: <>On the <Link component={RouterLink} to="/admin/people">People</Link> section, in the teams they work on.</>,
     },
     {
-      done: Boolean(s.install?.ssoProvider),
+      done: s.install === null ? null : Boolean(s.install.ssoProvider),
       title: "Optional: single sign-on",
       doneText: "Single sign-on",
       to: "/admin/sign-in",
@@ -278,6 +317,8 @@ function stepsOf(s: AdminSummary): Step[] {
 export function FirstRunChecklist({ summary }: { summary: AdminSummary }) {
   const steps = stepsOf(summary);
   const needed = steps.filter((s) => !s.title.startsWith("Optional"));
+  // A step whose part couldn't be read isn't called undone: no checklist then (Needs you says what wasn't read).
+  if (needed.some((s) => s.done === null)) return null;
   const done = needed.filter((s) => s.done).length;
 
   if (done === needed.length) {
@@ -425,12 +466,13 @@ export function EveryPart({ summary: s }: { summary: AdminSummary }) {
     });
   }
   if (s.tokens) {
-    const soon = s.tokens.filter((t) => t.expiresAt && daysUntil(t.expiresAt) <= 14).sort((a, b) => (a.expiresAt ?? "").localeCompare(b.expiresAt ?? ""))[0];
+    const working = workingTokens(s.tokens);
+    const soon = working.filter((t) => t.expiresAt && daysUntil(t.expiresAt) <= 14).sort((a, b) => (a.expiresAt ?? "").localeCompare(b.expiresAt ?? ""))[0];
     people.push({
       name: "Automation tokens",
       to: "/admin/tokens",
-      tone: s.tokens.length > 0 ? "ok" : "off",
-      detail: s.tokens.length === 0 ? "None issued." : `${String(s.tokens.length)} active${soon?.expiresAt ? `; ${soon.label} expires in ${plural(Math.max(daysUntil(soon.expiresAt), 0), "day")}` : ""}.`,
+      tone: working.length > 0 ? "ok" : "off",
+      detail: working.length === 0 ? (s.tokens.length === 0 ? "None issued." : "None working: every one has expired.") : `${String(working.length)} active${soon?.expiresAt ? `; ${soon.label} expires in ${plural(daysUntil(soon.expiresAt), "day")}` : ""}.`,
       where: "here",
     });
   }
@@ -478,15 +520,16 @@ export function EveryPart({ summary: s }: { summary: AdminSummary }) {
     const scans = s.scans ?? [];
     const failed = scans.filter(blocksRun).length;
     const inUse = failingInUse(s).length;
+    const unscanned = unscannedInUse(s).length;
     const passed = scans.filter((x) => x.status === "passed").length;
     const accepted = scans.filter((x) => x.status === "failed" && x.acceptedReason).length;
     catalog.push({
       name: "Image scans",
       to: "/admin/scans",
-      tone: !s.install.scanning ? "off" : inUse > 0 ? "err" : "ok",
+      tone: !s.install.scanning ? "off" : inUse > 0 ? "err" : unscanned > 0 ? "warn" : "ok",
       detail: !s.install.scanning
         ? <>Off: images run unscanned. {code("scanning.enabled")}</>
-        : `On. ${String(passed)} passed, ${String(failed)} failed${failed > inUse ? ` (${inUse === 0 ? "none" : String(inUse)} in use)` : ""}, ${String(accepted)} accepted.`,
+        : `On. ${String(passed)} passed, ${String(failed)} failed${failed > inUse ? ` (${inUse === 0 ? "none" : String(inUse)} in use)` : ""}, ${String(accepted)} accepted${unscanned > 0 ? `; ${String(unscanned)} in use couldn't be scanned` : ""}.`,
       where: "both",
     });
   }
