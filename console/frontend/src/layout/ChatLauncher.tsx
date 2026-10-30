@@ -30,6 +30,8 @@ export function AskProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState<string | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [opened, setOpened] = useState(false);
+  // A question a page opened it with: a new object each time, so the same words twice still fill the box.
+  const [question, setQuestion] = useState<{ text: string } | null>(null);
 
   useEffect(() => {
     getChatSettings()
@@ -40,8 +42,9 @@ export function AskProvider({ children }: { children: ReactNode }) {
   const ask = useMemo(
     () => ({
       model,
-      open: () => {
+      open: (text?: string) => {
         if (typeof model !== "string") return;
+        if (text) setQuestion({ text });
         setOpen(true);
         setOpened(true);
       },
@@ -68,7 +71,7 @@ export function AskProvider({ children }: { children: ReactNode }) {
                 </Box>
               }
             >
-              <ChatPanel model={model} width={PANEL_WIDTH} onClose={() => { setOpen(false); }} />
+              <ChatPanel model={model} width={PANEL_WIDTH} question={question} onClose={() => { setOpen(false); }} />
             </Suspense>
           )}
         </Drawer>
@@ -95,7 +98,7 @@ export function ChatLauncher({ placement, compact = false }: { placement: "sideb
     placement === "sidebar" ? (
       <ListItemButton
         disabled={off}
-        onClick={open}
+        onClick={() => { open(); }}
         aria-label="Ask Vertra"
         sx={{
           // Its own height: the sidebar is a column, and ListItemButton grows to fill one.
@@ -125,7 +128,7 @@ export function ChatLauncher({ placement, compact = false }: { placement: "sideb
         )}
       </ListItemButton>
     ) : (
-      <IconButton aria-label="Ask Vertra" disabled={off} onClick={open}>
+      <IconButton aria-label="Ask Vertra" disabled={off} onClick={() => { open(); }}>
         <ChatIcon fontSize="small" />
       </IconButton>
     );

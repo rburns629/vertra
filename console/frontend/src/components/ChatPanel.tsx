@@ -244,7 +244,18 @@ function Rate({ question, turn, team, model }: { question: string; turn: Extract
  * nothing), so it's bounded by the model's context window: the panel says
  * when it's filling, and offers a new one.
  */
-export function ChatPanel({ model, width, onClose }: { model: string; width: { xs: string; sm: number }; onClose: () => void }) {
+export function ChatPanel({
+  model,
+  width,
+  question,
+  onClose,
+}: {
+  model: string;
+  width: { xs: string; sm: number };
+  /** A question a page opened the panel with: put in the box, for the person to send or change. */
+  question?: { text: string } | null;
+  onClose: () => void;
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const teams = user?.teamNames ?? [];
@@ -267,6 +278,10 @@ export function ChatPanel({ model, width, onClose }: { model: string; width: { x
     setTurns([]);
     setError(null);
   }
+
+  useEffect(() => {
+    if (question) setDraft(question.text);
+  }, [question]);
 
   // Leaving the page stops a question in flight: no more model calls for it.
   useEffect(() => () => asking.current?.abort(), []);

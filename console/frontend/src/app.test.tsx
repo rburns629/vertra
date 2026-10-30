@@ -455,7 +455,19 @@ describe("the docs", () => {
   it("offers Ask Vertra from the help when there's a model", async () => {
     await renderAt("/docs", MEMBER, { ...DOCS, "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" } });
     fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra instead" }));
-    expect(await screen.findByLabelText("Your question")).toBeTruthy();
+    expect(((await screen.findByLabelText("Your question")) as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("opens Ask with a page's question in the box (useAsk().open(question)): the help's search", async () => {
+    await renderAt("/docs", MEMBER, {
+      ...DOCS,
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "GuideService/SearchGuides": { hits: [] },
+    });
+    fireEvent.change(await screen.findByLabelText("Search the guides"), { target: { value: "rotate a bot token" } });
+    const results = await screen.findByRole("region", { name: "Search results" });
+    fireEvent.click(within(results).getByRole("button", { name: "Ask Vertra" }));
+    await waitFor(() => { expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe("rotate a bot token"); });
   });
 
   it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {

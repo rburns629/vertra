@@ -410,7 +410,8 @@ function SearchResults({ query, hits, onPick, floating = false }: { query: strin
           <Box component="span" sx={{ color: "text.secondary" }}>
             Not it? Ask in your own words; the answer cites these guides.
           </Box>
-          <Button variant="outlined" startIcon={<ChatIcon />} onClick={ask.open}>
+          {/* What was searched for, in the box, to put in your own words. */}
+          <Button variant="outlined" startIcon={<ChatIcon />} onClick={() => { ask.open(q); }}>
             Ask Vertra
           </Button>
         </Box>
@@ -483,7 +484,7 @@ function HelpHome({ categories, served }: { categories: Category[]; served: Read
             <Button
               variant="outlined"
               startIcon={<ChatIcon />}
-              onClick={ask.open}
+              onClick={() => { ask.open(); }}
               sx={{ bgcolor: "sidebar.hoverBg", borderColor: "sidebar.activeBg", color: "sidebar.textStrong", "&:hover": { bgcolor: "sidebar.activeBg", borderColor: "sidebar.accent" }, "&.Mui-focusVisible": { outlineColor: (t) => t.palette.sidebar.accent } }}
             >
               Ask Vertra instead
@@ -867,7 +868,7 @@ function StillStuck() {
   return (
     <Card sx={{ mt: 4.5, px: 2.5, py: 2.25, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1.5, fontSize: 14 }}>
       <span>Still stuck? Ask in your own words; the answer cites the sections it used.</span>
-      <Button variant="contained" startIcon={<ChatIcon />} onClick={ask.open}>
+      <Button variant="contained" startIcon={<ChatIcon />} onClick={() => { ask.open(); }}>
         Ask Vertra
       </Button>
     </Card>
