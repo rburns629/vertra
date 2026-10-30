@@ -1080,6 +1080,29 @@ describe("observe", () => {
     expect(screen.getByText("entry 41,206")).toBeTruthy();
   });
 
+  it("never calls the audit copy intact when it couldn't be compared, or hasn't been checked", async () => {
+    await renderAt("/observe?tab=audit", MEMBER, {
+      "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", compareProblem: "Couldn't list the copy: AccessDenied." },
+    });
+    expect(await screen.findByText("Not compared")).toBeTruthy();
+    expect(screen.queryByText("Chain intact")).toBeNull();
+    expect(screen.queryByText(/agrees with its copy/)).toBeNull();
+    expect(screen.getByText(/AccessDenied/)).toBeTruthy();
+    cleanup();
+
+    // Admin's side navigation, and Needs you, say the same.
+    await renderAt("/admin", ADMIN, {
+      "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", compareProblem: "Couldn't list the copy: AccessDenied." },
+    });
+    const nav = await screen.findByRole("navigation", { name: "Admin sections" });
+    expect(await within(nav).findByRole("link", { name: /^Audit log copy Not compared/ })).toBeTruthy();
+    cleanup();
+
+    await renderAt("/observe?tab=audit", MEMBER, { "ObserveService/GetAuditCopy": { enabled: true } });
+    expect(await screen.findByText("Not checked yet")).toBeTruthy();
+    expect(screen.queryByText("Chain intact")).toBeNull();
+  });
+
   it("opens the logs on an API's backends when linked from one, and says who sees which lines", async () => {
     const searched: Record<string, unknown>[] = [];
     await renderAt("/observe?tab=logs&from=api&team=payments", MEMBER, {

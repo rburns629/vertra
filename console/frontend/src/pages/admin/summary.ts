@@ -141,6 +141,9 @@ export function auditState(copy: AuditCopy): State {
   if (copy.differsAt > 0) return { tone: "err", text: "Changed since copied" };
   if (copy.brokenAt > 0) return { tone: "err", text: "Chain broken" };
   if (copy.problem) return { tone: "warn", text: "Not copying" };
+  // Intact only when it's been checked and compared: never as a default.
+  if (copy.compareProblem) return { tone: "warn", text: "Not compared" };
+  if (!copy.checkedAt) return { tone: "off", text: "Not checked yet" };
   return { tone: "ok", text: "Intact" };
 }
 
