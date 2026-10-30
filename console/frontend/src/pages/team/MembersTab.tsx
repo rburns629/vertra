@@ -226,8 +226,15 @@ export function MembersTab({
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {readOnly ? (
-                        <Pill tone={m.role === "maintainer" ? "info" : "neutral"}>{ROLE_LABELS[m.role]}</Pill>
+                      {readOnly || m.followsGroups ? (
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
+                          <Pill tone={m.role === "maintainer" ? "info" : "neutral"}>{ROLE_LABELS[m.role]}</Pill>
+                          {!readOnly && (
+                            <Typography variant="caption" color="text.secondary">
+                              Set by their groups
+                            </Typography>
+                          )}
+                        </Box>
                       ) : (
                         <TextField
                           select
@@ -248,7 +255,7 @@ export function MembersTab({
                     </TableCell>
                     <TableCell sx={{ ...WIDE, color: "text.secondary", whiteSpace: "nowrap" }}>{relativeTime(m.addedAt)}</TableCell>
                     <TableCell align="right">
-                      {!readOnly && (
+                      {!readOnly && !m.followsGroups && (
                         <Button
                           size="small"
                           color="error"

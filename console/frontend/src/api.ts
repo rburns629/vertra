@@ -295,6 +295,8 @@ export interface TeamMember {
   /** How they sign in: a password of their own, single sign-on, or both (a bot neither). */
   hasPassword: boolean;
   usesSso: boolean;
+  /** Their membership follows their single sign-on groups: not changed here. */
+  followsGroups: boolean;
 }
 
 export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
@@ -308,6 +310,7 @@ export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
     addedAt: iso(m.addedAt) ?? "",
     hasPassword: m.hasPassword,
     usesSso: m.usesSso,
+    followsGroups: m.followsGroups,
   }));
 }
 

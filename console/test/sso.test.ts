@@ -191,11 +191,18 @@ describe("a mapped team", () => {
     expect((await call(admin, "TeamService/AddMember", { team: teamB, email: `keeps@${domain}` })).failure).toBe("TEAM_FOLLOWS_SSO_GROUPS");
     const password = await createUser(`password@${domain}`, null);
     expect((await call(admin, "TeamService/AddMember", { team: teamA, email: `password@${domain}` })).code).toBe("ok");
+    // The members list says whose membership follows groups, by the same rule as the refusal.
+    const follows = async () =>
+      Object.fromEntries(
+        ((await call<{ members: { email: string; followsGroups?: boolean }[] }>(admin, "TeamService/ListMembers", { team: teamA })).body.members ?? []).map((m) => [m.email, m.followsGroups === true]),
+      );
+    expect(await follows()).toMatchObject({ [`keeps@${domain}`]: true, [`password@${domain}`]: false });
     expect((await call(admin, "TeamService/RemoveMember", { team: teamA, userId: password.id })).code).toBe("ok");
     // Unmapped, the team is managed by hand again.
     for (const m of await db.select().from(ssoGroupMappings).where(eq(ssoGroupMappings.teamId, ids[teamA] ?? ""))) {
       expect((await call(admin, "SsoService/DeleteSsoGroupMapping", { id: m.id })).code).toBe("ok");
     }
+    expect((await follows())[`keeps@${domain}`]).toBe(false);
     expect((await call(admin, "TeamService/RemoveMember", { team: teamA, userId: dev?.id })).code).toBe("ok");
   });
 });

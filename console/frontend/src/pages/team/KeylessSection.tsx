@@ -100,7 +100,7 @@ export function KeylessSection({
       title="Signs in from CI, with no token"
       action={
         !readOnly && !adding ? (
-          <Button size="small" variant="outlined" color="inherit" onClick={() => { setAdding(true); }}>
+          <Button size="small" variant="outlined" color="inherit" onClick={() => { setError(null); setAdding(true); }}>
             Sign in from CI…
           </Button>
         ) : undefined
@@ -153,7 +153,7 @@ export function KeylessSection({
             <Button size="small" variant="contained" disabled={!repo.trim()} onClick={() => void add()}>
               Add
             </Button>
-            <Button size="small" onClick={() => { setAdding(false); }}>
+            <Button size="small" onClick={() => { setError(null); setAdding(false); }}>
               Cancel
             </Button>
           </Box>

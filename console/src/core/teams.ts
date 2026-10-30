@@ -193,8 +193,7 @@ async function maintainedTeam(caller: AuthUser | undefined, name: string) {
  * here wouldn't last. Bots and password accounts are managed here as ever.
  */
 async function ensureNotFollowingGroups(team: { id: string; name: string }, person: { email: string; usesSso: boolean }): Promise<void> {
-  const sources = groupSources();
-  if (!person.usesSso || (!sources.claim && !sources.google) || !(await teamIsMapped(team.id))) return;
+  if (!person.usesSso || !(await groupsDecide(team))) return;
   throw new ApiError(
     409,
     "TEAM_FOLLOWS_SSO_GROUPS",
@@ -218,9 +217,18 @@ export async function addMember(
   await addTeamMember(user.id, team.id, role);
 }
 
-/** Everyone in the team, with their roles: any member may see them. */
+/** Whether groups decide this team's single sign-on members: groups are read and one is mapped to it. */
+async function groupsDecide(team: { id: string }): Promise<boolean> {
+  const sources = groupSources();
+  return (sources.claim !== "" || sources.google) && (await teamIsMapped(team.id));
+}
+
+/** Everyone in the team, with their roles, and whose membership follows
+ * their groups (ensureNotFollowingGroups refuses changing it): any member may see them. */
 export async function members(caller: AuthUser | undefined, teamName: string) {
-  return listMembersForTeam((await memberTeam(caller, teamName)).id);
+  const team = await memberTeam(caller, teamName);
+  const [rows, decided] = await Promise.all([listMembersForTeam(team.id), groupsDecide(team)]);
+  return rows.map((m) => ({ ...m, followsGroups: decided && m.usesSso && !m.isBot }));
 }
 
 /** Refused when it would leave the team with no person who maintains it:

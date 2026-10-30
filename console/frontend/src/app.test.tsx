@@ -1653,6 +1653,36 @@ describe("a team's members", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Maintainer/ }));
     expect(screen.getByRole("button", { name: /^Maintainer/ }).getAttribute("aria-pressed")).toBe("true");
   });
+
+  it("offer no role change or removal for someone whose groups decide it", async () => {
+    await renderAt("/teams/payments", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TeamService/ListMembers": {
+        members: [
+          { id: "u1", email: "ana@acme.com", hasPassword: true, role: "TEAM_ROLE_MAINTAINER" },
+          { id: "u3", email: "sam@acme.com", usesSso: true, followsGroups: true, role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "2 people" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "ana@acme.com's role" })).toBeTruthy();
+    expect(screen.queryByRole("combobox", { name: "sam@acme.com's role" })).toBeNull();
+    expect(screen.getByText("Set by their groups")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
+  });
+});
+
+describe("a team's bots", () => {
+  it("call a bot whose only token has expired not active", async () => {
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": {
+        bots: [{ id: "b1", email: "payments-ci@bots.vertra.local", tokens: [{ tokenId: "k1", label: "ci", expiresAt: "2020-01-01T00:00:00Z" }] }],
+      },
+    });
+    expect(await screen.findByText(/No working token/)).toBeTruthy();
+    expect(screen.queryByText("Active")).toBeNull();
+  });
 });
 
 describe("a team's settings", () => {
