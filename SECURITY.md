@@ -32,8 +32,8 @@ policies they install (`helm/charts/`).
 Not in scope:
 
 - Gaps already documented as not yet enforced in
-  [`docs/security-model.md`](docs/security-model.md) (for example, plain
-  traffic inside the cluster). They're tracked in
+  [`docs/security-model.md`](docs/security-model.md#not-yet-enforced) (for
+  example, reads of a run's outputs and logs aren't audited). They're tracked in
   [`TODO.md`](TODO.md); reports that show a new way to exploit them are still
   welcome.
 - The fixed admin password in the local `kind` settings

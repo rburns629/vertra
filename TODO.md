@@ -20,11 +20,13 @@ Azure last.
    Alertmanager, so today they need a port-forward).
 3. The run page saying whether a manual retry is safe (the action's
    `idempotent`).
-4. Readiness checks (`check`) for the gcp and aws samples' products.
-5. What can be built before the billed run: the reverse cross-cloud
+4. ~~Readiness checks (`check`) for the gcp and aws samples' products~~
+   (built 2026-10-30, unit and contract tests; proven in the billed run).
+5. What can be built before the billed run: ~~the reverse cross-cloud
    catalog read (ECR from GKE), an aws reader of another account's ECR,
-   `vertra`'s command for the catalog owner's grant, policy-controller on
-   EKS, and a sample federating with its product token.
+   `vertra`'s command for the catalog owner's grant~~ (built 2026-10-30,
+   below), ~~policy-controller on EKS~~ (proven 2026-10-27); left: a sample
+   federating with its product token.
 6. The rest of the performance work (below): sustained and higher
    scenarios, failure cases, API load through the console.
 7. The billed proof run, one session per cloud, destroyed after (decided

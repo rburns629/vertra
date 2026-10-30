@@ -7,12 +7,14 @@ reviewed catalog and every team's secrets stay sealed off from the rest.**
 graph, so it never loops back. Steps run in order, each one building on what
 the steps before it produced, and every run moves forward to an end.
 
-> **Status: 0.x, not production-ready yet.** The engine, console and
-> isolation model work and are tested on kind and GKE. Still missing for
-> production: TLS in front of the console (an operator's job today), single
-> sign-on, network isolation between team namespaces, and proof on EKS and
-> AKS. See [`docs/security-model.md`](docs/security-model.md) for exactly
-> what is and isn't enforced today, and [`TODO.md`](TODO.md) for the plan.
+> **Status: 0.x, not production-ready yet.** The engine, console, API
+> gateway and isolation model work, and are tested on kind, GKE and EKS:
+> single sign-on, TLS inside the cluster and in front of the console, and
+> network isolation between team namespaces are all in. Still to come before
+> 1.0: Azure, a proof run of the newest features on each cloud, and the gaps
+> listed under "Not yet enforced" in
+> [`docs/security-model.md`](docs/security-model.md#not-yet-enforced). See
+> [`TODO.md`](TODO.md) for the plan.
 
 ## What it does
 
@@ -109,7 +111,7 @@ to run again (it rebuilds from your checkout).
 
 Sign in as `admin@example.com` with the password `vertra-local`. That
 password is set only for this local cluster; never use it anywhere else.
-Then open **Executions → Submit new**, paste the JSON above, and watch both
+Then open **Runs → Submit new**, paste the JSON above, and watch both
 steps finish.
 
 `make logs` follows every component's logs, `make down` stops the cluster
@@ -126,21 +128,26 @@ then pushed to the local registry and registered with the console.
 
 ```
 console/   the authenticated front door: sign-in, teams, bots, secrets,
-           products, and submitting and following runs. TypeScript (Fastify,
-           React). The only way in for people and pipelines.
+           the catalog, and ordering and following runs. TypeScript
+           (Fastify, React). The only way in for people and pipelines.
 kernel/    the DAG engine: kernel-api accepts runs, kernel-scheduler claims
            ready steps, starts each as a Kubernetes Job, collects its result
            and releases the steps that depend on it. Go (Connect,
            client-go). Deliberately blind to what any step does.
+gateway/   the API gateway: forwards calls to teams' API products, exactly
+           as each one's OpenAPI document describes. Go.
+cli/       vertra, the installer: a cloud (Google Cloud or AWS) or an
+           existing cluster, from one config file. Go, with OpenTofu.
 helm/      the two Helm charts (execution-kernel, execution-console) and the
            admission policies that guard the cluster, plus per-environment
            settings.
+catalog-template/  what a new catalog repository of products starts as.
 docs/      design and reference docs, and the generated architecture diagrams.
 examples/  fake products for local demos and tests.
 ```
 
-`kernel/` and `console/` are independent projects with their own
-dependencies, images and tests; they share a repository so they deploy
+`kernel/`, `console/`, `gateway/` and `cli/` are independent projects with their own
+dependencies and tests; they share a repository so they deploy
 together. Steps themselves live in a separate **catalog** repository, where
 adding a product is a reviewed pull request; `catalog-template/` is what a
 new one starts as.

@@ -15,30 +15,33 @@ request needs. For security issues, see [`SECURITY.md`](SECURITY.md) instead.
 
 ## Setting up
 
-The repository holds two independent projects. Build and test each one from
+The repository holds four independent projects. Build and test each one from
 inside its own directory.
 
-**Kernel** (Python 3.12 or later, `cd kernel`):
+**Kernel**, **gateway** and **CLI** (Go 1.26 or later; `cd kernel`,
+`cd gateway` or `cd cli`):
 
 ```
-pip install -e ".[dev]"
-ruff check .
-mypy .
+go vet ./... && gofmt -l .
+go test ./...
 ```
 
-**Console** (Node 22, `cd console`, and separately `cd console/frontend`):
+CI runs them in the pinned `golang:1.27-alpine` image, as `make test` does
+for the kernel.
+
+**Console** (Node 26, `cd console`, and separately `cd console/frontend`):
 
 ```
 npm ci
 npm run typecheck && npm run lint
-cd frontend && npm ci && npm run build && npm run lint
+cd frontend && npm ci && npm run build && npm run lint && npm test
 ```
 
 **Tests** (from the repository root, needs Docker):
 
 ```
-make test             # starts a test Postgres, migrates it, runs every suite (kernel, console, frontend)
-make test-db          # just the database; then run pytest or npm test yourself
+make test             # starts a test Postgres, migrates it, runs the kernel's, console's and frontend's tests
+make test-db          # just the databases, migrated; then run a suite yourself
 make test-db-down     # removes it
 ```
 
@@ -48,20 +51,22 @@ Postgres you already run and from any Vertra install. To run a suite by hand
 against it, set `TEST_DATABASE_URL`:
 
 ```
-cd kernel && TEST_DATABASE_URL=postgresql+asyncpg://postgres@127.0.0.1:55432/execution_kernel_test pytest
+cd kernel && TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/execution_kernel_test go test ./...
 cd console && TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/execution_console_test npm test
+cd gateway && TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/execution_console_test go test ./...
 ```
 
-If `alembic` and `pytest` aren't on your PATH, point make at them:
-`make test ALEMBIC=.venv/bin/alembic PYTEST=.venv/bin/pytest`.
+The gateway's tests read the console's migrated test database.
 
 The charts' admission policies have their own check, against a real
 cluster (it adds a few objects of its own under a "policytest" name, and removes them after):
 `bash helm/tests/admission-policies.sh`. CI runs it on kind, with the
 kernel's Kubernetes tests.
 
-Kubernetes tests skip themselves unless the current `kubectl` context is a
-reachable `kind` cluster with an `execution-kernel` namespace. To run the whole
+The kernel's Kubernetes tests (`TestKind*`) skip themselves unless the
+current `kubectl` context is a reachable `kind` cluster with an
+`execution-kernel` namespace; run them from your machine, not the Go
+container. To run the whole
 platform locally, see the README's "Try it locally".
 
 ## Pull requests
@@ -77,7 +82,11 @@ platform locally, see the README's "Try it locally".
     `docs/architecture/generate.py` (don't hand-edit the `.drawio`)
   - a database schema change means updating
     `console/docs/06-database-schemas.md`
-- **CI must pass**: tests, linters, type checks, Helm rendering, and the
+  - a change to a platform doc (`docs/*.md`, `docs/clouds/`) means
+    `make console-docs`, which copies it into the console's Docs page
+  - a change to the console's API means `make proto`
+- **CI must pass**: tests, linters, type checks, Helm rendering and the
+  alert rules' tests, and the
   security scans (Trivy, OSV, Semgrep, gitleaks).
 - **Never commit a secret**, not even a placeholder value that looks real.
 
@@ -101,7 +110,7 @@ By contributing, you agree that your contributions are licensed under the
 # SPDX-License-Identifier: MIT
 ```
 
-(`// SPDX-License-Identifier: MIT` in TypeScript.)
+(`// SPDX-License-Identifier: MIT` in Go and TypeScript.)
 
 ## Conduct
 
