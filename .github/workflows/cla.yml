@@ -47,5 +47,5 @@ jobs:
             once, by commenting the sentence below. You keep the copyright in
             your work.
           custom-allsigned-prcomment: Every author of this pull request has accepted the CLA.
-          signed-commit-message: "cla: $contributorName accepted it in #$pullRequestNo"
+          signed-commit-message: "cla: $contributorName accepted it"  # the action fills in only $contributorName, $owner and $repo
           create-file-commit-message: "cla: the file of who accepted the CLA"

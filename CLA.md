@@ -79,4 +79,3 @@ separately from any Contribution, identifying its source and any license or
 other restriction you know of (including related patents, trademarks and
 license agreements), and conspicuously marking it "Submitted on behalf of a
 third party: [named here]".
-
