@@ -74,7 +74,8 @@ function Answer({ turn, onOpenCart, onLeave }: { turn: Extract<Turn, { role: "as
         if (!cited) {
           // The console's own pages open in it (a reload would lose the conversation);
           // anything else in a new tab, never in place of the console.
-          if (href?.startsWith("/") && !href.startsWith("//")) {
+          // A path on this console: "/" then not another "/" or a "\\" (which browsers read as another host).
+          if (href && /^\/(?![/\\])/.test(href)) {
             return (
               <Link href={href} onClick={(e) => { e.preventDefault(); navigate(href); onLeave(); }}>
                 {children}
