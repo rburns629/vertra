@@ -630,7 +630,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (Schedule…) and kept on the team's Schedules tab. Each run is started as
   the bot, through the same checks, by whichever console claims it first;
   a refused start is kept and told to the maintainers (`scheduleRunner.ts`,
-  console migration 0024). Left: schedules waking a sleeping install.
+  console migration 0024). A sleeping install wakes for them (done
+  2026-10-24, below).
 - [x] **P2: caps per product** (done 2026-10-27, proven on kind):
   product.yaml's `maxRunning` (1 to 100) caps how many of the product's
   steps, all its actions sharing it, are claimed or running at once; the
@@ -1122,15 +1123,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   manage 160 to 515 steps a second. Next:
   1. Not yet seen on GKE or EKS at 50/100: watch the scheduler's log for
      throttling and the API server's for rejections on the next deploy.
-  2. Read a finished Pod's status instead of waiting for its Job complete
-     (about 2.5 s a step), if that's still the largest part.
-  3. A pass stamps what it records with its start: under a long pass a
-     step's completion time is early by up to the pass.
-  4. The sustained and higher scenarios; profiling (pprof on a private
-     listener); API load through the console; the failure cases not yet
-     covered (a create that times out but happened, Postgres or the API
-     server away, cancelling as a step finishes); repeated runs compared;
-     a manual or nightly CI job. And `perf/`'s own tests in CI.
+  2. Done 2026-10-29 (phase 2, perf/README.md): a step is done when its
+     container is (completion lag p50 2.6 s to 1.2 s; burst 3.24 to 3.82
+     steps/s; a 20-step chain 84 s to 70.5 s).
+  3. Done 2026-10-29: a pass stamps with its time as it goes.
+  4. Profiling done (2026-10-29: `profiling.enabled`; the scheduler used
+     under 4% of a core in a burst: the node is the limit), and `perf/`'s
+     own tests in CI. Left: the sustained and higher scenarios; API load
+     through the console; the failure cases not yet covered (a create that
+     times out but happened, Postgres or the API server away, cancelling as
+     a step finishes); repeated runs compared; a manual or nightly CI job.
 - [ ] **A chat agent, then an MCP server (decision 24; the chat agent built
   2026-10-28: `console/src/chat/`, `ChatService`, the Ask panel. Seen on
   kind with Qwen 27B: a backups question answered in 229 s (the laptop

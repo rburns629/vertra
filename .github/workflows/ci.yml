@@ -17,6 +17,8 @@ name: ci
 #             (backup destinations, a shared database, policies off), so a
 #             change that breaks a template fails here, not at helm upgrade.
 #   cli       gofmt, go vet and the unit tests of vertra (its catalog commands included), and macOS builds.
+#   perf      gofmt, go vet and the benchmark driver's own tests (the
+#             benchmarks themselves run by hand: perf/README.md).
 #   opentofu  init, validate and fmt of the CLI's OpenTofu modules.
 #   workflows actionlint over .github/workflows and the catalog template's.
 #   catalog-template  the template a new catalog starts from, with every
@@ -281,6 +283,23 @@ jobs:
       - run: apk add --no-cache git
       - run: go test ./...
       - run: GOOS=darwin GOARCH=arm64 go build -o /dev/null ./cmd/vertra
+
+  perf:
+    # The benchmark driver's own tests (its workloads' shapes and caps, its
+    # statistics), in the CLI's pinned Go image. The benchmarks themselves
+    # need a kind cluster of their own and run by hand (perf/README.md).
+    runs-on: ubuntu-latest
+    container: golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd
+    defaults:
+      run:
+        working-directory: perf
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "run gofmt -w on these"; exit 1; }
+      - run: go vet ./...
+      - run: go test ./...
 
   proto:
     # The console's API (proto/): its protos lint, nothing breaks what the

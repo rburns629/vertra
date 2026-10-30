@@ -33,6 +33,9 @@ container sharing the laptop's CPUs, memory and disk with everything else.
   pgbench from a Pod of the kernel release (the NetworkPolicy admits only
   those), over TLS, in a scratch database it drops after, with 8 and 64
   clients at once, writes (TPC-B-like) and reads (select-only).
+- Profiling: the kernel chart's `profiling.enabled` serves Go's profiler on
+  127.0.0.1:6060 inside the kernel's Pods (`kubectl port-forward`, then
+  `go tool pprof http://localhost:16060/debug/pprof/profile?seconds=25`).
 - `kind-kernel.yaml`, `kind-console.yaml`: the perf cluster's settings on
   top of `helm/values/kind/`: at most 40 steps running at once (so a large
   scenario queues instead of starting hundreds of Pods on a laptop), and a
@@ -172,11 +175,46 @@ Writes are gp3's: each commit waits for the volume, whatever the size.
 Reads under load double at `resilient` (its CPU and memory): `minimal`'s
 quarter vCPU, on a node it shares, is what 64 clients at once run out of.
 
+## Phase 2 (2026-10-29)
+
+The same machine and cluster; the kernel's client at 50/100.
+
+**1. A step is done when its container is.** The kernel now reads a
+finished Pod (a Job runs one Pod, never restarted, so its container's end
+is final) instead of waiting for the Job controller to mark the Job, and
+stamps what a pass records with the pass's time as it goes, not its start
+(no more negative completion lags). Every run correct:
+
+| | phase 1 (50/s) | phase 2 |
+| --- | --- | --- |
+| baseline: completion lag, p50 | 2.6 s | 1.2 s |
+| baseline: end to end, p50 | 3.2 s | 2.8 s |
+| burst: wall, steps/s | 33 s, 3.24 | 28 s, 3.82 |
+| burst: completion lag, p50 | 5.3 s | 3.3 s |
+| dependency (10 × 20): wall, steps/s | 84 s, 2.44 | 70.5 s, 2.93 |
+| dependency: completion lag, p50 | 2.9 s | 1.2 s |
+
+**2. The scheduler isn't the constraint.** With `profiling.enabled` (Go's
+profiler on 127.0.0.1:6060 in each kernel Pod, reached with `kubectl
+port-forward deploy/kernel-execution-kernel-scheduler 16060:6060`), a
+25-second CPU profile in the middle of a burst: 950 ms of CPU, under 4% of
+one core, nearly all of it network I/O, TLS and decoding Kubernetes
+objects. What's left is the node: in a burst, containers take 6.4 s to
+start (p50) with 40 starting at once on one kind node, and steps queue
+behind the 40-step cap.
+
+**3. Found on the way: a clean image's scan recorded as failed.** Under
+the burst's load, the console read a finished scan Job before its Pod's
+log could be, called the empty output a failed scan, and refused every run
+of the image for 15 minutes; the first attempt here measured nothing. The
+console now waits for a finished scan's output (up to five minutes), and a
+scan that can't be read says why.
+
 ## Next (TODO.md)
 
-Whether to read a
-finished Pod's status instead of waiting for its Job (about 2.5 s a step);
-the sustained and higher scenarios; profiling; the remaining failure cases
-(a create that times out but happened, Postgres or the API server away,
-cancelling as a step finishes); API load through the console; repeated runs
-compared for regressions; a manual or nightly CI job.
+On GKE and EKS: the client limits under a real API server, the scheduler's
+throttling log, container start-up on real nodes. Here: the sustained and
+higher scenarios; the remaining failure cases (a create that times out but
+happened, Postgres or the API server away, cancelling as a step finishes);
+API load through the console; repeated runs compared for regressions; a
+manual or nightly CI job. `perf/`'s own tests run in CI (2026-10-29).
