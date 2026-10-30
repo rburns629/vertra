@@ -137,6 +137,14 @@ rules:
       - {{ .Values.scanning.policyName | quote }}
       {{- end }}
     verbs: ["get", "update"]
+  {{- with .Values.imageSignature.policyName }}
+  # The kernel's signature policy (policy-controller's), read to say on the
+  # Admin page whether catalog images must be signed; never changed.
+  - apiGroups: ["policy.sigstore.dev"]
+    resources: ["clusterimagepolicies"]
+    resourceNames: [{{ . | quote }}]
+    verbs: ["get"]
+  {{- end }}
   {{- if .Values.writeFence.enabled }}
   # Its own write fence: read, to check it's in force before starting;
   # never changed.

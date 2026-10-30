@@ -18,6 +18,7 @@ import { countProducts, countSubmittedExecutions, countTeams, countUsers } from 
 import { auditLog, users } from "../db/schema.js";
 import { adoptTeam, catalogStatus, syncCatalog } from "../catalogSync.js";
 import { policySyncOutcomes, syncPolicies } from "../policySync.js";
+import { clusterImagePolicyExists } from "../k8s.js";
 
 const REQUIRES_ADMIN = "Requires admin access.";
 
@@ -37,7 +38,7 @@ export async function platformStats(caller: AuthUser | undefined) {
 }
 
 /** This install: the console's version and which optional parts are on. Admins only. */
-export function install(caller: AuthUser | undefined) {
+export async function install(caller: AuthUser | undefined, log: FastifyBaseLogger) {
   forbiddenUnlessAdmin(caller, REQUIRES_ADMIN);
   const signature = config.catalog.signature;
   return {
@@ -52,6 +53,56 @@ export function install(caller: AuthUser | undefined) {
     catalogSigned: signature.publicKeys.length > 0 || signature.keylessIssuer !== "",
     scanning: config.scanning.enabled,
     runRetentionDays: config.retention.executionDays,
+    ...catalogSettings(),
+    // Email: whether, where through and from whom; never its sign-in.
+    email: config.notifications.email.host !== "",
+    emailHost: config.notifications.email.host,
+    emailFrom: config.notifications.email.from,
+    monitoringProvider: config.monitoring.provider,
+    grafanaUrl: config.monitoring.grafanaUrl,
+    sessionLength: config.jwtTtl,
+    auditKeepDays: config.audit.export.bucket ? config.audit.export.keepDays : 0,
+    auditLock: config.audit.export.bucket !== "" && config.audit.export.lock,
+    policySyncSeconds: config.policySyncIntervalSeconds,
+    imageSignaturesRequired: await imageSignaturesRequired(log),
+    rescanHours: config.scanning.enabled ? config.scanning.rescanHours : 0,
+  };
+}
+
+/**
+ * Whether catalog images must be signed, from the cluster: the kernel
+ * chart's signature policy exists. Undefined when the console can't tell
+ * (no policy name configured, or the cluster didn't answer): a page says
+ * so rather than guess either way.
+ */
+async function imageSignaturesRequired(log: FastifyBaseLogger): Promise<boolean | undefined> {
+  const name = config.imageSignaturePolicyName;
+  if (!name) return undefined;
+  try {
+    return await clusterImagePolicyExists(name);
+  } catch (error) {
+    log.warn({ err: error, policy: name }, "couldn't read the image signature policy");
+    return undefined;
+  }
+}
+
+/** The catalog release's settings, as the install named them; all empty with no catalog. */
+function catalogSettings() {
+  const { release, newestVersion, pollSeconds, external, signature } = config.catalog;
+  if (!release) {
+    return { catalogVersion: "", catalogPollSeconds: 0, catalogSignerKeys: 0, catalogKeylessIssuer: "", catalogKeylessSubject: "", externalCatalog: "" };
+  }
+  // <registry>/catalog-release:<tag>: the tag is latest or a version (vertra's releaseTag).
+  const at = release.lastIndexOf(":");
+  const slash = release.lastIndexOf("/");
+  const tag = at > slash ? release.slice(at + 1) : "latest";
+  return {
+    catalogVersion: newestVersion ? "newest" : tag,
+    catalogPollSeconds: pollSeconds,
+    catalogSignerKeys: signature.publicKeys.length,
+    catalogKeylessIssuer: signature.keylessIssuer,
+    catalogKeylessSubject: signature.keylessSubjectRegExp,
+    externalCatalog: external && slash > 0 ? release.slice(0, slash) : "",
   };
 }
 

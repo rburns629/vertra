@@ -8,11 +8,13 @@
  */
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { ImagePolicyConflictError, writeImagePolicyData } from "../src/k8s.js";
+import { clusterImagePolicyExists, ImagePolicyConflictError, writeImagePolicyData } from "../src/k8s.js";
 import { buildApp } from "../src/index.js";
+import { config } from "../src/config.js";
 import { failureCode, rpcClient, type RpcError } from "./rpc.js";
 
-// The cluster's image policy is the only thing faked: `stored` plays it.
+// The cluster is faked: `stored` plays the image policy, and the signature
+// policy (policy-controller's) is there unless a test says otherwise.
 let stored: { source: string; additional: string[]; version: string } | null = {
   source: "registry.example/catalog",
   additional: [],
@@ -22,6 +24,7 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
   readImagePolicyData: vi.fn(() => Promise.resolve(stored)),
   writeImagePolicyData: vi.fn(),
+  clusterImagePolicyExists: vi.fn(() => Promise.resolve(true)),
 }));
 
 let app: FastifyInstance;
@@ -73,6 +76,84 @@ describe("AdminService", () => {
     // The tests' settings: built locally, no catalog, no logs, no copy.
     expect(install).toMatchObject({ version: "development", catalog: false, logs: false, auditCopy: false });
     expect(Number(install["runRetentionDays"])).toBeGreaterThan(0);
+  });
+
+  it("says images must be signed only when the cluster's signature policy exists", async () => {
+    const token = await signIn((await makeUser({ admin: true })).email);
+    const saved = config.imageSignaturePolicyName;
+    const required = async () => (await rpc("AdminService", "GetInstall", {}, { token })).json<Record<string, unknown>>()["imageSignaturesRequired"];
+    try {
+      // No policy named (as in tests): not asked, so not said either way.
+      config.imageSignaturePolicyName = "";
+      expect(await required()).toBeUndefined();
+      expect(vi.mocked(clusterImagePolicyExists)).not.toHaveBeenCalled();
+
+      config.imageSignaturePolicyName = "kernel-execution-kernel-signed-images";
+      vi.mocked(clusterImagePolicyExists).mockResolvedValueOnce(true);
+      expect(await required()).toBe(true);
+      expect(vi.mocked(clusterImagePolicyExists)).toHaveBeenLastCalledWith("kernel-execution-kernel-signed-images");
+      // Not there, or no policy-controller (kind): not required.
+      vi.mocked(clusterImagePolicyExists).mockResolvedValueOnce(false);
+      expect(await required()).toBe(false);
+      // The cluster didn't answer: unknown, and the rest of the page still loads.
+      vi.mocked(clusterImagePolicyExists).mockRejectedValueOnce(new Error("forbidden"));
+      expect(await required()).toBeUndefined();
+    } finally {
+      config.imageSignaturePolicyName = saved;
+    }
+  });
+
+  it("names the install's settings, never a credential", async () => {
+    const token = await signIn((await makeUser({ admin: true })).email);
+    // As a chart would set them; restored after.
+    const saved = structuredClone({ catalog: config.catalog, email: config.notifications.email, audit: config.audit, monitoring: config.monitoring });
+    const savedSignaturePolicy = config.imageSignaturePolicyName;
+    Object.assign(config.catalog, {
+      release: "us-docker.pkg.dev/other/vertra-products/catalog-release:v1.4.0",
+      newestVersion: false,
+      external: true,
+      pollSeconds: 120,
+      signature: { publicKeys: ["-----BEGIN PUBLIC KEY-----\nkey\n-----END PUBLIC KEY-----"], keylessIssuer: "https://token.actions.githubusercontent.com", keylessSubjectRegExp: "^https://github.com/acme/catalog/" },
+    });
+    Object.assign(config.notifications.email, { host: "smtp.example.com", from: "Vertra <vertra@example.com>", username: "smtp-user", passwordFile: "/var/run/secrets/vertra/smtp/password" });
+    Object.assign(config.audit.export, { bucket: "acme-audit", keepDays: 400, lock: true });
+    Object.assign(config.monitoring, { provider: "google", grafanaUrl: "https://grafana.example.com" });
+    config.imageSignaturePolicyName = "kernel-execution-kernel-signed-images";
+    try {
+      const response = await rpc("AdminService", "GetInstall", {}, { token });
+      const install = response.json<Record<string, unknown>>();
+      expect(install).toMatchObject({
+        catalogVersion: "v1.4.0",
+        catalogPollSeconds: 120,
+        catalogSignerKeys: 1,
+        catalogKeylessIssuer: "https://token.actions.githubusercontent.com",
+        catalogKeylessSubject: "^https://github.com/acme/catalog/",
+        externalCatalog: "us-docker.pkg.dev/other/vertra-products",
+        email: true,
+        emailHost: "smtp.example.com",
+        emailFrom: "Vertra <vertra@example.com>",
+        monitoringProvider: "google",
+        grafanaUrl: "https://grafana.example.com",
+        sessionLength: config.jwtTtl,
+        auditKeepDays: 400,
+        auditLock: true,
+        imageSignaturesRequired: true,
+      });
+      expect(Number(install["policySyncSeconds"])).toBeGreaterThan(0);
+      // Never the SMTP sign-in, the public keys themselves, or anything like a secret.
+      expect(response.body).not.toContain("smtp-user");
+      expect(response.body).not.toContain("/var/run/secrets");
+      expect(response.body).not.toContain("BEGIN PUBLIC KEY");
+      // Following the newest version instead of a tag.
+      config.catalog.newestVersion = true;
+      expect((await rpc("AdminService", "GetInstall", {}, { token })).json<Record<string, unknown>>()["catalogVersion"]).toBe("newest");
+    } finally {
+      Object.assign(config.catalog, saved.catalog);
+      Object.assign(config.notifications.email, saved.email);
+      Object.assign(config.audit.export, saved.audit.export);
+      Object.assign(config.monitoring, saved.monitoring);
+      config.imageSignaturePolicyName = savedSignaturePolicy;
+    }
   });
 
   it("checks the audit query", async () => {

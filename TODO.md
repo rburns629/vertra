@@ -1070,6 +1070,30 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Console
 
+- [ ] **What the redesigned pages leave out** (found building boards 9–13,
+  2026-10-30; #33–#38): each is something a board shows that the API doesn't
+  return, so the page omits it rather than guess. Group 1, mostly data the
+  console already has, is done (2026-10-30): the Runs list's starter by
+  email and running step with its attempt, how long runs are kept for
+  everyone, the Admin sections' install settings, Observe's Grafana link,
+  a team's install limits beside its own, and team.yaml's description in
+  the release, on the Teams page and the team's page. Still open:
+  - Planned already: Observe's firing alerts (item 2 of "Next, in order")
+    and whether a retry is safe (item 3).
+  - The rest, to decide one by one: which schedule started a run; what the
+    cart held for an order; the Kubernetes Job's name in "Who acted"; a
+    resource's run name; which group added a member (and a team-scoped read
+    of group mappings, and each mapping's member count); who retired a team;
+    when a CI identity was added; an API's per-team limits and the gateway's
+    default for non-admins; log search by one API; a refusal's detail apart
+    from its subject; what a catalog release applied (counts); who last
+    saved the image sources; a proposed cart's lines with product, team,
+    verb and wiring; a total for guide search; "since you last looked"
+    (a per-person last-seen time); per-team product usage and run counts;
+    sharing-change and template creation times; order choices' resource
+    details; an alert to admins when the audit copy stops or its chain
+    breaks (the board said there was one; there isn't).
+
 - [ ] **Gaps the 2026-10-30 guides found** (writing guides 10 to 16 against
   the code): no way to ask for access to an API, though `api.schema.json`
   says callers can; an API whose OpenAPI document the gateway can't load

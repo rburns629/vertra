@@ -13,6 +13,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, createUser } from "../src/db/queries.js";
 import { submittedExecutions, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { getExecutionStates } from "../src/kernel/client.js";
 import { caller } from "./rpc.js";
 
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
@@ -25,6 +26,7 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => ({
         steps: { SUCCEEDED: 3, SKIPPED: 1 },
         createdAt: "2026-10-21T10:00:00.000Z",
         updatedAt: "2026-10-21T10:06:02.000Z",
+        running: [{ taskId: "app-hosting", action: "create", attempt: 2, maxAttempts: 3 }],
       })),
     ),
   ),
@@ -41,8 +43,19 @@ const ids: string[] = [];
 let base = 0;
 
 interface Page {
-  executions: { executionId: string; name: string; state: string; template: string; steps: Record<string, number>; finishedAt?: string }[];
+  executions: {
+    executionId: string;
+    name: string;
+    state: string;
+    template: string;
+    steps: Record<string, number>;
+    finishedAt?: string;
+    submittedBy?: string;
+    submittedByEmail?: string;
+    running?: { taskId: string; action: string; attempt: number; maxAttempts: number }[];
+  }[];
   nextCursor: string;
+  runRetentionDays?: number;
 }
 
 interface Query {
@@ -146,6 +159,26 @@ describe("ListExecutions", () => {
     });
     const older = (await page({ team: ours })).executions.find((e) => e.executionId === ids[0]);
     expect(older?.template).toBe("");
+  });
+
+  it("says who started each run by email, unless that account is gone", async () => {
+    const result = await page({ team: ours });
+    const own = result.executions.find((e) => e.executionId === ids[4]);
+    expect(own?.submittedByEmail).toBe(email);
+    expect(own?.submittedBy).toBeTruthy();
+    const deleted = result.executions.find((e) => e.executionId === ids[0]);
+    expect(deleted?.submittedBy).toBeUndefined();
+    expect(deleted?.submittedByEmail).toBeUndefined();
+  });
+
+  it("says which step runs now, and its attempt", async () => {
+    const newest = (await page({ team: ours, limit: 1 })).executions[0];
+    expect(newest?.running).toEqual([{ taskId: "app-hosting", action: "create", attempt: 2, maxAttempts: 3 }]);
+    expect(vi.mocked(getExecutionStates)).toHaveBeenLastCalledWith([newest?.executionId], { running: true });
+  });
+
+  it("says how long runs are kept, to anyone who may list them", async () => {
+    expect((await page({ limit: 1 })).runRetentionDays).toBeGreaterThan(0);
   });
 
   it("narrows to the caller's own runs", async () => {

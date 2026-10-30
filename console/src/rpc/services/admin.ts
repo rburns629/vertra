@@ -105,7 +105,7 @@ export function adminService(): ServiceImpl<typeof AdminService> {
     },
 
     getInstall(_req, ctx) {
-      return install(callerOf(ctx));
+      return install(callerOf(ctx), logOf(ctx));
     },
   };
 }

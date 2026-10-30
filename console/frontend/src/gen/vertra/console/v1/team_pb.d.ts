@@ -73,6 +73,13 @@ export declare type Team = Message<"vertra.console.v1.Team"> & {
    * @generated from field: bool quota_is_default = 9;
    */
   quotaIsDefault: boolean;
+
+  /**
+   * The install's limits, which a team without its own has.
+   *
+   * @generated from field: vertra.console.v1.TeamQuota install_quota = 10;
+   */
+  installQuota?: TeamQuota | undefined;
 };
 
 /**
@@ -943,6 +950,13 @@ export declare type GetTeamProfileResponse = Message<"vertra.console.v1.GetTeamP
    * @generated from field: string owner = 8;
    */
   owner: string;
+
+  /**
+   * team.yaml's description, from the catalog; empty for a team made here.
+   *
+   * @generated from field: string description = 9;
+   */
+  description: string;
 };
 
 /**

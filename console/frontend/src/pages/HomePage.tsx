@@ -59,6 +59,7 @@ import { readinessSentence } from "../components/ReadinessNote";
 import { useEnvironment } from "../environment";
 import { imageName, imageVersion } from "../imageRef";
 import { useAsk } from "../layout/ask";
+import { runProgress, stepsDone } from "../runningNow";
 import { duration, useNow, when } from "../time";
 import { runLink } from "./RunFormPage";
 
@@ -76,11 +77,6 @@ function dayStart(daysAgo: number): Date {
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - daysAgo);
   return d;
-}
-
-function stepsOf(run: ExecutionSummary): { done: number; total: number } {
-  const total = Object.values(run.steps).reduce((a, b) => a + b, 0);
-  return { done: run.steps["SUCCEEDED"] ?? 0, total };
 }
 
 /** What a run was: its template or action, else a DAG. */
@@ -309,7 +305,7 @@ function RunningNow({ live, now }: { live: ExecutionSummary[] | null; now: numbe
         </Typography>
       )}
       {live?.map((r) => {
-        const { done, total } = stepsOf(r);
+        const { done, total } = stepsDone(r);
         const waiting = r.state === "AWAITING_APPROVAL";
         return (
           <Box
@@ -327,7 +323,9 @@ function RunningNow({ live, now }: { live: ExecutionSummary[] | null; now: numbe
             <Box sx={{ height: 6, borderRadius: 3, bgcolor: "divider", overflow: "hidden" }} aria-hidden="true">
               <Box sx={{ height: "100%", width: `${String(total ? Math.max(6, (done / total) * 100) : 6)}%`, bgcolor: waiting ? "warning.main" : "primary.main", borderRadius: 3 }} />
             </Box>
-            <Typography variant="caption">{waiting ? "Waiting for an approval" : `${String(done)} of ${String(total)} steps done`}</Typography>
+            <Typography variant="caption">
+              {waiting ? "Waiting for an approval" : runProgress(r)}
+            </Typography>
           </Box>
         );
       })}
@@ -934,8 +932,8 @@ export function HomePage() {
 
   // Running now: yours, and your teams' (an admin sees every run, so it's narrowed to theirs too).
   const live = useMemo(
-    () => (visible === undefined ? null : (visible ?? []).filter((r) => r.state && LIVE.has(r.state) && (r.submittedBy === user?.email || r.teams.some((t) => teams.includes(t))))),
-    [visible, user?.email, teams],
+    () => (visible === undefined ? null : (visible ?? []).filter((r) => r.state && LIVE.has(r.state) && (r.submittedBy === user?.id || r.teams.some((t) => teams.includes(t))))),
+    [visible, user?.id, teams],
   );
   const now = useNow((live?.length ?? 0) > 0);
   const needs = approvals === undefined || deletes === undefined || schedules === undefined ? null : needsOf(approvals ?? [], deletes ?? [], schedules ?? [], user?.maintainerOf ?? []);

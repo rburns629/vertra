@@ -111,7 +111,7 @@ For why a single step is waiting, see [Why is my step Ready but not running?](09
 
 The console doesn't show Prometheus or Grafana itself; those belong to the install. Every component (kernel-api, the scheduler, the console and the gateway) serves Prometheus metrics, and an install can be set up with the Prometheus Operator, GKE's managed Prometheus, or a Prometheus of its own, with alerts (for example when the scheduler is down, steps wait too long, or a gateway backend is unreachable) and a Grafana dashboard for steps, the console and the gateway.
 
-Whether your install has them, and where to find them, is your admins' to say. How to set them up is in [operations](operations.md#metrics-and-alerts).
+Whether your install has them, and where to find them, is your admins' to say; an admin sees on this tab which Prometheus this install uses, and a link to its Grafana when the install names it (the console chart's `monitoring.grafanaUrl`). How to set them up is in [operations](operations.md#metrics-and-alerts).
 
 ## Searching the logs
 

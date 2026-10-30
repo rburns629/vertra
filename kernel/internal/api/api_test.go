@@ -408,6 +408,9 @@ func TestStatesAnswerForTheIDsThatExist(t *testing.T) {
 	if got.CreatedAt == nil || got.UpdatedAt == nil || got.UpdatedAt.AsTime().Before(got.CreatedAt.AsTime()) {
 		t.Errorf("created %v, updated %v", got.CreatedAt, got.UpdatedAt)
 	}
+	if len(got.Running) != 0 {
+		t.Errorf("nothing runs yet, but running = %v", got.Running)
+	}
 	ids := func(n int) []string {
 		out := make([]string, n)
 		for i := range out {
@@ -420,6 +423,39 @@ func TestStatesAnswerForTheIDsThatExist(t *testing.T) {
 	}
 	_, err = c.GetExecutionStates(context.Background(), connect.NewRequest(&kernelv1.GetExecutionStatesRequest{ExecutionIds: ids(MaxStatesPerRequest + 1)}))
 	code(t, err, connect.CodeInvalidArgument)
+}
+
+func TestStatesSayWhichStepRunsAndItsAttempt(t *testing.T) {
+	c := client(t)
+	id := submit(t, c, chain(unique("running"))).ExecutionId
+	exec(t, `UPDATE executions SET state = 'RUNNING' WHERE id = $1::uuid`, id)
+	exec(t, `UPDATE execution_tasks SET state = 'SUCCEEDED', attempt_count = 1 WHERE execution_id = $1::uuid AND task_key = 'create-project'`, id)
+	exec(t, `UPDATE execution_tasks SET state = 'RUNNING', attempt_count = 2, max_attempts = 3 WHERE execution_id = $1::uuid AND task_key = 'deploy-application'`, id)
+	states := func(include bool) *kernelv1.ExecutionStateEntry {
+		t.Helper()
+		res, err := c.GetExecutionStates(context.Background(), connect.NewRequest(&kernelv1.GetExecutionStatesRequest{ExecutionIds: []string{id}, IncludeRunning: include}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg.States[0]
+	}
+	running := states(true).Running
+	if len(running) != 1 {
+		t.Fatalf("running = %v", running)
+	}
+	if r := running[0]; r.TaskId != "deploy-application" || r.Action != "create" || r.Attempt != 2 || r.MaxAttempts != 3 {
+		t.Errorf("running = %v", r)
+	}
+	// Only when asked: the console's purge check, say, has no use for it.
+	if got := states(false); len(got.Running) != 0 || got.Steps["RUNNING"] != 1 {
+		t.Errorf("not asked for, running = %v, steps = %v", got.Running, got.Steps)
+	}
+	// A cancelled execution isn't doing anything, though its last step may
+	// stay RUNNING until the scheduler stops it.
+	exec(t, `UPDATE executions SET state = 'CANCELLED' WHERE id = $1::uuid`, id)
+	if got := states(true).Running; len(got) != 0 {
+		t.Errorf("cancelled, but running = %v", got)
+	}
 }
 
 // --- cancelling ---

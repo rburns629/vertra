@@ -145,6 +145,22 @@ message ExecutionSummary {
   map<string, int32> steps = 8;
   // When it finished, once it has.
   optional google.protobuf.Timestamp finished_at = 9;
+  // The submitter's email; unset if that account was deleted.
+  optional string submitted_by_email = 10;
+  // The steps claimed or running now, by step id; empty once it has
+  // finished (a cancelled run's last steps may still be stopping), or if
+  // the kernel couldn't be asked.
+  repeated RunningStep running = 11;
+}
+
+// A step claimed or running: which, and which attempt.
+message RunningStep {
+  // The task's id from the DAG.
+  string task_id = 1;
+  string action = 2;
+  // From 1.
+  int32 attempt = 3;
+  int32 max_attempts = 4;
 }
 
 message Execution {
@@ -269,6 +285,8 @@ message ListExecutionsResponse {
   repeated ExecutionSummary executions = 1;
   // Empty on the last page.
   string next_cursor = 2;
+  // How many days runs' records are kept; 0 keeps them forever.
+  int32 run_retention_days = 3;
 }
 
 message SubmitExecutionRequest {

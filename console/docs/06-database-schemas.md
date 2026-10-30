@@ -298,6 +298,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `allowed_targets` | jsonb | no | team.yaml's `allowedTargets` from the release: `[{ teams, targets: { "gcp.project": [values or patterns], ... }, approval? }]`, where other teams may aim this team's products; a rule with `approval: true` lets its targets through only with a maintainer's approval. Empty: nowhere. |
 | `contact`, `help_chat`, `help_url` | text | yes | team.yaml's `contact` and `help` (`chat`, `url`), from the release: whom to ask when one of its steps fails. |
 | `owner` | text | yes | team.yaml's `owner` in the catalog (a GitHub user or team), from the release: shown on the Team page, never a grant (membership is the console's). |
+| `description` | text | yes | team.yaml's `description` in the catalog, from the release: shown on the Teams page and the team's page. Null for a team made here. |
 
 ### users
 

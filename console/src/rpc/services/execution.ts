@@ -248,8 +248,11 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
           template: row.template ?? "",
           steps: row.steps,
           finishedAt: timestamp(row.finishedAt),
+          submittedByEmail: row.submittedByEmail ?? undefined,
+          running: row.running,
         })),
         nextCursor: page.nextCursor ?? "",
+        runRetentionDays: page.runRetentionDays,
       };
     },
 

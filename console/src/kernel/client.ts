@@ -323,17 +323,23 @@ export interface ExecutionStateEntry {
   createdAt: string | null;
   /** Its last change: when it finished, once it has. */
   updatedAt: string | null;
+  /** The steps claimed or running now, by step id: only when asked for
+   * (`running: true`), and never once the execution has finished. */
+  running: { taskId: string; action: string; attempt: number; maxAttempts: number }[];
 }
 
 /** Per call to kernel-api, which takes at most 1000. */
 const STATES_BATCH = 500;
 
 /** Many executions' states for a list view, in batches; nothing to ask
- * for an empty list. */
-export async function getExecutionStates(executionIds: string[]): Promise<ExecutionStateEntry[]> {
+ * for an empty list. `running` also asks which steps run now, which costs
+ * kernel-api a query per execution: only for a list that shows it. */
+export async function getExecutionStates(executionIds: string[], { running = false } = {}): Promise<ExecutionStateEntry[]> {
   const states: ExecutionStateEntry[] = [];
   for (let i = 0; i < executionIds.length; i += STATES_BATCH) {
-    const page = await call(() => client().getExecutionStates({ executionIds: executionIds.slice(i, i + STATES_BATCH) }));
+    const page = await call(() =>
+      client().getExecutionStates({ executionIds: executionIds.slice(i, i + STATES_BATCH), includeRunning: running }),
+    );
     states.push(
       ...page.states.map((entry) => ({
         executionId: entry.executionId,
@@ -341,6 +347,7 @@ export async function getExecutionStates(executionIds: string[]): Promise<Execut
         steps: { ...entry.steps },
         createdAt: iso(entry.createdAt),
         updatedAt: iso(entry.updatedAt),
+        running: entry.running.map((r) => ({ taskId: r.taskId, action: r.action, attempt: r.attempt, maxAttempts: r.maxAttempts })),
       })),
     );
   }

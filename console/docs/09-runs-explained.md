@@ -151,7 +151,7 @@ The defaults; an admin can change most of them for an install.
 
 ## How long are runs kept?
 
-A finished run (its steps, inputs, outputs, logs and events) is deleted 90 days after it finished, unless your install says otherwise. After that it's gone from **Runs** and the API, and its `requestId` starts a new run if sent again.
+A finished run (its steps, inputs, outputs, logs and events) is deleted 90 days after it finished, unless your install says otherwise: the foot of the **Runs** list says how long it's kept here, or that runs are kept with no time limit (an install can keep them forever). After that it's gone from **Runs** and the API, and its `requestId` starts a new run if sent again.
 
 What a run made (on **Runs → What runs made**) is kept after the run is gone, until someone deletes it.
 

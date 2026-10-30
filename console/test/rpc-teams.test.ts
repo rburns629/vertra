@@ -162,14 +162,14 @@ describe("another team's page", () => {
   it("says where to ask it and how big it is, to anyone signed in, and nothing more", async () => {
     const name = `${prefix}-public`;
     const team = await createTeam(name);
-    await db.update(teams).set({ contact: "#payments-help", owner: "@acme/payments", helpUrl: "https://wiki.example/payments" }).where(eq(teams.id, team.id));
+    await db.update(teams).set({ contact: "#payments-help", owner: "@acme/payments", description: "Takes payments.", helpUrl: "https://wiki.example/payments" }).where(eq(teams.id, team.id));
     const member = await makeUser();
     await addTeamMember(member.id, team.id, "member");
     const outsider = await signIn((await makeUser()).email);
 
     const profile = await rpc("TeamService", "GetTeamProfile", { name }, { token: outsider });
     expect(profile.statusCode).toBe(200);
-    expect(profile.json()).toEqual({ name, fromCatalog: false, retired: false, contact: "#payments-help", owner: "@acme/payments", helpChat: "", helpUrl: "https://wiki.example/payments", people: 1 });
+    expect(profile.json()).toEqual({ name, fromCatalog: false, retired: false, contact: "#payments-help", owner: "@acme/payments", description: "Takes payments.", helpChat: "", helpUrl: "https://wiki.example/payments", people: 1 });
     // Its people and its team record stay its own.
     expect((await rpc("TeamService", "ListMembers", { team: name }, { token: outsider })).statusCode).toBe(403);
     expect((await rpc("TeamService", "GetTeamProfile", { name: `${prefix}-nobody` }, { token: outsider })).json<RpcError>().code).toBe("not_found");

@@ -224,12 +224,23 @@ describe("runs", () => {
     steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 },
   };
 
-  it("says what each run was and how far its steps got", async () => {
-    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [RUN] } });
+  it("says what each run was, how far its steps got, what runs now, and how long runs are kept", async () => {
+    await renderAt("/runs", MEMBER, {
+      "ExecutionService/ListExecutions": { executions: [{ ...RUN, running: [{ taskId: "app-hosting", action: "create", attempt: 2, maxAttempts: 3 }] }], runRetentionDays: 90 },
+    });
     expect(await screen.findByRole("link", { name: "orders-api first deploy" })).toBeTruthy();
     expect(screen.getByText("app-on-cloud-run · gcp-platform")).toBeTruthy();
     expect(screen.getByText("2 of 4")).toBeTruthy();
     expect(screen.getAllByText("Running").length).toBeGreaterThan(0);
+    expect(screen.getByText("Now: app-hosting.create, attempt 2 of 3")).toBeTruthy();
+    // Not an admin, and still told: the list carries it.
+    expect(screen.getByText(/Runs are kept 90 days/)).toBeTruthy();
+    expect(calls).not.toContain("AdminService/GetInstall");
+  });
+
+  it("says runs are kept with no time limit when the install keeps them forever", async () => {
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [RUN] } });
+    expect(await screen.findByText(/Runs are kept with no time limit/)).toBeTruthy();
   });
 
   it("asks the server for your own runs, and lists the steps waiting for your team to approve", async () => {
@@ -252,11 +263,13 @@ describe("runs", () => {
   });
 
   it("counts the week's runs, filters by kind, and says who started each", async () => {
-    const DAG = { ...RUN, executionId: "1b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a12", name: "kafka topics backfill", template: "", state: "EXECUTION_STATE_FAILED", submittedBy: "u9" };
-    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, submittedBy: MEMBER.userId }, DAG] } });
+    const DAG = { ...RUN, executionId: "1b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a12", name: "kafka topics backfill", template: "", state: "EXECUTION_STATE_FAILED", submittedBy: "u9", submittedByEmail: "sam@acme.com" };
+    const GONE = { ...RUN, executionId: "2b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a13", name: "old cleanup", template: "", state: "EXECUTION_STATE_SUCCEEDED" };
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, submittedBy: MEMBER.userId, submittedByEmail: MEMBER.email }, DAG, GONE] } });
     expect(await screen.findByText("kafka topics backfill")).toBeTruthy();
-    expect(screen.getByText("someone else")).toBeTruthy();
+    expect(screen.getByText("sam@acme.com")).toBeTruthy();
     expect(screen.getByText("you")).toBeTruthy();
+    expect(screen.getByText("a deleted account")).toBeTruthy();
     expect(await screen.findByRole("button", { name: /^Failed this week 1/ })).toBeTruthy();
 
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Kind" }));
@@ -1006,6 +1019,82 @@ describe("admin", () => {
     await waitFor(() => { expect(closed).toEqual([{ message: "Maintenance" }]); });
   });
 
+  it("says what this install has set, in each section, never a credential", async () => {
+    const install = {
+      version: "0.4.0",
+      catalog: true,
+      catalogVersion: "newest",
+      catalogPollSeconds: 300,
+      catalogSignerKeys: 1,
+      externalCatalog: "us-docker.pkg.dev/other/vertra-products",
+      email: true,
+      emailHost: "smtp.acme.com",
+      emailFrom: "vertra@acme.com",
+      monitoringProvider: "google",
+      grafanaUrl: "https://grafana.acme.com",
+      sessionLength: "12h",
+      auditCopy: true,
+      auditKeepDays: 400,
+      auditLock: true,
+      policySyncSeconds: 300,
+      imageSignaturesRequired: true,
+      scanning: true,
+      rescanHours: 24,
+    };
+    await renderAt("/admin/catalog", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText("newest")).toBeTruthy();
+    expect(screen.getByText("us-docker.pkg.dev/other/vertra-products")).toBeTruthy();
+    expect(screen.getByText(/1 public key/)).toBeTruthy();
+    expect(screen.getByText(/every 5 min/)).toBeTruthy();
+    cleanup();
+
+    await renderAt("/admin/people", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText("12h")).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/alerts", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText("smtp.acme.com")).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/audit", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/400 days/)).toBeTruthy();
+    expect(screen.getByText(/this install: locked/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/images", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/this install: required/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/scans", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/every 24 h/)).toBeTruthy();
+    cleanup();
+
+    // What the console can't confirm, it says so; what it couldn't read, it doesn't guess.
+    await renderAt("/admin/audit", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/400 days, as configured/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/catalog", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/, as configured/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/images", ADMIN, { "AdminService/GetInstall": { ...install, imageSignaturesRequired: undefined } });
+    expect(await screen.findByText(/couldn't be read from the cluster/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/images", ADMIN, { "AdminService/GetInstall": { ...install, imageSignaturesRequired: false } });
+    expect(await screen.findByText(/not required, no signature policy in the cluster/)).toBeTruthy();
+    cleanup();
+
+    // No catalog: nothing said about how often it's read, or who signs it.
+    await renderAt("/admin/catalog", ADMIN, { "AdminService/GetInstall": { ...install, catalog: false, catalogVersion: "", catalogPollSeconds: 0, catalogSignerKeys: 0, externalCatalog: "" } });
+    expect((await screen.findAllByText(/no catalog/)).length).toBeGreaterThan(1);
+    expect(screen.queryByText(/every 5 min/)).toBeNull();
+    expect(screen.queryByText(/releases aren't checked/)).toBeNull();
+    cleanup();
+
+    // The overview's metrics part, and Observe's Metrics, name the provider and link Grafana.
+    await renderAt("/admin", ADMIN, { "AdminService/GetInstall": install });
+    expect((await screen.findByRole("link", { name: "Grafana" })).getAttribute("href")).toBe("https://grafana.acme.com");
+    cleanup();
+    await renderAt("/observe?tab=metrics", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/This install uses google/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open its Grafana" }).getAttribute("href")).toBe("https://grafana.acme.com");
+  });
+
   it("names every policy the console writes, never its key", async () => {
     await renderAt("/admin/policies", ADMIN, {
       "AdminService/GetPolicySync": {
@@ -1125,14 +1214,25 @@ describe("home", () => {
     await renderAt("/", MEMBER, {
       "ExecutionService/ListExecutions": {
         executions: [
-          { executionId: "r1", name: "orders-api first deploy", submittedBy: "ana@acme.com", createdAt: new Date(Date.now() - 300_000).toISOString(), state: "EXECUTION_STATE_RUNNING", steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 } },
+          {
+            executionId: "r1",
+            name: "orders-api first deploy",
+            submittedBy: MEMBER.userId,
+            createdAt: new Date(Date.now() - 300_000).toISOString(),
+            state: "EXECUTION_STATE_RUNNING",
+            steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 },
+            running: [{ taskId: "app-hosting", action: "create", attempt: 2, maxAttempts: 3 }],
+          },
+          // Someone else's, in a team you're not in: not yours to watch.
+          { executionId: "r3", name: "not ours", submittedBy: "u9", teams: ["payments"], createdAt: new Date(Date.now() - 60_000).toISOString(), state: "EXECUTION_STATE_RUNNING", steps: { RUNNING: 1 } },
           { executionId: "r2", name: "yesterday's", createdAt: new Date(Date.now() - 86_400_000).toISOString(), state: "EXECUTION_STATE_SUCCEEDED", steps: { SUCCEEDED: 1 } },
         ],
       },
       "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "orders-api prod database", taskId: "database", team: "azure-apps", requestedBy: "sam@acme.com", canDecide: true }] },
     });
     expect(await screen.findByText("orders-api first deploy")).toBeTruthy();
-    expect(screen.getByText("2 of 4 steps done")).toBeTruthy();
+    expect(screen.getByText("2 of 4 steps done · now: app-hosting.create, attempt 2 of 3")).toBeTruthy();
+    expect(screen.queryByText("not ours")).toBeNull();
     expect(await screen.findByText(/1 run for you and your teams is going, and 1 thing waits for you to decide\./)).toBeTruthy();
     expect(screen.getByText("orders-api prod database")).toBeTruthy();
     expect(screen.getByText(/sam@acme.com asked to run database for azure-apps/)).toBeTruthy();
@@ -1454,7 +1554,9 @@ describe("the Teams page", () => {
     await renderAt("/teams", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
       "TeamService/GetTeam": { team: { id: "t1", name: "payments", fromCatalog: true } },
       "TeamService/GetTeamProfile": (request: Record<string, unknown>) =>
-        request["name"] === "payments" ? { name: "payments", people: 7 } : { name: String(request["name"]), owner: "@acme/growth", people: 14 },
+        request["name"] === "payments"
+          ? { name: "payments", people: 7, description: "Takes card payments." }
+          : { name: String(request["name"]), owner: "@acme/growth", people: 14, description: `What ${String(request["name"])} does.` },
       "TeamService/ListPods": { pods: [{ podName: "ek-1", state: "TASK_POD_STATE_RUNNING" }] },
       "SecretService/ListSecrets": { secrets: [{ id: "s1", secretName: "stripe-webhook", external: { status: "error" } }, { id: "s2", secretName: "db" }] },
       "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-ci@bots.vertra.local" }] },
@@ -1472,6 +1574,7 @@ describe("the Teams page", () => {
     });
     const card = (await screen.findByRole("link", { name: "payments" })).closest("article") as HTMLElement;
     expect(within(card).getByText("You maintain it")).toBeTruthy();
+    expect(await within(card).findByText("Takes card payments.")).toBeTruthy();
     expect(await within(card).findByText("merchant-onboarding")).toBeTruthy();
     expect(await within(card).findByText(/1 step waits for payments to approve/)).toBeTruthy();
     expect(within(card).getByRole("link", { name: "refund-ledger for growth" }).getAttribute("href")).toBe("/runs/r9");
@@ -1482,6 +1585,7 @@ describe("the Teams page", () => {
     expect(within(others).getByRole("link", { name: "Adopt…" }).getAttribute("href")).toBe("/admin/catalog");
     expect(within(others).getByRole("link", { name: "Restore or purge" }).getAttribute("href")).toBe("/teams/legacy?tab=settings");
     expect((await within(others).findAllByText("@acme/growth")).length).toBeGreaterThan(0);
+    expect(within(others).getByText("What growth does.")).toBeTruthy();
     fireEvent.change(within(others).getByRole("searchbox", { name: "Find a team" }), { target: { value: "sand" } });
     expect(within(others).queryByRole("link", { name: "growth" })).toBeNull();
     expect(within(others).getByRole("link", { name: "sandbox" })).toBeTruthy();
@@ -1546,6 +1650,27 @@ describe("a team's settings", () => {
     expect(await screen.findByText(/1 member signs in with a password only: lee@acme.com/i)).toBeTruthy();
     expect(screen.getByRole("switch", { name: /require google sign-in/i })).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: /retire payments/i })).toBeNull();
+  });
+
+  it("say what the team does, from the catalog, under its name", async () => {
+    await renderAt("/teams/payments", { ...MEMBER, teamNames: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments", fromCatalog: true } },
+      "TeamService/GetTeamProfile": { name: "payments", fromCatalog: true, people: 3, description: "Takes card payments." },
+    });
+    expect(await screen.findByRole("heading", { name: "payments", level: 1 })).toBeTruthy();
+    expect(await screen.findByText("Takes card payments.")).toBeTruthy();
+  });
+
+  it("show the install's limits beside a team's own", async () => {
+    await renderAt("/teams/payments?tab=settings", { ...MEMBER, teamNames: ["payments"] }, {
+      "TeamService/GetTeam": {
+        team: { id: "t2", name: "payments", quota: { cpu: "16", pods: "50" }, quotaIsDefault: false, installQuota: { cpu: "4", memory: "8Gi", pods: "20" } },
+      },
+    });
+    expect(await screen.findByText("16")).toBeTruthy();
+    expect(screen.getByText("4")).toBeTruthy();
+    expect(screen.getByText("8Gi")).toBeTruthy();
+    expect(screen.getAllByText(/the install's:/)).toHaveLength(4);
   });
 
   it("let a maintainer set the team's chat webhook, which is never shown back", async () => {

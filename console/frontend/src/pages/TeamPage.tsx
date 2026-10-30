@@ -179,6 +179,11 @@ export function TeamPage() {
               </Pill>
             )}
           </Box>
+          {profile?.description && (
+            <Typography variant="body1" sx={{ maxWidth: 860, mb: 0.5, overflowWrap: "anywhere" }}>
+              {profile.description}
+            </Typography>
+          )}
           {canSee && (
             <Typography variant="body1" color="text.secondary">
               Namespace <Mono>{teamName}</Mono>

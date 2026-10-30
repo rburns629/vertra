@@ -276,6 +276,7 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
           allowedTargets,
           contact: team.contact || null,
           owner: team.owner || null,
+          description: team.description || null,
           helpChat: team.helpChat || null,
           helpUrl: team.helpUrl || null,
         })

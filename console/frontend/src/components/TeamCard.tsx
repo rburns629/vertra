@@ -159,7 +159,8 @@ function useTeamSummary(name: string, maintains: boolean): Loaded {
  * One of your teams at a glance: your role, its people, what's running,
  * its secrets and bots (or schedules), what it offers, and what needs
  * attention (steps waiting for its approval, secrets that don't sync).
- * The team's description in the catalog isn't shown: the API doesn't carry it.
+ * Its description from the catalog shows in three lines at most (team.yaml
+ * allows 4000 characters); the team's page has all of it.
  */
 export function TeamCard({
   name,
@@ -198,6 +199,11 @@ export function TeamCard({
             Namespace <Mono>{name}</Mono>
             {team && (team.fromCatalog ? " · from the catalog" : " · made here")}
           </Typography>
+          {profile?.description && (
+            <Typography variant="body2" title={profile.description} sx={{ mt: 0.75, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {profile.description}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
           <Pill tone={maintains ? "info" : "neutral"}>{maintains ? "You maintain it" : "You're a member"}</Pill>

@@ -62,7 +62,13 @@ export function InstallStats({ summary }: { summary: AdminSummary }) {
       {live && <Stat label="Teams" value={live.length} note={catalog?.release && notMade > 0 ? `${String(notMade)} the catalog didn't make` : undefined} />}
       {people && <Stat label="People" value={people.length} note={plural(admins, "admin")} />}
       {products !== null && <Stat label="Products" value={products} note={catalog?.version ? `from catalog ${catalog.version}` : undefined} />}
-      {install && <Stat label="Runs kept" value={`${String(install.runRetentionDays)} days`} note="then their records go" />}
+      {install && (
+        <Stat
+          label="Runs kept"
+          value={install.runRetentionDays > 0 ? `${String(install.runRetentionDays)} days` : "No time limit"}
+          note={install.runRetentionDays > 0 ? "then their records go" : undefined}
+        />
+      )}
     </Box>
   );
 }
@@ -522,6 +528,29 @@ export function EveryPart({ summary: s }: { summary: AdminSummary }) {
       detail: s.install.logs ? `On · the last ${String(s.install.logSearchDays)} days, in Observe.` : <>Off. {code("logs.enabled")}</>,
       where: "install",
     });
+    const grafana = s.install.grafanaUrl;
+    integrations.push({
+      name: "Metrics",
+      to: "/observe?tab=metrics",
+      tone: s.install.monitoringProvider ? "ok" : "off",
+      detail: s.install.monitoringProvider ? (
+        <>
+          On · {code(s.install.monitoringProvider)}
+          {grafana ? (
+            <>
+              , its dashboard in{" "}
+              <Link href={grafana} target="_blank" rel="noopener noreferrer">
+                Grafana
+              </Link>
+            </>
+          ) : null}
+          .
+        </>
+      ) : (
+        <>Off: only Observe&apos;s own charts. {code("monitoring")}</>
+      ),
+      where: "install",
+    });
   }
 
   if (s.policies) {
@@ -549,7 +578,7 @@ export function EveryPart({ summary: s }: { summary: AdminSummary }) {
     security.push({
       name: "Run records",
       tone: "ok",
-      detail: <>Kept {String(s.install.runRetentionDays)} days. {code("retention.executionDays")}</>,
+      detail: <>{s.install.runRetentionDays > 0 ? `Kept ${String(s.install.runRetentionDays)} days.` : "Kept with no time limit."} {code("retention.executionDays")}</>,
       where: "install",
     });
   }

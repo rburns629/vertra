@@ -67,6 +67,15 @@ function positiveInt(name: string, fallback: number): number {
   return n;
 }
 
+/** A whole number, zero or more, or the default when unset; anything else fails startup. */
+function wholeNumber(name: string, fallback: number): number {
+  const value = process.env[name];
+  if (value === undefined || value === "") return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) throw new Error(`Invalid ${name} "${value}": expected a whole number, zero or more.`);
+  return n;
+}
+
 /** Vertex's model unless another's named: the one scored (decision 24, 2026-10-28). */
 export const VERTEX_MODEL = "google/gemini-3.5-flash";
 /** Bedrock's unless another's named: a Claude open to every Bedrock account. */
@@ -337,6 +346,22 @@ function loadEmail() {
   return email;
 }
 
+/** MONITORING_PROVIDER: operator, google, bundled, or "" when monitoring is off. */
+function monitoringProvider(): "" | "operator" | "google" | "bundled" {
+  const value = process.env["MONITORING_PROVIDER"] ?? "";
+  if (value !== "" && value !== "operator" && value !== "google" && value !== "bundled") {
+    throw new Error(`Invalid MONITORING_PROVIDER "${value}": expected operator, google, bundled, or nothing for off.`);
+  }
+  return value;
+}
+
+/** GRAFANA_URL: an http(s) address, or "" for none. */
+function grafanaUrl(): string {
+  const value = (process.env["GRAFANA_URL"] ?? "").trim().replace(/\/+$/, "");
+  if (value && !/^https?:\/\/[^\s]+$/.test(value)) throw new Error(`Invalid GRAFANA_URL "${value}": expected http(s)://...`);
+  return value;
+}
+
 export const config = {
   port: Number(process.env["PORT"] ?? 8080),
   // /metrics for Prometheus, on a port of its own so the console's Ingress
@@ -571,8 +596,28 @@ export const config = {
       endpoint: process.env["AUDIT_EXPORT_ENDPOINT"] ?? "",
       prefix: process.env["AUDIT_EXPORT_PREFIX"] ?? "vertra-audit/",
       minutes: Number(process.env["AUDIT_EXPORT_MINUTES"] ?? "5"),
+      // What the bucket keeps, as the install says it made it (vertra.yaml's
+      // audit.keepDays and audit.lock), for the Admin page only, which
+      // labels them "as configured": the bucket enforces them, and the
+      // console's identity may write and read its objects but not read the
+      // bucket's retention or lock. 0: not known here.
+      keepDays: wholeNumber("AUDIT_EXPORT_KEEP_DAYS", 0),
+      lock: parseBoolean("AUDIT_EXPORT_LOCK"),
     },
   },
+  // Prometheus, as the charts' monitoring values set it (operator, google or
+  // bundled; empty: off), and where the install's Grafana is. Shown on the
+  // Admin page and Observe; the console reads neither.
+  monitoring: {
+    provider: monitoringProvider(),
+    grafanaUrl: grafanaUrl(),
+  },
+  // The kernel chart's signature policy (image-signature.yaml, a
+  // policy-controller ClusterImagePolicy): catalog images must be signed
+  // exactly when it exists, which the Admin page reads from the cluster.
+  // Named after that release: "<release>-execution-kernel-signed-images".
+  // Empty: not read, so the Admin page doesn't say.
+  imageSignaturePolicyName: process.env["IMAGE_SIGNATURE_POLICY_NAME"] ?? "",
   // Log search (core/logs.ts): the chart's Loki, which the console queries
   // with each caller's visibility added. Empty: this install keeps no logs.
   // Older than searchDays, logs are archived and not searched.
@@ -590,7 +635,12 @@ export const config = {
     // Follow the newest version (a vX.Y.Z tag of release's repository,
     // `vertra catalog promote`) instead of release's own tag.
     newestVersion: process.env["CATALOG_NEWEST_VERSION"] === "true",
-    pollSeconds: Number(process.env["CATALOG_POLL_SECONDS"] ?? "300"),
+    pollSeconds: positiveInt("CATALOG_POLL_SECONDS", 300),
+    // release is another install's catalog (vertra.yaml's externalCatalog),
+    // not this install's own, as the install says. Display only, labelled
+    // "as configured": nothing the console reads tells the two apart (the
+    // kernel's source registry is the other install's then too).
+    external: parseBoolean("CATALOG_EXTERNAL"),
     // Who may sign a release: the same as the kernel chart's imageSignature
     // (PEM public keys, a JSON list; and/or a keyless identity). None: the
     // release isn't verified, its trust being the registry's main-only

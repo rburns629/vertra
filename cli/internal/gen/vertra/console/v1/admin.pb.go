@@ -83,8 +83,47 @@ type GetInstallResponse struct {
 	Scanning bool `protobuf:"varint,10,opt,name=scanning,proto3" json:"scanning,omitempty"`
 	// How long runs' records are kept.
 	RunRetentionDays int32 `protobuf:"varint,11,opt,name=run_retention_days,json=runRetentionDays,proto3" json:"run_retention_days,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Which catalog releases are applied: latest, newest (the newest vX.Y.Z)
+	// or one version; empty with no catalog.
+	CatalogVersion string `protobuf:"bytes,12,opt,name=catalog_version,json=catalogVersion,proto3" json:"catalog_version,omitempty"`
+	// How often the console looks for a new release, in seconds.
+	CatalogPollSeconds int32 `protobuf:"varint,13,opt,name=catalog_poll_seconds,json=catalogPollSeconds,proto3" json:"catalog_poll_seconds,omitempty"`
+	// Who may sign a release: how many public keys are trusted, and a
+	// keyless identity's issuer and subject pattern (empty: none).
+	CatalogSignerKeys     int32  `protobuf:"varint,14,opt,name=catalog_signer_keys,json=catalogSignerKeys,proto3" json:"catalog_signer_keys,omitempty"`
+	CatalogKeylessIssuer  string `protobuf:"bytes,15,opt,name=catalog_keyless_issuer,json=catalogKeylessIssuer,proto3" json:"catalog_keyless_issuer,omitempty"`
+	CatalogKeylessSubject string `protobuf:"bytes,16,opt,name=catalog_keyless_subject,json=catalogKeylessSubject,proto3" json:"catalog_keyless_subject,omitempty"`
+	// Another install's catalog, read from its registry, as the install is
+	// configured (vertra.yaml's externalCatalog; nothing the console reads
+	// confirms it); empty when this install's own (or none).
+	ExternalCatalog string `protobuf:"bytes,17,opt,name=external_catalog,json=externalCatalog,proto3" json:"external_catalog,omitempty"`
+	// Email: whether it's sent, through which SMTP host, from which address.
+	// Never its credentials.
+	Email     bool   `protobuf:"varint,18,opt,name=email,proto3" json:"email,omitempty"`
+	EmailHost string `protobuf:"bytes,19,opt,name=email_host,json=emailHost,proto3" json:"email_host,omitempty"`
+	EmailFrom string `protobuf:"bytes,20,opt,name=email_from,json=emailFrom,proto3" json:"email_from,omitempty"`
+	// Prometheus: operator, google or bundled; empty when monitoring is off.
+	MonitoringProvider string `protobuf:"bytes,21,opt,name=monitoring_provider,json=monitoringProvider,proto3" json:"monitoring_provider,omitempty"`
+	// Where the install's Grafana is, for its dashboard; empty when unknown.
+	GrafanaUrl string `protobuf:"bytes,22,opt,name=grafana_url,json=grafanaUrl,proto3" json:"grafana_url,omitempty"`
+	// How long a session lasts before signing in again: 8h, 30m, 1d.
+	SessionLength string `protobuf:"bytes,23,opt,name=session_length,json=sessionLength,proto3" json:"session_length,omitempty"`
+	// The audit copy's bucket: how many days it keeps each copy (0: not
+	// known here), and whether that retention is locked, as the install is
+	// configured (vertra.yaml's audit.keepDays and audit.lock). The bucket
+	// enforces them; the console can't read them back from it.
+	AuditKeepDays int32 `protobuf:"varint,24,opt,name=audit_keep_days,json=auditKeepDays,proto3" json:"audit_keep_days,omitempty"`
+	AuditLock     bool  `protobuf:"varint,25,opt,name=audit_lock,json=auditLock,proto3" json:"audit_lock,omitempty"`
+	// How often the cluster policies are rewritten whatever changed, in seconds.
+	PolicySyncSeconds int32 `protobuf:"varint,26,opt,name=policy_sync_seconds,json=policySyncSeconds,proto3" json:"policy_sync_seconds,omitempty"`
+	// Catalog images run only if signed: whether the kernel chart's signature
+	// policy (a policy-controller ClusterImagePolicy) exists in the cluster.
+	// Unset when the console couldn't tell.
+	ImageSignaturesRequired *bool `protobuf:"varint,27,opt,name=image_signatures_required,json=imageSignaturesRequired,proto3,oneof" json:"image_signatures_required,omitempty"`
+	// Images in use are scanned again once their verdict is this old, in hours.
+	RescanHours   int32 `protobuf:"varint,28,opt,name=rescan_hours,json=rescanHours,proto3" json:"rescan_hours,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetInstallResponse) Reset() {
@@ -190,6 +229,125 @@ func (x *GetInstallResponse) GetScanning() bool {
 func (x *GetInstallResponse) GetRunRetentionDays() int32 {
 	if x != nil {
 		return x.RunRetentionDays
+	}
+	return 0
+}
+
+func (x *GetInstallResponse) GetCatalogVersion() string {
+	if x != nil {
+		return x.CatalogVersion
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetCatalogPollSeconds() int32 {
+	if x != nil {
+		return x.CatalogPollSeconds
+	}
+	return 0
+}
+
+func (x *GetInstallResponse) GetCatalogSignerKeys() int32 {
+	if x != nil {
+		return x.CatalogSignerKeys
+	}
+	return 0
+}
+
+func (x *GetInstallResponse) GetCatalogKeylessIssuer() string {
+	if x != nil {
+		return x.CatalogKeylessIssuer
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetCatalogKeylessSubject() string {
+	if x != nil {
+		return x.CatalogKeylessSubject
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetExternalCatalog() string {
+	if x != nil {
+		return x.ExternalCatalog
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetEmail() bool {
+	if x != nil {
+		return x.Email
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetEmailHost() string {
+	if x != nil {
+		return x.EmailHost
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetEmailFrom() string {
+	if x != nil {
+		return x.EmailFrom
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetMonitoringProvider() string {
+	if x != nil {
+		return x.MonitoringProvider
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetGrafanaUrl() string {
+	if x != nil {
+		return x.GrafanaUrl
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetSessionLength() string {
+	if x != nil {
+		return x.SessionLength
+	}
+	return ""
+}
+
+func (x *GetInstallResponse) GetAuditKeepDays() int32 {
+	if x != nil {
+		return x.AuditKeepDays
+	}
+	return 0
+}
+
+func (x *GetInstallResponse) GetAuditLock() bool {
+	if x != nil {
+		return x.AuditLock
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetPolicySyncSeconds() int32 {
+	if x != nil {
+		return x.PolicySyncSeconds
+	}
+	return 0
+}
+
+func (x *GetInstallResponse) GetImageSignaturesRequired() bool {
+	if x != nil && x.ImageSignaturesRequired != nil {
+		return *x.ImageSignaturesRequired
+	}
+	return false
+}
+
+func (x *GetInstallResponse) GetRescanHours() int32 {
+	if x != nil {
+		return x.RescanHours
 	}
 	return 0
 }
@@ -1203,7 +1361,7 @@ var File_vertra_console_v1_admin_proto protoreflect.FileDescriptor
 const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\n" +
 	"\x1dvertra/console/v1/admin.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x13\n" +
-	"\x11GetInstallRequest\"\xfe\x02\n" +
+	"\x11GetInstallRequest\"\xe8\b\n" +
 	"\x12GetInstallResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12+\n" +
 	"\x11environment_label\x18\x02 \x01(\tR\x10environmentLabel\x12!\n" +
@@ -1217,7 +1375,29 @@ const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\x0ecatalog_signed\x18\t \x01(\bR\rcatalogSigned\x12\x1a\n" +
 	"\bscanning\x18\n" +
 	" \x01(\bR\bscanning\x12,\n" +
-	"\x12run_retention_days\x18\v \x01(\x05R\x10runRetentionDays\"\x19\n" +
+	"\x12run_retention_days\x18\v \x01(\x05R\x10runRetentionDays\x12'\n" +
+	"\x0fcatalog_version\x18\f \x01(\tR\x0ecatalogVersion\x120\n" +
+	"\x14catalog_poll_seconds\x18\r \x01(\x05R\x12catalogPollSeconds\x12.\n" +
+	"\x13catalog_signer_keys\x18\x0e \x01(\x05R\x11catalogSignerKeys\x124\n" +
+	"\x16catalog_keyless_issuer\x18\x0f \x01(\tR\x14catalogKeylessIssuer\x126\n" +
+	"\x17catalog_keyless_subject\x18\x10 \x01(\tR\x15catalogKeylessSubject\x12)\n" +
+	"\x10external_catalog\x18\x11 \x01(\tR\x0fexternalCatalog\x12\x14\n" +
+	"\x05email\x18\x12 \x01(\bR\x05email\x12\x1d\n" +
+	"\n" +
+	"email_host\x18\x13 \x01(\tR\temailHost\x12\x1d\n" +
+	"\n" +
+	"email_from\x18\x14 \x01(\tR\temailFrom\x12/\n" +
+	"\x13monitoring_provider\x18\x15 \x01(\tR\x12monitoringProvider\x12\x1f\n" +
+	"\vgrafana_url\x18\x16 \x01(\tR\n" +
+	"grafanaUrl\x12%\n" +
+	"\x0esession_length\x18\x17 \x01(\tR\rsessionLength\x12&\n" +
+	"\x0faudit_keep_days\x18\x18 \x01(\x05R\rauditKeepDays\x12\x1d\n" +
+	"\n" +
+	"audit_lock\x18\x19 \x01(\bR\tauditLock\x12.\n" +
+	"\x13policy_sync_seconds\x18\x1a \x01(\x05R\x11policySyncSeconds\x12?\n" +
+	"\x19image_signatures_required\x18\x1b \x01(\bH\x00R\x17imageSignaturesRequired\x88\x01\x01\x12!\n" +
+	"\frescan_hours\x18\x1c \x01(\x05R\vrescanHoursB\x1c\n" +
+	"\x1a_image_signatures_required\"\x19\n" +
 	"\x17GetCatalogStatusRequest\"T\n" +
 	"\x18GetCatalogStatusResponse\x128\n" +
 	"\x06status\x18\x01 \x01(\v2 .vertra.console.v1.CatalogStatusR\x06status\"\x14\n" +
@@ -1396,6 +1576,7 @@ func file_vertra_console_v1_admin_proto_init() {
 	if File_vertra_console_v1_admin_proto != nil {
 		return
 	}
+	file_vertra_console_v1_admin_proto_msgTypes[1].OneofWrappers = []any{}
 	file_vertra_console_v1_admin_proto_msgTypes[12].OneofWrappers = []any{}
 	file_vertra_console_v1_admin_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}

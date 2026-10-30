@@ -119,7 +119,7 @@ steps:
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out.String())
 	}
-	if len(release.GetTeams()) != 1 || release.GetTeams()[0].GetName() != "a" || release.GetTeams()[0].GetOwner() != "@acme/team-a" || len(release.GetProducts()) != 1 {
+	if len(release.GetTeams()) != 1 || release.GetTeams()[0].GetName() != "a" || release.GetTeams()[0].GetOwner() != "@acme/team-a" || release.GetTeams()[0].GetDescription() != "A" || len(release.GetProducts()) != 1 {
 		t.Fatalf("release = %v", release)
 	}
 	got := release.GetProducts()[0]
