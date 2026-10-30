@@ -16,13 +16,15 @@ const AUTH: Record<string, string> = {
   "": "nothing: it checks Vertra-Caller, or nothing",
 };
 
-/** What the gateway does with each request, in order. */
+/** What the gateway does with each request, in the order gateway/internal/gateway/gateway.go does it. */
 const STEPS: [string, string][] = [
-  ["Who is calling", "A person's session or a bot's token; Google sign-in when the caller's team requires it."],
+  ["Open?", "The gateway isn't closed, and the API isn't paused, held or unusable; else 503."],
+  ["Who is calling", "A person's session or a bot's token; Google sign-in when the caller's team requires it; else 401."],
   ["Shared with them?", "Its shareWith covers the caller's team; else 403."],
+  ["Small enough?", "The body is within its size limit; else 413."],
   ["In the spec?", "The method and path are an operation in its OpenAPI file; else 404, blocked."],
   ["Does it fit?", "Parameters, headers and body against that operation's schemas; else 400."],
-  ["Within limits", "The calling team's requests a minute and the size limit; else 429 or 413."],
+  ["Within its limit", "The calling team's requests a minute; else 429."],
   ["Forward", "Same method, path, query, headers and body; the caller's Authorization swapped for the backend's, Vertra-Caller added."],
   ["Answer", "The backend's response, passed back unchanged."],
 ];
@@ -80,8 +82,9 @@ export function ApiPause({
 }: {
   api: ApiProduct;
   busy: boolean;
-  onPause: (message: string) => Promise<void>;
-  onResume: () => Promise<void>;
+  /** Resolves to whether it paused. */
+  onPause: (message: string) => Promise<boolean>;
+  onResume: () => Promise<unknown>;
 }) {
   const [message, setMessage] = useState("");
   const paused = api.state === "PAUSED";
@@ -118,8 +121,9 @@ export function ApiPause({
           onClick={() =>
             void (paused
               ? onResume()
-              : onPause(message).then(() => {
-                  setMessage("");
+              : onPause(message).then((done) => {
+                  // Kept to try again when pausing didn't work.
+                  if (done) setMessage("");
                 }))
           }
         >

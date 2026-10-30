@@ -53,14 +53,15 @@ function described(source: Source, team: string, run: string, hours: number): st
   return `${from}${source === "step" && run ? "" : `, ${range}`}`;
 }
 
-export function LogsTab({ initialRun, initialSource, initialTeam }: { initialRun: string; initialSource?: string; initialTeam?: string }) {
+export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }: { initialRun: string; initialSource?: string; initialTeam?: string; initialHours?: number }) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [team, setTeam] = useState(initialTeam ?? "");
   const [run, setRun] = useState(initialRun);
   const [level, setLevel] = useState("");
   const [source, setSource] = useState<Source>(initialSource === "api" || initialSource === "platform" ? initialSource : "step");
-  const [hours, setHours] = useState(initialRun ? 168 : 1);
+  // A link's range when it's one offered (an API's 24-hour card), else a run's week or the last hour.
+  const [hours, setHours] = useState(RANGES.some(([h]) => h === initialHours) ? (initialHours ?? 1) : initialRun ? 168 : 1);
   const [teams, setTeams] = useState<string[]>([]);
   const [lines, setLines] = useState<LogLineView[] | null>(null);
   const [searched, setSearched] = useState({ source, team, run: initialRun, hours });

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -261,6 +261,8 @@ export function AuditTab() {
   const [nextBefore, setNextBefore] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Each filter's number: Load older for an earlier one is dropped.
+  const listing = useRef(0);
 
   useEffect(() => {
     if (!user) return;
@@ -279,7 +281,10 @@ export function AuditTab() {
 
   useEffect(() => {
     let cancelled = false;
+    listing.current += 1;
     setEntries(null);
+    setNextBefore("");
+    setLoadingMore(false);
     setError(null);
     listAudit({ team, mine, refusedOnly })
       .then((page) => {
@@ -296,15 +301,17 @@ export function AuditTab() {
   }, [team, mine, refusedOnly]);
 
   async function loadMore(): Promise<void> {
+    const mineNow = listing.current;
     setLoadingMore(true);
     try {
       const page = await listAudit({ before: nextBefore, team, mine, refusedOnly });
+      if (mineNow !== listing.current) return; // the filters changed meanwhile
       setEntries((shown) => [...(shown ?? []), ...page.entries]);
       setNextBefore(page.nextBefore);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load more.");
+      if (mineNow === listing.current) setError(err instanceof ApiError ? err.message : "Failed to load more.");
     } finally {
-      setLoadingMore(false);
+      if (mineNow === listing.current) setLoadingMore(false);
     }
   }
 

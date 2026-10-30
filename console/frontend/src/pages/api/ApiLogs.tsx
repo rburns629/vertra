@@ -48,11 +48,11 @@ export function ApiLogs({ team }: { team: string }) {
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
             The newest lines, over the last day, from Pods {team} labels <Mono sx={{ fontSize: 12 }}>vertra/api-backend</Mono>, every level,
-            seen by {team} only. Credentials are redacted before anything is kept.
+            seen by {team} and admins only. Credentials are redacted before anything is kept.
           </Typography>
         </Box>
         {!off && (
-          <Button component={RouterLink} to={`/observe?tab=logs&from=api&team=${encodeURIComponent(team)}`} variant="outlined" size="large">
+          <Button component={RouterLink} to={`/observe?tab=logs&from=api&team=${encodeURIComponent(team)}&hours=24`} variant="outlined" size="large">
             Search them in Observe
           </Button>
         )}

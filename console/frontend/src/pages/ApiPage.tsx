@@ -69,14 +69,17 @@ export function ApiPage() {
     if (ownTeam && jump) document.getElementById(jump)?.scrollIntoView?.();
   }, [ownTeam, jump]);
 
-  async function change(action: () => Promise<void>): Promise<void> {
+  /** Whether it worked (its error is shown when it didn't). */
+  async function change(action: () => Promise<void>): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       await action();
       load();
+      return true;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "That didn't work.");
+      return false;
     } finally {
       setBusy(false);
     }

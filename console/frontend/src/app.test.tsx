@@ -983,9 +983,16 @@ describe("an API", () => {
         requests: "120",
         forwarded: "100",
         stopped: "20",
-        endpoints: [{ endpoint: "GET /orders/{id}", requests: "4321", backend5xx: "7" }],
+        endpoints: [
+          { endpoint: "GET /orders/{id}", requests: "4321", backend5xx: "7" },
+          // Unauthenticated probes on a path the spec never had.
+          { endpoint: "GET /wp-login.php", requests: "5000" },
+        ],
         blocked: [{ request: "DELETE /orders/x", count: "9", teams: ["growth"] }],
-        teams: [{ team: "growth", requests: "120", peakPerMinute: "57", limitPerMinute: 60 }],
+        teams: [
+          { team: "growth", requests: "120", peakPerMinute: "57", limitPerMinute: 60 },
+          { team: "", requests: "5000", peakPerMinute: "900" },
+        ],
       },
       "ObserveService/SearchLogs": { lines: [{ team: "payments", app: "orders-api", level: "error", line: "ledger answered 503" }], searchDays: 30 },
       "ApiService/PauseApi": (request: Record<string, unknown>) => {
@@ -999,9 +1006,15 @@ describe("an API", () => {
     expect(await screen.findByText("4,321")).toBeTruthy();
     expect(screen.getByText("DELETE /orders/x")).toBeTruthy();
     expect(screen.getByText("busiest minute 57 of 60")).toBeTruthy();
+    // Traffic to paths not in the spec has its row; refusals before a team was known aren't called "not signed in".
+    expect(screen.getByText("GET /wp-login.php")).toBeTruthy();
+    expect(screen.getByText("not in its current spec")).toBeTruthy();
+    expect(screen.getByText("(no calling team)")).toBeTruthy();
+    expect(screen.queryByText(/not signed in, so no limit/)).toBeNull();
     expect(await screen.findByText("ledger answered 503")).toBeTruthy();
     expect(calls).toContain("ObserveService/SearchLogs");
-    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments");
+    // Over the same day the card shows.
+    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments&hours=24");
 
     fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
     fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
@@ -1316,7 +1329,7 @@ describe("observe", () => {
 
   it("opens the logs on an API's backends when linked from one, and says who sees which lines", async () => {
     const searched: Record<string, unknown>[] = [];
-    await renderAt("/observe?tab=logs&from=api&team=payments", MEMBER, {
+    await renderAt("/observe?tab=logs&from=api&team=payments&hours=24", MEMBER, {
       "ObserveService/SearchLogs": (request: Record<string, unknown>) => {
         searched.push(request);
         return { lines: [{ team: "payments", app: "orders-api", level: "warn", line: "ledger call slow" }], searchDays: 30 };
@@ -1324,6 +1337,8 @@ describe("observe", () => {
     });
     expect(await screen.findByText("ledger call slow")).toBeTruthy();
     expect(searched[0]).toMatchObject({ source: "api", team: "payments" });
+    // Over the last day, as the link said.
+    expect(Math.round((Date.now() - Date.parse(String(searched[0]?.["since"]))) / 3_600_000)).toBe(24);
     expect(screen.getByRole("button", { name: "API backends" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/1 line/)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Who sees which lines" })).toBeTruthy();
@@ -1341,7 +1356,8 @@ describe("observe", () => {
       },
     });
     expect(await screen.findByText("Teams from the directory: not yet")).toBeTruthy();
-    expect(screen.getByText("1 by the cluster · 2 by the gateway")).toBeTruthy();
+    // Calls, not rows: the gateway's two rows are 2 and 3 calls.
+    expect(screen.getByText("1 by the cluster · 5 by the gateway")).toBeTruthy();
     const refused = screen.getByRole("region", { name: "Refused, last 7 days" });
     expect(within(refused).getAllByText("NOT_IN_SPEC").length).toBeGreaterThan(1);
   });

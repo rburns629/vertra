@@ -89,6 +89,28 @@ function Method({ method }: { method: string }) {
 type EndpointTraffic = ApiTraffic["endpoints"][number];
 const num = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
 
+/** One endpoint's traffic, as the table's columns. */
+function TrafficCells({ t }: { t: Pick<EndpointTraffic, "requests" | "invalid" | "backend4xx" | "backend5xx" | "averageMs"> | undefined }) {
+  const narrow = { display: { xs: "none", sm: "table-cell" } };
+  return (
+    <>
+      <TableCell align="right">{num(t?.requests)}</TableCell>
+      <TableCell align="right" sx={narrow}>
+        {num(t?.invalid)}
+      </TableCell>
+      <TableCell align="right" sx={{ display: { xs: "none", md: "table-cell" } }}>
+        {num(t?.backend4xx)}
+      </TableCell>
+      <TableCell align="right" sx={{ ...narrow, ...(t?.backend5xx ? { color: "error.main", fontWeight: 600 } : {}) }}>
+        {num(t?.backend5xx)}
+      </TableCell>
+      <TableCell align="right" sx={{ display: { xs: "none", md: "table-cell" }, pr: 2.75 }}>
+        {t?.averageMs ? `${String(t.averageMs)} ms` : "—"}
+      </TableCell>
+    </>
+  );
+}
+
 /**
  * The endpoints its OpenAPI file describes, each with its traffic when the
  * viewer is its own team's (`traffic` given), and how to call the one
@@ -106,6 +128,8 @@ export function ApiEndpoints({ api, traffic }: { api: ApiProduct; traffic?: ApiT
     ].join("\n");
   const showTraffic = traffic !== undefined;
   const byEndpoint = new Map<string, EndpointTraffic>((traffic?.endpoints ?? []).map((e) => [e.endpoint, e]));
+  const inSpec = new Set(api.endpoints.map((e) => `${e.method} ${e.path}`));
+  const offSpec = (traffic?.endpoints ?? []).filter((e) => !inSpec.has(e.endpoint) && e.requests > 0);
   const trafficCell = { display: { xs: "none", sm: "table-cell" } };
 
   return (
@@ -176,26 +200,26 @@ export function ApiEndpoints({ api, traffic }: { api: ApiProduct; traffic?: ApiT
                       </ButtonBase>
                     </Box>
                   </TableCell>
-                  {showTraffic && (
-                    <>
-                      <TableCell align="right">{num(t?.requests)}</TableCell>
-                      <TableCell align="right" sx={trafficCell}>
-                        {num(t?.invalid)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ display: { xs: "none", md: "table-cell" } }}>
-                        {num(t?.backend4xx)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ ...trafficCell, ...(t?.backend5xx ? { color: "error.main", fontWeight: 600 } : {}) }}>
-                        {num(t?.backend5xx)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ display: { xs: "none", md: "table-cell" }, pr: 2.75 }}>
-                        {t?.averageMs ? `${String(t.averageMs)} ms` : "—"}
-                      </TableCell>
-                    </>
-                  )}
+                  {showTraffic && <TrafficCells t={t} />}
                 </TableRow>
               );
             })}
+            {/* What callers sent that isn't in the spec now (paths it never had, refused at the
+                door; operations since removed): counted in the totals, so listed too. */}
+            {showTraffic &&
+              offSpec.map((e) => (
+                <TableRow key={`other ${e.endpoint}`}>
+                  <TableCell sx={{ pl: 2.75 }}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: { sm: 240 } }}>
+                      <Mono sx={{ fontSize: 12.5, overflowWrap: "anywhere" }}>{e.endpoint}</Mono>
+                      <Typography variant="caption" color="text.secondary">
+                        not in its current spec
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TrafficCells t={e} />
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </Box>
