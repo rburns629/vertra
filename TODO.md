@@ -1025,7 +1025,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Identity role, which passes IAM for its own model and is refused for any
   other; what's left is one answer.
 
-- [ ] **API products and the gateway** (decision 20, `docs/assessment.md`;
+- [x] **API products and the gateway** (done 2026-10-22; decision 20, `docs/assessment.md`;
   mocked up 2026-10-21 in the console mockups, boards 12–16). A team
   publishes a backend it already runs: `teams/<team>/apis/<name>/api.yaml`
   (`kind: Api`) and its `openapi.yaml`; the gateway forwards exactly what
@@ -1070,9 +1070,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      STS, then generateIdToken), AWS SigV4 (AssumeRoleWithWebIdentity,
      then signing). AWS only besides Google, no Azure (decided
      2026-10-22); no static-secret fallback (the gateway reads no
-     Secrets). Then Google ID tokens,
-     AWS SigV4 and Azure tokens through I1's federation. A Secret from the
-     team's store only as a fallback, read by name. The gateway's RBAC is
+     Secrets). The gateway's RBAC is
      `serviceaccounts/token` on the API ServiceAccounts alone.
   5. ~~Its chart~~ (done 2026-10-22): Deployment, Service, an Ingress for
      the public listener, egress anywhere but the cloud metadata server
@@ -1095,9 +1093,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (Cloud Run, Google ID token) and `aws/apis/orders` (Lambda URL, SigV4),
   the last two validated, not deployed. The gateway's database role reads
   only what it needs and writes only api_traffic (`gatewayAccess.ts`).
+  Left: the gcp and aws samples' API products deployed from a catalog on a
+  cloud (the billed batch; their credential kinds are proven).
 
-- [ ] **Orders from outside the cluster** (decision 23, `docs/assessment.md`,
-  decided 2026-10-27). Through the console's public `/api`, as a bot signed
+- [x] **Orders from outside the cluster** (done 2026-10-29; decision 23,
+  `docs/assessment.md`, decided 2026-10-27). Through the console's public `/api`, as a bot signed
   in keylessly; kernel-api stays private. To build:
   1. An order is for the bot's own team (its caps, quota and approvals; its
      maintainers see and cancel it). Done 2026-10-27: a template runs on
