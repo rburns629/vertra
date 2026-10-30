@@ -204,13 +204,14 @@ message GetAuditCopyResponse {
 message SearchLogsRequest {
   // Lines containing this, ignoring case.
   string text = 1;
-  // Only this team's steps.
+  // Only this team's steps (or API backends).
   string team = 2;
-  // Only this run's steps.
+  // Only this run's steps (not with source api).
   string execution_id = 3;
   // debug, info, warn or error; any when empty.
   string level = 4;
-  // step (the default) or platform (admins only).
+  // step (the default); api, the API backends a team runs (Pods labelled
+  // vertra/api-backend), its own team's only; or platform (admins only).
   string source = 5;
   // The window; the last hour when unset. At most the install's search
   // window (searchDays) back: older logs are archived.
@@ -230,13 +231,15 @@ message SearchLogsResponse {
 
 message LogLine {
   google.protobuf.Timestamp at = 1;
-  // A step's team (its namespace); empty for the platform's.
+  // A step's or API backend's team (its namespace); empty for the
+  // platform's.
   string team = 2;
   string execution_id = 3;
   string task = 4;
   int32 attempt = 5;
   string level = 6;
-  // For the platform's: which part (app, gateway, scheduler...).
+  // For the platform's: which part (app, gateway, scheduler...); for an
+  // API backend's, its app.kubernetes.io/name or app label.
   string app = 7;
   string line = 8;
 }

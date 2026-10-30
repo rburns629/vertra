@@ -394,8 +394,11 @@ accepts only the collector's pushes and the console's queries
 (NetworkPolicy). The collector, Grafana Alloy, redacts credentials before
 anything is stored, with the kernel's patterns, and may read every Pod's
 logs in the cluster (a read-only ClusterRole on `pods` and `pods/log`:
-steps run in every team's namespace); it keeps only steps' Pods and the
-platform's own. The platform's own logs are for admins only.
+steps run in every team's namespace); it keeps only steps' Pods, the
+API backends teams run (Pods labelled `vertra/api-backend: "true"`) and the
+platform's own. An API backend's lines, every level, are for its own team
+only (they belong to no run, so no one else owns them); the platform's own
+logs are for admins only.
 
 ## The API gateway
 

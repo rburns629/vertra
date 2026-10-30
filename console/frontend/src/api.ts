@@ -1930,12 +1930,12 @@ export interface LogSearch {
   team?: string;
   executionId?: string;
   level?: string;
-  source?: "step" | "platform";
+  source?: "step" | "api" | "platform";
   /** How far back, in hours, from now. */
   hours: number;
 }
 
-/** Steps' logs as the caller may see them (and the platform's, for admins). Throws ApiError LOGS_OFF when none are kept. */
+/** Steps' and API backends' logs as the caller may see them (and the platform's, for admins). Throws ApiError LOGS_OFF when none are kept. */
 export async function searchLogs(search: LogSearch): Promise<{ lines: LogLineView[]; truncated: boolean; searchDays: number }> {
   const found = await call(() =>
     observe.searchLogs({

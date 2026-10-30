@@ -11,11 +11,9 @@ import Typography from "@mui/material/Typography";
 import { Mono } from "../../components/Mono";
 import Button from "@mui/material/Button";
 import FormControl from "@mui/material/FormControl";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
-import Switch from "@mui/material/Switch";
 import { Pill, type PillTone } from "../../components/Pill";
 import { useAuth } from "../../auth/AuthContext";
 import { ApiError, listAllTeams, searchLogs, type LogLineView } from "../../api";
@@ -35,7 +33,7 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
   const [team, setTeam] = useState("");
   const [run, setRun] = useState(initialRun);
   const [level, setLevel] = useState("");
-  const [platform, setPlatform] = useState(false);
+  const [source, setSource] = useState<"step" | "api" | "platform">("step");
   const [hours, setHours] = useState(initialRun ? 168 : 1);
   const [teams, setTeams] = useState<string[]>([]);
   const [lines, setLines] = useState<LogLineView[] | null>(null);
@@ -66,10 +64,10 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
     try {
       const found = await searchLogs({
         text: text.trim(),
-        team: platform ? "" : team,
-        executionId: platform ? "" : run.trim(),
+        team: source === "platform" ? "" : team,
+        executionId: source === "step" ? run.trim() : "",
         level,
-        source: platform ? "platform" : "step",
+        source,
         hours,
       });
       setLines(found.lines);
@@ -106,8 +104,8 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {user?.isAdmin
-            ? `Every step's output, and the platform's own. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`
-            : `Every line from your teams' steps, and the INFO lines of other runs you can see. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`}
+            ? `Every step's output, every team's API backends', and the platform's own. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`
+            : `Every line from your teams' steps and API backends, and the INFO lines of other runs you can see. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`}
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -132,7 +130,22 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
             sx={{ flex: "1 1 220px" }}
             slotProps={{ htmlInput: { "aria-label": "Text to find", maxLength: 200 } }}
           />
-          {!platform && (
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel id="logs-source-label">From</InputLabel>
+            <Select
+              labelId="logs-source-label"
+              label="From"
+              value={source}
+              onChange={(event) => {
+                setSource(event.target.value);
+              }}
+            >
+              <MenuItem value="step">Steps</MenuItem>
+              <MenuItem value="api">API backends</MenuItem>
+              {user?.isAdmin && <MenuItem value="platform">The platform</MenuItem>}
+            </Select>
+          </FormControl>
+          {source !== "platform" && (
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel id="logs-team-label">Team</InputLabel>
               <Select
@@ -152,7 +165,7 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
               </Select>
             </FormControl>
           )}
-          {!platform && (
+          {source === "step" && (
             <TextField
               size="small"
               placeholder="Run id"
@@ -199,19 +212,6 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
               ))}
             </Select>
           </FormControl>
-          {user?.isAdmin && (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={platform}
-                  onChange={(event) => {
-                    setPlatform(event.target.checked);
-                  }}
-                />
-              }
-              label="The platform's own"
-            />
-          )}
           <Button type="submit" variant="contained" disabled={searching}>
             {searching ? "Searching…" : "Search"}
           </Button>
@@ -256,6 +256,8 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
                         {l.executionId.slice(0, 8)}
                       </Link>
                     </>
+                  ) : l.team ? (
+                    `${l.team} · ${l.app || "API backend"}`
                   ) : (
                     l.app || "platform"
                   )}

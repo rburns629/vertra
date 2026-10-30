@@ -2,8 +2,8 @@
 /**
  * Observe's log search (core/logs.ts): the LogQL the console sends Loki
  * carries each caller's visibility. A step's lines, every level, to its own
- * team; its INFO lines to anyone else who may see its run; the platform's
- * own to admins. A stand-in Loki records the queries and answers them.
+ * team; its INFO lines to anyone else who may see its run; an API backend's
+ * lines to its own team alone; the platform's own to admins. A stand-in Loki records the queries and answers them.
  */
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
@@ -136,5 +136,27 @@ describe("log search", () => {
     } finally {
       config.logs.lokiUrl = url;
     }
+  });
+});
+
+describe("API backends' log search", () => {
+  it("gives a member every level of their own team's backends, and nothing of another team's", async () => {
+    expect((await search(memberOfA, { source: "api" })).code).toBe("ok");
+    expect(queries).toEqual([`{component="api", namespace=~"^(${teamA})$"}`]);
+    queries.length = 0;
+    const elsewhere = await search(memberOfA, { source: "api", team: teamB });
+    expect(elsewhere.code).toBe("ok");
+    expect(elsewhere.body.lines ?? []).toEqual([]);
+    expect(queries).toHaveLength(0);
+  });
+
+  it("gives an admin every team's", async () => {
+    await search(admin, { source: "api", team: teamB, level: "error" });
+    expect(queries).toEqual([`{component="api", namespace="${teamB}", level="error"}`]);
+  });
+
+  it("refuses a run: a backend's lines belong to none", async () => {
+    expect((await search(memberOfA, { source: "api", executionId: runInA })).code).toBe("invalid_argument");
+    expect(queries).toHaveLength(0);
   });
 });

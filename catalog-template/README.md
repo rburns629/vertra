@@ -474,7 +474,9 @@ the gateway reads no secrets. Your backend learns who called from the
 
 A backend in your team's own namespace is reachable by the gateway only
 when its Pods are labelled `vertra/api-backend: "true"` (every other Pod
-there stays closed to everything outside the namespace). The samples show
+there stays closed to everything outside the namespace). What those Pods
+print is searchable by your team, and only your team, on Observe's Logs tab
+(From: API backends), when the install keeps logs. The samples show
 each way: `samples/local/apis/greetings` (a Service in the namespace, no
 cloud, checking `Vertra-Caller`), `samples/gcp/apis/hello-world` (Cloud
 Run, `googleIdToken`) and `samples/aws/apis/orders` (a Lambda function URL,

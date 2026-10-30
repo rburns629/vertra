@@ -617,14 +617,14 @@ export type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsRequest"> &
   text: string;
 
   /**
-   * Only this team's steps.
+   * Only this team's steps (or API backends).
    *
    * @generated from field: string team = 2;
    */
   team: string;
 
   /**
-   * Only this run's steps.
+   * Only this run's steps (not with source api).
    *
    * @generated from field: string execution_id = 3;
    */
@@ -638,7 +638,8 @@ export type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsRequest"> &
   level: string;
 
   /**
-   * step (the default) or platform (admins only).
+   * step (the default); api, the API backends a team runs (Pods labelled
+   * vertra/api-backend), its own team's only; or platform (admins only).
    *
    * @generated from field: string source = 5;
    */
@@ -713,7 +714,8 @@ export type LogLine = Message<"vertra.console.v1.LogLine"> & {
   at?: Timestamp | undefined;
 
   /**
-   * A step's team (its namespace); empty for the platform's.
+   * A step's or API backend's team (its namespace); empty for the
+   * platform's.
    *
    * @generated from field: string team = 2;
    */
@@ -740,7 +742,8 @@ export type LogLine = Message<"vertra.console.v1.LogLine"> & {
   level: string;
 
   /**
-   * For the platform's: which part (app, gateway, scheduler...).
+   * For the platform's: which part (app, gateway, scheduler...); for an
+   * API backend's, its app.kubernetes.io/name or app label.
    *
    * @generated from field: string app = 7;
    */

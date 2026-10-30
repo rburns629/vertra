@@ -7030,14 +7030,14 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "Only this team's steps."
+     "comment": "Only this team's steps (or API backends)."
     },
     {
      "name": "executionId",
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "Only this run's steps."
+     "comment": "Only this run's steps (not with source api)."
     },
     {
      "name": "level",
@@ -7051,7 +7051,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "step (the default) or platform (admins only)."
+     "comment": "step (the default); api, the API backends a team runs (Pods labelled\nvertra/api-backend), its own team's only; or platform (admins only)."
     },
     {
      "name": "since",
@@ -7120,7 +7120,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "A step's team (its namespace); empty for the platform's."
+     "comment": "A step's or API backend's team (its namespace); empty for the\nplatform's."
     },
     {
      "name": "executionId",
@@ -7155,7 +7155,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "For the platform's: which part (app, gateway, scheduler...)."
+     "comment": "For the platform's: which part (app, gateway, scheduler...); for an\nAPI backend's, its app.kubernetes.io/name or app label."
     },
     {
      "name": "line",

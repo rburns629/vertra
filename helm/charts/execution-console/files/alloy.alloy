@@ -1,9 +1,11 @@
 // Vertra's log collector (values: logs). Reads the output of every step's
-// Pod and of the platform's own, through the Kubernetes API, and sends it
-// to Loki labelled for Observe's log search (console/src/core/logs.ts):
+// Pod, of the API backends teams run (Pods labelled vertra/api-backend:
+// "true"), and of the platform's own, through the Kubernetes API, and sends
+// it to Loki labelled for Observe's log search (console/src/core/logs.ts):
 //
-//   labels:              namespace (a step's team), component (step or
-//                        platform), app (a platform Pod's), level
+//   labels:              namespace (a step's or backend's team), component
+//                        (step, api or platform), app (a platform Pod's
+//                        component, a backend's app), level
 //   structured metadata: execution_id, task, attempt, image, pod
 //
 // Credentials a step prints are redacted here, before anything is stored,
@@ -19,19 +21,22 @@ discovery.kubernetes "pods" {
 discovery.relabel "pods" {
   targets = discovery.kubernetes.pods.targets
 
-  // Steps (the kernel's Jobs, in team namespaces) and the platform's own Pods.
+  // Steps (the kernel's Jobs, in team namespaces), API backends and the
+  // platform's own Pods.
   rule {
-    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_vertra_dev_execution_id"]
-    regex         = sys.env("PLATFORM_NAMESPACE") + `;.*|.+;.+`
+    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_vertra_dev_execution_id", "__meta_kubernetes_pod_label_vertra_api_backend"]
+    regex         = sys.env("PLATFORM_NAMESPACE") + `;.*;.*|.+;.+;.*|.+;;true`
     action        = "keep"
   }
   rule {
     source_labels = ["__meta_kubernetes_namespace"]
     target_label  = "namespace"
   }
+  // A step is a step even if it carries the backend label; anything in the
+  // platform's namespace is the platform's, whatever its labels.
   rule {
     target_label = "component"
-    replacement  = "platform"
+    replacement  = "api"
   }
   rule {
     source_labels = ["__meta_kubernetes_pod_label_vertra_dev_execution_id"]
@@ -40,7 +45,25 @@ discovery.relabel "pods" {
     replacement   = "step"
   }
   rule {
-    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_component"]
+    source_labels = ["__meta_kubernetes_namespace"]
+    regex         = sys.env("PLATFORM_NAMESPACE")
+    target_label  = "component"
+    replacement   = "platform"
+  }
+  rule {
+    source_labels = ["component", "__meta_kubernetes_pod_label_app_kubernetes_io_component"]
+    regex         = `platform;(.*)`
+    target_label  = "app"
+  }
+  // A backend's app: its app.kubernetes.io/name, else its app label.
+  rule {
+    source_labels = ["component", "__meta_kubernetes_pod_label_app"]
+    regex         = `api;(.+)`
+    target_label  = "app"
+  }
+  rule {
+    source_labels = ["component", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = `api;(.+)`
     target_label  = "app"
   }
   rule {

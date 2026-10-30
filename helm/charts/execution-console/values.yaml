@@ -200,11 +200,12 @@ audit:
     minutes: 5
 
 # -- Log search (Observe's Logs tab, console/src/core/logs.ts): Grafana
-# Alloy reads every step's output and the platform's own through the
+# Alloy reads every step's output, the API backends teams run (Pods
+# labelled vertra/api-backend: "true") and the platform's own through the
 # Kubernetes API, redacts credentials, and sends it to a single Loki here.
 # The console queries Loki itself, adding each caller's visibility (a step's
-# INFO lines to anyone who may see its run; the rest to its team; the
-# platform's to admins), so Loki is reachable from the console and Alloy
+# INFO lines to anyone who may see its run; the rest, and a backend's
+# lines, to its team; the platform's to admins), so Loki is reachable from the console and Alloy
 # only. Logs are searchable for searchDays, then archived: kept, in a
 # bucket's archive storage class, until keepDays (filesystem storage, as on
 # kind, has no archive class: there they're simply kept until keepDays).

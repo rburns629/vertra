@@ -88,8 +88,10 @@ design.
     now always has a volume). And on EKS: the bucket and its rules, Loki
     writing through Pod Identity, reading back chunks moved to Glacier
     Instant Retrieval with its volume deleted, and a restart keeping its
-    volume losing nothing. Left: API products' backends'
-    logs (in team namespaces, not steps) for their teams; Secret values
+    volume losing nothing. API backends' logs (done 2026-10-29): Pods a
+    team labels `vertra/api-backend` are collected as `component="api"`,
+    every level to their own team only (Logs tab, From: API backends);
+    proven on kind with the greetings backend. Left: Secret values
     (not just credential shapes) masked. Needs a decision (2026-10-29):
     masking a value needs its value, so something would have to read
     every team's Secrets (the collector, or the scheduler), which the
@@ -655,7 +657,7 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   consumer of what's shared with their teams. Managed on the team's
   Members tab (`TeamService/SetMemberRole`); never without a maintainer
   (`LAST_MAINTAINER`). Bots, and people an admin creates in a team, are
-  maintainers. Left: SSO groups mapped to roles (with SSO sign-in).
+  maintainers. SSO groups map to a team with a role (2026-10-25, below).
 - [x] **P1: `visibility` on actions** (done 2026-10-21): `visibility:
   hidden` on an action (product.yaml) or a template keeps it to its own
   team (and admins), and can't be combined with `shareWith`; everything

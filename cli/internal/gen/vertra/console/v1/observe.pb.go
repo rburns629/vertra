@@ -1152,13 +1152,14 @@ type SearchLogsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Lines containing this, ignoring case.
 	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	// Only this team's steps.
+	// Only this team's steps (or API backends).
 	Team string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
-	// Only this run's steps.
+	// Only this run's steps (not with source api).
 	ExecutionId string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
 	// debug, info, warn or error; any when empty.
 	Level string `protobuf:"bytes,4,opt,name=level,proto3" json:"level,omitempty"`
-	// step (the default) or platform (admins only).
+	// step (the default); api, the API backends a team runs (Pods labelled
+	// vertra/api-backend), its own team's only; or platform (admins only).
 	Source string `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
 	// The window; the last hour when unset. At most the install's search
 	// window (searchDays) back: older logs are archived.
@@ -1321,13 +1322,15 @@ func (x *SearchLogsResponse) GetSearchDays() int32 {
 type LogLine struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	At    *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
-	// A step's team (its namespace); empty for the platform's.
+	// A step's or API backend's team (its namespace); empty for the
+	// platform's.
 	Team        string `protobuf:"bytes,2,opt,name=team,proto3" json:"team,omitempty"`
 	ExecutionId string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
 	Task        string `protobuf:"bytes,4,opt,name=task,proto3" json:"task,omitempty"`
 	Attempt     int32  `protobuf:"varint,5,opt,name=attempt,proto3" json:"attempt,omitempty"`
 	Level       string `protobuf:"bytes,6,opt,name=level,proto3" json:"level,omitempty"`
-	// For the platform's: which part (app, gateway, scheduler...).
+	// For the platform's: which part (app, gateway, scheduler...); for an
+	// API backend's, its app.kubernetes.io/name or app label.
 	App           string `protobuf:"bytes,7,opt,name=app,proto3" json:"app,omitempty"`
 	Line          string `protobuf:"bytes,8,opt,name=line,proto3" json:"line,omitempty"`
 	unknownFields protoimpl.UnknownFields

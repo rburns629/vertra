@@ -7,6 +7,8 @@
  * - a step's lines, every level, to its own team (its namespace);
  * - its INFO lines to the run's other owners (its submitter, the team it
  *   was run for; core/runView.ts), never to another provider's member;
+ * - an API backend's lines (a Pod a team labels vertra/api-backend), every
+ *   level, to its own team only: they belong to no run;
  * - the platform's own logs to admins only.
  *
  * Nothing the caller typed reaches a query unchecked: teams and levels are
@@ -34,7 +36,7 @@ export const SearchLogsQuery = Type.Object({
   team: Type.Optional(Type.String({ pattern: "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" })),
   executionId: Type.Optional(Type.String({ format: "uuid" })),
   level: Type.Optional(Type.Union(LEVELS.map((l) => Type.Literal(l)))),
-  source: Type.Optional(Type.Union([Type.Literal("step"), Type.Literal("platform")])),
+  source: Type.Optional(Type.Union([Type.Literal("step"), Type.Literal("api"), Type.Literal("platform")])),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
 });
 
@@ -43,7 +45,7 @@ export interface SearchLogsInput {
   team?: string | undefined;
   executionId?: string | undefined;
   level?: (typeof LEVELS)[number] | undefined;
-  source?: "step" | "platform" | undefined;
+  source?: "step" | "api" | "platform" | undefined;
   since?: Date | undefined;
   until?: Date | undefined;
   limit?: number | undefined;
@@ -115,6 +117,15 @@ export async function visibleQueries(who: AuthUser, input: SearchLogsInput, sinc
     if (!who.isAdmin) throw new ApiError(403, "FORBIDDEN", "The platform's own logs are for admins.", Code.PermissionDenied);
     return [`{component="platform"${level}}${pipeline}`];
   }
+  if (input.source === "api") {
+    if (input.executionId) {
+      throw new ApiError(400, "BAD_REQUEST", "An API backend's lines belong to no run: leave the run out.", Code.InvalidArgument);
+    }
+    const team = input.team ? `, namespace=${quoted(input.team)}` : "";
+    if (who.isAdmin) return [`{component="api"${team}${level}}${pipeline}`];
+    const own = who.teamNames.filter((t) => !input.team || t === input.team);
+    return own.length > 0 ? [`{component="api", namespace=~${oneOf(own)}${level}}${pipeline}`] : [];
+  }
   const access = input.executionId ? await runAccess(who, input.executionId) : "full";
   if (access === "none") {
     throw new ApiError(404, "NOT_FOUND", "No such run, or you can't see it.", Code.NotFound);
@@ -181,7 +192,7 @@ export async function searchLogs(caller: AuthUser | undefined, input: SearchLogs
         count++;
         lines.push({
           at: new Date(Number(BigInt(ns) / 1_000_000n)),
-          team: stream["component"] === "step" ? (stream["namespace"] ?? "") : "",
+          team: stream["component"] === "platform" ? "" : (stream["namespace"] ?? ""),
           executionId: stream["execution_id"] ?? "",
           task: stream["task"] ?? "",
           attempt: Number(stream["attempt"] ?? 0),
