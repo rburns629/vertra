@@ -35,6 +35,7 @@ import { FixedWindowLimit } from "../rateLimit.js";
 import { check } from "../validate.js";
 import type { TeamQuota } from "../../k8s.js";
 import { effectiveQuota } from "../../teamQuota.js";
+import { config } from "../../config.js";
 
 const AnyTeam = Type.String({ minLength: 1 });
 
@@ -81,7 +82,8 @@ function team(row: {
     fromCatalog: row.fromCatalog ?? false,
     quota,
     quotaIsDefault: (row.quota ?? null) === null,
-    installQuota: effectiveQuota({ quota: null }),
+    // The install's, on every team: the page compares the two without another call.
+    installQuota: config.teamNamespaces.quota,
   };
 }
 

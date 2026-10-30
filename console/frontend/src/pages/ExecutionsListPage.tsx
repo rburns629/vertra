@@ -179,7 +179,7 @@ export function ExecutionsListPage() {
         if (cancelled) return;
         setExecutions(page.executions);
         setNextCursor(page.nextCursor);
-        setRetentionDays(page.runRetentionDays || null);
+        setRetentionDays(page.runRetentionDays);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof ApiError ? err.message : "Couldn't load the runs.");
@@ -286,16 +286,19 @@ export function ExecutionsListPage() {
       key: "steps",
       header: "Steps",
       hideBelow: "sm",
-      render: (e) => (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
-          <Steps steps={e.steps} />
-          {runningNow(e) && (
-            <Typography component="span" sx={{ fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
-              Now: {runningNow(e)}
-            </Typography>
-          )}
-        </Box>
-      ),
+      render: (e) => {
+        const now = runningNow(e);
+        return (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+            <Steps steps={e.steps} />
+            {now && (
+              <Typography component="span" sx={{ fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
+                Now: {now}
+              </Typography>
+            )}
+          </Box>
+        );
+      },
     },
     { key: "started", header: "Started", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{when(e.createdAt)}</Box> },
     { key: "by", header: "By", hideBelow: "md", render: (e) => <Box sx={{ overflowWrap: "anywhere" }}>{byWhom(e)}</Box> },
@@ -493,7 +496,7 @@ export function ExecutionsListPage() {
             <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1.25, mt: -1.5 }}>
               <Typography variant="caption" color="text.secondary">
                 {retentionDays !== null &&
-                  `Runs are kept ${String(retentionDays)} days${environment?.label ? ` on ${environment.label}` : ""}. What they made is kept until it's deleted.`}
+                  `Runs are kept ${retentionDays > 0 ? `${String(retentionDays)} days` : "with no time limit"}${environment?.label ? ` on ${environment.label}` : ""}. What they made is kept until it's deleted.`}
               </Typography>
               {nextCursor && (
                 <Button variant="outlined" onClick={() => void loadMore()} disabled={loadingMore}>

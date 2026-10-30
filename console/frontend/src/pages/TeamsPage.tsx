@@ -131,22 +131,25 @@ export function TeamsPage() {
     {
       key: "team",
       header: "Team",
-      render: (t) => (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
-          <Link component={RouterLink} to={teamHref(t.name)} sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
-            {t.name}
-          </Link>
-          {facts[t.name]?.profile?.description && (
-            <Typography
-              component="span"
-              title={facts[t.name]?.profile?.description ?? undefined}
-              sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
-            >
-              {facts[t.name]?.profile?.description}
-            </Typography>
-          )}
-        </Box>
-      ),
+      render: (t) => {
+        const description = facts[t.name]?.profile?.description;
+        return (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+            <Link component={RouterLink} to={teamHref(t.name)} sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
+              {t.name}
+            </Link>
+            {description && (
+              <Typography
+                component="span"
+                title={description}
+                sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+              >
+                {description}
+              </Typography>
+            )}
+          </Box>
+        );
+      },
     },
     {
       key: "state",
