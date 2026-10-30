@@ -54,6 +54,8 @@ render() {
     echo "---"
     helm template "$RELEASE" helm/charts/execution-console -n "$PLATFORM_NS" \
       --set kernelApiUrl=http://unused \
+      --set teamNamespaces.schedulerLogs.clusterRole=$RELEASE-execution-kernel-scheduler-logs \
+      --set teamNamespaces.schedulerLogs.serviceAccount=$PLATFORM_NS/$RELEASE-execution-kernel \
       --show-only templates/write-fence-policy.yaml \
       --show-only templates/namespace-policy.yaml
   }
@@ -93,6 +95,8 @@ rules:
   - {apiGroups: [""], resources: [secrets, configmaps], verbs: [create]}
   - {apiGroups: [""], resources: [namespaces], verbs: [get, create, update, patch]}
   - {apiGroups: [""], resources: [serviceaccounts], verbs: [get, update, patch]}
+  - {apiGroups: [rbac.authorization.k8s.io], resources: [rolebindings, roles], verbs: [create]}
+  - {apiGroups: [rbac.authorization.k8s.io], resources: [clusterroles], verbs: [bind]}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -233,6 +237,21 @@ expect "kube-system (Kubernetes itself refuses)" "forbidden"                  "$
 echo "Console ServiceAccounts:"
 expect "update ESO's (eso-*)"                    allowed                      "$(as_console -n "$TEAM_A" annotate serviceaccount eso-gcp iam.gke.io/gcp-service-account=x)"
 expect "update a product's"                      "only update the ServiceAccounts ESO" "$(as_console -n "$TEAM_A" annotate serviceaccount db-sa iam.gke.io/gcp-service-account=x)"
+
+echo "Console RBAC (the scheduler's log reading, per team namespace):"
+LOGS_ROLE=$RELEASE-execution-kernel-scheduler-logs
+SCHED_SA=$PLATFORM_NS:$RELEASE-execution-kernel
+binding() {  # namespace, name, clusterrole, extra arguments
+  local ns=$1 name=$2 role=$3; shift 3
+  as_console -n "$ns" create rolebinding "$name" --clusterrole="$role" --serviceaccount="$SCHED_SA" "$@"
+}
+expect "the scheduler's logs binding"            allowed                "$(binding "$TEAM_A" vertra-scheduler-logs "$LOGS_ROLE")"
+expect "another ClusterRole"                     "only RBAC write"      "$(binding "$TEAM_A" vertra-scheduler-logs cluster-admin)"
+expect "another subject too"                     "only RBAC write"      "$(binding "$TEAM_A" vertra-scheduler-logs "$LOGS_ROLE" --serviceaccount="$TEAM_A:db-sa")"
+expect "another name"                            "only RBAC write"      "$(binding "$TEAM_A" anything "$LOGS_ROLE")"
+expect "in kube-system"                          "may only write in team" "$(binding kube-system vertra-scheduler-logs "$LOGS_ROLE")"
+# (RBAC's own escalation check, or the fence: refused either way.)
+expect "a Role"                                  "forbidden"            "$(as_console -n "$TEAM_A" create role r --verb=get --resource=pods )"
 
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES case(s) failed"

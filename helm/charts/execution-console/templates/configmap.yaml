@@ -157,6 +157,11 @@ data:
   TEAM_NAMESPACE_POD_SECURITY: {{ .Values.teamNamespaces.podSecurity | quote }}
   TEAM_NAMESPACE_DEFAULT_DENY_INGRESS: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress | quote }}
   TEAM_NAMESPACE_BLOCK_METADATA: {{ and .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress .Values.teamNamespaces.blockMetadata | quote }}
+  {{- with (include "execution-console.schedulerLogs" . | fromJson) }}
+  # The kernel scheduler's log reading, bound per team namespace (schedulerLogs.ts).
+  TEAM_SCHEDULER_LOGS_ROLE: {{ .clusterRole | quote }}
+  TEAM_SCHEDULER_SERVICE_ACCOUNT: {{ printf "%s/%s" .namespace .name | quote }}
+  {{- end }}
   {{- if and .Values.gateway.enabled .Values.teamNamespaces.manage .Values.teamNamespaces.defaultDenyIngress }}
   # The gateway's Pods, let into each team's API backends (vertra-gateway-ingress).
   TEAM_GATEWAY_NAMESPACE: {{ .Release.Namespace | quote }}

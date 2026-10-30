@@ -94,8 +94,11 @@ its own directory.
   - `src/k8s.ts`: every Secret, ServiceAccount and ExternalSecret write.
     These writes are security-sensitive and idempotent (read, then
     create-or-replace; a product's ServiceAccount is create-only). The
-    console creates no RBAC: it may only delete the per-secret Roles older
-    versions made.
+    console's only RBAC write is one RoleBinding per team namespace,
+    `vertra-scheduler-logs`, letting the kernel's scheduler read its steps'
+    logs there (`src/schedulerLogs.ts`; its write fence allows nothing
+    else); otherwise it only deletes the per-secret Roles older versions
+    made.
 - **`gateway/`** (Go 1.26+, pgx, libopenapi-validator): the API gateway
   (decision 20, `docs/assessment.md`), forwarding to each API product's
   backend exactly what its OpenAPI document describes. It reads the

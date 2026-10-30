@@ -8,9 +8,10 @@ one fixed namespace), and reading a Namespace at all (ensureNamespaceExists,
 which deliberately never creates one) is a cluster-scoped resource a plain
 Role cannot grant access to regardless of scope.
 
-It can't create or change RBAC: secrets are per team and need no Role, so
-only deleting the per-secret Roles and RoleBindings older consoles created
-remains (deleteLegacySecretRole).
+Its only RBAC write is one RoleBinding per team namespace letting the
+kernel's scheduler read its steps' logs there (schedulerLogs.ts), which the
+write fence holds to exactly that; otherwise it only deletes the per-secret
+Roles and RoleBindings older consoles created (deleteLegacySecretRole).
 */}}
 {{- if .Values.rbac.create }}
 apiVersion: rbac.authorization.k8s.io/v1
@@ -46,7 +47,18 @@ rules:
     verbs: ["delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["rolebindings"]
+    {{- if (include "execution-console.schedulerLogs" . | fromJson) }}
+    # And one it writes: each team namespace's vertra-scheduler-logs
+    # (schedulerLogs.ts), the write fence's exact shape. Binding a
+    # ClusterRole needs bind on it: on the kernel's logs-only one alone.
+    verbs: ["list", "delete", "create", "update"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["bind"]
+    resourceNames: [{{ (include "execution-console.schedulerLogs" . | fromJson).clusterRole | quote }}]
+    {{- else }}
     verbs: ["list", "delete"]
+    {{- end }}
   # External Secrets Operator's CRDs (docs/security-model.md). SecretStores are listed cluster-wide (the Team page's list of
   # secret sources, and spotting two teams' stores sharing one identity),
   # and written only from a team's reviewed catalog file, through

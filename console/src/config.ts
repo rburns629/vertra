@@ -233,6 +233,17 @@ function loadQuota() {
   return quota;
 }
 
+function schedulerLogs(): { clusterRole: string; serviceAccount: { namespace: string; name: string } } | null {
+  const clusterRole = process.env["TEAM_SCHEDULER_LOGS_ROLE"] ?? "";
+  const serviceAccount = process.env["TEAM_SCHEDULER_SERVICE_ACCOUNT"] ?? "";
+  if (!clusterRole && !serviceAccount) return null;
+  const [namespace, name, extra] = serviceAccount.split("/");
+  if (!clusterRole || !namespace || !name || extra !== undefined) {
+    throw new Error("TEAM_SCHEDULER_LOGS_ROLE and TEAM_SCHEDULER_SERVICE_ACCOUNT (namespace/name) go together");
+  }
+  return { clusterRole, serviceAccount: { namespace, name } };
+}
+
 function gatewayPods(): { namespace: string; labels: Record<string, string> } | null {
   const namespace = process.env["TEAM_GATEWAY_NAMESPACE"] ?? "";
   if (!namespace) return null;
@@ -609,6 +620,10 @@ export const config = {
     // take its node's credentials. Never on GKE, whose Workload Identity
     // is served there.
     blockMetadata: process.env["TEAM_NAMESPACE_BLOCK_METADATA"] === "true",
+    // The kernel scheduler's log reading, bound in each team namespace only
+    // (schedulerLogs.ts): its logs-only ClusterRole, and its ServiceAccount
+    // as namespace/name. Unset, nothing is bound.
+    schedulerLogs: schedulerLogs(),
     // With the gateway on: its Pods (their namespace and labels), which a
     // second NetworkPolicy lets reach the Pods a team labels as API
     // backends (k8s.ts's TEAM_GATEWAY_INGRESS). Null: the gateway is off.

@@ -13,6 +13,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { syncIdentityPolicy } from "./productPolicy.js";
 import { syncPullSecrets } from "./pullSecret.js";
 import { syncScanPolicy } from "./scanning.js";
+import { syncSchedulerLogsBindings } from "./schedulerLogs.js";
 import { syncTeamNetworkPolicies } from "./teamNetwork.js";
 import { syncTeamQuotas } from "./teamQuota.js";
 
@@ -32,6 +33,7 @@ const SYNCS: Record<string, () => Promise<boolean>> = {
   scanPolicy: syncScanPolicy,
   pullSecrets: syncPullSecrets,
   teamNetworkPolicies: syncTeamNetworkPolicies,
+  schedulerLogs: syncSchedulerLogsBindings,
   teamQuotas: syncTeamQuotas,
 };
 

@@ -125,6 +125,29 @@ spec:
         (with teamNamespaces.blockMetadata) vertra-no-metadata, letting out everything but what
         it excepts; it never deletes one.
       reason: Forbidden
+    # Its only RoleBinding written is each team namespace's
+    # vertra-scheduler-logs (schedulerLogs.ts): the kernel's logs-only
+    # ClusterRole for its scheduler, and nothing else; no Role ever. It may
+    # still delete the per-secret ones older consoles made.
+    {{- $logs := include "execution-console.schedulerLogs" . | fromJson }}
+    - expression: >-
+        request.operation == "DELETE" ||
+        (request.resource.resource != "roles" && request.resource.resource != "rolebindings")
+        {{- if $logs }} || (
+        request.resource.resource == "rolebindings" &&
+        object.metadata.name == "vertra-scheduler-logs" &&
+        object.roleRef.apiGroup == "rbac.authorization.k8s.io" &&
+        object.roleRef.kind == "ClusterRole" &&
+        object.roleRef.name == {{ $logs.clusterRole | quote }} &&
+        has(object.subjects) && size(object.subjects) == 1 &&
+        object.subjects[0].kind == "ServiceAccount" &&
+        object.subjects[0].name == {{ $logs.name | quote }} &&
+        has(object.subjects[0].namespace) && object.subjects[0].namespace == {{ $logs.namespace | quote }})
+        {{- end }}
+      message: >-
+        The console's only RBAC write is a team namespace's vertra-scheduler-logs RoleBinding,
+        binding the kernel's logs-only ClusterRole to its scheduler alone.
+      reason: Forbidden
     # Its only quota and limits are each team's (teamQuota.ts). (Deleting
     # one is checked by its name in the request: there's no object then.)
     - expression: >-

@@ -644,6 +644,16 @@ teamNamespaces:
   # identity, is served at that address. Turning it off later leaves the
   # policies in place (the console never deletes one).
   blockMetadata: false
+  # -- The kernel scheduler's log reading, bound in each team namespace (a
+  # RoleBinding, vertra-scheduler-logs: the console's only RBAC write, held
+  # to exactly that by the write fence) instead of cluster-wide. The kernel
+  # chart's logs-only ClusterRole and its scheduler's ServiceAccount
+  # (namespace/name; empty: this release's namespace, kernel-execution-kernel).
+  # An empty clusterRole binds nothing (then set the kernel chart's
+  # rbac.schedulerLogs: cluster).
+  schedulerLogs:
+    clusterRole: kernel-execution-kernel-scheduler-logs
+    serviceAccount: ""
   # -- What each team's steps may use together, as a ResourceQuota
   # (vertra-team-quota) and LimitRange (vertra-team-limits) in its
   # namespace, unless an admin sets the team's own on its Settings tab.

@@ -164,6 +164,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `pullSecret.ts` | Copies the platform's registry pull Secret into every team namespace (`vertra-pull`), for steps' images in private registries. |
 | `failureHelp.ts` | What a failed step's error means, what to do, whether a retry is safe and whom to ask: the owner's words, else the platform's. |
 | `targets.ts` | Allowed targets (X1): which projects, folders, accounts or subscriptions another team may aim a team's products at, from its `allowedTargets`. |
+| `schedulerLogs.ts` | Binds the kernel scheduler's log reading in each team namespace (one RoleBinding to its logs-only ClusterRole, the console's only RBAC write), with the namespace and on every policy resync. |
 | `teamNetwork.ts` | Keeps the default-deny NetworkPolicy (`vertra-default-deny`) in every team namespace, so teams' steps can't reach each other. |
 | `retention.ts` | Deletes, hourly, submitted-execution records, audit entries, unused scan verdicts and chat ratings (90 days) past their retention. |
 | `notifier.ts` | Notifications: making each event once (a run that failed or finished, a step waiting for an approval, the catalog not pulled, a product not ready, a step the cluster refused, a platform alert), fanning it out to inboxes, email (SMTP, the kinds each person chooses) and teams' chat webhooks, and sending those (webhook URLs encrypted, allowed hosts only). |
@@ -399,7 +400,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/migration-job.yaml` | Runs database migrations before an upgrade (a Helm hook). |
 | `templates/backup-cronjob.yaml` | Scheduled database backup (both databases when they share the instance) to GCS, S3, Azure Blob or a volume. |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, the database password, the kernel's identity. |
-| `templates/rbac.yaml` | What the scheduler may do: create and delete Jobs and ConfigMaps, read Pods and their logs. |
+| `templates/rbac.yaml` | What the scheduler may do: create and delete Jobs and ConfigMaps, read Pods; and its logs-only ClusterRole, bound per team namespace by the console (or cluster-wide, `rbac.schedulerLogs: cluster`). |
 | `templates/dispatch-policy.yaml` | Admission policy: the scheduler may only create Jobs (hardened, with `taskPodHardening`) in namespaces labelled `vertra/team=true`, and delete only its own Jobs and ConfigMaps there. |
 | `templates/image-policy.yaml` | Admission policy: task images only from allowed sources (the console edits the list). |
 | `templates/image-signature.yaml` | On GKE: catalog images must be signed (Sigstore's ClusterImagePolicy). |
@@ -431,7 +432,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/namespace-policy.yaml` | Admission policy: the console may only create namespaces labelled a team's and change that one label on a team's namespace, never on kube-* or protected ones. |
 | `templates/scanner.yaml` | The Trivy server image scans run against, the scan Jobs' ServiceAccount (no token) and the Role that lets the console run them in its own namespace and idle the server (its replica count only). |
 | `templates/configmap.yaml`, `secret.yaml`, `serviceaccount.yaml` | Settings, generated secrets (kept across upgrades), the console's identity. |
-| `templates/rbac.yaml` | What the console may do in Kubernetes: create ServiceAccounts, write Secrets and ExternalSecrets, delete (never create) Roles and RoleBindings, edit the image and identity policies; read namespaces, SecretStores and Pods. |
+| `templates/rbac.yaml` | What the console may do in Kubernetes: create ServiceAccounts, write Secrets and ExternalSecrets, write one RoleBinding per team namespace (the scheduler's logs; the write fence allows no other) and delete older consoles' Roles and RoleBindings, edit the image and identity policies; read namespaces, SecretStores and Pods. |
 | `templates/_helpers.tpl`, `NOTES.txt` | Shared snippets; post-install message. |
 
 ### `helm/tests/`

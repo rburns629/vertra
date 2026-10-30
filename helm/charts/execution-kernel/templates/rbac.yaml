@@ -16,9 +16,9 @@ metadata:
     {{- include "execution-kernel.labels" . | nindent 4 }}
 # Exactly the calls kernel/internal/executor makes: Jobs created, read
 # (status included), listed for the orphan sweep, watched, deleted; their
-# Pods listed and watched, and their logs read; the request ConfigMap
-# created and deleted; events listed, to tell a Pod the team's limits refuse
-# for good from one waiting for room in its quota.
+# Pods listed and watched; the request ConfigMap created and deleted;
+# events listed, to tell a Pod the team's limits refuse for good from one
+# waiting for room in its quota. Its steps' logs: the role below.
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
@@ -26,9 +26,6 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["list", "watch"]
-  - apiGroups: [""]
-    resources: ["pods/log"]
-    verbs: ["get"]
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["create", "delete"]
@@ -50,6 +47,39 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "execution-kernel.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
+---
+# Reading its steps' logs (their last lines, when they finish), apart: bound
+# in each team namespace by the console (rbac.schedulerLogs: teamNamespaces,
+# its only RBAC write), or cluster-wide (cluster).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-scheduler-logs
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+{{- if eq .Values.rbac.schedulerLogs "cluster" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-scheduler-logs
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "execution-kernel.fullname" . }}-scheduler-logs
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "execution-kernel.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- else if ne .Values.rbac.schedulerLogs "teamNamespaces" }}
+{{- fail "rbac.schedulerLogs must be teamNamespaces or cluster." }}
+{{- end }}
 {{- end }}
 {{- if .Values.api.auth.enabled }}
 ---

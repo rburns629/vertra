@@ -601,6 +601,35 @@ async function writeNetworkPolicy(namespace: string, body: k8s.V1NetworkPolicy):
   return true;
 }
 
+/** The RoleBinding in each team namespace letting the kernel's scheduler
+ * read its steps' logs (schedulerLogs.ts): the console's only RBAC write,
+ * held to exactly this by its write fence. */
+export const SCHEDULER_LOGS_BINDING = "vertra-scheduler-logs";
+
+/** Creates or replaces a team namespace's scheduler-logs RoleBinding. False
+ * when the namespace doesn't exist. */
+export async function writeSchedulerLogsBinding(
+  namespace: string,
+  clusterRole: string,
+  scheduler: { namespace: string; name: string },
+): Promise<boolean> {
+  const { rbac } = getApis();
+  const body: k8s.V1RoleBinding = {
+    metadata: { name: SCHEDULER_LOGS_BINDING, namespace, labels: MANAGED_LABELS },
+    roleRef: { apiGroup: "rbac.authorization.k8s.io", kind: "ClusterRole", name: clusterRole },
+    subjects: [{ kind: "ServiceAccount", name: scheduler.name, namespace: scheduler.namespace }],
+  };
+  try {
+    await rbac.createNamespacedRoleBinding({ namespace, body });
+    return true;
+  } catch (error) {
+    if (isNotFound(error)) return false;
+    if (!isConflict(error)) throw error;
+  }
+  await rbac.replaceNamespacedRoleBinding({ name: SCHEDULER_LOGS_BINDING, namespace, body });
+  return true;
+}
+
 /** The ResourceQuota and LimitRange every team namespace holds when limits
  * are set (teamQuota.ts). The console's write fence accepts no other names. */
 export const TEAM_QUOTA = "vertra-team-quota";

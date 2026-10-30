@@ -38,6 +38,13 @@ serviceAccount:
 # once at install time.
 rbac:
   create: true
+  # -- Where the scheduler may read its steps' logs. teamNamespaces: only in
+  # team namespaces, through a RoleBinding the console writes into each
+  # (the console chart's teamNamespaces.schedulerLogs) to the logs-only
+  # ClusterRole <release>-execution-kernel-scheduler-logs. cluster: that
+  # role bound cluster-wide, every Pod's logs, kube-system's too: for an
+  # install whose team namespaces the console doesn't manage.
+  schedulerLogs: teamNamespaces
 
 # -- Only dispatch tasks into namespaces carrying this label with the value
 # "true", and never into the namespace this release is installed in (see

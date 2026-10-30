@@ -26,9 +26,11 @@ import {
   ProtectedNamespaceError,
   setTeamNamespace,
   TEAM_GATEWAY_INGRESS,
+  writeSchedulerLogsBinding,
   writeTeamNetworkPolicy,
   writeTeamPullSecret,
 } from "../src/k8s.js";
+import { syncSchedulerLogsBindings } from "../src/schedulerLogs.js";
 import { syncPullSecrets } from "../src/pullSecret.js";
 import { syncTeamNetworkPolicies } from "../src/teamNetwork.js";
 import { checkSecretStoreObjects, cloudIdentities } from "../src/secretStores.js";
@@ -41,6 +43,7 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
   applySecretStoreObjects: vi.fn(() => Promise.resolve()),
   writeTeamPullSecret: vi.fn(() => Promise.resolve(true)),
   writeTeamNetworkPolicy: vi.fn(() => Promise.resolve(true)),
+  writeSchedulerLogsBinding: vi.fn(() => Promise.resolve(true)),
   writeTeamQuota: vi.fn(() => Promise.resolve(true)),
 }));
 // Purging asks kernel-api about unfinished executions; these teams have none.
@@ -363,6 +366,39 @@ describe("the gateway-ingress network policy", () => {
         },
       ],
     });
+  });
+});
+
+describe("the scheduler's log reading, bound per team namespace", () => {
+  const logs = { clusterRole: "kernel-execution-kernel-scheduler-logs", serviceAccount: { namespace: "vertra-system", name: "kernel-execution-kernel" } };
+  beforeAll(() => {
+    config.teamNamespaces.schedulerLogs = logs;
+  });
+  afterAll(() => {
+    config.teamNamespaces.schedulerLogs = null;
+  });
+
+  it("is bound in a new team's namespace, kept while it's retired, and bound again when it's back", async () => {
+    vi.mocked(writeSchedulerLogsBinding).mockClear();
+    expect((await call(admin, "TeamService/CreateTeam", { name: name("logs") })).code).toBe("ok");
+    expect(writeSchedulerLogsBinding).toHaveBeenCalledWith(name("logs"), logs.clusterRole, logs.serviceAccount);
+    vi.mocked(writeSchedulerLogsBinding).mockClear();
+    await retire(name("logs"));
+    expect(writeSchedulerLogsBinding).not.toHaveBeenCalled();
+    await call(admin, "TeamService/UnretireTeam", { name: name("logs") });
+    expect(writeSchedulerLogsBinding).toHaveBeenCalledWith(name("logs"), logs.clusterRole, logs.serviceAccount);
+  });
+
+  it("is bound in every team's namespace on a resync, and not at all when it isn't configured", async () => {
+    await createTeam(name("logs-sync"));
+    vi.mocked(writeSchedulerLogsBinding).mockClear();
+    expect(await syncSchedulerLogsBindings()).toBe(true);
+    expect(writeSchedulerLogsBinding).toHaveBeenCalledWith(name("logs-sync"), logs.clusterRole, logs.serviceAccount);
+    config.teamNamespaces.schedulerLogs = null;
+    vi.mocked(writeSchedulerLogsBinding).mockClear();
+    expect(await syncSchedulerLogsBindings()).toBe(false);
+    expect(writeSchedulerLogsBinding).not.toHaveBeenCalled();
+    config.teamNamespaces.schedulerLogs = logs;
   });
 });
 

@@ -797,7 +797,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 - [ ] **Gaps the 2026-10-28 docs audit found** (documented in
   `docs/security-model.md`): the scheduler may read every Pod's logs
-  cluster-wide; and a compromised
+  cluster-wide (fixed 2026-10-29: a logs-only ClusterRole the console
+  binds per team namespace, its only RBAC write, fenced to exactly that;
+  proven on kind: team namespaces yes, kube-system and the platform's no,
+  a step's logs still read); and a compromised
   console can loosen the image, identity and scan policies (accepted:
   Kubernetes can't fence an admission policy's own edits). Proven on EKS
   Auto Mode 2026-10-28 (NetworkPolicy enforced: another team's Pod

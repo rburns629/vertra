@@ -231,3 +231,21 @@ local   all  all            trust
 hostssl all  all  0.0.0.0/0 scram-sha-256
 hostssl all  all  ::/0      scram-sha-256
 {{- end -}}
+
+{{/*
+The kernel scheduler's log reading, bound per team namespace: its logs-only
+ClusterRole and ServiceAccount, as JSON ({} when not bound: the console
+doesn't manage team namespaces, or teamNamespaces.schedulerLogs.clusterRole
+is empty).
+*/}}
+{{- define "execution-console.schedulerLogs" -}}
+{{- $s := .Values.teamNamespaces.schedulerLogs -}}
+{{- if and .Values.teamNamespaces.manage $s.clusterRole -}}
+{{- $sa := $s.serviceAccount | default (printf "%s/kernel-execution-kernel" .Release.Namespace) -}}
+{{- $parts := splitList "/" $sa -}}
+{{- if ne (len $parts) 2 }}{{ fail "teamNamespaces.schedulerLogs.serviceAccount is namespace/name." }}{{ end -}}
+{{- dict "clusterRole" $s.clusterRole "namespace" (index $parts 0) "name" (index $parts 1) | toJson -}}
+{{- else -}}
+{}
+{{- end -}}
+{{- end -}}

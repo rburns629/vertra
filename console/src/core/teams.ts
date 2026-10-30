@@ -57,6 +57,7 @@ import {
 import { getExecutionStates } from "../kernel/client.js";
 import { syncIdentityPolicy } from "../productPolicy.js";
 import { copyPullSecret } from "../pullSecret.js";
+import { ensureSchedulerLogsBinding } from "../schedulerLogs.js";
 import { ensureTeamNetworkPolicy } from "../teamNetwork.js";
 import { ensureTeamQuota } from "../teamQuota.js";
 import { ensureNotRetired } from "./retired.js";
@@ -85,6 +86,7 @@ async function setTeamNamespaceState(name: string, state: TeamNamespaceState, cr
     await setTeamNamespace(name, state, { ...config.teamNamespaces, createIfMissing });
     if (state === "true") {
       await ensureTeamNetworkPolicy(name);
+      await ensureSchedulerLogsBinding(name);
       await ensureTeamQuota(name);
       await copyPullSecret(name);
     }

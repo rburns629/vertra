@@ -766,8 +766,10 @@ taken, and what would still hold.
   namespaces, never the platform's (the dispatch policy, which it can't
   edit); it can't write outside team namespaces, change a team namespace's
   labels beyond its team label, delete a namespace (unless
-  `teamNamespaces.purge`), widen a team's NetworkPolicy, create RBAC, or
-  read a Secret through the API; policy-controller's signature check, where
+  `teamNamespaces.purge`), widen a team's NetworkPolicy, create RBAC
+  beyond one fixed RoleBinding per team namespace (the scheduler reading
+  its steps' logs; the write fence refuses any other subject, role or
+  name), or read a Secret through the API; policy-controller's signature check, where
   installed; Pod Security in the namespaces it created.
 - **kernel-api**'s ServiceAccount may only ask the API server who a token
   belongs to (`system:auth-delegator`). It holds the kernel's database: every run's
@@ -780,8 +782,10 @@ taken, and what would still hold.
   (`helm/charts/execution-kernel/templates/rbac.yaml`): create Jobs and
   ConfigMaps (the dispatch policy keeps them to team namespaces, and the
   Job policies check every Job); list and watch every Pod in the cluster
-  and read any Pod's logs, the platform's and kube-system's included;
-  delete Jobs and ConfigMaps, which the dispatch policy keeps to its own
+  read steps' logs only in team namespaces (a logs-only ClusterRole the
+  console binds in each one; not the platform's or kube-system's, unless
+  the kernel chart's `rbac.schedulerLogs: cluster`, for an install whose
+  team namespaces the console doesn't manage); delete Jobs and ConfigMaps, which the dispatch policy keeps to its own
   (labelled `app=execution-kernel`, named `ek-…`) in team namespaces,
   retired ones included (proven on kind 2026-10-28); list events.
 - **The gateway** may mint ServiceAccount tokens only for `*-api`
@@ -916,7 +920,6 @@ Vertra isn't production-ready yet.
 | Groups from an ID token's claim are read at sign-in only | Someone who leaves a group the provider reports in its token stays in its team until their session ends (8 hours by default) or they sign in again; Google Workspace groups are read again every hour | Shorter sessions where that matters (`JWT_TTL`) |
 | Reads aren't audited ([Audit](#audit)) | Who looked at a run's outputs or logs isn't recorded | Not decided |
 | The audit log lives in the console's own database unless `audit.export` copies it to write-once storage (its entries are hash-chained, so a change shows at the next copy; Observe shows the log as each caller may see it) | Someone who can write that database could change it | Ship the `event: "audit"` log lines to a SIEM or write-once store |
-| The scheduler may read every Pod's logs, cluster-wide (reading isn't something an admission policy can check) | A stolen scheduler identity can read the platform's and kube-system's logs | Not decided: per-namespace Roles would need something to create RBAC in each team namespace, which the console deliberately can't |
 | Step Pod hardening is a chart setting: with `scheduler.taskPodHardening: false`, the dispatch policy no longer requires it, and only Pod Security, on namespaces the console created, holds a step to `restricted` | Steps run as root with an API token in an adopted namespace | Keep `taskPodHardening` on and let the console create team namespaces |
 | Every team named in a raw DAG sees all of its steps' outputs (a template run's providers see only their own steps in full; other teams see only a step's INFO log lines) | Cross-team visibility of outputs within a shared raw DAG | Decide: filter outputs by team, or require every team for reads |
 
