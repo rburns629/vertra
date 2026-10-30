@@ -91,4 +91,26 @@ describe("useComposeDrafts", () => {
     expect(vi.mocked(saveDraft).mock.calls[1]?.[0].version).toBe(4);
     expect(result.current.status).toBe("saved");
   });
+
+  it("never saves over someone else's draft of the same name it didn't open", async () => {
+    // A teammate's draft is listed; this page starts a new one by that name.
+    const theirs = draft("my-template", "Theirs");
+    vi.mocked(listDrafts).mockResolvedValue([stored(theirs, 3)]);
+    const { result, rerender } = renderHook(({ d }) => useComposeDrafts(d), { initialProps: { d: draft("my-template") } });
+    await settle(0);
+    act(() => { result.current.edited(); });
+    rerender({ d: draft("my-template", "Mine") });
+    await settle();
+    // Saved as new (version 0), which the server refuses as a conflict, not as an update of theirs.
+    expect(vi.mocked(saveDraft).mock.calls.map(([c]) => c.version)).toEqual([0]);
+
+    // Opened (a fresh page), it's this page's to save over.
+    vi.mocked(saveDraft).mockClear();
+    const opened = renderHook(({ d }) => useComposeDrafts(d), { initialProps: { d: theirs } });
+    await settle(0);
+    act(() => { opened.result.current.opened(theirs); opened.result.current.edited(); });
+    opened.rerender({ d: draft("my-template", "Edited") });
+    await settle();
+    expect(vi.mocked(saveDraft).mock.calls.map(([c]) => c.version)).toEqual([3]);
+  });
 });

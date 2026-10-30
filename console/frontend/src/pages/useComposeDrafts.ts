@@ -39,6 +39,9 @@ export type SaveStatus = "idle" | "saving" | "saved" | "conflict" | "error";
  * a time, each naming the version the last returned; one someone else beat
  * is a conflict, which keepMine or the page's reload settles. Renaming the
  * open draft moves it. `edited` marks a change to save; opening one doesn't.
+ * Only the draft this page opened or saved is saved over: a new one, or a
+ * rename onto a name that's taken, is created, so someone else's draft by
+ * that name is a conflict, never replaced (unless keepMine says so).
  */
 export function useComposeDrafts(current: Draft) {
   const [drafts, setDrafts] = useState<StoredDraft[] | null>(null);
@@ -66,13 +69,14 @@ export function useComposeDrafts(current: Draft) {
     });
   }, [reload]);
 
-  const save = useCallback((draft: Draft) => {
+  const save = useCallback((draft: Draft, overwrite = false) => {
     const key = keyOf(draft);
     const upTo = edits.current;
     queue.current = queue.current.then(async () => {
       setStatus("saving");
       try {
-        const saved = await saveDraft({ team: draft.team, name: draft.name, body: { ...draft }, version: versions.current.get(key) ?? 0 });
+        const ours = overwrite || savedAs.current === key;
+        const saved = await saveDraft({ team: draft.team, name: draft.name, body: { ...draft }, version: ours ? (versions.current.get(key) ?? 0) : 0 });
         versions.current.set(key, saved.version);
         savedEdits.current = Math.max(savedEdits.current, upTo);
         const moved = savedAs.current !== null && savedAs.current !== key ? savedAs.current : null;
@@ -124,7 +128,7 @@ export function useComposeDrafts(current: Draft) {
       setProblem(null);
     },
     /** Saves the open draft over whatever someone else saved. */
-    keepMine: () => { save(current); },
+    keepMine: () => { save(current, true); },
     remove: async (d: StoredDraft) => {
       await deleteDraft(d.team, d.name);
       versions.current.delete(keyOf(d));
