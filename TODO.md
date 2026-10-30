@@ -31,7 +31,8 @@ Azure last.
    below), ~~policy-controller on EKS~~ (proven 2026-10-27); left: a sample
    federating with its product token.
 6. The rest of the performance work (below): sustained and higher
-   scenarios, failure cases, API load through the console.
+   scenarios, failure cases, API load through the console, and per-team
+   product usage and run counts (moved here from the redesign's gaps).
 7. The billed proof run, one session per cloud, destroyed after (decided
    2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
    Service for Prometheus, the bundled Prometheus on a cloud volume, the
@@ -1090,22 +1091,25 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   email and running step with its attempt, how long runs are kept for
   everyone, the Admin sections' install settings, Observe's Grafana link,
   a team's install limits beside its own, and team.yaml's description in
-  the release, on the Teams page and the team's page. Still open:
-  - Planned already, and done since: Observe's alerts (#45) and whether a
-    retry is safe (the failure help's **Safe to retry?**).
-  - The rest, to decide one by one: which schedule started a run; what the
-    cart held for an order; the Kubernetes Job's name in "Who acted"; a
-    resource's run name; which group added a member (and a team-scoped read
-    of group mappings, and each mapping's member count); who retired a team;
-    when a CI identity was added; an API's per-team limits and the gateway's
-    default for non-admins; log search by one API; a refusal's detail apart
-    from its subject; what a catalog release applied (counts); who last
-    saved the image sources; a proposed cart's lines with product, team,
-    verb and wiring; a total for guide search; "since you last looked"
-    (a per-person last-seen time); per-team product usage and run counts;
-    sharing-change and template creation times; order choices' resource
-    details; an alert to admins when the audit copy stops or its chain
-    breaks (the board said there was one; there isn't).
+  the release, on the Teams page and the team's page. Planned already, and
+  done since: Observe's alerts (#45) and whether a retry is safe. The rest,
+  decided 2026-10-30:
+  - Building now (group 2, data mostly there): an alert to admins when the
+    audit copy stops or its chain breaks (the board said there was one;
+    there isn't); which schedule started a run; when a CI identity was
+    added; what a catalog release applied (counts); a refusal's detail
+    apart from its subject; which group added a member.
+  - Next, boards first: log search by one API; an API's per-team limits
+    and the gateway's default for non-admins; who retired a team; who last
+    saved the image sources (or a link to its audit entry); what the cart
+    held for an order, and its choices' resource details; a proposed
+    cart's lines with product, team, verb and wiring.
+  - Dropped, and to come off the boards: the Kubernetes Job's name in "Who
+    acted"; a resource's run name; "since you last looked"; sharing-change
+    and template creation times (the catalog's history has them); a total
+    for guide search; a team-scoped read of group mappings and each
+    mapping's member count. Per-team product usage and run counts moved to
+    the performance work (item 5 there), not dropped.
 
 - [ ] **One read for the Teams page's other teams** (found reviewing #33,
   2026-10-30): an admin's Teams page reads each other team's profile and
@@ -1288,6 +1292,11 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      through the console; the failure cases not yet covered (a create that
      times out but happened, Postgres or the API server away, cancelling as
      a step finishes); repeated runs compared; a manual or nightly CI job.
+  5. Per-team product usage and run counts (from the redesign's gaps,
+     2026-10-30; a board drew them): how many runs each team started and which products it
+     used, over a day and a week. Decide with the rest of this pass where
+     they come from (kernel-api's `GetStats`, or Prometheus) and what they
+     cost on a busy install, then show them on the Teams page and Observe.
 - [ ] **A chat agent, then an MCP server (decision 24; the chat agent built
   2026-10-28: `console/src/chat/`, `ChatService`, the Ask panel. Seen on
   kind with Qwen 27B: a backups question answered in 229 s (the laptop
