@@ -1368,4 +1368,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [x] **`make up` mistakes any console port-forward for its own** (done:
   `PORT_FORWARD` names the context and port, which `pgrep`/`pkill` match).
 - [ ] **Switch to Sigstore's newer signature format** once policy-controller
-  reads it (catalog CI signs with `--new-bundle-format=false`).
+  reads it (catalog CI signs with `--new-bundle-format=false`). Checked
+  2026-10-29: the installed policy-controller (chart 0.10.8, app 0.13.1) has
+  an authority's `signatureFormat: bundle`, but its docs say the bundle
+  format covers attestations only, not plain signatures, which is what
+  catalog CI makes. When it covers signatures: sign without the flag, and
+  give the image policy both formats' authorities for the change (they're
+  OR'd), then drop `legacy` once old images are gone.
