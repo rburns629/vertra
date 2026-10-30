@@ -18,9 +18,10 @@ const ChatPanel = lazy(() => import("../components/ChatPanel").then((m) => ({ de
 /**
  * Ask (decision 24): in the sidebar beside the navigation on a desktop, in
  * the top bar on a phone, and the chat panel it opens, kept while closed.
- * Without a model it's there but off, saying who turns it on.
+ * Without a model it's there but off, saying who turns it on. `compact`:
+ * the collapsed sidebar's, its icon alone and its name on hover.
  */
-export function ChatLauncher({ placement }: { placement: "sidebar" | "toolbar" }) {
+export function ChatLauncher({ placement, compact = false }: { placement: "sidebar" | "toolbar"; compact?: boolean }) {
   const { user } = useAuth();
   // undefined while asking; null when there's no model.
   const [model, setModel] = useState<string | null | undefined>(undefined);
@@ -52,7 +53,9 @@ export function ChatLauncher({ placement }: { placement: "sidebar" | "toolbar" }
           flex: "none",
           mx: 1.5,
           borderRadius: 2,
-          minHeight: 40,
+          minHeight: 44,
+          justifyContent: compact ? "center" : undefined,
+          px: compact ? 0 : undefined,
           border: 1,
           borderColor: "sidebar.border",
           color: "sidebar.text",
@@ -61,14 +64,16 @@ export function ChatLauncher({ placement }: { placement: "sidebar" | "toolbar" }
           "&.Mui-disabled": { opacity: 0.55 },
         }}
       >
-        <ListItemIcon sx={{ minWidth: 32, color: off ? "inherit" : "sidebar.accent", "& svg": { fontSize: 19 } }}>
+        <ListItemIcon sx={{ minWidth: compact ? 0 : 32, color: off ? "inherit" : "sidebar.accent", "& svg": { fontSize: 19 } }}>
           <ChatIcon />
         </ListItemIcon>
-        <ListItemText
-          primary="Ask Vertra"
-          secondary={off ? "Not set up" : undefined}
-          slotProps={{ primary: { sx: { fontSize: 14 } }, secondary: { sx: { fontSize: 12, color: "sidebar.textMuted" } } }}
-        />
+        {!compact && (
+          <ListItemText
+            primary="Ask Vertra"
+            secondary={off ? "Not set up" : undefined}
+            slotProps={{ primary: { sx: { fontSize: 14 } }, secondary: { sx: { fontSize: 12, color: "sidebar.textMuted" } } }}
+          />
+        )}
       </ListItemButton>
     ) : (
       <IconButton aria-label="Ask Vertra" disabled={off} onClick={ask}>
@@ -79,8 +84,8 @@ export function ChatLauncher({ placement }: { placement: "sidebar" | "toolbar" }
   return (
     <>
       {/* A disabled control gets no hover: the tooltip sits on what holds it. */}
-      {off ? (
-        <Tooltip title={why} placement={placement === "sidebar" ? "right" : "bottom"}>
+      {off || compact ? (
+        <Tooltip title={off ? why : "Ask Vertra"} placement={placement === "sidebar" ? "right" : "bottom"}>
           <Box component="span" sx={{ display: placement === "sidebar" ? "block" : "inline-flex" }}>
             {trigger}
           </Box>

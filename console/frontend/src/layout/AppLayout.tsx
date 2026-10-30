@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
@@ -14,6 +14,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
@@ -21,6 +22,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import HomeIcon from "@mui/icons-material/HomeOutlined";
 import CatalogIcon from "@mui/icons-material/GridViewOutlined";
 import ApiIcon from "@mui/icons-material/CodeOutlined";
+import ComposeIcon from "@mui/icons-material/AccountTreeOutlined";
 import RunsIcon from "@mui/icons-material/PlayArrowOutlined";
 import ObserveIcon from "@mui/icons-material/InsightsOutlined";
 import GroupsIcon from "@mui/icons-material/GroupsOutlined";
@@ -29,6 +31,8 @@ import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import PersonIcon from "@mui/icons-material/PersonOutlined";
 import DocsIcon from "@mui/icons-material/MenuBookOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
+import CollapseIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
+import ExpandIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import type { Me } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { PageErrorBoundary } from "../components/ErrorPage";
@@ -36,20 +40,35 @@ import { useEnvironment } from "../environment";
 import { ChatLauncher } from "./ChatLauncher";
 import { NotificationBell } from "./NotificationBell";
 
-const DRAWER_WIDTH = 248;
+/** The sidebar's width: dragged between these; under COMPACT_BELOW it keeps just the icons (Motion board). */
+const WIDTH = { default: 248, min: 72, max: 360, compactBelow: 150 } as const;
+const WIDTH_KEY = "vertra.sidebarWidth";
 
-/** Each place in the console; `also` are paths that belong to it too. */
-const NAV_ITEMS = [
-  { label: "Home", to: "/", icon: <HomeIcon />, also: [] as string[] },
-  { label: "Catalog", to: "/catalog", icon: <CatalogIcon />, also: ["/products"] },
-  { label: "APIs", to: "/apis", icon: <ApiIcon />, also: [] },
-  { label: "Runs", to: "/runs", icon: <RunsIcon />, also: [] },
-  { label: "Observe", to: "/observe", icon: <ObserveIcon />, also: [] },
-  { label: "Teams", to: "/teams", icon: <GroupsIcon />, also: [] },
+interface NavItem {
+  label: string;
+  to: string;
+  icon: ReactNode;
+  /** Paths that belong to it too. */
+  also?: string[];
+  /** Paths under it that are another item's. */
+  not?: string[];
+}
+
+/** Each place in the console. */
+const NAV_ITEMS: NavItem[] = [
+  { label: "Home", to: "/", icon: <HomeIcon /> },
+  { label: "Catalog", to: "/catalog", icon: <CatalogIcon />, also: ["/products"], not: ["/catalog/compose"] },
+  { label: "APIs", to: "/apis", icon: <ApiIcon /> },
+  { label: "Compose", to: "/catalog/compose", icon: <ComposeIcon /> },
+  { label: "Runs", to: "/runs", icon: <RunsIcon /> },
+  { label: "Observe", to: "/observe", icon: <ObserveIcon /> },
+  { label: "Teams", to: "/teams", icon: <GroupsIcon /> },
 ];
-const ADMIN_ITEM = { label: "Admin", to: "/admin", icon: <AdminIcon />, also: [] as string[] };
+const ADMIN_ITEM: NavItem = { label: "Admin", to: "/admin", icon: <AdminIcon /> };
 
 const isUnder = (path: string, prefix: string) => (prefix === "/" ? path === "/" : path === prefix || path.startsWith(`${prefix}/`));
+const isAt = (path: string, item: NavItem) =>
+  [item.to, ...(item.also ?? [])].some((p) => isUnder(path, p)) && !(item.not ?? []).some((p) => isUnder(path, p));
 
 /** Who you are here, in a few words: "admin", "maintainer · azure-apps". */
 function roleLine(user: Me): string {
@@ -58,6 +77,32 @@ function roleLine(user: Me): string {
   if (first) return `maintainer · ${first}`;
   const [team] = user.teamNames;
   return team ? `member · ${team}` : "no team yet";
+}
+
+const clamp = (width: number) => Math.min(WIDTH.max, Math.max(WIDTH.min, Math.round(width)));
+
+/** The width last chosen in this browser: a convenience, so the default when storage isn't there. */
+function storedWidth(): number {
+  try {
+    const saved = Number(localStorage.getItem(WIDTH_KEY));
+    return saved > 0 ? clamp(saved) : WIDTH.default;
+  } catch {
+    return WIDTH.default;
+  }
+}
+
+/** The sidebar's width, kept in this browser, and what changes it. */
+function useSidebarWidth() {
+  const [width, setWidth] = useState(storedWidth);
+  useEffect(() => {
+    try {
+      localStorage.setItem(WIDTH_KEY, String(width));
+    } catch {
+      // Private window or blocked storage: the width lasts this page only.
+    }
+  }, [width]);
+  const set = useCallback((next: number) => { setWidth(clamp(next)); }, []);
+  return [width, set] as const;
 }
 
 /** Two DAG steps feeding a third: the Vertra mark. */
@@ -86,6 +131,67 @@ function InstallCard() {
   );
 }
 
+const onDarkButton = {
+  color: "sidebar.text",
+  borderRadius: 2,
+  "&:hover": { bgcolor: "sidebar.hoverBg", color: "sidebar.textStrong" },
+  "&.Mui-focusVisible": { outlineColor: (t: { palette: { sidebar: { accent: string } } }) => t.palette.sidebar.accent },
+} as const;
+
+/**
+ * The sidebar's right edge: drag it to resize, or focus it and use the
+ * arrow keys (Home and End for narrowest and widest). A window splitter, as
+ * ARIA has it.
+ */
+function ResizeHandle({ width, onWidth }: { width: number; onWidth: (w: number) => void }) {
+  const start = useRef<{ x: number; width: number } | null>(null);
+  const down = (e: PointerEvent<HTMLDivElement>) => {
+    start.current = { x: e.clientX, width };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const move = (e: PointerEvent<HTMLDivElement>) => {
+    if (start.current) onWidth(start.current.width + e.clientX - start.current.x);
+  };
+  const up = () => { start.current = null; };
+  const key = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 48 : 16;
+    const next = { ArrowLeft: width - step, ArrowRight: width + step, Home: WIDTH.min, End: WIDTH.max }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    onWidth(next);
+  };
+  return (
+    <Box
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the sidebar"
+      aria-valuemin={WIDTH.min}
+      aria-valuemax={WIDTH.max}
+      aria-valuenow={width}
+      tabIndex={0}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onKeyDown={key}
+      onDoubleClick={() => { onWidth(WIDTH.default); }}
+      sx={{
+        position: "absolute",
+        top: 0,
+        right: -4,
+        width: 8,
+        height: "100%",
+        cursor: "col-resize",
+        zIndex: 1,
+        touchAction: "none",
+        "&:hover, &:focus-visible": { bgcolor: "sidebar.accent", opacity: 0.5 },
+        "&:focus-visible": { outline: "none" },
+        transition: "background-color 120ms",
+      }}
+    />
+  );
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -96,6 +202,10 @@ export function AppLayout() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [navOpen, setNavOpen] = useState(false);
+  const [width, setWidth] = useSidebarWidth();
+  // The phone's drawer is always full; only the desktop's column narrows.
+  const drawerWidth = isDesktop ? width : WIDTH.default;
+  const compact = isDesktop && width < WIDTH.compactBelow;
 
   if (!user) return null;
 
@@ -115,48 +225,72 @@ export function AppLayout() {
         onClose={() => { setNavOpen(false); }}
         ModalProps={{ keepMounted: true }}
         sx={{
-          width: isDesktop ? DRAWER_WIDTH : undefined,
+          width: isDesktop ? drawerWidth : undefined,
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: {
-            width: DRAWER_WIDTH,
+            width: drawerWidth,
             boxSizing: "border-box",
             bgcolor: "sidebar.background",
             borderRight: 1,
             borderColor: "sidebar.border",
             color: "sidebar.text",
+            overflowX: "hidden",
+            overflowY: "visible",
             pt: 2.5,
             pb: 1.5,
             gap: 2.5,
           },
         }}
       >
-        <Box
-          component={RouterLink}
-          to="/"
-          onClick={() => { setNavOpen(false); }}
-          sx={{ display: "flex", alignItems: "center", gap: 1.25, px: 2.25, color: "sidebar.textStrong", textDecoration: "none", fontWeight: 600, fontSize: 17 }}
-        >
-          <Mark />
-          Vertra
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: compact ? "center" : "space-between", px: compact ? 0 : 2.25, pr: compact ? 0 : 1, gap: 1 }}>
+          <Box
+            component={RouterLink}
+            to="/"
+            aria-label={compact ? "Vertra home" : undefined}
+            onClick={() => { setNavOpen(false); }}
+            sx={{ display: "flex", alignItems: "center", gap: 1.25, color: "sidebar.textStrong", textDecoration: "none", fontWeight: 600, fontSize: 17, minHeight: 32 }}
+          >
+            <Mark />
+            {!compact && "Vertra"}
+          </Box>
+          {isDesktop && !compact && (
+            <Tooltip title="Collapse the sidebar">
+              <IconButton size="small" aria-label="Collapse the sidebar" onClick={() => { setWidth(WIDTH.min); }} sx={onDarkButton}>
+                <CollapseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
+        {compact && (
+          <Box sx={{ display: "flex", justifyContent: "center", mt: -1.5 }}>
+            <Tooltip title="Expand the sidebar" placement="right">
+              <IconButton size="small" aria-label="Expand the sidebar" onClick={() => { setWidth(WIDTH.default); }} sx={onDarkButton}>
+                <ExpandIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
 
-        <InstallCard />
+        {!compact && <InstallCard />}
 
         <List component="nav" aria-label="Main" sx={{ px: 1.5, py: 0, flexGrow: 1 }}>
           {items.map((item) => {
-            const selected = [item.to, ...item.also].some((p) => isUnder(location.pathname, p));
-            return (
+            const selected = isAt(location.pathname, item);
+            const button = (
               <ListItemButton
                 key={item.to}
                 component={RouterLink}
                 to={item.to}
                 selected={selected}
                 aria-current={selected ? "page" : undefined}
+                aria-label={compact ? item.label : undefined}
                 onClick={() => { setNavOpen(false); }}
                 sx={{
                   borderRadius: 2,
                   mb: 0.25,
-                  minHeight: 40,
+                  minHeight: 44,
+                  justifyContent: compact ? "center" : undefined,
+                  px: compact ? 0 : undefined,
                   color: selected ? "sidebar.activeText" : "sidebar.text",
                   "&:hover": { bgcolor: "sidebar.hoverBg", color: "sidebar.textStrong" },
                   "&.Mui-focusVisible": { outlineColor: (t) => t.palette.sidebar.accent },
@@ -166,39 +300,60 @@ export function AppLayout() {
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 32, color: "inherit", "& svg": { fontSize: 19 } }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: selected ? 500 : 400 } } }} />
+                <ListItemIcon sx={{ minWidth: compact ? 0 : 32, color: "inherit", "& svg": { fontSize: 19 } }}>{item.icon}</ListItemIcon>
+                {!compact && <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontSize: 14, fontWeight: selected ? 500 : 400 } } }} />}
               </ListItemButton>
+            );
+            return compact ? (
+              <Tooltip key={item.to} title={item.label} placement="right">
+                {button}
+              </Tooltip>
+            ) : (
+              button
             );
           })}
         </List>
 
-        {isDesktop && <ChatLauncher placement="sidebar" />}
+        {isDesktop && <ChatLauncher placement="sidebar" compact={compact} />}
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mx: 1.5, pt: 1.25, px: 0.75, borderTop: 1, borderColor: "sidebar.border" }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12, fontWeight: 600 }} aria-hidden="true">
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: compact ? "column" : "row",
+            alignItems: "center",
+            gap: compact ? 0.5 : 1.25,
+            mx: 1.5,
+            pt: 1.25,
+            px: compact ? 0 : 0.75,
+            borderTop: 1,
+            borderColor: "sidebar.border",
+          }}
+        >
+          <Avatar
+            sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 12, fontWeight: 600 }}
+            aria-hidden={compact ? undefined : "true"}
+            aria-label={compact ? user.email : undefined}
+            title={compact ? `${user.email} (${roleLine(user)})` : undefined}
+          >
             {user.email.slice(0, 2).toUpperCase()}
           </Avatar>
-          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography noWrap sx={{ fontSize: 13, color: "sidebar.textStrong", lineHeight: 1.35 }}>
-              {user.email}
-            </Typography>
-            <Typography noWrap sx={{ fontSize: 12, color: "sidebar.textMuted", lineHeight: 1.35 }}>
-              {roleLine(user)}
-            </Typography>
-          </Box>
+          {!compact && (
+            <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+              <Typography noWrap sx={{ fontSize: 13, color: "sidebar.textStrong", lineHeight: 1.35 }}>
+                {user.email}
+              </Typography>
+              <Typography noWrap sx={{ fontSize: 12, color: "sidebar.textMuted", lineHeight: 1.35 }}>
+                {roleLine(user)}
+              </Typography>
+            </Box>
+          )}
           {isDesktop && <NotificationBell onDark />}
           <IconButton
             aria-label="Settings"
             aria-haspopup="menu"
             aria-expanded={Boolean(menuAnchor)}
             onClick={(event) => { setMenuAnchor(event.currentTarget); }}
-            sx={{
-              color: "sidebar.text",
-              borderRadius: 2,
-              "&:hover": { bgcolor: "sidebar.hoverBg", color: "sidebar.textStrong" },
-              "&.Mui-focusVisible": { outlineColor: (t) => t.palette.sidebar.accent },
-            }}
+            sx={onDarkButton}
           >
             <SettingsIcon fontSize="small" />
           </IconButton>
@@ -208,7 +363,7 @@ export function AppLayout() {
           open={Boolean(menuAnchor)}
           onClose={() => { setMenuAnchor(null); }}
           anchorOrigin={{ vertical: "top", horizontal: "right" }}
-          transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "bottom", horizontal: compact ? "left" : "right" }}
         >
           <MenuItem onClick={() => { goTo("/account"); }}>
             <ListItemIcon>
@@ -220,7 +375,7 @@ export function AppLayout() {
             <ListItemIcon>
               <DocsIcon fontSize="small" />
             </ListItemIcon>
-            Documentation
+            Help and guides
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -235,6 +390,7 @@ export function AppLayout() {
             Sign out
           </MenuItem>
         </Menu>
+        {isDesktop && <ResizeHandle width={width} onWidth={setWidth} />}
       </Drawer>
 
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>

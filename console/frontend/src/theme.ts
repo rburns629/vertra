@@ -152,7 +152,44 @@ export const theme = createTheme({
       styleOverrides: { root: { fontWeight: 500 } },
     },
     MuiTableCell: {
-      styleOverrides: { root: { borderColor: "#ECEEF2" }, head: { color: INK_MUTED, fontWeight: 500 } },
+      styleOverrides: { root: { borderColor: "#ECEEF2" }, head: { color: INK_MUTED, fontWeight: 500, fontSize: 13, backgroundColor: "#F9FAFB" } },
+    },
+    // Tabs as the mockups draw them: sentence case, 44px targets, the accent underline.
+    MuiTabs: {
+      styleOverrides: { root: { minHeight: 44, borderBottom: `1px solid ${BORDER}` }, indicator: { height: 2, borderRadius: 1 } },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          minHeight: 44,
+          textTransform: "none",
+          fontWeight: 500,
+          fontSize: 14,
+          color: theme.palette.text.secondary,
+          "&.Mui-selected": { color: theme.palette.text.primary },
+        }),
+      },
+    },
+    MuiTooltip: {
+      defaultProps: { arrow: true },
+      styleOverrides: { tooltip: { backgroundColor: INK, fontSize: 12, fontWeight: 400, lineHeight: 1.45, padding: "6px 10px" }, arrow: { color: INK } },
+    },
+    // Messages sit flat on the page like the cards: a hairline in their own tone.
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          alignItems: "flex-start",
+          variants: (
+            [
+              ["success", "#BFE3CD"],
+              ["info", "#CBD8FB"],
+              ["warning", "#F3D6A6"],
+              ["error", "#F6C4BE"],
+            ] as const
+          ).map(([severity, border]) => ({ props: { variant: "standard", severity }, style: { border: `1px solid ${border}` } })),
+        },
+      },
     },
     // Unselected toggle buttons default to action.active (54% black), which
     // lands at 4.49:1 on the page background: just under AA.
