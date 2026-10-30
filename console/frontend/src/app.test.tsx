@@ -2330,3 +2330,40 @@ describe("Compose's drafts", () => {
   });
 });
 
+
+describe("Observe's alerts", () => {
+  it("show the charts' rules, firing first with what each fires for and since when", async () => {
+    await renderAt("/observe?tab=metrics", MEMBER, {
+      "ObserveService/ListAlerts": {
+        configured: true,
+        checkedAt: "2026-10-30T14:29:00Z",
+        rules: [
+          {
+            name: "VertraGatewayBackendUnreachable",
+            severity: "warning",
+            summary: "The gateway can't reach …'s backend.",
+            state: "firing",
+            hidden: 1,
+            instances: [{ state: "firing", activeAt: "2026-10-30T13:58:00Z", summary: "The gateway can't reach payments/orders's backend.", labels: { api: "payments/orders" } }],
+          },
+          { name: "VertraSchedulerDown", severity: "critical", summary: "No scheduler has finished a pass in 10 minutes.", state: "inactive" },
+        ],
+      },
+    });
+    const card = await screen.findByRole("region", { name: "Alerts" });
+    expect(await within(card).findByText("The gateway can't reach payments/orders's backend.")).toBeTruthy();
+    expect(within(card).getByText("api=payments/orders")).toBeTruthy();
+    expect(within(card).getByText(/^Firing since/)).toBeTruthy();
+    expect(within(card).getByText("And 1 about an API you can't see.")).toBeTruthy();
+    expect(within(card).getByText("Quiet")).toBeTruthy();
+    expect(within(card).getByText(/^1 firing · checked/)).toBeTruthy();
+  });
+
+  it("say when the console reads no Prometheus, or it isn't answering", async () => {
+    await renderAt("/observe?tab=metrics", MEMBER, { "ObserveService/ListAlerts": { configured: false } });
+    expect(await screen.findByText(/reads no Prometheus here/)).toBeTruthy();
+    cleanup();
+    await renderAt("/observe?tab=metrics", MEMBER, { "ObserveService/ListAlerts": { configured: true, problem: "Prometheus isn't answering." } });
+    expect(await screen.findByText("Couldn't read the alerts: Prometheus isn't answering.")).toBeTruthy();
+  });
+});

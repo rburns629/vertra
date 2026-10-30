@@ -14,6 +14,7 @@ import { MetricCard } from "../../components/MetricCard";
 import { Mono } from "../../components/Mono";
 import { ApiError, getInstall, getMetrics, type InstallInfo, type MetricsView } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { AlertsCard } from "./AlertsCard";
 
 type ProductTimes = MetricsView["products"][number];
 
@@ -258,37 +259,40 @@ export function MetricsTab() {
         </ChartCard>
       </Box>
 
-      <Card component="section" aria-label="Why steps failed" sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-        <Typography variant="h6" component="h2">
-          Why steps failed, last 24 hours
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, mb: 1.25 }}>
-          Each failed attempt by its code. A product&apos;s own codes are explained in its documentation.
-        </Typography>
-        {view?.failures.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ borderTop: 1, borderColor: "divider", pt: 1.25 }}>
-            No failures.
+      <Box sx={{ display: "grid", gap: 2.5, alignItems: "start", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 3fr) minmax(0, 2fr)" } }}>
+        <Card component="section" aria-label="Why steps failed" sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography variant="h6" component="h2">
+            Why steps failed, last 24 hours
           </Typography>
-        )}
-        {view?.failures.map((f) => (
-          <Box
-            key={f.code}
-            sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) 40px", sm: "minmax(0, 250px) minmax(0, 1fr) 40px" }, columnGap: 1.75, rowGap: 0.75, alignItems: "center", py: 1.125, borderTop: 1, borderColor: "divider" }}
-          >
-            <Mono sx={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.code || "(none)"}</Mono>
-            <Box aria-hidden="true" sx={{ height: 12, display: { xs: "none", sm: "block" } }}>
-              <Box sx={{ height: "100%", width: `${String((100 * f.count) / most)}%`, bgcolor: "primary.main", borderRadius: "0 4px 4px 0" }} />
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, mb: 1.25 }}>
+            Each failed attempt by its code. A product&apos;s own codes are explained in its documentation.
+          </Typography>
+          {view?.failures.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ borderTop: 1, borderColor: "divider", pt: 1.25 }}>
+              No failures.
+            </Typography>
+          )}
+          {view?.failures.map((f) => (
+            <Box
+              key={f.code}
+              sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) 40px", sm: "minmax(0, 250px) minmax(0, 1fr) 40px" }, columnGap: 1.75, rowGap: 0.75, alignItems: "center", py: 1.125, borderTop: 1, borderColor: "divider" }}
+            >
+              <Mono sx={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.code || "(none)"}</Mono>
+              <Box aria-hidden="true" sx={{ height: 12, display: { xs: "none", sm: "block" } }}>
+                <Box sx={{ height: "100%", width: `${String((100 * f.count) / most)}%`, bgcolor: "primary.main", borderRadius: "0 4px 4px 0" }} />
+              </Box>
+              <Typography variant="body2" sx={{ textAlign: "right", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                {f.count.toLocaleString()}
+              </Typography>
+              <Typography variant="body2" sx={{ gridColumn: "1 / -1", fontSize: 12.5, lineHeight: 1.45 }}>
+                {f.means || "—"}
+                {f.retried && " Some were retried automatically."}
+              </Typography>
             </Box>
-            <Typography variant="body2" sx={{ textAlign: "right", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-              {f.count.toLocaleString()}
-            </Typography>
-            <Typography variant="body2" sx={{ gridColumn: "1 / -1", fontSize: 12.5, lineHeight: 1.45 }}>
-              {f.means || "—"}
-              {f.retried && " Some were retried automatically."}
-            </Typography>
-          </Box>
-        ))}
-      </Card>
+          ))}
+        </Card>
+        <AlertsCard />
+      </Box>
 
       <Card component="section" aria-label="Step times by product" sx={{ overflow: "hidden" }}>
         <Box sx={{ px: 2.75, pt: 2.25, pb: 1.5, display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 1.25, alignItems: "flex-end" }}>

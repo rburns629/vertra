@@ -500,11 +500,12 @@ Which Prometheus is `monitoring.provider`, the same in both charts:
   namespace's Vertra Pods (kernel-api over TLS, checked against the
   kernel's CA) through a Role that lists only this namespace's Pods, and
   evaluating both charts' alerts. The kernel chart's come as a ConfigMap
-  it reloads when a kernel upgrade changes them (within a minute). Nothing
-  may connect to it; read it with `kubectl -n <namespace> port-forward
-  svc/console-execution-console-prometheus 9090`. Without an Alertmanager
-  (`monitoring.prometheus.alertmanager.url`), firing alerts show only on
-  its Alerts page. It can also send every sample on
+  it reloads when a kernel upgrade changes them (within a minute). Only
+  the console may connect to it, to show its alerts on Observe's
+  **Metrics**; read anything else with `kubectl -n <namespace>
+  port-forward svc/console-execution-console-prometheus 9090`. Without an
+  Alertmanager (`monitoring.prometheus.alertmanager.url`), nothing sends
+  firing alerts anywhere: they show on Observe and on its own Alerts page. It can also send every sample on
   (`monitoring.prometheus.remoteWrite.url`), each signed as the Pod's AWS
   identity when given a `sigv4Region`. List it in both charts'
   `metricsFrom`:
@@ -551,6 +552,16 @@ Which Prometheus is `monitoring.provider`, the same in both charts:
   a link on the Admin page and (for admins) Observe's Metrics. The console
   never calls it. Which provider the Admin page names is `monitoring.provider`
   once any of `podMonitor`, `alerts`, `dashboard` or `prometheus` is on.
+- `monitoring.prometheusUrl` (console chart, `""`): the Prometheus whose
+  alerts Observe's **Metrics** shows, quiet, pending or firing (the
+  console reads its `/api/v1/rules`, keeping the charts' `vertra-*`
+  groups). Any Prometheus that evaluates the charts' rules: the cluster's
+  (kube-prometheus-stack's `http://<release>-kube-prometheus-prometheus.<namespace>.svc:9090`)
+  or one outside it, such as one on your machine for kind
+  (`http://host.docker.internal:9090`). Empty: the bundled one when it's
+  on, else none. A Prometheus with a NetworkPolicy of its own must admit
+  the console's Pods. One Prometheus shared by several installs shows
+  each install's Vertra alerts on every one of them.
 
 The metrics, for alerts and dashboards of your own:
 

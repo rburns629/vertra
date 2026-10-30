@@ -1932,6 +1932,44 @@ export interface MetricsView {
   running: number;
 }
 
+/** One alerting rule, as the Prometheus the console reads has it now. */
+export interface AlertRuleView {
+  name: string;
+  severity: string;
+  /** Its summary for no one instance, what varies left out. */
+  summary: string;
+  state: "inactive" | "pending" | "firing";
+  instances: { state: string; activeAt: string | null; summary: string; description: string; labels: Record<string, string> }[];
+  /** Pending or firing for something the caller can't see. */
+  hidden: number;
+}
+
+export interface AlertsView {
+  /** Whether the console reads a Prometheus at all. */
+  configured: boolean;
+  problem: string;
+  checkedAt: string | null;
+  rules: AlertRuleView[];
+}
+
+/** The install's alerts: the charts' rules, firing first (ObserveService.ListAlerts). */
+export async function listAlerts(): Promise<AlertsView> {
+  const a = await call(() => observe.listAlerts({}));
+  return {
+    configured: a.configured,
+    problem: a.problem,
+    checkedAt: iso(a.checkedAt),
+    rules: a.rules.map((r) => ({
+      name: r.name,
+      severity: r.severity,
+      summary: r.summary,
+      state: r.state === "firing" || r.state === "pending" ? r.state : "inactive",
+      instances: r.instances.map((i) => ({ state: i.state, activeAt: iso(i.activeAt), summary: i.summary, description: i.description, labels: { ...i.labels } })),
+      hidden: r.hidden,
+    })),
+  };
+}
+
 /** Steps started and their waits by hour, why steps failed, and each product's step times. */
 export async function getMetrics(): Promise<MetricsView> {
   const m = await call(() => observe.getMetrics({}));

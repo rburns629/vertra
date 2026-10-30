@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/observe.proto.
  */
 export const file_vertra_console_v1_observe: GenFile = /*@__PURE__*/
-  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QiJAoTR2V0SW1hZ2VTYm9tUmVxdWVzdBINCgVpbWFnZRgBIAEoCSIkChRHZXRJbWFnZVNib21SZXNwb25zZRIMCgRzYm9tGAEgASgJIqYBChNHZXRTZWN1cml0eVJlc3BvbnNlEjAKBmNoZWNrcxgBIAMoCzIgLnZlcnRyYS5jb25zb2xlLnYxLlNlY3VyaXR5Q2hlY2sSLAoIcmVmdXNhbHMYAiADKAsyGi52ZXJ0cmEuY29uc29sZS52MS5SZWZ1c2FsEi8KBmltYWdlcxgDIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkFsbG93ZWRJbWFnZSI6Cg1TZWN1cml0eUNoZWNrEgwKBG5hbWUYASABKAkSDQoFc3RhdGUYAiABKAkSDAoEdGV4dBgDIAEoCSKdAQoHUmVmdXNhbBImCgJhdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEd2hhdBgCIAEoCRIMCgR0ZWFtGAMgASgJEgwKBGNvZGUYBCABKAkSCwoDd2h5GAUgASgJEhQKDGV4ZWN1dGlvbl9pZBgGIAEoCRIOCgZzb3VyY2UYByABKAkSDQoFY291bnQYCCABKAUiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiYgoLSG91ck1ldHJpY3MSKAoEaG91chgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHc3RhcnRlZBgCIAEoBRIYChB3YWl0X3A5NV9zZWNvbmRzGAMgASgBIk0KDkZhaWx1cmVNZXRyaWNzEgwKBGNvZGUYASABKAkSDQoFY291bnQYAiABKAUSDwoHcmV0cmllZBgDIAEoCBINCgVtZWFucxgEIAEoCSKLAQoOUHJvZHVjdE1ldHJpY3MSDwoHcHJvZHVjdBgBIAEoCRIOCgZhY3Rpb24YAiABKAkSDAoEdGVhbRgDIAEoCRINCgVzdGVwcxgEIAEoBRIRCglzdWNjZWVkZWQYBSABKAUSEwoLcDUwX3NlY29uZHMYBiABKAESEwoLcDk1X3NlY29uZHMYByABKAEiYwoQTGlzdEF1ZGl0UmVxdWVzdBIOCgZiZWZvcmUYASABKAMSDAoEdGVhbRgCIAEoCRIMCgRtaW5lGAMgASgIEhQKDHJlZnVzZWRfb25seRgEIAEoCBINCgVsaW1pdBgFIAEoBSJYChFMaXN0QXVkaXRSZXNwb25zZRIuCgdlbnRyaWVzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXVkaXRFbnRyeRITCgtuZXh0X2JlZm9yZRgCIAEoAyIVChNHZXRBdWRpdENvcHlSZXF1ZXN0IpwDChRHZXRBdWRpdENvcHlSZXNwb25zZRIPCgdlbmFibGVkGAEgASgIEhMKC2Rlc3RpbmF0aW9uGAIgASgJEhYKDmNvcGllZF90aHJvdWdoGAMgASgDEjIKCWNvcGllZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBARIPCgd3YWl0aW5nGAUgASgDEjMKCmNoZWNrZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESEQoJYnJva2VuX2F0GAcgASgDEg8KB3Byb2JsZW0YCCABKAkSGAoQY29tcGFyZWRfdGhyb3VnaBgJIAEoAxI0Cgtjb21wYXJlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAogBARISCgpkaWZmZXJzX2F0GAsgASgDEhcKD2NvbXBhcmVfcHJvYmxlbRgMIAEoCUIMCgpfY29waWVkX2F0Qg0KC19jaGVja2VkX2F0Qg4KDF9jb21wYXJlZF9hdCLJAQoRU2VhcmNoTG9nc1JlcXVlc3QSDAoEdGV4dBgBIAEoCRIMCgR0ZWFtGAIgASgJEhQKDGV4ZWN1dGlvbl9pZBgDIAEoCRINCgVsZXZlbBgEIAEoCRIOCgZzb3VyY2UYBSABKAkSKQoFc2luY2UYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEikKBXVudGlsGAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVsaW1pdBgIIAEoBSJnChJTZWFyY2hMb2dzUmVzcG9uc2USKQoFbGluZXMYASADKAsyGi52ZXJ0cmEuY29uc29sZS52MS5Mb2dMaW5lEhEKCXRydW5jYXRlZBgCIAEoCBITCgtzZWFyY2hfZGF5cxgDIAEoBSKeAQoHTG9nTGluZRImCgJhdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEdGVhbRgCIAEoCRIUCgxleGVjdXRpb25faWQYAyABKAkSDAoEdGFzaxgEIAEoCRIPCgdhdHRlbXB0GAUgASgFEg0KBWxldmVsGAYgASgJEgsKA2FwcBgHIAEoCRIMCgRsaW5lGAggASgJMtwECg5PYnNlcnZlU2VydmljZRJhCgtHZXRTZWN1cml0eRIlLnZlcnRyYS5jb25zb2xlLnYxLkdldFNlY3VyaXR5UmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLkdldFNlY3VyaXR5UmVzcG9uc2UiA5ACARJkCgxHZXRJbWFnZVNib20SJi52ZXJ0cmEuY29uc29sZS52MS5HZXRJbWFnZVNib21SZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuR2V0SW1hZ2VTYm9tUmVzcG9uc2UiA5ACARJeCgpHZXRNZXRyaWNzEiQudmVydHJhLmNvbnNvbGUudjEuR2V0TWV0cmljc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5HZXRNZXRyaWNzUmVzcG9uc2UiA5ACARJbCglMaXN0QXVkaXQSIy52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRSZXF1ZXN0GiQudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0UmVzcG9uc2UiA5ACARJkCgxHZXRBdWRpdENvcHkSJi52ZXJ0cmEuY29uc29sZS52MS5HZXRBdWRpdENvcHlSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuR2V0QXVkaXRDb3B5UmVzcG9uc2UiA5ACARJeCgpTZWFyY2hMb2dzEiQudmVydHJhLmNvbnNvbGUudjEuU2VhcmNoTG9nc1JlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hMb2dzUmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_timestamp, file_vertra_console_v1_admin]);
+  fileDesc("Ch92ZXJ0cmEvY29uc29sZS92MS9vYnNlcnZlLnByb3RvEhF2ZXJ0cmEuY29uc29sZS52MSIUChJHZXRTZWN1cml0eVJlcXVlc3QiJAoTR2V0SW1hZ2VTYm9tUmVxdWVzdBINCgVpbWFnZRgBIAEoCSIkChRHZXRJbWFnZVNib21SZXNwb25zZRIMCgRzYm9tGAEgASgJIqYBChNHZXRTZWN1cml0eVJlc3BvbnNlEjAKBmNoZWNrcxgBIAMoCzIgLnZlcnRyYS5jb25zb2xlLnYxLlNlY3VyaXR5Q2hlY2sSLAoIcmVmdXNhbHMYAiADKAsyGi52ZXJ0cmEuY29uc29sZS52MS5SZWZ1c2FsEi8KBmltYWdlcxgDIAMoCzIfLnZlcnRyYS5jb25zb2xlLnYxLkFsbG93ZWRJbWFnZSI6Cg1TZWN1cml0eUNoZWNrEgwKBG5hbWUYASABKAkSDQoFc3RhdGUYAiABKAkSDAoEdGV4dBgDIAEoCSKdAQoHUmVmdXNhbBImCgJhdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEd2hhdBgCIAEoCRIMCgR0ZWFtGAMgASgJEgwKBGNvZGUYBCABKAkSCwoDd2h5GAUgASgJEhQKDGV4ZWN1dGlvbl9pZBgGIAEoCRIOCgZzb3VyY2UYByABKAkSDQoFY291bnQYCCABKAUiyAEKDEFsbG93ZWRJbWFnZRIPCgdwcm9kdWN0GAEgASgJEgwKBHRlYW0YAiABKAkSDQoFaW1hZ2UYAyABKAkSDAoEc2NhbhgEIAEoCRIuCgpzY2FubmVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdmaXhhYmxlGAYgASgFEhEKCXVuZml4YWJsZRgHIAEoBRIPCgdzZWNyZXRzGAggASgFEhcKD2FjY2VwdGVkX3JlYXNvbhgJIAEoCSITChFHZXRNZXRyaWNzUmVxdWVzdCLNAQoSR2V0TWV0cmljc1Jlc3BvbnNlEi0KBWhvdXJzGAEgAygLMh4udmVydHJhLmNvbnNvbGUudjEuSG91ck1ldHJpY3MSMwoIZmFpbHVyZXMYAiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5GYWlsdXJlTWV0cmljcxIzCghwcm9kdWN0cxgDIAMoCzIhLnZlcnRyYS5jb25zb2xlLnYxLlByb2R1Y3RNZXRyaWNzEg0KBXJlYWR5GAQgASgFEg8KB3J1bm5pbmcYBSABKAUiEwoRTGlzdEFsZXJ0c1JlcXVlc3QilgEKEkxpc3RBbGVydHNSZXNwb25zZRISCgpjb25maWd1cmVkGAEgASgIEg8KB3Byb2JsZW0YAiABKAkSLgoKY2hlY2tlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoFcnVsZXMYBCADKAsyHC52ZXJ0cmEuY29uc29sZS52MS5BbGVydFJ1bGUikAEKCUFsZXJ0UnVsZRIMCgRuYW1lGAEgASgJEhAKCHNldmVyaXR5GAIgASgJEg8KB3N1bW1hcnkYAyABKAkSDQoFc3RhdGUYBCABKAkSMwoJaW5zdGFuY2VzGAUgAygLMiAudmVydHJhLmNvbnNvbGUudjEuQWxlcnRJbnN0YW5jZRIOCgZoaWRkZW4YBiABKAUi4AEKDUFsZXJ0SW5zdGFuY2USDQoFc3RhdGUYASABKAkSLQoJYWN0aXZlX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdzdW1tYXJ5GAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEjwKBmxhYmVscxgFIAMoCzIsLnZlcnRyYS5jb25zb2xlLnYxLkFsZXJ0SW5zdGFuY2UuTGFiZWxzRW50cnkaLQoLTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJiCgtIb3VyTWV0cmljcxIoCgRob3VyGAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgdzdGFydGVkGAIgASgFEhgKEHdhaXRfcDk1X3NlY29uZHMYAyABKAEiTQoORmFpbHVyZU1ldHJpY3MSDAoEY29kZRgBIAEoCRINCgVjb3VudBgCIAEoBRIPCgdyZXRyaWVkGAMgASgIEg0KBW1lYW5zGAQgASgJIosBCg5Qcm9kdWN0TWV0cmljcxIPCgdwcm9kdWN0GAEgASgJEg4KBmFjdGlvbhgCIAEoCRIMCgR0ZWFtGAMgASgJEg0KBXN0ZXBzGAQgASgFEhEKCXN1Y2NlZWRlZBgFIAEoBRITCgtwNTBfc2Vjb25kcxgGIAEoARITCgtwOTVfc2Vjb25kcxgHIAEoASJjChBMaXN0QXVkaXRSZXF1ZXN0Eg4KBmJlZm9yZRgBIAEoAxIMCgR0ZWFtGAIgASgJEgwKBG1pbmUYAyABKAgSFAoMcmVmdXNlZF9vbmx5GAQgASgIEg0KBWxpbWl0GAUgASgFIlgKEUxpc3RBdWRpdFJlc3BvbnNlEi4KB2VudHJpZXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BdWRpdEVudHJ5EhMKC25leHRfYmVmb3JlGAIgASgDIhUKE0dldEF1ZGl0Q29weVJlcXVlc3QinAMKFEdldEF1ZGl0Q29weVJlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSEwoLZGVzdGluYXRpb24YAiABKAkSFgoOY29waWVkX3Rocm91Z2gYAyABKAMSMgoJY29waWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAiAEBEg8KB3dhaXRpbmcYBSABKAMSMwoKY2hlY2tlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAYgBARIRCglicm9rZW5fYXQYByABKAMSDwoHcHJvYmxlbRgIIAEoCRIYChBjb21wYXJlZF90aHJvdWdoGAkgASgDEjQKC2NvbXBhcmVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgCiAEBEhIKCmRpZmZlcnNfYXQYCyABKAMSFwoPY29tcGFyZV9wcm9ibGVtGAwgASgJQgwKCl9jb3BpZWRfYXRCDQoLX2NoZWNrZWRfYXRCDgoMX2NvbXBhcmVkX2F0IskBChFTZWFyY2hMb2dzUmVxdWVzdBIMCgR0ZXh0GAEgASgJEgwKBHRlYW0YAiABKAkSFAoMZXhlY3V0aW9uX2lkGAMgASgJEg0KBWxldmVsGAQgASgJEg4KBnNvdXJjZRgFIAEoCRIpCgVzaW5jZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKQoFdW50aWwYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBWxpbWl0GAggASgFImcKElNlYXJjaExvZ3NSZXNwb25zZRIpCgVsaW5lcxgBIAMoCzIaLnZlcnRyYS5jb25zb2xlLnYxLkxvZ0xpbmUSEQoJdHJ1bmNhdGVkGAIgASgIEhMKC3NlYXJjaF9kYXlzGAMgASgFIp4BCgdMb2dMaW5lEiYKAmF0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIMCgR0ZWFtGAIgASgJEhQKDGV4ZWN1dGlvbl9pZBgDIAEoCRIMCgR0YXNrGAQgASgJEg8KB2F0dGVtcHQYBSABKAUSDQoFbGV2ZWwYBiABKAkSCwoDYXBwGAcgASgJEgwKBGxpbmUYCCABKAkyvAUKDk9ic2VydmVTZXJ2aWNlEmEKC0dldFNlY3VyaXR5EiUudmVydHJhLmNvbnNvbGUudjEuR2V0U2VjdXJpdHlSZXF1ZXN0GiYudmVydHJhLmNvbnNvbGUudjEuR2V0U2VjdXJpdHlSZXNwb25zZSIDkAIBEmQKDEdldEltYWdlU2JvbRImLnZlcnRyYS5jb25zb2xlLnYxLkdldEltYWdlU2JvbVJlcXVlc3QaJy52ZXJ0cmEuY29uc29sZS52MS5HZXRJbWFnZVNib21SZXNwb25zZSIDkAIBEl4KCkdldE1ldHJpY3MSJC52ZXJ0cmEuY29uc29sZS52MS5HZXRNZXRyaWNzUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkdldE1ldHJpY3NSZXNwb25zZSIDkAIBEl4KCkxpc3RBbGVydHMSJC52ZXJ0cmEuY29uc29sZS52MS5MaXN0QWxlcnRzUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBbGVydHNSZXNwb25zZSIDkAIBElsKCUxpc3RBdWRpdBIjLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBdWRpdFJlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRSZXNwb25zZSIDkAIBEmQKDEdldEF1ZGl0Q29weRImLnZlcnRyYS5jb25zb2xlLnYxLkdldEF1ZGl0Q29weVJlcXVlc3QaJy52ZXJ0cmEuY29uc29sZS52MS5HZXRBdWRpdENvcHlSZXNwb25zZSIDkAIBEl4KClNlYXJjaExvZ3MSJC52ZXJ0cmEuY29uc29sZS52MS5TZWFyY2hMb2dzUmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLlNlYXJjaExvZ3NSZXNwb25zZSIDkAIBYgZwcm90bzM", [file_google_protobuf_timestamp, file_vertra_console_v1_admin]);
 
 /**
  * @generated from message vertra.console.v1.GetSecurityRequest
@@ -311,6 +311,149 @@ export const GetMetricsResponseSchema: GenMessage<GetMetricsResponse> = /*@__PUR
   messageDesc(file_vertra_console_v1_observe, 8);
 
 /**
+ * @generated from message vertra.console.v1.ListAlertsRequest
+ */
+export type ListAlertsRequest = Message<"vertra.console.v1.ListAlertsRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAlertsRequest.
+ * Use `create(ListAlertsRequestSchema)` to create a new message.
+ */
+export const ListAlertsRequestSchema: GenMessage<ListAlertsRequest> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 9);
+
+/**
+ * @generated from message vertra.console.v1.ListAlertsResponse
+ */
+export type ListAlertsResponse = Message<"vertra.console.v1.ListAlertsResponse"> & {
+  /**
+   * Whether the console reads a Prometheus at all.
+   *
+   * @generated from field: bool configured = 1;
+   */
+  configured: boolean;
+
+  /**
+   * Why it couldn't be read just now; empty when it was.
+   *
+   * @generated from field: string problem = 2;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp checked_at = 3;
+   */
+  checkedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.AlertRule rules = 4;
+   */
+  rules: AlertRule[];
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAlertsResponse.
+ * Use `create(ListAlertsResponseSchema)` to create a new message.
+ */
+export const ListAlertsResponseSchema: GenMessage<ListAlertsResponse> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 10);
+
+/**
+ * @generated from message vertra.console.v1.AlertRule
+ */
+export type AlertRule = Message<"vertra.console.v1.AlertRule"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * Its severity label (warning, critical).
+   *
+   * @generated from field: string severity = 2;
+   */
+  severity: string;
+
+  /**
+   * Its summary, with what varies by instance left out.
+   *
+   * @generated from field: string summary = 3;
+   */
+  summary: string;
+
+  /**
+   * inactive, pending or firing.
+   *
+   * @generated from field: string state = 4;
+   */
+  state: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.AlertInstance instances = 5;
+   */
+  instances: AlertInstance[];
+
+  /**
+   * Pending or firing for something the caller can't see (another team's
+   * hidden API).
+   *
+   * @generated from field: int32 hidden = 6;
+   */
+  hidden: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.AlertRule.
+ * Use `create(AlertRuleSchema)` to create a new message.
+ */
+export const AlertRuleSchema: GenMessage<AlertRule> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 11);
+
+/**
+ * @generated from message vertra.console.v1.AlertInstance
+ */
+export type AlertInstance = Message<"vertra.console.v1.AlertInstance"> & {
+  /**
+   * pending or firing.
+   *
+   * @generated from field: string state = 1;
+   */
+  state: string;
+
+  /**
+   * Since when.
+   *
+   * @generated from field: google.protobuf.Timestamp active_at = 2;
+   */
+  activeAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string summary = 3;
+   */
+  summary: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+
+  /**
+   * Its labels, but alertname and severity.
+   *
+   * @generated from field: map<string, string> labels = 5;
+   */
+  labels: { [key: string]: string };
+};
+
+/**
+ * Describes the message vertra.console.v1.AlertInstance.
+ * Use `create(AlertInstanceSchema)` to create a new message.
+ */
+export const AlertInstanceSchema: GenMessage<AlertInstance> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_observe, 12);
+
+/**
  * @generated from message vertra.console.v1.HourMetrics
  */
 export type HourMetrics = Message<"vertra.console.v1.HourMetrics"> & {
@@ -335,7 +478,7 @@ export type HourMetrics = Message<"vertra.console.v1.HourMetrics"> & {
  * Use `create(HourMetricsSchema)` to create a new message.
  */
 export const HourMetricsSchema: GenMessage<HourMetrics> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 9);
+  messageDesc(file_vertra_console_v1_observe, 13);
 
 /**
  * @generated from message vertra.console.v1.FailureMetrics
@@ -371,7 +514,7 @@ export type FailureMetrics = Message<"vertra.console.v1.FailureMetrics"> & {
  * Use `create(FailureMetricsSchema)` to create a new message.
  */
 export const FailureMetricsSchema: GenMessage<FailureMetrics> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 10);
+  messageDesc(file_vertra_console_v1_observe, 14);
 
 /**
  * @generated from message vertra.console.v1.ProductMetrics
@@ -420,7 +563,7 @@ export type ProductMetrics = Message<"vertra.console.v1.ProductMetrics"> & {
  * Use `create(ProductMetricsSchema)` to create a new message.
  */
 export const ProductMetricsSchema: GenMessage<ProductMetrics> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 11);
+  messageDesc(file_vertra_console_v1_observe, 15);
 
 /**
  * @generated from message vertra.console.v1.ListAuditRequest
@@ -467,7 +610,7 @@ export type ListAuditRequest = Message<"vertra.console.v1.ListAuditRequest"> & {
  * Use `create(ListAuditRequestSchema)` to create a new message.
  */
 export const ListAuditRequestSchema: GenMessage<ListAuditRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 12);
+  messageDesc(file_vertra_console_v1_observe, 16);
 
 /**
  * @generated from message vertra.console.v1.ListAuditResponse
@@ -491,7 +634,7 @@ export type ListAuditResponse = Message<"vertra.console.v1.ListAuditResponse"> &
  * Use `create(ListAuditResponseSchema)` to create a new message.
  */
 export const ListAuditResponseSchema: GenMessage<ListAuditResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 13);
+  messageDesc(file_vertra_console_v1_observe, 17);
 
 /**
  * @generated from message vertra.console.v1.GetAuditCopyRequest
@@ -504,7 +647,7 @@ export type GetAuditCopyRequest = Message<"vertra.console.v1.GetAuditCopyRequest
  * Use `create(GetAuditCopyRequestSchema)` to create a new message.
  */
 export const GetAuditCopyRequestSchema: GenMessage<GetAuditCopyRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 14);
+  messageDesc(file_vertra_console_v1_observe, 18);
 
 /**
  * @generated from message vertra.console.v1.GetAuditCopyResponse
@@ -603,7 +746,7 @@ export type GetAuditCopyResponse = Message<"vertra.console.v1.GetAuditCopyRespon
  * Use `create(GetAuditCopyResponseSchema)` to create a new message.
  */
 export const GetAuditCopyResponseSchema: GenMessage<GetAuditCopyResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 15);
+  messageDesc(file_vertra_console_v1_observe, 19);
 
 /**
  * @generated from message vertra.console.v1.SearchLogsRequest
@@ -671,7 +814,7 @@ export type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsRequest"> &
  * Use `create(SearchLogsRequestSchema)` to create a new message.
  */
 export const SearchLogsRequestSchema: GenMessage<SearchLogsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 16);
+  messageDesc(file_vertra_console_v1_observe, 20);
 
 /**
  * @generated from message vertra.console.v1.SearchLogsResponse
@@ -702,7 +845,7 @@ export type SearchLogsResponse = Message<"vertra.console.v1.SearchLogsResponse">
  * Use `create(SearchLogsResponseSchema)` to create a new message.
  */
 export const SearchLogsResponseSchema: GenMessage<SearchLogsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 17);
+  messageDesc(file_vertra_console_v1_observe, 21);
 
 /**
  * @generated from message vertra.console.v1.LogLine
@@ -760,7 +903,7 @@ export type LogLine = Message<"vertra.console.v1.LogLine"> & {
  * Use `create(LogLineSchema)` to create a new message.
  */
 export const LogLineSchema: GenMessage<LogLine> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_observe, 18);
+  messageDesc(file_vertra_console_v1_observe, 22);
 
 /**
  * Observe: what this install checks, what it refused, and what everything
@@ -805,6 +948,20 @@ export const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetMetricsRequestSchema;
     output: typeof GetMetricsResponseSchema;
+  },
+  /**
+   * The install's alerts, as the Prometheus the console reads has them now
+   * (the console chart's monitoring.prometheusUrl, else the bundled one):
+   * the charts' rules (groups vertra-*), each inactive, pending or firing,
+   * with what it fires for. Everyone signed in; a firing instance about an
+   * API the caller can't see is counted, not described.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.ListAlerts
+   */
+  listAlerts: {
+    methodKind: "unary";
+    input: typeof ListAlertsRequestSchema;
+    output: typeof ListAlertsResponseSchema;
   },
   /**
    * Who changed what, newest first. Admins see every entry; anyone else

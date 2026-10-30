@@ -3,6 +3,7 @@
 import type { ServiceImpl } from "@connectrpc/connect";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Type } from "@sinclair/typebox";
+import { listAlerts } from "../../core/alerts.js";
 import { searchLogs, SearchLogsQuery, type SearchLogsInput } from "../../core/logs.js";
 import { getAuditCopy, getImageSbom, getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
 import type { ObserveService } from "../../gen/vertra/console/v1/observe_pb.js";
@@ -40,6 +41,15 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
         comparedThrough: BigInt(copy.comparedThrough),
         comparedAt: timestamp(copy.comparedAt),
         differsAt: BigInt(copy.differsAt),
+      };
+    },
+
+    async listAlerts(_req, ctx) {
+      const found = await listAlerts(callerOf(ctx));
+      return {
+        ...found,
+        checkedAt: timestamp(found.checkedAt),
+        rules: found.rules.map((r) => ({ ...r, instances: r.instances.map((i) => ({ ...i, activeAt: timestamp(i.activeAt) })) })),
       };
     },
 

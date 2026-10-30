@@ -104,7 +104,8 @@ function mayCall(caller: AuthUser, api: Api): boolean {
   return caller.teamNames.includes(api.teamName) || api.shareWith.includes("*") || api.shareWith.some((t) => caller.teamNames.includes(t));
 }
 
-function sees(caller: AuthUser, api: Api): boolean {
+/** Whether the caller may see the API at all: it isn't hidden, or it's their team's (or they're an admin). */
+export function sees(caller: AuthUser, api: Pick<Api, "hidden" | "teamName">): boolean {
   return !api.hidden || caller.isAdmin || caller.teamNames.includes(api.teamName);
 }
 
