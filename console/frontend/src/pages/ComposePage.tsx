@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -347,7 +347,9 @@ function BuildFromCart({
   // Each wiring's number: only the latest one's answer is used, so arrowing
   // through choices, or opening another draft meanwhile, can't land an old one.
   const wiring = useRef(0);
-  useEffect(() => {
+  // A layout effect: it runs with the opening's own render, before any
+  // answer still in flight can be read.
+  useLayoutEffect(() => {
     wiring.current += 1;
     setWired(null);
     setPicked([]);
