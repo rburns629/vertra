@@ -583,11 +583,19 @@ networkPolicy:
   metricsFrom: []
 
 # Prometheus, through the Prometheus Operator's resources (kube-prometheus-
-# stack, VictoriaMetrics, ...; not GKE Managed Prometheus, which reads its own
-# PodMonitoring). Off by default: each
+# stack, VictoriaMetrics, ...), or GKE Managed Prometheus's own PodMonitoring
+# and Rules (googleManaged). Off by default: each
 # needs its CRDs installed. Without them, scrape the pods' prometheus.io
 # annotations instead. Either way, list the scraper in metricsFrom.
 monitoring:
+  googleManaged:
+    # -- GKE Managed Service for Prometheus: podMonitor and alerts become its
+    # PodMonitoring and Rules (monitoring.googleapis.com) instead of the
+    # Prometheus Operator's. List collectorNamespace in
+    # networkPolicy.metricsFrom so its collector may scrape.
+    enabled: false
+    # -- Where its collector runs: gmp-system, or gke-gmp-system on Autopilot.
+    collectorNamespace: gmp-system
   podMonitor:
     # -- A PodMonitor for kernel-api (port 8000) and the scheduler (metricsPort).
     enabled: false

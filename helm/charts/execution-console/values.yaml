@@ -840,6 +840,14 @@ networkPolicy:
 monitoring:
   # -- The console's /metrics port, never served by its Ingress. 0: off.
   port: 9090
+  googleManaged:
+    # -- GKE Managed Service for Prometheus: podMonitor and alerts become its
+    # PodMonitoring and Rules (monitoring.googleapis.com) instead of the
+    # Prometheus Operator's. List collectorNamespace in
+    # networkPolicy.metricsFrom so its collector may scrape.
+    enabled: false
+    # -- Where its collector runs: gmp-system, or gke-gmp-system on Autopilot.
+    collectorNamespace: gmp-system
   podMonitor:
     # -- A PodMonitor for the console and the gateway.
     enabled: false

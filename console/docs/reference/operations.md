@@ -459,8 +459,17 @@ nothing needs looking up.
 With the Prometheus Operator (kube-prometheus-stack; VictoriaMetrics's
 operator reads the same resources), the charts can add the rest, each off
 by default because it needs that operator's CRDs. GKE's Managed Service
-for Prometheus doesn't read them: it has its own `PodMonitoring`, which
-the charts don't ship yet (`TODO.md`).
+for Prometheus reads its own resources instead: with
+`monitoring.googleManaged.enabled` (both charts), `podMonitor` and
+`alerts` become its `PodMonitoring` and `Rules`, and the kernel chart lets
+its collector read the kernel's TLS CA (one Secret, public). List the
+collector's namespace in `networkPolicy.metricsFrom`:
+`monitoring.googleManaged.collectorNamespace`, `gmp-system`, or
+`gke-gmp-system` on Autopilot. It's billed by samples ingested ($0.06 a
+million): Vertra's few hundred series every 30 s are about 35 million a
+month, a few dollars. `VertraSchedulerDown` also needs GKE's
+kube-state-metrics package; without it, it never fires. Its alerts go
+wherever the cluster's managed Alertmanager sends them (configured apart).
 
 - `monitoring.podMonitor.enabled` (both charts): PodMonitors. Add the
   labels your Prometheus selects them by in `monitoring.podMonitor.labels`

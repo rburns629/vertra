@@ -1,11 +1,19 @@
 {{- /*
-Prometheus Operator resources and Grafana's dashboard (values: monitoring).
-The dashboard covers the kernel chart's metrics too.
+Prometheus Operator resources and Grafana's dashboard (values: monitoring),
+or with monitoring.googleManaged GKE Managed Service for Prometheus's own
+(PodMonitoring and Rules, monitoring.googleapis.com). The dashboard covers
+the kernel chart's metrics too.
 */}}
 {{- $mon := .Values.monitoring }}
+{{- $gmp := $mon.googleManaged.enabled }}
 {{- if $mon.podMonitor.enabled }}
+{{- if $gmp }}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+{{- else }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
+{{- end }}
 metadata:
   name: {{ include "execution-console.fullname" . }}
   namespace: {{ .Release.Namespace }}
@@ -20,14 +28,19 @@ spec:
       {{- include "execution-console.selectorLabels" . | nindent 6 }}
     matchExpressions:
       - {key: app.kubernetes.io/component, operator: In, values: [app, gateway]}
-  podMetricsEndpoints:
+  {{ if $gmp }}endpoints{{ else }}podMetricsEndpoints{{ end }}:
     - {port: metrics, path: /metrics, interval: {{ $mon.podMonitor.interval }}}
 ---
 {{- end }}
 {{- if $mon.alerts.enabled }}
 {{- $ns := printf "namespace=%q" .Release.Namespace }}
+{{- if $gmp }}
+apiVersion: monitoring.googleapis.com/v1
+kind: Rules
+{{- else }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
+{{- end }}
 metadata:
   name: {{ include "execution-console.fullname" . }}
   namespace: {{ .Release.Namespace }}

@@ -1,11 +1,21 @@
 {{- /*
-Prometheus Operator resources (values: monitoring). The console chart
-ships the Grafana dashboard covering both charts and the gateway.
+Prometheus Operator resources (values: monitoring), or with
+monitoring.googleManaged GKE Managed Service for Prometheus's own
+(PodMonitoring and Rules, monitoring.googleapis.com), which adds the
+namespace label itself and scopes a namespace's Rules to it. The console
+chart ships the Grafana dashboard covering both charts and the gateway.
 */}}
 {{- $mon := .Values.monitoring }}
+{{- $gmp := $mon.googleManaged.enabled }}
+{{- $caSecret := printf "%s-tls-ca" (include "execution-kernel.fullname" .) }}
 {{- if $mon.podMonitor.enabled }}
+{{- if $gmp }}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+{{- else }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
+{{- end }}
 metadata:
   name: {{ include "execution-kernel.fullname" . }}
   namespace: {{ .Release.Namespace }}
@@ -20,27 +30,65 @@ spec:
       {{- include "execution-kernel.selectorLabels" . | nindent 6 }}
     matchExpressions:
       - {key: app.kubernetes.io/component, operator: In, values: [api, scheduler]}
-  podMetricsEndpoints:
-    # kernel-api serves /metrics beside its API (over HTTPS with tls, checked
-    # against this release's CA under its Service's name); the scheduler on
-    # its own port.
+  # kernel-api serves /metrics beside its API (over HTTPS with tls, checked
+  # against this release's CA under its Service's name); the scheduler on
+  # its own port.
+  {{ if $gmp }}endpoints{{ else }}podMetricsEndpoints{{ end }}:
     - port: http
       path: /metrics
       interval: {{ $mon.podMonitor.interval }}
       {{- if .Values.tls.enabled }}
       scheme: https
-      tlsConfig:
-        ca: {secret: {name: {{ include "execution-kernel.fullname" . }}-tls-ca, key: ca.crt}}
+      {{ if $gmp }}tls{{ else }}tlsConfig{{ end }}:
+        ca: {secret: {name: {{ $caSecret }}, key: ca.crt}}
         serverName: {{ include "execution-kernel.fullname" . }}-api.{{ .Release.Namespace }}.svc
       {{- end }}
     - {port: metrics, path: /metrics, interval: {{ $mon.podMonitor.interval }}}
 ---
+{{- if and $gmp .Values.tls.enabled }}
+# Managed collection reads a Secret a PodMonitoring names only when its
+# collector is granted it: this CA (public), nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-gmp-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ $caSecret | quote }}]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-gmp-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "execution-kernel.fullname" . }}-gmp-ca
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: {{ $mon.googleManaged.collectorNamespace }}
+---
+{{- end }}
 {{- end }}
 {{- if $mon.alerts.enabled }}
 {{- $ns := printf "namespace=%q" .Release.Namespace }}
 {{- $scheduler := printf "namespace=%q, deployment=%q" .Release.Namespace (printf "%s-scheduler" (include "execution-kernel.fullname" .)) }}
+{{- if $gmp }}
+apiVersion: monitoring.googleapis.com/v1
+kind: Rules
+{{- else }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
+{{- end }}
 metadata:
   name: {{ include "execution-kernel.fullname" . }}
   namespace: {{ .Release.Namespace }}
