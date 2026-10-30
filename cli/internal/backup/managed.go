@@ -5,6 +5,7 @@ package backup
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rburns629/vertra/cli/internal/config"
@@ -43,4 +44,21 @@ func ManagedList(ctx context.Context, r *run.Runner, c *config.Config, db *insta
 			"--output", "table")...)
 	}
 	return "", fmt.Errorf("no managed database on %s", db.Provider)
+}
+
+// DeleteManagedSnapshots deletes the RDS snapshots vertra backup took of
+// instance (named vertra-...), which RDS keeps after the instance is gone:
+// for destroy, when it deletes the data.
+func DeleteManagedSnapshots(ctx context.Context, r *run.Runner, c *config.Config, instance string) error {
+	out, err := r.Output(ctx, "aws", awsArgs(c, "rds", "describe-db-snapshots", "--db-instance-identifier", instance,
+		"--snapshot-type", "manual", "--output", "text", "--query", "DBSnapshots[?starts_with(DBSnapshotIdentifier, 'vertra-')].DBSnapshotIdentifier")...)
+	if err != nil {
+		return err
+	}
+	for _, snapshot := range strings.Fields(out) {
+		if _, err := r.Output(ctx, "aws", awsArgs(c, "rds", "delete-db-snapshot", "--db-snapshot-identifier", snapshot, "--output", "text", "--query", "DBSnapshot.Status")...); err != nil {
+			return err
+		}
+	}
+	return nil
 }

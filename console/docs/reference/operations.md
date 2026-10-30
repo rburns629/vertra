@@ -738,7 +738,8 @@ Cloud SQL and RDS back it up daily, with point-in-time recovery, keeping
 `database.backups.retentionDays` backups (at most 35 on RDS); the
 backup Jobs and their bucket aren't made. It runs whether or not the
 platform sleeps, and the approval screen prices it. `vertra destroy`
-deletes it only when told to delete data.
+deletes it only when told to delete data (on RDS, with the snapshots `vertra
+backup` took, which RDS would otherwise keep).
 
 **Moving an install onto it.** For an install whose data is in the
 in-cluster Postgres, `vertra config set -e <env> database.type managed`,

@@ -12,6 +12,7 @@ import (
 
 	"github.com/rburns629/vertra/cli/internal/access"
 	"github.com/rburns629/vertra/cli/internal/awscloud"
+	"github.com/rburns629/vertra/cli/internal/backup"
 	"github.com/rburns629/vertra/cli/internal/cluster"
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/install"
@@ -326,6 +327,11 @@ func (a *app) destroyAWS(ctx context.Context, out io.Writer, dir string, c *conf
 		if managed && deleteData {
 			// Its deletion protection is lifted only once the state says so.
 			emptied = append(emptied, instance)
+			// RDS keeps manual snapshots after their instance: vertra
+			// backup's are data too.
+			if err := backup.DeleteManagedSnapshots(ctx, a.runner, c, c.Cluster.Name); err != nil {
+				return err
+			}
 		}
 		if len(emptied) > 0 {
 			// A bucket with data in it is deleted only once the state says
