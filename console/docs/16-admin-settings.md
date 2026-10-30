@@ -248,7 +248,7 @@ Set by the install: `chat` in vertra.yaml on gcp and aws (`chat.off`, `chat.mode
 
 ### Admins' alerts
 
-`/admin/alerts`. Admins get alerts in the console, such as a team purged, the image sources changed, a policy not syncing, the catalog not pulled, or a step the cluster refused. They also get them by email, if they chose that kind and the install sends email.
+`/admin/alerts`. Admins get alerts in the console, such as a team purged, the image sources changed, a policy not syncing, the audit log's copy stopped or its chain broken, the catalog not pulled, or a step the cluster refused. They also get them by email, if they chose that kind and the install sends email.
 
 **Team** chooses a team whose chat webhook gets them too, then **Save**. That team's maintainers set the webhook, and which alerts it gets, on its **Settings** tab. **None** posts them nowhere else.
 

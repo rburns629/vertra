@@ -141,7 +141,7 @@ The bell (in the sidebar, next to your name) shows your own notifications, with 
 | A step waits for approval | The maintainers of the step's team (not whoever ran it, who can't decide) |
 | A product isn't ready here | Its team's maintainers, and admins |
 | The cluster refused a step | Whoever ran it, and admins |
-| The catalog isn't being pulled; a team purged, image sources changed, a policy not syncing | Admins |
+| The catalog isn't being pulled; a team purged, image sources changed, a policy not syncing, the audit log's copy stopped or its chain broken | Admins |
 
 Nobody sees anyone else's notifications.
 
