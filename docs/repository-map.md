@@ -488,6 +488,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `application-product/` | Pretends to deploy an application into a project, taking the project id from the step before. |
 | `hello-world-app/` | A tiny web app: the image the Cloud Run demo deploys (and `samples/gcp/apis/hello-world` publishes through the gateway). |
 | `greetings-api/` | The backend of `samples/local/apis/greetings`: a Go service (standard library only) that checks the gateway's signed `Vertra-Caller` against its JWKS before answering; `deploy.yaml` runs it in the local team's namespace, labelled `vertra/api-backend` (`make kind-sample-api`). |
+| `order-receiver/` | A reference receiver for order callbacks: a Go service (standard library only) that checks each post's `Vertra-Signature` (HMAC-SHA256, at most five minutes old) before accepting it; `deploy.yaml` runs it in a namespace of its own, with the bot's secret and a certificate the console trusts. |
 
 ## `cli/`: the installer
 

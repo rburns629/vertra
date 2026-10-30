@@ -1104,7 +1104,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
      posts `order.finished` signed (`Vertra-Signature`, HMAC-SHA256 with the
      bot's secret, shown once), five tries as webhooks. Proven on kind: a
      real order queued and posted (to an unresolvable host, its failure
-     recorded on the bot). Left: a post a real receiver accepts and verifies.
+     recorded on the bot), and to a real receiver (2026-10-29,
+     `examples/order-receiver`): the order's post verified and answered,
+     a forged one and one replayed an hour later refused.
   4. A request rate per bot (done 2026-10-27, `console/src/core/
      orderRate.ts`): the console chart's `orders.ratePerMinute` (60) orders
      a minute for each ordering bot, counted from its runs in the database,

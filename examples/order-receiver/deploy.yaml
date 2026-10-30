@@ -1,0 +1,61 @@
+# The order receiver in a namespace of its own, standing in for the system
+# that orders (a storefront, a Marketplace page), which would normally run
+# outside the cluster. Its Secrets come first: order-receiver-tls (a
+# certificate the console trusts) and order-receiver-secret (key "secret":
+# the bot's callback secret, shown once by TokenService/SetBotCallback).
+# The console posts to https://order-receiver.order-receiver.svc:8443/,
+# which the console chart's orders.callbackHosts must allow.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: order-receiver
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-receiver
+  namespace: order-receiver
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: order-receiver}
+  template:
+    metadata:
+      labels: {app: order-receiver}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: receiver
+          image: localhost:5001/examples/order-receiver:latest
+          env:
+            - {name: CALLBACK_SECRET_FILE, value: /secret/secret}
+            - {name: TLS_CERT_FILE, value: /tls/tls.crt}
+            - {name: TLS_KEY_FILE, value: /tls/tls.key}
+          ports: [{containerPort: 8443}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 64Mi}
+          volumeMounts:
+            - {name: secret, mountPath: /secret, readOnly: true}
+            - {name: tls, mountPath: /tls, readOnly: true}
+      volumes:
+        - name: secret
+          secret: {secretName: order-receiver-secret}
+        - name: tls
+          secret: {secretName: order-receiver-tls}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-receiver
+  namespace: order-receiver
+spec:
+  selector: {app: order-receiver}
+  ports: [{port: 8443, targetPort: 8443}]

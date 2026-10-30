@@ -186,6 +186,8 @@ function verified(secret, header, body) {
 }
 ```
 
+`examples/order-receiver` in the Vertra repository is a whole receiver in Go.
+
 Answer with any 2xx. Anything else, or no answer in 10 seconds, is tried
 again every 30 seconds, five times in all; the card shows the last error. A
 post can come twice, so act on each `executionId` and `state` once. It
