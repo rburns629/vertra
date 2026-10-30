@@ -92,7 +92,7 @@ beforeAll(async () => {
   config.gateway.url = "http://gateway.vertra-system.svc:8080";
   config.gateway.publicUrl = "https://api.example.com";
   await Promise.all([createTeam(owner), createTeam(consumer), createTeam(outsider)]);
-  await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] }), api("legacy", { backendUrl: "https://old.example.com" })]);
+  await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [], perMinute: {} }), api("legacy", { backendUrl: "https://old.example.com" })]);
   serviceAccounts = [...vi.mocked(ensureServiceAccount).mock.calls];
   const made = { maintainer: await users.makeUser(), member: await users.makeUser(), consumer: await users.makeUser(), outsider: await users.makeUser() };
   const [ownerTeam, consumerTeam, outsiderTeam] = await Promise.all([findTeamByName(owner), findTeamByName(consumer), findTeamByName(outsider)]);
@@ -126,9 +126,9 @@ describe("from the release", () => {
   });
 
   it("removes what a later release drops", async () => {
-    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] })]);
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [], perMinute: {} })]);
     expect((await listFor("maintainer")).map((a) => a.name).sort()).toEqual(["ledger", "orders"]);
-    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] }), api("legacy", { backendUrl: "https://old.example.com" })]);
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [], perMinute: {} }), api("legacy", { backendUrl: "https://old.example.com" })]);
   });
 });
 
@@ -139,6 +139,9 @@ describe("who sees what", () => {
     const orders = listed.find((a) => a.name === "orders");
     expect(orders).toMatchObject({ mayCall: true, backendUrl: "https://orders.example.run.app", publicUrl: `https://api.example.com/${owner}/orders` });
     expect(orders?.endpoints?.map((e) => `${e.method} ${e.path}`)).toEqual(["POST /orders", "GET /orders/{id}"]);
+    // Its own limit, as the gateway counts: the API's default, else the gateway's.
+    expect(orders?.perMinute).toBe(60);
+    expect(listed.find((a) => a.name === "ledger")?.perMinute).toBe(config.gateway.defaultPerMinute);
   });
 
   it("lets a team it's shared with call it, at its own limit, without the backend's address", async () => {
@@ -182,7 +185,7 @@ describe("pausing", () => {
   });
 
   it("lasts across releases, until it's resumed", async () => {
-    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [] }), api("legacy", { backendUrl: "https://old.example.com" })]);
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [], perMinute: {} }), api("legacy", { backendUrl: "https://old.example.com" })]);
     expect((await listFor("maintainer")).find((a) => a.name === "orders")?.state).toBe("API_STATE_PAUSED");
     expect((await call(tokens.maintainer, "ApiService/ResumeApi", { team: owner, name: "orders" })).code).toBe("ok");
     expect((await listFor("maintainer")).find((a) => a.name === "orders")?.state).toBe("API_STATE_LIVE");

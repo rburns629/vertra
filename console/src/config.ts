@@ -472,6 +472,9 @@ export const config = {
     internetTeams: list(process.env["GATEWAY_INTERNET_TEAMS"]),
     url: process.env["GATEWAY_URL"] ?? "",
     publicUrl: process.env["GATEWAY_PUBLIC_URL"] ?? "",
+    // The gateway's limit for a team an API's limits don't name and no
+    // default covers (its DEFAULT_PER_MINUTE), shown on an API's page.
+    defaultPerMinute: positiveInt("GATEWAY_DEFAULT_PER_MINUTE", 600),
   },
   // A registry on another cloud (or another AWS account), read with no
   // stored key (registryFederation.ts), exchanging the console's projected

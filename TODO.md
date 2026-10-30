@@ -1062,6 +1062,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Console
 
+- [ ] **Gaps the 2026-10-30 guides found** (writing guides 10 to 16 against
+  the code): no way to ask for access to an API, though `api.schema.json`
+  says callers can; an API whose OpenAPI document the gateway can't load
+  still shows Live; adding a bot always mints a token, so a keyless-only
+  bot's must be revoked by hand; schedules can't be edited, only paused or
+  deleted; the API page's Definition tab lists the gateway's checks in
+  another order than it runs them; the team Settings tab says maintainers
+  come from the catalog, which has no such field. Fixed then: an API's
+  page showed "0 a minute" for a team its limits don't name (now the
+  gateway's default, as the gateway counts), and stale wording.
 - [x] **A page for image scans** (done 2026-10-25): Admin's **Image scans**
   tab, every digest's verdict by state, its findings, Rescan now, and
   Accept with a reason; Observe's Security tab links to it for admins. The

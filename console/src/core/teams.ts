@@ -12,7 +12,7 @@
  * leaked CI token came to control every platform, back when CI called the
  * console. A new team starts empty;
  * an admin adds its first members. Growing it stays self-service within the
- * team: a member, or an admin, can add another.
+ * team: a maintainer, or an admin, can add another.
  */
 import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
@@ -198,7 +198,7 @@ async function ensureNotFollowingGroups(team: { id: string; name: string }, pers
   throw new ApiError(
     409,
     "TEAM_FOLLOWS_SSO_GROUPS",
-    `${person.email}'s membership of "${team.name}" follows their single sign-on groups: change their groups, or the team's mappings (Admin, People).`,
+    `${person.email}'s membership of "${team.name}" follows their single sign-on groups: change their groups, or the team's mappings (Admin, Single sign-on and groups).`,
   );
 }
 
@@ -466,7 +466,7 @@ export async function applySecretStore(
 /**
  * Sets the stored credential the team's SecretStores may use: the Secret
  * eso-auth, which no step can mount. Each install's own (a release carries
- * the stores, never a credential): a member of the team, or an admin.
+ * the stores, never a credential): a maintainer of the team, or an admin.
  */
 export async function setSecretStoreCredential(
   caller: AuthUser | undefined,

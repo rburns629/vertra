@@ -151,6 +151,8 @@ spec:
               value: {{ .Values.gateway.url | quote }}
             - name: GATEWAY_PUBLIC_URL
               value: {{ .Values.gateway.publicUrl | quote }}
+            - name: GATEWAY_DEFAULT_PER_MINUTE
+              value: {{ .Values.gateway.defaultPerMinute | quote }}
             {{- if include "execution-console.registryFederationAudience" . }}
             {{- with .Values.registryCheck.gcpFederation }}
             {{- if .workloadIdentityProvider }}

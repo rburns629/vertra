@@ -88,11 +88,15 @@ function sees(caller: AuthUser, api: Api): boolean {
   return !api.hidden || caller.isAdmin || caller.teamNames.includes(api.teamName);
 }
 
-/** The most requests a minute any of the caller's teams may send it. */
+/**
+ * The most requests a minute any of the caller's teams may send it, as the
+ * gateway counts them: the team's own limit, else the API's default, else
+ * the gateway's (0 in either means unset there too).
+ */
 function perMinuteFor(caller: AuthUser, api: Api): number {
   if (!mayCall(caller, api)) return 0;
-  const fallback = api.perMinute["default"] ?? 0;
-  return Math.max(fallback, ...caller.teamNames.map((t) => api.perMinute[t] ?? fallback));
+  const fallback = api.perMinute["default"] || config.gateway.defaultPerMinute;
+  return Math.max(fallback, ...caller.teamNames.map((t) => api.perMinute[t] || fallback));
 }
 
 function authKind(auth: BackendAuth | null): string {

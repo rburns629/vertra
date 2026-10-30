@@ -3,9 +3,10 @@
  * Bots and their API tokens: the logic behind TokenService
  * (rpc/services/token.ts).
  *
- * A team's bot (db/schema.ts's users.isBot) acts as a member of that team:
- * only a member of the team (or an admin) can create one, see its tokens,
- * or revoke one. An automation token's bot belongs to no team; its scopes
+ * A team's bot (db/schema.ts's users.isBot) is a maintainer of that team
+ * (an ordering bot, a member that may run only its templates): only a
+ * maintainer of the team (or an admin) can create one, see its tokens, or
+ * revoke one. An automation token's bot belongs to no team; its scopes
  * (auth/scopes.ts) are the whole of what it can do, and only admins mint
  * or list them. Every raw token is returned once, here, and never stored
  * or shown again.
