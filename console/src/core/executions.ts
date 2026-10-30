@@ -727,23 +727,6 @@ async function authorizeTasks(
 }
 
 /**
- * A submission with the current field names: `name` (was externalReference)
- * and `requestId` (was idempotencyKey). Old names are still accepted, from
- * older callers and DAGs stored before the rename (rerun); to be dropped
- * later (TODO.md). With both an old and a new name, nothing is changed, and
- * kernel-api refuses the ambiguous submission.
- */
-function withCurrentFieldNames(body: Record<string, unknown>): Record<string, unknown> {
-  const renames: Record<string, string> = { externalReference: "name", idempotencyKey: "requestId" };
-  return Object.fromEntries(
-    Object.entries(body).map(([key, value]) => {
-      const current = renames[key];
-      return current && !(current in body) ? [current, value] : [key, value];
-    }),
-  );
-}
-
-/**
  * kernel-api's requestIds are one namespace for every team, so two teams
  * picking the same one ("hello-1") would get each other's executions back.
  * Prefixing it with the submitting teams keeps each team's requestIds its
@@ -863,7 +846,7 @@ export async function submitChecked(
   log: FastifyBaseLogger,
   run?: TemplateRun,
 ) {
-  const body = isRecord(submitted) ? await withProductIdentities(withCurrentFieldNames(submitted)) : submitted;
+  const body = isRecord(submitted) ? await withProductIdentities(submitted) : submitted;
   const tasksInfo = extractTasksAuthInfo(body);
   if (tasksInfo === null) {
     throw new ApiError(
@@ -1061,7 +1044,7 @@ export async function rerun(caller: AuthUser | undefined, executionId: string, l
   // Stored DAGs from before the rename get the current field names first,
   // and a task with no serviceAccount the one it runs as now.
   const replayed = isRecord(submitted.payload)
-    ? await withProductIdentities(withCurrentFieldNames(submitted.payload))
+    ? await withProductIdentities(submitted.payload)
     : submitted.payload;
   const tasksInfo = extractTasksAuthInfo(replayed);
   if (tasksInfo === null) {

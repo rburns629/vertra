@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { readFileSync } from "node:fs";
+import { inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { hashPassword } from "../src/auth/password.js";
@@ -386,14 +387,19 @@ describe("SubmitExecution: name and requestId", () => {
     expect(list.body.executions.find((e) => e.executionId === response.body.executionId)?.name).toBe("named");
   });
 
-  it("reruns a DAG stored under the old names with the new ones and a fresh requestId", async () => {
+  it("reruns a DAG stored under the old names, once migration 0049 renamed them", async () => {
     const first = await post({ name: "stored-legacy", requestId: "old-2", tasks: [task()] });
     const id = first.body.executionId;
-    // Simulate a row stored before the rename: payload with the old names.
+    // A row stored before the rename: payload with the old names.
     await db
       .update(submittedExecutions)
       .set({ payload: { externalReference: "stored-legacy", idempotencyKey: "old-2", tasks: [task()] } })
       .where(inArray(submittedExecutions.executionId, [id]));
+    // What the migration does to it (it changes only rows with the old names).
+    await db.execute(sql.raw(readFileSync(new URL("../src/db/migrations/0049_stored_dag_field_names.sql", import.meta.url), "utf8")));
+    const [migrated] = await db.select().from(submittedExecutions).where(inArray(submittedExecutions.executionId, [id]));
+    expect(migrated?.payload).toMatchObject({ name: "stored-legacy", requestId: "old-2" });
+    expect(migrated?.payload).not.toHaveProperty("externalReference");
     vi.mocked(submitExecution).mockClear();
 
     const rerun = await call(token, "ExecutionService/RerunExecution", { executionId: id });

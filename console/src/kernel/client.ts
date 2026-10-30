@@ -100,7 +100,7 @@ async function call<T>(request: () => Promise<T>): Promise<T> {
 /** What a DAG's JSON may say: anything else is refused, so the JSON can't
  * say one thing to the console's checks (which read these names) and
  * another to the kernel. */
-const SUBMISSION_FIELDS = new Set(["name", "requestId", "tasks", "externalReference", "idempotencyKey"]);
+const SUBMISSION_FIELDS = new Set(["name", "requestId", "tasks"]);
 const TASK_FIELDS = new Set([
   "id",
   "image",
@@ -203,18 +203,14 @@ function task(value: unknown, index: number): Task {
   });
 }
 
-/** A DAG's JSON as the request. The old names externalReference and
- * idempotencyKey are still read, so stored DAGs (Rerun) keep working;
- * they're to be dropped later (TODO.md). */
+/** A DAG's JSON as the request. */
 export function submissionRequest(payload: unknown) {
   if (!isObject(payload)) refuse("The submission must be an object.");
   only(payload, SUBMISSION_FIELDS, "submission");
-  if (payload.name !== undefined && payload.externalReference !== undefined) refuse("Give name or externalReference, not both.");
-  if (payload.requestId !== undefined && payload.idempotencyKey !== undefined) refuse("Give requestId or idempotencyKey, not both.");
   if (payload.tasks !== undefined && !Array.isArray(payload.tasks)) refuse("tasks must be a list");
   return create(SubmitExecutionRequestSchema, {
-    name: text(payload.name ?? payload.externalReference, "name"),
-    requestId: text(payload.requestId ?? payload.idempotencyKey, "requestId"),
+    name: text(payload.name, "name"),
+    requestId: text(payload.requestId, "requestId"),
     tasks: ((payload.tasks as unknown[] | undefined) ?? []).map(task),
   });
 }

@@ -208,13 +208,9 @@ describe("a DAG's JSON as a request", () => {
     );
   });
 
-  it("still reads the old names a stored DAG may have, but not both at once", () => {
-    const request = submissionRequest({ externalReference: "old", idempotencyKey: "k", tasks: [task] });
-    expect([request.name, request.requestId]).toEqual(["old", "k"]);
-    expect(() => submissionRequest({ name: "new", externalReference: "old", tasks: [task] })).toThrow(KernelApiError);
-    expect(() => submissionRequest({ name: "x", requestId: "a", idempotencyKey: "b", tasks: [task] })).toThrow(
-      KernelApiError,
-    );
+  it("refuses the names from before the rename (stored DAGs were migrated)", () => {
+    expect(() => submissionRequest({ externalReference: "old", tasks: [task] })).toThrow(KernelApiError);
+    expect(() => submissionRequest({ name: "x", idempotencyKey: "k", tasks: [task] })).toThrow(KernelApiError);
   });
 
   it("refuses the wrong types instead of guessing", () => {

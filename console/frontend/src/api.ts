@@ -1108,8 +1108,7 @@ export interface SubmittedTaskPayload {
   secretRefs?: string[];
 }
 
-/** As stored at submission (the console reads older rows' names,
- * externalReference and idempotencyKey, as these). */
+/** As stored at submission. */
 export interface SubmittedExecutionPayload {
   name: string;
   /** Empty when the submission had none. */

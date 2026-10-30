@@ -53,7 +53,7 @@ export interface DagCheckContext {
 const TOP_LEVEL_FIELDS = ["apiVersion", "kind", "name", "requestId", "tasks"];
 /** The catalog format a dags/ file says it's in (apiVersion: …, kind: Dag). */
 const CATALOG_API_VERSION = "vertra.dev/v2";
-// Still accepted, as the console's API does (see ../../src/core/executions.ts).
+// Renamed: a DAG written with these is told the new name.
 const OLD_FIELD_NAMES: Record<string, string> = { externalReference: "name", idempotencyKey: "requestId" };
 const TASK_FIELDS = [
   "id",
@@ -266,17 +266,17 @@ export function checkDag(text: string, context: DagCheckContext, dump: (value: u
   const issues: DagIssue[] = [];
   for (const field of Object.keys(value)) {
     const current = OLD_FIELD_NAMES[field];
-    if (current && current in value) {
-      issues.push({ where: field, message: `This is the old name for "${current}"; use only "${current}".` });
-    } else if (!current && !TOP_LEVEL_FIELDS.includes(field)) {
+    if (current) {
+      issues.push({ where: field, message: `Renamed to "${current}": use "${current}" instead.` });
+    } else if (!TOP_LEVEL_FIELDS.includes(field)) {
       issues.push(unknownFieldIssue("Top level", field, TOP_LEVEL_FIELDS));
     }
   }
-  const name = value["name"] ?? value["externalReference"];
+  const name = value["name"];
   if (typeof name !== "string" || name === "") {
     issues.push({ where: "name", message: "Required: a label for this run, e.g. my-first-hello. It can repeat." });
   }
-  const requestId = value["requestId"] ?? value["idempotencyKey"];
+  const requestId = value["requestId"];
   if (requestId !== undefined && (typeof requestId !== "string" || requestId === "")) {
     issues.push({
       where: "requestId",

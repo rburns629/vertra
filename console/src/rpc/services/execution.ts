@@ -121,16 +121,11 @@ function submission(dag: Dag | undefined): Record<string, unknown> | undefined {
   };
 }
 
-/**
- * The stored DAG as a message; unset if it can't be read as one. Rows from
- * before the rename say externalReference and idempotencyKey.
- */
+/** The stored DAG as a message; unset if it can't be read as one. */
 function storedDag(payload: unknown): Dag | undefined {
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return undefined;
-  const { externalReference, idempotencyKey, ...rest } = payload as Record<string, unknown>;
-  const renamed = { name: externalReference, requestId: idempotencyKey, ...rest };
   try {
-    return fromJson(DagSchema, JSON.parse(JSON.stringify(renamed)) as JsonValue, { ignoreUnknownFields: true });
+    return fromJson(DagSchema, JSON.parse(JSON.stringify(payload)) as JsonValue, { ignoreUnknownFields: true });
   } catch {
     return undefined;
   }

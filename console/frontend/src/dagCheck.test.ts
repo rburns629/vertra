@@ -44,6 +44,13 @@ describe("checkDag", () => {
     expect(check({ apiVersion: "vertra.dev/v1", name: "hello", tasks: [task("a")] }).status).toBe("invalid");
   });
 
+  it("names the new field for one renamed since", () => {
+    expect(messages(check({ externalReference: "old", tasks: [task("a")] }))).toEqual(
+      expect.arrayContaining(['Renamed to "name": use "name" instead.']),
+    );
+    expect(messages(check({ name: "x", idempotencyKey: "k", tasks: [task("a")] }))).toEqual(['Renamed to "requestId": use "requestId" instead.']);
+  });
+
   it("is empty for empty text", () => {
     expect(checkDag("  ", anyone, (value) => dump(value)).status).toBe("empty");
   });

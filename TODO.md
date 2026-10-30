@@ -970,13 +970,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   2026-10-23): Submit a DAG's **Add a step** appends a step of one of your
   teams' products with its latest image, action, team and identity, and its
   required inputs to fill in (Every product already marks the latest).
-- [ ] **Stop reading `externalReference` and `idempotencyKey`** (now
-  `name` and `requestId`; submissions over Connect can't send them) once
-  no stored execution has them: `submissionRequest` in
-  `console/src/kernel/client.ts`, `withCurrentFieldNames` in
-  `console/src/core/executions.ts`,
-  `storedDag` in `console/src/rpc/services/execution.ts`, and the
-  frontend's `dagCheck.ts`.
+- [x] **Stop reading `externalReference` and `idempotencyKey`** (done
+  2026-10-29): migration 0049 renames them in stored submissions (`name`,
+  `requestId`), and nothing reads the old names any more; a DAG written with
+  one is refused, the editor naming the new field.
 
 ## Products and catalog
 
