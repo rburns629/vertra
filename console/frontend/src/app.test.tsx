@@ -1839,6 +1839,32 @@ describe("a team's members", () => {
   });
 });
 
+describe("the Teams pages' requests", () => {
+  it("ask for other teams' facts a few at a time, and a tab's count again only when it's left", async () => {
+    // Every other team's pod list hangs: no more than four are asked for at once.
+    await renderAt("/teams", { ...ADMIN, teamNames: [], maintainerOf: [] }, {
+      "TeamService/ListTeams": { teams: Array.from({ length: 10 }, (_, i) => ({ id: `t${String(i)}`, name: `team-${String(i)}` })) },
+      "TeamService/ListPods": () => new Promise(() => {}),
+    });
+    await waitFor(() => { expect(calls.filter((c) => c === "TeamService/ListPods").length).toBeGreaterThan(0); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
+    expect(calls.filter((c) => c === "TeamService/ListPods").length).toBe(4);
+    cleanup();
+    calls.length = 0;
+
+    await renderAt("/teams/payments", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+    });
+    await waitFor(() => { expect(calls).toContain("ApiService/ListApis"); });
+    const apis = calls.filter((c) => c === "ApiService/ListApis").length;
+    const members = calls.filter((c) => c === "TeamService/ListMembers").length;
+    // Leaving Members reads its count again; nothing else is read again.
+    fireEvent.click(screen.getByRole("tab", { name: /^Secrets/ }));
+    await waitFor(() => { expect(calls.filter((c) => c === "TeamService/ListMembers").length).toBeGreaterThan(members); });
+    expect(calls.filter((c) => c === "ApiService/ListApis").length).toBe(apis);
+  });
+});
+
 describe("a team's bots", () => {
   it("call a bot whose only token has expired not active", async () => {
     await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {

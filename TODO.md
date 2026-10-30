@@ -1094,6 +1094,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
     details; an alert to admins when the audit copy stops or its chain
     breaks (the board said there was one; there isn't).
 
+- [ ] **One read for the Teams page's other teams** (found reviewing #33,
+  2026-10-30): an admin's Teams page reads each other team's profile and
+  pods, a few at a time since #43, so 80 teams are still 160 requests and 80
+  pod lists per visit. A TeamService method returning each team's people,
+  owner and running count at once (one query, and running from the kernel's
+  states or one pod list by label) would make it one.
+
 - [ ] **Gaps the 2026-10-30 guides found** (writing guides 10 to 16 against
   the code): no way to ask for access to an API, though `api.schema.json`
   says callers can; an API whose OpenAPI document the gateway can't load

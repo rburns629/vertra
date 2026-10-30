@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, Box, Button, Link, Tab, Tabs, Typography } from "@mui/material";
 import {
@@ -45,38 +45,46 @@ const TABS: [TabId, string][] = [
   ["settings", "Settings"],
 ];
 
-/** The small counts on the tabs. Display only: a failed count just isn't
- * shown, and each tab loads (and reports errors for) its own data. */
+/** Each counted tab's count, read alone. */
+const COUNTERS: Partial<Record<TabId, (team: string, maintains: boolean) => Promise<number | undefined>>> = {
+  members: async (team) => (await listTeamMembers(team)).filter((m) => !m.isBot).length,
+  secrets: async (team) => (await listTeamSecrets(team)).length,
+  running: async (team) => (await listTeamPods(team)).filter((p) => isRunningPod(p.state)).length,
+  // Bots are a maintainer's: anyone else isn't asked.
+  automation: async (team, maintains) => (maintains ? (await listBots(team)).length : undefined),
+  schedules: async (team) => (await listSchedules(team)).length,
+  apis: async (team) => (await listApis()).filter((a) => a.team === team).length,
+};
+
+/** The small counts on the tabs: each read once, and a tab's again when
+ * it's left (where something may have changed), not every count on every
+ * click. Display only: a failed count just isn't shown, and each tab loads
+ * (and reports errors for) its own data. */
 function useTabCounts(teamName: string, tab: TabId, enabled: boolean, maintains: boolean) {
   const [counts, setCounts] = useState<Partial<Record<TabId, number>>>({});
+  // The team counted now: a count that answers after another team is open is dropped.
+  const counting = useRef(teamName);
+  const read = useCallback(
+    (ids: TabId[]) => {
+      counting.current = teamName;
+      for (const id of ids) {
+        COUNTERS[id]?.(teamName, maintains)
+          .then((n) => { if (counting.current === teamName) setCounts((c) => ({ ...c, [id]: n })); })
+          .catch(() => { if (counting.current === teamName) setCounts((c) => ({ ...c, [id]: undefined })); });
+      }
+    },
+    [teamName, maintains],
+  );
   useEffect(() => {
     if (!enabled) return;
-    let cancelled = false;
-    void Promise.allSettled([
-      listTeamMembers(teamName),
-      listTeamSecrets(teamName),
-      listTeamPods(teamName),
-      // Bots are a maintainer's: anyone else isn't asked.
-      maintains ? listBots(teamName) : Promise.resolve(null),
-      listSchedules(teamName),
-      listApis(),
-    ]).then(([members, secrets, pods, bots, schedules, apis]) => {
-      if (cancelled) return;
-      const count = <T,>(result: PromiseSettledResult<T[] | null>, keep: (item: T) => boolean = () => true) =>
-        result.status === "fulfilled" && result.value ? result.value.filter(keep).length : undefined;
-      setCounts({
-        members: count(members, (m) => !m.isBot),
-        secrets: count(secrets),
-        automation: count(bots),
-        schedules: count(schedules),
-        apis: count(apis, (a) => a.team === teamName),
-        running: count(pods, (p) => isRunningPod(p.state)),
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [teamName, tab, enabled, maintains]);
+    setCounts({});
+    read(Object.keys(COUNTERS) as TabId[]);
+  }, [read, enabled]);
+  const shown = useRef(tab);
+  useEffect(() => {
+    if (enabled && shown.current !== tab) read([shown.current]);
+    shown.current = tab;
+  }, [tab, enabled, read]);
   return counts;
 }
 

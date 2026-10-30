@@ -46,25 +46,33 @@ const ROLES: [string, "neutral" | "info" | "warning", string][] = [
   ["Vertra admin", "warning", "Reaches every team; only admins create, retire and purge teams and set their limits."],
 ];
 
+/** How many other teams' facts are asked for at once. */
+const AT_ONCE = 4;
+
 /** Each other team's owner, people and what's running: one profile and one
- * pod list each. Display only: what fails shows as a dash. */
+ * pod list each, AT_ONCE teams at a time. Display only: what fails shows as a dash. */
 function useOtherTeamFacts(teams: Team[]) {
   const [facts, setFacts] = useState<Record<string, { profile?: TeamProfile; running?: number }>>({});
   const names = teams.map((t) => t.name).join(",");
   useEffect(() => {
     let cancelled = false;
-    for (const name of names ? names.split(",") : []) {
-      void Promise.allSettled([getTeamProfile(name), listTeamPods(name)]).then(([profile, pods]) => {
+    // A few teams at a time, not every team at once: each is a pod list in the cluster.
+    const queue = names ? names.split(",") : [];
+    const next = async (): Promise<void> => {
+      for (let name = queue.shift(); name !== undefined && !cancelled; name = queue.shift()) {
+        const [profile, pods] = await Promise.allSettled([getTeamProfile(name), listTeamPods(name)]);
         if (cancelled) return;
+        const team = name;
         setFacts((current) => ({
           ...current,
-          [name]: {
+          [team]: {
             profile: profile.status === "fulfilled" ? profile.value : undefined,
             running: pods.status === "fulfilled" ? pods.value.filter((p) => isRunningPod(p.state)).length : undefined,
           },
         }));
-      });
-    }
+      }
+    };
+    for (let i = 0; i < AT_ONCE; i++) void next();
     return () => {
       cancelled = true;
     };
