@@ -22,6 +22,7 @@ import { useAuth } from "../auth/AuthContext";
 import { cart, useCart } from "../cart";
 import type { BuiltStep } from "../compose";
 import { EmptyState } from "../components/EmptyState";
+import { OrderChoice, optionKey, sameInput } from "../components/OrderChoice";
 import { PageHeader } from "../components/PageHeader";
 import { Pill } from "../components/Pill";
 import { fieldsOf, initialValues, toParameters, type Field, type FieldValue, type Values } from "../schemaForm";
@@ -29,8 +30,6 @@ import { FieldInput } from "./catalog/FieldInput";
 
 type Plan = { steps: BuiltStep[]; problems: OrderProblem[]; suggestions: OrderSuggestion[] };
 
-const sameInput = (a: { step: string; input: string }, b: { step: string; input: string }) => a.step === b.step && a.input === b.input;
-const optionKey = (o: OrderOption) => (o.resourceId ? `r:${o.resourceId}` : o.addNew ? "new" : `s:${o.fromStep ?? ""}.${o.fromOutput ?? ""}`);
 
 /** How a wired input is filled, in a line. */
 function Wired({ input, choice }: { input: BuiltStep["inputs"][string]; choice: OrderOption | undefined }) {
@@ -46,30 +45,6 @@ function Wired({ input, choice }: { input: BuiltStep["inputs"][string]; choice: 
     <Typography variant="body2" color="text.secondary">
       {text}
     </Typography>
-  );
-}
-
-/** A choice the order needs made: what fills this input. */
-function Choose({ problem, chosen, onChoose }: { problem: OrderProblem; chosen: OrderOption | undefined; onChoose: (o: OrderOption) => void }) {
-  return (
-    <TextField
-      select
-      size="small"
-      label={problem.input}
-      helperText={problem.message}
-      value={chosen ? optionKey(chosen) : ""}
-      onChange={(e) => {
-        const picked = problem.options.find((o) => optionKey(o) === e.target.value);
-        if (picked) onChoose(picked);
-      }}
-      sx={{ minWidth: 280 }}
-    >
-      {problem.options.map((o) => (
-        <MenuItem key={optionKey(o)} value={optionKey(o)}>
-          {o.label}
-        </MenuItem>
-      ))}
-    </TextField>
   );
 }
 
@@ -238,7 +213,7 @@ export function CartPage() {
                 {Object.entries(step.inputs).map(([name, input]) => {
                   const problem = plan.problems.find((p) => p.options.length > 0 && sameInput(p, { step: step.id, input: name }));
                   const chosen = choices.find((c) => sameInput(c, { step: step.id, input: name }));
-                  if (problem) return <Choose key={name} problem={problem} chosen={chosen} onChoose={choose} />;
+                  if (problem) return <OrderChoice key={name} problem={problem} chosen={chosen} onChoose={choose} />;
                   if (input.kind === "unset") return null;
                   return (
                     <Box key={name} sx={{ display: "flex", gap: 1 }}>

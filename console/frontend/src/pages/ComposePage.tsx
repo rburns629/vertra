@@ -12,9 +12,10 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import DeleteIcon from "@mui/icons-material/DeleteOutlined";
-import { ApiError, listAllTeams, listProducts, listRunnables, previewOrder, submitExecution, type OrderProblem, type Product } from "../api";
+import { ApiError, listAllTeams, listProducts, listRunnables, previewOrder, submitExecution, type OrderOption, type OrderProblem, type Product } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { CodeBlock } from "../components/CodeBlock";
+import { OrderChoice, sameInput } from "../components/OrderChoice";
 import { Pill } from "../components/Pill";
 import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, stepsFromOrder, templateYaml, type ComposeStep, type Draft, type InputSource } from "../compose";
 import { draftOf, useComposeDrafts } from "./useComposeDrafts";
@@ -128,18 +129,34 @@ function BuildFromCart({ team, choices, onBuilt }: { team: string; choices: Prod
   const [cart, setCart] = useState<Product[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  async function build(): Promise<void> {
+  // What was last wired, the inputs it asked to choose for (kept, so a
+  // choice can be changed), and what was chosen: each choice wires again.
+  const [wired, setWired] = useState<{ actions: string[]; asked: OrderProblem[] } | null>(null);
+  const [picked, setPicked] = useState<OrderOption[]>([]);
+  async function wire(actions: string[], chosen: OrderOption[], asked: OrderProblem[]): Promise<void> {
     setBusy(true);
     setError(null);
     try {
-      const built = await previewOrder(team, cart.map((p) => p.name));
+      const built = await previewOrder(team, actions, chosen);
       onBuilt(stepsFromOrder(built.steps), built.problems);
-      setCart([]);
+      const fresh = built.problems.filter((p) => p.options.length > 0 && !asked.some((a) => sameInput(a, p)));
+      setWired({ actions, asked: [...asked, ...fresh] });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't wire them.");
     } finally {
       setBusy(false);
     }
+  }
+  async function build(): Promise<void> {
+    setPicked([]);
+    await wire(cart.map((p) => p.name), [], []);
+    setCart([]);
+  }
+  function choose(o: OrderOption): void {
+    if (!wired) return;
+    const next = [...picked.filter((c) => !sameInput(c, o)), o];
+    setPicked(next);
+    void wire(wired.actions, next, wired.asked);
   }
   return (
     <Card sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -165,6 +182,21 @@ function BuildFromCart({ team, choices, onBuilt }: { team: string; choices: Prod
       <Button variant="outlined" disabled={busy || cart.length === 0 || !team} onClick={() => void build()} sx={{ alignSelf: "flex-start" }}>
         {busy ? "Wiring…" : "Wire them"}
       </Button>
+      {wired && wired.asked.length > 0 && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            More than one thing could fill these: choose, and the steps are wired again.
+          </Typography>
+          {wired.asked.map((problem) => (
+            <OrderChoice
+              key={`${problem.step}.${problem.input}`}
+              problem={{ ...problem, input: `${problem.step}'s ${problem.input}` }}
+              chosen={picked.find((c) => sameInput(c, problem))}
+              onChoose={choose}
+            />
+          ))}
+        </Box>
+      )}
     </Card>
   );
 }

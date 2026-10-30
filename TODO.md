@@ -1313,9 +1313,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   parameter named for it), and reports `AMBIGUOUS` (with the options, and
   `choices` to settle them), `NO_PROVIDER` and `CYCLE`. It runs nothing:
   Compose's **Build from a cart** opens the result for a person to review,
-  run or propose. Not for ordering bots (carts become templates first). Left:
-  choosing an ambiguous input in the card itself (today: in the step's
-  source list, after wiring).
+  run or propose. Not for ordering bots (carts become templates first). An
+  input more than one step could fill is chosen in the card itself, which
+  wires the steps again with it (2026-10-29, `components/OrderChoice.tsx`,
+  shared with the Cart page).
 - [x] **Base images the platform maintains** (done 2026-10-27, decided:
   mirror and pin, not required): a catalog's `bases.yaml` lists approved
   bases; catalog CI copies each weekly into `<registry>/bases/<name>` (same

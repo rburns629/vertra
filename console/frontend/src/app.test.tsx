@@ -1253,6 +1253,46 @@ describe("schedules", () => {
   });
 });
 
+describe("Compose's cart", () => {
+  it("asks which of several fills an input, in its card, and wires them again with the choice", async () => {
+    const previews: Record<string, unknown>[] = [];
+    const product = (name: string) => ({ id: name, name, image: `registry.example/apps/${name}@sha256:aa`, action: "create", teamName: "azure-apps", inputSchema: { type: "object" } });
+    const step = (id: string, inputs: Record<string, unknown> = {}) => ({ id, product: id, inputs });
+    const options = [
+      { step: "deploy", input: "projectId", fromStep: "dev-project", fromOutput: "projectId", label: "dev-project's projectId" },
+      { step: "deploy", input: "projectId", fromStep: "prod-project", fromOutput: "projectId", label: "prod-project's projectId" },
+    ];
+    await renderAt("/catalog/compose", MEMBER, {
+      "ProductService/ListProducts": { products: ["deploy", "dev-project", "prod-project"].map(product) },
+      "TemplateService/ListTemplates": {
+        runnables: ["deploy", "dev-project", "prod-project"].map((name) => ({ kind: "KIND_ACTION", team: "azure-apps", name, actions: [`azure-apps/${name}.create`], shared: true })),
+      },
+      "OrderService/PreviewOrder": (request: Record<string, unknown>) => {
+        previews.push(request);
+        const chosen = Array.isArray(request["choices"]) && request["choices"].length > 0;
+        const wired = { kind: "step", step: chosen ? "prod-project" : "dev-project", output: "projectId" };
+        return chosen
+          ? { steps: [step("dev-project"), step("prod-project"), step("deploy", { projectId: wired })] }
+          : {
+              steps: [step("dev-project"), step("prod-project"), step("deploy", { projectId: { kind: "unset" } })],
+              problems: [{ code: "AMBIGUOUS", step: "deploy", input: "projectId", message: "Two steps provide a project: choose one.", options }],
+            };
+      },
+    });
+    fireEvent.mouseDown(await screen.findByRole("combobox", { name: "Actions" }));
+    fireEvent.click(await screen.findByRole("option", { name: /^deploy/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Wire them" }));
+    fireEvent.mouseDown(await screen.findByRole("combobox", { name: "deploy's projectId" }));
+    fireEvent.click(await screen.findByRole("option", { name: "prod-project's projectId" }));
+    await waitFor(() => {
+      expect(previews).toHaveLength(2);
+    });
+    expect(previews[1]).toMatchObject({ choices: [{ step: "deploy", input: "projectId", fromStep: "prod-project", fromOutput: "projectId" }] });
+    // The choice stays shown, to change.
+    expect(await screen.findByText("prod-project's projectId")).toBeTruthy();
+  });
+});
+
 describe("a product's readiness", () => {
   it("says what it lacks here, and lets its team check it again", async () => {
     const checked: Record<string, unknown>[] = [];
