@@ -7,7 +7,7 @@
  * with canned JSON (an empty message when a test gives none), so these
  * tests check what the pages do with the API, whatever the pages look like.
  */
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { FailureSchema } from "./gen/vertra/console/v1/common_pb.js";
 import { CssBaseline, ThemeProvider } from "@mui/material";
@@ -23,9 +23,10 @@ let answers: Record<string, Answer> = {};
  * console's stable code in a Failure detail. */
 const refused = (status: number, code: string, message: string, failure?: string) => ({ refused: { status, code, message, failure } });
 
-function connectResponse(key: string, request: Record<string, unknown>, streaming: boolean): Response {
+async function connectResponse(key: string, request: Record<string, unknown>, streaming: boolean): Promise<Response> {
   const answer = answers[key];
-  const value = typeof answer === "function" ? (answer as (r: Record<string, unknown>) => unknown)(request) : (answer ?? {});
+  // A handler may answer later (a promise), to test what happens meanwhile.
+  const value: unknown = await (typeof answer === "function" ? (answer as (r: Record<string, unknown>) => unknown)(request) : (answer ?? {}));
   // (An array named refused is a message's field: the gateway's refusals.)
   if (value && typeof value === "object" && "refused" in value && !Array.isArray(value.refused)) {
     const { status, code, message, failure } = (value as ReturnType<typeof refused>).refused;
@@ -1793,6 +1794,37 @@ describe("Compose's drafts", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Deploy/, pressed: true })).toBeTruthy();
+  });
+
+  it("drops wiring started for one draft when another is opened before it answers", async () => {
+    let answer: (value: unknown) => void = () => {};
+    const product = (name: string) => ({ id: name, name, image: `registry.example/apps/${name}@sha256:aa`, action: "create", teamName: "azure-apps", inputSchema: { type: "object" } });
+    await renderAt("/catalog/compose?draft=azure-apps%2Fnightly", MEMBER, {
+      "ProductService/ListProducts": { products: ["deploy", "check"].map(product) },
+      "TemplateService/ListTemplates": { runnables: ["deploy", "check"].map((name) => ({ kind: "KIND_ACTION", team: "azure-apps", name, actions: [`azure-apps/${name}.create`], shared: true })) },
+      "DraftService/ListDrafts": {
+        drafts: [
+          { team: "azure-apps", name: "nightly", version: "1", body: { displayName: "Nightly", steps: [] } },
+          { team: "azure-apps", name: "weekly", version: "2", body: { displayName: "Weekly", steps: [{ id: "check", product: "check", inputs: {} }] } },
+        ],
+      },
+      "OrderService/PreviewOrder": () => new Promise((resolve) => { answer = resolve; }),
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
+    fireEvent.mouseDown(await screen.findByRole("combobox", { name: "Actions" }));
+    fireEvent.click(await screen.findByRole("option", { name: /^deploy/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Wire them" }));
+    await waitFor(() => { expect(calls).toContain("OrderService/PreviewOrder"); });
+    // Another draft opened while it wires; then the answer for the first arrives.
+    fireEvent.click(screen.getByRole("button", { name: /^weekly/ }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Weekly" })).toBeTruthy();
+    act(() => { answer({ steps: [{ id: "deploy", product: "deploy", inputs: {} }] }); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 1500)); });
+    // Weekly keeps its own step, and nothing is saved over it or deleted.
+    expect(screen.getByRole("button", { name: /check/i, pressed: true })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /deploy/i, pressed: true })).toBeNull();
+    expect(calls).not.toContain("DraftService/SaveDraft");
+    expect(calls).not.toContain("DraftService/DeleteDraft");
   });
 });
 

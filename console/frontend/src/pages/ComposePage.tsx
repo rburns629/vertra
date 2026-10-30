@@ -323,11 +323,14 @@ function Palette({ choices, locked, onAdd }: { choices: Product[]; locked: Runna
  */
 function BuildFromCart({
   team,
+  opening,
   choices,
   initial,
   onBuilt,
 }: {
   team: string;
+  /** Counts drafts opened: wiring started for one draft never lands on the next. */
+  opening: number;
   choices: Product[];
   /** The cart's actions, to start from (Use your cart, or ?cart=1). */
   initial: Product[] | null;
@@ -341,6 +344,16 @@ function BuildFromCart({
   // choice can be changed), and what was chosen: each choice wires again.
   const [wired, setWired] = useState<{ actions: string[]; asked: OrderProblem[]; steps: number; added: string[]; problems: OrderProblem[] } | null>(null);
   const [picked, setPicked] = useState<OrderOption[]>([]);
+  // Each wiring's number: only the latest one's answer is used, so arrowing
+  // through choices, or opening another draft meanwhile, can't land an old one.
+  const wiring = useRef(0);
+  useEffect(() => {
+    wiring.current += 1;
+    setWired(null);
+    setPicked([]);
+    setError(null);
+    setBusy(false);
+  }, [opening]);
   const [params] = useSearchParams();
   // ?cart=1 (the Catalog's and the cart's "build a template from it"): start from the cart.
   const fromCart = useRef(params.get("cart") === "1");
@@ -352,18 +365,20 @@ function BuildFromCart({
   }, [cartProducts]);
 
   async function wire(actions: string[], chosen: OrderOption[], asked: OrderProblem[]): Promise<void> {
+    const mine = (wiring.current += 1);
     setBusy(true);
     setError(null);
     try {
       const built = await previewOrder(team, actions, chosen);
+      if (mine !== wiring.current) return;
       const added = built.steps.filter((s) => s.added).map((s) => s.id);
       onBuilt(stepsFromOrder(built.steps), built.problems, added);
       const fresh = built.problems.filter((p) => p.options.length > 0 && !asked.some((a) => sameInput(a, p)));
       setWired({ actions, asked: [...asked, ...fresh], steps: built.steps.length, added: built.steps.filter((s) => s.added).map((s) => s.product), problems: built.problems.filter((p) => p.options.length === 0) });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't wire them.");
+      if (mine === wiring.current) setError(err instanceof ApiError ? err.message : "Couldn't wire them.");
     } finally {
-      setBusy(false);
+      if (mine === wiring.current) setBusy(false);
     }
   }
   async function build(): Promise<void> {
@@ -514,7 +529,10 @@ export function ComposePage() {
     stored.edited();
     setDraft(next);
   };
+  // Drafts opened so far: Build from a cart drops what it was wiring for the last one.
+  const [opening, setOpening] = useState(0);
   const open = (next: Draft | null) => {
+    setOpening((n) => n + 1);
     stored.opened(next);
     setDraft(next ?? blank(`draft-${String((stored.drafts?.length ?? 0) + 1)}`));
     setSelected(next && next.steps.length > 0 ? 0 : null);
@@ -607,10 +625,13 @@ export function ComposePage() {
 
       <BuildFromCart
         team={draft.team}
+        opening={opening}
         choices={choices}
         initial={fromCart}
         onBuilt={(steps, _found, addedIds) => {
-          update({ ...draft, steps });
+          // Only the steps change, on the draft as it is now.
+          stored.edited();
+          setDraft((d) => ({ ...d, steps }));
           setAdded(new Set(addedIds));
           setSelected(steps.length > 0 ? 0 : null);
         }}
