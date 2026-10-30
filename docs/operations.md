@@ -69,9 +69,11 @@ on AKS a network policy engine). Without it, no policy below holds.
 3. **Optional components**, before the charts that use them:
    - **Image signatures:** Sigstore's policy-controller
      (`helm/values/gke/policy-controller.yaml` is an example; it must exclude
-     the platform namespace), then the kernel's `imageSignature` values,
-     and the console chart's `imageSignature.required: true` so its Admin
-     page says so (display only).
+     the platform namespace), then the kernel's `imageSignature` values.
+     The console's Admin page says images must be signed when it finds the
+     kernel's signature policy (`<release>-execution-kernel-signed-images`,
+     the console chart's `imageSignature.policyName`) in the cluster, which
+     its ServiceAccount may read by that name and nothing else.
    - **Syncing secrets from a vault:** External Secrets Operator
      (`helm repo add external-secrets https://charts.external-secrets.io`;
      `vertra config set externalSecrets true` has `vertra apply` install it,
@@ -390,7 +392,8 @@ roll back, pin the previous version; versions never move. The Admin page's
 Catalog card shows the version applied, and its section says which versions
 the install follows, how often it looks (`catalog.pollSeconds`), who may sign
 a release, and the registry of another install's catalog it reads
-(`catalog.external`, which vertra sets with `externalCatalog`; display only).
+(`catalog.external`, which vertra sets with `externalCatalog`; display only,
+labelled "as configured": nothing the console reads confirms it).
 
 ### Sizes, sleeping and headroom
 
@@ -588,7 +591,9 @@ no setting for it.
 
 The console chart's `audit.export.keepDays` and `audit.export.lock` (0 and
 false; vertra sets them from `audit.keepDays` and `audit.lock`) only tell the
-Admin page what the bucket keeps: the bucket enforces it.
+Admin page what the bucket keeps, which shows them "as configured": the
+bucket enforces them, and the console's identity may write and read the
+bucket's objects but not read its retention or lock back.
 
 The console hash-chains its audit log: each entry's hash covers the entry
 before it, so changing, removing or adding one breaks every later hash. With

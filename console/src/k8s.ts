@@ -1045,6 +1045,22 @@ export async function listTaskPods(namespace: string): Promise<TaskPodSummary[]>
   });
 }
 
+/** Whether policy-controller's ClusterImagePolicy `name` exists: the kernel
+ * chart makes it (image-signature.yaml) exactly when catalog images must be
+ * signed. No such object, or no such kind (policy-controller isn't
+ * installed, as on kind), is false. Read only, by that name alone
+ * (rbac.yaml). */
+export async function clusterImagePolicyExists(name: string): Promise<boolean> {
+  const { custom } = getApis();
+  try {
+    await custom.getClusterCustomObject({ group: "policy.sigstore.dev", version: "v1beta1", plural: "clusterimagepolicies", name });
+    return true;
+  } catch (error) {
+    if (isNotFound(error)) return false;
+    throw error;
+  }
+}
+
 /** The image policy's allowed sources, as the two CEL literals the
  * execution-kernel chart's image-policy.yaml keeps them in (`source`, a
  * string; `additional`, a list of strings), with the policy's

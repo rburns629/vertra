@@ -1528,7 +1528,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "Another install's catalog, read from its registry; empty when this\ninstall's own (or none)."
+     "comment": "Another install's catalog, read from its registry, as the install is\nconfigured (vertra.yaml's externalCatalog; nothing the console reads\nconfirms it); empty when this install's own (or none)."
     },
     {
      "name": "email",
@@ -1577,7 +1577,7 @@
      "type": "integer",
      "repeated": false,
      "optional": false,
-     "comment": "The audit copy's bucket: how many days it keeps each copy (0: not\nknown here), and whether that retention is locked."
+     "comment": "The audit copy's bucket: how many days it keeps each copy (0: not\nknown here), and whether that retention is locked, as the install is\nconfigured (vertra.yaml's audit.keepDays and audit.lock). The bucket\nenforces them; the console can't read them back from it."
     },
     {
      "name": "auditLock",
@@ -1597,8 +1597,8 @@
      "name": "imageSignaturesRequired",
      "type": "boolean",
      "repeated": false,
-     "optional": false,
-     "comment": "Catalog images run only if signed (the kernel chart's imageSignature)."
+     "optional": true,
+     "comment": "Catalog images run only if signed: whether the kernel chart's signature\npolicy (a policy-controller ClusterImagePolicy) exists in the cluster.\nUnset when the console couldn't tell."
     },
     {
      "name": "rescanHours",
@@ -3217,7 +3217,7 @@
      "ref": "vertra.console.v1.RunningStep",
      "repeated": true,
      "optional": false,
-     "comment": "The steps claimed or running now, in the order they were submitted;\nempty if the kernel couldn't be asked."
+     "comment": "The steps claimed or running now, by step id; empty once it has\nfinished (a cancelled run's last steps may still be stopping), or if\nthe kernel couldn't be asked."
     }
    ]
   },

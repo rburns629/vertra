@@ -238,6 +238,11 @@ describe("runs", () => {
     expect(calls).not.toContain("AdminService/GetInstall");
   });
 
+  it("says runs are kept with no time limit when the install keeps them forever", async () => {
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [RUN] } });
+    expect(await screen.findByText(/Runs are kept with no time limit/)).toBeTruthy();
+  });
+
   it("asks the server for your own runs, and lists the steps waiting for your team to approve", async () => {
     const asked: Record<string, unknown>[] = [];
     await renderAt("/runs", MEMBER, {
@@ -1043,6 +1048,27 @@ describe("admin", () => {
     expect(await screen.findByText(/every 24 h/)).toBeTruthy();
     cleanup();
 
+    // What the console can't confirm, it says so; what it couldn't read, it doesn't guess.
+    await renderAt("/admin/audit", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/400 days, as configured/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/catalog", ADMIN, { "AdminService/GetInstall": install });
+    expect(await screen.findByText(/, as configured/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/images", ADMIN, { "AdminService/GetInstall": { ...install, imageSignaturesRequired: undefined } });
+    expect(await screen.findByText(/couldn't be read from the cluster/)).toBeTruthy();
+    cleanup();
+    await renderAt("/admin/images", ADMIN, { "AdminService/GetInstall": { ...install, imageSignaturesRequired: false } });
+    expect(await screen.findByText(/not required, no signature policy in the cluster/)).toBeTruthy();
+    cleanup();
+
+    // No catalog: nothing said about how often it's read, or who signs it.
+    await renderAt("/admin/catalog", ADMIN, { "AdminService/GetInstall": { ...install, catalog: false, catalogVersion: "", catalogPollSeconds: 0, catalogSignerKeys: 0, externalCatalog: "" } });
+    expect((await screen.findAllByText(/no catalog/)).length).toBeGreaterThan(1);
+    expect(screen.queryByText(/every 5 min/)).toBeNull();
+    expect(screen.queryByText(/releases aren't checked/)).toBeNull();
+    cleanup();
+
     // The overview's metrics part, and Observe's Metrics, name the provider and link Grafana.
     await renderAt("/admin", ADMIN, { "AdminService/GetInstall": install });
     expect((await screen.findByRole("link", { name: "Grafana" })).getAttribute("href")).toBe("https://grafana.acme.com");
@@ -1188,7 +1214,7 @@ describe("home", () => {
       "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "orders-api prod database", taskId: "database", team: "azure-apps", requestedBy: "sam@acme.com", canDecide: true }] },
     });
     expect(await screen.findByText("orders-api first deploy")).toBeTruthy();
-    expect(screen.getByText("Step 3 of 4: app-hosting.create, attempt 2 of 3")).toBeTruthy();
+    expect(screen.getByText("2 of 4 steps done · now: app-hosting.create, attempt 2 of 3")).toBeTruthy();
     expect(screen.queryByText("not ours")).toBeNull();
     expect(await screen.findByText(/1 run for you and your teams is going, and 1 thing waits for you to decide\./)).toBeTruthy();
     expect(screen.getByText("orders-api prod database")).toBeTruthy();

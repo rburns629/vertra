@@ -771,7 +771,8 @@ taken, and what would still hold.
   and delete Secrets, product ServiceAccounts, ExternalSecrets,
   SecretStores, NetworkPolicies and quotas in team namespaces (the write
   fence keeps it to those); read every Pod in the cluster, specs included;
-  and update the image, identity and scan policies. Kubernetes doesn't
+  and update the image, identity and scan policies (and read, never
+  change, the kernel's signature policy, by its name). Kubernetes doesn't
   apply admission policies to admission policies, so nothing narrows that
   last right: the console only ever writes their lists, and every kernel
   upgrade resets the rest, but a compromised console could rewrite them to

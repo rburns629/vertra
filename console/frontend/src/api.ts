@@ -499,7 +499,7 @@ export interface InstallInfo {
   catalogSignerKeys: number;
   catalogKeylessIssuer: string;
   catalogKeylessSubject: string;
-  /** Another install's catalog registry; "" when this install's own. */
+  /** Another install's catalog registry, as configured (not confirmed); "" when this install's own. */
   externalCatalog: string;
   email: boolean;
   emailHost: string;
@@ -509,11 +509,12 @@ export interface InstallInfo {
   grafanaUrl: string;
   /** How long a session lasts: 8h, 30m, 1d. */
   sessionLength: string;
-  /** 0: not known here. */
+  /** As configured: the console can't read the bucket's own. 0: not known here. */
   auditKeepDays: number;
   auditLock: boolean;
   policySyncSeconds: number;
-  imageSignaturesRequired: boolean;
+  /** Whether the kernel's signature policy is in the cluster; null when the console couldn't tell. */
+  imageSignaturesRequired: boolean | null;
   /** 0 with scanning off. */
   rescanHours: number;
 }
@@ -547,7 +548,7 @@ export async function getInstall(): Promise<InstallInfo> {
     auditKeepDays: i.auditKeepDays,
     auditLock: i.auditLock,
     policySyncSeconds: i.policySyncSeconds,
-    imageSignaturesRequired: i.imageSignaturesRequired,
+    imageSignaturesRequired: i.imageSignaturesRequired ?? null,
     rescanHours: i.rescanHours,
   };
 }

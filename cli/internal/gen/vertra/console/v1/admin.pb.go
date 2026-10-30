@@ -93,8 +93,9 @@ type GetInstallResponse struct {
 	CatalogSignerKeys     int32  `protobuf:"varint,14,opt,name=catalog_signer_keys,json=catalogSignerKeys,proto3" json:"catalog_signer_keys,omitempty"`
 	CatalogKeylessIssuer  string `protobuf:"bytes,15,opt,name=catalog_keyless_issuer,json=catalogKeylessIssuer,proto3" json:"catalog_keyless_issuer,omitempty"`
 	CatalogKeylessSubject string `protobuf:"bytes,16,opt,name=catalog_keyless_subject,json=catalogKeylessSubject,proto3" json:"catalog_keyless_subject,omitempty"`
-	// Another install's catalog, read from its registry; empty when this
-	// install's own (or none).
+	// Another install's catalog, read from its registry, as the install is
+	// configured (vertra.yaml's externalCatalog; nothing the console reads
+	// confirms it); empty when this install's own (or none).
 	ExternalCatalog string `protobuf:"bytes,17,opt,name=external_catalog,json=externalCatalog,proto3" json:"external_catalog,omitempty"`
 	// Email: whether it's sent, through which SMTP host, from which address.
 	// Never its credentials.
@@ -108,13 +109,17 @@ type GetInstallResponse struct {
 	// How long a session lasts before signing in again: 8h, 30m, 1d.
 	SessionLength string `protobuf:"bytes,23,opt,name=session_length,json=sessionLength,proto3" json:"session_length,omitempty"`
 	// The audit copy's bucket: how many days it keeps each copy (0: not
-	// known here), and whether that retention is locked.
+	// known here), and whether that retention is locked, as the install is
+	// configured (vertra.yaml's audit.keepDays and audit.lock). The bucket
+	// enforces them; the console can't read them back from it.
 	AuditKeepDays int32 `protobuf:"varint,24,opt,name=audit_keep_days,json=auditKeepDays,proto3" json:"audit_keep_days,omitempty"`
 	AuditLock     bool  `protobuf:"varint,25,opt,name=audit_lock,json=auditLock,proto3" json:"audit_lock,omitempty"`
 	// How often the cluster policies are rewritten whatever changed, in seconds.
 	PolicySyncSeconds int32 `protobuf:"varint,26,opt,name=policy_sync_seconds,json=policySyncSeconds,proto3" json:"policy_sync_seconds,omitempty"`
-	// Catalog images run only if signed (the kernel chart's imageSignature).
-	ImageSignaturesRequired bool `protobuf:"varint,27,opt,name=image_signatures_required,json=imageSignaturesRequired,proto3" json:"image_signatures_required,omitempty"`
+	// Catalog images run only if signed: whether the kernel chart's signature
+	// policy (a policy-controller ClusterImagePolicy) exists in the cluster.
+	// Unset when the console couldn't tell.
+	ImageSignaturesRequired *bool `protobuf:"varint,27,opt,name=image_signatures_required,json=imageSignaturesRequired,proto3,oneof" json:"image_signatures_required,omitempty"`
 	// Images in use are scanned again once their verdict is this old, in hours.
 	RescanHours   int32 `protobuf:"varint,28,opt,name=rescan_hours,json=rescanHours,proto3" json:"rescan_hours,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -334,8 +339,8 @@ func (x *GetInstallResponse) GetPolicySyncSeconds() int32 {
 }
 
 func (x *GetInstallResponse) GetImageSignaturesRequired() bool {
-	if x != nil {
-		return x.ImageSignaturesRequired
+	if x != nil && x.ImageSignaturesRequired != nil {
+		return *x.ImageSignaturesRequired
 	}
 	return false
 }
@@ -1356,7 +1361,7 @@ var File_vertra_console_v1_admin_proto protoreflect.FileDescriptor
 const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\n" +
 	"\x1dvertra/console/v1/admin.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x13\n" +
-	"\x11GetInstallRequest\"\xc5\b\n" +
+	"\x11GetInstallRequest\"\xe8\b\n" +
 	"\x12GetInstallResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12+\n" +
 	"\x11environment_label\x18\x02 \x01(\tR\x10environmentLabel\x12!\n" +
@@ -1389,9 +1394,10 @@ const file_vertra_console_v1_admin_proto_rawDesc = "" +
 	"\x0faudit_keep_days\x18\x18 \x01(\x05R\rauditKeepDays\x12\x1d\n" +
 	"\n" +
 	"audit_lock\x18\x19 \x01(\bR\tauditLock\x12.\n" +
-	"\x13policy_sync_seconds\x18\x1a \x01(\x05R\x11policySyncSeconds\x12:\n" +
-	"\x19image_signatures_required\x18\x1b \x01(\bR\x17imageSignaturesRequired\x12!\n" +
-	"\frescan_hours\x18\x1c \x01(\x05R\vrescanHours\"\x19\n" +
+	"\x13policy_sync_seconds\x18\x1a \x01(\x05R\x11policySyncSeconds\x12?\n" +
+	"\x19image_signatures_required\x18\x1b \x01(\bH\x00R\x17imageSignaturesRequired\x88\x01\x01\x12!\n" +
+	"\frescan_hours\x18\x1c \x01(\x05R\vrescanHoursB\x1c\n" +
+	"\x1a_image_signatures_required\"\x19\n" +
 	"\x17GetCatalogStatusRequest\"T\n" +
 	"\x18GetCatalogStatusResponse\x128\n" +
 	"\x06status\x18\x01 \x01(\v2 .vertra.console.v1.CatalogStatusR\x06status\"\x14\n" +
@@ -1570,6 +1576,7 @@ func file_vertra_console_v1_admin_proto_init() {
 	if File_vertra_console_v1_admin_proto != nil {
 		return
 	}
+	file_vertra_console_v1_admin_proto_msgTypes[1].OneofWrappers = []any{}
 	file_vertra_console_v1_admin_proto_msgTypes[12].OneofWrappers = []any{}
 	file_vertra_console_v1_admin_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}

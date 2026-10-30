@@ -64,7 +64,7 @@ const mono = (text: string) => (
 );
 
 /** A setting's value on this install, after its name: " (this install: 8h)". Nothing until it's read. */
-function current(install: InstallInfo | null, value: (i: InstallInfo) => ReactNode) {
+function thisInstall(install: InstallInfo | null, value: (i: InstallInfo) => ReactNode) {
   return install ? <> (this install: {value(install)})</> : null;
 }
 
@@ -77,6 +77,7 @@ function seconds(n: number): string {
 
 /** Who may sign a release, in words. */
 function signers(i: InstallInfo): ReactNode {
+  if (!i.catalogVersion) return "no catalog";
   const keys = i.catalogSignerKeys > 0 ? `${String(i.catalogSignerKeys)} public ${i.catalogSignerKeys === 1 ? "key" : "keys"}` : "";
   const keyless = i.catalogKeylessIssuer ? (
     <>
@@ -133,7 +134,7 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         here: ["Accounts, admins and password resets.", "A new person joins each team chosen as a maintainer; the team's maintainers change roles on its Members tab."],
         install: (i) => [
           <>The first admin: {mono("admin.email")} in vertra.yaml.</>,
-          <>How long a session lasts: {mono("jwtTtl")}{current(i, (x) => mono(x.sessionLength)) ?? " (8 hours unless the install changes it)"}.</>,
+          <>How long a session lasts: {mono("jwtTtl")}{thisInstall(i, (x) => mono(x.sessionLength)) ?? " (8 hours unless the install changes it)"}.</>,
           <SelfRegistration key="self-registration" />,
         ],
         content: () => <PeopleTab />,
@@ -176,11 +177,11 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         install: (i) => [
           <>
             The release, and which versions to apply: {mono("catalog")}, {mono("catalogVersion")} ({mono("vertra catalog create")}, {mono("vertra catalog promote")})
-            {current(i, (x) => (x.catalogVersion ? mono(x.catalogVersion) : "no catalog"))}.
+            {thisInstall(i, (x) => (x.catalogVersion ? mono(x.catalogVersion) : "no catalog"))}.
           </>,
-          <>How often it looks for a new release: the console chart&apos;s {mono("catalog.pollSeconds")}{current(i, (x) => `every ${seconds(x.catalogPollSeconds || 300)}`)}.</>,
-          <>Who may sign a release: {mono("signing")}{current(i, signers)}.</>,
-          <>Reading another install&apos;s catalog instead: {mono("externalCatalog")}{current(i, (x) => (x.externalCatalog ? mono(x.externalCatalog) : x.catalogVersion ? "its own" : "none"))}.</>,
+          <>How often it looks for a new release: the console chart&apos;s {mono("catalog.pollSeconds")}{thisInstall(i, (x) => (x.catalogVersion ? `every ${seconds(x.catalogPollSeconds)}` : "no catalog"))}.</>,
+          <>Who may sign a release: {mono("signing")}{thisInstall(i, signers)}.</>,
+          <>Reading another install&apos;s catalog instead: {mono("externalCatalog")}{thisInstall(i, (x) => (x.externalCatalog ? <>{mono(x.externalCatalog)}, as configured</> : x.catalogVersion ? "its own, as configured" : "no catalog"))}.</>,
         ],
         content: () => <CatalogSection />,
       },
@@ -192,7 +193,17 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         here: ["The allowed sources: the source registry and any more.", "Upgrades keep what's saved here."],
         install: (i) => [
           <>Their first value, when the kernel is installed: {mono("taskImages.registry")} in vertra.yaml.</>,
-          <>Whether catalog images must be signed: the kernel chart&apos;s {mono("imageSignature")}{current(i, (x) => (x.imageSignaturesRequired ? "required" : "not required"))}.</>,
+          <>
+            Whether catalog images must be signed: the kernel chart&apos;s {mono("imageSignature")}
+            {thisInstall(i, (x) =>
+              x.imageSignaturesRequired === null
+                ? "couldn't be read from the cluster"
+                : x.imageSignaturesRequired
+                  ? "required, its signature policy is in the cluster"
+                  : "not required, no signature policy in the cluster",
+            )}
+            .
+          </>,
         ],
         content: (summary) => <ImageSourcesCard summary={summary} />,
       },
@@ -203,8 +214,8 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         source: "both",
         here: ["Rescan an image now.", "Accept a failed one, with a reason kept in the audit log."],
         install: (i) => [
-          <>Whether images are scanned: the console chart&apos;s {mono("scanning.enabled")} (on by default){current(i, (x) => (x.scanning ? "on" : "off"))}.</>,
-          <>How often images in use are scanned again: {mono("scanning.rescanHours")}{current(i, (x) => (x.rescanHours ? `every ${String(x.rescanHours)} h` : "never, scanning is off"))}.</>,
+          <>Whether images are scanned: the console chart&apos;s {mono("scanning.enabled")} (on by default){thisInstall(i, (x) => (x.scanning ? "on" : "off"))}.</>,
+          <>How often images in use are scanned again: {mono("scanning.rescanHours")}{thisInstall(i, (x) => (x.rescanHours ? `every ${String(x.rescanHours)} h` : "never, scanning is off"))}.</>,
         ],
         content: () => <ImageScansTab />,
       },
@@ -255,7 +266,7 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         install: (i) => [
           <>
             Email: the console chart&apos;s {mono("notifications.email")} names the SMTP server
-            {current(i, (x) => (x.email ? <>{mono(x.emailHost)}, from {mono(x.emailFrom)}</> : "none, so no email is sent"))}.
+            {thisInstall(i, (x) => (x.email ? <>{mono(x.emailHost)}, from {mono(x.emailFrom)}</> : "none, so no email is sent"))}.
           </>,
           <>The hosts a webhook may post to: {mono("notifications.webhookHosts")}.</>,
         ],
@@ -273,7 +284,7 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         source: "status",
         here: ["Write them again: rewrite them all now."],
         install: (i) => [
-          <>How often they&apos;re rewritten: the console chart&apos;s {mono("policySyncIntervalSeconds")}{current(i, (x) => `every ${seconds(x.policySyncSeconds)}`) ?? " (300)"}.</>,
+          <>How often they&apos;re rewritten: the console chart&apos;s {mono("policySyncIntervalSeconds")}{thisInstall(i, (x) => `every ${seconds(x.policySyncSeconds)}`) ?? " (300)"}.</>,
           "The policies the kernel chart installs and the console doesn't write (below).",
         ],
         content: () => <PoliciesCard />,
@@ -285,10 +296,10 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         source: "install",
         install: (i) => [
           <>Whether there&apos;s a copy, and where: {mono("audit.export")} in vertra.yaml (gcp, aws), or the console chart&apos;s {mono("audit.export.bucket")}.</>,
-          <>How long the bucket keeps each entry: {mono("audit.keepDays")}{current(i, (x) => (!x.auditCopy ? "no copy" : x.auditKeepDays ? `${String(x.auditKeepDays)} days` : "not known here"))}.</>,
+          <>How long the bucket keeps each entry: {mono("audit.keepDays")}{thisInstall(i, (x) => (!x.auditCopy ? "no copy" : x.auditKeepDays ? `${String(x.auditKeepDays)} days, as configured` : "not known here"))}.</>,
           <>
             {mono("audit.lock")} makes that retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it
-            {current(i, (x) => (!x.auditCopy ? "no copy" : x.auditLock ? "locked" : "not locked"))}.
+            {thisInstall(i, (x) => (!x.auditCopy ? "no copy" : x.auditLock ? "locked, as configured" : "not locked, as configured"))}.
           </>,
         ],
         content: () => <AuditCopyCard />,

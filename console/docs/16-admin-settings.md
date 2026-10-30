@@ -163,7 +163,7 @@ Set by the install:
 | `catalog` (vertra.yaml, made by `vertra catalog create`); `catalog.release` (chart) | The catalog repository and the release this console reads. Empty: no catalog, so teams and products are only what admins make |
 | `catalogVersion` (vertra.yaml); `catalog.newestVersion` (chart) | Which releases to apply: every one `main` publishes (`latest`), the newest `vX.Y.Z` (`newest`), or one version pinned. See [operations](operations.md#catalog-versions) |
 | `signing` (vertra.yaml); `catalog.signature` (chart) | Who may sign releases: a key (`kms`), or catalog CI's own identity (`keyless`). With none, releases aren't verified |
-| `externalCatalog.registry` and `catalogSignature` (vertra.yaml) | Read another install's catalog instead of owning one, and trust its signer. See [operations](operations.md#reading-another-installs-catalog) |
+| `externalCatalog.registry` and `catalogSignature` (vertra.yaml) | Read another install's catalog instead of owning one, and trust its signer. This page shows it "as configured": nothing the console reads confirms it. See [operations](operations.md#reading-another-installs-catalog) |
 | `catalog.pollSeconds` (chart) | How often the release is read, 300 seconds by default |
 
 Admins are alerted when the catalog hasn't been pulled for 30 minutes.
@@ -184,7 +184,7 @@ Set by the install: the first value only. `taskImages.registry` in vertra.yaml (
 
 Admins are alerted when the image sources change.
 
-**What an image passes before it runs** lists the four checks the cluster makes when a step starts: it comes from an allowed source (`IMAGE_NOT_ALLOWED`), it's pinned to a digest (`IMAGE_NOT_PINNED`), it passed its scan (`IMAGE_SCAN_FAILED`), and, when the install requires it (the kernel chart's `imageSignature`), a catalog image is signed (`IMAGE_NOT_SIGNED`).
+**What an image passes before it runs** lists the four checks the cluster makes when a step starts: it comes from an allowed source (`IMAGE_NOT_ALLOWED`), it's pinned to a digest (`IMAGE_NOT_PINNED`), it passed its scan (`IMAGE_SCAN_FAILED`), and, when the install requires it (the kernel chart's `imageSignature`), a catalog image is signed (`IMAGE_NOT_SIGNED`). Whether it's required is read from the cluster: the kernel chart's signature policy is there or not; if the console can't read it, the page says so.
 
 ### Image scans
 
@@ -291,4 +291,4 @@ One this install doesn't have the console keep says **Not used here**. The card 
 
 It also shows how many entries are copied and how many are waiting for the next copy, **Copied to**, **Last copy**, when the **Chain checked**, and how far it's **Compared with the copy**. **Read the audit log in Observe →** opens the log itself.
 
-Set by the install: `audit.export`, `audit.keepDays` and `audit.lock` in vertra.yaml. `audit.lock` makes the bucket's retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it. See [operations](operations.md#the-audit-logs-copy).
+Set by the install: `audit.export`, `audit.keepDays` and `audit.lock` in vertra.yaml. This page shows the last two "as configured": the bucket enforces them, and the console can't read them back from it. `audit.lock` makes the bucket's retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it. See [operations](operations.md#the-audit-logs-copy).

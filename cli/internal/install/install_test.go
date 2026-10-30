@@ -276,8 +276,8 @@ func TestAReaderTrustsTheCatalogsSigner(t *testing.T) {
 	if !strings.Contains(images, "enabled:true") || !strings.Contains(images, subject) || !strings.Contains(images, GitHubActionsIssuer) {
 		t.Errorf("imageSignature: %v", images)
 	}
-	// The console says so on its Admin page.
-	if got := fmt.Sprint(ConsoleValues(c, "dev", Images{}, cloud)["imageSignature"]); got != "map[required:true]" {
+	// The console reads the kernel's policy from the cluster: nothing to tell it.
+	if got, set := ConsoleValues(c, "dev", Images{}, cloud)["imageSignature"]; set {
 		t.Errorf("console's imageSignature: %v", got)
 	}
 	catalog, _ = ConsoleValues(c, "dev", Images{}, cloud)["catalog"].(map[string]any)

@@ -136,8 +136,9 @@ export declare type GetInstallResponse = Message<"vertra.console.v1.GetInstallRe
   catalogKeylessSubject: string;
 
   /**
-   * Another install's catalog, read from its registry; empty when this
-   * install's own (or none).
+   * Another install's catalog, read from its registry, as the install is
+   * configured (vertra.yaml's externalCatalog; nothing the console reads
+   * confirms it); empty when this install's own (or none).
    *
    * @generated from field: string external_catalog = 17;
    */
@@ -184,7 +185,9 @@ export declare type GetInstallResponse = Message<"vertra.console.v1.GetInstallRe
 
   /**
    * The audit copy's bucket: how many days it keeps each copy (0: not
-   * known here), and whether that retention is locked.
+   * known here), and whether that retention is locked, as the install is
+   * configured (vertra.yaml's audit.keepDays and audit.lock). The bucket
+   * enforces them; the console can't read them back from it.
    *
    * @generated from field: int32 audit_keep_days = 24;
    */
@@ -203,11 +206,13 @@ export declare type GetInstallResponse = Message<"vertra.console.v1.GetInstallRe
   policySyncSeconds: number;
 
   /**
-   * Catalog images run only if signed (the kernel chart's imageSignature).
+   * Catalog images run only if signed: whether the kernel chart's signature
+   * policy (a policy-controller ClusterImagePolicy) exists in the cluster.
+   * Unset when the console couldn't tell.
    *
-   * @generated from field: bool image_signatures_required = 27;
+   * @generated from field: optional bool image_signatures_required = 27;
    */
-  imageSignaturesRequired: boolean;
+  imageSignaturesRequired?: boolean | undefined;
 
   /**
    * Images in use are scanned again once their verdict is this old, in hours.

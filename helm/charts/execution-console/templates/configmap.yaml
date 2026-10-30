@@ -76,7 +76,7 @@ data:
   MONITORING_PROVIDER: {{ ternary .provider "" (or .podMonitor.enabled .alerts.enabled .dashboard.enabled .prometheus.enabled) | quote }}
   GRAFANA_URL: {{ .grafanaUrl | quote }}
   {{- end }}
-  IMAGE_SIGNATURES_REQUIRED: {{ .Values.imageSignature.required | quote }}
+  IMAGE_SIGNATURE_POLICY_NAME: {{ .Values.imageSignature.policyName | quote }}
   KERNEL_API_URL: {{ .Values.kernelApiUrl | quote }}
   ENVIRONMENT_LABEL: {{ .Values.environmentLabel | quote }}
   # The console's own version: its image's tag, for the Admin page.
