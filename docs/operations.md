@@ -69,7 +69,9 @@ on AKS a network policy engine). Without it, no policy below holds.
 3. **Optional components**, before the charts that use them:
    - **Image signatures:** Sigstore's policy-controller
      (`helm/values/gke/policy-controller.yaml` is an example; it must exclude
-     the platform namespace), then the kernel's `imageSignature` values.
+     the platform namespace), then the kernel's `imageSignature` values,
+     and the console chart's `imageSignature.required: true` so its Admin
+     page says so (display only).
    - **Syncing secrets from a vault:** External Secrets Operator
      (`helm repo add external-secrets https://charts.external-secrets.io`;
      `vertra config set externalSecrets true` has `vertra apply` install it,
@@ -385,7 +387,10 @@ repository, which tags the release `main` already published for that commit
 digests and signature, so a production install following `newest` gets
 what a test install on `latest` already ran, when someone cuts the tag. To
 roll back, pin the previous version; versions never move. The Admin page's
-Catalog card shows the version applied.
+Catalog card shows the version applied, and its section says which versions
+the install follows, how often it looks (`catalog.pollSeconds`), who may sign
+a release, and the registry of another install's catalog it reads
+(`catalog.external`, which vertra sets with `externalCatalog`; display only).
 
 ### Sizes, sleeping and headroom
 
@@ -539,6 +544,10 @@ Which Prometheus is `monitoring.provider`, the same in both charts:
   (`files/grafana-dashboard.json`: steps, the console, the gateway) as a
   ConfigMap labelled for Grafana's dashboard sidecar; set
   `monitoring.dashboard.namespace` if the sidecar watches only Grafana's.
+- `monitoring.grafanaUrl` (console chart, `""`): where that Grafana is, for
+  a link on the Admin page and (for admins) Observe's Metrics. The console
+  never calls it. Which provider the Admin page names is `monitoring.provider`
+  once any of `podMonitor`, `alerts`, `dashboard` or `prometheus` is on.
 
 The metrics, for alerts and dashboards of your own:
 
@@ -576,6 +585,10 @@ field, such as `catalog_sync_failed`. The level is fixed at INFO; there's
 no setting for it.
 
 ### The audit log's copy
+
+The console chart's `audit.export.keepDays` and `audit.export.lock` (0 and
+false; vertra sets them from `audit.keepDays` and `audit.lock`) only tell the
+Admin page what the bucket keeps: the bucket enforces it.
 
 The console hash-chains its audit log: each entry's hash covers the entry
 before it, so changing, removing or adding one breaks every later hash. With

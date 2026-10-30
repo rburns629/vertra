@@ -252,6 +252,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/dagLayout.ts` | Arranges a DAG's tasks into columns for the execution graph. |
 | `src/time.ts` | Durations and times as people say them ("8m 05s", "today 14:02"), and a clock that ticks while something runs. |
 | `src/statusColor.ts` | Each state's color and label, shared by the status chips and the home charts. |
+| `src/runningNow.ts` | What a run is doing now ("app-hosting.create, attempt 2 of 3"), for Home's Running now and the Runs list. Tested in `runningNow.test.ts`. |
 | `src/auth/` | The signed-in user (`AuthContext`) and the guard that sends signed-out visitors to the login page. |
 | `src/layout/` | The sidebar (the install, the places, your account and its settings menu; a top bar opens it on a phone), and `SignInLayout`, the screens before it (signing in, registering, choosing your own password). Old addresses (`/executions`, `/run`) redirect in `App.tsx`. |
 | `src/environment.tsx` | The install's public settings (its label, open registration, single sign-on), fetched once for the whole app. |

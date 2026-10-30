@@ -1073,20 +1073,17 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 - [ ] **What the redesigned pages leave out** (found building boards 9–13,
   2026-10-30; #33–#38): each is something a board shows that the API doesn't
   return, so the page omits it rather than guess. Group 1, mostly data the
-  console already has, first:
-  - Runs: the starter's email on the list (`ListExecutions` has only an
-    account id, so "By" says you or someone else); the running step and its
-    attempt (Home's "Step 3 of 4: app-hosting.create, attempt 2"); how long
-    runs are kept, for non-admins (`runRetentionDays` is in the admin-only
-    `GetInstall`).
-  - Admin: the install's settings it can't show yet (`GetInstall`): the
-    catalog's `catalogVersion`, signing and signer, `externalCatalog`,
-    `pollSeconds`; email (SMTP); `monitoring.provider` and a Grafana URL
-    (Observe's Metrics too); session length (`JWT_TTL`); `audit.keepDays`
-    and `audit.lock`; the policy rewrite interval; whether image signatures
-    are required; the rescan interval.
-  - Teams: a team's description (`team.yaml`); the install's default limits
-    beside a team's own.
+  console already has, first (done 2026-10-30, but one: the Runs list's
+  starter by email and running step with its attempt, how long runs are
+  kept for everyone, the Admin sections' install settings, Observe's
+  Grafana link, a team's install limits beside its own):
+  - Teams: a team's description. team.yaml requires one
+    (`team.schema.json`), but the release doesn't carry it: it needs a
+    `description` on `proto/vertra/catalog/v1/release.proto`'s Team, `vertra
+    catalog release` filling it (cli/internal/catalogtool), a
+    `teams.description` column (a drizzle migration, documented in
+    `06-database-schemas.md`) that `catalogSync.ts` writes, and
+    `GetTeamProfile` or `Team` returning it, as `owner` did (2026-10-27).
   - Planned already: Observe's firing alerts (item 2 of "Next, in order")
     and whether a retry is safe (item 3).
   - The rest, to decide one by one: which schedule started a run; what the

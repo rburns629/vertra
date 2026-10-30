@@ -130,7 +130,7 @@ The **Settings** tab has these sections. Members see them read-only.
 | Section | What it does | Who changes it |
 | --- | --- | --- |
 | **Signing in** | **Require <provider> sign-in for its members**: their passwords stop working, here and at the gateway, including sessions they already have | Admins |
-| **Resource limits** | How much CPU, memory and how many Pods the team's steps may use together, and the most memory one step may ask for. The cluster enforces it. Shows whether these are the install's defaults or the team's own | Admins |
+| **Resource limits** | How much CPU, memory and how many Pods the team's steps may use together, and the most memory one step may ask for. The cluster enforces it. Shows whether these are the install's defaults or the team's own, and beside the team's own, the install's | Admins |
 | **Chat notifications** | Posts the team's notifications to a Slack, Google Chat or Teams channel through an incoming webhook | Maintainers and admins |
 | **Outcome webhook** | When one of the team's runs finishes, posts its outcome as signed JSON to the team's own systems, under the install's allowed hosts | Maintainers and admins |
 | **Where it comes from** | Whether the catalog made it, its owner and contact there, its namespace, and when it was created | Nobody |

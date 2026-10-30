@@ -1,6 +1,6 @@
 # Admin settings
 
-This page is for the install's admins. It goes through every section of the **Admin** page in order: what each setting does, what it affects, and whether you change it in the console or it's set by the install. Install settings live in the environment's `vertra.yaml` (change one with `vertra config set -e <env> <key> <value>`, then `vertra apply <env>`) or, without `vertra`, in the console chart's Helm values. Each section has its own address, `/admin/<id>`, shown next to its name below. The list of sections down the side shows each one's state in a few words where the console knows it (such as **3 to finish**, **1 to adopt**, **In sync**). Each section opens with what it does, what's **Set here** and what's **Set by the install**. Only admins can open the Admin page; anyone else sees "Admins only".
+This page is for the install's admins. It goes through every section of the **Admin** page in order: what each setting does, what it affects, and whether you change it in the console or it's set by the install. Install settings live in the environment's `vertra.yaml` (change one with `vertra config set -e <env> <key> <value>`, then `vertra apply <env>`) or, without `vertra`, in the console chart's Helm values. Each section has its own address, `/admin/<id>`, shown next to its name below. The list of sections down the side shows each one's state in a few words where the console knows it (such as **3 to finish**, **1 to adopt**, **In sync**). Each section opens with what it does, what's **Set here** and what's **Set by the install**, with this install's value beside each install setting the console knows (such as `jwtTtl` (this install: 8h)). Never a credential: an SMTP server's sign-in, a key or a token isn't shown. Only admins can open the Admin page; anyone else sees "Admins only".
 
 | Section | Changed here | Set by the install |
 | --- | --- | --- |
@@ -45,13 +45,13 @@ Once they're done, a **Ready to run** line says so instead.
 | --- | --- |
 | People and access | Single sign-on, groups from the directory, automation tokens, self-registration (`allowSelfRegistration`) |
 | Catalog and images | The catalog release, its signature, image sources, image scans |
-| Integrations | The API gateway, the chat agent, admins' alerts, log search (`logs.enabled`, `logs.searchDays`) |
+| Integrations | The API gateway, the chat agent, admins' alerts, log search (`logs.enabled`, `logs.searchDays`), metrics (which Prometheus, and a link to Grafana when the console chart's `monitoring.grafanaUrl` names it) |
 | Security and audit | Cluster policies, the audit log's copy, run records (kept 90 days unless the console chart's `retention.executionDays` says otherwise; keep it equal to the kernel chart's `executionRetentionDays`) |
 
-Two install settings don't appear on this page:
+Two install settings have no section of their own:
 
-- **Monitoring.** Observe's **Metrics** tab works with nothing installed. For Prometheus, `monitoring` in vertra.yaml chooses the cluster's Prometheus Operator (`operator`), GKE's managed one (`google`), or one the console chart runs (`bundled`). The console chart's `monitoring.dashboard.enabled` adds a Grafana dashboard. See [operations](operations.md#metrics-and-alerts).
-- **Email.** Notifications go by email only when the console chart's `notifications.email` names an SMTP server. Each person chooses which kinds they get in their preferences.
+- **Monitoring.** Observe's **Metrics** tab works with nothing installed. For Prometheus, `monitoring` in vertra.yaml chooses the cluster's Prometheus Operator (`operator`), GKE's managed one (`google`), or one the console chart runs (`bundled`). The console chart's `monitoring.dashboard.enabled` adds a Grafana dashboard, and `monitoring.grafanaUrl` says where that Grafana is, for the link here and on Observe's **Metrics**. See [operations](operations.md#metrics-and-alerts).
+- **Email.** Notifications go by email only when the console chart's `notifications.email` names an SMTP server: [Admins' alerts](#admins-alerts) names it and the address mail comes from. Each person chooses which kinds they get in their preferences.
 
 ## People and access
 
