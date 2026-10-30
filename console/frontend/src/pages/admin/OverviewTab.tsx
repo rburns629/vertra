@@ -221,6 +221,8 @@ export function PoliciesCard() {
 const STATE_MEANS: { tone: Tone; name: string; means: string }[] = [
   { tone: "ok", name: "Intact", means: "The chain held, and the copies compared so far match the database." },
   { tone: "warn", name: "Not copying", means: "The last copy failed: the reason is shown, and entries wait until it works." },
+  { tone: "warn", name: "Not compared", means: "The database couldn't be compared with its copy (the reason is shown), so a change there wouldn't be noticed until it can." },
+  { tone: "off", name: "Not checked yet", means: "The copy is on, but its first check hasn't run: it does within minutes." },
   { tone: "err", name: "Chain broken", means: "An entry was changed, removed or added after it was written. Nothing from there on is copied." },
   { tone: "err", name: "Changed since copied", means: "An entry in the database differs from its copy in the bucket." },
   { tone: "off", name: "Off", means: "No copy: the log is only in the console's database, and nothing checks its chain." },

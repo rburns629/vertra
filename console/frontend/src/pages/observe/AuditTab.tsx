@@ -76,6 +76,10 @@ function WriteOnceCopy() {
       <Pill tone="error">Changed since copied</Pill>
     ) : copy.brokenAt > 0 ? (
       <Pill tone="error">Chain broken</Pill>
+    ) : copy.compareProblem ? (
+      <Pill tone="warning">Not compared</Pill>
+    ) : !copy.checkedAt ? (
+      <Pill tone="neutral">Not checked yet</Pill>
     ) : (
       <Pill tone="success" dot="currentColor">
         Chain intact
@@ -118,6 +122,8 @@ function WriteOnceCopy() {
       {copy.differsAt > 0 && (
         <Alert severity="error">{copy.compareProblem || `Entry ${entry(copy.differsAt)} in the database differs from its write-once copy.`}</Alert>
       )}
+      {/* The comparison couldn't run: nothing says the database still matches. */}
+      {copy.compareProblem && copy.differsAt === 0 && <Alert severity="warning">Not compared with its copy: {copy.compareProblem}</Alert>}
       {/* The chain held, but nothing new is reaching the copy: as Admin's card says it. */}
       {copy.problem && copy.brokenAt === 0 && <Alert severity="warning">Not copying: {copy.problem}</Alert>}
 
@@ -157,10 +163,18 @@ function WriteOnceCopy() {
             .join(" · ")}
         />
         <CopyFigure
-          swatch={copy.differsAt ? "error.main" : "success.main"}
+          swatch={copy.differsAt ? "error.main" : copy.compareProblem || !copy.checkedAt ? "warning.main" : "success.main"}
           label="Differs at"
-          value={copy.differsAt ? `entry ${entry(copy.differsAt)}` : "nowhere"}
-          note={copy.differsAt ? "the database no longer matches its copy there" : "the database agrees with its copy so far"}
+          value={copy.differsAt ? `entry ${entry(copy.differsAt)}` : copy.compareProblem ? "not compared" : !copy.checkedAt ? "not checked yet" : "nowhere"}
+          note={
+            copy.differsAt
+              ? "the database no longer matches its copy there"
+              : copy.compareProblem
+                ? "the comparison couldn't run, as said above"
+                : !copy.checkedAt
+                  ? "its first check runs within minutes"
+                  : "the database agrees with its copy so far"
+          }
         />
       </Box>
     </Card>

@@ -85,6 +85,7 @@ func TestAPIs(t *testing.T) {
 		"a parameter with no schema":     {apiYAML, strings.Replace(openapiYAML, `schema: {type: string, pattern: "^ord_[a-z0-9]{8}$"}`, "description: x", 1), "parameter 'orderId' has no schema"},
 		"the gateway's own path":         {apiYAML, strings.Replace(openapiYAML, "/orders:", "/.vertra/health:", 1), "the gateway's own"},
 		"two paths alike":                {apiYAML, strings.Replace(openapiYAML, "/orders:", "/orders/{id}:", 1), "match the same requests"},
+		"a shell in a path":              {apiYAML, strings.Replace(openapiYAML, "/orders:", "/orders'$(id)':", 1), "a character a path doesn't need"},
 		"Swagger 2":                      {apiYAML, "swagger: \"2.0\"\ninfo: {title: x, version: \"1\"}\npaths: {}\n", "OpenAPI"},
 		"no spec file":                   {strings.Replace(apiYAML, "spec: openapi.yaml", "spec: missing.yaml", 1), openapiYAML, "no such file"},
 		"another name":                   {strings.Replace(apiYAML, "name: orders", "name: billing", 1), openapiYAML, "isn't its folder's"},

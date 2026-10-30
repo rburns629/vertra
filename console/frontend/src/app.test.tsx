@@ -7,7 +7,7 @@
  * with canned JSON (an empty message when a test gives none), so these
  * tests check what the pages do with the API, whatever the pages look like.
  */
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { FailureSchema } from "./gen/vertra/console/v1/common_pb.js";
 import { CssBaseline, ThemeProvider } from "@mui/material";
@@ -23,9 +23,10 @@ let answers: Record<string, Answer> = {};
  * console's stable code in a Failure detail. */
 const refused = (status: number, code: string, message: string, failure?: string) => ({ refused: { status, code, message, failure } });
 
-function connectResponse(key: string, request: Record<string, unknown>, streaming: boolean): Response {
+async function connectResponse(key: string, request: Record<string, unknown>, streaming: boolean): Promise<Response> {
   const answer = answers[key];
-  const value = typeof answer === "function" ? (answer as (r: Record<string, unknown>) => unknown)(request) : (answer ?? {});
+  // A handler may answer later (a promise), to test what happens meanwhile.
+  const value: unknown = await (typeof answer === "function" ? (answer as (r: Record<string, unknown>) => unknown)(request) : (answer ?? {}));
   // (An array named refused is a message's field: the gateway's refusals.)
   if (value && typeof value === "object" && "refused" in value && !Array.isArray(value.refused)) {
     const { status, code, message, failure } = (value as ReturnType<typeof refused>).refused;
@@ -313,14 +314,18 @@ describe("what runs made", () => {
 
   it("counts by state, and deletes the ones picked in one cleanup run", async () => {
     const asked: Record<string, unknown>[] = [];
+    const listed: Record<string, unknown>[] = [];
+    const all = [
+      made("a1b2c3d4-0000-4000-8000-000000000001", "payments-dev"),
+      made("a1b2c3d4-0000-4000-8000-000000000002", "orders-api-dev"),
+      made("a1b2c3d4-0000-4000-8000-000000000003", "scratch-bucket", "delete_failed"),
+      made("a1b2c3d4-0000-4000-8000-000000000004", "old-bucket", "deleted"),
+    ];
     await renderAt("/runs/made", MEMBER, {
-      "ResourceService/ListResources": {
-        resources: [
-          made("a1b2c3d4-0000-4000-8000-000000000001", "payments-dev"),
-          made("a1b2c3d4-0000-4000-8000-000000000002", "orders-api-dev"),
-          made("a1b2c3d4-0000-4000-8000-000000000003", "scratch-bucket", "delete_failed"),
-          made("a1b2c3d4-0000-4000-8000-000000000004", "old-bucket", "deleted"),
-        ],
+      // As the server does: deleted ones only when asked for.
+      "ResourceService/ListResources": (request: Record<string, unknown>) => {
+        listed.push(request);
+        return { resources: request["includeDeleted"] ? all : all.filter((r) => r.state !== "deleted") };
       },
       "ResourceService/DeleteResources": (request: Record<string, unknown>) => {
         asked.push(request);
@@ -328,10 +333,15 @@ describe("what runs made", () => {
       },
     });
     expect(await screen.findByRole("button", { name: /^Made 2/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^Deleted 1/ })).toBeTruthy();
-    // Deleted ones show only when asked for.
+    // Deleted ones aren't even fetched until asked for: they'd crowd the newest 200.
+    expect(listed[0]?.["includeDeleted"]).toBeFalsy();
+    expect(screen.getByRole("button", { name: /^Deleted —/ })).toBeTruthy();
     expect(screen.queryByText("old-bucket")).toBeNull();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Deleted —/ }));
+    expect(await screen.findByText("old-bucket")).toBeTruthy();
+    expect(listed.at(-1)?.["includeDeleted"]).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /^Deleted 1/ }));
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select payments-dev" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Select orders-api-dev" }));
@@ -1176,6 +1186,29 @@ describe("observe", () => {
     expect(screen.getByText("entry 41,206")).toBeTruthy();
   });
 
+  it("never calls the audit copy intact when it couldn't be compared, or hasn't been checked", async () => {
+    await renderAt("/observe?tab=audit", MEMBER, {
+      "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", compareProblem: "Couldn't list the copy: AccessDenied." },
+    });
+    expect(await screen.findByText("Not compared")).toBeTruthy();
+    expect(screen.queryByText("Chain intact")).toBeNull();
+    expect(screen.queryByText(/agrees with its copy/)).toBeNull();
+    expect(screen.getByText(/AccessDenied/)).toBeTruthy();
+    cleanup();
+
+    // Admin's side navigation, and Needs you, say the same.
+    await renderAt("/admin", ADMIN, {
+      "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", compareProblem: "Couldn't list the copy: AccessDenied." },
+    });
+    const nav = await screen.findByRole("navigation", { name: "Admin sections" });
+    expect(await within(nav).findByRole("link", { name: /^Audit log copy Not compared/ })).toBeTruthy();
+    cleanup();
+
+    await renderAt("/observe?tab=audit", MEMBER, { "ObserveService/GetAuditCopy": { enabled: true } });
+    expect(await screen.findByText("Not checked yet")).toBeTruthy();
+    expect(screen.queryByText("Chain intact")).toBeNull();
+  });
+
   it("opens the logs on an API's backends when linked from one, and says who sees which lines", async () => {
     const searched: Record<string, unknown>[] = [];
     await renderAt("/observe?tab=logs&from=api&team=payments", MEMBER, {
@@ -1935,6 +1968,37 @@ describe("Compose's drafts", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Deploy/, pressed: true })).toBeTruthy();
+  });
+
+  it("drops wiring started for one draft when another is opened before it answers", async () => {
+    let answer: (value: unknown) => void = () => {};
+    const product = (name: string) => ({ id: name, name, image: `registry.example/apps/${name}@sha256:aa`, action: "create", teamName: "azure-apps", inputSchema: { type: "object" } });
+    await renderAt("/catalog/compose?draft=azure-apps%2Fnightly", MEMBER, {
+      "ProductService/ListProducts": { products: ["deploy", "check"].map(product) },
+      "TemplateService/ListTemplates": { runnables: ["deploy", "check"].map((name) => ({ kind: "KIND_ACTION", team: "azure-apps", name, actions: [`azure-apps/${name}.create`], shared: true })) },
+      "DraftService/ListDrafts": {
+        drafts: [
+          { team: "azure-apps", name: "nightly", version: "1", body: { displayName: "Nightly", steps: [] } },
+          { team: "azure-apps", name: "weekly", version: "2", body: { displayName: "Weekly", steps: [{ id: "check", product: "check", inputs: {} }] } },
+        ],
+      },
+      "OrderService/PreviewOrder": () => new Promise((resolve) => { answer = resolve; }),
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
+    fireEvent.mouseDown(await screen.findByRole("combobox", { name: "Actions" }));
+    fireEvent.click(await screen.findByRole("option", { name: /^deploy/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Wire them" }));
+    await waitFor(() => { expect(calls).toContain("OrderService/PreviewOrder"); });
+    // Another draft opened while it wires; then the answer for the first arrives.
+    fireEvent.click(screen.getByRole("button", { name: /^weekly/ }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Weekly" })).toBeTruthy();
+    act(() => { answer({ steps: [{ id: "deploy", product: "deploy", inputs: {} }] }); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 1500)); });
+    // Weekly keeps its own step, and nothing is saved over it or deleted.
+    expect(screen.getByRole("button", { name: /check/i, pressed: true })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /deploy/i, pressed: true })).toBeNull();
+    expect(calls).not.toContain("DraftService/SaveDraft");
+    expect(calls).not.toContain("DraftService/DeleteDraft");
   });
 });
 
