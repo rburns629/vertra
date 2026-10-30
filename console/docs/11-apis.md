@@ -62,7 +62,7 @@ Its own team and admins also get a pill saying **You maintain it**, **Your team'
 
 ## How do I get access to an API?
 
-An API's team decides who may call it, in its `api.yaml` (`shareWith`, a list of teams, or `["*"]` for every team). There's no button in the console to request access. Ask the owning team to add your team; the change goes through their catalog review like any other.
+An API's team decides who may call it, in its `api.yaml` (`shareWith`, a list of teams, or `["*"]` for every team). On the **APIs** page, or the API's own page, **Ask for access ↗** opens a new issue on the catalog repository, filled in, in your own browser, asking the owning team to add yours. The console never changes the catalog itself: the team adds yours in a reviewed change like any other, and you may call the API once the release with it reaches this install. When the console can't build that issue (the catalog isn't on GitHub, or the API didn't come from a release), the link goes to the team's page, to ask them there.
 
 Access is per team, not per person. Once your team is in `shareWith`, every member of your team, and your team's bots, may call it. Who's in a team is read on every request, so being added to or removed from a team counts at once.
 

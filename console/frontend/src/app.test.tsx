@@ -1036,6 +1036,7 @@ describe("the APIs page", () => {
           api("payments", "orders", { mayCall: true }),
           api("identity", "users", { mayCall: true }),
           api("ml", "scoring", { state: "API_STATE_HELD", heldReason: "Its backend's host isn't allowed here yet" }),
+          api("risk", "fraud", { askForAccessUrl: "https://github.com/acme/catalog/issues/new?title=fraud" }),
         ],
       },
     });
@@ -1043,7 +1044,9 @@ describe("the APIs page", () => {
     const table = screen.getByRole("region", { name: "APIs you can see" });
     const groups = [...table.querySelectorAll("th[scope=rowgroup]")].map((h) => h.textContent);
     expect(groups).toEqual([expect.stringMatching(/^Your teams’ · payments/), expect.stringMatching(/^Shared with your teams/), expect.stringMatching(/^Not shared/)]);
-    expect(within(table).getByRole("link", { name: "Ask ml for access" })).toBeTruthy();
+    // An issue on the catalog asking its team, when the console can build one; else the team's page.
+    expect(within(table).getByRole("link", { name: "Ask ml for access" }).getAttribute("href")).toBe("/teams/ml");
+    expect(within(table).getByRole("link", { name: "Ask risk for access ↗" }).getAttribute("href")).toBe("https://github.com/acme/catalog/issues/new?title=fraud");
     expect(screen.getByText("http://gateway.vertra-system.svc/<team>/<api>")).toBeTruthy();
     expect(screen.getByRole("link", { name: "A bot for payments" }).getAttribute("href")).toBe("/teams/payments?tab=automation");
 

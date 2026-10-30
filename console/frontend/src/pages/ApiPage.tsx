@@ -146,7 +146,16 @@ export function ApiPage() {
               {api.state === "HELD" && <Alert severity="warning">Held: {api.heldReason}</Alert>}
               {api.deprecated && <Alert severity="info">Deprecated: {api.deprecated}</Alert>}
               {!api.mayCall && (
-                <Alert severity="info">
+                <Alert
+                  severity="info"
+                  action={
+                    api.askForAccessUrl && (
+                      <Button color="inherit" size="small" href={api.askForAccessUrl} target="_blank" rel="noopener noreferrer">
+                        Ask for access ↗
+                      </Button>
+                    )
+                  }
+                >
                   It isn&apos;t shared with your teams: the gateway refuses your calls (403). Its team decides who may call it, in its api.yaml.
                 </Alert>
               )}

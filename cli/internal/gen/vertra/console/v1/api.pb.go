@@ -117,10 +117,14 @@ type ApiProduct struct {
 	BackendUrl  string `protobuf:"bytes,20,opt,name=backend_url,json=backendUrl,proto3" json:"backend_url,omitempty"`
 	BackendAuth string `protobuf:"bytes,21,opt,name=backend_auth,json=backendAuth,proto3" json:"backend_auth,omitempty"`
 	// The spec's title and version.
-	SpecTitle     string `protobuf:"bytes,22,opt,name=spec_title,json=specTitle,proto3" json:"spec_title,omitempty"`
-	SpecVersion   string `protobuf:"bytes,23,opt,name=spec_version,json=specVersion,proto3" json:"spec_version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SpecTitle   string `protobuf:"bytes,22,opt,name=spec_title,json=specTitle,proto3" json:"spec_title,omitempty"`
+	SpecVersion string `protobuf:"bytes,23,opt,name=spec_version,json=specVersion,proto3" json:"spec_version,omitempty"`
+	// When the caller may not call it: a new issue on the catalog repository,
+	// filled in with what to change, asking its team to share it (opened in
+	// the person's own browser). Empty when it can't be built.
+	AskForAccessUrl string `protobuf:"bytes,24,opt,name=ask_for_access_url,json=askForAccessUrl,proto3" json:"ask_for_access_url,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ApiProduct) Reset() {
@@ -310,6 +314,13 @@ func (x *ApiProduct) GetSpecTitle() string {
 func (x *ApiProduct) GetSpecVersion() string {
 	if x != nil {
 		return x.SpecVersion
+	}
+	return ""
+}
+
+func (x *ApiProduct) GetAskForAccessUrl() string {
+	if x != nil {
+		return x.AskForAccessUrl
 	}
 	return ""
 }
@@ -1437,7 +1448,7 @@ var File_vertra_console_v1_api_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\n" +
-	"\x1bvertra/console/v1/api.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8c\x06\n" +
+	"\x1bvertra/console/v1/api.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb9\x06\n" +
 	"\n" +
 	"ApiProduct\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x12\n" +
@@ -1472,7 +1483,8 @@ const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\fbackend_auth\x18\x15 \x01(\tR\vbackendAuth\x12\x1d\n" +
 	"\n" +
 	"spec_title\x18\x16 \x01(\tR\tspecTitle\x12!\n" +
-	"\fspec_version\x18\x17 \x01(\tR\vspecVersion\"S\n" +
+	"\fspec_version\x18\x17 \x01(\tR\vspecVersion\x12+\n" +
+	"\x12ask_for_access_url\x18\x18 \x01(\tR\x0faskForAccessUrl\"S\n" +
 	"\vApiEndpoint\x12\x16\n" +
 	"\x06method\x18\x01 \x01(\tR\x06method\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x18\n" +

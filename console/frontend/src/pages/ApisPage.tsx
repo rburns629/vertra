@@ -54,11 +54,23 @@ function You({ api, mine }: { api: ApiProduct; mine: boolean }) {
       <Typography variant="caption" color="text.secondary">
         {note}
       </Typography>
-      {!api.mayCall && !mine && (
-        <Link component={RouterLink} to={`/teams/${encodeURIComponent(api.team)}`} variant="body2" sx={{ fontSize: 12.5 }}>
-          Ask {api.team} for access
-        </Link>
-      )}
+      {!api.mayCall && !mine &&
+        (api.askForAccessUrl ? (
+          <Link
+            href={api.askForAccessUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Opens an issue on the catalog repository asking ${api.team} to share it with your team.`}
+            variant="body2"
+            sx={{ fontSize: 12.5 }}
+          >
+            Ask {api.team} for access ↗
+          </Link>
+        ) : (
+          <Link component={RouterLink} to={`/teams/${encodeURIComponent(api.team)}`} variant="body2" sx={{ fontSize: 12.5 }}>
+            Ask {api.team} for access
+          </Link>
+        ))}
     </Box>
   );
 }

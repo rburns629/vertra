@@ -154,6 +154,15 @@ export declare type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
    * @generated from field: string spec_version = 23;
    */
   specVersion: string;
+
+  /**
+   * When the caller may not call it: a new issue on the catalog repository,
+   * filled in with what to change, asking its team to share it (opened in
+   * the person's own browser). Empty when it can't be built.
+   *
+   * @generated from field: string ask_for_access_url = 24;
+   */
+  askForAccessUrl: string;
 };
 
 /**

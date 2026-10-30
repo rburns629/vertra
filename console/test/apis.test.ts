@@ -26,6 +26,12 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
   ensureNamespaceExists: vi.fn(() => Promise.resolve()),
   applySecretStoreObjects: vi.fn(() => Promise.resolve()),
 }));
+// The catalog repository a release came from, for "Ask for access": faked
+// here, since catalog_sync is one row other test files write too.
+vi.mock("../src/db/queries.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/db/queries.js")>()),
+  catalogRepository: vi.fn(() => Promise.resolve("github.com/acme/vertra-catalog")),
+}));
 
 const prefix = `api-${randomUUID().slice(0, 6)}`;
 const owner = `${prefix}-pay`;
@@ -111,7 +117,7 @@ afterAll(async () => {
   await app.close();
 });
 
-type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
+type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; askForAccessUrl?: string; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
 const listFor = async (who: keyof typeof tokens) =>
   ((await call<Listed>(tokens[who], "ApiService/ListApis")).body.apis ?? []).filter((a) => a.team === owner);
 
@@ -155,6 +161,16 @@ describe("who sees what", () => {
     expect(orders?.mayCall ?? false).toBe(false);
     expect(orders?.perMinute ?? 0).toBe(0);
     expect((await call(tokens.outsider, "ApiService/GetApi", { team: owner, name: "ledger" })).code).toBe("not_found");
+  });
+
+  it("offers whoever may not call it an issue asking its team to share it, and nobody else", async () => {
+    const ask = new URL((await listFor("outsider")).find((a) => a.name === "orders")?.askForAccessUrl ?? "");
+    expect(`${ask.origin}${ask.pathname}`).toBe("https://github.com/acme/vertra-catalog/issues/new");
+    expect(ask.searchParams.get("title")).toBe(`Share ${owner}/orders with ${outsider}`);
+    expect(ask.searchParams.get("body")).toContain(`[\`teams/${owner}/apis/orders/api.yaml\`]`);
+    expect(ask.searchParams.get("body")).toContain(`shareWith: [${outsider}]`);
+    expect((await listFor("consumer")).find((a) => a.name === "orders")?.askForAccessUrl ?? "").toBe("");
+    expect((await listFor("member")).find((a) => a.name === "orders")?.askForAccessUrl ?? "").toBe("");
   });
 
   it("holds an API whose backend isn't under an allowed host", async () => {

@@ -14,8 +14,9 @@ import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { findApi, findUserById, listLiveTeamApis, setApiPaused, type ApiRow } from "../db/queries.js";
+import { catalogRepository, findApi, findUserById, listLiveTeamApis, setApiPaused, type ApiRow } from "../db/queries.js";
 import { apiTraffic, gatewayState, type BackendAuth } from "../db/schema.js";
+import { catalogLinks, githubBase } from "./catalogLinks.js";
 
 type Api = ApiRow & { teamName: string };
 
@@ -110,7 +111,8 @@ function joinUrl(base: string, api: Api): string {
   return base ? `${base.replace(/\/$/, "")}/${api.teamName}/${api.name}` : "";
 }
 
-function view(caller: AuthUser, api: Api) {
+/** One API as the caller sees it; `base` is the catalog repository's GitHub page, for its links. */
+function view(caller: AuthUser, api: Api, base: string | null) {
   const own = caller.isAdmin || caller.teamNames.includes(api.teamName);
   const internet = api.internet && config.gateway.internetTeams.includes(api.teamName);
   const info = isRecord(api.openapi) && isRecord(api.openapi["info"]) ? api.openapi["info"] : {};
@@ -133,6 +135,7 @@ function view(caller: AuthUser, api: Api) {
     timeoutSeconds: api.timeoutSeconds,
     maxRequestBytes: api.maxRequestBytes,
     sourcePath: api.sourcePath ?? "",
+    askForAccessUrl: catalogLinks(base, api.sourcePath ?? null, "the API", `${api.teamName}/${api.name}`, caller, mayCall(caller, api)).askForAccessUrl ?? "",
     backendUrl: own ? api.backendUrl : "",
     backendAuth: own ? authKind(api.backendAuth) : "",
     specTitle: typeof info["title"] === "string" ? info["title"] : "",
@@ -144,7 +147,8 @@ export type ApiView = ReturnType<typeof view>;
 
 export async function listApis(caller: AuthUser | undefined): Promise<ApiView[]> {
   const who = signedIn(caller);
-  return (await listLiveTeamApis()).filter((api) => sees(who, api)).map((api) => view(who, api));
+  const base = githubBase(await catalogRepository());
+  return (await listLiveTeamApis()).filter((api) => sees(who, api)).map((api) => view(who, api, base));
 }
 
 async function visibleApi(who: AuthUser, team: string, name: string): Promise<Api> {
@@ -156,7 +160,7 @@ async function visibleApi(who: AuthUser, team: string, name: string): Promise<Ap
 export async function getApi(caller: AuthUser | undefined, team: string, name: string) {
   const who = signedIn(caller);
   const api = await visibleApi(who, team, name);
-  return { api: view(who, api), openapi: JSON.stringify(api.openapi) };
+  return { api: view(who, api, githubBase(await catalogRepository())), openapi: JSON.stringify(api.openapi) };
 }
 
 /** Pauses (a message) or resumes (null) an API; a maintainer of its team or an admin. */

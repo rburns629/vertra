@@ -1746,6 +1746,8 @@ export interface ApiProduct {
   backendAuth: string;
   specTitle: string;
   specVersion: string;
+  /** When the caller may not call it: an issue asking its team to share it, on the catalog repository. */
+  askForAccessUrl: string | null;
 }
 
 function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][number]): ApiProduct {
@@ -1773,6 +1775,7 @@ function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][numb
     backendAuth: a.backendAuth,
     specTitle: a.specTitle,
     specVersion: a.specVersion,
+    askForAccessUrl: a.askForAccessUrl || null,
   };
 }
 

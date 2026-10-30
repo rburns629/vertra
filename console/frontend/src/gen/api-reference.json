@@ -2179,6 +2179,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "askForAccessUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "When the caller may not call it: a new issue on the catalog repository,\nfilled in with what to change, asking its team to share it (opened in\nthe person's own browser). Empty when it can't be built."
     }
    ]
   },
