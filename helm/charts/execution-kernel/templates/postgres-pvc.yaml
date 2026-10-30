@@ -13,7 +13,8 @@ metadata:
     helm.sh/resource-policy: keep
     {{- end }}
     {{- if include "execution-kernel.postgresNonRoot" . }}
-    # Made for Postgres running as its own user (postgres.nonRoot).
+    # Made for Postgres running as its own user (postgres.nonRoot), or being
+    # moved to it: the Pod's postgres-layout finishes a move when it starts.
     vertra.dev/postgres-layout: nonroot
     {{- end }}
 spec:

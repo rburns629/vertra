@@ -730,7 +730,8 @@ Each chart can run its own Postgres (`postgres.enabled`), a single replica
 on a volume (the kernel's runs as its own user, 999, from the start on a
 volume made since 2026-10-29, which its claim marks
 `vertra.dev/postgres-layout: nonroot`; one made before keeps the image's
-way, starting as root to take ownership: `postgres.nonRoot`); or use an external database, such as the managed one `vertra`
+way, starting as root to take ownership, until it's
+[moved](#moving-postgres-to-its-own-user): `postgres.nonRoot`); or use an external database, such as the managed one `vertra`
 makes on Google Cloud or AWS (below). On a small install the kernel's
 Postgres can also hold the console's database (`postgres.consoleDatabase`),
 where the console signs in as its own role, which owns only its database.
@@ -880,6 +881,63 @@ and Kubernetes refuses to shrink one, which fails the upgrade (so going
 from `scaled` to `resilient` needs `postgres.persistence.size` kept at
 the larger size). Postgres doesn't hand space from deleted rows back to the
 disk; it reuses it.
+
+### Moving Postgres to its own user
+
+The kernel's Postgres on a volume made before 2026-10-29 still starts as
+root (`postgres.nonRoot: auto` leaves it so, on every upgrade). Moving it
+to run as its own user (999) is one explicit upgrade, with Postgres down
+for a restart:
+
+1. **Back it up first**, and check the backup is there: `vertra backup
+   <env>` (or `--to <folder>`), or the CronJob run by hand ([Upgrading](#upgrading)).
+   A move changes only permissions, never data, but a backup is the way
+   back from anything.
+2. **Upgrade with `postgres.nonRoot: true`**: with Helm,
+   `--set postgres.nonRoot=true` on the usual upgrade; with `vertra`, in
+   the file its `values:` names (`postgres: {nonRoot: true}`), then
+   `vertra apply <env>`. The claim is marked
+   `vertra.dev/postgres-layout: nonroot`, so `auto` keeps the new layout
+   afterwards; the setting can go back to `auto`.
+
+What happens: the old Pod stops (the Deployment recreates, never two at
+once), and the new one runs as 999 with the volume's group (`fsGroup`).
+The data is already where the new layout keeps it (`pgdata/` on the
+volume) and already owned by 999 (the image's entrypoint saw to it), so
+only permissions change. Before any container starts, the kubelet's first
+`fsGroup` pass gives the volume's group to every file and opens them all,
+the data directory to 2770, which Postgres refuses (it wants 0700 or
+0750). The Pod's first init container, `postgres-layout`, then closes
+them again, as 999: the files first, the data directory last, so a move
+interrupted anywhere (the Pod killed, the node gone) is finished by the
+next start, and one that's done is left alone (it logs `in place`). Later
+starts get no kubelet pass: the volume's root has the group by then
+(`fsGroupChangePolicy: OnRootMismatch`). The pass and the check are one
+walk of the data directory each; Postgres keeps a few thousand files, more
+with many tables.
+
+It refuses, changing nothing, when a move isn't safe: no `pgdata/` on a
+volume that holds something else (Postgres would start an empty database
+beside it), a file in it not owned by 999, or data from another Postgres
+major than the image's. Postgres doesn't start; the Pod shows `Init:Error`
+and says why (`kubectl -n vertra-system logs deploy/kernel-execution-kernel-postgres
+-c postgres-layout`, or `describe`). The upgrade's migration hook then
+waits for a database that won't come, so stop the upgrade and go back
+with `helm rollback kernel <the revision before>`, which runs no
+migration hook: Postgres starts as root again, and the image's entrypoint
+takes the volume as it is (a file root owned is given back to 999). Fix
+what it said, then upgrade with `true` again. `postgres.nonRoot: false`
+goes back the same way on any later upgrade.
+
+Proven on kind (2026-10-30), on volumes the kubelet applies `fsGroup` to
+as it does a cloud disk (a `local` volume, root-owned 0755 with a
+lost+found, as ext4 makes it): the data kept, Postgres as 999 with its
+files 0600 and 0700, a rerun and a restart left alone, the Pod killed
+mid-move and states interrupted at each step finished by the next start,
+both refusals, and going back to root and moving again. Not yet on a
+cloud volume.
+
+The console's own Postgres (when it has one) still starts as root.
 
 ## Rotating secrets
 

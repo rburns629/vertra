@@ -439,8 +439,11 @@ postgres:
   # -- Run Postgres as its own user (999) from the start, never root: auto
   # (the default) for a volume made that way (a new install's, marked
   # vertra.dev/postgres-layout: nonroot) and the image's way, root first,
-  # for one made before; true or false to choose. true on a volume made the
-  # old way leaves Postgres refusing its data directory's permissions.
+  # for one made before (never moved by an upgrade on its own); true or false
+  # to choose. true on a volume made before moves it, once: back it up
+  # first (docs/operations.md, "Moving Postgres to its own user"); its
+  # claim is marked then, so auto keeps it after. false goes back to the
+  # image's way, which takes the volume as it is.
   nonRoot: auto
   persistence:
     enabled: true

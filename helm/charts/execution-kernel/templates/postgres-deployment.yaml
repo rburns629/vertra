@@ -44,12 +44,89 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile: {type: RuntimeDefault}
       {{- end }}
-      {{- if .Values.tls.enabled }}
-      # Postgres reads its key only if no one else can: copied from the
-      # Secret into a directory of its own, owned by its user (999), 0600.
-      # (fsGroup would do it for the Secret, but would also open the data
-      # directory's permissions, which Postgres refuses.)
+      {{- $layoutCheck := and $nonRoot .Values.postgres.persistence.enabled }}
+      {{- if or $layoutCheck .Values.tls.enabled }}
       initContainers:
+      {{- end }}
+      {{- if $layoutCheck }}
+        # The volume's layout, checked (and finished) before every start, as
+        # Postgres's user. A volume made the image's way (as root) is moved
+        # to this one by its first start here (postgres.nonRoot: true, never
+        # by itself on an upgrade): its data is already pgdata/ (the root
+        # layout's subPath), owned by 999 (the image's entrypoint chowned it),
+        # so only its permissions change. The kubelet's first fsGroup pass
+        # has, before any container runs, given the volume's group to every
+        # file and opened them all (pgdata 2770, which Postgres refuses: it
+        # wants 0700 or 0750). This closes them again, the contents first and
+        # pgdata itself last, so a move interrupted anywhere is redone by the
+        # next start, and a done one is left alone. Later starts get no
+        # kubelet pass (OnRootMismatch: the volume's root is right by then).
+        # (The image's entrypoint chmods pgdata itself to 0700 too, but not
+        # what's in it, and refuses nothing.) Anything it can't move safely
+        # it refuses, and Postgres doesn't start.
+        - name: postgres-layout
+          image: {{ include "execution-kernel.image" .Values.postgres.image | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              root=/var/lib/postgresql/data
+              data=$root/pgdata
+              refuse() {
+                echo "postgres-layout: refusing to start: $*. Nothing was changed; see docs/operations.md, \"Moving Postgres to its own user\"." >&2
+                exit 1
+              }
+              if [ ! -e "$data" ] && [ ! -L "$data" ]; then
+                # A new volume: Postgres makes pgdata. Only ext4's lost+found
+                # may be beside it, or this isn't a volume this chart made,
+                # and Postgres would start an empty database next to its data.
+                for f in "$root"/* "$root"/.[!.]* "$root"/..?*; do
+                  if [ -e "$f" ] || [ -L "$f" ]; then
+                    [ "$f" = "$root/lost+found" ] || refuse "the volume holds ${f#$root/} but no pgdata/, so it isn't one this chart made"
+                  fi
+                done
+                echo "postgres-layout: a new volume"
+                exit 0
+              fi
+              if [ -L "$data" ] || [ ! -d "$data" ]; then refuse "pgdata/ isn't a directory"; fi
+              owner=$(stat -c %u "$data")
+              [ "$owner" = 999 ] || refuse "pgdata/ is owned by user $owner, not Postgres's (999)"
+              if [ -f "$data/PG_VERSION" ]; then
+                version=$(cat "$data/PG_VERSION")
+                [ "$version" = "$PG_MAJOR" ] || refuse "pgdata/ is Postgres $version's, this image is $PG_MAJOR"
+              fi
+              mode=$(stat -c %a "$data")
+              if [ "$mode" = 750 ]; then
+                # Group access chosen at initdb (its files 0640): left as it is.
+                echo "postgres-layout: in place (pgdata 750)"
+                exit 0
+              fi
+              open=$(find "$data" ! -type l -perm /2077 -print -quit)
+              if [ "$mode" = 700 ] && [ -z "$open" ]; then
+                echo "postgres-layout: in place"
+                exit 0
+              fi
+              other=$(find "$data" ! -user 999 -print -quit)
+              [ -z "$other" ] || refuse "${other#$root/} is owned by user $(stat -c %u "$other"), not Postgres's (999)"
+              echo "postgres-layout: moving: pgdata $mode, its files opened by the volume's group; closing them"
+              find "$data" -mindepth 1 ! -type l -perm /2077 -exec chmod g-rwxs,o-rwx {} +
+              chmod u=rwx,g-rwxs,o-rwx "$data"
+              echo "postgres-layout: moved"
+          terminationMessagePolicy: FallbackToLogsOnError
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+      {{- end }}
+      {{- if .Values.tls.enabled }}
+        # Postgres reads its key only if no one else can: copied from the
+        # Secret into a directory of its own, owned by its user (999), 0600.
+        # (fsGroup would do it for the Secret, but would also open the data
+        # directory's permissions, which Postgres refuses.)
         - name: tls-key
           image: {{ include "execution-kernel.image" .Values.postgres.image | quote }}
           {{- if $nonRoot }}

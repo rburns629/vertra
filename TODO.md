@@ -24,8 +24,7 @@ Azure last.
 5. What can be built before the billed run: the reverse cross-cloud
    catalog read (ECR from GKE), an aws reader of another account's ECR,
    `vertra`'s command for the catalog owner's grant, policy-controller on
-   EKS, a sample federating with its product token, and moving an existing
-   Postgres volume to non-root.
+   EKS, and a sample federating with its product token.
 6. The rest of the performance work (below): sustained and higher
    scenarios, failure cases, API load through the console.
 7. The billed proof run, one session per cloud, destroyed after (decided
@@ -34,7 +33,8 @@ Azure last.
    audit copy compared on GCS, the gcp sample's API product and per-product
    grants, catalog CI's SBOM attestation, the scheduler at scale (relists,
    rate limits at 50/100, Spot retries), the client limits, why a minimal
-   Autopilot install had three nodes, size figures. EKS: SecretStores set up
+   Autopilot install had three nodes, an existing Postgres volume moved to
+   non-root (`postgres.nonRoot: true`), size figures. EKS: SecretStores set up
    by `vertra`, the S3 audit bucket and its comparison, Amazon Managed
    Prometheus, the aws sample's API product, products choosing Spot,
    non-root Postgres on EBS, `vertra destroy` with an unanswering cluster,
@@ -997,10 +997,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   claim marked `vertra.dev/postgres-layout: nonroot`), and the Jobs running
   only its tools (backups' dump, the console's database) run as 999; proven
   on kind, a fresh install (a step, an upgrade keeping it) and an existing
-  one keeping its layout and data. Left: an existing volume moved to it
-  (the kubelet's first fsGroup pass opens the data directory's mode, which
-  a 999 init container would have to close again), proven on a cloud
-  volume.
+  one keeping its layout and data. An existing volume moves to it with
+  `postgres.nonRoot: true` (2026-10-30; docs/operations.md, "Moving
+  Postgres to its own user"): after the kubelet's first fsGroup pass opens
+  every file, the Pod's `postgres-layout` init container (as 999) closes
+  them again, the data directory last, and refuses what it can't move
+  safely; proven on kind on `local` volumes, which get the fsGroup pass as
+  a cloud disk does (a kill mid-move, reruns, refusals, going back to root
+  and moving again). Left: proven on a cloud volume (the billed run, GKE
+  and EBS), and the console chart's own Postgres, which still starts as
+  root.
 - [x] **Bind the console's Secret rights per team namespace** as teams are
   created, instead of cluster-wide fenced by an admission policy. Decided
   against (2026-10-22): the console would have to create RoleBindings (and

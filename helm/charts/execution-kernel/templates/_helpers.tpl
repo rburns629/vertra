@@ -184,7 +184,8 @@ hostssl all  all  ::/0      scram-sha-256
 Whether the bundled Postgres runs as its user (999) from the start
 (postgres.nonRoot): "true" or "". auto: when its volume is new or was made
 that way (the claim's vertra.dev/postgres-layout: nonroot); a volume made
-before keeps the image's way, starting as root to take ownership of it.
+before keeps the image's way, starting as root to take ownership of it,
+until "true" moves it (postgres-deployment.yaml's postgres-layout).
 */}}
 {{- define "execution-kernel.postgresNonRoot" -}}
 {{- $mode := toString .Values.postgres.nonRoot -}}
