@@ -699,6 +699,15 @@
      "public": false
     },
     {
+     "name": "ListAlerts",
+     "comment": "The install's alerts, as the Prometheus the console reads has them now\n(the console chart's monitoring.prometheusUrl, else the bundled one):\nthe charts' rules (groups vertra-*), each inactive, pending or firing,\nwith what it fires for. Everyone signed in; a firing instance about an\nAPI the caller can't see is counted, not described.",
+     "input": "vertra.console.v1.ListAlertsRequest",
+     "output": "vertra.console.v1.ListAlertsResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
      "name": "ListAudit",
      "comment": "Who changed what, newest first. Admins see every entry; anyone else\ntheir own, and what was done to their teams and to runs in them.",
      "input": "vertra.console.v1.ListAuditRequest",
@@ -6943,6 +6952,136 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.ListAlertsRequest": {
+   "name": "ListAlertsRequest",
+   "comment": "",
+   "fields": []
+  },
+  "vertra.console.v1.ListAlertsResponse": {
+   "name": "ListAlertsResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "configured",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "Whether the console reads a Prometheus at all."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Why it couldn't be read just now; empty when it was."
+    },
+    {
+     "name": "checkedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "rules",
+     "type": "AlertRule",
+     "ref": "vertra.console.v1.AlertRule",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.AlertRule": {
+   "name": "AlertRule",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "severity",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its severity label (warning, critical)."
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its summary, with what varies by instance left out."
+    },
+    {
+     "name": "state",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "inactive, pending or firing."
+    },
+    {
+     "name": "instances",
+     "type": "AlertInstance",
+     "ref": "vertra.console.v1.AlertInstance",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "hidden",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "Pending or firing for something the caller can't see (another team's\nhidden API)."
+    }
+   ]
+  },
+  "vertra.console.v1.AlertInstance": {
+   "name": "AlertInstance",
+   "comment": "",
+   "fields": [
+    {
+     "name": "state",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "pending or firing."
+    },
+    {
+     "name": "activeAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Since when."
+    },
+    {
+     "name": "summary",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "description",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "labels",
+     "type": "map of string to string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Its labels, but alertname and severity."
     }
    ]
   },

@@ -16,10 +16,13 @@ Azure last.
    the workspace's Alertmanager to SNS and an email; proven on kind against
    stand-ins, a real alert delivered; the signing and SNS in the billed
    run).
-2. The bundled Prometheus's firing alerts on the Observe page (it has no
-   Alertmanager, so today they need a port-forward).
-3. The run page saying whether a manual retry is safe (the action's
-   `idempotent`).
+2. ~~The bundled Prometheus's firing alerts on the Observe page~~ (done
+   2026-10-30, #45: Observe's Metrics shows the charts' alerts from any
+   Prometheus, `monitoring.prometheusUrl`, the bundled one by default;
+   proven against a real Prometheus; on kind with the bundled one, left).
+3. ~~The run page saying whether a manual retry is safe (the action's
+   `idempotent`)~~ (built with the owner's failure help, before the
+   redesign: a failed step's **Safe to retry?**).
 4. ~~Readiness checks (`check`) for the gcp and aws samples' products~~
    (built 2026-10-30, unit and contract tests; proven in the billed run).
 5. What can be built before the billed run: ~~the reverse cross-cloud
@@ -1078,8 +1081,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   everyone, the Admin sections' install settings, Observe's Grafana link,
   a team's install limits beside its own, and team.yaml's description in
   the release, on the Teams page and the team's page. Still open:
-  - Planned already: Observe's firing alerts (item 2 of "Next, in order")
-    and whether a retry is safe (item 3).
+  - Planned already, and done since: Observe's alerts (#45) and whether a
+    retry is safe (the failure help's **Safe to retry?**).
   - The rest, to decide one by one: which schedule started a run; what the
     cart held for an order; the Kubernetes Job's name in "Who acted"; a
     resource's run name; which group added a member (and a team-scoped read

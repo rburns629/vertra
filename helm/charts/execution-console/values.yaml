@@ -878,6 +878,14 @@ monitoring:
   # -- Where the install's Grafana is (https://...), linked from the Admin
   # page and Observe's Metrics for its dashboard. Empty: not linked.
   grafanaUrl: ""
+  # -- The Prometheus whose alerts Observe's Metrics shows, firing or not
+  # (its HTTP API, http(s)://...:9090): any Prometheus that evaluates the
+  # charts' rules, in the cluster or outside it, such as kube-prometheus-
+  # stack's (http://<release>-kube-prometheus-prometheus.<namespace>.svc:9090)
+  # or one on your own machine. Empty: the bundled one, with provider bundled
+  # and prometheus.enabled; else none, and Observe shows no alerts. Its own
+  # NetworkPolicy, if it has one, must admit the console's Pods.
+  prometheusUrl: ""
   google:
     # -- Where GKE's managed collector runs: gmp-system, or gke-gmp-system on
     # Autopilot.
@@ -887,7 +895,8 @@ monitoring:
   # Kubernetes API, this namespace only), with both charts' alerts (the
   # kernel's from its <release>-execution-kernel-prometheus-rules
   # ConfigMap, reloaded when it changes). No Alertmanager: firing alerts
-  # show on its own page (kubectl port-forward to its Service, 9090).
+  # show on Observe's Metrics, and on its own page (kubectl port-forward to
+  # its Service, 9090).
   prometheus:
     enabled: false
     image:

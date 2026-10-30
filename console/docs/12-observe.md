@@ -7,7 +7,7 @@
 | Tab | Shows | Who sees what |
 | --- | --- | --- |
 | **Security checks** | What this install enforces, what it refused over the last 7 days, and every image allowed to run, with its last scan and SBOM | Everyone sees the checks, the cluster's and catalog's refusals, and every listed product's image. A refused step links to its run only for those who may see that run. Gateway refusals: the API's team, the calling team, and admins |
-| **Metrics** | Steps waiting and running now, steps started and how long they waited, why steps failed, and each product's step times | Everyone. A hidden product's rows only for its own team and admins |
+| **Metrics** | Steps waiting and running now, steps started and how long they waited, why steps failed, the install's alerts, and each product's step times | Everyone. A hidden product's rows only for its own team and admins; an alert about a hidden API is counted, not described, for others |
 | **Logs** | A search over steps' output, API backends' output and, for admins, the platform's own | Your teams' lines in full; other teams' INFO lines in runs you own; admins everything ([whose logs](#whose-logs-can-i-see)) |
 | **Audit log** | Who changed what, allowed or refused | Admins every entry; anyone else their own, and what was done to their teams or runs in them |
 
@@ -92,7 +92,7 @@ Accepting is a risk you take on for the install. Prefer a rebuild; accept only w
 
 ## Reading the Metrics tab
 
-The Metrics tab reads kernel-api's own tables, so it works with nothing else installed.
+The Metrics tab reads kernel-api's own tables, so it works with nothing else installed; only **Alerts** needs a Prometheus.
 
 | Part | Shows | What to watch for |
 | --- | --- | --- |
@@ -103,13 +103,14 @@ The Metrics tab reads kernel-api's own tables, so it works with nothing else ins
 | **Steps started, by hour** | Attempts started in each of the last 24 hours | |
 | **Wait to start, 95th percentile** | From a step becoming Ready to its Pod starting, by hour | A rising wait means the cluster or the scheduler is short of room |
 | **Why steps failed, last 24 hours** | Each failed attempt by its code, what the code means, and whether some were retried automatically | A platform code that keeps coming back ([failure codes](09-runs-explained.md#what-does-each-failure-code-mean)). A product's own codes are explained in its documentation |
+| **Alerts** | Each of the charts' alerts as the install's Prometheus has it now: **Quiet**, **Pending** (true, but not yet for long enough) or **Firing**, firing ones first, with since when and what each fires for (an API, say). Shown when the console reads a Prometheus: the bundled one, or the one the console chart's `monitoring.prometheusUrl` names | Anything firing. An alert about an API you can't see is counted, not described |
 | **Step times by product, last 7 days** | Per product and action: **Steps**, **Succeeded** (a percentage), **Median** and **95th percentile** run time, slowest first | A product that's slower or fails more than it used to |
 
 For why a single step is waiting, see [Why is my step Ready but not running?](09-runs-explained.md#why-is-my-step-ready-but-not-running).
 
 ## Prometheus, alerts and Grafana
 
-The console doesn't show Prometheus or Grafana itself; those belong to the install. Every component (kernel-api, the scheduler, the console and the gateway) serves Prometheus metrics, and an install can be set up with the Prometheus Operator, GKE's managed Prometheus, or a Prometheus of its own, with alerts (for example when the scheduler is down, steps wait too long, or a gateway backend is unreachable) and a Grafana dashboard for steps, the console and the gateway.
+Beyond **Alerts**, the console doesn't show Prometheus or Grafana itself; those belong to the install. Every component (kernel-api, the scheduler, the console and the gateway) serves Prometheus metrics, and an install can be set up with the Prometheus Operator, GKE's managed Prometheus, or a Prometheus of its own, with alerts (for example when the scheduler is down, steps wait too long, or a gateway backend is unreachable) and a Grafana dashboard for steps, the console and the gateway.
 
 Whether your install has them, and where to find them, is your admins' to say; an admin sees on this tab which Prometheus this install uses, and a link to its Grafana when the install names it (the console chart's `monitoring.grafanaUrl`). How to set them up is in [operations](operations.md#metrics-and-alerts).
 

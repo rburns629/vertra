@@ -4,8 +4,9 @@ one server with a volume of its own, like Loki. It finds this release's
 Pods and the kernel release's through the Kubernetes API, in this namespace
 only (a Role, not a ClusterRole), and evaluates both charts' alerts, the
 kernel's from that release's rule file (Prometheus reloads its config and
-rule files when they change). Nothing may connect to it: it's read through
-kubectl port-forward. The Pods it scrapes admit it through
+rule files when they change). Only the console may connect to it, to show
+its alerts on Observe (core/alerts.ts); otherwise it's read through kubectl
+port-forward. The Pods it scrapes admit it through
 networkPolicy.metricsFrom, in both charts. It can also send every sample on
 (remoteWrite) and its firing alerts to an Alertmanager (alertmanager), each
 signed as the Pod's AWS identity when given a region (Amazon Managed
@@ -223,7 +224,7 @@ spec:
     - {name: http, port: 9090, targetPort: http}
 {{- if .Values.networkPolicy.enabled }}
 ---
-# Nothing connects to it; it's read through kubectl port-forward.
+# Only the console connects to it, for its alerts; else kubectl port-forward.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -235,6 +236,13 @@ spec:
     matchLabels:
       {{- toYaml $labels | nindent 6 }}
   policyTypes: ["Ingress"]
-  ingress: []
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "execution-console.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: app
+      ports:
+        - {port: 9090, protocol: TCP}
 {{- end }}
 {{- end }}

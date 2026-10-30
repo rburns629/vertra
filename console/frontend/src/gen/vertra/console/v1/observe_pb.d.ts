@@ -298,6 +298,145 @@ export declare type GetMetricsResponse = Message<"vertra.console.v1.GetMetricsRe
 export declare const GetMetricsResponseSchema: GenMessage<GetMetricsResponse>;
 
 /**
+ * @generated from message vertra.console.v1.ListAlertsRequest
+ */
+export declare type ListAlertsRequest = Message<"vertra.console.v1.ListAlertsRequest"> & {
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAlertsRequest.
+ * Use `create(ListAlertsRequestSchema)` to create a new message.
+ */
+export declare const ListAlertsRequestSchema: GenMessage<ListAlertsRequest>;
+
+/**
+ * @generated from message vertra.console.v1.ListAlertsResponse
+ */
+export declare type ListAlertsResponse = Message<"vertra.console.v1.ListAlertsResponse"> & {
+  /**
+   * Whether the console reads a Prometheus at all.
+   *
+   * @generated from field: bool configured = 1;
+   */
+  configured: boolean;
+
+  /**
+   * Why it couldn't be read just now; empty when it was.
+   *
+   * @generated from field: string problem = 2;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp checked_at = 3;
+   */
+  checkedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.AlertRule rules = 4;
+   */
+  rules: AlertRule[];
+};
+
+/**
+ * Describes the message vertra.console.v1.ListAlertsResponse.
+ * Use `create(ListAlertsResponseSchema)` to create a new message.
+ */
+export declare const ListAlertsResponseSchema: GenMessage<ListAlertsResponse>;
+
+/**
+ * @generated from message vertra.console.v1.AlertRule
+ */
+export declare type AlertRule = Message<"vertra.console.v1.AlertRule"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * Its severity label (warning, critical).
+   *
+   * @generated from field: string severity = 2;
+   */
+  severity: string;
+
+  /**
+   * Its summary, with what varies by instance left out.
+   *
+   * @generated from field: string summary = 3;
+   */
+  summary: string;
+
+  /**
+   * inactive, pending or firing.
+   *
+   * @generated from field: string state = 4;
+   */
+  state: string;
+
+  /**
+   * @generated from field: repeated vertra.console.v1.AlertInstance instances = 5;
+   */
+  instances: AlertInstance[];
+
+  /**
+   * Pending or firing for something the caller can't see (another team's
+   * hidden API).
+   *
+   * @generated from field: int32 hidden = 6;
+   */
+  hidden: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.AlertRule.
+ * Use `create(AlertRuleSchema)` to create a new message.
+ */
+export declare const AlertRuleSchema: GenMessage<AlertRule>;
+
+/**
+ * @generated from message vertra.console.v1.AlertInstance
+ */
+export declare type AlertInstance = Message<"vertra.console.v1.AlertInstance"> & {
+  /**
+   * pending or firing.
+   *
+   * @generated from field: string state = 1;
+   */
+  state: string;
+
+  /**
+   * Since when.
+   *
+   * @generated from field: google.protobuf.Timestamp active_at = 2;
+   */
+  activeAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string summary = 3;
+   */
+  summary: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+
+  /**
+   * Its labels, but alertname and severity.
+   *
+   * @generated from field: map<string, string> labels = 5;
+   */
+  labels: { [key: string]: string };
+};
+
+/**
+ * Describes the message vertra.console.v1.AlertInstance.
+ * Use `create(AlertInstanceSchema)` to create a new message.
+ */
+export declare const AlertInstanceSchema: GenMessage<AlertInstance>;
+
+/**
  * @generated from message vertra.console.v1.HourMetrics
  */
 export declare type HourMetrics = Message<"vertra.console.v1.HourMetrics"> & {
@@ -782,6 +921,20 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetMetricsRequestSchema;
     output: typeof GetMetricsResponseSchema;
+  },
+  /**
+   * The install's alerts, as the Prometheus the console reads has them now
+   * (the console chart's monitoring.prometheusUrl, else the bundled one):
+   * the charts' rules (groups vertra-*), each inactive, pending or firing,
+   * with what it fires for. Everyone signed in; a firing instance about an
+   * API the caller can't see is counted, not described.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.ListAlerts
+   */
+  listAlerts: {
+    methodKind: "unary";
+    input: typeof ListAlertsRequestSchema;
+    output: typeof ListAlertsResponseSchema;
   },
   /**
    * Who changed what, newest first. Admins see every entry; anyone else

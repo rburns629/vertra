@@ -355,10 +355,10 @@ function monitoringProvider(): "" | "operator" | "google" | "bundled" {
   return value;
 }
 
-/** GRAFANA_URL: an http(s) address, or "" for none. */
-function grafanaUrl(): string {
-  const value = (process.env["GRAFANA_URL"] ?? "").trim().replace(/\/+$/, "");
-  if (value && !/^https?:\/\/[^\s]+$/.test(value)) throw new Error(`Invalid GRAFANA_URL "${value}": expected http(s)://...`);
+/** An http(s) address from the environment, or "" for none. */
+function httpUrl(name: string): string {
+  const value = (process.env[name] ?? "").trim().replace(/\/+$/, "");
+  if (value && !/^https?:\/\/[^\s]+$/.test(value)) throw new Error(`Invalid ${name} "${value}": expected http(s)://...`);
   return value;
 }
 
@@ -606,11 +606,14 @@ export const config = {
     },
   },
   // Prometheus, as the charts' monitoring values set it (operator, google or
-  // bundled; empty: off), and where the install's Grafana is. Shown on the
-  // Admin page and Observe; the console reads neither.
+  // bundled; empty: off), and where the install's Grafana is: shown on the
+  // Admin page and Observe. prometheusUrl is the Prometheus whose alerts
+  // Observe shows (core/alerts.ts): the bundled one, or any other, in the
+  // cluster or not; empty, none are shown.
   monitoring: {
     provider: monitoringProvider(),
-    grafanaUrl: grafanaUrl(),
+    grafanaUrl: httpUrl("GRAFANA_URL"),
+    prometheusUrl: httpUrl("PROMETHEUS_URL"),
   },
   // The kernel chart's signature policy (image-signature.yaml, a
   // policy-controller ClusterImagePolicy): catalog images must be signed

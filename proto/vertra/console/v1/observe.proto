@@ -29,6 +29,14 @@ service ObserveService {
   rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // The install's alerts, as the Prometheus the console reads has them now
+  // (the console chart's monitoring.prometheusUrl, else the bundled one):
+  // the charts' rules (groups vertra-*), each inactive, pending or firing,
+  // with what it fires for. Everyone signed in; a firing instance about an
+  // API the caller can't see is counted, not described.
+  rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Who changed what, newest first. Admins see every entry; anyone else
   // their own, and what was done to their teams and to runs in them.
   rpc ListAudit(ListAuditRequest) returns (ListAuditResponse) {
@@ -120,6 +128,42 @@ message GetMetricsResponse {
   // Steps waiting to start, and running, now.
   int32 ready = 4;
   int32 running = 5;
+}
+
+message ListAlertsRequest {}
+
+message ListAlertsResponse {
+  // Whether the console reads a Prometheus at all.
+  bool configured = 1;
+  // Why it couldn't be read just now; empty when it was.
+  string problem = 2;
+  google.protobuf.Timestamp checked_at = 3;
+  repeated AlertRule rules = 4;
+}
+
+message AlertRule {
+  string name = 1;
+  // Its severity label (warning, critical).
+  string severity = 2;
+  // Its summary, with what varies by instance left out.
+  string summary = 3;
+  // inactive, pending or firing.
+  string state = 4;
+  repeated AlertInstance instances = 5;
+  // Pending or firing for something the caller can't see (another team's
+  // hidden API).
+  int32 hidden = 6;
+}
+
+message AlertInstance {
+  // pending or firing.
+  string state = 1;
+  // Since when.
+  google.protobuf.Timestamp active_at = 2;
+  string summary = 3;
+  string description = 4;
+  // Its labels, but alertname and severity.
+  map<string, string> labels = 5;
 }
 
 message HourMetrics {
