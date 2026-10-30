@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
+import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
@@ -11,7 +12,8 @@ import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { HelpLink } from "../../components/HelpLink";
 import { MetricCard } from "../../components/MetricCard";
 import { Mono } from "../../components/Mono";
-import { ApiError, getMetrics, type MetricsView } from "../../api";
+import { ApiError, getInstall, getMetrics, type InstallInfo, type MetricsView } from "../../api";
+import { useAuth } from "../../auth/AuthContext";
 
 type ProductTimes = MetricsView["products"][number];
 
@@ -171,6 +173,23 @@ const SERIES = [
 export function MetricsTab() {
   const [view, setView] = useState<MetricsView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Which Prometheus this install uses, and its Grafana: the install's settings, an admin's to read.
+  const isAdmin = useAuth().user?.isAdmin ?? false;
+  const [install, setInstall] = useState<InstallInfo | null>(null);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    getInstall()
+      .then((i) => {
+        if (!cancelled) setInstall(i);
+      })
+      .catch(() => {
+        /* the section says it's the admins' to say */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,12 +330,28 @@ export function MetricsTab() {
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
             Every component serves <Mono sx={{ fontSize: 12 }}>/metrics</Mono> (kernel-api, the scheduler, the console, the gateway), open only to
             the Prometheus this install names. The charts load its alerts into that Prometheus, and the console chart ships a Grafana
-            dashboard: steps, the console, the gateway. Which one this install uses, and where to find it, is your admins&apos; to say.
+            dashboard: steps, the console, the gateway.{" "}
+            {!install
+              ? "Which one this install uses, and where to find it, is your admins' to say."
+              : install.monitoringProvider
+                ? `This install uses ${install.monitoringProvider}.`
+                : "This install has none: only these charts."}
           </Typography>
+          {install?.grafanaUrl && (
+            <Typography variant="body2" sx={{ fontSize: 13 }}>
+              <Link href={install.grafanaUrl} target="_blank" rel="noopener noreferrer">
+                Open its Grafana
+              </Link>
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           {PROVIDERS.map(([key, title, text]) => (
-            <Box key={key} sx={{ display: "flex", flexDirection: "column", gap: 0.5, p: 1.75, borderRadius: 2, border: 1, borderColor: "divider", bgcolor: "background.default" }}>
+            <Box
+              key={key}
+              aria-current={install?.monitoringProvider === key ? "true" : undefined}
+              sx={{ display: "flex", flexDirection: "column", gap: 0.5, p: 1.75, borderRadius: 2, border: 1, borderColor: install?.monitoringProvider === key ? "primary.main" : "divider", bgcolor: "background.default" }}
+            >
               <Mono sx={{ fontSize: 12.5, fontWeight: 500 }}>{key}</Mono>
               <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500 }}>
                 {title}

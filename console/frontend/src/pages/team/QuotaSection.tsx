@@ -17,6 +17,11 @@ const FIELDS: { key: keyof TeamQuota; label: string; help: string }[] = [
   { key: "stepMemory", label: "Memory, one step at most", help: "Such as 8Gi" },
 ];
 
+/** A limit as the page shows it. */
+function limit(value: string) {
+  return value ? <Mono>{value}</Mono> : "no limit";
+}
+
 /**
  * What a team's steps may use together, as its namespace's quota holds it:
  * its own, or the install's. Admins change it; everyone sees it.
@@ -61,7 +66,7 @@ export function QuotaSection({ team, isAdmin, onChanged }: { team: Team; isAdmin
                 value={form[f.key]}
                 placeholder="no limit"
                 onChange={(e) => { setForm({ ...form, [f.key]: e.target.value.trim() }); }}
-                helperText={f.help}
+                helperText={`${f.help}. The install's: ${team.installQuota[f.key] || "no limit"}`}
                 slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ "& input": { fontFamily: "fontFamilyMono" } }}
               />
@@ -87,7 +92,14 @@ export function QuotaSection({ team, isAdmin, onChanged }: { team: Team; isAdmin
                 {f.label}
               </Typography>
               <Typography component="dd" variant="body2" sx={{ m: 0 }}>
-                {team.quota[f.key] ? <Mono>{team.quota[f.key]}</Mono> : "no limit"}
+                {limit(team.quota[f.key])}
+                {/* Its own: the install's beside it, to compare. */}
+                {!team.quotaIsDefault && (
+                  <Typography component="span" variant="body2" color="text.secondary">
+                    {" "}
+                    (the install&apos;s: {limit(team.installQuota[f.key])})
+                  </Typography>
+                )}
               </Typography>
             </Box>
           ))}

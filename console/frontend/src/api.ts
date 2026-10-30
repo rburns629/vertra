@@ -200,6 +200,8 @@ export interface Team {
   quota: TeamQuota;
   /** True when the quota is the install's, not one an admin set for it. */
   quotaIsDefault: boolean;
+  /** The install's limits, which a team without its own has. */
+  installQuota: TeamQuota;
 }
 
 /** A team's resource limits, as Kubernetes quantities; "" for no limit. */
@@ -253,6 +255,12 @@ function team(message: TeamMessage | undefined): Team {
     fromCatalog: message?.fromCatalog ?? false,
     quota: { cpu: message?.quota?.cpu ?? "", memory: message?.quota?.memory ?? "", pods: message?.quota?.pods ?? "", stepMemory: message?.quota?.stepMemory ?? "" },
     quotaIsDefault: message?.quotaIsDefault ?? true,
+    installQuota: {
+      cpu: message?.installQuota?.cpu ?? "",
+      memory: message?.installQuota?.memory ?? "",
+      pods: message?.installQuota?.pods ?? "",
+      stepMemory: message?.installQuota?.stepMemory ?? "",
+    },
   };
 }
 
@@ -484,6 +492,30 @@ export interface InstallInfo {
   catalogSigned: boolean;
   scanning: boolean;
   runRetentionDays: number;
+  /** latest, newest, or a version; "" with no catalog. */
+  catalogVersion: string;
+  catalogPollSeconds: number;
+  /** How many public keys may sign a release, and a keyless signer's issuer and subject pattern. */
+  catalogSignerKeys: number;
+  catalogKeylessIssuer: string;
+  catalogKeylessSubject: string;
+  /** Another install's catalog registry; "" when this install's own. */
+  externalCatalog: string;
+  email: boolean;
+  emailHost: string;
+  emailFrom: string;
+  /** operator, google or bundled; "" when monitoring is off. */
+  monitoringProvider: string;
+  grafanaUrl: string;
+  /** How long a session lasts: 8h, 30m, 1d. */
+  sessionLength: string;
+  /** 0: not known here. */
+  auditKeepDays: number;
+  auditLock: boolean;
+  policySyncSeconds: number;
+  imageSignaturesRequired: boolean;
+  /** 0 with scanning off. */
+  rescanHours: number;
 }
 
 export async function getInstall(): Promise<InstallInfo> {
@@ -500,6 +532,23 @@ export async function getInstall(): Promise<InstallInfo> {
     catalogSigned: i.catalogSigned,
     scanning: i.scanning,
     runRetentionDays: i.runRetentionDays,
+    catalogVersion: i.catalogVersion,
+    catalogPollSeconds: i.catalogPollSeconds,
+    catalogSignerKeys: i.catalogSignerKeys,
+    catalogKeylessIssuer: i.catalogKeylessIssuer,
+    catalogKeylessSubject: i.catalogKeylessSubject,
+    externalCatalog: i.externalCatalog,
+    email: i.email,
+    emailHost: i.emailHost,
+    emailFrom: i.emailFrom,
+    monitoringProvider: i.monitoringProvider,
+    grafanaUrl: i.grafanaUrl,
+    sessionLength: i.sessionLength,
+    auditKeepDays: i.auditKeepDays,
+    auditLock: i.auditLock,
+    policySyncSeconds: i.policySyncSeconds,
+    imageSignaturesRequired: i.imageSignaturesRequired,
+    rescanHours: i.rescanHours,
   };
 }
 
@@ -976,12 +1025,26 @@ export interface ExecutionSummary {
   steps: Record<string, number>;
   /** When it finished, once it has. */
   finishedAt: string | null;
+  /** The submitter's email; "" once that account is deleted. */
+  submittedByEmail: string;
+  /** The steps claimed or running now, in the order they were submitted. */
+  running: RunningStep[];
+}
+
+/** A step claimed or running, and which attempt. */
+export interface RunningStep {
+  taskId: string;
+  action: string;
+  attempt: number;
+  maxAttempts: number;
 }
 
 export interface ExecutionPage {
   executions: ExecutionSummary[];
   /** Pass back as `cursor` for the next page; null on the last. */
   nextCursor: string | null;
+  /** How many days runs' records are kept; 0 keeps them forever. */
+  runRetentionDays: number;
 }
 
 export interface ExecutionListQuery {
@@ -1018,8 +1081,11 @@ export async function listExecutions(query: ExecutionListQuery = {}): Promise<Ex
       template: row.template,
       steps: { ...row.steps },
       finishedAt: iso(row.finishedAt),
+      submittedByEmail: row.submittedByEmail ?? "",
+      running: row.running.map((r) => ({ taskId: r.taskId, action: r.action, attempt: r.attempt, maxAttempts: r.maxAttempts })),
     })),
     nextCursor: page.nextCursor || null,
+    runRetentionDays: page.runRetentionDays,
   };
 }
 

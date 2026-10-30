@@ -59,6 +59,7 @@ import { readinessSentence } from "../components/ReadinessNote";
 import { useEnvironment } from "../environment";
 import { imageName, imageVersion } from "../imageRef";
 import { useAsk } from "../layout/ask";
+import { runningNow } from "../runningNow";
 import { duration, useNow, when } from "../time";
 import { runLink } from "./RunFormPage";
 
@@ -327,7 +328,13 @@ function RunningNow({ live, now }: { live: ExecutionSummary[] | null; now: numbe
             <Box sx={{ height: 6, borderRadius: 3, bgcolor: "divider", overflow: "hidden" }} aria-hidden="true">
               <Box sx={{ height: "100%", width: `${String(total ? Math.max(6, (done / total) * 100) : 6)}%`, bgcolor: waiting ? "warning.main" : "primary.main", borderRadius: 3 }} />
             </Box>
-            <Typography variant="caption">{waiting ? "Waiting for an approval" : `${String(done)} of ${String(total)} steps done`}</Typography>
+            <Typography variant="caption">
+              {waiting
+                ? "Waiting for an approval"
+                : runningNow(r)
+                  ? `Step ${String(Math.min(done + 1, total))} of ${String(total)}: ${runningNow(r)}`
+                  : `${String(done)} of ${String(total)} steps done`}
+            </Typography>
           </Box>
         );
       })}
@@ -934,8 +941,8 @@ export function HomePage() {
 
   // Running now: yours, and your teams' (an admin sees every run, so it's narrowed to theirs too).
   const live = useMemo(
-    () => (visible === undefined ? null : (visible ?? []).filter((r) => r.state && LIVE.has(r.state) && (r.submittedBy === user?.email || r.teams.some((t) => teams.includes(t))))),
-    [visible, user?.email, teams],
+    () => (visible === undefined ? null : (visible ?? []).filter((r) => r.state && LIVE.has(r.state) && (r.submittedBy === user?.id || r.teams.some((t) => teams.includes(t))))),
+    [visible, user?.id, teams],
   );
   const now = useNow((live?.length ?? 0) > 0);
   const needs = approvals === undefined || deletes === undefined || schedules === undefined ? null : needsOf(approvals ?? [], deletes ?? [], schedules ?? [], user?.maintainerOf ?? []);

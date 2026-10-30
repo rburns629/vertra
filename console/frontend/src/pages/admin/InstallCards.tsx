@@ -522,6 +522,29 @@ export function EveryPart({ summary: s }: { summary: AdminSummary }) {
       detail: s.install.logs ? `On · the last ${String(s.install.logSearchDays)} days, in Observe.` : <>Off. {code("logs.enabled")}</>,
       where: "install",
     });
+    const grafana = s.install.grafanaUrl;
+    integrations.push({
+      name: "Metrics",
+      to: "/observe?tab=metrics",
+      tone: s.install.monitoringProvider ? "ok" : "off",
+      detail: s.install.monitoringProvider ? (
+        <>
+          On · {code(s.install.monitoringProvider)}
+          {grafana ? (
+            <>
+              , its dashboard in{" "}
+              <Link href={grafana} target="_blank" rel="noopener noreferrer">
+                Grafana
+              </Link>
+            </>
+          ) : null}
+          .
+        </>
+      ) : (
+        <>Off: only Observe&apos;s own charts. {code("monitoring")}</>
+      ),
+      where: "install",
+    });
   }
 
   if (s.policies) {

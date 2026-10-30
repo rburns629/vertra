@@ -14,6 +14,7 @@ import { ErrorPage } from "../components/ErrorPage";
 import { HelpLink, helpHref } from "../components/HelpLink";
 import { PageHeader } from "../components/PageHeader";
 import { Pill, type PillTone } from "../components/Pill";
+import type { InstallInfo } from "../api";
 import { useEnvironment } from "../environment";
 import { AdminChannelCard } from "./admin/AdminChannelCard";
 import { AutomationTokensCard } from "./admin/AutomationTokensCard";
@@ -50,9 +51,9 @@ interface Section {
   /** What it does and what it affects, in a sentence or two. */
   about: ReactNode;
   source: Source;
-  /** What's changed in this console, and what the install sets: a few points each. */
+  /** What's changed in this console, and what the install sets (with this install's values, once read): a few points each. */
   here?: ReactNode[];
-  install?: ReactNode[];
+  install?: ReactNode[] | ((install: InstallInfo | null) => ReactNode[]);
   content: (summary: AdminSummary | null) => ReactNode;
 }
 
@@ -61,6 +62,36 @@ const mono = (text: string) => (
     {text}
   </Box>
 );
+
+/** A setting's value on this install, after its name: " (this install: 8h)". Nothing until it's read. */
+function current(install: InstallInfo | null, value: (i: InstallInfo) => ReactNode) {
+  return install ? <> (this install: {value(install)})</> : null;
+}
+
+/** A number of seconds as people say it: 90 s, 5 min, 2 h. */
+function seconds(n: number): string {
+  if (n % 3600 === 0 && n >= 3600) return `${String(n / 3600)} h`;
+  if (n % 60 === 0 && n >= 60) return `${String(n / 60)} min`;
+  return `${String(n)} s`;
+}
+
+/** Who may sign a release, in words. */
+function signers(i: InstallInfo): ReactNode {
+  const keys = i.catalogSignerKeys > 0 ? `${String(i.catalogSignerKeys)} public ${i.catalogSignerKeys === 1 ? "key" : "keys"}` : "";
+  const keyless = i.catalogKeylessIssuer ? (
+    <>
+      keyless, {mono(i.catalogKeylessIssuer)} for {mono(i.catalogKeylessSubject || "any subject")}
+    </>
+  ) : null;
+  if (!keys && !keyless) return "none, so releases aren't checked";
+  return (
+    <>
+      {keys}
+      {keys && keyless && " or "}
+      {keyless}
+    </>
+  );
+}
 
 /** Whether anyone may sign up, as this install has it. */
 function SelfRegistration() {
@@ -100,9 +131,9 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         about: "Everyone who can sign in to this install: add a person to the teams they work on, make or remove an admin, reset a password, or delete an account. What each person may do comes from their teams; bots are on each team's Automation tab.",
         source: "here",
         here: ["Accounts, admins and password resets.", "A new person joins each team chosen as a maintainer; the team's maintainers change roles on its Members tab."],
-        install: [
+        install: (i) => [
           <>The first admin: {mono("admin.email")} in vertra.yaml.</>,
-          <>How long a session lasts: {mono("jwtTtl")} (8 hours unless the install changes it).</>,
+          <>How long a session lasts: {mono("jwtTtl")}{current(i, (x) => mono(x.sessionLength)) ?? " (8 hours unless the install changes it)"}.</>,
           <SelfRegistration key="self-registration" />,
         ],
         content: () => <PeopleTab />,
@@ -142,10 +173,14 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         about: "Where teams, products, templates and SecretStores come from. Catalog CI publishes a release from the catalog repository's main; this console reads it every few minutes, checks its signature and applies it. What a release no longer has is unregistered or retired here, never purged.",
         source: "both",
         here: ["Sync now: read and apply the release at once.", "Adopt a team the catalog found here but didn't make."],
-        install: [
-          <>The release, and which versions to apply: {mono("catalog")}, {mono("catalogVersion")} ({mono("vertra catalog create")}, {mono("vertra catalog promote")}).</>,
-          <>Who may sign a release: {mono("signing")}.</>,
-          <>Reading another install&apos;s catalog instead: {mono("externalCatalog")}.</>,
+        install: (i) => [
+          <>
+            The release, and which versions to apply: {mono("catalog")}, {mono("catalogVersion")} ({mono("vertra catalog create")}, {mono("vertra catalog promote")})
+            {current(i, (x) => (x.catalogVersion ? mono(x.catalogVersion) : "no catalog"))}.
+          </>,
+          <>How often it looks for a new release: the console chart&apos;s {mono("catalog.pollSeconds")}{current(i, (x) => `every ${seconds(x.catalogPollSeconds || 300)}`)}.</>,
+          <>Who may sign a release: {mono("signing")}{current(i, signers)}.</>,
+          <>Reading another install&apos;s catalog instead: {mono("externalCatalog")}{current(i, (x) => (x.externalCatalog ? mono(x.externalCatalog) : x.catalogVersion ? "its own" : "none"))}.</>,
         ],
         content: () => <CatalogSection />,
       },
@@ -155,9 +190,9 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         about: "The registry paths a step's image may come from. The cluster refuses any other image when a step starts, however it was submitted (IMAGE_NOT_ALLOWED). A save takes effect for every team at once.",
         source: "both",
         here: ["The allowed sources: the source registry and any more.", "Upgrades keep what's saved here."],
-        install: [
+        install: (i) => [
           <>Their first value, when the kernel is installed: {mono("taskImages.registry")} in vertra.yaml.</>,
-          <>Whether catalog images must be signed: the kernel chart&apos;s {mono("imageSignature")}.</>,
+          <>Whether catalog images must be signed: the kernel chart&apos;s {mono("imageSignature")}{current(i, (x) => (x.imageSignaturesRequired ? "required" : "not required"))}.</>,
         ],
         content: (summary) => <ImageSourcesCard summary={summary} />,
       },
@@ -167,7 +202,10 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         about: "Every image's last scan. A failed image can't be registered or run until it's rebuilt, or an admin accepts it here.",
         source: "both",
         here: ["Rescan an image now.", "Accept a failed one, with a reason kept in the audit log."],
-        install: [<>Whether images are scanned: the console chart&apos;s {mono("scanning.enabled")} (on by default), and how often they&apos;re rescanned.</>],
+        install: (i) => [
+          <>Whether images are scanned: the console chart&apos;s {mono("scanning.enabled")} (on by default){current(i, (x) => (x.scanning ? "on" : "off"))}.</>,
+          <>How often images in use are scanned again: {mono("scanning.rescanHours")}{current(i, (x) => (x.rescanHours ? `every ${String(x.rescanHours)} h` : "never, scanning is off"))}.</>,
+        ],
         content: () => <ImageScansTab />,
       },
     ],
@@ -214,8 +252,11 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         about: "Admins get alerts (a team purged, the image sources changed, a policy not written, a step the cluster refused) in the console and by email. A team's chat webhook can get them too.",
         source: "both",
         here: ["Which team's chat webhook also gets them."],
-        install: [
-          <>Email: the console chart&apos;s {mono("notifications.email")} names the SMTP server.</>,
+        install: (i) => [
+          <>
+            Email: the console chart&apos;s {mono("notifications.email")} names the SMTP server
+            {current(i, (x) => (x.email ? <>{mono(x.emailHost)}, from {mono(x.emailFrom)}</> : "none, so no email is sent"))}.
+          </>,
           <>The hosts a webhook may post to: {mono("notifications.webhookHosts")}.</>,
         ],
         content: () => <AdminChannelCard />,
@@ -231,8 +272,8 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         about: "The rules the cluster enforces whatever the console says: which products, identities, secrets and images a step may use, and what each team's steps may reach and take. The console writes them from its database when products, secrets or image sources change, at startup, and every few minutes, which also undoes any edit made by hand.",
         source: "status",
         here: ["Write them again: rewrite them all now."],
-        install: [
-          <>How often they&apos;re rewritten: the console chart&apos;s {mono("policySyncIntervalSeconds")} (300).</>,
+        install: (i) => [
+          <>How often they&apos;re rewritten: the console chart&apos;s {mono("policySyncIntervalSeconds")}{current(i, (x) => `every ${seconds(x.policySyncSeconds)}`) ?? " (300)"}.</>,
           "The policies the kernel chart installs and the console doesn't write (below).",
         ],
         content: () => <PoliciesCard />,
@@ -242,10 +283,13 @@ const GROUPS: { name: string; sections: Section[] }[] = [
         label: "Audit log copy",
         about: "Every request that tried to change something is in the audit log, each entry hash-chained to the one before, so changing, removing or slipping in an entry breaks every later hash. This is its write-once copy in a bucket that refuses deletes and overwrites, and whether the chain still holds.",
         source: "install",
-        install: [
+        install: (i) => [
           <>Whether there&apos;s a copy, and where: {mono("audit.export")} in vertra.yaml (gcp, aws), or the console chart&apos;s {mono("audit.export.bucket")}.</>,
-          <>How long the bucket keeps each entry: {mono("audit.keepDays")}.</>,
-          <>{mono("audit.lock")} makes that retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it.</>,
+          <>How long the bucket keeps each entry: {mono("audit.keepDays")}{current(i, (x) => (!x.auditCopy ? "no copy" : x.auditKeepDays ? `${String(x.auditKeepDays)} days` : "not known here"))}.</>,
+          <>
+            {mono("audit.lock")} makes that retention permanent: nobody can shorten it or delete the bucket until it lapses. Decide before you set it
+            {current(i, (x) => (!x.auditCopy ? "no copy" : x.auditLock ? "locked" : "not locked"))}.
+          </>,
         ],
         content: () => <AuditCopyCard />,
       },
@@ -275,8 +319,9 @@ function Where({ icon, title, points }: { icon: ReactNode; title: string; points
  * What a section is for, where its settings are made, and its part of the
  * guide: above its cards.
  */
-function SectionIntro({ section }: { section: Section }) {
+function SectionIntro({ section, install }: { section: Section; install: InstallInfo | null }) {
   const source = SOURCE[section.source];
+  const installPoints = typeof section.install === "function" ? section.install(install) : section.install;
   return (
     <AdminCard title={section.label} status={<Pill tone={source.tone}>{source.label}</Pill>} label={`About ${section.label}`}>
       <Typography variant="body2" sx={{ maxWidth: 860, lineHeight: 1.6 }}>
@@ -285,7 +330,7 @@ function SectionIntro({ section }: { section: Section }) {
       {(section.here || section.install) && (
         <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
           {section.here && <Where icon={<EditIcon sx={{ fontSize: 15 }} aria-hidden="true" />} title="Set here" points={section.here} />}
-          {section.install && <Where icon={<TerminalIcon sx={{ fontSize: 15 }} aria-hidden="true" />} title="Set by the install" points={section.install} />}
+          {installPoints && <Where icon={<TerminalIcon sx={{ fontSize: 15 }} aria-hidden="true" />} title="Set by the install" points={installPoints} />}
         </Box>
       )}
       <Box>
@@ -412,7 +457,7 @@ export function AdminPage() {
           ])}
         </TextField>
         <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-          <SectionIntro section={section} />
+          <SectionIntro section={section} install={summary?.install ?? null} />
           {section.content(summary)}
         </Box>
       </Box>

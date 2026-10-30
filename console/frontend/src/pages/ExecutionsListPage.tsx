@@ -25,7 +25,6 @@ import { QuickTile, QuickTiles } from "../components/QuickTile";
 import { StatusBadge } from "../components/StatusBadge";
 import {
   ApiError,
-  getInstall,
   listAllTeams,
   listExecutions,
   listPendingApprovals,
@@ -36,6 +35,7 @@ import {
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useEnvironment } from "../environment";
+import { runningNow } from "../runningNow";
 import { statusFill } from "../statusColor";
 import { duration, when } from "../time";
 import { RunsSchedules } from "./run/RunsSchedules";
@@ -179,6 +179,7 @@ export function ExecutionsListPage() {
         if (cancelled) return;
         setExecutions(page.executions);
         setNextCursor(page.nextCursor);
+        setRetentionDays(page.runRetentionDays || null);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof ApiError ? err.message : "Couldn't load the runs.");
@@ -215,9 +216,6 @@ export function ExecutionsListPage() {
     listAllTeams()
       .then((teams) => { setAllTeams(teams.map((team) => team.name)); })
       .catch(() => { /* the filter offers the teams on the loaded runs */ });
-    getInstall()
-      .then((install) => { setRetentionDays(install.runRetentionDays || null); })
-      .catch(() => { /* the note is left out */ });
   }, [user?.isAdmin]);
 
   async function loadMore(): Promise<void> {
@@ -264,8 +262,8 @@ export function ExecutionsListPage() {
     : (user?.teamNames ?? []);
   const open = (id: string) => { navigate(`/runs/${encodeURIComponent(id)}`); };
   const toApprove = approvals?.length ?? 0;
-  // The list carries the submitter's account id, not their name: yours is "you".
-  const byWhom = (e: ExecutionSummary) => (!e.submittedBy ? "a deleted account" : e.submittedBy === user?.id ? "you" : "someone else");
+  // Yours is "you"; anyone else's by their email.
+  const byWhom = (e: ExecutionSummary) => (!e.submittedBy ? "a deleted account" : e.submittedBy === user?.id ? "you" : e.submittedByEmail || "someone else");
   const toggleState = (state: string) => { setStatusFilter((current) => (current === state ? "" : state)); };
 
   const columns: DataTableColumn<ExecutionSummary>[] = [
@@ -284,7 +282,21 @@ export function ExecutionsListPage() {
       ),
     },
     { key: "state", header: "State", render: (e) => (e.state ? <StatusBadge status={e.state} /> : "—") },
-    { key: "steps", header: "Steps", hideBelow: "sm", render: (e) => <Steps steps={e.steps} /> },
+    {
+      key: "steps",
+      header: "Steps",
+      hideBelow: "sm",
+      render: (e) => (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+          <Steps steps={e.steps} />
+          {runningNow(e) && (
+            <Typography component="span" sx={{ fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
+              Now: {runningNow(e)}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
     { key: "started", header: "Started", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{when(e.createdAt)}</Box> },
     { key: "by", header: "By", hideBelow: "md", render: (e) => <Box sx={{ overflowWrap: "anywhere" }}>{byWhom(e)}</Box> },
     { key: "took", header: "Took", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{took(e, now)}</Box> },
