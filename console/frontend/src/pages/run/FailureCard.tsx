@@ -5,7 +5,13 @@ import Card from "@mui/material/Card";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { TaskStatus } from "../../api";
-import { FailureHelp } from "./FailureHelp";
+import { FailureHelp, explainedBy } from "./FailureHelp";
+
+/** "not retried automatically", or how many attempts it had. */
+function retriedNote(task: TaskStatus): string {
+  if (!task.failure?.retryable) return "not retried automatically";
+  return task.attempts.length > 1 ? `after ${String(task.attempts.length)} attempts` : "";
+}
 
 /**
  * Why a failed run stopped, at the top of its page: the step, its error
@@ -20,7 +26,7 @@ export function FailureCard({
   onShow,
 }: {
   task: TaskStatus;
-  /** "step 3 of 4". */
+  /** "Step 3". */
   position: string;
   busy: boolean;
   retryBlocked: string | null;
@@ -28,16 +34,23 @@ export function FailureCard({
   onShow: () => void;
 }) {
   if (!task.failure) return null;
+  const note = retriedNote(task);
   return (
-    <Card sx={{ p: 3, borderColor: "error.light", borderWidth: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-        <Typography variant="h6" component="h2">
-          Failed at {position}, {task.taskId}: {task.failure.message}
+    <Card component="section" aria-labelledby="why-heading" sx={{ p: 3, borderColor: "error.light", display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 1.25 }}>
+        <Typography id="why-heading" variant="h6" component="h2" sx={{ fontSize: 18, overflowWrap: "anywhere", minWidth: 0 }}>
+          {position}, {task.taskId}: {task.failure.message}
         </Typography>
-        <Typography sx={{ fontFamily: "fontFamilyMono", fontSize: 13, color: "error.dark", fontWeight: 500 }}>{task.failure.code}</Typography>
+        <Box
+          component="span"
+          sx={{ fontFamily: "fontFamilyMono", fontSize: 12, color: "error.dark", bgcolor: "error.light", px: 1, py: 0.5, borderRadius: 1.5, overflowWrap: "anywhere" }}
+        >
+          {task.failure.code}
+          {note && ` · ${note}`}
+        </Box>
       </Box>
       {task.help && <FailureHelp help={task.help} />}
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px 16px", pt: 1.75, borderTop: 1, borderColor: "divider" }}>
         <Tooltip title={retryBlocked ?? (task.failure.retryable ? "" : "This failure is marked not retryable.")}>
           <span>
             <Button variant="contained" disabled={busy || retryBlocked !== null} onClick={onRetry}>
@@ -45,7 +58,14 @@ export function FailureCard({
             </Button>
           </span>
         </Tooltip>
-        <Button onClick={onShow}>Show its attempts and logs</Button>
+        <Button variant="outlined" onClick={onShow}>
+          Show its attempts and logs
+        </Button>
+        {task.help && (
+          <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: "auto" } }}>
+            {explainedBy(task.help)}
+          </Typography>
+        )}
       </Box>
     </Card>
   );

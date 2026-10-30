@@ -33,7 +33,7 @@ Everyone in a team is a member or a maintainer. What each may do:
 | See the team's runs, their outputs and logs, its Pods, and its secrets' names | Yes | Yes |
 | Run templates and actions shared with the team, from **Catalog** | Yes | Yes |
 | Retry, cancel and run again a template run they started | Yes | Yes |
-| Submit a raw DAG (**Runs → Submit new**) | No | Yes, if they maintain every team it names |
+| Submit a raw DAG (**Runs → Submit a DAG**) | No | Yes, if they maintain every team it names |
 | Retry, cancel or run again any other run of the team | No | Yes, if they maintain every team in it |
 | Add, change or remove the team's secrets | No | Yes |
 | Add people, change roles, add or revoke bots | No | Yes |
@@ -80,7 +80,7 @@ Copy the `hello` sample, rename three things, and merge: CI builds it, tests it,
 Paste a one-task DAG into the console and you'll get `Hello, Anna!` back in under a minute.
 
 1. Open `templates/dags/1-hello.yaml` and replace `team-a` with your team, and the registry with yours.
-2. In the console, open **Runs → Submit new**, paste it, and submit.
+2. In the console, open **Runs → Submit a DAG**, paste it, and submit.
 3. On the execution's page, watch the task go from Ready to Running to Succeeded. ([Runs, explained](09-runs-explained.md) has every state.)
 
 Submitting a raw DAG takes a maintainer of its team; a member runs the team's products from **Catalog** instead.
