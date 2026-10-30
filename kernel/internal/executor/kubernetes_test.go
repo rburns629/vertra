@@ -429,6 +429,16 @@ func TestAnIdentityPolicyRefusalGetsItsOwnCode(t *testing.T) {
 	check(t, "message", strings.HasPrefix(r.Message, `localhost:5001/app (action "create") may not run as`), true)
 }
 
+// The dispatch policy's refusal for a namespace labelled retired.
+func TestARetiredTeamsRefusalSaysSo(t *testing.T) {
+	_, err := jobRefused(t, status(403, metav1.StatusReasonForbidden, `jobs.batch "ek-b-1" is forbidden: ValidatingAdmissionPolicy `+
+		`'kernel-execution-kernel-dispatch' with binding 'kernel-execution-kernel-dispatch' denied request: TEAM_RETIRED: `+
+		`team rt-a is retired, so nothing new runs in its namespace; an admin can un-retire it`))
+	r := rejected(t, err)
+	check(t, "code", r.Code, "TEAM_RETIRED")
+	check(t, "message", r.Message, "team rt-a is retired, so nothing new runs in its namespace; an admin can un-retire it")
+}
+
 // Sigstore policy-controller's refusal, as kind returned it: a 400, not a 403.
 func TestAnUnsignedImageIsANonRetryableSignatureRefusal(t *testing.T) {
 	c, err := jobRefused(t, status(400, metav1.StatusReasonBadRequest, `admission webhook "policy.sigstore.dev" denied the request: validation failed: `+

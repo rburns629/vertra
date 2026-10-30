@@ -1540,8 +1540,9 @@ export const KernelService: GenService<{
   },
   /**
    * Attempts the cluster refused to start since a time (an admission
-   * policy's code: DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_PINNED,
-   * IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
+   * policy's code: DISPATCH_REJECTED, TEAM_RETIRED, IMAGE_NOT_ALLOWED,
+   * IMAGE_NOT_PINNED, IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED,
+   * IDENTITY_NOT_ALLOWED), newest
    * first, at most 500.
    *
    * @generated from rpc vertra.kernel.v1.KernelService.ListRefusals

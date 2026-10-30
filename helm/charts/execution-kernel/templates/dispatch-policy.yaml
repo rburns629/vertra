@@ -72,8 +72,12 @@ spec:
         {{- end }}
         variables.labelled &&
         namespaceObject.metadata.labels[{{ $label | quote }}] == "true")
+      # A retired team's says so, with its code (the kernel reads it).
       messageExpression: >-
-        "namespace " + namespaceObject.metadata.name + " is not a Vertra team
+        variables.labelled && namespaceObject.metadata.labels[{{ $label | quote }}] == "retired"
+        ? "TEAM_RETIRED: team " + namespaceObject.metadata.name + " is retired, so nothing
+        new runs in its namespace; an admin can un-retire it"
+        : "namespace " + namespaceObject.metadata.name + " is not a Vertra team
         namespace (it needs the label {{ $label }}=true), so tasks can't be
         dispatched into it"
       reason: Forbidden

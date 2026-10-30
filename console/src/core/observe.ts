@@ -37,6 +37,7 @@ const WEEK_MS = 7 * 24 * 3_600_000;
 /** What each refusal code means, for the person reading the list. */
 const WHY: Record<string, string> = {
   DISPATCH_REJECTED: "Its namespace isn't a team's.",
+  TEAM_RETIRED: "Its team was retired while the run was going.",
   IMAGE_NOT_ALLOWED: "Its image isn't from a source this install allows.",
   IMAGE_NOT_PINNED: "Its image wasn't pinned to a digest.",
   IMAGE_SCAN_FAILED: "Its image failed the security scan.",

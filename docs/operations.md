@@ -1125,6 +1125,7 @@ in sooner, delete their row from `sign_in_failures` (and
 | Code | Meaning |
 | --- | --- |
 | `DISPATCH_REJECTED` | Its namespace isn't labelled `vertra/team=true` |
+| `TEAM_RETIRED` | Its team's namespace is labelled `vertra/team=retired` (retired while the run was going) |
 | `IMAGE_NOT_ALLOWED` | Its image isn't under an allowed source (Admin page) |
 | `IMAGE_NOT_PINNED`, `IMAGE_SCAN_FAILED` | Not pinned by digest; a failed scan |
 | `IMAGE_NOT_SIGNED` | Not signed by the catalog's key (with policy-controller) |

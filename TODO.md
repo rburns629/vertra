@@ -752,8 +752,13 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   wake`, five minutes before it. Proven on kind: slept at 21:13, woke at
   21:20, the 21:25 schedule ran as its bot, slept again at 21:27, re-armed
   for the next day).
-- [ ] **Trace what a retired team's running executions do** (not checked in
-  the assessment).
+- [x] **Trace what a retired team's running executions do** (done
+  2026-10-29, traced on kind): a step already running finishes, under the
+  team's identity (as when a step fails for good); its steps not yet
+  started fail as `TEAM_RETIRED` (the dispatch policy says so, rather than
+  a bare `DISPATCH_REJECTED`), not retryable, and the run fails; another
+  team's step claimed in the same pass runs on. Un-retiring and retrying
+  resumes it.
 
 - [ ] **Catalog versions, and installs reading another's catalog**
   (decision 22, `docs/assessment.md`; vertra 0.4.0). Done 2026-10-26:

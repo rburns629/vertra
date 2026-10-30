@@ -29,6 +29,7 @@ export const PLATFORM_ERRORS: Record<string, ErrorHelp> = {
   IMAGE_NOT_SIGNED: { means: "Its image isn't signed by the catalog's CI.", do: "Ask the product's team to publish it through their catalog's CI." },
   IDENTITY_NOT_ALLOWED: { means: "It asked for an identity or secrets its product isn't registered for." },
   DISPATCH_REJECTED: { means: "The cluster refused to run it in that team's namespace." },
+  TEAM_RETIRED: { means: "Its team was retired while the run was going, so it never started.", do: "An admin can un-retire the team (Teams page), then retry it." },
   OUTPUT_CONTAINS_CREDENTIAL: { means: "Its outputs held something that looked like a credential, so they were discarded.", do: "Ask the product's team: outputs must never echo a secret." },
   PRODUCT_RESULT_MISSING: { means: "It ended without writing its result." },
   PRODUCT_RESULT_INVALID: { means: "It wrote a result the platform couldn't read." },

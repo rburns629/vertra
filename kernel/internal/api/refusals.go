@@ -13,7 +13,7 @@ import (
 
 // RefusalCodes are the admission policies' failures: the cluster refused
 // to start an attempt.
-var RefusalCodes = []string{"DISPATCH_REJECTED", "IMAGE_NOT_ALLOWED", "IMAGE_NOT_PINNED", "IMAGE_SCAN_FAILED", "IMAGE_NOT_SIGNED", "IDENTITY_NOT_ALLOWED"}
+var RefusalCodes = []string{"DISPATCH_REJECTED", "TEAM_RETIRED", "IMAGE_NOT_ALLOWED", "IMAGE_NOT_PINNED", "IMAGE_SCAN_FAILED", "IMAGE_NOT_SIGNED", "IDENTITY_NOT_ALLOWED"}
 
 // MaxRefusals is the most ListRefusals answers with.
 const MaxRefusals = 500

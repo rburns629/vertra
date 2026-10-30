@@ -101,8 +101,9 @@ type KernelServiceClient interface {
 	// The tasks awaiting approval in the given teams, oldest first.
 	ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error)
 	// Attempts the cluster refused to start since a time (an admission
-	// policy's code: DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_PINNED,
-	// IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
+	// policy's code: DISPATCH_REJECTED, TEAM_RETIRED, IMAGE_NOT_ALLOWED,
+	// IMAGE_NOT_PINNED, IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED,
+	// IDENTITY_NOT_ALLOWED), newest
 	// first, at most 500.
 	ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error)
 	// What the steps did: started and waited per hour over the last day,
@@ -302,8 +303,9 @@ type KernelServiceHandler interface {
 	// The tasks awaiting approval in the given teams, oldest first.
 	ListAwaitingApproval(context.Context, *connect.Request[v1.ListAwaitingApprovalRequest]) (*connect.Response[v1.ListAwaitingApprovalResponse], error)
 	// Attempts the cluster refused to start since a time (an admission
-	// policy's code: DISPATCH_REJECTED, IMAGE_NOT_ALLOWED, IMAGE_NOT_PINNED,
-	// IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED, IDENTITY_NOT_ALLOWED), newest
+	// policy's code: DISPATCH_REJECTED, TEAM_RETIRED, IMAGE_NOT_ALLOWED,
+	// IMAGE_NOT_PINNED, IMAGE_SCAN_FAILED, IMAGE_NOT_SIGNED,
+	// IDENTITY_NOT_ALLOWED), newest
 	// first, at most 500.
 	ListRefusals(context.Context, *connect.Request[v1.ListRefusalsRequest]) (*connect.Response[v1.ListRefusalsResponse], error)
 	// What the steps did: started and waited per hour over the last day,

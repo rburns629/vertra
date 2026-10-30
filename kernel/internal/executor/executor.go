@@ -86,7 +86,8 @@ type LaunchedAttempt struct {
 // DispatchRejected is the cluster refusing to create an attempt's workload
 // on policy grounds: the same attempt would be refused again, so it's
 // never retried. Code is IMAGE_NOT_ALLOWED, IDENTITY_NOT_ALLOWED,
-// IMAGE_NOT_SIGNED, IMAGE_SCAN_FAILED, IMAGE_NOT_PINNED or DISPATCH_REJECTED.
+// IMAGE_NOT_SIGNED, IMAGE_SCAN_FAILED, IMAGE_NOT_PINNED, TEAM_RETIRED (the
+// team retired while its run was going) or DISPATCH_REJECTED.
 type DispatchRejected struct {
 	Code    string
 	Message string

@@ -148,7 +148,7 @@ func apiMessage(err error) string {
 }
 
 // The chart's own policies start their messages with their code.
-var policyCodes = []string{"IMAGE_NOT_ALLOWED", "IDENTITY_NOT_ALLOWED", "IMAGE_SCAN_FAILED", "IMAGE_NOT_PINNED"}
+var policyCodes = []string{"IMAGE_NOT_ALLOWED", "IDENTITY_NOT_ALLOWED", "IMAGE_SCAN_FAILED", "IMAGE_NOT_PINNED", "TEAM_RETIRED"}
 
 // Sigstore's policy-controller refuses with a 400 and this in its message.
 const signatureWebhookMarker = `admission webhook "policy.sigstore.dev" denied the request`
