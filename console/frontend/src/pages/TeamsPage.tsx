@@ -137,7 +137,11 @@ export function TeamsPage() {
             {t.name}
           </Link>
           {facts[t.name]?.profile?.description && (
-            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere" }}>
+            <Typography
+              component="span"
+              title={facts[t.name]?.profile?.description ?? undefined}
+              sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+            >
               {facts[t.name]?.profile?.description}
             </Typography>
           )}
