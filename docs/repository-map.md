@@ -393,7 +393,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `templates/sleeper.yaml` | Sleeping when idle: the sleeper's CronJobs, its narrow identity (replica counts of named Deployments only), and the ConfigMap of counts to wake to. |
 | `templates/step-headroom.yaml` | Warm headroom: low-priority placeholder Pods the size of a default step, and their PriorityClass. |
 | `templates/kernel-api-deployment.yaml`, `kernel-api-service.yaml` | kernel-api, reachable only inside the cluster. |
-| `templates/monitoring.yaml` | With the Prometheus Operator (`monitoring`): a PodMonitor for kernel-api and the scheduler, and alerts (scheduler down or failing, steps waiting). |
+| `templates/monitoring.yaml` | Monitoring (`monitoring.provider`): a PodMonitor (operator) or PodMonitoring (google) for kernel-api and the scheduler, and alerts (scheduler down or failing, steps waiting) as a PrometheusRule, Rules, or a rule file for the console chart's bundled Prometheus. |
 | `templates/kernel-scheduler-deployment.yaml` | kernel-scheduler. |
 | `templates/postgres-*.yaml` | The kernel's Postgres: Deployment, storage, Service, and (with `tls`) its `pg_hba` accepting only TLS from the network. |
 | `templates/tls.yaml` | TLS inside the cluster (`tls`): a CA of the release's own, made once and kept, and the certificates it signs for Postgres and kernel-api; the CA alone in `-tls-ca` for clients, the console's included. |
@@ -419,7 +419,8 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `sizes/{minimal,resilient,scaled,auto}.yaml` | The size presets: copies and retention. |
 | `templates/autoscaling.yaml` | The console's HorizontalPodAutoscaler (`auto`) and its PodDisruptionBudget from two copies. |
 | `templates/logs.yaml`, `files/alloy.alloy` | Log search (`logs`): one Loki (a volume or a bucket) and Grafana Alloy collecting steps' and the platform's Pods with credentials redacted; only Alloy and the console reach Loki. |
-| `templates/monitoring.yaml`, `files/grafana-dashboard.json` | With the Prometheus Operator (`monitoring`): a PodMonitor for the console and gateway, alerts (calls failing, sign-in bursts, the catalog not applying, backends unreachable), and Vertra's Grafana dashboard as a ConfigMap. |
+| `templates/monitoring.yaml`, `files/grafana-dashboard.json` | Monitoring (`monitoring.provider`): a PodMonitor or PodMonitoring for the console and gateway, alerts (calls failing, sign-in bursts, the catalog not applying, backends unreachable) as a PrometheusRule, Rules or a rule file, and Vertra's Grafana dashboard as a ConfigMap. |
+| `templates/prometheus.yaml` | The bundled Prometheus (`monitoring.provider: bundled`): one StatefulSet with a volume, finding this namespace's Vertra Pods through a Role, both charts' alerts, reachable by nothing (port-forward). |
 | `templates/ingress.yaml` | Reaching the console from outside the cluster (HTTPS only), for the catalog's CI: the certificate from the cloud, a Secret, or cert-manager (an issuer of yours, or Let's Encrypt through the chart's own Issuer); plain HTTP refused for known controllers. With `trustProxy`, the console believes the load balancer's X-Forwarded-For. |
 | `templates/httproute.yaml` | The same through a Gateway (`gatewayApi`): an HTTPRoute on its HTTPS listener, and a redirect from its HTTP one. |
 | `templates/activity.yaml` | The ConfigMap the console records its last use in (for the kernel's sleeper), and the Role that lets it update that one. |
@@ -440,6 +441,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | Path | What it's for |
 | --- | --- |
 | `secrets-e2e.sh` | A team's secret end to end on a kind install (`make kind-e2e-secrets`): a SecretStore (ESO's fake provider) syncs it, a registered product's step reads it (its SHA-256, never the value), and a step that isn't one, or another team's, is refused. |
+| `prometheus-rules.sh`, `prometheus/alerts.test.yaml` | Both charts' alerts rendered and evaluated by promtool (the bundled Prometheus's image) against made-up series: what fires and what doesn't. Run by CI's helm job. |
 | `admission-policies.sh` | Proves the charts' admission policies on a real cluster (dispatch, image sources, step identity, the console's write fence), case by case with server-side dry runs. Run by CI's kubernetes job. |
 
 ### `helm/values/`: each cluster's settings

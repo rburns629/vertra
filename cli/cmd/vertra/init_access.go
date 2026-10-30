@@ -439,30 +439,65 @@ func (a *app) askFeatures(out io.Writer, c *config.Config, f *initFlags) error {
 	return nil
 }
 
-// askMonitoring offers the charts' PodMonitors, alerts and Grafana dashboard
-// when the cluster runs a Prometheus Operator, set up for that Prometheus:
-// its namespace may scrape, and the labels it selects them by are put on.
+// askMonitoring offers Prometheus for the platform's metrics and alerts:
+// the cluster's Prometheus Operator when one runs there (its PodMonitors,
+// alerts and Grafana dashboard), GKE's Managed Service for Prometheus on
+// gcp, or a Prometheus of the install's own. --monitoring answers it:
+// false, operator (or true), google or bundled.
 func (a *app) askMonitoring(ctx context.Context, out io.Writer, c *config.Config, f *initFlags) error {
 	if f.monitoring == "false" {
 		return nil
 	}
-	p := install.FindPrometheus(ctx, a.runner, c)
-	if p == nil {
-		if f.monitoring == "true" {
-			return fmt.Errorf("--monitoring: no Prometheus Operator in this cluster (kube-prometheus-stack, for one)")
-		}
-		return nil
+	var p *install.Prometheus
+	if c.Target == "kind" || c.Target == "existing" {
+		p = install.FindPrometheus(ctx, a.runner, c)
 	}
-	on := f.monitoring == "true"
-	if f.monitoring == "" {
-		var err error
-		if on, err = a.ask.Confirm(fmt.Sprintf("A Prometheus Operator runs in %s. Add Vertra's PodMonitors, alerts and Grafana dashboard for it?", p.Namespace), true); err != nil {
+	operator := func() {
+		c.Monitoring = config.Monitoring{Enabled: true, Provider: "operator", Namespace: p.Namespace, PodMonitorLabels: p.PodMonitorLabels, RuleLabels: p.RuleLabels}
+		fmt.Fprintf(out, "Monitoring: scraped from %s; its alerts and dashboard go to that Prometheus and Grafana.\n", p.Namespace)
+	}
+	choice := f.monitoring
+	if choice == "true" {
+		choice = "operator"
+	}
+	switch choice {
+	case "operator":
+		if p == nil {
+			return fmt.Errorf("--monitoring operator: no Prometheus Operator in this cluster (kube-prometheus-stack, for one)")
+		}
+		operator()
+		return nil
+	case "google", "bundled":
+		c.Monitoring = config.Monitoring{Enabled: true, Provider: choice}
+		return nil
+	case "":
+	default:
+		return fmt.Errorf("--monitoring: %q isn't false, operator, google or bundled", f.monitoring)
+	}
+
+	if p != nil {
+		on, err := a.ask.Confirm(fmt.Sprintf("A Prometheus Operator runs in %s. Add Vertra's PodMonitors, alerts and Grafana dashboard for it?", p.Namespace), true)
+		if err != nil || on {
+			if on {
+				operator()
+			}
 			return err
 		}
 	}
-	if on {
-		c.Monitoring = config.Monitoring{Enabled: true, Namespace: p.Namespace, PodMonitorLabels: p.PodMonitorLabels, RuleLabels: p.RuleLabels}
-		fmt.Fprintf(out, "Monitoring: scraped from %s; its alerts and dashboard go to that Prometheus and Grafana.\n", p.Namespace)
+	options := []prompt.Option{
+		{Value: "none", Label: "None", Note: "Observe's Metrics tab needs no Prometheus; this is for alerts and your own queries"},
+		{Value: "bundled", Label: "A Prometheus of its own", Note: "one Pod (about 0.05 vCPU, 0.25 GiB) and a 2 GiB volume; its alerts on its own page"},
+	}
+	if c.Target == "gcp" {
+		options = append(options, prompt.Option{Value: "google", Label: "Google Cloud Managed Service for Prometheus",
+			Note: "billed per sample: Vertra's few hundred series, a few dollars a month; alerts through Cloud Monitoring"})
+	}
+	choice, err := a.ask.Choose("Prometheus for the platform's metrics and alerts?", options, "none")
+	if err != nil {
+		return err
+	}
+	if choice != "none" {
+		c.Monitoring = config.Monitoring{Enabled: true, Provider: choice}
 	}
 	return nil
 }

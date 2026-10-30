@@ -32,7 +32,7 @@ It asks, in order, with what each choice costs or gives up:
 | Log search | keep steps' logs for search in Observe (archived to a bucket after 30 days on a cloud) |
 | The audit copy | gcp, aws: copy the audit log to a bucket that refuses deletes; locking it is a separate, permanent choice |
 | The API gateway | serve the catalog's API products |
-| Monitoring | kind, existing: when the cluster runs a Prometheus Operator, Vertra's alerts and Grafana dashboard for it |
+| Monitoring | Prometheus for alerts: the cluster's Prometheus Operator (kind, existing), GKE's managed Prometheus (gcp, a few dollars a month), or one of its own (a Pod and a 2 GiB volume) ([Metrics and alerts](operations.md#metrics-and-alerts)) |
 
 **A public console**, by target:
 

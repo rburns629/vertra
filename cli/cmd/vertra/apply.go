@@ -395,6 +395,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		{Label: "Database", Text: database},
 		{Label: "Logs", Text: logsLine(c)},
 		{Label: "Audit", Text: auditLine(c)},
+		{Label: "Monitoring", Text: monitoringLine(c)},
 		{Label: "Admin", Text: admin},
 	}
 	if cloud != nil {
@@ -526,6 +527,21 @@ func logsLine(c *config.Config) string {
 		return fmt.Sprintf("searchable %d days, then archived in a bucket; deleted after %d days", c.Logs.SearchDays, c.Logs.KeepDays)
 	}
 	return fmt.Sprintf("searchable on a volume, deleted after %d days (no archive without a bucket)", c.Logs.KeepDays)
+}
+
+// monitoringLine says which Prometheus scrapes the platform and holds its
+// alerts, for the approval screen.
+func monitoringLine(c *config.Config) string {
+	if !c.Monitoring.Enabled {
+		return "none (Observe's Metrics tab needs none; monitoring.provider for Prometheus alerts)"
+	}
+	switch c.Monitoring.ProviderName() {
+	case "google":
+		return fmt.Sprintf("GKE's Managed Service for Prometheus (billed per sample, a few dollars a month), its collector in %s", install.GoogleCollectorNamespace(c))
+	case "bundled":
+		return "a Prometheus of its own: 15 days on a 2 GiB volume, its alerts on its own page (kubectl port-forward)"
+	}
+	return fmt.Sprintf("the Prometheus Operator in %s: PodMonitors, alerts and a Grafana dashboard", c.Monitoring.Namespace)
 }
 
 // auditLine says where the audit log's copy goes, for the approval screen.

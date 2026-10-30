@@ -417,3 +417,44 @@ func TestASignedCatalogIsRequiredByBothCharts(t *testing.T) {
 		}
 	}
 }
+
+func TestMonitoringValues(t *testing.T) {
+	c := kindConfig()
+	img := ImagesFor(c, time.Now())
+	metricsFrom := func(v map[string]any) string { return fmt.Sprint(v["networkPolicy"].(map[string]any)["metricsFrom"]) }
+
+	// The cluster's operator, as before: a config without a provider.
+	c.Monitoring = config.Monitoring{Enabled: true, Namespace: "monitoring", PodMonitorLabels: map[string]string{"release": "kps"}}
+	k, v := KernelValues(c, img, "", nil), ConsoleValues(c, "dev", img, nil)
+	if m := k["monitoring"].(map[string]any); m["provider"] != "operator" || !strings.Contains(fmt.Sprint(m["podMonitor"]), "release:kps") {
+		t.Errorf("operator: %v", m)
+	}
+	if _, ok := v["monitoring"].(map[string]any)["dashboard"]; !ok || !strings.Contains(metricsFrom(v), "monitoring") {
+		t.Errorf("operator console: %v %v", v["monitoring"], metricsFrom(v))
+	}
+
+	// Bundled: the console chart runs it; both charts admit it alone.
+	c.Monitoring = config.Monitoring{Enabled: true, Provider: "bundled"}
+	k, v = KernelValues(c, img, "", nil), ConsoleValues(c, "dev", img, nil)
+	if _, ok := k["monitoring"].(map[string]any)["prometheus"]; ok {
+		t.Error("only the console chart runs the bundled Prometheus")
+	}
+	if p := v["monitoring"].(map[string]any)["prometheus"].(map[string]any); p["enabled"] != true || p["kernelRelease"] != "kernel" {
+		t.Errorf("bundled: %v", p)
+	}
+	for _, values := range []map[string]any{k, v} {
+		if got := metricsFrom(values); !strings.Contains(got, "component:prometheus") || !strings.Contains(got, "instance:console") {
+			t.Errorf("bundled metricsFrom: %s", got)
+		}
+	}
+
+	// Google: its collector's namespace, Autopilot's own.
+	c.Monitoring = config.Monitoring{Enabled: true, Provider: "google"}
+	for mode, want := range map[string]string{"auto": "gke-gmp-system", "standard": "gmp-system"} {
+		c.Cluster.Mode = mode
+		k = KernelValues(c, img, "", nil)
+		if m := k["monitoring"].(map[string]any); m["provider"] != "google" || fmt.Sprint(m["google"]) != "map[collectorNamespace:"+want+"]" || !strings.Contains(metricsFrom(k), want) {
+			t.Errorf("google on %s: %v %s", mode, m, metricsFrom(k))
+		}
+	}
+}

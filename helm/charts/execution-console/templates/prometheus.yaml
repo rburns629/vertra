@@ -1,0 +1,211 @@
+{{/*
+The bundled Prometheus (monitoring.provider bundled, monitoring.prometheus):
+one server with a volume of its own, like Loki. It finds this release's
+Pods and the kernel release's through the Kubernetes API, in this namespace
+only (a Role, not a ClusterRole), and evaluates both charts' alerts, the
+kernel's from that release's rule file (Prometheus reloads its config and
+rule files when they change). Nothing may connect to it: it's read through
+kubectl port-forward. The Pods it scrapes admit it through
+networkPolicy.metricsFrom, in both charts.
+*/}}
+{{- $mon := .Values.monitoring }}
+{{- if and (eq $mon.provider "bundled") $mon.prometheus.enabled }}
+{{- $p := $mon.prometheus }}
+{{- $name := printf "%s-prometheus" (include "execution-console.fullname" .) }}
+{{- $labels := dict "app.kubernetes.io/name" (printf "%s-prometheus" (include "execution-console.name" .)) "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "prometheus" }}
+{{- $kernel := printf "%s-execution-kernel" $p.kernelRelease }}
+{{- $kernelTls := hasPrefix "https://" .Values.kernelApiUrl }}
+{{- if and $kernelTls (not .Values.tls.kernelCaSecret) }}
+{{- fail "monitoring.prometheus: kernel-api is HTTPS, so tls.kernelCaSecret must name its CA." }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+data:
+  prometheus.yaml: |
+    global:
+      scrape_interval: {{ $p.interval }}
+      evaluation_interval: {{ $p.interval }}
+    rule_files:
+      - /etc/prometheus/rules/console/*.yaml
+      - /etc/prometheus/rules/kernel/*.yaml
+    scrape_configs:
+      # The console, the gateway and the scheduler, each on its metrics port.
+      - job_name: vertra
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: {names: [{{ .Release.Namespace | quote }}]}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app_kubernetes_io_component, __meta_kubernetes_pod_container_port_name]
+            regex: {{ printf "(%s;execution-console;(app|gateway)|%s;execution-kernel;scheduler);metrics" .Release.Name $p.kernelRelease | quote }}
+            action: keep
+          - {source_labels: [__meta_kubernetes_namespace], target_label: namespace}
+          - {source_labels: [__meta_kubernetes_pod_name], target_label: pod}
+          - {source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component], target_label: component}
+      # kernel-api, beside its API: over HTTPS with tls, checked against the
+      # kernel's CA under its Service's name.
+      - job_name: kernel-api
+        {{- if $kernelTls }}
+        scheme: https
+        tls_config:
+          ca_file: /etc/vertra/tls/ca.crt
+          server_name: {{ printf "%s-api.%s.svc" $kernel .Release.Namespace }}
+        {{- end }}
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: {names: [{{ .Release.Namespace | quote }}]}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app_kubernetes_io_component, __meta_kubernetes_pod_container_port_name]
+            regex: {{ printf "%s;execution-kernel;api;http" $p.kernelRelease | quote }}
+            action: keep
+          - {source_labels: [__meta_kubernetes_namespace], target_label: namespace}
+          - {source_labels: [__meta_kubernetes_pod_name], target_label: pod}
+          - {source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component], target_label: component}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+# Finding what to scrape: Pods in this namespace, read-only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+spec:
+  replicas: 1
+  serviceName: {{ $name }}
+  selector:
+    matchLabels:
+      {{- toYaml $labels | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- toYaml $labels | nindent 8 }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: prometheus
+          image: {{ include "execution-console.image" $p.image | quote }}
+          args:
+            - --config.file=/etc/prometheus/config/prometheus.yaml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ $p.retentionDays }}d
+            # The kernel's rules change with its release, not this one's.
+            - --config.auto-reload
+            - --config.auto-reload-interval=30s
+          ports:
+            - {name: http, containerPort: 9090}
+          readinessProbe:
+            httpGet: {path: /-/ready, port: http}
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            {{- toYaml $p.resources | nindent 12 }}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus/config, readOnly: true}
+            - {name: console-rules, mountPath: /etc/prometheus/rules/console, readOnly: true}
+            - {name: kernel-rules, mountPath: /etc/prometheus/rules/kernel, readOnly: true}
+            {{- if $kernelTls }}
+            - {name: kernel-ca, mountPath: /etc/vertra/tls, readOnly: true}
+            {{- end }}
+            - {name: data, mountPath: /prometheus}
+      volumes:
+        - name: config
+          configMap: {name: {{ $name }}}
+        # Each chart's alerts, when it has them on.
+        - name: console-rules
+          configMap: {name: {{ include "execution-console.fullname" . }}-prometheus-rules, optional: true}
+        - name: kernel-rules
+          configMap: {name: {{ $kernel }}-prometheus-rules, optional: true}
+        {{- if $kernelTls }}
+        - name: kernel-ca
+          secret: {secretName: {{ .Values.tls.kernelCaSecret }}, optional: true}
+        {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with $p.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $p.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- toYaml $labels | nindent 4 }}
+  ports:
+    - {name: http, port: 9090, targetPort: http}
+{{- if .Values.networkPolicy.enabled }}
+---
+# Nothing connects to it; it's read through kubectl port-forward.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml $labels | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress: []
+{{- end }}
+{{- end }}

@@ -1,12 +1,18 @@
 {{- /*
-Prometheus Operator resources and Grafana's dashboard (values: monitoring),
-or with monitoring.googleManaged GKE Managed Service for Prometheus's own
-(PodMonitoring and Rules, monitoring.googleapis.com). The dashboard covers
+Monitoring (values: monitoring) for one of three Prometheuses
+(monitoring.provider, as in the kernel chart): the Prometheus Operator's
+PodMonitor and PrometheusRule (operator), GKE Managed Service for
+Prometheus's PodMonitoring and Rules (google), or this chart's own
+Prometheus (bundled, prometheus.yaml), which finds the Pods itself and
+reads these alerts from a ConfigMap. And Grafana's dashboard, which covers
 the kernel chart's metrics too.
 */}}
 {{- $mon := .Values.monitoring }}
-{{- $gmp := $mon.googleManaged.enabled }}
-{{- if $mon.podMonitor.enabled }}
+{{- if not (has $mon.provider (list "operator" "google" "bundled")) }}
+{{- fail "monitoring.provider is operator, google or bundled." }}
+{{- end }}
+{{- $gmp := eq $mon.provider "google" }}
+{{- if and $mon.podMonitor.enabled (ne $mon.provider "bundled") }}
 {{- if $gmp }}
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
@@ -33,7 +39,18 @@ spec:
 ---
 {{- end }}
 {{- if $mon.alerts.enabled }}
-{{- $ns := printf "namespace=%q" .Release.Namespace }}
+{{- if eq $mon.provider "bundled" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "execution-console.fullname" . }}-prometheus-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-console.labels" . | nindent 4 }}
+data:
+  console.rules.yaml: |
+    {{- include "execution-console.alertGroups" . | nindent 4 }}
+{{- else }}
 {{- if $gmp }}
 apiVersion: monitoring.googleapis.com/v1
 kind: Rules
@@ -50,42 +67,8 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  groups:
-    - name: vertra-console
-      rules:
-        - alert: VertraConsoleFailing
-          expr: >-
-            sum(rate(console_rpc_requests_total{ {{- $ns -}}, code="internal"}[5m]))
-            / sum(rate(console_rpc_requests_total{ {{- $ns -}} }[5m])) > 0.05
-          for: 10m
-          labels: {severity: warning}
-          annotations:
-            summary: More than 5% of the console's calls are failing.
-            description: Each is logged in full by the console (maskErrors). Usually its database, kernel-api or the Kubernetes API.
-        - alert: VertraSignInBurst
-          expr: sum(increase(console_rpc_requests_total{ {{- $ns -}}, procedure="vertra.console.v1.AuthService/Login", code!="ok"}[15m])) > 50
-          labels: {severity: warning}
-          annotations:
-            summary: Over 50 failed sign-ins in 15 minutes.
-            description: Someone may be guessing passwords. Accounts lock for a while after repeated failures; the console's logs have the client addresses.
-        - alert: VertraCatalogNotApplying
-          expr: >-
-            sum(increase(console_catalog_syncs_total{ {{- $ns -}}, outcome="failed"}[1h])) > 0
-            unless sum(increase(console_catalog_syncs_total{ {{- $ns -}}, outcome!="failed"}[1h])) > 0
-          for: 30m
-          labels: {severity: warning}
-          annotations:
-            summary: The catalog's release hasn't been applied for over an hour.
-            description: Observe's security checks (and the Admin page) show why. Nothing in the catalog changes here until it applies.
-        - alert: VertraGatewayBackendUnreachable
-          expr: >-
-            sum by (api) (rate(vertra_gateway_requests_total{ {{- $ns -}}, outcome="backend_error"}[5m]))
-            / sum by (api) (rate(vertra_gateway_requests_total{ {{- $ns -}}, outcome=~"forwarded|backend_error"}[5m])) > 0.1
-          for: 10m
-          labels: {severity: warning}
-          annotations:
-            summary: The gateway can't reach {{ "{{ $labels.api }}" }}'s backend.
-            description: More than 10% of its requests couldn't be connected or couldn't get the backend's credential. The gateway's logs say which.
+  {{- include "execution-console.alertGroups" . | nindent 2 }}
+{{- end }}
 ---
 {{- end }}
 {{- if $mon.dashboard.enabled }}
@@ -102,4 +85,45 @@ metadata:
 data:
   vertra.json: |-
     {{- .Files.Get "files/grafana-dashboard.json" | nindent 4 }}
+{{- end }}
+
+{{- /* The alerts, as a rule file's (and a PrometheusRule's spec's) groups. */}}
+{{- define "execution-console.alertGroups" -}}
+{{- $ns := printf "namespace=%q" .Release.Namespace }}
+groups:
+  - name: vertra-console
+    rules:
+      - alert: VertraConsoleFailing
+        expr: >-
+          sum(rate(console_rpc_requests_total{ {{- $ns -}}, code="internal"}[5m]))
+          / sum(rate(console_rpc_requests_total{ {{- $ns -}} }[5m])) > 0.05
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: More than 5% of the console's calls are failing.
+          description: Each is logged in full by the console (maskErrors). Usually its database, kernel-api or the Kubernetes API.
+      - alert: VertraSignInBurst
+        expr: sum(increase(console_rpc_requests_total{ {{- $ns -}}, procedure="vertra.console.v1.AuthService/Login", code!="ok"}[15m])) > 50
+        labels: {severity: warning}
+        annotations:
+          summary: Over 50 failed sign-ins in 15 minutes.
+          description: Someone may be guessing passwords. Accounts lock for a while after repeated failures; the console's logs have the client addresses.
+      - alert: VertraCatalogNotApplying
+        expr: >-
+          sum(increase(console_catalog_syncs_total{ {{- $ns -}}, outcome="failed"}[1h])) > 0
+          unless sum(increase(console_catalog_syncs_total{ {{- $ns -}}, outcome!="failed"}[1h])) > 0
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: The catalog's release hasn't been applied for over an hour.
+          description: Observe's security checks (and the Admin page) show why. Nothing in the catalog changes here until it applies.
+      - alert: VertraGatewayBackendUnreachable
+        expr: >-
+          sum by (api) (rate(vertra_gateway_requests_total{ {{- $ns -}}, outcome="backend_error"}[5m]))
+          / sum by (api) (rate(vertra_gateway_requests_total{ {{- $ns -}}, outcome=~"forwarded|backend_error"}[5m])) > 0.1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: The gateway can't reach {{ "{{ $labels.api }}" }}'s backend.
+          description: More than 10% of its requests couldn't be connected or couldn't get the backend's credential. The gateway's logs say which.
 {{- end }}

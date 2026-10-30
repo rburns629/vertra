@@ -714,20 +714,53 @@ func FindPrometheus(ctx context.Context, r *run.Runner, c *config.Config) *Prome
 	return &Prometheus{Namespace: p.Metadata.Namespace, PodMonitorLabels: p.Spec.PodMonitorSelector.MatchLabels, RuleLabels: p.Spec.RuleSelector.MatchLabels}
 }
 
-// monitoringValues are a chart's monitoring and metricsFrom, for the
-// cluster's Prometheus as vertra init found it.
-func monitoringValues(c *config.Config, dashboard bool) (monitoring map[string]any, metricsFrom []any) {
+// monitoringValues are a chart's monitoring and metricsFrom (who may
+// scrape), for the Prometheus monitoring.provider names: the cluster's
+// operator as vertra init found it, GKE's managed collector, or the
+// console chart's own (console: this is the console chart's values).
+func monitoringValues(c *config.Config, console bool) (monitoring map[string]any, metricsFrom []any) {
 	m := c.Monitoring
+	scrapedFrom := func(namespace string) []any {
+		return []any{map[string]any{"namespaceSelector": map[string]any{"matchLabels": map[string]string{"kubernetes.io/metadata.name": namespace}}}}
+	}
+	switch m.ProviderName() {
+	case "google":
+		collector := GoogleCollectorNamespace(c)
+		monitoring = map[string]any{
+			"provider":   "google",
+			"google":     map[string]any{"collectorNamespace": collector},
+			"podMonitor": map[string]any{"enabled": true},
+			"alerts":     map[string]any{"enabled": true},
+		}
+		return monitoring, scrapedFrom(collector)
+	case "bundled":
+		monitoring = map[string]any{"provider": "bundled", "alerts": map[string]any{"enabled": true}}
+		if console {
+			monitoring["prometheus"] = map[string]any{"enabled": true, "kernelRelease": "kernel"}
+		}
+		bundled := map[string]any{"podSelector": map[string]any{"matchLabels": map[string]string{
+			"app.kubernetes.io/instance": "console", "app.kubernetes.io/component": "prometheus"}}}
+		return monitoring, []any{bundled}
+	}
 	monitoring = map[string]any{
+		"provider":   "operator",
 		"podMonitor": map[string]any{"enabled": true, "labels": m.PodMonitorLabels},
 		"alerts":     map[string]any{"enabled": true, "labels": m.RuleLabels},
 	}
-	if dashboard {
+	if console {
 		// Grafana's dashboard sidecar watches its own namespace by default.
 		monitoring["dashboard"] = map[string]any{"enabled": true, "namespace": m.Namespace}
 	}
-	metricsFrom = []any{map[string]any{"namespaceSelector": map[string]any{"matchLabels": map[string]string{"kubernetes.io/metadata.name": m.Namespace}}}}
-	return monitoring, metricsFrom
+	return monitoring, scrapedFrom(m.Namespace)
+}
+
+// GoogleCollectorNamespace is where GKE's managed Prometheus collector runs:
+// its own namespace on Autopilot, gmp-system on a standard cluster.
+func GoogleCollectorNamespace(c *config.Config) string {
+	if c.Cluster.Mode == "auto" {
+		return "gke-gmp-system"
+	}
+	return "gmp-system"
 }
 
 // SSOSecretName is the Secret holding the Google OAuth client's secret.

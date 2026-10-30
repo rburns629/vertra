@@ -833,31 +833,58 @@ networkPolicy:
   #   - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
   metricsFrom: []
 
-# Prometheus, through the Prometheus Operator's resources (kube-prometheus-
-# stack, VictoriaMetrics, ...; not GKE Managed Prometheus, which reads its own
-# PodMonitoring). Off by default: each
-# needs its CRDs installed. List the scraper in networkPolicy.metricsFrom.
+# Prometheus (off by default). monitoring.provider says which, as in the
+# kernel chart (set both the same):
+# - operator: the Prometheus Operator's PodMonitor and PrometheusRule
+#   (kube-prometheus-stack, VictoriaMetrics, ...; needs its CRDs);
+# - google: GKE Managed Service for Prometheus's PodMonitoring and Rules;
+# - bundled: a Prometheus of this chart's own (monitoring.prometheus).
+# List the scraper in networkPolicy.metricsFrom, in both charts.
 monitoring:
   # -- The console's /metrics port, never served by its Ingress. 0: off.
   port: 9090
-  googleManaged:
-    # -- GKE Managed Service for Prometheus: podMonitor and alerts become its
-    # PodMonitoring and Rules (monitoring.googleapis.com) instead of the
-    # Prometheus Operator's. List collectorNamespace in
-    # networkPolicy.metricsFrom so its collector may scrape.
-    enabled: false
-    # -- Where its collector runs: gmp-system, or gke-gmp-system on Autopilot.
+  provider: operator
+  google:
+    # -- Where GKE's managed collector runs: gmp-system, or gke-gmp-system on
+    # Autopilot.
     collectorNamespace: gmp-system
+  # -- With provider bundled: one Prometheus in this namespace, scraping
+  # this release's Pods and the kernel release's (found through the
+  # Kubernetes API, this namespace only), with both charts' alerts (the
+  # kernel's from its <release>-execution-kernel-prometheus-rules
+  # ConfigMap, reloaded when it changes). No Alertmanager: firing alerts
+  # show on its own page (kubectl port-forward to its Service, 9090).
+  prometheus:
+    enabled: false
+    image:
+      repository: quay.io/prometheus/prometheus
+      tag: v3.15.1
+      digest: sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2
+    # -- How long it keeps samples.
+    retentionDays: 15
+    # -- Its volume. Vertra's few hundred series need well under 1Gi for
+    # 15 days.
+    size: 2Gi
+    storageClassName: ""
+    interval: 30s
+    # -- The kernel chart's release name, for its rules and kernel-api's
+    # TLS name (its Service's).
+    kernelRelease: kernel
+    resources:
+      requests: {cpu: 50m, memory: 256Mi}
+      limits: {memory: 1Gi}
   podMonitor:
-    # -- A PodMonitor for the console and the gateway.
+    # -- A PodMonitor (or PodMonitoring) for the console and the gateway;
+    # not used with bundled.
     enabled: false
     interval: 30s
     # -- Labels your Prometheus selects PodMonitors by (kube-prometheus-
     # stack: release: <its release name>).
     labels: {}
   alerts:
-    # -- A PrometheusRule: the console failing calls, the catalog not
-    # applying, the gateway's backends failing.
+    # -- A PrometheusRule (Rules; with bundled, the bundled Prometheus's own
+    # rules): the console failing calls, the catalog not applying, the
+    # gateway's backends failing.
     enabled: false
     labels: {}
   dashboard:

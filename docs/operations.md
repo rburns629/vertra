@@ -451,30 +451,53 @@ networkPolicy:
     - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
 ```
 
-On kind or an existing cluster, `vertra init` finds a Prometheus Operator
-and offers all of this (`--monitoring`), reading which labels its Prometheus
-selects PodMonitors and rules by and which namespace it scrapes from, so
-nothing needs looking up.
+Which Prometheus is `monitoring.provider`, the same in both charts:
 
-With the Prometheus Operator (kube-prometheus-stack; VictoriaMetrics's
-operator reads the same resources), the charts can add the rest, each off
-by default because it needs that operator's CRDs. GKE's Managed Service
-for Prometheus reads its own resources instead: with
-`monitoring.googleManaged.enabled` (both charts), `podMonitor` and
-`alerts` become its `PodMonitoring` and `Rules`, and the kernel chart lets
-its collector read the kernel's TLS CA (one Secret, public). List the
-collector's namespace in `networkPolicy.metricsFrom`:
-`monitoring.googleManaged.collectorNamespace`, `gmp-system`, or
-`gke-gmp-system` on Autopilot. It's billed by samples ingested ($0.06 a
-million): Vertra's few hundred series every 30 s are about 35 million a
-month, a few dollars. `VertraSchedulerDown` also needs GKE's
-kube-state-metrics package; without it, it never fires. Its alerts go
-wherever the cluster's managed Alertmanager sends them (configured apart).
+- **operator**: the Prometheus Operator's resources (kube-prometheus-stack;
+  VictoriaMetrics's operator reads the same), each off by default because
+  it needs that operator's CRDs. On kind or an existing cluster, `vertra
+  init` finds one and offers it (`--monitoring operator`), reading which
+  labels its Prometheus selects PodMonitors and rules by and which
+  namespace it scrapes from, so nothing needs looking up.
+- **google**: GKE's Managed Service for Prometheus, which reads its own
+  `PodMonitoring` and `Rules` (`monitoring.googleapis.com`); the kernel
+  chart lets its collector read the kernel's TLS CA (that one Secret,
+  public). Its collector runs in `monitoring.google.collectorNamespace`:
+  `gmp-system`, or `gke-gmp-system` on Autopilot; list that in
+  `metricsFrom`. It's billed per sample ingested ($0.06 a million):
+  Vertra's few hundred series every 30 s are about 35 million a month, a
+  few dollars. `VertraSchedulerDown` also needs GKE's kube-state-metrics
+  package; without it, it never fires. Alerts go wherever the cluster's
+  managed Alertmanager sends them (configured apart). `vertra init` offers
+  it on gcp (`--monitoring google`).
+- **bundled**: a Prometheus of the console chart's own
+  (`monitoring.prometheus.enabled`): one Pod and a volume
+  (`monitoring.prometheus.size`, 2Gi; `retentionDays`, 15), scraping this
+  namespace's Vertra Pods (kernel-api over TLS, checked against the
+  kernel's CA) through a Role that lists only this namespace's Pods, and
+  evaluating both charts' alerts. The kernel chart's come as a ConfigMap
+  it reloads when a kernel upgrade changes them (within a minute). Nothing
+  may connect to it; read it with `kubectl -n <namespace> port-forward
+  svc/console-execution-console-prometheus 9090`. There's no Alertmanager:
+  firing alerts show on its Alerts page. List it in both charts'
+  `metricsFrom`:
 
-- `monitoring.podMonitor.enabled` (both charts): PodMonitors. Add the
+  ```yaml
+  networkPolicy:
+    metricsFrom:
+      - podSelector: {matchLabels: {app.kubernetes.io/instance: console, app.kubernetes.io/component: prometheus}}
+  ```
+
+  `vertra init` offers it on every target (`--monitoring bundled`).
+  Without kube-state-metrics, its `VertraSchedulerDown` is a scheduler
+  Pod that can't be scraped, or is but finishes no passes.
+
+- `monitoring.podMonitor.enabled` (both charts; not bundled): PodMonitors
+  (or PodMonitorings). Add the
   labels your Prometheus selects them by in `monitoring.podMonitor.labels`
   (kube-prometheus-stack: `release: <its release name>`).
-- `monitoring.alerts.enabled` (both charts): PrometheusRules.
+- `monitoring.alerts.enabled` (both charts): PrometheusRules (Rules; a
+  rule file with bundled; `helm/tests/prometheus-rules.sh` evaluates them).
   `VertraSchedulerDown` (no pass in 10 minutes while the scheduler should
   be running; needs kube-state-metrics, so an install that's asleep isn't
   down), `VertraSchedulerFailing`, `VertraStepsWaiting` (the oldest ready

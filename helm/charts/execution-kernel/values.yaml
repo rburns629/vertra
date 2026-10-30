@@ -582,30 +582,31 @@ networkPolicy:
   #   - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
   metricsFrom: []
 
-# Prometheus, through the Prometheus Operator's resources (kube-prometheus-
-# stack, VictoriaMetrics, ...), or GKE Managed Prometheus's own PodMonitoring
-# and Rules (googleManaged). Off by default: each
-# needs its CRDs installed. Without them, scrape the pods' prometheus.io
-# annotations instead. Either way, list the scraper in metricsFrom.
+# Prometheus (off by default). monitoring.provider says which:
+# - operator: the Prometheus Operator's PodMonitor and PrometheusRule
+#   (kube-prometheus-stack, VictoriaMetrics, ...; needs its CRDs);
+# - google: GKE Managed Service for Prometheus's PodMonitoring and Rules;
+# - bundled: the console chart's own Prometheus (monitoring.prometheus
+#   there), which finds these Pods itself: alerts are a rule file for it.
+# Either way, list the scraper in networkPolicy.metricsFrom. Without any,
+# scrape the pods' prometheus.io annotations instead.
 monitoring:
-  googleManaged:
-    # -- GKE Managed Service for Prometheus: podMonitor and alerts become its
-    # PodMonitoring and Rules (monitoring.googleapis.com) instead of the
-    # Prometheus Operator's. List collectorNamespace in
-    # networkPolicy.metricsFrom so its collector may scrape.
-    enabled: false
-    # -- Where its collector runs: gmp-system, or gke-gmp-system on Autopilot.
+  provider: operator
+  google:
+    # -- Where GKE's managed collector runs: gmp-system, or gke-gmp-system on
+    # Autopilot (it's granted this release's TLS CA, nothing else).
     collectorNamespace: gmp-system
   podMonitor:
-    # -- A PodMonitor for kernel-api (port 8000) and the scheduler (metricsPort).
+    # -- A PodMonitor (or PodMonitoring) for kernel-api (port 8000) and the
+    # scheduler (metricsPort); not used with bundled.
     enabled: false
     interval: 30s
     # -- Labels your Prometheus selects PodMonitors by (kube-prometheus-stack:
     # release: <its release name>).
     labels: {}
   alerts:
-    # -- A PrometheusRule: the scheduler stopped or keeps failing, or steps
-    # wait too long to start.
+    # -- A PrometheusRule (Rules; with bundled, a rule file): the scheduler
+    # stopped or keeps failing, or steps wait too long to start.
     enabled: false
     labels: {}
     # -- How long the oldest READY step may wait before VertraStepsWaiting.

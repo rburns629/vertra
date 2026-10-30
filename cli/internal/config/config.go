@@ -98,8 +98,9 @@ type Config struct {
 	// the install's own project; on aws, Claude in Amazon Bedrock in its
 	// region; unless it's off. Elsewhere, the console chart's chat values.
 	Chat Chat `yaml:"chat,omitempty"`
-	// Monitoring: the charts' PodMonitors, alerts and Grafana dashboard,
-	// for a Prometheus Operator already in the cluster.
+	// Monitoring: Prometheus for the platform's metrics and alerts: the
+	// cluster's Prometheus Operator, GKE's Managed Service for Prometheus,
+	// or a Prometheus of the install's own.
 	Monitoring Monitoring `yaml:"monitoring,omitempty"`
 	// Access records who set this environment up, so a later run signed in
 	// as someone else (another account, profile or project) stops first.
@@ -240,11 +241,17 @@ type SSO struct {
 	GoogleGroups bool `yaml:"googleGroups,omitempty"`
 }
 
-// Monitoring is for a cluster's Prometheus Operator, as vertra init found
-// it: the namespace it scrapes from, and the labels it selects
-// PodMonitors and rules by.
+// Monitoring is which Prometheus scrapes the platform and evaluates its
+// alerts (Provider): the cluster's Prometheus Operator (operator, as vertra
+// init found it: the namespace it scrapes from, and the labels it selects
+// PodMonitors and rules by), GKE's Managed Service for Prometheus
+// (google, gcp; billed per sample), or one the console chart runs
+// (bundled: a Pod and a small volume).
 type Monitoring struct {
-	Enabled          bool              `yaml:"enabled,omitempty"`
+	Enabled bool `yaml:"enabled,omitempty"`
+	// Provider: operator (empty means operator, as before), google or
+	// bundled.
+	Provider         string            `yaml:"provider,omitempty"`
 	Namespace        string            `yaml:"namespace,omitempty"`
 	PodMonitorLabels map[string]string `yaml:"podMonitorLabels,omitempty"`
 	RuleLabels       map[string]string `yaml:"ruleLabels,omitempty"`
@@ -617,6 +624,21 @@ func (c *Config) Validate() error {
 			add("logs.keepDays: %d: at least logs.searchDays (%d), at most 3650", c.Logs.KeepDays, c.Logs.SearchDays)
 		}
 	}
+	if c.Monitoring.Enabled {
+		switch c.Monitoring.ProviderName() {
+		case "operator":
+			if c.Monitoring.Namespace == "" {
+				add("monitoring.namespace: the namespace the Prometheus Operator scrapes from")
+			}
+		case "google":
+			if c.Target != "gcp" {
+				add("monitoring.provider: google (GKE's Managed Service for Prometheus) is only on gcp")
+			}
+		case "bundled":
+		default:
+			add("monitoring.provider: %q isn't operator, google or bundled", c.Monitoring.Provider)
+		}
+	}
 	if c.Audit.Export {
 		if c.Target != "gcp" && c.Target != "aws" {
 			add("audit.export: only on gcp and aws, where vertra makes the bucket (elsewhere, set the console chart's audit.export)")
@@ -965,4 +987,12 @@ func (c *Config) ModuleSigning() string {
 // here: its own catalog signed, or another's verified.
 func (c *Config) ChecksSignatures() bool {
 	return c.Signs() || c.VerifiesCatalog()
+}
+
+// ProviderName is the Prometheus monitoring is for: operator when unset.
+func (m Monitoring) ProviderName() string {
+	if m.Provider == "" {
+		return "operator"
+	}
+	return m.Provider
 }

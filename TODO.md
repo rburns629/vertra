@@ -110,12 +110,18 @@ design.
     92.1.0 (2026-10-22): all four components scraped through the
     PodMonitors, all seven alerts loaded, the dashboard in Grafana with its
     queries answering; `vertra init` finds the operator and its selector
-    labels (`--monitoring`). GKE's Managed Service for Prometheus (charts
-    done 2026-10-29): `monitoring.googleManaged` turns podMonitor and
-    alerts into its `PodMonitoring` and `Rules`, the kernel's TLS CA
-    readable by its collector; checked against GMP v0.17.0's CRDs (a
-    server dry run on kind). Left: on a real GKE cluster (the billed batch),
-    and whether `vertra` offers it on gcp (billed per sample).
+    labels (`--monitoring`). Two more providers (done 2026-10-30,
+    `monitoring.provider`): GKE's Managed Service for Prometheus (its
+    `PodMonitoring` and `Rules`, the kernel's TLS CA readable by its
+    collector; checked against GMP v0.17.0's CRDs by a server dry run on
+    kind) and a bundled Prometheus in the console chart (proven on kind:
+    all four components scraped, kernel-api over TLS, both charts' seven
+    alerts loaded, a kernel-only upgrade's rule change picked up in 70 s
+    without a restart). `vertra init` offers each (google on gcp). The
+    alerts' behaviour is tested by promtool in CI
+    (`helm/tests/prometheus-rules.sh`). Left: google on a real GKE cluster
+    and bundled on a cloud's volumes (the billed batch); the console
+    could show the bundled Prometheus's firing alerts on Observe.
   - The audit log (done 2026-10-22: `ObserveService.ListAudit`, the
     Observe page's Audit log tab): an admin sees every entry; anyone else
     their own, and what was done to their teams or to runs in them, by

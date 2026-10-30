@@ -365,3 +365,19 @@ func TestLoadReadsTheCatalogsPublicKey(t *testing.T) {
 		t.Errorf("loaded %q, %v", got.CatalogSignature.PublicKey, err)
 	}
 }
+
+func TestValidateMonitoring(t *testing.T) {
+	for provider, want := range map[string]string{
+		"bundled":  "",
+		"google":   "only on gcp",
+		"operator": "monitoring.namespace",
+		"grafana":  `"grafana" isn't operator, google or bundled`,
+	} {
+		c := validKind(t)
+		c.Monitoring = Monitoring{Enabled: true, Provider: provider}
+		err := c.Validate()
+		if want == "" && err != nil || want != "" && (err == nil || !strings.Contains(err.Error(), want)) {
+			t.Errorf("%s: %v, want %q", provider, err, want)
+		}
+	}
+}

@@ -1,14 +1,25 @@
 {{- /*
-Prometheus Operator resources (values: monitoring), or with
-monitoring.googleManaged GKE Managed Service for Prometheus's own
-(PodMonitoring and Rules, monitoring.googleapis.com), which adds the
-namespace label itself and scopes a namespace's Rules to it. The console
-chart ships the Grafana dashboard covering both charts and the gateway.
+Monitoring (values: monitoring), for one of three Prometheuses
+(monitoring.provider):
+
+- operator: the Prometheus Operator's PodMonitor and PrometheusRule.
+- google: GKE Managed Service for Prometheus's own PodMonitoring and Rules
+  (monitoring.googleapis.com), which adds the namespace label itself and
+  scopes a namespace's Rules to it.
+- bundled: the console chart's own Prometheus, which finds this release's
+  Pods itself; this chart gives it only its alerts, as a rule file in a
+  ConfigMap (<fullname>-prometheus-rules).
+
+The console chart ships the Grafana dashboard covering both charts and the
+gateway.
 */}}
 {{- $mon := .Values.monitoring }}
-{{- $gmp := $mon.googleManaged.enabled }}
+{{- if not (has $mon.provider (list "operator" "google" "bundled")) }}
+{{- fail "monitoring.provider is operator, google or bundled." }}
+{{- end }}
+{{- $gmp := eq $mon.provider "google" }}
 {{- $caSecret := printf "%s-tls-ca" (include "execution-kernel.fullname" .) }}
-{{- if $mon.podMonitor.enabled }}
+{{- if and $mon.podMonitor.enabled (ne $mon.provider "bundled") }}
 {{- if $gmp }}
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
@@ -75,13 +86,23 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: collector
-    namespace: {{ $mon.googleManaged.collectorNamespace }}
+    namespace: {{ $mon.google.collectorNamespace }}
 ---
 {{- end }}
 {{- end }}
 {{- if $mon.alerts.enabled }}
-{{- $ns := printf "namespace=%q" .Release.Namespace }}
-{{- $scheduler := printf "namespace=%q, deployment=%q" .Release.Namespace (printf "%s-scheduler" (include "execution-kernel.fullname" .)) }}
+{{- if eq $mon.provider "bundled" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "execution-kernel.fullname" . }}-prometheus-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "execution-kernel.labels" . | nindent 4 }}
+data:
+  kernel.rules.yaml: |
+    {{- include "execution-kernel.alertGroups" . | nindent 4 }}
+{{- else }}
 {{- if $gmp }}
 apiVersion: monitoring.googleapis.com/v1
 kind: Rules
@@ -98,32 +119,52 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  groups:
-    - name: vertra-kernel
-      rules:
-        - alert: VertraSchedulerDown
-          # Only while its Deployment wants replicas: asleep (kernel sleep)
-          # isn't down. Needs kube-state-metrics.
-          expr: >-
-            (absent(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }) or sum(rate(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }[5m])) == 0)
-            and on() sum(kube_deployment_spec_replicas{ {{- $scheduler -}} }) > 0
-          for: 10m
-          labels: {severity: critical}
-          annotations:
-            summary: No scheduler has finished a pass in 10 minutes.
-            description: Nothing will start or finish. Check the scheduler's Pods and logs (docs/operations.md, Troubleshooting).
-        - alert: VertraSchedulerFailing
-          expr: sum(increase(kernel_scheduler_tick_errors_total{ {{- $ns -}} }[10m])) > 5
-          for: 10m
-          labels: {severity: warning}
-          annotations:
-            summary: The scheduler's passes keep failing.
-            description: Each failed pass is retried from the database, so a run of them usually means Postgres or the Kubernetes API is failing. See "scheduler tick failed" in its logs.
-        - alert: VertraStepsWaiting
-          expr: max(kernel_oldest_ready_task_age_seconds{ {{- $ns -}} }) > {{ $mon.alerts.readyWaitSeconds }}
-          for: 5m
-          labels: {severity: warning}
-          annotations:
-            summary: A step has waited {{ "{{ $value | humanizeDuration }}" }} to start.
-            description: Steps are ready but not starting. The cluster may be out of room, a team at its limit, or the scheduler behind.
+  {{- include "execution-kernel.alertGroups" . | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{- /*
+The alerts, as a rule file's (and a PrometheusRule's spec's) groups.
+VertraSchedulerDown: only while the scheduler's Deployment wants replicas,
+so asleep (kernel sleep) isn't down. That needs kube-state-metrics; the
+bundled Prometheus has none, so there it's a scheduler Pod that's down, or
+up but finishing no passes.
+*/}}
+{{- define "execution-kernel.alertGroups" -}}
+{{- $mon := .Values.monitoring }}
+{{- $ns := printf "namespace=%q" .Release.Namespace }}
+{{- $schedulerName := printf "%s-scheduler" (include "execution-kernel.fullname" .) }}
+{{- $scheduler := printf "namespace=%q, deployment=%q" .Release.Namespace $schedulerName }}
+groups:
+  - name: vertra-kernel
+    rules:
+      - alert: VertraSchedulerDown
+        {{- if eq $mon.provider "bundled" }}
+        expr: >-
+          max(up{ {{- $ns -}}, pod=~"{{ $schedulerName }}-.*"}) == 0
+          or sum(rate(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }[5m])) == 0
+        {{- else }}
+        expr: >-
+          (absent(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }) or sum(rate(kernel_scheduler_tick_duration_seconds_count{ {{- $ns -}} }[5m])) == 0)
+          and on() sum(kube_deployment_spec_replicas{ {{- $scheduler -}} }) > 0
+        {{- end }}
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: No scheduler has finished a pass in 10 minutes.
+          description: Nothing will start or finish. Check the scheduler's Pods and logs (docs/operations.md, Troubleshooting).
+      - alert: VertraSchedulerFailing
+        expr: sum(increase(kernel_scheduler_tick_errors_total{ {{- $ns -}} }[10m])) > 5
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: The scheduler's passes keep failing.
+          description: Each failed pass is retried from the database, so a run of them usually means Postgres or the Kubernetes API is failing. See "scheduler tick failed" in its logs.
+      - alert: VertraStepsWaiting
+        expr: max(kernel_oldest_ready_task_age_seconds{ {{- $ns -}} }) > {{ $mon.alerts.readyWaitSeconds }}
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: A step has waited {{ "{{ $value | humanizeDuration }}" }} to start.
+          description: Steps are ready but not starting. The cluster may be out of room, a team at its limit, or the scheduler behind.
 {{- end }}

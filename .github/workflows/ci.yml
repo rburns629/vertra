@@ -195,13 +195,16 @@ jobs:
             --set identityPolicy.enabled=false --set api.auth.enabled=false --set imagePolicy.enabled=false > /dev/null
           helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
             --set writeFence.enabled=false --set kernelApiToken.enabled=false > /dev/null
-          monitoring="--set monitoring.podMonitor.enabled=true --set monitoring.alerts.enabled=true"
-          # shellcheck disable=SC2086
-          helm template kernel helm/charts/execution-kernel $monitoring > /dev/null
-          # shellcheck disable=SC2086
-          helm template console helm/charts/execution-console --set kernelApiUrl=http://x $monitoring \
-            --set monitoring.dashboard.enabled=true --set gateway.enabled=true \
-            --set 'networkPolicy.metricsFrom[0].namespaceSelector.matchLabels.x=y' > /dev/null
+          for provider in operator google bundled; do
+            monitoring="--set monitoring.provider=$provider --set monitoring.podMonitor.enabled=true
+              --set monitoring.alerts.enabled=true --set monitoring.prometheus.enabled=true"
+            # shellcheck disable=SC2086
+            helm template kernel helm/charts/execution-kernel $monitoring > /dev/null
+            # shellcheck disable=SC2086
+            helm template console helm/charts/execution-console --set kernelApiUrl=http://x $monitoring \
+              --set monitoring.dashboard.enabled=true --set gateway.enabled=true \
+              --set 'networkPolicy.metricsFrom[0].namespaceSelector.matchLabels.x=y' > /dev/null
+          done
           for tls in "ingress.certManager.issuer=ca" "ingress.certManager.acme.email=a@b.c" "ingress.tlsSecretName=s"; do
             helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
               --set ingress.enabled=true --set ingress.host=v.example.com --set ingress.className=traefik --set "$tls" > /dev/null
@@ -215,6 +218,8 @@ jobs:
             helm template console helm/charts/execution-console --set kernelApiUrl=http://x \
               --set logs.enabled=true --set logs.storage.type=$storage --set logs.storage.bucket=b > /dev/null
           done
+      - name: The alerts, evaluated by promtool
+        run: bash helm/tests/prometheus-rules.sh
       - name: Render every size, with sleeping and headroom on
         run: |
           for size in minimal resilient scaled auto; do
