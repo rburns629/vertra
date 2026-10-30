@@ -31,7 +31,7 @@ export function AskProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [opened, setOpened] = useState(false);
   // A question a page opened it with: a new object each time, so the same words twice still fill the box.
-  const [question, setQuestion] = useState<{ text: string } | null>(null);
+  const [question, setQuestion] = useState<{ text: string; send: boolean } | null>(null);
 
   useEffect(() => {
     getChatSettings()
@@ -42,9 +42,9 @@ export function AskProvider({ children }: { children: ReactNode }) {
   const ask = useMemo(
     () => ({
       model,
-      open: (text?: string) => {
+      open: (text?: string, options?: { send?: boolean }) => {
         if (typeof model !== "string") return;
-        if (text) setQuestion({ text });
+        if (text) setQuestion({ text, send: options?.send ?? false });
         setOpen(true);
         setOpened(true);
       },

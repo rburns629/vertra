@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
-import { useSyncExternalStore } from "react";
-import type { OrderOption } from "./api";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { ApiError, previewOrder, type OrderOption, type OrderProblem, type OrderSuggestion, type Runnable } from "./api";
+import type { Check } from "./components/CheckStrip";
+import type { BuiltStep } from "./compose";
 
 /**
  * The cart (decision 25): actions a person collects in the Catalog, then
@@ -91,3 +93,67 @@ export const cart = {
     write({ team: current.team, actions: [], choices: [], values: {} });
   },
 };
+
+/** A cart planned for a team (OrderService/PreviewOrder): its steps wired, what it couldn't settle, what's suggested. */
+export interface Plan {
+  steps: BuiltStep[];
+  problems: OrderProblem[];
+  suggestions: OrderSuggestion[];
+}
+
+/** The plan for these actions, for this team with these choices: planned again whenever one changes. Runs nothing. */
+export function useOrderPlan(team: string | null, actions: string[], choices: OrderOption[]): { plan: Plan | null; error: string | null } {
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!team || actions.length === 0) {
+      setPlan(null);
+      setError(null);
+      return;
+    }
+    let current = true;
+    previewOrder(team, actions, choices)
+      .then((p) => {
+        if (current) {
+          setPlan(p);
+          setError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (current) setError(err instanceof ApiError ? err.message : "Couldn't plan the order.");
+      });
+    return () => {
+      current = false;
+    };
+  }, [team, actions, choices]);
+  return { plan, error };
+}
+
+/**
+ * A plan's account, for a strip of checks: how many steps and in what
+ * order, what was added, choices made and left, and steps that aren't
+ * ready here or are deprecated (by `action`, the step's action as the
+ * catalog lists it).
+ */
+export function planChecks(plan: Plan, choices: OrderOption[], action: (product: string) => Runnable | undefined, install: string): Check[] {
+  const name = (product: string) => action(product)?.displayName || product;
+  const checks: Check[] = [];
+  const cycle = plan.problems.find((p) => p.code === "CYCLE");
+  if (cycle) checks.push({ tone: "error", text: cycle.message });
+  else checks.push({ tone: "success", text: `${String(plan.steps.length)} ${plan.steps.length === 1 ? "step" : "steps"}, in the order they can run` });
+  const chosen = choices.length;
+  const added = plan.steps.filter((s) => s.added);
+  if (added.length > 0) checks.push({ tone: "info", text: `Adds ${added.map((s) => name(s.product)).join(", ")}: something in your cart needs ${added.length === 1 ? "it" : "them"}` });
+  if (chosen > 0) checks.push({ tone: "success", text: `${String(chosen)} ${chosen === 1 ? "choice" : "choices"} made` });
+  const open = plan.problems.filter((p) => p.options.length > 0 && !choices.some((c) => c.step === p.step && c.input === p.input));
+  if (open.length > 0)
+    checks.push({
+      tone: "warning",
+      text: `${String(open.length)} ${open.length === 1 ? "choice" : "choices"}: what fills ${open.map((p) => `${name(plan.steps.find((s) => s.id === p.step)?.product ?? p.step)}'s ${p.input}`).join(", ")}`,
+    });
+  const unready = plan.steps.filter((s) => action(s.product)?.readiness?.state === "not_ready").length;
+  if (unready > 0) checks.push({ tone: "warning", text: `${String(unready)} ${unready === 1 ? "step" : "steps"} not ready on ${install}` });
+  const deprecated = plan.steps.filter((s) => action(s.product)?.deprecated).length;
+  if (deprecated > 0) checks.push({ tone: "warning", text: `${String(deprecated)} ${deprecated === 1 ? "step" : "steps"} deprecated` });
+  return checks;
+}

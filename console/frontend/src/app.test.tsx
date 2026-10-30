@@ -489,7 +489,7 @@ describe("the catalog", () => {
     expect(screen.getByRole("heading", { name: "RDS for PostgreSQL" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "All teams" }));
-    fireEvent.click(screen.getByRole("switch", { name: /only what i can run/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /only what i can run/i }));
     expect(screen.queryByRole("heading", { name: "RDS for PostgreSQL" })).toBeNull();
     expect(screen.getByRole("heading", { name: "App on Cloud Run" })).toBeTruthy();
   });
@@ -782,8 +782,7 @@ describe("the cart", () => {
     });
     expect(await screen.findByRole("heading", { name: "App hosting" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Place order" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "projectId" }));
-    fireEvent.click(await screen.findByRole("option", { name: "web-prod (gcp/project)" }));
+    fireEvent.click(screen.getByRole("radio", { name: /web-prod \(gcp\/project\)/ }));
     expect(await screen.findByText("Uses web-prod (gcp/project)")).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/Service name/), { target: { value: "shop-api" } });
     fireEvent.change(screen.getByLabelText(/gcp\.region/), { target: { value: "us-central1" } });
@@ -1094,16 +1093,20 @@ describe("home", () => {
     await renderAt("/", MEMBER, {
       "ExecutionService/ListExecutions": {
         executions: [
-          { executionId: "r1", name: "orders-api first deploy", createdAt: new Date(Date.now() - 300_000).toISOString(), state: "EXECUTION_STATE_RUNNING", steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 } },
+          { executionId: "r1", name: "orders-api first deploy", submittedBy: "ana@acme.com", createdAt: new Date(Date.now() - 300_000).toISOString(), state: "EXECUTION_STATE_RUNNING", steps: { SUCCEEDED: 2, RUNNING: 1, PENDING: 1 } },
           { executionId: "r2", name: "yesterday's", createdAt: new Date(Date.now() - 86_400_000).toISOString(), state: "EXECUTION_STATE_SUCCEEDED", steps: { SUCCEEDED: 1 } },
         ],
       },
       "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "orders-api prod database", taskId: "database", team: "azure-apps", requestedBy: "sam@acme.com", canDecide: true }] },
     });
-    expect(await screen.findByRole("link", { name: "orders-api first deploy" })).toBeTruthy();
+    expect(await screen.findByText("orders-api first deploy")).toBeTruthy();
     expect(screen.getByText("2 of 4 steps done")).toBeTruthy();
-    expect(screen.getByText(/1 of your runs is going\. 1 step waits for you to approve\./)).toBeTruthy();
-    expect(screen.getByText(/sam@acme.com asked to run database in orders-api prod database/)).toBeTruthy();
+    expect(await screen.findByText(/1 run for you and your teams is going, and 1 thing waits for you to decide\./)).toBeTruthy();
+    expect(screen.getByText("orders-api prod database")).toBeTruthy();
+    expect(screen.getByText(/sam@acme.com asked to run database for azure-apps/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Review it" }).getAttribute("href")).toBe("/runs/r9");
+    // The install at a glance is an admin's.
+    expect(screen.queryByRole("heading", { name: /at a glance/ })).toBeNull();
   });
 });
 
@@ -1667,8 +1670,7 @@ describe("Compose's cart", () => {
     fireEvent.mouseDown(await screen.findByRole("combobox", { name: "Actions" }));
     fireEvent.click(await screen.findByRole("option", { name: /^deploy/ }));
     fireEvent.click(screen.getByRole("button", { name: "Wire them" }));
-    fireEvent.mouseDown(await screen.findByRole("combobox", { name: "deploy's projectId" }));
-    fireEvent.click(await screen.findByRole("option", { name: "prod-project's projectId" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /prod-project's projectId/ }));
     await waitFor(() => {
       expect(previews).toHaveLength(2);
     });
@@ -1700,9 +1702,8 @@ describe("a product's readiness", () => {
         return { started: true };
       },
     });
-    // Its team's section, then the product.
-    fireEvent.click(await screen.findByText("gcp-platform"));
-    fireEvent.click(await screen.findByText("Not ready"));
+    // Its team's section is open (the first); then the product.
+    fireEvent.click(await screen.findByRole("button", { name: "project" }));
     expect(await screen.findByText("roles/resourcemanager.projectCreator on folder 12")).toBeTruthy();
     expect(screen.getByText("project-sa@acme.iam")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Check now" }));
@@ -1728,10 +1729,55 @@ describe("notifications", () => {
       },
     });
     fireEvent.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
-    fireEvent.click(await screen.findByText("billing-api staging failed"));
+    // The bell's list, not Home's own: it's shown last, in a popover.
+    fireEvent.click((await screen.findAllByText("billing-api staging failed")).at(-1) as HTMLElement);
     await waitFor(() => { expect(read).toEqual([{ ids: ["n1"] }]); });
     // On the run's page now.
     expect(await screen.findByLabelText("Loading the run")).toBeTruthy();
+  });
+});
+
+describe("home for an admin", () => {
+  it("shows the install at a glance and the deletes waiting for an admin", async () => {
+    await renderAt("/", ADMIN, {
+      "AdminService/GetCatalogStatus": { status: { release: "registry.example/catalog-release", version: "v1.18.0", commit: "3f2be1d0", problems: [] } },
+      "ObserveService/GetSecurity": {
+        images: [{ product: "flagger", team: "growth", image: "registry.example/growth/flagger:0.9@sha256:aa", scan: "failed" }],
+        refusals: [{ what: "a step", team: "growth", code: "IMAGE_NOT_ALLOWED", source: "step", count: 3 }],
+      },
+      "ResourceService/ListDeleteRequests": { requests: [{ id: "d1", resources: [{ id: "r1", type: "pg/instance", externalId: "orders-db-stg", name: "orders-db-stg" }] }] },
+    });
+    expect(await screen.findByRole("heading", { name: /test at a glance/ })).toBeTruthy();
+    expect(await screen.findByText("Catalog release v1.18.0 applied")).toBeTruthy();
+    expect(screen.getByText("1 image fails its scan")).toBeTruthy();
+    expect(screen.getByText("3 steps refused this week")).toBeTruthy();
+    expect(await screen.findByText("1 delete waits for an admin")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Decide" }).getAttribute("href")).toBe("/runs/made");
+  });
+});
+
+describe("the catalog's cart", () => {
+  it("collects an action beside the catalog, says it's in, and removes it", async () => {
+    await renderAt("/catalog", MEMBER, {
+      "TemplateService/ListTemplates": { runnables: [{ kind: "KIND_ACTION", team: "gcp", name: "gcp-bucket-create", displayName: "Bucket", actions: ["gcp/bucket.create"], shared: true }] },
+      "OrderService/PreviewOrder": { steps: [{ id: "bucket", product: "gcp-bucket-create", inputs: {} }] },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Add to cart" }));
+    expect(await screen.findByRole("link", { name: "In your cart" })).toBeTruthy();
+    expect(await screen.findByText("1 step, in the order they can run")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Bucket" }));
+    expect(await screen.findByRole("button", { name: "Add to cart" })).toBeTruthy();
+  });
+});
+
+describe("Compose's drafts", () => {
+  it("opens the draft a link names, its steps listed", async () => {
+    await renderAt("/catalog/compose?draft=azure-apps%2Fnightly", MEMBER, {
+      "ProductService/ListProducts": { products: [{ id: "p1", name: "deploy", displayName: "Deploy", image: "registry.example/apps/deploy@sha256:aa", action: "create", teamName: "azure-apps", inputSchema: { type: "object" } }] },
+      "DraftService/ListDrafts": { drafts: [{ team: "azure-apps", name: "nightly", version: "1", body: { displayName: "Nightly", steps: [{ id: "deploy", product: "deploy", inputs: {} }] } }] },
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Nightly" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Deploy/, pressed: true })).toBeTruthy();
   });
 });
 
