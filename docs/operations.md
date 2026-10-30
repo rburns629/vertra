@@ -603,7 +603,10 @@ to know:
   conflict. The chart writes back what the console last set, so nothing is
   lost.
 - **Migrations run first**, as a Helm hook, before any new Pod starts, on
-  every upgrade (a no-op when nothing's pending). The scheduler waits for
+  every upgrade (a no-op when nothing's pending), against the database the
+  upgrade is going to: the kernel's hook reads its URL from a hook Secret
+  of its own (`<release>-execution-kernel-db-migrate`), since the release's
+  other resources, its main Secret included, are updated only after it. The scheduler waits for
   them on a fresh install.
 
 **Images reused under the same tag.** With `pullPolicy: IfNotPresent` (the
@@ -746,8 +749,12 @@ signed in as that database's own service (`kernel database-token` writes
 its token for `pg_restore`), so the service owns what's restored, in one
 transaction; then the charts start on the server. The data never leaves the
 cluster. A server database that already has tables is never copied over. If
-a copy fails, the platform starts again on the in-cluster Postgres and
-nothing has switched. The in-cluster Postgres's volume is kept as the way
+a copy fails before any is done, the platform starts again on the
+in-cluster Postgres and nothing has switched; once one is done, the writers
+stay stopped and applying again copies only the rest (what's done stays
+current, nothing having written since). The in-cluster backups' bucket is
+kept, its old backups ageing out as before. Proven on GKE (Cloud SQL) and
+EKS (RDS), 2026-10-29. The in-cluster Postgres's volume is kept as the way
 back, until you delete its claim. (`vertra backup --to <folder>` first keeps
 a copy on your machine too.)
 

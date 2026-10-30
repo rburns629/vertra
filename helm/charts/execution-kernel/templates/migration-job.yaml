@@ -60,5 +60,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "execution-kernel.databaseSecretName" . }}
+                  # The URL being upgraded to (secret.yaml's hook Secret),
+                  # or yours.
+                  name: {{ if .Values.existingSecret }}{{ .Values.existingSecret }}{{ else }}{{ include "execution-kernel.fullname" . }}-db-migrate{{ end }}
                   key: {{ include "execution-kernel.databaseSecretKey" . }}

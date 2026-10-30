@@ -63,7 +63,7 @@ func (a *app) planGCP(ctx context.Context, out io.Writer, dir string, c *config.
 	if err := modules.Write("gcp", p.tf.Path); err != nil {
 		return nil, err
 	}
-	if err := p.tf.WriteVars(gcp.Vars(c, false)); err != nil {
+	if err := p.tf.WriteVars(keepBackupBucket(ctx, p.tf, c, gcp.Vars(c, false), "google_storage_bucket.backups[0]")); err != nil {
 		return nil, err
 	}
 	fmt.Fprintln(out, "Planning the cloud side (OpenTofu)...")
@@ -76,6 +76,17 @@ func (a *app) planGCP(ctx context.Context, out io.Writer, dir string, c *config.
 	}
 	p.changes, p.cost = changes, cost()
 	return p, nil
+}
+
+// keepBackupBucket keeps the in-cluster database's backups bucket an
+// install has once its database is managed (its data moved there): the
+// backups taken before stay, aging out by the bucket's lifecycle rule,
+// rather than going with the bucket (which, holding them, would fail).
+func keepBackupBucket(ctx context.Context, tf tofu.Dir, c *config.Config, vars map[string]any, bucket string) map[string]any {
+	if c.Database.Type == "managed" && c.Database.Backups.Enabled && tf.Has(ctx, bucket) {
+		vars["backups"] = true
+	}
+	return vars
 }
 
 // later runs f in the background when it should, and returns a wait for
@@ -278,6 +289,14 @@ func (a *app) applyGCP(ctx context.Context, out io.Writer, c *config.Config, p *
 	if err := gcp.Credentials(ctx, a.runner, c); err != nil {
 		return nil, err
 	}
+	// A new cluster takes your IAM role to its RBAC a little after it's up:
+	// until then the charts' RBAC is refused, as granting what you lack.
+	if err := waitFor(ctx, 5*time.Minute, 10*time.Second, func() (bool, error) {
+		out, _ := a.runner.Output(ctx, "kubectl", "--context", cluster.Context(c), "auth", "can-i", "create", "jobs.batch", "--all-namespaces")
+		return out == "yes", nil
+	}); err != nil {
+		return nil, fmt.Errorf("the cluster doesn't yet let you manage it (kubectl auth can-i create jobs.batch --all-namespaces): %w", err)
+	}
 	if img.Push {
 		if err := gcp.DockerLogin(ctx, a.runner, strings.SplitN(gcp.PlatformRegistry(c), "/", 2)[0]); err != nil {
 			return nil, err
@@ -342,7 +361,7 @@ func (a *app) destroyGCP(ctx context.Context, out io.Writer, dir string, c *conf
 	if err := modules.Write("gcp", tf.Path); err != nil {
 		return err
 	}
-	if err := tf.WriteVars(gcp.Vars(c, deleteData)); err != nil {
+	if err := tf.WriteVars(keepBackupBucket(ctx, tf, c, gcp.Vars(c, deleteData), "google_storage_bucket.backups[0]")); err != nil {
 		return err
 	}
 	if err := tf.Init(ctx); err != nil {

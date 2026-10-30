@@ -22,7 +22,7 @@ func ManagedNow(ctx context.Context, r *run.Runner, c *config.Config, db *instal
 			"--project", c.GCP.Project, "--description", "vertra backup")
 	case "aws":
 		snapshot := "vertra-" + time.Now().UTC().Format("20060102-150405")
-		if err := r.Run(ctx, "aws", awsArgs(c, "rds", "create-db-snapshot", "--db-instance-identifier", db.Instance,
+		if _, err := r.Output(ctx, "aws", awsArgs(c, "rds", "create-db-snapshot", "--db-instance-identifier", db.Instance,
 			"--db-snapshot-identifier", snapshot, "--output", "text", "--query", "DBSnapshot.DBSnapshotIdentifier")...); err != nil {
 			return "", err
 		}

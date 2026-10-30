@@ -438,5 +438,5 @@ func (a *app) writeAWSVars(ctx context.Context, c *config.Config, tf tofu.Dir, d
 			return err
 		}
 	}
-	return tf.WriteVars(awscloud.Vars(c, deleteData, github))
+	return tf.WriteVars(keepBackupBucket(ctx, tf, c, awscloud.Vars(c, deleteData, github), "aws_s3_bucket.backups[0]"))
 }

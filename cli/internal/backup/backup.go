@@ -132,7 +132,7 @@ func waitForJob(ctx context.Context, r *run.Runner, c *config.Config, job string
 			case cond.Type == "Complete" && cond.Status == "True":
 				return nil
 			case cond.Type == "Failed" && cond.Status == "True":
-				return fmt.Errorf("the backup Job %s failed", job)
+				return fmt.Errorf("the Job %s failed", job)
 			}
 		}
 		select {
@@ -141,7 +141,7 @@ func waitForJob(ctx context.Context, r *run.Runner, c *config.Config, job string
 		case <-time.After(5 * time.Second):
 		}
 	}
-	return fmt.Errorf("the backup Job %s didn't finish in %s", job, limit)
+	return fmt.Errorf("the Job %s didn't finish in %s", job, limit)
 }
 
 func pairAt(base, ts string) Pair {

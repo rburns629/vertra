@@ -28,8 +28,12 @@ func TestMoveJobsSignInAsTheirServiceAndReachThePostgres(t *testing.T) {
 					Spec     struct {
 						ServiceAccountName string `yaml:"serviceAccountName"`
 						InitContainers     []struct {
-							Command []string
-							Env     []struct{ Name, Value string }
+							Command      []string
+							Env          []struct{ Name, Value string }
+							VolumeMounts []struct {
+								Name      string
+								MountPath string `yaml:"mountPath"`
+							} `yaml:"volumeMounts"`
 						} `yaml:"initContainers"`
 						Containers []struct {
 							Command      []string
@@ -51,6 +55,14 @@ func TestMoveJobsSignInAsTheirServiceAndReachThePostgres(t *testing.T) {
 		}
 		if spec.ServiceAccountName != "kernel-execution-kernel" || len(spec.InitContainers) != 1 || spec.InitContainers[0].Command[1] != "database-token" {
 			t.Errorf("%s: sign-in %+v", tc.db.Provider, spec)
+		}
+		// pgx reads the CA the URL names as it parses it.
+		mounts := map[string]string{}
+		for _, m := range spec.InitContainers[0].VolumeMounts {
+			mounts[m.Name] = m.MountPath
+		}
+		if mounts["db-ca"] != "/etc/vertra/tls-db" || mounts["token"] != "/token" {
+			t.Errorf("%s: token mounts %v", tc.db.Provider, mounts)
 		}
 		env := map[string]string{}
 		for _, e := range spec.InitContainers[0].Env {

@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rburns629/vertra/cli/internal/config"
@@ -63,9 +65,14 @@ func MoveToManaged(ctx context.Context, r *run.Runner, c *config.Config, out io.
 	}
 	// Where to sign in on gcp: the annotation the charts give these
 	// ServiceAccounts with a managed database (the same value, so Helm's
-	// server-side apply takes it over without a conflict).
+	// server-side apply takes it over without a conflict), here before the
+	// charts: the copy runs as them, and so does the kernel's migration,
+	// a hook that runs before Helm updates the ServiceAccounts.
 	if db.Provider == "gcp" {
-		for sa, identity := range map[string]string{kernelServiceAccount: db.KernelServiceAccount, consoleServiceAccount: consoleIdentity} {
+		for sa, identity := range map[string]string{
+			kernelServiceAccount: db.KernelServiceAccount, kernelServiceAccount + "-api": db.KernelServiceAccount,
+			consoleServiceAccount: consoleIdentity,
+		} {
 			if err := r.Run(ctx, "kubectl", kubectl(c, "annotate", "serviceaccount", sa, "--overwrite",
 				"iam.gke.io/gcp-service-account="+identity)...); err != nil {
 				return err
@@ -83,31 +90,76 @@ func MoveToManaged(ctx context.Context, r *run.Runner, c *config.Config, out io.
 		return err
 	}
 
-	fmt.Fprintln(out, "Copying both databases into the managed server...")
+	// What an earlier run copied stays current while what writes has
+	// stayed stopped since, which the record's being there says.
+	copied := copiedDatabases(ctx, r, c)
 	moves := []struct{ job, database, user, serviceAccount string }{
 		{"vertra-move-kernel", kernelDatabase, db.KernelUser, kernelServiceAccount},
 		{"vertra-move-console", consoleDatabase, db.ConsoleUser, consoleServiceAccount},
 	}
+	var pending []func()
 	errs := make([]error, len(moves))
-	copies := make([]func(), len(moves))
 	for i, m := range moves {
-		copies[i] = func() {
+		if copied[m.database] {
+			fmt.Fprintf(out, "%s was copied by an earlier run (nothing has written since).\n", m.database)
+			continue
+		}
+		pending = append(pending, func() {
 			manifest := moveJob(m.job, m.serviceAccount, kernelImage, postgresImage, m.database, db, db.URL(m.user, m.database), sourceTLS)
-			errs[i] = runJob(ctx, r, c, m.job, manifest, 2*time.Hour)
-		}
-	}
-	run.Together(copies...)
-	for _, err := range errs {
-		if err != nil {
-			fmt.Fprintln(out, "The copy failed: starting the platform again on the in-cluster Postgres (nothing switched)...")
-			if startErr := startWriters(ctx, r, c, replicas); startErr != nil {
-				return fmt.Errorf("%w; and starting again: %v", err, startErr)
+			if errs[i] = runJob(ctx, r, c, m.job, manifest, 2*time.Hour); errs[i] == nil {
+				errs[i] = markCopied(ctx, r, c, m.database)
 			}
-			return err
+		})
+	}
+	if len(pending) > 0 {
+		fmt.Fprintln(out, "Copying the databases into the managed server...")
+	}
+	run.Together(pending...)
+	for _, err := range errs {
+		if err == nil {
+			continue
 		}
+		if len(copiedDatabases(ctx, r, c)) > 0 {
+			// Starting again would make the copy that's done stale.
+			return fmt.Errorf("%w\nWhat writes stays stopped, the in-cluster Postgres unchanged: apply again to copy the rest (or set database.type back to in-cluster and apply, to start as before)", err)
+		}
+		fmt.Fprintln(out, "The copy failed: starting the platform again on the in-cluster Postgres (nothing switched)...")
+		if startErr := startWriters(ctx, r, c, replicas); startErr != nil {
+			return fmt.Errorf("%w; and starting again: %v", err, startErr)
+		}
+		return err
 	}
 	return nil
 }
+
+// copiedDatabases are the databases a move has copied while what writes
+// has been stopped (kept with the writers' copies, gone once they start).
+func copiedDatabases(ctx context.Context, r *run.Runner, c *config.Config) map[string]bool {
+	out, _ := r.Output(ctx, "kubectl", kubectl(c, "get", "configmap", restoreRecord, "--ignore-not-found", "-o", "jsonpath={.data.copied}")...)
+	copied := map[string]bool{}
+	for _, d := range strings.Fields(out) {
+		copied[d] = true
+	}
+	return copied
+}
+
+// markCopied adds a database to the record's copied ones.
+func markCopied(ctx context.Context, r *run.Runner, c *config.Config, database string) error {
+	moveMarks.Lock()
+	defer moveMarks.Unlock()
+	copied := copiedDatabases(ctx, r, c)
+	copied[database] = true
+	var names []string
+	for d := range copied {
+		names = append(names, d)
+	}
+	slices.Sort(names)
+	patch := fmt.Sprintf(`{"data":{"copied":%q}}`, strings.Join(names, " "))
+	return r.Run(ctx, "kubectl", kubectl(c, "patch", "configmap", restoreRecord, "--type", "merge", "--patch", patch)...)
+}
+
+// moveMarks keeps the two copies' marks from overwriting each other.
+var moveMarks sync.Mutex
 
 // FinishMove starts what writes again once the charts use the managed
 // server: the charts set their copies, except where an autoscaler owns
@@ -183,8 +235,14 @@ func runJob(ctx context.Context, r *run.Runner, c *config.Config, job, manifest 
 		return err
 	}
 	if err := waitForJob(ctx, r, c, job, limit); err != nil {
-		logs, _ := r.Output(ctx, "kubectl", kubectl(c, "logs", "job/"+job, "--all-containers", "--tail", "30")...)
-		return fmt.Errorf("%w\n%s", err, strings.TrimSpace(logs))
+		// Each container's own: one that never started fails --all-containers.
+		var logs []string
+		for _, container := range []string{"token", "copy"} {
+			if out, _ := r.Output(ctx, "kubectl", kubectl(c, "logs", "job/"+job, "--container", container, "--tail", "30")...); out != "" {
+				logs = append(logs, out)
+			}
+		}
+		return fmt.Errorf("%w\n%s", err, strings.Join(logs, "\n"))
 	}
 	return nil
 }
@@ -251,6 +309,8 @@ spec:
 %[6]s
           volumeMounts:
             - {name: token, mountPath: /token}
+            # The URL names the server's CA, which pgx reads as it parses it.
+            - {name: db-ca, mountPath: /etc/vertra/tls-db, readOnly: true}
           resources:
             requests: {cpu: 50m, memory: 64Mi}
             limits: {memory: 128Mi}

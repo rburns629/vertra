@@ -154,10 +154,11 @@ design.
   has its own, with examples; `vertra help settings` and `vertra help
   sizes`; `vertra man` writes man pages, and each release attaches them. `vertra
   logs`; upgrade advice (newer releases, releases passed over, no
-  downgrades); `vertra backup`, `backups` and `restore` (2026-10-29,
-  proven on kind; the bucket and managed paths not yet on a cloud); moving
-  an install's data into a managed database at apply (2026-10-29, not yet
-  proven on a cloud). Still
+  downgrades); `vertra backup`, `backups` and `restore`; moving an
+  install's data into a managed database at apply (2026-10-29: proven on
+  kind, and on GKE Autopilot with Cloud SQL and EKS standard with RDS: a
+  bucket backup, its restore, the move with a run seeded before it found
+  after and a new step run, and an on-demand managed backup). Still
   to do: measuring the sizes' figures, which are first estimates (a billed
   run).
   Decided 2026-10-18:
