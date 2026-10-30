@@ -90,21 +90,19 @@ platform locally, see the README's "Try it locally".
   security scans (Trivy, OSV, Semgrep, gitleaks).
 - **Never commit a secret**, not even a placeholder value that looks real.
 
-## Sign your commits (DCO)
+## Contributor License Agreement
 
-Every commit needs a `Signed-off-by` line, certifying that you wrote the change
-or otherwise have the right to submit it under the project's MIT license, as
-described by the [Developer Certificate of Origin](https://developercertificate.org/).
-Add it with:
-
-```
-git commit -s
-```
+Before your first pull request can be merged, you accept the
+[Contributor License Agreement](CLA.md), once. The CLA Assistant bot asks you
+to on that pull request: reply with the comment it gives you, and it covers
+everything you contribute after. You keep the copyright in your work; the
+agreement lets the project use and distribute it. If your employer has rights
+to what you write, check that it allows you to contribute first.
 
 ## License
 
-By contributing, you agree that your contributions are licensed under the
-[MIT License](LICENSE). New source files start with the license identifier:
+Vertra is released under the [MIT License](LICENSE); your contributions are
+covered by the [CLA](CLA.md). New source files start with the license identifier:
 
 ```
 # SPDX-License-Identifier: MIT

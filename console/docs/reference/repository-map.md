@@ -31,7 +31,8 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `README.md` | What Vertra is, a first example DAG, trying it locally on kind, and how the parts fit together. |
 | `LICENSE` | The MIT license. |
 | `SECURITY.md` | How to report a vulnerability privately, response times, supported versions, scope. |
-| `CONTRIBUTING.md` | Setting up, testing, what a pull request needs, DCO sign-off. |
+| `CONTRIBUTING.md` | Setting up, testing, what a pull request needs, the CLA. |
+| `CLA.md` | The Individual Contributor License Agreement contributors accept once, through the CLA Assistant bot. |
 | `CODE_OF_CONDUCT.md` | Adopts the Contributor Covenant 2.1, and where to report problems. |
 | `AGENTS.md` | Guide for AI coding assistants (and a quick orientation for people): layout, core contracts, commands, things that bite, engineering principles. |
 | `CLAUDE.md` | One line that imports `AGENTS.md`, so Claude Code reads the same guide. |
