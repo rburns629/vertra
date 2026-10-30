@@ -6,7 +6,11 @@ only (a Role, not a ClusterRole), and evaluates both charts' alerts, the
 kernel's from that release's rule file (Prometheus reloads its config and
 rule files when they change). Nothing may connect to it: it's read through
 kubectl port-forward. The Pods it scrapes admit it through
-networkPolicy.metricsFrom, in both charts.
+networkPolicy.metricsFrom, in both charts. It can also send every sample on
+(remoteWrite) and its firing alerts to an Alertmanager (alertmanager), each
+signed as the Pod's AWS identity when given a region (Amazon Managed
+Service for Prometheus: the workspace stores the metrics, its Alertmanager
+delivers the alerts).
 */}}
 {{- $mon := .Values.monitoring }}
 {{- if and (eq $mon.provider "bundled") $mon.prometheus.enabled }}
@@ -14,6 +18,7 @@ networkPolicy.metricsFrom, in both charts.
 {{- $name := printf "%s-prometheus" (include "execution-console.fullname" .) }}
 {{- $labels := dict "app.kubernetes.io/name" (printf "%s-prometheus" (include "execution-console.name" .)) "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "prometheus" }}
 {{- $kernel := printf "%s-execution-kernel" $p.kernelRelease }}
+{{- $account := $p.serviceAccountName | default $name }}
 {{- $kernelTls := hasPrefix "https://" .Values.kernelApiUrl }}
 {{- if and $kernelTls (not .Values.tls.kernelCaSecret) }}
 {{- fail "monitoring.prometheus: kernel-api is HTTPS, so tls.kernelCaSecret must name its CA." }}
@@ -30,6 +35,30 @@ data:
     global:
       scrape_interval: {{ $p.interval }}
       evaluation_interval: {{ $p.interval }}
+      {{- with $p.externalLabels }}
+      external_labels:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with $p.remoteWrite.url }}
+    remote_write:
+      - url: {{ . | quote }}
+        {{- with $p.remoteWrite.sigv4Region }}
+        sigv4: {region: {{ . | quote }}}
+        {{- end }}
+    {{- end }}
+    {{- with $p.alertmanager.url }}
+    {{- $am := urlParse . }}
+    alerting:
+      alertmanagers:
+        - scheme: {{ $am.scheme }}
+          api_version: v2
+          path_prefix: {{ $am.path | default "/" | quote }}
+          static_configs:
+            - targets: [{{ $am.host | quote }}]
+          {{- with $p.alertmanager.sigv4Region }}
+          sigv4: {region: {{ . | quote }}}
+          {{- end }}
+    {{- end }}
     rule_files:
       - /etc/prometheus/rules/console/*.yaml
       - /etc/prometheus/rules/kernel/*.yaml
@@ -69,7 +98,7 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ $name }}
+  name: {{ $account }}
   labels:
     {{- include "execution-console.labels" . | nindent 4 }}
 automountServiceAccountToken: false
@@ -98,7 +127,7 @@ roleRef:
   name: {{ $name }}
 subjects:
   - kind: ServiceAccount
-    name: {{ $name }}
+    name: {{ $account }}
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: apps/v1
@@ -119,7 +148,7 @@ spec:
       labels:
         {{- toYaml $labels | nindent 8 }}
     spec:
-      serviceAccountName: {{ $name }}
+      serviceAccountName: {{ $account }}
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true

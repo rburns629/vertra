@@ -111,6 +111,18 @@ variable "log_keep_days" {
   default     = 365
 }
 
+variable "amazon_prometheus" {
+  description = "An Amazon Managed Service for Prometheus workspace the bundled Prometheus writes to, its Alertmanager publishing alerts to an SNS topic."
+  type        = bool
+  default     = false
+}
+
+variable "alert_email" {
+  description = "An email subscribed to the alerts' SNS topic (it confirms by email); empty for none."
+  type        = string
+  default     = ""
+}
+
 variable "audit_export" {
   description = "A bucket for the console's write-once copy of the audit log."
   type        = bool

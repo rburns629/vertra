@@ -46,6 +46,13 @@ type Cloud struct {
 	// The audit log's write-once copy: its bucket, and region (aws).
 	AuditBucket string
 	AuditRegion string
+	// Amazon Managed Service for Prometheus (aws): where the bundled
+	// Prometheus writes and sends alerts, signed in its region, and the SNS
+	// topic its Alertmanager publishes them to.
+	PrometheusRemoteWrite  string
+	PrometheusAlertmanager string
+	PrometheusRegion       string
+	PrometheusAlertsTopic  string
 	// The chart's scheduler.taskPlacement: where steps run (Spot, a pool).
 	StepPlacement map[string]any
 	// The chart's scheduler.capacityPlacements: where a step whose product
@@ -119,6 +126,11 @@ func CertificateStatus(ctx context.Context, r *run.Runner, c *config.Config) str
 		"get", "managedcertificate", certificateName, "--ignore-not-found", "-o", "jsonpath={.status.certificateStatus}")
 	return strings.TrimSpace(out)
 }
+
+// PrometheusServiceAccountName is the bundled Prometheus's ServiceAccount
+// with Amazon Managed Prometheus (the console chart's
+// monitoring.prometheus.serviceAccountName), bound to the module's role.
+const PrometheusServiceAccountName = "vertra-prometheus"
 
 // LokiServiceAccountName is the Kubernetes ServiceAccount Loki runs as (the
 // console chart's logs.serviceAccountName), bound to the module's logs
@@ -389,7 +401,7 @@ func KernelValues(c *config.Config, img Images, volume string, cloud *Cloud) map
 		v["imageSignature"] = map[string]any{"enabled": true, "publicKeys": trust["publicKeys"], "keyless": trust["keyless"]}
 	}
 	if c.Monitoring.Enabled {
-		monitoring, metricsFrom := monitoringValues(c, false)
+		monitoring, metricsFrom := monitoringValues(c, nil, false)
 		v["monitoring"] = monitoring
 		v["networkPolicy"] = map[string]any{"metricsFrom": metricsFrom}
 	}
@@ -577,7 +589,7 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		v["logs"] = logsValues(c, cloud)
 	}
 	if c.Monitoring.Enabled {
-		monitoring, metricsFrom := monitoringValues(c, true)
+		monitoring, metricsFrom := monitoringValues(c, cloud, true)
 		v["monitoring"] = monitoring
 		v["networkPolicy"] = map[string]any{"metricsFrom": metricsFrom}
 	}
@@ -717,8 +729,9 @@ func FindPrometheus(ctx context.Context, r *run.Runner, c *config.Config) *Prome
 // monitoringValues are a chart's monitoring and metricsFrom (who may
 // scrape), for the Prometheus monitoring.provider names: the cluster's
 // operator as vertra init found it, GKE's managed collector, or the
-// console chart's own (console: this is the console chart's values).
-func monitoringValues(c *config.Config, console bool) (monitoring map[string]any, metricsFrom []any) {
+// console chart's own (console: this is the console chart's values), which
+// with amazon also writes to the module's workspace.
+func monitoringValues(c *config.Config, cloud *Cloud, console bool) (monitoring map[string]any, metricsFrom []any) {
 	m := c.Monitoring
 	scrapedFrom := func(namespace string) []any {
 		return []any{map[string]any{"namespaceSelector": map[string]any{"matchLabels": map[string]string{"kubernetes.io/metadata.name": namespace}}}}
@@ -733,10 +746,17 @@ func monitoringValues(c *config.Config, console bool) (monitoring map[string]any
 			"alerts":     map[string]any{"enabled": true},
 		}
 		return monitoring, scrapedFrom(collector)
-	case "bundled":
+	case "bundled", "amazon":
 		monitoring = map[string]any{"provider": "bundled", "alerts": map[string]any{"enabled": true}}
 		if console {
-			monitoring["prometheus"] = map[string]any{"enabled": true, "kernelRelease": "kernel"}
+			prometheus := map[string]any{"enabled": true, "kernelRelease": "kernel"}
+			if m.ProviderName() == "amazon" && cloud != nil && cloud.PrometheusRemoteWrite != "" {
+				prometheus["serviceAccountName"] = PrometheusServiceAccountName
+				prometheus["externalLabels"] = map[string]any{"cluster": c.Cluster.Name}
+				prometheus["remoteWrite"] = map[string]any{"url": cloud.PrometheusRemoteWrite, "sigv4Region": cloud.PrometheusRegion}
+				prometheus["alertmanager"] = map[string]any{"url": cloud.PrometheusAlertmanager, "sigv4Region": cloud.PrometheusRegion}
+			}
+			monitoring["prometheus"] = prometheus
 		}
 		bundled := map[string]any{"podSelector": map[string]any{"matchLabels": map[string]string{
 			"app.kubernetes.io/instance": "console", "app.kubernetes.io/component": "prometheus"}}}

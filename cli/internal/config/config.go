@@ -245,13 +245,17 @@ type SSO struct {
 // alerts (Provider): the cluster's Prometheus Operator (operator, as vertra
 // init found it: the namespace it scrapes from, and the labels it selects
 // PodMonitors and rules by), GKE's Managed Service for Prometheus
-// (google, gcp; billed per sample), or one the console chart runs
-// (bundled: a Pod and a small volume).
+// (google, gcp; billed per sample), one the console chart runs (bundled: a
+// Pod and a small volume), or that one writing to Amazon Managed Service
+// for Prometheus, whose Alertmanager sends its alerts to an SNS topic
+// (amazon, aws).
 type Monitoring struct {
 	Enabled bool `yaml:"enabled,omitempty"`
-	// Provider: operator (empty means operator, as before), google or
-	// bundled.
-	Provider         string            `yaml:"provider,omitempty"`
+	// Provider: operator (empty means operator, as before), google,
+	// bundled or amazon.
+	Provider string `yaml:"provider,omitempty"`
+	// AlertEmail (amazon): subscribed to the alerts' SNS topic.
+	AlertEmail       string            `yaml:"alertEmail,omitempty"`
 	Namespace        string            `yaml:"namespace,omitempty"`
 	PodMonitorLabels map[string]string `yaml:"podMonitorLabels,omitempty"`
 	RuleLabels       map[string]string `yaml:"ruleLabels,omitempty"`
@@ -634,9 +638,16 @@ func (c *Config) Validate() error {
 			if c.Target != "gcp" {
 				add("monitoring.provider: google (GKE's Managed Service for Prometheus) is only on gcp")
 			}
+		case "amazon":
+			if c.Target != "aws" {
+				add("monitoring.provider: amazon (Amazon Managed Service for Prometheus) is only on aws")
+			}
+			if c.Monitoring.AlertEmail != "" && !strings.Contains(c.Monitoring.AlertEmail, "@") {
+				add("monitoring.alertEmail: %q isn't an email address", c.Monitoring.AlertEmail)
+			}
 		case "bundled":
 		default:
-			add("monitoring.provider: %q isn't operator, google or bundled", c.Monitoring.Provider)
+			add("monitoring.provider: %q isn't operator, google, bundled or amazon", c.Monitoring.Provider)
 		}
 	}
 	if c.Audit.Export {

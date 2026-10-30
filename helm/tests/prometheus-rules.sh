@@ -22,5 +22,5 @@ rule_file execution-kernel kernel kernel.rules.yaml > "$work/rules/kernel.rules.
 rule_file execution-console console console.rules.yaml > "$work/rules/console.rules.yaml"
 
 image=$(awk '/^  prometheus:/{p=1} p && /repository:/{r=$2} p && /digest:/{print r "@" $2; exit}' helm/charts/execution-console/values.yaml)
-docker run --rm -v "$work:/work:ro" -w /work --entrypoint promtool "$image" check rules rules/kernel.rules.yaml rules/console.rules.yaml
-docker run --rm -v "$work:/work:ro" -w /work --entrypoint promtool "$image" test rules alerts.test.yaml
+docker run --rm --user "$(id -u):$(id -g)" -v "$work:/work:ro" -w /work --entrypoint promtool "$image" check rules rules/kernel.rules.yaml rules/console.rules.yaml
+docker run --rm --user "$(id -u):$(id -g)" -v "$work:/work:ro" -w /work --entrypoint promtool "$image" test rules alerts.test.yaml

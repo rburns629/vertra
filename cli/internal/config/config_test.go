@@ -371,7 +371,8 @@ func TestValidateMonitoring(t *testing.T) {
 		"bundled":  "",
 		"google":   "only on gcp",
 		"operator": "monitoring.namespace",
-		"grafana":  `"grafana" isn't operator, google or bundled`,
+		"amazon":   "only on aws",
+		"grafana":  `"grafana" isn't operator, google, bundled or amazon`,
 	} {
 		c := validKind(t)
 		c.Monitoring = Monitoring{Enabled: true, Provider: provider}
@@ -379,5 +380,14 @@ func TestValidateMonitoring(t *testing.T) {
 		if want == "" && err != nil || want != "" && (err == nil || !strings.Contains(err.Error(), want)) {
 			t.Errorf("%s: %v, want %q", provider, err, want)
 		}
+	}
+}
+
+func TestValidateAlertEmail(t *testing.T) {
+	c := validKind(t)
+	c.Target = "aws"
+	c.Monitoring = Monitoring{Enabled: true, Provider: "amazon", AlertEmail: "nobody"}
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), `monitoring.alertEmail: "nobody"`) {
+		t.Errorf("%v", err)
 	}
 }

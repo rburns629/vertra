@@ -205,7 +205,18 @@ func Vars(c *config.Config, deleteData bool, githubProvider string) map[string]a
 		"github_oidc_provider_arn":   githubProvider,
 		"catalog_subject_prefix":     c.Catalog.SubjectPrefix,
 		"chat_model":                 chatModel(c),
+		"amazon_prometheus":          c.Monitoring.Enabled && c.Monitoring.ProviderName() == "amazon",
+		"alert_email":                alertEmail(c),
 	}
+}
+
+// alertEmail is subscribed to the alerts' topic with Amazon Managed
+// Prometheus, or "".
+func alertEmail(c *config.Config) string {
+	if !c.Monitoring.Enabled || c.Monitoring.ProviderName() != "amazon" {
+		return ""
+	}
+	return c.Monitoring.AlertEmail
 }
 
 // chatModel is the Bedrock model the console may call, or "" with chat off.

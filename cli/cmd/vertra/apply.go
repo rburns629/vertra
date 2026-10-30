@@ -501,6 +501,9 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		p.Settings = append(p.Settings, plan.Line{Label: "Public", Text: fmt.Sprintf("https://%s through Ingress class %s; certificate from %s", c.Console.Hostname, c.Console.IngressClass, cert)})
 	}
 
+	if c.Monitoring.Enabled && c.Monitoring.ProviderName() == "amazon" && c.Monitoring.AlertEmail != "" {
+		p.Notes = append(p.Notes, fmt.Sprintf("AWS emails %s a link to confirm the alerts' subscription; until it's followed, alerts reach no one.", c.Monitoring.AlertEmail))
+	}
 	if install.KeepsVolume(c, now.volume) && now.volume != floor.Volume {
 		why := "volumes can't shrink"
 		if c.Target == "kind" {
@@ -540,6 +543,12 @@ func monitoringLine(c *config.Config) string {
 		return fmt.Sprintf("GKE's Managed Service for Prometheus (billed per sample, a few dollars a month), its collector in %s", install.GoogleCollectorNamespace(c))
 	case "bundled":
 		return "a Prometheus of its own: 15 days on a 2 GiB volume, its alerts on its own page (kubectl port-forward)"
+	case "amazon":
+		to := "an SNS topic to subscribe to"
+		if c.Monitoring.AlertEmail != "" {
+			to = "an SNS topic, emailed to " + c.Monitoring.AlertEmail + " once confirmed"
+		}
+		return "Amazon Managed Service for Prometheus (a few dollars a month): a Prometheus of its own writes to its workspace, its alerts to " + to
 	}
 	return fmt.Sprintf("the Prometheus Operator in %s: PodMonitors, alerts and a Grafana dashboard", c.Monitoring.Namespace)
 }

@@ -448,6 +448,22 @@ func TestMonitoringValues(t *testing.T) {
 		}
 	}
 
+	// Amazon: the bundled one, writing to the module's workspace and sending
+	// its alerts there, as the ServiceAccount Pod Identity binds.
+	c.Monitoring = config.Monitoring{Enabled: true, Provider: "amazon"}
+	ws := "https://aps-workspaces.us-east-2.amazonaws.com/workspaces/ws-1/"
+	cloud := &Cloud{Provider: "aws", PrometheusRemoteWrite: ws + "api/v1/remote_write", PrometheusAlertmanager: ws + "alertmanager/", PrometheusRegion: "us-east-2"}
+	k, v = KernelValues(c, img, "", nil), ConsoleValues(c, "dev", img, cloud)
+	if m := k["monitoring"].(map[string]any); m["provider"] != "bundled" {
+		t.Errorf("amazon kernel: %v", m)
+	}
+	p := v["monitoring"].(map[string]any)["prometheus"].(map[string]any)
+	if p["serviceAccountName"] != PrometheusServiceAccountName ||
+		fmt.Sprint(p["remoteWrite"]) != "map[sigv4Region:us-east-2 url:"+ws+"api/v1/remote_write]" ||
+		fmt.Sprint(p["alertmanager"]) != "map[sigv4Region:us-east-2 url:"+ws+"alertmanager/]" {
+		t.Errorf("amazon console: %v", p)
+	}
+
 	// Google: its collector's namespace, Autopilot's own.
 	c.Monitoring = config.Monitoring{Enabled: true, Provider: "google"}
 	for mode, want := range map[string]string{"auto": "gke-gmp-system", "standard": "gmp-system"} {

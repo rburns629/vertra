@@ -870,6 +870,26 @@ monitoring:
     # -- The kernel chart's release name, for its rules and kernel-api's
     # TLS name (its Service's).
     kernelRelease: kernel
+    # -- Its ServiceAccount (default: <release>-execution-console-prometheus):
+    # the name an AWS role is bound to by Pod Identity (vertra uses
+    # vertra-prometheus).
+    serviceAccountName: ""
+    # -- Labels on every sample it sends on and alert it raises (say, which
+    # install).
+    externalLabels: {}
+    # -- Send every sample on to a remote store too (Amazon Managed Service
+    # for Prometheus: its workspace's .../api/v1/remote_write), signed as
+    # the Pod's AWS identity when sigv4Region is set.
+    remoteWrite:
+      url: ""
+      sigv4Region: ""
+    # -- Send firing alerts to an Alertmanager (Amazon Managed Service for
+    # Prometheus: https://aps-workspaces.<region>.amazonaws.com/workspaces/
+    # <id>/alertmanager/), signed likewise. Without one, they show only on
+    # its own Alerts page.
+    alertmanager:
+      url: ""
+      sigv4Region: ""
     resources:
       requests: {cpu: 50m, memory: 256Mi}
       limits: {memory: 1Gi}

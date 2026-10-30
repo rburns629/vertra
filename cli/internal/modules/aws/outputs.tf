@@ -107,3 +107,12 @@ output "database" {
     admin_secret = aws_db_instance.this[0].master_user_secret[0].secret_arn
   } : null
 }
+
+output "prometheus" {
+  value = var.amazon_prometheus ? {
+    remote_write = "${aws_prometheus_workspace.this[0].prometheus_endpoint}api/v1/remote_write"
+    alertmanager = "${aws_prometheus_workspace.this[0].prometheus_endpoint}alertmanager/"
+    alerts_topic = aws_sns_topic.alerts[0].arn
+    region       = var.region
+  } : null
+}

@@ -11,9 +11,11 @@ Solid before features: housekeeping and tests first, then features with
 steps left, then one billed proof run per cloud, and the MCP server and
 Azure last.
 
-1. Managed Prometheus on AWS (approved 2026-10-30): Amazon Managed Service
-   for Prometheus as a `monitoring.provider`, beside operator, google and
-   bundled.
+1. ~~Managed Prometheus on AWS~~ (done 2026-10-30, `--monitoring amazon`:
+   the bundled Prometheus writing to an AMP workspace, its alerts through
+   the workspace's Alertmanager to SNS and an email; proven on kind against
+   stand-ins, a real alert delivered; the signing and SNS in the billed
+   run).
 2. The bundled Prometheus's firing alerts on the Observe page (it has no
    Alertmanager, so today they need a port-forward).
 3. The run page saying whether a manual retry is safe (the action's
@@ -157,11 +159,21 @@ masking Secret values in logs (suggested: leave it, documented).
     kind) and a bundled Prometheus in the console chart (proven on kind:
     all four components scraped, kernel-api over TLS, both charts' seven
     alerts loaded, a kernel-only upgrade's rule change picked up in 70 s
-    without a restart). `vertra init` offers each (google on gcp). The
-    alerts' behaviour is tested by promtool in CI
-    (`helm/tests/prometheus-rules.sh`). Left: google on a real GKE cluster
-    and bundled on a cloud's volumes (the billed batch); the console
-    could show the bundled Prometheus's firing alerts on Observe.
+    without a restart). And Amazon Managed Service for Prometheus (vertra's
+    `amazon`, aws): the bundled one writing to the module's workspace as
+    `vertra-prometheus` (Pod Identity, only RemoteWrite and
+    CreateAlertManagerAlerts on it), its alerts through the workspace's
+    Alertmanager to an SNS topic and an email. Proven on kind against
+    stand-ins (a receiving Prometheus and an Alertmanager): every
+    component's samples arrived labelled with the cluster, and a
+    crash-looping scheduler's VertraSchedulerDown fired after its 10
+    minutes and reached the Alertmanager. `vertra init`
+    offers each (google on gcp, amazon on aws). The alerts' behaviour is
+    tested by promtool in CI (`helm/tests/prometheus-rules.sh`). Left:
+    google on a real GKE cluster, amazon on EKS (SigV4 through Pod
+    Identity, the SNS email), bundled on a cloud's volumes (the billed
+    batch); the console could show the bundled Prometheus's firing alerts
+    on Observe.
   - The audit log (done 2026-10-22: `ObserveService.ListAudit`, the
     Observe page's Audit log tab): an admin sees every entry; anyone else
     their own, and what was done to their teams or to runs in them, by

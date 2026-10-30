@@ -92,6 +92,12 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 			Bucket string `json:"bucket"`
 			Region string `json:"region"`
 		}
+		Prometheus *struct {
+			RemoteWrite  string `json:"remote_write"`
+			Alertmanager string `json:"alertmanager"`
+			AlertsTopic  string `json:"alerts_topic"`
+			Region       string `json:"region"`
+		}
 		StepPlacement map[string]any
 		Capacities    map[string]any
 		Spot          bool
@@ -118,7 +124,7 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 		}
 	}
 	for name, into := range map[string]any{
-		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit,
+		"cluster": &v.Cluster, "task_registry": &v.TaskRegistry, "backup": &v.Backup, "logs": &v.Logs, "audit": &v.Audit, "prometheus": &v.Prometheus,
 		"step_placement": &v.StepPlacement, "capacity_placements": &v.Capacities, "spot": &v.Spot, "catalog": &v.Catalog,
 		"console_address": &v.ConsoleAddress, "signing": &v.Signing, "database": &v.Database,
 	} {
@@ -151,6 +157,10 @@ func cloudFromAWS(outputs map[string]json.RawMessage) (*install.Cloud, bool, err
 	}
 	if v.Audit != nil {
 		cloud.AuditBucket, cloud.AuditRegion = v.Audit.Bucket, v.Audit.Region
+	}
+	if p := v.Prometheus; p != nil {
+		cloud.PrometheusRemoteWrite, cloud.PrometheusAlertmanager = p.RemoteWrite, p.Alertmanager
+		cloud.PrometheusRegion, cloud.PrometheusAlertsTopic = p.Region, p.AlertsTopic
 	}
 	if v.Catalog != nil {
 		cloud.CatalogServiceAccount = v.Catalog.RoleArn

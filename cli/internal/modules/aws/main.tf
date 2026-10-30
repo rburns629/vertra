@@ -589,6 +589,102 @@ resource "aws_eks_pod_identity_association" "logs" {
   role_arn        = aws_iam_role.logs[0].arn
 }
 
+# --- metrics: Amazon Managed Service for Prometheus -------------------------
+# The bundled Prometheus (vertra-prometheus) scrapes in the cluster and
+# writes every sample to this workspace, and sends its firing alerts to the
+# workspace's Alertmanager, which publishes them to an SNS topic (an email
+# subscribed to it when alert_email is set). Its role may do only those two
+# things, on this workspace.
+
+resource "aws_prometheus_workspace" "this" {
+  count = var.amazon_prometheus ? 1 : 0
+  alias = var.name
+}
+
+resource "aws_sns_topic" "alerts" {
+  count = var.amazon_prometheus ? 1 : 0
+  name  = "${var.name}-alerts"
+}
+
+data "aws_iam_policy_document" "alerts" {
+  count = var.amazon_prometheus ? 1 : 0
+  statement {
+    actions   = ["sns:Publish", "sns:GetTopicAttributes"]
+    resources = [aws_sns_topic.alerts[0].arn]
+    principals {
+      type        = "Service"
+      identifiers = ["aps.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_prometheus_workspace.this[0].arn]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "alerts" {
+  count  = var.amazon_prometheus ? 1 : 0
+  arn    = aws_sns_topic.alerts[0].arn
+  policy = data.aws_iam_policy_document.alerts[0].json
+}
+
+resource "aws_sns_topic_subscription" "alert_email" {
+  count     = var.amazon_prometheus && var.alert_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.alerts[0].arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+resource "aws_prometheus_alert_manager_definition" "this" {
+  count        = var.amazon_prometheus ? 1 : 0
+  workspace_id = aws_prometheus_workspace.this[0].id
+  definition   = <<-EOT
+    alertmanager_config: |
+      route:
+        receiver: sns
+        group_by: [alertname]
+        repeat_interval: 4h
+      receivers:
+        - name: sns
+          sns_configs:
+            - topic_arn: ${aws_sns_topic.alerts[0].arn}
+              sigv4:
+                region: ${var.region}
+              subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} (${var.name})'
+  EOT
+  depends_on   = [aws_sns_topic_policy.alerts]
+}
+
+resource "aws_iam_role" "prometheus" {
+  count              = var.amazon_prometheus ? 1 : 0
+  name               = "${var.name}-prometheus"
+  assume_role_policy = data.aws_iam_policy_document.pod_trust.json
+}
+
+data "aws_iam_policy_document" "prometheus" {
+  count = var.amazon_prometheus ? 1 : 0
+  statement {
+    actions   = ["aps:RemoteWrite", "aps:CreateAlertManagerAlerts"]
+    resources = [aws_prometheus_workspace.this[0].arn]
+  }
+}
+
+resource "aws_iam_role_policy" "prometheus" {
+  count  = var.amazon_prometheus ? 1 : 0
+  name   = "prometheus-workspace"
+  role   = aws_iam_role.prometheus[0].id
+  policy = data.aws_iam_policy_document.prometheus[0].json
+}
+
+resource "aws_eks_pod_identity_association" "prometheus" {
+  count           = var.amazon_prometheus ? 1 : 0
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = var.namespace
+  service_account = "vertra-prometheus"
+  role_arn        = aws_iam_role.prometheus[0].arn
+}
+
 # --- the audit log's write-once copy --------------------------------------
 # Object Lock: every object kept audit_keep_days (governance; compliance
 # when audit_lock, which nobody can shorten, the root account included).

@@ -442,8 +442,9 @@ func (a *app) askFeatures(out io.Writer, c *config.Config, f *initFlags) error {
 // askMonitoring offers Prometheus for the platform's metrics and alerts:
 // the cluster's Prometheus Operator when one runs there (its PodMonitors,
 // alerts and Grafana dashboard), GKE's Managed Service for Prometheus on
-// gcp, or a Prometheus of the install's own. --monitoring answers it:
-// false, operator (or true), google or bundled.
+// gcp, Amazon Managed Service for Prometheus on aws, or a Prometheus of the
+// install's own. --monitoring answers it: false, operator (or true),
+// google, amazon or bundled.
 func (a *app) askMonitoring(ctx context.Context, out io.Writer, c *config.Config, f *initFlags) error {
 	if f.monitoring == "false" {
 		return nil
@@ -467,12 +468,12 @@ func (a *app) askMonitoring(ctx context.Context, out io.Writer, c *config.Config
 		}
 		operator()
 		return nil
-	case "google", "bundled":
-		c.Monitoring = config.Monitoring{Enabled: true, Provider: choice}
-		return nil
+	case "google", "bundled", "amazon":
+		c.Monitoring = config.Monitoring{Enabled: true, Provider: choice, AlertEmail: c.Monitoring.AlertEmail}
+		return a.askAlertEmail(c)
 	case "":
 	default:
-		return fmt.Errorf("--monitoring: %q isn't false, operator, google or bundled", f.monitoring)
+		return fmt.Errorf("--monitoring: %q isn't false, operator, google, amazon or bundled", f.monitoring)
 	}
 
 	if p != nil {
@@ -488,9 +489,13 @@ func (a *app) askMonitoring(ctx context.Context, out io.Writer, c *config.Config
 		{Value: "none", Label: "None", Note: "Observe's Metrics tab needs no Prometheus; this is for alerts and your own queries"},
 		{Value: "bundled", Label: "A Prometheus of its own", Note: "one Pod (about 0.05 vCPU, 0.25 GiB) and a 2 GiB volume; its alerts on its own page"},
 	}
-	if c.Target == "gcp" {
+	switch c.Target {
+	case "gcp":
 		options = append(options, prompt.Option{Value: "google", Label: "Google Cloud Managed Service for Prometheus",
 			Note: "billed per sample: Vertra's few hundred series, a few dollars a month; alerts through Cloud Monitoring"})
+	case "aws":
+		options = append(options, prompt.Option{Value: "amazon", Label: "Amazon Managed Service for Prometheus",
+			Note: "a Prometheus of its own writing to it: a few dollars a month; alerts emailed through SNS"})
 	}
 	choice, err := a.ask.Choose("Prometheus for the platform's metrics and alerts?", options, "none")
 	if err != nil {
@@ -499,5 +504,20 @@ func (a *app) askMonitoring(ctx context.Context, out io.Writer, c *config.Config
 	if choice != "none" {
 		c.Monitoring = config.Monitoring{Enabled: true, Provider: choice}
 	}
+	return a.askAlertEmail(c)
+}
+
+// askAlertEmail asks where Amazon Managed Prometheus's alerts are emailed:
+// the first admin's address unless another is given (monitoring.alertEmail
+// later, empty for none).
+func (a *app) askAlertEmail(c *config.Config) error {
+	if !c.Monitoring.Enabled || c.Monitoring.ProviderName() != "amazon" || c.Monitoring.AlertEmail != "" {
+		return nil
+	}
+	email, err := a.ask.Text("Email the alerts to (the address confirms the subscription)", c.Admin.Email, validEmail)
+	if err != nil {
+		return err
+	}
+	c.Monitoring.AlertEmail = email
 	return nil
 }

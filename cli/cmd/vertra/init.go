@@ -79,7 +79,7 @@ func (a *app) initCmd() *cobra.Command {
 	fl.StringVar(&f.auditLock, "audit-lock", "", "gcp, aws: true or false: lock that bucket's retention for good (permanent)")
 	fl.StringVar(&f.gateway, "gateway", "", "true or false: serve the catalog's API products through the API gateway")
 	fl.StringVar(&f.signing, "signing", "", "gcp, aws, with a catalog: none, kms (a key in the cloud's KMS) or keyless (Sigstore, public log)")
-	fl.StringVar(&f.monitoring, "monitoring", "", "Prometheus for the platform's metrics and alerts: false, operator (the cluster's Prometheus Operator; true means this), google (gcp: GKE's managed Prometheus) or bundled (one of its own)")
+	fl.StringVar(&f.monitoring, "monitoring", "", "Prometheus for the platform's metrics and alerts: false, operator (the cluster's Prometheus Operator; true means this), google (gcp: GKE's managed Prometheus), amazon (aws: Amazon Managed Prometheus) or bundled (one of its own)")
 	fl.StringVar(&f.idleAfter, "idle-after", "", "with scale-down: how long idle before sleeping (default 2h)")
 	fl.IntVar(&f.minReplicas, "min-replicas", 0, "without scale-down: always-on copies of the console and API")
 	fl.IntVar(&f.headroom, "step-headroom", -1, "without scale-down: steps that can start without waiting")

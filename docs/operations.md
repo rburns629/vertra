@@ -478,8 +478,11 @@ Which Prometheus is `monitoring.provider`, the same in both charts:
   evaluating both charts' alerts. The kernel chart's come as a ConfigMap
   it reloads when a kernel upgrade changes them (within a minute). Nothing
   may connect to it; read it with `kubectl -n <namespace> port-forward
-  svc/console-execution-console-prometheus 9090`. There's no Alertmanager:
-  firing alerts show on its Alerts page. List it in both charts'
+  svc/console-execution-console-prometheus 9090`. Without an Alertmanager
+  (`monitoring.prometheus.alertmanager.url`), firing alerts show only on
+  its Alerts page. It can also send every sample on
+  (`monitoring.prometheus.remoteWrite.url`), each signed as the Pod's AWS
+  identity when given a `sigv4Region`. List it in both charts'
   `metricsFrom`:
 
   ```yaml
@@ -491,6 +494,18 @@ Which Prometheus is `monitoring.provider`, the same in both charts:
   `vertra init` offers it on every target (`--monitoring bundled`).
   Without kube-state-metrics, its `VertraSchedulerDown` is a scheduler
   Pod that can't be scraped, or is but finishes no passes.
+- **amazon** (`vertra` on aws, `--monitoring amazon`): the bundled
+  Prometheus writing to an Amazon Managed Service for Prometheus workspace
+  the aws module makes, and sending its alerts to the workspace's
+  Alertmanager, which publishes them to an SNS topic (`<name>-alerts`); an
+  email (`monitoring.alertEmail`, the first admin's by default) is
+  subscribed and confirms by email. It runs as `vertra-prometheus`, whose
+  Pod Identity role may only write to that workspace and raise alerts in
+  it. Collected in the cluster rather than by AWS's agentless scraper
+  (about $29 a month more), so kernel-api's certificate is still checked
+  and only that one Pod may reach the metrics ports. A few dollars a month:
+  Vertra's samples and SNS's emails. In the charts it's `bundled` with
+  `remoteWrite` and `alertmanager` set.
 
 - `monitoring.podMonitor.enabled` (both charts; not bundled): PodMonitors
   (or PodMonitorings). Add the
