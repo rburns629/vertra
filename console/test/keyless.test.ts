@@ -84,6 +84,7 @@ beforeEach(() => {
 afterAll(async () => {
   vi.unstubAllGlobals();
   await db.delete(teams).where(like(teams.name, `${prefix}%`));
+  await db.delete(usersTable).where(like(usersTable.email, `${prefix}-%@bots.vertra.local`));
   await users.cleanUp();
   await app.close();
 });
@@ -109,6 +110,38 @@ describe("a bot's identities", () => {
     expect((await add(maintainerToken, { claims: { sub: SUBJECT } })).code).toBe("already_exists");
     const listed = await call<{ identities?: unknown[]; audience?: string }>(memberToken, "TokenService/ListBotIdentities", { team });
     expect(listed.body).toMatchObject({ audience: AUDIENCE, identities: [{ issuer: ISSUER, claims: { sub: SUBJECT }, botEmail: bot.email }] });
+  });
+});
+
+describe("a keyless bot", () => {
+  const made = (token: string, body: object) =>
+    call<{ email?: string; identity?: { botEmail: string; claims: Record<string, string> } }>(token, "TokenService/CreateKeylessBot", {
+      team,
+      email: `${prefix}-deploy@bots.vertra.local`,
+      issuer: ISSUER,
+      ...body,
+    });
+  const tokensOf = async (email: string) =>
+    (await call<{ bots?: { email: string; tokens?: unknown[] }[] }>(maintainerToken, "TokenService/ListBots", { team })).body.bots?.find((b) => b.email === email);
+
+  it("is made with its identity and no token, by a maintainer, and only when the identity passes", async () => {
+    const email = `${prefix}-deploy@bots.vertra.local`;
+    expect((await made(memberToken, { claims: { sub: "repo:acme/deploy:ref:refs/heads/main" } })).code).toBe("permission_denied");
+    const refused = await made(maintainerToken, { claims: { sub: "repo:acme/*" } });
+    expect(refused.failure).toBe("BAD_IDENTITY");
+    // A refused identity makes no bot.
+    expect(await tokensOf(email)).toBeUndefined();
+
+    const ok = await made(maintainerToken, { claims: { sub: "repo:acme/deploy:ref:refs/heads/main" } });
+    expect(ok.body).toMatchObject({ email, identity: { botEmail: email, claims: { sub: "repo:acme/deploy:ref:refs/heads/main" } } });
+    expect((await tokensOf(email))?.tokens ?? []).toEqual([]);
+    // The same identity again, for any bot: refused, as AddBotIdentity refuses it.
+    expect((await made(maintainerToken, { email: `${prefix}-again@bots.vertra.local`, claims: { sub: "repo:acme/deploy:ref:refs/heads/main" } })).code).toBe("already_exists");
+    expect(await tokensOf(`${prefix}-again@bots.vertra.local`)).toBeUndefined();
+
+    // And it signs in.
+    const session = await exchange(await sign({ sub: "repo:acme/deploy:ref:refs/heads/main" }));
+    expect(session.body.email).toBe(email);
   });
 });
 

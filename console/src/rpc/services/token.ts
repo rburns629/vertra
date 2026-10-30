@@ -20,7 +20,7 @@ import {
   TokenId,
   TokenLabel,
 } from "../../core/tokens.js";
-import { addBotIdentity, listBotIdentities, removeBotIdentity } from "../../core/botIdentities.js";
+import { addBotIdentity, createKeylessBot, listBotIdentities, removeBotIdentity } from "../../core/botIdentities.js";
 import type { TokenService } from "../../gen/vertra/console/v1/token_pb.js";
 import { callerOf, logOf } from "../context.js";
 import { check } from "../validate.js";
@@ -53,6 +53,15 @@ export function tokenService(): ServiceImpl<typeof TokenService> {
         { team: req.team, botId: req.botId, issuer: req.issuer },
       );
       return { identity: identity(await addBotIdentity(callerOf(ctx), team, botId, issuer, { ...req.claims })) };
+    },
+
+    async createKeylessBot(req, ctx) {
+      const { team, email, orderTemplates, issuer } = check(
+        { team: TeamName, email: BotEmail, orderTemplates: OrderTemplates, issuer: Type.String({ minLength: 1, maxLength: 300 }) },
+        { team: req.team, email: req.email, orderTemplates: req.orderTemplates, issuer: req.issuer },
+      );
+      const made = await createKeylessBot(callerOf(ctx), team, { email, ordering: req.ordering, orderTemplates, issuer, claims: { ...req.claims } });
+      return { email: made.email, identity: identity(made.identity) };
     },
 
     async removeBotIdentity(req, ctx) {

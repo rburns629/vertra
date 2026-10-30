@@ -2374,6 +2374,19 @@ export async function listBotIdentities(team: string): Promise<{ identities: Bot
   };
 }
 
+/** A bot that signs in only from CI, keyless: no token, made with its identity. */
+export async function createKeylessBot(
+  team: string,
+  email: string,
+  issuer: string,
+  claims: Record<string, string>,
+  orderTemplates?: string[],
+): Promise<{ email: string; identityId: string }> {
+  const ordering = orderTemplates !== undefined;
+  const made = await call(() => tokens.createKeylessBot({ team, email, issuer, claims, ordering, orderTemplates: orderTemplates ?? [] }));
+  return { email: made.email, identityId: made.identity?.id ?? "" };
+}
+
 export async function addBotIdentity(team: string, botId: string, issuer: string, claims: Record<string, string>): Promise<void> {
   await call(() => tokens.addBotIdentity({ team, botId, issuer, claims }));
 }

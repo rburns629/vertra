@@ -329,7 +329,10 @@ there's no token to leak.
 ## Keyless bots
 
 A bot can sign in with its CI job's own OIDC identity instead of a stored
-token, so a pipeline holds no Vertra secret. A team's maintainers bind a
+token, so a pipeline holds no Vertra secret. It can be made that way
+(`TokenService/CreateKeylessBot`: its identity is checked first, and no
+token is ever made), or have tokens revoked once its CI signs in. A team's
+maintainers bind a
 bot to an issuer the install allows (`keyless.issuers`: GitHub Actions and
 gitlab.com by default) and exact claims: one naming the repository or
 subject, perhaps the branch or environment; no patterns, and never `aud`

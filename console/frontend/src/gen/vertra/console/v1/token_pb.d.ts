@@ -241,6 +241,75 @@ export declare type CreateBotTokenRequest = Message<"vertra.console.v1.CreateBot
 export declare const CreateBotTokenRequestSchema: GenMessage<CreateBotTokenRequest>;
 
 /**
+ * @generated from message vertra.console.v1.CreateKeylessBotRequest
+ */
+export declare type CreateKeylessBotRequest = Message<"vertra.console.v1.CreateKeylessBotRequest"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * The bot's account: a new one (an existing bot gets an identity with
+   * AddBotIdentity).
+   *
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * As CreateBotTokenRequest's.
+   *
+   * @generated from field: bool ordering = 3;
+   */
+  ordering: boolean;
+
+  /**
+   * @generated from field: repeated string order_templates = 4;
+   */
+  orderTemplates: string[];
+
+  /**
+   * As AddBotIdentityRequest's.
+   *
+   * @generated from field: string issuer = 5;
+   */
+  issuer: string;
+
+  /**
+   * @generated from field: map<string, string> claims = 6;
+   */
+  claims: { [key: string]: string };
+};
+
+/**
+ * Describes the message vertra.console.v1.CreateKeylessBotRequest.
+ * Use `create(CreateKeylessBotRequestSchema)` to create a new message.
+ */
+export declare const CreateKeylessBotRequestSchema: GenMessage<CreateKeylessBotRequest>;
+
+/**
+ * @generated from message vertra.console.v1.CreateKeylessBotResponse
+ */
+export declare type CreateKeylessBotResponse = Message<"vertra.console.v1.CreateKeylessBotResponse"> & {
+  /**
+   * @generated from field: string email = 1;
+   */
+  email: string;
+
+  /**
+   * @generated from field: vertra.console.v1.BotIdentity identity = 2;
+   */
+  identity?: BotIdentity | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.CreateKeylessBotResponse.
+ * Use `create(CreateKeylessBotResponseSchema)` to create a new message.
+ */
+export declare const CreateKeylessBotResponseSchema: GenMessage<CreateKeylessBotResponse>;
+
+/**
  * @generated from message vertra.console.v1.SetBotOrdersRequest
  */
 export declare type SetBotOrdersRequest = Message<"vertra.console.v1.SetBotOrdersRequest"> & {
@@ -682,6 +751,18 @@ export declare const TokenService: GenService<{
     methodKind: "unary";
     input: typeof CreateBotTokenRequestSchema;
     output: typeof CreateBotTokenResponseSchema;
+  },
+  /**
+   * Creates a bot that signs in only from CI, keyless (its team's
+   * maintainers): with no token, and the identity AddBotIdentity would add.
+   * The identity is checked first, so a refused one makes no bot.
+   *
+   * @generated from rpc vertra.console.v1.TokenService.CreateKeylessBot
+   */
+  createKeylessBot: {
+    methodKind: "unary";
+    input: typeof CreateKeylessBotRequestSchema;
+    output: typeof CreateKeylessBotResponseSchema;
   },
   /**
    * Sets the templates an ordering bot may order (its team's maintainers):

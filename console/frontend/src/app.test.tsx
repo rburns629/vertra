@@ -2035,6 +2035,33 @@ describe("keyless bots", () => {
       ]);
     });
   });
+
+  it("make a new bot that signs in only from CI, with no token", async () => {
+    const made: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": { bots: [] },
+      "TokenService/ListBotIdentities": { identities: [], issuers: ["https://token.actions.githubusercontent.com"], audience: "https://vertra.acme.dev" },
+      "TokenService/CreateKeylessBot": (request: Record<string, unknown>) => {
+        made.push(request);
+        return { email: "payments-deploy@bots.vertra.local", identity: { id: "i1" } };
+      },
+    });
+    fireEvent.change(await screen.findByLabelText(/What will use it/), { target: { value: "deploy" } });
+    expect(screen.getByRole("button", { name: "Create bot and token" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /Keyless, from CI/ }));
+    expect(screen.queryByRole("button", { name: "Create bot and token" })).toBeNull();
+    const create = screen.getByRole("button", { name: "Create bot" });
+    expect(create).toHaveProperty("disabled", true); // until the repository is named
+    fireEvent.change(screen.getByLabelText(/Repository \(owner\/name\)/), { target: { value: "acme/deploy" } });
+    fireEvent.click(create);
+    await waitFor(() => {
+      expect(made).toEqual([
+        { team: "payments", email: "payments-deploy@bots.vertra.local", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/deploy" } },
+      ]);
+    });
+    expect(calls).not.toContain("TokenService/CreateBotToken");
+  });
 });
 
 describe("ordering bots", () => {

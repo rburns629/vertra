@@ -10,7 +10,7 @@ A bot is an account that signs in with a token instead of a password. Each kind 
 | --- | --- | --- | --- |
 | A pipeline that submits your team's DAGs, runs templates, retries | A **team bot** | Your team → **Automation → Add a bot** | What a maintainer of your team can, and nothing in any other team |
 | A storefront or another system that places orders | An **ordering bot** | The same, ticking *It places orders* | Run only the templates you list for it, for your team |
-| Either of those, from GitHub Actions or GitLab, with no stored secret | **Keyless sign-in** for that bot | The bot's card → **Sign in from CI…** | What the bot can, for an hour at a time |
+| Either of those, from GitHub Actions or GitLab, with no stored secret | **Keyless sign-in** for that bot | **Add a bot → Keyless, from CI**, or an existing bot's card → **Sign in from CI…** | What the bot can, for an hour at a time |
 | Platform automation of an admin's own (creating teams, registering products) | An **automation token** | **Admin → Automation tokens** (admins only) | Only the scopes ticked; never read a secret or submit a run |
 
 Give each pipeline or system its own bot, so revoking one doesn't break the others. You don't need a bot to publish products: the catalog's own CI does that, and the console pulls the catalog itself.
@@ -47,14 +47,14 @@ The bot keeps its other tokens while you do this, so nothing breaks in between.
 
 A GitHub Actions or GitLab CI job can sign in as a bot with its own identity, so the pipeline holds no Vertra secret at all.
 
-1. On the bot's card, under **Signs in from CI, with no token**, choose **Sign in from CI…**.
+1. For a new bot: under **Add a bot**, say **What will use it?** and choose **Keyless, from CI** under **How it signs in**; the same fields follow, and **Create bot** makes the bot with no token at all, then shows the job's lines beside it. For a bot you already have: on its card, under **Signs in from CI, with no token**, choose **Sign in from CI…**.
 2. Pick the **CI**, then give **Repository (owner/name)** for GitHub or **Project (group/name)** for GitLab.
 3. Optionally, **Only from this branch**, such as `refs/heads/main`. Jobs on any other branch are refused.
 4. **Add.** The form shows the lines to put in the job: they ask the CI for an ID token for this install, exchange it, and keep the result as `VERTRA_TOKEN`.
 
 The exchanged token is good for an hour, as that bot. A token from any other repository or branch, or one minted for another service, is refused. The bot's card lists each CI identity with when it was last used, and **Remove** stops it.
 
-A bot is always made with a token. Once its CI sign-in works, revoke that token, and the card shows **Keyless**: there's nothing left to leak.
+A bot made keyless has no token to leak, and its card shows **Keyless**. A bot that started with a token keeps it: once its CI sign-in works, revoke the token, and the card shows **Keyless** too.
 
 Which CIs you can choose is the install's setting (GitHub Actions and gitlab.com by default). When it allows neither, the section isn't shown.
 
