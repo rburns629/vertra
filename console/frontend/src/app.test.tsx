@@ -301,14 +301,18 @@ describe("what runs made", () => {
 
   it("counts by state, and deletes the ones picked in one cleanup run", async () => {
     const asked: Record<string, unknown>[] = [];
+    const listed: Record<string, unknown>[] = [];
+    const all = [
+      made("a1b2c3d4-0000-4000-8000-000000000001", "payments-dev"),
+      made("a1b2c3d4-0000-4000-8000-000000000002", "orders-api-dev"),
+      made("a1b2c3d4-0000-4000-8000-000000000003", "scratch-bucket", "delete_failed"),
+      made("a1b2c3d4-0000-4000-8000-000000000004", "old-bucket", "deleted"),
+    ];
     await renderAt("/runs/made", MEMBER, {
-      "ResourceService/ListResources": {
-        resources: [
-          made("a1b2c3d4-0000-4000-8000-000000000001", "payments-dev"),
-          made("a1b2c3d4-0000-4000-8000-000000000002", "orders-api-dev"),
-          made("a1b2c3d4-0000-4000-8000-000000000003", "scratch-bucket", "delete_failed"),
-          made("a1b2c3d4-0000-4000-8000-000000000004", "old-bucket", "deleted"),
-        ],
+      // As the server does: deleted ones only when asked for.
+      "ResourceService/ListResources": (request: Record<string, unknown>) => {
+        listed.push(request);
+        return { resources: request["includeDeleted"] ? all : all.filter((r) => r.state !== "deleted") };
       },
       "ResourceService/DeleteResources": (request: Record<string, unknown>) => {
         asked.push(request);
@@ -316,10 +320,15 @@ describe("what runs made", () => {
       },
     });
     expect(await screen.findByRole("button", { name: /^Made 2/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^Deleted 1/ })).toBeTruthy();
-    // Deleted ones show only when asked for.
+    // Deleted ones aren't even fetched until asked for: they'd crowd the newest 200.
+    expect(listed[0]?.["includeDeleted"]).toBeFalsy();
+    expect(screen.getByRole("button", { name: /^Deleted —/ })).toBeTruthy();
     expect(screen.queryByText("old-bucket")).toBeNull();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Deleted —/ }));
+    expect(await screen.findByText("old-bucket")).toBeTruthy();
+    expect(listed.at(-1)?.["includeDeleted"]).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /^Deleted 1/ }));
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select payments-dev" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Select orders-api-dev" }));

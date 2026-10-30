@@ -35,6 +35,9 @@ const listed = (items: string[]) => (items.length < 2 ? (items[0] ?? "") : `${it
  * 21), one at a time or several of one team's at once. Deletes others
  * depended on wait above for an admin (decision 25).
  */
+/** The most the server lists at once (console/src/core/resources.ts, LIST_LIMIT). */
+const LIST_LIMIT = 200;
+
 export function ResourcesPage() {
   const { user } = useAuth();
   const theme = useTheme();
@@ -50,16 +53,18 @@ export function ResourcesPage() {
   const search = useDeferredValue(query.trim());
   const bulk = useResourceDelete();
 
-  // Deleted ones too, always: they're counted; Show deleted shows them.
+  // Deleted ones only when asked for (Show deleted, or their tile): the
+  // server sends the newest LIST_LIMIT, and deleted ones would crowd out
+  // what still exists.
   useEffect(() => {
     let current = true;
-    listResources({ query: search, includeDeleted: true })
+    listResources({ query: search, includeDeleted })
       .then((rows) => { if (current) { setFound(rows); setError(null); } })
       .catch((err: unknown) => { if (current) setError(err instanceof ApiError ? err.message : "Couldn't load what runs made."); });
     return () => {
       current = false;
     };
-  }, [search]);
+  }, [search, includeDeleted]);
 
   const loadRequests = useCallback(() => {
     listDeleteRequests()
@@ -133,7 +138,13 @@ export function ResourcesPage() {
           dot={theme.palette.error.main}
           {...tile("delete_failed")}
         />
-        <QuickTile label="Deleted" value={found ? count("deleted") : "…"} note="shown with Show deleted" dot={theme.palette.grey[500]} {...tile("deleted")} />
+        <QuickTile
+          label="Deleted"
+          value={!includeDeleted ? "—" : found ? count("deleted") : "…"}
+          note={includeDeleted ? "shown with Show deleted" : "press to show them"}
+          dot={theme.palette.grey[500]}
+          {...tile("deleted")}
+        />
       </QuickTiles>
 
       <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
@@ -218,6 +229,11 @@ export function ResourcesPage() {
           </Box>
         )}
         {bulk.ui}
+        {found && found.length >= LIST_LIMIT && (
+          <Typography variant="body2" color="text.secondary" sx={{ px: { xs: 2, sm: 2.75 }, pt: 1.5 }}>
+            Showing the newest {LIST_LIMIT}: search or narrow it to find older ones.
+          </Typography>
+        )}
         <ResourceTable
           resources={rows}
           showRun
