@@ -13,6 +13,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, createUser } from "../src/db/queries.js";
 import { submittedExecutions, teams, users } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
+import { getExecutionStates } from "../src/kernel/client.js";
 import { caller } from "./rpc.js";
 
 vi.mock("../src/kernel/client.js", async (importOriginal) => ({
@@ -173,6 +174,7 @@ describe("ListExecutions", () => {
   it("says which step runs now, and its attempt", async () => {
     const newest = (await page({ team: ours, limit: 1 })).executions[0];
     expect(newest?.running).toEqual([{ taskId: "app-hosting", action: "create", attempt: 2, maxAttempts: 3 }]);
+    expect(vi.mocked(getExecutionStates)).toHaveBeenLastCalledWith([newest?.executionId], { running: true });
   });
 
   it("says how long runs are kept, to anyone who may list them", async () => {

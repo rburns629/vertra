@@ -799,7 +799,10 @@ export async function listExecutions(
   }
   let statesByExecutionId = new Map<string, ExecutionStateEntry>();
   try {
-    const states = await getExecutionStates(page.rows.map((row) => row.executionId));
+    const states = await getExecutionStates(
+      page.rows.map((row) => row.executionId),
+      { running: true },
+    );
     statesByExecutionId = new Map(states.map((s) => [s.executionId, s]));
   } catch (error) {
     log.warn({ err: error }, "Failed to fetch execution states from kernel-api");

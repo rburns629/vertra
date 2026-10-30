@@ -204,8 +204,9 @@ export declare type ExecutionSummary = Message<"vertra.console.v1.ExecutionSumma
   submittedByEmail?: string | undefined;
 
   /**
-   * The steps claimed or running now, in the order they were submitted;
-   * empty if the kernel couldn't be asked.
+   * The steps claimed or running now, by step id; empty once it has
+   * finished (a cancelled run's last steps may still be stopping), or if
+   * the kernel couldn't be asked.
    *
    * @generated from field: repeated vertra.console.v1.RunningStep running = 11;
    */

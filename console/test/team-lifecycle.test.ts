@@ -178,6 +178,8 @@ describe("purge", () => {
     const running = await call(admin, "TeamService/PurgeTeam", { name: t.name });
     expect(running.code).toBe("failed_precondition");
     expect(running.failure).toBe("EXECUTIONS_RUNNING");
+    // Only their states: which steps run is the lists' business, not a purge's.
+    expect(vi.mocked(getExecutionStates)).toHaveBeenLastCalledWith([t.executionId]);
 
     vi.mocked(getExecutionStates).mockRejectedValueOnce(new Error("kernel-api unreachable"));
     expect((await call(admin, "TeamService/PurgeTeam", { name: t.name })).code).toBe("internal");

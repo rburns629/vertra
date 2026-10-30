@@ -265,6 +265,9 @@ message Attempt {
 message GetExecutionStatesRequest {
   // At most 1000.
   repeated string execution_ids = 1;
+  // Also say which steps are claimed or running now (each entry's
+  // running), for a list that shows it; left out, running stays empty.
+  bool include_running = 2;
 }
 
 message GetExecutionStatesResponse {
@@ -280,7 +283,9 @@ message ExecutionStateEntry {
   google.protobuf.Timestamp created_at = 4;
   // Its last change: when it finished, once it has.
   google.protobuf.Timestamp updated_at = 5;
-  // The steps claimed or running now, in the order they were submitted.
+  // The steps claimed or running now, by step id, when include_running
+  // asked for them; always empty once the execution has finished, even
+  // while a cancelled one's last steps are still being stopped.
   repeated RunningStep running = 6;
 }
 

@@ -428,19 +428,27 @@ func (s *Service) GetExecutionStates(ctx context.Context, req *connect.Request[k
 	if len(ids) == 0 {
 		return connect.NewResponse(out), nil
 	}
-	// Each execution with its steps counted by state, and those claimed or
-	// running now, in one query.
+	// Each execution with its steps counted by state, in one query; and,
+	// when asked and while the execution is still active, the steps claimed
+	// or running now (a cancelled execution's last steps may run until the
+	// scheduler stops them, but it isn't doing anything any more). Tasks
+	// carry no submission order (one transaction inserts them all), so
+	// they're listed by step id.
 	rows, err := s.Pool.Query(ctx, `
 		SELECT e.id::text, e.state, e.created_at, e.updated_at,
 		       COALESCE((SELECT jsonb_object_agg(t.state, t.n)
 		                 FROM (SELECT state, count(*)::int AS n FROM execution_tasks
 		                       WHERE execution_id = e.id GROUP BY state) t), '{}'::jsonb),
-		       COALESCE((SELECT jsonb_agg(jsonb_build_object('taskId', t.task_key, 'action', t.action,
-		                                                     'attempt', t.attempt_count, 'maxAttempts', t.max_attempts)
-		                                  ORDER BY t.created_at, t.task_key)
-		                 FROM execution_tasks t
-		                 WHERE t.execution_id = e.id AND t.state IN ($2, $3)), '[]'::jsonb)
-		FROM executions e WHERE e.id = ANY($1::uuid[])`, ids, string(domain.TaskClaimed), string(domain.TaskRunning))
+		       CASE WHEN $2 AND e.state IN ($3, $4) THEN
+		         COALESCE((SELECT jsonb_agg(jsonb_build_object('taskId', t.task_key, 'action', t.action,
+		                                                       'attempt', t.attempt_count, 'maxAttempts', t.max_attempts)
+		                                    ORDER BY t.task_key)
+		                   FROM execution_tasks t
+		                   WHERE t.execution_id = e.id AND t.state IN ($5, $6)), '[]'::jsonb)
+		       ELSE '[]'::jsonb END
+		FROM executions e WHERE e.id = ANY($1::uuid[])`,
+		ids, req.Msg.GetIncludeRunning(), string(domain.ExecutionPending), string(domain.ExecutionRunning),
+		string(domain.TaskClaimed), string(domain.TaskRunning))
 	if err != nil {
 		return nil, err
 	}

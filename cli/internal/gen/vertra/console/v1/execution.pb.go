@@ -374,8 +374,9 @@ type ExecutionSummary struct {
 	FinishedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=finished_at,json=finishedAt,proto3,oneof" json:"finished_at,omitempty"`
 	// The submitter's email; unset if that account was deleted.
 	SubmittedByEmail *string `protobuf:"bytes,10,opt,name=submitted_by_email,json=submittedByEmail,proto3,oneof" json:"submitted_by_email,omitempty"`
-	// The steps claimed or running now, in the order they were submitted;
-	// empty if the kernel couldn't be asked.
+	// The steps claimed or running now, by step id; empty once it has
+	// finished (a cancelled run's last steps may still be stopping), or if
+	// the kernel couldn't be asked.
 	Running       []*RunningStep `protobuf:"bytes,11,rep,name=running,proto3" json:"running,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

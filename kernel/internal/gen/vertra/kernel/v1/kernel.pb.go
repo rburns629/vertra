@@ -1204,9 +1204,12 @@ func (x *Attempt) GetImage() string {
 type GetExecutionStatesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// At most 1000.
-	ExecutionIds  []string `protobuf:"bytes,1,rep,name=execution_ids,json=executionIds,proto3" json:"execution_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ExecutionIds []string `protobuf:"bytes,1,rep,name=execution_ids,json=executionIds,proto3" json:"execution_ids,omitempty"`
+	// Also say which steps are claimed or running now (each entry's
+	// running), for a list that shows it; left out, running stays empty.
+	IncludeRunning bool `protobuf:"varint,2,opt,name=include_running,json=includeRunning,proto3" json:"include_running,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetExecutionStatesRequest) Reset() {
@@ -1244,6 +1247,13 @@ func (x *GetExecutionStatesRequest) GetExecutionIds() []string {
 		return x.ExecutionIds
 	}
 	return nil
+}
+
+func (x *GetExecutionStatesRequest) GetIncludeRunning() bool {
+	if x != nil {
+		return x.IncludeRunning
+	}
+	return false
 }
 
 type GetExecutionStatesResponse struct {
@@ -1300,7 +1310,9 @@ type ExecutionStateEntry struct {
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Its last change: when it finished, once it has.
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	// The steps claimed or running now, in the order they were submitted.
+	// The steps claimed or running now, by step id, when include_running
+	// asked for them; always empty once the execution has finished, even
+	// while a cancelled one's last steps are still being stopped.
 	Running       []*RunningStep `protobuf:"bytes,6,rep,name=running,proto3" json:"running,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2923,9 +2935,10 @@ const file_vertra_kernel_v1_kernel_proto_rawDesc = "" +
 	"\frequested_by\x18\x05 \x01(\tR\vrequestedBy\x12\x18\n" +
 	"\atrigger\x18\x06 \x01(\tR\atrigger\x12\x19\n" +
 	"\bacted_as\x18\a \x01(\tR\aactedAs\x12\x14\n" +
-	"\x05image\x18\b \x01(\tR\x05image\"@\n" +
+	"\x05image\x18\b \x01(\tR\x05image\"i\n" +
 	"\x19GetExecutionStatesRequest\x12#\n" +
-	"\rexecution_ids\x18\x01 \x03(\tR\fexecutionIds\"[\n" +
+	"\rexecution_ids\x18\x01 \x03(\tR\fexecutionIds\x12'\n" +
+	"\x0finclude_running\x18\x02 \x01(\bR\x0eincludeRunning\"[\n" +
 	"\x1aGetExecutionStatesResponse\x12=\n" +
 	"\x06states\x18\x01 \x03(\v2%.vertra.kernel.v1.ExecutionStateEntryR\x06states\"\xa1\x03\n" +
 	"\x13ExecutionStateEntry\x12!\n" +
