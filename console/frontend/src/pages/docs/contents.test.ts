@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { contentsOf, docTarget, pageOf, pagesOf, placeOf, sectionHolding, sectionsOf } from "./contents";
+import { API_REFERENCE_ID } from "../ApiReference";
+import { contentsOf, docTarget, IN_DEPTH, pageOf, pagesOf, placeOf, plain, POPULAR, sectionHolding, sectionsOf, slug, START_HERE, SYMPTOMS, TASKS } from "./contents";
 
 // What the console serves (../../../src/guides.ts): its guides, and the platform's docs copied into reference/.
 const files = {
@@ -61,5 +62,31 @@ describe("the docs' contents", () => {
       { title: "Backups", anchor: "backups" },
       { title: "Backups", anchor: "backups-1" },
     ]);
+  });
+});
+
+describe("the help's chosen links", () => {
+  const markdownOf = new Map(
+    Object.entries(files).map(([path, markdown]) => {
+      const name = path.split("/").at(-1)?.replace(/\.md$/, "") ?? "";
+      return [path.includes("/reference/") ? `reference-${name}` : name, markdown];
+    }),
+  );
+  const anchors = (markdown: string) => [...markdown.matchAll(/^#{1,6} (.+?)\s*#*\s*$/gm)].map((m) => slug(plain(m[1] ?? "")));
+
+  it("each go to a guide the console serves, and to a heading it has", () => {
+    const links = [
+      ...START_HERE.map((s): { guide: string; section?: string } => ({ guide: s.guide })),
+      ...POPULAR,
+      ...TASKS.flatMap((t) => t.questions),
+      ...IN_DEPTH,
+      ...Object.values(SYMPTOMS).flatMap((s) => s.items),
+    ];
+    for (const { guide, section } of links) {
+      if (guide === API_REFERENCE_ID) continue;
+      const markdown = markdownOf.get(guide);
+      expect(markdown, guide).toBeDefined();
+      if (section) expect(anchors(markdown ?? ""), `${guide}#${section}`).toContain(section);
+    }
   });
 });

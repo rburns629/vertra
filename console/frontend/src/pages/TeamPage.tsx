@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Alert, Box, Chip, Link, Tab, Tabs, Typography } from "@mui/material";
+import { Alert, Box, Button, Link, Tab, Tabs, Typography } from "@mui/material";
 import {
   ApiError,
   getTeam,
+  getTeamProfile,
+  listApis,
+  listBots,
+  listSchedules,
   listTeamMembers,
   listTeamPods,
   listTeamSecrets,
@@ -12,10 +16,13 @@ import {
   retireTeam,
   unretireTeam,
   type Team,
+  type TeamProfile,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { HelpLink } from "../components/HelpLink";
+import { Mono } from "../components/Mono";
 import { Pill } from "../components/Pill";
+import { isRunningPod } from "../components/TeamCard";
 import { useEnvironment } from "../environment";
 import { AutomationTab } from "./team/AutomationTab";
 import { SchedulesTab } from "./team/SchedulesTab";
@@ -40,29 +47,56 @@ const TABS: [TabId, string][] = [
 
 /** The small counts on the tabs. Display only: a failed count just isn't
  * shown, and each tab loads (and reports errors for) its own data. */
-function useTabCounts(teamName: string, tab: TabId, enabled: boolean) {
+function useTabCounts(teamName: string, tab: TabId, enabled: boolean, maintains: boolean) {
   const [counts, setCounts] = useState<Partial<Record<TabId, number>>>({});
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    void Promise.allSettled([listTeamMembers(teamName), listTeamSecrets(teamName), listTeamPods(teamName)]).then(
-      ([members, secrets, pods]) => {
-        if (cancelled) return;
-        setCounts({
-          members: members.status === "fulfilled" ? members.value.filter((m) => !m.isBot).length : undefined,
-          secrets: secrets.status === "fulfilled" ? secrets.value.length : undefined,
-          running:
-            pods.status === "fulfilled"
-              ? pods.value.filter((p) => p.state === "running" || p.state === "starting" || p.state === "cant-start").length
-              : undefined,
-        });
-      },
-    );
+    void Promise.allSettled([
+      listTeamMembers(teamName),
+      listTeamSecrets(teamName),
+      listTeamPods(teamName),
+      // Bots are a maintainer's: anyone else isn't asked.
+      maintains ? listBots(teamName) : Promise.resolve(null),
+      listSchedules(teamName),
+      listApis(),
+    ]).then(([members, secrets, pods, bots, schedules, apis]) => {
+      if (cancelled) return;
+      const count = <T,>(result: PromiseSettledResult<T[] | null>, keep: (item: T) => boolean = () => true) =>
+        result.status === "fulfilled" && result.value ? result.value.filter(keep).length : undefined;
+      setCounts({
+        members: count(members, (m) => !m.isBot),
+        secrets: count(secrets),
+        automation: count(bots),
+        schedules: count(schedules),
+        apis: count(apis, (a) => a.team === teamName),
+        running: count(pods, (p) => isRunningPod(p.state)),
+      });
+    });
     return () => {
       cancelled = true;
     };
-  }, [teamName, tab, enabled]);
+  }, [teamName, tab, enabled, maintains]);
   return counts;
+}
+
+/** Where to ask the team, from its team.yaml: a chat, a help page, a contact. */
+function AskLine({ profile }: { profile: TeamProfile }) {
+  const chat = profile.helpChat;
+  const url = profile.helpUrl;
+  if (!chat && !url && !profile.contact) return null;
+  return (
+    <>
+      {" · ask "}
+      {url ? (
+        <Link href={url} target="_blank" rel="noopener noreferrer">
+          {chat ?? profile.contact ?? "its help page"}
+        </Link>
+      ) : (
+        (chat ?? profile.contact)
+      )}
+    </>
+  );
 }
 
 export function TeamPage() {
@@ -86,10 +120,11 @@ export function TeamPage() {
   const tab: TabId = tabs.some(([id]) => id === requested) ? (requested as TabId) : "members";
   const setTab = (next: TabId) => { setParams(next === "members" ? {} : { tab: next }, { replace: true }); };
   const [team, setTeam] = useState<Team | null>(null);
+  const [profile, setProfile] = useState<TeamProfile | null>(null);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const retired = Boolean(team?.retiredAt);
-  const counts = useTabCounts(teamName, tab, canSee);
+  const counts = useTabCounts(teamName, tab, canSee, canMaintain);
 
   const reload = useCallback(() => {
     // Display only: if this fails, the page still works without the
@@ -99,8 +134,11 @@ export function TeamPage() {
 
   useEffect(() => {
     setTeam(null);
+    setProfile(null);
     reload();
-  }, [reload]);
+    // Display only: where to ask the team, in the header and its settings.
+    if (canSee) getTeamProfile(teamName).then(setProfile).catch(() => undefined);
+  }, [reload, teamName, canSee]);
 
   /** Retire, restore or purge: the refusal shown up top, the team reloaded after. */
   async function lifecycle(action: () => Promise<void>): Promise<void> {
@@ -115,43 +153,51 @@ export function TeamPage() {
       setLifecycleBusy(false);
     }
   }
+  const restore = () => lifecycle(async () => { await unretireTeam(teamName); reload(); });
 
   const role = isMember ? (canMaintain ? "You maintain it" : "You're a member") : isAdmin ? "Viewing as admin" : null;
 
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary">
+      <Typography component="nav" aria-label="Breadcrumb" variant="body2" color="text.secondary">
         <Link component={RouterLink} to="/teams">
           Teams
         </Link>{" "}
         / {teamName}
       </Typography>
-      <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.25, mt: 0.75, mb: 0.5 }}>
-        <Typography variant="h4" component="h1" sx={{ overflowWrap: "anywhere" }}>
-          {teamName}
-        </Typography>
-        {retired && <Pill tone="neutral">Retired</Pill>}
-        {role && <Pill tone="info">{role}</Pill>}
-        {sso && team?.requireSso && (
-          <Pill tone="neutral" title={`Members sign in with ${sso}; their passwords don't work (admins' do).`}>
-            {sso} sign-in only
-          </Pill>
-        )}
-      </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Namespace <Box component="span" sx={{ fontFamily: "fontFamilyMono" }}>{teamName}</Box>
-        {team && (team.fromCatalog ? " · from the catalog" : " · made here")}
-        {" · "}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 2, flexWrap: "wrap", mt: 1, mb: 2.5 }}>
+        <Box sx={{ minWidth: 0, flex: "1 1 420px" }}>
+          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.25, mb: 0.75 }}>
+            <Typography variant="h4" component="h1" sx={{ overflowWrap: "anywhere", fontSize: { xs: 24, sm: 28 } }}>
+              {teamName}
+            </Typography>
+            {retired && <Pill tone="neutral">Retired</Pill>}
+            {role && <Pill tone="info">{role}</Pill>}
+            {sso && team?.requireSso && (
+              <Pill tone="neutral" title={`Members sign in with ${sso}; their passwords don't work (admins' do).`}>
+                {sso} sign-in only
+              </Pill>
+            )}
+          </Box>
+          {canSee && (
+            <Typography variant="body1" color="text.secondary">
+              Namespace <Mono>{teamName}</Mono>
+              {team &&
+                (team.fromCatalog ? (
+                  <>
+                    {" · from the catalog, "}
+                    <Mono>teams/{teamName}/</Mono>
+                  </>
+                ) : (
+                  " · made here"
+                ))}
+              {profile && <AskLine profile={profile} />}
+            </Typography>
+          )}
+        </Box>
         <HelpLink guide="13-teams-and-roles" section="what-may-a-member-a-maintainer-and-an-admin-do" label="Who can do what" />
-      </Typography>
+      </Box>
 
-      {retired && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          This team is retired: it&apos;s read-only. Nothing new can be registered, granted or run for it, and its products
-          are no longer listed. Its history stays visible.
-          {isAdmin ? " Restore it from its Settings." : " An admin can restore it."}
-        </Alert>
-      )}
       {lifecycleError && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {lifecycleError}
@@ -167,7 +213,8 @@ export function TeamPage() {
             onChange={(_event, value: TabId) => { setTab(value); }}
             variant="scrollable"
             allowScrollButtonsMobile
-            sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}
+            aria-label="Team views"
+            sx={{ mb: 3 }}
           >
             {tabs.map(([id, label]) => (
               <Tab
@@ -176,34 +223,72 @@ export function TeamPage() {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     {label}
-                    {counts[id] !== undefined && counts[id] > 0 && <Chip label={counts[id]} size="small" sx={{ height: 20, fontSize: 12 }} />}
+                    {counts[id] !== undefined && counts[id] > 0 && (
+                      <Box
+                        component="span"
+                        sx={{ minWidth: 20, px: 0.75, borderRadius: 999, bgcolor: "background.default", border: 1, borderColor: "divider", fontSize: 12, lineHeight: "18px", color: "text.secondary", fontVariantNumeric: "tabular-nums" }}
+                      >
+                        {counts[id]}
+                      </Box>
+                    )}
                   </Box>
                 }
               />
             ))}
           </Tabs>
+          {retired && team?.retiredAt && (
+            <Alert
+              severity="info"
+              icon={false}
+              sx={{ mb: 3, bgcolor: "action.hover", borderColor: "divider", color: "text.primary", alignItems: "center" }}
+              action={
+                isAdmin ? (
+                  <Button variant="outlined" color="inherit" size="small" disabled={lifecycleBusy} onClick={() => void restore()} sx={{ bgcolor: "background.paper" }}>
+                    Restore it
+                  </Button>
+                ) : undefined
+              }
+            >
+              <strong>Retired {new Date(team.retiredAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.</strong> This
+              team is retired: it&apos;s read-only. Nothing new can be registered, granted or run for it, and its products are no
+              longer listed. Its history stays visible.
+              {!isAdmin && " An admin can restore it."}
+            </Alert>
+          )}
           {tab === "members" && (
             <MembersTab
               teamName={teamName}
               readOnly={retired || !canMaintain}
               currentUserId={user?.id}
+              requireSso={Boolean(sso && team?.requireSso)}
               onShowAutomation={canMaintain ? () => { setTab("automation"); } : undefined}
+              onShowSettings={() => { setTab("settings"); }}
             />
           )}
           {tab === "offers" && <TeamOffers teamName={teamName} showProfile={false} />}
           {tab === "secrets" && <SecretsTab teamName={teamName} readOnly={retired || !canMaintain} />}
-          {tab === "automation" && canMaintain && <AutomationTab teamName={teamName} readOnly={retired} />}
+          {tab === "automation" && canMaintain && (
+            <AutomationTab
+              teamName={teamName}
+              readOnly={retired}
+              schedules={counts.schedules}
+              onShowSchedules={() => { setTab("schedules"); }}
+              onShowSettings={() => { setTab("settings"); }}
+            />
+          )}
           {tab === "schedules" && <SchedulesTab teamName={teamName} readOnly={retired || !canMaintain} />}
           {tab === "apis" && <ApisTab teamName={teamName} />}
           {tab === "running" && <RunningTab teamName={teamName} />}
           {tab === "settings" && team && (
             <SettingsTab
               team={team}
+              profile={profile}
               isAdmin={isAdmin}
               busy={lifecycleBusy}
               onChanged={reload}
+              onShowMembers={() => { setTab("members"); }}
               onRetire={() => lifecycle(async () => { await retireTeam(teamName); reload(); })}
-              onRestore={() => lifecycle(async () => { await unretireTeam(teamName); reload(); })}
+              onRestore={restore}
               onPurge={() =>
                 lifecycle(async () => {
                   await purgeTeam(teamName);

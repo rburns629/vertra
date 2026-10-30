@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Drawer from "@mui/material/Drawer";
@@ -11,22 +11,27 @@ import Tooltip from "@mui/material/Tooltip";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import { getChatSettings } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { AskContext, useAsk } from "./ask";
+import { SIDEBAR_TIP } from "./sidebarTip";
 
 // Fetched the first time it's opened: markdown rendering isn't every page's.
 const ChatPanel = lazy(() => import("../components/ChatPanel").then((m) => ({ default: m.ChatPanel })));
 
+/** The panel's width on a wider screen (board 13c); a phone's is the whole width. */
+const PANEL_WIDTH = { xs: "100vw", sm: 480 };
+
 /**
- * Ask (decision 24): in the sidebar beside the navigation on a desktop, in
- * the top bar on a phone, and the chat panel it opens, kept while closed.
- * Without a model it's there but off, saying who turns it on. `compact`:
- * the collapsed sidebar's, its icon alone and its name on hover.
+ * Ask Vertra (decision 24) for the whole app: whether there's a model, and
+ * the chat panel, which any page can open (the sidebar's button, the
+ * help's) and which keeps its conversation while closed.
  */
-export function ChatLauncher({ placement, compact = false }: { placement: "sidebar" | "toolbar"; compact?: boolean }) {
-  const { user } = useAuth();
+export function AskProvider({ children }: { children: ReactNode }) {
   // undefined while asking; null when there's no model.
   const [model, setModel] = useState<string | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [opened, setOpened] = useState(false);
+  // A question a page opened it with: a new object each time, so the same words twice still fill the box.
+  const [question, setQuestion] = useState<{ text: string } | null>(null);
 
   useEffect(() => {
     getChatSettings()
@@ -34,19 +39,66 @@ export function ChatLauncher({ placement, compact = false }: { placement: "sideb
       .catch(() => { setModel(null); });
   }, []);
 
+  const ask = useMemo(
+    () => ({
+      model,
+      open: (text?: string) => {
+        if (typeof model !== "string") return;
+        if (text) setQuestion({ text });
+        setOpen(true);
+        setOpened(true);
+      },
+    }),
+    [model],
+  );
+
+  return (
+    <AskContext.Provider value={ask}>
+      {children}
+      {typeof model === "string" && (
+        <Drawer
+          anchor="right"
+          open={open}
+          onClose={() => { setOpen(false); }}
+          keepMounted={opened}
+          slotProps={{ paper: { role: "dialog", "aria-label": "Ask Vertra", "aria-modal": true } }}
+        >
+          {opened && (
+            <Suspense
+              fallback={
+                <Box sx={{ width: PANEL_WIDTH, display: "flex", justifyContent: "center", py: 6 }}>
+                  <CircularProgress size={24} aria-label="Loading" />
+                </Box>
+              }
+            >
+              <ChatPanel model={model} width={PANEL_WIDTH} question={question} onClose={() => { setOpen(false); }} />
+            </Suspense>
+          )}
+        </Drawer>
+      )}
+    </AskContext.Provider>
+  );
+}
+
+/**
+ * Ask's button: in the sidebar beside the navigation on a desktop, in the
+ * top bar on a phone. Without a model it's there but off, saying who turns
+ * it on. `compact`: the collapsed sidebar's, its icon alone and its name on
+ * hover.
+ */
+export function ChatLauncher({ placement, compact = false }: { placement: "sidebar" | "toolbar"; compact?: boolean }) {
+  const { user } = useAuth();
+  const { model, open } = useAsk();
+
   if (model === undefined) return null;
   const off = model === null;
   const why = user?.isAdmin ? "Not set up: choose its model in Admin, Chat agent" : "Not set up yet: an admin chooses its model";
-  const ask = () => {
-    setOpen(true);
-    setOpened(true);
-  };
 
   const trigger =
     placement === "sidebar" ? (
       <ListItemButton
         disabled={off}
-        onClick={ask}
+        onClick={() => { open(); }}
         aria-label="Ask Vertra"
         sx={{
           // Its own height: the sidebar is a column, and ListItemButton grows to fill one.
@@ -76,38 +128,18 @@ export function ChatLauncher({ placement, compact = false }: { placement: "sideb
         )}
       </ListItemButton>
     ) : (
-      <IconButton aria-label="Ask Vertra" disabled={off} onClick={ask}>
+      <IconButton aria-label="Ask Vertra" disabled={off} onClick={() => { open(); }}>
         <ChatIcon fontSize="small" />
       </IconButton>
     );
 
+  // A disabled control gets no hover: the tooltip sits on what holds it.
+  if (!off && !compact) return trigger;
   return (
-    <>
-      {/* A disabled control gets no hover: the tooltip sits on what holds it. */}
-      {off || compact ? (
-        <Tooltip title={off ? why : "Ask Vertra"} placement={placement === "sidebar" ? "right" : "bottom"}>
-          <Box component="span" sx={{ display: placement === "sidebar" ? "block" : "inline-flex" }}>
-            {trigger}
-          </Box>
-        </Tooltip>
-      ) : (
-        trigger
-      )}
-      {!off && (
-        <Drawer anchor="right" open={open} onClose={() => { setOpen(false); }} keepMounted={opened}>
-          {opened && (
-            <Suspense
-              fallback={
-                <Box sx={{ width: { xs: "100vw", sm: 440 }, display: "flex", justifyContent: "center", py: 6 }}>
-                  <CircularProgress size={24} aria-label="Loading" />
-                </Box>
-              }
-            >
-              <ChatPanel model={model} onClose={() => { setOpen(false); }} />
-            </Suspense>
-          )}
-        </Drawer>
-      )}
-    </>
+    <Tooltip title={off ? why : "Ask Vertra"} {...(placement === "sidebar" ? SIDEBAR_TIP : { placement: "bottom" })}>
+      <Box component="span" sx={{ display: placement === "sidebar" ? "block" : "inline-flex" }}>
+        {trigger}
+      </Box>
+    </Tooltip>
   );
 }

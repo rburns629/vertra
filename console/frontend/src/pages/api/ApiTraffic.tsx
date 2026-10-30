@@ -1,67 +1,26 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
-import BlockIcon from "@mui/icons-material/BlockOutlined";
-import CallMadeIcon from "@mui/icons-material/CallMade";
-import CallReceivedIcon from "@mui/icons-material/CallReceived";
-import ErrorIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import { DataTable, type DataTableColumn } from "../../components/DataTable";
-import { MetricCard } from "../../components/MetricCard";
 import { Mono } from "../../components/Mono";
+import { MetricCard } from "../../components/MetricCard";
 import { ApiError, getApiTraffic, type ApiTraffic as Traffic } from "../../api";
 
-const shown = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
+const num = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
+const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
-type EndpointRow = Traffic["endpoints"][number];
-type BlockedRow = Traffic["blocked"][number];
-type TeamRow = Traffic["teams"][number];
-
-const ENDPOINTS: DataTableColumn<EndpointRow>[] = [
-  { key: "endpoint", header: "Endpoint", render: (e) => <Mono>{e.endpoint}</Mono> },
-  { key: "requests", header: "Requests", render: (e) => e.requests.toLocaleString(), align: "right" },
-  { key: "invalid", header: "Stopped: didn't fit", render: (e) => e.invalid.toLocaleString(), align: "right", hideBelow: "sm" },
-  { key: "4xx", header: "Backend 4xx", render: (e) => e.backend4xx.toLocaleString(), align: "right", hideBelow: "md" },
-  { key: "5xx", header: "Backend 5xx", render: (e) => e.backend5xx.toLocaleString(), align: "right", hideBelow: "sm" },
-  { key: "ms", header: "Backend, average", render: (e) => (e.averageMs ? `${String(e.averageMs)} ms` : "—"), align: "right", hideBelow: "md" },
-];
-
-const BLOCKED: DataTableColumn<BlockedRow>[] = [
-  { key: "request", header: "Request", render: (b) => <Mono>{b.request}</Mono> },
-  { key: "count", header: "Count", render: (b) => b.count.toLocaleString(), align: "right" },
-  { key: "from", header: "From", render: (b) => b.teams.join(", ") || "—", hideBelow: "sm" },
-  { key: "last", header: "Last", render: (b) => (b.last ? new Date(b.last).toLocaleString() : "—"), hideBelow: "md" },
-];
-
-const TEAMS: DataTableColumn<TeamRow>[] = [
-  { key: "team", header: "Calling team", render: (t) => t.team || "(not signed in)" },
-  { key: "requests", header: "Requests", render: (t) => t.requests.toLocaleString(), align: "right" },
-  {
-    key: "peak",
-    header: "Busiest minute",
-    render: (t) => (t.limitPerMinute ? `${String(t.peakPerMinute)} of ${String(t.limitPerMinute)}` : String(t.peakPerMinute)),
-    align: "right",
-  },
-];
-
-/**
- * An API's traffic (ApiService.GetApiTraffic), for its own team: what
- * callers sent, what the gateway stopped, and what the backend answered.
- * Bodies are never recorded; nor who called beyond their team.
- */
-export function ApiTraffic({ team, name }: { team: string; name: string }) {
-  const [hours, setHours] = useState(24);
+/** An API's traffic over the last `hours` (ApiService.GetApiTraffic): its own team's and admins'. Null while loading. */
+export function useApiTraffic(team: string, name: string, hours: number, enabled: boolean) {
   const [traffic, setTraffic] = useState<Traffic | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     setTraffic(null);
+    setError(null);
     getApiTraffic(team, name, hours)
       .then((t) => {
         if (!cancelled) setTraffic(t);
@@ -72,51 +31,142 @@ export function ApiTraffic({ team, name }: { team: string; name: string }) {
     return () => {
       cancelled = true;
     };
-  }, [team, name, hours]);
+  }, [team, name, hours, enabled]);
+  return { traffic, error };
+}
 
+/** Last 24 hours or last 7 days. */
+export function PeriodToggle({ hours, onChange }: { hours: number; onChange: (hours: number) => void }) {
   return (
-    <Card>
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 1 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
-            What callers sent, what the gateway stopped, and what your backend answered. Bodies are never recorded; callers only by team.
+    <ToggleButtonGroup
+      size="small"
+      exclusive
+      aria-label="Period"
+      value={hours}
+      onChange={(_e, value: number | null) => {
+        if (value) onChange(value);
+      }}
+      sx={{ bgcolor: "background.paper", "& .MuiToggleButton-root": { minHeight: 40, px: 1.75 } }}
+    >
+      <ToggleButton value={24}>Last 24 hours</ToggleButton>
+      <ToggleButton value={168}>Last 7 days</ToggleButton>
+    </ToggleButtonGroup>
+  );
+}
+
+/** Requests, forwarded, stopped and backend errors, each with what's behind it. */
+export function TrafficTiles({ traffic }: { traffic: Traffic | null }) {
+  const named = traffic?.teams.filter((t) => t.team) ?? [];
+  const anonymous = traffic?.teams.find((t) => !t.team)?.requests ?? 0;
+  const blocked = traffic?.blocked.reduce((n, b) => n + b.count, 0) ?? 0;
+  const invalid = traffic?.endpoints.reduce((n, e) => n + e.invalid, 0) ?? 0;
+  const worst = traffic?.endpoints.reduce<Traffic["endpoints"][number] | null>((w, e) => (e.backend5xx > (w?.backend5xx ?? 0) ? e : w), null);
+  return (
+    <Box component="section" aria-label="Traffic summary" sx={{ display: "grid", gap: 1.75, gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(auto-fit, minmax(200px, 1fr))" } }}>
+      <MetricCard
+        label="Requests"
+        value={num(traffic?.requests)}
+        note={traffic && `from ${plural(named.length, "team")}${anonymous ? `, and ${anonymous.toLocaleString()} not signed in` : ""}`}
+      />
+      <MetricCard
+        label="Forwarded to the backend"
+        value={num(traffic?.forwarded)}
+        note={traffic?.requests ? `${((100 * traffic.forwarded) / traffic.requests).toFixed(1)}% of requests` : undefined}
+      />
+      <MetricCard
+        label="Stopped at the gateway"
+        value={num(traffic?.stopped)}
+        note={traffic && (blocked || invalid) ? `${blocked.toLocaleString()} not in the spec · ${invalid.toLocaleString()} didn’t fit` : undefined}
+      />
+      <MetricCard
+        label="Backend errors"
+        value={num(traffic?.backendErrors)}
+        note={worst ? `${worst.backend5xx.toLocaleString()} answered 5xx on ${worst.endpoint}` : undefined}
+      />
+    </Box>
+  );
+}
+
+/** Each calling team's requests, its busiest minute against its limit as a bar. */
+export function CallingTeams({ traffic }: { traffic: Traffic | null }) {
+  return (
+    <Card component="section" aria-label="By calling team" sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>
+      <Typography variant="h6" component="h2">
+        By calling team
+      </Typography>
+      {traffic?.teams.length === 0 && (
+        <Typography variant="body2" color="text.secondary">
+          No callers yet.
+        </Typography>
+      )}
+      {traffic?.teams.map((t) => {
+        const pct = t.limitPerMinute ? Math.min(100, Math.round((100 * t.peakPerMinute) / t.limitPerMinute)) : 0;
+        const name = t.team || "(not signed in)";
+        return (
+          <Box key={t.team || "-"} sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.5 }}>
+              <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500 }}>
+                {name}
+              </Typography>
+              <Typography variant="body2" sx={{ fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                {t.requests.toLocaleString()}
+              </Typography>
+            </Box>
+            <Box
+              role="meter"
+              aria-label={`${name}: busiest minute against its limit`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={pct}
+              sx={{ height: 8, bgcolor: "action.hover", borderRadius: 1, overflow: "hidden" }}
+            >
+              <Box sx={{ height: "100%", borderRadius: 1, width: `${String(t.limitPerMinute ? Math.max(pct, 1) : 3)}%`, bgcolor: pct >= 90 ? "warning.main" : "primary.main" }} />
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              {t.limitPerMinute
+                ? `busiest minute ${t.peakPerMinute.toLocaleString()} of ${t.limitPerMinute.toLocaleString()}`
+                : `busiest minute ${t.peakPerMinute.toLocaleString()}; not signed in, so no limit applies`}
+            </Typography>
+          </Box>
+        );
+      })}
+      <Typography variant="caption" color="text.secondary" sx={{ borderTop: 1, borderColor: "divider", pt: 1.25, lineHeight: 1.45 }}>
+        The bar is each team’s busiest minute against its limit; past it, the gateway answers 429.
+      </Typography>
+    </Card>
+  );
+}
+
+/** Requests for paths or methods its spec doesn't describe. */
+export function BlockedRequests({ traffic }: { traffic: Traffic | null }) {
+  return (
+    <Card component="section" aria-label="Blocked: not in the spec" sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 1.25, borderColor: "warning.light" }}>
+      <Typography variant="h6" component="h2">
+        Blocked: not in the spec
+      </Typography>
+      <Typography variant="body2" sx={{ fontSize: 12.5, lineHeight: 1.5 }}>
+        Paths or methods its OpenAPI file doesn’t describe. They got 404 and never reached the backend; a caller that keeps sending one
+        may rely on an endpoint you never published.
+      </Typography>
+      {traffic?.blocked.length === 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ borderTop: 1, borderColor: "divider", pt: 1 }}>
+          Nothing blocked.
+        </Typography>
+      )}
+      {traffic?.blocked.map((b) => (
+        <Box key={b.request} sx={{ display: "flex", flexDirection: "column", gap: 0.25, py: 1, borderTop: 1, borderColor: "divider" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.25 }}>
+            <Mono sx={{ fontSize: 12, overflowWrap: "anywhere" }}>{b.request}</Mono>
+            <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
+              {b.count.toLocaleString()}
+            </Typography>
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            {b.teams.join(", ") || "—"}
+            {b.last ? ` · last ${new Date(b.last).toLocaleString()}` : ""}
           </Typography>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={hours}
-            onChange={(_e, value: number | null) => {
-              if (value) setHours(value);
-            }}
-          >
-            <ToggleButton value={24}>Last 24 hours</ToggleButton>
-            <ToggleButton value={168}>Last 7 days</ToggleButton>
-          </ToggleButtonGroup>
         </Box>
-        {error && <Alert severity="error">{error}</Alert>}
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, my: 3 }}>
-          <MetricCard label="Requests" value={shown(traffic?.requests)} icon={<CallReceivedIcon fontSize="small" />} />
-          <MetricCard label="Forwarded" value={shown(traffic?.forwarded)} icon={<CallMadeIcon fontSize="small" />} />
-          <MetricCard label="Stopped at the gateway" value={shown(traffic?.stopped)} icon={<BlockIcon fontSize="small" />} />
-          <MetricCard label="Backend errors" value={shown(traffic?.backendErrors)} icon={<ErrorIcon fontSize="small" />} />
-        </Box>
-        <Typography variant="subtitle1" component="h3">
-          By endpoint
-        </Typography>
-        <DataTable columns={ENDPOINTS} rows={traffic?.endpoints ?? null} getRowKey={(e) => e.endpoint} emptyMessage="No requests yet." />
-        <Typography variant="subtitle1" component="h3" sx={{ mt: 3 }}>
-          Blocked: not in the spec
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Requests for paths or methods your OpenAPI file doesn&apos;t describe. They got 404 from the gateway and never reached your backend.
-          A caller that keeps sending one may be relying on an endpoint you never published.
-        </Typography>
-        <DataTable columns={BLOCKED} rows={traffic?.blocked ?? null} getRowKey={(b) => b.request} emptyMessage="Nothing blocked." />
-        <Typography variant="subtitle1" component="h3" sx={{ mt: 3 }}>
-          By calling team
-        </Typography>
-        <DataTable columns={TEAMS} rows={traffic?.teams ?? null} getRowKey={(t) => t.team || "-"} emptyMessage="No callers yet." />
-      </CardContent>
+      ))}
     </Card>
   );
 }

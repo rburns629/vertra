@@ -246,9 +246,88 @@ describe("runs", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Mine" }));
     await waitFor(() => { expect(asked.at(-1)).toMatchObject({ mine: true }); });
 
-    fireEvent.click(screen.getByRole("button", { name: /to approve \(1\)/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /to approve/i }));
     expect(await screen.findByRole("link", { name: "orders-api prod database" })).toBeTruthy();
     expect(screen.getByText("sam@acme.com")).toBeTruthy();
+  });
+
+  it("counts the week's runs, filters by kind, and says who started each", async () => {
+    const DAG = { ...RUN, executionId: "1b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a12", name: "kafka topics backfill", template: "", state: "EXECUTION_STATE_FAILED", submittedBy: "u9" };
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, submittedBy: MEMBER.userId }, DAG] } });
+    expect(await screen.findByText("kafka topics backfill")).toBeTruthy();
+    expect(screen.getByText("someone else")).toBeTruthy();
+    expect(screen.getByText("you")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /^Failed this week 1/ })).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Kind" }));
+    fireEvent.click(await screen.findByRole("option", { name: "A DAG" }));
+    await waitFor(() => { expect(screen.queryByText("orders-api first deploy")).toBeNull(); });
+    expect(screen.getByText("kafka topics backfill")).toBeTruthy();
+  });
+
+  it("lists every one of your teams' schedules together", async () => {
+    const asked: string[] = [];
+    await renderAt("/runs?view=schedules", { ...MEMBER, teamNames: ["payments", "ml"] }, {
+      "ScheduleService/ListSchedules": (request: Record<string, unknown>) => {
+        const team = String(request["team"]);
+        asked.push(team);
+        return { schedules: [{ id: `s-${team}`, team, name: `${team} nightly`, kind: "action", runnableName: "uptime-check.check", cron: "0 2 * * *", timeZone: "UTC", botEmail: `${team}@bots.vertra.local`, enabled: team === "ml" }] };
+      },
+    });
+    expect(await screen.findByText("payments nightly")).toBeTruthy();
+    expect(screen.getByText("ml nightly")).toBeTruthy();
+    expect(screen.getByText("Paused")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /schedules 2/i, selected: true })).toBeTruthy();
+    expect(asked.sort()).toEqual(["ml", "payments"]);
+  });
+});
+
+describe("what runs made", () => {
+  const made = (id: string, name: string, state = "exists") => ({
+    id,
+    type: "gcp/project",
+    externalId: `${name}-7f3`,
+    name,
+    product: "gcp-platform-project",
+    productTeam: "gcp-platform",
+    ownerTeam: "azure-apps",
+    executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11",
+    taskId: "project",
+    firstReportedAt: "2026-10-21T16:21:00Z",
+    state,
+    canDelete: true,
+  });
+
+  it("counts by state, and deletes the ones picked in one cleanup run", async () => {
+    const asked: Record<string, unknown>[] = [];
+    await renderAt("/runs/made", MEMBER, {
+      "ResourceService/ListResources": {
+        resources: [
+          made("a1b2c3d4-0000-4000-8000-000000000001", "payments-dev"),
+          made("a1b2c3d4-0000-4000-8000-000000000002", "orders-api-dev"),
+          made("a1b2c3d4-0000-4000-8000-000000000003", "scratch-bucket", "delete_failed"),
+          made("a1b2c3d4-0000-4000-8000-000000000004", "old-bucket", "deleted"),
+        ],
+      },
+      "ResourceService/DeleteResources": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
+      },
+    });
+    expect(await screen.findByRole("button", { name: /^Made 2/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Deleted 1/ })).toBeTruthy();
+    // Deleted ones show only when asked for.
+    expect(screen.queryByText("old-bucket")).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select payments-dev" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select orders-api-dev" }));
+    expect(screen.getByText("2 selected")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Delete 2…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await waitFor(() => {
+      expect(asked).toEqual([{ resourceIds: ["a1b2c3d4-0000-4000-8000-000000000001", "a1b2c3d4-0000-4000-8000-000000000002"] }]);
+    });
   });
 });
 
@@ -282,7 +361,8 @@ describe("a run", () => {
         return {};
       },
     });
-    expect(await screen.findByText(/failed at step 2 of 2, deploy: the region is out of quota/i)).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /step 2, deploy: the region is out of quota/i })).toBeTruthy();
+    expect(screen.getByText(/failed at step 2 of 2/i)).toBeTruthy();
     expect(screen.getAllByText("REGION_QUOTA_EXCEEDED").length).toBeGreaterThan(0);
     expect(screen.getByText(/run again in europe-west1/i)).toBeTruthy();
     // The failed step is the one shown below the timeline.
@@ -311,8 +391,9 @@ describe("a run", () => {
       },
     });
     // In the table, and on the request.
-    expect(await screen.findAllByText("Used by shop-api")).toHaveLength(2);
-    expect(screen.getByRole("heading", { name: "Waiting for an admin" })).toBeTruthy();
+    expect(await screen.findByText("Used by shop-api")).toBeTruthy();
+    expect(screen.getAllByText("shop-api").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /^Waiting for an admin/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve and delete" }));
     await waitFor(() => { expect(decided).toEqual([{ id: "d1d1d1d1-0000-4000-8000-000000000001", approve: true }]); });
   });
@@ -342,9 +423,9 @@ describe("a run", () => {
         return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
       },
     });
-    expect(await screen.findByRole("heading", { name: "What it made" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "What it made before failing" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /billing-db/ }).getAttribute("href")).toBe("https://console.cloud.google.com/home?project=x");
-    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete all 2…" }));
     fireEvent.click(await screen.findByRole("button", { name: "Delete all", hidden: false }));
     await waitFor(() => { expect(asked).toEqual([{ executionId: FAILED_RUN.executionId }]); });
   });
@@ -427,9 +508,11 @@ describe("the docs", () => {
       "GuideService/SearchGuides": { hits: [{ guide: "reference-operations", title: "Operations", heading: "Databases > Backups", excerpt: "Back up both databases nightly." }] },
     });
     expect(await screen.findByText("Reference")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Search the docs"), { target: { value: "back up" } });
-    const hit = await screen.findByRole("link", { name: /Operations · Databases > Backups/ });
+    fireEvent.change(screen.getByLabelText("Search the guides"), { target: { value: "back up" } });
+    const hit = await screen.findByRole("link", { name: /^Backups\s*in Operations/ });
     expect(hit.getAttribute("href")).toBe("/docs/reference-operations#backups");
+    // The words searched for, marked in the excerpt.
+    expect(within(hit).getByText("Back").tagName).toBe("MARK");
   });
 
   const DOCS = {
@@ -456,13 +539,56 @@ describe("the docs", () => {
     },
   };
 
-  it("opens on a home with where to start and every category, a new doc under More", async () => {
+  it("opens on a home by task, linking only the guides this console serves", async () => {
     await renderAt("/docs", MEMBER, DOCS);
-    const start = await screen.findByRole("region", { name: "Start here" });
+    const start = await screen.findByRole("region", { name: "New here? Start with these two" });
     expect(within(start).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["/docs/01-getting-started", "/docs/03-what-is-a-dag"]);
-    expect(screen.getByRole("heading", { name: "Install and operate" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "More" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Something new" }).getAttribute("href")).toBe("/docs/09-something-new");
+    const tasks = screen.getByRole("region", { name: "What are you trying to do?" });
+    // Of the tasks, only Install and operate has a guide served here.
+    expect(within(tasks).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Install and operate"]);
+    expect(within(tasks).getByRole("link", { name: "Upgrading, backups, rotating secrets" }).getAttribute("href")).toBe("/docs/reference-operations#upgrading");
+    expect(within(tasks).getByRole("link", { name: "All guides, in reading order" }).getAttribute("href")).toBe("/docs/01-getting-started");
+    // Nothing to offer without a model.
+    expect(screen.queryByRole("button", { name: "Ask Vertra instead" })).toBeNull();
+  });
+
+  it("offers Ask Vertra from the help when there's a model", async () => {
+    await renderAt("/docs", MEMBER, { ...DOCS, "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra instead" }));
+    expect(((await screen.findByLabelText("Your question")) as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("opens Ask with a page's question in the box (useAsk().open(question)): the help's search", async () => {
+    await renderAt("/docs", MEMBER, {
+      ...DOCS,
+      "ChatService/GetChatSettings": { enabled: true, model: "qwen3.8-27b" },
+      "GuideService/SearchGuides": { hits: [] },
+    });
+    fireEvent.change(await screen.findByLabelText("Search the guides"), { target: { value: "rotate a bot token" } });
+    const results = await screen.findByRole("region", { name: "Search results" });
+    fireEvent.click(within(results).getByRole("button", { name: "Ask Vertra" }));
+    await waitFor(() => { expect((screen.getByLabelText("Your question") as HTMLTextAreaElement).value).toBe("rotate a bot token"); });
+  });
+
+  it("sets a troubleshooting guide by symptom: what you see, why, and what to do", async () => {
+    await renderAt("/docs/15-troubleshooting", MEMBER, {
+      "GuideService/ListGuides": { guides: [{ id: "15-troubleshooting", title: "Troubleshooting", section: "guides", kind: "guide" }] },
+      "GuideService/GetGuide": {
+        markdown: "# Troubleshooting\n\nBy what you see.\n\n## My step is Ready but not running\n\n**What you see:** the step stays **Ready**.\n\n**Why:** something holds it.\n\n**What to do:** wait.\n\n## I can't sign in\n\nAsk.",
+      },
+    });
+    const symptoms = await screen.findByRole("region", { name: "What do you see?" });
+    // The symptoms whose sections the guide has, each to its section.
+    expect(within(symptoms).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#my-step-is-ready-but-not-running", "#i-cant-sign-in"]);
+    expect(screen.getByText("What you see").nextElementSibling?.textContent).toBe("The step stays Ready.");
+    expect(screen.getByText("What to do").nextElementSibling?.textContent).toBe("Wait.");
+  });
+
+  it("lists a doc the contents don't place under More", async () => {
+    await renderAt("/docs/01-getting-started", MEMBER, { ...DOCS, "GuideService/GetGuide": { markdown: "# Try Vertra end to end\n\nHello." } });
+    const contents = await screen.findByRole("navigation", { name: "Docs contents" });
+    fireEvent.click(await within(contents).findByRole("button", { name: "More" }));
+    expect((await within(contents).findByRole("link", { name: "Something new" })).getAttribute("href")).toBe("/docs/09-something-new");
   });
 
   it("shows a long doc a section to a page, nested under it, with the pages before and after", async () => {
@@ -482,9 +608,10 @@ describe("the docs", () => {
     expect(within(contents).getByRole("link", { name: "Upgrading" }).getAttribute("aria-current")).toBe("page");
     const sections = screen.getByRole("navigation", { name: "On this page" });
     expect(within(sections).getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual(["#reused-tags", "#rolling-back"]);
+    expect(within(trail).getByText("Upgrading").getAttribute("aria-current")).toBe("page");
     const onward = screen.getByRole("navigation", { name: "Previous and next" });
-    expect(within(onward).getByRole("link", { name: /Previous · Install and operate\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
-    expect(within(onward).getByRole("link", { name: /Next · Install and operate › Operations\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
+    expect(within(onward).getByRole("link", { name: /Previous\s*Operations/ }).getAttribute("href")).toBe("/docs/reference-operations");
+    expect(within(onward).getByRole("link", { name: /Next\s*Backups/ }).getAttribute("href")).toBe("/docs/reference-operations/backups");
   });
 
   it("draws a doc's figure, and opens it and a linked one at full size", async () => {
@@ -547,9 +674,11 @@ describe("the chat panel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ask Vertra" }));
     fireEvent.change(await screen.findByLabelText("Your question"), { target: { value: "How do I back up?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    expect((await screen.findByRole("link", { name: "[S1] Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    expect((await screen.findByRole("link", { name: "Operations · Backups" })).getAttribute("href")).toBe("/docs/reference-operations#backups");
+    // Cited in the answer by the number it has in the list.
+    expect(screen.getByRole("link", { name: "Source 1" }).textContent).toBe("[1]");
     expect(screen.getByText(/design history: why, not how it works now/)).toBeTruthy();
-    expect(screen.getByText(/searched the docs, filled a cart/)).toBeTruthy();
+    expect(screen.getByText("Searched the guides, filled a cart")).toBeTruthy();
     expect(asked).toMatchObject([{ team: "azure-apps", messages: [{ role: "user", content: "How do I back up?" }] }]);
     // A wrong answer goes to the admins with its question, and what was wrong.
     fireEvent.click(screen.getByRole("button", { name: "Wrong answer" }));
@@ -677,30 +806,75 @@ describe("the cart", () => {
 describe("an API", () => {
   const ORDERS = { team: "payments", name: "orders", displayName: "Orders API", state: "API_STATE_LIVE", mayCall: true, endpoints: [{ method: "GET", path: "/orders/{id}", summary: "One order" }], perMinute: 600 };
 
-  it("tells a caller how to call it, without its team's tabs", async () => {
+  it("tells a caller how to call it, without its team's traffic, backend or logs", async () => {
     await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: ORDERS, openapi: "{}" } });
     expect(await screen.findByRole("heading", { name: "Orders API" })).toBeTruthy();
     expect(screen.getByText(/curl -X GET/)).toBeTruthy();
-    expect(screen.queryByRole("tab", { name: "Traffic" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "On this page" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Requests" })).toBeNull();
+    expect(calls).not.toContain("ApiService/GetApiTraffic");
+    expect(calls).not.toContain("ObserveService/SearchLogs");
   });
 
-  it("gives its own team its traffic, and lets a maintainer pause it", async () => {
+  it("shows its own team each endpoint's traffic, its backend's logs, and lets a maintainer pause it", async () => {
     const paused: Record<string, unknown>[] = [];
-    await renderAt("/apis/payments/orders?tab=definition", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+    await renderAt("/apis/payments/orders", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
       "ApiService/GetApi": { api: { ...ORDERS, backendUrl: "https://orders.internal", sourcePath: "teams/payments/apis/orders/api.yaml" }, openapi: "{}" },
+      "ApiService/GetApiTraffic": {
+        requests: "120",
+        forwarded: "100",
+        stopped: "20",
+        endpoints: [{ endpoint: "GET /orders/{id}", requests: "4321", backend5xx: "7" }],
+        blocked: [{ request: "DELETE /orders/x", count: "9", teams: ["growth"] }],
+        teams: [{ team: "growth", requests: "120", peakPerMinute: "57", limitPerMinute: 60 }],
+      },
+      "ObserveService/SearchLogs": { lines: [{ team: "payments", app: "orders-api", level: "error", line: "ledger answered 503" }], searchDays: 30 },
       "ApiService/PauseApi": (request: Record<string, unknown>) => {
         paused.push(request);
         return {};
       },
     });
     expect(await screen.findByText("teams/payments/apis/orders/api.yaml")).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Traffic" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();
+    // The endpoint's own row carries its traffic; what the spec doesn't describe is listed apart.
+    expect(await screen.findByText("4,321")).toBeTruthy();
+    expect(screen.getByText("DELETE /orders/x")).toBeTruthy();
+    expect(screen.getByText("busiest minute 57 of 60")).toBeTruthy();
+    expect(await screen.findByText("ledger answered 503")).toBeTruthy();
+    expect(calls).toContain("ObserveService/SearchLogs");
+    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments");
+
     fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
     fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
     await waitFor(() => { expect(paused).toEqual([{ team: "payments", name: "orders", message: "Failing over" }]); });
+  });
+});
 
-    fireEvent.click(screen.getByRole("tab", { name: "Traffic" }));
-    await waitFor(() => { expect(calls).toContain("ApiService/GetApiTraffic"); });
+describe("the APIs page", () => {
+  const api = (team: string, name: string, extra: Record<string, unknown> = {}) => ({ team, name, displayName: `${name} API`, state: "API_STATE_LIVE", endpoints: [], url: `http://gateway.vertra-system.svc/${team}/${name}`, ...extra });
+
+  it("groups APIs as your teams', shared with you, and not shared, and filters them", async () => {
+    await renderAt("/apis", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "ApiService/ListApis": {
+        apis: [
+          api("payments", "orders", { mayCall: true }),
+          api("identity", "users", { mayCall: true }),
+          api("ml", "scoring", { state: "API_STATE_HELD", heldReason: "Its backend's host isn't allowed here yet" }),
+        ],
+      },
+    });
+    await screen.findByText("orders API");
+    const table = screen.getByRole("region", { name: "APIs you can see" });
+    const groups = [...table.querySelectorAll("th[scope=rowgroup]")].map((h) => h.textContent);
+    expect(groups).toEqual([expect.stringMatching(/^Your teams’ · payments/), expect.stringMatching(/^Shared with your teams/), expect.stringMatching(/^Not shared/)]);
+    expect(within(table).getByRole("link", { name: "Ask ml for access" })).toBeTruthy();
+    expect(screen.getByText("http://gateway.vertra-system.svc/<team>/<api>")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "A bot for payments" }).getAttribute("href")).toBe("/teams/payments?tab=automation");
+
+    fireEvent.click(screen.getByRole("button", { name: /Paused or held/ }));
+    expect(within(table).queryByText("orders API")).toBeNull();
+    expect(within(table).getByText("scoring API")).toBeTruthy();
+    expect(within(table).getByText("Its backend's host isn't allowed here yet")).toBeTruthy();
   });
 });
 
@@ -879,6 +1053,39 @@ describe("observe", () => {
       "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", copiedAt: "2026-10-22T14:05:00Z" },
     });
     expect(await screen.findByText("Chain intact")).toBeTruthy();
+    expect(screen.getByText("entry 41,206")).toBeTruthy();
+  });
+
+  it("opens the logs on an API's backends when linked from one, and says who sees which lines", async () => {
+    const searched: Record<string, unknown>[] = [];
+    await renderAt("/observe?tab=logs&from=api&team=payments", MEMBER, {
+      "ObserveService/SearchLogs": (request: Record<string, unknown>) => {
+        searched.push(request);
+        return { lines: [{ team: "payments", app: "orders-api", level: "warn", line: "ledger call slow" }], searchDays: 30 };
+      },
+    });
+    expect(await screen.findByText("ledger call slow")).toBeTruthy();
+    expect(searched[0]).toMatchObject({ source: "api", team: "payments" });
+    expect(screen.getByRole("button", { name: "API backends" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/1 line/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Who sees which lines" })).toBeTruthy();
+  });
+
+  it("counts what was refused by code, and marks who refused each", async () => {
+    await renderAt("/observe", MEMBER, {
+      "ObserveService/GetSecurity": {
+        checks: [{ name: "Teams from the directory", state: "not_yet", text: "Planned." }],
+        refusals: [
+          { what: "a", code: "NOT_IN_SPEC", why: "No such path.", source: "gateway", count: 2 },
+          { what: "b", code: "NOT_IN_SPEC", why: "No such path.", source: "gateway", count: 3 },
+          { what: "c", code: "IMAGE_NOT_ALLOWED", why: "Not allowed.", source: "step", count: 1 },
+        ],
+      },
+    });
+    expect(await screen.findByText("Teams from the directory: not yet")).toBeTruthy();
+    expect(screen.getByText("1 by the cluster · 2 by the gateway")).toBeTruthy();
+    const refused = screen.getByRole("region", { name: "Refused, last 7 days" });
+    expect(within(refused).getAllByText("NOT_IN_SPEC").length).toBeGreaterThan(1);
   });
 });
 
@@ -1207,6 +1414,75 @@ describe("signing in", () => {
   });
 });
 
+describe("the Teams page", () => {
+  it("sums up your teams, what needs them, and every other team for an admin", async () => {
+    await renderAt("/teams", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t1", name: "payments", fromCatalog: true } },
+      "TeamService/GetTeamProfile": (request: Record<string, unknown>) =>
+        request["name"] === "payments" ? { name: "payments", people: 7 } : { name: String(request["name"]), owner: "@acme/growth", people: 14 },
+      "TeamService/ListPods": { pods: [{ podName: "ek-1", state: "TASK_POD_STATE_RUNNING" }] },
+      "SecretService/ListSecrets": { secrets: [{ id: "s1", secretName: "stripe-webhook", external: { status: "error" } }, { id: "s2", secretName: "db" }] },
+      "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-ci@bots.vertra.local" }] },
+      "TemplateService/ListTemplates": { runnables: [{ kind: "KIND_TEMPLATE", team: "payments", name: "merchant-onboarding", shared: true }] },
+      "ExecutionService/ListPendingApprovals": { approvals: [{ executionId: "r9", executionName: "refund-ledger for growth", taskId: "t", team: "payments", canDecide: true }] },
+      "TeamService/ListTeams": {
+        teams: [
+          { id: "t1", name: "payments", fromCatalog: true },
+          { id: "t2", name: "growth", fromCatalog: true },
+          { id: "t3", name: "sandbox" },
+          { id: "t4", name: "legacy", fromCatalog: true, retiredAt: "2026-10-21T12:00:00Z" },
+        ],
+      },
+      "AdminService/GetCatalogStatus": { status: { problems: [{ item: "teams/sandbox", message: "made here", adoptableTeam: "sandbox" }] } },
+    });
+    const card = (await screen.findByRole("link", { name: "payments" })).closest("article") as HTMLElement;
+    expect(within(card).getByText("You maintain it")).toBeTruthy();
+    expect(await within(card).findByText("merchant-onboarding")).toBeTruthy();
+    expect(await within(card).findByText(/1 step waits for payments to approve/)).toBeTruthy();
+    expect(within(card).getByRole("link", { name: "refund-ledger for growth" }).getAttribute("href")).toBe("/runs/r9");
+    expect(await within(card).findByText("stripe-webhook")).toBeTruthy();
+    expect(within(card).getByRole("link", { name: /^Bots/ }).getAttribute("href")).toBe("/teams/payments?tab=automation");
+
+    const others = screen.getByRole("region", { name: /every other team · 3/i });
+    expect(within(others).getByRole("link", { name: "Adopt…" }).getAttribute("href")).toBe("/admin/catalog");
+    expect(within(others).getByRole("link", { name: "Restore or purge" }).getAttribute("href")).toBe("/teams/legacy?tab=settings");
+    expect((await within(others).findAllByText("@acme/growth")).length).toBeGreaterThan(0);
+    fireEvent.change(within(others).getByRole("searchbox", { name: "Find a team" }), { target: { value: "sand" } });
+    expect(within(others).queryByRole("link", { name: "growth" })).toBeNull();
+    expect(within(others).getByRole("link", { name: "sandbox" })).toBeTruthy();
+  });
+});
+
+describe("a team's members", () => {
+  it("say how each signs in, flag passwords a Google-only team refuses, and show an admin who joins by group", async () => {
+    await renderAt("/teams/payments", { ...ADMIN, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "AuthService/GetEnvironment": { label: "test", ssoLabel: "Google" },
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments", requireSso: true } },
+      "TeamService/ListMembers": {
+        members: [
+          { id: "u1", email: "ana@acme.com", hasPassword: true, usesSso: true, role: "TEAM_ROLE_MAINTAINER", isAdmin: true },
+          { id: "u2", email: "lee@acme.com", hasPassword: true, role: "TEAM_ROLE_MEMBER" },
+          { id: "u3", email: "sam@acme.com", usesSso: true, role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+      "SsoService/ListSsoGroupMappings": {
+        mappings: [
+          { id: "m1", group: "payments-eng@acme.com", team: "payments", role: "TEAM_ROLE_MEMBER" },
+          { id: "m2", group: "data-eng@acme.com", team: "data", role: "TEAM_ROLE_MEMBER" },
+        ],
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "3 people" })).toBeTruthy();
+    expect(screen.getByText("Password only")).toBeTruthy();
+    expect(screen.getByText(/1 signs in with a password only, while payments requires Google/)).toBeTruthy();
+    expect(await screen.findByText("payments-eng@acme.com")).toBeTruthy();
+    expect(screen.queryByText("data-eng@acme.com")).toBeNull();
+    // The role a new person gets: Member until Maintainer is chosen.
+    fireEvent.click(screen.getByRole("button", { name: /^Maintainer/ }));
+    expect(screen.getByRole("button", { name: /^Maintainer/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
 describe("a team's settings", () => {
   it("say a retired team is read-only, and offer an admin to restore it", async () => {
     await renderAt("/teams/old-team?tab=settings", ADMIN, {
@@ -1215,7 +1491,9 @@ describe("a team's settings", () => {
     expect(await screen.findByText(/this team is retired: it's read-only/i)).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Restore old-team" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /purge old-team/i })).toHaveProperty("disabled", false);
-    expect(screen.getByText("teams/old-team/")).toBeTruthy();
+    // In the header, and in "Where it comes from".
+    expect(screen.getAllByText("teams/old-team/")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Restore it" })).toBeTruthy();
   });
 
   it("name the members a Google-only rule would lock out, and keep the controls from non-admins", async () => {
@@ -1312,6 +1590,31 @@ describe("keyless bots", () => {
         { team: "payments", botId: "b0b0b0b0-0000-4000-8000-000000000001", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/release", ref: "refs/heads/main" } },
       ]);
     });
+  });
+});
+
+describe("ordering bots", () => {
+  it("list what they may order, and change it only after Edit", async () => {
+    const saved: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": {
+        bots: [{ id: "b1", email: "payments-shop@bots.vertra.local", ordering: true, orderTemplates: ["payments/onboarding"], tokens: [{ id: "k1", label: "Shop" }] }],
+      },
+      "TokenService/SetBotOrders": (request: Record<string, unknown>) => {
+        saved.push(request);
+        return { templates: request["templates"] };
+      },
+    });
+    const card = (await screen.findByRole("heading", { name: "payments-shop@bots.vertra.local" })).closest("article") as HTMLElement;
+    expect(within(card).getByText("Ordering")).toBeTruthy();
+    expect(within(card).getByText("payments/onboarding")).toBeTruthy();
+    expect(within(card).queryByLabelText("Templates it may order")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
+    fireEvent.change(within(card).getByLabelText("Templates it may order"), { target: { value: "payments/onboarding\ndata/postgres-db" } });
+    // The templates' Save, before the callback's.
+    fireEvent.click(within(card).getAllByRole("button", { name: "Save" })[0] as HTMLElement);
+    await waitFor(() => { expect(saved).toEqual([{ team: "payments", email: "payments-shop@bots.vertra.local", templates: ["payments/onboarding", "data/postgres-db"] }]); });
   });
 });
 

@@ -3,22 +3,24 @@ import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Link from "@mui/material/Link";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import { Mono } from "../../components/Mono";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
+import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
-import { Pill, type PillTone } from "../../components/Pill";
+import TextField from "@mui/material/TextField";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
+import { Mono } from "../../components/Mono";
 import { useAuth } from "../../auth/AuthContext";
 import { ApiError, listAllTeams, searchLogs, type LogLineView } from "../../api";
+import { LEVEL, LogLines } from "./LogLines";
 
-const LEVEL: Record<string, PillTone> = { debug: "neutral", info: "info", warn: "warning", error: "error" };
+type Source = "step" | "api" | "platform";
+
 const RANGES: [number, string][] = [
   [1, "Last hour"],
   [6, "Last 6 hours"],
@@ -27,16 +29,41 @@ const RANGES: [number, string][] = [
   [720, "Last 30 days"],
 ];
 
-export function LogsTab({ initialRun }: { initialRun: string }) {
+/** Who sees which lines: as the console's log search decides it (console/src/core/logs.ts). */
+const WHO: [string, string][] = [
+  ["A step’s lines, every level", "The step’s own team, and admins."],
+  ["A step’s info lines", "Also the run’s owners: whoever submitted it, and the team it was run for."],
+  ["API backends", "Every level, to the backend’s own team only, and admins."],
+  ["The platform", "kernel-api, the scheduler, the console and the gateway: admins only."],
+];
+
+const field = { "& .MuiInputBase-root": { minHeight: 44 } };
+
+/** What the search covered, in words: "from every step of run 4be9a1c0, last 7 days". */
+function described(source: Source, team: string, run: string, hours: number): string {
+  const range = (RANGES.find(([h]) => h === hours)?.[1] ?? `last ${String(hours)} hours`).toLowerCase();
+  const from =
+    source === "platform"
+      ? "from the platform"
+      : source === "api"
+        ? `from ${team ? `${team}’s` : "every"} API backend${team ? "s" : ""}`
+        : run
+          ? "from every step of run"
+          : `from ${team ? `${team}’s` : "every"} step${team ? "s" : ""}`;
+  return `${from}${source === "step" && run ? "" : `, ${range}`}`;
+}
+
+export function LogsTab({ initialRun, initialSource, initialTeam }: { initialRun: string; initialSource?: string; initialTeam?: string }) {
   const { user } = useAuth();
   const [text, setText] = useState("");
-  const [team, setTeam] = useState("");
+  const [team, setTeam] = useState(initialTeam ?? "");
   const [run, setRun] = useState(initialRun);
   const [level, setLevel] = useState("");
-  const [source, setSource] = useState<"step" | "api" | "platform">("step");
+  const [source, setSource] = useState<Source>(initialSource === "api" || initialSource === "platform" ? initialSource : "step");
   const [hours, setHours] = useState(initialRun ? 168 : 1);
   const [teams, setTeams] = useState<string[]>([]);
   const [lines, setLines] = useState<LogLineView[] | null>(null);
+  const [searched, setSearched] = useState({ source, team, run: initialRun, hours });
   const [truncated, setTruncated] = useState(false);
   const [searchDays, setSearchDays] = useState(30);
   const [off, setOff] = useState(false);
@@ -61,16 +88,18 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
   async function search(): Promise<void> {
     setSearching(true);
     setError(null);
+    const runId = source === "step" ? run.trim() : "";
     try {
       const found = await searchLogs({
         text: text.trim(),
         team: source === "platform" ? "" : team,
-        executionId: source === "step" ? run.trim() : "",
+        executionId: runId,
         level,
         source,
         hours,
       });
       setLines(found.lines);
+      setSearched({ source, team: source === "platform" ? "" : team, run: runId, hours });
       setTruncated(found.truncated);
       setSearchDays(found.searchDays);
     } catch (err) {
@@ -97,60 +126,72 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
   }
 
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="h6" component="h2">
-          Search the logs
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {user?.isAdmin
-            ? `Every step's output, every team's API backends', and the platform's own. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`
-            : `Every line from your teams' steps and API backends, and the INFO lines of other runs you can see. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`}
-        </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Box
-          component="form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void search();
-          }}
-          sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center", mb: 2 }}
-        >
-          <TextField
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Card
+        component="form"
+        role="search"
+        aria-label="Search the logs"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void search();
+        }}
+        sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}
+      >
+        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 1.5 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, maxWidth: 760 }}>
+            <Typography variant="h6" component="h2">
+              Search the logs
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+              {user?.isAdmin
+                ? `Every step's output, every team's API backends', and the platform's own. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`
+                : `Every line from your teams' steps and API backends, and the INFO lines of other runs you can see. Credentials are redacted before anything is kept. Searchable for ${String(searchDays)} days, then archived.`}
+            </Typography>
+          </Box>
+          <ToggleButtonGroup
+            exclusive
             size="small"
-            placeholder="Text to find"
+            aria-label="From"
+            value={source}
+            onChange={(_e, value: Source | null) => {
+              if (value) setSource(value);
+            }}
+            sx={{ bgcolor: "background.paper", flexWrap: "wrap", "& .MuiToggleButton-root": { minHeight: 40, px: 1.75, gap: 0.75 } }}
+          >
+            <ToggleButton value="step">Steps</ToggleButton>
+            <ToggleButton value="api">API backends</ToggleButton>
+            {user?.isAdmin && (
+              <ToggleButton value="platform">
+                The platform
+                <Box component="span" sx={{ fontSize: 11, color: "text.secondary", fontWeight: 400 }}>
+                  admins
+                </Box>
+              </ToggleButton>
+            )}
+          </ToggleButtonGroup>
+        </Box>
+        <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+          <TextField
+            label="Text to find"
+            placeholder="Any text"
+            type="search"
             value={text}
             onChange={(event) => {
               setText(event.target.value);
             }}
-            sx={{ flex: "1 1 220px" }}
-            slotProps={{ htmlInput: { "aria-label": "Text to find", maxLength: 200 } }}
+            sx={{ ...field, flex: "2 1 240px", "& input": { fontFamily: "fontFamilyMono", fontSize: 13 } }}
+            slotProps={{ htmlInput: { maxLength: 200 }, inputLabel: { shrink: true } }}
           />
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel id="logs-source-label">From</InputLabel>
-            <Select
-              labelId="logs-source-label"
-              label="From"
-              value={source}
-              onChange={(event) => {
-                setSource(event.target.value);
-              }}
-            >
-              <MenuItem value="step">Steps</MenuItem>
-              <MenuItem value="api">API backends</MenuItem>
-              {user?.isAdmin && <MenuItem value="platform">The platform</MenuItem>}
-            </Select>
-          </FormControl>
           {source !== "platform" && (
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel id="logs-team-label">Team</InputLabel>
+            <FormControl sx={{ ...field, flex: "1 1 150px" }}>
+              <InputLabel id="logs-team-label" shrink>
+                Team
+              </InputLabel>
               <Select
                 labelId="logs-team-label"
                 label="Team"
+                notched
+                displayEmpty
                 value={team}
                 onChange={(event) => {
                   setTeam(event.target.value);
@@ -167,21 +208,25 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
           )}
           {source === "step" && (
             <TextField
-              size="small"
-              placeholder="Run id"
+              label="Run id"
+              placeholder="Any run"
               value={run}
               onChange={(event) => {
                 setRun(event.target.value);
               }}
-              sx={{ width: 300 }}
-              slotProps={{ htmlInput: { "aria-label": "Run id" } }}
+              sx={{ ...field, flex: "1 1 240px" }}
+              slotProps={{ inputLabel: { shrink: true } }}
             />
           )}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel id="logs-level-label">Level</InputLabel>
+          <FormControl sx={{ ...field, flex: "0 1 120px" }}>
+            <InputLabel id="logs-level-label" shrink>
+              Level
+            </InputLabel>
             <Select
               labelId="logs-level-label"
               label="Level"
+              notched
+              displayEmpty
               value={level}
               onChange={(event) => {
                 setLevel(event.target.value);
@@ -195,7 +240,7 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl sx={{ ...field, flex: "0 1 150px" }}>
             <InputLabel id="logs-range-label">When</InputLabel>
             <Select
               labelId="logs-range-label"
@@ -212,64 +257,92 @@ export function LogsTab({ initialRun }: { initialRun: string }) {
               ))}
             </Select>
           </FormControl>
-          <Button type="submit" variant="contained" disabled={searching}>
+          <Button type="submit" variant="contained" size="large" disabled={searching} sx={{ px: 2.75 }}>
             {searching ? "Searching…" : "Search"}
           </Button>
         </Box>
-        {truncated && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Only the newest {lines?.length ?? 0} lines are shown. Narrow the search to see the rest.
-          </Alert>
-        )}
-        {lines === null ? (
-          <Typography color="text.secondary">Searching…</Typography>
-        ) : lines.length === 0 ? (
-          <Typography color="text.secondary">Nothing found.</Typography>
-        ) : (
-          <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, overflowX: "auto" }}>
-            {lines.map((l, i) => (
-              <Box
-                key={`${l.at ?? ""}/${String(i)}`}
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "170px 64px 220px 1fr" },
-                  gap: 1,
-                  px: 1.5,
-                  py: 0.75,
-                  borderTop: i === 0 ? 0 : 1,
-                  borderColor: "divider",
-                  alignItems: "start",
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  {l.at ? new Date(l.at).toLocaleString() : ""}
-                </Typography>
-                <Box>
-                  <Pill tone={LEVEL[l.level] ?? "neutral"}>{l.level}</Pill>
-                </Box>
-                <Typography variant="caption" sx={{ overflowWrap: "anywhere" }}>
-                  {l.executionId ? (
+      </Card>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, alignItems: "flex-start" }}>
+        <Card component="section" aria-label="Log lines" sx={{ flex: "3 1 640px", minWidth: 0, overflow: "hidden" }}>
+          <Box sx={{ px: 2.75, py: 1.75, display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 1, borderBottom: 1, borderColor: "divider" }}>
+            <Typography variant="body2" sx={{ fontSize: 13 }}>
+              {lines === null ? (
+                "Searching…"
+              ) : (
+                <>
+                  <b>
+                    {lines.length.toLocaleString()} line{lines.length === 1 ? "" : "s"}
+                  </b>{" "}
+                  {described(searched.source, searched.team, searched.run, searched.hours)}
+                  {searched.run && (
                     <>
-                      {l.team} · {l.task}
-                      {l.attempt > 1 ? ` (attempt ${String(l.attempt)})` : ""} ·{" "}
-                      <Link component={RouterLink} to={`/runs/${l.executionId}`}>
-                        {l.executionId.slice(0, 8)}
+                      {" "}
+                      <Link component={RouterLink} to={`/runs/${searched.run}`} sx={{ fontFamily: "fontFamilyMono", fontSize: 12.5 }}>
+                        {searched.run.slice(0, 8)}
                       </Link>
+                      , {(RANGES.find(([h]) => h === searched.hours)?.[1] ?? "").toLowerCase()}
                     </>
-                  ) : l.team ? (
-                    `${l.team} · ${l.app || "API backend"}`
-                  ) : (
-                    l.app || "platform"
                   )}
+                  {lines.length > 0 && " · newest first"}
+                </>
+              )}
+            </Typography>
+            {user?.isAdmin && (
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                every level: you&apos;re an admin
+              </Typography>
+            )}
+          </Box>
+          {truncated && (
+            <Alert severity="info" sx={{ m: 2 }}>
+              Only the newest {lines?.length ?? 0} lines are shown. Narrow the search to see the rest.
+            </Alert>
+          )}
+          {lines?.length === 0 && (
+            <Typography color="text.secondary" sx={{ px: 2.75, py: 3 }}>
+              Nothing found.
+            </Typography>
+          )}
+          {lines && lines.length > 0 && <LogLines lines={lines} />}
+        </Card>
+
+        <Box component="aside" sx={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Card component="section" aria-label="Who sees which lines" sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Typography variant="h6" component="h2">
+              Who sees which lines
+            </Typography>
+            {WHO.map(([what, who]) => (
+              <Box key={what} sx={{ display: "flex", flexDirection: "column", gap: 0.375, pt: 1.25, borderTop: 1, borderColor: "divider" }}>
+                <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500 }}>
+                  {what}
                 </Typography>
-                <Box component="pre" sx={{ m: 0, fontFamily: "monospace", fontSize: 12.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                  {l.line}
-                </Box>
+                <Typography variant="body2" sx={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                  {who}
+                </Typography>
               </Box>
             ))}
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+              Steps log JSON lines with a level; a plain line counts as debug, so nothing reaches other teams by accident. Write info for the
+              people running your product.
+            </Typography>
+          </Card>
+          <Card component="section" aria-label="Redacted, then kept" sx={{ px: 2.75, py: 2.5, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Typography variant="h6" component="h2">
+              Redacted, then kept
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.5 }}>
+              Credential shapes are replaced with <Mono sx={{ fontSize: 12 }}>••••••••</Mono> before a line is stored. Searchable here for{" "}
+              {searchDays} days, then archived.
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.5 }}>
+              A run&apos;s own page still shows its steps&apos; output, kept with the run.
+            </Typography>
+          </Card>
+        </Box>
+      </Box>
+    </Box>
   );
 }

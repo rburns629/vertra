@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 import { useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
@@ -42,12 +41,10 @@ function eventColor(eventType: string): string {
 }
 
 export function StepLogs({
-  executionId,
   taskId,
   logs,
   events,
 }: {
-  executionId: string;
   taskId: string;
   logs: TaskLogs | undefined;
   events: ExecutionEvent[];
@@ -81,35 +78,36 @@ export function StepLogs({
         <Button size="small" startIcon={<DownloadIcon />} onClick={download} disabled={feed.length === 0}>
           Download
         </Button>
-        <Button size="small" component={RouterLink} to={`/observe?tab=logs&run=${encodeURIComponent(executionId)}`}>
-          Search in Observe
-        </Button>
       </Box>
       <Box
         tabIndex={0}
         role="region"
         aria-label={`${taskId} output`}
-        sx={{ maxHeight: 420, overflowY: "auto", p: 2, borderRadius: 2, bgcolor: "code.background", color: "code.text", fontFamily: "fontFamilyMono", fontSize: 13 }}
+        sx={{ maxHeight: 420, overflowY: "auto", px: 2, py: 1.75, borderRadius: "10px", bgcolor: "code.background", color: "code.text", fontFamily: "fontFamilyMono", fontSize: 12, lineHeight: 1.7 }}
       >
         {shown.length === 0 && (
           <Typography variant="body2" sx={{ color: "code.textMuted" }}>
             {feed.length === 0 ? "Nothing yet." : "Nothing matches."}
           </Typography>
         )}
+        {/* A milestone's time in the first column, the step's own lines under it in the second. */}
         {shown.map((entry, i) =>
           entry.kind === "event" ? (
             // The feed has no stable ids, and is rebuilt each render.
-            <Box key={i} sx={{ mb: 0.25 }}>
+            <Box key={i} sx={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr)", gap: 1.25 }}>
               <Box component="span" sx={{ color: "code.textMuted" }}>
-                {new Date(entry.createdAt).toLocaleTimeString()}{" "}
+                {new Date(entry.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </Box>
               <Box component="span" sx={{ color: eventColor(entry.eventType), fontWeight: 600 }}>
                 {entry.eventType}
               </Box>
             </Box>
           ) : (
-            <Box key={i} sx={{ whiteSpace: "pre-wrap", mb: 0.25, pl: 2 }}>
-              {entry.line}
+            <Box key={i} sx={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr)", gap: 1.25 }}>
+              <span />
+              <Box component="span" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                {entry.line}
+              </Box>
             </Box>
           ),
         )}

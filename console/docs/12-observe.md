@@ -130,7 +130,7 @@ Fill in what you know and press **Search**:
 
 The newest lines come first. Each shows its time, level, and where it came from: a step's team, step and attempt with a link to its run; an API backend's team and app; or the platform component. When there are more matches than shown, the tab says **Only the newest N lines are shown**: narrow the search.
 
-From a step on a run's page, **Search in Observe** opens this tab with that run filled in, over the last 7 days.
+From a step on a run's page, **Search its logs in Observe** opens this tab with that run filled in, over the last 7 days.
 
 Credentials a step or backend prints are redacted before anything is kept. Older logs than the search window are archived; only an admin can read them, with Loki's own tools.
 
@@ -158,7 +158,7 @@ A step's lines count as `info` only when it logs them as JSON with `"level": "in
 | **On** | What it acted on: a team, a secret's name, an image, a run (linked) |
 | **Outcome** | **Done**, **Done, with problems**, **Refused** (not allowed), **Rejected** (a bad request) or **Failed** (an error) |
 
-Filter with **Team**, **Only mine** and **Only refused or failed**, and press **Load more** for older entries.
+Filter with **Team**, **Only mine** and **Only refused or failed**, and press **Load older entries** for more. Each entry shows its number in the chain (**Entry**).
 
 Admins see every entry. Anyone else sees their own, and what anyone (admins included) did to their teams or to runs in them. Entries about no team, such as users, the catalog, the gateway or policies, are for admins only.
 
@@ -179,7 +179,7 @@ Admins see more under **Admin → Audit log copy**, in **The audit log's copy**:
 | --- | --- | --- |
 | A step under **Refused** (Cluster) | The cluster refused to start it; the code says why | Fix what the code names ([failure codes](09-runs-explained.md#what-does-each-failure-code-mean)), then retry the step |
 | **CATALOG_NOT_APPLIED** | The latest catalog release couldn't be applied; the error says why | Tell the catalog's admins |
-| A gateway refusal on your API | Callers are being stopped at the gateway | Open the API's **Traffic** tab ([traffic](11-apis.md#watching-your-apis-traffic)) |
+| A gateway refusal on your API | Callers are being stopped at the gateway | Open the API's page, **Endpoints and traffic** ([traffic](11-apis.md#watching-your-apis-traffic)) |
 | A gateway refusal on your calls | Your team's calls to another API are refused | Read the code ([gateway errors](11-apis.md#what-does-each-gateway-error-mean)) |
 | **Failed** on your product's image | Its last scan found a fixable vulnerability or a secret | [Fix it](#what-to-do-when-a-scan-fails) |
 | A failure code climbing on **Metrics** | Many steps failing the same way | Read what it means; tell the product's team or an admin |
