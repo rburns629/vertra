@@ -139,6 +139,10 @@ describe("a due schedule", () => {
     expect(row?.nextRunAt?.getTime()).toBeGreaterThan(Date.now());
     const [run] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.executionId, row?.lastExecutionId ?? ""));
     expect(run).toMatchObject({ submittedBy: bot.id, onBehalfOf: own, scheduleId: row?.id, templateParameters: { text: "hello" } });
+    // Listed with the schedule that started it (the run is its step's team's).
+    const admin = await users.signIn((await users.makeUser({ admin: true })).email);
+    const listed = await call<{ executions?: { executionId: string; schedule?: string }[] }>(admin, "ExecutionService/ListExecutions", { team: prov });
+    expect(listed.body.executions?.find((e) => e.executionId === run?.executionId)?.schedule).toBe("nightly");
     await startDueSchedules(silent);
     expect(ours()).toHaveLength(1);
   });

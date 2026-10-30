@@ -211,6 +211,14 @@ export declare type ExecutionSummary = Message<"vertra.console.v1.ExecutionSumma
    * @generated from field: repeated vertra.console.v1.RunningStep running = 11;
    */
   running: RunningStep[];
+
+  /**
+   * The schedule that started it, by name; unset when none did, or it has
+   * since been deleted.
+   *
+   * @generated from field: optional string schedule = 12;
+   */
+  schedule?: string | undefined;
 };
 
 /**
@@ -330,6 +338,14 @@ export declare type Execution = Message<"vertra.console.v1.Execution"> & {
    * @generated from field: optional string on_behalf_of = 12;
    */
   onBehalfOf?: string | undefined;
+
+  /**
+   * The schedule that started it, by name; unset when none did, or it has
+   * since been deleted.
+   *
+   * @generated from field: optional string schedule = 13;
+   */
+  schedule?: string | undefined;
 };
 
 /**

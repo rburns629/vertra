@@ -322,7 +322,21 @@ export function ExecutionsListPage() {
       },
     },
     { key: "started", header: "Started", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{when(e.createdAt)}</Box> },
-    { key: "by", header: "By", hideBelow: "md", render: (e) => <Box sx={{ overflowWrap: "anywhere" }}>{byWhom(e)}</Box> },
+    {
+      key: "by",
+      header: "By",
+      hideBelow: "md",
+      render: (e) => (
+        <Box sx={{ overflowWrap: "anywhere" }}>
+          {byWhom(e)}
+          {e.schedule && (
+            <Typography component="span" sx={{ display: "block", fontSize: 13, color: "text.secondary" }}>
+              on the schedule {e.schedule}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
     { key: "took", header: "Took", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{took(e, now)}</Box> },
   ];
 

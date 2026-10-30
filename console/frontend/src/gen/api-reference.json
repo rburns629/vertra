@@ -3257,6 +3257,13 @@
      "repeated": true,
      "optional": false,
      "comment": "The steps claimed or running now, by step id; empty once it has\nfinished (a cancelled run's last steps may still be stopping), or if\nthe kernel couldn't be asked."
+    },
+    {
+     "name": "schedule",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "The schedule that started it, by name; unset when none did, or it has\nsince been deleted."
     }
    ]
   },
@@ -3385,6 +3392,13 @@
      "repeated": false,
      "optional": true,
      "comment": ""
+    },
+    {
+     "name": "schedule",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "The schedule that started it, by name; unset when none did, or it has\nsince been deleted."
     }
    ]
   },

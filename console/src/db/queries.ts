@@ -19,6 +19,7 @@ import {
   templates,
   apis,
   catalogSync,
+  schedules,
   type Approval,
   type ErrorHelp,
   type ProductCleanup,
@@ -979,8 +980,8 @@ export interface ExecutionPageQuery {
 }
 
 export interface ExecutionPage {
-  /** With the submitter's email: null once that account is deleted. */
-  rows: (SubmittedExecutionSummary & { submittedByEmail: string | null })[];
+  /** With the submitter's email (null once that account is deleted) and the schedule that started it (null when none did, or it's deleted). */
+  rows: (SubmittedExecutionSummary & { submittedByEmail: string | null; scheduleName: string | null })[];
   /** Where the next page starts; null on the last page. */
   nextCursor: string | null;
 }
@@ -1020,9 +1021,10 @@ export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Pr
     );
   }
   const rows = await db
-    .select({ ...summaryColumns, submittedByEmail: users.email, cursorTime: sql<string>`${submittedExecutions.createdAt}::text` })
+    .select({ ...summaryColumns, submittedByEmail: users.email, scheduleName: schedules.name, cursorTime: sql<string>`${submittedExecutions.createdAt}::text` })
     .from(submittedExecutions)
     .leftJoin(users, eq(users.id, submittedExecutions.submittedBy))
+    .leftJoin(schedules, eq(schedules.id, submittedExecutions.scheduleId))
     .where(and(...conditions))
     .orderBy(desc(submittedExecutions.createdAt), desc(submittedExecutions.executionId))
     .limit(query.limit + 1);
@@ -1034,12 +1036,23 @@ export async function listSubmittedExecutionsPage(query: ExecutionPageQuery): Pr
       teams: row.teams,
       submittedBy: row.submittedBy,
       submittedByEmail: row.submittedByEmail,
+      scheduleName: row.scheduleName,
       name: row.name,
       createdAt: row.createdAt,
       template: row.template,
     })),
     nextCursor: rows.length > query.limit && last ? `${last.cursorTime}${CURSOR_SEPARATOR}${last.executionId}` : null,
   };
+}
+
+/** The name of the schedule that started a run; null when none did, or it's deleted. */
+export async function scheduleThatStarted(executionId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ name: schedules.name })
+    .from(submittedExecutions)
+    .innerJoin(schedules, eq(schedules.id, submittedExecutions.scheduleId))
+    .where(eq(submittedExecutions.executionId, executionId));
+  return row?.name ?? null;
 }
 
 /** Executions visible to a non-admin: any execution with at least one

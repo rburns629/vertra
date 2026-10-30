@@ -1033,6 +1033,8 @@ export interface ExecutionSummary {
   submittedByEmail: string;
   /** The steps claimed or running now, in the order they were submitted. */
   running: RunningStep[];
+  /** The schedule that started it, by name; null when none did (or it's deleted). */
+  schedule: string | null;
 }
 
 /** A step claimed or running, and which attempt. */
@@ -1087,6 +1089,7 @@ export async function listExecutions(query: ExecutionListQuery = {}): Promise<Ex
       finishedAt: iso(row.finishedAt),
       submittedByEmail: row.submittedByEmail ?? "",
       running: row.running.map((r) => ({ taskId: r.taskId, action: r.action, attempt: r.attempt, maxAttempts: r.maxAttempts })),
+      schedule: row.schedule ?? null,
     })),
     nextCursor: page.nextCursor || null,
     runRetentionDays: page.runRetentionDays,
@@ -1226,6 +1229,8 @@ export interface ExecutionDetail {
   templateParameters: Record<string, unknown> | null;
   /** Which of the submitter's teams it ran for, if any. */
   onBehalfOf: string | null;
+  /** The schedule that started it, by name; null when none did (or it's deleted). */
+  schedule: string | null;
 }
 
 export async function getExecution(executionId: string): Promise<ExecutionDetail> {
@@ -1335,6 +1340,7 @@ function executionDetail(execution: Execution): ExecutionDetail {
     template: execution.template ?? null,
     templateParameters: execution.templateParameters ?? null,
     onBehalfOf: execution.onBehalfOf ?? null,
+    schedule: execution.schedule ?? null,
   };
 }
 

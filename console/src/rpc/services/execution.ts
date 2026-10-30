@@ -201,6 +201,7 @@ function execution(detail: Detail) {
     template: detail.template ?? undefined,
     templateParameters: (detail.templateParameters ?? undefined) as JsonObject | undefined,
     onBehalfOf: detail.onBehalfOf ?? undefined,
+    schedule: detail.schedule ?? undefined,
   };
 }
 
@@ -250,6 +251,7 @@ export function executionService(): ServiceImpl<typeof ExecutionService> {
           finishedAt: timestamp(row.finishedAt),
           submittedByEmail: row.submittedByEmail ?? undefined,
           running: row.running,
+          schedule: row.scheduleName ?? undefined,
         })),
         nextCursor: page.nextCursor ?? "",
         runRetentionDays: page.runRetentionDays,

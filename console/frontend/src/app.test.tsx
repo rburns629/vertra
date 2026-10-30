@@ -2367,3 +2367,30 @@ describe("Observe's alerts", () => {
     expect(await screen.findByText("Couldn't read the alerts: Prometheus isn't answering.")).toBeTruthy();
   });
 });
+
+describe("a run a schedule started", () => {
+  const RUN = {
+    executionId: "5c5c5c5c-0000-4000-8000-000000000005",
+    name: "nightly uptime check",
+    teams: ["payments"],
+    createdAt: "2026-10-30T02:00:00Z",
+    state: "EXECUTION_STATE_SUCCEEDED",
+    submittedBy: "b0b0b0b0-0000-4000-8000-000000000001",
+    submittedByEmail: "payments-nightly@bots.vertra.local",
+    schedule: "nightly",
+  };
+
+  it("says which, in the Runs list", async () => {
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [RUN] } });
+    expect(await screen.findByText("on the schedule nightly")).toBeTruthy();
+  });
+
+  it("links to it from the run's page", async () => {
+    const execution = { executionId: RUN.executionId, name: RUN.name, state: RUN.state, tasks: [], submittedBy: RUN.submittedByEmail, onBehalfOf: "payments", schedule: "nightly", createdAt: RUN.createdAt };
+    await renderAt(`/runs/${RUN.executionId}`, MEMBER, {
+      "ExecutionService/GetExecution": { execution },
+      "ExecutionService/WatchExecution": [{ execution }],
+    });
+    expect((await screen.findByRole("link", { name: "nightly" })).getAttribute("href")).toBe("/teams/payments?tab=schedules");
+  });
+});

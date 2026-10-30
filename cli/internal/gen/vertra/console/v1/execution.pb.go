@@ -377,7 +377,10 @@ type ExecutionSummary struct {
 	// The steps claimed or running now, by step id; empty once it has
 	// finished (a cancelled run's last steps may still be stopping), or if
 	// the kernel couldn't be asked.
-	Running       []*RunningStep `protobuf:"bytes,11,rep,name=running,proto3" json:"running,omitempty"`
+	Running []*RunningStep `protobuf:"bytes,11,rep,name=running,proto3" json:"running,omitempty"`
+	// The schedule that started it, by name; unset when none did, or it has
+	// since been deleted.
+	Schedule      *string `protobuf:"bytes,12,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -489,6 +492,13 @@ func (x *ExecutionSummary) GetRunning() []*RunningStep {
 	return nil
 }
 
+func (x *ExecutionSummary) GetSchedule() string {
+	if x != nil && x.Schedule != nil {
+		return *x.Schedule
+	}
+	return ""
+}
+
 // A step claimed or running: which, and which attempt.
 type RunningStep struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -580,8 +590,11 @@ type Execution struct {
 	// The parameters it ran with, and which of the submitter's teams it ran for.
 	TemplateParameters *structpb.Struct `protobuf:"bytes,11,opt,name=template_parameters,json=templateParameters,proto3" json:"template_parameters,omitempty"`
 	OnBehalfOf         *string          `protobuf:"bytes,12,opt,name=on_behalf_of,json=onBehalfOf,proto3,oneof" json:"on_behalf_of,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The schedule that started it, by name; unset when none did, or it has
+	// since been deleted.
+	Schedule      *string `protobuf:"bytes,13,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Execution) Reset() {
@@ -694,6 +707,13 @@ func (x *Execution) GetTemplateParameters() *structpb.Struct {
 func (x *Execution) GetOnBehalfOf() string {
 	if x != nil && x.OnBehalfOf != nil {
 		return *x.OnBehalfOf
+	}
+	return ""
+}
+
+func (x *Execution) GetSchedule() string {
+	if x != nil && x.Schedule != nil {
+		return *x.Schedule
 	}
 	return ""
 }
@@ -2716,7 +2736,7 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"\x10_timeout_secondsB\x0f\n" +
 	"\r_max_attemptsB\f\n" +
 	"\n" +
-	"_resources\"\xfe\x04\n" +
+	"_resources\"\xac\x05\n" +
 	"\x10ExecutionSummary\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -2731,19 +2751,21 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	"finishedAt\x88\x01\x01\x121\n" +
 	"\x12submitted_by_email\x18\n" +
 	" \x01(\tH\x02R\x10submittedByEmail\x88\x01\x01\x128\n" +
-	"\arunning\x18\v \x03(\v2\x1e.vertra.console.v1.RunningStepR\arunning\x1a8\n" +
+	"\arunning\x18\v \x03(\v2\x1e.vertra.console.v1.RunningStepR\arunning\x12\x1f\n" +
+	"\bschedule\x18\f \x01(\tH\x03R\bschedule\x88\x01\x01\x1a8\n" +
 	"\n" +
 	"StepsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01B\x0f\n" +
 	"\r_submitted_byB\x0e\n" +
 	"\f_finished_atB\x15\n" +
-	"\x13_submitted_by_email\"{\n" +
+	"\x13_submitted_by_emailB\v\n" +
+	"\t_schedule\"{\n" +
 	"\vRunningStep\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x12\x18\n" +
 	"\aattempt\x18\x03 \x01(\x05R\aattempt\x12!\n" +
-	"\fmax_attempts\x18\x04 \x01(\x05R\vmaxAttempts\"\xd3\x04\n" +
+	"\fmax_attempts\x18\x04 \x01(\x05R\vmaxAttempts\"\x81\x05\n" +
 	"\tExecution\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x127\n" +
@@ -2760,10 +2782,12 @@ const file_vertra_console_v1_execution_proto_rawDesc = "" +
 	" \x01(\tH\x01R\btemplate\x88\x01\x01\x12H\n" +
 	"\x13template_parameters\x18\v \x01(\v2\x17.google.protobuf.StructR\x12templateParameters\x12%\n" +
 	"\fon_behalf_of\x18\f \x01(\tH\x02R\n" +
-	"onBehalfOf\x88\x01\x01B\x0e\n" +
+	"onBehalfOf\x88\x01\x01\x12\x1f\n" +
+	"\bschedule\x18\r \x01(\tH\x03R\bschedule\x88\x01\x01B\x0e\n" +
 	"\f_run_blockedB\v\n" +
 	"\t_templateB\x0f\n" +
-	"\r_on_behalf_of\"\xb7\x01\n" +
+	"\r_on_behalf_ofB\v\n" +
+	"\t_schedule\"\xb7\x01\n" +
 	"\n" +
 	"RunBlocked\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
