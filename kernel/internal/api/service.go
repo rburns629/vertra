@@ -428,13 +428,19 @@ func (s *Service) GetExecutionStates(ctx context.Context, req *connect.Request[k
 	if len(ids) == 0 {
 		return connect.NewResponse(out), nil
 	}
-	// Each execution with its steps counted by state, in one query.
+	// Each execution with its steps counted by state, and those claimed or
+	// running now, in one query.
 	rows, err := s.Pool.Query(ctx, `
 		SELECT e.id::text, e.state, e.created_at, e.updated_at,
 		       COALESCE((SELECT jsonb_object_agg(t.state, t.n)
 		                 FROM (SELECT state, count(*)::int AS n FROM execution_tasks
-		                       WHERE execution_id = e.id GROUP BY state) t), '{}'::jsonb)
-		FROM executions e WHERE e.id = ANY($1::uuid[])`, ids)
+		                       WHERE execution_id = e.id GROUP BY state) t), '{}'::jsonb),
+		       COALESCE((SELECT jsonb_agg(jsonb_build_object('taskId', t.task_key, 'action', t.action,
+		                                                     'attempt', t.attempt_count, 'maxAttempts', t.max_attempts)
+		                                  ORDER BY t.created_at, t.task_key)
+		                 FROM execution_tasks t
+		                 WHERE t.execution_id = e.id AND t.state IN ($2, $3)), '[]'::jsonb)
+		FROM executions e WHERE e.id = ANY($1::uuid[])`, ids, string(domain.TaskClaimed), string(domain.TaskRunning))
 	if err != nil {
 		return nil, err
 	}
@@ -443,16 +449,29 @@ func (s *Service) GetExecutionStates(ctx context.Context, req *connect.Request[k
 		var id, st string
 		var created, updated time.Time
 		var steps map[string]int32
-		if err := rows.Scan(&id, &st, &created, &updated, &steps); err != nil {
+		var running []struct {
+			TaskID      string `json:"taskId"`
+			Action      string `json:"action"`
+			Attempt     int32  `json:"attempt"`
+			MaxAttempts int32  `json:"maxAttempts"`
+		}
+		if err := rows.Scan(&id, &st, &created, &updated, &steps, &running); err != nil {
 			return nil, err
 		}
-		out.States = append(out.States, &kernelv1.ExecutionStateEntry{
+		entry := &kernelv1.ExecutionStateEntry{
 			ExecutionId: id,
 			State:       executionState(st),
 			Steps:       steps,
 			CreatedAt:   timestamppb.New(created),
 			UpdatedAt:   timestamppb.New(updated),
-		})
+		}
+		for _, r := range running {
+			// attempt_count counts the attempts claimed: the one running is the last.
+			entry.Running = append(entry.Running, &kernelv1.RunningStep{
+				TaskId: r.TaskID, Action: r.Action, Attempt: max(r.Attempt, 1), MaxAttempts: r.MaxAttempts,
+			})
+		}
+		out.States = append(out.States, entry)
 	}
 	return connect.NewResponse(out), rows.Err()
 }

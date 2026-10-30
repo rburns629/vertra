@@ -408,6 +408,9 @@ func TestStatesAnswerForTheIDsThatExist(t *testing.T) {
 	if got.CreatedAt == nil || got.UpdatedAt == nil || got.UpdatedAt.AsTime().Before(got.CreatedAt.AsTime()) {
 		t.Errorf("created %v, updated %v", got.CreatedAt, got.UpdatedAt)
 	}
+	if len(got.Running) != 0 {
+		t.Errorf("nothing runs yet, but running = %v", got.Running)
+	}
 	ids := func(n int) []string {
 		out := make([]string, n)
 		for i := range out {
@@ -420,6 +423,24 @@ func TestStatesAnswerForTheIDsThatExist(t *testing.T) {
 	}
 	_, err = c.GetExecutionStates(context.Background(), connect.NewRequest(&kernelv1.GetExecutionStatesRequest{ExecutionIds: ids(MaxStatesPerRequest + 1)}))
 	code(t, err, connect.CodeInvalidArgument)
+}
+
+func TestStatesSayWhichStepRunsAndItsAttempt(t *testing.T) {
+	c := client(t)
+	id := submit(t, c, chain(unique("running"))).ExecutionId
+	exec(t, `UPDATE execution_tasks SET state = 'SUCCEEDED', attempt_count = 1 WHERE execution_id = $1::uuid AND task_key = 'create-project'`, id)
+	exec(t, `UPDATE execution_tasks SET state = 'RUNNING', attempt_count = 2, max_attempts = 3 WHERE execution_id = $1::uuid AND task_key = 'deploy-application'`, id)
+	res, err := c.GetExecutionStates(context.Background(), connect.NewRequest(&kernelv1.GetExecutionStatesRequest{ExecutionIds: []string{id}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	running := res.Msg.States[0].Running
+	if len(running) != 1 {
+		t.Fatalf("running = %v", running)
+	}
+	if r := running[0]; r.TaskId != "deploy-application" || r.Action != "create" || r.Attempt != 2 || r.MaxAttempts != 3 {
+		t.Errorf("running = %v", r)
+	}
 }
 
 // --- cancelling ---

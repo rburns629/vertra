@@ -280,6 +280,17 @@ message ExecutionStateEntry {
   google.protobuf.Timestamp created_at = 4;
   // Its last change: when it finished, once it has.
   google.protobuf.Timestamp updated_at = 5;
+  // The steps claimed or running now, in the order they were submitted.
+  repeated RunningStep running = 6;
+}
+
+// A step claimed or running, for a list's "what's it doing now".
+message RunningStep {
+  string task_id = 1;
+  string action = 2;
+  // Which attempt this is, from 1.
+  int32 attempt = 3;
+  int32 max_attempts = 4;
 }
 
 message ListExecutionEventsRequest {
