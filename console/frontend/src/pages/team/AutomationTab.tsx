@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Alert, Box, Button, Card, Checkbox, FormControlLabel, Link, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, Checkbox, FormControl, FormControlLabel, FormLabel, Link, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import BotIcon from "@mui/icons-material/SmartToyOutlined";
 import CartIcon from "@mui/icons-material/ShoppingCartOutlined";
 import KeyIcon from "@mui/icons-material/VpnKeyOutlined";
 import LinkIcon from "@mui/icons-material/LinkOutlined";
-import { createBot, listBotIdentities, listBots, revokeToken, setBotCallback, setBotOrders, type Bot, type BotIdentity } from "../../api";
+import { createBot, createKeylessBot, listBotIdentities, listBots, revokeToken, setBotCallback, setBotOrders, type Bot, type BotIdentity } from "../../api";
 import { CI, KeylessSection } from "./KeylessSection";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CodeBlock } from "../../components/CodeBlock";
@@ -287,7 +287,9 @@ export function AutomationTab({
 
   const consoleUrl = window.location.origin;
   // The job's lines for the first bot that signs in from CI, beside the list.
-  const shownIdentity = keyless?.identities.find((i) => i.issuer in CI);
+  // The keyless bot just added, else the first: its job's snippet.
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const shownIdentity = keyless?.identities.find((i) => i.id === justAdded) ?? keyless?.identities.find((i) => i.issuer in CI);
   const shownCi = shownIdentity ? CI[shownIdentity.issuer] : undefined;
 
   return (
@@ -389,8 +391,13 @@ export function AutomationTab({
             ) : (
               <AddBot
                 teamName={teamName}
+                issuers={keyless?.issuers.filter((i) => i in CI) ?? []}
                 onCreated={(email, token, ordering) => {
                   setIssued({ email, token, ordering });
+                  reload();
+                }}
+                onKeyless={(identityId) => {
+                  setJustAdded(identityId);
                   reload();
                 }}
               />
@@ -447,8 +454,25 @@ export function AutomationTab({
   );
 }
 
-function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: string, token: string, ordering: boolean) => void }) {
+function AddBot({
+  teamName,
+  issuers,
+  onCreated,
+  onKeyless,
+}: {
+  teamName: string;
+  /** The CIs this install accepts keyless sign-in from; none, only tokens. */
+  issuers: string[];
+  onCreated: (email: string, token: string, ordering: boolean) => void;
+  onKeyless: (identityId: string) => void;
+}) {
   const [purpose, setPurpose] = useState("");
+  const [signIn, setSignIn] = useState<"token" | "keyless">("token");
+  const [issuer, setIssuer] = useState("");
+  const [repo, setRepo] = useState("");
+  const [ref, setRef] = useState("");
+  const keyless = signIn === "keyless" && issuers.length > 0;
+  const ci = CI[issuers.includes(issuer) ? issuer : (issuers[0] ?? "")];
   const [ordering, setOrdering] = useState(false);
   const [templates, setTemplates] = useState("");
   const [days, setDays] = useState(DEFAULT_TOKEN_DAYS);
@@ -460,6 +484,16 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
     setError(null);
     setSubmitting(true);
     try {
+      if (keyless && ci) {
+        const claims = { [ci.repo]: repo.trim(), ...(ref.trim() ? { ref: ref.trim() } : {}) };
+        const made = await createKeylessBot(teamName, botEmail(teamName, purpose), issuers.includes(issuer) ? issuer : (issuers[0] ?? ""), claims, ordering ? templateList(templates) : undefined);
+        setPurpose("");
+        setTemplates("");
+        setRepo("");
+        setRef("");
+        onKeyless(made.identityId);
+        return;
+      }
       const result = await createBot(teamName, botEmail(teamName, purpose), purpose.trim(), ordering ? templateList(templates) : undefined, days);
       setPurpose("");
       setTemplates("");
@@ -485,8 +519,51 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
               setPurpose(event.target.value);
             }}
             placeholder="release pipeline in our infra repo"
-            helperText="A pipeline or repo, so you know what breaks if you revoke it. Using the same words again adds another token to the same bot."
+            helperText="A pipeline or repo, so you know what breaks if you revoke it. Using the same words again adds to the same bot."
           />
+          {issuers.length > 0 && (
+            <FormControl>
+              <FormLabel id="bsign" sx={{ fontSize: 14, fontWeight: 500, color: "text.primary", "&.Mui-focused": { color: "text.primary" } }}>
+                How it signs in
+              </FormLabel>
+              <RadioGroup aria-labelledby="bsign" value={signIn} onChange={(e) => { setSignIn(e.target.value === "keyless" ? "keyless" : "token"); }}>
+                <FormControlLabel
+                  value="token"
+                  control={<Radio />}
+                  label={<><strong>A token</strong>, shown once, for a service, a script or a CI without its own identity</>}
+                  sx={{ alignItems: "flex-start", "& .MuiRadio-root": { mt: -0.75 }, "& .MuiFormControlLabel-label": { fontSize: 14 } }}
+                />
+                <FormControlLabel
+                  value="keyless"
+                  control={<Radio />}
+                  label={<><strong>Keyless, from CI</strong>: a {issuers.map((i) => CI[i]?.name).join(" or ")} job signs in with its own ID token. No token is made, so none can leak</>}
+                  sx={{ alignItems: "flex-start", "& .MuiRadio-root": { mt: -0.75 }, "& .MuiFormControlLabel-label": { fontSize: 14 } }}
+                />
+              </RadioGroup>
+            </FormControl>
+          )}
+          {keyless && ci && (
+            <>
+              {issuers.length > 1 && (
+                <TextField select size="small" label="CI" value={issuers.includes(issuer) ? issuer : issuers[0]} onChange={(e) => { setIssuer(e.target.value); }}>
+                  {issuers.map((i) => (
+                    <MenuItem key={i} value={i}>
+                      {CI[i]?.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+              <TextField size="small" required label={ci.repoLabel} value={repo} onChange={(e) => { setRepo(e.target.value); }} placeholder="acme/release-pipeline" />
+              <TextField
+                size="small"
+                label="Only from this branch (optional)"
+                value={ref}
+                onChange={(e) => { setRef(e.target.value); }}
+                placeholder="refs/heads/main"
+                helperText="Left empty, any branch of the repository, and pull requests from it, can sign in as the bot."
+              />
+            </>
+          )}
           <FormControlLabel
             control={<Checkbox checked={ordering} onChange={(e) => { setOrdering(e.target.checked); }} />}
             label="It places orders (a storefront, or another system): only the templates listed, nothing else"
@@ -503,10 +580,15 @@ function AddBot({ teamName, onCreated }: { teamName: string; onCreated: (email: 
               helperText="<team>/<name>, one per line. A member of this team, not a maintainer: it can't submit raw DAGs."
             />
           )}
-          <TokenLifetime days={days} onChange={setDays} />
-          <Button type="submit" variant="contained" disabled={submitting || !purpose.trim()} sx={{ alignSelf: "flex-start" }}>
-            {submitting ? "Creating…" : "Create bot and token"}
+          {!keyless && <TokenLifetime days={days} onChange={setDays} />}
+          <Button type="submit" variant="contained" disabled={submitting || !purpose.trim() || (keyless && !repo.trim())} sx={{ alignSelf: "flex-start" }}>
+            {submitting ? "Creating…" : keyless ? "Create bot" : "Create bot and token"}
           </Button>
+          {keyless && (
+            <Typography variant="caption" color="text.secondary">
+              Then the job&apos;s sign-in step, shown below. A token can still be added later, if something else needs one.
+            </Typography>
+          )}
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       </Box>

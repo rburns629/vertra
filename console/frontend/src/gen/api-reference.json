@@ -1275,6 +1275,15 @@
      "public": false
     },
     {
+     "name": "CreateKeylessBot",
+     "comment": "Creates a bot that signs in only from CI, keyless (its team's\nmaintainers): with no token, and the identity AddBotIdentity would add.\nThe identity is checked first, so a refused one makes no bot.",
+     "input": "vertra.console.v1.CreateKeylessBotRequest",
+     "output": "vertra.console.v1.CreateKeylessBotResponse",
+     "streaming": false,
+     "idempotency": "",
+     "public": false
+    },
+    {
      "name": "SetBotOrders",
      "comment": "Sets the templates an ordering bot may order (its team's maintainers):\n<team>/<name> each; it may run nothing else.",
      "input": "vertra.console.v1.SetBotOrdersRequest",
@@ -2176,6 +2185,27 @@
     {
      "name": "specVersion",
      "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "askForAccessUrl",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "When the caller may not call it: a new issue on the catalog repository,\nfilled in with what to change, asking its team to share it (opened in\nthe person's own browser). Empty when it can't be built."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Unavailable: what the gateway found, and when."
+    },
+    {
+     "name": "problemFoundAt",
+     "type": "timestamp (RFC 3339 string)",
      "repeated": false,
      "optional": false,
      "comment": ""
@@ -10917,6 +10947,75 @@
     }
    ]
   },
+  "vertra.console.v1.CreateKeylessBotRequest": {
+   "name": "CreateKeylessBotRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The bot's account; created if it doesn't exist."
+    },
+    {
+     "name": "ordering",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": "As CreateBotTokenRequest's."
+    },
+    {
+     "name": "orderTemplates",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "issuer",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "As AddBotIdentityRequest's."
+    },
+    {
+     "name": "claims",
+     "type": "map of string to string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.CreateKeylessBotResponse": {
+   "name": "CreateKeylessBotResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "email",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "identity",
+     "type": "BotIdentity",
+     "ref": "vertra.console.v1.BotIdentity",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
   "vertra.console.v1.SetBotOrdersRequest": {
    "name": "SetBotOrdersRequest",
    "comment": "",
@@ -11529,6 +11628,10 @@
     {
      "name": "API_STATE_PAUSED",
      "comment": "A maintainer paused it (paused_message)."
+    },
+    {
+     "name": "API_STATE_UNAVAILABLE",
+     "comment": "The gateway can't use its OpenAPI document (problem says why): it\nanswers 503 and forwards nothing until a release fixes it."
     }
    ]
   },

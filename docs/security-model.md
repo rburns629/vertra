@@ -329,7 +329,10 @@ there's no token to leak.
 ## Keyless bots
 
 A bot can sign in with its CI job's own OIDC identity instead of a stored
-token, so a pipeline holds no Vertra secret. A team's maintainers bind a
+token, so a pipeline holds no Vertra secret. It can be made that way
+(`TokenService/CreateKeylessBot`: its identity is checked first, and no
+token is ever made), or have tokens revoked once its CI signs in. A team's
+maintainers bind a
 bot to an issuer the install allows (`keyless.issuers`: GitHub Actions and
 gitlab.com by default) and exact claims: one naming the repository or
 subject, perhaps the branch or environment; no patterns, and never `aud`
@@ -425,7 +428,7 @@ console's database as a role of its own (`vertra_gateway`,
 `console/src/db/gatewayAccess.ts`): it may read the columns it needs to
 sign callers in and find APIs (never a password hash, a sealed value, a
 secret's name or the audit log) and write only its traffic counts
-(`api_traffic`). It checks sessions with the console's public key (its
+(`api_traffic`) and why it can't serve an API (`api_problems`). It checks sessions with the console's public key (its
 JWKS, `/api/auth/jwks`), so it can verify a session but never make one,
 and never holds `JWT_SECRET` (proven on kind 2026-10-28: the gateway
 connects as `vertra_gateway`, accepts a console session, refuses one signed

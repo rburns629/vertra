@@ -14,7 +14,7 @@ import { config } from "../src/config.js";
 import { backendAllowed } from "../src/core/apis.js";
 import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, findTeamByName } from "../src/db/queries.js";
-import { apiTraffic, apis, gatewayState, teams } from "../src/db/schema.js";
+import { apiProblems, apiTraffic, apis, gatewayState, teams } from "../src/db/schema.js";
 import { ApiSchema } from "../src/gen/vertra/catalog/v1/release_pb.js";
 import { buildApp } from "../src/index.js";
 import { ensureServiceAccount } from "../src/k8s.js";
@@ -25,6 +25,12 @@ vi.mock("../src/k8s.js", async (importOriginal) => ({
   ensureServiceAccount: vi.fn(() => Promise.resolve()),
   ensureNamespaceExists: vi.fn(() => Promise.resolve()),
   applySecretStoreObjects: vi.fn(() => Promise.resolve()),
+}));
+// The catalog repository a release came from, for "Ask for access": faked
+// here, since catalog_sync is one row other test files write too.
+vi.mock("../src/db/queries.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/db/queries.js")>()),
+  catalogRepository: vi.fn(() => Promise.resolve("github.com/acme/vertra-catalog")),
 }));
 
 const prefix = `api-${randomUUID().slice(0, 6)}`;
@@ -111,7 +117,7 @@ afterAll(async () => {
   await app.close();
 });
 
-type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
+type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; askForAccessUrl?: string; problem?: string; problemFoundAt?: string; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
 const listFor = async (who: keyof typeof tokens) =>
   ((await call<Listed>(tokens[who], "ApiService/ListApis")).body.apis ?? []).filter((a) => a.team === owner);
 
@@ -155,6 +161,34 @@ describe("who sees what", () => {
     expect(orders?.mayCall ?? false).toBe(false);
     expect(orders?.perMinute ?? 0).toBe(0);
     expect((await call(tokens.outsider, "ApiService/GetApi", { team: owner, name: "ledger" })).code).toBe("not_found");
+  });
+
+  it("offers whoever may not call it an issue asking its team to share it, and nobody else", async () => {
+    const ask = new URL((await listFor("outsider")).find((a) => a.name === "orders")?.askForAccessUrl ?? "");
+    expect(`${ask.origin}${ask.pathname}`).toBe("https://github.com/acme/vertra-catalog/issues/new");
+    expect(ask.searchParams.get("title")).toBe(`Share ${owner}/orders with ${outsider}`);
+    expect(ask.searchParams.get("body")).toContain(`[\`teams/${owner}/apis/orders/api.yaml\`]`);
+    expect(ask.searchParams.get("body")).toContain(`shareWith: [${outsider}]`);
+    expect((await listFor("consumer")).find((a) => a.name === "orders")?.askForAccessUrl ?? "").toBe("");
+    expect((await listFor("member")).find((a) => a.name === "orders")?.askForAccessUrl ?? "").toBe("");
+  });
+
+  it("says it can't be served, and why, while the gateway has recorded that it can't use its spec", async () => {
+    const [orders] = await db.select({ id: apis.id }).from(apis).innerJoin(teams, eq(teams.id, apis.teamId)).where(and(eq(teams.name, owner), eq(apis.name, "orders")));
+    const at = new Date("2026-10-30T14:02:00Z");
+    await db.insert(apiProblems).values({ apiId: orders?.id ?? "", problem: "its OpenAPI document can't be used: a $ref that isn't there", foundAt: at });
+    try {
+      expect((await listFor("consumer")).find((a) => a.name === "orders")).toMatchObject({
+        state: "API_STATE_UNAVAILABLE",
+        problem: "its OpenAPI document can't be used: a $ref that isn't there",
+        problemFoundAt: "2026-10-30T14:02:00Z",
+      });
+      const one = await call<{ api?: { state: string } }>(tokens.consumer, "ApiService/GetApi", { team: owner, name: "orders" });
+      expect(one.body.api?.state).toBe("API_STATE_UNAVAILABLE");
+    } finally {
+      await db.delete(apiProblems).where(eq(apiProblems.apiId, orders?.id ?? ""));
+    }
+    expect((await listFor("consumer")).find((a) => a.name === "orders")).toMatchObject({ state: "API_STATE_LIVE" });
   });
 
   it("holds an API whose backend isn't under an allowed host", async () => {

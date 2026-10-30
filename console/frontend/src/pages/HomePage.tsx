@@ -791,6 +791,7 @@ const API_STATE: Record<ApiProduct["state"], { tone: PillTone; label: string }> 
   LIVE: { tone: "success", label: "Live" },
   PAUSED: { tone: "warning", label: "Paused" },
   HELD: { tone: "error", label: "Held" },
+  UNAVAILABLE: { tone: "error", label: "Can’t serve" },
   UNSPECIFIED: { tone: "neutral", label: "Unknown" },
 };
 
@@ -833,6 +834,7 @@ function TeamApis({ apis }: { apis: { api: ApiProduct; traffic: ApiTraffic | nul
           )}
           {api.state === "PAUSED" && api.pausedMessage && <Typography variant="body2" sx={{ fontSize: 13 }}>Paused: “{api.pausedMessage}”</Typography>}
           {api.state === "HELD" && api.heldReason && <Typography variant="body2" sx={{ fontSize: 13 }}>Held: {api.heldReason}</Typography>}
+          {api.state === "UNAVAILABLE" && <Typography variant="body2" sx={{ fontSize: 13 }}>Can’t serve: {api.problem}</Typography>}
         </Box>
       ))}
     </Panel>

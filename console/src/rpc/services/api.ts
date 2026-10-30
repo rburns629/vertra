@@ -10,10 +10,10 @@ import { check } from "../validate.js";
 
 const Name = Type.String({ minLength: 1, maxLength: 63 });
 
-const STATE = { live: ApiState.LIVE, held: ApiState.HELD, paused: ApiState.PAUSED } as const;
+const STATE = { live: ApiState.LIVE, held: ApiState.HELD, paused: ApiState.PAUSED, unavailable: ApiState.UNAVAILABLE } as const;
 
 function product(a: ApiView) {
-  return { ...a, state: STATE[a.state] };
+  return { ...a, state: STATE[a.state], problemFoundAt: a.problemFoundAt ? timestamp(a.problemFoundAt) : undefined };
 }
 
 export function apiService(): ServiceImpl<typeof ApiService> {

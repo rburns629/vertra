@@ -1726,8 +1726,11 @@ export interface ApiProduct {
   name: string;
   displayName: string;
   description: string;
-  state: "LIVE" | "HELD" | "PAUSED" | "UNSPECIFIED";
+  state: "LIVE" | "HELD" | "PAUSED" | "UNAVAILABLE" | "UNSPECIFIED";
   heldReason: string;
+  /** Unavailable: why the gateway can't use its OpenAPI document, and since when. */
+  problem: string;
+  problemFoundAt: string | null;
   pausedMessage: string;
   mayCall: boolean;
   shareWith: string[];
@@ -1746,6 +1749,8 @@ export interface ApiProduct {
   backendAuth: string;
   specTitle: string;
   specVersion: string;
+  /** When the caller may not call it: an issue asking its team to share it, on the catalog repository. */
+  askForAccessUrl: string | null;
 }
 
 function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][number]): ApiProduct {
@@ -1756,6 +1761,8 @@ function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][numb
     description: a.description,
     state: ApiState[a.state] as ApiProduct["state"],
     heldReason: a.heldReason,
+    problem: a.problem,
+    problemFoundAt: iso(a.problemFoundAt),
     pausedMessage: a.pausedMessage,
     mayCall: a.mayCall,
     shareWith: a.shareWith,
@@ -1773,6 +1780,7 @@ function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][numb
     backendAuth: a.backendAuth,
     specTitle: a.specTitle,
     specVersion: a.specVersion,
+    askForAccessUrl: a.askForAccessUrl || null,
   };
 }
 
@@ -2339,8 +2347,12 @@ export async function createSchedule(input: {
   return scheduleOf(schedule);
 }
 
-export async function updateSchedule(id: string, change: { enabled?: boolean; cron?: string; timeZone?: string }): Promise<Schedule> {
-  return scheduleOf((await call(() => schedulesApi.updateSchedule({ id, ...change }))).schedule);
+export async function updateSchedule(
+  id: string,
+  change: { enabled?: boolean; cron?: string; timeZone?: string; botId?: string; parameters?: Record<string, unknown> },
+): Promise<Schedule> {
+  const { parameters, ...rest } = change;
+  return scheduleOf((await call(() => schedulesApi.updateSchedule({ id, ...rest, ...(parameters ? { parameters: parameters as JsonObject } : {}) }))).schedule);
 }
 
 export async function deleteSchedule(id: string): Promise<void> {
@@ -2364,6 +2376,19 @@ export async function listBotIdentities(team: string): Promise<{ identities: Bot
     issuers: r.issuers,
     audience: r.audience,
   };
+}
+
+/** A bot that signs in only from CI, keyless: no token, made with its identity. */
+export async function createKeylessBot(
+  team: string,
+  email: string,
+  issuer: string,
+  claims: Record<string, string>,
+  orderTemplates?: string[],
+): Promise<{ email: string; identityId: string }> {
+  const ordering = orderTemplates !== undefined;
+  const made = await call(() => tokens.createKeylessBot({ team, email, issuer, claims, ordering, orderTemplates: orderTemplates ?? [] }));
+  return { email: made.email, identityId: made.identity?.id ?? "" };
 }
 
 export async function addBotIdentity(team: string, botId: string, issuer: string, claims: Record<string, string>): Promise<void> {

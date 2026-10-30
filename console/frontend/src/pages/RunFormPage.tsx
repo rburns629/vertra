@@ -10,7 +10,7 @@ import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { ApiError, listRunnables, previewRunnable, runRunnable, type NotPreviewed, type Runnable } from "../api";
+import { ApiError, listRunnables, previewRunnable, runRunnable, updateSchedule, type NotPreviewed, type Runnable } from "../api";
 import { CodeBlock } from "../components/CodeBlock";
 import { Pill } from "../components/Pill";
 import { PreviewResult } from "../components/PreviewResult";
@@ -29,6 +29,19 @@ export interface RunFrom {
   name: string;
   parameters: Record<string, unknown>;
   onBehalfOf: string | null;
+}
+
+/** A schedule whose inputs the form changes (its Edit → Change inputs…), passed as the page's state. */
+interface ScheduleEdit {
+  id: string;
+  name: string;
+  team: string;
+}
+
+function scheduleFromState(state: unknown): ScheduleEdit | undefined {
+  if (typeof state !== "object" || state === null || !("schedule" in state)) return undefined;
+  const s = state.schedule as Partial<ScheduleEdit> | null;
+  return typeof s?.id === "string" && typeof s.name === "string" && typeof s.team === "string" ? { id: s.id, name: s.name, team: s.team } : undefined;
 }
 
 function runFromState(state: unknown): RunFrom | undefined {
@@ -65,7 +78,7 @@ function stepOf(action: string): { team: string; product: string; action: string
 }
 
 /** The form for one runnable, once it's found. */
-function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undefined }) {
+function RunForm({ runnable, from, schedule }: { runnable: Runnable; from: RunFrom | undefined; schedule: ScheduleEdit | undefined }) {
   const navigate = useNavigate();
   const fields = useMemo(() => withTargets(fieldsOf(runnable.parameters), runnable.targets), [runnable]);
   const [values, setValues] = useState<Values>(() => (fields ? initialValues(runnable.parameters, fields, from?.parameters) : {}));
@@ -87,6 +100,29 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  /** Enter: runs it, or, editing a schedule, saves its inputs. */
+  async function submit(event: FormEvent): Promise<void> {
+    if (!schedule) return run(event);
+    event.preventDefault();
+    return saveToSchedule();
+  }
+
+  /** Saves the form's inputs to the schedule being edited, then back to its team's schedules. */
+  async function saveToSchedule(): Promise<void> {
+    if (!schedule) return;
+    const parameters = checkedParameters(false);
+    if (!parameters) return;
+    setSavingSchedule(true);
+    try {
+      await updateSchedule(schedule.id, { parameters });
+      navigate(`/teams/${encodeURIComponent(schedule.team)}?tab=schedules`);
+    } catch (err) {
+      refused(err);
+      setSavingSchedule(false);
+    }
+  }
 
   /** The inputs as they'd be sent, or null (saying why, on the form) when they can't be. */
   function checkedParameters(needTeam = true): Record<string, unknown> | null {
@@ -182,11 +218,11 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
   const steps = runnable.actions.map(stepOf);
   return (
     <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start" }}>
-      <Card component="form" noValidate onSubmit={(event: FormEvent) => void run(event)} sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Card component="form" noValidate onSubmit={(event: FormEvent) => void submit(event)} sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2.5 }}>
         <Typography variant="h6" component="h2">
           Inputs
         </Typography>
-        {from && <Alert severity="info">Filled in from {from.name}. Change what you need, then run it.</Alert>}
+        {from && !schedule && <Alert severity="info">Filled in from {from.name}. Change what you need, then run it.</Alert>}
         {fields ? (
           groupsOf(fields).map(({ group, fields: shown }) => (
             <Box key={group ?? "-"} component={group ? "fieldset" : "div"} sx={{ border: 0, m: 0, p: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: 2.5 }}>
@@ -233,24 +269,38 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
             {message}
           </Alert>
         ))}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-          <Button type="submit" variant="contained" size="large" disabled={running}>
-            {running ? "Starting…" : "Run"}
-          </Button>
-          {runnable.previewable && (
-            <Button variant="outlined" size="large" disabled={previewing || running} onClick={() => void preview()}>
-              {previewing ? "Asking…" : "Preview"}
+        {schedule ? (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+            <Button variant="contained" size="large" disabled={savingSchedule} onClick={() => void saveToSchedule()}>
+              {savingSchedule ? "Saving…" : "Save to schedule"}
             </Button>
-          )}
-          {scheduleTeams.length > 0 && (
-            <Button size="large" onClick={() => { setScheduling(true); }}>
-              Schedule…
+            <Button size="large" component={RouterLink} to={`/teams/${encodeURIComponent(schedule.team)}?tab=schedules`}>
+              Cancel
             </Button>
-          )}
-          <Typography variant="body2" color="text.secondary">
-            Checked against its schema before anything runs.{runnable.previewable && " Preview says what it would change, first."}
-          </Typography>
-        </Box>
+            <Typography variant="body2" color="text.secondary">
+              Checked against its schema; nothing runs until the schedule next starts it.
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+            <Button type="submit" variant="contained" size="large" disabled={running}>
+              {running ? "Starting…" : "Run"}
+            </Button>
+            {runnable.previewable && (
+              <Button variant="outlined" size="large" disabled={previewing || running} onClick={() => void preview()}>
+                {previewing ? "Asking…" : "Preview"}
+              </Button>
+            )}
+            {scheduleTeams.length > 0 && (
+              <Button size="large" onClick={() => { setScheduling(true); }}>
+                Schedule…
+              </Button>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              Checked against its schema before anything runs.{runnable.previewable && " Preview says what it would change, first."}
+            </Typography>
+          </Box>
+        )}
         {scheduling && (
           <ScheduleDialog open onClose={() => { setScheduling(false); }} runnable={runnable} teams={scheduleTeams} parameters={() => checkedParameters(false)} />
         )}
@@ -363,7 +413,9 @@ function RunForm({ runnable, from }: { runnable: Runnable; from: RunFrom | undef
  */
 export function RunFormPage() {
   const [params] = useSearchParams();
-  const from = runFromState(useLocation().state);
+  const state: unknown = useLocation().state;
+  const from = runFromState(state);
+  const schedule = scheduleFromState(state);
   const [runnables, setRunnables] = useState<Runnable[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const template = params.get("template");
@@ -428,7 +480,12 @@ export function RunFormPage() {
           <CircularProgress size={28} aria-label="Loading" />
         </Box>
       )}
-      {runnable?.shared && <RunForm key={`${runnable.kind}:${runnable.team}/${runnable.name}`} runnable={runnable} from={from} />}
+      {schedule && runnable?.shared && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Changing the inputs of the schedule <strong>{schedule.name}</strong> ({schedule.team}). Save to schedule keeps them; it runs with them from its next start.
+        </Alert>
+      )}
+      {runnable?.shared && <RunForm key={`${runnable.kind}:${runnable.team}/${runnable.name}`} runnable={runnable} from={from} schedule={schedule} />}
     </Box>
   );
 }

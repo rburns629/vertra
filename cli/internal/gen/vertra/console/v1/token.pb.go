@@ -477,6 +477,145 @@ func (x *CreateBotTokenRequest) GetExpiresInDays() int32 {
 	return 0
 }
 
+type CreateKeylessBotRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Team  string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	// The bot's account; created if it doesn't exist.
+	Email string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	// As CreateBotTokenRequest's.
+	Ordering       bool     `protobuf:"varint,3,opt,name=ordering,proto3" json:"ordering,omitempty"`
+	OrderTemplates []string `protobuf:"bytes,4,rep,name=order_templates,json=orderTemplates,proto3" json:"order_templates,omitempty"`
+	// As AddBotIdentityRequest's.
+	Issuer        string            `protobuf:"bytes,5,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Claims        map[string]string `protobuf:"bytes,6,rep,name=claims,proto3" json:"claims,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateKeylessBotRequest) Reset() {
+	*x = CreateKeylessBotRequest{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateKeylessBotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateKeylessBotRequest) ProtoMessage() {}
+
+func (x *CreateKeylessBotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateKeylessBotRequest.ProtoReflect.Descriptor instead.
+func (*CreateKeylessBotRequest) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CreateKeylessBotRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *CreateKeylessBotRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *CreateKeylessBotRequest) GetOrdering() bool {
+	if x != nil {
+		return x.Ordering
+	}
+	return false
+}
+
+func (x *CreateKeylessBotRequest) GetOrderTemplates() []string {
+	if x != nil {
+		return x.OrderTemplates
+	}
+	return nil
+}
+
+func (x *CreateKeylessBotRequest) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *CreateKeylessBotRequest) GetClaims() map[string]string {
+	if x != nil {
+		return x.Claims
+	}
+	return nil
+}
+
+type CreateKeylessBotResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Identity      *BotIdentity           `protobuf:"bytes,2,opt,name=identity,proto3" json:"identity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateKeylessBotResponse) Reset() {
+	*x = CreateKeylessBotResponse{}
+	mi := &file_vertra_console_v1_token_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateKeylessBotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateKeylessBotResponse) ProtoMessage() {}
+
+func (x *CreateKeylessBotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_token_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateKeylessBotResponse.ProtoReflect.Descriptor instead.
+func (*CreateKeylessBotResponse) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CreateKeylessBotResponse) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *CreateKeylessBotResponse) GetIdentity() *BotIdentity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
 type SetBotOrdersRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Team  string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
@@ -489,7 +628,7 @@ type SetBotOrdersRequest struct {
 
 func (x *SetBotOrdersRequest) Reset() {
 	*x = SetBotOrdersRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +640,7 @@ func (x *SetBotOrdersRequest) String() string {
 func (*SetBotOrdersRequest) ProtoMessage() {}
 
 func (x *SetBotOrdersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +653,7 @@ func (x *SetBotOrdersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBotOrdersRequest.ProtoReflect.Descriptor instead.
 func (*SetBotOrdersRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SetBotOrdersRequest) GetTeam() string {
@@ -547,7 +686,7 @@ type SetBotOrdersResponse struct {
 
 func (x *SetBotOrdersResponse) Reset() {
 	*x = SetBotOrdersResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -559,7 +698,7 @@ func (x *SetBotOrdersResponse) String() string {
 func (*SetBotOrdersResponse) ProtoMessage() {}
 
 func (x *SetBotOrdersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -572,7 +711,7 @@ func (x *SetBotOrdersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBotOrdersResponse.ProtoReflect.Descriptor instead.
 func (*SetBotOrdersResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SetBotOrdersResponse) GetTemplates() []string {
@@ -596,7 +735,7 @@ type SetBotCallbackRequest struct {
 
 func (x *SetBotCallbackRequest) Reset() {
 	*x = SetBotCallbackRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -608,7 +747,7 @@ func (x *SetBotCallbackRequest) String() string {
 func (*SetBotCallbackRequest) ProtoMessage() {}
 
 func (x *SetBotCallbackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -621,7 +760,7 @@ func (x *SetBotCallbackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBotCallbackRequest.ProtoReflect.Descriptor instead.
 func (*SetBotCallbackRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{8}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SetBotCallbackRequest) GetTeam() string {
@@ -663,7 +802,7 @@ type SetBotCallbackResponse struct {
 
 func (x *SetBotCallbackResponse) Reset() {
 	*x = SetBotCallbackResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +814,7 @@ func (x *SetBotCallbackResponse) String() string {
 func (*SetBotCallbackResponse) ProtoMessage() {}
 
 func (x *SetBotCallbackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +827,7 @@ func (x *SetBotCallbackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBotCallbackResponse.ProtoReflect.Descriptor instead.
 func (*SetBotCallbackResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{9}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SetBotCallbackResponse) GetHost() string {
@@ -717,7 +856,7 @@ type CreateBotTokenResponse struct {
 
 func (x *CreateBotTokenResponse) Reset() {
 	*x = CreateBotTokenResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -729,7 +868,7 @@ func (x *CreateBotTokenResponse) String() string {
 func (*CreateBotTokenResponse) ProtoMessage() {}
 
 func (x *CreateBotTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +881,7 @@ func (x *CreateBotTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBotTokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateBotTokenResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{10}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateBotTokenResponse) GetEmail() string {
@@ -775,7 +914,7 @@ type RevokeTokenRequest struct {
 
 func (x *RevokeTokenRequest) Reset() {
 	*x = RevokeTokenRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -787,7 +926,7 @@ func (x *RevokeTokenRequest) String() string {
 func (*RevokeTokenRequest) ProtoMessage() {}
 
 func (x *RevokeTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -800,7 +939,7 @@ func (x *RevokeTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeTokenRequest.ProtoReflect.Descriptor instead.
 func (*RevokeTokenRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{11}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RevokeTokenRequest) GetTokenId() string {
@@ -818,7 +957,7 @@ type RevokeTokenResponse struct {
 
 func (x *RevokeTokenResponse) Reset() {
 	*x = RevokeTokenResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -830,7 +969,7 @@ func (x *RevokeTokenResponse) String() string {
 func (*RevokeTokenResponse) ProtoMessage() {}
 
 func (x *RevokeTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -843,7 +982,7 @@ func (x *RevokeTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeTokenResponse.ProtoReflect.Descriptor instead.
 func (*RevokeTokenResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{12}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{14}
 }
 
 type ListAutomationTokensRequest struct {
@@ -854,7 +993,7 @@ type ListAutomationTokensRequest struct {
 
 func (x *ListAutomationTokensRequest) Reset() {
 	*x = ListAutomationTokensRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -866,7 +1005,7 @@ func (x *ListAutomationTokensRequest) String() string {
 func (*ListAutomationTokensRequest) ProtoMessage() {}
 
 func (x *ListAutomationTokensRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -879,7 +1018,7 @@ func (x *ListAutomationTokensRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAutomationTokensRequest.ProtoReflect.Descriptor instead.
 func (*ListAutomationTokensRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{13}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{15}
 }
 
 type ListAutomationTokensResponse struct {
@@ -891,7 +1030,7 @@ type ListAutomationTokensResponse struct {
 
 func (x *ListAutomationTokensResponse) Reset() {
 	*x = ListAutomationTokensResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -903,7 +1042,7 @@ func (x *ListAutomationTokensResponse) String() string {
 func (*ListAutomationTokensResponse) ProtoMessage() {}
 
 func (x *ListAutomationTokensResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -916,7 +1055,7 @@ func (x *ListAutomationTokensResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAutomationTokensResponse.ProtoReflect.Descriptor instead.
 func (*ListAutomationTokensResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{14}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListAutomationTokensResponse) GetTokens() []*AutomationToken {
@@ -940,7 +1079,7 @@ type CreateAutomationTokenRequest struct {
 
 func (x *CreateAutomationTokenRequest) Reset() {
 	*x = CreateAutomationTokenRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -952,7 +1091,7 @@ func (x *CreateAutomationTokenRequest) String() string {
 func (*CreateAutomationTokenRequest) ProtoMessage() {}
 
 func (x *CreateAutomationTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -965,7 +1104,7 @@ func (x *CreateAutomationTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAutomationTokenRequest.ProtoReflect.Descriptor instead.
 func (*CreateAutomationTokenRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{15}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateAutomationTokenRequest) GetLabel() string {
@@ -1002,7 +1141,7 @@ type CreateAutomationTokenResponse struct {
 
 func (x *CreateAutomationTokenResponse) Reset() {
 	*x = CreateAutomationTokenResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1014,7 +1153,7 @@ func (x *CreateAutomationTokenResponse) String() string {
 func (*CreateAutomationTokenResponse) ProtoMessage() {}
 
 func (x *CreateAutomationTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1027,7 +1166,7 @@ func (x *CreateAutomationTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAutomationTokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateAutomationTokenResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{16}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateAutomationTokenResponse) GetTokenId() string {
@@ -1073,7 +1212,7 @@ type BotIdentity struct {
 
 func (x *BotIdentity) Reset() {
 	*x = BotIdentity{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1085,7 +1224,7 @@ func (x *BotIdentity) String() string {
 func (*BotIdentity) ProtoMessage() {}
 
 func (x *BotIdentity) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1098,7 +1237,7 @@ func (x *BotIdentity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BotIdentity.ProtoReflect.Descriptor instead.
 func (*BotIdentity) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{17}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *BotIdentity) GetId() string {
@@ -1159,7 +1298,7 @@ type ListBotIdentitiesRequest struct {
 
 func (x *ListBotIdentitiesRequest) Reset() {
 	*x = ListBotIdentitiesRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[18]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1171,7 +1310,7 @@ func (x *ListBotIdentitiesRequest) String() string {
 func (*ListBotIdentitiesRequest) ProtoMessage() {}
 
 func (x *ListBotIdentitiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[18]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1184,7 +1323,7 @@ func (x *ListBotIdentitiesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotIdentitiesRequest.ProtoReflect.Descriptor instead.
 func (*ListBotIdentitiesRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{18}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListBotIdentitiesRequest) GetTeam() string {
@@ -1206,7 +1345,7 @@ type ListBotIdentitiesResponse struct {
 
 func (x *ListBotIdentitiesResponse) Reset() {
 	*x = ListBotIdentitiesResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[19]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1218,7 +1357,7 @@ func (x *ListBotIdentitiesResponse) String() string {
 func (*ListBotIdentitiesResponse) ProtoMessage() {}
 
 func (x *ListBotIdentitiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[19]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1231,7 +1370,7 @@ func (x *ListBotIdentitiesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotIdentitiesResponse.ProtoReflect.Descriptor instead.
 func (*ListBotIdentitiesResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{19}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListBotIdentitiesResponse) GetIdentities() []*BotIdentity {
@@ -1267,7 +1406,7 @@ type AddBotIdentityRequest struct {
 
 func (x *AddBotIdentityRequest) Reset() {
 	*x = AddBotIdentityRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[20]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1279,7 +1418,7 @@ func (x *AddBotIdentityRequest) String() string {
 func (*AddBotIdentityRequest) ProtoMessage() {}
 
 func (x *AddBotIdentityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[20]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1292,7 +1431,7 @@ func (x *AddBotIdentityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddBotIdentityRequest.ProtoReflect.Descriptor instead.
 func (*AddBotIdentityRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{20}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AddBotIdentityRequest) GetTeam() string {
@@ -1332,7 +1471,7 @@ type AddBotIdentityResponse struct {
 
 func (x *AddBotIdentityResponse) Reset() {
 	*x = AddBotIdentityResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[21]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1344,7 +1483,7 @@ func (x *AddBotIdentityResponse) String() string {
 func (*AddBotIdentityResponse) ProtoMessage() {}
 
 func (x *AddBotIdentityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[21]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1357,7 +1496,7 @@ func (x *AddBotIdentityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddBotIdentityResponse.ProtoReflect.Descriptor instead.
 func (*AddBotIdentityResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{21}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AddBotIdentityResponse) GetIdentity() *BotIdentity {
@@ -1376,7 +1515,7 @@ type RemoveBotIdentityRequest struct {
 
 func (x *RemoveBotIdentityRequest) Reset() {
 	*x = RemoveBotIdentityRequest{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[22]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1388,7 +1527,7 @@ func (x *RemoveBotIdentityRequest) String() string {
 func (*RemoveBotIdentityRequest) ProtoMessage() {}
 
 func (x *RemoveBotIdentityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[22]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1401,7 +1540,7 @@ func (x *RemoveBotIdentityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveBotIdentityRequest.ProtoReflect.Descriptor instead.
 func (*RemoveBotIdentityRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{22}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RemoveBotIdentityRequest) GetId() string {
@@ -1419,7 +1558,7 @@ type RemoveBotIdentityResponse struct {
 
 func (x *RemoveBotIdentityResponse) Reset() {
 	*x = RemoveBotIdentityResponse{}
-	mi := &file_vertra_console_v1_token_proto_msgTypes[23]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1431,7 +1570,7 @@ func (x *RemoveBotIdentityResponse) String() string {
 func (*RemoveBotIdentityResponse) ProtoMessage() {}
 
 func (x *RemoveBotIdentityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_token_proto_msgTypes[23]
+	mi := &file_vertra_console_v1_token_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1444,7 +1583,7 @@ func (x *RemoveBotIdentityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveBotIdentityResponse.ProtoReflect.Descriptor instead.
 func (*RemoveBotIdentityResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{23}
+	return file_vertra_console_v1_token_proto_rawDescGZIP(), []int{25}
 }
 
 var File_vertra_console_v1_token_proto protoreflect.FileDescriptor
@@ -1492,7 +1631,20 @@ const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\bordering\x18\x04 \x01(\bR\bordering\x12'\n" +
 	"\x0forder_templates\x18\x05 \x03(\tR\x0eorderTemplates\x12+\n" +
 	"\x0fexpires_in_days\x18\x06 \x01(\x05H\x00R\rexpiresInDays\x88\x01\x01B\x12\n" +
-	"\x10_expires_in_days\"]\n" +
+	"\x10_expires_in_days\"\xab\x02\n" +
+	"\x17CreateKeylessBotRequest\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
+	"\bordering\x18\x03 \x01(\bR\bordering\x12'\n" +
+	"\x0forder_templates\x18\x04 \x03(\tR\x0eorderTemplates\x12\x16\n" +
+	"\x06issuer\x18\x05 \x01(\tR\x06issuer\x12N\n" +
+	"\x06claims\x18\x06 \x03(\v26.vertra.console.v1.CreateKeylessBotRequest.ClaimsEntryR\x06claims\x1a9\n" +
+	"\vClaimsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"l\n" +
+	"\x18CreateKeylessBotResponse\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12:\n" +
+	"\bidentity\x18\x02 \x01(\v2\x1e.vertra.console.v1.BotIdentityR\bidentity\"]\n" +
 	"\x13SetBotOrdersRequest\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1c\n" +
@@ -1560,10 +1712,11 @@ const file_vertra_console_v1_token_proto_rawDesc = "" +
 	"\bidentity\x18\x01 \x01(\v2\x1e.vertra.console.v1.BotIdentityR\bidentity\"*\n" +
 	"\x18RemoveBotIdentityRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1b\n" +
-	"\x19RemoveBotIdentityResponse2\xc0\b\n" +
+	"\x19RemoveBotIdentityResponse2\xad\t\n" +
 	"\fTokenService\x12X\n" +
 	"\bListBots\x12\".vertra.console.v1.ListBotsRequest\x1a#.vertra.console.v1.ListBotsResponse\"\x03\x90\x02\x01\x12e\n" +
-	"\x0eCreateBotToken\x12(.vertra.console.v1.CreateBotTokenRequest\x1a).vertra.console.v1.CreateBotTokenResponse\x12_\n" +
+	"\x0eCreateBotToken\x12(.vertra.console.v1.CreateBotTokenRequest\x1a).vertra.console.v1.CreateBotTokenResponse\x12k\n" +
+	"\x10CreateKeylessBot\x12*.vertra.console.v1.CreateKeylessBotRequest\x1a+.vertra.console.v1.CreateKeylessBotResponse\x12_\n" +
 	"\fSetBotOrders\x12&.vertra.console.v1.SetBotOrdersRequest\x1a'.vertra.console.v1.SetBotOrdersResponse\x12e\n" +
 	"\x0eSetBotCallback\x12(.vertra.console.v1.SetBotCallbackRequest\x1a).vertra.console.v1.SetBotCallbackResponse\x12s\n" +
 	"\x11ListBotIdentities\x12+.vertra.console.v1.ListBotIdentitiesRequest\x1a,.vertra.console.v1.ListBotIdentitiesResponse\"\x03\x90\x02\x01\x12e\n" +
@@ -1587,7 +1740,7 @@ func file_vertra_console_v1_token_proto_rawDescGZIP() []byte {
 	return file_vertra_console_v1_token_proto_rawDescData
 }
 
-var file_vertra_console_v1_token_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_vertra_console_v1_token_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_vertra_console_v1_token_proto_goTypes = []any{
 	(*TokenInfo)(nil),                     // 0: vertra.console.v1.TokenInfo
 	(*Bot)(nil),                           // 1: vertra.console.v1.Bot
@@ -1595,70 +1748,77 @@ var file_vertra_console_v1_token_proto_goTypes = []any{
 	(*ListBotsRequest)(nil),               // 3: vertra.console.v1.ListBotsRequest
 	(*ListBotsResponse)(nil),              // 4: vertra.console.v1.ListBotsResponse
 	(*CreateBotTokenRequest)(nil),         // 5: vertra.console.v1.CreateBotTokenRequest
-	(*SetBotOrdersRequest)(nil),           // 6: vertra.console.v1.SetBotOrdersRequest
-	(*SetBotOrdersResponse)(nil),          // 7: vertra.console.v1.SetBotOrdersResponse
-	(*SetBotCallbackRequest)(nil),         // 8: vertra.console.v1.SetBotCallbackRequest
-	(*SetBotCallbackResponse)(nil),        // 9: vertra.console.v1.SetBotCallbackResponse
-	(*CreateBotTokenResponse)(nil),        // 10: vertra.console.v1.CreateBotTokenResponse
-	(*RevokeTokenRequest)(nil),            // 11: vertra.console.v1.RevokeTokenRequest
-	(*RevokeTokenResponse)(nil),           // 12: vertra.console.v1.RevokeTokenResponse
-	(*ListAutomationTokensRequest)(nil),   // 13: vertra.console.v1.ListAutomationTokensRequest
-	(*ListAutomationTokensResponse)(nil),  // 14: vertra.console.v1.ListAutomationTokensResponse
-	(*CreateAutomationTokenRequest)(nil),  // 15: vertra.console.v1.CreateAutomationTokenRequest
-	(*CreateAutomationTokenResponse)(nil), // 16: vertra.console.v1.CreateAutomationTokenResponse
-	(*BotIdentity)(nil),                   // 17: vertra.console.v1.BotIdentity
-	(*ListBotIdentitiesRequest)(nil),      // 18: vertra.console.v1.ListBotIdentitiesRequest
-	(*ListBotIdentitiesResponse)(nil),     // 19: vertra.console.v1.ListBotIdentitiesResponse
-	(*AddBotIdentityRequest)(nil),         // 20: vertra.console.v1.AddBotIdentityRequest
-	(*AddBotIdentityResponse)(nil),        // 21: vertra.console.v1.AddBotIdentityResponse
-	(*RemoveBotIdentityRequest)(nil),      // 22: vertra.console.v1.RemoveBotIdentityRequest
-	(*RemoveBotIdentityResponse)(nil),     // 23: vertra.console.v1.RemoveBotIdentityResponse
-	nil,                                   // 24: vertra.console.v1.BotIdentity.ClaimsEntry
-	nil,                                   // 25: vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
-	(*timestamppb.Timestamp)(nil),         // 26: google.protobuf.Timestamp
+	(*CreateKeylessBotRequest)(nil),       // 6: vertra.console.v1.CreateKeylessBotRequest
+	(*CreateKeylessBotResponse)(nil),      // 7: vertra.console.v1.CreateKeylessBotResponse
+	(*SetBotOrdersRequest)(nil),           // 8: vertra.console.v1.SetBotOrdersRequest
+	(*SetBotOrdersResponse)(nil),          // 9: vertra.console.v1.SetBotOrdersResponse
+	(*SetBotCallbackRequest)(nil),         // 10: vertra.console.v1.SetBotCallbackRequest
+	(*SetBotCallbackResponse)(nil),        // 11: vertra.console.v1.SetBotCallbackResponse
+	(*CreateBotTokenResponse)(nil),        // 12: vertra.console.v1.CreateBotTokenResponse
+	(*RevokeTokenRequest)(nil),            // 13: vertra.console.v1.RevokeTokenRequest
+	(*RevokeTokenResponse)(nil),           // 14: vertra.console.v1.RevokeTokenResponse
+	(*ListAutomationTokensRequest)(nil),   // 15: vertra.console.v1.ListAutomationTokensRequest
+	(*ListAutomationTokensResponse)(nil),  // 16: vertra.console.v1.ListAutomationTokensResponse
+	(*CreateAutomationTokenRequest)(nil),  // 17: vertra.console.v1.CreateAutomationTokenRequest
+	(*CreateAutomationTokenResponse)(nil), // 18: vertra.console.v1.CreateAutomationTokenResponse
+	(*BotIdentity)(nil),                   // 19: vertra.console.v1.BotIdentity
+	(*ListBotIdentitiesRequest)(nil),      // 20: vertra.console.v1.ListBotIdentitiesRequest
+	(*ListBotIdentitiesResponse)(nil),     // 21: vertra.console.v1.ListBotIdentitiesResponse
+	(*AddBotIdentityRequest)(nil),         // 22: vertra.console.v1.AddBotIdentityRequest
+	(*AddBotIdentityResponse)(nil),        // 23: vertra.console.v1.AddBotIdentityResponse
+	(*RemoveBotIdentityRequest)(nil),      // 24: vertra.console.v1.RemoveBotIdentityRequest
+	(*RemoveBotIdentityResponse)(nil),     // 25: vertra.console.v1.RemoveBotIdentityResponse
+	nil,                                   // 26: vertra.console.v1.CreateKeylessBotRequest.ClaimsEntry
+	nil,                                   // 27: vertra.console.v1.BotIdentity.ClaimsEntry
+	nil,                                   // 28: vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
+	(*timestamppb.Timestamp)(nil),         // 29: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_token_proto_depIdxs = []int32{
-	26, // 0: vertra.console.v1.TokenInfo.created_at:type_name -> google.protobuf.Timestamp
-	26, // 1: vertra.console.v1.TokenInfo.last_used_at:type_name -> google.protobuf.Timestamp
-	26, // 2: vertra.console.v1.TokenInfo.expires_at:type_name -> google.protobuf.Timestamp
+	29, // 0: vertra.console.v1.TokenInfo.created_at:type_name -> google.protobuf.Timestamp
+	29, // 1: vertra.console.v1.TokenInfo.last_used_at:type_name -> google.protobuf.Timestamp
+	29, // 2: vertra.console.v1.TokenInfo.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: vertra.console.v1.Bot.tokens:type_name -> vertra.console.v1.TokenInfo
-	26, // 4: vertra.console.v1.Bot.callback_last_sent_at:type_name -> google.protobuf.Timestamp
-	26, // 5: vertra.console.v1.AutomationToken.created_at:type_name -> google.protobuf.Timestamp
-	26, // 6: vertra.console.v1.AutomationToken.last_used_at:type_name -> google.protobuf.Timestamp
-	26, // 7: vertra.console.v1.AutomationToken.expires_at:type_name -> google.protobuf.Timestamp
+	29, // 4: vertra.console.v1.Bot.callback_last_sent_at:type_name -> google.protobuf.Timestamp
+	29, // 5: vertra.console.v1.AutomationToken.created_at:type_name -> google.protobuf.Timestamp
+	29, // 6: vertra.console.v1.AutomationToken.last_used_at:type_name -> google.protobuf.Timestamp
+	29, // 7: vertra.console.v1.AutomationToken.expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 8: vertra.console.v1.ListBotsResponse.bots:type_name -> vertra.console.v1.Bot
-	2,  // 9: vertra.console.v1.ListAutomationTokensResponse.tokens:type_name -> vertra.console.v1.AutomationToken
-	24, // 10: vertra.console.v1.BotIdentity.claims:type_name -> vertra.console.v1.BotIdentity.ClaimsEntry
-	26, // 11: vertra.console.v1.BotIdentity.created_at:type_name -> google.protobuf.Timestamp
-	26, // 12: vertra.console.v1.BotIdentity.last_used_at:type_name -> google.protobuf.Timestamp
-	17, // 13: vertra.console.v1.ListBotIdentitiesResponse.identities:type_name -> vertra.console.v1.BotIdentity
-	25, // 14: vertra.console.v1.AddBotIdentityRequest.claims:type_name -> vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
-	17, // 15: vertra.console.v1.AddBotIdentityResponse.identity:type_name -> vertra.console.v1.BotIdentity
-	3,  // 16: vertra.console.v1.TokenService.ListBots:input_type -> vertra.console.v1.ListBotsRequest
-	5,  // 17: vertra.console.v1.TokenService.CreateBotToken:input_type -> vertra.console.v1.CreateBotTokenRequest
-	6,  // 18: vertra.console.v1.TokenService.SetBotOrders:input_type -> vertra.console.v1.SetBotOrdersRequest
-	8,  // 19: vertra.console.v1.TokenService.SetBotCallback:input_type -> vertra.console.v1.SetBotCallbackRequest
-	18, // 20: vertra.console.v1.TokenService.ListBotIdentities:input_type -> vertra.console.v1.ListBotIdentitiesRequest
-	20, // 21: vertra.console.v1.TokenService.AddBotIdentity:input_type -> vertra.console.v1.AddBotIdentityRequest
-	22, // 22: vertra.console.v1.TokenService.RemoveBotIdentity:input_type -> vertra.console.v1.RemoveBotIdentityRequest
-	11, // 23: vertra.console.v1.TokenService.RevokeToken:input_type -> vertra.console.v1.RevokeTokenRequest
-	13, // 24: vertra.console.v1.TokenService.ListAutomationTokens:input_type -> vertra.console.v1.ListAutomationTokensRequest
-	15, // 25: vertra.console.v1.TokenService.CreateAutomationToken:input_type -> vertra.console.v1.CreateAutomationTokenRequest
-	4,  // 26: vertra.console.v1.TokenService.ListBots:output_type -> vertra.console.v1.ListBotsResponse
-	10, // 27: vertra.console.v1.TokenService.CreateBotToken:output_type -> vertra.console.v1.CreateBotTokenResponse
-	7,  // 28: vertra.console.v1.TokenService.SetBotOrders:output_type -> vertra.console.v1.SetBotOrdersResponse
-	9,  // 29: vertra.console.v1.TokenService.SetBotCallback:output_type -> vertra.console.v1.SetBotCallbackResponse
-	19, // 30: vertra.console.v1.TokenService.ListBotIdentities:output_type -> vertra.console.v1.ListBotIdentitiesResponse
-	21, // 31: vertra.console.v1.TokenService.AddBotIdentity:output_type -> vertra.console.v1.AddBotIdentityResponse
-	23, // 32: vertra.console.v1.TokenService.RemoveBotIdentity:output_type -> vertra.console.v1.RemoveBotIdentityResponse
-	12, // 33: vertra.console.v1.TokenService.RevokeToken:output_type -> vertra.console.v1.RevokeTokenResponse
-	14, // 34: vertra.console.v1.TokenService.ListAutomationTokens:output_type -> vertra.console.v1.ListAutomationTokensResponse
-	16, // 35: vertra.console.v1.TokenService.CreateAutomationToken:output_type -> vertra.console.v1.CreateAutomationTokenResponse
-	26, // [26:36] is the sub-list for method output_type
-	16, // [16:26] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	26, // 9: vertra.console.v1.CreateKeylessBotRequest.claims:type_name -> vertra.console.v1.CreateKeylessBotRequest.ClaimsEntry
+	19, // 10: vertra.console.v1.CreateKeylessBotResponse.identity:type_name -> vertra.console.v1.BotIdentity
+	2,  // 11: vertra.console.v1.ListAutomationTokensResponse.tokens:type_name -> vertra.console.v1.AutomationToken
+	27, // 12: vertra.console.v1.BotIdentity.claims:type_name -> vertra.console.v1.BotIdentity.ClaimsEntry
+	29, // 13: vertra.console.v1.BotIdentity.created_at:type_name -> google.protobuf.Timestamp
+	29, // 14: vertra.console.v1.BotIdentity.last_used_at:type_name -> google.protobuf.Timestamp
+	19, // 15: vertra.console.v1.ListBotIdentitiesResponse.identities:type_name -> vertra.console.v1.BotIdentity
+	28, // 16: vertra.console.v1.AddBotIdentityRequest.claims:type_name -> vertra.console.v1.AddBotIdentityRequest.ClaimsEntry
+	19, // 17: vertra.console.v1.AddBotIdentityResponse.identity:type_name -> vertra.console.v1.BotIdentity
+	3,  // 18: vertra.console.v1.TokenService.ListBots:input_type -> vertra.console.v1.ListBotsRequest
+	5,  // 19: vertra.console.v1.TokenService.CreateBotToken:input_type -> vertra.console.v1.CreateBotTokenRequest
+	6,  // 20: vertra.console.v1.TokenService.CreateKeylessBot:input_type -> vertra.console.v1.CreateKeylessBotRequest
+	8,  // 21: vertra.console.v1.TokenService.SetBotOrders:input_type -> vertra.console.v1.SetBotOrdersRequest
+	10, // 22: vertra.console.v1.TokenService.SetBotCallback:input_type -> vertra.console.v1.SetBotCallbackRequest
+	20, // 23: vertra.console.v1.TokenService.ListBotIdentities:input_type -> vertra.console.v1.ListBotIdentitiesRequest
+	22, // 24: vertra.console.v1.TokenService.AddBotIdentity:input_type -> vertra.console.v1.AddBotIdentityRequest
+	24, // 25: vertra.console.v1.TokenService.RemoveBotIdentity:input_type -> vertra.console.v1.RemoveBotIdentityRequest
+	13, // 26: vertra.console.v1.TokenService.RevokeToken:input_type -> vertra.console.v1.RevokeTokenRequest
+	15, // 27: vertra.console.v1.TokenService.ListAutomationTokens:input_type -> vertra.console.v1.ListAutomationTokensRequest
+	17, // 28: vertra.console.v1.TokenService.CreateAutomationToken:input_type -> vertra.console.v1.CreateAutomationTokenRequest
+	4,  // 29: vertra.console.v1.TokenService.ListBots:output_type -> vertra.console.v1.ListBotsResponse
+	12, // 30: vertra.console.v1.TokenService.CreateBotToken:output_type -> vertra.console.v1.CreateBotTokenResponse
+	7,  // 31: vertra.console.v1.TokenService.CreateKeylessBot:output_type -> vertra.console.v1.CreateKeylessBotResponse
+	9,  // 32: vertra.console.v1.TokenService.SetBotOrders:output_type -> vertra.console.v1.SetBotOrdersResponse
+	11, // 33: vertra.console.v1.TokenService.SetBotCallback:output_type -> vertra.console.v1.SetBotCallbackResponse
+	21, // 34: vertra.console.v1.TokenService.ListBotIdentities:output_type -> vertra.console.v1.ListBotIdentitiesResponse
+	23, // 35: vertra.console.v1.TokenService.AddBotIdentity:output_type -> vertra.console.v1.AddBotIdentityResponse
+	25, // 36: vertra.console.v1.TokenService.RemoveBotIdentity:output_type -> vertra.console.v1.RemoveBotIdentityResponse
+	14, // 37: vertra.console.v1.TokenService.RevokeToken:output_type -> vertra.console.v1.RevokeTokenResponse
+	16, // 38: vertra.console.v1.TokenService.ListAutomationTokens:output_type -> vertra.console.v1.ListAutomationTokensResponse
+	18, // 39: vertra.console.v1.TokenService.CreateAutomationToken:output_type -> vertra.console.v1.CreateAutomationTokenResponse
+	29, // [29:40] is the sub-list for method output_type
+	18, // [18:29] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_token_proto_init() }
@@ -1667,14 +1827,14 @@ func file_vertra_console_v1_token_proto_init() {
 		return
 	}
 	file_vertra_console_v1_token_proto_msgTypes[5].OneofWrappers = []any{}
-	file_vertra_console_v1_token_proto_msgTypes[15].OneofWrappers = []any{}
+	file_vertra_console_v1_token_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_token_proto_rawDesc), len(file_vertra_console_v1_token_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

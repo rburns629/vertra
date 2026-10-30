@@ -7,10 +7,11 @@ const STATE: Record<ApiProduct["state"], { label: string; tone: PillTone }> = {
   LIVE: { label: "Live", tone: "success" },
   HELD: { label: "Held", tone: "warning" },
   PAUSED: { label: "Paused", tone: "warning" },
+  UNAVAILABLE: { label: "Can’t serve", tone: "error" },
   UNSPECIFIED: { label: "Unknown", tone: "neutral" },
 };
 
-/** An API's state: Live, Held (its backend's host isn't allowed yet), or Paused by its team. */
+/** An API's state: Live, Held (its backend's host isn't allowed yet), Paused by its team, or Can't serve (the gateway can't use its spec). */
 export function ApiStatePill({ state }: { state: ApiProduct["state"] }) {
   const theme = useTheme();
   const { label, tone } = STATE[state];

@@ -158,7 +158,7 @@ From a template's or action's form, a maintainer of one of the teams it can run 
 
 Each run starts as the bot, never as you, with the bot's access as it is then, and through every check the bot running it itself would get. If the bot can't run it any more, that start is refused: the tab's **Last** column shows why, and the team's maintainers are told.
 
-Every member sees the team's **Schedules** tab: what each runs, **When** (with the next time), **Runs as**, and **Last** (a link to its last run, or its last error). Maintainers turn one off and on with **On**, and **Delete** it; the runs it started stay. To change what a schedule runs or when, delete it and make a new one. More for maintainers in [Bots and automation](14-bots-and-automation.md#how-do-i-run-something-on-a-schedule).
+Every member sees the team's **Schedules** tab: what each runs, **When** (with the next time), **Runs as**, and **Last** (a link to its last run, or its last error). Maintainers turn one off and on with **On**, **Edit** when it runs, as which bot, and its inputs (**Change inputs…** opens this run form with them, and **Save to schedule** keeps the changes), and **Delete** it; the runs it started stay. To run something else, make a new one. More for maintainers in [Bots and automation](14-bots-and-automation.md#how-do-i-run-something-on-a-schedule).
 
 ## Where do I find what a run made, and how do I delete it?
 

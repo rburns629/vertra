@@ -57,6 +57,9 @@ enum ApiState {
   API_STATE_HELD = 2;
   // A maintainer paused it (paused_message).
   API_STATE_PAUSED = 3;
+  // The gateway can't use its OpenAPI document (problem says why): it
+  // answers 503 and forwards nothing until a release fixes it.
+  API_STATE_UNAVAILABLE = 4;
 }
 
 message ApiProduct {
@@ -97,6 +100,13 @@ message ApiProduct {
   // The spec's title and version.
   string spec_title = 22;
   string spec_version = 23;
+  // When the caller may not call it: a new issue on the catalog repository,
+  // filled in with what to change, asking its team to share it (opened in
+  // the person's own browser). Empty when it can't be built.
+  string ask_for_access_url = 24;
+  // Unavailable: what the gateway found, and when.
+  string problem = 25;
+  google.protobuf.Timestamp problem_found_at = 26;
 }
 
 message ApiEndpoint {

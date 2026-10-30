@@ -186,6 +186,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/users.ts`, `core/tokens.ts`, `core/admin.ts` | Accounts; bot and automation tokens; platform counts, the audit log, policy sync. |
 | `core/orderRate.ts` | An ordering bot's rate (decision 23): its orders in the last minute, counted from its runs; past `orders.ratePerMinute`, 429 with Retry-After. |
 | `core/templates.ts` | Templates: what a person may run (templates and shared actions), running one with parameters only, each step built from its product; reruns of a template's run; previews (runs of plan actions) and cleanup runs. |
+| `core/catalogLinks.ts` | Links into the catalog repository for a template, action or API: its file, and the pre-filled issue Ask for access opens. |
 | `auth/keyless.ts`, `core/botIdentities.ts` | Keyless bots: a CI's ID token exchanged for a bot's hour-long session (AuthService/ExchangeToken), and which CI identities sign in as which bot (TokenService). |
 | `core/schedules.ts` | `ScheduleService`: a team's schedules (members see, maintainers make, pause and delete), checked as their bot. |
 | `core/sso.ts` | `SsoService`: single sign-on as admins set it (the provider unless the install set it, its discovery checked, its secret write-only), where groups come from, and groups mapped to teams. |
@@ -384,7 +385,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `cmd/gateway/main.go` | Reads its settings, the published APIs (every few seconds) and serves: inside the cluster, optionally a public listener, and metrics. |
 | `internal/gateway/` | The request path: the API, paused or held, who's calling, shared with them, size, the spec (404 when not in it, 400 when unfit), the team's rate, then forwarded with the backend's credential and a signed `Vertra-Caller`, the answer streamed back. |
 | `internal/auth/` | Signing callers in as the console does: session JWTs (checked with the console's public key, fetched from its JWKS: `keys.go`) and bot tokens, against its database. |
-| `internal/store/` | The published APIs from the console's `apis` table, each with its OpenAPI validator and endpoints; whether an admin closed the gateway; the backend host rule. |
+| `internal/store/` | The published APIs from the console's `apis` table, each with its OpenAPI validator and endpoints, and why one can't be served (written to the console's `api_problems`); whether an admin closed the gateway; the backend host rule. |
 | `internal/credentials/` | Signing a forwarded request in to its backend, from the API's own ServiceAccount: its token (TokenRequest), a Google ID token (federated at Google's STS, then generateIdToken), or AWS SigV4 (AssumeRoleWithWebIdentity); each kept for most of its life. |
 | `internal/traffic/` | Counting each API's requests a minute at a time (team, endpoint, outcome) and adding them to the console's `api_traffic`. |
 | `internal/caller/` | The `Vertra-Caller` header (an EdDSA JWT) and its public key at `/.vertra/jwks.json`. |

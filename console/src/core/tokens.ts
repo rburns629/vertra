@@ -77,6 +77,18 @@ export async function createBotToken(
 ) {
   const team = await teamForMaintainer(caller, teamName);
   ensureNotRetired(team);
+  const bot = await teamBot(team, input);
+  const rawToken = generateApiToken();
+  const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken), [], expiryAfter(input.expiresInDays ?? DEFAULT_TOKEN_DAYS));
+  return { email: bot.email, token: rawToken, tokenId: tokenMeta.id };
+}
+
+/**
+ * The team's bot with this address: made if it doesn't exist, and in the
+ * team, as a pipeline's bot (a maintainer) or an ordering bot (a member).
+ * The caller has checked the team's maintainer and that it isn't retired.
+ */
+export async function teamBot(team: { id: string }, input: { email: string; ordering?: boolean; orderTemplates?: string[] }) {
   const bot = await createBotUser(input.email);
   if (!bot.isBot) {
     throw new ApiError(409, "CONFLICT", `"${input.email}" already belongs to a non-bot account.`, Code.AlreadyExists);
@@ -91,9 +103,7 @@ export async function createBotToken(
   } else {
     await addTeamMember(bot.id, team.id, "maintainer");
   }
-  const rawToken = generateApiToken();
-  const tokenMeta = await createApiToken(bot.id, input.label, hashApiToken(rawToken), [], expiryAfter(input.expiresInDays ?? DEFAULT_TOKEN_DAYS));
-  return { email: bot.email, token: rawToken, tokenId: tokenMeta.id };
+  return bot;
 }
 
 /** Sets what an ordering bot of the team may order (its maintainers). */

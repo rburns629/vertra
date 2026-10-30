@@ -979,6 +979,27 @@ describe("an API", () => {
     expect(calls).not.toContain("ObserveService/SearchLogs");
   });
 
+  it("says it can't serve, why, and where to fix it, while the gateway can't use its spec", async () => {
+    const broken = {
+      ...ORDERS,
+      state: "API_STATE_UNAVAILABLE",
+      problem: "its OpenAPI document can't be used: a $ref that isn't there",
+      problemFoundAt: "2026-10-30T14:02:00Z",
+      sourcePath: "teams/payments/apis/orders/api.yaml",
+    };
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: broken, openapi: "{}" } });
+    expect(await screen.findByText("Can’t serve")).toBeTruthy();
+    expect(screen.getByText(/every call gets 503 and nothing reaches the backend/)).toBeTruthy();
+    expect(screen.getByText("its OpenAPI document can't be used: a $ref that isn't there")).toBeTruthy();
+    expect(screen.getByText("teams/payments/apis/orders/api.yaml")).toBeTruthy();
+  });
+
+  it("offers whoever it isn't shared with an issue asking its team", async () => {
+    const theirs = { ...ORDERS, mayCall: false, askForAccessUrl: "https://github.com/acme/catalog/issues/new?title=orders" };
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: theirs, openapi: "{}" } });
+    expect((await screen.findByRole("link", { name: "Ask for access ↗" })).getAttribute("href")).toBe("https://github.com/acme/catalog/issues/new?title=orders");
+  });
+
   it("shows its own team each endpoint's traffic, its backend's logs, and lets a maintainer pause it", async () => {
     const paused: Record<string, unknown>[] = [];
     await renderAt("/apis/payments/orders", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
@@ -1036,6 +1057,7 @@ describe("the APIs page", () => {
           api("payments", "orders", { mayCall: true }),
           api("identity", "users", { mayCall: true }),
           api("ml", "scoring", { state: "API_STATE_HELD", heldReason: "Its backend's host isn't allowed here yet" }),
+          api("risk", "fraud", { askForAccessUrl: "https://github.com/acme/catalog/issues/new?title=fraud" }),
         ],
       },
     });
@@ -1043,11 +1065,13 @@ describe("the APIs page", () => {
     const table = screen.getByRole("region", { name: "APIs you can see" });
     const groups = [...table.querySelectorAll("th[scope=rowgroup]")].map((h) => h.textContent);
     expect(groups).toEqual([expect.stringMatching(/^Your teams’ · payments/), expect.stringMatching(/^Shared with your teams/), expect.stringMatching(/^Not shared/)]);
-    expect(within(table).getByRole("link", { name: "Ask ml for access" })).toBeTruthy();
+    // An issue on the catalog asking its team, when the console can build one; else the team's page.
+    expect(within(table).getByRole("link", { name: "Ask ml for access" }).getAttribute("href")).toBe("/teams/ml");
+    expect(within(table).getByRole("link", { name: "Ask risk for access ↗" }).getAttribute("href")).toBe("https://github.com/acme/catalog/issues/new?title=fraud");
     expect(screen.getByText("http://gateway.vertra-system.svc/<team>/<api>")).toBeTruthy();
     expect(screen.getByRole("link", { name: "A bot for payments" }).getAttribute("href")).toBe("/teams/payments?tab=automation");
 
-    fireEvent.click(screen.getByRole("button", { name: /Paused or held/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Not live/ }));
     expect(within(table).queryByText("orders API")).toBeNull();
     expect(within(table).getByText("scoring API")).toBeTruthy();
     expect(within(table).getByText("Its backend's host isn't allowed here yet")).toBeTruthy();
@@ -2011,6 +2035,33 @@ describe("keyless bots", () => {
       ]);
     });
   });
+
+  it("make a new bot that signs in only from CI, with no token", async () => {
+    const made: Record<string, unknown>[] = [];
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": { bots: [] },
+      "TokenService/ListBotIdentities": { identities: [], issuers: ["https://token.actions.githubusercontent.com"], audience: "https://vertra.acme.dev" },
+      "TokenService/CreateKeylessBot": (request: Record<string, unknown>) => {
+        made.push(request);
+        return { email: "payments-deploy@bots.vertra.local", identity: { id: "i1" } };
+      },
+    });
+    fireEvent.change(await screen.findByLabelText(/What will use it/), { target: { value: "deploy" } });
+    expect(screen.getByRole("button", { name: "Create bot and token" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /Keyless, from CI/ }));
+    expect(screen.queryByRole("button", { name: "Create bot and token" })).toBeNull();
+    const create = screen.getByRole("button", { name: "Create bot" });
+    expect(create).toHaveProperty("disabled", true); // until the repository is named
+    fireEvent.change(screen.getByLabelText(/Repository \(owner\/name\)/), { target: { value: "acme/deploy" } });
+    fireEvent.click(create);
+    await waitFor(() => {
+      expect(made).toEqual([
+        { team: "payments", email: "payments-deploy@bots.vertra.local", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/deploy" } },
+      ]);
+    });
+    expect(calls).not.toContain("TokenService/CreateBotToken");
+  });
 });
 
 describe("ordering bots", () => {
@@ -2055,6 +2106,50 @@ describe("schedules", () => {
     expect(screen.getByText(/isn't shared with you/)).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: "nightly on" }));
     await waitFor(() => { expect(changed).toEqual([{ id: "s1", enabled: false }]); });
+  });
+
+  it("are edited there: when and as which bot, and their inputs on the run form", async () => {
+    const changed: Record<string, unknown>[] = [];
+    const nightly = {
+      id: "s1", team: "payments", name: "nightly", kind: "template", runnableTeam: "gcp-platform", runnableName: "app-on-cloud-run",
+      parameters: { projectId: "orders-api" }, cron: "0 2 * * *", timeZone: "Europe/Berlin", botId: "b1", botEmail: "payments-nightly@bots.vertra.local", enabled: true,
+    };
+    await renderAt("/teams/payments?tab=schedules", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "ScheduleService/ListSchedules": { schedules: [nightly] },
+      "TokenService/ListBots": { bots: [{ id: "b1", email: "payments-nightly@bots.vertra.local" }, { id: "b2", email: "payments-release@bots.vertra.local" }] },
+      "TemplateService/ListTemplates": {
+        runnables: [{ kind: "KIND_TEMPLATE", team: "gcp-platform", name: "app-on-cloud-run", displayName: "App on Cloud Run", shared: true, actions: [],
+          parameters: { type: "object", required: ["projectId"], properties: { projectId: { type: "string", title: "Project ID" } } } }],
+      },
+      "ScheduleService/UpdateSchedule": (request: Record<string, unknown>) => {
+        changed.push(request);
+        return { schedule: { ...nightly, ...request } };
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Edit nightly" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit nightly" });
+    expect(within(dialog).getByText("projectId: \"orders-api\"")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true); // nothing changed yet
+    fireEvent.mouseDown(within(dialog).getByRole("combobox", { name: "When" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Weekdays at 09:00" }));
+    fireEvent.mouseDown(within(dialog).getByRole("combobox", { name: "Runs as" }));
+    fireEvent.click(await screen.findByRole("option", { name: "payments-release@bots.vertra.local" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => { expect(changed).toEqual([{ id: "s1", cron: "0 9 * * 1-5", timeZone: "Europe/Berlin", botId: "b2" }]); });
+    await waitFor(() => { expect(screen.queryByRole("dialog")).toBeNull(); });
+
+    // Its inputs: on the run form, filled in, saved back to it rather than run.
+    fireEvent.click(screen.getByRole("button", { name: "Edit nightly" }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "Edit nightly" })).getByRole("link", { name: "Change inputs…" }));
+    expect(await screen.findByText(/Changing the inputs of the schedule/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Run" })).toBeNull();
+    const project = screen.getByLabelText(/project id/i);
+    expect((project as HTMLInputElement).value).toBe("orders-api");
+    fireEvent.change(project, { target: { value: "orders-api-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save to schedule" }));
+    await waitFor(() => { expect(changed[1]).toEqual({ id: "s1", parameters: { projectId: "orders-api-2" } }); });
+    expect(await screen.findByRole("button", { name: "Edit nightly" })).toBeTruthy(); // back on the team's schedules
   });
 });
 

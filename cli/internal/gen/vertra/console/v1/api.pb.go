@@ -35,6 +35,9 @@ const (
 	ApiState_API_STATE_HELD ApiState = 2
 	// A maintainer paused it (paused_message).
 	ApiState_API_STATE_PAUSED ApiState = 3
+	// The gateway can't use its OpenAPI document (problem says why): it
+	// answers 503 and forwards nothing until a release fixes it.
+	ApiState_API_STATE_UNAVAILABLE ApiState = 4
 )
 
 // Enum value maps for ApiState.
@@ -44,12 +47,14 @@ var (
 		1: "API_STATE_LIVE",
 		2: "API_STATE_HELD",
 		3: "API_STATE_PAUSED",
+		4: "API_STATE_UNAVAILABLE",
 	}
 	ApiState_value = map[string]int32{
 		"API_STATE_UNSPECIFIED": 0,
 		"API_STATE_LIVE":        1,
 		"API_STATE_HELD":        2,
 		"API_STATE_PAUSED":      3,
+		"API_STATE_UNAVAILABLE": 4,
 	}
 )
 
@@ -117,10 +122,17 @@ type ApiProduct struct {
 	BackendUrl  string `protobuf:"bytes,20,opt,name=backend_url,json=backendUrl,proto3" json:"backend_url,omitempty"`
 	BackendAuth string `protobuf:"bytes,21,opt,name=backend_auth,json=backendAuth,proto3" json:"backend_auth,omitempty"`
 	// The spec's title and version.
-	SpecTitle     string `protobuf:"bytes,22,opt,name=spec_title,json=specTitle,proto3" json:"spec_title,omitempty"`
-	SpecVersion   string `protobuf:"bytes,23,opt,name=spec_version,json=specVersion,proto3" json:"spec_version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SpecTitle   string `protobuf:"bytes,22,opt,name=spec_title,json=specTitle,proto3" json:"spec_title,omitempty"`
+	SpecVersion string `protobuf:"bytes,23,opt,name=spec_version,json=specVersion,proto3" json:"spec_version,omitempty"`
+	// When the caller may not call it: a new issue on the catalog repository,
+	// filled in with what to change, asking its team to share it (opened in
+	// the person's own browser). Empty when it can't be built.
+	AskForAccessUrl string `protobuf:"bytes,24,opt,name=ask_for_access_url,json=askForAccessUrl,proto3" json:"ask_for_access_url,omitempty"`
+	// Unavailable: what the gateway found, and when.
+	Problem        string                 `protobuf:"bytes,25,opt,name=problem,proto3" json:"problem,omitempty"`
+	ProblemFoundAt *timestamppb.Timestamp `protobuf:"bytes,26,opt,name=problem_found_at,json=problemFoundAt,proto3" json:"problem_found_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ApiProduct) Reset() {
@@ -312,6 +324,27 @@ func (x *ApiProduct) GetSpecVersion() string {
 		return x.SpecVersion
 	}
 	return ""
+}
+
+func (x *ApiProduct) GetAskForAccessUrl() string {
+	if x != nil {
+		return x.AskForAccessUrl
+	}
+	return ""
+}
+
+func (x *ApiProduct) GetProblem() string {
+	if x != nil {
+		return x.Problem
+	}
+	return ""
+}
+
+func (x *ApiProduct) GetProblemFoundAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ProblemFoundAt
+	}
+	return nil
 }
 
 type ApiEndpoint struct {
@@ -1437,7 +1470,7 @@ var File_vertra_console_v1_api_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\n" +
-	"\x1bvertra/console/v1/api.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8c\x06\n" +
+	"\x1bvertra/console/v1/api.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x99\a\n" +
 	"\n" +
 	"ApiProduct\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x12\n" +
@@ -1472,7 +1505,10 @@ const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\fbackend_auth\x18\x15 \x01(\tR\vbackendAuth\x12\x1d\n" +
 	"\n" +
 	"spec_title\x18\x16 \x01(\tR\tspecTitle\x12!\n" +
-	"\fspec_version\x18\x17 \x01(\tR\vspecVersion\"S\n" +
+	"\fspec_version\x18\x17 \x01(\tR\vspecVersion\x12+\n" +
+	"\x12ask_for_access_url\x18\x18 \x01(\tR\x0faskForAccessUrl\x12\x18\n" +
+	"\aproblem\x18\x19 \x01(\tR\aproblem\x12D\n" +
+	"\x10problem_found_at\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\x0eproblemFoundAt\"S\n" +
 	"\vApiEndpoint\x12\x16\n" +
 	"\x06method\x18\x01 \x01(\tR\x06method\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x18\n" +
@@ -1548,12 +1584,13 @@ const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\x06mostly\x18\x03 \x01(\tR\x06mostly\"3\n" +
 	"\x17SetGatewayClosedRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\x1a\n" +
-	"\x18SetGatewayClosedResponse*c\n" +
+	"\x18SetGatewayClosedResponse*~\n" +
 	"\bApiState\x12\x19\n" +
 	"\x15API_STATE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eAPI_STATE_LIVE\x10\x01\x12\x12\n" +
 	"\x0eAPI_STATE_HELD\x10\x02\x12\x14\n" +
-	"\x10API_STATE_PAUSED\x10\x032\x9d\x05\n" +
+	"\x10API_STATE_PAUSED\x10\x03\x12\x19\n" +
+	"\x15API_STATE_UNAVAILABLE\x10\x042\x9d\x05\n" +
 	"\n" +
 	"ApiService\x12X\n" +
 	"\bListApis\x12\".vertra.console.v1.ListApisRequest\x1a#.vertra.console.v1.ListApisResponse\"\x03\x90\x02\x01\x12R\n" +
@@ -1607,33 +1644,34 @@ var file_vertra_console_v1_api_proto_goTypes = []any{
 var file_vertra_console_v1_api_proto_depIdxs = []int32{
 	0,  // 0: vertra.console.v1.ApiProduct.state:type_name -> vertra.console.v1.ApiState
 	2,  // 1: vertra.console.v1.ApiProduct.endpoints:type_name -> vertra.console.v1.ApiEndpoint
-	1,  // 2: vertra.console.v1.ListApisResponse.apis:type_name -> vertra.console.v1.ApiProduct
-	1,  // 3: vertra.console.v1.GetApiResponse.api:type_name -> vertra.console.v1.ApiProduct
-	13, // 4: vertra.console.v1.GetApiTrafficResponse.endpoints:type_name -> vertra.console.v1.EndpointTraffic
-	14, // 5: vertra.console.v1.GetApiTrafficResponse.blocked:type_name -> vertra.console.v1.BlockedRequests
-	15, // 6: vertra.console.v1.GetApiTrafficResponse.teams:type_name -> vertra.console.v1.TeamTraffic
-	21, // 7: vertra.console.v1.BlockedRequests.last:type_name -> google.protobuf.Timestamp
-	21, // 8: vertra.console.v1.GetGatewayResponse.closed_at:type_name -> google.protobuf.Timestamp
-	18, // 9: vertra.console.v1.GetGatewayResponse.refused:type_name -> vertra.console.v1.RefusedRequests
-	3,  // 10: vertra.console.v1.ApiService.ListApis:input_type -> vertra.console.v1.ListApisRequest
-	5,  // 11: vertra.console.v1.ApiService.GetApi:input_type -> vertra.console.v1.GetApiRequest
-	7,  // 12: vertra.console.v1.ApiService.PauseApi:input_type -> vertra.console.v1.PauseApiRequest
-	9,  // 13: vertra.console.v1.ApiService.ResumeApi:input_type -> vertra.console.v1.ResumeApiRequest
-	11, // 14: vertra.console.v1.ApiService.GetApiTraffic:input_type -> vertra.console.v1.GetApiTrafficRequest
-	16, // 15: vertra.console.v1.ApiService.GetGateway:input_type -> vertra.console.v1.GetGatewayRequest
-	19, // 16: vertra.console.v1.ApiService.SetGatewayClosed:input_type -> vertra.console.v1.SetGatewayClosedRequest
-	4,  // 17: vertra.console.v1.ApiService.ListApis:output_type -> vertra.console.v1.ListApisResponse
-	6,  // 18: vertra.console.v1.ApiService.GetApi:output_type -> vertra.console.v1.GetApiResponse
-	8,  // 19: vertra.console.v1.ApiService.PauseApi:output_type -> vertra.console.v1.PauseApiResponse
-	10, // 20: vertra.console.v1.ApiService.ResumeApi:output_type -> vertra.console.v1.ResumeApiResponse
-	12, // 21: vertra.console.v1.ApiService.GetApiTraffic:output_type -> vertra.console.v1.GetApiTrafficResponse
-	17, // 22: vertra.console.v1.ApiService.GetGateway:output_type -> vertra.console.v1.GetGatewayResponse
-	20, // 23: vertra.console.v1.ApiService.SetGatewayClosed:output_type -> vertra.console.v1.SetGatewayClosedResponse
-	17, // [17:24] is the sub-list for method output_type
-	10, // [10:17] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	21, // 2: vertra.console.v1.ApiProduct.problem_found_at:type_name -> google.protobuf.Timestamp
+	1,  // 3: vertra.console.v1.ListApisResponse.apis:type_name -> vertra.console.v1.ApiProduct
+	1,  // 4: vertra.console.v1.GetApiResponse.api:type_name -> vertra.console.v1.ApiProduct
+	13, // 5: vertra.console.v1.GetApiTrafficResponse.endpoints:type_name -> vertra.console.v1.EndpointTraffic
+	14, // 6: vertra.console.v1.GetApiTrafficResponse.blocked:type_name -> vertra.console.v1.BlockedRequests
+	15, // 7: vertra.console.v1.GetApiTrafficResponse.teams:type_name -> vertra.console.v1.TeamTraffic
+	21, // 8: vertra.console.v1.BlockedRequests.last:type_name -> google.protobuf.Timestamp
+	21, // 9: vertra.console.v1.GetGatewayResponse.closed_at:type_name -> google.protobuf.Timestamp
+	18, // 10: vertra.console.v1.GetGatewayResponse.refused:type_name -> vertra.console.v1.RefusedRequests
+	3,  // 11: vertra.console.v1.ApiService.ListApis:input_type -> vertra.console.v1.ListApisRequest
+	5,  // 12: vertra.console.v1.ApiService.GetApi:input_type -> vertra.console.v1.GetApiRequest
+	7,  // 13: vertra.console.v1.ApiService.PauseApi:input_type -> vertra.console.v1.PauseApiRequest
+	9,  // 14: vertra.console.v1.ApiService.ResumeApi:input_type -> vertra.console.v1.ResumeApiRequest
+	11, // 15: vertra.console.v1.ApiService.GetApiTraffic:input_type -> vertra.console.v1.GetApiTrafficRequest
+	16, // 16: vertra.console.v1.ApiService.GetGateway:input_type -> vertra.console.v1.GetGatewayRequest
+	19, // 17: vertra.console.v1.ApiService.SetGatewayClosed:input_type -> vertra.console.v1.SetGatewayClosedRequest
+	4,  // 18: vertra.console.v1.ApiService.ListApis:output_type -> vertra.console.v1.ListApisResponse
+	6,  // 19: vertra.console.v1.ApiService.GetApi:output_type -> vertra.console.v1.GetApiResponse
+	8,  // 20: vertra.console.v1.ApiService.PauseApi:output_type -> vertra.console.v1.PauseApiResponse
+	10, // 21: vertra.console.v1.ApiService.ResumeApi:output_type -> vertra.console.v1.ResumeApiResponse
+	12, // 22: vertra.console.v1.ApiService.GetApiTraffic:output_type -> vertra.console.v1.GetApiTrafficResponse
+	17, // 23: vertra.console.v1.ApiService.GetGateway:output_type -> vertra.console.v1.GetGatewayResponse
+	20, // 24: vertra.console.v1.ApiService.SetGatewayClosed:output_type -> vertra.console.v1.SetGatewayClosedResponse
+	18, // [18:25] is the sub-list for method output_type
+	11, // [11:18] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_api_proto_init() }

@@ -18,12 +18,12 @@ The OpenAPI file is the allowlist. The gateway forwards a request only when its 
 
 ## Finding an API: the APIs page
 
-**APIs** in the side menu lists every API you may see, with a search box (**Search APIs**) and filters (**All**, **You can call**, **Your teams’**, **Paused or held**), in three groups: **Your teams’**, **Shared with your teams** and **Not shared with your teams**. Each row shows:
+**APIs** in the side menu lists every API you may see, with a search box (**Search APIs**) and filters (**All**, **You can call**, **Your teams’**, **Not live**), in three groups: **Your teams’**, **Shared with your teams** and **Not shared with your teams**. Each row shows:
 
 | Column | Means |
 | --- | --- |
 | **API** | Its display name, `<team>/<name>`, what it does, and whether it's deprecated |
-| **State** | **Live**, **Held** or **Paused** ([states](#what-do-live-held-and-paused-mean)), with why it's held or the pause message |
+| **State** | **Live**, **Held**, **Paused** or **Can’t serve** ([states](#what-do-live-held-paused-and-cant-serve-mean)), with why it's held or can't serve, or the pause message |
 | **Endpoints** | How many operations its spec describes |
 | **You** | **Your team’s** or **May call**, with your team's limit (requests a minute, request size, timeout); **Not shared** when the gateway refuses your calls, with a link to ask its team |
 | **Reachable** | **In the cluster**, or **Internet** when it's also on the gateway's public address |
@@ -34,13 +34,14 @@ Everyone signed in sees the listed APIs, including ones they may not call. An AP
 
 Your own team's APIs are also on your team's page, on the **APIs** tab, with each one's backend and who it's shared with.
 
-## What do Live, Held and Paused mean?
+## What do Live, Held, Paused and Can't serve mean?
 
 | State | Means | What the gateway does |
 | --- | --- | --- |
 | **Live** | Its backend is under a host this install allows | Forwards what its spec describes |
 | **Held** | Its backend's host isn't one the install's admins allow | Answers every call with 503 `API_HELD`; forwards nothing |
 | **Paused** | A maintainer of its team paused it, with a message | Answers every call with 503 `API_PAUSED` and that message; forwards nothing |
+| **Can’t serve** | The gateway can't use its OpenAPI document (it can't be read, or a `$ref` points nowhere); its page says what the gateway found, and when | Answers every call with 503 `API_UNAVAILABLE`; forwards nothing until a release fixes the file. `vertra catalog validate` refuses a file it can't read or whose `$ref` points nowhere, so most of these never reach a release |
 
 An API can also be marked deprecated in its `api.yaml`. It keeps working; its page shows **Deprecated:** and what to use instead.
 
@@ -62,7 +63,7 @@ Its own team and admins also get a pill saying **You maintain it**, **Your team'
 
 ## How do I get access to an API?
 
-An API's team decides who may call it, in its `api.yaml` (`shareWith`, a list of teams, or `["*"]` for every team). There's no button in the console to request access. Ask the owning team to add your team; the change goes through their catalog review like any other.
+An API's team decides who may call it, in its `api.yaml` (`shareWith`, a list of teams, or `["*"]` for every team). On the **APIs** page, or the API's own page, **Ask for access ↗** opens a new issue on the catalog repository, filled in, in your own browser, asking the owning team to add yours. The console never changes the catalog itself: the team adds yours in a reviewed change like any other, and you may call the API once the release with it reaches this install. When the console can't build that issue (the catalog isn't on GitHub, or the API didn't come from a release), the link goes to the team's page, to ask them there.
 
 Access is per team, not per person. Once your team is in `shareWith`, every member of your team, and your team's bots, may call it. Who's in a team is read on every request, so being added to or removed from a team counts at once.
 
@@ -123,7 +124,7 @@ The gateway's own answers are JSON, `{"error": "<code>", "message": "…"}`, and
 | 503 | `API_PAUSED` | Its team paused it; the message says why | Wait, or ask its team |
 | 503 | `API_HELD` | Its backend isn't one this install allows yet | Its team asks an admin ([held](#why-is-my-api-held)) |
 | 503 | `GATEWAY_CLOSED` | An admin closed the gateway; the message says why | Wait, or ask an admin |
-| 503 | `API_UNAVAILABLE` | Its spec can't be used, so nothing is forwarded | Tell its team |
+| 503 | `API_UNAVAILABLE` | Its spec can't be used, so nothing is forwarded; its page shows **Can’t serve** and why | Tell its team |
 | 503 | `UNAVAILABLE` | The gateway couldn't check who you are just then | Try again |
 | 502 | `BACKEND_CREDENTIAL` | The gateway couldn't get the backend's credential | Tell its team |
 | 502 | `BACKEND_UNREACHABLE` | The backend couldn't be reached | Tell its team |

@@ -15,6 +15,7 @@ import { db } from "../db/client.js";
 import { findTeamById, findTeamByName } from "../db/queries.js";
 import { botIdentities, teamMemberships, users } from "../db/schema.js";
 import { ensureNotRetired } from "./retired.js";
+import { teamBot } from "./tokens.js";
 
 function signedIn(caller: AuthUser | undefined): AuthUser {
   if (!caller) throw new ApiError(401, "UNAUTHORIZED", "Sign in first.", Code.Unauthenticated);
@@ -62,6 +63,31 @@ export async function addBotIdentity(caller: AuthUser | undefined, teamName: str
   const [row] = await db.insert(botIdentities).values({ botId, issuer, claims, createdBy: who.id }).onConflictDoNothing().returning();
   if (!row) throw new ApiError(409, "ALREADY_EXISTS", "A bot already signs in with exactly these claims.", Code.AlreadyExists);
   return { ...row, botEmail: bot.email };
+}
+
+/**
+ * A bot that signs in from CI, keyless, with no token: made (or found, as
+ * CreateBotToken does) only once its identity passes the same checks
+ * addBotIdentity makes, so a refused one leaves no bot behind.
+ */
+export async function createKeylessBot(
+  caller: AuthUser | undefined,
+  teamName: string,
+  input: { email: string; ordering?: boolean; orderTemplates?: string[]; issuer: string; claims: Record<string, string> },
+) {
+  const who = signedIn(caller);
+  ensureTeamMaintainer(who, teamName);
+  const team = await teamNamed(teamName);
+  ensureNotRetired(team);
+  const problem = identityProblem(input.issuer, input.claims);
+  if (problem) throw new ApiError(400, "BAD_IDENTITY", problem);
+  const [taken] = await db
+    .select({ id: botIdentities.id })
+    .from(botIdentities)
+    .where(and(eq(botIdentities.issuer, input.issuer), eq(botIdentities.claims, input.claims)));
+  if (taken) throw new ApiError(409, "ALREADY_EXISTS", "A bot already signs in with exactly these claims.", Code.AlreadyExists);
+  const bot = await teamBot(team, input);
+  return { email: bot.email, identity: await addBotIdentity(who, teamName, bot.id, input.issuer, input.claims) };
 }
 
 export async function removeBotIdentity(caller: AuthUser | undefined, id: string): Promise<void> {

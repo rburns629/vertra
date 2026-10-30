@@ -204,6 +204,7 @@ erDiagram
   teams ||--o{ templates : "owns"
   teams ||--o{ apis : "publishes"
   apis ||--o{ api_traffic : "counted in"
+  apis ||--o| api_problems : "can't be served for"
   users ||--o{ submitted_executions : "submitted"
   teams {
     uuid id PK
@@ -625,6 +626,16 @@ What the gateway did with each API's requests, a minute at a time; it adds to th
 | `outcome` | text | no | `forwarded_2xx` to `forwarded_5xx` (the backend's answer), or what the gateway answered itself: `blocked` (not in the spec), `invalid`, `limited`, `unauthenticated`, `forbidden`, `paused`, `held`, `closed`, `unavailable`, `backend_error`. |
 | `count` | integer | no | How many. |
 | `duration_ms` | bigint | no | Their total time, for averages. |
+
+### api_problems
+
+Why the gateway can't serve an API: its OpenAPI document can't be read or used, or its backend URL can't be parsed. The gateway writes it when it builds the API (at start, and whenever the API's row changes) and deletes it once the API builds; nothing else writes it. While there's a row, every call to the API gets 503 and the console shows it as Can't serve. Deleted with its API.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `api_id` | uuid | no | The API (`apis.id`). The key. |
+| `problem` | text | no | What the gateway found, such as `its OpenAPI document can't be used: …`. |
+| `found_at` | timestamptz | no | When the gateway found it. |
 
 ### gateway_state
 
