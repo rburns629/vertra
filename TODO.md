@@ -1070,6 +1070,39 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
 
 ## Console
 
+- [ ] **What the redesigned pages leave out** (found building boards 9–13,
+  2026-10-30; #33–#38): each is something a board shows that the API doesn't
+  return, so the page omits it rather than guess. Group 1, mostly data the
+  console already has, first:
+  - Runs: the starter's email on the list (`ListExecutions` has only an
+    account id, so "By" says you or someone else); the running step and its
+    attempt (Home's "Step 3 of 4: app-hosting.create, attempt 2"); how long
+    runs are kept, for non-admins (`runRetentionDays` is in the admin-only
+    `GetInstall`).
+  - Admin: the install's settings it can't show yet (`GetInstall`): the
+    catalog's `catalogVersion`, signing and signer, `externalCatalog`,
+    `pollSeconds`; email (SMTP); `monitoring.provider` and a Grafana URL
+    (Observe's Metrics too); session length (`JWT_TTL`); `audit.keepDays`
+    and `audit.lock`; the policy rewrite interval; whether image signatures
+    are required; the rescan interval.
+  - Teams: a team's description (`team.yaml`); the install's default limits
+    beside a team's own.
+  - Planned already: Observe's firing alerts (item 2 of "Next, in order")
+    and whether a retry is safe (item 3).
+  - The rest, to decide one by one: which schedule started a run; what the
+    cart held for an order; the Kubernetes Job's name in "Who acted"; a
+    resource's run name; which group added a member (and a team-scoped read
+    of group mappings, and each mapping's member count); who retired a team;
+    when a CI identity was added; an API's per-team limits and the gateway's
+    default for non-admins; log search by one API; a refusal's detail apart
+    from its subject; what a catalog release applied (counts); who last
+    saved the image sources; a proposed cart's lines with product, team,
+    verb and wiring; a total for guide search; "since you last looked"
+    (a per-person last-seen time); per-team product usage and run counts;
+    sharing-change and template creation times; order choices' resource
+    details; an alert to admins when the audit copy stops or its chain
+    breaks (the board said there was one; there isn't).
+
 - [ ] **Gaps the 2026-10-30 guides found** (writing guides 10 to 16 against
   the code): no way to ask for access to an API, though `api.schema.json`
   says callers can; an API whose OpenAPI document the gateway can't load
