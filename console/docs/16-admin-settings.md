@@ -146,7 +146,7 @@ The catalog needs no token: the console reads the catalog's release itself. Toke
 
 - **Applied release**: the version and commit applied last, and the repository (a newer one that failed its checks shows under Applied).
 - **Signature**: whether each release's signature is checked before it's applied.
-- **Applied**: when.
+- **Applied**: when, and what the release held: its teams, products (with their actions, when a product has several), templates, APIs and SecretStores.
 - **Release**: the release followed, or "the newest version of" its repository; **Last looked**: when the console last read it.
 - An error, if the last attempt failed. Nothing is applied from a release that failed its signature check.
 

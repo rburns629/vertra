@@ -88,6 +88,30 @@ export interface CatalogStatus {
   problems: CatalogProblem[];
   checkedAt: Date | null;
   error: string | null;
+  /** What the applied release held; null before one was applied. */
+  applied: CatalogCounts | null;
+}
+
+export interface CatalogCounts {
+  teams: number;
+  /** By image: one product, any number of actions. */
+  products: number;
+  actions: number;
+  templates: number;
+  apis: number;
+  secretStores: number;
+}
+
+/** What a release holds, as Admin's catalog section says what it applied. */
+export function countsOf(release: Release): CatalogCounts {
+  return {
+    teams: release.teams.length,
+    products: new Set(release.products.map((p) => p.image.split("@")[0])).size,
+    actions: release.products.length,
+    templates: release.templates.length,
+    apis: release.apis.length,
+    secretStores: release.teams.reduce((n, t) => n + t.secretStoreDocuments.length, 0),
+  };
 }
 
 export async function catalogStatus(): Promise<CatalogStatus> {
@@ -103,6 +127,7 @@ export async function catalogStatus(): Promise<CatalogStatus> {
     problems: row?.problems ?? [],
     checkedAt: row?.checkedAt ?? null,
     error: row?.error ?? null,
+    applied: row?.applied ?? null,
   };
 }
 
@@ -469,7 +494,7 @@ export async function syncCatalog(log: FastifyBaseLogger, force = false): Promis
       }
       const release = fromJson(ReleaseSchema, JSON.parse(json) as JsonValue, { ignoreUnknownFields: true });
       const problems = await apply(release, log);
-      await record({ digest, version, commit: release.commit, repository: release.repository, appliedAt: now, problems, checkedAt: now, error: null });
+      await record({ digest, version, commit: release.commit, repository: release.repository, appliedAt: now, problems, checkedAt: now, error: null, applied: countsOf(release) });
       await writeAuditEntry(log, {
         actorId: null,
         method: "CATALOG",

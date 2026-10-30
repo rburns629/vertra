@@ -8,7 +8,7 @@ import SyncIcon from "@mui/icons-material/Sync";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
-import { ApiError, adoptCatalogTeam, getCatalogStatus, getInstall, syncCatalog, type CatalogStatus } from "../../api";
+import { ApiError, adoptCatalogTeam, getCatalogStatus, getInstall, syncCatalog, type CatalogCounts, type CatalogStatus } from "../../api";
 import { when } from "../../time";
 import { AdminCard, Dot, KeyValues, PILL_TONE, SrOnly, TONE_WORD, type Tone } from "./parts";
 import { catalogState, useAdminChanged } from "./summary";
@@ -41,6 +41,19 @@ function Tile({ tone, label, value, children }: { tone: Tone; label: string; val
  * reads and applies it at once; a team the catalog found but didn't make
  * waits for an admin to adopt it.
  */
+/** "5 teams, 14 products, 6 templates, 4 SecretStores": what the release held, leaving out what it had none of. */
+function heldText(c: CatalogCounts): string {
+  const n = (count: number, one: string, many: string) => (count > 0 ? `${String(count)} ${count === 1 ? one : many}` : "");
+  const parts = [
+    n(c.teams, "team", "teams"),
+    c.products > 0 ? `${n(c.products, "product", "products")}${c.actions > c.products ? ` (${String(c.actions)} actions)` : ""}` : "",
+    n(c.templates, "template", "templates"),
+    n(c.apis, "API", "APIs"),
+    n(c.secretStores, "SecretStore", "SecretStores"),
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "An empty release.";
+}
+
 export function CatalogCard() {
   const [status, setStatus] = useState<CatalogStatus | null>(null);
   const [signed, setSigned] = useState<boolean | null>(null);
@@ -126,7 +139,7 @@ export function CatalogCard() {
                 </Tile>
               )}
               <Tile tone={status.error ? "err" : status.problems.length > 0 ? "warn" : status.appliedAt ? "ok" : "off"} label="Applied" value={status.appliedAt ? when(status.appliedAt) : "Nothing yet"}>
-                {status.error ? "The last attempt failed (below)." : null}
+                {status.error ? "The last attempt failed (below)." : status.applied ? heldText(status.applied) : null}
               </Tile>
             </Box>
             <KeyValues

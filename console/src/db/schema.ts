@@ -1163,6 +1163,8 @@ export const catalogSync = pgTable("catalog_sync", {
   appliedAt: timestamp("applied_at", { withTimezone: true }),
   // What applying it couldn't do, item by item: [{ item, message }].
   problems: jsonb("problems").$type<{ item: string; message: string; adoptableTeam?: string }[]>().notNull().default([]),
+  // What it held (catalogSync.ts's counts); null before one was applied.
+  applied: jsonb("applied").$type<{ teams: number; products: number; actions: number; templates: number; apis: number; secretStores: number }>(),
   // The last look: when, and why it failed, if it did (fetching or
   // verifying; nothing was applied then).
   checkedAt: timestamp("checked_at", { withTimezone: true }),

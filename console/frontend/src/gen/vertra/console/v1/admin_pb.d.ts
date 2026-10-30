@@ -381,6 +381,14 @@ export declare type CatalogStatus = Message<"vertra.console.v1.CatalogStatus"> &
    * @generated from field: string version = 10;
    */
   version: string;
+
+  /**
+   * What the applied release held; unset before one was applied (or by a
+   * console older than this field).
+   *
+   * @generated from field: vertra.console.v1.CatalogCounts applied = 11;
+   */
+  applied?: CatalogCounts | undefined;
 };
 
 /**
@@ -388,6 +396,51 @@ export declare type CatalogStatus = Message<"vertra.console.v1.CatalogStatus"> &
  * Use `create(CatalogStatusSchema)` to create a new message.
  */
 export declare const CatalogStatusSchema: GenMessage<CatalogStatus>;
+
+/**
+ * What a catalog release held: what it applied, problems aside.
+ *
+ * @generated from message vertra.console.v1.CatalogCounts
+ */
+export declare type CatalogCounts = Message<"vertra.console.v1.CatalogCounts"> & {
+  /**
+   * @generated from field: int32 teams = 1;
+   */
+  teams: number;
+
+  /**
+   * Products by image, each with one or more actions.
+   *
+   * @generated from field: int32 products = 2;
+   */
+  products: number;
+
+  /**
+   * @generated from field: int32 actions = 3;
+   */
+  actions: number;
+
+  /**
+   * @generated from field: int32 templates = 4;
+   */
+  templates: number;
+
+  /**
+   * @generated from field: int32 apis = 5;
+   */
+  apis: number;
+
+  /**
+   * @generated from field: int32 secret_stores = 6;
+   */
+  secretStores: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.CatalogCounts.
+ * Use `create(CatalogCountsSchema)` to create a new message.
+ */
+export declare const CatalogCountsSchema: GenMessage<CatalogCounts>;
 
 /**
  * @generated from message vertra.console.v1.CatalogProblem

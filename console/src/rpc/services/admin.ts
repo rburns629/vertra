@@ -33,6 +33,7 @@ function catalog(status: CatalogStatus) {
     problems: status.problems.map((p) => ({ item: p.item, message: p.message, adoptableTeam: p.adoptableTeam ?? "" })),
     checkedAt: status.checkedAt ? timestamp(status.checkedAt) : undefined,
     error: status.error ?? "",
+    applied: status.applied ?? undefined,
   };
 }
 

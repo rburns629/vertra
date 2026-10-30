@@ -1491,6 +1491,18 @@ export interface CatalogStatus {
   problems: { item: string; message: string; adoptableTeam: string }[];
   checkedAt: string | null;
   error: string;
+  /** What the applied release held; null before one was applied. */
+  applied: CatalogCounts | null;
+}
+
+/** What a catalog release held: products by image, each with its actions. */
+export interface CatalogCounts {
+  teams: number;
+  products: number;
+  actions: number;
+  templates: number;
+  apis: number;
+  secretStores: number;
 }
 
 function catalogStatus(status: {
@@ -1504,6 +1516,7 @@ function catalogStatus(status: {
   problems: { item: string; message: string; adoptableTeam: string }[];
   checkedAt?: Timestamp;
   error: string;
+  applied?: CatalogCounts;
 } | undefined): CatalogStatus {
   return {
     release: status?.release ?? "",
@@ -1516,6 +1529,9 @@ function catalogStatus(status: {
     problems: (status?.problems ?? []).map((p) => ({ item: p.item, message: p.message, adoptableTeam: p.adoptableTeam })),
     checkedAt: iso(status?.checkedAt),
     error: status?.error ?? "",
+    applied: status?.applied
+      ? { teams: status.applied.teams, products: status.applied.products, actions: status.applied.actions, templates: status.applied.templates, apis: status.applied.apis, secretStores: status.applied.secretStores }
+      : null,
   };
 }
 

@@ -2409,3 +2409,19 @@ describe("a bot's CI identities", () => {
     expect(await screen.findByText(/^added .+ · last used never$/)).toBeTruthy();
   });
 });
+
+describe("Admin's catalog section", () => {
+  it("says what the applied release held", async () => {
+    await renderAt("/admin/catalog", ADMIN, {
+      "AdminService/GetCatalogStatus": {
+        status: {
+          release: "registry.example/catalog-release",
+          commit: "c1",
+          appliedAt: "2026-10-29T10:00:00Z",
+          applied: { teams: 5, products: 14, actions: 20, templates: 6, secretStores: 4 },
+        },
+      },
+    });
+    expect(await screen.findByText("5 teams, 14 products (20 actions), 6 templates, 4 SecretStores")).toBeTruthy();
+  });
+});

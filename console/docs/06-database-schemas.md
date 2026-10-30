@@ -549,6 +549,7 @@ The catalog release this console last applied (its teams, products and SecretSto
 | `repository` | text | yes | The catalog repository, for people. |
 | `applied_at` | timestamptz | yes | When it was applied. |
 | `problems` | jsonb | no | What applying it couldn't do, one item each (`item`, `message`); the rest was applied. |
+| `applied` | jsonb | yes | What it held: `teams`, `products` (by image), `actions`, `templates`, `apis` and `secretStores`, counted. Null before a release was applied. |
 | `checked_at` | timestamptz | yes | The last look. |
 | `error` | text | yes | Why the last look failed (reading or verifying the release); nothing was applied then. |
 
