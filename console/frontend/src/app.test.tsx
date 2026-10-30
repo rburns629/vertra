@@ -2394,3 +2394,18 @@ describe("a run a schedule started", () => {
     expect((await screen.findByRole("link", { name: "nightly" })).getAttribute("href")).toBe("/teams/payments?tab=schedules");
   });
 });
+
+describe("a bot's CI identities", () => {
+  it("say when each was added, and when it was last used", async () => {
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": { bots: [{ id: "b0b0b0b0-0000-4000-8000-000000000001", email: "payments-release@bots.vertra.local" }] },
+      "TokenService/ListBotIdentities": {
+        identities: [{ id: "i1", botId: "b0b0b0b0-0000-4000-8000-000000000001", botEmail: "payments-release@bots.vertra.local", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/release" }, createdAt: "2026-10-02T09:00:00Z" }],
+        issuers: ["https://token.actions.githubusercontent.com"],
+        audience: "https://vertra.acme.dev",
+      },
+    });
+    expect(await screen.findByText(/^added .+ · last used never$/)).toBeTruthy();
+  });
+});

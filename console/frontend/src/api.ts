@@ -2410,13 +2410,14 @@ export interface BotIdentity {
   botEmail: string;
   issuer: string;
   claims: Record<string, string>;
+  createdAt: string | null;
   lastUsedAt: string | null;
 }
 
 export async function listBotIdentities(team: string): Promise<{ identities: BotIdentity[]; issuers: string[]; audience: string }> {
   const r = await call(() => tokens.listBotIdentities({ team }));
   return {
-    identities: r.identities.map((i) => ({ id: i.id, botId: i.botId, botEmail: i.botEmail, issuer: i.issuer, claims: { ...i.claims }, lastUsedAt: iso(i.lastUsedAt) })),
+    identities: r.identities.map((i) => ({ id: i.id, botId: i.botId, botEmail: i.botEmail, issuer: i.issuer, claims: { ...i.claims }, createdAt: iso(i.createdAt), lastUsedAt: iso(i.lastUsedAt) })),
     issuers: r.issuers,
     audience: r.audience,
   };
