@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { Pill } from "../../components/Pill";
+import { AdminCard } from "./parts";
 import { ApiError, getAdminChannel, listAllTeams, setAdminChannel, type Team } from "../../api";
 
 /**
@@ -44,10 +45,7 @@ export function AdminChannelCard() {
   }
 
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography variant="h6" component="h2">
-        Admins&apos; alerts in chat
-      </Typography>
+    <AdminCard title="Admins' alerts in chat" status={saved ? <Pill tone="success" dot="success.main">In {saved}&apos;s chat</Pill> : <Pill tone="neutral">Console and email only</Pill>}>
       <Typography variant="body2" color="text.secondary">
         Admins see alerts (a team purged, the image sources changed, a policy not syncing, a step the cluster refused) in the
         console and by email. Choose a team to post them to its chat webhook too: its maintainers set the webhook, and which
@@ -63,10 +61,10 @@ export function AdminChannelCard() {
             </MenuItem>
           ))}
         </TextField>
-        <Button variant="contained" disabled={busy || chosen === saved} onClick={() => void save()}>
+        <Button variant="contained" disabled={busy || chosen === saved} onClick={() => void save()} sx={{ minHeight: 40 }}>
           Save
         </Button>
       </Box>
-    </Card>
+    </AdminCard>
   );
 }

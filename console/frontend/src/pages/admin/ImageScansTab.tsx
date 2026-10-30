@@ -3,8 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -17,6 +15,7 @@ import { ApiError, acceptImageScan, listImageScans, rescanImage, type ImageScan 
 import { DataTable, type DataTableColumn } from "../../components/DataTable";
 import { Mono } from "../../components/Mono";
 import { Pill, type PillTone } from "../../components/Pill";
+import { AdminCard } from "./parts";
 
 type Shown = "all" | "failed" | "error" | "pending" | "passed" | "accepted";
 
@@ -217,21 +216,13 @@ export function ImageScansTab() {
   };
 
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="h6" component="h2">
-          Image scans
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+    <AdminCard title="Every image's last scan">
+        <Typography variant="body2" color="text.secondary">
           Every image is scanned before it&apos;s registered or run, and again while it&apos;s in use (every 24 hours unless the install sets another interval). A failed one can&apos;t run (the
           cluster refuses it) until it&apos;s fixed or an admin accepts it.
         </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        <Box role="group" aria-label="Verdict" sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1.5 }}>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Box role="group" aria-label="Verdict" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           {FILTERS.map(([id, label]) => (
             <Chip
               key={id}
@@ -241,6 +232,7 @@ export function ImageScansTab() {
               color={shown === id ? "primary" : "default"}
               variant={shown === id ? "filled" : "outlined"}
               onClick={() => { setShown(id); }}
+              sx={{ height: 36 }}
             />
           ))}
         </Box>
@@ -249,12 +241,11 @@ export function ImageScansTab() {
           placeholder="Filter by image or digest"
           value={filter}
           onChange={(e) => { setFilter(e.target.value); }}
-          sx={{ mb: 2, width: { xs: "100%", sm: 320 } }}
+          sx={{ width: { xs: "100%", sm: 320 } }}
           slotProps={{ htmlInput: { "aria-label": "Filter by image or digest" } }}
         />
         <DataTable columns={COLUMNS} rows={rows} getRowKey={(s) => s.digest} onRowClick={setOpen} emptyMessage="No scans like that." />
-      </CardContent>
       {open && <ScanDialog scan={open} onClose={() => { setOpen(null); }} onChanged={changed} />}
-    </Card>
+    </AdminCard>
   );
 }

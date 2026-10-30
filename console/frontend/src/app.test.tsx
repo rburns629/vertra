@@ -26,7 +26,8 @@ const refused = (status: number, code: string, message: string, failure?: string
 function connectResponse(key: string, request: Record<string, unknown>, streaming: boolean): Response {
   const answer = answers[key];
   const value = typeof answer === "function" ? (answer as (r: Record<string, unknown>) => unknown)(request) : (answer ?? {});
-  if (value && typeof value === "object" && "refused" in value) {
+  // (An array named refused is a message's field: the gateway's refusals.)
+  if (value && typeof value === "object" && "refused" in value && !Array.isArray(value.refused)) {
     const { status, code, message, failure } = (value as ReturnType<typeof refused>).refused;
     const details = failure
       ? [{ type: "vertra.console.v1.Failure", value: btoa(String.fromCharCode(...toBinary(FailureSchema, create(FailureSchema, { code: failure, message })))) }]
@@ -746,10 +747,10 @@ describe("admin", () => {
 
   it("opens a section from the address, and from an old tab's", async () => {
     await renderAt("/admin?tab=gateway", ADMIN, { "ApiService/GetGateway": { enabled: true, url: "http://gateway:8080" } });
-    expect(await screen.findByRole("button", { name: "Close the gateway" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Close the gateway…" })).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "Admin sections" });
-    expect(within(nav).getByRole("link", { name: "API gateway" }).getAttribute("aria-current")).toBe("page");
-    expect(within(nav).getByRole("link", { name: "Chat agent" }).getAttribute("href")).toBe("/admin/chat");
+    expect(within(nav).getByRole("link", { name: /^API gateway/ }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav).getByRole("link", { name: /^Chat agent/ }).getAttribute("href")).toBe("/admin/chat");
   });
 
   it("says where each section is set, and gives image sources and the audit copy sections of their own", async () => {
@@ -758,8 +759,46 @@ describe("admin", () => {
     expect(screen.getByText("Install and here")).toBeTruthy();
     expect(screen.getByRole("link", { name: "About Image sources" }).getAttribute("href")).toBe("/docs/16-admin-settings#image-sources");
     const nav = screen.getByRole("navigation", { name: "Admin sections" });
-    expect(within(nav).getByRole("link", { name: "Audit log copy" }).getAttribute("href")).toBe("/admin/audit");
-    expect(within(nav).getByRole("link", { name: "Single sign-on and groups" }).getAttribute("href")).toBe("/admin/sign-in");
+    expect(within(nav).getByRole("link", { name: /^Audit log copy/ }).getAttribute("href")).toBe("/admin/audit");
+    expect(within(nav).getByRole("link", { name: /^Single sign-on and groups/ }).getAttribute("href")).toBe("/admin/sign-in");
+    // Each section's state beside its name, in words: one source allowed.
+    expect(await within(nav).findByRole("link", { name: "Image sources 1, fine" })).toBeTruthy();
+  });
+
+  it("closes the gateway only once it's confirmed, and lists what it refused in words", async () => {
+    const closed: Record<string, unknown>[] = [];
+    await renderAt("/admin/gateway", ADMIN, {
+      "ApiService/GetGateway": { enabled: true, url: "http://gateway:8080", apis: 2, requests24h: "200", refused: [{ outcome: "blocked", count: "10", mostly: "payments" }] },
+      "ApiService/SetGatewayClosed": (request: Record<string, unknown>) => {
+        closed.push(request);
+        return {};
+      },
+    });
+    expect(await screen.findByText("Not in the API's spec")).toBeTruthy();
+    expect(screen.getByText("5.0% of requests")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Message to every caller"), { target: { value: "Maintenance" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close the gateway…" }));
+    expect(closed).toEqual([]);
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Close the gateway" }));
+    await waitFor(() => { expect(closed).toEqual([{ message: "Maintenance" }]); });
+  });
+
+  it("names every policy the console writes, never its key", async () => {
+    await renderAt("/admin/policies", ADMIN, {
+      "AdminService/GetPolicySync": {
+        outcomes: {
+          pullSecrets: { applies: true, ok: true },
+          schedulerLogs: { applies: true, ok: true },
+          teamQuotas: { applies: true, ok: false, error: "quota refused" },
+        },
+      },
+    });
+    expect(await screen.findByText("Registry sign-in for each team")).toBeTruthy();
+    expect(screen.getByText("The scheduler's log reading")).toBeTruthy();
+    expect(screen.getByText("What each team may use together")).toBeTruthy();
+    expect(screen.getByText("quota refused")).toBeTruthy();
+    const main = screen.getByRole("main");
+    expect(main.textContent).not.toMatch(/pullSecrets|schedulerLogs|teamQuotas/);
   });
 
   it("sets the chat agent's model in place of the install's, keeps its key unshown, and tries it first", async () => {
@@ -782,10 +821,9 @@ describe("admin", () => {
     expect(await screen.findByText(/These are the install's settings \(Gemini on Vertex AI/)).toBeTruthy();
     expect((screen.getByLabelText("Google Cloud project") as HTMLInputElement).value).toBe("acme-prod");
     // No key on Vertex: it signs in as the console.
-    expect(screen.queryByLabelText(/API key/)).toBeNull();
+    expect(screen.queryByLabelText(/^API key/)).toBeNull();
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Provider" }));
-    fireEvent.click(await screen.findByRole("option", { name: "Claude through Anthropic's API" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^Claude through Anthropic's API/ }));
     fireEvent.change(screen.getByLabelText("Model"), { target: { value: "claude-haiku-5-5" } });
     fireEvent.change(screen.getByLabelText("API key"), { target: { value: "sk-ant-typed" } });
     fireEvent.click(screen.getByRole("button", { name: "Test" }));
@@ -1017,11 +1055,27 @@ describe("a new install", () => {
     expect(screen.getByText("1 of 4 done")).toBeTruthy();
     expect(screen.getByText("Connect the catalog")).toBeTruthy();
     expect(await screen.findByText("0.4.0")).toBeTruthy();
-    // Single sign-on: set in Single sign-on and groups, or with vertra; each part leads to its section.
-    expect(screen.getAllByText(/vertra sso google/, { selector: "span" }).length).toBe(1);
-    expect(screen.getByText("Set up in Single sign-on and groups")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Signing in with single sign-on" }).getAttribute("href")).toBe("/admin/sign-in");
-    expect(screen.getByRole("link", { name: "The chat agent" }).getAttribute("href")).toBe("/admin/chat");
+    // Every part says where it's set, and leads to its section.
+    const parts = screen.getByRole("region", { name: "Every part, and where it's set" });
+    expect(within(parts).getByRole("link", { name: /^Single sign-on/ }).getAttribute("href")).toBe("/admin/sign-in");
+    expect(within(parts).getByRole("link", { name: /^Image sources/ }).getAttribute("href")).toBe("/admin/images");
+    expect(within(parts).getByText(/Kept 90 days/)).toBeTruthy();
+  });
+
+  it("lists what needs an admin, from what the API says", async () => {
+    await renderAt("/admin", ADMIN, {
+      "AdminService/GetCatalogStatus": {
+        status: { release: "registry.example/catalog-release", appliedAt: "2026-10-29T10:00:00Z", problems: [{ item: "team sandbox", message: "Not made by the catalog.", adoptableTeam: "sandbox" }] },
+      },
+      "UserService/ListUsers": { users: [{ email: "ana@acme.com", isAdmin: true }, { email: "lee@acme.com", mustChangePassword: true }] },
+    });
+    const needs = await screen.findByRole("region", { name: "Needs you" });
+    expect(await within(needs).findByText("The catalog found a team named sandbox that it didn't make")).toBeTruthy();
+    expect(within(needs).getByText("1 person hasn't chosen a password yet")).toBeTruthy();
+    expect(within(needs).getByRole("link", { name: /Decide in Catalog/ }).getAttribute("href")).toBe("/admin/catalog");
+    const nav = screen.getByRole("navigation", { name: "Admin sections" });
+    expect(within(nav).getByRole("link", { name: "Catalog 1 to adopt, needs a look" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "People 1 to finish, needs a look" })).toBeTruthy();
   });
 });
 
@@ -1043,7 +1097,7 @@ describe("the admins' chat channel", () => {
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Team" }));
     expect(screen.queryByRole("option", { name: "old" })).toBeNull(); // retired
     fireEvent.click(await screen.findByRole("option", { name: "platform" }));
-    const card = screen.getByRole("heading", { name: "Admins' alerts in chat" }).closest("div") as HTMLElement;
+    const card = screen.getByRole("heading", { name: "Admins' alerts in chat" }).closest("section") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: "Save" }));
     await waitFor(() => { expect(saved).toEqual([{ team: "platform" }]); });
   });
