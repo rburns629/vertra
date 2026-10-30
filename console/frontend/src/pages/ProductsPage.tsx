@@ -1,42 +1,52 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useMemo, useState } from "react";
-import Accordion from "@mui/material/Accordion";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import AccordionSummary from "@mui/material/AccordionSummary";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
 import IconButton from "@mui/material/IconButton";
+import Link from "@mui/material/Link";
 import Skeleton from "@mui/material/Skeleton";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import AddIcon from "@mui/icons-material/Add";
+import ChevronIcon from "@mui/icons-material/ChevronRight";
 import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { EmptyState } from "../components/EmptyState";
-import Link from "@mui/material/Link";
 import { PageHeader } from "../components/PageHeader";
 import { Pill } from "../components/Pill";
-import { Link as RouterLink } from "react-router-dom";
-import Button from "@mui/material/Button";
-import { ApiError, checkProduct, listProducts, listRunnables, type Product, type ProductRelease } from "../api";
-import { useAuth } from "../auth/AuthContext";
 import { ReadinessPill } from "../components/ReadinessPill";
+import { ApiError, checkProduct, listProducts, listRunnables, type Product, type ProductRelease, type Runnable } from "../api";
+import { useAuth } from "../auth/AuthContext";
+import { cart, useCart } from "../cart";
+import { actionRef } from "../compose";
+import { useEnvironment } from "../environment";
 import { when } from "../time";
 import { imageName, imageVersion } from "../imageRef";
 
-/** How many releases one product shows. A long-lived product's full
- * history is mostly noise; the recent ones are what a DAG author wants. */
-const MAX_RELEASES_SHOWN = 50;
+/** How many releases an opened product shows before "Show all". The recent ones are what a DAG author wants. */
+const RELEASES_SHOWN = 4;
+const WEEK_MS = 7 * 86_400_000;
 
-/** Products no team owns are grouped under this heading, after the
- * real platforms. */
+/** Products no team owns are grouped under this heading, after the real platforms. */
 const UNOWNED_GROUP = "Platform-provided";
+
+type Filter = "all" | "not_ready" | "deprecated" | "shared" | "week";
 
 function matches(product: Product, query: string): boolean {
   return (
     product.name.toLowerCase().includes(query) ||
     product.action.toLowerCase().includes(query) ||
+    (product.displayName ?? "").toLowerCase().includes(query) ||
     (product.teamName ?? UNOWNED_GROUP).toLowerCase().includes(query) ||
     // Any release, not only the current image, so a search for an old tag
     // still finds the product it belongs to.
@@ -45,32 +55,58 @@ function matches(product: Product, query: string): boolean {
   );
 }
 
+const notReady = (p: Product) => p.readiness?.state === "not_ready" || p.readiness?.state === "failed";
+const releasedThisWeek = (p: Product) => {
+  const at = p.releases[0]?.registeredAt;
+  return Boolean(at) && Date.now() - Date.parse(at ?? "") < WEEK_MS;
+};
+const sharedWith = (p: Product) => (p.shareWith.includes("*") ? "every team" : p.shareWith.length > 0 ? p.shareWith.join(", ") : "its own team only");
+
+/** A product's state here: deprecated, its check's answer, or that it has none. */
+function ProductState({ product }: { product: Product }) {
+  if (product.deprecated) return <Pill tone="warning" title={product.deprecated}>Deprecated</Pill>;
+  if (product.readiness) return <ReadinessPill readiness={product.readiness} />;
+  return <Pill tone="neutral">No check</Pill>;
+}
+
+function Tile({ label, value, note, tone }: { label: string; value: ReactNode; note: ReactNode; tone?: "success" | "error" }) {
+  return (
+    <Card sx={{ px: 2.25, py: 2, display: "flex", flexDirection: "column", gap: 0.5 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+        {label}
+      </Typography>
+      <Typography sx={{ fontSize: 26, fontWeight: 600, lineHeight: 1.2, fontVariantNumeric: "tabular-nums", color: tone ? `${tone}.dark` : "text.primary" }}>{value}</Typography>
+      <Typography variant="caption" sx={{ fontSize: 12, overflowWrap: "anywhere" }}>
+        {note}
+      </Typography>
+    </Card>
+  );
+}
+
 /**
- * A read-only view of the product registry (`GET /products`) -- what's
- * currently registered as discoverable, kept up to date automatically by
- * the catalog's CI (docs/architecture.md), not something
+ * Every team's products (ProductService/ListProducts), as each catalog
+ * release registers them -- kept up to date by the catalog, not something
  * anyone edits here. Deliberately NOT the source of truth for what a DAG
- * can reference -- kernel/ has no concept of this table at all, and any
- * image is runnable directly whether it's registered or not (see this
- * page's own subtitle).
+ * can reference: kernel/ has no concept of this table at all.
  *
- * Grouped the way the catalog is: one accordion per platform, its products
- * inside, and each product expands to its releases (every image it has
- * been registered with), the current one marked "latest".
+ * By team, as the catalog is: a section per team, a row per product
+ * (whether it's ready on this install, who it's shared with, its
+ * releases), and a row opens to its check, its releases (every image it
+ * has been registered with, the current one marked latest) and Run.
  */
 export function ProductsPage() {
+  const install = useEnvironment()?.label || "this install";
   const [products, setProducts] = useState<Product[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  // The products the caller may run on their own (shared with them).
-  const [runnable, setRunnable] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<Filter>("all");
+  // The actions the caller may run on their own (shared with them), and the templates, to say which use a product.
+  const [runnables, setRunnables] = useState<Runnable[]>([]);
 
   useEffect(() => {
     listRunnables()
-      .then((all) => {
-        setRunnable(new Set(all.filter((r) => r.kind === "action").map((r) => r.name)));
-      })
-      // Only the Run buttons depend on it; the registry still shows.
+      .then(setRunnables)
+      // Only Run, Add to cart and "used by" depend on it; the registry still shows.
       .catch(() => undefined);
     listProducts()
       .then(setProducts)
@@ -79,13 +115,23 @@ export function ProductsPage() {
       });
   }, []);
 
+  const runnable = useMemo(() => new Set(runnables.filter((r) => r.kind === "action" && r.shared).map((r) => r.name)), [runnables]);
   const query = search.trim().toLowerCase();
+  const all = products ?? [];
+  const FILTERS: [Filter, string, (p: Product) => boolean][] = [
+    ["all", "All", () => true],
+    ["not_ready", "Not ready", notReady],
+    ["deprecated", "Deprecated", (p) => Boolean(p.deprecated)],
+    ["shared", "Shared with my teams", (p) => runnable.has(p.name)],
+    ["week", "Released this week", releasedThisWeek],
+  ];
+  const test = FILTERS.find(([id]) => id === filter)?.[2] ?? (() => true);
 
-  /** Platforms in name order, unowned products last. */
+  /** Teams in name order, unowned products last. */
   const platforms = useMemo(() => {
     if (!products) return null;
     const byPlatform = new Map<string, Product[]>();
-    for (const product of query ? products.filter((p) => matches(p, query)) : products) {
+    for (const product of products.filter((p) => (!query || matches(p, query)) && test(p))) {
       const platform = product.teamName ?? UNOWNED_GROUP;
       byPlatform.set(platform, [...(byPlatform.get(platform) ?? []), product]);
     }
@@ -94,39 +140,100 @@ export function ProductsPage() {
       if (b === UNOWNED_GROUP) return -1;
       return a.localeCompare(b);
     });
-  }, [products, query]);
+    // test follows filter and runnable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, query, filter, runnable]);
+
+  const teamCount = new Set(all.map((p) => p.teamName ?? UNOWNED_GROUP)).size;
+  const ready = all.filter((p) => p.readiness?.state === "ready").length;
+  const problems = all.filter(notReady);
+  const narrowed = query !== "" || filter !== "all";
 
   return (
-    <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
-        <Link component={RouterLink} to="/catalog">
-          Catalog
-        </Link>{" "}
-        / Every product
-      </Typography>
-      <PageHeader
-        title="Every product"
-        help={{ guide: "10-ordering-and-the-cart", section: "whats-in-the-catalog", label: "What's in the catalog" }}
-        subtitle="Every team's products, as each catalog release registers them, by team. Expand a team for its products, and a product for its releases. Run one shared with you on its own, or find templates that use them in the Catalog."
-      />
+    <Box sx={{ maxWidth: 1280, mx: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
+      <Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+          <Link component={RouterLink} to="/catalog">
+            Catalog
+          </Link>{" "}
+          / Every product
+        </Typography>
+        <PageHeader
+          title="Every product"
+          help={{ guide: "10-ordering-and-the-cart", section: "whats-in-the-catalog", label: "What's in the catalog" }}
+          subtitle="Every team's products, as each catalog release registers them, by team: whether each is ready on this install, who it's shared with, and its releases. Run one shared with you on its own, or find templates that use it in the Catalog."
+          action={
+            <Button component={RouterLink} to="/catalog" variant="outlined" size="large">
+              Back to the catalog
+            </Button>
+          }
+        />
+      </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {products && products.length > 0 && (
+        <Box component="section" aria-label="Summary" sx={{ display: "grid", gap: 1.75, gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, mt: -1 }}>
+          <Tile label="Products" value={all.length} note={`from ${String(teamCount)} ${teamCount === 1 ? "team" : "teams"}`} />
+          <Tile label={`Ready on ${install}`} value={ready} note="by their own checks, at least daily" tone="success" />
+          <Tile
+            label="Not ready, or check failed"
+            value={problems.length}
+            note={problems.length > 0 ? problems.map((p) => `${imageName(p.image)}.${p.action}`).join(", ") : "none"}
+            tone={problems.length > 0 ? "error" : undefined}
+          />
+          <Tile label="Shared with your teams" value={all.filter((p) => runnable.has(p.name)).length} note={`of ${String(all.length)}`} />
+        </Box>
       )}
 
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, alignItems: "center" }}>
         <TextField
           size="small"
-          placeholder="Search platforms, products or image tags"
-          slotProps={{ htmlInput: { "aria-label": "Search platforms, products or image tags" } }}
+          type="search"
+          placeholder="Search teams, products or image tags"
+          slotProps={{ htmlInput: { "aria-label": "Search teams, products or image tags" } }}
           value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-          }}
-          sx={{ minWidth: 320 }}
+          onChange={(event) => { setSearch(event.target.value); }}
+          sx={{ flex: "1 1 280px", maxWidth: 420, bgcolor: "background.paper", "& .MuiInputBase-root": { minHeight: 44 } }}
         />
+        <Box role="group" aria-label="Show" sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          {FILTERS.map(([id, label, fits]) => {
+            const on = filter === id;
+            return (
+              <Box
+                key={id}
+                component="button"
+                type="button"
+                aria-pressed={on}
+                onClick={() => { setFilter(id); }}
+                sx={{
+                  height: 36,
+                  px: 1.75,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  borderRadius: 999,
+                  font: "inherit",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  border: 1,
+                  borderColor: on ? "primary.main" : "tint.field",
+                  bgcolor: on ? "info.light" : "background.paper",
+                  color: on ? "info.main" : "text.primary",
+                  fontWeight: on ? 500 : 400,
+                  "&:focus-visible": { outline: (t) => `2px solid ${t.palette.primary.main}`, outlineOffset: 2 },
+                }}
+              >
+                {label}
+                {products && (
+                  <Box component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                    {all.filter(fits).length}
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
       </Box>
 
       {platforms === null && !error && (
@@ -137,104 +244,204 @@ export function ProductsPage() {
         </Box>
       )}
       {platforms?.length === 0 && (
-        <EmptyState
-          message={
-            products && products.length > 0 ? "No products match this search." : "No products registered yet. A catalog release registers its teams' products."
-          }
-          help={products && products.length > 0 ? undefined : { guide: "reference-catalog-guide", label: "Publishing to the catalog" }}
-        />
+        <Card>
+          <EmptyState
+            message={products && products.length > 0 ? "No products match this search or filter." : "No products registered yet. A catalog release registers its teams' products."}
+            help={products && products.length > 0 ? undefined : { guide: "reference-catalog-guide", label: "Publishing to the catalog" }}
+          />
+        </Card>
       )}
-      {platforms?.map(([platform, platformProducts]) => (
-        // Remounted when a search starts or ends, so matches open
-        // automatically and everything collapses again afterwards.
-        <PlatformAccordion
-          key={`${platform}:${query ? "search" : "browse"}`}
+      {platforms?.map(([platform, platformProducts], i) => (
+        // Remounted when a search or filter starts or ends, so matches open
+        // and everything goes back to the first team open afterwards.
+        <TeamSection
+          key={`${platform}:${narrowed ? "narrowed" : "browse"}`}
           platform={platform}
           products={platformProducts}
-          defaultExpanded={query !== ""}
+          defaultOpen={narrowed || i === 0}
           runnable={runnable}
+          runnables={runnables}
+          install={install}
         />
       ))}
     </Box>
   );
 }
 
-function PlatformAccordion({
+function TeamSection({
   platform,
   products,
-  defaultExpanded,
+  defaultOpen,
   runnable,
+  runnables,
+  install,
 }: {
   platform: string;
   products: Product[];
-  defaultExpanded: boolean;
+  defaultOpen: boolean;
   runnable: Set<string>;
+  runnables: Runnable[];
+  install: string;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [opened, setOpened] = useState<string | null>(null);
+  const lastRelease = products.flatMap((p) => p.releases.map((r) => r.registeredAt)).sort().at(-1);
+  const unready = products.filter(notReady).length;
+  const deprecated = products.filter((p) => p.deprecated).length;
+  const checked = products.filter((p) => p.readiness).length;
+  const sharedNote = products.some((p) => runnable.has(p.name)) ? "" : " · not shared with your teams";
   return (
-    <Accordion
-      variant="outlined"
-      disableGutters
-      defaultExpanded={defaultExpanded}
-      slotProps={{ transition: { unmountOnExit: true } }}
-    >
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Typography sx={{ fontWeight: 600, fontSize: 16 }}>{platform}</Typography>
-          <Typography variant="body2" color="text.secondary">
+    <Card component="section" aria-label={platform} sx={{ overflow: "hidden" }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1.25, px: 2.5, py: 1 }}>
+        <Box
+          component="button"
+          type="button"
+          aria-expanded={open}
+          onClick={() => { setOpen((o) => !o); }}
+          sx={{ all: "unset", boxSizing: "border-box", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", "&:focus-visible": { outline: (t) => `2px solid ${t.palette.primary.main}`, outlineOffset: 2, borderRadius: 1 } }}
+        >
+          <ChevronIcon aria-hidden="true" sx={{ fontSize: 20, color: "text.secondary", transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+          <Typography component="span" sx={{ fontSize: 17, fontWeight: 600 }}>
+            {platform}
+          </Typography>
+          <Typography component="span" variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
             {products.length} {products.length === 1 ? "product" : "products"}
+            {lastRelease && ` · last release ${when(lastRelease)}`}
+            {platform !== UNOWNED_GROUP && sharedNote}
           </Typography>
         </Box>
-      </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0, bgcolor: "background.default" }}>
-        {products.map((product) => (
-          <ProductAccordion key={product.id} product={product} runnable={runnable.has(product.name)} />
-        ))}
-      </AccordionDetails>
-    </Accordion>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+          {unready > 0 && <Pill tone="error">{unready} not ready</Pill>}
+          {deprecated > 0 && <Pill tone="warning">{deprecated} deprecated</Pill>}
+          {unready === 0 && deprecated === 0 && checked > 0 && checked === products.length && <Pill tone="success">All ready</Pill>}
+          {platform !== UNOWNED_GROUP && (
+            <Link component={RouterLink} to={`/teams/${encodeURIComponent(platform)}`} variant="body2" sx={{ fontSize: 13 }}>
+              Its team page
+            </Link>
+          )}
+        </Box>
+      </Box>
+      {open && (
+        <Box sx={{ overflowX: "auto", borderTop: 1, borderColor: "divider" }} tabIndex={0} aria-label={`${platform}'s products`}>
+          <Table size="small" sx={{ minWidth: 900 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Product</TableCell>
+                <TableCell>Action</TableCell>
+                <TableCell>Latest</TableCell>
+                <TableCell>On {install}</TableCell>
+                <TableCell>Shared with</TableCell>
+                <TableCell>Releases</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {products.map((product) => {
+                const isOpen = opened === product.id;
+                const toggle = () => { setOpened(isOpen ? null : product.id); };
+                const latest = product.releases[0];
+                return (
+                  <Fragment key={product.id}>
+                    <TableRow hover onClick={toggle} sx={{ cursor: "pointer", bgcolor: isOpen ? "background.default" : undefined, "& td": { py: 1.5 } }}>
+                      <TableCell>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                          <ChevronIcon aria-hidden="true" sx={{ fontSize: 16, color: "text.secondary", transform: isOpen ? "rotate(90deg)" : "none" }} />
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+                            <Box
+                              component="button"
+                              type="button"
+                              aria-expanded={isOpen}
+                              onClick={(e) => { e.stopPropagation(); toggle(); }}
+                              sx={{ all: "unset", cursor: "pointer", fontWeight: 500, color: "primary.main", fontSize: 13, "&:focus-visible": { outline: (t) => `2px solid ${t.palette.primary.main}`, outlineOffset: 2 } }}
+                            >
+                              {product.displayName ?? imageName(product.image)}
+                            </Box>
+                            <Typography sx={{ fontFamily: "fontFamilyMono", fontSize: 12, color: "text.secondary" }}>{imageName(product.image)}</Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ fontFamily: "fontFamilyMono", fontSize: 12 }}>{product.action}</TableCell>
+                      <TableCell>
+                        <Box component="span" title={product.image} sx={{ fontFamily: "fontFamilyMono", fontSize: 12, px: 1, py: 0.375, borderRadius: "6px", bgcolor: "tint.neutral", whiteSpace: "nowrap" }}>
+                          {imageVersion(product.image) || "—"}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <ProductState product={product} />
+                      </TableCell>
+                      <TableCell>{sharedWith(product)}</TableCell>
+                      <TableCell sx={{ color: "text.secondary", whiteSpace: "nowrap" }}>
+                        {product.releases.length}
+                        {latest && ` · ${when(latest.registeredAt)}`}
+                      </TableCell>
+                    </TableRow>
+                    {isOpen && (
+                      <TableRow>
+                        <TableCell colSpan={6} sx={{ bgcolor: "background.default", pl: { xs: 2, sm: 5.5 }, pr: 2, pt: 0.75, pb: 2.5 }}>
+                          <ProductDetail product={product} runnable={runnable.has(product.name)} runnables={runnables} install={install} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Box>
+      )}
+    </Card>
   );
 }
 
 /** What its check said here: who it acts as, what it lacks, when; and Check now for its team. */
-function ReadinessDetail({ product }: { product: Product }) {
+function ReadinessDetail({ product, install }: { product: Product; install: string }) {
   const { user } = useAuth();
   const [asked, setAsked] = useState<string | null>(null);
   const r = product.readiness;
   if (!r) return null;
   const mine = Boolean(user?.isAdmin || (product.teamName && user?.teamNames.includes(product.teamName)));
+  const bad = r.state === "not_ready";
   return (
-    <Box sx={{ mb: 1.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-      <Typography variant="body2">
-        {r.state === "ready" && "Ready on this install"}
-        {r.state === "not_ready" && "Not ready on this install"}
+    <Box sx={{ bgcolor: "background.paper", border: 1, borderColor: bad ? "tint.errorBorder" : r.state === "failed" ? "tint.warningBorder" : "divider", borderRadius: 2, px: 2, py: 1.75, display: "flex", flexDirection: "column", gap: 1 }}>
+      <Typography sx={{ fontWeight: 600, fontSize: 13, color: bad ? "error.dark" : r.state === "ready" ? "success.dark" : "text.primary" }}>
+        {r.state === "ready" && `Ready on ${install}`}
+        {r.state === "not_ready" && `Not ready on ${install}`}
         {r.state === "failed" && "Its check couldn't say"}
         {r.state === "checking" && "Being checked"}
         {r.state === "unchecked" && "Not checked yet"}
-        {r.principal && <>, acting as <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 13 }}>{r.principal}</Box></>}
-        {r.checkedAt && ` (checked ${when(r.checkedAt)})`}.
+        {r.principal && (
+          <>
+            , acting as{" "}
+            <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 12 }}>
+              {r.principal}
+            </Box>
+          </>
+        )}
       </Typography>
       {r.missing.length > 0 && (
-        <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+        <Box component="ul" sx={{ m: 0, pl: 2.25 }}>
           {r.missing.map((m) => (
-            <Typography component="li" variant="body2" key={m}>
+            <Typography component="li" variant="body2" key={m} sx={{ fontSize: 13 }}>
               {m}
             </Typography>
           ))}
         </Box>
       )}
       {r.detail && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="body2" sx={{ fontSize: 13 }}>
           {r.detail}
         </Typography>
       )}
-      <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
-        {r.executionId && (
-          <Link component={RouterLink} to={`/runs/${r.executionId}`} variant="caption">
-            The check run
-          </Link>
-        )}
+      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+        {r.checkedAt ? `Checked ${when(r.checkedAt)}, by its check action. ` : ""}
+        It&apos;s checked again when its image changes, a day after its last answer, or on Check now.
+      </Typography>
+      <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", flexWrap: "wrap" }}>
         {mine && r.state !== "checking" && (
           <Button
+            variant="outlined"
             size="small"
+            startIcon={<RefreshIcon />}
+            sx={{ minHeight: 36, bgcolor: "background.paper" }}
             onClick={() => {
               checkProduct(product.name)
                 .then((started) => { setAsked(started ? "Checking now: refresh in a minute." : "A check is already under way."); })
@@ -244,8 +451,13 @@ function ReadinessDetail({ product }: { product: Product }) {
             Check now
           </Button>
         )}
+        {r.executionId && (
+          <Link component={RouterLink} to={`/runs/${r.executionId}`} variant="body2" sx={{ fontSize: 13 }}>
+            The check run
+          </Link>
+        )}
         {asked && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
             {asked}
           </Typography>
         )}
@@ -254,75 +466,82 @@ function ReadinessDetail({ product }: { product: Product }) {
   );
 }
 
-function ProductAccordion({ product, runnable }: { product: Product; runnable: boolean }) {
-  const releaseCount = product.releases.length;
-  const shown = product.releases.slice(0, MAX_RELEASES_SHOWN);
-
+function ProductDetail({ product, runnable, runnables, install }: { product: Product; runnable: boolean; runnables: Runnable[]; install: string }) {
+  const [all, setAll] = useState(false);
+  const inCart = useCart().actions.includes(product.name);
+  const ref = actionRef(product, "");
+  const templates = runnables.filter((r) => r.kind === "template" && r.actions.includes(ref));
+  const shown = all ? product.releases : product.releases.slice(0, RELEASES_SHOWN);
+  const mono = (text: string) => (
+    <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 12 }}>
+      {text}
+    </Box>
+  );
   return (
-    // Unmounted until opened: a long registry shouldn't render every
-    // product's release list up front.
-    <Accordion variant="outlined" disableGutters slotProps={{ transition: { unmountOnExit: true } }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", minWidth: 0, pr: 1 }}>
-          <Typography sx={{ fontWeight: 600, fontFamily: "fontFamilyMono", fontSize: 14 }}>
-            {imageName(product.image)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            action: {product.action}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {releaseCount} {releaseCount === 1 ? "release" : "releases"}
-          </Typography>
-          {product.deprecated && (
-            <Pill tone="warning" title={product.deprecated}>
-              Deprecated
-            </Pill>
-          )}
-          <Pill tone="success" title={product.image}>
-            latest: {imageVersion(product.image)}
-          </Pill>
-          {product.readiness && <ReadinessPill readiness={product.readiness} />}
-        </Box>
-      </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
-        {product.deprecated && (
-          <Alert severity="warning" sx={{ mb: 1 }}>
-            Deprecated: {product.deprecated}
-          </Alert>
-        )}
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-          Registered as <code>{product.name}</code>
-          {" · "}
-          {product.shareWith.includes("*")
-            ? "shared with every team"
-            : product.shareWith.length > 0
-              ? `shared with ${product.shareWith.join(", ")}`
-              : "its own team only"}
-          {product.secretRefs.length > 0 && <> · uses {product.secretRefs.join(", ")}</>}
+    <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.2fr) minmax(0, 1fr)" }, fontSize: 13 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, minWidth: 0 }}>
+        <Typography variant="body2" sx={{ fontSize: 13, overflowWrap: "anywhere" }}>
+          Registered as {mono(product.name)} · shared with {sharedWith(product)}
+          {product.secretRefs.length > 0 && <> · uses {mono(product.secretRefs.join(", "))}</>}
+          {product.serviceAccount && <> · runs as {mono(product.serviceAccount)}</>}
           {product.tokenAudiences.length > 0 && <> · tokens for {product.tokenAudiences.join(", ")}</>}
         </Typography>
-        {product.readiness && <ReadinessDetail product={product} />}
-        {runnable && (
-          <Button
-            component={RouterLink}
-            to={`/catalog/run?action=${encodeURIComponent(product.name)}`}
-            size="small"
-            variant="outlined"
-            sx={{ mb: 1 }}
-          >
-            Run on its own
-          </Button>
+        {product.description && (
+          <Typography variant="body2" sx={{ fontSize: 13 }}>
+            {product.description}
+          </Typography>
         )}
+        {product.deprecated && <Alert severity="warning">Deprecated: {product.deprecated}</Alert>}
+        <ReadinessDetail product={product} install={install} />
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, alignItems: "center" }}>
+          {runnable && (
+            <>
+              <Button component={RouterLink} to={`/catalog/run?action=${encodeURIComponent(product.name)}`} size="small" variant="contained" sx={{ minHeight: 36 }}>
+                Run on its own
+              </Button>
+              {inCart ? (
+                <Button component={RouterLink} to="/catalog/cart" size="small" variant="outlined" color="success" startIcon={<CheckIcon />} sx={{ minHeight: 36 }}>
+                  In your cart
+                </Button>
+              ) : (
+                <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => { cart.add(product.name); }} sx={{ minHeight: 36, bgcolor: "background.paper" }}>
+                  Add to cart
+                </Button>
+              )}
+            </>
+          )}
+          {templates.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+              Used by the {templates.length === 1 ? "template" : "templates"}{" "}
+              {templates.map((t, i) => (
+                <Fragment key={`${t.team}/${t.name}`}>
+                  {i > 0 && ", "}
+                  <Link component={RouterLink} to={`/catalog/run?template=${encodeURIComponent(`${t.team}/${t.name}`)}`}>
+                    {t.displayName || t.name}
+                  </Link>
+                </Fragment>
+              ))}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+        <Typography sx={{ fontWeight: 600, fontSize: 13 }}>Releases</Typography>
         {shown.map((release) => (
           <ReleaseRow key={release.image} release={release} isLatest={release.image === product.image} />
         ))}
-        {releaseCount > MAX_RELEASES_SHOWN && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-            Showing the {MAX_RELEASES_SHOWN} most recent of {releaseCount} releases.
-          </Typography>
+        {product.releases.length > RELEASES_SHOWN && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 12 }}>
+              {all ? `All ${String(product.releases.length)} releases.` : `Showing the ${String(RELEASES_SHOWN)} most recent of ${String(product.releases.length)} releases.`}
+            </Typography>
+            <Button size="small" onClick={() => { setAll((a) => !a); }}>
+              {all ? "Show fewer" : "Show all"}
+            </Button>
+          </Box>
         )}
-      </AccordionDetails>
-    </Accordion>
+      </Box>
+    </Box>
   );
 }
 
@@ -343,28 +562,18 @@ function ReleaseRow({ release, isLatest }: { release: ProductRelease; isLatest: 
   }
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1.5,
-        py: 0.75,
-        borderTop: 1,
-        borderColor: "divider",
-      }}
-    >
-      <Box
-        component="span"
-        sx={{ fontFamily: "fontFamilyMono", fontSize: 12.5, wordBreak: "break-all", flexGrow: 1, minWidth: 0 }}
-      >
-        {release.image}
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, pl: 1.25, pr: 0.5, py: 0.75, bgcolor: "background.paper", border: 1, borderColor: "tint.rule", borderRadius: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0, flex: "1 1 auto" }}>
+        <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 12, wordBreak: "break-all" }}>
+          {release.image}
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: 12 }}>
+          Registered {new Date(release.registeredAt).toLocaleString()}
+        </Typography>
       </Box>
       {isLatest && <Pill tone="success">Latest</Pill>}
-      <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, whiteSpace: "nowrap" }}>
-        {new Date(release.registeredAt).toLocaleString()}
-      </Typography>
       <Tooltip title={copied ? "Copied" : "Copy image reference"}>
-        <IconButton size="small" aria-label="Copy image reference" onClick={() => void copy()} sx={{ flexShrink: 0 }}>
+        <IconButton aria-label="Copy image reference" onClick={() => void copy()} sx={{ flexShrink: 0, width: 36, height: 36 }}>
           {copied ? <CheckIcon fontSize="small" color="success" /> : <ContentCopyIcon fontSize="small" />}
         </IconButton>
       </Tooltip>

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -11,71 +11,181 @@ import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import AddIcon from "@mui/icons-material/Add";
+import CartIcon from "@mui/icons-material/ShoppingCartOutlined";
+import CheckIcon from "@mui/icons-material/Check";
 import DeleteIcon from "@mui/icons-material/DeleteOutlined";
-import { ApiError, listAllTeams, listProducts, listRunnables, previewOrder, submitExecution, type OrderOption, type OrderProblem, type Product } from "../api";
+import LockIcon from "@mui/icons-material/LockOutlined";
+import { ApiError, listAllTeams, listProducts, listRunnables, previewOrder, submitExecution, type OrderOption, type OrderProblem, type Product, type Runnable } from "../api";
 import { useAuth } from "../auth/AuthContext";
-import { HelpLink } from "../components/HelpLink";
+import { useCart } from "../cart";
+import { CheckStrip, type Check } from "../components/CheckStrip";
 import { CodeBlock } from "../components/CodeBlock";
+import { HelpLink } from "../components/HelpLink";
 import { OrderChoice, sameInput } from "../components/OrderChoice";
 import { Pill } from "../components/Pill";
-import { candidates, dagOf, inputsOf, newStep, problems, proposeUrl, stepsFromOrder, templateYaml, type ComposeStep, type Draft, type InputSource } from "../compose";
+import { readinessSentence } from "../components/ReadinessNote";
+import { ReadinessPill } from "../components/ReadinessPill";
+import { useEnvironment } from "../environment";
+import { actionRef, candidates, dagOf, hasParameters, inputsOf, newStep, problems, proposeUrl, stepsFromOrder, templateYaml, type ComposeStep, type Draft, type InputSource } from "../compose";
+import { when } from "../time";
 import { draftOf, useComposeDrafts } from "./useComposeDrafts";
 
 /** "value", "parameter", "unset", or "<step>/<output>", for the source select. */
 const sourceKey = (s: InputSource) => (s.kind === "step" ? `${s.step}/${s.output}` : s.kind);
 
-function StepCard({
-  step,
+const productName = (p: Product | undefined, fallback: string) => p?.displayName ?? p?.name ?? fallback;
+
+/** What a step asks for and is given, in a line: its values and what's asked when it runs (wiring is shown between the steps). */
+function asksOf(step: ComposeStep): string {
+  const parts: string[] = [];
+  const asked = Object.entries(step.inputs).filter(([, s]) => s.kind === "parameter").map(([n]) => n);
+  if (asked.length > 0) parts.push(`${asked.join(" and ")} asked when it runs`);
+  for (const [name, s] of Object.entries(step.inputs)) if (s.kind === "value" && s.value !== "") parts.push(`${name} ${s.value}`);
+  return parts.join(" · ");
+}
+
+/** What a step takes from earlier ones, in a line: "project from step 1 · database from step 3". */
+function linksOf(step: ComposeStep, steps: ComposeStep[]): string {
+  return Object.entries(step.inputs)
+    .flatMap(([name, s]) => {
+      if (s.kind !== "step") return [];
+      const n = steps.findIndex((x) => x.id === s.step);
+      return [`${name} from ${n >= 0 ? `step ${String(n + 1)}` : s.step}`];
+    })
+    .join(" · ");
+}
+
+/** The steps, in order: each a card to select, what it takes from earlier ones between them. */
+function StepList({
+  draft,
+  products,
+  selected,
+  added,
+  onSelect,
+}: {
+  draft: Draft;
+  products: Map<string, Product>;
+  selected: number | null;
+  added: Set<string>;
+  onSelect: (i: number) => void;
+}) {
+  if (draft.steps.length === 0) {
+    return (
+      <Card sx={{ p: 3 }}>
+        <Typography variant="body2" color="text.secondary">
+          No steps yet. Add one from Add a step, or build them from a cart above.
+        </Typography>
+      </Card>
+    );
+  }
+  return (
+    <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column" }}>
+      {draft.steps.map((step, i) => {
+        const product = products.get(step.product);
+        const link = linksOf(step, draft.steps);
+        const on = selected === i;
+        return (
+          <Box component="li" key={`${step.id}-${String(i)}`} sx={{ display: "flex", flexDirection: "column" }}>
+            {link && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, py: 0.75, pl: 2.75, fontSize: 12, color: "text.secondary" }}>
+                <Box aria-hidden="true" sx={{ width: 2, height: 22, bgcolor: "tint.field" }} />
+                <span>{link}</span>
+              </Box>
+            )}
+            {!link && i > 0 && <Box sx={{ height: 12 }} />}
+            <Box
+              component="button"
+              type="button"
+              aria-pressed={on}
+              onClick={() => { onSelect(i); }}
+              sx={{
+                all: "unset",
+                boxSizing: "border-box",
+                cursor: "pointer",
+                display: "flex",
+                gap: 1.75,
+                alignItems: "flex-start",
+                bgcolor: "background.paper",
+                borderRadius: "10px",
+                px: 2,
+                py: 1.75,
+                border: 1,
+                borderColor: on ? "primary.main" : "divider",
+                boxShadow: on ? (t) => `0 0 0 3px ${t.palette.info.light}` : "none",
+                "&:hover": { borderColor: on ? "primary.main" : "tint.infoBorder" },
+                "&:focus-visible": { outline: (t) => `2px solid ${t.palette.primary.main}`, outlineOffset: 2 },
+              }}
+            >
+              <Box
+                sx={{ flex: "0 0 28px", height: 28, borderRadius: "50%", bgcolor: on ? "primary.main" : "info.light", color: on ? "primary.contrastText" : "info.main", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                {i + 1}
+              </Box>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.375, minWidth: 0, flex: "1 1 auto" }}>
+                <Typography sx={{ fontSize: 15, fontWeight: 600 }}>{productName(product, step.product)}</Typography>
+                <Typography sx={{ fontFamily: "fontFamilyMono", fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
+                  {step.id}
+                  {product && ` · ${actionRef(product, draft.team)}`}
+                </Typography>
+                {asksOf(step) && <Typography sx={{ fontSize: 12, overflowWrap: "anywhere" }}>{asksOf(step)}</Typography>}
+              </Box>
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.75 }}>
+                {product?.deprecated ? <Pill tone="warning" title={product.deprecated}>Deprecated</Pill> : product?.readiness ? <ReadinessPill readiness={product.readiness} /> : null}
+                {added.has(step.id) && <Typography sx={{ fontSize: 11, color: "info.main" }}>added by wiring</Typography>}
+              </Box>
+            </Box>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+/** The selected step: its id, each input's source, and what its team set (identity, secrets, readiness here). */
+function StepInspector({
   index,
   draft,
   products,
+  install,
   onChange,
   onRemove,
 }: {
-  step: ComposeStep;
   index: number;
   draft: Draft;
   products: Map<string, Product>;
+  install: string;
   onChange: (step: ComposeStep) => void;
   onRemove: () => void;
 }) {
+  const step = draft.steps[index];
+  if (!step) return null;
   const product = products.get(step.product);
   const set = (name: string, source: InputSource) => { onChange({ ...step, inputs: { ...step.inputs, [name]: source } }); };
+  const readiness = readinessSentence(product?.readiness ?? null, install);
   return (
-    <Card sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-        <Box sx={{ flex: "0 0 26px", height: 26, borderRadius: "50%", bgcolor: "info.light", color: "info.main", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {index + 1}
-        </Box>
-        <TextField size="small" label="Step" value={step.id} onChange={(e) => { onChange({ ...step, id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }); }} sx={{ width: 180 }} />
-        <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}>
-          {product ? `${product.displayName ?? product.name} · ${product.action} · ${product.teamName ?? ""}` : step.product}
+    <Card component="section" aria-label={`Step ${String(index + 1)}`} sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 2, borderColor: "tint.infoBorder" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: 12 }}>
+          Step {index + 1}
+          {product && ` · ${product.teamName ?? ""} · ${product.action}`}
         </Typography>
-        <IconButton aria-label={`Remove ${step.id}`} onClick={onRemove}>
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+        <Typography variant="h6" component="h2" sx={{ fontSize: 17 }}>
+          {productName(product, step.product)}
+        </Typography>
       </Box>
+      <TextField size="small" label="Step id" value={step.id} onChange={(e) => { onChange({ ...step, id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }); }} slotProps={{ htmlInput: { sx: { fontFamily: "fontFamilyMono", fontSize: 13 } } }} />
       {product &&
         inputsOf(product).map((input) => {
           const source = step.inputs[input.name] ?? { kind: "unset" };
           const options = candidates(draft, products, index, input);
+          const wired = source.kind === "step";
           return (
-            <Box key={input.name} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "180px 1fr 1fr" }, gap: 1, alignItems: "center" }}>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {input.name}
-                  {input.required && " *"}
-                </Typography>
-                {input.wiring && (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "fontFamilyMono" }}>
-                    {input.wiring}
-                  </Typography>
-                )}
-              </Box>
+            <Box key={input.name} sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
               <TextField
                 select
                 size="small"
-                label="From"
+                label={`${input.name} · ${input.wiring ?? input.type}${input.required ? " · required" : ""}`}
                 value={sourceKey(source)}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -86,28 +196,258 @@ function StepCard({
                     set(input.name, { kind: "step", step: from, output });
                   }
                 }}
+                helperText={source.kind === "parameter" && source.name ? `Asked once, as ${source.name}, for every input of that type.` : source.kind !== "value" ? input.description || undefined : undefined}
+                sx={wired ? { "& .MuiInputBase-root": { bgcolor: "tint.infoSurface" }, "& fieldset": { borderColor: "primary.main" } } : undefined}
               >
                 <MenuItem value="unset">Not given</MenuItem>
                 <MenuItem value="value">A value</MenuItem>
                 <MenuItem value="parameter">Asked when it runs</MenuItem>
                 {options.map((c) => (
                   <MenuItem key={`${c.step}/${c.output}`} value={`${c.step}/${c.output}`}>
-                    {c.step}&apos;s {c.output}
+                    From {c.step} → {c.output}
                     {c.match === "type" && " ✓ same type"}
                   </MenuItem>
                 ))}
               </TextField>
-              {source.kind === "value" ? (
-                <TextField size="small" label="Value" value={source.value} onChange={(e) => { set(input.name, { kind: "value", value: e.target.value }); }} helperText={input.description || undefined} />
-              ) : (
-                <Typography variant="caption" color="text.secondary">
-                  {source.kind === "parameter" && source.name ? `Asked once, as ${source.name}, for every input of that type. ` : ""}
-                  {input.description}
-                </Typography>
+              {source.kind === "value" && (
+                <TextField size="small" label={`${input.name}'s value`} value={source.value} onChange={(e) => { set(input.name, { kind: "value", value: e.target.value }); }} helperText={input.description || undefined} />
               )}
             </Box>
           );
         })}
+      {product && (
+        <Box sx={{ borderTop: 1, borderColor: "tint.rule", pt: 1.75, display: "flex", flexDirection: "column", gap: 0.75, fontSize: 13 }}>
+          <Typography sx={{ fontWeight: 600, fontSize: 13 }}>Set by {product.teamName ?? "the platform"}</Typography>
+          <Typography variant="body2" sx={{ fontSize: 13 }}>
+            Runs as{" "}
+            <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 12 }}>
+              {product.serviceAccount ?? "default"}
+            </Box>
+            , in {product.teamName ?? "its team"}&apos;s namespace
+          </Typography>
+          {product.secretRefs.length > 0 && (
+            <Typography variant="body2" sx={{ fontSize: 13 }}>
+              Secrets:{" "}
+              <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 12 }}>
+                {product.secretRefs.join(", ")}
+              </Box>{" "}
+              (values hidden)
+            </Typography>
+          )}
+          {readiness && (
+            <Typography variant="body2" sx={{ fontSize: 13, color: product.readiness?.state === "not_ready" ? "error.dark" : "warning.main" }}>
+              {readiness}
+            </Typography>
+          )}
+          {product.deprecated && (
+            <Typography variant="body2" sx={{ fontSize: 13, color: "warning.main" }}>
+              Deprecated: {product.deprecated}
+            </Typography>
+          )}
+        </Box>
+      )}
+      <Button variant="outlined" color="error" size="small" startIcon={<DeleteIcon />} onClick={onRemove} sx={{ alignSelf: "flex-start", minHeight: 36 }}>
+        Remove the step
+      </Button>
+    </Card>
+  );
+}
+
+/** Add a step: the actions shared with you, by team, and the ones that aren't (to ask for). */
+function Palette({ choices, locked, onAdd }: { choices: Product[]; locked: Runnable[]; onAdd: (p: Product) => void }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const groups = useMemo(() => {
+    const byTeam = new Map<string, { add: Product[]; ask: Runnable[] }>();
+    const group = (team: string) => byTeam.get(team) ?? byTeam.set(team, { add: [], ask: [] }).get(team) ?? { add: [], ask: [] };
+    for (const p of choices) if (!q || `${productName(p, "")} ${p.name} ${p.action}`.toLowerCase().includes(q)) group(p.teamName ?? "").add.push(p);
+    for (const r of locked) if (!q || `${r.displayName} ${r.name}`.toLowerCase().includes(q)) group(r.team).ask.push(r);
+    return [...byTeam.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [choices, locked, q]);
+  const row = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.25, px: 1.25, py: 1, borderRadius: 2, border: 1, borderColor: "tint.rule" };
+  return (
+    <Card component="section" aria-label="Add a step" sx={{ p: 2.25, display: "flex", flexDirection: "column", gap: 1.5, minWidth: 0 }}>
+      <Typography variant="h6" component="h2" sx={{ fontSize: 15 }}>
+        Add a step
+      </Typography>
+      <TextField size="small" type="search" placeholder="Find an action" value={query} onChange={(e) => { setQuery(e.target.value); }} slotProps={{ htmlInput: { "aria-label": "Find an action" } }} />
+      {groups.length === 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+          {choices.length === 0 && locked.length === 0 ? "No actions are shared with you yet." : "Nothing matches."}
+        </Typography>
+      )}
+      {groups.map(([team, { add, ask }]) => (
+        <Box key={team} sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography sx={{ pt: 0.75, fontSize: 11, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: "text.secondary" }}>{team || "Platform"}</Typography>
+          {add.map((p) => (
+            <Box key={p.name} sx={row}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 500, overflowWrap: "anywhere" }}>{productName(p, p.name)}</Typography>
+                <Typography sx={{ fontSize: 11, color: "text.secondary" }}>{p.action}</Typography>
+              </Box>
+              <IconButton
+                aria-label={`Add ${productName(p, p.name)} (${p.action})`}
+                onClick={() => { onAdd(p); }}
+                sx={{ flex: "0 0 36px", width: 36, height: 36, border: 1, borderColor: "tint.infoBorder", bgcolor: "tint.infoSurface", color: "info.main", borderRadius: "6px" }}
+              >
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ))}
+          {ask.map((r) => (
+            <Box key={r.name} sx={{ ...row, bgcolor: "background.default" }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 500, overflowWrap: "anywhere" }}>{r.displayName || r.name}</Typography>
+                <Typography sx={{ fontSize: 11, color: "text.secondary" }}>not shared with you</Typography>
+              </Box>
+              {r.askForAccessUrl ? (
+                <IconButton component="a" href={r.askForAccessUrl} target="_blank" rel="noopener noreferrer" aria-label={`Not shared with you: ask ${r.team} for ${r.displayName || r.name}`} title={`Not shared with you: ask ${r.team}`} sx={{ width: 36, height: 36 }}>
+                  <LockIcon fontSize="small" />
+                </IconButton>
+              ) : (
+                <LockIcon fontSize="small" aria-hidden="true" sx={{ color: "text.secondary", mx: 1 }} />
+              )}
+            </Box>
+          ))}
+        </Box>
+      ))}
+    </Card>
+  );
+}
+
+/**
+ * The order builder (decision 23): several actions at once, made into steps
+ * by OrderService/PreviewOrder, each input wired to the one output of its
+ * wiring type, a type's default provider added when nothing provides it,
+ * and what it couldn't settle said, to fix in the steps.
+ */
+function BuildFromCart({
+  team,
+  choices,
+  initial,
+  onBuilt,
+}: {
+  team: string;
+  choices: Product[];
+  /** The cart's actions, to start from (Use your cart, or ?cart=1). */
+  initial: Product[] | null;
+  onBuilt: (steps: ComposeStep[], problems: OrderProblem[], added: string[]) => void;
+}) {
+  const cartProducts = useMemo(() => initial ?? [], [initial]);
+  const [selection, setSelection] = useState<Product[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // What was last wired, the inputs it asked to choose for (kept, so a
+  // choice can be changed), and what was chosen: each choice wires again.
+  const [wired, setWired] = useState<{ actions: string[]; asked: OrderProblem[]; steps: number; added: string[]; problems: OrderProblem[] } | null>(null);
+  const [picked, setPicked] = useState<OrderOption[]>([]);
+  const [params] = useSearchParams();
+  // ?cart=1 (the Catalog's and the cart's "build a template from it"): start from the cart.
+  const fromCart = useRef(params.get("cart") === "1");
+  useEffect(() => {
+    if (fromCart.current && cartProducts.length > 0) {
+      fromCart.current = false;
+      setSelection(cartProducts);
+    }
+  }, [cartProducts]);
+
+  async function wire(actions: string[], chosen: OrderOption[], asked: OrderProblem[]): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      const built = await previewOrder(team, actions, chosen);
+      const added = built.steps.filter((s) => s.added).map((s) => s.id);
+      onBuilt(stepsFromOrder(built.steps), built.problems, added);
+      const fresh = built.problems.filter((p) => p.options.length > 0 && !asked.some((a) => sameInput(a, p)));
+      setWired({ actions, asked: [...asked, ...fresh], steps: built.steps.length, added: built.steps.filter((s) => s.added).map((s) => s.product), problems: built.problems.filter((p) => p.options.length === 0) });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't wire them.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function build(): Promise<void> {
+    setPicked([]);
+    await wire(selection.map((p) => p.name), [], []);
+    setSelection([]);
+  }
+  function choose(o: OrderOption): void {
+    if (!wired) return;
+    const next = [...picked.filter((c) => !sameInput(c, o)), o];
+    setPicked(next);
+    void wire(wired.actions, next, wired.asked);
+  }
+  const nameOf = (product: string) => productName(choices.find((p) => p.name === product), product);
+  return (
+    <Card component="section" aria-label="Build from a cart" sx={{ px: { xs: 2, sm: 2.75 }, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 1.25 }}>
+        <Typography variant="h6" component="h2" sx={{ display: "flex", alignItems: "center", gap: 1, "& svg": { fontSize: 18, color: "primary.main" } }}>
+          <CartIcon />
+          Build from a cart
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+          Replaces the steps below
+        </Typography>
+      </Box>
+      <Typography variant="body2" sx={{ fontSize: 13, maxWidth: 820 }}>
+        Choose the actions you want: they&apos;re put in the order they can run, each input wired to what provides its type, and anything else they need added.
+      </Typography>
+      <Autocomplete
+        multiple
+        options={choices}
+        value={selection}
+        groupBy={(p) => p.teamName ?? ""}
+        getOptionLabel={(p) => `${productName(p, p.name)} · ${p.action}`}
+        isOptionEqualToValue={(a, b) => a.name === b.name}
+        onChange={(_e, next) => { setSelection(next); }}
+        renderInput={(params) => <TextField {...params} label="Actions" placeholder="Add an action" />}
+        sx={{ bgcolor: "background.paper" }}
+      />
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, alignItems: "center" }}>
+        {cartProducts.length > 0 && (
+          <Button variant="outlined" size="small" onClick={() => { setSelection(cartProducts); }} sx={{ minHeight: 36 }}>
+            Use your cart ({cartProducts.length})
+          </Button>
+        )}
+        <Button variant="contained" size="small" disabled={busy || selection.length === 0 || !team} onClick={() => void build()} sx={{ minHeight: 36 }}>
+          {busy ? "Wiring…" : "Wire them"}
+        </Button>
+        {wired && (
+          <Typography variant="body2" sx={{ fontSize: 13, color: "success.dark", display: "inline-flex", alignItems: "center", gap: 0.75, "& svg": { fontSize: 16 } }}>
+            <CheckIcon />
+            Wired into {wired.steps} {wired.steps === 1 ? "step" : "steps"}
+            {wired.added.length > 0 && `: ${wired.added.map(nameOf).join(" and ")} added`}
+          </Typography>
+        )}
+      </Box>
+      {error && <Alert severity="error">{error}</Alert>}
+      {wired && wired.problems.length > 0 && (
+        <Alert severity="info">
+          Wired, but these need you:
+          <Box component="ul" sx={{ m: 0, pl: 2 }}>
+            {wired.problems.map((p) => (
+              <li key={`${p.code}:${p.step}:${p.input}`}>{p.message}</li>
+            ))}
+          </Box>
+        </Alert>
+      )}
+      {wired?.asked.map((problem) => (
+        <Box key={`${problem.step}.${problem.input}`} sx={{ borderTop: 1, borderColor: "tint.rule", pt: 1.75 }}>
+          <OrderChoice
+            problem={problem}
+            label={
+              <>
+                {problem.step}&apos;s{" "}
+                <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontWeight: 500, fontSize: 12 }}>
+                  {problem.input}
+                </Box>
+              </>
+            }
+            chosen={picked.find((c) => sameInput(c, problem))}
+            onChoose={choose}
+          />
+        </Box>
+      ))}
     </Card>
   );
 }
@@ -118,94 +458,17 @@ function StepCard({
  * earlier step's output (matched by its wiring type). It's proposed to the
  * catalog as a file (GitHub's new-file page, in your browser, for review),
  * or run now when every step is your team's and nothing's asked. Drafts
- * are kept by the console for their team (useComposeDrafts).
+ * are kept by the console for their team (useComposeDrafts); ?draft=<team>/<name>
+ * opens one, and ?cart=1 starts Build from a cart from your cart.
  */
-/**
- * The order builder (decision 23): several actions at once, made into steps
- * by OrderService/PreviewOrder, each input wired to the one output of its
- * wiring type, a type's default provider added when nothing provides it,
- * and what it couldn't settle said, to fix in the steps.
- */
-function BuildFromCart({ team, choices, onBuilt }: { team: string; choices: Product[]; onBuilt: (steps: ComposeStep[], problems: OrderProblem[]) => void }) {
-  const [cart, setCart] = useState<Product[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // What was last wired, the inputs it asked to choose for (kept, so a
-  // choice can be changed), and what was chosen: each choice wires again.
-  const [wired, setWired] = useState<{ actions: string[]; asked: OrderProblem[] } | null>(null);
-  const [picked, setPicked] = useState<OrderOption[]>([]);
-  async function wire(actions: string[], chosen: OrderOption[], asked: OrderProblem[]): Promise<void> {
-    setBusy(true);
-    setError(null);
-    try {
-      const built = await previewOrder(team, actions, chosen);
-      onBuilt(stepsFromOrder(built.steps), built.problems);
-      const fresh = built.problems.filter((p) => p.options.length > 0 && !asked.some((a) => sameInput(a, p)));
-      setWired({ actions, asked: [...asked, ...fresh] });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't wire them.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function build(): Promise<void> {
-    setPicked([]);
-    await wire(cart.map((p) => p.name), [], []);
-    setCart([]);
-  }
-  function choose(o: OrderOption): void {
-    if (!wired) return;
-    const next = [...picked.filter((c) => !sameInput(c, o)), o];
-    setPicked(next);
-    void wire(wired.actions, next, wired.asked);
-  }
-  return (
-    <Card sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography variant="h6" component="h2">
-        Build from a cart
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Choose the actions you want; they&apos;re put in the order they can run, each input wired to what provides its type, and
-        anything else they need added. This replaces the steps above.
-      </Typography>
-      <Autocomplete
-        multiple
-        options={choices}
-        value={cart}
-        groupBy={(p) => p.teamName ?? ""}
-        getOptionLabel={(p) => `${p.displayName ?? p.name} · ${p.action}`}
-        isOptionEqualToValue={(a, b) => a.name === b.name}
-        onChange={(_e, next) => { setCart(next); }}
-        renderInput={(params) => <TextField {...params} label="Actions" />}
-        sx={{ bgcolor: "background.paper" }}
-      />
-      {error && <Alert severity="error">{error}</Alert>}
-      <Button variant="outlined" disabled={busy || cart.length === 0 || !team} onClick={() => void build()} sx={{ alignSelf: "flex-start" }}>
-        {busy ? "Wiring…" : "Wire them"}
-      </Button>
-      {wired && wired.asked.length > 0 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            More than one thing could fill these: choose, and the steps are wired again.
-          </Typography>
-          {wired.asked.map((problem) => (
-            <OrderChoice
-              key={`${problem.step}.${problem.input}`}
-              problem={{ ...problem, input: `${problem.step}'s ${problem.input}` }}
-              chosen={picked.find((c) => sameInput(c, problem))}
-              onChoose={choose}
-            />
-          ))}
-        </Box>
-      )}
-    </Card>
-  );
-}
-
 export function ComposePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const install = useEnvironment()?.label || "this install";
+  const cartActions = useCart().actions;
+  const [params] = useSearchParams();
   const [products, setProducts] = useState<Product[] | null>(null);
+  const [runnables, setRunnables] = useState<Runnable[]>([]);
   const [usable, setUsable] = useState<Set<string>>(new Set());
   const [repository, setRepository] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -214,16 +477,18 @@ export function ComposePage() {
   const stored = useComposeDrafts(draft);
   const [moved, setMoved] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [built, setBuilt] = useState<OrderProblem[] | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
   // The teams it can be for: yours, or any for an admin.
   const [teams, setTeams] = useState<string[]>(user?.teamNames ?? []);
 
   useEffect(() => {
     Promise.all([listProducts(), listRunnables()])
-      .then(([all, runnables]) => {
+      .then(([all, list]) => {
         setProducts(all);
-        setUsable(new Set(runnables.filter((r) => r.kind === "action" && r.shared).map((r) => r.name)));
-        const source = runnables.find((r) => r.sourceUrl)?.sourceUrl ?? null;
+        setRunnables(list);
+        setUsable(new Set(list.filter((r) => r.kind === "action" && r.shared).map((r) => r.name)));
+        const source = list.find((r) => r.sourceUrl)?.sourceUrl ?? null;
         setRepository(source ? (source.split("/blob/")[0] ?? null) : null);
       })
       .catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't load the catalog."); });
@@ -235,12 +500,15 @@ export function ComposePage() {
   }, [user?.isAdmin]);
 
   const byName = useMemo(() => new Map((products ?? []).map((p) => [p.name, p])), [products]);
-  const choices = (products ?? []).filter((p) => usable.has(p.name) && !p.deprecated);
+  const choices = useMemo(() => (products ?? []).filter((p) => usable.has(p.name) && !p.deprecated), [products, usable]);
+  const locked = useMemo(() => runnables.filter((r) => r.kind === "action" && !r.shared), [runnables]);
+  const fromCart = useMemo(() => (products ? cartActions.flatMap((a) => choices.filter((p) => p.name === a)) : null), [products, cartActions, choices]);
   const found = problems(draft, byName);
   const yaml = templateYaml(draft, byName);
   const dag = dagOf(draft, byName);
   const runnable = dag !== null && found.length === 0 && draft.steps.every((s) => user?.maintainerOf.includes(byName.get(s.product)?.teamName ?? "") ?? false);
   const propose = proposeUrl(repository, draft, yaml);
+  const asked = [...new Set(draft.steps.flatMap((s) => Object.entries(s.inputs).filter(([, i]) => i.kind === "parameter").map(([n, i]) => (i.kind === "parameter" && i.name) || n)))];
 
   const update = (next: Draft) => {
     stored.edited();
@@ -249,11 +517,23 @@ export function ComposePage() {
   const open = (next: Draft | null) => {
     stored.opened(next);
     setDraft(next ?? blank(`draft-${String((stored.drafts?.length ?? 0) + 1)}`));
+    setSelected(next && next.steps.length > 0 ? 0 : null);
+    setAdded(new Set());
   };
   async function loadTheirs(): Promise<void> {
     const theirs = (await stored.reload()).find((d) => d.team === draft.team && d.name === draft.name);
     open(theirs ? draftOf(theirs) : null);
   }
+
+  // ?draft=<team>/<name> (Home's "Pick up where you left off"): open it, once the drafts are in.
+  const wanted = useRef(params.get("draft"));
+  useEffect(() => {
+    if (!wanted.current || !stored.drafts) return;
+    const d = stored.drafts.find((x) => `${x.team}/${x.name}` === wanted.current);
+    wanted.current = null;
+    if (d) open(draftOf(d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stored.drafts]);
 
   async function run(): Promise<void> {
     if (!dag) return;
@@ -267,31 +547,126 @@ export function ComposePage() {
     }
   }
 
+  // The checks, in a line: what's wrong first, then what's settled, then what to know.
+  const checks: Check[] = [
+    ...found.map((text): Check => ({ tone: "warning", text })),
+    ...(found.length === 0 ? [{ tone: "success", text: "Every required input given, wired or asked" } satisfies Check] : []),
+  ];
+  const unready = draft.steps.filter((s) => byName.get(s.product)?.readiness?.state === "not_ready").length;
+  if (unready > 0) checks.push({ tone: "warning", text: `${String(unready)} ${unready === 1 ? "step" : "steps"} not ready on ${install}` });
+  const deprecated = draft.steps.filter((s) => byName.get(s.product)?.deprecated).length;
+  if (deprecated > 0) checks.push({ tone: "warning", text: `${String(deprecated)} ${deprecated === 1 ? "step" : "steps"} deprecated` });
+  if (asked.length > 0) checks.push({ tone: "info", text: `Asks ${asked.join(", ")} when it runs` });
+
+  const runWhy = runnable
+    ? undefined
+    : hasParameters(draft)
+      ? `It asks for ${asked.join(", ")} when it runs, so propose it as a template`
+      : "It runs now only when nothing's asked and every step is a team you maintain";
+  const status = stored.status === "saving" ? "saving…" : stored.status === "saved" ? "saved for the team" : null;
+  const openDraft = stored.drafts?.find((d) => d.team === draft.team && d.name === draft.name);
+
   return (
-    <Box>
-      <Typography variant="body2" color="text.secondary">
-        <Link component={RouterLink} to="/catalog">
-          Catalog
-        </Link>{" "}
-        / Compose
-      </Typography>
-      <Typography variant="h4" component="h1" sx={{ mt: 0.75 }}>
-        Compose
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 0.5, mb: 3, maxWidth: 840 }}>
-        Build a template from the actions shared with you: each step&apos;s inputs a value, asked when it runs, or an earlier step&apos;s
-        output. Propose it to the catalog for review, or run it now when every step is your team&apos;s.{" "}
-        <HelpLink guide="10-ordering-and-the-cart" section="how-do-i-compose-a-template-by-hand" label="Composing by hand" />
-      </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start" }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Card sx={{ p: 2.5, display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
-            <TextField size="small" label="Name" value={draft.name} onChange={(e) => { update({ ...draft, name: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }); }} helperText="Its file: dags/<name>.yaml" />
+    <Box sx={{ maxWidth: 1280, mx: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
+      <Box component="header" sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minWidth: 0, flex: "1 1 360px" }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+            <Link component={RouterLink} to="/catalog">
+              Catalog
+            </Link>{" "}
+            / Compose{draft.team && ` · draft for ${draft.team}`}
+            {status ? ` · ${status}` : openDraft?.updatedAt ? ` · saved ${when(openDraft.updatedAt)}` : ""}
+          </Typography>
+          <Typography variant="h4" component="h1" sx={{ fontSize: { xs: 24, sm: 28 }, overflowWrap: "anywhere" }}>
+            {draft.displayName || "Compose"}
+          </Typography>
+          <Typography sx={{ fontSize: 14, maxWidth: 720, lineHeight: 1.5 }}>
+            Build a template from the actions shared with you: each step&apos;s inputs a value, asked when it runs, or an earlier step&apos;s output. Propose it to the catalog for review, or run it now
+            when every step is your team&apos;s and nothing is asked.
+          </Typography>
+          <Box>
+            <HelpLink guide="10-ordering-and-the-cart" section="how-do-i-compose-a-template-by-hand" label="Composing by hand" />
+          </Box>
+        </Box>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25 }}>
+          <Button variant="outlined" size="large" onClick={() => { open(null); }}>
+            New
+          </Button>
+          <Button component="a" variant="outlined" size="large" disabled={found.length > 0 || !propose} href={propose ?? undefined} target="_blank" rel="noopener noreferrer" title="Opens the catalog repository's new-file page with it filled in">
+            Propose as a template ↗
+          </Button>
+          <Box component="span" title={runWhy}>
+            <Button variant="contained" size="large" disabled={!runnable || running} onClick={() => void run()}>
+              {running ? "Starting…" : "Run now"}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <BuildFromCart
+        team={draft.team}
+        choices={choices}
+        initial={fromCart}
+        onBuilt={(steps, _found, addedIds) => {
+          update({ ...draft, steps });
+          setAdded(new Set(addedIds));
+          setSelected(steps.length > 0 ? 0 : null);
+        }}
+      />
+
+      <CheckStrip label="Checks" checks={checks} />
+
+      <Box sx={{ display: "grid", gap: 2.5, alignItems: "start", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", lg: "250px minmax(0, 1fr) 360px" } }}>
+        <Box sx={{ gridColumn: { md: "1 / -1", lg: "auto" }, minWidth: 0 }}>
+          <Palette
+            choices={choices}
+            locked={locked}
+            onAdd={(product) => {
+              update({ ...draft, steps: [...draft.steps, newStep(draft, byName, product)] });
+              setSelected(draft.steps.length);
+            }}
+          />
+        </Box>
+        <Box component="section" aria-label="Steps" sx={{ minWidth: 0 }}>
+          <StepList draft={draft} products={byName} selected={selected} added={added} onSelect={setSelected} />
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          {selected !== null && draft.steps[selected] ? (
+            <StepInspector
+              index={selected}
+              draft={draft}
+              products={byName}
+              install={install}
+              onChange={(next) => { update({ ...draft, steps: draft.steps.map((s, j) => (j === selected ? next : s)) }); }}
+              onRemove={() => {
+                update({ ...draft, steps: draft.steps.filter((_, j) => j !== selected) });
+                setSelected(draft.steps.length > 1 ? Math.max(0, selected - 1) : null);
+              }}
+            />
+          ) : (
+            <Card sx={{ p: 2.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Choose a step to set its inputs.
+              </Typography>
+            </Card>
+          )}
+        </Box>
+      </Box>
+
+      <Box sx={{ display: "grid", gap: 2.5, alignItems: "start", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) 340px" } }}>
+        <Card component="section" aria-label="The template" sx={{ px: { xs: 2, sm: 2.75 }, py: 2.5, display: "flex", flexDirection: "column", gap: 1.75, minWidth: 0 }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 1.25 }}>
+            <Typography variant="h6" component="h2">
+              The template
+            </Typography>
+            <Typography sx={{ fontFamily: "fontFamilyMono", fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
+              teams/{draft.team || "<team>"}/dags/{draft.name}.yaml
+            </Typography>
+          </Box>
+          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" } }}>
+            <TextField size="small" label="Name" value={draft.name} onChange={(e) => { update({ ...draft, name: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }); }} helperText="Its file name" />
             <TextField select size="small" label="For team" value={draft.team} onChange={(e) => { update({ ...draft, team: e.target.value }); }} helperText="Its catalog folder, and who owns it">
               {teams.map((t) => (
                 <MenuItem key={t} value={t}>
@@ -301,167 +676,114 @@ export function ComposePage() {
             </TextField>
             <TextField size="small" label="Display name" value={draft.displayName} onChange={(e) => { update({ ...draft, displayName: e.target.value }); }} />
             <TextField size="small" label="Description" value={draft.description} onChange={(e) => { update({ ...draft, description: e.target.value }); }} />
-          </Card>
-          {draft.steps.map((step, i) => (
-            <StepCard
-              key={i}
-              step={step}
-              index={i}
-              draft={draft}
-              products={byName}
-              onChange={(next) => { update({ ...draft, steps: draft.steps.map((s, j) => (j === i ? next : s)) }); }}
-              onRemove={() => { update({ ...draft, steps: draft.steps.filter((_, j) => j !== i) }); }}
-            />
-          ))}
-          <Autocomplete
-            options={choices}
-            value={null}
-            blurOnSelect
-            loading={products === null}
-            groupBy={(p) => p.teamName ?? ""}
-            getOptionLabel={(p) => `${p.displayName ?? p.name} · ${p.action}`}
-            onChange={(_e, product) => { if (product) update({ ...draft, steps: [...draft.steps, newStep(draft, byName, product)] }); }}
-            renderInput={(params) => <TextField {...params} label="Add a step" helperText="Actions shared with you. Inputs that need what an earlier step makes are wired to it." />}
-            sx={{ bgcolor: "background.paper" }}
-          />
-          {built && (
-            <Alert severity={built.length > 0 ? "info" : "success"} onClose={() => { setBuilt(null); }}>
-              {built.length > 0 ? (
-                <>
-                  Wired, but these need you:
-                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                    {built.map((p) => (
-                      <li key={`${p.code}:${p.step}:${p.input}`}>{p.message}</li>
-                    ))}
-                  </Box>
-                </>
-              ) : (
-                "Wired. Fill in what's left and review it."
-              )}
-            </Alert>
-          )}
-          <BuildFromCart
-            team={draft.team}
-            choices={choices}
-            onBuilt={(steps, found) => {
-              update({ ...draft, steps });
-              setBuilt(found);
-            }}
-          />
-        </Box>
-
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Card sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <Typography variant="h6" component="h2">
-              The template
-            </Typography>
-            {found.length > 0 ? (
-              <Alert severity="warning">
-                <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                  {found.map((p) => (
-                    <li key={p}>{p}</li>
-                  ))}
-                </Box>
-              </Alert>
-            ) : (
-              <Pill tone="success">Ready to propose</Pill>
-            )}
-            <CodeBlock code={yaml} copyLabel="Copy the file" />
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Button component="a" variant="contained" disabled={found.length > 0 || !propose} href={propose ?? undefined} target="_blank" rel="noopener noreferrer">
-                Propose as a template ↗
-              </Button>
-              {runnable && (
-                <Button variant="outlined" disabled={running} onClick={() => void run()}>
-                  {running ? "Starting…" : "Run now"}
-                </Button>
-              )}
-            </Box>
-            <Typography variant="caption" color="text.secondary">
+          </Box>
+          <CodeBlock code={yaml} copyLabel="Copy the file" />
+          <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap", alignItems: "center" }}>
+            <Button component="a" variant="contained" size="small" disabled={found.length > 0 || !propose} href={propose ?? undefined} target="_blank" rel="noopener noreferrer" sx={{ minHeight: 36 }}>
+              Propose as a template ↗
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ flex: "1 1 240px" }}>
               {propose
-                ? "Opens the catalog repository's new-file page with it filled in: open a pull request for its team to review."
+                ? `Opens the catalog repository's new-file page with it filled in: open a pull request for ${draft.team || "its team"} to review.`
                 : "The catalog repository isn't known here: copy the file into teams/<team>/dags/ yourself."}
-              {!runnable && " It runs now only when nothing's asked and every step is a team you maintain."}
             </Typography>
-          </Card>
-          <Card sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1 }}>
+          </Box>
+        </Card>
+
+        <Card component="aside" aria-label="Drafts" sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1 }}>
             <Typography variant="h6" component="h2">
               Drafts
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Kept for their team as you go: its members see and change them, from any device.{" "}
-              {stored.status === "saving" ? "Saving…" : stored.status === "saved" ? "Saved." : ""}
-            </Typography>
-            {stored.status === "conflict" && (
-              <Alert
-                severity="warning"
-                action={
-                  <Box sx={{ display: "flex", flexDirection: "column" }}>
-                    <Button size="small" color="inherit" onClick={() => void loadTheirs()}>
-                      Load theirs
-                    </Button>
-                    <Button size="small" color="inherit" onClick={stored.keepMine}>
-                      Keep mine
-                    </Button>
-                  </Box>
-                }
-              >
-                {stored.problem}
-              </Alert>
-            )}
-            {stored.status !== "conflict" && stored.problem && <Alert severity="error">{stored.problem}</Alert>}
-            {stored.drafts?.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                None yet: give this one a name and it&apos;s kept.
-              </Typography>
-            )}
-            {stored.drafts?.map((d) => {
-              const isOpen = d.team === draft.team && d.name === draft.name;
-              const steps = draftOf(d).steps.length;
-              return (
-                <Box key={`${d.team}/${d.name}`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Button size="small" onClick={() => { open(draftOf(d)); }} sx={{ flexGrow: 1, justifyContent: "flex-start", textAlign: "left", fontWeight: isOpen ? 600 : 400 }}>
-                    {d.team} / {d.name} · {steps} {steps === 1 ? "step" : "steps"}
-                    {d.updatedBy && ` · ${d.updatedBy}`}
-                  </Button>
-                  <IconButton
-                    size="small"
-                    aria-label={`Delete draft ${d.team}/${d.name}`}
-                    onClick={() => {
-                      stored.remove(d).catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't delete it."); });
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              );
-            })}
-            <Button size="small" onClick={() => { open(null); }}>
+            <Button size="small" onClick={() => { open(null); }} sx={{ minHeight: 36 }}>
               New
             </Button>
-            {stored.inBrowser.length > 0 && (
-              <Alert
-                severity="info"
-                action={
-                  <Button
-                    size="small"
-                    color="inherit"
-                    onClick={() => {
-                      stored
-                        .moveFromBrowser(teams)
-                        .then((n) => { setMoved(`${String(n)} moved.`); })
-                        .catch(() => { setMoved("Couldn't move them."); });
-                    }}
-                  >
-                    Move them
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, lineHeight: 1.45 }}>
+            Kept for their team as you go: its members see and change them, from any device. {stored.status === "saving" ? "Saving…" : stored.status === "saved" ? "Saved." : ""}
+          </Typography>
+          {stored.status === "conflict" && (
+            <Alert
+              severity="warning"
+              action={
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                  <Button size="small" color="inherit" onClick={() => void loadTheirs()}>
+                    Load theirs
                   </Button>
-                }
+                  <Button size="small" color="inherit" onClick={stored.keepMine}>
+                    Keep mine
+                  </Button>
+                </Box>
+              }
+            >
+              {stored.problem}
+            </Alert>
+          )}
+          {stored.status !== "conflict" && stored.problem && <Alert severity="error">{stored.problem}</Alert>}
+          {stored.drafts?.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+              None yet: give this one a name and it&apos;s kept.
+            </Typography>
+          )}
+          {stored.drafts?.map((d) => {
+            const isOpen = d.team === draft.team && d.name === draft.name;
+            const steps = draftOf(d).steps.length;
+            return (
+              <Box
+                key={`${d.team}/${d.name}`}
+                sx={{ display: "flex", alignItems: "center", gap: 1, pl: 0.5, pr: 0.5, borderRadius: 2, border: 1, borderColor: isOpen ? "primary.main" : "tint.rule", bgcolor: isOpen ? "tint.infoSurface" : "transparent" }}
               >
-                {stored.inBrowser.length} {stored.inBrowser.length === 1 ? "draft is" : "drafts are"} kept only in this browser. {moved}
-              </Alert>
-            )}
-          </Card>
-        </Box>
+                <Box
+                  component="button"
+                  type="button"
+                  aria-current={isOpen ? "true" : undefined}
+                  onClick={() => { open(draftOf(d)); }}
+                  sx={{ all: "unset", boxSizing: "border-box", cursor: "pointer", flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 0.25, px: 1, py: 1.25, fontSize: 13, "&:focus-visible": { outline: (t) => `2px solid ${t.palette.primary.main}`, outlineOffset: 2, borderRadius: 1 } }}
+                >
+                  <Box component="span" sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
+                    {d.name}
+                  </Box>
+                  <Box component="span" sx={{ color: "text.secondary" }}>
+                    {d.team} · {steps} {steps === 1 ? "step" : "steps"}
+                    {d.updatedBy && ` · ${d.updatedBy}`}
+                    {d.updatedAt && `, ${when(d.updatedAt)}`}
+                  </Box>
+                </Box>
+                <IconButton
+                  aria-label={`Delete draft ${d.team}/${d.name}`}
+                  title="Delete"
+                  onClick={() => {
+                    stored.remove(d).catch((err: unknown) => { setError(err instanceof ApiError ? err.message : "Couldn't delete it."); });
+                  }}
+                  sx={{ width: 36, height: 36 }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            );
+          })}
+          {stored.inBrowser.length > 0 && (
+            <Alert
+              severity="info"
+              action={
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={() => {
+                    stored
+                      .moveFromBrowser(teams)
+                      .then((n) => { setMoved(`${String(n)} moved.`); })
+                      .catch(() => { setMoved("Couldn't move them."); });
+                  }}
+                >
+                  Move them
+                </Button>
+              }
+            >
+              {stored.inBrowser.length} {stored.inBrowser.length === 1 ? "draft is" : "drafts are"} kept only in this browser. {moved}
+            </Alert>
+          )}
+        </Card>
       </Box>
     </Box>
   );

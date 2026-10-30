@@ -252,8 +252,8 @@ export function ChatPanel({
 }: {
   model: string;
   width: { xs: string; sm: number };
-  /** A question a page opened the panel with: put in the box, for the person to send or change. */
-  question?: { text: string } | null;
+  /** A question a page opened the panel with: put in the box, for the person to send or change, or sent at once (`send`). */
+  question?: { text: string; send: boolean } | null;
   onClose: () => void;
 }) {
   const { user } = useAuth();
@@ -280,7 +280,11 @@ export function ChatPanel({
   }
 
   useEffect(() => {
-    if (question) setDraft(question.text);
+    if (!question) return;
+    if (question.send) void send(question.text);
+    else setDraft(question.text);
+    // send changes every render; only a new question should ask.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question]);
 
   // Leaving the page stops a question in flight: no more model calls for it.
@@ -290,8 +294,8 @@ export function ChatPanel({
     end.current?.scrollIntoView?.({ block: "end" });
   }, [turns, busy, doing]);
 
-  async function send(): Promise<void> {
-    const question = draft.trim();
+  async function send(text: string = draft): Promise<void> {
+    const question = text.trim();
     if (!question || busy) return;
     const next: Turn[] = [...turns, { role: "user", content: question }];
     setTurns(next);

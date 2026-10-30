@@ -10,18 +10,21 @@ What you can run comes first. The rest is listed too, so you know it exists:
 
 | The card says | Means | What you can do |
 | --- | --- | --- |
-| **Ready** (green) | It's shared with you, and nothing says it isn't ready here | **Run**, and for an action **Add to cart** |
+| **Ready** (green) | It's shared with you, and its readiness check says it's ready here | **Run**, and for an action **Add to cart** |
+| **No check** | It's shared with you, and nothing in it has a readiness check | **Run**, and for an action **Add to cart** |
 | **Not ready**, **Check failed**, **Checking**, **Not checked yet** | It's shared with you, and its product has a readiness check ([what they mean](#what-does-not-ready-mean-on-a-product)) | Run it anyway; it may fail |
 | **Deprecated** | Its team wants you to use something else; hover for what | It still runs |
 | **Not shared with you** | Its team hasn't shared it with any of your teams | **Ask for access ↗** |
 
 **Ask for access ↗** opens a new issue on the catalog repository, filled in, in your own browser, asking the owning team to share it with yours. The console never writes to the catalog itself. Something a team marked hidden never appears here at all.
 
-To narrow the list, type in **Search templates, actions, teams**, pick a team's chip (**All teams** clears it), or turn on **Only what I can run**.
+To narrow the list, type in **Search templates, actions, teams**, pick a team (**All teams** clears it), or tick **Only what I can run** or **Ready on** this install.
+
+**Your cart** sits beside the list: the team it's for, what's in it (remove one with its ×), and how it plans (how many steps, what it adds, what you'll need to choose). **Plan and order** opens the cart; **Or build a template from it in Compose** starts Compose from it. An action already in it says **In your cart**.
 
 Three buttons at the top lead elsewhere:
 
-- **Every product**: every team's products by team, each with its releases (every image it has been registered with, the current one marked **Latest**) and **Copy image reference**. An action shared with you has **Run on its own**.
+- **Every product**: every team's products by team, with how many are ready here, filters (**Not ready**, **Deprecated**, **Shared with my teams**, **Released this week**), and a row per product. Open a row for its check, its releases (every image it has been registered with, the current one marked **Latest**, each with **Copy image reference**) and, for an action shared with you, **Run on its own** and **Add to cart**.
 - **Compose**: build a template yourself ([below](#how-do-i-compose-a-template-by-hand)).
 - **Cart**: what you've added to order together ([below](#how-do-i-order-several-actions-together-with-the-cart)); it shows how many are in it.
 
@@ -103,9 +106,9 @@ The cart turns several actions into one run, wired together for you: you pick wh
    | --- | --- |
    | `From <step>'s <output>` | Wired to an earlier step's output of the same type |
    | `Uses <name>` | Filled with something your team (or you) already has, which you chose |
-   | `Asked once for the order: <name>` | One value for every input of that type, under **Asked once for the whole order** |
+   | `Asked once for the order: <name>` | One value for every input of that type, under **Your order** |
    | A field | Yours to fill in, checked like the run form's |
-   | A choice | More than one thing could fill it, or you already have some: pick one, or a new one |
+   | A choice | More than one thing could fill it, or you already have some: pick one of its cards, or a new one |
 
    A step marked **Added: something in your cart needs it** wasn't in your cart: something you added needs what it makes, and nothing else in the cart provides it.
 4. **Optional** suggestions offer to add a provider for an optional input (**Add ...**), or to use what you have (**Use ...**). Nothing is added unless you choose it.
@@ -124,17 +127,17 @@ Good to know:
 
 **Catalog → Compose** builds a template from the actions shared with you, when you want to keep and reuse a combination, or get it reviewed into the catalog.
 
-1. Give it a **Name** (its file is `dags/<name>.yaml`), **For team** (the catalog folder that will own it), and optionally a **Display name** and **Description**.
-2. **Add a step** for each action. Inputs that need what an earlier step makes are wired to it as you add.
-3. For each input, choose **From**: **Not given**, **A value**, **Asked when it runs** (a field on the template's form), or an earlier step's output. Outputs of the matching type are marked `✓ same type`.
-4. **The template** shows the file as it stands, with any problems listed, or **Ready to propose**.
+1. Under **Add a step**, choose **+** beside each action you want (one not shared with you shows a lock: ask its team for it). Inputs that need what an earlier step makes are wired to it as you add.
+2. Pick a step in the list to set its **Step id** and, for each input, where it comes from: **Not given**, **A value**, **Asked when it runs** (a field on the template's form), or an earlier step's output (`From <step> → <output>`). Outputs of the matching type are marked `✓ same type`. **Remove the step** takes it out.
+3. **Checks**, above the steps, lists what's wrong, or that every required input is given, and what it will ask when it runs.
+4. Under **The template**, give it a **Name** (its file is `dags/<name>.yaml`), **For team** (the catalog folder that will own it), and optionally a **Display name** and **Description**. The file shows as it stands.
 
 Then:
 
 - **Propose as a template ↗** opens the catalog repository's new-file page with the file filled in, in your browser. Open a pull request there for its team to review. When the repository isn't known, **Copy the file** and add it to `teams/<team>/dags/` yourself.
-- **Run now** runs it straight away, as a DAG. It's offered only when nothing is asked when it runs and every step is a product of a team you maintain.
+- **Run now** runs it straight away, as a DAG. It works only when nothing is asked when it runs and every step is a product of a team you maintain.
 
-**Build from a cart**, on the same page, wires several actions at once: choose them under **Actions**, then **Wire them**. They're put in an order they can run, each input wired to what provides its type, and anything else they need added. It replaces the steps above. When more than one thing could fill an input, choose, and the steps are wired again. This uses its own list, not the Catalog's **Cart**.
+**Build from a cart**, on the same page, wires several actions at once: choose them under **Actions** (or **Use your cart**), then **Wire them**. They're put in an order they can run, each input wired to what provides its type, and anything else they need added. It replaces the steps below. When more than one thing could fill an input, pick one of its cards, and the steps are wired again. **Use your cart** fills the list from the Catalog's **Cart**; the cart itself is left as it is.
 
 **Drafts** are kept by the console as you go, for the draft's team: its members see and change them from any device. Pick one to open it, **New** to start another, or the bin to delete it. If someone else saved the same draft since you opened it, you're asked to **Load theirs** or **Keep mine**. Drafts still kept only in this browser are offered to the console: **Move them**.
 

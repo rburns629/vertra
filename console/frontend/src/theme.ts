@@ -14,6 +14,20 @@ interface DarkSurface {
   /** Highlights on this surface; the light-theme primary is too dark here. */
   accent: string;
 }
+/** The boards' quieter tints: edges and fills for what's about the install
+ * (info) or waits on you (warning), and the hairline inside a card. */
+interface TintPalette {
+  infoBorder: string;
+  infoSurface: string;
+  warningBorder: string;
+  warningSurface: string;
+  errorBorder: string;
+  successBorder: string;
+  rule: string;
+  neutral: string;
+  /** A control's edge: fields, choice cards, outlined buttons. */
+  field: string;
+}
 interface SidebarPalette extends DarkSurface {
   border: string;
   textStrong: string;
@@ -25,10 +39,12 @@ declare module "@mui/material/styles" {
   interface Palette {
     sidebar: SidebarPalette;
     code: DarkSurface;
+    tint: TintPalette;
   }
   interface PaletteOptions {
     sidebar?: SidebarPalette;
     code?: DarkSurface;
+    tint?: TintPalette;
   }
   interface TypographyVariants {
     fontFamilyMono: string;
@@ -80,6 +96,17 @@ export const theme = createTheme({
       activeBg: "#2F3A52",
       activeText: "#FFFFFF",
       hoverBg: "#232833",
+    },
+    tint: {
+      infoBorder: "#C9D6F7",
+      infoSurface: "#F6F8FF",
+      warningBorder: "#F0D9B5",
+      warningSurface: "#FFFAF2",
+      errorBorder: "#F2C4BE",
+      successBorder: "#A8D5BC",
+      rule: "#ECEEF2",
+      neutral: "#ECEEF2",
+      field: "#D5D9E0",
     },
     // One surface for every block of machine output. The success.light and
     // error.light event colors in the log feed pass on it.
