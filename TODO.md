@@ -1358,10 +1358,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   naming the Secret is refused; and a kernel kind test in CI checks a step
   gets exactly the Secrets it names. Proven by hand on EKS before
   (2026-10-27).
-- [ ] **Re-pin `rot13`'s distroless base** once Google rebuilds
-  `cc-debian12` with Debian's libssl3 fix (CVE-2026-84782), and delete its
-  `.trivyignore` line (it expires 2026-11-27 by itself, failing the check
-  again if the base still has it).
+- [x] **`rot13`'s CVE-2026-84782 exception** (done 2026-10-29): rot13
+  had already moved to a static binary on distroless `static`, which has no
+  OpenSSL; its `.trivyignore` is deleted (Trivy 0.74.0 finds nothing
+  fixable at HIGH or CRITICAL, and no libssl).
 - [x] **actionlint in the catalog template's own CI** (done 2026-10-27):
   its pull-request check lints the workflows, with actionlint installed
   pinned as the scanners are.

@@ -1,6 +1,0 @@
-# libssl3 in the distroless cc-debian12 base, not yet rebuilt by Google with
-# Debian's fix (3.0.22-1~deb12u2) as of 2026-10-27. The rot13 binary links
-# only glibc and libgcc, never OpenSSL, so it can't reach the flaw. Expires
-# by itself; when Google publishes the fixed image, re-pin the base with
-# `./vertra catalog bases --update` and delete this line.
-CVE-2026-84782 exp:2026-11-27
