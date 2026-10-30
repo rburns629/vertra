@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ApiError, deleteTeamWebhook, getTeamWebhook, setTeamWebhook, testTeamWebhook, type TeamWebhook } from "../../api";
 import { when } from "../../time";
+import { Mono } from "../../components/Mono";
+import { SettingsCard } from "./shared";
 
 const KINDS = [
   { kind: "run_failed", label: "A run for the team failed" },
@@ -88,49 +89,66 @@ export function WebhookSection({ team, canManage, retired }: { team: string; can
   const toggle = (kind: string, on: boolean) => { setKinds((current) => (on ? [...current, kind] : current.filter((k) => k !== kind))); };
 
   return (
-    <Card sx={{ p: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography variant="h6" component="h2">
-        Chat notifications
-      </Typography>
+    <SettingsCard title="Chat notifications">
       <Typography variant="body2" color="text.secondary">
-        Posts the team&apos;s notifications to a Slack, Google Chat or Teams channel through its incoming webhook. Everyone also
-        sees their own in the console (the bell).
+        Posts {team}&apos;s notifications to a Slack, Google Chat or Teams channel through its incoming webhook. Everyone also
+        gets their own in the console&apos;s bell.
       </Typography>
       {webhook?.configured ? (
-        <Typography variant="body2">
-          Posting to <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 13 }}>{webhook.host}</Box>
-          {webhook.lastSentAt ? `, last ${when(webhook.lastSentAt)}` : ", nothing sent yet"}.
-        </Typography>
+        <Box role="status" sx={{ p: 1.5, borderRadius: 2, bgcolor: webhook.lastError ? "warning.light" : "background.default" }}>
+          <Typography variant="body2" sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+            <Box
+              component="span"
+              aria-hidden="true"
+              sx={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, alignSelf: "center", bgcolor: webhook.lastError ? "warning.main" : "success.main" }}
+            />
+            <span>
+              Posting to <Mono>{webhook.host}</Mono>
+              {webhook.lastSentAt ? `, last ${when(webhook.lastSentAt)}` : ", nothing sent yet"}.
+            </span>
+          </Typography>
+          {webhook.lastError && (
+            <Typography variant="body2" sx={{ color: "warning.main", mt: 0.5 }}>
+              The last post didn&apos;t go: {webhook.lastError}
+            </Typography>
+          )}
+        </Box>
       ) : (
         webhook && <Typography variant="body2">No webhook: nothing is posted.</Typography>
       )}
-      {webhook?.lastError && <Alert severity="warning">The last post didn&apos;t go: {webhook.lastError}</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
       {notice && <Alert severity="success">{notice}</Alert>}
       {editable && webhook && (
         <>
+          <Box sx={{ display: "flex", flexDirection: "column" }}>
+            {[...KINDS, ...(adminChannel ? ADMIN_KINDS : [])].map(({ kind, label }) => (
+              <FormControlLabel
+                key={kind}
+                control={<Checkbox checked={kinds.includes(kind)} onChange={(e) => { toggle(kind, e.target.checked); }} />}
+                label={label}
+                sx={{ "& .MuiFormControlLabel-label": { fontSize: 14 } }}
+              />
+            ))}
+          </Box>
           <TextField
             label={webhook.configured ? "A new webhook URL (optional)" : "Webhook URL"}
             type="password"
             autoComplete="off"
             value={url}
             onChange={(e) => { setUrl(e.target.value); }}
-            helperText={`It's kept encrypted and never shown again. Allowed hosts: ${allowed.join(", ")}.`}
+            placeholder="https://hooks.slack.com/services/…"
+            helperText={`Kept encrypted and never shown again. Allowed hosts: ${allowed.join(", ")}.`}
             size="small"
+            slotProps={{ inputLabel: { shrink: true } }}
           />
-          <Box sx={{ display: "flex", flexDirection: "column" }}>
-            {[...KINDS, ...(adminChannel ? ADMIN_KINDS : [])].map(({ kind, label }) => (
-              <FormControlLabel key={kind} control={<Checkbox checked={kinds.includes(kind)} onChange={(e) => { toggle(kind, e.target.checked); }} />} label={label} />
-            ))}
-          </Box>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Button variant="contained" disabled={busy || (!webhook.configured && !url.trim())} onClick={() => void save()}>
               Save
             </Button>
             {webhook.configured && (
               <>
-                <Button disabled={busy} onClick={() => void test()}>
-                  Send a test
+                <Button variant="outlined" color="inherit" disabled={busy} onClick={() => void test()}>
+                  Send a test message
                 </Button>
                 <Button color="error" disabled={busy} onClick={() => void remove()}>
                   Remove
@@ -140,6 +158,6 @@ export function WebhookSection({ team, canManage, retired }: { team: string; can
           </Box>
         </>
       )}
-    </Card>
+    </SettingsCard>
   );
 }

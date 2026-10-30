@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { type ReactNode } from "react";
-import { Box, ButtonBase, Chip, Stack, Typography } from "@mui/material";
+import { Box, ButtonBase, Card, Chip, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import CheckIcon from "@mui/icons-material/Check";
 
@@ -10,6 +10,82 @@ export function TabIntro({ children }: { children: ReactNode }) {
     <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 760, mb: 3 }}>
       {children}
     </Typography>
+  );
+}
+
+/** For a label only a screen reader needs (an actions column's header). */
+export const visuallyHidden = { position: "absolute", width: "1px", height: "1px", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" } as const;
+
+/** The small capitals over a group of cards ("Your teams · 2"); danger
+ * for the admins' end-of-life section. */
+export function SectionLabel({ children, id, tone }: { children: ReactNode; id?: string; tone?: "danger" }) {
+  return (
+    <Typography
+      variant="subtitle2"
+      component="h2"
+      id={id}
+      sx={{
+        mb: 1.5,
+        fontSize: 12,
+        fontWeight: 600,
+        letterSpacing: 0.6,
+        textTransform: "uppercase",
+        color: tone === "danger" ? "error.main" : "text.secondary",
+      }}
+    >
+      {children}
+    </Typography>
+  );
+}
+
+/** A card's own heading and what it's for, the boards' card header. */
+export function CardTitle({ title, children, id, aside }: { title: ReactNode; children?: ReactNode; id?: string; aside?: ReactNode }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
+      <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+        <Typography variant="h6" component="h2" id={id} sx={{ fontSize: 17 }}>
+          {title}
+        </Typography>
+        {children && (
+          <Typography variant="body2" color="text.secondary" component="div" sx={{ mt: 0.5 }}>
+            {children}
+          </Typography>
+        )}
+      </Box>
+      {aside}
+    </Box>
+  );
+}
+
+/** One card on a team's Settings: its heading, then what it holds. */
+export function SettingsCard({ title, children, tone }: { title: string; children: ReactNode; tone?: "danger" }) {
+  return (
+    <Card
+      component="section"
+      aria-label={title}
+      sx={{ p: { xs: 2, sm: 2.75 }, display: "flex", flexDirection: "column", gap: 1.5, borderColor: tone === "danger" ? "error.light" : undefined }}
+    >
+      <Typography variant="h6" component={tone === "danger" ? "h3" : "h2"} sx={{ fontSize: 17 }}>
+        {title}
+      </Typography>
+      {children}
+    </Card>
+  );
+}
+
+/** One part of a bot's card (its CI sign-in, its templates, its tokens):
+ * a rule above, a small heading, and the part's own action beside it. */
+export function BotPart({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <Stack spacing={1.25} sx={{ pt: 2, borderTop: 1, borderColor: "divider" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap", minHeight: 32 }}>
+        <Typography variant="subtitle2" component="h4" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+        {action}
+      </Box>
+      {children}
+    </Stack>
   );
 }
 
