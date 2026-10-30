@@ -227,9 +227,88 @@ describe("runs", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Mine" }));
     await waitFor(() => { expect(asked.at(-1)).toMatchObject({ mine: true }); });
 
-    fireEvent.click(screen.getByRole("button", { name: /to approve \(1\)/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /to approve/i }));
     expect(await screen.findByRole("link", { name: "orders-api prod database" })).toBeTruthy();
     expect(screen.getByText("sam@acme.com")).toBeTruthy();
+  });
+
+  it("counts the week's runs, filters by kind, and says who started each", async () => {
+    const DAG = { ...RUN, executionId: "1b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a12", name: "kafka topics backfill", template: "", state: "EXECUTION_STATE_FAILED", submittedBy: "u9" };
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, submittedBy: MEMBER.userId }, DAG] } });
+    expect(await screen.findByText("kafka topics backfill")).toBeTruthy();
+    expect(screen.getByText("someone else")).toBeTruthy();
+    expect(screen.getByText("you")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /^Failed this week 1/ })).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Kind" }));
+    fireEvent.click(await screen.findByRole("option", { name: "A DAG" }));
+    await waitFor(() => { expect(screen.queryByText("orders-api first deploy")).toBeNull(); });
+    expect(screen.getByText("kafka topics backfill")).toBeTruthy();
+  });
+
+  it("lists every one of your teams' schedules together", async () => {
+    const asked: string[] = [];
+    await renderAt("/runs?view=schedules", { ...MEMBER, teamNames: ["payments", "ml"] }, {
+      "ScheduleService/ListSchedules": (request: Record<string, unknown>) => {
+        const team = String(request["team"]);
+        asked.push(team);
+        return { schedules: [{ id: `s-${team}`, team, name: `${team} nightly`, kind: "action", runnableName: "uptime-check.check", cron: "0 2 * * *", timeZone: "UTC", botEmail: `${team}@bots.vertra.local`, enabled: team === "ml" }] };
+      },
+    });
+    expect(await screen.findByText("payments nightly")).toBeTruthy();
+    expect(screen.getByText("ml nightly")).toBeTruthy();
+    expect(screen.getByText("Paused")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /schedules 2/i, selected: true })).toBeTruthy();
+    expect(asked.sort()).toEqual(["ml", "payments"]);
+  });
+});
+
+describe("what runs made", () => {
+  const made = (id: string, name: string, state = "exists") => ({
+    id,
+    type: "gcp/project",
+    externalId: `${name}-7f3`,
+    name,
+    product: "gcp-platform-project",
+    productTeam: "gcp-platform",
+    ownerTeam: "azure-apps",
+    executionId: "0b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a11",
+    taskId: "project",
+    firstReportedAt: "2026-10-21T16:21:00Z",
+    state,
+    canDelete: true,
+  });
+
+  it("counts by state, and deletes the ones picked in one cleanup run", async () => {
+    const asked: Record<string, unknown>[] = [];
+    await renderAt("/runs/made", MEMBER, {
+      "ResourceService/ListResources": {
+        resources: [
+          made("a1b2c3d4-0000-4000-8000-000000000001", "payments-dev"),
+          made("a1b2c3d4-0000-4000-8000-000000000002", "orders-api-dev"),
+          made("a1b2c3d4-0000-4000-8000-000000000003", "scratch-bucket", "delete_failed"),
+          made("a1b2c3d4-0000-4000-8000-000000000004", "old-bucket", "deleted"),
+        ],
+      },
+      "ResourceService/DeleteResources": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
+      },
+    });
+    expect(await screen.findByRole("button", { name: /^Made 2/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Deleted 1/ })).toBeTruthy();
+    // Deleted ones show only when asked for.
+    expect(screen.queryByText("old-bucket")).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select payments-dev" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select orders-api-dev" }));
+    expect(screen.getByText("2 selected")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Delete 2…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await waitFor(() => {
+      expect(asked).toEqual([{ resourceIds: ["a1b2c3d4-0000-4000-8000-000000000001", "a1b2c3d4-0000-4000-8000-000000000002"] }]);
+    });
   });
 });
 
@@ -263,7 +342,8 @@ describe("a run", () => {
         return {};
       },
     });
-    expect(await screen.findByText(/failed at step 2 of 2, deploy: the region is out of quota/i)).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /step 2, deploy: the region is out of quota/i })).toBeTruthy();
+    expect(screen.getByText(/failed at step 2 of 2/i)).toBeTruthy();
     expect(screen.getAllByText("REGION_QUOTA_EXCEEDED").length).toBeGreaterThan(0);
     expect(screen.getByText(/run again in europe-west1/i)).toBeTruthy();
     // The failed step is the one shown below the timeline.
@@ -292,8 +372,9 @@ describe("a run", () => {
       },
     });
     // In the table, and on the request.
-    expect(await screen.findAllByText("Used by shop-api")).toHaveLength(2);
-    expect(screen.getByRole("heading", { name: "Waiting for an admin" })).toBeTruthy();
+    expect(await screen.findByText("Used by shop-api")).toBeTruthy();
+    expect(screen.getAllByText("shop-api").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /^Waiting for an admin/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve and delete" }));
     await waitFor(() => { expect(decided).toEqual([{ id: "d1d1d1d1-0000-4000-8000-000000000001", approve: true }]); });
   });
@@ -323,9 +404,9 @@ describe("a run", () => {
         return { executionId: "9c9c9c9c-0000-4000-8000-000000000009" };
       },
     });
-    expect(await screen.findByRole("heading", { name: "What it made" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "What it made before failing" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /billing-db/ }).getAttribute("href")).toBe("https://console.cloud.google.com/home?project=x");
-    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete all 2…" }));
     fireEvent.click(await screen.findByRole("button", { name: "Delete all", hidden: false }));
     await waitFor(() => { expect(asked).toEqual([{ executionId: FAILED_RUN.executionId }]); });
   });

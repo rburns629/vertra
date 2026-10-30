@@ -1,37 +1,50 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
-import AddIcon from "@mui/icons-material/Add";
+import InventoryIcon from "@mui/icons-material/Inventory2Outlined";
 import { DataTable, type DataTableColumn } from "../components/DataTable";
 import { PageHeader } from "../components/PageHeader";
+import { Pill } from "../components/Pill";
+import { QuickTile, QuickTiles } from "../components/QuickTile";
 import { StatusBadge } from "../components/StatusBadge";
 import {
   ApiError,
+  getInstall,
   listAllTeams,
   listExecutions,
   listPendingApprovals,
+  listSchedules,
   type ExecutionSummary,
   type PendingApproval,
+  type Schedule,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { useEnvironment } from "../environment";
 import { statusFill } from "../statusColor";
 import { duration, when } from "../time";
+import { RunsSchedules } from "./run/RunsSchedules";
 
 const STATUS_OPTIONS = ["RUNNING", "AWAITING_APPROVAL", "PENDING", "FAILED", "SUCCEEDED", "CANCELLED"];
 const PAGE_SIZE = 100;
+/** The most of a week's runs the tiles count (the server's largest page). */
+const WEEK_LIMIT = 1000;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 /** How long typing pauses before the search goes to the server. */
 const SEARCH_DELAY_MS = 300;
 /** More steps than this show as one bar, not a segment each. */
@@ -39,7 +52,25 @@ const MAX_SEGMENTS = 12;
 /** The order a run's steps are drawn in: done first, then what's moving. */
 const STEP_ORDER = ["SUCCEEDED", "FAILED", "CANCELLED", "RUNNING", "CLAIMED", "AWAITING_APPROVAL"];
 
-type Whose = "all" | "mine" | "approve";
+type View = "runs" | "approve" | "schedules";
+type Whose = "all" | "mine";
+type Kind = "template" | "action" | "order" | "dag" | "cleanup" | "preview";
+
+const KINDS: [Kind, string][] = [
+  ["template", "From a template"],
+  ["action", "An action alone"],
+  ["order", "An order"],
+  ["dag", "A DAG"],
+  ["cleanup", "A cleanup"],
+  ["preview", "A preview"],
+];
+
+/** What kind of run it was, from what it ran. */
+function kindOf(run: ExecutionSummary): Kind {
+  if (run.template === "cleanup" || run.template === "preview" || run.template === "order") return run.template;
+  if (!run.template) return "dag";
+  return /^[a-z0-9-]+\/[a-z0-9-]+\.[a-z0-9-]+$/.test(run.template) ? "action" : "template";
+}
 
 /** What a run was: its template ("app-on-cloud-run · gcp-platform") or a DAG of its teams. */
 function what(run: ExecutionSummary): string {
@@ -56,6 +87,11 @@ function took(run: ExecutionSummary, now: number): string {
   if (run.finishedAt) return duration(Date.parse(run.finishedAt) - start);
   if (run.state === "RUNNING" || run.state === "AWAITING_APPROVAL") return `${duration(now - start)} so far`;
   return "—";
+}
+
+/** "a", "a and b", "a, b and c". */
+function listed(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`;
 }
 
 /** A run's steps as one segment each, colored by state, and "2 of 4" done. */
@@ -86,16 +122,36 @@ function Steps({ steps }: { steps: Record<string, number> }) {
   );
 }
 
+/** A tab's label with its count beside it, when there's one. */
+function Counted({ label, count, tone }: { label: string; count: number | null; tone: "warning" | "neutral" }) {
+  return (
+    <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+      {label}
+      {count !== null && count > 0 && <Pill tone={tone}>{count}</Pill>}
+    </Box>
+  );
+}
+
 /**
  * Runs you can see, newest first: from the console's record of who started
  * what (already scoped to the viewer), each with its state and steps from
- * kernel-api in bulk. To approve lists the steps waiting for your team.
+ * kernel-api in bulk; the week's at a glance. To approve lists the steps
+ * waiting for your team; Schedules, your teams' timetables.
  */
 export function ExecutionsListPage() {
   const { user } = useAuth();
+  const theme = useTheme();
+  const environment = useEnvironment();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("view");
+  const view: View = requested === "approve" || requested === "schedules" ? requested : "runs";
+  const setView = (next: View) => { setParams(next === "runs" ? {} : { view: next }, { replace: true }); };
+
   const [executions, setExecutions] = useState<ExecutionSummary[] | null>(null);
+  const [week, setWeek] = useState<ExecutionSummary[] | null>(null);
   const [approvals, setApprovals] = useState<PendingApproval[] | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +160,9 @@ export function ExecutionsListPage() {
   const [query, setQuery] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [kindFilter, setKindFilter] = useState<Kind | "">("");
   const [allTeams, setAllTeams] = useState<string[]>([]);
+  const [retentionDays, setRetentionDays] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
 
   useEffect(() => {
@@ -114,7 +172,6 @@ export function ExecutionsListPage() {
 
   // Whose, name and team are filtered on the server; a new filter starts over.
   useEffect(() => {
-    if (whose === "approve") return;
     let cancelled = false;
     setExecutions(null);
     listExecutions({ limit: PAGE_SIZE, search: query, team: teamFilter, mine: whose === "mine" })
@@ -129,17 +186,38 @@ export function ExecutionsListPage() {
     return () => { cancelled = true; };
   }, [query, teamFilter, whose]);
 
+  // The tiles: the week's runs, for whose and which team.
+  useEffect(() => {
+    let cancelled = false;
+    setWeek(null);
+    listExecutions({ limit: WEEK_LIMIT, since: new Date(now - WEEK_MS).toISOString(), team: teamFilter, mine: whose === "mine" })
+      .then((page) => { if (!cancelled) setWeek(page.executions); })
+      .catch(() => { if (!cancelled) setWeek([]); }); // Display only: the list says if runs can't load.
+    return () => { cancelled = true; };
+  }, [now, teamFilter, whose]);
+
   useEffect(() => {
     listPendingApprovals()
       .then((list) => { setApprovals(list.filter((a) => a.canDecide)); })
       .catch(() => { setApprovals([]); });
   }, []);
 
+  const teamNames = user?.teamNames;
+  useEffect(() => {
+    if (!teamNames) return;
+    Promise.all(teamNames.map((team) => listSchedules(team).catch(() => [] as Schedule[])))
+      .then((lists) => { setSchedules(lists.flat()); })
+      .catch(() => { setSchedules([]); });
+  }, [teamNames]);
+
   useEffect(() => {
     if (!user?.isAdmin) return;
     listAllTeams()
       .then((teams) => { setAllTeams(teams.map((team) => team.name)); })
       .catch(() => { /* the filter offers the teams on the loaded runs */ });
+    getInstall()
+      .then((install) => { setRetentionDays(install.runRetentionDays || null); })
+      .catch(() => { /* the note is left out */ });
   }, [user?.isAdmin]);
 
   async function loadMore(): Promise<void> {
@@ -156,16 +234,39 @@ export function ExecutionsListPage() {
     }
   }
 
-  // State comes from kernel-api per page, so it's filtered here, over what's loaded.
+  // State comes from kernel-api per page, so it's filtered here, over what's loaded; kind too.
   const filtered = useMemo(() => {
     if (!executions) return null;
-    return statusFilter ? executions.filter((e) => e.state === statusFilter) : executions;
-  }, [executions, statusFilter]);
+    return executions.filter((e) => (!statusFilter || e.state === statusFilter) && (!kindFilter || kindOf(e) === kindFilter));
+  }, [executions, statusFilter, kindFilter]);
+
+  const tiles = useMemo(() => {
+    if (!week) return null;
+    const count = (state: string) => week.filter((e) => e.state === state).length;
+    const running = week.filter((e) => e.state === "RUNNING");
+    const longest = running.at(-1); // Newest first: the last started longest ago.
+    const failed = count("FAILED");
+    const succeeded = count("SUCCEEDED");
+    const finished = week.filter((e) => e.finishedAt).length;
+    return {
+      running: running.length,
+      runningNote: longest ? `longest: ${longest.name}, ${duration(now - Date.parse(longest.createdAt))}` : "none now",
+      waiting: count("AWAITING_APPROVAL"),
+      failed,
+      succeeded,
+      finished,
+      more: week.length >= WEEK_LIMIT,
+    };
+  }, [week, now]);
 
   const teamOptions = user?.isAdmin
     ? Array.from(new Set([...allTeams, ...(executions?.flatMap((e) => e.teams) ?? [])])).sort()
     : (user?.teamNames ?? []);
   const open = (id: string) => { navigate(`/runs/${encodeURIComponent(id)}`); };
+  const toApprove = approvals?.length ?? 0;
+  // The list carries the submitter's account id, not their name: yours is "you".
+  const byWhom = (e: ExecutionSummary) => (!e.submittedBy ? "a deleted account" : e.submittedBy === user?.id ? "you" : "someone else");
+  const toggleState = (state: string) => { setStatusFilter((current) => (current === state ? "" : state)); };
 
   const columns: DataTableColumn<ExecutionSummary>[] = [
     {
@@ -185,6 +286,7 @@ export function ExecutionsListPage() {
     { key: "state", header: "State", render: (e) => (e.state ? <StatusBadge status={e.state} /> : "—") },
     { key: "steps", header: "Steps", hideBelow: "sm", render: (e) => <Steps steps={e.steps} /> },
     { key: "started", header: "Started", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{when(e.createdAt)}</Box> },
+    { key: "by", header: "By", hideBelow: "md", render: (e) => <Box sx={{ overflowWrap: "anywhere" }}>{byWhom(e)}</Box> },
     { key: "took", header: "Took", hideBelow: "md", render: (e) => <Box sx={{ whiteSpace: "nowrap" }}>{took(e, now)}</Box> },
   ];
 
@@ -203,53 +305,110 @@ export function ExecutionsListPage() {
     { key: "since", header: "Waiting since", hideBelow: "md", render: (a) => (a.awaitingSince ? when(a.awaitingSince) : "—") },
   ];
 
-  const toApprove = approvals?.length ?? 0;
+  const fieldSx = { bgcolor: "background.paper", "& .MuiInputBase-root": { minHeight: 40 } };
 
   return (
-    <Box>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <PageHeader
         title="Runs"
         help={{ guide: "09-runs-explained", label: "Runs, explained" }}
-        subtitle="Runs you started, your teams', and any that ran your teams' steps."
+        subtitle="Runs you started, your teams', and any that ran your teams' steps: their state, their steps, and what waits for your team to approve."
         action={
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button variant="outlined" onClick={() => { navigate("/runs/made"); }}>
+          <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap" }}>
+            <Button variant="outlined" size="large" startIcon={<InventoryIcon />} component={RouterLink} to="/runs/made">
               What runs made
             </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { navigate("/runs/submit"); }}>
-              Submit new
+            <Button variant="outlined" size="large" component={RouterLink} to="/runs/submit">
+              Submit a DAG
+            </Button>
+            <Button variant="contained" size="large" component={RouterLink} to="/catalog">
+              Run something
             </Button>
           </Box>
         }
       />
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {toApprove > 0 && whose !== "approve" && (
-        <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => { setWhose("approve"); }}>Review</Button>}>
-          {toApprove === 1 ? "A step waits" : `${String(toApprove)} steps wait`} for your team to approve {toApprove === 1 ? "it" : "them"}.
-        </Alert>
-      )}
+      <Tabs
+        value={view}
+        onChange={(_event, value: View) => { setView(value); }}
+        aria-label="Runs views"
+        variant="scrollable"
+        allowScrollButtonsMobile
+        sx={{ mt: -3 }}
+      >
+        <Tab value="runs" label="Runs" />
+        <Tab value="approve" label={<Counted label="To approve" count={approvals === null ? null : toApprove} tone="warning" />} />
+        <Tab value="schedules" label={<Counted label="Schedules" count={schedules === null ? null : schedules.length} tone="neutral" />} />
+      </Tabs>
 
-      <Box sx={{ display: "flex", gap: 1.25, mb: 2, flexWrap: "wrap", alignItems: "center" }}>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={whose}
-          onChange={(_, value: Whose | null) => { if (value) setWhose(value); }}
-          aria-label="Whose runs"
-          sx={{ bgcolor: "background.paper", "& .MuiToggleButton-root": { px: 1.75, minHeight: 40 } }}
-        >
-          <ToggleButton value="mine">Mine</ToggleButton>
-          <ToggleButton value="all">All I can see</ToggleButton>
-          <ToggleButton value="approve">To approve{toApprove > 0 ? ` (${String(toApprove)})` : ""}</ToggleButton>
-        </ToggleButtonGroup>
-        {whose !== "approve" && (
-          <>
-            <FormControl size="small" sx={{ minWidth: 160, bgcolor: "background.paper" }}>
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {view === "runs" && (
+        <>
+          {approvals && toApprove > 0 && (
+            <Alert
+              severity="warning"
+              role="status"
+              action={
+                <Button color="inherit" variant="outlined" onClick={() => { setView("approve"); }}>
+                  Review {toApprove === 1 ? "it" : "them"}
+                </Button>
+              }
+            >
+              {toApprove === 1 ? "A step waits" : `${String(toApprove)} steps wait`} for an approval you can give:{" "}
+              {listed(approvals.slice(0, 3).map((a) => `${a.executionName} (${a.team})`))}
+              {toApprove > 3 ? ` and ${String(toApprove - 3)} more` : ""}.
+            </Alert>
+          )}
+
+          <QuickTiles label="This week at a glance">
+            <QuickTile
+              label="Running"
+              value={tiles?.running ?? "…"}
+              note={tiles?.runningNote}
+              dot={theme.palette.primary.main}
+              pressed={statusFilter === "RUNNING"}
+              onClick={() => { toggleState("RUNNING"); }}
+            />
+            <QuickTile
+              label="Waiting for approval"
+              value={tiles?.waiting ?? "…"}
+              note={approvals ? (toApprove > 0 ? `${String(toApprove)} you can decide` : "none you can decide") : undefined}
+              dot={statusFill(theme, "AWAITING_APPROVAL")}
+              pressed={statusFilter === "AWAITING_APPROVAL"}
+              onClick={() => { toggleState("AWAITING_APPROVAL"); }}
+            />
+            <QuickTile
+              label="Failed this week"
+              value={tiles?.failed ?? "…"}
+              note={tiles && `of ${String(tiles.finished)} finished${tiles.more ? ", in the latest 1000" : ""}`}
+              dot={theme.palette.error.main}
+              pressed={statusFilter === "FAILED"}
+              onClick={() => { toggleState("FAILED"); }}
+            />
+            <QuickTile
+              label="Succeeded this week"
+              value={tiles?.succeeded ?? "…"}
+              note={tiles && (tiles.finished > 0 ? `${String(Math.round((tiles.succeeded / tiles.finished) * 100))}% of those finished` : "none finished yet")}
+              dot={theme.palette.success.main}
+              pressed={statusFilter === "SUCCEEDED"}
+              onClick={() => { toggleState("SUCCEEDED"); }}
+            />
+          </QuickTiles>
+
+          <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap", alignItems: "center" }}>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={whose}
+              onChange={(_, value: Whose | null) => { if (value) setWhose(value); }}
+              aria-label="Whose runs"
+              sx={{ bgcolor: "background.paper", "& .MuiToggleButton-root": { px: 1.75, minHeight: 40 } }}
+            >
+              <ToggleButton value="mine">Mine</ToggleButton>
+              <ToggleButton value="all">All I can see</ToggleButton>
+            </ToggleButtonGroup>
+            <FormControl size="small" sx={{ minWidth: 150, ...fieldSx }}>
               <InputLabel id="team-filter-label">Team</InputLabel>
               <Select labelId="team-filter-label" label="Team" value={teamFilter} onChange={(event) => { setTeamFilter(event.target.value); }}>
                 <MenuItem value="">Any team</MenuItem>
@@ -260,7 +419,7 @@ export function ExecutionsListPage() {
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 160, bgcolor: "background.paper" }}>
+            <FormControl size="small" sx={{ minWidth: 150, ...fieldSx }}>
               <InputLabel id="status-filter-label">State</InputLabel>
               <Select labelId="status-filter-label" label="State" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); }}>
                 <MenuItem value="">Any state</MenuItem>
@@ -271,48 +430,82 @@ export function ExecutionsListPage() {
                 ))}
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 150, ...fieldSx }}>
+              <InputLabel id="kind-filter-label">Kind</InputLabel>
+              <Select labelId="kind-filter-label" label="Kind" value={kindFilter} onChange={(event) => { setKindFilter(event.target.value as Kind | ""); }}>
+                <MenuItem value="">Any kind</MenuItem>
+                {KINDS.map(([kind, label]) => (
+                  <MenuItem key={kind} value={kind}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               size="small"
               placeholder="Find a run by name"
               slotProps={{ htmlInput: { "aria-label": "Find a run" } }}
               value={search}
               onChange={(event) => { setSearch(event.target.value); }}
-              sx={{ flex: "1 1 240px", minWidth: 0, bgcolor: "background.paper" }}
+              sx={{ flex: "1 1 240px", minWidth: 0, ...fieldSx }}
             />
-          </>
-        )}
-      </Box>
+          </Box>
 
-      {whose === "approve" ? (
-        <DataTable
-          columns={approvalColumns}
-          rows={approvals}
-          getRowKey={(a) => `${a.executionId}/${a.taskId}`}
-          onRowClick={(a) => { open(a.executionId); }}
-          emptyMessage="Nothing waits for your teams to approve."
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={filtered}
-          getRowKey={(e) => e.executionId}
-          onRowClick={(e) => { open(e.executionId); }}
-          emptyMessage={
-            executions && executions.length > 0
-              ? "No runs match these filters."
-              : whose === "mine"
-                ? "You haven't started a run yet. Find something to run in the Catalog."
-                : "No runs you can see yet: they're your own, your teams', and any that used your teams' steps."
-          }
-        />
+          <Card component="section" aria-labelledby="runs-heading">
+            <Box sx={{ px: 2.5, pt: 2, pb: 0.75, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 1 }}>
+              <Typography id="runs-heading" variant="h6" component="h2">
+                {whose === "mine" ? "Your runs" : "All you can see"}
+              </Typography>
+              {executions && (
+                <Typography variant="body2" color="text.secondary">
+                  Newest first · {filtered && filtered.length !== executions.length ? `${String(filtered.length)} shown of ` : ""}
+                  {executions.length} loaded{nextCursor ? ", more to load" : ""}
+                </Typography>
+              )}
+            </Box>
+            <DataTable
+              columns={columns}
+              rows={filtered}
+              getRowKey={(e) => e.executionId}
+              onRowClick={(e) => { open(e.executionId); }}
+              emptyMessage={
+                executions && executions.length > 0
+                  ? "No runs match these filters."
+                  : whose === "mine"
+                    ? "You haven't started a run yet. Find something to run in the Catalog."
+                    : "No runs you can see yet: they're your own, your teams', and any that used your teams' steps."
+              }
+            />
+          </Card>
+          {(retentionDays !== null || nextCursor) && (
+            <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1.25, mt: -1.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {retentionDays !== null &&
+                  `Runs are kept ${String(retentionDays)} days${environment?.label ? ` on ${environment.label}` : ""}. What they made is kept until it's deleted.`}
+              </Typography>
+              {nextCursor && (
+                <Button variant="outlined" onClick={() => void loadMore()} disabled={loadingMore}>
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              )}
+            </Box>
+          )}
+        </>
       )}
-      {whose !== "approve" && nextCursor && (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <Button onClick={() => void loadMore()} disabled={loadingMore}>
-            {loadingMore ? "Loading…" : "Load more"}
-          </Button>
-        </Box>
+
+      {view === "approve" && (
+        <Card>
+          <DataTable
+            columns={approvalColumns}
+            rows={approvals}
+            getRowKey={(a) => `${a.executionId}/${a.taskId}`}
+            onRowClick={(a) => { open(a.executionId); }}
+            emptyMessage="Nothing waits for your teams to approve."
+          />
+        </Card>
       )}
+
+      {view === "schedules" && <RunsSchedules schedules={schedules} />}
     </Box>
   );
 }

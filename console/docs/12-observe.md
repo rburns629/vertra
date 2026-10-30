@@ -130,7 +130,7 @@ Fill in what you know and press **Search**:
 
 The newest lines come first. Each shows its time, level, and where it came from: a step's team, step and attempt with a link to its run; an API backend's team and app; or the platform component. When there are more matches than shown, the tab says **Only the newest N lines are shown**: narrow the search.
 
-From a step on a run's page, **Search in Observe** opens this tab with that run filled in, over the last 7 days.
+From a step on a run's page, **Search its logs in Observe** opens this tab with that run filled in, over the last 7 days.
 
 Credentials a step or backend prints are redacted before anything is kept. Older logs than the search window are archived; only an admin can read them, with Loki's own tools.
 

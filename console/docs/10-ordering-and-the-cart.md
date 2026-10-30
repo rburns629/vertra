@@ -161,8 +161,8 @@ Every member sees the team's **Schedules** tab: what each runs, **When** (with t
 
 A product can report what its steps made or changed (a project, a ticket, a service). The console keeps that list after the run itself is deleted, so you can find it and clean it up later.
 
-- **On a run's page**, **What it made** lists it, within a minute of the run finishing.
-- **Runs → What runs made** lists everything made for your teams, or for you, newest first. Search by type, id or name; **Show deleted** includes what's gone.
+- **On a run's page**, **What this run made** lists it, within a minute of the run finishing.
+- **Runs → What runs made** lists everything made for your teams, or for you, newest first. Search by type, id or name, or narrow it by whom it was made for, its type or its state; **Show deleted** includes what's gone. Tick several of one team's and **Delete** them together: each one's cleanup runs, in one run, newest first.
 
 Each row shows **What** (linked, when the product gave a link), **Made for**, **By** (the product and the run), **Made**, and **State**:
 

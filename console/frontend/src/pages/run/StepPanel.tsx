@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: MIT
 import { useState, type ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { dump as dumpYaml } from "js-yaml";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
+import Link from "@mui/material/Link";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import type { ExecutionEvent, SubmittedExecutionPayload, SubmittedTaskPayload, TaskAttempt, TaskLogs, TaskStatus } from "../../api";
+import { alpha, useTheme } from "@mui/material/styles";
+import type { ExecutionEvent, FailureHelp, SubmittedExecutionPayload, SubmittedTaskPayload, TaskAttempt, TaskLogs, TaskStatus } from "../../api";
 import { StatusBadge } from "../../components/StatusBadge";
 import { imageName } from "../../imageRef";
 import { duration, when } from "../../time";
 import { Approval } from "./Approval";
+import { RETRY } from "./FailureHelp";
 import { StepLogs } from "./StepLogs";
 
 type TabId = "attempts" | "outputs" | "inputs" | "logs" | "definition";
@@ -25,11 +29,6 @@ const TRIGGER: Record<string, string> = {
 };
 
 const mono = { fontFamily: "fontFamilyMono", fontSize: 13 } as const;
-
-/** repo:tag@sha256:1a2b3c4d5e6f…: the digest cut short (the whole of it on hover). */
-function shortImage(image: string): string {
-  return image.replace(/@sha256:([0-9a-f]{12})[0-9a-f]+$/, "@sha256:$1…");
-}
 
 /** One step's definition as it was submitted, in the shape a DAG file uses. */
 function definitionYaml(payload: SubmittedExecutionPayload, task: SubmittedTaskPayload): string {
@@ -67,13 +66,13 @@ function KeyValues({ values, empty }: { values: Record<string, unknown> | null |
   const entries = Object.entries(values ?? {});
   if (entries.length === 0) return <Typography color="text.secondary">{empty}</Typography>;
   return (
-    <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "minmax(120px, auto) 1fr", columnGap: 3, rowGap: 1 }}>
+    <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "minmax(80px, auto) minmax(0, 1fr)", columnGap: 2, rowGap: 0.75 }}>
       {entries.map(([key, value]) => (
         <Box key={key} sx={{ display: "contents" }}>
-          <Box component="dt" sx={{ ...mono, color: "text.secondary" }}>
+          <Box component="dt" sx={{ ...mono, fontSize: 12, color: "text.secondary" }}>
             {key}
           </Box>
-          <Box component="dd" sx={{ ...mono, m: 0, overflowWrap: "anywhere" }}>
+          <Box component="dd" sx={{ ...mono, fontSize: 12, m: 0, overflowWrap: "anywhere" }}>
             {valueOf(value)}
           </Box>
         </Box>
@@ -82,53 +81,64 @@ function KeyValues({ values, empty }: { values: Record<string, unknown> | null |
   );
 }
 
-function Attempt({ attempt, now }: { attempt: TaskAttempt; now: number }) {
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+/**
+ * One attempt as a tinted box: how it went and for how long, when, who asked
+ * for it, its failure, and, once retried, when and by whom.
+ */
+function Attempt({ attempt, next, help, now }: { attempt: TaskAttempt; next: TaskAttempt | undefined; help: FailureHelp | null; now: number }) {
+  const theme = useTheme();
   const started = attempt.startedAt ? Date.parse(attempt.startedAt) : null;
   const ended = attempt.completedAt ? Date.parse(attempt.completedAt) : null;
   const how = attempt.failure ? "failed" : ended ? "succeeded" : started ? "running" : "waiting to start";
+  const tone = attempt.failure ? (next ? theme.palette.warning.main : theme.palette.error.main) : ended ? theme.palette.success.main : started ? theme.palette.primary.main : theme.palette.grey[500];
+  const retried = next && [TRIGGER[next.trigger] ?? next.trigger, next.requestedBy].filter(Boolean).join(" ");
+  const gap = next?.startedAt && ended !== null ? ` after ${duration(Date.parse(next.startedAt) - ended)}` : "";
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, py: 1.5, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}>
-      <Typography sx={{ fontWeight: 500 }}>
-        Attempt {attempt.number} · {how}
-        {started !== null && ` ${ended ? "after" : "for"} ${duration((ended ?? now) - started)}`}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {[
-          [TRIGGER[attempt.trigger] ?? attempt.trigger, attempt.requestedBy].filter(Boolean).join(" "),
-          attempt.startedAt ? when(attempt.startedAt) : "",
-        ]
-          .filter(Boolean)
-          .join(", ")}
+    <Box
+      component="li"
+      sx={{ display: "flex", flexDirection: "column", gap: 0.75, px: 2, py: 1.75, borderRadius: 2, border: 1, borderColor: alpha(tone, 0.35), bgcolor: alpha(tone, 0.05) }}
+    >
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 1 }}>
+        <Typography component="span" sx={{ fontSize: 14, fontWeight: 600 }}>
+          Attempt {attempt.number} · {how}
+          {started !== null && ` ${ended ? "after" : "for"} ${duration((ended ?? now) - started)}`}
+        </Typography>
+        <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+          {retried
+            ? `${retried}${gap}`
+            : attempt.startedAt && attempt.completedAt
+              ? `${clock(attempt.startedAt)} to ${clock(attempt.completedAt)}`
+              : attempt.startedAt
+                ? `since ${clock(attempt.startedAt)}`
+                : ""}
+        </Typography>
+      </Box>
+      <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+        {[[TRIGGER[attempt.trigger] ?? attempt.trigger, attempt.requestedBy].filter(Boolean).join(" "), attempt.startedAt ? when(attempt.startedAt) : ""].filter(Boolean).join(", ")}
       </Typography>
       {attempt.failure && (
-        <Typography variant="body2">
-          <Box component="span" sx={{ ...mono, fontWeight: 600, color: "error.main" }}>
+        <Typography component="span" sx={{ ...mono, color: "text.primary", overflowWrap: "anywhere" }}>
+          <Box component="span" sx={{ fontWeight: 600, color: next ? "warning.dark" : "error.main" }}>
             {attempt.failure.code}
           </Box>{" "}
           · {attempt.failure.message}
           {!attempt.failure.retryable && " (not retryable)"}
         </Typography>
       )}
-    </Box>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography component="div" variant="body2" sx={{ overflowWrap: "anywhere" }}>
-        {children}
-      </Typography>
+      {attempt.failure && help && RETRY[help.retry] && (
+        <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+          Safe to retry? {RETRY[help.retry]}
+        </Typography>
+      )}
     </Box>
   );
 }
 
 /**
- * The selected step: its approval, if it needs one; its attempts, outputs,
- * inputs, logs and definition; and who acted in it.
+ * The selected step: its approval, if it needs one; its attempts (and, once
+ * it succeeded, its outputs), outputs, inputs, logs and definition.
  */
 export function StepPanel({
   executionId,
@@ -156,117 +166,101 @@ export function StepPanel({
   onDecide: (approve: boolean, reason: string) => void;
 }) {
   const [tab, setTab] = useState<TabId>("attempts");
-  const last = task.attempts.at(-1);
+  const hasOutputs = Object.keys(task.outputs ?? {}).length > 0;
 
   return (
-    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, alignItems: "flex-start" }}>
-      <Card sx={{ flex: "3 1 520px", minWidth: 0, p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 1.5 }}>
-          <Box sx={{ minWidth: 0 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
-              <Typography variant="h6" component="h2">
-                {task.taskId}
-              </Typography>
-              <StatusBadge status={task.state} />
-            </Box>
-            {definition && (
-              <Typography variant="body2" color="text.secondary">
-                {imageName(definition.image)} · {definition.action} · {definition.team}
-              </Typography>
-            )}
+    <Card component="section" id="step" aria-labelledby="step-heading" sx={{ minWidth: 0, p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 1.5 }}>
+        <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
+            <Typography id="step-heading" variant="h6" component="h2" sx={{ fontSize: 18, overflowWrap: "anywhere" }}>
+              {task.taskId}
+            </Typography>
+            <StatusBadge status={task.state} />
           </Box>
-          {task.state === "FAILED" && (
-            <Tooltip title={retryBlocked ?? ""}>
-              {/* A disabled button fires no events, so the tooltip needs a wrapper. */}
-              <span>
-                <Button variant="contained" disabled={busy || retryBlocked !== null} onClick={onRetry}>
-                  {busy ? "Retrying…" : "Retry this step"}
-                </Button>
-              </span>
-            </Tooltip>
+          {definition && (
+            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+              {imageName(definition.image)} · {definition.action} · {definition.team}
+            </Typography>
           )}
         </Box>
-
-        {task.waitingFor && (
-          <Alert severity="info">
-            Waiting its turn: another run is changing the same{" "}
-            {Object.entries(task.waitingFor)
-              .map(([name, value]) => `${name} (${typeof value === "string" ? value : JSON.stringify(value)})`)
-              .join(", ")}
-            . It starts when that one finishes.
-          </Alert>
+        {task.state === "FAILED" && (
+          <Tooltip title={retryBlocked ?? ""}>
+            {/* A disabled button fires no events, so the tooltip needs a wrapper. */}
+            <span>
+              <Button variant="outlined" disabled={busy || retryBlocked !== null} onClick={onRetry}>
+                {busy ? "Retrying…" : "Retry this step"}
+              </Button>
+            </span>
+          </Tooltip>
         )}
-        {task.waitingForCap && (
-          <Alert severity="info">
-            Waiting its turn: its product already has as many steps running as it allows at once (its maxRunning). It starts
-            when one of them finishes.
-          </Alert>
-        )}
-        {task.approval && <Approval executionId={executionId} taskId={task.taskId} approval={task.approval} awaiting={task.state === "AWAITING_APPROVAL"} busy={busy} onDecide={onDecide} />}
+      </Box>
 
-        <Tabs value={tab} onChange={(_, value: TabId) => { setTab(value); }} variant="scrollable" allowScrollButtonsMobile sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}>
-          <Tab value="attempts" label="Attempts" />
-          <Tab value="outputs" label="Outputs" />
-          <Tab value="inputs" label="Inputs" />
-          <Tab value="logs" label="Logs" />
-          <Tab value="definition" label="Definition" />
-        </Tabs>
+      {task.waitingFor && (
+        <Alert severity="info">
+          Waiting its turn: another run is changing the same{" "}
+          {Object.entries(task.waitingFor)
+            .map(([name, value]) => `${name} (${typeof value === "string" ? value : JSON.stringify(value)})`)
+            .join(", ")}
+          . It starts when that one finishes.
+        </Alert>
+      )}
+      {task.waitingForCap && (
+        <Alert severity="info">
+          Waiting its turn: its product already has as many steps running as it allows at once (its maxRunning). It starts
+          when one of them finishes.
+        </Alert>
+      )}
+      {task.approval && <Approval executionId={executionId} taskId={task.taskId} approval={task.approval} awaiting={task.state === "AWAITING_APPROVAL"} busy={busy} onDecide={onDecide} />}
 
-        {tab === "attempts" &&
-          (task.attempts.length > 0 ? (
-            <Box>
-              {[...task.attempts].reverse().map((a) => (
-                <Attempt key={a.number} attempt={a} now={now} />
+      <Tabs value={tab} onChange={(_, value: TabId) => { setTab(value); }} aria-label="Step views" variant="scrollable" allowScrollButtonsMobile>
+        <Tab value="attempts" label="Attempts" />
+        <Tab value="outputs" label="Outputs" />
+        <Tab value="inputs" label="Inputs" />
+        <Tab value="logs" label="Logs" />
+        <Tab value="definition" label="Definition" />
+      </Tabs>
+
+      {tab === "attempts" &&
+        (task.attempts.length > 0 ? (
+          <>
+            <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 1.5 }}>
+              {task.attempts.map((a, i) => (
+                <Attempt key={a.number} attempt={a} next={task.attempts[i + 1]} help={task.help} now={now} />
               ))}
             </Box>
-          ) : (
-            <Typography color="text.secondary">
-              {task.dependsOn.length > 0 ? `Waits for ${task.dependsOn.join(", ")}.` : "Not started yet."}
-            </Typography>
-          ))}
-        {tab === "outputs" && <KeyValues values={task.outputs} empty="No outputs yet: a step reports them when it finishes." />}
-        {tab === "inputs" && <KeyValues values={definition?.inputs} empty="It takes no inputs." />}
-        {tab === "logs" && <StepLogs executionId={executionId} taskId={task.taskId} logs={logs} events={events} />}
-        {tab === "definition" &&
-          (payload && definition ? (
-            <Box component="pre" tabIndex={0} sx={{ ...mono, m: 0, p: 2, borderRadius: 2, bgcolor: "code.background", color: "code.text", overflowX: "auto" }}>
-              {definitionYaml(payload, definition)}
-            </Box>
-          ) : (
-            <Typography color="text.secondary">This run predates stored submissions, so its definition isn't kept.</Typography>
-          ))}
-      </Card>
-
-      <Card component="aside" sx={{ flex: "1 1 260px", minWidth: 0, p: 3, display: "flex", flexDirection: "column", gap: 1.75 }}>
-        <Typography variant="h6" component="h3">
-          Who acted
-        </Typography>
-        <Fact label="Asked for by">
-          {last?.requestedBy || (last?.trigger === "automatic_retry" ? "the scheduler, retrying automatically" : "—")}
-        </Fact>
-        <Fact label="Ran as">
-          <Box component="span" sx={mono}>
-            {last?.actedAs || (definition ? `${definition.team}/${definition.serviceAccount ?? "default"}` : "—")}
+            {task.state === "SUCCEEDED" && hasOutputs && (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pt: 1.75, borderTop: 1, borderColor: "divider" }}>
+                <Typography component="h3" sx={{ fontSize: 13, fontWeight: 600 }}>
+                  Outputs
+                </Typography>
+                <KeyValues values={task.outputs} empty="" />
+              </Box>
+            )}
+          </>
+        ) : (
+          <Typography color="text.secondary">
+            {task.dependsOn.length > 0 ? `Waits for ${task.dependsOn.join(", ")}.` : "Not started yet."}
+          </Typography>
+        ))}
+      {tab === "outputs" && <KeyValues values={task.outputs} empty="No outputs yet: a step reports them when it finishes." />}
+      {tab === "inputs" && <KeyValues values={definition?.inputs} empty="It takes no inputs." />}
+      {tab === "logs" && <StepLogs taskId={task.taskId} logs={logs} events={events} />}
+      {tab === "definition" &&
+        (payload && definition ? (
+          <Box component="pre" tabIndex={0} sx={{ ...mono, m: 0, p: 2, borderRadius: 2, bgcolor: "code.background", color: "code.text", overflowX: "auto" }}>
+            {definitionYaml(payload, definition)}
           </Box>
-        </Fact>
-        {definition && (
-          <Fact label="Image">
-            <Box component="span" sx={mono} title={last?.image || definition.image}>
-              {shortImage(last?.image || definition.image)}
-            </Box>
-          </Fact>
-        )}
-        {definition?.secretRefs && definition.secretRefs.length > 0 && (
-          <Fact label="Secrets mounted">
-            <Box component="span" sx={mono}>
-              {definition.secretRefs.join(", ")}
-            </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              Names only: values are never shown.
-            </Typography>
-          </Fact>
-        )}
-      </Card>
-    </Box>
+        ) : (
+          <Typography color="text.secondary">This run predates stored submissions, so its definition isn&apos;t kept.</Typography>
+        ))}
+
+      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+        {logs && logs.hidden > 0 && `You see this step's INFO lines, its status, errors and outputs; ${logs.visibleTo} sees every line. `}
+        <Link component={RouterLink} to={`/observe?tab=logs&run=${encodeURIComponent(executionId)}`}>
+          Search its logs in Observe
+        </Link>
+      </Typography>
+    </Card>
   );
 }
