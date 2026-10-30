@@ -12,10 +12,10 @@ import { ApiError } from "../apiError.js";
 import { canMaintainTeam } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { catalogRepository, findApi, findUserById, listLiveTeamApis, setApiPaused, type ApiRow } from "../db/queries.js";
-import { apiTraffic, gatewayState, type BackendAuth } from "../db/schema.js";
+import { apiProblems, apiTraffic, gatewayState, type BackendAuth } from "../db/schema.js";
 import { catalogLinks, githubBase } from "./catalogLinks.js";
 
 type Api = ApiRow & { teamName: string };
@@ -45,16 +45,35 @@ export function backendAllowed(url: string, hosts: string[] = config.gateway.bac
   });
 }
 
-/** live, held or paused, and why. */
-export function apiState(api: Pick<Api, "backendUrl" | "pausedMessage">): { state: "live" | "held" | "paused"; heldReason: string } {
-  if (api.pausedMessage !== null) return { state: "paused", heldReason: "" };
+/** Why the gateway can't serve an API, as it recorded it (api_problems). */
+export interface Problem {
+  problem: string;
+  foundAt: Date;
+}
+
+/** Live, held, paused, or unavailable (the gateway can't use its spec), and why: in the gateway's order. */
+export function apiState(
+  api: Pick<Api, "backendUrl" | "pausedMessage">,
+  problem: Problem | null = null,
+): { state: "live" | "held" | "paused" | "unavailable"; heldReason: string; problem: string; problemFoundAt: Date | null } {
+  const none = { heldReason: "", problem: "", problemFoundAt: null };
+  if (api.pausedMessage !== null) return { state: "paused", ...none };
   if (!backendAllowed(api.backendUrl)) {
     return {
       state: "held",
+      ...none,
       heldReason: `Its backend's host, ${hostOf(api.backendUrl)}, isn't one this install's admins allow (the gateway's backendHosts).`,
     };
   }
-  return { state: "live", heldReason: "" };
+  if (problem) return { state: "unavailable", ...none, problem: problem.problem, problemFoundAt: problem.foundAt };
+  return { state: "live", ...none };
+}
+
+/** What the gateway recorded it can't serve, of these APIs. */
+async function problemsOf(ids: string[]): Promise<Map<string, Problem>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db.select().from(apiProblems).where(inArray(apiProblems.apiId, ids));
+  return new Map(rows.map((r) => [r.apiId, { problem: r.problem, foundAt: r.foundAt }]));
 }
 
 function hostOf(url: string): string {
@@ -112,7 +131,7 @@ function joinUrl(base: string, api: Api): string {
 }
 
 /** One API as the caller sees it; `base` is the catalog repository's GitHub page, for its links. */
-function view(caller: AuthUser, api: Api, base: string | null) {
+function view(caller: AuthUser, api: Api, base: string | null, problem: Problem | null) {
   const own = caller.isAdmin || caller.teamNames.includes(api.teamName);
   const internet = api.internet && config.gateway.internetTeams.includes(api.teamName);
   const info = isRecord(api.openapi) && isRecord(api.openapi["info"]) ? api.openapi["info"] : {};
@@ -121,7 +140,7 @@ function view(caller: AuthUser, api: Api, base: string | null) {
     name: api.name,
     displayName: api.displayName,
     description: api.description,
-    ...apiState(api),
+    ...apiState(api, problem),
     pausedMessage: api.pausedMessage ?? "",
     mayCall: mayCall(caller, api),
     shareWith: api.shareWith,
@@ -148,7 +167,9 @@ export type ApiView = ReturnType<typeof view>;
 export async function listApis(caller: AuthUser | undefined): Promise<ApiView[]> {
   const who = signedIn(caller);
   const base = githubBase(await catalogRepository());
-  return (await listLiveTeamApis()).filter((api) => sees(who, api)).map((api) => view(who, api, base));
+  const seen = (await listLiveTeamApis()).filter((api) => sees(who, api));
+  const problems = await problemsOf(seen.map((api) => api.id));
+  return seen.map((api) => view(who, api, base, problems.get(api.id) ?? null));
 }
 
 async function visibleApi(who: AuthUser, team: string, name: string): Promise<Api> {
@@ -160,7 +181,8 @@ async function visibleApi(who: AuthUser, team: string, name: string): Promise<Ap
 export async function getApi(caller: AuthUser | undefined, team: string, name: string) {
   const who = signedIn(caller);
   const api = await visibleApi(who, team, name);
-  return { api: view(who, api, githubBase(await catalogRepository())), openapi: JSON.stringify(api.openapi) };
+  const problem = (await problemsOf([api.id])).get(api.id) ?? null;
+  return { api: view(who, api, githubBase(await catalogRepository()), problem), openapi: JSON.stringify(api.openapi) };
 }
 
 /** Pauses (a message) or resumes (null) an API; a maintainer of its team or an admin. */

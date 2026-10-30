@@ -2186,6 +2186,20 @@
      "repeated": false,
      "optional": false,
      "comment": "When the caller may not call it: a new issue on the catalog repository,\nfilled in with what to change, asking its team to share it (opened in\nthe person's own browser). Empty when it can't be built."
+    },
+    {
+     "name": "problem",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Unavailable: what the gateway found, and when."
+    },
+    {
+     "name": "problemFoundAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -11536,6 +11550,10 @@
     {
      "name": "API_STATE_PAUSED",
      "comment": "A maintainer paused it (paused_message)."
+    },
+    {
+     "name": "API_STATE_UNAVAILABLE",
+     "comment": "The gateway can't use its OpenAPI document (problem says why): it\nanswers 503 and forwards nothing until a release fixes it."
     }
    ]
   },

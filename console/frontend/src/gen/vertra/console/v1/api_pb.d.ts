@@ -163,6 +163,18 @@ export declare type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
    * @generated from field: string ask_for_access_url = 24;
    */
   askForAccessUrl: string;
+
+  /**
+   * Unavailable: what the gateway found, and when.
+   *
+   * @generated from field: string problem = 25;
+   */
+  problem: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp problem_found_at = 26;
+   */
+  problemFoundAt?: Timestamp | undefined;
 };
 
 /**
@@ -711,6 +723,14 @@ export enum ApiState {
    * @generated from enum value: API_STATE_PAUSED = 3;
    */
   PAUSED = 3,
+
+  /**
+   * The gateway can't use its OpenAPI document (problem says why): it
+   * answers 503 and forwards nothing until a release fixes it.
+   *
+   * @generated from enum value: API_STATE_UNAVAILABLE = 4;
+   */
+  UNAVAILABLE = 4,
 }
 
 /**

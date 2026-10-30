@@ -979,6 +979,27 @@ describe("an API", () => {
     expect(calls).not.toContain("ObserveService/SearchLogs");
   });
 
+  it("says it can't serve, why, and where to fix it, while the gateway can't use its spec", async () => {
+    const broken = {
+      ...ORDERS,
+      state: "API_STATE_UNAVAILABLE",
+      problem: "its OpenAPI document can't be used: a $ref that isn't there",
+      problemFoundAt: "2026-10-30T14:02:00Z",
+      sourcePath: "teams/payments/apis/orders/api.yaml",
+    };
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: broken, openapi: "{}" } });
+    expect(await screen.findByText("Can’t serve")).toBeTruthy();
+    expect(screen.getByText(/every call gets 503 and nothing reaches the backend/)).toBeTruthy();
+    expect(screen.getByText("its OpenAPI document can't be used: a $ref that isn't there")).toBeTruthy();
+    expect(screen.getByText("teams/payments/apis/orders/api.yaml")).toBeTruthy();
+  });
+
+  it("offers whoever it isn't shared with an issue asking its team", async () => {
+    const theirs = { ...ORDERS, mayCall: false, askForAccessUrl: "https://github.com/acme/catalog/issues/new?title=orders" };
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: theirs, openapi: "{}" } });
+    expect((await screen.findByRole("link", { name: "Ask for access ↗" })).getAttribute("href")).toBe("https://github.com/acme/catalog/issues/new?title=orders");
+  });
+
   it("shows its own team each endpoint's traffic, its backend's logs, and lets a maintainer pause it", async () => {
     const paused: Record<string, unknown>[] = [];
     await renderAt("/apis/payments/orders", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
@@ -1050,7 +1071,7 @@ describe("the APIs page", () => {
     expect(screen.getByText("http://gateway.vertra-system.svc/<team>/<api>")).toBeTruthy();
     expect(screen.getByRole("link", { name: "A bot for payments" }).getAttribute("href")).toBe("/teams/payments?tab=automation");
 
-    fireEvent.click(screen.getByRole("button", { name: /Paused or held/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Not live/ }));
     expect(within(table).queryByText("orders API")).toBeNull();
     expect(within(table).getByText("scoring API")).toBeTruthy();
     expect(within(table).getByText("Its backend's host isn't allowed here yet")).toBeTruthy();

@@ -29,7 +29,7 @@ const FILTERS: [Filter, string, (a: ApiProduct, mine: boolean) => boolean][] = [
   ["all", "All", () => true],
   ["call", "You can call", (a) => a.mayCall],
   ["mine", "Your teams’", (_a, mine) => mine],
-  ["stopped", "Paused or held", (a) => a.state === "PAUSED" || a.state === "HELD"],
+  ["stopped", "Not live", (a) => a.state !== "LIVE"],
 ];
 
 /** Where the gateway answers, from an API's own address: what's before /<team>/<name>. */
@@ -42,7 +42,7 @@ function gatewayBase(address: string, a: ApiProduct): string {
 function You({ api, mine }: { api: ApiProduct; mine: boolean }) {
   const terms = `${String(api.perMinute)} a minute · ${size(api.maxRequestBytes)} · ${String(api.timeoutSeconds)} s`;
   const [label, note] = mine
-    ? ["Your team’s", api.state === "PAUSED" ? "every call gets 503 while paused" : terms]
+    ? ["Your team’s", api.state === "PAUSED" ? "every call gets 503 while paused" : api.state === "UNAVAILABLE" ? "every call gets 503 until its spec is fixed" : terms]
     : api.mayCall
       ? ["May call", terms]
       : ["Not shared", "the gateway answers your calls with 403"];
@@ -76,7 +76,8 @@ function You({ api, mine }: { api: ApiProduct; mine: boolean }) {
 }
 
 function ApiRow({ api, mine }: { api: ApiProduct; mine: boolean }) {
-  const note = api.state === "HELD" ? api.heldReason : api.state === "PAUSED" && api.pausedMessage ? `“${api.pausedMessage}”` : "";
+  const note =
+    api.state === "HELD" ? api.heldReason : api.state === "UNAVAILABLE" ? api.problem : api.state === "PAUSED" && api.pausedMessage ? `“${api.pausedMessage}”` : "";
   return (
     <TableRow>
       <TableCell sx={{ pl: { sm: 2.75 } }}>
@@ -109,7 +110,13 @@ function ApiRow({ api, mine }: { api: ApiProduct; mine: boolean }) {
       <TableCell>
         <ApiStatePill state={api.state} />
         {note && (
-          <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.5, maxWidth: 180 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            component="div"
+            title={note}
+            sx={{ mt: 0.5, maxWidth: 180, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}
+          >
             {note}
           </Typography>
         )}
@@ -374,6 +381,7 @@ export function ApisPage() {
               </Step>
               <Step n={2}>It’s reviewed like a product, and goes live with the next catalog release.</Step>
               <Step n={3}>Its backend’s host must be one the admins allow; until then it’s Held.</Step>
+              <Step n={4}>The gateway must be able to use its OpenAPI document. When it can’t, the API shows Can’t serve, with why, and every call gets 503 until a release fixes the file.</Step>
             </Box>
             <HelpLink guide="11-apis" section="publishing-or-changing-an-api" label="Publishing an API" />
           </Card>

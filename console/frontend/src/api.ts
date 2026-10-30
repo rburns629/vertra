@@ -1726,8 +1726,11 @@ export interface ApiProduct {
   name: string;
   displayName: string;
   description: string;
-  state: "LIVE" | "HELD" | "PAUSED" | "UNSPECIFIED";
+  state: "LIVE" | "HELD" | "PAUSED" | "UNAVAILABLE" | "UNSPECIFIED";
   heldReason: string;
+  /** Unavailable: why the gateway can't use its OpenAPI document, and since when. */
+  problem: string;
+  problemFoundAt: string | null;
   pausedMessage: string;
   mayCall: boolean;
   shareWith: string[];
@@ -1758,6 +1761,8 @@ function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][numb
     description: a.description,
     state: ApiState[a.state] as ApiProduct["state"],
     heldReason: a.heldReason,
+    problem: a.problem,
+    problemFoundAt: iso(a.problemFoundAt),
     pausedMessage: a.pausedMessage,
     mayCall: a.mayCall,
     shareWith: a.shareWith,

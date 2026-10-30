@@ -1086,6 +1086,20 @@ export const apiTraffic = pgTable(
   (table) => [primaryKey({ columns: [table.apiId, table.minute, table.team, table.endpoint, table.outcome] }), index("api_traffic_minute_idx").on(table.minute)],
 );
 
+/**
+ * Why the gateway can't serve an API (its OpenAPI document can't be read
+ * or used, or its backend URL can't be parsed), written by the gateway when
+ * it builds the API and removed once it builds; no row, it serves. Every
+ * call to it meanwhile gets 503.
+ */
+export const apiProblems = pgTable("api_problems", {
+  apiId: uuid("api_id")
+    .primaryKey()
+    .references(() => apis.id, { onDelete: "cascade" }),
+  problem: text("problem").notNull(),
+  foundAt: timestamp("found_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** The gateway as a whole: one row. Closed, every API answers 503. */
 export const gatewayState = pgTable("gateway_state", {
   id: integer("id").primaryKey().default(1),

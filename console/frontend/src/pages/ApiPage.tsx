@@ -13,6 +13,7 @@ import { ApiError, getApi, pauseApi, resumeApi, type ApiProduct } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { HelpLink } from "../components/HelpLink";
 import { Mono } from "../components/Mono";
+import { when } from "../time";
 import { Pill } from "../components/Pill";
 import { ApiBackend, ApiPause, RequestSteps } from "./api/ApiDefinition";
 import { ApiLogs } from "./api/ApiLogs";
@@ -144,6 +145,25 @@ export function ApiPage() {
                 <Alert severity="warning">Paused by its team: every request gets 503 with “{api.pausedMessage}”, and nothing reaches the backend.</Alert>
               )}
               {api.state === "HELD" && <Alert severity="warning">Held: {api.heldReason}</Alert>}
+              {api.state === "UNAVAILABLE" && (
+                <Alert severity="error">
+                  <strong>The gateway can’t use its OpenAPI document, so every call gets 503 and nothing reaches the backend.</strong>
+                  <Box sx={{ mt: 0.5 }}>
+                    Why, as the gateway found it{api.problemFoundAt ? ` ${when(api.problemFoundAt)}` : ""}:{" "}
+                    <Mono sx={{ fontSize: 12.5, overflowWrap: "anywhere" }}>{api.problem}</Mono>
+                  </Box>
+                  <Box sx={{ mt: 0.5 }}>
+                    {api.sourcePath ? (
+                      <>
+                        Fix the OpenAPI file beside <Mono sx={{ fontSize: 12.5 }}>{api.sourcePath}</Mono> in the catalog
+                      </>
+                    ) : (
+                      "Fix its OpenAPI file in the catalog"
+                    )}
+                    ; it serves again with the next release. Run <Mono sx={{ fontSize: 12.5 }}>vertra catalog validate</Mono> on the fix first.
+                  </Box>
+                </Alert>
+              )}
               {api.deprecated && <Alert severity="info">Deprecated: {api.deprecated}</Alert>}
               {!api.mayCall && (
                 <Alert

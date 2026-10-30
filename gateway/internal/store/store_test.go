@@ -3,8 +3,14 @@
 package store
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"net/url"
+	"os"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestARequestIsNamedByTheOperationItMatched(t *testing.T) {
@@ -33,5 +39,59 @@ func TestBackendHosts(t *testing.T) {
 		if got := BackendAllowed(u, []string{hosts}); got != want {
 			t.Errorf("%s: %v", hosts, got)
 		}
+	}
+}
+
+// Against the console's real, migrated test database (TEST_DATABASE_URL):
+// what the API's page reads.
+func TestWhyAnAPICantBeServedIsRecordedUntilItCan(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		url = "postgresql://postgres@localhost/execution_console_test"
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	var teamID, team, apiID string
+	if err := pool.QueryRow(ctx, `INSERT INTO teams (name) VALUES ('gw-store-' || substr(md5(random()::text), 1, 6)) RETURNING id::text, name`).Scan(&teamID, &team); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM teams WHERE id = $1::uuid`, teamID) })
+	broken := `{"openapi": "3.1.0", "info": {"title": "Orders", "version": "1"}, "paths": {"/orders": {"get": {"responses": {"200": {"description": "ok",
+		"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Missing"}}}}}}}}}`
+	if err := pool.QueryRow(ctx, `INSERT INTO apis (team_id, name, display_name, openapi, backend_url, service_account)
+		VALUES ($1::uuid, 'orders', 'Orders', $2::jsonb, 'https://x', 'orders-api') RETURNING id::text`, teamID, broken).Scan(&apiID); err != nil {
+		t.Fatal(err)
+	}
+	problem := func() (string, bool) {
+		var p string
+		err := pool.QueryRow(ctx, `SELECT problem FROM api_problems WHERE api_id = $1::uuid`, apiID).Scan(&p)
+		return p, err == nil
+	}
+
+	s := &Store{DB: pool, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if err := s.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	served := s.Get(team, "orders")
+	if served == nil || served.Problem == "" {
+		t.Fatalf("the broken spec should be a problem: %+v", served)
+	}
+	if p, ok := problem(); !ok || p != served.Problem {
+		t.Errorf("recorded %q (%v), want %q", p, ok, served.Problem)
+	}
+
+	// A release fixes it: the row goes.
+	if _, err := pool.Exec(ctx, `UPDATE apis SET openapi = '{"openapi": "3.1.0", "info": {"title": "Orders", "version": "2"}, "paths": {}}', updated_at = now() WHERE id = $1::uuid`, apiID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if p, ok := problem(); ok {
+		t.Errorf("still recorded once it builds: %q", p)
 	}
 }

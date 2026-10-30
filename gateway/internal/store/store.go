@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pb33f/libopenapi"
 	validator "github.com/pb33f/libopenapi-validator"
 )
@@ -41,6 +42,9 @@ type API struct {
 	// forwarded).
 	Validator validator.Validator
 	Problem   string
+	// recorded: Problem is in the console's api_problems table (or, with
+	// none, the API's row isn't), for the API's page.
+	recorded bool
 	// Endpoints are its spec's operations, to name what a request matched.
 	Endpoints []Endpoint
 }
@@ -93,6 +97,7 @@ func (a *API) Key() string { return a.Team + "/" + a.Name }
 type Store struct {
 	DB interface {
 		Query(context.Context, string, ...any) (pgx.Rows, error)
+		Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 	}
 	Log *slog.Logger
 
@@ -158,6 +163,9 @@ func (s *Store) Refresh(ctx context.Context) error {
 			return err
 		}
 		if prev := old[a.Key()]; prev != nil && prev.UpdatedAt.Equal(a.UpdatedAt) {
+			if !prev.recorded {
+				s.record(ctx, prev)
+			}
 			next[a.Key()] = prev
 			continue
 		}
@@ -177,6 +185,7 @@ func (s *Store) Refresh(ctx context.Context) error {
 		if a.Problem != "" {
 			s.Log.Warn("an API can't be served", "api", a.Key(), "problem", a.Problem)
 		}
+		s.record(ctx, &a)
 		next[a.Key()] = &a
 	}
 	if err := rows.Err(); err != nil {
@@ -187,6 +196,35 @@ func (s *Store) Refresh(ctx context.Context) error {
 	s.closed = closed
 	s.mu.Unlock()
 	return nil
+}
+
+// maxProblem is the most of a problem the console is told: a parser's
+// message can quote much of the document.
+const maxProblem = 1000
+
+// record tells the console whether the API can be served (api_problems, a
+// row while it can't), for its page. A failed write is logged and tried
+// again on the next refresh; serving doesn't wait on it.
+func (s *Store) record(ctx context.Context, a *API) {
+	var err error
+	if a.Problem == "" {
+		_, err = s.DB.Exec(ctx, `DELETE FROM api_problems WHERE api_id = $1::uuid`, a.ID)
+	} else {
+		problem := a.Problem
+		if len(problem) > maxProblem {
+			problem = strings.ToValidUTF8(problem[:maxProblem], "") + "…"
+		}
+		// found_at stays when the same problem is found again (another
+		// replica, a restart): it's when it began.
+		_, err = s.DB.Exec(ctx, `INSERT INTO api_problems (api_id, problem) VALUES ($1::uuid, $2)
+			ON CONFLICT (api_id) DO UPDATE SET problem = excluded.problem,
+				found_at = CASE WHEN api_problems.problem = excluded.problem THEN api_problems.found_at ELSE now() END`, a.ID, problem)
+	}
+	if err != nil {
+		s.Log.Error("couldn't record whether an API can be served", "api", a.Key(), "error", err)
+		return
+	}
+	a.recorded = true
 }
 
 // Put adds an API whose spec is given, for tests.
