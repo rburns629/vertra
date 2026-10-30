@@ -14,6 +14,7 @@ import {
   type Team,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { HelpLink } from "../components/HelpLink";
 import { Pill } from "../components/Pill";
 import { useEnvironment } from "../environment";
 import { AutomationTab } from "./team/AutomationTab";
@@ -140,6 +141,8 @@ export function TeamPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Namespace <Box component="span" sx={{ fontFamily: "fontFamilyMono" }}>{teamName}</Box>
         {team && (team.fromCatalog ? " · from the catalog" : " · made here")}
+        {" · "}
+        <HelpLink guide="13-teams-and-roles" section="what-may-a-member-a-maintainer-and-an-admin-do" label="Who can do what" />
       </Typography>
 
       {retired && (

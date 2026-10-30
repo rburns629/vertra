@@ -10,6 +10,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { ApiError, listResources, type MadeResource } from "../api";
+import { HelpLink } from "../components/HelpLink";
 import { ResourceTable } from "../components/ResourceTable";
 import { DeleteRequests } from "./DeleteRequests";
 
@@ -49,7 +50,8 @@ export function ResourcesPage() {
       <Typography color="text.secondary" sx={{ mt: 0.5, mb: 3, maxWidth: 840 }}>
         What your teams&apos; runs, and yours, made or changed, as each product reported it. It&apos;s kept after the runs are gone,
         so it can be deleted at any time: deleting runs the product&apos;s own cleanup. Something other resources still use is
-        deleted only once an admin approves it.
+        deleted only once an admin approves it.{" "}
+        <HelpLink guide="10-ordering-and-the-cart" section="where-do-i-find-what-a-run-made-and-how-do-i-delete-it" label="Deleting what a run made" />
       </Typography>
       <DeleteRequests />
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center", mb: 2 }}>

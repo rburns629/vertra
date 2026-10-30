@@ -14,6 +14,7 @@ import Typography from "@mui/material/Typography";
 import DeleteIcon from "@mui/icons-material/DeleteOutlined";
 import { ApiError, listAllTeams, listProducts, listRunnables, previewOrder, submitExecution, type OrderOption, type OrderProblem, type Product } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { HelpLink } from "../components/HelpLink";
 import { CodeBlock } from "../components/CodeBlock";
 import { OrderChoice, sameInput } from "../components/OrderChoice";
 import { Pill } from "../components/Pill";
@@ -279,7 +280,8 @@ export function ComposePage() {
       </Typography>
       <Typography color="text.secondary" sx={{ mt: 0.5, mb: 3, maxWidth: 840 }}>
         Build a template from the actions shared with you: each step&apos;s inputs a value, asked when it runs, or an earlier step&apos;s
-        output. Propose it to the catalog for review, or run it now when every step is your team&apos;s.
+        output. Propose it to the catalog for review, or run it now when every step is your team&apos;s.{" "}
+        <HelpLink guide="10-ordering-and-the-cart" section="how-do-i-compose-a-template-by-hand" label="Composing by hand" />
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

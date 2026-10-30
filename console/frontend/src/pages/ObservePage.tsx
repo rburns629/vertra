@@ -29,6 +29,7 @@ export function ObservePage() {
     <Box>
       <PageHeader
         title="Observe"
+        help={{ guide: "12-observe", label: "What Observe shows, tab by tab" }}
         subtitle="What this install checks, what it refused, and what everything is doing. Everyone can see this; logs follow who can see each run."
       />
       <Tabs

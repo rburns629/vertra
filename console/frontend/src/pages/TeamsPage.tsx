@@ -52,6 +52,7 @@ export function TeamsPage() {
     <Box>
       <PageHeader
         title="Teams"
+        help={{ guide: "13-teams-and-roles", label: "Teams and roles" }}
         subtitle="The teams you're in: their members, secrets, bots, APIs and what's running."
         action={
           user.isAdmin && (
@@ -109,6 +110,8 @@ export function TeamsPage() {
 
       {user.teamNames.length === 0 ? (
         <EmptyState
+          title="No team yet"
+          help={{ guide: "13-teams-and-roles", section: "how-do-i-join-a-team", label: "How to join a team" }}
           message={
             user.isAdmin
               ? "You're not a member of any team. As an admin, you can open any of them below."

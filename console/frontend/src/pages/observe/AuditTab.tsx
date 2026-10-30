@@ -61,7 +61,17 @@ function ChainStatus() {
     );
   }
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+      {/* The chain held, but nothing new is reaching the copy: as Admin's card says it. */}
+      {copy.problem && <Alert severity="warning">Not copying: {copy.problem}</Alert>}
+      <ChainLine copy={copy} />
+    </Box>
+  );
+}
+
+function ChainLine({ copy }: { copy: AuditCopy }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
       <Pill tone="success">Chain intact</Pill>
       <Typography variant="body2" color="text.secondary">
         {copy.checkedAt ? `checked ${when(copy.checkedAt)}` : "not checked yet"}

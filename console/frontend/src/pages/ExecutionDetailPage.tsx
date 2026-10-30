@@ -11,6 +11,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { ApiError, cancelExecution, decideApproval, rerunExecution, retryTask, type ExecutionDetail, type TaskStatus } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { HelpLink } from "../components/HelpLink";
 import { StatusBadge } from "../components/StatusBadge";
 import { computeStages } from "../dagLayout";
 import { duration, useNow, when } from "../time";
@@ -165,6 +166,11 @@ export function ExecutionDetailPage() {
             Started by {startedBy}
             {execution.onBehalfOf && ` (${execution.onBehalfOf})`} {when(execution.createdAt)} · {source(execution)}
           </Typography>
+          {execution.state === "FAILED" ? (
+            <HelpLink guide="15-troubleshooting" section="where-do-i-start-when-a-run-fails" label="What to do when a run fails" />
+          ) : (
+            <HelpLink guide="09-runs-explained" section="what-do-a-runs-states-and-a-steps-states-mean" label="What a run's states mean" />
+          )}
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Tooltip title={rerunBlocked ?? ""}>

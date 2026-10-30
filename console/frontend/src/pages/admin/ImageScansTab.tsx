@@ -223,7 +223,7 @@ export function ImageScansTab() {
           Image scans
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Every image is scanned before it&apos;s registered or run, and again daily while it&apos;s in use. A failed one can&apos;t run (the
+          Every image is scanned before it&apos;s registered or run, and again while it&apos;s in use (every 24 hours unless the install sets another interval). A failed one can&apos;t run (the
           cluster refuses it) until it&apos;s fixed or an admin accepts it.
         </Typography>
         {error && (

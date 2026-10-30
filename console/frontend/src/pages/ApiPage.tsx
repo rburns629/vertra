@@ -10,6 +10,7 @@ import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { ApiError, getApi, pauseApi, resumeApi, type ApiProduct } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { HelpLink } from "../components/HelpLink";
 import { Pill } from "../components/Pill";
 import { ApiDefinition } from "./api/ApiDefinition";
 import { ApiOverview } from "./api/ApiOverview";
@@ -97,10 +98,13 @@ export function ApiPage() {
             )}
           </Box>
           {api.description && (
-            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 840, mb: 2 }}>
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 840, mb: 1 }}>
               {api.description}
             </Typography>
           )}
+          <Box sx={{ mb: 2 }}>
+            <HelpLink guide="11-apis" section="how-do-i-call-an-api-through-the-gateway" label="Calling an API through the gateway" />
+          </Box>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 2 }}>
             {api.state === "PAUSED" && (

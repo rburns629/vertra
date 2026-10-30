@@ -150,6 +150,7 @@ export function CartPage() {
     <Box>
       <PageHeader
         title="Cart"
+        help={{ guide: "10-ordering-and-the-cart", section: "how-do-i-order-several-actions-together-with-the-cart", label: "Ordering with the cart" }}
         subtitle="What you've added from the Catalog, ordered together as one run for one of your teams. What each needs is added or offered, and you fill in the rest."
         action={
           <Button component={RouterLink} to="/catalog" variant="outlined">

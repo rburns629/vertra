@@ -209,6 +209,7 @@ export function ExecutionsListPage() {
     <Box>
       <PageHeader
         title="Runs"
+        help={{ guide: "09-runs-explained", label: "Runs, explained" }}
         subtitle="Runs you started, your teams', and any that ran your teams' steps."
         action={
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>

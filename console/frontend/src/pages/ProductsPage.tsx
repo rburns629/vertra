@@ -106,6 +106,7 @@ export function ProductsPage() {
       </Typography>
       <PageHeader
         title="Every product"
+        help={{ guide: "10-ordering-and-the-cart", section: "whats-in-the-catalog", label: "What's in the catalog" }}
         subtitle="Every team's products, as each catalog release registers them, by team. Expand a team for its products, and a product for its releases. Run one shared with you on its own, or find templates that use them in the Catalog."
       />
 
@@ -138,8 +139,9 @@ export function ProductsPage() {
       {platforms?.length === 0 && (
         <EmptyState
           message={
-            products && products.length > 0 ? "No products match this search." : "No products registered yet."
+            products && products.length > 0 ? "No products match this search." : "No products registered yet. A catalog release registers its teams' products."
           }
+          help={products && products.length > 0 ? undefined : { guide: "reference-catalog-guide", label: "Publishing to the catalog" }}
         />
       )}
       {platforms?.map(([platform, platformProducts]) => (

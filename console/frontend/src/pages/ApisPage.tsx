@@ -71,6 +71,7 @@ export function ApisPage() {
     <Box>
       <PageHeader
         title="APIs"
+        help={{ guide: "11-apis", label: "APIs and the gateway" }}
         subtitle="Backends teams already run, published through this install's gateway. Each one's OpenAPI file is the whole of what reaches it: anything else is blocked at the gateway."
       />
       {error && (

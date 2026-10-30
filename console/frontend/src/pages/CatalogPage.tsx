@@ -169,6 +169,7 @@ export function CatalogPage() {
     <Box>
       <PageHeader
         title="Catalog"
+        help={{ guide: "10-ordering-and-the-cart", label: "Finding and running things from the catalog" }}
         subtitle="What platform teams publish. Each one runs as its team's own identity: you only fill in the inputs. What isn't shared with your team yet is shown too, so you can ask for it."
         action={
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -236,11 +237,13 @@ export function CatalogPage() {
 
       {runnables !== null && shown.length === 0 && (
         <EmptyState
+          title={runnables.length === 0 ? "Nothing published yet" : "Nothing matches"}
           message={
             runnables.length === 0
-              ? "Nothing is published here yet. Teams publish templates and actions from their catalog repository."
-              : "Nothing matches these filters."
+              ? "Teams publish templates and actions from their catalog repository; they show here once its next release is pulled."
+              : "Nothing matches these filters. Clear the search or a filter to see more."
           }
+          help={runnables.length === 0 ? { guide: "reference-catalog-guide", label: "Publishing to the catalog" } : undefined}
         />
       )}
 
