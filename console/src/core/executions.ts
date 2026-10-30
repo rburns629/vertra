@@ -20,6 +20,7 @@ import { failureHelp, type FailureHelp } from "../failureHelp.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
 import {
+  findTeamById,
   findTeamByName,
   findTeamByNameIncludingDeleted,
   findUserById,
@@ -29,6 +30,7 @@ import {
   listSubmittedExecutionsPage,
   recordSubmittedExecution,
   type Product,
+  type SubmittedExecution,
   markResourcesUnrecorded,
 } from "../db/queries.js";
 import {
@@ -59,7 +61,7 @@ import { errorMessage, errorPath, schemaErrors } from "../jsonSchema.js";
 import { missingImages, pinImages } from "../registry.js";
 import { platformAlert } from "../notifier.js";
 import { scanBlocker } from "../scanning.js";
-import { narrowWiredTargets, targetsNeedApproval } from "../targets.js";
+import { narrowWiredTargets, targetProblems, targetsNeedApproval } from "../targets.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -1012,6 +1014,7 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
   // Theirs only while it's still shared with them, and its steps with its team.
   if (ownTemplateRun) await ensureStillRunnable(caller, submitted);
   await authorizeTasks(tasksInfo, caller, { maintainers: !ownTemplateRun });
+  await ensureRetryTargetsAllowed(caller, submitted, taskId);
   const images = taskImages(submitted.payload, taskId);
   const context: RunContext = { action: "retry", teams: submitted.teams, executionId, caller, log };
   await refuseBlockedImages(images, context);
@@ -1021,6 +1024,31 @@ export async function retry(caller: AuthUser | undefined, executionId: string, t
   // Live again: what it makes, or deletes, is recorded once it finishes again.
   await markResourcesUnrecorded(executionId);
   return retried;
+}
+
+/**
+ * Refuses retrying a step aimed at a target its product's team no longer
+ * lets the run's team use (X1): its allowedTargets may have narrowed since
+ * the run started, and a retry runs the step again against the same target.
+ * The product team's own people, and admins, aren't limited, as when it ran.
+ */
+async function ensureRetryTargetsAllowed(caller: AuthUser | undefined, submitted: SubmittedExecution, taskId: string): Promise<void> {
+  if (!caller || caller.isAdmin) return;
+  const task = payloadTask(submitted.payload, taskId);
+  const product = await productOfTask(productLookup(), task);
+  const owner = product?.teamId ? await findTeamById(product.teamId) : undefined;
+  if (!product || !owner || caller.teamNames.includes(owner.name)) return;
+  const inputs = isRecord(task?.["inputs"]) ? task["inputs"] : {};
+  const teams = submitted.onBehalfOf ? [submitted.onBehalfOf] : caller.teamNames;
+  const problems = targetProblems(owner, product.inputSchema, inputs, teams);
+  if (problems.length === 0) return;
+  throw new ApiError(
+    403,
+    "TARGET_NOT_ALLOWED",
+    `Step "${taskId}" can't be retried: ${problems.map((p) => p.message).join(" ")}`,
+    undefined,
+    { problems: problems.map((p) => ({ field: `inputs.${p.field}`, message: p.message })) },
+  );
 }
 
 /**

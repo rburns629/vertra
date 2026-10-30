@@ -90,7 +90,12 @@ design.
     Instant Retrieval with its volume deleted, and a restart keeping its
     volume losing nothing. Left: API products' backends'
     logs (in team namespaces, not steps) for their teams; Secret values
-    (not just credential shapes) masked.
+    (not just credential shapes) masked. Needs a decision (2026-10-29):
+    masking a value needs its value, so something would have to read
+    every team's Secrets (the collector, or the scheduler), which the
+    platform deliberately lets nothing do; credential shapes are redacted,
+    products must never print a secret, and a step's non-INFO lines reach
+    only its own team. Suggested: leave it, documented.
   - Metrics (done 2026-10-22): the Observe page's Metrics tab for
     everyone, from kernel-api's own tables (`GetStats`: steps started and
     their p95 wait by hour, failures by code, each product's step times),
@@ -554,8 +559,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   team's run with any other value is refused before it starts
   (`TARGET_NOT_ALLOWED`, `console/src/targets.ts`); the Run form offers the
   allowed values. The owning team and admins aren't limited; a value from
-  an earlier step isn't checked. Proven on kind. Left: re-checking targets
-  on retry if a team narrows its rules; GCP folder membership isn't looked
+  an earlier step isn't checked. Proven on kind. A retry is checked again
+  (2026-10-29): a step aimed where the owner no longer lets the run's team
+  is refused (`TARGET_NOT_ALLOWED`). GCP folder membership isn't looked
   up (patterns on IDs, by decision); scoping owner identities to folders is
   each team's cloud setup.
 - [x] **P1: retry policy and idempotency per action (R3)** (done

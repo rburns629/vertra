@@ -12,7 +12,7 @@ import { db } from "../src/db/client.js";
 import { addTeamMember, createTeam, upsertProduct, upsertTemplate } from "../src/db/queries.js";
 import { products, submittedExecutions, teams } from "../src/db/schema.js";
 import { buildApp } from "../src/index.js";
-import { submitExecution } from "../src/kernel/client.js";
+import { retryTask, submitExecution } from "../src/kernel/client.js";
 import { allowedValues, matchesTarget, narrowWiredTargets, targetProblems } from "../src/targets.js";
 import { caller, failureCode, problemFields, rpcClient, type RpcError } from "./rpc.js";
 
@@ -34,6 +34,7 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => {
   return {
     ...actual,
     submitExecution: vi.fn(() => Promise.resolve({ executionId: uuid(), state: "PENDING", created: true })),
+    retryTask: vi.fn(() => Promise.resolve({ executionId: "retried", taskId: "run", state: "READY" })),
   };
 });
 vi.mock("../src/imagePolicy.js", async (importOriginal) => ({
@@ -223,6 +224,35 @@ describe("running another team's action", () => {
     expect(await targetsFor(appsToken)).toEqual([{ parameter: "projectId", type: "gcp.project", allowed: [`${allowed}-*`, "shared-sandbox"] }]);
     expect(await targetsFor(otherToken)).toEqual([{ parameter: "projectId", type: "gcp.project", allowed: [] }]);
     expect(await targetsFor(ownerToken)).toEqual([]);
+  });
+});
+
+describe("retrying another team's action", () => {
+  it("is refused once the owning team no longer allows its target, and not where it still does", async () => {
+    const run = (projectId: string) =>
+      call<{ executionId: string } & RpcError>(appsToken, "TemplateService/RunAction", { product, inputs: { projectId } });
+    const sandbox = (await run("shared-sandbox")).body.executionId;
+    const own = (await run(`${allowed}-dev`)).body.executionId;
+    const taskOf = async (id: string) => {
+      const [row] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.executionId, id));
+      const tasks = (row?.payload as { tasks: { id: string }[] }).tasks;
+      return tasks[0]!.id;
+    };
+    const [ownerTeam] = await db.select().from(teams).where(eq(teams.name, owner));
+    const rules = ownerTeam!.allowedTargets;
+    // The owner narrows its rules: no more shared sandbox for anyone.
+    await db.update(teams).set({ allowedTargets: [{ teams: [allowed], targets: { "gcp.project": [`${allowed}-*`] } }] }).where(eq(teams.id, ownerTeam!.id));
+    try {
+      vi.mocked(retryTask).mockClear();
+      const refused = await call<RpcError>(appsToken, "ExecutionService/RetryTask", { executionId: sandbox, taskId: await taskOf(sandbox) });
+      expect(refused.code).toBe("permission_denied");
+      expect(failureCode(refused.body)).toBe("TARGET_NOT_ALLOWED");
+      expect(problemFields(refused.body)).toEqual(["inputs.projectId"]);
+      expect(retryTask).not.toHaveBeenCalled();
+      expect((await call(appsToken, "ExecutionService/RetryTask", { executionId: own, taskId: await taskOf(own) })).code).toBe("ok");
+    } finally {
+      await db.update(teams).set({ allowedTargets: rules }).where(eq(teams.id, ownerTeam!.id));
+    }
   });
 });
 
