@@ -1,0 +1,10 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": false,
+    "principal": "Kubernetes ServiceAccount gcp-app-hosting, with no Google identity",
+    "missing": [
+      "GKE Workload Identity Federation for ServiceAccount gcp-app-hosting (the cluster's)"
+    ]
+  }
+}

@@ -57,8 +57,11 @@ gcloud resource-manager folders add-iam-policy-binding $FOLDER --role roles/reso
 gcloud projects add-iam-policy-binding $TARGET --role roles/cloudbuild.builds.editor --member "$(member build-image)"
 gcloud storage buckets add-iam-policy-binding gs://$SOURCES --role roles/storage.objectViewer --member "$(member build-image)"
 gcloud artifacts repositories add-iam-policy-binding $REPO --location $REGION --role roles/artifactregistry.reader --member "$(member build-image)"
-# app-hosting: Cloud Run services.
+# app-hosting: Cloud Run services, run as the project's default compute account.
 gcloud projects add-iam-policy-binding $TARGET --role roles/run.developer --member "$(member app-hosting)"
+TARGET_NUMBER=$(gcloud projects describe $TARGET --format='value(projectNumber)')
+gcloud iam service-accounts add-iam-policy-binding $TARGET_NUMBER-compute@developer.gserviceaccount.com --project $TARGET \
+  --role roles/iam.serviceAccountUser --member "$(member app-hosting)"
 # cloud-sql: Cloud SQL instances.
 gcloud projects add-iam-policy-binding $TARGET --role roles/cloudsql.admin --member "$(member cloud-sql)"
 ```
@@ -81,4 +84,26 @@ It's mounted at `/platform/secrets/gcp-target/service-account` for those
 steps only, so each team (and each product) chooses its own. The first
 account needs `roles/iam.serviceAccountTokenCreator` on the second. Leave it
 out when the bound identity already is the one to act as: impersonating
-yourself fails, after a minute's timeout, as `PERMISSION_DENIED`.
+yourself fails, after a minute's timeout, as `PERMISSION_DENIED`. List it in
+the product's `check` too, so the check asks as the account the actions act as.
+
+## Is it ready here?
+
+Each product's `check` (product.yaml) says whether it's ready on an install,
+and the console runs it when the product is registered, daily, and on
+**Check now**. It changes nothing: it gets a token as the product's identity
+(impersonating `gcp-target` when listed), then asks Google with
+`testIamPermissions` whether it may do what its actions do. The projects,
+folders and billing accounts are inputs of each run, so a check looks
+through those its identity can see (at most 20) for one where it may:
+
+| Product | Ready when it may | Missing names |
+|---|---|---|
+| `project` | create, get and delete projects under a folder or organization, and link a billing account | `roles/browser`, `roles/resourcemanager.projectCreator`, `roles/resourcemanager.projectDeleter` on the folder; `roles/billing.user` |
+| `build-image` | create and get builds in a project | `roles/cloudbuild.builds.editor`. Its source bucket and image repository are per run: only a create finds out |
+| `app-hosting` | get, create and delete Cloud Run services in a project, and act as its default compute account | `roles/run.developer`; `roles/iam.serviceAccountUser` on that account |
+| `cloud-sql` | get, create and delete Cloud SQL instances in a project | `roles/cloudsql.admin` |
+
+With no Workload Identity it isn't ready, and says so. A project, folder or
+billing account it can't see isn't looked at. Built, not yet proven on a
+cloud.

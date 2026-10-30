@@ -89,7 +89,28 @@ role's ARN, and list it in each action that should act as it
 (`secretRefs: [{name: aws-target, keys: [role-arn]}]`): those steps then use
 their own credentials only to assume that role (`sts:AssumeRole`, which the
 target's trust policy must allow) and act as it. Each team, and each
-product, chooses its own.
+product, chooses its own. List it in the product's `check` too, so the check
+asks as the role the actions act as.
+
+## Is it ready here?
+
+Each product's `check` (product.yaml) says whether it's ready on an install,
+and the console runs it when the product is registered, daily, and on
+**Check now**. It changes nothing: it signs in as create does, asks STS who
+it is (the `principal` it reports), assumes `aws-target` when listed, then
+makes the read-only calls its role must allow, in the cluster's region
+(`AWS_REGION`, else us-east-1), since each run's region is an input:
+
+| Product | Asks | Missing names |
+|---|---|---|
+| `s3-bucket` | nothing more: its S3 actions are granted on bucket names, and a check names none, so only a create finds out | only an IAM role, when none is bound |
+| `app-runner` | `apprunner:ListServices` | that action, for its role |
+| `rds-postgres` | `rds:DescribeDBInstances`, and `kms:DescribeKey` on `alias/aws/secretsmanager` | those actions, for its role |
+
+With no role bound to its ServiceAccount, or a role that won't let it in or
+let it assume `aws-target`, it isn't ready, and says what's missing. The
+actions with no read-only form (creating, tagging, deleting) only a create
+or delete finds out. Built, not yet proven on a cloud.
 
 ## Secrets
 

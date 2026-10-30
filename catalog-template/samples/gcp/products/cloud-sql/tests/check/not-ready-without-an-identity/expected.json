@@ -1,0 +1,10 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": false,
+    "principal": "Kubernetes ServiceAccount gcp-cloud-sql, with no Google identity",
+    "missing": [
+      "GKE Workload Identity Federation for ServiceAccount gcp-cloud-sql (the cluster's)"
+    ]
+  }
+}

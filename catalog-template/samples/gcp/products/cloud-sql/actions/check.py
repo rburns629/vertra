@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""gcp/cloud-sql's "check" action: whether it's ready on this install
+(product.yaml's check). Changes nothing.
+
+Run by the console with no inputs, as this product's identity. It asks
+Google for a token as that identity (impersonating gcp-target when the
+team's secret is mounted, as create does), then asks Resource Manager, with
+testIamPermissions, whether it may create, read and delete Cloud SQL
+instances in a project it can see. create's projectId is per run, so it
+looks for any project: ready means there's at least one. Reports what's
+missing as the roles to grant (the gcp team's README.md, Credentials).
+
+Like create, it uses the discovery-based googleapiclient (this image has no
+google.cloud client for Resource Manager either).
+"""
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import google.auth
+import google.auth.credentials
+import google.auth.exceptions
+import google.auth.transport.requests
+from google.auth import impersonated_credentials
+from googleapiclient import discovery
+from googleapiclient.errors import HttpError
+
+OUTPUT_PATH = Path("/platform/output/result.json")
+
+# product.yaml's serviceAccount: the Kubernetes identity Workload Identity
+# signs in as, named in what an admin must grant it.
+SERVICE_ACCOUNT = "gcp-cloud-sql"
+TARGET_SERVICE_ACCOUNT_FILE = Path("/platform/secrets/gcp-target/service-account")
+IMPERSONATION_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+
+# Cheap: at most this many projects asked about.
+MAX_PROJECTS = 20
+# What create and delete need in their project, and the role that grants each.
+PROJECT_PERMISSIONS = {
+    "cloudsql.instances.get": "roles/cloudsql.admin",
+    "cloudsql.instances.create": "roles/cloudsql.admin",
+    "cloudsql.instances.delete": "roles/cloudsql.admin",
+}
+
+
+def _write_result(result: dict[str, Any]) -> None:
+    OUTPUT_PATH.write_text(json.dumps(result))
+
+
+def _answer(ready: bool, principal: str, missing: list[str], detail: str) -> int:
+    _write_result({
+        "status": "succeeded",
+        "outputs": {"ready": ready, "principal": principal, "missing": missing, "detail": detail},
+    })
+    return 0
+
+
+def _failure(code: str, message: str, *, retryable: bool = False) -> int:
+    _write_result(
+        {"status": "failed", "error": {"code": code, "message": message, "retryable": retryable}}
+    )
+    return 1
+
+
+def _sign_in() -> tuple[google.auth.credentials.Credentials, str]:
+    """This product's credentials, refreshed (so they work), and who they are.
+    Raises google.auth's DefaultCredentialsError or RefreshError when it can't."""
+    target = TARGET_SERVICE_ACCOUNT_FILE.read_text().strip() if TARGET_SERVICE_ACCOUNT_FILE.exists() else ""
+    source, _ = google.auth.default(scopes=IMPERSONATION_SCOPES)
+    credentials = source
+    if target:
+        credentials = impersonated_credentials.Credentials(
+            source_credentials=source, target_principal=target, target_scopes=IMPERSONATION_SCOPES
+        )
+    credentials.refresh(google.auth.transport.requests.Request())
+    if target:
+        return credentials, target
+    # GKE's metadata server names the pool for a Kubernetes identity bound
+    # directly (no Google service account): <project>.svc.id.goog.
+    email = getattr(source, "service_account_email", "") or ""
+    if email.endswith(".svc.id.goog"):
+        return credentials, f"Kubernetes ServiceAccount {SERVICE_ACCOUNT}, by Workload Identity ({email})"
+    if not email or email == "default":
+        return credentials, f"Kubernetes ServiceAccount {SERVICE_ACCOUNT}, by Workload Identity"
+    return credentials, email  # a Google service account bound to it
+
+
+def _build_service(credentials: google.auth.credentials.Credentials):
+    # cache_discovery=False: as in create.py, no discovery cache on a
+    # read-only filesystem.
+    return discovery.build("cloudresourcemanager", "v3", credentials=credentials, cache_discovery=False)
+
+
+def main() -> int:
+    target = TARGET_SERVICE_ACCOUNT_FILE.read_text().strip() if TARGET_SERVICE_ACCOUNT_FILE.exists() else ""
+    try:
+        credentials, principal = _sign_in()
+    except google.auth.exceptions.DefaultCredentialsError:
+        return _answer(
+            False, f"Kubernetes ServiceAccount {SERVICE_ACCOUNT}, with no Google identity",
+            [f"GKE Workload Identity Federation for ServiceAccount {SERVICE_ACCOUNT} (the cluster's)"],
+            "No Google credentials: this step isn't running with Workload Identity.",
+        )
+    except google.auth.exceptions.RefreshError as error:
+        if target:
+            return _answer(
+                False, f"Kubernetes ServiceAccount {SERVICE_ACCOUNT}, impersonating {target}",
+                [f"roles/iam.serviceAccountTokenCreator on {target}, for ServiceAccount {SERVICE_ACCOUNT}"],
+                f"Couldn't impersonate gcp-target: {str(error)[:300]}",
+            )
+        return _answer(
+            False, f"Kubernetes ServiceAccount {SERVICE_ACCOUNT}",
+            [f"GKE Workload Identity Federation for ServiceAccount {SERVICE_ACCOUNT} (the cluster's)"],
+            f"Couldn't get a Google token: {str(error)[:300]}",
+        )
+    except google.auth.exceptions.TransportError as error:
+        return _failure("GCP_API_ERROR", f"couldn't reach Google to sign in: {error}", retryable=True)
+
+    wanted = list(PROJECT_PERMISSIONS)
+    try:
+        projects = _build_service(credentials).projects()
+        found = projects.search(query="state:ACTIVE", pageSize=MAX_PROJECTS).execute()
+        # The project it may do the most in: ready when that's everything.
+        best: tuple[str, set[str]] | None = None
+        for project in found.get("projects", [])[:MAX_PROJECTS]:
+            held = set(projects.testIamPermissions(
+                resource=f"projects/{project['projectId']}", body={"permissions": wanted}
+            ).execute().get("permissions", []))
+            if best is None or len(held) > len(best[1]):
+                best = (project["projectId"], held)
+            if len(held) == len(wanted):
+                break
+    except HttpError as error:
+        status = error.resp.status
+        return _failure("GCP_API_ERROR", f"couldn't ask Google what it may do: {str(error)[:300]}",
+                        retryable=status == 429 or status >= 500)
+
+    if best is None:
+        roles = sorted(set(PROJECT_PERMISSIONS.values()))
+        return _answer(False, principal, [f"{', '.join(roles)} on a project its instances go in"],
+                       "It can sign in, but sees no project.")
+    if len(best[1]) < len(wanted):
+        roles = sorted({PROJECT_PERMISSIONS[p] for p in wanted if p not in best[1]})
+        return _answer(False, principal, [f"{', '.join(roles)} on project {best[0]}"],
+                       "It can sign in, but can't make Cloud SQL instances in any project it sees.")
+    return _answer(True, principal, [], f"It may make and delete Cloud SQL instances in project {best[0]}.")
+
+
+if __name__ == "__main__":
+    sys.exit(main())

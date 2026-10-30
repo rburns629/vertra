@@ -1,0 +1,10 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": false,
+    "principal": "Kubernetes ServiceAccount aws-rds-postgres, with no AWS identity",
+    "missing": [
+      "an IAM role for ServiceAccount aws-rds-postgres (an EKS Pod Identity association, or IRSA)"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": false,
+    "principal": "Kubernetes ServiceAccount aws-s3-bucket, with no AWS identity",
+    "missing": [
+      "an IAM role for ServiceAccount aws-s3-bucket (an EKS Pod Identity association, or IRSA)"
+    ]
+  }
+}

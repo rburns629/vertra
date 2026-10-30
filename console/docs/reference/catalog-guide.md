@@ -255,7 +255,11 @@ it's `missing` (["roles/browser on folder 12"]). Each install runs it when
 the product is registered or its image changes, and daily; the console
 shows the answer with the product and in the catalog, and tells your team's
 maintainers (and its chat webhook) when it isn't ready. Ask your cloud who
-you are and whether you may do what your actions do; change nothing.
+you are and whether you may do what your actions do; change nothing. The
+local `ticket` sample has one, and every gcp and aws sample has a real one
+(Google's `testIamPermissions`; AWS's read-only calls): their READMEs say
+what each asks. Fail the step, rather than answer, when the cloud can't be
+reached: an answer is only what the cloud said.
 
 `approval` makes a step wait for a person before it runs: `always`,
 `otherTeams` (only when another team runs the action), or a list of teams

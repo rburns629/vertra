@@ -11,6 +11,10 @@ owner: aws-team
 runtime: python3.12
 # Its own identity: bound to only what it does (README.md, Credentials).
 serviceAccount: aws-s3-bucket
+# Each install runs check (no inputs, as this identity) when this is
+# registered and daily, and shows whether it's ready there: whether it can
+# sign in, and may do what its actions do. It changes nothing.
+check: check
 actions:
 - name: create
   # Finds what it would create before creating it, so a step that
@@ -95,3 +99,23 @@ actions:
       deleted:
         type: string
         description: The bucket deleted.
+- name: check
+  idempotent: true   # it only asks
+  maxAttempts: 2
+  script: actions/check.py
+  input:
+    type: object
+    additionalProperties: false
+  output:
+    type: object
+    additionalProperties: false
+    required: [ready]
+    properties:
+      ready: {type: boolean, title: Ready}
+      principal: {type: string, title: Principal, description: Who it signs in as here.}
+      missing:
+        type: array
+        title: Missing
+        description: What an admin must grant it here.
+        items: {type: string}
+      detail: {type: string, title: Detail}

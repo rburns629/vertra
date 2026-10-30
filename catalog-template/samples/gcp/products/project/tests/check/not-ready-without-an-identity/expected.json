@@ -1,0 +1,8 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": false,
+    "principal": "Kubernetes ServiceAccount gcp-project, with no Google identity",
+    "missing": ["GKE Workload Identity Federation for ServiceAccount gcp-project (the cluster's)"]
+  }
+}

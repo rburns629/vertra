@@ -687,7 +687,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   submitter) when a product is new or changed, daily, and on **Check now**
   (`readiness.ts`, console migration 0023), shows it in the catalog, on
   Every product and the run form, and tells the team's maintainers and
-  webhook when it isn't ready. Left: the cloud samples' checks.
+  webhook when it isn't ready. The cloud samples' checks are built
+  (2026-10-30; each gcp and aws product signs in as itself and asks
+  `testIamPermissions` or a read-only call, with unit and contract tests),
+  not yet proven on a cloud: left, a billed run of each on GKE and EKS.
 - [x] **P2: schedules** (done 2026-10-24): a template or action on a cron
   (five fields, an IANA time zone, at most every five minutes), with set
   parameters, for a team, as one of its bots, made from the run form
