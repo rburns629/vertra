@@ -7,8 +7,9 @@ License Agreement. You keep the copyright in your contributions; this
 agreement doesn't take it away, and you can use your own contributions for
 anything else you like.
 
-You accept it once, by commenting on your first pull request as the CLA
-Assistant bot asks. It then covers every contribution you make.
+You accept it once, by commenting `I have read the CLA and I accept it` on
+your first pull request, as the bot there asks. It then covers every
+contribution you make.
 
 "We" and "us" mean rburns629, the copyright holder of Vertra
 (<https://github.com/rburns629/vertra>), and its successors and assigns.

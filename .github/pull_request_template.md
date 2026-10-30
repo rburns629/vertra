@@ -12,4 +12,4 @@
 - [ ] Tests cover the change (a fix has a test that fails without it)
 - [ ] Docs updated where needed (`docs/repository-map.md` for added or moved files, `generate.py` rerun for diagram changes, the schema doc for database changes)
 - [ ] No secrets, tokens or real credentials anywhere in the diff
-- [ ] Every commit is signed off (`git commit -s`, see CONTRIBUTING.md)
+- [ ] You've accepted the [CLA](../CLA.md) (the bot asks on your first pull request)

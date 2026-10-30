@@ -93,8 +93,8 @@ platform locally, see the README's "Try it locally".
 ## Contributor License Agreement
 
 Before your first pull request can be merged, you accept the
-[Contributor License Agreement](CLA.md), once. The CLA Assistant bot asks you
-to on that pull request: reply with the comment it gives you, and it covers
+[Contributor License Agreement](CLA.md), once. A bot asks you to on that
+pull request: comment `I have read the CLA and I accept it`, and it covers
 everything you contribute after. You keep the copyright in your work; the
 agreement lets the project use and distribute it. If your employer has rights
 to what you write, check that it allows you to contribute first.

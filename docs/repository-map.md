@@ -32,7 +32,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | `LICENSE` | The MIT license. |
 | `SECURITY.md` | How to report a vulnerability privately, response times, supported versions, scope. |
 | `CONTRIBUTING.md` | Setting up, testing, what a pull request needs, the CLA. |
-| `CLA.md` | The Individual Contributor License Agreement contributors accept once, through the CLA Assistant bot. |
+| `CLA.md` | The Individual Contributor License Agreement contributors accept once, by a comment on their first pull request (`workflows/cla.yml`). |
 | `CODE_OF_CONDUCT.md` | Adopts the Contributor Covenant 2.1, and where to report problems. |
 | `AGENTS.md` | Guide for AI coding assistants (and a quick orientation for people): layout, core contracts, commands, things that bite, engineering principles. |
 | `CLAUDE.md` | One line that imports `AGENTS.md`, so Claude Code reads the same guide. |
@@ -54,6 +54,7 @@ Around them: `helm/` packages both for Kubernetes, with each cluster's settings,
 | --- | --- |
 | `workflows/ci.yml` | Every PR: the kernel's `gofmt`, `go vet`, migrations and tests (`-race`), with its kind tests in the kubernetes job; console tests, lint and build; the API's protos linted and their committed generated code checked against `make proto`; Helm lint and render of `helm/values/*`; `actionlint` (this repo's workflows and the catalog template's); the catalog template's checks; building both platform images and scanning them (Trivy, OSV-Scanner). |
 | `dependabot.yml` | Weekly, grouped update pull requests (a week's cooldown) for the kernel's and the CLI's Go, the console's npm, every Dockerfile, the workflows, and the catalog template's starters. |
+| `workflows/cla.yml` | On a pull request: asks each author who hasn't accepted the CLA to, and passes once all have (CLA Assistant Lite; signatures on the `cla-signatures` branch). |
 | `workflows/release.yml` | On a version tag: builds both platform images for amd64 and arm64, scans them, pushes them to GHCR, signs them keyless; packages, pushes and signs both charts; creates the GitHub release; builds `vertra` for linux and macOS (amd64, arm64), pushes each binary to GHCR as a blob a catalog's `./vertra` downloads by SHA-256, signs them, and attaches them with their checksums. |
 | `workflows/security.yml` | Secret scanning (gitleaks) and code scanning (Semgrep, including `.semgrep/`). |
 | `scripts/install-scanners.sh` | Installs pinned, checksum-verified tool binaries (Trivy, OSV-Scanner, gitleaks, actionlint, cosign, oras) for the workflows. |
