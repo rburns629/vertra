@@ -80,6 +80,8 @@ spec:
         app.kubernetes.io/component: console-db
     spec:
       restartPolicy: Never
+      securityContext:
+        {{- include "execution-kernel.postgresToolsSecurityContext" . | nindent 8 }}
       {{- if .Values.tls.enabled }}
       volumes:
         {{- include "execution-kernel.tlsCaVolume" . | nindent 8 }}

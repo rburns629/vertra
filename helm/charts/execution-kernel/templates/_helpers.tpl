@@ -179,3 +179,33 @@ local   all  all            trust
 hostssl all  all  0.0.0.0/0 scram-sha-256
 hostssl all  all  ::/0      scram-sha-256
 {{- end -}}
+
+{{/*
+Whether the bundled Postgres runs as its user (999) from the start
+(postgres.nonRoot): "true" or "". auto: when its volume is new or was made
+that way (the claim's vertra.dev/postgres-layout: nonroot); a volume made
+before keeps the image's way, starting as root to take ownership of it.
+*/}}
+{{- define "execution-kernel.postgresNonRoot" -}}
+{{- $mode := toString .Values.postgres.nonRoot -}}
+{{- if eq $mode "true" -}}
+true
+{{- else if eq $mode "auto" -}}
+{{- $pvc := lookup "v1" "PersistentVolumeClaim" .Release.Namespace (printf "%s-postgres" (include "execution-kernel.fullname" .)) -}}
+{{- $layout := "" -}}
+{{- if $pvc }}{{ $layout = index ($pvc.metadata.annotations | default dict) "vertra.dev/postgres-layout" | default "" }}{{ end -}}
+{{- if or (not .Values.postgres.persistence.enabled) (not $pvc) (eq $layout "nonroot") -}}
+true
+{{- end -}}
+{{- else if ne $mode "false" -}}
+{{- fail "postgres.nonRoot must be auto, true or false." -}}
+{{- end -}}
+{{- end -}}
+
+{{/* A Pod running only the Postgres image's tools, never its data: its user. */}}
+{{- define "execution-kernel.postgresToolsSecurityContext" -}}
+runAsNonRoot: true
+runAsUser: 999
+runAsGroup: 999
+seccompProfile: {type: RuntimeDefault}
+{{- end }}

@@ -72,6 +72,13 @@ spec:
           initContainers:
             - name: pg-dump
               image: {{ include "execution-kernel.image" $.Values.postgres.image | quote }}
+              # The image's tools, not its server: as its user, never root.
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 999
+                runAsGroup: 999
+                allowPrivilegeEscalation: false
+                capabilities: {drop: ["ALL"]}
               # Explicit, not left for Autopilot's own resource-defaulting
               # webhook to fill in -- confirmed directly that its mutation
               # of this CronJob's doubly-nested pod template

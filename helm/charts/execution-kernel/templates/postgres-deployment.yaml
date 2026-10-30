@@ -31,6 +31,19 @@ spec:
         checksum/hba: {{ include "execution-kernel.pgHba" . | sha256sum }}
       {{- end }}
     spec:
+      {{- $nonRoot := include "execution-kernel.postgresNonRoot" . }}
+      {{- if $nonRoot }}
+      # As its own user from the start (postgres.nonRoot): the volume's root
+      # given its group once (OnRootMismatch), so it can make its data
+      # directory, which then keeps the 0700 Postgres requires.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      {{- end }}
       {{- if .Values.tls.enabled }}
       # Postgres reads its key only if no one else can: copied from the
       # Secret into a directory of its own, owned by its user (999), 0600.
@@ -39,7 +52,12 @@ spec:
       initContainers:
         - name: tls-key
           image: {{ include "execution-kernel.image" .Values.postgres.image | quote }}
+          {{- if $nonRoot }}
+          command: ["sh", "-c", "install -m 0644 /tls-secret/tls.crt /tls/tls.crt && install -m 0600 /tls-secret/tls.key /tls/tls.key"]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+          {{- else }}
           command: ["sh", "-c", "install -o 999 -g 999 -m 0644 /tls-secret/tls.crt /tls/tls.crt && install -o 999 -g 999 -m 0600 /tls-secret/tls.key /tls/tls.key"]
+          {{- end }}
           volumeMounts:
             - {name: tls-secret, mountPath: /tls-secret, readOnly: true}
             - {name: tls, mountPath: /tls}
@@ -82,14 +100,25 @@ spec:
                   key: postgres-password
             - name: POSTGRES_DB
               value: {{ .Values.postgres.auth.database | quote }}
+            {{- if and $nonRoot .Values.postgres.persistence.enabled }}
+            # The volume's pgdata, as Postgres made it (the same place the
+            # root layout's subPath puts it).
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+            {{- end }}
+          {{- if $nonRoot }}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: ["ALL"]}}
+          {{- end }}
           volumeMounts:
             {{- if .Values.postgres.persistence.enabled }}
             - name: data
               mountPath: /var/lib/postgresql/data
+              {{- if not $nonRoot }}
               # Not the PVC root directly: initdb refuses to run in a
               # non-empty directory, and a fresh PVC on some storage
-              # classes already contains a lost+found directory.
+              # classes already contains a lost+found directory. (As its
+              # own user, PGDATA is that subdirectory, which it makes.)
               subPath: pgdata
+              {{- end }}
             {{- end }}
             {{- if .Values.tls.enabled }}
             - {name: tls, mountPath: /tls, readOnly: true}

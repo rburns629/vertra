@@ -892,8 +892,16 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   scheduler, the console and both migrations require `runAsNonRoot`, the
   runtime's seccomp profile, no privilege escalation, no capabilities and a
   read-only root filesystem (`/tmp` an emptyDir), like the gateway, Loki,
-  the collector and Trivy already did. Left: Postgres and the Jobs that run
-  its image (backups, the console's database), whose image starts as root.
+  the collector and Trivy already did. Postgres too (2026-10-29): a new
+  install's runs as its user (999) from the start (`postgres.nonRoot:
+  auto`: fsGroup with OnRootMismatch, its data directory one it makes, the
+  claim marked `vertra.dev/postgres-layout: nonroot`), and the Jobs running
+  only its tools (backups' dump, the console's database) run as 999; proven
+  on kind, a fresh install (a step, an upgrade keeping it) and an existing
+  one keeping its layout and data. Left: an existing volume moved to it
+  (the kubelet's first fsGroup pass opens the data directory's mode, which
+  a 999 init container would have to close again), proven on a cloud
+  volume.
 - [x] **Bind the console's Secret rights per team namespace** as teams are
   created, instead of cluster-wide fenced by an admission policy. Decided
   against (2026-10-22): the console would have to create RoleBindings (and

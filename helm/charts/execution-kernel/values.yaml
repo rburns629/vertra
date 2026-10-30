@@ -430,6 +430,12 @@ postgres:
     # Where its backups go under backup.bucket: the same prefix the console
     # chart's own backups would use (its release name).
     backupPrefix: console
+  # -- Run Postgres as its own user (999) from the start, never root: auto
+  # (the default) for a volume made that way (a new install's, marked
+  # vertra.dev/postgres-layout: nonroot) and the image's way, root first,
+  # for one made before; true or false to choose. true on a volume made the
+  # old way leaves Postgres refusing its data directory's permissions.
+  nonRoot: auto
   persistence:
     enabled: true
     size: 1Gi

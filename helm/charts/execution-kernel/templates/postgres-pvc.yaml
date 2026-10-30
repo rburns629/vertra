@@ -6,12 +6,16 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "execution-kernel.labels" . | nindent 4 }}
-  {{- if .Values.postgres.persistence.keepOnUninstall }}
-  # Uninstalling the release leaves the data; deleting it is a separate,
-  # explicit step (vertra destroy asks).
   annotations:
+    {{- if .Values.postgres.persistence.keepOnUninstall }}
+    # Uninstalling the release leaves the data; deleting it is a separate,
+    # explicit step (vertra destroy asks).
     helm.sh/resource-policy: keep
-  {{- end }}
+    {{- end }}
+    {{- if include "execution-kernel.postgresNonRoot" . }}
+    # Made for Postgres running as its own user (postgres.nonRoot).
+    vertra.dev/postgres-layout: nonroot
+    {{- end }}
 spec:
   accessModes:
     - ReadWriteOnce

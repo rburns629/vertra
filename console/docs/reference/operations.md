@@ -654,7 +654,10 @@ To go back: install the previous release's charts, then restore that backup
 ## Databases
 
 Each chart can run its own Postgres (`postgres.enabled`), a single replica
-on a volume; or use an external database, such as the managed one `vertra`
+on a volume (the kernel's runs as its own user, 999, from the start on a
+volume made since 2026-10-29, which its claim marks
+`vertra.dev/postgres-layout: nonroot`; one made before keeps the image's
+way, starting as root to take ownership: `postgres.nonRoot`); or use an external database, such as the managed one `vertra`
 makes on Google Cloud or AWS (below). On a small install the kernel's
 Postgres can also hold the console's database (`postgres.consoleDatabase`),
 where the console signs in as its own role, which owns only its database.
