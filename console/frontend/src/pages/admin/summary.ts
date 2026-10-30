@@ -9,6 +9,7 @@ import {
   getImagePolicy,
   getInstall,
   getPolicySync,
+  getSecurity,
   getSsoSettings,
   listAllTeams,
   listAutomationTokens,
@@ -24,6 +25,7 @@ import {
   type ImageScan,
   type InstallInfo,
   type PolicySync,
+  type SecurityView,
   type SsoGroupMapping,
   type SsoSettings,
   type Team,
@@ -46,6 +48,8 @@ export interface AdminSummary {
   catalog: CatalogStatus | null;
   imagePolicy: ImagePolicy | null;
   scans: ImageScan[] | null;
+  /** Observe's security view: its images are the ones registered products run now. */
+  security: SecurityView | null;
   gateway: GatewayInfo | null;
   chat: ChatConfig | null;
   channel: string | null;
@@ -81,7 +85,8 @@ export function useAdminSummary(key: string): AdminSummary | null {
       getAdminChannel(),
       getPolicySync(),
       getAuditCopy(),
-    ]).then(([install, people, teams, sso, mappings, tokens, catalog, imagePolicy, scans, gateway, chat, channel, policies, audit]) => {
+      getSecurity(),
+    ]).then(([install, people, teams, sso, mappings, tokens, catalog, imagePolicy, scans, gateway, chat, channel, policies, audit, security]) => {
       if (!live) return;
       setSummary({
         install: value(install),
@@ -98,6 +103,7 @@ export function useAdminSummary(key: string): AdminSummary | null {
         channel: value(channel),
         policies: value(policies),
         audit: value(audit),
+        security: value(security),
       });
     });
     return () => {
@@ -109,6 +115,22 @@ export function useAdminSummary(key: string): AdminSummary | null {
 
 /** A failed scan nobody accepted: the image can't run. */
 export const blocksRun = (s: ImageScan) => s.status === "failed" && !s.acceptedReason;
+
+/** A digest's hex, from a digest or an image reference that pins one. */
+const hex = (ref: string) => (ref.split("@").at(-1) ?? ref).replace(/^sha256:/, "");
+
+/**
+ * The failed scans that need an admin: of images a registered product runs
+ * now (Observe's images). An old build a product has moved on from fails
+ * quietly, since nothing runs it; it stays in Image scans' list. When
+ * Observe's images couldn't be read, every failed scan counts.
+ */
+export function failingInUse(s: AdminSummary): ImageScan[] {
+  const failed = (s.scans ?? []).filter(blocksRun);
+  if (!s.security) return failed;
+  const used = new Set(s.security.images.map((i) => hex(i.image)));
+  return failed.filter((f) => used.has(hex(f.digest)));
+}
 
 /** Teams that still exist (retired ones included). */
 export const liveTeams = (teams: Team[]) => teams.filter((t) => !t.deletedAt);
@@ -161,7 +183,7 @@ export function sectionStates(s: AdminSummary): Partial<Record<string, State>> {
   }
   if (s.install && !s.install.scanning) states.scans = { tone: "off", text: "Off" };
   else if (s.scans) {
-    const failed = s.scans.filter(blocksRun).length;
+    const failed = failingInUse(s).length;
     const unscanned = s.scans.filter((x) => x.status === "error").length;
     states.scans = failed > 0 ? { tone: "err", text: `${String(failed)} failed` } : unscanned > 0 ? { tone: "warn", text: `${String(unscanned)} not scanned` } : { tone: "ok", text: "Passing" };
   }

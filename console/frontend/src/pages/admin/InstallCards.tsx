@@ -15,7 +15,7 @@ import { Pill } from "../../components/Pill";
 import { useEnvironment } from "../../environment";
 import { when } from "../../time";
 import { AdminCard, Dot, PILL_TONE, SrOnly, TONE_WORD, type Tone } from "./parts";
-import { auditState, blocksRun, catalogState, liveTeams, policiesState, type AdminSummary } from "./summary";
+import { auditState, blocksRun, catalogState, failingInUse, liveTeams, policiesState, type AdminSummary } from "./summary";
 
 const code = (text: string) => (
   <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: "0.92em" }}>
@@ -79,7 +79,7 @@ interface Need {
 /** What needs an admin now, worst first, each from what the API says. */
 function needs(s: AdminSummary, ssoLabel: string): Need[] {
   const out: Need[] = [];
-  const failed = s.install?.scanning === false ? [] : (s.scans ?? []).filter(blocksRun);
+  const failed = s.install?.scanning === false ? [] : failingInUse(s);
   if (failed.length === 1 && failed[0]) {
     const f = failed[0];
     out.push({
@@ -471,13 +471,16 @@ export function EveryPart({ summary: s }: { summary: AdminSummary }) {
   if (s.install) {
     const scans = s.scans ?? [];
     const failed = scans.filter(blocksRun).length;
+    const inUse = failingInUse(s).length;
     const passed = scans.filter((x) => x.status === "passed").length;
     const accepted = scans.filter((x) => x.status === "failed" && x.acceptedReason).length;
     catalog.push({
       name: "Image scans",
       to: "/admin/scans",
-      tone: !s.install.scanning ? "off" : failed > 0 ? "err" : "ok",
-      detail: !s.install.scanning ? <>Off: images run unscanned. {code("scanning.enabled")}</> : `On. ${String(passed)} passed, ${String(failed)} failed, ${String(accepted)} accepted.`,
+      tone: !s.install.scanning ? "off" : inUse > 0 ? "err" : "ok",
+      detail: !s.install.scanning
+        ? <>Off: images run unscanned. {code("scanning.enabled")}</>
+        : `On. ${String(passed)} passed, ${String(failed)} failed${failed > inUse ? ` (${inUse === 0 ? "none" : String(inUse)} in use)` : ""}, ${String(accepted)} accepted.`,
       where: "both",
     });
   }

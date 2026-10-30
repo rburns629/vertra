@@ -15,7 +15,7 @@ import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
 import { ApiError, getImagePolicy, updateImagePolicy, type ImagePolicy } from "../../api";
 import { AdminCard, Dot, SrOnly, TONE_WORD, type Tone } from "./parts";
-import { blocksRun, type AdminSummary } from "./summary";
+import { failingInUse, type AdminSummary } from "./summary";
 
 /** A whole registry host (every project or user on it), not one path in
  * it. Same rule as ../../src/imagePolicy.ts's isBroadSource. */
@@ -35,7 +35,7 @@ interface Check {
 function ImageChecks({ summary }: { summary: AdminSummary | null }) {
   const allowed = summary?.imagePolicy?.allowed.length;
   const scanning = summary?.install?.scanning;
-  const failing = (summary?.scans ?? []).filter(blocksRun).length;
+  const failing = summary ? failingInUse(summary).length : 0;
   const checks: Check[] = [
     {
       title: "Comes from an allowed source",

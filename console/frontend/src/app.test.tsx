@@ -193,6 +193,24 @@ describe("image scans", () => {
     fireEvent.change(within(dialog).getByLabelText("Why it may run anyway"), { target: { value: "No fix upstream; not reachable here." } });
     expect(accept.hasAttribute("disabled")).toBe(false);
   });
+
+  it("tells an admin only about failed images a product runs now", async () => {
+    const running = (image: string) => ({
+      "AdminService/GetInstall": { version: "0.4.0", scanning: true },
+      "ObserveService/GetSecurity": { images: [{ product: "web", team: "web", image, scan: "passed" }] },
+    });
+    // An old build the product moved on from: listed, but nothing to do.
+    await renderAt("/admin", ADMIN, { "ImageService/ListImageScans": { scans: [FAILED, PASSED] }, ...running(PASSED.image) });
+    const parts = await screen.findByRole("region", { name: "Every part, and where it's set" });
+    expect(await within(parts).findByText(/1 failed \(none in use\)/)).toBeTruthy();
+    expect(screen.queryByText(/failed its scan/)).toBeNull();
+    cleanup();
+
+    // The build a product runs: it needs an admin.
+    await renderAt("/admin", ADMIN, { "ImageService/ListImageScans": { scans: [FAILED, PASSED] }, ...running(FAILED.image) });
+    const needs = await screen.findByRole("region", { name: "Needs you" });
+    expect(await within(needs).findByText("registry.example/web/site failed its scan")).toBeTruthy();
+  });
 });
 
 describe("runs", () => {
