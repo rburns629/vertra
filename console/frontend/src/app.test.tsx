@@ -658,30 +658,75 @@ describe("the cart", () => {
 describe("an API", () => {
   const ORDERS = { team: "payments", name: "orders", displayName: "Orders API", state: "API_STATE_LIVE", mayCall: true, endpoints: [{ method: "GET", path: "/orders/{id}", summary: "One order" }], perMinute: 600 };
 
-  it("tells a caller how to call it, without its team's tabs", async () => {
+  it("tells a caller how to call it, without its team's traffic, backend or logs", async () => {
     await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api: ORDERS, openapi: "{}" } });
     expect(await screen.findByRole("heading", { name: "Orders API" })).toBeTruthy();
     expect(screen.getByText(/curl -X GET/)).toBeTruthy();
-    expect(screen.queryByRole("tab", { name: "Traffic" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "On this page" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Requests" })).toBeNull();
+    expect(calls).not.toContain("ApiService/GetApiTraffic");
+    expect(calls).not.toContain("ObserveService/SearchLogs");
   });
 
-  it("gives its own team its traffic, and lets a maintainer pause it", async () => {
+  it("shows its own team each endpoint's traffic, its backend's logs, and lets a maintainer pause it", async () => {
     const paused: Record<string, unknown>[] = [];
-    await renderAt("/apis/payments/orders?tab=definition", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+    await renderAt("/apis/payments/orders", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
       "ApiService/GetApi": { api: { ...ORDERS, backendUrl: "https://orders.internal", sourcePath: "teams/payments/apis/orders/api.yaml" }, openapi: "{}" },
+      "ApiService/GetApiTraffic": {
+        requests: "120",
+        forwarded: "100",
+        stopped: "20",
+        endpoints: [{ endpoint: "GET /orders/{id}", requests: "4321", backend5xx: "7" }],
+        blocked: [{ request: "DELETE /orders/x", count: "9", teams: ["growth"] }],
+        teams: [{ team: "growth", requests: "120", peakPerMinute: "57", limitPerMinute: 60 }],
+      },
+      "ObserveService/SearchLogs": { lines: [{ team: "payments", app: "orders-api", level: "error", line: "ledger answered 503" }], searchDays: 30 },
       "ApiService/PauseApi": (request: Record<string, unknown>) => {
         paused.push(request);
         return {};
       },
     });
     expect(await screen.findByText("teams/payments/apis/orders/api.yaml")).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Traffic" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();
+    // The endpoint's own row carries its traffic; what the spec doesn't describe is listed apart.
+    expect(await screen.findByText("4,321")).toBeTruthy();
+    expect(screen.getByText("DELETE /orders/x")).toBeTruthy();
+    expect(screen.getByText("busiest minute 57 of 60")).toBeTruthy();
+    expect(await screen.findByText("ledger answered 503")).toBeTruthy();
+    expect(calls).toContain("ObserveService/SearchLogs");
+    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments");
+
     fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
     fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
     await waitFor(() => { expect(paused).toEqual([{ team: "payments", name: "orders", message: "Failing over" }]); });
+  });
+});
 
-    fireEvent.click(screen.getByRole("tab", { name: "Traffic" }));
-    await waitFor(() => { expect(calls).toContain("ApiService/GetApiTraffic"); });
+describe("the APIs page", () => {
+  const api = (team: string, name: string, extra: Record<string, unknown> = {}) => ({ team, name, displayName: `${name} API`, state: "API_STATE_LIVE", endpoints: [], url: `http://gateway.vertra-system.svc/${team}/${name}`, ...extra });
+
+  it("groups APIs as your teams', shared with you, and not shared, and filters them", async () => {
+    await renderAt("/apis", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "ApiService/ListApis": {
+        apis: [
+          api("payments", "orders", { mayCall: true }),
+          api("identity", "users", { mayCall: true }),
+          api("ml", "scoring", { state: "API_STATE_HELD", heldReason: "Its backend's host isn't allowed here yet" }),
+        ],
+      },
+    });
+    await screen.findByText("orders API");
+    const table = screen.getByRole("region", { name: "APIs you can see" });
+    const groups = [...table.querySelectorAll("th[scope=rowgroup]")].map((h) => h.textContent);
+    expect(groups).toEqual([expect.stringMatching(/^Your teams’ · payments/), expect.stringMatching(/^Shared with your teams/), expect.stringMatching(/^Not shared/)]);
+    expect(within(table).getByRole("link", { name: "Ask ml for access" })).toBeTruthy();
+    expect(screen.getByText("http://gateway.vertra-system.svc/<team>/<api>")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "A bot for payments" }).getAttribute("href")).toBe("/teams/payments?tab=automation");
+
+    fireEvent.click(screen.getByRole("button", { name: /Paused or held/ }));
+    expect(within(table).queryByText("orders API")).toBeNull();
+    expect(within(table).getByText("scoring API")).toBeTruthy();
+    expect(within(table).getByText("Its backend's host isn't allowed here yet")).toBeTruthy();
   });
 });
 
@@ -823,6 +868,39 @@ describe("observe", () => {
       "ObserveService/GetAuditCopy": { enabled: true, copiedThrough: "41206", checkedAt: "2026-10-22T08:00:00Z", copiedAt: "2026-10-22T14:05:00Z" },
     });
     expect(await screen.findByText("Chain intact")).toBeTruthy();
+    expect(screen.getByText("entry 41,206")).toBeTruthy();
+  });
+
+  it("opens the logs on an API's backends when linked from one, and says who sees which lines", async () => {
+    const searched: Record<string, unknown>[] = [];
+    await renderAt("/observe?tab=logs&from=api&team=payments", MEMBER, {
+      "ObserveService/SearchLogs": (request: Record<string, unknown>) => {
+        searched.push(request);
+        return { lines: [{ team: "payments", app: "orders-api", level: "warn", line: "ledger call slow" }], searchDays: 30 };
+      },
+    });
+    expect(await screen.findByText("ledger call slow")).toBeTruthy();
+    expect(searched[0]).toMatchObject({ source: "api", team: "payments" });
+    expect(screen.getByRole("button", { name: "API backends" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/1 line/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Who sees which lines" })).toBeTruthy();
+  });
+
+  it("counts what was refused by code, and marks who refused each", async () => {
+    await renderAt("/observe", MEMBER, {
+      "ObserveService/GetSecurity": {
+        checks: [{ name: "Teams from the directory", state: "not_yet", text: "Planned." }],
+        refusals: [
+          { what: "a", code: "NOT_IN_SPEC", why: "No such path.", source: "gateway", count: 2 },
+          { what: "b", code: "NOT_IN_SPEC", why: "No such path.", source: "gateway", count: 3 },
+          { what: "c", code: "IMAGE_NOT_ALLOWED", why: "Not allowed.", source: "step", count: 1 },
+        ],
+      },
+    });
+    expect(await screen.findByText("Teams from the directory: not yet")).toBeTruthy();
+    expect(screen.getByText("1 by the cluster · 2 by the gateway")).toBeTruthy();
+    const refused = screen.getByRole("region", { name: "Refused, last 7 days" });
+    expect(within(refused).getAllByText("NOT_IN_SPEC").length).toBeGreaterThan(1);
   });
 });
 
