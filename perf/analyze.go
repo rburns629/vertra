@@ -256,18 +256,21 @@ func output(name string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func environment(cluster string) env {
-	context := "kind-" + cluster
+// environment describes the cluster behind context, and this machine's
+// Docker when the cluster is kind's.
+func environment(context string, kind bool) env {
 	e := env{
-		GitCommit:  output("git", "rev-parse", "HEAD"),
-		GitDirty:   output("git", "status", "--porcelain") != "",
-		Host:       output("sysctl", "-n", "machdep.cpu.brand_string") + ", " + output("sysctl", "-n", "hw.memsize") + " bytes",
-		HostCPUs:   runtime.NumCPU(),
-		DockerCPUs: output("docker", "info", "--format", "{{.NCPU}}"),
-		DockerMem:  output("docker", "info", "--format", "{{.MemTotal}}"),
-		GoVersion:  runtime.Version(),
-		Kernel:     map[string]string{},
-		Replicas:   map[string]string{},
+		GitCommit: output("git", "rev-parse", "HEAD"),
+		GitDirty:  output("git", "status", "--porcelain") != "",
+		Host:      output("sysctl", "-n", "machdep.cpu.brand_string") + ", " + output("sysctl", "-n", "hw.memsize") + " bytes",
+		HostCPUs:  runtime.NumCPU(),
+		GoVersion: runtime.Version(),
+		Kernel:    map[string]string{},
+		Replicas:  map[string]string{},
+	}
+	if kind {
+		e.DockerCPUs = output("docker", "info", "--format", "{{.NCPU}}")
+		e.DockerMem = output("docker", "info", "--format", "{{.MemTotal}}")
 	}
 	var version struct {
 		Server struct{ GitVersion string } `json:"serverVersion"`
@@ -319,7 +322,10 @@ func markdown(r report) string {
 	if r.Readers > 0 {
 		fmt.Fprintf(&b, "\n%d reader(s); %d read(s) failed.\n", r.Readers, r.ReadErrors)
 	}
-	fmt.Fprintf(&b, "\nNode: CPU peak %.0f%%, mean %.0f%% (of %s CPUs); memory peak %.2f GiB.\n\n", r.NodePeakCPU, r.NodeMeanCPU, r.Environment.DockerCPUs, r.NodePeakMemG)
+	if r.Environment.DockerCPUs != "" {
+		fmt.Fprintf(&b, "\nNode: CPU peak %.0f%%, mean %.0f%% (of %s CPUs); memory peak %.2f GiB.\n", r.NodePeakCPU, r.NodeMeanCPU, r.Environment.DockerCPUs, r.NodePeakMemG)
+	}
+	b.WriteString("\n")
 	if len(r.Problems) == 0 {
 		b.WriteString("Correctness: every DAG ended as expected, every step ran its own inputs, the expected attempts, after what it depends on.\n")
 	} else {

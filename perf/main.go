@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 // perf runs one benchmark scenario against a Vertra install on the
-// dedicated vertra-perf kind cluster (README.md): it submits DAGs of the
+// dedicated vertra-perf kind cluster, or a vertra-* cloud cluster named
+// exactly with -context (README.md): it submits DAGs of the
 // perf sample's no-op product through the console's API, as a pipeline
 // would, waits for each to finish, and writes what it measured, and
 // whether every run ended as it should, to results/ as JSON and Markdown.
@@ -67,6 +68,7 @@ func run() error {
 		rate        = flag.Float64("rate", 0, "submissions a second across all submitters; 0: as fast as they go")
 		allowLarge  = flag.Bool("allow-large", false, "allow more than 1,000 steps in all")
 		cluster     = flag.String("cluster", "vertra-perf", "the kind cluster it may use (its context is kind-<cluster>)")
+		cloud       = flag.String("context", "", "instead of -cluster: a vertra-* GKE or EKS cluster's kubectl context, named exactly")
 		consoleURL  = flag.String("console", "http://localhost:18080", "the console's address: this machine only")
 		team        = flag.String("team", "perf", "the team the steps run for")
 		image       = flag.String("image", "localhost:5001/perf-catalog/perf/noop:latest", "the no-op product's image")
@@ -89,7 +91,8 @@ func run() error {
 	if err := w.check(*allowLarge); err != nil {
 		return err
 	}
-	if err := safe(*cluster, *consoleURL); err != nil {
+	kubeContext, err := safe(*cluster, *cloud, *consoleURL)
+	if err != nil {
 		return err
 	}
 	token := os.Getenv("VERTRA_TOKEN")
@@ -104,11 +107,15 @@ func run() error {
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	c := &console{url: strings.TrimRight(*consoleURL, "/"), token: token, http: &http.Client{Timeout: 30 * time.Second}}
 
-	env := environment(*cluster)
+	env := environment(kubeContext, *cloud == "")
 	runID := time.Now().UTC().Format("20060102T150405Z")
 	log.Info("starting", "run", runID, "scenario", w.Scenario, "dags", w.DAGs, "steps", w.Steps, "shape", w.Shape)
 
-	sampler := startSampler(ctx, *cluster+"-control-plane")
+	// A kind node is a container here; a cloud's nodes aren't sampled.
+	sampler := func() []sample { return nil }
+	if *cloud == "" {
+		sampler = startSampler(ctx, *cluster+"-control-plane")
+	}
 	started := time.Now()
 	var mu sync.Mutex
 	var ids []string
@@ -142,19 +149,28 @@ func run() error {
 	return write(*out, r, runs, log)
 }
 
-// safe refuses anything but the named kind cluster's context, existing and
-// running Vertra, and a console on this machine.
-func safe(cluster, consoleURL string) error {
-	if !strings.HasPrefix(cluster, "vertra-perf") {
-		return fmt.Errorf("cluster %q: benchmarks run only on a vertra-perf* cluster (README.md)", cluster)
+// safe refuses anything but the named kind cluster's context (or, with
+// -context, a vertra-* cloud cluster's), existing and running Vertra, and a
+// console on this machine; it returns the context to use.
+func safe(cluster, cloud, consoleURL string) (string, error) {
+	context := "kind-" + cluster
+	switch {
+	case cloud != "":
+		// GKE's contexts end in _<cluster>, EKS's in /<cluster>.
+		name := cloud[strings.LastIndexAny(cloud, "_/")+1:]
+		if strings.HasPrefix(cloud, "kind-") || !strings.HasPrefix(name, "vertra-") {
+			return "", fmt.Errorf("context %q: -context is a vertra-* GKE or EKS cluster's; a kind cluster is -cluster (README.md)", cloud)
+		}
+		context = cloud
+	case !strings.HasPrefix(cluster, "vertra-perf"):
+		return "", fmt.Errorf("cluster %q: benchmarks run only on a vertra-perf* cluster (README.md)", cluster)
 	}
 	u, err := url.Parse(consoleURL)
 	if err != nil || (u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1") {
-		return fmt.Errorf("console %q: only a console on this machine (a port-forward to the perf cluster)", consoleURL)
+		return "", fmt.Errorf("console %q: only a console on this machine (a port-forward to the perf cluster)", consoleURL)
 	}
-	context := "kind-" + cluster
 	if err := exec.Command("kubectl", "--context", context, "-n", "vertra-system", "get", "deployment", "kernel-execution-kernel-scheduler").Run(); err != nil {
-		return fmt.Errorf("context %s has no Vertra in vertra-system: make quickstart KIND_CLUSTER=%s (README.md)", context, cluster)
+		return "", fmt.Errorf("context %s has no Vertra in vertra-system (README.md)", context)
 	}
 	// The port-forward on the console's port must reach this cluster's
 	// console, not another's: the whole command make up starts (pgrep -l
@@ -165,9 +181,9 @@ func safe(cluster, consoleURL string) error {
 	}
 	forward := "kubectl --context " + context + " -n vertra-system port-forward svc/console-execution-console " + port + ":8080"
 	if err := exec.Command("pgrep", "-f", forward).Run(); err != nil {
-		return fmt.Errorf("no port-forward on port %s to %s's console: make up KIND_CLUSTER=%s (and make down for any other)", port, context, cluster)
+		return "", fmt.Errorf("no port-forward on port %s to %s's console: %s (README.md)", port, context, forward)
 	}
-	return nil
+	return context, nil
 }
 
 // submitAll submits every DAG, `concurrency` at a time, at most `rate` a second.
