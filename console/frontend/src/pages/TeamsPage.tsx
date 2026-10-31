@@ -200,7 +200,14 @@ export function TeamsPage() {
       hideBelow: "md",
       render: (t) => {
         const top = usageOf(t.name)?.used[0];
-        return top ? <Mono sx={{ overflowWrap: "anywhere" }}>{`${top.name} ×${top.count.toLocaleString()}`}</Mono> : "—";
+        const text = top && `${top.name} ×${top.count.toLocaleString()}`;
+        return text ? (
+          <Box title={text} sx={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Mono>{text}</Mono>
+          </Box>
+        ) : (
+          "—"
+        );
       },
     },
     {

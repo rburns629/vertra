@@ -41,7 +41,7 @@ function teamColumns(most: number): DataTableColumn<TeamUsageView>[] {
       header: "Team",
       render: (t) =>
         t.team ? (
-          <Link component={RouterLink} to={`/teams/${encodeURIComponent(t.team)}`} sx={{ fontWeight: 500, overflowWrap: "anywhere" }}>
+          <Link component={RouterLink} to={`/teams/${encodeURIComponent(t.team)}`} sx={{ fontWeight: 500, whiteSpace: "nowrap" }}>
             {t.team}
           </Link>
         ) : (
@@ -51,7 +51,7 @@ function teamColumns(most: number): DataTableColumn<TeamUsageView>[] {
         ),
     },
     { key: "runs", header: "Runs started", render: (t) => <Sized n={t.runs} most={most} label={`${t.runs.toLocaleString()} runs started for ${usageTeam(t.team)}`} /> },
-    { key: "by", header: "Started by", hideBelow: "md", render: (t) => startedBy(t) || "—" },
+    { key: "by", header: "Started by", hideBelow: "md", render: (t) => <Box sx={{ whiteSpace: "nowrap" }}>{startedBy(t) || "—"}</Box> },
     { key: "steps", header: "Steps", align: "right", hideBelow: "sm", render: (t) => t.steps.toLocaleString() },
     {
       key: "used",
@@ -76,7 +76,7 @@ function teamColumns(most: number): DataTableColumn<TeamUsageView>[] {
         </Box>
       ),
     },
-    { key: "ranFor", header: "Its products ran for", hideBelow: "md", render: (t) => countsText(t.ranFor, t.team) || "—" },
+    { key: "ranFor", header: "Its products ran for", hideBelow: "md", render: (t) => <Box sx={{ minWidth: 180 }}>{countsText(t.ranFor, t.team) || "—"}</Box> },
   ];
 }
 
