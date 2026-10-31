@@ -133,6 +133,33 @@ describe("checkImage", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("ECONNREFUSED"))));
     expect(await checkImage(image().ref, ALLOWED)).toBe("unverified");
   });
+
+  it("asks the registry once for checks of one image at the same time", async () => {
+    const tagged = image();
+    existing.add(tagged.manifestPath);
+    const statuses = await Promise.all(Array.from({ length: 8 }, () => checkImage(tagged.ref, ALLOWED)));
+    expect(statuses).toEqual(Array(8).fill("available"));
+    expect(calls.filter((call) => call.url.endsWith(tagged.manifestPath))).toHaveLength(2); // the 401, then signed in
+  });
+
+  it("remembers an unanswered check for seconds, not the minute an answer is kept", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const tagged = image();
+      existing.add(tagged.manifestPath);
+      vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("timeout"))));
+      expect((await pinImages([tagged.ref], ALLOWED)).unresolved).toEqual([tagged.ref]);
+      vi.stubGlobal("fetch", vi.fn(fakeRegistry));
+      expect((await pinImages([tagged.ref], ALLOWED)).unresolved).toEqual([tagged.ref]); // still remembered
+      vi.setSystemTime(Date.now() + 6_000);
+      expect((await pinImages([tagged.ref], ALLOWED)).pinned.get(tagged.ref)).toBe(`${tagged.ref}@${DIGEST}`);
+      vi.setSystemTime(Date.now() + 50_000);
+      vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("timeout"))));
+      expect((await pinImages([tagged.ref], ALLOWED)).pinned.get(tagged.ref)).toBe(`${tagged.ref}@${DIGEST}`); // the answer, kept
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("pinImages", () => {
