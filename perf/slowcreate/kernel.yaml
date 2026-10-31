@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: MIT
+# For "A create that timed out" (perf/README.md), on top of
+# perf/kind-kernel.yaml: the kernel gives up on a Kubernetes request after
+# 3 s, under the slowcreate webhook's hold.
+scheduler:
+  kubernetesRequestTimeoutSeconds: 3

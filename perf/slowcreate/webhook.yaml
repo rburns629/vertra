@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: MIT
+# The slowcreate webhook (run.sh fills in @IMAGE@, @DELAY@ and @CA@).
+# Jobs in namespace perf only; failurePolicy Ignore, so a webhook that's
+# gone never blocks a step.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slowcreate
+  namespace: slowcreate
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: slowcreate}
+  template:
+    metadata:
+      labels: {app: slowcreate}
+    spec:
+      containers:
+        - name: slowcreate
+          image: "@IMAGE@"
+          # Rebuilt under one tag: always the newest.
+          imagePullPolicy: Always
+          env:
+            - {name: DELAY, value: "@DELAY@"}
+            - {name: JITTER, value: "@JITTER@"}
+          ports:
+            - containerPort: 8443
+          volumeMounts:
+            - {name: tls, mountPath: /tls, readOnly: true}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities: {drop: [ALL]}
+      volumes:
+        - name: tls
+          secret: {secretName: slowcreate}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slowcreate
+  namespace: slowcreate
+spec:
+  selector: {app: slowcreate}
+  ports:
+    - {port: 443, targetPort: 8443}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: slowcreate
+webhooks:
+  - name: slowcreate.perf.vertra.dev
+    rules:
+      - apiGroups: [batch]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [jobs]
+    namespaceSelector:
+      matchLabels: {kubernetes.io/metadata.name: perf}
+    clientConfig:
+      service: {name: slowcreate, namespace: slowcreate, path: /validate}
+      caBundle: "@CA@"
+    failurePolicy: Ignore
+    timeoutSeconds: 20
+    sideEffects: None
+    admissionReviewVersions: [v1]
