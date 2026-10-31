@@ -265,7 +265,7 @@ export function ApiPage() {
 
           <RequestSteps />
 
-          {ownTeam && <ApiLogs team={team} />}
+          {ownTeam && <ApiLogs team={team} api={name} />}
         </>
       )}
     </Box>

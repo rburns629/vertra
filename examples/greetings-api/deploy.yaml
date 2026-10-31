@@ -2,7 +2,8 @@
 # would run it (kubectl, or its own CD): `make kind-sample-api` builds it and
 # applies this. vertra/api-backend: "true" is what lets the gateway reach it
 # (the console's vertra-gateway-ingress NetworkPolicy); every other Pod in
-# the namespace stays closed to it.
+# the namespace stays closed to it. vertra/api names the API product it
+# serves, so Observe can search its lines by API.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,6 +18,7 @@ spec:
       labels:
         app: greetings
         vertra/api-backend: "true"
+        vertra/api: greetings
     spec:
       automountServiceAccountToken: false
       securityContext:

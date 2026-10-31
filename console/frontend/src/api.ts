@@ -2074,6 +2074,8 @@ export interface LogSearch {
   executionId?: string;
   level?: string;
   source?: "step" | "api" | "platform";
+  /** With source api: one API product's backend, by name. */
+  api?: string;
   /** How far back, in hours, from now. */
   hours: number;
 }
@@ -2087,6 +2089,7 @@ export async function searchLogs(search: LogSearch): Promise<{ lines: LogLineVie
       executionId: search.executionId ?? "",
       level: search.level ?? "",
       source: search.source ?? "",
+      api: search.api ?? "",
       since: timestampFromDate(new Date(Date.now() - search.hours * 3_600_000)),
       limit: 500,
     }),

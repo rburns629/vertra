@@ -1039,7 +1039,7 @@ describe("an API", () => {
     expect(await screen.findByText("ledger answered 503")).toBeTruthy();
     expect(calls).toContain("ObserveService/SearchLogs");
     // Over the same day the card shows.
-    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments&hours=24");
+    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments&api=orders&hours=24");
 
     fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
     fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
@@ -2429,5 +2429,25 @@ describe("Admin's catalog section", () => {
       },
     });
     expect(await screen.findByText("5 teams, 14 products (20 actions), 6 templates, 4 SecretStores")).toBeTruthy();
+  });
+});
+
+describe("Observe's log search, for one API", () => {
+  it("searches one API product's backend, its team chosen with it", async () => {
+    const asked: Record<string, unknown>[] = [];
+    await renderAt("/observe?tab=logs&from=api&team=payments&api=orders&hours=24", { ...MEMBER, teamNames: ["payments"] }, {
+      "ApiService/ListApis": { apis: [{ team: "payments", name: "orders", state: "API_STATE_LIVE" }, { team: "payments", name: "ledger", state: "API_STATE_LIVE" }, { team: "ml", name: "scoring", state: "API_STATE_LIVE" }] },
+      "ObserveService/SearchLogs": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return { lines: [], searchDays: 30 };
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^Search/ }));
+    await waitFor(() => { expect(asked.at(-1)).toMatchObject({ source: "api", team: "payments", api: "orders" }); });
+    expect(await screen.findByText(/from payments\/orders’s backend/)).toBeTruthy();
+    // Only the APIs of the caller's teams are offered.
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "API" }));
+    expect(await screen.findByRole("option", { name: "payments/ledger" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "ml/scoring" })).toBeNull();
   });
 });

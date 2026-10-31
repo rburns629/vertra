@@ -1450,7 +1450,10 @@ type SearchLogsRequest struct {
 	Since *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=since,proto3" json:"since,omitempty"`
 	Until *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=until,proto3" json:"until,omitempty"`
 	// 200 when unset, at most 1000.
-	Limit         int32 `protobuf:"varint,8,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,8,opt,name=limit,proto3" json:"limit,omitempty"`
+	// With source api: only the backend of this API product of the team's
+	// (its Pods labelled vertra/api: <name>).
+	Api           string `protobuf:"bytes,9,opt,name=api,proto3" json:"api,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1539,6 +1542,13 @@ func (x *SearchLogsRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *SearchLogsRequest) GetApi() string {
+	if x != nil {
+		return x.Api
+	}
+	return ""
 }
 
 type SearchLogsResponse struct {
@@ -1828,7 +1838,7 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\n" +
 	"_copied_atB\r\n" +
 	"\v_checked_atB\x0e\n" +
-	"\f_compared_at\"\x86\x02\n" +
+	"\f_compared_at\"\x98\x02\n" +
 	"\x11SearchLogsRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12!\n" +
@@ -1837,7 +1847,8 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\x06source\x18\x05 \x01(\tR\x06source\x120\n" +
 	"\x05since\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x120\n" +
 	"\x05until\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x12\x14\n" +
-	"\x05limit\x18\b \x01(\x05R\x05limit\"\x85\x01\n" +
+	"\x05limit\x18\b \x01(\x05R\x05limit\x12\x10\n" +
+	"\x03api\x18\t \x01(\tR\x03api\"\x85\x01\n" +
 	"\x12SearchLogsResponse\x120\n" +
 	"\x05lines\x18\x01 \x03(\v2\x1a.vertra.console.v1.LogLineR\x05lines\x12\x1c\n" +
 	"\ttruncated\x18\x02 \x01(\bR\ttruncated\x12\x1f\n" +

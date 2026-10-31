@@ -266,6 +266,9 @@ message SearchLogsRequest {
   google.protobuf.Timestamp until = 7;
   // 200 when unset, at most 1000.
   int32 limit = 8;
+  // With source api: only the backend of this API product of the team's
+  // (its Pods labelled vertra/api: <name>).
+  string api = 9;
 }
 
 message SearchLogsResponse {

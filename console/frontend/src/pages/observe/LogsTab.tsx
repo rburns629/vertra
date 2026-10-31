@@ -16,7 +16,7 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import { Mono } from "../../components/Mono";
 import { useAuth } from "../../auth/AuthContext";
-import { ApiError, listAllTeams, searchLogs, type LogLineView } from "../../api";
+import { ApiError, listAllTeams, listApis, searchLogs, type LogLineView } from "../../api";
 import { LEVEL, LogLines } from "./LogLines";
 
 type Source = "step" | "api" | "platform";
@@ -40,31 +40,49 @@ const WHO: [string, string][] = [
 const field = { "& .MuiInputBase-root": { minHeight: 44 } };
 
 /** What the search covered, in words: "from every step of run 4be9a1c0, last 7 days". */
-function described(source: Source, team: string, run: string, hours: number): string {
+function described(source: Source, team: string, run: string, hours: number, api = ""): string {
   const range = (RANGES.find(([h]) => h === hours)?.[1] ?? `last ${String(hours)} hours`).toLowerCase();
   const from =
     source === "platform"
       ? "from the platform"
       : source === "api"
-        ? `from ${team ? `${team}’s` : "every"} API backend${team ? "s" : ""}`
+        ? api
+          ? `from ${team}/${api}’s backend`
+          : `from ${team ? `${team}’s` : "every"} API backend${team ? "s" : ""}`
         : run
           ? "from every step of run"
           : `from ${team ? `${team}’s` : "every"} step${team ? "s" : ""}`;
   return `${from}${source === "step" && run ? "" : `, ${range}`}`;
 }
 
-export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }: { initialRun: string; initialSource?: string; initialTeam?: string; initialHours?: number }) {
+export function LogsTab({
+  initialRun,
+  initialSource,
+  initialTeam,
+  initialHours,
+  initialApi,
+}: {
+  initialRun: string;
+  initialSource?: string;
+  initialTeam?: string;
+  initialHours?: number;
+  /** With source api: one API product, by name (its team is initialTeam). */
+  initialApi?: string;
+}) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [team, setTeam] = useState(initialTeam ?? "");
   const [run, setRun] = useState(initialRun);
+  const [api, setApi] = useState(initialApi && initialTeam ? `${initialTeam}/${initialApi}` : "");
+  // The API products whose backends the caller may search: their teams' (every one, for an admin).
+  const [apis, setApis] = useState<{ team: string; name: string }[]>([]);
   const [level, setLevel] = useState("");
   const [source, setSource] = useState<Source>(initialSource === "api" || initialSource === "platform" ? initialSource : "step");
   // A link's range when it's one offered (an API's 24-hour card), else a run's week or the last hour.
   const [hours, setHours] = useState(RANGES.some(([h]) => h === initialHours) ? (initialHours ?? 1) : initialRun ? 168 : 1);
   const [teams, setTeams] = useState<string[]>([]);
   const [lines, setLines] = useState<LogLineView[] | null>(null);
-  const [searched, setSearched] = useState({ source, team, run: initialRun, hours });
+  const [searched, setSearched] = useState({ source, team, run: initialRun, hours, api: initialApi ?? "" });
   const [truncated, setTruncated] = useState(false);
   const [searchDays, setSearchDays] = useState(30);
   const [off, setOff] = useState(false);
@@ -86,10 +104,18 @@ export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }
       });
   }, [user]);
 
+  useEffect(() => {
+    if (!user || source !== "api") return;
+    listApis()
+      .then((found) => { setApis(found.filter((a) => user.isAdmin || user.teamNames.includes(a.team)).map((a) => ({ team: a.team, name: a.name }))); })
+      .catch(() => { setApis([]); });
+  }, [user, source]);
+
   async function search(): Promise<void> {
     setSearching(true);
     setError(null);
     const runId = source === "step" ? run.trim() : "";
+    const apiName = source === "api" && api ? (api.split("/")[1] ?? "") : "";
     try {
       const found = await searchLogs({
         text: text.trim(),
@@ -97,10 +123,11 @@ export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }
         executionId: runId,
         level,
         source,
+        api: apiName,
         hours,
       });
       setLines(found.lines);
-      setSearched({ source, team: source === "platform" ? "" : team, run: runId, hours });
+      setSearched({ source, team: source === "platform" ? "" : team, run: runId, hours, api: apiName });
       setTruncated(found.truncated);
       setSearchDays(found.searchDays);
     } catch (err) {
@@ -196,6 +223,7 @@ export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }
                 value={team}
                 onChange={(event) => {
                   setTeam(event.target.value);
+                  if (api && !api.startsWith(`${event.target.value}/`)) setApi("");
                 }}
               >
                 <MenuItem value="">Any</MenuItem>
@@ -205,6 +233,37 @@ export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }
                   </MenuItem>
                 ))}
               </Select>
+            </FormControl>
+          )}
+          {source === "api" && (
+            <FormControl sx={{ ...field, flex: "1 1 220px" }}>
+              <InputLabel id="logs-api-label" shrink>
+                API
+              </InputLabel>
+              <Select
+                labelId="logs-api-label"
+                label="API"
+                aria-describedby="logs-api-help"
+                notched
+                displayEmpty
+                value={api}
+                onChange={(event) => {
+                  setApi(event.target.value);
+                  if (event.target.value) setTeam(event.target.value.split("/")[0] ?? "");
+                }}
+              >
+                <MenuItem value="">{team ? `Any of ${team}’s APIs` : "Any API"}</MenuItem>
+                {apis
+                  .filter((a) => !team || a.team === team)
+                  .map((a) => (
+                    <MenuItem key={`${a.team}/${a.name}`} value={`${a.team}/${a.name}`}>
+                      {a.team}/{a.name}
+                    </MenuItem>
+                  ))}
+              </Select>
+              <Typography id="logs-api-help" variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                One API: its backend&apos;s Pods labelled <Mono sx={{ fontSize: 11.5 }}>vertra/api: &lt;name&gt;</Mono>.
+              </Typography>
             </FormControl>
           )}
           {source === "step" && (
@@ -277,7 +336,7 @@ export function LogsTab({ initialRun, initialSource, initialTeam, initialHours }
                   <b>
                     {lines.length.toLocaleString()} line{lines.length === 1 ? "" : "s"}
                   </b>{" "}
-                  {described(searched.source, searched.team, searched.run, searched.hours)}
+                  {described(searched.source, searched.team, searched.run, searched.hours, searched.api)}
                   {searched.run && (
                     <>
                       {" "}

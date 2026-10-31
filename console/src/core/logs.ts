@@ -37,6 +37,7 @@ export const SearchLogsQuery = Type.Object({
   executionId: Type.Optional(Type.String({ format: "uuid" })),
   level: Type.Optional(Type.Union(LEVELS.map((l) => Type.Literal(l)))),
   source: Type.Optional(Type.Union([Type.Literal("step"), Type.Literal("api"), Type.Literal("platform")])),
+  api: Type.Optional(Type.String({ pattern: "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$" })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
 });
 
@@ -46,6 +47,8 @@ export interface SearchLogsInput {
   executionId?: string | undefined;
   level?: (typeof LEVELS)[number] | undefined;
   source?: "step" | "api" | "platform" | undefined;
+  /** With source api: one API product's backend (its Pods' vertra/api label). */
+  api?: string | undefined;
   since?: Date | undefined;
   until?: Date | undefined;
   limit?: number | undefined;
@@ -122,9 +125,10 @@ export async function visibleQueries(who: AuthUser, input: SearchLogsInput, sinc
       throw new ApiError(400, "BAD_REQUEST", "An API backend's lines belong to no run: leave the run out.", Code.InvalidArgument);
     }
     const team = input.team ? `, namespace=${quoted(input.team)}` : "";
-    if (who.isAdmin) return [`{component="api"${team}${level}}${pipeline}`];
+    const api = input.api ? `, api=${quoted(input.api)}` : "";
+    if (who.isAdmin) return [`{component="api"${team}${api}${level}}${pipeline}`];
     const own = who.teamNames.filter((t) => !input.team || t === input.team);
-    return own.length > 0 ? [`{component="api", namespace=~${oneOf(own)}${level}}${pipeline}`] : [];
+    return own.length > 0 ? [`{component="api", namespace=~${oneOf(own)}${api}${level}}${pipeline}`] : [];
   }
   const access = input.executionId ? await runAccess(who, input.executionId) : "full";
   if (access === "none") {

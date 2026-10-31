@@ -643,7 +643,7 @@ for a day; point `audit.export` at it in a values file under `_local/`.
 
 Observe's Logs tab searches every step's output, the API backends teams
 run in their namespaces (Pods labelled `vertra/api-backend: "true"`, each
-team its own), and, for admins, the platform's own, when the console chart's `logs.enabled` is on (`vertra`:
+team its own; also labelled `vertra/api: <name>`, searchable by API), and, for admins, the platform's own, when the console chart's `logs.enabled` is on (`vertra`:
 `logs.enabled` in vertra.yaml). Grafana Alloy collects through the
 Kubernetes API, redacting credentials, into one Loki; the console queries
 Loki with each caller's visibility added. Each step's Job is kept

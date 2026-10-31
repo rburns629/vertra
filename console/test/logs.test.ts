@@ -155,6 +155,15 @@ describe("API backends' log search", () => {
     expect(queries).toEqual([`{component="api", namespace="${teamB}", level="error"}`]);
   });
 
+  it("narrows to one API product's backend, its Pods' vertra/api label", async () => {
+    queries.length = 0;
+    await search(memberOfA, { source: "api", api: "orders" });
+    expect(queries).toEqual([`{component="api", namespace=~"^(${teamA})$", api="orders"}`]);
+    queries.length = 0;
+    expect((await search(memberOfA, { source: "api", api: "Not An API" })).code).toBe("invalid_argument");
+    expect(queries).toHaveLength(0);
+  });
+
   it("refuses a run: a backend's lines belong to none", async () => {
     expect((await search(memberOfA, { source: "api", executionId: runInA })).code).toBe("invalid_argument");
     expect(queries).toHaveLength(0);

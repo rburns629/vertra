@@ -18,7 +18,7 @@ const SHOWN = 20;
  * labelled vertra/api-backend, not this API's alone: the logs don't say
  * which API a Pod serves.
  */
-export function ApiLogs({ team }: { team: string }) {
+export function ApiLogs({ team, api }: { team: string; api: string }) {
   const [lines, setLines] = useState<LogLineView[] | null>(null);
   const [off, setOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function ApiLogs({ team }: { team: string }) {
           </Typography>
         </Box>
         {!off && (
-          <Button component={RouterLink} to={`/observe?tab=logs&from=api&team=${encodeURIComponent(team)}&hours=24`} variant="outlined" size="large">
+          <Button component={RouterLink} to={`/observe?tab=logs&from=api&team=${encodeURIComponent(team)}&api=${encodeURIComponent(api)}&hours=24`} variant="outlined" size="large">
             Search them in Observe
           </Button>
         )}

@@ -182,7 +182,7 @@ To release it, ask an admin to add the host (or a `*.` pattern above it) to the 
 
 ## Where are my API backend's logs?
 
-When the install keeps logs, a backend running in your team's namespace has its output on Observe: **Logs**, then **From: API backends**. The API's own page shows the newest of them, from all your team's API backends, under **Its backend’s logs**, with **Search them in Observe**. Only Pods labelled `vertra/api-backend: "true"` are collected. Those lines, at every level, are seen by your team and admins only: they belong to no run, so no caller sees them ([Observe's logs](12-observe.md#whose-logs-can-i-see)).
+When the install keeps logs, a backend running in your team's namespace has its output on Observe: **Logs**, then **From: API backends**. The API's own page shows the newest of them, from all your team's API backends, under **Its backend’s logs**, with **Search them in Observe**. Only Pods labelled `vertra/api-backend: "true"` are collected. Label them `vertra/api: <the API's name>` too, and **Search them in Observe** finds this API's backend alone (else every API backend of your team's). Those lines, at every level, are seen by your team and admins only: they belong to no run, so no caller sees them ([Observe's logs](12-observe.md#whose-logs-can-i-see)).
 
 A backend outside the cluster (Cloud Run, Lambda) logs where it runs. Use `Vertra-Request-Id` to find a request on both sides.
 
