@@ -204,6 +204,7 @@ TypeScript, Fastify 5, Drizzle (Postgres), `@kubernetes/client-node`. One proces
 | `core/runView.ts` | How much of a run a caller sees: its owners every step; a provider team's member only its own steps in full (the rest: state and failure codes). |
 | `core/alerts.ts` | Observe's alerts: the charts' alerting rules as a Prometheus has them now (its `/api/v1/rules`, from `monitoring.prometheusUrl`), firing first; an instance about an API the caller can't see only counted. |
 | `core/logs.ts` | Observe's log search over Loki, each query carrying the caller's visibility: a step's lines to its team, its INFO to anyone who may see its run, the platform's to admins. |
+| `core/usage.ts` | Who ran what (`GetUsage`), from `submitted_executions`: runs counted for the teams they were run for (as `runView.ts` decides), by people, bots or schedules, readiness checks left out; the products their steps used; read at most once a minute per period, each caller shown their part. |
 | `core/observe.ts` | Observe for everyone: the security checks (what this install enforces and doesn't yet, what the cluster refused this week, a run linked only for those who may see it, every image allowed to run and its scan), the metrics (from kernel-api's `GetStats`, each image named by its product, a hidden one only for its team), and the audit log as each caller may see it (`listAudit`). |
 | `core/apis.ts` | API products: who sees and may call each, whether it's live, held (its backend's host isn't allowed) or paused, and pausing one. |
 | `core/approvals.ts` | Approvals: a maintainer of a step's team, never whoever ran it, approves or declines it; the steps awaiting one. |
@@ -252,6 +253,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/dagCheck.ts` | Checks a pasted DAG live on the Submit page (JSON or YAML) and explains what's wrong. Tested in `dagCheck.test.ts`. |
 | `vitest.config.ts`, `src/**/*.test.ts` | The frontend's tests (`npm test`); a test that renders opts into jsdom. |
 | `src/dagLayout.ts` | Arranges a DAG's tasks into columns for the execution graph. |
+| `src/usageText.ts` | How usage reads, the same on Observe's Usage tab and the Teams page's cards ("No team", "itself", who started runs). |
 | `src/time.ts` | Durations and times as people say them ("8m 05s", "today 14:02"), and a clock that ticks while something runs. |
 | `src/statusColor.ts` | Each state's color and label, shared by the status chips and the home charts. |
 | `src/runningNow.ts` | What a run is doing now ("app-hosting.create, attempt 2 of 3"), for Home's Running now and the Runs list. Tested in `runningNow.test.ts`. |
@@ -283,7 +285,7 @@ React 19, MUI, Vite, react-router. Its own `package.json`.
 | `src/pages/SubmitExecutionPage.tsx` | Paste or write a DAG, with live checking. |
 | `src/pages/ExecutionDetailPage.tsx`, `src/pages/run/` | One run: who started it and from what, what an order's cart held and chose (`OrderCart`), its steps against time (`RunTimeline`), why it failed (`FailureCard`, `FailureHelp`), its steps in order (`RunSteps`), what it made (`WhatItMade`, with Delete all), who asked for it and ran it (`WhoActed`), and the chosen step (`StepPanel`: its approval, attempts, outputs, inputs, logs (`StepLogs`), definition); retry, approve, cancel, run again. |
 | `src/pages/ProductsPage.tsx` | The product registry, by platform, with releases. |
-| `src/pages/ObservePage.tsx`, `src/pages/observe/` | Observe, a tab per file (`?tab=`): the security checks (what's enforced, what was refused this week by the cluster, the catalog or the gateway, every image that may run and its scan), the metrics (with `AlertsCard.tsx`, the install's alerts), log search (`LogLines.tsx` draws the lines, for an API's page too), and the audit log (with its write-once copy's progress). |
+| `src/pages/ObservePage.tsx`, `src/pages/observe/` | Observe, a tab per file (`?tab=`): the security checks (what's enforced, what was refused this week by the cluster, the catalog or the gateway, every image that may run and its scan), the metrics (with `AlertsCard.tsx`, the install's alerts), usage by team or by product (`UsageTab.tsx`), log search (`LogLines.tsx` draws the lines, for an API's page too), and the audit log (with its write-once copy's progress). |
 | `src/pages/ApisPage.tsx`, `src/pages/ApiPage.tsx`, `src/pages/api/`, `src/pages/team/ApisTab.tsx` | API products: every one you may see (your teams', shared with you, not shared), and one API's page: its endpoints and how to call them for anyone who may see it; for its own team, each endpoint's traffic, its callers and what was blocked, what its api.yaml says, pausing it, and its backend's logs (`ApiLogs`). Its curl example quotes the URL as one shell word (`shellWord`, tested against a real `sh`). |
 | `src/pages/TeamsPage.tsx`, `TeamPage.tsx` | Your teams (an admin, every team), and one team's page: its tabs, the chosen one in the address (`?tab=`). |
 | `src/pages/team/` | The Team page's tabs: members, secrets (adding one, connecting a cloud source, a SecretStore's stored credential in `StoredCredential.tsx`), automation (bots), running tasks. `providers.ts` describes each secret provider for the "Connect a source" wizard. |
@@ -355,6 +357,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | `approvals.test.ts` | Which steps wait for an approval (`always`, `otherTeams`, a list of teams, a target rule), and who may decide. |
 | `registry-federation.test.ts` | The STS exchange, impersonation, caching and the Docker config handed out. |
 | `registry-federation-aws.test.ts` | The same for Amazon ECR: assuming the owner's role by web identity, ECR's token as that role, caching to the session, STS's refusal, image checks and the Docker config. |
+| `usage.test.ts` | Usage: runs counted for the team they were run for, by people, bots or schedules, readiness checks left out; what each caller sees (their teams, their products' users, a hidden product named only for its team). |
 | `observe.test.ts` | The security checks: what's enforced, refusals linked only for those who may see the run, images (a hidden product's for its team); the metrics, named by product, a hidden one's only for its team. |
 | `logs.test.ts` | The LogQL the log search sends (a stand-in Loki records it): each caller's visibility, names checked, typed text quoted; LOGS_OFF. |
 | `metrics.test.ts` | The console's Prometheus metrics: calls counted by procedure and code, served on their own port and not on the console's. |

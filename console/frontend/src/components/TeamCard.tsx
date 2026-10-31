@@ -22,10 +22,12 @@ import {
   type Team,
   type TeamProfile,
   type TeamSecret,
+  type TeamUsageView,
 } from "../api";
 import { useEnvironment } from "../environment";
 import { statusLabel } from "../statusColor";
 import { when } from "../time";
+import { countsText, startedBy } from "../usageText";
 import { Mono } from "./Mono";
 import { Pill } from "./Pill";
 
@@ -114,6 +116,52 @@ function Offers({ offers, apis }: { offers: Runnable[]; apis: ApiProduct[] }) {
   );
 }
 
+/** The team's last 7 days: runs started for it and by whom, what they used, who its products ran for. */
+function Usage({ name, usage }: { name: string; usage: TeamUsageView | null }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 1.5, borderRadius: 2, border: 1, borderColor: "divider" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1.25 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+          Last 7 days
+        </Typography>
+        <Link component={RouterLink} to="/observe?tab=usage" variant="body2" sx={{ fontSize: 12 }}>
+          Every team&apos;s usage
+        </Link>
+      </Box>
+      {!usage || usage.runs === 0 ? (
+        <Typography variant="body2" sx={{ fontSize: 13 }}>
+          No runs started for {name}.
+          {usage && usage.ranFor.length > 0 && ` Its products ran for ${countsText(usage.ranFor, name)}.`}
+        </Typography>
+      ) : (
+        <>
+          <Typography variant="body2" sx={{ fontSize: 13 }}>
+            <Box component="b" sx={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+              {usage.runs.toLocaleString()}
+            </Box>{" "}
+            {usage.runs === 1 ? "run" : "runs"} started for {name}: {startedBy(usage).replaceAll(" · ", ", ")}.
+          </Typography>
+          <Typography variant="body2" component="div" sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.6, overflowWrap: "anywhere" }}>
+            {usage.used.length > 0 && (
+              <>
+                Used{" "}
+                {usage.used.slice(0, 3).map((u, i) => (
+                  <Fragment key={u.name}>
+                    {i > 0 && ", "}
+                    <Mono>{u.name}</Mono> ×{u.count.toLocaleString()}
+                  </Fragment>
+                ))}
+                {usage.used.length > 3 && `, +${String(usage.used.length - 3)} more`}.{" "}
+              </>
+            )}
+            {usage.ranFor.length > 0 && `Its products ran for ${countsText(usage.ranFor, name).replaceAll(" · ", ", ")}.`}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+}
+
 interface Loaded {
   team: Team | null;
   profile: TeamProfile | null;
@@ -168,6 +216,7 @@ export function TeamCard({
   offers,
   apis,
   approvals,
+  usage,
 }: {
   name: string;
   /** You maintain it (or you're an admin who's a member). */
@@ -177,6 +226,8 @@ export function TeamCard({
   apis: ApiProduct[];
   /** Its steps waiting for its approval. */
   approvals: PendingApproval[];
+  /** Its last 7 days; null when it started nothing, undefined while loading (or if it couldn't be). */
+  usage?: TeamUsageView | null | undefined;
 }) {
   const sso = useEnvironment()?.ssoLabel ?? "";
   const install = useEnvironment()?.label ?? "";
@@ -220,6 +271,8 @@ export function TeamCard({
       </Box>
 
       <Offers offers={offers} apis={apis} />
+
+      {usage !== undefined && <Usage name={name} usage={usage} />}
 
       {attention ? (
         <Box role="status" sx={{ display: "flex", gap: 1, p: 1.5, borderRadius: 2, bgcolor: "warning.light", color: "warning.dark" }}>

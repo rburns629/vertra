@@ -1,6 +1,6 @@
 # Observe: checks, scans, metrics, logs and the audit log
 
-**Observe** in the side menu shows what this install checks, what it refused, and what everything is doing. It has four tabs: **Security checks**, **Metrics**, **Logs** and **Audit log**. Everyone signed in can open it; what each person sees on a tab follows what they may see elsewhere, as this page explains. It also covers the admin pages behind it (**Admin → Image scans** and **Admin → Audit log copy**) and what to do when something is red.
+**Observe** in the side menu shows what this install checks, what it refused, and what everything is doing. It has five tabs: **Security checks**, **Metrics**, **Usage**, **Logs** and **Audit log**. Everyone signed in can open it; what each person sees on a tab follows what they may see elsewhere, as this page explains. It also covers the admin pages behind it (**Admin → Image scans** and **Admin → Audit log copy**) and what to do when something is red.
 
 ## What's on the Observe page, and who sees what?
 
@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | **Security checks** | What this install enforces, what it refused over the last 7 days, and every image allowed to run, with its last scan and SBOM | Everyone sees the checks, the cluster's and catalog's refusals, and every listed product's image. A refused step links to its run only for those who may see that run. Gateway refusals: the API's team, the calling team, and admins |
 | **Metrics** | Steps waiting and running now, steps started and how long they waited, why steps failed, the install's alerts, and each product's step times | Everyone. A hidden product's rows only for its own team and admins; an alert about a hidden API is counted, not described, for others |
+| **Usage** | Who ran what over the last day, week or month: runs started for each team and by whom, the products they used, and the teams each team's products ran for | Admins every team; anyone else their own teams, who used their teams' products, and their teams' use of others' ([reading it](#reading-the-usage-tab)) |
 | **Logs** | A search over steps' output, API backends' output and, for admins, the platform's own | Your teams' lines in full; other teams' INFO lines in runs you own; admins everything ([whose logs](#whose-logs-can-i-see)) |
 | **Audit log** | Who changed what, allowed or refused | Admins every entry; anyone else their own, and what was done to their teams or runs in them |
 
@@ -107,6 +108,21 @@ The Metrics tab reads kernel-api's own tables, so it works with nothing else ins
 | **Step times by product, last 7 days** | Per product and action: **Steps**, **Succeeded** (a percentage), **Median** and **95th percentile** run time, slowest first | A product that's slower or fails more than it used to |
 
 For why a single step is waiting, see [Why is my step Ready but not running?](09-runs-explained.md#why-is-my-step-ready-but-not-running).
+
+## Reading the Usage tab
+
+The Usage tab reads the console's own record of every run, so it works with nothing else installed, and is at most a minute old. Choose **By team** or **By product**, and the last **24 hours**, **7 days** or **30 days**. Each team's last 7 days are also on its card on the **Teams** page.
+
+A run counts for the team it was started for: a template's or an action's run for the team you chose to run it for, a DAG for every team its steps run in. Readiness checks don't count. Runs started for no team show under **No team**, for admins.
+
+| Part | Shows |
+| --- | --- |
+| **Runs started** | Runs in the period, and how many in the period before it, as long |
+| **Steps** | The steps of those runs as submitted; retries aren't counted |
+| **By team** | Per team: its runs, started by **people**, **bots** or **schedules**; their steps; the products they used, most first; and the teams its own products ran for (**itself** when it ran its own) |
+| **By product** | Per product: its steps and runs, the teams whose runs used it, and when it was last used. An image that isn't a registered product shows by its repository, as does a hidden product to anyone outside its team |
+
+How runs ended (succeeded or failed) isn't here: it's on **Metrics**, by product.
 
 ## Prometheus, alerts and Grafana
 

@@ -29,6 +29,15 @@ service ObserveService {
   rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Who ran what over the last day, week or month: runs started for each
+  // team, who started them, the products their steps used, and the teams
+  // each team's products ran for. From the console's own record of runs,
+  // read at most once a minute. Admins see every team; anyone else the
+  // teams they're in, their products' users, and their teams' use of
+  // others' products.
+  rpc GetUsage(GetUsageRequest) returns (GetUsageResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // The install's alerts, as the Prometheus the console reads has them now
   // (the console chart's monitoring.prometheusUrl, else the bundled one):
   // the charts' rules (groups vertra-*), each inactive, pending or firing,
@@ -131,6 +140,60 @@ message GetMetricsResponse {
   // Steps waiting to start, and running, now.
   int32 ready = 4;
   int32 running = 5;
+}
+
+message GetUsageRequest {
+  // 1, 7 or 30; 7 when unset.
+  int32 days = 1;
+}
+
+message GetUsageResponse {
+  // Where the period starts.
+  google.protobuf.Timestamp since = 1;
+  int32 days = 2;
+  // Busiest first.
+  repeated TeamUsage teams = 3;
+  // Most used first.
+  repeated ProductUsage products = 4;
+}
+
+message TeamUsage {
+  // Empty for runs started for no team. A run counts for the team a
+  // template was run for, or every team of a raw DAG.
+  string team = 1;
+  int32 runs = 2;
+  // In the period before, as long.
+  int32 previous_runs = 3;
+  int32 by_people = 4;
+  int32 by_bots = 5;
+  int32 by_schedules = 6;
+  // The steps of those runs as submitted, retries not counted.
+  int32 steps = 7;
+  // Steps of its runs by product, most first.
+  repeated UsageCount used = 8;
+  // Steps of its own products by the team each run was for, most first.
+  repeated UsageCount ran_for = 9;
+}
+
+message ProductUsage {
+  // The registered product, or the image repository for one that isn't
+  // (or a hidden product the caller doesn't see).
+  string product = 1;
+  // The product's team; for an image that isn't a product, the namespace
+  // its steps ran in.
+  string team = 2;
+  string action = 3;
+  bool registered = 4;
+  int32 steps = 5;
+  int32 runs = 6;
+  // Steps by the team each run was for (empty: no team), most first.
+  repeated UsageCount used_by = 7;
+  google.protobuf.Timestamp last_used = 8;
+}
+
+message UsageCount {
+  string name = 1;
+  int32 count = 2;
 }
 
 message ListAlertsRequest {}

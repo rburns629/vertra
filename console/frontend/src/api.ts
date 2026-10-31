@@ -2032,6 +2032,77 @@ export async function getMetrics(): Promise<MetricsView> {
   };
 }
 
+export interface UsageCount {
+  /** A product, or a team ("" for runs started for no team). */
+  name: string;
+  count: number;
+}
+
+export interface TeamUsageView {
+  /** "" for runs started for no team. */
+  team: string;
+  runs: number;
+  /** In the period before, as long. */
+  previousRuns: number;
+  byPeople: number;
+  byBots: number;
+  bySchedules: number;
+  steps: number;
+  /** Steps of its runs by product, most first. */
+  used: UsageCount[];
+  /** Steps of its own products by the team each run was for, most first. */
+  ranFor: UsageCount[];
+}
+
+export interface ProductUsageView {
+  product: string;
+  team: string;
+  action: string;
+  registered: boolean;
+  steps: number;
+  runs: number;
+  usedBy: UsageCount[];
+  lastUsed: string | null;
+}
+
+export interface UsageView {
+  since: string | null;
+  days: number;
+  teams: TeamUsageView[];
+  products: ProductUsageView[];
+}
+
+/** Who ran what over the last `days` (1, 7 or 30), as far as the caller may see (ObserveService.GetUsage). */
+export async function getUsage(days: 1 | 7 | 30): Promise<UsageView> {
+  const u = await call(() => observe.getUsage({ days }));
+  const counts = (list: { name: string; count: number }[]) => list.map((c) => ({ name: c.name, count: c.count }));
+  return {
+    since: iso(u.since),
+    days: u.days,
+    teams: u.teams.map((t) => ({
+      team: t.team,
+      runs: t.runs,
+      previousRuns: t.previousRuns,
+      byPeople: t.byPeople,
+      byBots: t.byBots,
+      bySchedules: t.bySchedules,
+      steps: t.steps,
+      used: counts(t.used),
+      ranFor: counts(t.ranFor),
+    })),
+    products: u.products.map((p) => ({
+      product: p.product,
+      team: p.team,
+      action: p.action,
+      registered: p.registered,
+      steps: p.steps,
+      runs: p.runs,
+      usedBy: counts(p.usedBy),
+      lastUsed: iso(p.lastUsed),
+    })),
+  };
+}
+
 export interface AuditEntryView {
   id: string;
   at: string | null;

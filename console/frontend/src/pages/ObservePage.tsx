@@ -3,16 +3,18 @@ import { AuditTab } from "./observe/AuditTab";
 import { LogsTab } from "./observe/LogsTab";
 import { MetricsTab } from "./observe/MetricsTab";
 import { SecurityTab } from "./observe/SecurityTab";
+import { UsageTab } from "./observe/UsageTab";
 import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { PageHeader } from "../components/PageHeader";
 
-type TabId = "security" | "metrics" | "logs" | "audit";
+type TabId = "security" | "metrics" | "usage" | "logs" | "audit";
 const TABS: [TabId, string][] = [
   ["security", "Security checks"],
   ["metrics", "Metrics"],
+  ["usage", "Usage"],
   ["logs", "Logs"],
   ["audit", "Audit log"],
 ];
@@ -47,6 +49,7 @@ export function ObservePage() {
       </Tabs>
       {tab === "security" && <SecurityTab />}
       {tab === "metrics" && <MetricsTab />}
+      {tab === "usage" && <UsageTab />}
       {tab === "logs" && <LogsTab initialRun={params.get("run") ?? ""} initialSource={params.get("from") ?? ""} initialTeam={params.get("team") ?? ""} initialHours={Number(params.get("hours")) || undefined} initialApi={params.get("api") ?? ""} />}
       {tab === "audit" && <AuditTab />}
     </Box>

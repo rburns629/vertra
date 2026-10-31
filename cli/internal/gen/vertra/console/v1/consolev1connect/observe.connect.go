@@ -44,6 +44,8 @@ const (
 	// ObserveServiceGetMetricsProcedure is the fully-qualified name of the ObserveService's GetMetrics
 	// RPC.
 	ObserveServiceGetMetricsProcedure = "/vertra.console.v1.ObserveService/GetMetrics"
+	// ObserveServiceGetUsageProcedure is the fully-qualified name of the ObserveService's GetUsage RPC.
+	ObserveServiceGetUsageProcedure = "/vertra.console.v1.ObserveService/GetUsage"
 	// ObserveServiceListAlertsProcedure is the fully-qualified name of the ObserveService's ListAlerts
 	// RPC.
 	ObserveServiceListAlertsProcedure = "/vertra.console.v1.ObserveService/ListAlerts"
@@ -71,6 +73,13 @@ type ObserveServiceClient interface {
 	// hour over the last day; why they failed; and each product's step
 	// times over the last week.
 	GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error)
+	// Who ran what over the last day, week or month: runs started for each
+	// team, who started them, the products their steps used, and the teams
+	// each team's products ran for. From the console's own record of runs,
+	// read at most once a minute. Admins see every team; anyone else the
+	// teams they're in, their products' users, and their teams' use of
+	// others' products.
+	GetUsage(context.Context, *connect.Request[v1.GetUsageRequest]) (*connect.Response[v1.GetUsageResponse], error)
 	// The install's alerts, as the Prometheus the console reads has them now
 	// (the console chart's monitoring.prometheusUrl, else the bundled one):
 	// the charts' rules (groups vertra-*), each inactive, pending or firing,
@@ -123,6 +132,13 @@ func NewObserveServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getUsage: connect.NewClient[v1.GetUsageRequest, v1.GetUsageResponse](
+			httpClient,
+			baseURL+ObserveServiceGetUsageProcedure,
+			connect.WithSchema(observeServiceMethods.ByName("GetUsage")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		listAlerts: connect.NewClient[v1.ListAlertsRequest, v1.ListAlertsResponse](
 			httpClient,
 			baseURL+ObserveServiceListAlertsProcedure,
@@ -159,6 +175,7 @@ type observeServiceClient struct {
 	getSecurity  *connect.Client[v1.GetSecurityRequest, v1.GetSecurityResponse]
 	getImageSbom *connect.Client[v1.GetImageSbomRequest, v1.GetImageSbomResponse]
 	getMetrics   *connect.Client[v1.GetMetricsRequest, v1.GetMetricsResponse]
+	getUsage     *connect.Client[v1.GetUsageRequest, v1.GetUsageResponse]
 	listAlerts   *connect.Client[v1.ListAlertsRequest, v1.ListAlertsResponse]
 	listAudit    *connect.Client[v1.ListAuditRequest, v1.ListAuditResponse]
 	getAuditCopy *connect.Client[v1.GetAuditCopyRequest, v1.GetAuditCopyResponse]
@@ -178,6 +195,11 @@ func (c *observeServiceClient) GetImageSbom(ctx context.Context, req *connect.Re
 // GetMetrics calls vertra.console.v1.ObserveService.GetMetrics.
 func (c *observeServiceClient) GetMetrics(ctx context.Context, req *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error) {
 	return c.getMetrics.CallUnary(ctx, req)
+}
+
+// GetUsage calls vertra.console.v1.ObserveService.GetUsage.
+func (c *observeServiceClient) GetUsage(ctx context.Context, req *connect.Request[v1.GetUsageRequest]) (*connect.Response[v1.GetUsageResponse], error) {
+	return c.getUsage.CallUnary(ctx, req)
 }
 
 // ListAlerts calls vertra.console.v1.ObserveService.ListAlerts.
@@ -213,6 +235,13 @@ type ObserveServiceHandler interface {
 	// hour over the last day; why they failed; and each product's step
 	// times over the last week.
 	GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error)
+	// Who ran what over the last day, week or month: runs started for each
+	// team, who started them, the products their steps used, and the teams
+	// each team's products ran for. From the console's own record of runs,
+	// read at most once a minute. Admins see every team; anyone else the
+	// teams they're in, their products' users, and their teams' use of
+	// others' products.
+	GetUsage(context.Context, *connect.Request[v1.GetUsageRequest]) (*connect.Response[v1.GetUsageResponse], error)
 	// The install's alerts, as the Prometheus the console reads has them now
 	// (the console chart's monitoring.prometheusUrl, else the bundled one):
 	// the charts' rules (groups vertra-*), each inactive, pending or firing,
@@ -261,6 +290,13 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	observeServiceGetUsageHandler := connect.NewUnaryHandler(
+		ObserveServiceGetUsageProcedure,
+		svc.GetUsage,
+		connect.WithSchema(observeServiceMethods.ByName("GetUsage")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	observeServiceListAlertsHandler := connect.NewUnaryHandler(
 		ObserveServiceListAlertsProcedure,
 		svc.ListAlerts,
@@ -297,6 +333,8 @@ func NewObserveServiceHandler(svc ObserveServiceHandler, opts ...connect.Handler
 			observeServiceGetImageSbomHandler.ServeHTTP(w, r)
 		case ObserveServiceGetMetricsProcedure:
 			observeServiceGetMetricsHandler.ServeHTTP(w, r)
+		case ObserveServiceGetUsageProcedure:
+			observeServiceGetUsageHandler.ServeHTTP(w, r)
 		case ObserveServiceListAlertsProcedure:
 			observeServiceListAlertsHandler.ServeHTTP(w, r)
 		case ObserveServiceListAuditProcedure:
@@ -324,6 +362,10 @@ func (UnimplementedObserveServiceHandler) GetImageSbom(context.Context, *connect
 
 func (UnimplementedObserveServiceHandler) GetMetrics(context.Context, *connect.Request[v1.GetMetricsRequest]) (*connect.Response[v1.GetMetricsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetMetrics is not implemented"))
+}
+
+func (UnimplementedObserveServiceHandler) GetUsage(context.Context, *connect.Request[v1.GetUsageRequest]) (*connect.Response[v1.GetUsageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vertra.console.v1.ObserveService.GetUsage is not implemented"))
 }
 
 func (UnimplementedObserveServiceHandler) ListAlerts(context.Context, *connect.Request[v1.ListAlertsRequest]) (*connect.Response[v1.ListAlertsResponse], error) {

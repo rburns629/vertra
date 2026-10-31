@@ -699,6 +699,15 @@
      "public": false
     },
     {
+     "name": "GetUsage",
+     "comment": "Who ran what over the last day, week or month: runs started for each\nteam, who started them, the products their steps used, and the teams\neach team's products ran for. From the console's own record of runs,\nread at most once a minute. Admins see every team; anyone else the\nteams they're in, their products' users, and their teams' use of\nothers' products.",
+     "input": "vertra.console.v1.GetUsageRequest",
+     "output": "vertra.console.v1.GetUsageResponse",
+     "streaming": false,
+     "idempotency": "read",
+     "public": false
+    },
+    {
      "name": "ListAlerts",
      "comment": "The install's alerts, as the Prometheus the console reads has them now\n(the console chart's monitoring.prometheusUrl, else the bundled one):\nthe charts' rules (groups vertra-*), each inactive, pending or firing,\nwith what it fires for. Everyone signed in; a firing instance about an\nAPI the caller can't see is counted, not described.",
      "input": "vertra.console.v1.ListAlertsRequest",
@@ -7081,6 +7090,209 @@
     },
     {
      "name": "running",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.GetUsageRequest": {
+   "name": "GetUsageRequest",
+   "comment": "",
+   "fields": [
+    {
+     "name": "days",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "1, 7 or 30; 7 when unset."
+    }
+   ]
+  },
+  "vertra.console.v1.GetUsageResponse": {
+   "name": "GetUsageResponse",
+   "comment": "",
+   "fields": [
+    {
+     "name": "since",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": "Where the period starts."
+    },
+    {
+     "name": "days",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "teams",
+     "type": "TeamUsage",
+     "ref": "vertra.console.v1.TeamUsage",
+     "repeated": true,
+     "optional": false,
+     "comment": "Busiest first."
+    },
+    {
+     "name": "products",
+     "type": "ProductUsage",
+     "ref": "vertra.console.v1.ProductUsage",
+     "repeated": true,
+     "optional": false,
+     "comment": "Most used first."
+    }
+   ]
+  },
+  "vertra.console.v1.TeamUsage": {
+   "name": "TeamUsage",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Empty for runs started for no team. A run counts for the team a\ntemplate was run for, or every team of a raw DAG."
+    },
+    {
+     "name": "runs",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "previousRuns",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "In the period before, as long."
+    },
+    {
+     "name": "byPeople",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "byBots",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "bySchedules",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "The steps of those runs as submitted, retries not counted."
+    },
+    {
+     "name": "used",
+     "type": "UsageCount",
+     "ref": "vertra.console.v1.UsageCount",
+     "repeated": true,
+     "optional": false,
+     "comment": "Steps of its runs by product, most first."
+    },
+    {
+     "name": "ranFor",
+     "type": "UsageCount",
+     "ref": "vertra.console.v1.UsageCount",
+     "repeated": true,
+     "optional": false,
+     "comment": "Steps of its own products by the team each run was for, most first."
+    }
+   ]
+  },
+  "vertra.console.v1.ProductUsage": {
+   "name": "ProductUsage",
+   "comment": "",
+   "fields": [
+    {
+     "name": "product",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The registered product, or the image repository for one that isn't\n(or a hidden product the caller doesn't see)."
+    },
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "The product's team; for an image that isn't a product, the namespace\nits steps ran in."
+    },
+    {
+     "name": "action",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "registered",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "runs",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "usedBy",
+     "type": "UsageCount",
+     "ref": "vertra.console.v1.UsageCount",
+     "repeated": true,
+     "optional": false,
+     "comment": "Steps by the team each run was for (empty: no team), most first."
+    },
+    {
+     "name": "lastUsed",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.UsageCount": {
+   "name": "UsageCount",
+   "comment": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "count",
      "type": "integer",
      "repeated": false,
      "optional": false,
