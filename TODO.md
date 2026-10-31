@@ -28,8 +28,9 @@ Azure last.
 5. What can be built before the billed run: ~~the reverse cross-cloud
    catalog read (ECR from GKE), an aws reader of another account's ECR,
    `vertra`'s command for the catalog owner's grant~~ (built 2026-10-30,
-   below), ~~policy-controller on EKS~~ (proven 2026-10-27); left: a sample
-   federating with its product token.
+   below), ~~policy-controller on EKS~~ (proven 2026-10-27), ~~a sample
+   federating with its product token~~ (2026-10-31: the aws sample's
+   `caller-identity`, seen on kind; proven in the billed run, below).
 6. The rest of the performance work (below): sustained and higher
    scenarios, failure cases, API load through the console, and per-team
    product usage and run counts (moved here from the redesign's gaps).
@@ -40,7 +41,9 @@ Azure last.
    grants, catalog CI's SBOM attestation, the scheduler at scale (relists,
    rate limits at 50/100, Spot retries), the client limits, why a minimal
    Autopilot install had three nodes, an existing Postgres volume moved to
-   non-root (`postgres.nonRoot: true`), size figures. EKS: SecretStores set up
+   non-root (`postgres.nonRoot: true`), the aws sample's `caller-identity`
+   signing in to AWS from the GKE cluster (an IAM OIDC provider for its
+   issuer; free, STS only), size figures. EKS: SecretStores set up
    by `vertra`, the S3 audit bucket and its comparison, Amazon Managed
    Prometheus, the aws sample's API product, products choosing Spot,
    non-root Postgres on EBS, `vertra destroy` with an unanswering cluster,
@@ -613,8 +616,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   Proven on kind and on GKE Autopilot (2026-10-20): each declared token
   arrives from the cluster's issuer for the product's ServiceAccount,
   lasting an hour; the policy refuses the rest; registration refuses
-  GKE's API audience, read from the console's own token. Not yet: a
-  sample that federates with it (S2's samples, or AWS from GKE).
+  GKE's API audience, read from the console's own token. The sample:
+  `samples/aws/products/caller-identity` (2026-10-31), AWS from any
+  cluster that isn't EKS; seen on kind up to AWS refusing kind's private
+  issuer, a GKE cluster's issuer trusted is for the billed run.
 - [x] **P1: check inputs and outputs against their schemas (C1)** (done
   2026-10-21). The console checks each step's literal inputs against its
   product's input schema at submit (`INPUT_INVALID`, each problem on its

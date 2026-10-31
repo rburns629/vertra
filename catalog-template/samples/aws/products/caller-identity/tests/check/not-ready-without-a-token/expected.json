@@ -1,0 +1,7 @@
+{
+  "status": "succeeded",
+  "outputs": {
+    "ready": false,
+    "principal": "Kubernetes ServiceAccount aws-caller-identity, with no token for AWS"
+  }
+}

@@ -1,0 +1,87 @@
+# A sample: AWS from a cluster that isn't EKS (GKE, AKS, kind), signing in
+# with the step's own projected ServiceAccount token, by OIDC federation.
+# No key, no secret: see the aws team's README.md, AWS from another cluster.
+apiVersion: vertra.dev/v2
+kind: Product
+name: caller-identity
+team: aws
+displayName: AWS caller identity
+description: 'Signs in to AWS as a role, with this step''s own Kubernetes identity (no key), and says who AWS
+  says it is: the pattern for a product that calls AWS from GKE, AKS or any cluster AWS trusts by OIDC.'
+owner: aws-team
+runtime: python3.12
+serviceAccount: aws-caller-identity
+# A token for AWS's STS, an hour long, at /platform/tokens/sts.amazonaws.com:
+# signed by this cluster's issuer for this product's ServiceAccount.
+tokenAudiences:
+- sts.amazonaws.com
+check: check
+errors:
+  NO_TOKEN:
+    means: The step had no token for sts.amazonaws.com.
+    do: Run it on an install whose release carries this product's tokenAudiences; a hand-made step gets none.
+  TOKEN_NOT_TRUSTED:
+    means: AWS didn't trust the token's issuer, this cluster's OIDC issuer.
+    do: Add the cluster's issuer as an IAM OIDC identity provider in the account, with sts.amazonaws.com as its audience (the aws team's README.md).
+  ROLE_NOT_ALLOWED:
+    means: The role's trust policy doesn't let this product's ServiceAccount in.
+    do: Trust the provider in the role, for sub system:serviceaccount:aws:aws-caller-identity and aud sts.amazonaws.com.
+actions:
+- name: whoami
+  # It only asks.
+  idempotent: true
+  maxAttempts: 2
+  script: actions/whoami.py
+  input:
+    type: object
+    additionalProperties: false
+    required:
+    - roleArn
+    properties:
+      roleArn:
+        type: string
+        title: Role
+        description: The IAM role to act as, whose trust policy lets this product's ServiceAccount in.
+        pattern: ^arn:aws[a-z-]*:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_/-]{1,512}$
+      region:
+        type: string
+        description: The STS region to ask, such as eu-west-1. Left out, us-east-1.
+        pattern: ^[a-z]{2}(-[a-z]+)+-[0-9]$
+  output:
+    type: object
+    additionalProperties: false
+    required:
+    - account
+    - arn
+    properties:
+      account:
+        type: string
+        title: Account
+      arn:
+        type: string
+        title: Signed in as
+        description: The role session AWS says this step is.
+      expiresAt:
+        type: string
+        title: Until
+        description: When the session's credentials expire (never shown).
+- name: check
+  idempotent: true   # it only looks
+  maxAttempts: 2
+  script: actions/check.py
+  input:
+    type: object
+    additionalProperties: false
+  output:
+    type: object
+    additionalProperties: false
+    required: [ready]
+    properties:
+      ready: {type: boolean, title: Ready}
+      principal: {type: string, title: Principal, description: Who it signs in as here.}
+      missing:
+        type: array
+        title: Missing
+        description: What an admin must grant it here.
+        items: {type: string}
+      detail: {type: string, title: Detail}

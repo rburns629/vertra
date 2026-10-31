@@ -11,6 +11,7 @@ SecretStore isn't proven yet.
 | [`s3-bucket`](products/s3-bucket/) | Finds a bucket by name, or creates it with all public access blocked. A name another account owns fails with `BUCKET_NAME_TAKEN` |
 | [`app-runner`](products/app-runner/) | Deploys an image (ECR or ECR Public) as an App Runner service and waits for it to run, or returns the existing service's URL. Private unless `public: true` |
 | [`rds-postgres`](products/rds-postgres/) | Finds an RDS for PostgreSQL instance, or creates it (encrypted, not public) and waits until it's available, several minutes: set `timeoutSeconds` to 1500 or more, and delete it after |
+| [`caller-identity`](products/caller-identity/) | `whoami`: signs in as a role with the step's own projected ServiceAccount token, from a cluster that isn't EKS (GKE, AKS, kind), and says who AWS says it is. Free: STS only. See [AWS from another cluster](#aws-from-another-cluster) |
 
 Every action looks before it creates, so a retried step is harmless.
 
@@ -91,6 +92,44 @@ their own credentials only to assume that role (`sts:AssumeRole`, which the
 target's trust policy must allow) and act as it. Each team, and each
 product, chooses its own. List it in the product's `check` too, so the check
 asks as the role the actions act as.
+
+## AWS from another cluster
+
+`caller-identity` is the pattern for a product that runs on GKE, AKS or any
+cluster other than EKS and calls AWS, with no key and no stored secret. Its
+`product.yaml` declares `tokenAudiences: [sts.amazonaws.com]`, so each of
+its steps gets an hour-long token for its own ServiceAccount, signed by the
+cluster's OIDC issuer, at `/platform/tokens/sts.amazonaws.com`. `whoami`
+hands that token to STS's `AssumeRoleWithWebIdentity` (an unsigned call: the
+token is the proof) for the role it's given, asks who the session is, and
+outputs the account and ARN, never the credentials.
+
+To let it in, once per account and cluster:
+
+1. **An IAM OIDC identity provider** for the cluster's issuer URL, with
+   `sts.amazonaws.com` as its audience. On GKE the issuer is
+   `https://container.googleapis.com/v1/projects/<project>/locations/<location>/clusters/<cluster>`;
+   `kubectl get --raw /.well-known/openid-configuration` prints any
+   cluster's. AWS must be able to fetch its keys from there, so a cluster
+   whose issuer isn't public (kind's isn't) can't be trusted.
+2. **A role** whose trust policy allows `sts:AssumeRoleWithWebIdentity` from
+   that provider, with the conditions `<issuer>:sub` =
+   `system:serviceaccount:aws:aws-caller-identity` (this product's
+   ServiceAccount, in the team's namespace) and `<issuer>:aud` =
+   `sts.amazonaws.com`. Give the role only what your own product will call;
+   `whoami` itself needs nothing more.
+
+Then run `whoami` with the role's ARN. Its failures say which part is
+missing: `NO_TOKEN` (the step got no token: a hand-made step, or a release
+without the product's `tokenAudiences`), `TOKEN_NOT_TRUSTED` (no provider
+for the issuer, or AWS can't reach its keys) and `ROLE_NOT_ALLOWED` (the
+role's trust policy). Its `check` says whether the step gets its token, and
+which issuer and subject a role must trust.
+
+Seen on kind (2026-10-31): the token mounted for the product's
+ServiceAccount, the check ready naming its issuer and subject, and real STS
+refusing kind's private issuer (`TOKEN_NOT_TRUSTED`). A role that trusts a
+GKE cluster's issuer is for the billed run.
 
 ## Is it ready here?
 
