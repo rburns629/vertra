@@ -669,7 +669,13 @@ type GetUsageResponse struct {
 	// Busiest first.
 	Teams []*TeamUsage `protobuf:"bytes,3,rep,name=teams,proto3" json:"teams,omitempty"`
 	// Most used first.
-	Products      []*ProductUsage `protobuf:"bytes,4,rep,name=products,proto3" json:"products,omitempty"`
+	Products []*ProductUsage `protobuf:"bytes,4,rep,name=products,proto3" json:"products,omitempty"`
+	// The runs the caller sees counted once each, however many of the
+	// teams it counts for (a raw DAG across two counts for both): in the
+	// period, in the one before it, and their steps.
+	Runs          int32 `protobuf:"varint,5,opt,name=runs,proto3" json:"runs,omitempty"`
+	PreviousRuns  int32 `protobuf:"varint,6,opt,name=previous_runs,json=previousRuns,proto3" json:"previous_runs,omitempty"`
+	Steps         int32 `protobuf:"varint,7,opt,name=steps,proto3" json:"steps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -732,10 +738,32 @@ func (x *GetUsageResponse) GetProducts() []*ProductUsage {
 	return nil
 }
 
+func (x *GetUsageResponse) GetRuns() int32 {
+	if x != nil {
+		return x.Runs
+	}
+	return 0
+}
+
+func (x *GetUsageResponse) GetPreviousRuns() int32 {
+	if x != nil {
+		return x.PreviousRuns
+	}
+	return 0
+}
+
+func (x *GetUsageResponse) GetSteps() int32 {
+	if x != nil {
+		return x.Steps
+	}
+	return 0
+}
+
 type TeamUsage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Empty for runs started for no team. A run counts for the team a
-	// template was run for, or every team of a raw DAG.
+	// template was run for, or every team of a raw DAG. A team whose
+	// products ran, but that started nothing, has a row too.
 	Team string `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
 	Runs int32  `protobuf:"varint,2,opt,name=runs,proto3" json:"runs,omitempty"`
 	// In the period before, as long.
@@ -849,7 +877,8 @@ func (x *TeamUsage) GetRanFor() []*UsageCount {
 type ProductUsage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The registered product, or the image repository for one that isn't
-	// (or a hidden product the caller doesn't see).
+	// (or a hidden product the caller doesn't see). A step is a product's
+	// only when it ran in the product's team's namespace.
 	Product string `protobuf:"bytes,1,opt,name=product,proto3" json:"product,omitempty"`
 	// The product's team; for an image that isn't a product, the namespace
 	// its steps ran in.
@@ -2151,12 +2180,15 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\x05ready\x18\x04 \x01(\x05R\x05ready\x12\x18\n" +
 	"\arunning\x18\x05 \x01(\x05R\arunning\"%\n" +
 	"\x0fGetUsageRequest\x12\x12\n" +
-	"\x04days\x18\x01 \x01(\x05R\x04days\"\xc9\x01\n" +
+	"\x04days\x18\x01 \x01(\x05R\x04days\"\x98\x02\n" +
 	"\x10GetUsageResponse\x120\n" +
 	"\x05since\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x12\x12\n" +
 	"\x04days\x18\x02 \x01(\x05R\x04days\x122\n" +
 	"\x05teams\x18\x03 \x03(\v2\x1c.vertra.console.v1.TeamUsageR\x05teams\x12;\n" +
-	"\bproducts\x18\x04 \x03(\v2\x1f.vertra.console.v1.ProductUsageR\bproducts\"\xb2\x02\n" +
+	"\bproducts\x18\x04 \x03(\v2\x1f.vertra.console.v1.ProductUsageR\bproducts\x12\x12\n" +
+	"\x04runs\x18\x05 \x01(\x05R\x04runs\x12#\n" +
+	"\rprevious_runs\x18\x06 \x01(\x05R\fpreviousRuns\x12\x14\n" +
+	"\x05steps\x18\a \x01(\x05R\x05steps\"\xb2\x02\n" +
 	"\tTeamUsage\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x12\n" +
 	"\x04runs\x18\x02 \x01(\x05R\x04runs\x12#\n" +

@@ -15,11 +15,12 @@ import { buildApp } from "../src/index.js";
 import { caller, rpcClient } from "./rpc.js";
 
 const prefix = `use-${randomUUID().slice(0, 6)}`;
-const [provider, consumer, third] = [`${prefix}-a`, `${prefix}-b`, `${prefix}-c`];
+const [provider, consumer, third, only] = [`${prefix}-a`, `${prefix}-b`, `${prefix}-c`, `${prefix}-d`];
 const digest = `sha256:${"a".repeat(64)}`;
 const prov = `registry.example/${provider}/prov`;
 const sec = `registry.example/${provider}/sec`;
 const own = `registry.example/${consumer}/own`;
+const dprod = `registry.example/${only}/dprod`;
 const runIds: string[] = [];
 
 let app: FastifyInstance;
@@ -52,9 +53,10 @@ async function run(values: {
 
 beforeAll(async () => {
   app = await buildApp();
-  const [a, b, c] = [await createTeam(provider), await createTeam(consumer), await createTeam(third)];
+  const [a, b, c, d] = [await createTeam(provider), await createTeam(consumer), await createTeam(third), await createTeam(only)];
   await upsertProduct({ name: `${prefix}-prov`, image: `${prov}@${digest}`, action: "run", teamId: a.id });
   await upsertProduct({ name: `${prefix}-sec`, image: `${sec}@${digest}`, action: "run", teamId: a.id, hidden: true });
+  await upsertProduct({ name: `${prefix}-dprod`, image: `${dprod}@${digest}`, action: "run", teamId: d.id });
   const admin = await users.makeUser({ admin: true });
   const [pa, pb, pc, bot] = [await users.makeUser(), await users.makeUser(), await users.makeUser(), await users.makeUser()];
   await addTeamMember(pa.id, a.id, "member");
@@ -79,6 +81,10 @@ beforeAll(async () => {
   await run({ teams: [provider], submittedBy: null, template: "check", tasks: [step(`${prov}@${digest}`, provider)] });
   // The third team uses the hidden product.
   await run({ teams: [provider], submittedBy: pc.id, template: `${provider}/sec`, onBehalfOf: third, tasks: [step(`${sec}@${digest}`, provider)] });
+  // A raw DAG for two teams; the provider's image in the third team's namespace isn't its product there.
+  await run({ teams: [consumer, third], submittedBy: pb.id, tasks: [step(`${own}:2`, consumer), step(`${prov}@${digest}`, third)] });
+  // A team that only provides: the third team runs its product.
+  await run({ teams: [only], submittedBy: pc.id, template: `${only}/dprod`, onBehalfOf: third, tasks: [step(`${dprod}@${digest}`, only)] });
 });
 
 afterAll(async () => {
@@ -92,6 +98,9 @@ afterAll(async () => {
 
 type Count = { name: string; count: number };
 type Usage = {
+  runs?: number;
+  previousRuns?: number;
+  steps?: number;
   teams: { team?: string; runs?: number; previousRuns?: number; byPeople?: number; byBots?: number; bySchedules?: number; steps?: number; used?: Count[]; ranFor?: Count[] }[];
   products: { product: string; team: string; registered?: boolean; steps?: number; runs?: number; usedBy?: Count[] }[];
 };
@@ -108,19 +117,32 @@ describe("usage", () => {
   it("counts runs for the team they were run for, by who started them, without readiness checks", async () => {
     const u = await usage("admin");
     const b = u.teams.find((t) => t.team === consumer);
-    expect(b).toMatchObject({ runs: 3, previousRuns: 1, byPeople: 1, byBots: 1, bySchedules: 1, steps: 4 });
-    expect(counts(b?.used)).toEqual({ [`${prefix}-prov`]: 3, [own]: 1 });
+    expect(b).toMatchObject({ runs: 4, previousRuns: 1, byPeople: 2, byBots: 1, bySchedules: 1, steps: 6 });
+    expect(counts(b?.used)).toEqual({ [`${prefix}-prov`]: 3, [own]: 2, [prov]: 1 });
     const a = u.teams.find((t) => t.team === provider);
     expect(a).toMatchObject({ runs: 1, steps: 2 });
     // Its products ran for: the consumer, itself, no team (not the check) and the third team.
     expect(counts(a?.ranFor)).toEqual({ [consumer]: 3, [provider]: 2, "": 1, [third]: 1 });
     expect(counts(product(u, `${prefix}-prov`)?.usedBy)).toEqual({ [consumer]: 3, [provider]: 1, "": 1 });
+    // The run for two teams is one run, and its steps one each, in a product's figures.
+    expect(product(u, own)).toMatchObject({ team: consumer, registered: false, steps: 2, runs: 2 });
+    expect(counts(product(u, own)?.usedBy)).toEqual({ [consumer]: 2, [third]: 1 });
+    expect(product(u, prov)).toMatchObject({ team: third, registered: false, steps: 1 });
+    // A team that started nothing still shows who its products ran for.
+    expect(u.teams.find((t) => t.team === only)).toMatchObject({ runs: 0, ranFor: [{ name: third, count: 1 }] });
+  });
+
+  it("counts each run once in a caller's totals", async () => {
+    const b = await usage("consumer");
+    expect(b).toMatchObject({ runs: 4, previousRuns: 1, steps: 6 });
   });
 
   it("shows anyone else only their teams, their products' users and their own use of others'", async () => {
     const b = await usage("consumer");
     expect(ours(b).map((t) => t.team)).toEqual([consumer]);
     expect(counts(product(b, `${prefix}-prov`)?.usedBy)).toEqual({ [consumer]: 3 });
+    // The provider's image run elsewhere: only the caller's team's use of it.
+    expect(counts(product(b, prov)?.usedBy)).toEqual({ [consumer]: 1 });
     expect(product(b, `${prefix}-sec`)).toBeUndefined();
 
     const a = await usage("provider");
@@ -133,7 +155,7 @@ describe("usage", () => {
   it("names a hidden product only for its team", async () => {
     const c = await usage("third");
     expect(ours(c).map((t) => t.team)).toEqual([third]);
-    expect(counts(ours(c)[0]?.used)).toEqual({ [sec]: 1 });
+    expect(counts(ours(c)[0]?.used)).toEqual({ [sec]: 1, [prov]: 1, [own]: 1, [`${prefix}-dprod`]: 1 });
     expect(product(c, `${prefix}-sec`)).toBeUndefined();
     expect(product(c, sec)).toMatchObject({ team: provider, usedBy: [{ name: third, count: 1 }] });
   });

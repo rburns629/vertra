@@ -119,7 +119,7 @@ export function UsageTab() {
   const [by, setBy] = useState<By>("team");
   const [view, setView] = useState<UsageView | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTeams, setActiveTeams] = useState<number | null>(null);
+  const [activeTeams, setActiveTeams] = useState<string[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,20 +140,23 @@ export function UsageTab() {
     if (!isAdmin) return;
     // Display only: without it the tile leaves out "of N".
     listAllTeams()
-      .then((all) => { setActiveTeams(all.filter((t) => !t.retiredAt).length); })
+      .then((all) => { setActiveTeams(all.filter((t) => !t.retiredAt).map((t) => t.name)); })
       .catch(() => undefined);
   }, [isAdmin]);
 
   const period = PERIOD[days];
-  const runs = view?.teams.reduce((n, t) => n + t.runs, 0);
-  const previous = view?.teams.reduce((n, t) => n + t.previousRuns, 0);
-  const steps = view?.teams.reduce((n, t) => n + t.steps, 0);
-  const ran = view?.teams.filter((t) => t.team && t.runs > 0).length;
-  const of = isAdmin ? activeTeams : (user?.teamNames.length ?? null);
+  const runs = view?.runs;
+  const previous = view?.previousRuns;
+  const steps = view?.steps;
+  // Of the teams there are now: an admin's every active team, anyone else's own.
+  const active = isAdmin ? activeTeams : (user?.teamNames ?? null);
+  const ran = view?.teams.filter((t) => t.team && t.runs > 0 && (!active || active.includes(t.team))).length;
+  const of = active?.length ?? null;
   const registered = view?.products.filter((p) => p.registered).length;
   const images = view ? view.products.length - (registered ?? 0) : 0;
   const shown = (n: number | undefined) => (n === undefined ? "—" : n.toLocaleString());
-  const teamRows = view ? view.teams.filter((t) => t.runs > 0) : null;
+  // A team that started nothing this period still shows when its products ran.
+  const teamRows = view ? view.teams.filter((t) => t.runs > 0 || t.ranFor.length > 0) : null;
   const productRows = view?.products ?? null;
 
   return (
@@ -202,7 +205,7 @@ export function UsageTab() {
         <MetricCard
           label="Runs started"
           value={shown(runs)}
-          note={view && previous !== undefined && runs !== undefined && `${runs >= previous ? "up" : "down"} from ${previous.toLocaleString()} ${period.before}`}
+          note={view && (runs === previous ? `the same as ${period.before}` : `${(runs ?? 0) > (previous ?? 0) ? "up" : "down"} from ${(previous ?? 0).toLocaleString()} ${period.before}`)}
         />
         <MetricCard label="Steps" value={shown(steps)} note={view && "in those runs, retries not counted"} />
         <MetricCard label="Teams that ran something" value={ran === undefined ? "—" : of ? `${String(ran)} of ${String(of)}` : String(ran)} />
@@ -243,7 +246,7 @@ export function UsageTab() {
         </Box>
         {by === "team" && (
           <Typography variant="caption" component="p" color="text.secondary" sx={{ px: 2.75, py: 1.5, m: 0 }}>
-            Steps count every step of those runs, wherever it ran. A raw DAG across several teams counts for each.{" "}
+            Steps count every step of those runs, wherever it ran. A raw DAG across several teams counts for each, and once in the totals above. A step is a product&apos;s only when it ran in its team&apos;s namespace.{" "}
             {isAdmin && (
               <Fragment>
                 A run someone started for no team shows under No team.{" "}

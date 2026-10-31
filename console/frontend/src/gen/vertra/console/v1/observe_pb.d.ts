@@ -352,6 +352,25 @@ export declare type GetUsageResponse = Message<"vertra.console.v1.GetUsageRespon
    * @generated from field: repeated vertra.console.v1.ProductUsage products = 4;
    */
   products: ProductUsage[];
+
+  /**
+   * The runs the caller sees counted once each, however many of the
+   * teams it counts for (a raw DAG across two counts for both): in the
+   * period, in the one before it, and their steps.
+   *
+   * @generated from field: int32 runs = 5;
+   */
+  runs: number;
+
+  /**
+   * @generated from field: int32 previous_runs = 6;
+   */
+  previousRuns: number;
+
+  /**
+   * @generated from field: int32 steps = 7;
+   */
+  steps: number;
 };
 
 /**
@@ -366,7 +385,8 @@ export declare const GetUsageResponseSchema: GenMessage<GetUsageResponse>;
 export declare type TeamUsage = Message<"vertra.console.v1.TeamUsage"> & {
   /**
    * Empty for runs started for no team. A run counts for the team a
-   * template was run for, or every team of a raw DAG.
+   * template was run for, or every team of a raw DAG. A team whose
+   * products ran, but that started nothing, has a row too.
    *
    * @generated from field: string team = 1;
    */
@@ -433,7 +453,8 @@ export declare const TeamUsageSchema: GenMessage<TeamUsage>;
 export declare type ProductUsage = Message<"vertra.console.v1.ProductUsage"> & {
   /**
    * The registered product, or the image repository for one that isn't
-   * (or a hidden product the caller doesn't see).
+   * (or a hidden product the caller doesn't see). A step is a product's
+   * only when it ran in the product's team's namespace.
    *
    * @generated from field: string product = 1;
    */

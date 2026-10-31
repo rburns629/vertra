@@ -117,10 +117,10 @@ A run counts for the team it was started for: a template's or an action's run fo
 
 | Part | Shows |
 | --- | --- |
-| **Runs started** | Runs in the period, and how many in the period before it, as long |
+| **Runs started** | Runs in the period, and how many in the period before it, as long. A DAG for several teams counts once here, and for each team below |
 | **Steps** | The steps of those runs as submitted; retries aren't counted |
 | **By team** | Per team: its runs, started by **people**, **bots** or **schedules**; their steps; the products they used, most first; and the teams its own products ran for (**itself** when it ran its own) |
-| **By product** | Per product: its steps and runs, the teams whose runs used it, and when it was last used. An image that isn't a registered product shows by its repository, as does a hidden product to anyone outside its team |
+| **By product** | Per product: its steps and runs, the teams whose runs used it, and when it was last used. An image that isn't a registered product shows by its repository, as does a product's image run outside its team's namespace, and a hidden product to anyone outside its team |
 
 How runs ended (succeeded or failed) isn't here: it's on **Metrics**, by product.
 

@@ -155,11 +155,18 @@ message GetUsageResponse {
   repeated TeamUsage teams = 3;
   // Most used first.
   repeated ProductUsage products = 4;
+  // The runs the caller sees counted once each, however many of the
+  // teams it counts for (a raw DAG across two counts for both): in the
+  // period, in the one before it, and their steps.
+  int32 runs = 5;
+  int32 previous_runs = 6;
+  int32 steps = 7;
 }
 
 message TeamUsage {
   // Empty for runs started for no team. A run counts for the team a
-  // template was run for, or every team of a raw DAG.
+  // template was run for, or every team of a raw DAG. A team whose
+  // products ran, but that started nothing, has a row too.
   string team = 1;
   int32 runs = 2;
   // In the period before, as long.
@@ -177,7 +184,8 @@ message TeamUsage {
 
 message ProductUsage {
   // The registered product, or the image repository for one that isn't
-  // (or a hidden product the caller doesn't see).
+  // (or a hidden product the caller doesn't see). A step is a product's
+  // only when it ran in the product's team's namespace.
   string product = 1;
   // The product's team; for an image that isn't a product, the namespace
   // its steps ran in.

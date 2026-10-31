@@ -2068,6 +2068,10 @@ export interface ProductUsageView {
 export interface UsageView {
   since: string | null;
   days: number;
+  /** The runs the caller sees, each once however many teams it counts for; in the period before; their steps. */
+  runs: number;
+  previousRuns: number;
+  steps: number;
   teams: TeamUsageView[];
   products: ProductUsageView[];
 }
@@ -2079,6 +2083,9 @@ export async function getUsage(days: 1 | 7 | 30): Promise<UsageView> {
   return {
     since: iso(u.since),
     days: u.days,
+    runs: u.runs,
+    previousRuns: u.previousRuns,
+    steps: u.steps,
     teams: u.teams.map((t) => ({
       team: t.team,
       runs: t.runs,

@@ -7143,6 +7143,27 @@
      "repeated": true,
      "optional": false,
      "comment": "Most used first."
+    },
+    {
+     "name": "runs",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "The runs the caller sees counted once each, however many of the\nteams it counts for (a raw DAG across two counts for both): in the\nperiod, in the one before it, and their steps."
+    },
+    {
+     "name": "previousRuns",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "steps",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -7155,7 +7176,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "Empty for runs started for no team. A run counts for the team a\ntemplate was run for, or every team of a raw DAG."
+     "comment": "Empty for runs started for no team. A run counts for the team a\ntemplate was run for, or every team of a raw DAG. A team whose\nproducts ran, but that started nothing, has a row too."
     },
     {
      "name": "runs",
@@ -7226,7 +7247,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "The registered product, or the image repository for one that isn't\n(or a hidden product the caller doesn't see)."
+     "comment": "The registered product, or the image repository for one that isn't\n(or a hidden product the caller doesn't see). A step is a product's\nonly when it ran in the product's team's namespace."
     },
     {
      "name": "team",
