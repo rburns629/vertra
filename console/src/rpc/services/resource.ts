@@ -18,15 +18,16 @@ function ref(r: ResourceRef) {
 export function resourceService(): ServiceImpl<typeof ResourceService> {
   return {
     async listResources(req, ctx) {
-      const { query, executionId } = check(
-        { query: Type.String({ maxLength: 200 }), executionId: Type.Union([Type.Literal(""), Uuid]) },
-        { query: req.query, executionId: req.executionId },
+      const { query, executionId, ids } = check(
+        { query: Type.String({ maxLength: 200 }), executionId: Type.Union([Type.Literal(""), Uuid]), ids: Type.Array(Uuid, { maxItems: 50 }) },
+        { query: req.query, executionId: req.executionId, ids: req.ids },
       );
       const found = await listResources(callerOf(ctx), {
         executionId: unsetIfEmpty(executionId),
         team: unsetIfEmpty(req.team),
         query,
         includeDeleted: req.includeDeleted,
+        ids,
       });
       return {
         resources: found.map((r) => ({

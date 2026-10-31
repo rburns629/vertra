@@ -82,6 +82,8 @@ export interface ResourceFilter {
   /** Matched against type, id and name. */
   query?: string | undefined;
   includeDeleted?: boolean | undefined;
+  /** Only these. */
+  ids?: string[] | undefined;
 }
 
 const LIST_LIMIT = 200;
@@ -211,6 +213,7 @@ export async function listResources(caller: AuthUser | undefined, filter: Resour
           )
         : undefined,
       filter.includeDeleted ? undefined : isNull(resources.deletedAt),
+      filter.ids && filter.ids.length > 0 ? inArray(resources.id, filter.ids) : undefined,
     ],
     LIST_LIMIT,
   );

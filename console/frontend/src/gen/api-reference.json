@@ -8641,6 +8641,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "ids",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Only these (an order's chosen resources, say), at most 50; those the\ncaller may see."
     }
    ]
   },

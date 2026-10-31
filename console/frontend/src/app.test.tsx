@@ -2471,3 +2471,45 @@ describe("Admin's image sources", () => {
     expect(await screen.findByText(/^Last saved by priya@acme\.com, .+\. Admins are alerted when these change\.$/)).toBeTruthy();
   });
 });
+
+describe("an order's run", () => {
+  it("says what its cart held, what the plan added, and which resource each choice took", async () => {
+    const execution = {
+      executionId: "6d6d6d6d-0000-4000-8000-000000000006",
+      name: "Order: project, app-hosting",
+      state: "EXECUTION_STATE_SUCCEEDED",
+      tasks: [],
+      submittedBy: "ana@acme.com",
+      onBehalfOf: "payments",
+      template: "order",
+      templateParameters: {
+        actions: ["gcp-platform-app-hosting-create"],
+        choices: [{ step: "app-hosting", input: "projectId", resourceId: "r1" }],
+        values: { "app-hosting": { serviceName: "orders-api-stg" } },
+        steps: [
+          { id: "identity", product: "identity-service-identity-create", added: true },
+          { id: "app-hosting", product: "gcp-platform-app-hosting-create", added: false },
+        ],
+      },
+      dag: {
+        name: "Order",
+        tasks: [
+          { id: "identity", image: "registry.example/identity/service-identity@sha256:aa", action: "create", team: "identity" },
+          { id: "app-hosting", image: "registry.example/gcp-platform/app-hosting@sha256:bb", action: "create", team: "gcp-platform" },
+        ],
+      },
+    };
+    await renderAt(`/runs/${execution.executionId}`, MEMBER, {
+      "ExecutionService/GetExecution": { execution },
+      "ExecutionService/WatchExecution": [{ execution }],
+      "ResourceService/ListResources": { resources: [{ id: "r1", type: "gcp/project", externalId: "orders-api", name: "orders-api", executionId: "1e1e1e1e-0000-4000-8000-000000000001", ownerTeam: "payments", firstReportedAt: "2026-10-20T10:00:00Z" }] },
+    });
+    const card = await screen.findByRole("region", { name: "Ordered from the cart, for payments" });
+    expect(within(card).getByText("app-hosting · create")).toBeTruthy();
+    expect(within(card).getByText("gcp-platform · serviceName orders-api-stg")).toBeTruthy();
+    expect(within(card).getByText("Added")).toBeTruthy();
+    expect(within(card).getByText(/^identity · the plan added it/)).toBeTruthy();
+    expect((await within(card).findByRole("link", { name: "orders-api" })).getAttribute("href")).toBe("/runs/1e1e1e1e-0000-4000-8000-000000000001");
+    expect(within(card).getByText(/^gcp\/project, made .+ for payments$/)).toBeTruthy();
+  });
+});

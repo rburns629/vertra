@@ -2167,7 +2167,7 @@ function resourceRef(r: { id: string; type: string; externalId: string; name: st
   return { id: r.id, type: r.type, externalId: r.externalId, name: r.name || null, executionId: r.executionId, input: r.input };
 }
 
-export async function listResources(filter: { executionId?: string; team?: string; query?: string; includeDeleted?: boolean }): Promise<MadeResource[]> {
+export async function listResources(filter: { executionId?: string; team?: string; query?: string; includeDeleted?: boolean; ids?: string[] }): Promise<MadeResource[]> {
   const { resources } = await call(() => resourcesApi.listResources(filter));
   return resources.map((r) => ({
     id: r.id,
