@@ -78,6 +78,9 @@ const REFUSALS: DataTableColumn<Refusal>[] = [
           r.what
         )}
         {r.source === "gateway" && `, ${r.count.toLocaleString()} call${r.count === 1 ? "" : "s"}`}
+        {r.detail && (
+          <Mono sx={{ display: "block", fontSize: 12, fontWeight: 400, color: "text.secondary", mt: 0.25 }}>{r.detail}</Mono>
+        )}
       </Box>
     ),
   },
@@ -339,7 +342,7 @@ export function SecurityTab() {
             <DataTable
               columns={REFUSALS}
               rows={shownRefusals}
-              getRowKey={(r) => `${r.source}/${r.at ?? ""}/${r.what}/${r.code}`}
+              getRowKey={(r) => `${r.source}/${r.at ?? ""}/${r.what}/${r.detail}/${r.code}`}
               emptyMessage="Nothing refused this week."
             />
           </Box>

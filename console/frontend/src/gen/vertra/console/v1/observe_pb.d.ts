@@ -129,8 +129,8 @@ export declare type Refusal = Message<"vertra.console.v1.Refusal"> & {
   at?: Timestamp | undefined;
 
   /**
-   * What was refused: a step (its team and image), the catalog's release,
-   * or calls to an API (the calling team, the API and its endpoint).
+   * What was refused: a step (its team and id), the catalog's release, or
+   * calls to an API (the calling team and the API).
    *
    * @generated from field: string what = 2;
    */
@@ -175,6 +175,14 @@ export declare type Refusal = Message<"vertra.console.v1.Refusal"> & {
    * @generated from field: int32 count = 8;
    */
   count: number;
+
+  /**
+   * Under it: a step's image, the endpoint called, or the release's version
+   * (else its digest).
+   *
+   * @generated from field: string detail = 9;
+   */
+  detail: string;
 };
 
 /**

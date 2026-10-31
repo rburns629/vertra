@@ -86,8 +86,8 @@ message SecurityCheck {
 message Refusal {
   // When; for the gateway's, the last of them.
   google.protobuf.Timestamp at = 1;
-  // What was refused: a step (its team and image), the catalog's release,
-  // or calls to an API (the calling team, the API and its endpoint).
+  // What was refused: a step (its team and id), the catalog's release, or
+  // calls to an API (the calling team and the API).
   string what = 2;
   // The step's team, or the API's.
   string team = 3;
@@ -101,6 +101,9 @@ message Refusal {
   // How many: the gateway's are grouped by API, calling team, endpoint and
   // reason over the week; 1 otherwise.
   int32 count = 8;
+  // Under it: a step's image, the endpoint called, or the release's version
+  // (else its digest).
+  string detail = 9;
 }
 
 message AllowedImage {

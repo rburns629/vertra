@@ -276,8 +276,8 @@ type Refusal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// When; for the gateway's, the last of them.
 	At *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
-	// What was refused: a step (its team and image), the catalog's release,
-	// or calls to an API (the calling team, the API and its endpoint).
+	// What was refused: a step (its team and id), the catalog's release, or
+	// calls to an API (the calling team and the API).
 	What string `protobuf:"bytes,2,opt,name=what,proto3" json:"what,omitempty"`
 	// The step's team, or the API's.
 	Team string `protobuf:"bytes,3,opt,name=team,proto3" json:"team,omitempty"`
@@ -290,7 +290,10 @@ type Refusal struct {
 	Source string `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
 	// How many: the gateway's are grouped by API, calling team, endpoint and
 	// reason over the week; 1 otherwise.
-	Count         int32 `protobuf:"varint,8,opt,name=count,proto3" json:"count,omitempty"`
+	Count int32 `protobuf:"varint,8,opt,name=count,proto3" json:"count,omitempty"`
+	// Under it: a step's image, the endpoint called, or the release's version
+	// (else its digest).
+	Detail        string `protobuf:"bytes,9,opt,name=detail,proto3" json:"detail,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -379,6 +382,13 @@ func (x *Refusal) GetCount() int32 {
 		return x.Count
 	}
 	return 0
+}
+
+func (x *Refusal) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
 }
 
 type AllowedImage struct {
@@ -1714,7 +1724,7 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\rSecurityCheck\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text\"\xd4\x01\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\"\xec\x01\n" +
 	"\aRefusal\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x12\n" +
 	"\x04what\x18\x02 \x01(\tR\x04what\x12\x12\n" +
@@ -1723,7 +1733,8 @@ const file_vertra_console_v1_observe_proto_rawDesc = "" +
 	"\x03why\x18\x05 \x01(\tR\x03why\x12!\n" +
 	"\fexecution_id\x18\x06 \x01(\tR\vexecutionId\x12\x16\n" +
 	"\x06source\x18\a \x01(\tR\x06source\x12\x14\n" +
-	"\x05count\x18\b \x01(\x05R\x05count\"\x9c\x02\n" +
+	"\x05count\x18\b \x01(\x05R\x05count\x12\x16\n" +
+	"\x06detail\x18\t \x01(\tR\x06detail\"\x9c\x02\n" +
 	"\fAllowedImage\x12\x18\n" +
 	"\aproduct\x18\x01 \x01(\tR\aproduct\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x14\n" +

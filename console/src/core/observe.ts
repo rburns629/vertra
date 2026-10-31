@@ -210,7 +210,8 @@ async function gatewayRefusals(who: AuthUser, since: Date) {
     const caller = r.team || "a caller with no team";
     return {
       at: r.last,
-      what: `${caller} \u2192 ${r.apiTeam}/${r.api}: ${r.endpoint}`,
+      what: `${caller} \u2192 ${r.apiTeam}/${r.api}`,
+      detail: r.endpoint,
       team: r.apiTeam,
       code: reason.code,
       why: reason.why,
@@ -253,13 +254,13 @@ export async function getSecurity(caller: AuthUser | undefined) {
     const visible =
       run !== undefined &&
       (who.isAdmin || run.submittedBy === who.id || run.teams.some((team) => canActForTeam(who, team)));
-    return { at: r.at ? new Date(r.at) : null, what: `${r.team} step ${r.taskId} (${r.image})`, team: r.team, code: r.code, why: WHY[r.code] ?? r.message, executionId: visible ? r.executionId : "", source: "step", count: 1 };
+    return { at: r.at ? new Date(r.at) : null, what: `${r.team} · step ${r.taskId}`, detail: r.image, team: r.team, code: r.code, why: WHY[r.code] ?? r.message, executionId: visible ? r.executionId : "", source: "step", count: 1 };
   });
   refusals.push(...(await gatewayRefusals(who, since)));
   refusals.sort((a, b) => (b.at?.getTime() ?? 0) - (a.at?.getTime() ?? 0));
   const catalog = await catalogStatus();
   if (catalog.release && catalog.error && catalog.checkedAt && catalog.checkedAt >= since) {
-    refusals.unshift({ at: catalog.checkedAt, what: "The catalog's release", team: "", code: "CATALOG_NOT_APPLIED", why: catalog.error, executionId: "", source: "catalog", count: 1 });
+    refusals.unshift({ at: catalog.checkedAt, what: "The catalog's release", detail: catalog.version ?? catalog.digest ?? "", team: "", code: "CATALOG_NOT_APPLIED", why: catalog.error, executionId: "", source: "catalog", count: 1 });
   }
 
   const scans = new Map((await db.select().from(imageScans)).map((s) => [s.digest, s]));

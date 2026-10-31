@@ -1898,7 +1898,8 @@ export async function setGatewayClosed(message: string): Promise<void> {
 export interface SecurityView {
   checks: { name: string; state: "enforced" | "off" | "not_yet" | string; text: string }[];
   /** source: step (the cluster), catalog (the console) or gateway; count: how many, for the gateway's (grouped). */
-  refusals: { at: string | null; what: string; team: string; code: string; why: string; executionId: string; source: string; count: number }[];
+  /** what: the step or the calls refused; detail: under it, the step's image, the endpoint or the release. */
+  refusals: { at: string | null; what: string; detail: string; team: string; code: string; why: string; executionId: string; source: string; count: number }[];
   images: {
     product: string;
     team: string;
@@ -1925,6 +1926,7 @@ export async function getSecurity(): Promise<SecurityView> {
     refusals: s.refusals.map((r) => ({
       at: iso(r.at),
       what: r.what,
+      detail: r.detail,
       team: r.team,
       code: r.code,
       why: r.why,

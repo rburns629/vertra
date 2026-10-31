@@ -6861,7 +6861,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "What was refused: a step (its team and image), the catalog's release,\nor calls to an API (the calling team, the API and its endpoint)."
+     "comment": "What was refused: a step (its team and id), the catalog's release, or\ncalls to an API (the calling team and the API)."
     },
     {
      "name": "team",
@@ -6904,6 +6904,13 @@
      "repeated": false,
      "optional": false,
      "comment": "How many: the gateway's are grouped by API, calling team, endpoint and\nreason over the week; 1 otherwise."
+    },
+    {
+     "name": "detail",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Under it: a step's image, the endpoint called, or the release's version\n(else its digest)."
     }
    ]
   },

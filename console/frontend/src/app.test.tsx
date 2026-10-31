@@ -1313,15 +1313,18 @@ describe("observe", () => {
     await renderAt("/observe", MEMBER, {
       "ObserveService/GetSecurity": {
         refusals: [
-          { what: "local step t (registry/x)", code: "IMAGE_NOT_ALLOWED", why: "Not an allowed source.", source: "step", count: 1 },
-          { what: "azure-apps → payments/orders: POST /orders", code: "INVALID_REQUEST", why: "Didn't fit.", source: "gateway", count: 214 },
+          { what: "local · step t", detail: "registry/x@sha256:aa", code: "IMAGE_NOT_ALLOWED", why: "Not an allowed source.", source: "step", count: 1 },
+          { what: "azure-apps → payments/orders", detail: "POST /orders", code: "INVALID_REQUEST", why: "Didn't fit.", source: "gateway", count: 214 },
         ],
       },
     });
-    expect(await screen.findByText(/payments\/orders: POST \/orders, 214 calls/)).toBeTruthy();
+    // What was refused, and under it the endpoint or the image.
+    expect(await screen.findByText(/payments\/orders, 214 calls/)).toBeTruthy();
+    expect(screen.getByText("POST /orders")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cluster" }));
     expect(screen.queryByText(/214 calls/)).toBeNull();
-    expect(screen.getByText("local step t (registry/x)")).toBeTruthy();
+    expect(screen.getByText("local · step t")).toBeTruthy();
+    expect(screen.getByText("registry/x@sha256:aa")).toBeTruthy();
   });
 
   it("says whether the audit log's chain held", async () => {
