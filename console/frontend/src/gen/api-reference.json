@@ -2274,6 +2274,48 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "limits",
+     "type": "TeamLimit",
+     "ref": "vertra.console.v1.TeamLimit",
+     "repeated": true,
+     "optional": false,
+     "comment": "Each team its api.yaml names a limit for, requests a minute; every\nother team it's shared with gets default_per_minute: api.yaml's\ndefault, else (default_from_gateway) the gateway's own."
+    },
+    {
+     "name": "defaultPerMinute",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "defaultFromGateway",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TeamLimit": {
+   "name": "TeamLimit",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "perMinute",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

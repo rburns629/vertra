@@ -1776,6 +1776,10 @@ export interface ApiProduct {
   specVersion: string;
   /** When the caller may not call it: an issue asking its team to share it, on the catalog repository. */
   askForAccessUrl: string | null;
+  /** Each team its api.yaml names a limit for; everyone else gets defaultPerMinute (api.yaml's, else the gateway's own). */
+  limits: { team: string; perMinute: number }[];
+  defaultPerMinute: number;
+  defaultFromGateway: boolean;
 }
 
 function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][number]): ApiProduct {
@@ -1806,6 +1810,9 @@ function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][numb
     specTitle: a.specTitle,
     specVersion: a.specVersion,
     askForAccessUrl: a.askForAccessUrl || null,
+    limits: a.limits.map((l) => ({ team: l.team, perMinute: l.perMinute })),
+    defaultPerMinute: a.defaultPerMinute,
+    defaultFromGateway: a.defaultFromGateway,
   };
 }
 

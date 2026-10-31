@@ -2451,3 +2451,13 @@ describe("Observe's log search, for one API", () => {
     expect(screen.queryByRole("option", { name: "ml/scoring" })).toBeNull();
   });
 });
+
+describe("an API's limits", () => {
+  it("say each calling team's, and everyone else's, to whoever sees it", async () => {
+    const api = { team: "payments", name: "orders", displayName: "Orders API", state: "API_STATE_LIVE", mayCall: false, endpoints: [], limits: [{ team: "growth", perMinute: 1200 }], defaultPerMinute: 600 };
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api, openapi: "{}" } });
+    expect(await screen.findByText("growth · 1,200 a minute")).toBeTruthy();
+    expect(screen.getByText("Every other team · 600 a minute")).toBeTruthy();
+    expect(screen.getByText(/its api\.yaml's default/)).toBeTruthy();
+  });
+});

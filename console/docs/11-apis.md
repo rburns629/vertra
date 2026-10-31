@@ -67,7 +67,7 @@ An API's team decides who may call it, in its `api.yaml` (`shareWith`, a list of
 
 Access is per team, not per person. Once your team is in `shareWith`, every member of your team, and your team's bots, may call it. Who's in a team is read on every request, so being added to or removed from a team counts at once.
 
-Each calling team has its own rate limit: the one `api.yaml` sets for your team by name, else its `default`, else the install's default.
+Each calling team has its own rate limit: the one `api.yaml` sets for your team by name, else its `default`, else the install's default. The API's page lists them for everyone who can see it: each team its `api.yaml` names, and what every other team gets.
 
 ## How do I call an API through the gateway?
 
