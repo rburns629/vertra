@@ -330,6 +330,7 @@ Who is in which team, and as what. Any member sees the team's executions, logs a
 | `team_id` | uuid | no | |
 | `role` | text | no | `maintainer` or `member`. Memberships from before roles are maintainers. |
 | `created_at` | timestamptz | no | |
+| `via_groups` | text[] | yes | The single sign-on groups that give the role, as the person's last sign-in (or the hourly Google groups read) found them; null when added by hand. |
 
 ### api_tokens
 

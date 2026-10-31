@@ -9490,6 +9490,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Their membership follows their single sign-on groups (the team is\nmapped to one): their role isn't changed, nor are they removed, here."
+    },
+    {
+     "name": "viaGroups",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Which of their groups give them their role here, as their last sign-in\n(or the hourly Google groups read) found them; empty when they were\nadded by hand, or haven't signed in since this was recorded."
     }
    ]
   },

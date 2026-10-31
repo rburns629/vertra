@@ -143,6 +143,19 @@ describe("signing in", () => {
     expect(await teamsOf(`dev@${domain}`)).toEqual({ [teamA]: "member", [teamC]: "member" });
     await provider.signIn(app, person("dev", { groups: ["g-dev", "G-LEAD", "g-ops"] }));
     expect(await teamsOf(`dev@${domain}`)).toEqual({ [teamA]: "maintainer", [teamB]: "member", [teamC]: "member" });
+    // Which groups give each role: only those giving the best one; none for a team added by hand.
+    const via = async () =>
+      Object.fromEntries(
+        (
+          await db
+            .select({ team: teams.name, viaGroups: teamMemberships.viaGroups })
+            .from(teamMemberships)
+            .innerJoin(teams, eq(teams.id, teamMemberships.teamId))
+            .innerJoin(users, eq(users.id, teamMemberships.userId))
+            .where(eq(users.email, `dev@${domain}`))
+        ).map((m) => [m.team, m.viaGroups]),
+      );
+    expect(await via()).toEqual({ [teamA]: ["g-lead"], [teamB]: ["g-ops"], [teamC]: null });
     await provider.signIn(app, person("dev", { groups: ["unmapped"] }));
     expect(await teamsOf(`dev@${domain}`)).toEqual({ [teamC]: "member" });
   });

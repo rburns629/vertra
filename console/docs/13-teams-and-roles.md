@@ -70,7 +70,7 @@ To change someone's role, pick it from the list next to their name. To remove so
 Two rules keep a team manageable:
 
 - **A team always keeps a maintainer.** You can't remove or demote the last person who maintains the team (`LAST_MAINTAINER`). Make someone else a maintainer first. Bots don't count as maintainers.
-- **Group-mapped teams follow their groups.** If an admin has mapped a single sign-on group to the team, you can't change the membership of someone who signs in with single sign-on (`TEAM_FOLLOWS_SSO_GROUPS`). Change their groups at your identity provider instead, or ask an admin to change the mapping ([single sign-on](#how-do-single-sign-on-groups-decide-who-is-in-a-team)).
+- **Group-mapped teams follow their groups.** If an admin has mapped a single sign-on group to the team, you can't change the membership of someone who signs in with single sign-on (`TEAM_FOLLOWS_SSO_GROUPS`). Change their groups at your identity provider instead, or ask an admin to change the mapping ([single sign-on](#how-do-single-sign-on-groups-decide-who-is-in-a-team)). Their role says **Set by their group** and which groups give it, as their last sign-in found them.
 
 Bots are listed on the **Automation** tab, not on **Members**.
 

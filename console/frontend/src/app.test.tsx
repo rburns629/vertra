@@ -1859,13 +1859,16 @@ describe("a team's members", () => {
         members: [
           { id: "u1", email: "ana@acme.com", hasPassword: true, role: "TEAM_ROLE_MAINTAINER" },
           { id: "u3", email: "sam@acme.com", usesSso: true, followsGroups: true, role: "TEAM_ROLE_MEMBER" },
+          { id: "u4", email: "kim@acme.com", usesSso: true, followsGroups: true, viaGroups: ["payments-eng"], role: "TEAM_ROLE_MEMBER" },
         ],
       },
     });
-    expect(await screen.findByRole("heading", { name: "2 people" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "3 people" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "ana@acme.com's role" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "sam@acme.com's role" })).toBeNull();
+    // Which group, once a sign-in has recorded it.
     expect(screen.getByText("Set by their groups")).toBeTruthy();
+    expect(screen.getByText("Set by their group payments-eng")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
   });
 });

@@ -150,6 +150,7 @@ export function teamService(): ServiceImpl<typeof TeamService> {
           hasPassword: member.hasPassword,
           usesSso: member.usesSso,
           followsGroups: member.followsGroups,
+          viaGroups: member.followsGroups ? (member.viaGroups ?? []) : [],
         })),
       };
     },

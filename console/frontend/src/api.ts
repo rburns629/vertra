@@ -297,6 +297,8 @@ export interface TeamMember {
   usesSso: boolean;
   /** Their membership follows their single sign-on groups: not changed here. */
   followsGroups: boolean;
+  /** Which of their groups give them their role here; empty when unknown, or not by groups. */
+  viaGroups: string[];
 }
 
 export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
@@ -311,6 +313,7 @@ export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
     hasPassword: m.hasPassword,
     usesSso: m.usesSso,
     followsGroups: m.followsGroups,
+    viaGroups: m.viaGroups,
   }));
 }
 

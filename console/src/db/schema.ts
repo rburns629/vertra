@@ -936,6 +936,9 @@ export const teamMemberships = pgTable(
     // Memberships from before roles were maintainers, and stay so.
     role: text("role").$type<TeamRole>().notNull().default("maintainer"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // The single sign-on groups that give this membership its role (sso.ts,
+    // at each sign-in or group resync); null when it was added by hand.
+    viaGroups: text("via_groups").array(),
   },
   (table) => [
     primaryKey({ columns: [table.userId, table.teamId] }),

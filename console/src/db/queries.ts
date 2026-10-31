@@ -506,6 +506,8 @@ export interface TeamMember extends SignInMethods {
   isAdmin: boolean;
   role: TeamRole;
   addedAt: Date;
+  /** The single sign-on groups giving the role; null when added by hand. */
+  viaGroups: string[] | null;
 }
 
 /** Human *and* bot accounts -- the Members tab shows both today (there's
@@ -521,6 +523,7 @@ export async function listMembersForTeam(teamId: string): Promise<TeamMember[]> 
       isAdmin: users.isAdmin,
       role: teamMemberships.role,
       addedAt: teamMemberships.createdAt,
+      viaGroups: teamMemberships.viaGroups,
       ...signInMethods,
     })
     .from(teamMemberships)
