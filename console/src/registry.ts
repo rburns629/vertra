@@ -53,6 +53,12 @@ interface Credential {
 
 const REQUEST_TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 60_000;
+/** A check that gave no digest (a timeout, a 5xx, a 401, a manifest with
+ * no digest header) is remembered only this long: long enough that polling
+ * doesn't hammer a registry that's down, short enough that one blip doesn't
+ * refuse a tag's submissions for a minute (pinning refuses what it can't
+ * resolve). */
+const UNANSWERED_TTL_MS = 5_000;
 const MANIFEST_TYPES = [
   "application/vnd.oci.image.index.v1+json",
   "application/vnd.oci.image.manifest.v1+json",
@@ -210,6 +216,8 @@ const CACHE_MAX_ENTRIES = 1000;
 
 function remember(image: string, check: ImageCheck): void {
   const now = Date.now();
+  // "available" with no digest can't be pinned either: as short as unanswered.
+  const ttl = check.status === "missing" || check.digest ? CACHE_TTL_MS : UNANSWERED_TTL_MS;
   if (cache.size >= CACHE_MAX_ENTRIES) {
     for (const [key, entry] of cache) {
       if (entry.expiresAt <= now) cache.delete(key);
@@ -220,7 +228,7 @@ function remember(image: string, check: ImageCheck): void {
     }
   }
   cache.delete(image); // re-inserted last: the newest
-  cache.set(image, { ...check, expiresAt: now + CACHE_TTL_MS });
+  cache.set(image, { ...check, expiresAt: now + ttl });
 }
 
 /** For tests. */
@@ -230,23 +238,32 @@ export function cachedImageCount(): number {
 
 /** Never throws: a check that can't complete is "unverified", and so is
  * an image outside `allowedPrefixes` (nothing is requested for it).
- * Answers are cached for a minute, since the execution detail page polls. */
+ * Answers are cached for a minute, since the execution detail page polls;
+ * an unanswered check, for a few seconds. */
 export async function checkImage(image: string, allowedPrefixes: string[]): Promise<ImageStatus> {
   return (await inspectImage(image, allowedPrefixes)).status;
 }
+
+/** Checks under way: callers asking about the same image at once (a burst
+ * of submissions) share one request to the registry. */
+const inFlight = new Map<string, Promise<ImageCheck>>();
 
 async function inspectImage(image: string, allowedPrefixes: string[]): Promise<ImageCheck> {
   if (!isImageAllowed(image, allowedPrefixes)) return { status: "unverified" };
   const cached = cache.get(image);
   if (cached && cached.expiresAt > Date.now()) return cached;
-  let check: ImageCheck;
-  try {
-    check = await checkUncached(image);
-  } catch {
-    check = { status: "unverified" };
+  let pending = inFlight.get(image);
+  if (!pending) {
+    pending = checkUncached(image)
+      .catch((): ImageCheck => ({ status: "unverified" }))
+      .then((check) => {
+        remember(image, check);
+        return check;
+      })
+      .finally(() => inFlight.delete(image));
+    inFlight.set(image, pending);
   }
-  remember(image, check);
-  return check;
+  return pending;
 }
 
 /** Whether an image reference already names its digest. */
