@@ -156,6 +156,20 @@ message CatalogStatus {
   // release's own tag, and the version applied, when it was one.
   bool newest_version = 9;
   string version = 10;
+  // What the applied release held; unset before one was applied (or by a
+  // console older than this field).
+  CatalogCounts applied = 11;
+}
+
+// What a catalog release held: what it applied, problems aside.
+message CatalogCounts {
+  int32 teams = 1;
+  // Products by image, each with one or more actions.
+  int32 products = 2;
+  int32 actions = 3;
+  int32 templates = 4;
+  int32 apis = 5;
+  int32 secret_stores = 6;
 }
 
 message CatalogProblem {

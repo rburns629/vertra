@@ -18,6 +18,7 @@ import { notificationEvents, notificationSettings, teams, teamWebhooks, userNoti
 import { buildApp } from "../src/index.js";
 import { listAwaitingApproval, listRefusals } from "../src/kernel/client.js";
 import { policySyncOutcomes } from "../src/policySync.js";
+import { auditExportStatus } from "../src/auditExport.js";
 import { config } from "../src/config.js";
 import {
   decryptUrl,
@@ -26,6 +27,7 @@ import {
   encryptUrl,
   notify,
   notifyApprovals,
+  notifyAuditCopy,
   notifyPolicySync,
   notifyRefusals,
   platformAlert,
@@ -42,6 +44,10 @@ vi.mock("../src/kernel/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/kernel/client.js")>()),
   listAwaitingApproval: vi.fn(() => Promise.resolve([])),
   listRefusals: vi.fn(() => Promise.resolve([])),
+}));
+vi.mock("../src/auditExport.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/auditExport.js")>()),
+  auditExportStatus: vi.fn(() => Promise.resolve(null)),
 }));
 vi.mock("../src/policySync.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/policySync.js")>()),
@@ -273,6 +279,43 @@ describe("a platform alert", () => {
     const [event] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:policy:${prefix}Policy:${day}`));
     expect(event?.title).toBe(`The ${prefix}Policy isn't being synced to the cluster`);
     vi.mocked(policySyncOutcomes).mockReturnValue({});
+  });
+
+  it("is made when the audit log's copy breaks, differs, or stops copying for half an hour", async () => {
+    const admin = await users.makeUser({ admin: true });
+    const entry = 1_000_000 + Math.floor(Math.random() * 1_000_000_000);
+    const copy = (fields: Partial<NonNullable<Awaited<ReturnType<typeof auditExportStatus>>>>) => ({
+      lastId: 1, lastHash: "h", exportedAt: null, checkedAt: null, error: null, brokenAt: null,
+      comparedThrough: 0, comparedAt: null, differsAt: null, compareProblem: null, ...fields,
+    });
+    const has = async (key: string) => (await inbox(admin.id)).some((n) => n.key === `platform:${key}`);
+
+    // Not copying for a minute isn't news; for half an hour it is.
+    const day = new Date().toISOString().slice(0, 10);
+    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:audit-copying:${day}`)); // an earlier run's, today
+    vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "couldn't write to the bucket: denied", exportedAt: new Date(Date.now() - 60_000) }));
+    expect(await notifyAuditCopy()).toBe(0);
+    vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "couldn't write to the bucket: denied", exportedAt: new Date(Date.now() - 31 * 60_000) }));
+    expect(await notifyAuditCopy()).toBe(1);
+    expect(await has(`audit-copying:${day}`)).toBe(true);
+    // Never copied at all: at once, though every failed try moves checkedAt.
+    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:audit-copying:${day}`));
+    vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "couldn't write to the bucket: denied", checkedAt: new Date() }));
+    expect(await notifyAuditCopy()).toBe(1);
+    const [never] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:audit-copying:${day}`));
+    expect(never?.body).toMatch(/^Nothing has been copied yet: /);
+
+    // A broken chain and a differing entry: at once, and each once.
+    vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "the chain breaks", brokenAt: entry, differsAt: entry + 1, compareProblem: `audit entry ${String(entry + 1)} differs` }));
+    expect(await notifyAuditCopy()).toBe(2);
+    expect(await notifyAuditCopy()).toBe(0);
+    expect(await has(`audit-broken:${String(entry)}`)).toBe(true);
+    const [differs] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:audit-differs:${String(entry + 1)}`));
+    expect(differs).toMatchObject({ title: "An audit log entry differs from its write-once copy", body: `audit entry ${String(entry + 1)} differs`, link: "/admin/audit" });
+
+    // No copy configured: nothing.
+    vi.mocked(auditExportStatus).mockResolvedValue(null);
+    expect(await notifyAuditCopy()).toBe(0);
   });
 });
 

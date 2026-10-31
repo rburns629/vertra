@@ -351,6 +351,10 @@ type Member struct {
 	// Their membership follows their single sign-on groups (the team is
 	// mapped to one): their role isn't changed, nor are they removed, here.
 	FollowsGroups bool `protobuf:"varint,9,opt,name=follows_groups,json=followsGroups,proto3" json:"follows_groups,omitempty"`
+	// Which of their groups give them their role here, as their last sign-in
+	// (or the hourly Google groups read) found them; empty when they were
+	// added by hand, or haven't signed in since this was recorded.
+	ViaGroups     []string `protobuf:"bytes,10,rep,name=via_groups,json=viaGroups,proto3" json:"via_groups,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -446,6 +450,13 @@ func (x *Member) GetFollowsGroups() bool {
 		return x.FollowsGroups
 	}
 	return false
+}
+
+func (x *Member) GetViaGroups() []string {
+	if x != nil {
+		return x.ViaGroups
+	}
+	return nil
 }
 
 type ListTeamsRequest struct {
@@ -2347,7 +2358,7 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\x12\x12\n" +
 	"\x04pods\x18\x03 \x01(\tR\x04pods\x12\x1f\n" +
 	"\vstep_memory\x18\x04 \x01(\tR\n" +
-	"stepMemory\"\xad\x02\n" +
+	"stepMemory\"\xcc\x02\n" +
 	"\x06Member\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x15\n" +
@@ -2357,7 +2368,10 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\x04role\x18\x06 \x01(\x0e2\x1b.vertra.console.v1.TeamRoleR\x04role\x12!\n" +
 	"\fhas_password\x18\a \x01(\bR\vhasPassword\x12\x19\n" +
 	"\buses_sso\x18\b \x01(\bR\ausesSso\x12%\n" +
-	"\x0efollows_groups\x18\t \x01(\bR\rfollowsGroups\"\x12\n" +
+	"\x0efollows_groups\x18\t \x01(\bR\rfollowsGroups\x12\x1d\n" +
+	"\n" +
+	"via_groups\x18\n" +
+	" \x03(\tR\tviaGroups\"\x12\n" +
 	"\x10ListTeamsRequest\"B\n" +
 	"\x11ListTeamsResponse\x12-\n" +
 	"\x05teams\x18\x01 \x03(\v2\x17.vertra.console.v1.TeamR\x05teams\"$\n" +

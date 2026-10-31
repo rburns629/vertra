@@ -1766,6 +1766,62 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "applied",
+     "type": "CatalogCounts",
+     "ref": "vertra.console.v1.CatalogCounts",
+     "repeated": false,
+     "optional": false,
+     "comment": "What the applied release held; unset before one was applied (or by a\nconsole older than this field)."
+    }
+   ]
+  },
+  "vertra.console.v1.CatalogCounts": {
+   "name": "CatalogCounts",
+   "comment": "What a catalog release held: what it applied, problems aside.",
+   "fields": [
+    {
+     "name": "teams",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "products",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": "Products by image, each with one or more actions."
+    },
+    {
+     "name": "actions",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "templates",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "apis",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "secretStores",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -3257,6 +3313,13 @@
      "repeated": true,
      "optional": false,
      "comment": "The steps claimed or running now, by step id; empty once it has\nfinished (a cancelled run's last steps may still be stopping), or if\nthe kernel couldn't be asked."
+    },
+    {
+     "name": "schedule",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "The schedule that started it, by name; unset when none did, or it has\nsince been deleted."
     }
    ]
   },
@@ -3385,6 +3448,13 @@
      "repeated": false,
      "optional": true,
      "comment": ""
+    },
+    {
+     "name": "schedule",
+     "type": "string",
+     "repeated": false,
+     "optional": true,
+     "comment": "The schedule that started it, by name; unset when none did, or it has\nsince been deleted."
     }
    ]
   },
@@ -6791,7 +6861,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "What was refused: a step (its team and image), the catalog's release,\nor calls to an API (the calling team, the API and its endpoint)."
+     "comment": "What was refused: a step (its team and id), the catalog's release, or\ncalls to an API (the calling team and the API)."
     },
     {
      "name": "team",
@@ -6834,6 +6904,13 @@
      "repeated": false,
      "optional": false,
      "comment": "How many: the gateway's are grouped by API, calling team, endpoint and\nreason over the week; 1 otherwise."
+    },
+    {
+     "name": "detail",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Under it: a step's image, the endpoint called, or the release's version\n(else its digest)."
     }
    ]
   },
@@ -9413,6 +9490,13 @@
      "repeated": false,
      "optional": false,
      "comment": "Their membership follows their single sign-on groups (the team is\nmapped to one): their role isn't changed, nor are they removed, here."
+    },
+    {
+     "name": "viaGroups",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Which of their groups give them their role here, as their last sign-in\n(or the hourly Google groups read) found them; empty when they were\nadded by hand, or haven't signed in since this was recorded."
     }
    ]
   },

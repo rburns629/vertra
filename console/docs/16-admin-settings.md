@@ -146,7 +146,7 @@ The catalog needs no token: the console reads the catalog's release itself. Toke
 
 - **Applied release**: the version and commit applied last, and the repository (a newer one that failed its checks shows under Applied).
 - **Signature**: whether each release's signature is checked before it's applied.
-- **Applied**: when.
+- **Applied**: when, and what the release held: its teams, products (with their actions, when a product has several), templates, APIs and SecretStores.
 - **Release**: the release followed, or "the newest version of" its repository; **Last looked**: when the console last read it.
 - An error, if the last attempt failed. Nothing is applied from a release that failed its signature check.
 
@@ -248,7 +248,7 @@ Set by the install: `chat` in vertra.yaml on gcp and aws (`chat.off`, `chat.mode
 
 ### Admins' alerts
 
-`/admin/alerts`. Admins get alerts in the console, such as a team purged, the image sources changed, a policy not syncing, the catalog not pulled, or a step the cluster refused. They also get them by email, if they chose that kind and the install sends email.
+`/admin/alerts`. Admins get alerts in the console, such as a team purged, the image sources changed, a policy not syncing, the audit log's copy stopped or its chain broken, the catalog not pulled, or a step the cluster refused. They also get them by email, if they chose that kind and the install sends email.
 
 **Team** chooses a team whose chat webhook gets them too, then **Save**. That team's maintainers set the webhook, and which alerts it gets, on its **Settings** tab. **None** posts them nowhere else.
 

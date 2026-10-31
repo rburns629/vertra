@@ -44,9 +44,9 @@ The text under each one is read from this install's own settings, so it names th
 
 **Refused, last 7 days** lists three kinds of refusal, which the chips above it filter: **All**, **Cluster**, **Catalog**, **Gateway**.
 
-- **Cluster**: steps the cluster wouldn't start, as `<team> step <id> (<image>)`, with the code and what it means. These are the same codes a run shows when a step fails ([failure codes](09-runs-explained.md#what-does-each-failure-code-mean)).
-- **Catalog**: the catalog's release, when the console couldn't apply it (`CATALOG_NOT_APPLIED`, with the error).
-- **Gateway**: calls the gateway answered itself instead of forwarding, as `<calling team> → <team>/<api>: <endpoint>, N calls`, with the reason (`NOT_IN_SPEC`, `NOT_SHARED`, `RATE_LIMITED` and so on; [gateway errors](11-apis.md#what-does-each-gateway-error-mean)). A call from no known team shows as `a caller with no team`.
+- **Cluster**: steps the cluster wouldn't start, as `<team> · step <id>` with its image under it, and the code and what it means. These are the same codes a run shows when a step fails ([failure codes](09-runs-explained.md#what-does-each-failure-code-mean)).
+- **Catalog**: the catalog's release, with its version (or digest) under it, when the console couldn't apply it (`CATALOG_NOT_APPLIED`, with the error).
+- **Gateway**: calls the gateway answered itself instead of forwarding, as `<calling team> → <team>/<api>, N calls` with the endpoint under it, and the reason (`NOT_IN_SPEC`, `NOT_SHARED`, `RATE_LIMITED` and so on; [gateway errors](11-apis.md#what-does-each-gateway-error-mean)). A call from no known team shows as `a caller with no team`.
 
 The **Refused, 7 days** card at the top counts the rows. A gateway row stands for many calls, so the card counts rows, not calls.
 
@@ -172,7 +172,7 @@ On the **Audit log** tab, everyone sees the result above the list (nothing, when
 - **Chain intact**, with when the chain was checked, last copied, and compared with the copy;
 - a red message naming the entry where the chain breaks, or the entry that differs from its copy.
 
-Admins see more under **Admin → Audit log copy**, in **The audit log's copy**: a pill (**Intact**, **Not copying**, **Chain broken**, **Changed since copied**, or **Off**), **Copied to** (the bucket), **Last copy**, **Waiting** (entries not copied yet), **Chain checked** and **Compared with the copy**. The same state is the last of Observe's security checks.
+Admins see more under **Admin → Audit log copy**, in **The audit log's copy**: a pill (**Intact**, **Not copying**, **Chain broken**, **Changed since copied**, or **Off**), **Copied to** (the bucket), **Last copy**, **Waiting** (entries not copied yet), **Chain checked** and **Compared with the copy**. The same state is the last of Observe's security checks. Admins are also alerted, in the console and by email if they chose it: at once when the chain breaks or an entry differs from its copy, and when nothing has been copied for half an hour, or ever (once a day while that lasts).
 
 ## When something on Observe is red
 

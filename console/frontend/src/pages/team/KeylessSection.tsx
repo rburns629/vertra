@@ -126,7 +126,7 @@ export function KeylessSection({
                 <Mono>{claimsText(i.claims)}</Mono>
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                last used {relativeTime(i.lastUsedAt)}
+                {i.createdAt && `added ${relativeTime(i.createdAt)} · `}last used {relativeTime(i.lastUsedAt)}
               </Typography>
             </Box>
           </Box>

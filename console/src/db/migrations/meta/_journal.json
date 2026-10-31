@@ -379,6 +379,20 @@
       "when": 1793396955658,
       "tag": "0053_api_problems",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793404680921,
+      "tag": "0054_catalog_applied_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793404930467,
+      "tag": "0055_membership_via_groups",
+      "breakpoints": true
     }
   ]
 }

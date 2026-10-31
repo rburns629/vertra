@@ -188,6 +188,15 @@ export declare type Member = Message<"vertra.console.v1.Member"> & {
    * @generated from field: bool follows_groups = 9;
    */
   followsGroups: boolean;
+
+  /**
+   * Which of their groups give them their role here, as their last sign-in
+   * (or the hourly Google groups read) found them; empty when they were
+   * added by hand, or haven't signed in since this was recorded.
+   *
+   * @generated from field: repeated string via_groups = 10;
+   */
+  viaGroups: string[];
 };
 
 /**

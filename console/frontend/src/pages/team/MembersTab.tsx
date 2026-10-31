@@ -229,9 +229,11 @@ export function MembersTab({
                       {readOnly || m.followsGroups ? (
                         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
                           <Pill tone={m.role === "maintainer" ? "info" : "neutral"}>{ROLE_LABELS[m.role]}</Pill>
-                          {!readOnly && (
-                            <Typography variant="caption" color="text.secondary">
-                              Set by their groups
+                          {m.followsGroups && (
+                            <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+                              {m.viaGroups.length > 0
+                                ? `Set by their group${m.viaGroups.length === 1 ? "" : "s"} ${m.viaGroups.join(", ")}`
+                                : "Set by their groups"}
                             </Typography>
                           )}
                         </Box>

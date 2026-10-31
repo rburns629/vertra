@@ -1,0 +1,1 @@
+ALTER TABLE "team_memberships" ADD COLUMN "via_groups" text[];

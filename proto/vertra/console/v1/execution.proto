@@ -151,6 +151,9 @@ message ExecutionSummary {
   // finished (a cancelled run's last steps may still be stopping), or if
   // the kernel couldn't be asked.
   repeated RunningStep running = 11;
+  // The schedule that started it, by name; unset when none did, or it has
+  // since been deleted.
+  optional string schedule = 12;
 }
 
 // A step claimed or running: which, and which attempt.
@@ -182,6 +185,9 @@ message Execution {
   // The parameters it ran with, and which of the submitter's teams it ran for.
   google.protobuf.Struct template_parameters = 11;
   optional string on_behalf_of = 12;
+  // The schedule that started it, by name; unset when none did, or it has
+  // since been deleted.
+  optional string schedule = 13;
 }
 
 // Why retrying or rerunning an execution would be refused now.

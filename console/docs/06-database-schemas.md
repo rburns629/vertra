@@ -330,6 +330,7 @@ Who is in which team, and as what. Any member sees the team's executions, logs a
 | `team_id` | uuid | no | |
 | `role` | text | no | `maintainer` or `member`. Memberships from before roles are maintainers. |
 | `created_at` | timestamptz | no | |
+| `via_groups` | text[] | yes | The single sign-on groups that give the role, as the person's last sign-in (or the hourly Google groups read) found them; null when added by hand. |
 
 ### api_tokens
 
@@ -549,6 +550,7 @@ The catalog release this console last applied (its teams, products and SecretSto
 | `repository` | text | yes | The catalog repository, for people. |
 | `applied_at` | timestamptz | yes | When it was applied. |
 | `problems` | jsonb | no | What applying it couldn't do, one item each (`item`, `message`); the rest was applied. |
+| `applied` | jsonb | yes | What it held: `teams`, `products` (by image), `actions`, `templates`, `apis` and `secretStores`, counted. Null before a release was applied. |
 | `checked_at` | timestamptz | yes | The last look. |
 | `error` | text | yes | Why the last look failed (reading or verifying the release); nothing was applied then. |
 
@@ -825,7 +827,7 @@ Something worth telling people: a run that failed or finished, a step waiting fo
 | --- | --- | --- | --- |
 | `id` | uuid | no | |
 | `key` | text | no | What makes it the same event (`run:<id>:<state>:<finished at>`, `approval:<run>:<step>:<since>`, `catalog:<last applied>`). Unique, so it's only ever made once. |
-| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing`, `product_not_ready`, `step_refused` (a step the cluster refused) or `platform_alert` (a team purged, the allowed image sources changed, a policy not syncing, a run's image gone). |
+| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing`, `product_not_ready`, `step_refused` (a step the cluster refused) or `platform_alert` (a team purged, the allowed image sources changed, a policy not syncing, a run's image gone, the audit log's copy not copying for half an hour (or never yet), its chain broken or an entry differing from its copy). |
 | `title` | text | no | |
 | `body` | text | no | |
 | `link` | text | yes | The console page it's about, such as `/runs/<id>`. |

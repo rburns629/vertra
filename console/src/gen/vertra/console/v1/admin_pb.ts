@@ -14,7 +14,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/admin.proto.
  */
 export const file_vertra_console_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9hZG1pbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiEwoRR2V0SW5zdGFsbFJlcXVlc3QizwUKEkdldEluc3RhbGxSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJEhkKEWVudmlyb25tZW50X2xhYmVsGAIgASgJEhQKDHNzb19wcm92aWRlchgDIAEoCRIMCgRsb2dzGAQgASgIEhcKD2xvZ19zZWFyY2hfZGF5cxgFIAEoBRISCgphdWRpdF9jb3B5GAYgASgIEg8KB2dhdGV3YXkYByABKAgSDwoHY2F0YWxvZxgIIAEoCBIWCg5jYXRhbG9nX3NpZ25lZBgJIAEoCBIQCghzY2FubmluZxgKIAEoCBIaChJydW5fcmV0ZW50aW9uX2RheXMYCyABKAUSFwoPY2F0YWxvZ192ZXJzaW9uGAwgASgJEhwKFGNhdGFsb2dfcG9sbF9zZWNvbmRzGA0gASgFEhsKE2NhdGFsb2dfc2lnbmVyX2tleXMYDiABKAUSHgoWY2F0YWxvZ19rZXlsZXNzX2lzc3VlchgPIAEoCRIfChdjYXRhbG9nX2tleWxlc3Nfc3ViamVjdBgQIAEoCRIYChBleHRlcm5hbF9jYXRhbG9nGBEgASgJEg0KBWVtYWlsGBIgASgIEhIKCmVtYWlsX2hvc3QYEyABKAkSEgoKZW1haWxfZnJvbRgUIAEoCRIbChNtb25pdG9yaW5nX3Byb3ZpZGVyGBUgASgJEhMKC2dyYWZhbmFfdXJsGBYgASgJEhYKDnNlc3Npb25fbGVuZ3RoGBcgASgJEhcKD2F1ZGl0X2tlZXBfZGF5cxgYIAEoBRISCgphdWRpdF9sb2NrGBkgASgIEhsKE3BvbGljeV9zeW5jX3NlY29uZHMYGiABKAUSJgoZaW1hZ2Vfc2lnbmF0dXJlc19yZXF1aXJlZBgbIAEoCEgAiAEBEhQKDHJlc2Nhbl9ob3VycxgcIAEoBUIcChpfaW1hZ2Vfc2lnbmF0dXJlc19yZXF1aXJlZCIZChdHZXRDYXRhbG9nU3RhdHVzUmVxdWVzdCJMChhHZXRDYXRhbG9nU3RhdHVzUmVzcG9uc2USMAoGc3RhdHVzGAEgASgLMiAudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1N0YXR1cyIUChJTeW5jQ2F0YWxvZ1JlcXVlc3QiRwoTU3luY0NhdGFsb2dSZXNwb25zZRIwCgZzdGF0dXMYASABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nU3RhdHVzIicKF0Fkb3B0Q2F0YWxvZ1RlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkiTAoYQWRvcHRDYXRhbG9nVGVhbVJlc3BvbnNlEjAKBnN0YXR1cxgBIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLkNhdGFsb2dTdGF0dXMioQIKDUNhdGFsb2dTdGF0dXMSDwoHcmVsZWFzZRgBIAEoCRIOCgZkaWdlc3QYAiABKAkSDgoGY29tbWl0GAMgASgJEhIKCnJlcG9zaXRvcnkYBCABKAkSLgoKYXBwbGllZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMwoIcHJvYmxlbXMYBiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nUHJvYmxlbRIuCgpjaGVja2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVlcnJvchgIIAEoCRIWCg5uZXdlc3RfdmVyc2lvbhgJIAEoCBIPCgd2ZXJzaW9uGAogASgJIkcKDkNhdGFsb2dQcm9ibGVtEgwKBGl0ZW0YASABKAkSDwoHbWVzc2FnZRgCIAEoCRIWCg5hZG9wdGFibGVfdGVhbRgDIAEoCSIRCg9HZXRTdGF0c1JlcXVlc3QiVgoQR2V0U3RhdHNSZXNwb25zZRINCgV0ZWFtcxgBIAEoAxINCgV1c2VycxgCIAEoAxIQCghwcm9kdWN0cxgDIAEoAxISCgpleGVjdXRpb25zGAQgASgDIqQCCgpBdWRpdEVudHJ5EgoKAmlkGAEgASgDEiYKAmF0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCghhY3Rvcl9pZBgDIAEoCUgAiAEBEhgKC2FjdG9yX2VtYWlsGAQgASgJSAGIAQESFAoMYWN0b3JfaXNfYm90GAUgASgIEg4KBm1ldGhvZBgGIAEoCRINCgVyb3V0ZRgHIAEoCRInCgZ0YXJnZXQYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg4KBnN0YXR1cxgJIAEoBRIXCgpyZXF1ZXN0X2lkGAogASgJSAKIAQFCCwoJX2FjdG9yX2lkQg4KDF9hY3Rvcl9lbWFpbEINCgtfcmVxdWVzdF9pZCJKChdMaXN0QXVkaXRFbnRyaWVzUmVxdWVzdBIOCgZiZWZvcmUYASABKAMSEAoIYWN0b3JfaWQYAiABKAkSDQoFbGltaXQYAyABKAUiXwoYTGlzdEF1ZGl0RW50cmllc1Jlc3BvbnNlEi4KB2VudHJpZXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BdWRpdEVudHJ5EhMKC25leHRfYmVmb3JlGAIgASgDInYKEVBvbGljeVN5bmNPdXRjb21lEg8KB2FwcGxpZXMYASABKAgSCgoCb2sYAiABKAgSJgoCYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKBWVycm9yGAQgASgJSACIAQFCCAoGX2Vycm9yIhYKFEdldFBvbGljeVN5bmNSZXF1ZXN0IrgBChVHZXRQb2xpY3lTeW5jUmVzcG9uc2USSAoIb3V0Y29tZXMYASADKAsyNi52ZXJ0cmEuY29uc29sZS52MS5HZXRQb2xpY3lTeW5jUmVzcG9uc2UuT3V0Y29tZXNFbnRyeRpVCg1PdXRjb21lc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLnZlcnRyYS5jb25zb2xlLnYxLlBvbGljeVN5bmNPdXRjb21lOgI4ASIVChNTeW5jUG9saWNpZXNSZXF1ZXN0IrYBChRTeW5jUG9saWNpZXNSZXNwb25zZRJHCghvdXRjb21lcxgBIAMoCzI1LnZlcnRyYS5jb25zb2xlLnYxLlN5bmNQb2xpY2llc1Jlc3BvbnNlLk91dGNvbWVzRW50cnkaVQoNT3V0Y29tZXNFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC52ZXJ0cmEuY29uc29sZS52MS5Qb2xpY3lTeW5jT3V0Y29tZToCOAEy0AYKDEFkbWluU2VydmljZRJYCghHZXRTdGF0cxIiLnZlcnRyYS5jb25zb2xlLnYxLkdldFN0YXRzUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldFN0YXRzUmVzcG9uc2UiA5ACARJwChBMaXN0QXVkaXRFbnRyaWVzEioudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0RW50cmllc1JlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRFbnRyaWVzUmVzcG9uc2UiA5ACARJnCg1HZXRQb2xpY3lTeW5jEicudmVydHJhLmNvbnNvbGUudjEuR2V0UG9saWN5U3luY1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5HZXRQb2xpY3lTeW5jUmVzcG9uc2UiA5ACARJkCgxTeW5jUG9saWNpZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TeW5jUG9saWNpZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU3luY1BvbGljaWVzUmVzcG9uc2UiA5ACAhJwChBHZXRDYXRhbG9nU3RhdHVzEioudmVydHJhLmNvbnNvbGUudjEuR2V0Q2F0YWxvZ1N0YXR1c1JlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5HZXRDYXRhbG9nU3RhdHVzUmVzcG9uc2UiA5ACARJhCgtTeW5jQ2F0YWxvZxIlLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNDYXRhbG9nUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNDYXRhbG9nUmVzcG9uc2UiA5ACAhJwChBBZG9wdENhdGFsb2dUZWFtEioudmVydHJhLmNvbnNvbGUudjEuQWRvcHRDYXRhbG9nVGVhbVJlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5BZG9wdENhdGFsb2dUZWFtUmVzcG9uc2UiA5ACAhJeCgpHZXRJbnN0YWxsEiQudmVydHJhLmNvbnNvbGUudjEuR2V0SW5zdGFsbFJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5HZXRJbnN0YWxsUmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch12ZXJ0cmEvY29uc29sZS92MS9hZG1pbi5wcm90bxIRdmVydHJhLmNvbnNvbGUudjEiEwoRR2V0SW5zdGFsbFJlcXVlc3QizwUKEkdldEluc3RhbGxSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJEhkKEWVudmlyb25tZW50X2xhYmVsGAIgASgJEhQKDHNzb19wcm92aWRlchgDIAEoCRIMCgRsb2dzGAQgASgIEhcKD2xvZ19zZWFyY2hfZGF5cxgFIAEoBRISCgphdWRpdF9jb3B5GAYgASgIEg8KB2dhdGV3YXkYByABKAgSDwoHY2F0YWxvZxgIIAEoCBIWCg5jYXRhbG9nX3NpZ25lZBgJIAEoCBIQCghzY2FubmluZxgKIAEoCBIaChJydW5fcmV0ZW50aW9uX2RheXMYCyABKAUSFwoPY2F0YWxvZ192ZXJzaW9uGAwgASgJEhwKFGNhdGFsb2dfcG9sbF9zZWNvbmRzGA0gASgFEhsKE2NhdGFsb2dfc2lnbmVyX2tleXMYDiABKAUSHgoWY2F0YWxvZ19rZXlsZXNzX2lzc3VlchgPIAEoCRIfChdjYXRhbG9nX2tleWxlc3Nfc3ViamVjdBgQIAEoCRIYChBleHRlcm5hbF9jYXRhbG9nGBEgASgJEg0KBWVtYWlsGBIgASgIEhIKCmVtYWlsX2hvc3QYEyABKAkSEgoKZW1haWxfZnJvbRgUIAEoCRIbChNtb25pdG9yaW5nX3Byb3ZpZGVyGBUgASgJEhMKC2dyYWZhbmFfdXJsGBYgASgJEhYKDnNlc3Npb25fbGVuZ3RoGBcgASgJEhcKD2F1ZGl0X2tlZXBfZGF5cxgYIAEoBRISCgphdWRpdF9sb2NrGBkgASgIEhsKE3BvbGljeV9zeW5jX3NlY29uZHMYGiABKAUSJgoZaW1hZ2Vfc2lnbmF0dXJlc19yZXF1aXJlZBgbIAEoCEgAiAEBEhQKDHJlc2Nhbl9ob3VycxgcIAEoBUIcChpfaW1hZ2Vfc2lnbmF0dXJlc19yZXF1aXJlZCIZChdHZXRDYXRhbG9nU3RhdHVzUmVxdWVzdCJMChhHZXRDYXRhbG9nU3RhdHVzUmVzcG9uc2USMAoGc3RhdHVzGAEgASgLMiAudmVydHJhLmNvbnNvbGUudjEuQ2F0YWxvZ1N0YXR1cyIUChJTeW5jQ2F0YWxvZ1JlcXVlc3QiRwoTU3luY0NhdGFsb2dSZXNwb25zZRIwCgZzdGF0dXMYASABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nU3RhdHVzIicKF0Fkb3B0Q2F0YWxvZ1RlYW1SZXF1ZXN0EgwKBG5hbWUYASABKAkiTAoYQWRvcHRDYXRhbG9nVGVhbVJlc3BvbnNlEjAKBnN0YXR1cxgBIAEoCzIgLnZlcnRyYS5jb25zb2xlLnYxLkNhdGFsb2dTdGF0dXMi1AIKDUNhdGFsb2dTdGF0dXMSDwoHcmVsZWFzZRgBIAEoCRIOCgZkaWdlc3QYAiABKAkSDgoGY29tbWl0GAMgASgJEhIKCnJlcG9zaXRvcnkYBCABKAkSLgoKYXBwbGllZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMwoIcHJvYmxlbXMYBiADKAsyIS52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nUHJvYmxlbRIuCgpjaGVja2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVlcnJvchgIIAEoCRIWCg5uZXdlc3RfdmVyc2lvbhgJIAEoCBIPCgd2ZXJzaW9uGAogASgJEjEKB2FwcGxpZWQYCyABKAsyIC52ZXJ0cmEuY29uc29sZS52MS5DYXRhbG9nQ291bnRzInkKDUNhdGFsb2dDb3VudHMSDQoFdGVhbXMYASABKAUSEAoIcHJvZHVjdHMYAiABKAUSDwoHYWN0aW9ucxgDIAEoBRIRCgl0ZW1wbGF0ZXMYBCABKAUSDAoEYXBpcxgFIAEoBRIVCg1zZWNyZXRfc3RvcmVzGAYgASgFIkcKDkNhdGFsb2dQcm9ibGVtEgwKBGl0ZW0YASABKAkSDwoHbWVzc2FnZRgCIAEoCRIWCg5hZG9wdGFibGVfdGVhbRgDIAEoCSIRCg9HZXRTdGF0c1JlcXVlc3QiVgoQR2V0U3RhdHNSZXNwb25zZRINCgV0ZWFtcxgBIAEoAxINCgV1c2VycxgCIAEoAxIQCghwcm9kdWN0cxgDIAEoAxISCgpleGVjdXRpb25zGAQgASgDIqQCCgpBdWRpdEVudHJ5EgoKAmlkGAEgASgDEiYKAmF0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCghhY3Rvcl9pZBgDIAEoCUgAiAEBEhgKC2FjdG9yX2VtYWlsGAQgASgJSAGIAQESFAoMYWN0b3JfaXNfYm90GAUgASgIEg4KBm1ldGhvZBgGIAEoCRINCgVyb3V0ZRgHIAEoCRInCgZ0YXJnZXQYCCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg4KBnN0YXR1cxgJIAEoBRIXCgpyZXF1ZXN0X2lkGAogASgJSAKIAQFCCwoJX2FjdG9yX2lkQg4KDF9hY3Rvcl9lbWFpbEINCgtfcmVxdWVzdF9pZCJKChdMaXN0QXVkaXRFbnRyaWVzUmVxdWVzdBIOCgZiZWZvcmUYASABKAMSEAoIYWN0b3JfaWQYAiABKAkSDQoFbGltaXQYAyABKAUiXwoYTGlzdEF1ZGl0RW50cmllc1Jlc3BvbnNlEi4KB2VudHJpZXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BdWRpdEVudHJ5EhMKC25leHRfYmVmb3JlGAIgASgDInYKEVBvbGljeVN5bmNPdXRjb21lEg8KB2FwcGxpZXMYASABKAgSCgoCb2sYAiABKAgSJgoCYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKBWVycm9yGAQgASgJSACIAQFCCAoGX2Vycm9yIhYKFEdldFBvbGljeVN5bmNSZXF1ZXN0IrgBChVHZXRQb2xpY3lTeW5jUmVzcG9uc2USSAoIb3V0Y29tZXMYASADKAsyNi52ZXJ0cmEuY29uc29sZS52MS5HZXRQb2xpY3lTeW5jUmVzcG9uc2UuT3V0Y29tZXNFbnRyeRpVCg1PdXRjb21lc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLnZlcnRyYS5jb25zb2xlLnYxLlBvbGljeVN5bmNPdXRjb21lOgI4ASIVChNTeW5jUG9saWNpZXNSZXF1ZXN0IrYBChRTeW5jUG9saWNpZXNSZXNwb25zZRJHCghvdXRjb21lcxgBIAMoCzI1LnZlcnRyYS5jb25zb2xlLnYxLlN5bmNQb2xpY2llc1Jlc3BvbnNlLk91dGNvbWVzRW50cnkaVQoNT3V0Y29tZXNFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC52ZXJ0cmEuY29uc29sZS52MS5Qb2xpY3lTeW5jT3V0Y29tZToCOAEy0AYKDEFkbWluU2VydmljZRJYCghHZXRTdGF0cxIiLnZlcnRyYS5jb25zb2xlLnYxLkdldFN0YXRzUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkdldFN0YXRzUmVzcG9uc2UiA5ACARJwChBMaXN0QXVkaXRFbnRyaWVzEioudmVydHJhLmNvbnNvbGUudjEuTGlzdEF1ZGl0RW50cmllc1JlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXVkaXRFbnRyaWVzUmVzcG9uc2UiA5ACARJnCg1HZXRQb2xpY3lTeW5jEicudmVydHJhLmNvbnNvbGUudjEuR2V0UG9saWN5U3luY1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5HZXRQb2xpY3lTeW5jUmVzcG9uc2UiA5ACARJkCgxTeW5jUG9saWNpZXMSJi52ZXJ0cmEuY29uc29sZS52MS5TeW5jUG9saWNpZXNSZXF1ZXN0GicudmVydHJhLmNvbnNvbGUudjEuU3luY1BvbGljaWVzUmVzcG9uc2UiA5ACAhJwChBHZXRDYXRhbG9nU3RhdHVzEioudmVydHJhLmNvbnNvbGUudjEuR2V0Q2F0YWxvZ1N0YXR1c1JlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5HZXRDYXRhbG9nU3RhdHVzUmVzcG9uc2UiA5ACARJhCgtTeW5jQ2F0YWxvZxIlLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNDYXRhbG9nUmVxdWVzdBomLnZlcnRyYS5jb25zb2xlLnYxLlN5bmNDYXRhbG9nUmVzcG9uc2UiA5ACAhJwChBBZG9wdENhdGFsb2dUZWFtEioudmVydHJhLmNvbnNvbGUudjEuQWRvcHRDYXRhbG9nVGVhbVJlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5BZG9wdENhdGFsb2dUZWFtUmVzcG9uc2UiA5ACAhJeCgpHZXRJbnN0YWxsEiQudmVydHJhLmNvbnNvbGUudjEuR2V0SW5zdGFsbFJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5HZXRJbnN0YWxsUmVzcG9uc2UiA5ACAWIGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.GetInstallRequest
@@ -392,6 +392,14 @@ export type CatalogStatus = Message<"vertra.console.v1.CatalogStatus"> & {
    * @generated from field: string version = 10;
    */
   version: string;
+
+  /**
+   * What the applied release held; unset before one was applied (or by a
+   * console older than this field).
+   *
+   * @generated from field: vertra.console.v1.CatalogCounts applied = 11;
+   */
+  applied?: CatalogCounts | undefined;
 };
 
 /**
@@ -400,6 +408,52 @@ export type CatalogStatus = Message<"vertra.console.v1.CatalogStatus"> & {
  */
 export const CatalogStatusSchema: GenMessage<CatalogStatus> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_admin, 8);
+
+/**
+ * What a catalog release held: what it applied, problems aside.
+ *
+ * @generated from message vertra.console.v1.CatalogCounts
+ */
+export type CatalogCounts = Message<"vertra.console.v1.CatalogCounts"> & {
+  /**
+   * @generated from field: int32 teams = 1;
+   */
+  teams: number;
+
+  /**
+   * Products by image, each with one or more actions.
+   *
+   * @generated from field: int32 products = 2;
+   */
+  products: number;
+
+  /**
+   * @generated from field: int32 actions = 3;
+   */
+  actions: number;
+
+  /**
+   * @generated from field: int32 templates = 4;
+   */
+  templates: number;
+
+  /**
+   * @generated from field: int32 apis = 5;
+   */
+  apis: number;
+
+  /**
+   * @generated from field: int32 secret_stores = 6;
+   */
+  secretStores: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.CatalogCounts.
+ * Use `create(CatalogCountsSchema)` to create a new message.
+ */
+export const CatalogCountsSchema: GenMessage<CatalogCounts> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_admin, 9);
 
 /**
  * @generated from message vertra.console.v1.CatalogProblem
@@ -431,7 +485,7 @@ export type CatalogProblem = Message<"vertra.console.v1.CatalogProblem"> & {
  * Use `create(CatalogProblemSchema)` to create a new message.
  */
 export const CatalogProblemSchema: GenMessage<CatalogProblem> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 9);
+  messageDesc(file_vertra_console_v1_admin, 10);
 
 /**
  * @generated from message vertra.console.v1.GetStatsRequest
@@ -444,7 +498,7 @@ export type GetStatsRequest = Message<"vertra.console.v1.GetStatsRequest"> & {
  * Use `create(GetStatsRequestSchema)` to create a new message.
  */
 export const GetStatsRequestSchema: GenMessage<GetStatsRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 10);
+  messageDesc(file_vertra_console_v1_admin, 11);
 
 /**
  * @generated from message vertra.console.v1.GetStatsResponse
@@ -476,7 +530,7 @@ export type GetStatsResponse = Message<"vertra.console.v1.GetStatsResponse"> & {
  * Use `create(GetStatsResponseSchema)` to create a new message.
  */
 export const GetStatsResponseSchema: GenMessage<GetStatsResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 11);
+  messageDesc(file_vertra_console_v1_admin, 12);
 
 /**
  * @generated from message vertra.console.v1.AuditEntry
@@ -544,7 +598,7 @@ export type AuditEntry = Message<"vertra.console.v1.AuditEntry"> & {
  * Use `create(AuditEntrySchema)` to create a new message.
  */
 export const AuditEntrySchema: GenMessage<AuditEntry> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 12);
+  messageDesc(file_vertra_console_v1_admin, 13);
 
 /**
  * @generated from message vertra.console.v1.ListAuditEntriesRequest
@@ -577,7 +631,7 @@ export type ListAuditEntriesRequest = Message<"vertra.console.v1.ListAuditEntrie
  * Use `create(ListAuditEntriesRequestSchema)` to create a new message.
  */
 export const ListAuditEntriesRequestSchema: GenMessage<ListAuditEntriesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 13);
+  messageDesc(file_vertra_console_v1_admin, 14);
 
 /**
  * @generated from message vertra.console.v1.ListAuditEntriesResponse
@@ -601,7 +655,7 @@ export type ListAuditEntriesResponse = Message<"vertra.console.v1.ListAuditEntri
  * Use `create(ListAuditEntriesResponseSchema)` to create a new message.
  */
 export const ListAuditEntriesResponseSchema: GenMessage<ListAuditEntriesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 14);
+  messageDesc(file_vertra_console_v1_admin, 15);
 
 /**
  * @generated from message vertra.console.v1.PolicySyncOutcome
@@ -635,7 +689,7 @@ export type PolicySyncOutcome = Message<"vertra.console.v1.PolicySyncOutcome"> &
  * Use `create(PolicySyncOutcomeSchema)` to create a new message.
  */
 export const PolicySyncOutcomeSchema: GenMessage<PolicySyncOutcome> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 15);
+  messageDesc(file_vertra_console_v1_admin, 16);
 
 /**
  * @generated from message vertra.console.v1.GetPolicySyncRequest
@@ -648,7 +702,7 @@ export type GetPolicySyncRequest = Message<"vertra.console.v1.GetPolicySyncReque
  * Use `create(GetPolicySyncRequestSchema)` to create a new message.
  */
 export const GetPolicySyncRequestSchema: GenMessage<GetPolicySyncRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 16);
+  messageDesc(file_vertra_console_v1_admin, 17);
 
 /**
  * @generated from message vertra.console.v1.GetPolicySyncResponse
@@ -668,7 +722,7 @@ export type GetPolicySyncResponse = Message<"vertra.console.v1.GetPolicySyncResp
  * Use `create(GetPolicySyncResponseSchema)` to create a new message.
  */
 export const GetPolicySyncResponseSchema: GenMessage<GetPolicySyncResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 17);
+  messageDesc(file_vertra_console_v1_admin, 18);
 
 /**
  * @generated from message vertra.console.v1.SyncPoliciesRequest
@@ -681,7 +735,7 @@ export type SyncPoliciesRequest = Message<"vertra.console.v1.SyncPoliciesRequest
  * Use `create(SyncPoliciesRequestSchema)` to create a new message.
  */
 export const SyncPoliciesRequestSchema: GenMessage<SyncPoliciesRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 18);
+  messageDesc(file_vertra_console_v1_admin, 19);
 
 /**
  * @generated from message vertra.console.v1.SyncPoliciesResponse
@@ -698,7 +752,7 @@ export type SyncPoliciesResponse = Message<"vertra.console.v1.SyncPoliciesRespon
  * Use `create(SyncPoliciesResponseSchema)` to create a new message.
  */
 export const SyncPoliciesResponseSchema: GenMessage<SyncPoliciesResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_admin, 19);
+  messageDesc(file_vertra_console_v1_admin, 20);
 
 /**
  * Running the platform: counts, the audit log, the cluster policies the

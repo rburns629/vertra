@@ -12,7 +12,9 @@
  *     unallowed source, an identity it isn't registered for): admins,
  *     whoever ran it, and its team's webhook;
  *   - a platform change or fault (a team purged, the allowed image sources
- *     changed, a policy sync failing, a run's image gone): admins.
+ *     changed, a policy sync failing, a run's image gone, the audit log's
+ *     write-once copy not copying, its chain broken or a copy differing):
+ *     admins.
  *
  * Each is shown in its people's inbox, emailed to those who want its kind
  * (users.email_kinds) when the install sends email (SMTP_*), and posted to
@@ -54,6 +56,7 @@ import { PLATFORM_ERRORS } from "./failureHelp.js";
 import { listAwaitingApproval, listRefusals } from "./kernel/client.js";
 import { deliverCallbacks } from "./callbacks.js";
 import { policySyncOutcomes } from "./policySync.js";
+import { auditExportStatus } from "./auditExport.js";
 
 const MAX_ATTEMPTS = 5;
 /** A finished run older than this when it's recorded isn't news (a console's first pass over old runs). */
@@ -62,6 +65,8 @@ const NEWS_MS = 60 * 60_000;
 const CATALOG_GRACE_MS = 30 * 60_000;
 /** A policy sync failing for this long is (one bad pass isn't). */
 const POLICY_GRACE_MS = 10 * 60_000;
+/** The audit log's copy not copying for this long is, too. */
+const AUDIT_GRACE_MS = 30 * 60_000;
 
 // --- the webhook URL, encrypted ---
 
@@ -300,6 +305,53 @@ export async function notifyPolicySync(): Promise<number> {
   return made;
 }
 
+/**
+ * The audit log's write-once copy (auditExport.ts): its chain broken, or an
+ * entry differing from its copy, once each, at once (either means the log
+ * was changed); and not copying for a while, once a day while it lasts.
+ */
+export async function notifyAuditCopy(): Promise<number> {
+  const copy = await auditExportStatus();
+  if (!copy) return 0;
+  let made = 0;
+  const link = "/admin/audit";
+  if (copy.brokenAt) {
+    const fresh = await platformAlert(
+      `audit-broken:${String(copy.brokenAt)}`,
+      "The audit log's chain is broken",
+      `Entry ${String(copy.brokenAt)} doesn't follow the one before it, so the log was changed or entries removed. Nothing from there on is copied.`,
+      undefined,
+      link,
+    );
+    if (fresh) made += 1;
+  }
+  if (copy.differsAt) {
+    const fresh = await platformAlert(
+      `audit-differs:${String(copy.differsAt)}`,
+      "An audit log entry differs from its write-once copy",
+      copy.compareProblem ?? `Entry ${String(copy.differsAt)} was changed after it was copied.`,
+      undefined,
+      link,
+    );
+    if (fresh) made += 1;
+  }
+  // Not copying: since its last copy, for half an hour; never copied at all,
+  // at once (checkedAt moves with every failed try, so it can't time that).
+  const last = copy.exportedAt;
+  if (copy.error && !copy.brokenAt && (!last || Date.now() - last.getTime() >= AUDIT_GRACE_MS)) {
+    // Keyed by the day: two consoles seeing the same outage say it once.
+    const fresh = await platformAlert(
+      `audit-copying:${new Date().toISOString().slice(0, 10)}`,
+      "The audit log isn't being copied",
+      `${last ? `Nothing copied since ${last.toISOString()}` : "Nothing has been copied yet"}: ${copy.error.slice(0, 500)}`,
+      undefined,
+      link,
+    );
+    if (fresh) made += 1;
+  }
+  return made;
+}
+
 /** The catalog not pulled for a while: admins, once per outage. */
 export async function notifyCatalog(): Promise<boolean> {
   const [status] = await db.select().from(catalogSync).where(eq(catalogSync.id, 1));
@@ -445,6 +497,7 @@ export function startNotifier(log: FastifyBaseLogger): void {
     await notifyCatalog();
     await notifyRefusals();
     await notifyPolicySync();
+    await notifyAuditCopy();
     await deliverWebhooks(log);
     await deliverEmails(log);
     await deliverCallbacks(log);

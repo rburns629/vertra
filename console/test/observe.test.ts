@@ -99,7 +99,7 @@ afterAll(async () => {
 
 type Security = {
   checks: { name: string; state: string }[];
-  refusals: { code: string; why: string; executionId: string; team: string; what: string; source: string; count: number }[];
+  refusals: { code: string; why: string; executionId: string; team: string; what: string; detail: string; source: string; count: number }[];
   images: { product: string; scan: string; fixable: number }[];
 };
 const security = async (who: keyof typeof tokens) => (await call<Security>(tokens[who], "ObserveService/GetSecurity")).body;
@@ -114,6 +114,9 @@ describe("security checks", () => {
   it("show everyone what was refused, linking the run only for those who may see it", async () => {
     const mine = (await security("owner")).refusals.find((r) => r.team === owner);
     expect(mine).toMatchObject({ code: "IMAGE_NOT_ALLOWED", executionId });
+    // Its step, and its image under it.
+    expect(mine?.what).toMatch(new RegExp(`^${owner} · step `));
+    expect(mine?.detail).toMatch(/@sha256:|:/);
     expect(mine?.why).toContain("allows");
     const theirs = (await security("other")).refusals.find((r) => r.team === owner);
     expect(theirs?.code).toBe("IMAGE_NOT_ALLOWED");
@@ -122,14 +125,14 @@ describe("security checks", () => {
 
   it("include the gateway's, for the API's team, the calling team and no one else", async () => {
     const gateway = async (who: keyof typeof tokens) =>
-      (await security(who)).refusals.filter((r) => r.source === "gateway" && r.team === owner).map((r) => `${r.code} ${String(r.count)} ${r.what}`).sort();
+      (await security(who)).refusals.filter((r) => r.source === "gateway" && r.team === owner).map((r) => `${r.code} ${String(r.count)} ${r.what} | ${r.detail}`).sort();
     expect(await gateway("owner")).toEqual([
-      `INVALID_REQUEST 1 ${stranger} \u2192 ${owner}/orders: POST /orders`,
-      `NOT_IN_SPEC 5 ${other} \u2192 ${owner}/orders: DELETE /orders/1`,
-      `UNAUTHENTICATED 2 a caller with no team \u2192 ${owner}/orders: GET /orders`,
+      `INVALID_REQUEST 1 ${stranger} \u2192 ${owner}/orders | POST /orders`,
+      `NOT_IN_SPEC 5 ${other} \u2192 ${owner}/orders | DELETE /orders/1`,
+      `UNAUTHENTICATED 2 a caller with no team \u2192 ${owner}/orders | GET /orders`,
     ]);
     // The calling team sees its own calls only; what it was forwarded isn't a refusal.
-    expect(await gateway("other")).toEqual([`NOT_IN_SPEC 5 ${other} \u2192 ${owner}/orders: DELETE /orders/1`]);
+    expect(await gateway("other")).toEqual([`NOT_IN_SPEC 5 ${other} \u2192 ${owner}/orders | DELETE /orders/1`]);
     const step = (await security("owner")).refusals.find((r) => r.code === "IMAGE_NOT_ALLOWED");
     expect(step).toMatchObject({ source: "step", count: 1 });
   });

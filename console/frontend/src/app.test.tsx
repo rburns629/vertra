@@ -1313,15 +1313,18 @@ describe("observe", () => {
     await renderAt("/observe", MEMBER, {
       "ObserveService/GetSecurity": {
         refusals: [
-          { what: "local step t (registry/x)", code: "IMAGE_NOT_ALLOWED", why: "Not an allowed source.", source: "step", count: 1 },
-          { what: "azure-apps → payments/orders: POST /orders", code: "INVALID_REQUEST", why: "Didn't fit.", source: "gateway", count: 214 },
+          { what: "local · step t", detail: "registry/x@sha256:aa", code: "IMAGE_NOT_ALLOWED", why: "Not an allowed source.", source: "step", count: 1 },
+          { what: "azure-apps → payments/orders", detail: "POST /orders", code: "INVALID_REQUEST", why: "Didn't fit.", source: "gateway", count: 214 },
         ],
       },
     });
-    expect(await screen.findByText(/payments\/orders: POST \/orders, 214 calls/)).toBeTruthy();
+    // What was refused, and under it the endpoint or the image.
+    expect(await screen.findByText(/payments\/orders, 214 calls/)).toBeTruthy();
+    expect(screen.getByText("POST /orders")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cluster" }));
     expect(screen.queryByText(/214 calls/)).toBeNull();
-    expect(screen.getByText("local step t (registry/x)")).toBeTruthy();
+    expect(screen.getByText("local · step t")).toBeTruthy();
+    expect(screen.getByText("registry/x@sha256:aa")).toBeTruthy();
   });
 
   it("says whether the audit log's chain held", async () => {
@@ -1856,13 +1859,16 @@ describe("a team's members", () => {
         members: [
           { id: "u1", email: "ana@acme.com", hasPassword: true, role: "TEAM_ROLE_MAINTAINER" },
           { id: "u3", email: "sam@acme.com", usesSso: true, followsGroups: true, role: "TEAM_ROLE_MEMBER" },
+          { id: "u4", email: "kim@acme.com", usesSso: true, followsGroups: true, viaGroups: ["payments-eng"], role: "TEAM_ROLE_MEMBER" },
         ],
       },
     });
-    expect(await screen.findByRole("heading", { name: "2 people" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "3 people" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "ana@acme.com's role" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "sam@acme.com's role" })).toBeNull();
+    // Which group, once a sign-in has recorded it.
     expect(screen.getByText("Set by their groups")).toBeTruthy();
+    expect(screen.getByText("Set by their group payments-eng")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
   });
 });
@@ -2365,5 +2371,63 @@ describe("Observe's alerts", () => {
     cleanup();
     await renderAt("/observe?tab=metrics", MEMBER, { "ObserveService/ListAlerts": { configured: true, problem: "Prometheus isn't answering." } });
     expect(await screen.findByText("Couldn't read the alerts: Prometheus isn't answering.")).toBeTruthy();
+  });
+});
+
+describe("a run a schedule started", () => {
+  const RUN = {
+    executionId: "5c5c5c5c-0000-4000-8000-000000000005",
+    name: "nightly uptime check",
+    teams: ["payments"],
+    createdAt: "2026-10-30T02:00:00Z",
+    state: "EXECUTION_STATE_SUCCEEDED",
+    submittedBy: "b0b0b0b0-0000-4000-8000-000000000001",
+    submittedByEmail: "payments-nightly@bots.vertra.local",
+    schedule: "nightly",
+  };
+
+  it("says which, in the Runs list", async () => {
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [RUN] } });
+    expect(await screen.findByText("on the schedule nightly")).toBeTruthy();
+  });
+
+  it("links to it from the run's page", async () => {
+    const execution = { executionId: RUN.executionId, name: RUN.name, state: RUN.state, tasks: [], submittedBy: RUN.submittedByEmail, onBehalfOf: "payments", schedule: "nightly", createdAt: RUN.createdAt };
+    await renderAt(`/runs/${RUN.executionId}`, MEMBER, {
+      "ExecutionService/GetExecution": { execution },
+      "ExecutionService/WatchExecution": [{ execution }],
+    });
+    expect((await screen.findByRole("link", { name: "nightly" })).getAttribute("href")).toBe("/teams/payments?tab=schedules");
+  });
+});
+
+describe("a bot's CI identities", () => {
+  it("say when each was added, and when it was last used", async () => {
+    await renderAt("/teams/payments?tab=automation", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {
+      "TeamService/GetTeam": { team: { id: "t2", name: "payments" } },
+      "TokenService/ListBots": { bots: [{ id: "b0b0b0b0-0000-4000-8000-000000000001", email: "payments-release@bots.vertra.local" }] },
+      "TokenService/ListBotIdentities": {
+        identities: [{ id: "i1", botId: "b0b0b0b0-0000-4000-8000-000000000001", botEmail: "payments-release@bots.vertra.local", issuer: "https://token.actions.githubusercontent.com", claims: { repository: "acme/release" }, createdAt: "2026-10-02T09:00:00Z" }],
+        issuers: ["https://token.actions.githubusercontent.com"],
+        audience: "https://vertra.acme.dev",
+      },
+    });
+    expect(await screen.findByText(/^added .+ · last used never$/)).toBeTruthy();
+  });
+});
+
+describe("Admin's catalog section", () => {
+  it("says what the applied release held", async () => {
+    await renderAt("/admin/catalog", ADMIN, {
+      "AdminService/GetCatalogStatus": {
+        status: {
+          release: "registry.example/catalog-release",
+          commit: "c1",
+          appliedAt: "2026-10-29T10:00:00Z",
+          applied: { teams: 5, products: 14, actions: 20, templates: 6, secretStores: 4 },
+        },
+      },
+    });
+    expect(await screen.findByText("5 teams, 14 products (20 actions), 6 templates, 4 SecretStores")).toBeTruthy();
   });
 });

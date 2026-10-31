@@ -174,7 +174,20 @@ export function ExecutionDetailPage() {
           </Box>
           <Typography sx={{ fontSize: 14, color: "text.primary", opacity: 0.85 }}>
             Started by {startedBy}
-            {execution.onBehalfOf && ` for ${execution.onBehalfOf}`}, {when(execution.createdAt)} · {source(execution)}
+            {execution.onBehalfOf && ` for ${execution.onBehalfOf}`}
+            {execution.schedule && (
+              <>
+                {" on the schedule "}
+                {execution.onBehalfOf ? (
+                  <Link component={RouterLink} to={`/teams/${encodeURIComponent(execution.onBehalfOf)}?tab=schedules`}>
+                    {execution.schedule}
+                  </Link>
+                ) : (
+                  execution.schedule
+                )}
+              </>
+            )}
+            , {when(execution.createdAt)} · {source(execution)}
           </Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
             {execution.state === "FAILED" && (

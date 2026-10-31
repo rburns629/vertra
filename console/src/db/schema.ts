@@ -936,6 +936,9 @@ export const teamMemberships = pgTable(
     // Memberships from before roles were maintainers, and stay so.
     role: text("role").$type<TeamRole>().notNull().default("maintainer"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // The single sign-on groups that give this membership its role (sso.ts,
+    // at each sign-in or group resync); null when it was added by hand.
+    viaGroups: text("via_groups").array(),
   },
   (table) => [
     primaryKey({ columns: [table.userId, table.teamId] }),
@@ -1163,6 +1166,8 @@ export const catalogSync = pgTable("catalog_sync", {
   appliedAt: timestamp("applied_at", { withTimezone: true }),
   // What applying it couldn't do, item by item: [{ item, message }].
   problems: jsonb("problems").$type<{ item: string; message: string; adoptableTeam?: string }[]>().notNull().default([]),
+  // What it held (catalogSync.ts's counts); null before one was applied.
+  applied: jsonb("applied").$type<{ teams: number; products: number; actions: number; templates: number; apis: number; secretStores: number }>(),
   // The last look: when, and why it failed, if it did (fetching or
   // verifying; nothing was applied then).
   checkedAt: timestamp("checked_at", { withTimezone: true }),

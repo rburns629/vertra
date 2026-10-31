@@ -177,10 +177,16 @@ export async function syncMappedTeams(userId: string, groups: string[], log: Fas
     .innerJoin(teams, eq(teams.id, ssoGroupMappings.teamId));
   if (mappings.length === 0) return [];
   const mine = new Set(groups);
-  const wanted = new Map<string, { name: string; role: TeamRole | null }>();
+  // Each mapped team's best role from the person's groups, and which of them give it.
+  const wanted = new Map<string, { name: string; role: TeamRole | null; via: string[] }>();
   for (const m of mappings) {
-    const current = wanted.get(m.teamId) ?? { name: m.teamName, role: null };
-    if (mine.has(m.groupName.toLowerCase()) && (current.role === null || rank(m.role) > rank(current.role))) current.role = m.role;
+    const current = wanted.get(m.teamId) ?? { name: m.teamName, role: null, via: [] };
+    if (mine.has(m.groupName.toLowerCase())) {
+      if (current.role === null || rank(m.role) > rank(current.role)) {
+        current.role = m.role;
+        current.via = [m.groupName];
+      } else if (m.role === current.role) current.via.push(m.groupName);
+    }
     wanted.set(m.teamId, current);
   }
   const held = new Map(
@@ -192,17 +198,19 @@ export async function syncMappedTeams(userId: string, groups: string[], log: Fas
     ).map((m) => [m.teamId, m.role]),
   );
   const changes: string[] = [];
-  for (const [teamId, { name, role }] of wanted) {
+  for (const [teamId, { name, role, via }] of wanted) {
     const now = held.get(teamId);
+    const viaGroups = [...new Set(via)].sort();
     if (role === null && now) {
       await db.delete(teamMemberships).where(and(eq(teamMemberships.userId, userId), eq(teamMemberships.teamId, teamId)));
       changes.push(`left ${name}`);
     } else if (role && !now) {
-      await db.insert(teamMemberships).values({ userId, teamId, role }).onConflictDoNothing();
+      await db.insert(teamMemberships).values({ userId, teamId, role, viaGroups }).onConflictDoNothing();
       changes.push(`joined ${name} as ${role}`);
-    } else if (role && now !== role) {
-      await db.update(teamMemberships).set({ role }).where(and(eq(teamMemberships.userId, userId), eq(teamMemberships.teamId, teamId)));
-      changes.push(`${role} of ${name}`);
+    } else if (role) {
+      // The role, and which groups give it, kept current either way.
+      await db.update(teamMemberships).set({ role, viaGroups }).where(and(eq(teamMemberships.userId, userId), eq(teamMemberships.teamId, teamId)));
+      if (now !== role) changes.push(`${role} of ${name}`);
     }
   }
   if (changes.length > 0) log.warn({ event: "sso_teams_synced", userId, changes }, "team memberships follow single sign-on groups");

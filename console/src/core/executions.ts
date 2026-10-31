@@ -32,6 +32,7 @@ import {
   type Product,
   type SubmittedExecution,
   markResourcesUnrecorded,
+  scheduleThatStarted,
 } from "../db/queries.js";
 import {
   allowedPrefixes,
@@ -963,6 +964,7 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
     // The consumer's parameters, theirs to see.
     templateParameters: view.full ? submitted.templateParameters : null,
     onBehalfOf: submitted.onBehalfOf,
+    schedule: await scheduleThatStarted(executionId),
   };
 }
 

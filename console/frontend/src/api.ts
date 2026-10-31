@@ -297,6 +297,8 @@ export interface TeamMember {
   usesSso: boolean;
   /** Their membership follows their single sign-on groups: not changed here. */
   followsGroups: boolean;
+  /** Which of their groups give them their role here; empty when unknown, or not by groups. */
+  viaGroups: string[];
 }
 
 export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
@@ -311,6 +313,7 @@ export async function listTeamMembers(teamName: string): Promise<TeamMember[]> {
     hasPassword: m.hasPassword,
     usesSso: m.usesSso,
     followsGroups: m.followsGroups,
+    viaGroups: m.viaGroups,
   }));
 }
 
@@ -1033,6 +1036,8 @@ export interface ExecutionSummary {
   submittedByEmail: string;
   /** The steps claimed or running now, in the order they were submitted. */
   running: RunningStep[];
+  /** The schedule that started it, by name; null when none did (or it's deleted). */
+  schedule: string | null;
 }
 
 /** A step claimed or running, and which attempt. */
@@ -1087,6 +1092,7 @@ export async function listExecutions(query: ExecutionListQuery = {}): Promise<Ex
       finishedAt: iso(row.finishedAt),
       submittedByEmail: row.submittedByEmail ?? "",
       running: row.running.map((r) => ({ taskId: r.taskId, action: r.action, attempt: r.attempt, maxAttempts: r.maxAttempts })),
+      schedule: row.schedule ?? null,
     })),
     nextCursor: page.nextCursor || null,
     runRetentionDays: page.runRetentionDays,
@@ -1226,6 +1232,8 @@ export interface ExecutionDetail {
   templateParameters: Record<string, unknown> | null;
   /** Which of the submitter's teams it ran for, if any. */
   onBehalfOf: string | null;
+  /** The schedule that started it, by name; null when none did (or it's deleted). */
+  schedule: string | null;
 }
 
 export async function getExecution(executionId: string): Promise<ExecutionDetail> {
@@ -1335,6 +1343,7 @@ function executionDetail(execution: Execution): ExecutionDetail {
     template: execution.template ?? null,
     templateParameters: execution.templateParameters ?? null,
     onBehalfOf: execution.onBehalfOf ?? null,
+    schedule: execution.schedule ?? null,
   };
 }
 
@@ -1485,6 +1494,18 @@ export interface CatalogStatus {
   problems: { item: string; message: string; adoptableTeam: string }[];
   checkedAt: string | null;
   error: string;
+  /** What the applied release held; null before one was applied. */
+  applied: CatalogCounts | null;
+}
+
+/** What a catalog release held: products by image, each with its actions. */
+export interface CatalogCounts {
+  teams: number;
+  products: number;
+  actions: number;
+  templates: number;
+  apis: number;
+  secretStores: number;
 }
 
 function catalogStatus(status: {
@@ -1498,6 +1519,7 @@ function catalogStatus(status: {
   problems: { item: string; message: string; adoptableTeam: string }[];
   checkedAt?: Timestamp;
   error: string;
+  applied?: CatalogCounts;
 } | undefined): CatalogStatus {
   return {
     release: status?.release ?? "",
@@ -1510,6 +1532,9 @@ function catalogStatus(status: {
     problems: (status?.problems ?? []).map((p) => ({ item: p.item, message: p.message, adoptableTeam: p.adoptableTeam })),
     checkedAt: iso(status?.checkedAt),
     error: status?.error ?? "",
+    applied: status?.applied
+      ? { teams: status.applied.teams, products: status.applied.products, actions: status.applied.actions, templates: status.applied.templates, apis: status.applied.apis, secretStores: status.applied.secretStores }
+      : null,
   };
 }
 
@@ -1876,7 +1901,8 @@ export async function setGatewayClosed(message: string): Promise<void> {
 export interface SecurityView {
   checks: { name: string; state: "enforced" | "off" | "not_yet" | string; text: string }[];
   /** source: step (the cluster), catalog (the console) or gateway; count: how many, for the gateway's (grouped). */
-  refusals: { at: string | null; what: string; team: string; code: string; why: string; executionId: string; source: string; count: number }[];
+  /** what: the step or the calls refused; detail: under it, the step's image, the endpoint or the release. */
+  refusals: { at: string | null; what: string; detail: string; team: string; code: string; why: string; executionId: string; source: string; count: number }[];
   images: {
     product: string;
     team: string;
@@ -1903,6 +1929,7 @@ export async function getSecurity(): Promise<SecurityView> {
     refusals: s.refusals.map((r) => ({
       at: iso(r.at),
       what: r.what,
+      detail: r.detail,
       team: r.team,
       code: r.code,
       why: r.why,
@@ -2404,13 +2431,14 @@ export interface BotIdentity {
   botEmail: string;
   issuer: string;
   claims: Record<string, string>;
+  createdAt: string | null;
   lastUsedAt: string | null;
 }
 
 export async function listBotIdentities(team: string): Promise<{ identities: BotIdentity[]; issuers: string[]; audience: string }> {
   const r = await call(() => tokens.listBotIdentities({ team }));
   return {
-    identities: r.identities.map((i) => ({ id: i.id, botId: i.botId, botEmail: i.botEmail, issuer: i.issuer, claims: { ...i.claims }, lastUsedAt: iso(i.lastUsedAt) })),
+    identities: r.identities.map((i) => ({ id: i.id, botId: i.botId, botEmail: i.botEmail, issuer: i.issuer, claims: { ...i.claims }, createdAt: iso(i.createdAt), lastUsedAt: iso(i.lastUsedAt) })),
     issuers: r.issuers,
     audience: r.audience,
   };

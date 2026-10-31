@@ -128,6 +128,8 @@ describe("applying a release", () => {
 
     const row = await status();
     expect(row).toMatchObject({ digest: digestOf(10), commit: "c1", problems: [], error: null });
+    // What it held: site's two actions are one product.
+    expect(row?.applied).toEqual({ teams: 2, products: 2, actions: 3, templates: 0, apis: 0, secretStores: 1 });
     const [entry] = await db.select().from(auditLog).where(eq(auditLog.requestId, digestOf(10)));
     expect(entry).toMatchObject({ method: "CATALOG", route: "catalog-sync", status: 200 });
   });

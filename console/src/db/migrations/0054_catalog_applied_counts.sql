@@ -1,0 +1,1 @@
+ALTER TABLE "catalog_sync" ADD COLUMN "applied" jsonb;
