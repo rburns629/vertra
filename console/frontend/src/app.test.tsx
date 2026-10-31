@@ -1915,9 +1915,10 @@ describe("a team's bots", () => {
 describe("a team's settings", () => {
   it("say a retired team is read-only, and offer an admin to restore it", async () => {
     await renderAt("/teams/old-team?tab=settings", ADMIN, {
-      "TeamService/GetTeam": { team: { id: "t1", name: "old-team", retiredAt: "2026-10-21T12:00:00Z", fromCatalog: true } },
+      "TeamService/GetTeam": { team: { id: "t1", name: "old-team", retiredAt: "2026-10-21T12:00:00Z", retiredBy: "the catalog", fromCatalog: true } },
     });
     expect(await screen.findByText(/this team is retired: it's read-only/i)).toBeTruthy();
+    expect(screen.getByText(/by the catalog\./)).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Restore old-team" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /purge old-team/i })).toHaveProperty("disabled", false);
     // In the header, and in "Where it comes from".
