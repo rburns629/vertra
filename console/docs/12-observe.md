@@ -172,7 +172,7 @@ On the **Audit log** tab, everyone sees the result above the list (nothing, when
 - **Chain intact**, with when the chain was checked, last copied, and compared with the copy;
 - a red message naming the entry where the chain breaks, or the entry that differs from its copy.
 
-Admins see more under **Admin → Audit log copy**, in **The audit log's copy**: a pill (**Intact**, **Not copying**, **Chain broken**, **Changed since copied**, or **Off**), **Copied to** (the bucket), **Last copy**, **Waiting** (entries not copied yet), **Chain checked** and **Compared with the copy**. The same state is the last of Observe's security checks. Admins are also alerted, in the console and by email if they chose it: at once when the chain breaks or an entry differs from its copy, and when nothing has been copied for half an hour (once a day while that lasts).
+Admins see more under **Admin → Audit log copy**, in **The audit log's copy**: a pill (**Intact**, **Not copying**, **Chain broken**, **Changed since copied**, or **Off**), **Copied to** (the bucket), **Last copy**, **Waiting** (entries not copied yet), **Chain checked** and **Compared with the copy**. The same state is the last of Observe's security checks. Admins are also alerted, in the console and by email if they chose it: at once when the chain breaks or an entry differs from its copy, and when nothing has been copied for half an hour, or ever (once a day while that lasts).
 
 ## When something on Observe is red
 

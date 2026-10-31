@@ -827,7 +827,7 @@ Something worth telling people: a run that failed or finished, a step waiting fo
 | --- | --- | --- | --- |
 | `id` | uuid | no | |
 | `key` | text | no | What makes it the same event (`run:<id>:<state>:<finished at>`, `approval:<run>:<step>:<since>`, `catalog:<last applied>`). Unique, so it's only ever made once. |
-| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing`, `product_not_ready`, `step_refused` (a step the cluster refused) or `platform_alert` (a team purged, the allowed image sources changed, a policy not syncing, a run's image gone, the audit log's copy not copying for half an hour, its chain broken or an entry differing from its copy). |
+| `kind` | text | no | `run_failed`, `run_succeeded`, `approval_waiting`, `catalog_failing`, `product_not_ready`, `step_refused` (a step the cluster refused) or `platform_alert` (a team purged, the allowed image sources changed, a policy not syncing, a run's image gone, the audit log's copy not copying for half an hour (or never yet), its chain broken or an entry differing from its copy). |
 | `title` | text | no | |
 | `body` | text | no | |
 | `link` | text | yes | The console page it's about, such as `/runs/<id>`. |

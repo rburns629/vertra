@@ -335,19 +335,19 @@ export async function notifyAuditCopy(): Promise<number> {
     );
     if (fresh) made += 1;
   }
-  if (copy.error && !copy.brokenAt) {
-    const since = copy.exportedAt ?? copy.checkedAt;
-    if (since && Date.now() - since.getTime() >= AUDIT_GRACE_MS) {
-      // Keyed by the day: two consoles seeing the same outage say it once.
-      const fresh = await platformAlert(
-        `audit-copying:${new Date().toISOString().slice(0, 10)}`,
-        "The audit log isn't being copied",
-        `Nothing copied since ${since.toISOString()}: ${copy.error.slice(0, 500)}`,
-        undefined,
-        link,
-      );
-      if (fresh) made += 1;
-    }
+  // Not copying: since its last copy, for half an hour; never copied at all,
+  // at once (checkedAt moves with every failed try, so it can't time that).
+  const last = copy.exportedAt;
+  if (copy.error && !copy.brokenAt && (!last || Date.now() - last.getTime() >= AUDIT_GRACE_MS)) {
+    // Keyed by the day: two consoles seeing the same outage say it once.
+    const fresh = await platformAlert(
+      `audit-copying:${new Date().toISOString().slice(0, 10)}`,
+      "The audit log isn't being copied",
+      `${last ? `Nothing copied since ${last.toISOString()}` : "Nothing has been copied yet"}: ${copy.error.slice(0, 500)}`,
+      undefined,
+      link,
+    );
+    if (fresh) made += 1;
   }
   return made;
 }

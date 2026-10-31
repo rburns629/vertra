@@ -1094,11 +1094,10 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   the release, on the Teams page and the team's page. Planned already, and
   done since: Observe's alerts (#45) and whether a retry is safe. The rest,
   decided 2026-10-30:
-  - Building now (group 2, data mostly there): an alert to admins when the
-    audit copy stops or its chain breaks (the board said there was one;
-    there isn't); which schedule started a run; when a CI identity was
-    added; what a catalog release applied (counts); a refusal's detail
-    apart from its subject; which group added a member.
+  - ~~Group 2~~ (done 2026-10-30, #47): an alert to admins when the audit
+    copy stops, breaks or differs; which schedule started a run; when a CI
+    identity was added; what a catalog release held (counts); a refusal's
+    detail apart from its subject; which groups give a member their role.
   - Next, boards first: log search by one API; an API's per-team limits
     and the gateway's default for non-admins; who retired a team; who last
     saved the image sources (or a link to its audit entry); what the cart

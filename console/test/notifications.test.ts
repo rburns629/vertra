@@ -298,6 +298,12 @@ describe("a platform alert", () => {
     vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "couldn't write to the bucket: denied", exportedAt: new Date(Date.now() - 31 * 60_000) }));
     expect(await notifyAuditCopy()).toBe(1);
     expect(await has(`audit-copying:${day}`)).toBe(true);
+    // Never copied at all: at once, though every failed try moves checkedAt.
+    await db.delete(notificationEvents).where(eq(notificationEvents.key, `platform:audit-copying:${day}`));
+    vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "couldn't write to the bucket: denied", checkedAt: new Date() }));
+    expect(await notifyAuditCopy()).toBe(1);
+    const [never] = await db.select().from(notificationEvents).where(eq(notificationEvents.key, `platform:audit-copying:${day}`));
+    expect(never?.body).toMatch(/^Nothing has been copied yet: /);
 
     // A broken chain and a differing entry: at once, and each once.
     vi.mocked(auditExportStatus).mockResolvedValue(copy({ error: "the chain breaks", brokenAt: entry, differsAt: entry + 1, compareProblem: `audit entry ${String(entry + 1)} differs` }));
