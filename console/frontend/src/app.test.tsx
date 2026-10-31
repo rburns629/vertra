@@ -2513,3 +2513,30 @@ describe("an order's run", () => {
     expect(within(card).getByText(/^gcp\/project, made .+ for payments$/)).toBeTruthy();
   });
 });
+
+describe("a cart Ask proposes", () => {
+  it("shows each line's team, product and verb, and what it takes from an earlier step", async () => {
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "claude-haiku-5-5" },
+      "ChatService/AskStream": () => [{ answer: { text: "I've filled a cart.", cart: { team: "payments", actions: ["data-platform-postgres-db-create", "gcp-platform-app-hosting-deploy"] } } }],
+      "OrderService/PreviewOrder": {
+        steps: [
+          { id: "postgres-db", product: "data-platform-postgres-db-create", inputs: {} },
+          { id: "app-hosting", product: "gcp-platform-app-hosting-deploy", inputs: { database: { kind: "step", step: "postgres-db", output: "connection" } } },
+        ],
+      },
+      "TemplateService/ListTemplates": {
+        runnables: [
+          { kind: "KIND_ACTION", team: "data-platform", name: "data-platform-postgres-db-create", actions: ["data-platform/postgres-db.create"], shared: true },
+          { kind: "KIND_ACTION", team: "gcp-platform", name: "gcp-platform-app-hosting-deploy", actions: ["gcp-platform/app-hosting.deploy"], shared: true },
+        ],
+      },
+    });
+    fireEvent.change(await screen.findByRole("textbox", { name: "Ask Vertra" }), { target: { value: "A database and app hosting?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    const proposed = await screen.findByRole("region", { name: "Proposed cart" });
+    expect(await within(proposed).findByText("gcp-platform/app-hosting")).toBeTruthy();
+    expect(within(proposed).getByText("data-platform/postgres-db")).toBeTruthy();
+    expect(within(proposed).getByText(/· deploy, its database from step 1/)).toBeTruthy();
+  });
+});

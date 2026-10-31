@@ -23,6 +23,7 @@ import ThumbUpIcon from "@mui/icons-material/ThumbUpOutlined";
 import { ApiError, askChatStream, rateAnswer, type ChatAnswer } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { cart, useCart } from "../cart";
+import { ProposedCartLines } from "./ProposedCartLines";
 
 type Turn = { role: "user"; content: string } | ({ role: "assistant"; content: string } & Omit<ChatAnswer, "text">);
 
@@ -138,15 +139,7 @@ function Answer({ turn, onOpenCart, onLeave }: { turn: Extract<Turn, { role: "as
           <Typography sx={{ display: "flex", alignItems: "center", gap: 1, fontSize: 13, fontWeight: 600 }}>
             <CartIcon sx={{ fontSize: 18, color: "primary.main" }} aria-hidden="true" />A cart for {turn.cart.team}
           </Typography>
-          <Box component="ol" sx={{ m: 0, pl: 2.5, fontSize: 13, display: "flex", flexDirection: "column", gap: 0.5 }}>
-            {turn.cart.actions.map((a, i) => (
-              <li key={`${a}-${String(i)}`}>
-                <Box component="span" sx={{ fontFamily: "fontFamilyMono", fontSize: 12 }}>
-                  {a}
-                </Box>
-              </li>
-            ))}
-          </Box>
+          <ProposedCartLines cart={turn.cart} />
           <Typography variant="caption" color="text.secondary">
             Nothing is ordered yet: you make its choices and place it.
           </Typography>

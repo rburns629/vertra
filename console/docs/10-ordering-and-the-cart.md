@@ -121,7 +121,7 @@ Good to know:
 - The cart is kept in this browser only. Another browser, or a private window, has its own.
 - Changing the team, or adding or removing an action, clears the choices you made.
 - Placing it twice from the same visit (say, after a timeout) is the same order, not a second one.
-- The chat assistant can fill a cart for you: **Open in cart** replaces what's in yours with its proposal, and you still make its choices and place it yourself.
+- The chat assistant can fill a cart for you. Its answer lists the cart as the order would run it: each step's team, product and verb, what it takes from an earlier step, and what the plan adds. **Open in cart** replaces what's in yours with its proposal, and you still make its choices and place it yourself.
 
 ## How do I compose a template by hand?
 
