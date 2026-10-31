@@ -67,6 +67,13 @@ type report struct {
 	NodeMeanCPU  float64 `json:"nodeMeanCpuPercent"`
 	NodePeakMemG float64 `json:"nodePeakMemGiB"`
 
+	// With readers: how long the Runs page's list and a run's page took
+	// while the run went on, and how many reads failed.
+	Readers    int   `json:"readers"`
+	ListRuns   stats `json:"listRuns"`
+	GetRun     stats `json:"getRun"`
+	ReadErrors int   `json:"readErrors"`
+
 	Problems []string `json:"problems"`
 }
 
@@ -277,8 +284,14 @@ func markdown(r report) string {
 	for _, row := range []struct {
 		name string
 		s    stats
-	}{{"Submit (API)", r.Submit}, {"End to end (DAG)", r.EndToEnd}, {"Queue wait (ready to started)", r.QueueWait}, {"Container start (started to running)", r.ContainerStart}, {"Completion lag (exited to recorded)", r.CompletionLag}} {
+	}{{"Submit (API)", r.Submit}, {"End to end (DAG)", r.EndToEnd}, {"Queue wait (ready to started)", r.QueueWait}, {"Container start (started to running)", r.ContainerStart}, {"Completion lag (exited to recorded)", r.CompletionLag}, {"List runs (API, readers)", r.ListRuns}, {"Get a run (API, readers)", r.GetRun}} {
+		if row.s.N == 0 && r.Readers == 0 && strings.HasSuffix(row.name, "readers)") {
+			continue
+		}
 		fmt.Fprintf(&b, "| %s | %d | %.0f | %.0f | %.0f | %.0f | %.0f |\n", row.name, row.s.N, row.s.P50, row.s.P95, row.s.P99, row.s.Max, row.s.Mean)
+	}
+	if r.Readers > 0 {
+		fmt.Fprintf(&b, "\n%d reader(s); %d read(s) failed.\n", r.Readers, r.ReadErrors)
 	}
 	fmt.Fprintf(&b, "\nNode: CPU peak %.0f%%, mean %.0f%% (of %s CPUs); memory peak %.2f GiB.\n\n", r.NodePeakCPU, r.NodeMeanCPU, r.Environment.DockerCPUs, r.NodePeakMemG)
 	if len(r.Problems) == 0 {

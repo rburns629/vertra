@@ -62,6 +62,7 @@ func run() error {
 		team        = flag.String("team", "perf", "the team the steps run for")
 		image       = flag.String("image", "localhost:5001/perf-catalog/perf/noop:latest", "the no-op product's image")
 		timeout     = flag.Duration("timeout", 30*time.Minute, "give up waiting after this long")
+		readers     = flag.Int("readers", 0, "readers listing runs and reading this run's while it goes, as people watching do")
 		out         = flag.String("out", "results", "where results go")
 	)
 	flag.Parse()
@@ -98,12 +99,29 @@ func run() error {
 
 	sampler := startSampler(ctx, *cluster+"-control-plane")
 	started := time.Now()
+	var mu sync.Mutex
+	var ids []string
+	stopReaders := startReaders(ctx, c, *readers, func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return ids
+	})
 	runs := submitAll(ctx, c, w, runID, *image, *team, log)
+	mu.Lock()
+	for _, s := range runs {
+		if s != nil && s.ExecutionID != "" {
+			ids = append(ids, s.ExecutionID)
+		}
+	}
+	mu.Unlock()
 	waitAll(ctx, c, runs, log)
 	finished := time.Now()
+	read := stopReaders()
 	samples := sampler()
 
 	r := analyze(w, runID, runs, started, finished, samples)
+	r.Readers = *readers
+	r.ListRuns, r.GetRun, r.ReadErrors = summarize(read.List), summarize(read.Get), read.ListErr+read.GetErr
 	r.Environment = env
 	if ctx.Err() != nil {
 		r.Problems = append(r.Problems, "stopped before every run finished: "+ctx.Err().Error())

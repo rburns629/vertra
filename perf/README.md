@@ -77,7 +77,10 @@ Scenarios (starting points, not targets):
 
 Or `-scenario custom -shape single|chain|wide|fanout -dags N -steps N`.
 Also `-sleep-ms`, `-fail never|always|first-attempt`, `-concurrency`
-(submitters), `-rate` (submissions a second). Every workload is capped (500
+(submitters), `-rate` (submissions a second), and `-readers N`: N readers
+doing what people watching do, the Runs page (ListExecutions, 50 a page) and
+a run's page (GetExecution of one of this run's), while it goes, each
+read's time reported. Every workload is capped (500
 DAGs, 50 steps, 5,000 steps in all; over 1,000 needs `-allow-large`). It
 refuses a cluster not named `vertra-perf*`, a console not on this machine,
 and a port-forward to any other cluster's console.
@@ -243,6 +246,39 @@ as the Pod went had no connect timeout, so it waited out TCP's SYN retries
 an `error` for an idle connection Postgres closed, and nothing listened, so
 Node ended the process; it now logs it (`database_connection_lost`) and
 opens another.
+
+**4. The API server going away costs a little more than it was away.** Its
+static Pod's manifest moved off the node for 30 s (37 s down) during
+`dependency`: the median run took 130 s instead of 70, every run correct,
+nothing restarted. The scheduler logged each status it couldn't read and
+read it again the next pass. (`kubectl port-forward` dies with the API
+server, so the driver's wall time is longer than the run's.)
+
+**5. One console serves about 115 reads a second.** `burst` with readers:
+
+| readers | reads/s | list runs p50 / p99 | get a run p50 / p99 | submit p50 |
+| ---: | ---: | --- | --- | ---: |
+| 0 | | | | 236 ms |
+| 20 | 117 | 146 / 481 ms | 155 / 451 ms | 609 ms |
+| 60 | 112 | 518 / 979 ms | 444 / 1071 ms | 2078 ms |
+
+No read failed, and every run was correct. Three times the readers got no
+more reads through: the console's one Node process was at 100% of a core
+(kernel-api 15%, Postgres a few percent each). Its CPU profile under 60
+readers is flat: garbage collection 11%, building SQL (drizzle) about 12%,
+JSON encoding, the kernel client, socket writes; no one hot spot. So a busy
+install needs more console replicas (`replicaCount`), not a fix; a
+pipeline polling many runs a second competes with people for the same core.
+Not measured here with two replicas: a port-forward reaches one Pod.
+
+**6. Per-team usage is a cheap query on the console's own runs.** For the
+Teams page's per-team run counts and products used (moved here from the
+redesign's gaps): on the test database with 200,000 runs in a week, 80 teams,
+2 to 5 steps each, runs each team started took 48 ms; products each team
+used, every team at once, 177 ms (each run's steps' images, by repository);
+one team's, 25 ms. So they come from `submitted_executions` (`on_behalf_of`,
+`payload`'s steps), on every install, with no Prometheus: the all-teams one
+cached for a minute.
 
 ## Next (TODO.md)
 
