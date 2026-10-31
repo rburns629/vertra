@@ -32,6 +32,11 @@ KUBECTL := kubectl --context $(KIND_CONTEXT)
 # command line that was started -- port included, so a forward someone
 # started on another port is never mistaken for this one, or killed.
 PORT_FORWARD := $(KUBECTL) -n $(PLATFORM_NAMESPACE) port-forward svc/console-execution-console 18080:8080
+# What pgrep and pkill match it by: the bracket keeps it from matching itself
+# in the shell that runs them (Linux's don't skip their own ancestors). A
+# recipe that also starts it writes it port-"forward", which the shell reads
+# the same but which keeps that recipe's own shell from matching.
+PORT_FORWARD_MATCH := $(subst port-forward,port-forwar[d],$(PORT_FORWARD))
 
 # kind's image source: a local registry, so kind runs images the same way
 # GKE does -- from a registry path the image policy allows (the
@@ -109,7 +114,7 @@ quickstart: _quickstart-prereqs kind-cluster kind-registry kind-namespaces
 			done; \
 		fi; \
 	done
-	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
+	@pkill -f "$(PORT_FORWARD_MATCH)" 2>/dev/null || true
 	@$(MAKE) --no-print-directory up
 	@echo "Creating the console team $(QUICKSTART_TEAM)..."
 	@token=$$(curl -sf -X POST $(CONSOLE_URL)/api/vertra.console.v1.AuthService/Login -H 'Content-Type: application/json' \
@@ -300,7 +305,7 @@ kind-deploy-console:
 	$(KUBECTL) -n $(PLATFORM_NAMESPACE) rollout status deployment console-execution-console-gateway --timeout=5m
 	@# A running port-forward stays attached to the replaced pod; stop it so
 	@# the next `make up` connects to the new one.
-	@pkill -f "$(PORT_FORWARD)" 2>/dev/null && echo "Stopped the old port-forward; run make up." || true
+	@pkill -f "$(PORT_FORWARD_MATCH)" 2>/dev/null && echo "Stopped the old port-forward; run make up." || true
 
 # Kernel first: the console calls the kernel, never the other way round.
 kind-deploy: kind-deploy-kernel kind-deploy-console
@@ -350,14 +355,14 @@ up:
 	@echo "Starting port-forward in the background (restarting it if it dies while the node finishes settling)..."
 	@i=0; \
 	while ! curl -sf http://localhost:18080/health/ready > /dev/null 2>&1; do \
-		if ! pgrep -f "$(PORT_FORWARD)" > /dev/null 2>&1; then \
-			nohup $(PORT_FORWARD) \
+		if ! pgrep -f "$(PORT_FORWARD_MATCH)" > /dev/null 2>&1; then \
+			nohup $(subst port-forward,port-"forward",$(PORT_FORWARD)) \
 				> /tmp/vertra-port-forward.log 2>&1 & \
 		fi; \
 		i=$$((i + 1)); \
 		if [ $$((i % 5)) -eq 0 ]; then \
 			echo "  still unreachable; restarting the port-forward (it may point at a replaced pod)"; \
-			pkill -f "$(PORT_FORWARD)" 2>/dev/null || true; \
+			pkill -f "$(PORT_FORWARD_MATCH)" 2>/dev/null || true; \
 		fi; \
 		if [ "$$i" -gt 60 ]; then \
 			echo "Timed out after 2 minutes waiting for execution-console to become reachable."; \
@@ -380,7 +385,7 @@ down:
 	else \
 		echo "$(KIND_NODE) doesn't exist -- nothing to stop."; \
 	fi
-	@pkill -f "$(PORT_FORWARD)" 2>/dev/null || true
+	@pkill -f "$(PORT_FORWARD_MATCH)" 2>/dev/null || true
 
 # Tails the platform's own processes (kernel-api, kernel-scheduler,
 # execution-console) live, interleaved and color-coded by pod, using

@@ -89,7 +89,12 @@ by side and fails on a clear regression: a p50 or p95 time a quarter worse
 (and half a second), throughput a quarter lower, or the newer run
 incorrect. The `perf` workflow (by hand, or weekly) runs baseline and burst
 on a runner's own `vertra-perf` and compares each with its last successful
-run's. Every workload is capped (500
+run's; only burst's comparison can fail it, since baseline's 10 DAGs start
+on one scheduler poll and are one sample (the same commit twice: 2.5 and
+4.6 s at p50). Its first successful run (2026-10-31, after #55 made `make quickstart`, `make
+up` and the driver's port-forward check work on Linux) took 12 minutes on
+a 4-CPU runner: baseline 2.5 s end to end at p50; burst 3.2 steps a
+second, 19 s end to end at p50; both correct. Every workload is capped (500
 DAGs, 50 steps, 5,000 steps in all; over 1,000 needs `-allow-large`). It
 refuses a cluster not named `vertra-perf*`, a console not on this machine,
 and a port-forward to any other cluster's console.
@@ -298,19 +303,45 @@ its steps are stopped after, within seconds (the driver waits for both). A
 step that finished as the cancel landed is recorded as it ended (succeeded)
 in a run that's cancelled: the record says what happened.
 
-**8. A create that timed out but happened** isn't reproduced here: a local
-API server answers within the kernel's one-second-or-more timeout. The path
-is tested: the scheduler retries the same attempt after a start that raised
-(`internal/scheduler/dispatch_test.go`), and its start adopts the Job
-already made under that attempt's name (`internal/executor/kubernetes_test.go`).
-Seeing it for real needs a slowed API server (a delaying webhook, or `tc`
-on the node).
+**8. A create that timed out but happened is adopted, and one the kernel
+gave up on is usually dropped by the API server too.** A local API server
+answers well within the kernel's timeout, so `perf/slowcreate/` slows it:
+an admission webhook holding each Job's first create in namespace `perf`
+for a while (the retry's create passes at once), with the kernel's
+Kubernetes request timeout at 3 s (`slowcreate/kernel.yaml`).
+
+- Held 8 s (`baseline`, 10 steps): every create timed out, and every time
+  the API server gave up on it with the kernel (the webhook saw the request
+  go at 3 s), so no Job was made. The scheduler retried the same attempt
+  5 s later and created it. All correct, each step's one attempt.
+- Held 2.96 to 3.0 s, across the moment the kernel gives up (`burst`, 100
+  steps): 39 creates timed out. 8 of them had been made all the same: the
+  retry found the Job, logged "adopting this attempt's existing Job", made
+  its request ConfigMap and ran it. The other 31 were dropped and made
+  fresh. All 100 runs correct, every step one attempt, no Job twice.
+
+So the window for a create that times out but happens is the few
+milliseconds between the API server saving it and its answer arriving, and
+when it happens, the retry adopts it, as the unit tests say
+(`internal/scheduler/dispatch_test.go`, `internal/executor/kubernetes_test.go`).
+
+To see it again, on `vertra-perf` only:
+
+```
+make kind-deploy-kernel KIND_CLUSTER=vertra-perf KIND_KERNEL_VALUES="perf/kind-kernel.yaml perf/slowcreate/kernel.yaml"
+DELAY=2.96s JITTER=40ms perf/slowcreate/run.sh up
+go run . -scenario burst   # then the scheduler's "adopting" lines and the webhook's log
+perf/slowcreate/run.sh down
+make kind-deploy-kernel KIND_CLUSTER=vertra-perf KIND_KERNEL_VALUES=perf/kind-kernel.yaml
+```
+
+The moment the kernel gives up moves with the machine: the webhook logs how
+long it held each create, and when the API server gave up on one, so aim
+`DELAY` at the gap between them.
 
 ## Next (TODO.md)
 
 On GKE and EKS: the client limits under a real API server, the scheduler's
-throttling log, container start-up on real nodes. Here: the sustained and
-higher scenarios; the remaining failure cases (a create that times out but
-happened, Postgres or the API server away, cancelling as a step finishes);
-API load through the console; repeated runs compared for regressions; a
-manual or nightly CI job. `perf/`'s own tests run in CI (2026-10-29).
+throttling log, container start-up on real nodes. Here: nothing left; the
+`perf` workflow (`.github/workflows/perf.yml`) compares each weekly run
+with its last. `perf/`'s own tests run in CI (2026-10-29).
