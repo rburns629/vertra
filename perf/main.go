@@ -156,9 +156,10 @@ func safe(cluster, consoleURL string) error {
 	if err := exec.Command("kubectl", "--context", context, "-n", "vertra-system", "get", "deployment", "kernel-execution-kernel-scheduler").Run(); err != nil {
 		return fmt.Errorf("context %s has no Vertra in vertra-system: make quickstart KIND_CLUSTER=%s (README.md)", context, cluster)
 	}
-	// The port-forward must reach this cluster's console, not another's.
-	forward, _ := exec.Command("pgrep", "-fl", "port-forward svc/console-execution-console").Output()
-	if !strings.Contains(string(forward), "--context "+context) {
+	// The port-forward must reach this cluster's console, not another's: the
+	// whole command make up starts (pgrep -l lists only names on Linux).
+	forward := "kubectl --context " + context + " -n vertra-system port-forward svc/console-execution-console"
+	if err := exec.Command("pgrep", "-f", forward).Run(); err != nil {
 		return fmt.Errorf("no port-forward to %s's console: make up KIND_CLUSTER=%s (and make down for any other)", context, cluster)
 	}
 	return nil
