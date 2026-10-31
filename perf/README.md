@@ -80,7 +80,16 @@ Also `-sleep-ms`, `-fail never|always|first-attempt`, `-concurrency`
 (submitters), `-rate` (submissions a second), and `-readers N`: N readers
 doing what people watching do, the Runs page (ListExecutions, 50 a page) and
 a run's page (GetExecution of one of this run's), while it goes, each
-read's time reported. Every workload is capped (500
+read's time reported; and `-cancel-after D`: each run cancelled D after it
+was submitted (with `-sleep-ms` near it, as its steps finish), checked to
+end cancelled or succeeded with every step ended.
+
+`go run . compare <before.json> <after.json>` puts two runs' measures side
+by side and fails on a clear regression: a p50 or p95 time a quarter worse
+(and half a second), throughput a quarter lower, or the newer run
+incorrect. The `perf` workflow (by hand, or weekly) runs baseline and burst
+on a runner's own `vertra-perf` and compares each with its last successful
+run's. Every workload is capped (500
 DAGs, 50 steps, 5,000 steps in all; over 1,000 needs `-allow-large`). It
 refuses a cluster not named `vertra-perf*`, a console not on this machine,
 and a port-forward to any other cluster's console.
@@ -279,6 +288,23 @@ used, every team at once, 177 ms (each run's steps' images, by repository);
 one team's, 25 ms. So they come from `submitted_executions` (`on_behalf_of`,
 `payload`'s steps), on every install, with no Prometheus: the all-teams one
 cached for a minute.
+
+**7. Cancelling as steps finish ends cleanly.** 60 single steps of 8 s, each
+run cancelled 12 s after it was submitted: all 60 ended cancelled, every
+step ended, and no Pod or Job was left 10 s later. 30 chains of 3 steps of
+3 s, cancelled at 9 s: all cancelled, 89 steps cancelled (those waiting
+behind the running one too), none left. A run is marked cancelled first and
+its steps are stopped after, within seconds (the driver waits for both). A
+step that finished as the cancel landed is recorded as it ended (succeeded)
+in a run that's cancelled: the record says what happened.
+
+**8. A create that timed out but happened** isn't reproduced here: a local
+API server answers within the kernel's one-second-or-more timeout. The path
+is tested: the scheduler retries the same attempt after a start that raised
+(`internal/scheduler/dispatch_test.go`), and its start adopts the Job
+already made under that attempt's name (`internal/executor/kubernetes_test.go`).
+Seeing it for real needs a slowed API server (a delaying webhook, or `tc`
+on the node).
 
 ## Next (TODO.md)
 

@@ -37,9 +37,12 @@ Azure last.
    `perf/README.md`: Postgres's restart crashed the console and stalled
    everything two minutes, fixed in #50; one console serves about 115
    reads a second; per-team usage from the console's runs, about 50 ms);
-   left: cancelling as a step finishes, a create that timed out but
-   happened, repeated runs compared, a manual or nightly CI job, and
-   building the per-team usage (Teams page and Observe).
+   then cancelling as steps finish (clean), runs compared (`perf`'s
+   `compare`) and the `perf` workflow (by hand or weekly, compared with its
+   last run); left: a create that timed out but happened, seen for real
+   (tested, not reproduced: it needs a slowed API server), the `perf`
+   workflow's first run, and building the per-team usage (Teams page and
+   Observe).
 7. The billed proof run, one session per cloud, destroyed after (decided
    2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
    Service for Prometheus, the bundled Prometheus on a cloud volume, the
