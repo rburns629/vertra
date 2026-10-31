@@ -3,8 +3,8 @@
 # runner. It brings up vertra-perf as the README does, runs baseline and
 # burst, keeps the results as an artifact, and compares each with the last
 # successful run's (perf's compare: a p50 or p95 time a quarter worse, and
-# half a second, or throughput a quarter lower, or any incorrect run fails
-# it). A runner isn't the laptop the README's numbers are from: compare runs
+# half a second, or throughput a quarter lower). An incorrect run fails it,
+# and so does a regression in burst; baseline's is only shown. A runner isn't the laptop the README's numbers are from: compare runs
 # with runs.
 name: perf
 
@@ -76,8 +76,10 @@ jobs:
             exit 0
           fi
           gh run download "$previous" --repo "$GITHUB_REPOSITORY" -n perf-results -D previous
-          status=0
-          for scenario in baseline burst; do
-            go run . compare previous/*-"$scenario".json results/*-"$scenario".json | tee -a "$GITHUB_STEP_SUMMARY" || status=1
-          done
-          exit $status
+          # Only burst's fails the run: baseline's 10 DAGs start together, on
+          # one scheduler poll, so its times are one sample (two runs of the
+          # same commit: 2.5 and 4.6 s at p50). An incorrect run already
+          # failed Benchmarks.
+          set -o pipefail
+          go run . compare previous/*-baseline.json results/*-baseline.json | tee -a "$GITHUB_STEP_SUMMARY" || true
+          go run . compare previous/*-burst.json results/*-burst.json | tee -a "$GITHUB_STEP_SUMMARY"
