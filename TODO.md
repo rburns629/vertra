@@ -53,15 +53,15 @@ masking Secret values in logs (suggested: leave it, documented).
 
 ## Installing and operating
 
-- [ ] **A burst that starts a counter can't fire its alert** (found proving
-  #45 on kind, 2026-10-30): `VertraSignInBurst` uses `increase()` on
-  `console_rpc_requests_total{procedure=Login, code!="ok"}`, a series that
-  only exists once the first failure happens. 70 failed sign-ins between
-  two scrapes made its first sample 70, so `increase()` saw nothing; it
-  fired only on a second burst. The same goes for any alert on a labelled
-  counter that starts at its first event. Fix: create the series at zero
-  when the console starts (the Login failure codes it can answer with), or
-  turn on Prometheus's created-timestamp zero ingestion in the bundled one.
+- [x] **A burst that starts a counter can't fire its alert** (found proving
+  #45 on kind; fixed 2026-10-30, #46): a series born holding a burst has no
+  lower sample, so `increase()` missed the 70 failed sign-ins that made
+  `VertraSignInBurst`'s. The console now starts the series its alerts
+  measure at zero (sign-in's, by every code; each catalog check outcome);
+  proven on kind, firing on the first burst. The other alerts were checked:
+  the kernel's tick errors are an unlabelled counter, exported at 0; the
+  gateway's per-API counter and the console's internal errors back alerts
+  that wait 10 minutes, so later increments count.
 
 - [x] **An upgrade of a minimal standard-mode EKS install can stall**
   (found 2026-10-29): rolling kernel-api and the scheduler runs old and new

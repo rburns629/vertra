@@ -44,6 +44,19 @@ export const scansFinished = new Counter({
 /** snake_case, as Connect's wire codes are: permission_denied. */
 const codeName = (code: Code) => Code[code].replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 
+/** Sign-in, whose failures VertraSignInBurst counts. */
+export const SIGN_IN = "vertra.console.v1.AuthService/Login";
+
+// The series an alert measures with increase() exist at zero from the start
+// (the charts' monitoring.yaml): a series born holding a burst has no lower
+// sample before it, so the burst that made it would never count. Sign-in's,
+// by every code it could answer with, and each catalog check's outcome.
+for (const code of Object.values(Code)) {
+  if (typeof code === "number") rpcRequests.inc({ procedure: SIGN_IN, code: codeName(code) }, 0);
+}
+rpcRequests.inc({ procedure: SIGN_IN, code: "ok" }, 0);
+for (const outcome of ["unchanged", "applied", "applied_with_problems", "failed"]) catalogSyncs.inc({ outcome }, 0);
+
 /** Outermost: counts every call once, whatever the inner interceptors did. */
 export const countCalls: Interceptor = (next) => async (req) => {
   const procedure = `${req.service.typeName}/${req.method.name}`;
