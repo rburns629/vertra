@@ -34,12 +34,21 @@ type submitted struct {
 	SubmittedAt time.Time     `json:"submittedAt"`
 	Latency     time.Duration `json:"latency"`
 	Error       string        `json:"error,omitempty"`
+	// With -cancel-after: whether the cancel was accepted, and why not.
+	CancelError string `json:"cancelError,omitempty"`
 	// When this driver first saw it finished, and how it ended.
 	SeenDoneAt time.Time  `json:"seenDoneAt"`
 	Final      *execution `json:"final,omitempty"`
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "compare" {
+		if err := compareCommand(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "perf:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "perf:", err)
 		os.Exit(1)
@@ -62,6 +71,8 @@ func run() error {
 		team        = flag.String("team", "perf", "the team the steps run for")
 		image       = flag.String("image", "localhost:5001/perf-catalog/perf/noop:latest", "the no-op product's image")
 		timeout     = flag.Duration("timeout", 30*time.Minute, "give up waiting after this long")
+		readers     = flag.Int("readers", 0, "readers listing runs and reading this run's while it goes, as people watching do")
+		cancelAfter = flag.Duration("cancel-after", 0, "cancel each run this long after submitting it (with -sleep-ms near it, as its step finishes)")
 		out         = flag.String("out", "results", "where results go")
 	)
 	flag.Parse()
@@ -74,6 +85,7 @@ func run() error {
 		return fmt.Errorf("no scenario %q", *scenario)
 	}
 	w.Scenario, w.SleepMs, w.Fail, w.Concurrency, w.Rate = *scenario, *sleepMs, *failMode, *concurrency, *rate
+	w.CancelAfterMs = int(cancelAfter.Milliseconds())
 	if err := w.check(*allowLarge); err != nil {
 		return err
 	}
@@ -98,12 +110,31 @@ func run() error {
 
 	sampler := startSampler(ctx, *cluster+"-control-plane")
 	started := time.Now()
-	runs := submitAll(ctx, c, w, runID, *image, *team, log)
+	var mu sync.Mutex
+	var ids []string
+	stopReaders := startReaders(ctx, c, *readers, func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return ids
+	})
+	var cancels sync.WaitGroup
+	runs := submitAll(ctx, c, w, runID, *image, *team, &cancels, log)
+	mu.Lock()
+	for _, s := range runs {
+		if s != nil && s.ExecutionID != "" {
+			ids = append(ids, s.ExecutionID)
+		}
+	}
+	mu.Unlock()
 	waitAll(ctx, c, runs, log)
+	cancels.Wait()
 	finished := time.Now()
+	read := stopReaders()
 	samples := sampler()
 
 	r := analyze(w, runID, runs, started, finished, samples)
+	r.Readers = *readers
+	r.ListRuns, r.GetRun, r.ReadErrors = summarize(read.List), summarize(read.Get), read.ListErr+read.GetErr
 	r.Environment = env
 	if ctx.Err() != nil {
 		r.Problems = append(r.Problems, "stopped before every run finished: "+ctx.Err().Error())
@@ -134,7 +165,7 @@ func safe(cluster, consoleURL string) error {
 }
 
 // submitAll submits every DAG, `concurrency` at a time, at most `rate` a second.
-func submitAll(ctx context.Context, c *console, w workload, runID, image, team string, log *slog.Logger) []*submitted {
+func submitAll(ctx context.Context, c *console, w workload, runID, image, team string, cancels *sync.WaitGroup, log *slog.Logger) []*submitted {
 	runs := make([]*submitted, w.DAGs)
 	next := make(chan int)
 	var wg sync.WaitGroup
@@ -148,6 +179,17 @@ func submitAll(ctx context.Context, c *console, w workload, runID, image, team s
 				if err != nil {
 					s.Error = err.Error()
 					log.Warn("submit failed", "dag", i, "error", err)
+				} else if w.CancelAfterMs > 0 {
+					cancels.Go(func() {
+						select {
+						case <-time.After(time.Duration(w.CancelAfterMs)*time.Millisecond - time.Since(at)):
+						case <-ctx.Done():
+							return
+						}
+						if err := c.call(ctx, "ExecutionService/CancelExecution", map[string]any{"executionId": id}, &struct{}{}); err != nil {
+							s.CancelError = err.Error()
+						}
+					})
 				}
 				runs[i] = s
 			}
@@ -176,6 +218,18 @@ func submitAll(ctx context.Context, c *console, w workload, runID, image, team s
 	return runs
 }
 
+// stepsEnded: none of the run's steps is still waiting, starting or running.
+func stepsEnded(e *execution) bool {
+	for _, t := range e.Tasks {
+		switch t.State {
+		case "TASK_STATE_SUCCEEDED", "TASK_STATE_FAILED", "TASK_STATE_CANCELLED":
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 // waitAll reads each unfinished run until it's finished, eight reads at a
 // time, a sweep a second: what the driver adds to the console's load.
 func waitAll(ctx context.Context, c *console, runs []*submitted, log *slog.Logger) {
@@ -200,7 +254,9 @@ func waitAll(ctx context.Context, c *console, runs []*submitted, log *slog.Logge
 					log.Warn("read failed", "execution", s.ExecutionID, "error", err)
 					return
 				}
-				if terminal(e.State) {
+				// A cancelled run is marked so first, then its steps are
+				// stopped: done once they have, too.
+				if terminal(e.State) && (e.State != "EXECUTION_STATE_CANCELLED" || stepsEnded(e)) {
 					s.SeenDoneAt, s.Final = time.Now(), e
 				}
 			})
