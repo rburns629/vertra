@@ -41,8 +41,8 @@ Azure last.
    `compare`) and the `perf` workflow (by hand or weekly, compared with its
    last run); left: a create that timed out but happened, seen for real
    (tested, not reproduced: it needs a slowed API server), the `perf`
-   workflow's first run, and building the per-team usage (Teams page and
-   Observe).
+   workflow's first run; ~~building the per-team usage~~ (2026-10-31, #52:
+   Observe's Usage tab and the Teams page's cards, `console/src/core/usage.ts`).
 7. The billed proof run, one session per cloud, destroyed after (decided
    2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
    Service for Prometheus, the bundled Prometheus on a cloud volume, the
