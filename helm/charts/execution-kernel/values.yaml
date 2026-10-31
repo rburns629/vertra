@@ -565,6 +565,10 @@ backup:
 # -- Longest any one database statement may run, for kernel-api and the
 # scheduler (Postgres's default is to wait forever).
 databaseCommandTimeoutSeconds: 60
+# -- Longest opening a database connection may take. A connection opened just
+# as Postgres's Pod is replaced would otherwise wait out TCP's retries (about
+# two minutes), and the scheduler with it.
+databaseConnectTimeoutSeconds: 10
 # -- Most database connections each kernel process holds. Every size keeps
 # the sum over all processes (and the console's, when its database is here)
 # under postgres.settings.max_connections.

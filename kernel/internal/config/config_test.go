@@ -21,7 +21,8 @@ func TestTheDefaultsAreThePythonKernels(t *testing.T) {
 	}
 	if s.LeaseDuration != time.Minute || s.ClaimLimit != 50 || s.ExecutorConcurrency != 16 || !s.TaskPodHardening ||
 		s.JobDeadlineGrace != 600*time.Second || s.TaskLogMaxLines != 5000 || s.MetricsPort != 9090 || s.MaxRunning != 0 ||
-		s.KubernetesQPS != 50 || s.KubernetesBurst != 100 || s.DatabaseMaxConnections != 10 {
+		s.KubernetesQPS != 50 || s.KubernetesBurst != 100 || s.DatabaseMaxConnections != 10 ||
+		s.DatabaseConnectTimeout != 10*time.Second {
 		t.Errorf("defaults = %+v", s)
 	}
 }

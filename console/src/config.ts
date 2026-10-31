@@ -371,6 +371,8 @@ export const config = {
   // Most connections this process holds (each request it serves may take
   // one); the size keeps every process's sum under Postgres's limit.
   databasePoolSize: positiveInt("DATABASE_POOL_SIZE", 10),
+  // Longest opening a database connection may take (db/connection.ts).
+  databaseConnectTimeoutSeconds: positiveInt("DATABASE_CONNECT_TIMEOUT_SECONDS", 10),
   // Sign in with its own cloud identity instead of a password: "gcp"
   // (Cloud SQL's IAM database authentication, its Workload Identity's
   // token), or "" (the URL's password).
