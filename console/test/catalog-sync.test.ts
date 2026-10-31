@@ -181,6 +181,7 @@ describe("applying a release", () => {
     expect((await catalogProducts()).map((p) => p.name).sort()).toEqual([`${prefix}-hand-made`, `${teamA}-site-run`].sort());
     const byName = new Map((await catalogTeams()).map((t) => [t.name, t]));
     expect(byName.get(teamB)?.retiredAt).not.toBeNull();
+    expect(byName.get(teamB)?.retiredBy).toBe("the catalog");
     expect(byName.get(teamB)?.deletedAt).toBeNull(); // retired, never purged
     expect(byName.get(handMade)?.retiredAt).toBeNull();
     expect(byName.get(teamA)?.retiredAt).toBeNull();

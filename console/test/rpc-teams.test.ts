@@ -30,11 +30,13 @@ let app: FastifyInstance;
 const { rpc, makeUser, signIn, cleanUp } = rpcClient(() => app);
 const prefix = `rpc-team-${randomUUID().slice(0, 6)}`;
 let admin: string;
+let adminEmail: string;
 
 beforeAll(async () => {
   app = await buildApp();
   await app.ready();
-  admin = await signIn((await makeUser({ admin: true })).email);
+  adminEmail = (await makeUser({ admin: true })).email;
+  admin = await signIn(adminEmail);
 });
 
 afterAll(async () => {
@@ -127,6 +129,9 @@ describe("the lifecycle", () => {
     expect(failureCode(early.json<RpcError>())).toBe("NOT_RETIRED");
 
     expect((await rpc("TeamService", "RetireTeam", { name: team.name }, { token: admin })).statusCode).toBe(200);
+    // Who retired it, for its page.
+    const retired = await rpc("TeamService", "GetTeam", { name: team.name }, { token: admin });
+    expect(retired.json<{ team?: { retiredBy?: string } }>().team?.retiredBy).toBe(adminEmail);
     const readOnly = await rpc("TeamService", "AddMember", { team: team.name, email: member.email }, { token });
     expect(failureCode(readOnly.json<RpcError>())).toBe("TEAM_RETIRED");
 

@@ -154,7 +154,10 @@ type Team struct {
 	// True when the quota is the install's, not one an admin set for it.
 	QuotaIsDefault bool `protobuf:"varint,9,opt,name=quota_is_default,json=quotaIsDefault,proto3" json:"quota_is_default,omitempty"`
 	// The install's limits, which a team without its own has.
-	InstallQuota  *TeamQuota `protobuf:"bytes,10,opt,name=install_quota,json=installQuota,proto3" json:"install_quota,omitempty"`
+	InstallQuota *TeamQuota `protobuf:"bytes,10,opt,name=install_quota,json=installQuota,proto3" json:"install_quota,omitempty"`
+	// Who retired it: their email, or "the catalog"; empty while it isn't
+	// retired (or for a team retired before this was kept).
+	RetiredBy     string `protobuf:"bytes,11,opt,name=retired_by,json=retiredBy,proto3" json:"retired_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -257,6 +260,13 @@ func (x *Team) GetInstallQuota() *TeamQuota {
 		return x.InstallQuota
 	}
 	return nil
+}
+
+func (x *Team) GetRetiredBy() string {
+	if x != nil {
+		return x.RetiredBy
+	}
+	return ""
 }
 
 // A team's resource limits, as Kubernetes quantities ("4", "500m",
@@ -2336,7 +2346,7 @@ var File_vertra_console_v1_team_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\n" +
-	"\x1cvertra/console/v1/team.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc0\x03\n" +
+	"\x1cvertra/console/v1/team.proto\x12\x11vertra.console.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdf\x03\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x129\n" +
@@ -2352,7 +2362,9 @@ const file_vertra_console_v1_team_proto_rawDesc = "" +
 	"\x05quota\x18\b \x01(\v2\x1c.vertra.console.v1.TeamQuotaR\x05quota\x12(\n" +
 	"\x10quota_is_default\x18\t \x01(\bR\x0equotaIsDefault\x12A\n" +
 	"\rinstall_quota\x18\n" +
-	" \x01(\v2\x1c.vertra.console.v1.TeamQuotaR\finstallQuota\"j\n" +
+	" \x01(\v2\x1c.vertra.console.v1.TeamQuotaR\finstallQuota\x12\x1d\n" +
+	"\n" +
+	"retired_by\x18\v \x01(\tR\tretiredBy\"j\n" +
 	"\tTeamQuota\x12\x10\n" +
 	"\x03cpu\x18\x01 \x01(\tR\x03cpu\x12\x16\n" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\x12\x12\n" +

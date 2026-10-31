@@ -9435,6 +9435,13 @@
      "repeated": false,
      "optional": false,
      "comment": "The install's limits, which a team without its own has."
+    },
+    {
+     "name": "retiredBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who retired it: their email, or \"the catalog\"; empty while it isn't\nretired (or for a team retired before this was kept)."
     }
    ]
   },

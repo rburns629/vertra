@@ -117,6 +117,9 @@ message Team {
   bool quota_is_default = 9;
   // The install's limits, which a team without its own has.
   TeamQuota install_quota = 10;
+  // Who retired it: their email, or "the catalog"; empty while it isn't
+  // retired (or for a team retired before this was kept).
+  string retired_by = 11;
 }
 
 // A team's resource limits, as Kubernetes quantities ("4", "500m",

@@ -150,10 +150,11 @@ export function listAllTeams(): Promise<Team[]> {
   return db.select().from(teams).where(isNull(teams.deletedAt));
 }
 
-export async function setTeamRetired(teamId: string, retired: boolean): Promise<void> {
+/** Retires a team (by: who, in words) or restores it. */
+export async function setTeamRetired(teamId: string, retired: boolean, by: string | null = null): Promise<void> {
   await db
     .update(teams)
-    .set({ retiredAt: retired ? new Date() : null })
+    .set({ retiredAt: retired ? new Date() : null, retiredBy: retired ? by : null })
     .where(eq(teams.id, teamId));
 }
 

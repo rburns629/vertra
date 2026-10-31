@@ -190,6 +190,8 @@ export interface Team {
   /** Set while the team is retired: read-only, its platform being wound
    * down (see ../../src/db/schema.ts). */
   retiredAt: string | null;
+  /** Who retired it: an email, or "the catalog"; "" when not known. */
+  retiredBy: string;
   /** Set once the team has been purged; its name stays reserved. */
   deletedAt: string | null;
   /** Its members sign in with single sign-on only, while it's on. */
@@ -250,6 +252,7 @@ function team(message: TeamMessage | undefined): Team {
     name: message?.name ?? "",
     createdAt: iso(message?.createdAt) ?? "",
     retiredAt: iso(message?.retiredAt),
+    retiredBy: message?.retiredBy ?? "",
     deletedAt: iso(message?.deletedAt),
     requireSso: message?.requireSso ?? false,
     fromCatalog: message?.fromCatalog ?? false,
