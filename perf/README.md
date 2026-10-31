@@ -89,7 +89,12 @@ by side and fails on a clear regression: a p50 or p95 time a quarter worse
 (and half a second), throughput a quarter lower, or the newer run
 incorrect. The `perf` workflow (by hand, or weekly) runs baseline and burst
 on a runner's own `vertra-perf` and compares each with its last successful
-run's. Every workload is capped (500
+run's; only burst's comparison can fail it, since baseline's 10 DAGs start
+on one scheduler poll and are one sample (the same commit twice: 2.5 and
+4.6 s at p50). Its first successful run (2026-10-31, after #55 made `make quickstart`, `make
+up` and the driver's port-forward check work on Linux) took 12 minutes on
+a 4-CPU runner: baseline 2.5 s end to end at p50; burst 3.2 steps a
+second, 19 s end to end at p50; both correct. Every workload is capped (500
 DAGs, 50 steps, 5,000 steps in all; over 1,000 needs `-allow-large`). It
 refuses a cluster not named `vertra-perf*`, a console not on this machine,
 and a port-forward to any other cluster's console.
