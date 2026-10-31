@@ -91,7 +91,11 @@ type ImagePolicy struct {
 	// Send back on SetImagePolicy, so concurrent edits can't clobber.
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
 	// Every allowed prefix, as the cluster matches them.
-	Allowed       []string `protobuf:"bytes,5,rep,name=allowed,proto3" json:"allowed,omitempty"`
+	Allowed []string `protobuf:"bytes,5,rep,name=allowed,proto3" json:"allowed,omitempty"`
+	// Admins only: who last saved them here, and when, from the audit log;
+	// empty when nobody has since it was installed (or for anyone else).
+	LastSavedBy   string                 `protobuf:"bytes,6,opt,name=last_saved_by,json=lastSavedBy,proto3" json:"last_saved_by,omitempty"`
+	LastSavedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_saved_at,json=lastSavedAt,proto3" json:"last_saved_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -157,6 +161,20 @@ func (x *ImagePolicy) GetVersion() string {
 func (x *ImagePolicy) GetAllowed() []string {
 	if x != nil {
 		return x.Allowed
+	}
+	return nil
+}
+
+func (x *ImagePolicy) GetLastSavedBy() string {
+	if x != nil {
+		return x.LastSavedBy
+	}
+	return ""
+}
+
+func (x *ImagePolicy) GetLastSavedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSavedAt
 	}
 	return nil
 }
@@ -902,7 +920,7 @@ var File_vertra_console_v1_image_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_image_proto_rawDesc = "" +
 	"\n" +
-	"\x1dvertra/console/v1/image.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x91\x01\n" +
+	"\x1dvertra/console/v1/image.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf5\x01\n" +
 	"\vImagePolicy\x12\x16\n" +
 	"\x06exists\x18\x01 \x01(\bR\x06exists\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1e\n" +
@@ -910,7 +928,9 @@ const file_vertra_console_v1_image_proto_rawDesc = "" +
 	"additional\x18\x03 \x03(\tR\n" +
 	"additional\x12\x18\n" +
 	"\aversion\x18\x04 \x01(\tR\aversion\x12\x18\n" +
-	"\aallowed\x18\x05 \x03(\tR\aallowed\"\xac\x04\n" +
+	"\aallowed\x18\x05 \x03(\tR\aallowed\x12\"\n" +
+	"\rlast_saved_by\x18\x06 \x01(\tR\vlastSavedBy\x12>\n" +
+	"\rlast_saved_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vlastSavedAt\"\xac\x04\n" +
 	"\tImageScan\x12\x16\n" +
 	"\x06digest\x18\x01 \x01(\tR\x06digest\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x125\n" +
@@ -1024,33 +1044,34 @@ var file_vertra_console_v1_image_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),   // 15: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_image_proto_depIdxs = []int32{
-	0,  // 0: vertra.console.v1.ImageScan.status:type_name -> vertra.console.v1.ScanStatus
-	3,  // 1: vertra.console.v1.ImageScan.findings:type_name -> vertra.console.v1.ScanFindings
-	15, // 2: vertra.console.v1.ImageScan.requested_at:type_name -> google.protobuf.Timestamp
-	15, // 3: vertra.console.v1.ImageScan.scanned_at:type_name -> google.protobuf.Timestamp
-	15, // 4: vertra.console.v1.ImageScan.last_used_at:type_name -> google.protobuf.Timestamp
-	15, // 5: vertra.console.v1.ImageScan.accepted_at:type_name -> google.protobuf.Timestamp
-	4,  // 6: vertra.console.v1.ScanFindings.findings:type_name -> vertra.console.v1.Finding
-	1,  // 7: vertra.console.v1.GetImagePolicyResponse.policy:type_name -> vertra.console.v1.ImagePolicy
-	1,  // 8: vertra.console.v1.SetImagePolicyResponse.policy:type_name -> vertra.console.v1.ImagePolicy
-	2,  // 9: vertra.console.v1.ListImageScansResponse.scans:type_name -> vertra.console.v1.ImageScan
-	2,  // 10: vertra.console.v1.AcceptImageScanResponse.scan:type_name -> vertra.console.v1.ImageScan
-	2,  // 11: vertra.console.v1.RescanImageResponse.scan:type_name -> vertra.console.v1.ImageScan
-	5,  // 12: vertra.console.v1.ImageService.GetImagePolicy:input_type -> vertra.console.v1.GetImagePolicyRequest
-	7,  // 13: vertra.console.v1.ImageService.SetImagePolicy:input_type -> vertra.console.v1.SetImagePolicyRequest
-	9,  // 14: vertra.console.v1.ImageService.ListImageScans:input_type -> vertra.console.v1.ListImageScansRequest
-	11, // 15: vertra.console.v1.ImageService.AcceptImageScan:input_type -> vertra.console.v1.AcceptImageScanRequest
-	13, // 16: vertra.console.v1.ImageService.RescanImage:input_type -> vertra.console.v1.RescanImageRequest
-	6,  // 17: vertra.console.v1.ImageService.GetImagePolicy:output_type -> vertra.console.v1.GetImagePolicyResponse
-	8,  // 18: vertra.console.v1.ImageService.SetImagePolicy:output_type -> vertra.console.v1.SetImagePolicyResponse
-	10, // 19: vertra.console.v1.ImageService.ListImageScans:output_type -> vertra.console.v1.ListImageScansResponse
-	12, // 20: vertra.console.v1.ImageService.AcceptImageScan:output_type -> vertra.console.v1.AcceptImageScanResponse
-	14, // 21: vertra.console.v1.ImageService.RescanImage:output_type -> vertra.console.v1.RescanImageResponse
-	17, // [17:22] is the sub-list for method output_type
-	12, // [12:17] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	15, // 0: vertra.console.v1.ImagePolicy.last_saved_at:type_name -> google.protobuf.Timestamp
+	0,  // 1: vertra.console.v1.ImageScan.status:type_name -> vertra.console.v1.ScanStatus
+	3,  // 2: vertra.console.v1.ImageScan.findings:type_name -> vertra.console.v1.ScanFindings
+	15, // 3: vertra.console.v1.ImageScan.requested_at:type_name -> google.protobuf.Timestamp
+	15, // 4: vertra.console.v1.ImageScan.scanned_at:type_name -> google.protobuf.Timestamp
+	15, // 5: vertra.console.v1.ImageScan.last_used_at:type_name -> google.protobuf.Timestamp
+	15, // 6: vertra.console.v1.ImageScan.accepted_at:type_name -> google.protobuf.Timestamp
+	4,  // 7: vertra.console.v1.ScanFindings.findings:type_name -> vertra.console.v1.Finding
+	1,  // 8: vertra.console.v1.GetImagePolicyResponse.policy:type_name -> vertra.console.v1.ImagePolicy
+	1,  // 9: vertra.console.v1.SetImagePolicyResponse.policy:type_name -> vertra.console.v1.ImagePolicy
+	2,  // 10: vertra.console.v1.ListImageScansResponse.scans:type_name -> vertra.console.v1.ImageScan
+	2,  // 11: vertra.console.v1.AcceptImageScanResponse.scan:type_name -> vertra.console.v1.ImageScan
+	2,  // 12: vertra.console.v1.RescanImageResponse.scan:type_name -> vertra.console.v1.ImageScan
+	5,  // 13: vertra.console.v1.ImageService.GetImagePolicy:input_type -> vertra.console.v1.GetImagePolicyRequest
+	7,  // 14: vertra.console.v1.ImageService.SetImagePolicy:input_type -> vertra.console.v1.SetImagePolicyRequest
+	9,  // 15: vertra.console.v1.ImageService.ListImageScans:input_type -> vertra.console.v1.ListImageScansRequest
+	11, // 16: vertra.console.v1.ImageService.AcceptImageScan:input_type -> vertra.console.v1.AcceptImageScanRequest
+	13, // 17: vertra.console.v1.ImageService.RescanImage:input_type -> vertra.console.v1.RescanImageRequest
+	6,  // 18: vertra.console.v1.ImageService.GetImagePolicy:output_type -> vertra.console.v1.GetImagePolicyResponse
+	8,  // 19: vertra.console.v1.ImageService.SetImagePolicy:output_type -> vertra.console.v1.SetImagePolicyResponse
+	10, // 20: vertra.console.v1.ImageService.ListImageScans:output_type -> vertra.console.v1.ListImageScansResponse
+	12, // 21: vertra.console.v1.ImageService.AcceptImageScan:output_type -> vertra.console.v1.AcceptImageScanResponse
+	14, // 22: vertra.console.v1.ImageService.RescanImage:output_type -> vertra.console.v1.RescanImageResponse
+	18, // [18:23] is the sub-list for method output_type
+	13, // [13:18] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_image_proto_init() }

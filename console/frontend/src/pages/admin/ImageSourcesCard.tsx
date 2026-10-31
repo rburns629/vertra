@@ -14,6 +14,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Mono } from "../../components/Mono";
 import { Pill } from "../../components/Pill";
 import { ApiError, getImagePolicy, updateImagePolicy, type ImagePolicy } from "../../api";
+import { when } from "../../time";
 import { AdminCard, Dot, SrOnly, TONE_WORD, type Tone } from "./parts";
 import { failingInUse, type AdminSummary, useAdminChanged } from "./summary";
 
@@ -256,6 +257,7 @@ export function ImageSourcesCard({ summary = null }: { summary?: AdminSummary | 
             Discard changes
           </Button>
           <Typography variant="caption" color="text.secondary">
+            {policy?.lastSavedBy && policy.lastSavedAt && `Last saved by ${policy.lastSavedBy}, ${when(policy.lastSavedAt)}. `}
             Admins are alerted when these change.
           </Typography>
         </Box>

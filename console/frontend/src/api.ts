@@ -360,6 +360,9 @@ export interface ImagePolicy {
   additional: string[];
   allowed: string[];
   version: string;
+  /** Admins only: who last saved them, and when; "" and null when nobody has (or for anyone else). */
+  lastSavedBy: string;
+  lastSavedAt: string | null;
 }
 
 export async function getImagePolicy(): Promise<ImagePolicy> {
@@ -373,6 +376,8 @@ function imagePolicy(policy: ImagePolicyMessage | undefined): ImagePolicy {
     additional: policy?.additional ?? [],
     allowed: policy?.allowed ?? [],
     version: policy?.version ?? "",
+    lastSavedBy: policy?.lastSavedBy ?? "",
+    lastSavedAt: iso(policy?.lastSavedAt),
   };
 }
 

@@ -5968,6 +5968,20 @@
      "repeated": true,
      "optional": false,
      "comment": "Every allowed prefix, as the cluster matches them."
+    },
+    {
+     "name": "lastSavedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Admins only: who last saved them here, and when, from the audit log;\nempty when nobody has since it was installed (or for anyone else)."
+    },
+    {
+     "name": "lastSavedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },

@@ -2462,3 +2462,12 @@ describe("an API's limits", () => {
     expect(screen.getByText(/its api\.yaml's default/)).toBeTruthy();
   });
 });
+
+describe("Admin's image sources", () => {
+  it("say who last saved them", async () => {
+    await renderAt("/admin/images", ADMIN, {
+      "ImageService/GetImagePolicy": { policy: { exists: true, source: "registry.example/", allowed: ["registry.example/"], lastSavedBy: "priya@acme.com", lastSavedAt: "2026-10-18T09:00:00Z" } },
+    });
+    expect(await screen.findByText(/^Last saved by priya@acme\.com, .+\. Admins are alerted when these change\.$/)).toBeTruthy();
+  });
+});

@@ -50,6 +50,19 @@ export declare type ImagePolicy = Message<"vertra.console.v1.ImagePolicy"> & {
    * @generated from field: repeated string allowed = 5;
    */
   allowed: string[];
+
+  /**
+   * Admins only: who last saved them here, and when, from the audit log;
+   * empty when nobody has since it was installed (or for anyone else).
+   *
+   * @generated from field: string last_saved_by = 6;
+   */
+  lastSavedBy: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_saved_at = 7;
+   */
+  lastSavedAt?: Timestamp | undefined;
 };
 
 /**
