@@ -1,5 +1,5 @@
 # The performance benchmarks (perf/README.md) on a kind cluster of their
-# own, by hand or weekly, never on a pull request: about 40 minutes on a
+# own, by hand or weekly, never on a pull request: about 15 minutes on a
 # runner. It brings up vertra-perf as the README does, runs baseline and
 # burst, keeps the results as an artifact, and compares each with the last
 # successful run's (perf's compare: a p50 or p95 time a quarter worse, and
