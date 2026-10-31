@@ -210,6 +210,40 @@ of the image for 15 minutes; the first attempt here measured nothing. The
 console now waits for a finished scan's output (up to five minutes), and a
 scan that can't be read says why.
 
+## Phase 3 (2026-10-31)
+
+The same machine and cluster, `main` at d08a465.
+
+**1. Steady at volume.** `sustained` (100 fan-outs of 10, 1,000 steps):
+301 s, 3.34 steps/s; `higher` (500 of them, 5,000 steps): 1,508 s, 3.32
+steps/s. Five times the work in five times the time: container start (7.1
+s, p50) and completion lag (4.4 s) didn't move, submissions held at 35 a
+second, and every run was correct. The node is still the limit.
+
+**2. Every run finishes near the end.** Ready steps are claimed oldest first
+across all runs, so the fan-outs advance together: `higher`'s median run took
+1,427 s of 1,508. Fair to everyone, but on a busy install even one small run
+waits behind all the others. Not changed: a choice, for later.
+
+**3. Postgres going away stalled everything for two minutes, and crashed
+the console.** The kernel's Postgres Pod deleted 25 s into `dependency` (10
+chains of 20):
+
+| | before | after |
+| --- | ---: | ---: |
+| wall (70 s without a failure) | 628 s | 75.5 s |
+| queue wait, p99 | 121 s | 11.2 s |
+| completion lag, p99 | 121 s | 11.3 s |
+| console | exited (code 1) | kept running |
+
+Every run ended correctly both times. The stall: a connection opened just
+as the Pod went had no connect timeout, so it waited out TCP's SYN retries
+(about 127 s), and the scheduler's pass with it. Each process now bounds it
+(`databaseConnectTimeoutSeconds`, 10). The crash: the console's pool raised
+an `error` for an idle connection Postgres closed, and nothing listened, so
+Node ended the process; it now logs it (`database_connection_lost`) and
+opens another.
+
 ## Next (TODO.md)
 
 On GKE and EKS: the client limits under a real API server, the scheduler's

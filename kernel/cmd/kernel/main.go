@@ -162,6 +162,7 @@ func poolFor(ctx context.Context, s config.Settings) (*pgxpool.Pool, error) {
 	}
 	// Longest any one statement may run before it fails.
 	poolConfig.ConnConfig.RuntimeParams["statement_timeout"] = fmt.Sprint(s.DatabaseCommandTimeout.Milliseconds())
+	poolConfig.ConnConfig.ConnectTimeout = s.DatabaseConnectTimeout
 	// Not pgx's default (the node's CPUs, at least 4): a 2-CPU node's 4
 	// would queue a burst of requests while Postgres sits idle.
 	poolConfig.MaxConns = int32(s.DatabaseMaxConnections)
@@ -213,6 +214,7 @@ func connect(ctx context.Context, s config.Settings, database string) (*pgx.Conn
 		return nil, fmt.Errorf("DATABASE_URL: %w", err)
 	}
 	// No statement_timeout: a migration may build an index for longer.
+	c.ConnectTimeout = s.DatabaseConnectTimeout
 	if database != "" {
 		c.Database = database
 	}
