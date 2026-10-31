@@ -1098,11 +1098,12 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
     copy stops, breaks or differs; which schedule started a run; when a CI
     identity was added; what a catalog release held (counts); a refusal's
     detail apart from its subject; which groups give a member their role.
-  - Next, boards first: log search by one API; an API's per-team limits
-    and the gateway's default for non-admins; who retired a team; who last
-    saved the image sources (or a link to its audit entry); what the cart
-    held for an order, and its choices' resource details; a proposed
-    cart's lines with product, team, verb and wiring.
+  - ~~Group 3~~ (boards drawn and approved 2026-10-30; built, #48): log
+    search by one API (its backend's Pods labelled `vertra/api`); each
+    calling team's limit on an API's page, for everyone who sees it; who
+    retired a team; who last saved the image sources; what an order's cart
+    held and chose; a proposed cart's lines with team, product, verb and
+    wiring. The dropped items are off the boards too.
   - Dropped, and to come off the boards: the Kubernetes Job's name in "Who
     acted"; a resource's run name; "since you last looked"; sharing-change
     and template creation times (the catalog's history has them); a total

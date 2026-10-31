@@ -80,6 +80,14 @@ export declare type Team = Message<"vertra.console.v1.Team"> & {
    * @generated from field: vertra.console.v1.TeamQuota install_quota = 10;
    */
   installQuota?: TeamQuota | undefined;
+
+  /**
+   * Who retired it: their email, or "the catalog"; empty while it isn't
+   * retired (or for a team retired before this was kept).
+   *
+   * @generated from field: string retired_by = 11;
+   */
+  retiredBy: string;
 };
 
 /**

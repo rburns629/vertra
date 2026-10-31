@@ -9,13 +9,14 @@
  * accept (with a reason, the platform's counterpart of a product's
  * .trivyignore) and rescan.
  */
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { db } from "../db/client.js";
-import { imageScans } from "../db/schema.js";
+import { findUserById } from "../db/queries.js";
+import { auditLog, imageScans, users } from "../db/schema.js";
 import {
   allowedPrefixes,
   invalidSourceReason,
@@ -33,9 +34,23 @@ const REQUIRES_ADMIN = "Requires admin access.";
 export const Digest = Type.String({ pattern: "^sha256:[a-f0-9]{64}$" });
 export const AcceptReason = Type.String({ minLength: 10, maxLength: 2000 });
 
-export async function imagePolicy() {
+/** Who last saved the image sources here, and when: the audit log's last SetImagePolicy that succeeded. */
+export async function lastImagePolicySave(): Promise<{ by: string; at: Date } | null> {
+  const [row] = await db
+    .select({ email: users.email, at: auditLog.at })
+    .from(auditLog)
+    .leftJoin(users, eq(users.id, auditLog.actorId))
+    .where(and(eq(auditLog.route, "vertra.console.v1.ImageService/SetImagePolicy"), eq(auditLog.status, 200)))
+    .orderBy(desc(auditLog.id))
+    .limit(1);
+  return row ? { by: row.email ?? "a deleted account", at: row.at } : null;
+}
+
+/** The allowed sources; for an admin, who last saved them and when (null otherwise, or never). */
+export async function imagePolicy(caller?: AuthUser) {
   const policy = await readImagePolicy();
-  return { ...policy, allowed: allowedPrefixes(policy) };
+  const lastSaved = caller?.isAdmin ? await lastImagePolicySave() : null;
+  return { ...policy, allowed: allowedPrefixes(policy), lastSaved };
 }
 
 /** Changes the allowed sources; `version` must be the one read (no lost updates). */
@@ -96,7 +111,9 @@ export async function setImagePolicy(
     caller?.id,
   );
   const policy = { ...after, exists: true, version: newVersion };
-  return { ...policy, allowed: allowedPrefixes(policy) };
+  // Saved by this admin, now: the audit entry is written once this returns.
+  const by = caller ? ((await findUserById(caller.id))?.email ?? "") : "";
+  return { ...policy, allowed: allowedPrefixes(policy), lastSaved: { by, at: new Date() } };
 }
 
 export async function listScans(caller: AuthUser | undefined) {

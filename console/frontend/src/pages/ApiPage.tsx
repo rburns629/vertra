@@ -202,6 +202,25 @@ export function ApiPage() {
             <Fact label="Shared with" note={sharedNote}>
               {sharedWith(api)}
             </Fact>
+            <Box sx={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 0.75, borderTop: 1, borderColor: "divider", pt: 1.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Each calling team&apos;s limit, as the gateway counts it
+              </Typography>
+              <Box component="ul" sx={{ display: "flex", flexWrap: "wrap", gap: 1, m: 0, p: 0, listStyle: "none" }}>
+                {api.limits.map((l) => (
+                  <Box component="li" key={l.team} sx={{ px: 1.25, py: 0.5, borderRadius: 999, bgcolor: "background.default", fontSize: 12.5 }}>
+                    {l.team} · {l.perMinute.toLocaleString()} a minute
+                  </Box>
+                ))}
+                <Box component="li" sx={{ px: 1.25, py: 0.5, borderRadius: 999, bgcolor: "background.default", fontSize: 12.5 }}>
+                  {api.limits.length > 0 ? "Every other team" : "Every team"} · {api.defaultPerMinute.toLocaleString()} a minute
+                </Box>
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {api.limits.length > 0 ? "Named in its api.yaml; the rest get " : "Its api.yaml names no team, so each gets "}
+                {api.defaultFromGateway ? "the gateway's own default on this install." : "its api.yaml's default."} Only teams it&apos;s shared with may call it at all.
+              </Typography>
+            </Box>
           </Card>
 
           {ownTeam && (
@@ -265,7 +284,7 @@ export function ApiPage() {
 
           <RequestSteps />
 
-          {ownTeam && <ApiLogs team={team} />}
+          {ownTeam && <ApiLogs team={team} api={name} />}
         </>
       )}
     </Box>

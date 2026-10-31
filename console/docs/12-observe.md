@@ -126,6 +126,7 @@ Fill in what you know and press **Search**:
 | **From** | **Steps**, **API backends**, or (admins) **The platform** |
 | **Team** | One team's namespace, or **Any** |
 | **Run id** | One run's steps (only with **From: Steps**) |
+| **API** | One API product's backend (only with **From: API backends**): its Pods labelled `vertra/api: <name>` |
 | **Level** | `debug`, `info`, `warn` or `error`, or **Any** |
 | **When** | **Last hour** up to **Last 30 days**, no further back than the install keeps searchable |
 

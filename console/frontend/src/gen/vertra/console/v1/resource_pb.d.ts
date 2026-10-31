@@ -393,6 +393,14 @@ export declare type ListResourcesRequest = Message<"vertra.console.v1.ListResour
    * @generated from field: bool include_deleted = 4;
    */
   includeDeleted: boolean;
+
+  /**
+   * Only these (an order's chosen resources, say), at most 50; those the
+   * caller may see.
+   *
+   * @generated from field: repeated string ids = 5;
+   */
+  ids: string[];
 };
 
 /**

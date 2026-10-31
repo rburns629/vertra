@@ -137,6 +137,9 @@ message ListResourcesRequest {
   // Matched against type, id and name.
   string query = 3;
   bool include_deleted = 4;
+  // Only these (an order's chosen resources, say), at most 50; those the
+  // caller may see.
+  repeated string ids = 5;
 }
 
 message ListResourcesResponse {

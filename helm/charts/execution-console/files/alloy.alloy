@@ -5,7 +5,9 @@
 //
 //   labels:              namespace (a step's or backend's team), component
 //                        (step, api or platform), app (a platform Pod's
-//                        component, a backend's app), level
+//                        component, a backend's app), api (the API product
+//                        a backend serves, its Pod's vertra/api label),
+//                        level
 //   structured metadata: execution_id, task, attempt, image, pod
 //
 // Credentials a step prints are redacted here, before anything is stored,
@@ -65,6 +67,13 @@ discovery.relabel "pods" {
     source_labels = ["component", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
     regex         = `api;(.+)`
     target_label  = "app"
+  }
+  // Which of the team's API products a backend serves, when it says
+  // (vertra/api: <name>): searched by API.
+  rule {
+    source_labels = ["component", "__meta_kubernetes_pod_label_vertra_api"]
+    regex         = `api;(.+)`
+    target_label  = "api"
   }
   rule {
     source_labels = ["__meta_kubernetes_pod_label_vertra_dev_execution_id"]

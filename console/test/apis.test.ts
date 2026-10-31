@@ -117,7 +117,7 @@ afterAll(async () => {
   await app.close();
 });
 
-type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; askForAccessUrl?: string; problem?: string; problemFoundAt?: string; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
+type Listed = { apis?: { team: string; name: string; state: string; mayCall?: boolean; limits?: { team: string; perMinute: number }[]; defaultPerMinute?: number; askForAccessUrl?: string; problem?: string; problemFoundAt?: string; backendUrl?: string; perMinute?: number; publicUrl?: string; endpoints?: { method: string; path: string }[]; heldReason?: string }[] };
 const listFor = async (who: keyof typeof tokens) =>
   ((await call<Listed>(tokens[who], "ApiService/ListApis")).body.apis ?? []).filter((a) => a.team === owner);
 
@@ -160,6 +160,13 @@ describe("who sees what", () => {
     const orders = (await listFor("outsider")).find((a) => a.name === "orders");
     expect(orders?.mayCall ?? false).toBe(false);
     expect(orders?.perMinute ?? 0).toBe(0);
+    // Everyone who sees it sees each team's limit, and everyone else's.
+    expect(orders).toMatchObject({ limits: [{ team: consumer, perMinute: 600 }], defaultPerMinute: 60 });
+    expect((orders as { defaultFromGateway?: boolean } | undefined)?.defaultFromGateway ?? false).toBe(false);
+    // An api.yaml with no limits: the gateway's own default, for everyone.
+    const ledger = (await listFor("member")).find((a) => a.name === "ledger") as { limits?: unknown[]; defaultPerMinute?: number; defaultFromGateway?: boolean } | undefined;
+    expect(ledger?.limits ?? []).toEqual([]);
+    expect(ledger).toMatchObject({ defaultPerMinute: config.gateway.defaultPerMinute, defaultFromGateway: true });
     expect((await call(tokens.outsider, "ApiService/GetApi", { team: owner, name: "ledger" })).code).toBe("not_found");
   });
 

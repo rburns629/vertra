@@ -120,6 +120,19 @@ function perMinuteFor(caller: AuthUser, api: Api): number {
   return Math.max(fallback, ...caller.teamNames.map((t) => api.perMinute[t] || fallback));
 }
 
+/** Its limits as the gateway counts them: each team api.yaml names, and everyone else's default. */
+function limitsOf(api: Api) {
+  const own = api.perMinute["default"] ?? 0;
+  return {
+    limits: Object.entries(api.perMinute)
+      .filter(([team, n]) => team !== "default" && n > 0)
+      .map(([team, perMinute]) => ({ team, perMinute }))
+      .sort((a, b) => a.team.localeCompare(b.team)),
+    defaultPerMinute: own || config.gateway.defaultPerMinute,
+    defaultFromGateway: !own,
+  };
+}
+
 function authKind(auth: BackendAuth | null): string {
   if (!auth) return "";
   if ("serviceAccountToken" in auth) return "service_account_token";
@@ -155,6 +168,7 @@ function view(caller: AuthUser, api: Api, base: string | null, problem: Problem 
     timeoutSeconds: api.timeoutSeconds,
     maxRequestBytes: api.maxRequestBytes,
     sourcePath: api.sourcePath ?? "",
+    ...limitsOf(api),
     askForAccessUrl: catalogLinks(base, api.sourcePath ?? null, "the API", `${api.teamName}/${api.name}`, caller, mayCall(caller, api)).askForAccessUrl ?? "",
     backendUrl: own ? api.backendUrl : "",
     backendAuth: own ? authKind(api.backendAuth) : "",

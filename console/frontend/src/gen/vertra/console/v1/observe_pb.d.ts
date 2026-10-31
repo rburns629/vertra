@@ -791,6 +791,14 @@ export declare type SearchLogsRequest = Message<"vertra.console.v1.SearchLogsReq
    * @generated from field: int32 limit = 8;
    */
   limit: number;
+
+  /**
+   * With source api: only the backend of this API product of the team's
+   * (its Pods labelled vertra/api: <name>).
+   *
+   * @generated from field: string api = 9;
+   */
+  api: string;
 };
 
 /**

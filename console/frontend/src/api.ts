@@ -190,6 +190,8 @@ export interface Team {
   /** Set while the team is retired: read-only, its platform being wound
    * down (see ../../src/db/schema.ts). */
   retiredAt: string | null;
+  /** Who retired it: an email, or "the catalog"; "" when not known. */
+  retiredBy: string;
   /** Set once the team has been purged; its name stays reserved. */
   deletedAt: string | null;
   /** Its members sign in with single sign-on only, while it's on. */
@@ -250,6 +252,7 @@ function team(message: TeamMessage | undefined): Team {
     name: message?.name ?? "",
     createdAt: iso(message?.createdAt) ?? "",
     retiredAt: iso(message?.retiredAt),
+    retiredBy: message?.retiredBy ?? "",
     deletedAt: iso(message?.deletedAt),
     requireSso: message?.requireSso ?? false,
     fromCatalog: message?.fromCatalog ?? false,
@@ -357,6 +360,9 @@ export interface ImagePolicy {
   additional: string[];
   allowed: string[];
   version: string;
+  /** Admins only: who last saved them, and when; "" and null when nobody has (or for anyone else). */
+  lastSavedBy: string;
+  lastSavedAt: string | null;
 }
 
 export async function getImagePolicy(): Promise<ImagePolicy> {
@@ -370,6 +376,8 @@ function imagePolicy(policy: ImagePolicyMessage | undefined): ImagePolicy {
     additional: policy?.additional ?? [],
     allowed: policy?.allowed ?? [],
     version: policy?.version ?? "",
+    lastSavedBy: policy?.lastSavedBy ?? "",
+    lastSavedAt: iso(policy?.lastSavedAt),
   };
 }
 
@@ -1776,6 +1784,10 @@ export interface ApiProduct {
   specVersion: string;
   /** When the caller may not call it: an issue asking its team to share it, on the catalog repository. */
   askForAccessUrl: string | null;
+  /** Each team its api.yaml names a limit for; everyone else gets defaultPerMinute (api.yaml's, else the gateway's own). */
+  limits: { team: string; perMinute: number }[];
+  defaultPerMinute: number;
+  defaultFromGateway: boolean;
 }
 
 function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][number]): ApiProduct {
@@ -1806,6 +1818,9 @@ function apiProduct(a: Awaited<ReturnType<typeof apisApi.listApis>>["apis"][numb
     specTitle: a.specTitle,
     specVersion: a.specVersion,
     askForAccessUrl: a.askForAccessUrl || null,
+    limits: a.limits.map((l) => ({ team: l.team, perMinute: l.perMinute })),
+    defaultPerMinute: a.defaultPerMinute,
+    defaultFromGateway: a.defaultFromGateway,
   };
 }
 
@@ -2074,6 +2089,8 @@ export interface LogSearch {
   executionId?: string;
   level?: string;
   source?: "step" | "api" | "platform";
+  /** With source api: one API product's backend, by name. */
+  api?: string;
   /** How far back, in hours, from now. */
   hours: number;
 }
@@ -2087,6 +2104,7 @@ export async function searchLogs(search: LogSearch): Promise<{ lines: LogLineVie
       executionId: search.executionId ?? "",
       level: search.level ?? "",
       source: search.source ?? "",
+      api: search.api ?? "",
       since: timestampFromDate(new Date(Date.now() - search.hours * 3_600_000)),
       limit: 500,
     }),
@@ -2149,7 +2167,7 @@ function resourceRef(r: { id: string; type: string; externalId: string; name: st
   return { id: r.id, type: r.type, externalId: r.externalId, name: r.name || null, executionId: r.executionId, input: r.input };
 }
 
-export async function listResources(filter: { executionId?: string; team?: string; query?: string; includeDeleted?: boolean }): Promise<MadeResource[]> {
+export async function listResources(filter: { executionId?: string; team?: string; query?: string; includeDeleted?: boolean; ids?: string[] }): Promise<MadeResource[]> {
   const { resources } = await call(() => resourcesApi.listResources(filter));
   return resources.map((r) => ({
     id: r.id,

@@ -107,6 +107,17 @@ message ApiProduct {
   // Unavailable: what the gateway found, and when.
   string problem = 25;
   google.protobuf.Timestamp problem_found_at = 26;
+  // Each team its api.yaml names a limit for, requests a minute; every
+  // other team it's shared with gets default_per_minute: api.yaml's
+  // default, else (default_from_gateway) the gateway's own.
+  repeated TeamLimit limits = 27;
+  int32 default_per_minute = 28;
+  bool default_from_gateway = 29;
+}
+
+message TeamLimit {
+  string team = 1;
+  int32 per_minute = 2;
 }
 
 message ApiEndpoint {

@@ -30,6 +30,7 @@ import {
   deleteProductsForTeam,
   findSubmittedExecutions,
   findTeamByName,
+  findUserById,
   findTeamByNameIncludingDeleted,
   findUserByEmail,
   listAllTeams,
@@ -343,11 +344,17 @@ export async function retireTeam(caller: AuthUser | undefined, name: string, log
   // The namespace first: once it's labelled retired, the kernel's dispatch
   // policy starts no new step there.
   await setTeamNamespaceState(team.name, "retired", false);
-  if (!team.retiredAt) await setTeamRetired(team.id, true);
+  if (!team.retiredAt) await setTeamRetired(team.id, true, await whoRetires(caller));
   const unregisteredProducts = await deleteProductsForTeam(team.id);
   await syncIdentityPolicy();
   log.info({ team: team.name, by: caller?.id, unregisteredProducts }, "team retired");
   return { name: team.name, retired: true, unregisteredProducts };
+}
+
+/** Who's retiring a team, as its page says it: an email, or the catalog's release. */
+async function whoRetires(caller: AuthUser | undefined): Promise<string | null> {
+  if (caller?.id === "catalog-sync") return "the catalog"; // catalogSync.ts's CATALOG
+  return caller ? ((await findUserById(caller.id))?.email ?? null) : null;
 }
 
 /** Undoes a retire (a team's folder restored); its products return with the catalog's next release. */

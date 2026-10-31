@@ -47,7 +47,7 @@ export function ObservePage() {
       </Tabs>
       {tab === "security" && <SecurityTab />}
       {tab === "metrics" && <MetricsTab />}
-      {tab === "logs" && <LogsTab initialRun={params.get("run") ?? ""} initialSource={params.get("from") ?? ""} initialTeam={params.get("team") ?? ""} initialHours={Number(params.get("hours")) || undefined} />}
+      {tab === "logs" && <LogsTab initialRun={params.get("run") ?? ""} initialSource={params.get("from") ?? ""} initialTeam={params.get("team") ?? ""} initialHours={Number(params.get("hours")) || undefined} initialApi={params.get("api") ?? ""} />}
       {tab === "audit" && <AuditTab />}
     </Box>
   );

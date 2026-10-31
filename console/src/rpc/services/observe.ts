@@ -88,6 +88,7 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
             executionId: unsetIfEmpty(req.executionId),
             level: unsetIfEmpty(req.level),
             source: unsetIfEmpty(req.source),
+            api: unsetIfEmpty(req.api),
             limit: unsetIfEmpty(req.limit),
           },
         },

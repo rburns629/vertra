@@ -1039,7 +1039,7 @@ describe("an API", () => {
     expect(await screen.findByText("ledger answered 503")).toBeTruthy();
     expect(calls).toContain("ObserveService/SearchLogs");
     // Over the same day the card shows.
-    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments&hours=24");
+    expect(screen.getByRole("link", { name: "Search them in Observe" }).getAttribute("href")).toBe("/observe?tab=logs&from=api&team=payments&api=orders&hours=24");
 
     fireEvent.change(screen.getByLabelText(/message to callers/i), { target: { value: "Failing over" } });
     fireEvent.click(screen.getByRole("button", { name: "Pause this API" }));
@@ -1915,9 +1915,10 @@ describe("a team's bots", () => {
 describe("a team's settings", () => {
   it("say a retired team is read-only, and offer an admin to restore it", async () => {
     await renderAt("/teams/old-team?tab=settings", ADMIN, {
-      "TeamService/GetTeam": { team: { id: "t1", name: "old-team", retiredAt: "2026-10-21T12:00:00Z", fromCatalog: true } },
+      "TeamService/GetTeam": { team: { id: "t1", name: "old-team", retiredAt: "2026-10-21T12:00:00Z", retiredBy: "the catalog", fromCatalog: true } },
     });
     expect(await screen.findByText(/this team is retired: it's read-only/i)).toBeTruthy();
+    expect(screen.getByText(/by the catalog\./)).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Restore old-team" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /purge old-team/i })).toHaveProperty("disabled", false);
     // In the header, and in "Where it comes from".
@@ -2429,5 +2430,113 @@ describe("Admin's catalog section", () => {
       },
     });
     expect(await screen.findByText("5 teams, 14 products (20 actions), 6 templates, 4 SecretStores")).toBeTruthy();
+  });
+});
+
+describe("Observe's log search, for one API", () => {
+  it("searches one API product's backend, its team chosen with it", async () => {
+    const asked: Record<string, unknown>[] = [];
+    await renderAt("/observe?tab=logs&from=api&team=payments&api=orders&hours=24", { ...MEMBER, teamNames: ["payments"] }, {
+      "ApiService/ListApis": { apis: [{ team: "payments", name: "orders", state: "API_STATE_LIVE" }, { team: "payments", name: "ledger", state: "API_STATE_LIVE" }, { team: "ml", name: "scoring", state: "API_STATE_LIVE" }] },
+      "ObserveService/SearchLogs": (request: Record<string, unknown>) => {
+        asked.push(request);
+        return { lines: [], searchDays: 30 };
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^Search/ }));
+    await waitFor(() => { expect(asked.at(-1)).toMatchObject({ source: "api", team: "payments", api: "orders" }); });
+    expect(await screen.findByText(/from payments\/orders’s backend/)).toBeTruthy();
+    // Only the APIs of the caller's teams are offered.
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "API" }));
+    expect(await screen.findByRole("option", { name: "payments/ledger" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "ml/scoring" })).toBeNull();
+  });
+});
+
+describe("an API's limits", () => {
+  it("say each calling team's, and everyone else's, to whoever sees it", async () => {
+    const api = { team: "payments", name: "orders", displayName: "Orders API", state: "API_STATE_LIVE", mayCall: false, endpoints: [], limits: [{ team: "growth", perMinute: 1200 }], defaultPerMinute: 600 };
+    await renderAt("/apis/payments/orders", MEMBER, { "ApiService/GetApi": { api, openapi: "{}" } });
+    expect(await screen.findByText("growth · 1,200 a minute")).toBeTruthy();
+    expect(screen.getByText("Every other team · 600 a minute")).toBeTruthy();
+    expect(screen.getByText(/its api\.yaml's default/)).toBeTruthy();
+  });
+});
+
+describe("Admin's image sources", () => {
+  it("say who last saved them", async () => {
+    await renderAt("/admin/images", ADMIN, {
+      "ImageService/GetImagePolicy": { policy: { exists: true, source: "registry.example/", allowed: ["registry.example/"], lastSavedBy: "priya@acme.com", lastSavedAt: "2026-10-18T09:00:00Z" } },
+    });
+    expect(await screen.findByText(/^Last saved by priya@acme\.com, .+\. Admins are alerted when these change\.$/)).toBeTruthy();
+  });
+});
+
+describe("an order's run", () => {
+  it("says what its cart held, what the plan added, and which resource each choice took", async () => {
+    const execution = {
+      executionId: "6d6d6d6d-0000-4000-8000-000000000006",
+      name: "Order: project, app-hosting",
+      state: "EXECUTION_STATE_SUCCEEDED",
+      tasks: [],
+      submittedBy: "ana@acme.com",
+      onBehalfOf: "payments",
+      template: "order",
+      templateParameters: {
+        actions: ["gcp-platform-app-hosting-create"],
+        choices: [{ step: "app-hosting", input: "projectId", resourceId: "r1" }],
+        values: { "app-hosting": { serviceName: "orders-api-stg" } },
+        steps: [
+          { id: "identity", product: "identity-service-identity-create", added: true },
+          { id: "app-hosting", product: "gcp-platform-app-hosting-create", added: false },
+        ],
+      },
+      dag: {
+        name: "Order",
+        tasks: [
+          { id: "identity", image: "registry.example/identity/service-identity@sha256:aa", action: "create", team: "identity" },
+          { id: "app-hosting", image: "registry.example/gcp-platform/app-hosting@sha256:bb", action: "create", team: "gcp-platform" },
+        ],
+      },
+    };
+    await renderAt(`/runs/${execution.executionId}`, MEMBER, {
+      "ExecutionService/GetExecution": { execution },
+      "ExecutionService/WatchExecution": [{ execution }],
+      "ResourceService/ListResources": { resources: [{ id: "r1", type: "gcp/project", externalId: "orders-api", name: "orders-api", executionId: "1e1e1e1e-0000-4000-8000-000000000001", ownerTeam: "payments", firstReportedAt: "2026-10-20T10:00:00Z" }] },
+    });
+    const card = await screen.findByRole("region", { name: "Ordered from the cart, for payments" });
+    expect(within(card).getByText("app-hosting · create")).toBeTruthy();
+    expect(within(card).getByText("gcp-platform · serviceName orders-api-stg")).toBeTruthy();
+    expect(within(card).getByText("Added")).toBeTruthy();
+    expect(within(card).getByText(/^identity · the plan added it/)).toBeTruthy();
+    expect((await within(card).findByRole("link", { name: "orders-api" })).getAttribute("href")).toBe("/runs/1e1e1e1e-0000-4000-8000-000000000001");
+    expect(within(card).getByText(/^gcp\/project, made .+ for payments$/)).toBeTruthy();
+  });
+});
+
+describe("a cart Ask proposes", () => {
+  it("shows each line's team, product and verb, and what it takes from an earlier step", async () => {
+    await renderAt("/", MEMBER, {
+      "ChatService/GetChatSettings": { enabled: true, model: "claude-haiku-5-5" },
+      "ChatService/AskStream": () => [{ answer: { text: "I've filled a cart.", cart: { team: "payments", actions: ["data-platform-postgres-db-create", "gcp-platform-app-hosting-deploy"] } } }],
+      "OrderService/PreviewOrder": {
+        steps: [
+          { id: "postgres-db", product: "data-platform-postgres-db-create", inputs: {} },
+          { id: "app-hosting", product: "gcp-platform-app-hosting-deploy", inputs: { database: { kind: "step", step: "postgres-db", output: "connection" } } },
+        ],
+      },
+      "TemplateService/ListTemplates": {
+        runnables: [
+          { kind: "KIND_ACTION", team: "data-platform", name: "data-platform-postgres-db-create", actions: ["data-platform/postgres-db.create"], shared: true },
+          { kind: "KIND_ACTION", team: "gcp-platform", name: "gcp-platform-app-hosting-deploy", actions: ["gcp-platform/app-hosting.deploy"], shared: true },
+        ],
+      },
+    });
+    fireEvent.change(await screen.findByRole("textbox", { name: "Ask Vertra" }), { target: { value: "A database and app hosting?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    const proposed = await screen.findByRole("region", { name: "Proposed cart" });
+    expect(await within(proposed).findByText("gcp-platform/app-hosting")).toBeTruthy();
+    expect(within(proposed).getByText("data-platform/postgres-db")).toBeTruthy();
+    expect(within(proposed).getByText(/· deploy, its database from step 1/)).toBeTruthy();
   });
 });

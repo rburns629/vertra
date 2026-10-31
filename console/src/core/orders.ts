@@ -359,7 +359,15 @@ export async function placeOrder(caller: AuthUser | undefined, cart: Cart, log: 
     name,
     steps,
     cart.team,
-    { actions: cart.actions, choices: cart.choices, values: cart.values, parameters: cart.parameters },
+    // As the run's page shows what was ordered: the cart, and each planned
+    // step's product, with those the plan added marked.
+    {
+      actions: cart.actions,
+      choices: cart.choices,
+      values: cart.values,
+      parameters: cart.parameters,
+      steps: plan.steps.map((s) => ({ id: s.id, product: s.product, added: s.added })),
+    },
     cart.requestId,
     log,
   );

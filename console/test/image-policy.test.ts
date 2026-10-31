@@ -170,6 +170,11 @@ describe("the routes", () => {
       { source: `${SOURCE}/`, additional: ["docker.io/library/"] },
       "7",
     );
+    // Who saved it last, from the audit log: for admins only.
+    const after = await as<{ policy: { lastSavedBy?: string; lastSavedAt?: string } }>(admin, "ImageService/GetImagePolicy");
+    expect(after.body.policy.lastSavedBy).toBe(emails[0]);
+    expect(after.body.policy.lastSavedAt).toBeTruthy();
+    expect((await as<{ policy: { lastSavedBy?: string } }>(member, "ImageService/GetImagePolicy")).body.policy.lastSavedBy ?? "").toBe("");
   });
 
   it("rejects an invalid source, and a save based on a stale version", async () => {

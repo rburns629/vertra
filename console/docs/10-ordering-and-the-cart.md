@@ -112,7 +112,7 @@ The cart turns several actions into one run, wired together for you: you pick wh
 
    A step marked **Added: something in your cart needs it** wasn't in your cart: something you added needs what it makes, and nothing else in the cart provides it.
 4. **Optional** suggestions offer to add a provider for an optional input (**Add ...**), or to use what you have (**Use ...**). Nothing is added unless you choose it.
-5. **Place order.** It stays disabled while a choice is unmade (`Choose what fills ... first.`) or the steps feed each other in a circle. Then it opens the run, and the cart empties.
+5. **Place order.** It stays disabled while a choice is unmade (`Choose what fills ... first.`) or the steps feed each other in a circle. Then it opens the run, and the cart empties. The run's page keeps what you ordered under **Ordered from the cart**: each action with what you filled in, what the plan added and why, and each choice with the resource it took.
 
 The order is one run for your team. Each step is checked as if you ran its action on its own: it must be shared with you, its inputs must fit, its targets must be allowed, and its approvals apply. So a cart never lets you do more than you could step by step.
 
@@ -121,7 +121,7 @@ Good to know:
 - The cart is kept in this browser only. Another browser, or a private window, has its own.
 - Changing the team, or adding or removing an action, clears the choices you made.
 - Placing it twice from the same visit (say, after a timeout) is the same order, not a second one.
-- The chat assistant can fill a cart for you: **Open in cart** replaces what's in yours with its proposal, and you still make its choices and place it yourself.
+- The chat assistant can fill a cart for you. Its answer lists the cart as the order would run it: each step's team, product and verb, what it takes from an earlier step, and what the plan adds. **Open in cart** replaces what's in yours with its proposal, and you still make its choices and place it yourself.
 
 ## How do I compose a template by hand?
 

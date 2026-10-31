@@ -33,10 +33,14 @@ function scan(row: ScanRow) {
   };
 }
 
+function policyMessage({ lastSaved, ...policy }: Awaited<ReturnType<typeof imagePolicy>>) {
+  return { ...policy, lastSavedBy: lastSaved?.by ?? "", lastSavedAt: timestamp(lastSaved?.at) };
+}
+
 export function imageService(): ServiceImpl<typeof ImageService> {
   return {
-    async getImagePolicy() {
-      return { policy: await imagePolicy() };
+    async getImagePolicy(_req, ctx) {
+      return { policy: policyMessage(await imagePolicy(callerOf(ctx))) };
     },
 
     async setImagePolicy(req, ctx) {
@@ -44,7 +48,7 @@ export function imageService(): ServiceImpl<typeof ImageService> {
         { source: Type.String(), additional: Type.Array(Type.String()), version: Type.String() },
         req,
       );
-      return { policy: await setImagePolicy(callerOf(ctx), input, logOf(ctx)) };
+      return { policy: policyMessage(await setImagePolicy(callerOf(ctx), input, logOf(ctx))) };
     },
 
     async listImageScans(_req, ctx) {

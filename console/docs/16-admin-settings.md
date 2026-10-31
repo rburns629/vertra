@@ -174,7 +174,7 @@ Admins are alerted when the catalog hasn't been pulled for 30 minutes.
 
 - **Source registry**: where catalog CI publishes product images, such as `us-central1-docker.pkg.dev/my-project/catalog-products`. Required.
 - **Add a source**: more allowed paths, such as `docker.io/library`. Base images a Dockerfile builds from don't need listing: they're part of the published image.
-- **Save image sources** saves both; **Discard changes** puts back what's saved.
+- **Save image sources** saves both; **Discard changes** puts back what's saved. Under them: who last saved them here, and when (from the audit log).
 
 Each entry is a path prefix. Saving a whole registry host, such as `docker.io`, asks you to confirm: any image anyone has published there could run. Prefer a specific path.
 

@@ -697,8 +697,11 @@ type ListResourcesRequest struct {
 	// Matched against type, id and name.
 	Query          string `protobuf:"bytes,3,opt,name=query,proto3" json:"query,omitempty"`
 	IncludeDeleted bool   `protobuf:"varint,4,opt,name=include_deleted,json=includeDeleted,proto3" json:"include_deleted,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Only these (an order's chosen resources, say), at most 50; those the
+	// caller may see.
+	Ids           []string `protobuf:"bytes,5,rep,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListResourcesRequest) Reset() {
@@ -757,6 +760,13 @@ func (x *ListResourcesRequest) GetIncludeDeleted() bool {
 		return x.IncludeDeleted
 	}
 	return false
+}
+
+func (x *ListResourcesRequest) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
 }
 
 type ListResourcesResponse struct {
@@ -1056,12 +1066,13 @@ const file_vertra_console_v1_resource_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aapprove\x18\x02 \x01(\bR\aapprove\"@\n" +
 	"\x1bDecideDeleteRequestResponse\x12!\n" +
-	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"\x8c\x01\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\"\x9e\x01\n" +
 	"\x14ListResourcesRequest\x12!\n" +
 	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x12\n" +
 	"\x04team\x18\x02 \x01(\tR\x04team\x12\x14\n" +
 	"\x05query\x18\x03 \x01(\tR\x05query\x12'\n" +
-	"\x0finclude_deleted\x18\x04 \x01(\bR\x0eincludeDeleted\"R\n" +
+	"\x0finclude_deleted\x18\x04 \x01(\bR\x0eincludeDeleted\x12\x10\n" +
+	"\x03ids\x18\x05 \x03(\tR\x03ids\"R\n" +
 	"\x15ListResourcesResponse\x129\n" +
 	"\tresources\x18\x01 \x03(\v2\x1b.vertra.console.v1.ResourceR\tresources\";\n" +
 	"\x16DeleteResourcesRequest\x12!\n" +

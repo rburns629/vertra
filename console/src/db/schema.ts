@@ -45,6 +45,9 @@ export const teams = pgTable("teams", {
   // bots, or product registrations -- and its products are unregistered.
   // Reversible: clearing this brings it back.
   retiredAt: timestamp("retired_at", { withTimezone: true }),
+  // Who retired it, as it was then: their email, or "the catalog" for a
+  // release that dropped it; null while it isn't retired.
+  retiredBy: text("retired_by"),
   // Purged: memberships, secret grants and products are gone, and the team
   // is invisible everywhere. The row itself is kept on purpose, so the name
   // stays reserved: execution history is keyed by team *name*, and a new

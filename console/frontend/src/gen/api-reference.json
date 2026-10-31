@@ -2274,6 +2274,48 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "limits",
+     "type": "TeamLimit",
+     "ref": "vertra.console.v1.TeamLimit",
+     "repeated": true,
+     "optional": false,
+     "comment": "Each team its api.yaml names a limit for, requests a minute; every\nother team it's shared with gets default_per_minute: api.yaml's\ndefault, else (default_from_gateway) the gateway's own."
+    },
+    {
+     "name": "defaultPerMinute",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "defaultFromGateway",
+     "type": "boolean",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    }
+   ]
+  },
+  "vertra.console.v1.TeamLimit": {
+   "name": "TeamLimit",
+   "comment": "",
+   "fields": [
+    {
+     "name": "team",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
+    },
+    {
+     "name": "perMinute",
+     "type": "integer",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -5926,6 +5968,20 @@
      "repeated": true,
      "optional": false,
      "comment": "Every allowed prefix, as the cluster matches them."
+    },
+    {
+     "name": "lastSavedBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Admins only: who last saved them here, and when, from the audit log;\nempty when nobody has since it was installed (or for anyone else)."
+    },
+    {
+     "name": "lastSavedAt",
+     "type": "timestamp (RFC 3339 string)",
+     "repeated": false,
+     "optional": false,
+     "comment": ""
     }
    ]
   },
@@ -7494,6 +7550,13 @@
      "repeated": false,
      "optional": false,
      "comment": "200 when unset, at most 1000."
+    },
+    {
+     "name": "api",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "With source api: only the backend of this API product of the team's\n(its Pods labelled vertra/api: <name>)."
     }
    ]
   },
@@ -8578,6 +8641,13 @@
      "repeated": false,
      "optional": false,
      "comment": ""
+    },
+    {
+     "name": "ids",
+     "type": "string",
+     "repeated": true,
+     "optional": false,
+     "comment": "Only these (an order's chosen resources, say), at most 50; those the\ncaller may see."
     }
    ]
   },
@@ -9386,6 +9456,13 @@
      "repeated": false,
      "optional": false,
      "comment": "The install's limits, which a team without its own has."
+    },
+    {
+     "name": "retiredBy",
+     "type": "string",
+     "repeated": false,
+     "optional": false,
+     "comment": "Who retired it: their email, or \"the catalog\"; empty while it isn't\nretired (or for a team retired before this was kept)."
     }
    ]
   },

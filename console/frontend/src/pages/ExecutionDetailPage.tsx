@@ -19,6 +19,7 @@ import type { RunFrom } from "./RunFormPage";
 import { FailureCard } from "./run/FailureCard";
 import { RunSteps } from "./run/RunSteps";
 import { RunTimeline } from "./run/RunTimeline";
+import { OrderCart } from "./run/OrderCart";
 import { WhatItMade } from "./run/WhatItMade";
 import { StepPanel } from "./run/StepPanel";
 import { WhoActed } from "./run/WhoActed";
@@ -248,6 +249,8 @@ export function ExecutionDetailPage() {
           onShow={() => { showStep(failed.taskId); }}
         />
       )}
+
+      <OrderCart execution={execution} />
 
       <Card component="section" aria-label="Timeline" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 2.75 } }}>
         <RunTimeline tasks={tasks} definitions={definitions} startedAt={execution.createdAt} now={now} finished={!live} selected={selectedId} onSelect={setChosen} />

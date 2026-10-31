@@ -66,6 +66,7 @@ function team(row: {
   name: string;
   createdAt: Date;
   retiredAt: Date | null;
+  retiredBy?: string | null;
   deletedAt?: Date | null;
   requireSso?: boolean;
   fromCatalog?: boolean;
@@ -77,6 +78,7 @@ function team(row: {
     name: row.name,
     createdAt: timestamp(row.createdAt),
     retiredAt: timestamp(row.retiredAt),
+    retiredBy: row.retiredBy ?? "",
     deletedAt: timestamp(row.deletedAt),
     requireSso: row.requireSso ?? false,
     fromCatalog: row.fromCatalog ?? false,

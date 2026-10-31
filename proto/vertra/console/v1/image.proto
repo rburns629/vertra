@@ -41,6 +41,10 @@ message ImagePolicy {
   string version = 4;
   // Every allowed prefix, as the cluster matches them.
   repeated string allowed = 5;
+  // Admins only: who last saved them here, and when, from the audit log;
+  // empty when nobody has since it was installed (or for anyone else).
+  string last_saved_by = 6;
+  google.protobuf.Timestamp last_saved_at = 7;
 }
 
 enum ScanStatus {

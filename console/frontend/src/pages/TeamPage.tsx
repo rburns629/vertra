@@ -262,7 +262,11 @@ export function TeamPage() {
                 ) : undefined
               }
             >
-              <strong>Retired {new Date(team.retiredAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.</strong> This
+              <strong>
+                Retired {new Date(team.retiredAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                {team.retiredBy && ` by ${team.retiredBy}`}.
+              </strong>{" "}
+              This
               team is retired: it&apos;s read-only. Nothing new can be registered, granted or run for it, and its products are no
               longer listed. Its history stays visible.
               {!isAdmin && " An admin can restore it."}

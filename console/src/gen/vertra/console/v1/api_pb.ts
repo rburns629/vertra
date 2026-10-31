@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file vertra/console/v1/api.proto.
  */
 export const file_vertra_console_v1_api: GenFile = /*@__PURE__*/
-  fileDesc("Cht2ZXJ0cmEvY29uc29sZS92MS9hcGkucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxIvEECgpBcGlQcm9kdWN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSKgoFc3RhdGUYBSABKA4yGy52ZXJ0cmEuY29uc29sZS52MS5BcGlTdGF0ZRITCgtoZWxkX3JlYXNvbhgGIAEoCRIWCg5wYXVzZWRfbWVzc2FnZRgHIAEoCRIQCghtYXlfY2FsbBgIIAEoCBISCgpzaGFyZV93aXRoGAkgAygJEg4KBmhpZGRlbhgKIAEoCBISCgpkZXByZWNhdGVkGAsgASgJEhAKCGludGVybmV0GAwgASgIEgsKA3VybBgNIAEoCRISCgpwdWJsaWNfdXJsGA4gASgJEjEKCWVuZHBvaW50cxgPIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLkFwaUVuZHBvaW50EhIKCnBlcl9taW51dGUYECABKAUSFwoPdGltZW91dF9zZWNvbmRzGBEgASgFEhkKEW1heF9yZXF1ZXN0X2J5dGVzGBIgASgFEhMKC3NvdXJjZV9wYXRoGBMgASgJEhMKC2JhY2tlbmRfdXJsGBQgASgJEhQKDGJhY2tlbmRfYXV0aBgVIAEoCRISCgpzcGVjX3RpdGxlGBYgASgJEhQKDHNwZWNfdmVyc2lvbhgXIAEoCRIaChJhc2tfZm9yX2FjY2Vzc191cmwYGCABKAkSDwoHcHJvYmxlbRgZIAEoCRI0ChBwcm9ibGVtX2ZvdW5kX2F0GBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI8CgtBcGlFbmRwb2ludBIOCgZtZXRob2QYASABKAkSDAoEcGF0aBgCIAEoCRIPCgdzdW1tYXJ5GAMgASgJIhEKD0xpc3RBcGlzUmVxdWVzdCI/ChBMaXN0QXBpc1Jlc3BvbnNlEisKBGFwaXMYASADKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BcGlQcm9kdWN0IisKDUdldEFwaVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJIk0KDkdldEFwaVJlc3BvbnNlEioKA2FwaRgBIAEoCzIdLnZlcnRyYS5jb25zb2xlLnYxLkFwaVByb2R1Y3QSDwoHb3BlbmFwaRgCIAEoCSI+Cg9QYXVzZUFwaVJlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB21lc3NhZ2UYAyABKAkiEgoQUGF1c2VBcGlSZXNwb25zZSIuChBSZXN1bWVBcGlSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCSITChFSZXN1bWVBcGlSZXNwb25zZSJBChRHZXRBcGlUcmFmZmljUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFaG91cnMYAyABKAUigAIKFUdldEFwaVRyYWZmaWNSZXNwb25zZRIQCghyZXF1ZXN0cxgBIAEoAxIRCglmb3J3YXJkZWQYAiABKAMSDwoHc3RvcHBlZBgDIAEoAxIWCg5iYWNrZW5kX2Vycm9ycxgEIAEoAxI1CgllbmRwb2ludHMYBSADKAsyIi52ZXJ0cmEuY29uc29sZS52MS5FbmRwb2ludFRyYWZmaWMSMwoHYmxvY2tlZBgGIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLkJsb2NrZWRSZXF1ZXN0cxItCgV0ZWFtcxgHIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLlRlYW1UcmFmZmljIoQBCg9FbmRwb2ludFRyYWZmaWMSEAoIZW5kcG9pbnQYASABKAkSEAoIcmVxdWVzdHMYAiABKAMSDwoHaW52YWxpZBgDIAEoAxITCgtiYWNrZW5kXzR4eBgEIAEoAxITCgtiYWNrZW5kXzV4eBgFIAEoAxISCgphdmVyYWdlX21zGAYgASgDImoKD0Jsb2NrZWRSZXF1ZXN0cxIPCgdyZXF1ZXN0GAEgASgJEg0KBWNvdW50GAIgASgDEg0KBXRlYW1zGAMgAygJEigKBGxhc3QYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImAKC1RlYW1UcmFmZmljEgwKBHRlYW0YASABKAkSEAoIcmVxdWVzdHMYAiABKAMSFwoPcGVha19wZXJfbWludXRlGAMgASgDEhgKEGxpbWl0X3Blcl9taW51dGUYBCABKAUiEwoRR2V0R2F0ZXdheVJlcXVlc3QiqAIKEkdldEdhdGV3YXlSZXNwb25zZRIPCgdlbmFibGVkGAEgASgIEhUKDWJhY2tlbmRfaG9zdHMYAiADKAkSFgoOaW50ZXJuZXRfdGVhbXMYAyADKAkSCwoDdXJsGAQgASgJEhIKCnB1YmxpY191cmwYBSABKAkSFgoOY2xvc2VkX21lc3NhZ2UYBiABKAkSEQoJY2xvc2VkX2J5GAcgASgJEi0KCWNsb3NlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDAoEYXBpcxgJIAEoBRIUCgxyZXF1ZXN0c18yNGgYCiABKAMSMwoHcmVmdXNlZBgLIAMoCzIiLnZlcnRyYS5jb25zb2xlLnYxLlJlZnVzZWRSZXF1ZXN0cyJBCg9SZWZ1c2VkUmVxdWVzdHMSDwoHb3V0Y29tZRgBIAEoCRINCgVjb3VudBgCIAEoAxIOCgZtb3N0bHkYAyABKAkiKgoXU2V0R2F0ZXdheUNsb3NlZFJlcXVlc3QSDwoHbWVzc2FnZRgBIAEoCSIaChhTZXRHYXRld2F5Q2xvc2VkUmVzcG9uc2UqfgoIQXBpU3RhdGUSGQoVQVBJX1NUQVRFX1VOU1BFQ0lGSUVEEAASEgoOQVBJX1NUQVRFX0xJVkUQARISCg5BUElfU1RBVEVfSEVMRBACEhQKEEFQSV9TVEFURV9QQVVTRUQQAxIZChVBUElfU1RBVEVfVU5BVkFJTEFCTEUQBDKdBQoKQXBpU2VydmljZRJYCghMaXN0QXBpcxIiLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBcGlzUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLkxpc3RBcGlzUmVzcG9uc2UiA5ACARJSCgZHZXRBcGkSIC52ZXJ0cmEuY29uc29sZS52MS5HZXRBcGlSZXF1ZXN0GiEudmVydHJhLmNvbnNvbGUudjEuR2V0QXBpUmVzcG9uc2UiA5ACARJTCghQYXVzZUFwaRIiLnZlcnRyYS5jb25zb2xlLnYxLlBhdXNlQXBpUmVxdWVzdBojLnZlcnRyYS5jb25zb2xlLnYxLlBhdXNlQXBpUmVzcG9uc2USVgoJUmVzdW1lQXBpEiMudmVydHJhLmNvbnNvbGUudjEuUmVzdW1lQXBpUmVxdWVzdBokLnZlcnRyYS5jb25zb2xlLnYxLlJlc3VtZUFwaVJlc3BvbnNlEmcKDUdldEFwaVRyYWZmaWMSJy52ZXJ0cmEuY29uc29sZS52MS5HZXRBcGlUcmFmZmljUmVxdWVzdBooLnZlcnRyYS5jb25zb2xlLnYxLkdldEFwaVRyYWZmaWNSZXNwb25zZSIDkAIBEl4KCkdldEdhdGV3YXkSJC52ZXJ0cmEuY29uc29sZS52MS5HZXRHYXRld2F5UmVxdWVzdBolLnZlcnRyYS5jb25zb2xlLnYxLkdldEdhdGV3YXlSZXNwb25zZSIDkAIBEmsKEFNldEdhdGV3YXlDbG9zZWQSKi52ZXJ0cmEuY29uc29sZS52MS5TZXRHYXRld2F5Q2xvc2VkUmVxdWVzdBorLnZlcnRyYS5jb25zb2xlLnYxLlNldEdhdGV3YXlDbG9zZWRSZXNwb25zZWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("Cht2ZXJ0cmEvY29uc29sZS92MS9hcGkucHJvdG8SEXZlcnRyYS5jb25zb2xlLnYxItkFCgpBcGlQcm9kdWN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSKgoFc3RhdGUYBSABKA4yGy52ZXJ0cmEuY29uc29sZS52MS5BcGlTdGF0ZRITCgtoZWxkX3JlYXNvbhgGIAEoCRIWCg5wYXVzZWRfbWVzc2FnZRgHIAEoCRIQCghtYXlfY2FsbBgIIAEoCBISCgpzaGFyZV93aXRoGAkgAygJEg4KBmhpZGRlbhgKIAEoCBISCgpkZXByZWNhdGVkGAsgASgJEhAKCGludGVybmV0GAwgASgIEgsKA3VybBgNIAEoCRISCgpwdWJsaWNfdXJsGA4gASgJEjEKCWVuZHBvaW50cxgPIAMoCzIeLnZlcnRyYS5jb25zb2xlLnYxLkFwaUVuZHBvaW50EhIKCnBlcl9taW51dGUYECABKAUSFwoPdGltZW91dF9zZWNvbmRzGBEgASgFEhkKEW1heF9yZXF1ZXN0X2J5dGVzGBIgASgFEhMKC3NvdXJjZV9wYXRoGBMgASgJEhMKC2JhY2tlbmRfdXJsGBQgASgJEhQKDGJhY2tlbmRfYXV0aBgVIAEoCRISCgpzcGVjX3RpdGxlGBYgASgJEhQKDHNwZWNfdmVyc2lvbhgXIAEoCRIaChJhc2tfZm9yX2FjY2Vzc191cmwYGCABKAkSDwoHcHJvYmxlbRgZIAEoCRI0ChBwcm9ibGVtX2ZvdW5kX2F0GBogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCgZsaW1pdHMYGyADKAsyHC52ZXJ0cmEuY29uc29sZS52MS5UZWFtTGltaXQSGgoSZGVmYXVsdF9wZXJfbWludXRlGBwgASgFEhwKFGRlZmF1bHRfZnJvbV9nYXRld2F5GB0gASgIIi0KCVRlYW1MaW1pdBIMCgR0ZWFtGAEgASgJEhIKCnBlcl9taW51dGUYAiABKAUiPAoLQXBpRW5kcG9pbnQSDgoGbWV0aG9kGAEgASgJEgwKBHBhdGgYAiABKAkSDwoHc3VtbWFyeRgDIAEoCSIRCg9MaXN0QXBpc1JlcXVlc3QiPwoQTGlzdEFwaXNSZXNwb25zZRIrCgRhcGlzGAEgAygLMh0udmVydHJhLmNvbnNvbGUudjEuQXBpUHJvZHVjdCIrCg1HZXRBcGlSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCSJNCg5HZXRBcGlSZXNwb25zZRIqCgNhcGkYASABKAsyHS52ZXJ0cmEuY29uc29sZS52MS5BcGlQcm9kdWN0Eg8KB29wZW5hcGkYAiABKAkiPgoPUGF1c2VBcGlSZXF1ZXN0EgwKBHRlYW0YASABKAkSDAoEbmFtZRgCIAEoCRIPCgdtZXNzYWdlGAMgASgJIhIKEFBhdXNlQXBpUmVzcG9uc2UiLgoQUmVzdW1lQXBpUmVxdWVzdBIMCgR0ZWFtGAEgASgJEgwKBG5hbWUYAiABKAkiEwoRUmVzdW1lQXBpUmVzcG9uc2UiQQoUR2V0QXBpVHJhZmZpY1JlcXVlc3QSDAoEdGVhbRgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWhvdXJzGAMgASgFIoACChVHZXRBcGlUcmFmZmljUmVzcG9uc2USEAoIcmVxdWVzdHMYASABKAMSEQoJZm9yd2FyZGVkGAIgASgDEg8KB3N0b3BwZWQYAyABKAMSFgoOYmFja2VuZF9lcnJvcnMYBCABKAMSNQoJZW5kcG9pbnRzGAUgAygLMiIudmVydHJhLmNvbnNvbGUudjEuRW5kcG9pbnRUcmFmZmljEjMKB2Jsb2NrZWQYBiADKAsyIi52ZXJ0cmEuY29uc29sZS52MS5CbG9ja2VkUmVxdWVzdHMSLQoFdGVhbXMYByADKAsyHi52ZXJ0cmEuY29uc29sZS52MS5UZWFtVHJhZmZpYyKEAQoPRW5kcG9pbnRUcmFmZmljEhAKCGVuZHBvaW50GAEgASgJEhAKCHJlcXVlc3RzGAIgASgDEg8KB2ludmFsaWQYAyABKAMSEwoLYmFja2VuZF80eHgYBCABKAMSEwoLYmFja2VuZF81eHgYBSABKAMSEgoKYXZlcmFnZV9tcxgGIAEoAyJqCg9CbG9ja2VkUmVxdWVzdHMSDwoHcmVxdWVzdBgBIAEoCRINCgVjb3VudBgCIAEoAxINCgV0ZWFtcxgDIAMoCRIoCgRsYXN0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJgCgtUZWFtVHJhZmZpYxIMCgR0ZWFtGAEgASgJEhAKCHJlcXVlc3RzGAIgASgDEhcKD3BlYWtfcGVyX21pbnV0ZRgDIAEoAxIYChBsaW1pdF9wZXJfbWludXRlGAQgASgFIhMKEUdldEdhdGV3YXlSZXF1ZXN0IqgCChJHZXRHYXRld2F5UmVzcG9uc2USDwoHZW5hYmxlZBgBIAEoCBIVCg1iYWNrZW5kX2hvc3RzGAIgAygJEhYKDmludGVybmV0X3RlYW1zGAMgAygJEgsKA3VybBgEIAEoCRISCgpwdWJsaWNfdXJsGAUgASgJEhYKDmNsb3NlZF9tZXNzYWdlGAYgASgJEhEKCWNsb3NlZF9ieRgHIAEoCRItCgljbG9zZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBGFwaXMYCSABKAUSFAoMcmVxdWVzdHNfMjRoGAogASgDEjMKB3JlZnVzZWQYCyADKAsyIi52ZXJ0cmEuY29uc29sZS52MS5SZWZ1c2VkUmVxdWVzdHMiQQoPUmVmdXNlZFJlcXVlc3RzEg8KB291dGNvbWUYASABKAkSDQoFY291bnQYAiABKAMSDgoGbW9zdGx5GAMgASgJIioKF1NldEdhdGV3YXlDbG9zZWRSZXF1ZXN0Eg8KB21lc3NhZ2UYASABKAkiGgoYU2V0R2F0ZXdheUNsb3NlZFJlc3BvbnNlKn4KCEFwaVN0YXRlEhkKFUFQSV9TVEFURV9VTlNQRUNJRklFRBAAEhIKDkFQSV9TVEFURV9MSVZFEAESEgoOQVBJX1NUQVRFX0hFTEQQAhIUChBBUElfU1RBVEVfUEFVU0VEEAMSGQoVQVBJX1NUQVRFX1VOQVZBSUxBQkxFEAQynQUKCkFwaVNlcnZpY2USWAoITGlzdEFwaXMSIi52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXBpc1JlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5MaXN0QXBpc1Jlc3BvbnNlIgOQAgESUgoGR2V0QXBpEiAudmVydHJhLmNvbnNvbGUudjEuR2V0QXBpUmVxdWVzdBohLnZlcnRyYS5jb25zb2xlLnYxLkdldEFwaVJlc3BvbnNlIgOQAgESUwoIUGF1c2VBcGkSIi52ZXJ0cmEuY29uc29sZS52MS5QYXVzZUFwaVJlcXVlc3QaIy52ZXJ0cmEuY29uc29sZS52MS5QYXVzZUFwaVJlc3BvbnNlElYKCVJlc3VtZUFwaRIjLnZlcnRyYS5jb25zb2xlLnYxLlJlc3VtZUFwaVJlcXVlc3QaJC52ZXJ0cmEuY29uc29sZS52MS5SZXN1bWVBcGlSZXNwb25zZRJnCg1HZXRBcGlUcmFmZmljEicudmVydHJhLmNvbnNvbGUudjEuR2V0QXBpVHJhZmZpY1JlcXVlc3QaKC52ZXJ0cmEuY29uc29sZS52MS5HZXRBcGlUcmFmZmljUmVzcG9uc2UiA5ACARJeCgpHZXRHYXRld2F5EiQudmVydHJhLmNvbnNvbGUudjEuR2V0R2F0ZXdheVJlcXVlc3QaJS52ZXJ0cmEuY29uc29sZS52MS5HZXRHYXRld2F5UmVzcG9uc2UiA5ACARJrChBTZXRHYXRld2F5Q2xvc2VkEioudmVydHJhLmNvbnNvbGUudjEuU2V0R2F0ZXdheUNsb3NlZFJlcXVlc3QaKy52ZXJ0cmEuY29uc29sZS52MS5TZXRHYXRld2F5Q2xvc2VkUmVzcG9uc2ViBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message vertra.console.v1.ApiProduct
@@ -178,6 +178,25 @@ export type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
    * @generated from field: google.protobuf.Timestamp problem_found_at = 26;
    */
   problemFoundAt?: Timestamp | undefined;
+
+  /**
+   * Each team its api.yaml names a limit for, requests a minute; every
+   * other team it's shared with gets default_per_minute: api.yaml's
+   * default, else (default_from_gateway) the gateway's own.
+   *
+   * @generated from field: repeated vertra.console.v1.TeamLimit limits = 27;
+   */
+  limits: TeamLimit[];
+
+  /**
+   * @generated from field: int32 default_per_minute = 28;
+   */
+  defaultPerMinute: number;
+
+  /**
+   * @generated from field: bool default_from_gateway = 29;
+   */
+  defaultFromGateway: boolean;
 };
 
 /**
@@ -186,6 +205,28 @@ export type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
  */
 export const ApiProductSchema: GenMessage<ApiProduct> = /*@__PURE__*/
   messageDesc(file_vertra_console_v1_api, 0);
+
+/**
+ * @generated from message vertra.console.v1.TeamLimit
+ */
+export type TeamLimit = Message<"vertra.console.v1.TeamLimit"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: int32 per_minute = 2;
+   */
+  perMinute: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamLimit.
+ * Use `create(TeamLimitSchema)` to create a new message.
+ */
+export const TeamLimitSchema: GenMessage<TeamLimit> = /*@__PURE__*/
+  messageDesc(file_vertra_console_v1_api, 1);
 
 /**
  * @generated from message vertra.console.v1.ApiEndpoint
@@ -216,7 +257,7 @@ export type ApiEndpoint = Message<"vertra.console.v1.ApiEndpoint"> & {
  * Use `create(ApiEndpointSchema)` to create a new message.
  */
 export const ApiEndpointSchema: GenMessage<ApiEndpoint> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 1);
+  messageDesc(file_vertra_console_v1_api, 2);
 
 /**
  * @generated from message vertra.console.v1.ListApisRequest
@@ -229,7 +270,7 @@ export type ListApisRequest = Message<"vertra.console.v1.ListApisRequest"> & {
  * Use `create(ListApisRequestSchema)` to create a new message.
  */
 export const ListApisRequestSchema: GenMessage<ListApisRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 2);
+  messageDesc(file_vertra_console_v1_api, 3);
 
 /**
  * @generated from message vertra.console.v1.ListApisResponse
@@ -246,7 +287,7 @@ export type ListApisResponse = Message<"vertra.console.v1.ListApisResponse"> & {
  * Use `create(ListApisResponseSchema)` to create a new message.
  */
 export const ListApisResponseSchema: GenMessage<ListApisResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 3);
+  messageDesc(file_vertra_console_v1_api, 4);
 
 /**
  * @generated from message vertra.console.v1.GetApiRequest
@@ -268,7 +309,7 @@ export type GetApiRequest = Message<"vertra.console.v1.GetApiRequest"> & {
  * Use `create(GetApiRequestSchema)` to create a new message.
  */
 export const GetApiRequestSchema: GenMessage<GetApiRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 4);
+  messageDesc(file_vertra_console_v1_api, 5);
 
 /**
  * @generated from message vertra.console.v1.GetApiResponse
@@ -292,7 +333,7 @@ export type GetApiResponse = Message<"vertra.console.v1.GetApiResponse"> & {
  * Use `create(GetApiResponseSchema)` to create a new message.
  */
 export const GetApiResponseSchema: GenMessage<GetApiResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 5);
+  messageDesc(file_vertra_console_v1_api, 6);
 
 /**
  * @generated from message vertra.console.v1.PauseApiRequest
@@ -321,7 +362,7 @@ export type PauseApiRequest = Message<"vertra.console.v1.PauseApiRequest"> & {
  * Use `create(PauseApiRequestSchema)` to create a new message.
  */
 export const PauseApiRequestSchema: GenMessage<PauseApiRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 6);
+  messageDesc(file_vertra_console_v1_api, 7);
 
 /**
  * @generated from message vertra.console.v1.PauseApiResponse
@@ -334,7 +375,7 @@ export type PauseApiResponse = Message<"vertra.console.v1.PauseApiResponse"> & {
  * Use `create(PauseApiResponseSchema)` to create a new message.
  */
 export const PauseApiResponseSchema: GenMessage<PauseApiResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 7);
+  messageDesc(file_vertra_console_v1_api, 8);
 
 /**
  * @generated from message vertra.console.v1.ResumeApiRequest
@@ -356,7 +397,7 @@ export type ResumeApiRequest = Message<"vertra.console.v1.ResumeApiRequest"> & {
  * Use `create(ResumeApiRequestSchema)` to create a new message.
  */
 export const ResumeApiRequestSchema: GenMessage<ResumeApiRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 8);
+  messageDesc(file_vertra_console_v1_api, 9);
 
 /**
  * @generated from message vertra.console.v1.ResumeApiResponse
@@ -369,7 +410,7 @@ export type ResumeApiResponse = Message<"vertra.console.v1.ResumeApiResponse"> &
  * Use `create(ResumeApiResponseSchema)` to create a new message.
  */
 export const ResumeApiResponseSchema: GenMessage<ResumeApiResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 9);
+  messageDesc(file_vertra_console_v1_api, 10);
 
 /**
  * @generated from message vertra.console.v1.GetApiTrafficRequest
@@ -398,7 +439,7 @@ export type GetApiTrafficRequest = Message<"vertra.console.v1.GetApiTrafficReque
  * Use `create(GetApiTrafficRequestSchema)` to create a new message.
  */
 export const GetApiTrafficRequestSchema: GenMessage<GetApiTrafficRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 10);
+  messageDesc(file_vertra_console_v1_api, 11);
 
 /**
  * @generated from message vertra.console.v1.GetApiTrafficResponse
@@ -448,7 +489,7 @@ export type GetApiTrafficResponse = Message<"vertra.console.v1.GetApiTrafficResp
  * Use `create(GetApiTrafficResponseSchema)` to create a new message.
  */
 export const GetApiTrafficResponseSchema: GenMessage<GetApiTrafficResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 11);
+  messageDesc(file_vertra_console_v1_api, 12);
 
 /**
  * @generated from message vertra.console.v1.EndpointTraffic
@@ -496,7 +537,7 @@ export type EndpointTraffic = Message<"vertra.console.v1.EndpointTraffic"> & {
  * Use `create(EndpointTrafficSchema)` to create a new message.
  */
 export const EndpointTrafficSchema: GenMessage<EndpointTraffic> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 12);
+  messageDesc(file_vertra_console_v1_api, 13);
 
 /**
  * @generated from message vertra.console.v1.BlockedRequests
@@ -530,7 +571,7 @@ export type BlockedRequests = Message<"vertra.console.v1.BlockedRequests"> & {
  * Use `create(BlockedRequestsSchema)` to create a new message.
  */
 export const BlockedRequestsSchema: GenMessage<BlockedRequests> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 13);
+  messageDesc(file_vertra_console_v1_api, 14);
 
 /**
  * @generated from message vertra.console.v1.TeamTraffic
@@ -566,7 +607,7 @@ export type TeamTraffic = Message<"vertra.console.v1.TeamTraffic"> & {
  * Use `create(TeamTrafficSchema)` to create a new message.
  */
 export const TeamTrafficSchema: GenMessage<TeamTraffic> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 14);
+  messageDesc(file_vertra_console_v1_api, 15);
 
 /**
  * @generated from message vertra.console.v1.GetGatewayRequest
@@ -579,7 +620,7 @@ export type GetGatewayRequest = Message<"vertra.console.v1.GetGatewayRequest"> &
  * Use `create(GetGatewayRequestSchema)` to create a new message.
  */
 export const GetGatewayRequestSchema: GenMessage<GetGatewayRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 15);
+  messageDesc(file_vertra_console_v1_api, 16);
 
 /**
  * @generated from message vertra.console.v1.GetGatewayResponse
@@ -650,7 +691,7 @@ export type GetGatewayResponse = Message<"vertra.console.v1.GetGatewayResponse">
  * Use `create(GetGatewayResponseSchema)` to create a new message.
  */
 export const GetGatewayResponseSchema: GenMessage<GetGatewayResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 16);
+  messageDesc(file_vertra_console_v1_api, 17);
 
 /**
  * @generated from message vertra.console.v1.RefusedRequests
@@ -682,7 +723,7 @@ export type RefusedRequests = Message<"vertra.console.v1.RefusedRequests"> & {
  * Use `create(RefusedRequestsSchema)` to create a new message.
  */
 export const RefusedRequestsSchema: GenMessage<RefusedRequests> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 17);
+  messageDesc(file_vertra_console_v1_api, 18);
 
 /**
  * @generated from message vertra.console.v1.SetGatewayClosedRequest
@@ -701,7 +742,7 @@ export type SetGatewayClosedRequest = Message<"vertra.console.v1.SetGatewayClose
  * Use `create(SetGatewayClosedRequestSchema)` to create a new message.
  */
 export const SetGatewayClosedRequestSchema: GenMessage<SetGatewayClosedRequest> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 18);
+  messageDesc(file_vertra_console_v1_api, 19);
 
 /**
  * @generated from message vertra.console.v1.SetGatewayClosedResponse
@@ -714,7 +755,7 @@ export type SetGatewayClosedResponse = Message<"vertra.console.v1.SetGatewayClos
  * Use `create(SetGatewayClosedResponseSchema)` to create a new message.
  */
 export const SetGatewayClosedResponseSchema: GenMessage<SetGatewayClosedResponse> = /*@__PURE__*/
-  messageDesc(file_vertra_console_v1_api, 19);
+  messageDesc(file_vertra_console_v1_api, 20);
 
 /**
  * @generated from enum vertra.console.v1.ApiState

@@ -175,6 +175,25 @@ export declare type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
    * @generated from field: google.protobuf.Timestamp problem_found_at = 26;
    */
   problemFoundAt?: Timestamp | undefined;
+
+  /**
+   * Each team its api.yaml names a limit for, requests a minute; every
+   * other team it's shared with gets default_per_minute: api.yaml's
+   * default, else (default_from_gateway) the gateway's own.
+   *
+   * @generated from field: repeated vertra.console.v1.TeamLimit limits = 27;
+   */
+  limits: TeamLimit[];
+
+  /**
+   * @generated from field: int32 default_per_minute = 28;
+   */
+  defaultPerMinute: number;
+
+  /**
+   * @generated from field: bool default_from_gateway = 29;
+   */
+  defaultFromGateway: boolean;
 };
 
 /**
@@ -182,6 +201,27 @@ export declare type ApiProduct = Message<"vertra.console.v1.ApiProduct"> & {
  * Use `create(ApiProductSchema)` to create a new message.
  */
 export declare const ApiProductSchema: GenMessage<ApiProduct>;
+
+/**
+ * @generated from message vertra.console.v1.TeamLimit
+ */
+export declare type TeamLimit = Message<"vertra.console.v1.TeamLimit"> & {
+  /**
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: int32 per_minute = 2;
+   */
+  perMinute: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamLimit.
+ * Use `create(TeamLimitSchema)` to create a new message.
+ */
+export declare const TeamLimitSchema: GenMessage<TeamLimit>;
 
 /**
  * @generated from message vertra.console.v1.ApiEndpoint

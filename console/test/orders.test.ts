@@ -308,6 +308,11 @@ describe("PlaceOrder", () => {
     ]);
     const [run] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.executionId, placed.body.executionId));
     expect(run).toMatchObject({ template: "order", onBehalfOf: team, templateParameters: { actions: [`${team}-bucket-create`] } });
+    // Each planned step's product, the one the plan added marked: for the run's page.
+    expect((run?.templateParameters as { steps?: unknown } | null)?.steps).toEqual([
+      { id: "project", product: `${team}-project-create`, added: true },
+      { id: "bucket", product: `${team}-bucket-create`, added: false },
+    ]);
   });
 
   it("is refused while a choice is unmade, and uses what's already there once chosen", async () => {
@@ -335,6 +340,9 @@ describe("PlaceOrder", () => {
       });
       expect(placed.code).toBe("ok");
       expect(lastDag().tasks).toMatchObject([{ id: "bucket", inputs: { project: `${prefix}-existing` } }]);
+      // The run's page reads the chosen resource by its id.
+      const chosen = await call<{ resources?: { id: string; externalId: string }[] }>(token, "ResourceService/ListResources", { ids: [made?.id] });
+      expect(chosen.body.resources?.map((r) => r.externalId)).toEqual([`${prefix}-existing`]);
     } finally {
       await db.delete(resources).where(like(resources.externalId, `${prefix}-%`));
     }

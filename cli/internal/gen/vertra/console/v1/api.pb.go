@@ -131,8 +131,14 @@ type ApiProduct struct {
 	// Unavailable: what the gateway found, and when.
 	Problem        string                 `protobuf:"bytes,25,opt,name=problem,proto3" json:"problem,omitempty"`
 	ProblemFoundAt *timestamppb.Timestamp `protobuf:"bytes,26,opt,name=problem_found_at,json=problemFoundAt,proto3" json:"problem_found_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Each team its api.yaml names a limit for, requests a minute; every
+	// other team it's shared with gets default_per_minute: api.yaml's
+	// default, else (default_from_gateway) the gateway's own.
+	Limits             []*TeamLimit `protobuf:"bytes,27,rep,name=limits,proto3" json:"limits,omitempty"`
+	DefaultPerMinute   int32        `protobuf:"varint,28,opt,name=default_per_minute,json=defaultPerMinute,proto3" json:"default_per_minute,omitempty"`
+	DefaultFromGateway bool         `protobuf:"varint,29,opt,name=default_from_gateway,json=defaultFromGateway,proto3" json:"default_from_gateway,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ApiProduct) Reset() {
@@ -347,6 +353,79 @@ func (x *ApiProduct) GetProblemFoundAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ApiProduct) GetLimits() []*TeamLimit {
+	if x != nil {
+		return x.Limits
+	}
+	return nil
+}
+
+func (x *ApiProduct) GetDefaultPerMinute() int32 {
+	if x != nil {
+		return x.DefaultPerMinute
+	}
+	return 0
+}
+
+func (x *ApiProduct) GetDefaultFromGateway() bool {
+	if x != nil {
+		return x.DefaultFromGateway
+	}
+	return false
+}
+
+type TeamLimit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Team          string                 `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	PerMinute     int32                  `protobuf:"varint,2,opt,name=per_minute,json=perMinute,proto3" json:"per_minute,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamLimit) Reset() {
+	*x = TeamLimit{}
+	mi := &file_vertra_console_v1_api_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamLimit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamLimit) ProtoMessage() {}
+
+func (x *TeamLimit) ProtoReflect() protoreflect.Message {
+	mi := &file_vertra_console_v1_api_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamLimit.ProtoReflect.Descriptor instead.
+func (*TeamLimit) Descriptor() ([]byte, []int) {
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *TeamLimit) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *TeamLimit) GetPerMinute() int32 {
+	if x != nil {
+		return x.PerMinute
+	}
+	return 0
+}
+
 type ApiEndpoint struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GET, POST and so on.
@@ -360,7 +439,7 @@ type ApiEndpoint struct {
 
 func (x *ApiEndpoint) Reset() {
 	*x = ApiEndpoint{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +451,7 @@ func (x *ApiEndpoint) String() string {
 func (*ApiEndpoint) ProtoMessage() {}
 
 func (x *ApiEndpoint) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[1]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +464,7 @@ func (x *ApiEndpoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApiEndpoint.ProtoReflect.Descriptor instead.
 func (*ApiEndpoint) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{1}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ApiEndpoint) GetMethod() string {
@@ -417,7 +496,7 @@ type ListApisRequest struct {
 
 func (x *ListApisRequest) Reset() {
 	*x = ListApisRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -429,7 +508,7 @@ func (x *ListApisRequest) String() string {
 func (*ListApisRequest) ProtoMessage() {}
 
 func (x *ListApisRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[2]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -442,7 +521,7 @@ func (x *ListApisRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListApisRequest.ProtoReflect.Descriptor instead.
 func (*ListApisRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{2}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{3}
 }
 
 type ListApisResponse struct {
@@ -454,7 +533,7 @@ type ListApisResponse struct {
 
 func (x *ListApisResponse) Reset() {
 	*x = ListApisResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +545,7 @@ func (x *ListApisResponse) String() string {
 func (*ListApisResponse) ProtoMessage() {}
 
 func (x *ListApisResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[3]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +558,7 @@ func (x *ListApisResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListApisResponse.ProtoReflect.Descriptor instead.
 func (*ListApisResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{3}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListApisResponse) GetApis() []*ApiProduct {
@@ -499,7 +578,7 @@ type GetApiRequest struct {
 
 func (x *GetApiRequest) Reset() {
 	*x = GetApiRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -511,7 +590,7 @@ func (x *GetApiRequest) String() string {
 func (*GetApiRequest) ProtoMessage() {}
 
 func (x *GetApiRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[4]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -524,7 +603,7 @@ func (x *GetApiRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetApiRequest.ProtoReflect.Descriptor instead.
 func (*GetApiRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{4}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetApiRequest) GetTeam() string {
@@ -552,7 +631,7 @@ type GetApiResponse struct {
 
 func (x *GetApiResponse) Reset() {
 	*x = GetApiResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -564,7 +643,7 @@ func (x *GetApiResponse) String() string {
 func (*GetApiResponse) ProtoMessage() {}
 
 func (x *GetApiResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[5]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -577,7 +656,7 @@ func (x *GetApiResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetApiResponse.ProtoReflect.Descriptor instead.
 func (*GetApiResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{5}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetApiResponse) GetApi() *ApiProduct {
@@ -606,7 +685,7 @@ type PauseApiRequest struct {
 
 func (x *PauseApiRequest) Reset() {
 	*x = PauseApiRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -618,7 +697,7 @@ func (x *PauseApiRequest) String() string {
 func (*PauseApiRequest) ProtoMessage() {}
 
 func (x *PauseApiRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[6]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -631,7 +710,7 @@ func (x *PauseApiRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseApiRequest.ProtoReflect.Descriptor instead.
 func (*PauseApiRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{6}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *PauseApiRequest) GetTeam() string {
@@ -663,7 +742,7 @@ type PauseApiResponse struct {
 
 func (x *PauseApiResponse) Reset() {
 	*x = PauseApiResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +754,7 @@ func (x *PauseApiResponse) String() string {
 func (*PauseApiResponse) ProtoMessage() {}
 
 func (x *PauseApiResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[7]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +767,7 @@ func (x *PauseApiResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseApiResponse.ProtoReflect.Descriptor instead.
 func (*PauseApiResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{7}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{8}
 }
 
 type ResumeApiRequest struct {
@@ -701,7 +780,7 @@ type ResumeApiRequest struct {
 
 func (x *ResumeApiRequest) Reset() {
 	*x = ResumeApiRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +792,7 @@ func (x *ResumeApiRequest) String() string {
 func (*ResumeApiRequest) ProtoMessage() {}
 
 func (x *ResumeApiRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[8]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +805,7 @@ func (x *ResumeApiRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeApiRequest.ProtoReflect.Descriptor instead.
 func (*ResumeApiRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{8}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ResumeApiRequest) GetTeam() string {
@@ -751,7 +830,7 @@ type ResumeApiResponse struct {
 
 func (x *ResumeApiResponse) Reset() {
 	*x = ResumeApiResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +842,7 @@ func (x *ResumeApiResponse) String() string {
 func (*ResumeApiResponse) ProtoMessage() {}
 
 func (x *ResumeApiResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[9]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +855,7 @@ func (x *ResumeApiResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeApiResponse.ProtoReflect.Descriptor instead.
 func (*ResumeApiResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{9}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{10}
 }
 
 type GetApiTrafficRequest struct {
@@ -791,7 +870,7 @@ type GetApiTrafficRequest struct {
 
 func (x *GetApiTrafficRequest) Reset() {
 	*x = GetApiTrafficRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +882,7 @@ func (x *GetApiTrafficRequest) String() string {
 func (*GetApiTrafficRequest) ProtoMessage() {}
 
 func (x *GetApiTrafficRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[10]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +895,7 @@ func (x *GetApiTrafficRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetApiTrafficRequest.ProtoReflect.Descriptor instead.
 func (*GetApiTrafficRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{10}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetApiTrafficRequest) GetTeam() string {
@@ -857,7 +936,7 @@ type GetApiTrafficResponse struct {
 
 func (x *GetApiTrafficResponse) Reset() {
 	*x = GetApiTrafficResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -869,7 +948,7 @@ func (x *GetApiTrafficResponse) String() string {
 func (*GetApiTrafficResponse) ProtoMessage() {}
 
 func (x *GetApiTrafficResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[11]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -882,7 +961,7 @@ func (x *GetApiTrafficResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetApiTrafficResponse.ProtoReflect.Descriptor instead.
 func (*GetApiTrafficResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{11}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetApiTrafficResponse) GetRequests() int64 {
@@ -951,7 +1030,7 @@ type EndpointTraffic struct {
 
 func (x *EndpointTraffic) Reset() {
 	*x = EndpointTraffic{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -963,7 +1042,7 @@ func (x *EndpointTraffic) String() string {
 func (*EndpointTraffic) ProtoMessage() {}
 
 func (x *EndpointTraffic) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[12]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -976,7 +1055,7 @@ func (x *EndpointTraffic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndpointTraffic.ProtoReflect.Descriptor instead.
 func (*EndpointTraffic) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{12}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *EndpointTraffic) GetEndpoint() string {
@@ -1034,7 +1113,7 @@ type BlockedRequests struct {
 
 func (x *BlockedRequests) Reset() {
 	*x = BlockedRequests{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1046,7 +1125,7 @@ func (x *BlockedRequests) String() string {
 func (*BlockedRequests) ProtoMessage() {}
 
 func (x *BlockedRequests) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[13]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1059,7 +1138,7 @@ func (x *BlockedRequests) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockedRequests.ProtoReflect.Descriptor instead.
 func (*BlockedRequests) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{13}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *BlockedRequests) GetRequest() string {
@@ -1104,7 +1183,7 @@ type TeamTraffic struct {
 
 func (x *TeamTraffic) Reset() {
 	*x = TeamTraffic{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1116,7 +1195,7 @@ func (x *TeamTraffic) String() string {
 func (*TeamTraffic) ProtoMessage() {}
 
 func (x *TeamTraffic) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[14]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1129,7 +1208,7 @@ func (x *TeamTraffic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamTraffic.ProtoReflect.Descriptor instead.
 func (*TeamTraffic) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{14}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TeamTraffic) GetTeam() string {
@@ -1168,7 +1247,7 @@ type GetGatewayRequest struct {
 
 func (x *GetGatewayRequest) Reset() {
 	*x = GetGatewayRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1259,7 @@ func (x *GetGatewayRequest) String() string {
 func (*GetGatewayRequest) ProtoMessage() {}
 
 func (x *GetGatewayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[15]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1272,7 @@ func (x *GetGatewayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGatewayRequest.ProtoReflect.Descriptor instead.
 func (*GetGatewayRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{15}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{16}
 }
 
 type GetGatewayResponse struct {
@@ -1217,7 +1296,7 @@ type GetGatewayResponse struct {
 
 func (x *GetGatewayResponse) Reset() {
 	*x = GetGatewayResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1229,7 +1308,7 @@ func (x *GetGatewayResponse) String() string {
 func (*GetGatewayResponse) ProtoMessage() {}
 
 func (x *GetGatewayResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[16]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1242,7 +1321,7 @@ func (x *GetGatewayResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGatewayResponse.ProtoReflect.Descriptor instead.
 func (*GetGatewayResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{16}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetGatewayResponse) GetEnabled() bool {
@@ -1336,7 +1415,7 @@ type RefusedRequests struct {
 
 func (x *RefusedRequests) Reset() {
 	*x = RefusedRequests{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1348,7 +1427,7 @@ func (x *RefusedRequests) String() string {
 func (*RefusedRequests) ProtoMessage() {}
 
 func (x *RefusedRequests) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[17]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1361,7 +1440,7 @@ func (x *RefusedRequests) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefusedRequests.ProtoReflect.Descriptor instead.
 func (*RefusedRequests) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{17}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RefusedRequests) GetOutcome() string {
@@ -1395,7 +1474,7 @@ type SetGatewayClosedRequest struct {
 
 func (x *SetGatewayClosedRequest) Reset() {
 	*x = SetGatewayClosedRequest{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[18]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1407,7 +1486,7 @@ func (x *SetGatewayClosedRequest) String() string {
 func (*SetGatewayClosedRequest) ProtoMessage() {}
 
 func (x *SetGatewayClosedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[18]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1420,7 +1499,7 @@ func (x *SetGatewayClosedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetGatewayClosedRequest.ProtoReflect.Descriptor instead.
 func (*SetGatewayClosedRequest) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{18}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SetGatewayClosedRequest) GetMessage() string {
@@ -1438,7 +1517,7 @@ type SetGatewayClosedResponse struct {
 
 func (x *SetGatewayClosedResponse) Reset() {
 	*x = SetGatewayClosedResponse{}
-	mi := &file_vertra_console_v1_api_proto_msgTypes[19]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1450,7 +1529,7 @@ func (x *SetGatewayClosedResponse) String() string {
 func (*SetGatewayClosedResponse) ProtoMessage() {}
 
 func (x *SetGatewayClosedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_vertra_console_v1_api_proto_msgTypes[19]
+	mi := &file_vertra_console_v1_api_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1463,14 +1542,14 @@ func (x *SetGatewayClosedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetGatewayClosedResponse.ProtoReflect.Descriptor instead.
 func (*SetGatewayClosedResponse) Descriptor() ([]byte, []int) {
-	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{19}
+	return file_vertra_console_v1_api_proto_rawDescGZIP(), []int{20}
 }
 
 var File_vertra_console_v1_api_proto protoreflect.FileDescriptor
 
 const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\n" +
-	"\x1bvertra/console/v1/api.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x99\a\n" +
+	"\x1bvertra/console/v1/api.proto\x12\x11vertra.console.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaf\b\n" +
 	"\n" +
 	"ApiProduct\x12\x12\n" +
 	"\x04team\x18\x01 \x01(\tR\x04team\x12\x12\n" +
@@ -1508,7 +1587,14 @@ const file_vertra_console_v1_api_proto_rawDesc = "" +
 	"\fspec_version\x18\x17 \x01(\tR\vspecVersion\x12+\n" +
 	"\x12ask_for_access_url\x18\x18 \x01(\tR\x0faskForAccessUrl\x12\x18\n" +
 	"\aproblem\x18\x19 \x01(\tR\aproblem\x12D\n" +
-	"\x10problem_found_at\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\x0eproblemFoundAt\"S\n" +
+	"\x10problem_found_at\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\x0eproblemFoundAt\x124\n" +
+	"\x06limits\x18\x1b \x03(\v2\x1c.vertra.console.v1.TeamLimitR\x06limits\x12,\n" +
+	"\x12default_per_minute\x18\x1c \x01(\x05R\x10defaultPerMinute\x120\n" +
+	"\x14default_from_gateway\x18\x1d \x01(\bR\x12defaultFromGateway\">\n" +
+	"\tTeamLimit\x12\x12\n" +
+	"\x04team\x18\x01 \x01(\tR\x04team\x12\x1d\n" +
+	"\n" +
+	"per_minute\x18\x02 \x01(\x05R\tperMinute\"S\n" +
 	"\vApiEndpoint\x12\x16\n" +
 	"\x06method\x18\x01 \x01(\tR\x06method\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x18\n" +
@@ -1616,62 +1702,64 @@ func file_vertra_console_v1_api_proto_rawDescGZIP() []byte {
 }
 
 var file_vertra_console_v1_api_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_vertra_console_v1_api_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_vertra_console_v1_api_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_vertra_console_v1_api_proto_goTypes = []any{
 	(ApiState)(0),                    // 0: vertra.console.v1.ApiState
 	(*ApiProduct)(nil),               // 1: vertra.console.v1.ApiProduct
-	(*ApiEndpoint)(nil),              // 2: vertra.console.v1.ApiEndpoint
-	(*ListApisRequest)(nil),          // 3: vertra.console.v1.ListApisRequest
-	(*ListApisResponse)(nil),         // 4: vertra.console.v1.ListApisResponse
-	(*GetApiRequest)(nil),            // 5: vertra.console.v1.GetApiRequest
-	(*GetApiResponse)(nil),           // 6: vertra.console.v1.GetApiResponse
-	(*PauseApiRequest)(nil),          // 7: vertra.console.v1.PauseApiRequest
-	(*PauseApiResponse)(nil),         // 8: vertra.console.v1.PauseApiResponse
-	(*ResumeApiRequest)(nil),         // 9: vertra.console.v1.ResumeApiRequest
-	(*ResumeApiResponse)(nil),        // 10: vertra.console.v1.ResumeApiResponse
-	(*GetApiTrafficRequest)(nil),     // 11: vertra.console.v1.GetApiTrafficRequest
-	(*GetApiTrafficResponse)(nil),    // 12: vertra.console.v1.GetApiTrafficResponse
-	(*EndpointTraffic)(nil),          // 13: vertra.console.v1.EndpointTraffic
-	(*BlockedRequests)(nil),          // 14: vertra.console.v1.BlockedRequests
-	(*TeamTraffic)(nil),              // 15: vertra.console.v1.TeamTraffic
-	(*GetGatewayRequest)(nil),        // 16: vertra.console.v1.GetGatewayRequest
-	(*GetGatewayResponse)(nil),       // 17: vertra.console.v1.GetGatewayResponse
-	(*RefusedRequests)(nil),          // 18: vertra.console.v1.RefusedRequests
-	(*SetGatewayClosedRequest)(nil),  // 19: vertra.console.v1.SetGatewayClosedRequest
-	(*SetGatewayClosedResponse)(nil), // 20: vertra.console.v1.SetGatewayClosedResponse
-	(*timestamppb.Timestamp)(nil),    // 21: google.protobuf.Timestamp
+	(*TeamLimit)(nil),                // 2: vertra.console.v1.TeamLimit
+	(*ApiEndpoint)(nil),              // 3: vertra.console.v1.ApiEndpoint
+	(*ListApisRequest)(nil),          // 4: vertra.console.v1.ListApisRequest
+	(*ListApisResponse)(nil),         // 5: vertra.console.v1.ListApisResponse
+	(*GetApiRequest)(nil),            // 6: vertra.console.v1.GetApiRequest
+	(*GetApiResponse)(nil),           // 7: vertra.console.v1.GetApiResponse
+	(*PauseApiRequest)(nil),          // 8: vertra.console.v1.PauseApiRequest
+	(*PauseApiResponse)(nil),         // 9: vertra.console.v1.PauseApiResponse
+	(*ResumeApiRequest)(nil),         // 10: vertra.console.v1.ResumeApiRequest
+	(*ResumeApiResponse)(nil),        // 11: vertra.console.v1.ResumeApiResponse
+	(*GetApiTrafficRequest)(nil),     // 12: vertra.console.v1.GetApiTrafficRequest
+	(*GetApiTrafficResponse)(nil),    // 13: vertra.console.v1.GetApiTrafficResponse
+	(*EndpointTraffic)(nil),          // 14: vertra.console.v1.EndpointTraffic
+	(*BlockedRequests)(nil),          // 15: vertra.console.v1.BlockedRequests
+	(*TeamTraffic)(nil),              // 16: vertra.console.v1.TeamTraffic
+	(*GetGatewayRequest)(nil),        // 17: vertra.console.v1.GetGatewayRequest
+	(*GetGatewayResponse)(nil),       // 18: vertra.console.v1.GetGatewayResponse
+	(*RefusedRequests)(nil),          // 19: vertra.console.v1.RefusedRequests
+	(*SetGatewayClosedRequest)(nil),  // 20: vertra.console.v1.SetGatewayClosedRequest
+	(*SetGatewayClosedResponse)(nil), // 21: vertra.console.v1.SetGatewayClosedResponse
+	(*timestamppb.Timestamp)(nil),    // 22: google.protobuf.Timestamp
 }
 var file_vertra_console_v1_api_proto_depIdxs = []int32{
 	0,  // 0: vertra.console.v1.ApiProduct.state:type_name -> vertra.console.v1.ApiState
-	2,  // 1: vertra.console.v1.ApiProduct.endpoints:type_name -> vertra.console.v1.ApiEndpoint
-	21, // 2: vertra.console.v1.ApiProduct.problem_found_at:type_name -> google.protobuf.Timestamp
-	1,  // 3: vertra.console.v1.ListApisResponse.apis:type_name -> vertra.console.v1.ApiProduct
-	1,  // 4: vertra.console.v1.GetApiResponse.api:type_name -> vertra.console.v1.ApiProduct
-	13, // 5: vertra.console.v1.GetApiTrafficResponse.endpoints:type_name -> vertra.console.v1.EndpointTraffic
-	14, // 6: vertra.console.v1.GetApiTrafficResponse.blocked:type_name -> vertra.console.v1.BlockedRequests
-	15, // 7: vertra.console.v1.GetApiTrafficResponse.teams:type_name -> vertra.console.v1.TeamTraffic
-	21, // 8: vertra.console.v1.BlockedRequests.last:type_name -> google.protobuf.Timestamp
-	21, // 9: vertra.console.v1.GetGatewayResponse.closed_at:type_name -> google.protobuf.Timestamp
-	18, // 10: vertra.console.v1.GetGatewayResponse.refused:type_name -> vertra.console.v1.RefusedRequests
-	3,  // 11: vertra.console.v1.ApiService.ListApis:input_type -> vertra.console.v1.ListApisRequest
-	5,  // 12: vertra.console.v1.ApiService.GetApi:input_type -> vertra.console.v1.GetApiRequest
-	7,  // 13: vertra.console.v1.ApiService.PauseApi:input_type -> vertra.console.v1.PauseApiRequest
-	9,  // 14: vertra.console.v1.ApiService.ResumeApi:input_type -> vertra.console.v1.ResumeApiRequest
-	11, // 15: vertra.console.v1.ApiService.GetApiTraffic:input_type -> vertra.console.v1.GetApiTrafficRequest
-	16, // 16: vertra.console.v1.ApiService.GetGateway:input_type -> vertra.console.v1.GetGatewayRequest
-	19, // 17: vertra.console.v1.ApiService.SetGatewayClosed:input_type -> vertra.console.v1.SetGatewayClosedRequest
-	4,  // 18: vertra.console.v1.ApiService.ListApis:output_type -> vertra.console.v1.ListApisResponse
-	6,  // 19: vertra.console.v1.ApiService.GetApi:output_type -> vertra.console.v1.GetApiResponse
-	8,  // 20: vertra.console.v1.ApiService.PauseApi:output_type -> vertra.console.v1.PauseApiResponse
-	10, // 21: vertra.console.v1.ApiService.ResumeApi:output_type -> vertra.console.v1.ResumeApiResponse
-	12, // 22: vertra.console.v1.ApiService.GetApiTraffic:output_type -> vertra.console.v1.GetApiTrafficResponse
-	17, // 23: vertra.console.v1.ApiService.GetGateway:output_type -> vertra.console.v1.GetGatewayResponse
-	20, // 24: vertra.console.v1.ApiService.SetGatewayClosed:output_type -> vertra.console.v1.SetGatewayClosedResponse
-	18, // [18:25] is the sub-list for method output_type
-	11, // [11:18] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	3,  // 1: vertra.console.v1.ApiProduct.endpoints:type_name -> vertra.console.v1.ApiEndpoint
+	22, // 2: vertra.console.v1.ApiProduct.problem_found_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: vertra.console.v1.ApiProduct.limits:type_name -> vertra.console.v1.TeamLimit
+	1,  // 4: vertra.console.v1.ListApisResponse.apis:type_name -> vertra.console.v1.ApiProduct
+	1,  // 5: vertra.console.v1.GetApiResponse.api:type_name -> vertra.console.v1.ApiProduct
+	14, // 6: vertra.console.v1.GetApiTrafficResponse.endpoints:type_name -> vertra.console.v1.EndpointTraffic
+	15, // 7: vertra.console.v1.GetApiTrafficResponse.blocked:type_name -> vertra.console.v1.BlockedRequests
+	16, // 8: vertra.console.v1.GetApiTrafficResponse.teams:type_name -> vertra.console.v1.TeamTraffic
+	22, // 9: vertra.console.v1.BlockedRequests.last:type_name -> google.protobuf.Timestamp
+	22, // 10: vertra.console.v1.GetGatewayResponse.closed_at:type_name -> google.protobuf.Timestamp
+	19, // 11: vertra.console.v1.GetGatewayResponse.refused:type_name -> vertra.console.v1.RefusedRequests
+	4,  // 12: vertra.console.v1.ApiService.ListApis:input_type -> vertra.console.v1.ListApisRequest
+	6,  // 13: vertra.console.v1.ApiService.GetApi:input_type -> vertra.console.v1.GetApiRequest
+	8,  // 14: vertra.console.v1.ApiService.PauseApi:input_type -> vertra.console.v1.PauseApiRequest
+	10, // 15: vertra.console.v1.ApiService.ResumeApi:input_type -> vertra.console.v1.ResumeApiRequest
+	12, // 16: vertra.console.v1.ApiService.GetApiTraffic:input_type -> vertra.console.v1.GetApiTrafficRequest
+	17, // 17: vertra.console.v1.ApiService.GetGateway:input_type -> vertra.console.v1.GetGatewayRequest
+	20, // 18: vertra.console.v1.ApiService.SetGatewayClosed:input_type -> vertra.console.v1.SetGatewayClosedRequest
+	5,  // 19: vertra.console.v1.ApiService.ListApis:output_type -> vertra.console.v1.ListApisResponse
+	7,  // 20: vertra.console.v1.ApiService.GetApi:output_type -> vertra.console.v1.GetApiResponse
+	9,  // 21: vertra.console.v1.ApiService.PauseApi:output_type -> vertra.console.v1.PauseApiResponse
+	11, // 22: vertra.console.v1.ApiService.ResumeApi:output_type -> vertra.console.v1.ResumeApiResponse
+	13, // 23: vertra.console.v1.ApiService.GetApiTraffic:output_type -> vertra.console.v1.GetApiTrafficResponse
+	18, // 24: vertra.console.v1.ApiService.GetGateway:output_type -> vertra.console.v1.GetGatewayResponse
+	21, // 25: vertra.console.v1.ApiService.SetGatewayClosed:output_type -> vertra.console.v1.SetGatewayClosedResponse
+	19, // [19:26] is the sub-list for method output_type
+	12, // [12:19] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_vertra_console_v1_api_proto_init() }
@@ -1685,7 +1773,7 @@ func file_vertra_console_v1_api_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vertra_console_v1_api_proto_rawDesc), len(file_vertra_console_v1_api_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

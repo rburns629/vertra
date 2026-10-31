@@ -292,6 +292,7 @@ A team's name is also its Kubernetes namespace; there is no separate column for 
 | `name` | text | no, unique | The team, and its namespace. |
 | `created_at` | timestamptz | no | |
 | `retired_at` | timestamptz | yes | Set when the team is retired: read-only, products unregistered. Clearing it brings the team back. |
+| `retired_by` | text | yes | Who retired it, as it was then: their email, or `the catalog` for a release that dropped it. Null while it isn't retired. |
 | `deleted_at` | timestamptz | yes | Set when a retired team is purged: memberships, grants and products are gone and the team is hidden, but the row stays so the name stays reserved. |
 | `from_catalog` | boolean | no | Made by a catalog release: retired when a release no longer names it. A team an admin made isn't touched. |
 | `require_sso` | boolean | no | Its members sign in with single sign-on only: their passwords, and sessions a password made, are refused (admins' aren't). No effect while single sign-on is off. |
