@@ -337,6 +337,6 @@ long it held each create, and when the API server gave up on one, so aim
 ## Next (TODO.md)
 
 On GKE and EKS: the client limits under a real API server, the scheduler's
-throttling log, container start-up on real nodes. Here: the `perf` workflow's first
-run (`.github/workflows/perf.yml`), whose results the weekly runs are then
-compared with. `perf/`'s own tests run in CI (2026-10-29).
+throttling log, container start-up on real nodes. Here: nothing left; the
+`perf` workflow (`.github/workflows/perf.yml`) compares each weekly run
+with its last. `perf/`'s own tests run in CI (2026-10-29).

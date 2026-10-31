@@ -43,7 +43,8 @@ Azure last.
    (2026-10-31, `perf/slowcreate/`: adopted by the retry; most the API
    server drops with the kernel); ~~building the per-team usage~~
    (2026-10-31, #52: Observe's Usage tab and the Teams page's cards, `console/src/core/usage.ts`);
-   left: the `perf` workflow's first run.
+   ~~the `perf` workflow's first run~~ (2026-10-31, after #55's Linux
+   fixes: 12 minutes, both scenarios correct).
 7. The billed proof run, one session per cloud, destroyed after (decided
    2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
    Service for Prometheus, the bundled Prometheus on a cloud volume, the
