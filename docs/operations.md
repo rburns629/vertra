@@ -1238,6 +1238,15 @@ those caps ([More than one copy](#sizes-sleeping-and-headroom)).
 
 ## Troubleshooting
 
+**Postgres was restarted or moved.** Nothing needs doing. The console and
+the gateway drop the closed connections and open new ones; the scheduler's
+passes fail and are retried from the database; every run carries on.
+Opening a connection is bounded (`databaseConnectTimeoutSeconds`, 10, in
+both charts), so one opened as Postgres's Pod is replaced fails after ten
+seconds, not after TCP's two minutes of retries. Seen on kind (2026-10-31,
+`perf/README.md`): deleting the kernel's Postgres Pod mid-run cost about
+ten seconds, and every run ended as expected.
+
 **The first admin's password is lost.** It's printed once, by the first
 migrate Job, and the next upgrade replaces that log. `vertra admin
 reset-password <env>` gives that admin (or `--email` another) a new random

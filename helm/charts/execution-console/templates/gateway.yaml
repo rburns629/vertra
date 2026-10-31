@@ -153,6 +153,8 @@ spec:
                   key: {{ include "execution-console.gatewayDatabaseSecretKey" . }}
             - name: DATABASE_MAX_CONNECTIONS
               value: {{ .Values.gateway.databaseMaxConnections | quote }}
+            - name: DATABASE_CONNECT_TIMEOUT_SECONDS
+              value: {{ .Values.databaseConnectTimeoutSeconds | quote }}
             - name: DATABASE_IAM_AUTH
               value: {{ .Values.database.iamAuth | quote }}
             - name: DATABASE_IAM_REGION

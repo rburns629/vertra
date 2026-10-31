@@ -31,9 +31,18 @@ Azure last.
    below), ~~policy-controller on EKS~~ (proven 2026-10-27), ~~a sample
    federating with its product token~~ (2026-10-31: the aws sample's
    `caller-identity`, seen on kind; proven in the billed run, below).
-6. The rest of the performance work (below): sustained and higher
-   scenarios, failure cases, API load through the console, and per-team
-   product usage and run counts (moved here from the redesign's gaps).
+6. The rest of the performance work (below): ~~sustained and higher
+   scenarios, Postgres and the API server going away, API load through the
+   console, where per-team usage comes from~~ (2026-10-31, phase 3,
+   `perf/README.md`: Postgres's restart crashed the console and stalled
+   everything two minutes, fixed in #50; one console serves about 115
+   reads a second; per-team usage from the console's runs, about 50 ms);
+   then cancelling as steps finish (clean), runs compared (`perf`'s
+   `compare`) and the `perf` workflow (by hand or weekly, compared with its
+   last run); left: a create that timed out but happened, seen for real
+   (tested, not reproduced: it needs a slowed API server), the `perf`
+   workflow's first run, and building the per-team usage (Teams page and
+   Observe).
 7. The billed proof run, one session per cloud, destroyed after (decided
    2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
    Service for Prometheus, the bundled Prometheus on a cloud volume, the

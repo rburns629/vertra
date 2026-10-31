@@ -21,6 +21,9 @@ type Settings struct {
 	DatabaseURL string
 	// Most connections it holds: each request checks who's calling there.
 	DatabaseMaxConnections int
+	// Longest opening a database connection may take: one opened just as
+	// Postgres's Pod is replaced would otherwise wait out TCP's retries.
+	DatabaseConnectTimeout time.Duration
 	// DatabaseIAMAuth signs in with its own cloud identity, no password:
 	// "gcp" (Cloud SQL's IAM database authentication), "aws" (Amazon RDS's,
 	// in DatabaseIAMRegion), or "".
@@ -83,6 +86,7 @@ func Load(getenv func(string) string) (*Settings, error) {
 	s := &Settings{
 		DatabaseURL:            need("DATABASE_URL"),
 		DatabaseMaxConnections: number("DATABASE_MAX_CONNECTIONS", 10),
+		DatabaseConnectTimeout: time.Duration(number("DATABASE_CONNECT_TIMEOUT_SECONDS", 10)) * time.Second,
 		DatabaseIAMAuth:        getenv("DATABASE_IAM_AUTH"),
 		DatabaseIAMRegion:      getenv("DATABASE_IAM_REGION"),
 		DatabaseIAMAccount:     getenv("DATABASE_IAM_ACCOUNT"),

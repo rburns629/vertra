@@ -55,6 +55,7 @@ func run(log *slog.Logger) error {
 	// Not pgx's default (the node's CPUs, at least 4), which would queue a
 	// burst of calls on a small node.
 	poolConfig.MaxConns = int32(max(s.DatabaseMaxConnections, 1))
+	poolConfig.ConnConfig.ConnectTimeout = s.DatabaseConnectTimeout
 	if s.DatabaseIAMAuth == "aws" {
 		// Its role's token for Amazon RDS, signed locally with its Pod
 		// Identity's credentials (the agent's address, which its

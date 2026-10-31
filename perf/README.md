@@ -77,7 +77,19 @@ Scenarios (starting points, not targets):
 
 Or `-scenario custom -shape single|chain|wide|fanout -dags N -steps N`.
 Also `-sleep-ms`, `-fail never|always|first-attempt`, `-concurrency`
-(submitters), `-rate` (submissions a second). Every workload is capped (500
+(submitters), `-rate` (submissions a second), and `-readers N`: N readers
+doing what people watching do, the Runs page (ListExecutions, 50 a page) and
+a run's page (GetExecution of one of this run's), while it goes, each
+read's time reported; and `-cancel-after D`: each run cancelled D after it
+was submitted (with `-sleep-ms` near it, as its steps finish), checked to
+end cancelled or succeeded with every step ended.
+
+`go run . compare <before.json> <after.json>` puts two runs' measures side
+by side and fails on a clear regression: a p50 or p95 time a quarter worse
+(and half a second), throughput a quarter lower, or the newer run
+incorrect. The `perf` workflow (by hand, or weekly) runs baseline and burst
+on a runner's own `vertra-perf` and compares each with its last successful
+run's. Every workload is capped (500
 DAGs, 50 steps, 5,000 steps in all; over 1,000 needs `-allow-large`). It
 refuses a cluster not named `vertra-perf*`, a console not on this machine,
 and a port-forward to any other cluster's console.
@@ -209,6 +221,90 @@ log could be, called the empty output a failed scan, and refused every run
 of the image for 15 minutes; the first attempt here measured nothing. The
 console now waits for a finished scan's output (up to five minutes), and a
 scan that can't be read says why.
+
+## Phase 3 (2026-10-31)
+
+The same machine and cluster, `main` at d08a465.
+
+**1. Steady at volume.** `sustained` (100 fan-outs of 10, 1,000 steps):
+301 s, 3.34 steps/s; `higher` (500 of them, 5,000 steps): 1,508 s, 3.32
+steps/s. Five times the work in five times the time: container start (7.1
+s, p50) and completion lag (4.4 s) didn't move, submissions held at 35 a
+second, and every run was correct. The node is still the limit.
+
+**2. Every run finishes near the end.** Ready steps are claimed oldest first
+across all runs, so the fan-outs advance together: `higher`'s median run took
+1,427 s of 1,508. Fair to everyone, but on a busy install even one small run
+waits behind all the others. Not changed: a choice, for later.
+
+**3. Postgres going away stalled everything for two minutes, and crashed
+the console.** The kernel's Postgres Pod deleted 25 s into `dependency` (10
+chains of 20):
+
+| | before | after |
+| --- | ---: | ---: |
+| wall (70 s without a failure) | 628 s | 75.5 s |
+| queue wait, p99 | 121 s | 11.2 s |
+| completion lag, p99 | 121 s | 11.3 s |
+| console | exited (code 1) | kept running |
+
+Every run ended correctly both times. The stall: a connection opened just
+as the Pod went had no connect timeout, so it waited out TCP's SYN retries
+(about 127 s), and the scheduler's pass with it. Each process now bounds it
+(`databaseConnectTimeoutSeconds`, 10). The crash: the console's pool raised
+an `error` for an idle connection Postgres closed, and nothing listened, so
+Node ended the process; it now logs it (`database_connection_lost`) and
+opens another.
+
+**4. The API server going away costs a little more than it was away.** Its
+static Pod's manifest moved off the node for 30 s (37 s down) during
+`dependency`: the median run took 130 s instead of 70, every run correct,
+nothing restarted. The scheduler logged each status it couldn't read and
+read it again the next pass. (`kubectl port-forward` dies with the API
+server, so the driver's wall time is longer than the run's.)
+
+**5. One console serves about 115 reads a second.** `burst` with readers:
+
+| readers | reads/s | list runs p50 / p99 | get a run p50 / p99 | submit p50 |
+| ---: | ---: | --- | --- | ---: |
+| 0 | | | | 236 ms |
+| 20 | 117 | 146 / 481 ms | 155 / 451 ms | 609 ms |
+| 60 | 112 | 518 / 979 ms | 444 / 1071 ms | 2078 ms |
+
+No read failed, and every run was correct. Three times the readers got no
+more reads through: the console's one Node process was at 100% of a core
+(kernel-api 15%, Postgres a few percent each). Its CPU profile under 60
+readers is flat: garbage collection 11%, building SQL (drizzle) about 12%,
+JSON encoding, the kernel client, socket writes; no one hot spot. So a busy
+install needs more console replicas (`replicaCount`), not a fix; a
+pipeline polling many runs a second competes with people for the same core.
+Not measured here with two replicas: a port-forward reaches one Pod.
+
+**6. Per-team usage is a cheap query on the console's own runs.** For the
+Teams page's per-team run counts and products used (moved here from the
+redesign's gaps): on the test database with 200,000 runs in a week, 80 teams,
+2 to 5 steps each, runs each team started took 48 ms; products each team
+used, every team at once, 177 ms (each run's steps' images, by repository);
+one team's, 25 ms. So they come from `submitted_executions` (`on_behalf_of`,
+`payload`'s steps), on every install, with no Prometheus: the all-teams one
+cached for a minute.
+
+**7. Cancelling as steps finish ends cleanly.** 60 single steps of 8 s, each
+run cancelled 12 s after it was submitted: all 60 ended cancelled, every
+step ended, and no Pod or Job was left 10 s later. 30 chains of 3 steps of
+3 s, cancelled at 9 s: all cancelled, 89 steps cancelled (those waiting
+behind the running one too), none left. A run is marked cancelled first and
+its steps are stopped after, within seconds (the driver waits for both). A
+step that finished as the cancel landed is recorded as it ended (succeeded)
+in a run that's cancelled: the record says what happened.
+
+**8. A create that timed out but happened** isn't reproduced here: a local
+API server answers within the kernel's one-second-or-more timeout. The path
+is tested: the scheduler retries the same attempt after a start that raised
+(`internal/scheduler/dispatch_test.go`), and its start adopts the Job
+already made under that attempt's name (`internal/executor/kubernetes_test.go`).
+Seeing it for real needs a slowed API server (a delaying webhook, or `tc`
+on the node).
 
 ## Next (TODO.md)
 

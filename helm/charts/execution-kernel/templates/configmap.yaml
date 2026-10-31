@@ -32,6 +32,7 @@ data:
   SCHEDULER_APPROVAL_TIMEOUT_SECONDS: {{ .Values.scheduler.approvalTimeoutSeconds | quote }}
   SCHEDULER_HEARTBEAT_FILE: {{ .Values.scheduler.heartbeatFile | quote }}
   DATABASE_COMMAND_TIMEOUT_SECONDS: {{ .Values.databaseCommandTimeoutSeconds | quote }}
+  DATABASE_CONNECT_TIMEOUT_SECONDS: {{ .Values.databaseConnectTimeoutSeconds | quote }}
   DATABASE_MAX_CONNECTIONS: {{ .Values.databaseMaxConnections | quote }}
   DATABASE_IAM_AUTH: {{ .Values.database.iamAuth | quote }}
   DATABASE_IAM_REGION: {{ .Values.database.region | quote }}

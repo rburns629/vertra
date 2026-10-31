@@ -37,6 +37,8 @@ type workload struct {
 	Concurrency int    `json:"concurrency"`
 	// Submissions a second, across every submitter; 0: as fast as they go.
 	Rate float64 `json:"rate"`
+	// Each run cancelled this long after it was submitted; 0: none are.
+	CancelAfterMs int `json:"cancelAfterMs,omitempty"`
 }
 
 // scenarios is the starting matrix (README.md): starting points, not targets.
