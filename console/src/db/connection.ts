@@ -13,7 +13,10 @@ import { gcpMetadataToken } from "../gcpMetadata.js";
 import { rdsTokens } from "./rds.js";
 
 export function poolConfig(max?: number): PoolConfig {
-  const pool = { ...(max ? { max } : {}) };
+  // A connection opened just as Postgres moves (its Pod replaced) would
+  // otherwise wait out TCP's retries, about two minutes, and every request
+  // needing one with it.
+  const pool = { ...(max ? { max } : {}), connectionTimeoutMillis: config.databaseConnectTimeoutSeconds * 1000 };
   if (config.databaseIamAuth === "") return { connectionString: config.databaseUrl, ...pool };
   // The URL parsed here, not given as connectionString: node-postgres
   // parses that over every other option, its empty password included,

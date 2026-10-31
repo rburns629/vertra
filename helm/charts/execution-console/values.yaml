@@ -18,6 +18,10 @@ replicaCount: 1
 # processes (the kernel's too, when they share a database) under
 # postgres.settings.max_connections.
 databasePoolSize: 10
+# -- Longest opening a database connection may take. One opened just as
+# Postgres's Pod is replaced would otherwise wait out TCP's retries (about two
+# minutes), and the requests needing it with it.
+databaseConnectTimeoutSeconds: 10
 
 # -- Copies on CPU load instead of replicaCount: a HorizontalPodAutoscaler
 # (the `auto` size, sizes/auto.yaml). Needs the cluster's metrics API

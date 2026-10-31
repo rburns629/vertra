@@ -13,7 +13,8 @@ describe("how the console connects to its database", () => {
   });
 
   it("uses the URL's password, unless signing in with its cloud identity", () => {
-    expect(poolConfig(7)).toEqual({ connectionString: config.databaseUrl, max: 7 });
+    // Opening a connection is bounded: one opened as Postgres moves fails in seconds, not minutes.
+    expect(poolConfig(7)).toEqual({ connectionString: config.databaseUrl, max: 7, connectionTimeoutMillis: 10_000 });
     (config as { databaseIamAuth: string }).databaseIamAuth = "gcp";
     // Each new connection asks for the token (kept until a minute before it
     // expires), and nothing parsed from the URL is left to replace it: a
@@ -22,6 +23,7 @@ describe("how the console connects to its database", () => {
     expect(iam.password).toBe(gcpMetadataToken);
     expect(iam.connectionString).toBeUndefined();
     expect(iam.max).toBe(7);
+    expect(iam.connectionTimeoutMillis).toBe(10_000);
     // As node-postgres merges them (connection-parameters.js).
     expect(Object.assign({}, iam).password).toBe(gcpMetadataToken);
   });
