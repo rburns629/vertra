@@ -89,7 +89,7 @@ by side and fails on a clear regression: a p50 or p95 time a quarter worse
 (and half a second), throughput a quarter lower, or the newer run
 incorrect. The `perf` workflow (by hand, or weekly) runs baseline and burst
 on a runner's own `vertra-perf` and compares each with its last successful
-run's. Its first run (2026-10-31, after #55 made `make quickstart`, `make
+run's. Its first successful run (2026-10-31, after #55 made `make quickstart`, `make
 up` and the driver's port-forward check work on Linux) took 12 minutes on
 a 4-CPU runner: baseline 2.5 s end to end at p50; burst 3.2 steps a
 second, 19 s end to end at p50; both correct. Every workload is capped (500
