@@ -53,10 +53,11 @@ interface Credential {
 
 const REQUEST_TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 60_000;
-/** An unanswered check (a timeout, a 5xx, a 401) is remembered only this
- * long: long enough that polling doesn't hammer a registry that's down,
- * short enough that one blip doesn't refuse a tag's submissions for a
- * minute (pinning refuses what it can't resolve). */
+/** A check that gave no digest (a timeout, a 5xx, a 401, a manifest with
+ * no digest header) is remembered only this long: long enough that polling
+ * doesn't hammer a registry that's down, short enough that one blip doesn't
+ * refuse a tag's submissions for a minute (pinning refuses what it can't
+ * resolve). */
 const UNANSWERED_TTL_MS = 5_000;
 const MANIFEST_TYPES = [
   "application/vnd.oci.image.index.v1+json",
@@ -215,7 +216,8 @@ const CACHE_MAX_ENTRIES = 1000;
 
 function remember(image: string, check: ImageCheck): void {
   const now = Date.now();
-  const ttl = check.status === "unverified" ? UNANSWERED_TTL_MS : CACHE_TTL_MS;
+  // "available" with no digest can't be pinned either: as short as unanswered.
+  const ttl = check.status === "missing" || check.digest ? CACHE_TTL_MS : UNANSWERED_TTL_MS;
   if (cache.size >= CACHE_MAX_ENTRIES) {
     for (const [key, entry] of cache) {
       if (entry.expiresAt <= now) cache.delete(key);

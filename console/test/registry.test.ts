@@ -151,7 +151,9 @@ describe("checkImage", () => {
       expect((await pinImages([tagged.ref], ALLOWED)).unresolved).toEqual([tagged.ref]);
       vi.stubGlobal("fetch", vi.fn(fakeRegistry));
       expect((await pinImages([tagged.ref], ALLOWED)).unresolved).toEqual([tagged.ref]); // still remembered
-      vi.setSystemTime(Date.now() + 6_000);
+      vi.setSystemTime(Date.now() + 4_000);
+      expect((await pinImages([tagged.ref], ALLOWED)).unresolved).toEqual([tagged.ref]);
+      vi.setSystemTime(Date.now() + 2_000);
       expect((await pinImages([tagged.ref], ALLOWED)).pinned.get(tagged.ref)).toBe(`${tagged.ref}@${DIGEST}`);
       vi.setSystemTime(Date.now() + 50_000);
       vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("timeout"))));
