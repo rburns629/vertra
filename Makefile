@@ -33,7 +33,9 @@ KUBECTL := kubectl --context $(KIND_CONTEXT)
 # started on another port is never mistaken for this one, or killed.
 PORT_FORWARD := $(KUBECTL) -n $(PLATFORM_NAMESPACE) port-forward svc/console-execution-console 18080:8080
 # What pgrep and pkill match it by: the bracket keeps it from matching itself
-# in the shell that runs them (Linux's don't skip their own ancestors).
+# in the shell that runs them (Linux's don't skip their own ancestors). A
+# recipe that also starts it writes it port-"forward", which the shell reads
+# the same but which keeps that recipe's own shell from matching.
 PORT_FORWARD_MATCH := $(subst port-forward,port-forwar[d],$(PORT_FORWARD))
 
 # kind's image source: a local registry, so kind runs images the same way
@@ -354,7 +356,7 @@ up:
 	@i=0; \
 	while ! curl -sf http://localhost:18080/health/ready > /dev/null 2>&1; do \
 		if ! pgrep -f "$(PORT_FORWARD_MATCH)" > /dev/null 2>&1; then \
-			nohup $(PORT_FORWARD) \
+			nohup $(subst port-forward,port-"forward",$(PORT_FORWARD)) \
 				> /tmp/vertra-port-forward.log 2>&1 & \
 		fi; \
 		i=$$((i + 1)); \
