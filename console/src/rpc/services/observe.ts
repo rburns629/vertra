@@ -6,6 +6,7 @@ import { Type } from "@sinclair/typebox";
 import { listAlerts } from "../../core/alerts.js";
 import { searchLogs, SearchLogsQuery, type SearchLogsInput } from "../../core/logs.js";
 import { getAuditCopy, getImageSbom, getMetrics, getSecurity, listAudit, ListAuditQuery } from "../../core/observe.js";
+import { getUsage } from "../../core/usage.js";
 import type { ObserveService } from "../../gen/vertra/console/v1/observe_pb.js";
 import { timestamp, unsetIfEmpty } from "../convert.js";
 import { callerOf } from "../context.js";
@@ -56,6 +57,15 @@ export function observeService(): ServiceImpl<typeof ObserveService> {
     async getMetrics(_req, ctx) {
       const m = await viaKernel(ctx, () => getMetrics(callerOf(ctx)));
       return { ...m, hours: m.hours.map((h) => ({ ...h, hour: timestamp(h.hour) })) };
+    },
+
+    async getUsage(req, ctx) {
+      const usage = await getUsage(callerOf(ctx), req.days || 7);
+      return {
+        ...usage,
+        since: timestamp(usage.since),
+        products: usage.products.map((p) => ({ ...p, lastUsed: timestamp(p.lastUsed) })),
+      };
     },
 
     async listAudit(req, ctx) {

@@ -306,6 +306,229 @@ export declare type GetMetricsResponse = Message<"vertra.console.v1.GetMetricsRe
 export declare const GetMetricsResponseSchema: GenMessage<GetMetricsResponse>;
 
 /**
+ * @generated from message vertra.console.v1.GetUsageRequest
+ */
+export declare type GetUsageRequest = Message<"vertra.console.v1.GetUsageRequest"> & {
+  /**
+   * 1, 7 or 30; 7 when unset.
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetUsageRequest.
+ * Use `create(GetUsageRequestSchema)` to create a new message.
+ */
+export declare const GetUsageRequestSchema: GenMessage<GetUsageRequest>;
+
+/**
+ * @generated from message vertra.console.v1.GetUsageResponse
+ */
+export declare type GetUsageResponse = Message<"vertra.console.v1.GetUsageResponse"> & {
+  /**
+   * Where the period starts.
+   *
+   * @generated from field: google.protobuf.Timestamp since = 1;
+   */
+  since?: Timestamp | undefined;
+
+  /**
+   * @generated from field: int32 days = 2;
+   */
+  days: number;
+
+  /**
+   * Busiest first.
+   *
+   * @generated from field: repeated vertra.console.v1.TeamUsage teams = 3;
+   */
+  teams: TeamUsage[];
+
+  /**
+   * Most used first.
+   *
+   * @generated from field: repeated vertra.console.v1.ProductUsage products = 4;
+   */
+  products: ProductUsage[];
+
+  /**
+   * The runs the caller sees counted once each, however many of the
+   * teams it counts for (a raw DAG across two counts for both): in the
+   * period, in the one before it, and their steps.
+   *
+   * @generated from field: int32 runs = 5;
+   */
+  runs: number;
+
+  /**
+   * @generated from field: int32 previous_runs = 6;
+   */
+  previousRuns: number;
+
+  /**
+   * @generated from field: int32 steps = 7;
+   */
+  steps: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.GetUsageResponse.
+ * Use `create(GetUsageResponseSchema)` to create a new message.
+ */
+export declare const GetUsageResponseSchema: GenMessage<GetUsageResponse>;
+
+/**
+ * @generated from message vertra.console.v1.TeamUsage
+ */
+export declare type TeamUsage = Message<"vertra.console.v1.TeamUsage"> & {
+  /**
+   * Empty for runs started for no team. A run counts for the team a
+   * template was run for, or every team of a raw DAG. A team whose
+   * products ran, but that started nothing, has a row too.
+   *
+   * @generated from field: string team = 1;
+   */
+  team: string;
+
+  /**
+   * @generated from field: int32 runs = 2;
+   */
+  runs: number;
+
+  /**
+   * In the period before, as long.
+   *
+   * @generated from field: int32 previous_runs = 3;
+   */
+  previousRuns: number;
+
+  /**
+   * @generated from field: int32 by_people = 4;
+   */
+  byPeople: number;
+
+  /**
+   * @generated from field: int32 by_bots = 5;
+   */
+  byBots: number;
+
+  /**
+   * @generated from field: int32 by_schedules = 6;
+   */
+  bySchedules: number;
+
+  /**
+   * The steps of those runs as submitted, retries not counted.
+   *
+   * @generated from field: int32 steps = 7;
+   */
+  steps: number;
+
+  /**
+   * Steps of its runs by product, most first.
+   *
+   * @generated from field: repeated vertra.console.v1.UsageCount used = 8;
+   */
+  used: UsageCount[];
+
+  /**
+   * Steps of its own products by the team each run was for, most first.
+   *
+   * @generated from field: repeated vertra.console.v1.UsageCount ran_for = 9;
+   */
+  ranFor: UsageCount[];
+};
+
+/**
+ * Describes the message vertra.console.v1.TeamUsage.
+ * Use `create(TeamUsageSchema)` to create a new message.
+ */
+export declare const TeamUsageSchema: GenMessage<TeamUsage>;
+
+/**
+ * @generated from message vertra.console.v1.ProductUsage
+ */
+export declare type ProductUsage = Message<"vertra.console.v1.ProductUsage"> & {
+  /**
+   * The registered product, or the image repository for one that isn't
+   * (or a hidden product the caller doesn't see). A step is a product's
+   * only when it ran in the product's team's namespace.
+   *
+   * @generated from field: string product = 1;
+   */
+  product: string;
+
+  /**
+   * The product's team; for an image that isn't a product, the namespace
+   * its steps ran in.
+   *
+   * @generated from field: string team = 2;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string action = 3;
+   */
+  action: string;
+
+  /**
+   * @generated from field: bool registered = 4;
+   */
+  registered: boolean;
+
+  /**
+   * @generated from field: int32 steps = 5;
+   */
+  steps: number;
+
+  /**
+   * @generated from field: int32 runs = 6;
+   */
+  runs: number;
+
+  /**
+   * Steps by the team each run was for (empty: no team), most first.
+   *
+   * @generated from field: repeated vertra.console.v1.UsageCount used_by = 7;
+   */
+  usedBy: UsageCount[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_used = 8;
+   */
+  lastUsed?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message vertra.console.v1.ProductUsage.
+ * Use `create(ProductUsageSchema)` to create a new message.
+ */
+export declare const ProductUsageSchema: GenMessage<ProductUsage>;
+
+/**
+ * @generated from message vertra.console.v1.UsageCount
+ */
+export declare type UsageCount = Message<"vertra.console.v1.UsageCount"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: int32 count = 2;
+   */
+  count: number;
+};
+
+/**
+ * Describes the message vertra.console.v1.UsageCount.
+ * Use `create(UsageCountSchema)` to create a new message.
+ */
+export declare const UsageCountSchema: GenMessage<UsageCount>;
+
+/**
  * @generated from message vertra.console.v1.ListAlertsRequest
  */
 export declare type ListAlertsRequest = Message<"vertra.console.v1.ListAlertsRequest"> & {
@@ -937,6 +1160,21 @@ export declare const ObserveService: GenService<{
     methodKind: "unary";
     input: typeof GetMetricsRequestSchema;
     output: typeof GetMetricsResponseSchema;
+  },
+  /**
+   * Who ran what over the last day, week or month: runs started for each
+   * team, who started them, the products their steps used, and the teams
+   * each team's products ran for. From the console's own record of runs,
+   * read at most once a minute. Admins see every team; anyone else the
+   * teams they're in, their products' users, and their teams' use of
+   * others' products.
+   *
+   * @generated from rpc vertra.console.v1.ObserveService.GetUsage
+   */
+  getUsage: {
+    methodKind: "unary";
+    input: typeof GetUsageRequestSchema;
+    output: typeof GetUsageResponseSchema;
   },
   /**
    * The install's alerts, as the Prometheus the console reads has them now

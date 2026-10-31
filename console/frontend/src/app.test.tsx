@@ -140,6 +140,7 @@ const PAGES: [string, Record<string, Answer>][] = [
   ["/apis", {}],
   ["/apis/payments/orders", { "ApiService/GetApi": { api: { team: "payments", name: "orders", displayName: "Orders API", mayCall: true, endpoints: [] }, openapi: "{}" } }],
   ["/observe", {}],
+  ["/observe?tab=usage", {}],
   [
     "/docs",
     {
@@ -2372,6 +2373,63 @@ describe("Observe's alerts", () => {
     cleanup();
     await renderAt("/observe?tab=metrics", MEMBER, { "ObserveService/ListAlerts": { configured: true, problem: "Prometheus isn't answering." } });
     expect(await screen.findByText("Couldn't read the alerts: Prometheus isn't answering.")).toBeTruthy();
+  });
+});
+
+describe("Observe's usage", () => {
+  const USAGE = {
+    days: 7,
+    runs: 630,
+    previousRuns: 509,
+    steps: 1738,
+    teams: [
+      { team: "growth", runs: 412, previousRuns: 300, byPeople: 38, byBots: 352, bySchedules: 22, steps: 1236, used: [{ name: "refund-ledger", count: 280 }], ranFor: [] },
+      { team: "payments", runs: 214, previousRuns: 200, byPeople: 52, byBots: 140, bySchedules: 22, steps: 498, used: [{ name: "payouts-batch", count: 162 }], ranFor: [{ name: "growth", count: 280 }, { name: "payments", count: 162 }, { name: "", count: 3 }] },
+      { team: "", runs: 4, previousRuns: 0, byPeople: 4, steps: 4, used: [], ranFor: [] },
+      { team: "quiet", runs: 0, previousRuns: 9, steps: 0, used: [], ranFor: [] },
+    ],
+    products: [
+      { product: "refund-ledger", team: "payments", action: "refund", registered: true, steps: 283, runs: 283, usedBy: [{ name: "growth", count: 280 }, { name: "", count: 3 }], lastUsed: "2026-10-31T12:00:00Z" },
+      { product: "localhost:5001/sandbox/try-me", team: "sandbox", action: "run", registered: false, steps: 9, runs: 9, usedBy: [{ name: "sandbox", count: 9 }] },
+    ],
+  };
+
+  it("adds up the period, lists teams busiest first, and switches to products and to a month", async () => {
+    const asked: unknown[] = [];
+    await renderAt("/observe?tab=usage", ADMIN, {
+      "ObserveService/GetUsage": (request: Record<string, unknown>) => {
+        asked.push(request["days"]);
+        return USAGE;
+      },
+      "TeamService/ListTeams": { teams: [{ id: "1", name: "growth" }, { id: "2", name: "payments" }, { id: "3", name: "quiet" }] },
+    });
+    expect(await screen.findByText("630")).toBeTruthy();
+    expect(screen.getByText("up from 509 the week before")).toBeTruthy();
+    expect(await screen.findByText("2 of 3")).toBeTruthy();
+    expect(screen.getByText("and 1 image that isn't a product")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "growth" })).toBeTruthy();
+    expect(screen.getByText("No team")).toBeTruthy();
+    expect(screen.getByText("bots 140 · people 52 · schedules 22")).toBeTruthy();
+    expect(screen.getByText("growth 280 · itself 162 · No team 3")).toBeTruthy();
+    // A team that ran nothing this period isn't a row.
+    expect(screen.queryByRole("link", { name: "quiet" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "By product" }));
+    expect(await screen.findByText("payments · refund")).toBeTruthy();
+    expect(screen.getByText("not a registered product · ran in sandbox")).toBeTruthy();
+    expect(screen.getByText("growth 280 · No team 3")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "30 days" }));
+    await waitFor(() => {
+      expect(asked).toEqual([7, 30]);
+    });
+  });
+
+  it("gives each of your team cards its last 7 days", async () => {
+    await renderAt("/teams", { ...MEMBER, teamNames: ["payments"] }, { "ObserveService/GetUsage": USAGE });
+    expect(await screen.findByText(/runs started for payments: bots 140, people 52, schedules 22\./)).toBeTruthy();
+    expect(screen.getByText(/Its products ran for growth 280, itself 162, No team 3\./)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Every team's usage" }).getAttribute("href")).toBe("/observe?tab=usage");
   });
 });
 

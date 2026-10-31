@@ -20,6 +20,7 @@ import {
   createTeam,
   getCatalogStatus,
   getTeamProfile,
+  getUsage,
   listAllTeams,
   listApis,
   listPendingApprovals,
@@ -32,6 +33,7 @@ import {
   type SsoGroupMapping,
   type Team,
   type TeamProfile,
+  type UsageView,
 } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useEnvironment } from "../environment";
@@ -98,13 +100,17 @@ export function TeamsPage() {
   const [adoptable, setAdoptable] = useState<string[]>([]);
   const [mappings, setMappings] = useState<SsoGroupMapping[]>([]);
   const [find, setFind] = useState("");
+  const [usage, setUsage] = useState<UsageView | null>(null);
 
   useEffect(() => {
     // Display only: each just leaves its part of the cards out when it fails.
     listRunnables().then(setOffers).catch(() => undefined);
     listApis().then(setApis).catch(() => undefined);
     listPendingApprovals().then(setApprovals).catch(() => undefined);
+    getUsage(7).then(setUsage).catch(() => undefined);
   }, []);
+  // A team that started nothing this week is null; undefined while it loads (or if it couldn't).
+  const usageOf = (team: string) => (usage ? (usage.teams.find((t) => t.team === team) ?? null) : undefined);
   useEffect(() => {
     if (!isAdmin) return;
     listAllTeams().then(setAllTeams).catch(() => undefined);
@@ -180,6 +186,31 @@ export function TeamsPage() {
     { key: "people", header: "People", hideBelow: "sm", render: (t) => facts[t.name]?.profile?.people ?? "–" },
     { key: "running", header: "Running now", hideBelow: "sm", render: (t) => facts[t.name]?.running ?? "–" },
     {
+      key: "runs",
+      header: "Runs, 7 days",
+      hideBelow: "sm",
+      render: (t) => {
+        const u = usageOf(t.name);
+        return u === undefined ? "–" : (u?.runs ?? 0).toLocaleString();
+      },
+    },
+    {
+      key: "uses",
+      header: "Uses most",
+      hideBelow: "md",
+      render: (t) => {
+        const top = usageOf(t.name)?.used[0];
+        const text = top && `${top.name} ×${top.count.toLocaleString()}`;
+        return text ? (
+          <Box title={text} sx={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Mono>{text}</Mono>
+          </Box>
+        ) : (
+          "—"
+        );
+      },
+    },
+    {
       key: "actions",
       header: <Box component="span" sx={visuallyHidden}>Actions</Box>,
       align: "right",
@@ -245,6 +276,7 @@ export function TeamsPage() {
                 offers={offers.filter((r) => r.team === teamName)}
                 apis={apis.filter((a) => a.team === teamName)}
                 approvals={approvals.filter((a) => a.team === teamName)}
+                usage={usageOf(teamName)}
               />
             ))}
           </Box>
