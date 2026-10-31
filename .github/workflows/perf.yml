@@ -1,0 +1,83 @@
+# The performance benchmarks (perf/README.md) on a kind cluster of their
+# own, by hand or weekly, never on a pull request: about 40 minutes on a
+# runner. It brings up vertra-perf as the README does, runs baseline and
+# burst, keeps the results as an artifact, and compares each with the last
+# successful run's (perf's compare: a p50 or p95 time a quarter worse, and
+# half a second, or throughput a quarter lower, or any incorrect run fails
+# it). A runner isn't the laptop the README's numbers are from: compare runs
+# with runs.
+name: perf
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 7 * * 0"   # Sundays, 07:17 UTC
+
+permissions:
+  contents: read
+  # To read the last run's results.
+  actions: read
+
+concurrency:
+  group: perf
+  cancel-in-progress: false
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: perf/go.mod
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.0
+      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        with:
+          install_only: true
+      - name: The perf cluster
+        run: |
+          make quickstart KIND_CLUSTER=vertra-perf
+          make kind-deploy-kernel KIND_CLUSTER=vertra-perf KIND_KERNEL_VALUES=perf/kind-kernel.yaml
+          make kind-deploy-console KIND_CLUSTER=vertra-perf KIND_CONSOLE_VALUES=perf/kind-console.yaml
+      - name: Benchmarks
+        run: |
+          # The port-forward the driver checks for, in this step: it's what
+          # reaches the console.
+          make up KIND_CLUSTER=vertra-perf
+          make catalog-publish KIND_CLUSTER=vertra-perf SAMPLES=perf CATALOG_REGISTRY=localhost:5001/perf-catalog
+          # kind's own admin, whose password is the kind values' (kind only).
+          password=$(sed -n '/^bootstrapAdmin:/,/^[^ ]/p' helm/values/kind/console.yaml | sed -n 's/^  password: *//p' | tr -d '"')
+          VERTRA_TOKEN=$(jq -n --arg p "$password" '{email: "admin@example.com", password: $p}' \
+            | curl -sf -X POST localhost:18080/api/vertra.console.v1.AuthService/Login -H 'Content-Type: application/json' -d @- | jq -r .token)
+          export VERTRA_TOKEN
+          # The console applies the release within a minute.
+          sleep 60
+          cd perf
+          go run . -scenario baseline
+          go run . -scenario burst
+          cat results/*.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: perf-results
+          path: perf/results/
+          if-no-files-found: ignore
+      - name: Compared with the last run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: perf
+        run: |
+          previous=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow perf.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$previous" ]; then
+            echo "No earlier successful run to compare with." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh run download "$previous" --repo "$GITHUB_REPOSITORY" -n perf-results -D previous
+          status=0
+          for scenario in baseline burst; do
+            go run . compare previous/*-"$scenario".json results/*-"$scenario".json | tee -a "$GITHUB_STEP_SUMMARY" || status=1
+          done
+          exit $status
