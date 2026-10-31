@@ -67,6 +67,11 @@ type report struct {
 	NodeMeanCPU  float64 `json:"nodeMeanCpuPercent"`
 	NodePeakMemG float64 `json:"nodePeakMemGiB"`
 
+	// With -cancel-after: runs that ended cancelled, and those that finished
+	// before the cancel reached them.
+	Cancelled     int `json:"cancelled"`
+	FinishedFirst int `json:"finishedFirst"`
+
 	// With readers: how long the Runs page's list and a run's page took
 	// while the run went on, and how many reads failed.
 	Readers    int   `json:"readers"`
@@ -85,6 +90,9 @@ func analyze(w workload, runID string, runs []*submitted, started, finished time
 	if w.Fail == "always" {
 		wantState = "EXECUTION_STATE_FAILED"
 	}
+	// Cancelled as its steps finish, a run may end either way, but never
+	// anything else, and never with a step still going.
+	cancelling := w.CancelAfterMs > 0
 	problem := func(format string, a ...any) {
 		if len(r.Problems) < 50 {
 			r.Problems = append(r.Problems, fmt.Sprintf(format, a...))
@@ -107,8 +115,23 @@ func analyze(w workload, runID string, runs []*submitted, started, finished time
 			problem("DAG %d (%s): never finished", i, s.ExecutionID)
 			continue
 		}
-		if e.State != wantState {
+		switch {
+		case cancelling && e.State == "EXECUTION_STATE_CANCELLED":
+			r.Cancelled++
+			for _, t := range e.Tasks {
+				switch t.State {
+				case "TASK_STATE_SUCCEEDED", "TASK_STATE_FAILED", "TASK_STATE_CANCELLED":
+				default:
+					problem("DAG %d (%s) cancelled with step %s %s", i, s.ExecutionID, t.TaskID, t.State)
+				}
+			}
+		case cancelling && e.State == wantState:
+			r.FinishedFirst++
+		case e.State != wantState:
 			problem("DAG %d (%s): %s, expected %s", i, s.ExecutionID, e.State, wantState)
+		}
+		if s.CancelError != "" {
+			problem("DAG %d (%s): cancel refused: %s", i, s.ExecutionID, s.CancelError)
 		}
 		if first.IsZero() || e.CreatedAt.Before(first) {
 			first = e.CreatedAt
@@ -289,6 +312,9 @@ func markdown(r report) string {
 			continue
 		}
 		fmt.Fprintf(&b, "| %s | %d | %.0f | %.0f | %.0f | %.0f | %.0f |\n", row.name, row.s.N, row.s.P50, row.s.P95, row.s.P99, row.s.Max, row.s.Mean)
+	}
+	if w.CancelAfterMs > 0 {
+		fmt.Fprintf(&b, "\nEach run cancelled %d ms after submitting it: %d ended cancelled, %d finished first.\n", w.CancelAfterMs, r.Cancelled, r.FinishedFirst)
 	}
 	if r.Readers > 0 {
 		fmt.Fprintf(&b, "\n%d reader(s); %d read(s) failed.\n", r.Readers, r.ReadErrors)
