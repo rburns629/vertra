@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os/exec"
 	"sort"
@@ -248,22 +249,51 @@ type Forward struct {
 func (f *Forward) Stop() { f.stop() }
 
 // ForwardConsole port-forwards a free local port to the console in the
-// background, and returns once it answers.
-func ForwardConsole(ctx context.Context, c *config.Config) (*Forward, error) {
+// background, and returns once it answers. kubectl's port-forward ends when
+// its stream drops (minutes, on some clouds): it's started again on the same
+// port, saying so on out, until Stop.
+func ForwardConsole(ctx context.Context, c *config.Config, out io.Writer) (*Forward, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
+	args := []string{"--context", cluster.Context(c), "--namespace", c.Namespace,
+		"port-forward", "svc/" + install.ConsoleRelease + "-execution-console", fmt.Sprintf("%d:8080", port)}
+	return supervise(ctx, out, port, func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, tools.Path("kubectl"), args...)
+	})
+}
+
+// supervise runs command (a forward to port) again whenever it ends, until
+// Stop, and returns once port answers.
+func supervise(ctx context.Context, out io.Writer, port int, command func(context.Context) *exec.Cmd) (*Forward, error) {
 	fctx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(fctx, tools.Path("kubectl"), "--context", cluster.Context(c), "--namespace", c.Namespace,
-		"port-forward", "svc/"+install.ConsoleRelease+"-execution-console", fmt.Sprintf("%d:8080", port))
-	if err := cmd.Start(); err != nil {
-		cancel()
-		return nil, err
-	}
-	f := &Forward{URL: fmt.Sprintf("http://127.0.0.1:%d", port), stop: func() { cancel(); _ = cmd.Wait() }}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			began := time.Now()
+			err := command(fctx).Run()
+			if fctx.Err() != nil {
+				return
+			}
+			fmt.Fprintf(out, "The console's port-forward ended (%v): starting it again.\n", err)
+			// One that ends at once (the cluster unreachable) isn't
+			// restarted in a tight loop.
+			wait := time.Second
+			if time.Since(began) < 5*time.Second {
+				wait = 5 * time.Second
+			}
+			select {
+			case <-fctx.Done():
+				return
+			case <-time.After(wait):
+			}
+		}
+	}()
+	f := &Forward{URL: fmt.Sprintf("http://127.0.0.1:%d", port), stop: func() { cancel(); <-done }}
 	for i := 0; i < 60; i++ {
 		if conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second); err == nil {
 			conn.Close()

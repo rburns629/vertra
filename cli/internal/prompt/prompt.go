@@ -181,7 +181,7 @@ func (a *Asker) Secret(question, env string) (string, error) {
 	data, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Fprintln(a.out)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: couldn't read it from the terminal (%w): set %s", question, err, env)
 	}
 	if len(data) == 0 {
 		return "", fmt.Errorf("%s: no answer", question)

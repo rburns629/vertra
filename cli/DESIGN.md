@@ -410,7 +410,10 @@ New chart features, so Helm users get them too:
    (repository creation, allowed actions, OIDC), the visibilities it
    supports, and which settings it would refuse.
 2. Create the repository with the chosen visibility; copy in
-   `catalog-template/` from the CLI's release (embedded, like the modules),
+   `catalog-template/` from the CLI's release (embedded, like the modules:
+   the release workflow writes `internal/catalogtemplate/template.tgz`; a
+   `vertra: source` install takes the checkout's), with `./vertra` pinned
+   to that release,
    with the owners in CODEOWNERS replaced, the first team created from
    `templates/team/`, and the chosen language starters copied from
    `samples/local/products/` with their `team:` rewritten; plus any billed
@@ -419,10 +422,18 @@ New chart features, so Helm users get them too:
    credential, since each console pulls the catalog's release; remove and
    revoke the console URL and tokens an earlier version stored; create the
    `catalog-publish` and `purge`
-   Environments and the branch rules where the plan allows.
-4. Wait for the first publish and release; have the console apply it
-   (`AdminService/SyncCatalog`, over a port-forward); submit a DAG using a
-   starter; report the result.
+   Environments and the branch rules where the plan allows. A repository
+   that already has commits isn't pushed: `catalog-ci` is run by hand
+   (`workflow_dispatch`) to republish every product with the new variables
+   (after `--take-over`, to this install's registry).
+4. Wait for the first publish and release (that run by hand, for an
+   existing repository); have the console apply it
+   (`AdminService/SyncCatalog`, over a port-forward that's started again
+   whenever kubectl's drops); submit a DAG using a starter; report the
+   result. It signs in as the first admin with the password `apply` saved
+   (or `VERTRA_ADMIN_PASSWORD`, or asks), and when the console wants that
+   generated password changed first, asks for a new one
+   (`VERTRA_NEW_ADMIN_PASSWORD` without a terminal) and deletes the file.
 
 As built (2026-10-18), for gcp: `init` asks the catalog's owner,
 repository, visibility, first team and starter languages, and whether the

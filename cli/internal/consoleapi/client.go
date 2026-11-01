@@ -169,6 +169,37 @@ func (c *Client) SignIn(ctx context.Context, email, password string) error {
 	})
 }
 
+// MustChangePassword says whether the console wants the signed-in
+// password changed before anything else (it was generated, or an admin
+// set it): every other call is refused until it is.
+func (c *Client) MustChangePassword(ctx context.Context) (bool, error) {
+	var must bool
+	err := idempotent(ctx, func(ctx context.Context) error {
+		resp, err := c.auth.GetMe(ctx, connect.NewRequest(&consolev1.GetMeRequest{}))
+		if err == nil {
+			must = resp.Msg.GetMustChangePassword()
+		}
+		return err
+	})
+	if err != nil {
+		return false, refused(err)
+	}
+	return must, nil
+}
+
+// ChangePassword sets the signed-in admin's own password, keeping this
+// session (with the fresh token it's given).
+func (c *Client) ChangePassword(ctx context.Context, current, next string) error {
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.auth.ChangePassword(ctx, connect.NewRequest(&consolev1.ChangePasswordRequest{CurrentPassword: current, NewPassword: next}))
+	if err != nil {
+		return refused(err)
+	}
+	c.token = resp.Msg.GetToken()
+	return nil
+}
+
 // RevokeOthers revokes every live automation token labelled label except
 // keep: what a new token replaces.
 func (c *Client) RevokeOthers(ctx context.Context, label, keep string) (int, error) {

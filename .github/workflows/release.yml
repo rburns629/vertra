@@ -13,7 +13,7 @@ name: release
 #           oci://ghcr.io/<owner>/<repo>/charts, signs them, and creates the
 #           GitHub release with the packaged charts attached.
 #   cli     builds vertra for linux and darwin, amd64 and arm64, from this
-#           tag, pushes each binary to ghcr.io/<owner>/<repo>/cli as one
+#           tag (with its catalog template inside, for `catalog create`), pushes each binary to ghcr.io/<owner>/<repo>/cli as one
 #           blob (tag <version>-<os>-<arch>; its digest is the binary's
 #           SHA-256), signs each, and attaches the binaries and
 #           vertra-checksums.txt and the manual pages (vertra-man.tar.gz)
@@ -145,6 +145,10 @@ jobs:
         run: |
           image=$(sed -n 's/^GO_IMAGE ?= *//p' Makefile)
           mkdir -p dist
+          # The catalog template it makes catalogs from (`catalog create`),
+          # this tag's tracked files with their modes.
+          git archive --format=tar.gz HEAD catalog-template -o cli/internal/catalogtemplate/template.tgz
+          test -s cli/internal/catalogtemplate/template.tgz
           for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
             docker run --rm -v "$PWD":/repo -w /repo/cli -e CGO_ENABLED=0 \
               -e GOOS="${platform%-*}" -e GOARCH="${platform#*-}" "$image" \

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/rburns629/vertra/cli/internal/run"
 )
@@ -297,17 +298,19 @@ func (g *GitHub) UserID(ctx context.Context, login string) (int64, error) {
 
 // Run is one workflow run.
 type Run struct {
-	ID         int64  `json:"databaseId"`
-	Workflow   string `json:"workflowName"`
-	Status     string `json:"status"`
-	Conclusion string `json:"conclusion"`
-	URL        string `json:"url"`
+	ID         int64     `json:"databaseId"`
+	Workflow   string    `json:"workflowName"`
+	Status     string    `json:"status"`
+	Conclusion string    `json:"conclusion"`
+	URL        string    `json:"url"`
+	Event      string    `json:"event"`
+	Created    time.Time `json:"createdAt"`
 }
 
 // Runs lists the workflow runs for a commit.
 func (g *GitHub) Runs(ctx context.Context, repo, commit string) ([]Run, error) {
 	out, err := g.r.Output(ctx, "gh", "run", "list", "--repo", repo, "--commit", commit,
-		"--json", "databaseId,workflowName,status,conclusion,url")
+		"--json", "databaseId,workflowName,status,conclusion,url,event,createdAt")
 	if err != nil {
 		return nil, err
 	}
@@ -316,6 +319,11 @@ func (g *GitHub) Runs(ctx context.Context, repo, commit string) ([]Run, error) {
 		return nil, err
 	}
 	return runs, nil
+}
+
+// Dispatch starts a workflow by hand (its workflow_dispatch) on a branch.
+func (g *GitHub) Dispatch(ctx context.Context, repo, workflow, branch string) error {
+	return g.r.Run(ctx, "gh", "workflow", "run", workflow, "--repo", repo, "--ref", branch)
 }
 
 // Head is a branch's latest commit.

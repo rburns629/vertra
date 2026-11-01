@@ -19,7 +19,8 @@ import (
 
 // Options are what goes into the first commit.
 type Options struct {
-	// Template is a catalog-template/ directory (from a source checkout).
+	// Template is a catalog-template/ directory: a checkout's, or the one
+	// this release carries, extracted.
 	Template string
 	Team     string
 	// Owners replaces the template's @your-org/catalog-admins: who approves
@@ -190,4 +191,28 @@ func copyTree(src, dst string) error {
 			return os.WriteFile(target, data, info.Mode().Perm())
 		}
 	})
+}
+
+// Pin points a catalog's ./vertra at a released vertra: its version and each
+// platform's SHA-256, as .github/scripts/pin-vertra.sh does, so the
+// catalog's CI runs the release its install does.
+func Pin(wrapper, version string, sums map[string]string) error {
+	data, err := os.ReadFile(wrapper)
+	if err != nil {
+		return err
+	}
+	s := string(data)
+	versionLine := regexp.MustCompile(`(?m)^version=".*"$`)
+	if !versionLine.MatchString(s) {
+		return fmt.Errorf("%s has no version= line to pin", wrapper)
+	}
+	s = versionLine.ReplaceAllLiteralString(s, `version="`+version+`"`)
+	for platform, sum := range sums {
+		line := regexp.MustCompile(`(?m)^  ` + regexp.QuoteMeta(platform) + `\) sha256="[0-9a-f]*" ;;$`)
+		if !line.MatchString(s) {
+			return fmt.Errorf("%s has no %s line to pin", wrapper, platform)
+		}
+		s = line.ReplaceAllLiteralString(s, `  `+platform+`) sha256="`+sum+`" ;;`)
+	}
+	return os.WriteFile(wrapper, []byte(s), 0o755)
 }
