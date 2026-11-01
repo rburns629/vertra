@@ -244,7 +244,14 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 	}
 	p.Notes = append(p.Notes, "Team "+cat.Team+" (and its namespace) is made by the console when it applies the first release, not before.")
 	if !noSmoke && len(cat.Languages) > 0 {
-		p.Notes = append(p.Notes, "Then: waits for CI on the push, has the console apply the release, and runs the "+config.Languages[cat.Languages[0]]+" starter as a smoke test.")
+		on := "main's last commit"
+		switch {
+		case push:
+			on = "the push"
+		case republish:
+			on = "the run by hand"
+		}
+		p.Notes = append(p.Notes, "Then: waits for CI on "+on+", has the console apply the release, and runs the "+config.Languages[cat.Languages[0]]+" starter as a smoke test.")
 	}
 	p.Render(out)
 	if planOnly {
@@ -623,11 +630,18 @@ type dispatch struct {
 func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string, by *dispatch) ([]githost.Run, error) {
 	var runs []githost.Run
 	began := time.Now()
+	failures := 0
 	err := waitFor(ctx, 45*time.Minute, 20*time.Second, func() (bool, error) {
 		all, err := gh.Runs(ctx, repo, commit)
+		// A blip reaching GitHub (a TLS handshake timeout) isn't the end of
+		// a wait this long; three in a row are.
 		if err != nil {
-			return false, err
+			if failures++; failures == 3 {
+				return false, err
+			}
+			return false, nil
 		}
+		failures = 0
 		runs = sinceDispatch(all, by)
 		if len(runs) == 0 {
 			if by != nil && time.Since(began) > 5*time.Minute {

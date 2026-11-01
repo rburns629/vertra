@@ -124,6 +124,16 @@ Kernel and alerts:
   it was evicted or disrupted (the Pod's `DisruptionTarget` condition).
 
 Samples and catalog CI:
+- [ ] **A product can't say which installs it's for**: one catalog serves
+  installs on several clouds, so an aws product on a GKE install shows
+  "not ready" (its check can't sign in by EKS Pod Identity) when it was
+  never meant to run there. A product (or team) could declare its targets
+  (`targets: [aws]`, catalog format, both schemas: `tools/` and
+  `cli/internal/catalogtool/schemas/`); the console would list it as "not
+  for this install" on the catalog, Every product and the run form, skip
+  its readiness checks, and refuse to run it there, instead of "not
+  ready". Readiness proves only the identity path on this install; whether
+  a product works stays the platform team's tests and catalog CI's.
 - [ ] **gcp `app-hosting`**: Cloud Run's create needs the deployer to read
   the image's repository (`roles/artifactregistry.reader`), missing from
   its README; its PERMISSION_DENIED was retried three times as
