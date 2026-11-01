@@ -6,8 +6,9 @@ to either is encrypted and every client checks it reached the real one
 needed.
 
 Made once, at install, and kept across upgrades by reading them back (as
-the database passwords are); a server certificate is made again only when
-it's missing or names other hosts. To rotate everything, delete both
+the database passwords are; _helpers.tpl's tlsMade, which the Pods'
+checksums read too); a server certificate is made again only when it's
+missing or names other hosts. To rotate everything, delete both
 Secrets and upgrade: the CA, then every certificate, is new, and every Pod
 restarts with it (their checksum annotations).
 
@@ -20,29 +21,10 @@ the console chart's included (its kernelTls.caSecret).
 {{- $fullname := include "execution-kernel.fullname" . }}
 {{- $ns := .Release.Namespace }}
 {{- $name := printf "%s-tls" $fullname }}
-{{- $existing := (lookup "v1" "Secret" $ns $name).data | default dict }}
-{{- $days := int .Values.tls.days }}
-{{- $ca := dict }}
-{{- if and (hasKey $existing "ca.crt") (hasKey $existing "ca.key") }}
-  {{- $ca = buildCustomCert (index $existing "ca.crt") (index $existing "ca.key") }}
-{{- else }}
-  {{- $ca = genCA (printf "%s CA" $fullname) $days }}
-{{- end }}
-{{- $servers := dict "postgres" (printf "%s-postgres" $fullname) "api" (printf "%s-api" $fullname) }}
-{{- $certs := dict }}
-{{- range $item, $service := $servers }}
-  {{- $hosts := list $service (printf "%s.%s" $service $ns) (printf "%s.%s.svc" $service $ns) (printf "%s.%s.svc.cluster.local" $service $ns) }}
-  {{- $crt := index $existing (printf "%s.crt" $item) | default "" }}
-  {{- $key := index $existing (printf "%s.key" $item) | default "" }}
-  {{- $hostsKey := printf "%s.hosts" $item }}
-  {{- if and $crt $key (eq (index $existing $hostsKey | default "" | b64dec) (join "," $hosts)) (hasKey $existing "ca.key") }}
-    {{- $_ := set $certs $item (dict "crt" ($crt | b64dec) "key" ($key | b64dec)) }}
-  {{- else }}
-    {{- $cert := genSignedCert $service nil $hosts $days $ca }}
-    {{- $_ := set $certs $item (dict "crt" $cert.Cert "key" $cert.Key) }}
-  {{- end }}
-  {{- $_ := set (index $certs $item) "hosts" (join "," $hosts) }}
-{{- end }}
+{{- include "execution-kernel.tlsMade" . }}
+{{- $made := index .Values.tls "_made" }}
+{{- $ca := $made.ca }}
+{{- $certs := $made.certs }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -52,8 +34,8 @@ metadata:
     {{- include "execution-kernel.labels" . | nindent 4 }}
 type: Opaque
 data:
-  ca.crt: {{ $ca.Cert | b64enc }}
-  ca.key: {{ $ca.Key | b64enc }}
+  ca.crt: {{ $ca.crt | b64enc }}
+  ca.key: {{ $ca.key | b64enc }}
   {{- range $item, $cert := $certs }}
   {{ $item }}.crt: {{ $cert.crt | b64enc }}
   {{ $item }}.key: {{ $cert.key | b64enc }}
@@ -69,5 +51,5 @@ metadata:
     {{- include "execution-kernel.labels" . | nindent 4 }}
 type: Opaque
 data:
-  ca.crt: {{ $ca.Cert | b64enc }}
+  ca.crt: {{ $ca.crt | b64enc }}
 {{- end }}

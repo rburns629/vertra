@@ -145,6 +145,55 @@ every Pod that connects to it or to kernel-api.
 {{- end -}}
 {{- end -}}
 
+{{/*
+tlsMade works out tls.yaml's CA and server certificates once per render,
+kept in .Values.tls._made: tls.yaml writes them, and tlsChecksum hashes the
+same certificates. A first install's Pods so carry the checksum the next
+upgrade computes from the Secret, and restart only when a certificate
+really changes.
+*/}}
+{{- define "execution-kernel.tlsMade" -}}
+{{- if not (hasKey .Values.tls "_made") }}
+{{- $fullname := include "execution-kernel.fullname" . }}
+{{- $ns := .Release.Namespace }}
+{{- $existing := (lookup "v1" "Secret" $ns (printf "%s-tls" $fullname)).data | default dict }}
+{{- $days := int .Values.tls.days }}
+{{- $ca := dict }}
+{{- if and (hasKey $existing "ca.crt") (hasKey $existing "ca.key") }}
+  {{- $ca = buildCustomCert (index $existing "ca.crt") (index $existing "ca.key") }}
+{{- else }}
+  {{- $ca = genCA (printf "%s CA" $fullname) $days }}
+{{- end }}
+{{- $servers := dict "postgres" (printf "%s-postgres" $fullname) "api" (printf "%s-api" $fullname) }}
+{{- $certs := dict }}
+{{- range $item, $service := $servers }}
+  {{- $hosts := list $service (printf "%s.%s" $service $ns) (printf "%s.%s.svc" $service $ns) (printf "%s.%s.svc.cluster.local" $service $ns) }}
+  {{- $crt := index $existing (printf "%s.crt" $item) | default "" }}
+  {{- $key := index $existing (printf "%s.key" $item) | default "" }}
+  {{- $hostsKey := printf "%s.hosts" $item }}
+  {{- if and $crt $key (eq (index $existing $hostsKey | default "" | b64dec) (join "," $hosts)) (hasKey $existing "ca.key") }}
+    {{- $_ := set $certs $item (dict "crt" ($crt | b64dec) "key" ($key | b64dec)) }}
+  {{- else }}
+    {{- $cert := genSignedCert $service nil $hosts $days $ca }}
+    {{- $_ := set $certs $item (dict "crt" $cert.Cert "key" $cert.Key) }}
+  {{- end }}
+  {{- $_ := set (index $certs $item) "hosts" (join "," $hosts) }}
+{{- end }}
+{{- $_ := set .Values.tls "_made" (dict "ca" (dict "crt" $ca.Cert "key" $ca.Key) "certs" $certs) }}
+{{- end }}
+{{- end -}}
+
+{{/* The Pods' checksum/tls: the CA's and the servers' certificates. */}}
+{{- define "execution-kernel.tlsChecksum" -}}
+{{- include "execution-kernel.tlsMade" . -}}
+{{- $made := index .Values.tls "_made" -}}
+{{- $parts := list $made.ca.crt -}}
+{{- range $item, $cert := $made.certs -}}
+{{- $parts = append $parts $cert.crt -}}
+{{- end -}}
+{{- $parts | toJson | sha256sum -}}
+{{- end -}}
+
 {{- define "execution-kernel.tlsCaVolume" -}}
 {{- if .Values.tls.enabled }}
 - name: tls-ca

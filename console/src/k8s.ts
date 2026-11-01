@@ -109,6 +109,27 @@ export interface SecretGrant {
  * respond with a 4xx instead of Fastify's default 500 for anything thrown. */
 export class NamespaceNotFoundError extends Error {}
 
+/** External Secrets Operator isn't installed: a create of one of its kinds
+ * answers 404 when the namespace exists, as the kind isn't served. */
+export class ExternalSecretsMissingError extends Error {
+  constructor() {
+    super(
+      "External Secrets Operator isn't installed on this cluster, so SecretStores and synced secrets can't be made. " +
+        "With vertra: `vertra config set -e <env> externalSecrets true`, then `vertra apply <env>`.",
+    );
+  }
+}
+
+/** Creates one of ESO's objects; a 404 means ESO isn't installed. */
+async function createEsoObject(request: k8s.CustomObjectsApiCreateNamespacedCustomObjectRequest): Promise<void> {
+  try {
+    await getApis().custom.createNamespacedCustomObject(request);
+  } catch (error) {
+    if (isNotFound(error)) throw new ExternalSecretsMissingError();
+    throw error;
+  }
+}
+
 /** A Secret of that name exists in the namespace but isn't the team's
  * registered secret (a SecretStore's credentials, something applied by
  * hand): it won't be overwritten, or registered for tasks to mount. */
@@ -338,7 +359,7 @@ async function upsertExternalSecret(grant: ExternalSecretGrant): Promise<void> {
     });
   } catch (error) {
     if (!isNotFound(error)) throw error;
-    await custom.createNamespacedCustomObject({
+    await createEsoObject({
       group: ESO_GROUP,
       version: ESO_VERSION,
       namespace: grant.namespace,
@@ -766,7 +787,7 @@ export async function applySecretStoreObjects(
       });
     } catch (error) {
       if (!isNotFound(error)) throw error;
-      await custom.createNamespacedCustomObject({ ...target, body });
+      await createEsoObject({ ...target, body });
     }
   }
 }

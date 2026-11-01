@@ -26,7 +26,7 @@ spec:
       {{- if .Values.tls.enabled }}
       annotations:
         # A rotated certificate (tls.yaml) or a changed pg_hba restarts it.
-        checksum/tls: {{ (lookup "v1" "Secret" .Release.Namespace (printf "%s-tls" (include "execution-console.fullname" .))).data | toJson | sha256sum }}
+        checksum/tls: {{ include "execution-console.tlsChecksum" . }}
         checksum/hba: {{ include "execution-console.pgHba" . | sha256sum }}
       {{- end }}
     spec:

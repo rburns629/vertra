@@ -33,7 +33,7 @@ const nodeDiskGiB = 50
 
 // GCP is the cost section of the approval screen for a gcp install.
 func GCP(p *GCPPrices, c *config.Config, fetched string) []plan.Line {
-	f := plan.Floors[c.Size]
+	f := plan.FloorOf(c)
 	standard := c.Cluster.Mode == "standard"
 	disks := f.VolumeGiB * p.BalancedDisk
 	fee := p.ClusterFee * hoursPerMonth

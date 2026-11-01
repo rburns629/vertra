@@ -21,7 +21,7 @@ const awsNodeDiskGiB = 80
 
 // AWS is the cost section of the approval screen for an aws install.
 func AWS(p *AWSPrices, c *config.Config, fetched string) []plan.Line {
-	f := plan.Floors[c.Size]
+	f := plan.FloorOf(c)
 	platform := p.Instances[awsPlatformInstance[c.Size]]
 	nodeHour := func(i InstancePrice, price float64) float64 {
 		return price + i.Fee + p.PublicIP + awsNodeDiskGiB*p.GP3/hoursPerMonth

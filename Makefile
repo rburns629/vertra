@@ -575,7 +575,7 @@ COSIGN_VERIFY = $(COSIGN) verify --certificate-identity $(RELEASE_IDENTITY) \
 
 gke-verify-release:
 	@test -n "$(VERSION)" || { echo "VERSION=v<x.y.z>: the release to deploy."; exit 1; }
-	@for ref in execution-kernel:$(VERSION:v%=%) execution-console:$(VERSION:v%=%) \
+	@for ref in execution-kernel:$(VERSION:v%=%) execution-console:$(VERSION:v%=%) execution-gateway:$(VERSION:v%=%) \
 		charts/execution-kernel:$(VERSION:v%=%) charts/execution-console:$(VERSION:v%=%); do \
 		printf "  %-40s " "$$ref"; \
 		$(COSIGN_VERIFY) $(RELEASE_REGISTRY)/$$ref > /dev/null 2>&1 \

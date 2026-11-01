@@ -14,7 +14,7 @@
  */
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
-import { ApiError } from "../apiError.js";
+import { ApiError, externalSecretsMissing } from "../apiError.js";
 import { ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { config } from "../config.js";
@@ -27,6 +27,7 @@ import {
   recordSecretGrant,
 } from "../db/queries.js";
 import {
+  ExternalSecretsMissingError,
   NamespaceNotFoundError,
   SECRET_STORE_CREDENTIAL,
   SecretNotManagedError,
@@ -103,6 +104,7 @@ async function writeAndRecord(
     // A caller mistake from k8s.ts, as a refusal; anything else stays a failure.
     if (error instanceof NamespaceNotFoundError) throw new ApiError(422, "UNPROCESSABLE_ENTITY", error.message);
     if (error instanceof SecretNotManagedError) throw new ApiError(409, "CONFLICT", error.message);
+    if (error instanceof ExternalSecretsMissingError) throw externalSecretsMissing(error);
     throw error;
   }
   if (alreadyGranted) await record();

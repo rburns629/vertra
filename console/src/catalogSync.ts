@@ -38,6 +38,7 @@ import { fromJson } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
+import { ApiError } from "./apiError.js";
 
 import { writeAuditEntry } from "./audit.js";
 import { SCOPES } from "./auth/scopes.js";
@@ -164,7 +165,7 @@ export async function applyApis(
     keepApis.add(`${team.id}/${a.name}`);
     await attempt(`api ${a.team}/${a.name}`, async () => {
       const openapi = JSON.parse(a.openapi) as unknown;
-      if (typeof openapi !== "object" || openapi === null) throw new Error("its OpenAPI document isn't an object");
+      if (typeof openapi !== "object" || openapi === null) throw new ReleaseProblem("its OpenAPI document isn't an object");
       // The identity its backend credentials are minted for (phase 4).
       await ensureServiceAccount(a.team, a.serviceAccount);
       await upsertApi({
@@ -204,6 +205,9 @@ function backendAuth(auth: ReleaseBackendAuth | undefined): BackendAuth | null {
       return null;
   }
 }
+
+/** What's wrong with a release's own contents, said as the problem. */
+class ReleaseProblem extends Error {}
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -266,7 +270,10 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
     try {
       await work();
     } catch (error) {
-      problems.push({ item, message: message(error) });
+      // A refusal says what's wrong; anything else (the cluster's, the
+      // database's) can carry response bodies and headers, so only the log has it.
+      const text = error instanceof ApiError || error instanceof ReleaseProblem ? error.message : "failed unexpectedly: the console's log has why (catalog_apply_problem)";
+      problems.push({ item, message: text });
       log.warn({ event: "catalog_apply_problem", item, err: error }, `catalog release: ${item} failed`);
     }
   };
@@ -368,10 +375,10 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
     await attempt(`template ${t.team}/${t.name}`, async () => {
       const parameters = t.parameters ?? { type: "object" };
       const problem = parameterSchemaProblem(parameters);
-      if (problem) throw new Error(`its parameters aren't a usable JSON Schema: ${problem}`);
+      if (problem) throw new ReleaseProblem(`its parameters aren't a usable JSON Schema: ${problem}`);
       // Every step's action, as applied just above, shared with this team.
       const stepProblems = await templateStepProblems(t.team, t.name, t.steps);
-      if (stepProblems.length > 0) throw new Error(stepProblems.join(" "));
+      if (stepProblems.length > 0) throw new ReleaseProblem(stepProblems.join(" "));
       await upsertTemplate({
         teamId: team.id,
         name: t.name,

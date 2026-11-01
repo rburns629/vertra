@@ -56,3 +56,8 @@ func Names(cloud string) []string {
 	}
 	return names
 }
+
+// Read returns one of a module's files (for tests).
+func Read(cloud, name string) ([]byte, error) {
+	return files.ReadFile(cloud + "/" + name)
+}

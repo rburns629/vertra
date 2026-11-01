@@ -267,3 +267,42 @@ STS (registryCheck.awsFederation). One or the other.
 sts.amazonaws.com
 {{- end -}}
 {{- end -}}
+
+{{/*
+tlsMade works out tls.yaml's CA and Postgres certificate once per render,
+kept in .Values.tls._made: tls.yaml writes them, and tlsChecksum hashes the
+same certificates, so a first install's Postgres carries the checksum the
+next upgrade computes from the Secret and restarts only when a certificate
+really changes.
+*/}}
+{{- define "execution-console.tlsMade" -}}
+{{- if not (hasKey .Values.tls "_made") }}
+{{- $fullname := include "execution-console.fullname" . }}
+{{- $ns := .Release.Namespace }}
+{{- $existing := (lookup "v1" "Secret" $ns (printf "%s-tls" $fullname)).data | default dict }}
+{{- $days := int .Values.tls.days }}
+{{- $ca := dict }}
+{{- if and (hasKey $existing "ca.crt") (hasKey $existing "ca.key") }}
+  {{- $ca = buildCustomCert (index $existing "ca.crt") (index $existing "ca.key") }}
+{{- else }}
+  {{- $ca = genCA (printf "%s CA" $fullname) $days }}
+{{- end }}
+{{- $service := printf "%s-postgres" $fullname }}
+{{- $hosts := list $service (printf "%s.%s" $service $ns) (printf "%s.%s.svc" $service $ns) (printf "%s.%s.svc.cluster.local" $service $ns) }}
+{{- $crt := index $existing "postgres.crt" | default "" | b64dec }}
+{{- $key := index $existing "postgres.key" | default "" | b64dec }}
+{{- if not (and $crt $key (hasKey $existing "ca.key") (eq (index $existing "postgres.hosts" | default "" | b64dec) (join "," $hosts))) }}
+  {{- $cert := genSignedCert $service nil $hosts $days $ca }}
+  {{- $crt = $cert.Cert }}
+  {{- $key = $cert.Key }}
+{{- end }}
+{{- $_ := set .Values.tls "_made" (dict "ca" (dict "crt" $ca.Cert "key" $ca.Key) "postgres" (dict "crt" $crt "key" $key "hosts" (join "," $hosts))) }}
+{{- end }}
+{{- end -}}
+
+{{/* The Postgres Pod's checksum/tls: the CA's and its certificate. */}}
+{{- define "execution-console.tlsChecksum" -}}
+{{- include "execution-console.tlsMade" . -}}
+{{- $made := index .Values.tls "_made" -}}
+{{- list $made.ca.crt $made.postgres.crt | toJson | sha256sum -}}
+{{- end -}}

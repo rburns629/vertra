@@ -3,6 +3,8 @@
 package tofu
 
 import (
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/rburns629/vertra/cli/internal/modules"
@@ -49,6 +51,28 @@ func TestTheGCPModuleIsEmbedded(t *testing.T) {
 	for _, want := range []string{"main.tf", "variables.tf", "outputs.tf", "versions.tf", ".terraform.lock.hcl"} {
 		if !names[want] {
 			t.Errorf("%s isn't embedded (have %v)", want, names)
+		}
+	}
+}
+
+// Every resource a module makes has a name on the approval screen, never
+// its OpenTofu type.
+func TestEveryResourceTypeIsNamed(t *testing.T) {
+	declared := regexp.MustCompile(`(?m)^resource "([a-z0-9_]+)"`)
+	for _, cloud := range []string{"gcp", "aws"} {
+		for _, file := range modules.Names(cloud) {
+			if !strings.HasSuffix(file, ".tf") {
+				continue
+			}
+			data, err := modules.Read(cloud, file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, m := range declared.FindAllStringSubmatch(string(data), -1) {
+				if _, ok := names[m[1]]; !ok {
+					t.Errorf("%s/%s: %s has no name in names", cloud, file, m[1])
+				}
+			}
 		}
 	}
 }

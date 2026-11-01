@@ -436,6 +436,11 @@ func (a *app) askFeatures(out io.Writer, c *config.Config, f *initFlags) error {
 	if c.Gateway.Enabled, err = yes(f.gateway, "Serve the catalog's API products through the API gateway (a small Deployment; backends it may reach listed later under gateway.backendHosts in vertra.yaml)?", c.Gateway.Enabled); err != nil {
 		return err
 	}
+	// A catalog's SecretStores (teams/<team>/secret-stores) need it; without
+	// it the console refuses them, saying so.
+	if c.ExternalSecrets, err = yes(f.externalSecrets, "Install External Secrets Operator, so teams' SecretStores sync secrets from their vaults (a catalog with teams/<team>/secret-stores needs it)?", c.ExternalSecrets); err != nil {
+		return err
+	}
 	return nil
 }
 

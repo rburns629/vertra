@@ -151,7 +151,8 @@ values: values.yaml          # optional: Helm values layered last, for anything 
 
 Next to it, the CLI keeps `tofu/` (the OpenTofu working directory and its
 state, unless a remote backend is configured), `last-plan.txt` (the approved
-approval screen), `admin-password` (the first admin's generated password,
+approval screen), `applied.yaml` (the config as last applied, so the next
+screen names the settings changed since), `admin-password` (the first admin's generated password,
 0600, kept out of git by a `.gitignore` beside it; delete it once you've
 signed in), and nothing else. The state holds resource attributes and
 must be treated like the config's private companion: gitignored here, and
@@ -366,9 +367,14 @@ Apply? [y/N]
   requests only.
 - **If prices can't be fetched,** the screen shows resource totals and says
   the cost is unavailable; it never guesses.
-- On a later `apply`, the screen shows what changes and the new estimate
-  against the last approved one. The approved screen is saved as
-  `deploy/<env>/last-plan.txt`.
+- On a later `apply`, the screen shows what changes: the settings changed
+  since the last apply (against `applied.yaml`), a rerun at the same
+  version as applied again rather than upgraded, and policy-controller or
+  External Secrets Operator only when they're missing or older than vertra
+  pins. The approved screen is saved as `deploy/<env>/last-plan.txt`.
+- The resources it states are the size's, plus the parts turned on that
+  request their own: the gateway, log search, a Prometheus of the
+  install's own.
 
 ## Scale down, sleep and wake
 
