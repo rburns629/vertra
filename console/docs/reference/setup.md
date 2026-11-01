@@ -26,7 +26,7 @@ It asks, in order, with what each choice costs or gives up:
 | Size | how many copies of each part, and the step caps (`minimal` to `scaled`, or `auto`) |
 | Sleep when idle | scale to zero after a quiet spell (data kept); `vertra wake` brings it back |
 | Database | gcp, aws: in-cluster Postgres (backed up to a bucket), or managed: Cloud SQL or Amazon RDS, no passwords of Vertra's, the cloud's backups, a standby in a second zone if chosen ([Databases](operations.md#databases)) |
-| First admin | their email; the password is generated and shown once after the first apply |
+| First admin | their email; the password is generated, and the first apply saves it to `deploy/<env>/admin-password`, readable only by you |
 | The console | private (`vertra console` port-forwards to it) or reached over HTTPS at a hostname |
 | The catalog | a GitHub repository for your teams' products, made for you |
 | Log search | keep steps' logs for search in Observe (archived to a bucket after 30 days on a cloud) |

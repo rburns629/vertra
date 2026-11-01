@@ -420,7 +420,7 @@ func ConsoleValues(c *config.Config, env string, img Images, cloud *Cloud) map[s
 		"postgres":          map[string]any{"enabled": false},
 		"existingSecret":    KernelRelease + "-execution-kernel-console-db",
 		"existingSecretKey": "database-url",
-		// No password: one is generated and shown once (Password).
+		// No password: one is generated and saved (Password).
 		"bootstrapAdmin": map[string]any{"email": c.Admin.Email},
 	}
 	if cloud != nil && cloud.Database != nil {
@@ -995,6 +995,14 @@ func Password(ctx context.Context, r *run.Runner, c *config.Config) string {
 		return ""
 	}
 	return m[1]
+}
+
+// ForgetPassword deletes the console's migrate Job once its generated
+// password is saved, so its log doesn't keep it (the next upgrade makes the
+// Job again, without one). Best effort: the next upgrade replaces it anyway.
+func ForgetPassword(ctx context.Context, r *run.Runner, c *config.Config) {
+	_ = r.Succeeds(ctx, "kubectl", "--context", cluster.Context(c), "--namespace", c.Namespace,
+		"delete", "job", ConsoleRelease+"-execution-console-migrate", "--ignore-not-found")
 }
 
 // Uninstall removes a release. The database volume stays: the charts mark

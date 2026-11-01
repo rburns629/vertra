@@ -44,7 +44,7 @@ var Settings = []Setting{
 	{"database.highAvailability", "managed: a standby in a second zone, failed over to automatically."},
 	{"database.backups.enabled", "Daily backups: of the in-cluster Postgres to a bucket; a managed database's are the cloud's."},
 	{"database.backups.retentionDays", "How many days of backups are kept (at most 35 on RDS)."},
-	{"admin.email", "The first admin's email: their password is generated and shown once, after the first apply."},
+	{"admin.email", "The first admin's email: their password is generated at the first apply and saved to admin-password beside this file, readable only by you."},
 	{"console.public", "gcp, aws, existing: reach the console over HTTPS from the internet (what catalog CI needs)."},
 	{"console.hostname", "A public console's hostname (gcp default: a nip.io name; aws default: console.<zone>)."},
 	{"console.zone", "aws: a DNS zone vertra makes in Route 53 for the console, which you delegate."},

@@ -286,8 +286,14 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	}
 	if installed[install.ConsoleRelease] == "" {
 		if pw := install.Password(ctx, a.runner, c); pw != "" {
-			fmt.Fprintf(out, "  Sign in as %s with %s\n", c.Admin.Email, pw)
-			fmt.Fprintln(out, "  That password is shown only this once: you'll choose your own when you sign in.")
+			path, err := savePassword(dir, pw)
+			if err != nil {
+				return fmt.Errorf("installed, but the first admin's password couldn't be saved (%w): once %s can be written to, `vertra admin reset-password %s` makes a new one", err, dir, envName(dir))
+			}
+			// Saved: the migrate Job's log is the only other copy.
+			install.ForgetPassword(ctx, a.runner, c)
+			fmt.Fprintf(out, "  Sign in as %s with the password in %s (only you can read it).\n", c.Admin.Email, path)
+			fmt.Fprintln(out, "  "+passwordThen)
 		}
 	}
 	return nil
@@ -341,7 +347,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 			scale += fmt.Sprintf("; room kept for %d %s to start at once (reserved around the clock)", c.StepHeadroom, slots)
 		}
 	}
-	admin := c.Admin.Email + " (password generated, shown once after the first install)"
+	admin := c.Admin.Email + " (password generated at the first install, saved to admin-password here)"
 	if installed[install.ConsoleRelease] != "" {
 		admin = c.Admin.Email + " (set up at the first install)"
 	}
