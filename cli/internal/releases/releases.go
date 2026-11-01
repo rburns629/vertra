@@ -228,12 +228,12 @@ func Checksums(ctx context.Context, version string) (map[string]string, error) {
 var sha256Hex = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // parseChecksums reads sha256sum's lines, "<sha256>  vertra-<platform>",
-// and wants every platform.
+// keeping the binaries' (not the manual pages'), and wants every platform.
 func parseChecksums(body, version string) (map[string]string, error) {
 	sums := map[string]string{}
 	for _, line := range strings.Split(body, "\n") {
 		f := strings.Fields(line)
-		if len(f) == 2 && sha256Hex.MatchString(f[0]) {
+		if len(f) == 2 && sha256Hex.MatchString(f[0]) && slices.Contains(Platforms, strings.TrimPrefix(f[1], "vertra-")) {
 			sums[strings.TrimPrefix(f[1], "vertra-")] = f[0]
 		}
 	}

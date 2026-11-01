@@ -76,7 +76,7 @@ func TestParseChecksums(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sums["darwin-arm64"] != sha("d") || sums["linux-amd64"] != sha("a") {
+	if len(sums) != 4 || sums["darwin-arm64"] != sha("d") || sums["linux-amd64"] != sha("a") {
 		t.Errorf("sums %v", sums)
 	}
 	if _, err := parseChecksums(sha("a")+"  vertra-linux-amd64\n", "0.6.0"); err == nil {

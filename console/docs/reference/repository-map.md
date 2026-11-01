@@ -531,7 +531,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `cmd/vertra/backup.go` | `backup`, `backups` and `restore`. |
 | `cmd/vertra/logs.go` | `logs`: the platform's components' logs, or one execution's steps' from their team namespaces. |
 | `cmd/vertra/admin.go` | `admin reset-password`: a lost admin password, reset inside the cluster; where a generated password is saved (`admin-password`, 0600, never printed). |
-| `cmd/vertra/catalog.go` | `catalog create`: creates the catalog repository on GitHub with its first team and starters, sets its registry variables (no console credential; old ones removed and revoked), pushes it (or runs its CI by hand to republish an existing one), waits for its CI, has the console apply the release, and runs a starter; the first admin's generated password changed first. |
+| `cmd/vertra/catalog.go` | `catalog create`: creates the catalog repository on GitHub with its first team and starters, sets its registry variables (no console credential; old ones removed and revoked), pushes it (or, taking one over from another registry, runs its CI by hand to republish), waits for its CI, has the console apply the release, and runs a starter; the first admin's generated password changed first. |
 | `cmd/vertra/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
 | `cmd/vertra/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
 | `cmd/vertra/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |

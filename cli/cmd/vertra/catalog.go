@@ -180,6 +180,9 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 	// One that exists but is empty (a run stopped before its push) gets
 	// the push.
 	push := !exists
+	// One that isn't pushed and published elsewhere last (another
+	// registry, after --take-over) is republished by a run by hand.
+	republish := false
 	if exists {
 		if push, err = gh.HasBranches(ctx, cat.Repo()); err != nil {
 			return err
@@ -195,6 +198,7 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 		if err := ownedElsewhere(cat.Repo(), current, setup.registry, takeOver); err != nil {
 			return err
 		}
+		republish = current != setup.registry
 	}
 	// Environments (the publish job's main-only gate, the reviewed image deletion)
 	// need a paid plan on a private repository; on GitHub Free the
@@ -219,8 +223,10 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 		{Label: "Publishes to", Text: setup.registry + ", signing in through federation (main only, no key)"},
 		{Label: "Release", Text: setup.registry + "/catalog-release, which the console reads and applies (no console credential in CI)"},
 	}
-	if exists && !push {
-		p.Changes = append(p.Changes, plan.Line{Label: "Exists", Text: "the repository is left as it is: its variables are set, and catalog-ci run by hand to republish every product with them"})
+	if exists && !push && republish {
+		p.Changes = append(p.Changes, plan.Line{Label: "Exists", Text: "the repository is left as it is: its variables are set, and catalog-ci run by hand to republish every product to " + setup.registry})
+	} else if exists && !push {
+		p.Changes = append(p.Changes, plan.Line{Label: "Exists", Text: "the repository is left as it is: only its variables are set"})
 	} else if exists {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will push", Text: fmt.Sprintf("main to the existing, empty repository: the template, teams/%s and its starters", cat.Team)})
 	} else {
@@ -407,22 +413,33 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 			return err
 		}
 	}
-	// One that isn't pushed last ran CI with the old variables (another
-	// registry, after --take-over): a run by hand republishes every product
-	// with these.
-	var dispatched time.Time
-	if !push {
-		fmt.Fprintln(out, "Republishing every product with these variables (catalog-ci, run by hand)...")
-		dispatched = time.Now().Add(-30 * time.Second) // GitHub's clock may differ a little
-		if err := gh.Dispatch(ctx, repo, "ci.yml", "main"); err != nil {
+	// One that isn't pushed last ran CI with the old variables: a run by
+	// hand republishes every product with these. It's told from the
+	// commit's earlier runs by id, not by time (clocks differ).
+	var by *dispatch
+	if !push && republish {
+		fmt.Fprintln(out, "Republishing every product to", setup.registry, "(catalog-ci, run by hand)...")
+		commit, err := gh.Head(ctx, repo, "main")
+		if err != nil {
 			return err
+		}
+		earlier, err := gh.Runs(ctx, repo, commit)
+		if err != nil {
+			return err
+		}
+		by = &dispatch{commit: commit}
+		for _, r := range earlier {
+			by.after = max(by.after, r.ID)
+		}
+		if err := gh.Dispatch(ctx, repo, "ci.yml", "main"); err != nil {
+			return fmt.Errorf("couldn't run catalog-ci by hand (an older catalog's ci.yml may not allow workflow_dispatch: take it from catalog-template, or push any change to main to publish): %w", err)
 		}
 	}
 	fmt.Fprintf(out, "The catalog is at https://github.com/%s\n", repo)
 	if noSmoke || len(cat.Languages) == 0 {
 		return nil
 	}
-	return a.smokeTest(ctx, out, c, gh, api, setup, dispatched)
+	return a.smokeTest(ctx, out, c, gh, api, setup, by)
 }
 
 // catalogSetup reads what the install made from the module's outputs.
@@ -502,14 +519,17 @@ func variableNames(vars [][2]string) string {
 // smokeTest waits for CI on the pushed commit, has the console apply the
 // release it pushed, then runs the first starter through the console and
 // reports what it returned.
-func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh *githost.GitHub, api *consoleapi.Client, setup *catalogSetup, dispatched time.Time) error {
+func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh *githost.GitHub, api *consoleapi.Client, setup *catalogSetup, by *dispatch) error {
 	cat := c.Catalog
-	commit, err := gh.Head(ctx, cat.Repo(), "main")
-	if err != nil {
+	var commit string
+	var err error
+	if by != nil {
+		commit = by.commit
+	} else if commit, err = gh.Head(ctx, cat.Repo(), "main"); err != nil {
 		return err
 	}
 	fmt.Fprintln(out, "Waiting for CI on", commit[:7], "...")
-	runs, err := waitForRuns(ctx, gh, cat.Repo(), commit, dispatched)
+	runs, err := waitForRuns(ctx, gh, cat.Repo(), commit, by)
 	if err != nil {
 		return err
 	}
@@ -522,7 +542,7 @@ func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh
 			}
 		}
 		time.Sleep(10 * time.Second)
-		if runs, err = waitForRuns(ctx, gh, cat.Repo(), commit, dispatched); err != nil {
+		if runs, err = waitForRuns(ctx, gh, cat.Repo(), commit, by); err != nil {
 			return err
 		}
 	}
@@ -592,17 +612,27 @@ func scanning(err error) bool {
 }
 
 // waitForRuns waits until every run on commit has completed.
-// waitForRuns waits for a commit's CI runs to finish: with dispatched set,
-// only the runs started by hand since then.
-func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string, dispatched time.Time) ([]githost.Run, error) {
+// dispatch is a run by hand on commit: the runs after the id it had.
+type dispatch struct {
+	commit string
+	after  int64
+}
+
+// waitForRuns waits for a commit's CI runs to finish: with by, only the run
+// started by hand, which must appear within a few minutes.
+func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string, by *dispatch) ([]githost.Run, error) {
 	var runs []githost.Run
+	began := time.Now()
 	err := waitFor(ctx, 45*time.Minute, 20*time.Second, func() (bool, error) {
 		all, err := gh.Runs(ctx, repo, commit)
 		if err != nil {
 			return false, err
 		}
-		runs = sinceDispatch(all, dispatched)
+		runs = sinceDispatch(all, by)
 		if len(runs) == 0 {
+			if by != nil && time.Since(began) > 5*time.Minute {
+				return false, fmt.Errorf("the run by hand didn't start within 5 minutes: see https://github.com/%s/actions", repo)
+			}
 			return false, nil
 		}
 		for _, r := range runs {
@@ -615,15 +645,15 @@ func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string, d
 	return runs, err
 }
 
-// sinceDispatch keeps the runs started by hand since dispatched, or all of
-// them when it's zero.
-func sinceDispatch(runs []githost.Run, dispatched time.Time) []githost.Run {
-	if dispatched.IsZero() {
+// sinceDispatch keeps the runs started by hand after by's, or all of them
+// without one.
+func sinceDispatch(runs []githost.Run, by *dispatch) []githost.Run {
+	if by == nil {
 		return runs
 	}
 	var kept []githost.Run
 	for _, r := range runs {
-		if r.Event == "workflow_dispatch" && r.Created.After(dispatched) {
+		if r.Event == "workflow_dispatch" && r.ID > by.after {
 			kept = append(kept, r)
 		}
 	}

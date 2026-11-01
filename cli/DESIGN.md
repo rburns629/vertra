@@ -423,11 +423,11 @@ New chart features, so Helm users get them too:
    revoke the console URL and tokens an earlier version stored; create the
    `catalog-publish` and `purge`
    Environments and the branch rules where the plan allows. A repository
-   that already has commits isn't pushed: `catalog-ci` is run by hand
-   (`workflow_dispatch`) to republish every product with the new variables
-   (after `--take-over`, to this install's registry).
-4. Wait for the first publish and release (that run by hand, for an
-   existing repository); have the console apply it
+   that already has commits isn't pushed: when it last published to another
+   registry (`--take-over`), `catalog-ci` is run by hand
+   (`workflow_dispatch`) to republish every product to this install's.
+4. Wait for the first publish and release (that run by hand, told by its
+   run id, for an existing repository); have the console apply it
    (`AdminService/SyncCatalog`, over a port-forward that's started again
    whenever kubectl's drops); submit a DAG using a starter; report the
    result. It signs in as the first admin with the password `apply` saved
