@@ -102,7 +102,8 @@ on AKS a network policy engine). Without it, no policy below holds.
    helm install kernel ./execution-kernel -n vertra-system -f execution-kernel/sizes/$SIZE.yaml -f <values>/kernel.yaml
    helm install console ./execution-console -n vertra-system -f execution-console/sizes/$SIZE.yaml -f <values>/console.yaml
    kubectl -n vertra-system rollout status deployment -l 'app.kubernetes.io/instance in (kernel,console)'
-   kubectl -n vertra-system logs job/console-execution-console-migrate   # the first admin's password, shown once; changed at the first sign-in
+   kubectl -n vertra-system logs job/console-execution-console-migrate   # the first admin's password; changed at the first sign-in
+   kubectl -n vertra-system delete job console-execution-console-migrate # then its log doesn't keep it (vertra does this)
    ```
 
    Upgrades (`helm upgrade`) can use `--wait`: they migrate before the

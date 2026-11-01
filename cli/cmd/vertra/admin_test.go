@@ -50,3 +50,40 @@ func TestSavePasswordNewFolder(t *testing.T) {
 		t.Errorf(".gitignore %q", b)
 	}
 }
+
+// A symlink at the path is replaced, not written through (into a file git
+// may track), and a .gitignore already listing it, CRLF or rooted, isn't
+// added to.
+func TestSavePasswordSymlinkAndListed(t *testing.T) {
+	dir := t.TempDir()
+	tracked := filepath.Join(dir, "tracked.txt")
+	if err := os.WriteFile(tracked, []byte("keep\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(tracked, filepath.Join(dir, "admin-password")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("tofu/\r\n/admin-password\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := savePassword(dir, "s3cret"); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(tracked); string(b) != "keep\n" {
+		t.Errorf("written through the symlink: %q", b)
+	}
+	info, err := os.Lstat(filepath.Join(dir, "admin-password"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+		t.Errorf("admin-password is %v", info.Mode())
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, ".gitignore")); string(b) != "tofu/\r\n/admin-password\r\n" {
+		t.Errorf(".gitignore %q", b)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 3 {
+		t.Errorf("left behind: %v", entries)
+	}
+}
