@@ -151,7 +151,9 @@ values: values.yaml          # optional: Helm values layered last, for anything 
 
 Next to it, the CLI keeps `tofu/` (the OpenTofu working directory and its
 state, unless a remote backend is configured), `last-plan.txt` (the approved
-approval screen), and nothing else. The state holds resource attributes and
+approval screen), `admin-password` (the first admin's generated password,
+0600, kept out of git by a `.gitignore` beside it; delete it once you've
+signed in), and nothing else. The state holds resource attributes and
 must be treated like the config's private companion: gitignored here, and
 kept wherever the config is kept.
 
@@ -196,7 +198,9 @@ the sign-in that follows.
    Secrets Operator; `helm upgrade --install` of the kernel, then the
    console (`--reset-values`, `--force-conflicts` for the kernel).
 7. Wait until both are ready; print where the console is and how to reach
-   it, and where the first admin's password is (shown once).
+   it, and where the first admin's password is: `admin-password` in the
+   environment's folder, readable only by you and listed in a
+   `.gitignore` there (never printed: it would land in CI logs).
 
 ### Values composition
 
