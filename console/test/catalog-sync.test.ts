@@ -167,8 +167,8 @@ describe("applying a release", () => {
 
   it("says ESO isn't installed, and never shows a cluster's error itself", async () => {
     vi.mocked(applySecretStoreObjects)
-      .mockRejectedValueOnce(new ExternalSecretsMissingError())
-      .mockRejectedValueOnce(new Error("HTTP-Code: 500 Body: {...} Headers: {audit-id: x}"));
+      .mockRejectedValueOnce(new ExternalSecretsMissingError("external-secrets.io/v1"))
+      .mockRejectedValueOnce(new (class ApiException extends Error {})("HTTP-Code: 500 Body: {...} Headers: {audit-id: x}"));
     publish(
       release({
         commit: "c2",
@@ -182,7 +182,7 @@ describe("applying a release", () => {
     expect(problems).toHaveLength(2);
     expect(problems[0]?.message).toContain("External Secrets Operator isn't installed");
     expect(problems[0]?.message).toContain("vertra config set -e <env> externalSecrets true");
-    expect(problems[1]?.message).toBe("failed unexpectedly: the console's log has why (catalog_apply_problem)");
+    expect(problems[1]?.message).toBe("failed unexpectedly: the console's log has why");
   });
 
   it("unregisters what a later release drops, and retires a team it drops, never one an admin made", async () => {

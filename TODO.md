@@ -84,8 +84,13 @@ it was seen.
   catalog create` now pins the release it is; a catalog made from the
   template by hand needs `pin-vertra.sh`. Worth a release step that opens
   the pin's pull request.
+- [ ] `apply`'s cost leaves out the optional parts' volumes (log search's
+  10 GiB, the bundled Prometheus's 2 GiB); their CPU and memory are counted.
 
 Console and gateway:
+- [ ] A SecretStore file the cluster refuses (ESO missing, say) still
+  leaves its ServiceAccounts and `eso-auth` written: the console writes
+  them before the store. Write the store first, or remove them on failure.
 - [ ] **The console says a teamless admin may call an API the gateway
   refuses** (`mayCall` true on a `shareWith: *` API; the gateway answers
   NOT_SHARED, as a caller needs a team). Make them agree.

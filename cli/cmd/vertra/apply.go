@@ -238,9 +238,6 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 	if err := install.Upgrade(ctx, a.runner, c, dir, install.ConsoleRelease, consoleChart, consoleValues); err != nil {
 		return err
 	}
-	if err := c.SaveApplied(dir); err != nil {
-		return err
-	}
 	if now.move {
 		fmt.Fprintln(out, "Starting the platform on the managed database...")
 		if err := backup.FinishMove(ctx, a.runner, c); err != nil {
@@ -297,6 +294,10 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 				fmt.Fprintln(out, "  "+step)
 			}
 		}
+	}
+	// Applied: what the next screen compares against.
+	if err := c.SaveApplied(dir); err != nil {
+		return err
 	}
 	if installed[install.ConsoleRelease] == "" {
 		if pw := install.Password(ctx, a.runner, c); pw != "" {
@@ -571,6 +572,8 @@ func addOn(name, version, installed, where string) (plan.Line, bool) {
 		return plan.Line{Label: "Will install", Text: name + " " + version + " into " + where}, true
 	case releases.ChartVersion(installed) == version:
 		return plan.Line{}, false
+	case releases.Compare(releases.ChartVersion(installed), version) > 0:
+		return plan.Line{Label: "Will downgrade", Text: fmt.Sprintf("%s (now %s, newer) to %s, the version vertra pins, in %s", name, installed, version, where)}, true
 	}
 	return plan.Line{Label: "Will upgrade", Text: fmt.Sprintf("%s (now %s) to %s, in %s", name, installed, version, where)}, true
 }

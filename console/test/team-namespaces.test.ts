@@ -263,7 +263,7 @@ describe("applying a team's SecretStore file", () => {
   it("says External Secrets Operator isn't installed, as the install's to fix", async () => {
     const team = name("no-eso");
     await createTeam(team);
-    vi.mocked(applySecretStoreObjects).mockRejectedValueOnce(new ExternalSecretsMissingError());
+    vi.mocked(applySecretStoreObjects).mockRejectedValueOnce(new ExternalSecretsMissingError("external-secrets.io/v1"));
     const refused = await call<RpcError>(admin, "TeamService/ApplySecretStore", { team, documents: [store(team)] });
     expect(refused.code).toBe("failed_precondition");
     expect(failureCode(refused.body)).toBe("EXTERNAL_SECRETS_MISSING");

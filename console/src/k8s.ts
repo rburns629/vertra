@@ -109,23 +109,25 @@ export interface SecretGrant {
  * respond with a 4xx instead of Fastify's default 500 for anything thrown. */
 export class NamespaceNotFoundError extends Error {}
 
-/** External Secrets Operator isn't installed: a create of one of its kinds
- * answers 404 when the namespace exists, as the kind isn't served. */
+/** External Secrets Operator doesn't serve the kind: a create of one
+ * answers 404 when the namespace exists. Not installed, mostly; or a file
+ * names an apiVersion the installed one no longer serves. */
 export class ExternalSecretsMissingError extends Error {
-  constructor() {
+  constructor(apiVersion: string) {
     super(
-      "External Secrets Operator isn't installed on this cluster, so SecretStores and synced secrets can't be made. " +
-        "With vertra: `vertra config set -e <env> externalSecrets true`, then `vertra apply <env>`.",
+      `External Secrets Operator isn't installed on this cluster, or doesn't serve ${apiVersion}, so this can't be made. ` +
+        "With vertra: `vertra config set -e <env> externalSecrets true`, then `vertra apply <env>`; " +
+        "if it's installed, the file's apiVersion is one it doesn't serve (external-secrets.io/v1 is current).",
     );
   }
 }
 
-/** Creates one of ESO's objects; a 404 means ESO isn't installed. */
+/** Creates one of ESO's objects; a 404 means ESO doesn't serve its kind. */
 async function createEsoObject(request: k8s.CustomObjectsApiCreateNamespacedCustomObjectRequest): Promise<void> {
   try {
     await getApis().custom.createNamespacedCustomObject(request);
   } catch (error) {
-    if (isNotFound(error)) throw new ExternalSecretsMissingError();
+    if (isNotFound(error)) throw new ExternalSecretsMissingError(`${request.group}/${request.version}`);
     throw error;
   }
 }

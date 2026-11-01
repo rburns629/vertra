@@ -55,4 +55,9 @@ func TestPlanOfARerun(t *testing.T) {
 			t.Errorf("no %q in:\n%s", want, got)
 		}
 	}
+
+	now.externalSecrets = "external-secrets-99.0.0"
+	if got = changes(buildPlan(context.Background(), c, "dev", s, install.Images{}, installed, now, nil)); !strings.Contains(got, "Will downgrade: External Secrets Operator (now external-secrets-99.0.0, newer)") {
+		t.Errorf("a newer one is downgraded, and said so:\n%s", got)
+	}
 }

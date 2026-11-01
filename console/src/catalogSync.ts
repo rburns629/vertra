@@ -164,7 +164,12 @@ export async function applyApis(
     if (!team) continue;
     keepApis.add(`${team.id}/${a.name}`);
     await attempt(`api ${a.team}/${a.name}`, async () => {
-      const openapi = JSON.parse(a.openapi) as unknown;
+      let openapi: unknown;
+      try {
+        openapi = JSON.parse(a.openapi);
+      } catch {
+        throw new ReleaseProblem("its OpenAPI document isn't JSON");
+      }
       if (typeof openapi !== "object" || openapi === null) throw new ReleaseProblem("its OpenAPI document isn't an object");
       // The identity its backend credentials are minted for (phase 4).
       await ensureServiceAccount(a.team, a.serviceAccount);
@@ -209,8 +214,14 @@ function backendAuth(auth: ReleaseBackendAuth | undefined): BackendAuth | null {
 /** What's wrong with a release's own contents, said as the problem. */
 class ReleaseProblem extends Error {}
 
+/** What a sync or an item records as why it failed: a refusal's, a
+ * release's problem, or this code's own plain Error, which says what to do.
+ * Anything else (the cluster client's, carrying response bodies and
+ * headers; the database's) only the log has. */
 function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof ApiError || error instanceof ReleaseProblem) return error.message;
+  if (error instanceof Error && error.constructor === Error) return error.message;
+  return "failed unexpectedly: the console's log has why";
 }
 
 /** What `cosign verify` needs to check a release against each trusted
@@ -270,10 +281,7 @@ export async function apply(release: Release, log: FastifyBaseLogger): Promise<C
     try {
       await work();
     } catch (error) {
-      // A refusal says what's wrong; anything else (the cluster's, the
-      // database's) can carry response bodies and headers, so only the log has it.
-      const text = error instanceof ApiError || error instanceof ReleaseProblem ? error.message : "failed unexpectedly: the console's log has why (catalog_apply_problem)";
-      problems.push({ item, message: text });
+      problems.push({ item, message: message(error) });
       log.warn({ event: "catalog_apply_problem", item, err: error }, `catalog release: ${item} failed`);
     }
   };
