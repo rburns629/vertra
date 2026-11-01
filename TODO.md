@@ -45,8 +45,13 @@ Azure last.
    (2026-10-31, #52: Observe's Usage tab and the Teams page's cards, `console/src/core/usage.ts`);
    ~~the `perf` workflow's first run~~ (2026-10-31, after #55's Linux
    fixes: 12 minutes, both scenarios correct).
-7. The billed proof run, one session per cloud, destroyed after (decided
-   2026-10-29). GKE: released images (`make gke-deploy VERSION=`), Managed
+7. ~~The billed proof run, one session per cloud, destroyed after~~
+   (done 2026-10-31 on GKE and 2026-11-01 on EKS, released 0.6.0, both
+   destroyed with nothing left but the write-once audit buckets; what it
+   found is under "Found in the billed run", below; perf's figures in
+   `perf/README.md`). All of the plan was proven but `make gke-deploy
+   VERSION=` (the run installed the release with `vertra apply` instead).
+   The plan, GKE: released images (`make gke-deploy VERSION=`), Managed
    Service for Prometheus, the bundled Prometheus on a cloud volume, the
    audit copy compared on GCS, the gcp sample's API product and per-product
    grants, catalog CI's SBOM attestation, the scheduler at scale (relists,
@@ -59,12 +64,94 @@ Azure last.
    Prometheus, the aws sample's API product, products choosing Spot,
    non-root Postgres on EBS, `vertra destroy` with an unanswering cluster,
    the scheduler at scale, size figures.
-8. Last: the MCP server, then Azure (its target, its managed Prometheus,
+8. What the billed run found (below), the password printed by `apply`
+   first.
+9. Last: the MCP server, then Azure (its target, its managed Prometheus,
    the Azure sample signing in).
 
 Blocked: the chat agent on Bedrock (the account's model access) and
 Sigstore's newer signature format (policy-controller). Needs a decision:
 masking Secret values in logs (suggested: leave it, documented).
+
+## Found in the billed run (2026-10-31 and 2026-11-01)
+
+Released 0.6.0 on GKE Autopilot and EKS standard. Each item names where
+it was seen.
+
+Security:
+- [ ] **`vertra apply` prints the generated admin password** in its closing
+  line ("Sign in as admin@example.com with …"), so it lands in CI logs and
+  tee'd files (EKS); `vertra admin reset-password` does the same. Write it
+  to a 0600 file in the environment's folder and print the path.
+
+`vertra`:
+- [ ] **A released `vertra` can't make its catalog**: `catalog create`
+  requires `vertra: source` (`cli/cmd/vertra/catalog.go`). Worked around
+  with a temporary source checkout at the tag.
+- [ ] **A release's catalog template pins the previous CLI** (0.6.0's
+  `catalog-template/vertra` pinned 0.5.2; the pin is bumped after a
+  release), so a new catalog's CI runs a `vertra` older than its install.
+- [ ] **`catalog create --take-over` waits on the previous commit's CI**,
+  which published to the old registry, then fails "the console couldn't
+  read the catalog's release: 404". It should start a full republish
+  (`workflow_dispatch`) and wait on that.
+- [ ] **`catalog create` without a terminal** exits 1 saying nothing (stdin
+  closed) or "operation not supported by device": say to set
+  `VERTRA_ADMIN_PASSWORD`. And right after `apply` the console refuses the
+  generated password until it's changed: `apply`'s closing message and
+  `catalog create` should say so, or offer the change.
+- [ ] **The console's port-forward isn't restarted when kubectl's dies**
+  (`cli/internal/platform`): on GKE it dropped within minutes, and `catalog
+  create`'s smoke test reported "didn't finish within 15m" for a run that
+  succeeded in two.
+- [ ] **External Secrets Operator is installed only with `externalSecrets:
+  true`**, and `init` never asks, even for a catalog with SecretStores.
+  The console then reports the missing operator as a raw 404 dump; it
+  should say "External Secrets Operator isn't installed: `vertra config
+  set externalSecrets true`".
+- [ ] **`apply`'s screen leaves things out**: a settings or values-file
+  change (`gateway.backendHosts`, `postgres.nonRoot`) shows only "upgrade
+  0.6.0 to 0.6.0"; it says "Will install policy-controller" when it's
+  installed; the cost leaves out the gateway (0.55 vCPU said, 0.6
+  requested); the cloud list shows raw OpenTofu types
+  (`aws_prometheus_workspace`).
+- [ ] **A settings-only `apply` restarted Postgres and kernel-api once**
+  (EKS, the second apply: `checksum/tls` changed, not on the third). Is
+  the kernel's TLS certificate made again once after install? The console
+  logged 20 s of refused connections.
+- [ ] `gke-verify-release` skips `execution-gateway` (it is signed; the
+  check doesn't look).
+
+Console and gateway:
+- [ ] **The console says a teamless admin may call an API the gateway
+  refuses** (`mayCall` true on a `shareWith: *` API; the gateway answers
+  NOT_SHARED, as a caller needs a team). Make them agree.
+- [ ] **`INVALID_REQUEST` doesn't say what's wrong**: only "does not meet the
+  schema requirements of the specification". Name the field and the rule
+  (`quantity`: minimum 1), never the value.
+- [ ] **Observe's alerts with Google's managed Prometheus** say "not
+  configured": the console reads `/api/v1/rules`, which GMP doesn't serve.
+- [ ] A readiness check's run says submitted by "(deleted account)" (it was
+  the system); while a check is running, the product shows the last
+  answer's missing list without saying it's the last answer.
+
+Kernel and alerts:
+- [ ] **No alert for dispatched steps whose Pods can't be scheduled** (GKE
+  at 40 at once, the SSD quota refusing nodes): `VertraStepsWaiting` sees
+  READY tasks only. And completion lag rose from 3 s to 12 s p50 with them
+  (`perf/README.md`, "On GKE and EKS"): worth a look.
+- [ ] An evicted step's failure says "no terminated container status"; say
+  it was evicted or disrupted (the Pod's `DisruptionTarget` condition).
+
+Samples and catalog CI:
+- [ ] **gcp `app-hosting`**: Cloud Run's create needs the deployer to read
+  the image's repository (`roles/artifactregistry.reader`), missing from
+  its README; its PERMISSION_DENIED was retried three times as
+  `GCP_API_ERROR` (should not be retryable); `hello-world`'s api.yaml gives
+  the Workload Identity principal in other clusters' form only (GKE's own
+  pool is `subject/ns/<ns>/sa/<sa>`).
+- [ ] The SBOM attestation's subject name is the scan's temporary tar path,
+  not the image.
 
 ## Installing and operating
 
@@ -199,11 +286,11 @@ masking Secret values in logs (suggested: leave it, documented).
     crash-looping scheduler's VertraSchedulerDown fired after its 10
     minutes and reached the Alertmanager. `vertra init`
     offers each (google on gcp, amazon on aws). The alerts' behaviour is
-    tested by promtool in CI (`helm/tests/prometheus-rules.sh`). Left:
-    google on a real GKE cluster, amazon on EKS (SigV4 through Pod
-    Identity, the SNS email), bundled on a cloud's volumes (the billed
-    batch); the console could show the bundled Prometheus's firing alerts
-    on Observe.
+    tested by promtool in CI (`helm/tests/prometheus-rules.sh`). Proven in
+    the billed run: google on GKE (every component scraped), bundled on a
+    GKE persistent disk, amazon on EKS (SigV4 through Pod Identity, a sign-in
+    burst's alert through AMP's Alertmanager to SNS). Left: Observe's alerts
+    with google (below).
   - The audit log (done 2026-10-22: `ObserveService.ListAudit`, the
     Observe page's Audit log tab): an admin sees every entry; anyone else
     their own, and what was done to their teams or to runs in them, by
@@ -257,8 +344,9 @@ masking Secret values in logs (suggested: leave it, documented).
   bucket backup, its restore, the move with a run seeded before it found
   after and a new step run, and an on-demand managed backup). Monitoring
   (2026-10-30): `init` offers the cluster's Prometheus Operator, GKE's
-  managed Prometheus or a bundled one. Left: measuring the sizes' figures,
-  which are first estimates (the billed run); GitLab as a second git host
+  managed Prometheus or a bundled one. The sizes' figures, measured in the
+  billed run: `minimal` requests 600m and 1856Mi on GKE (650m with EKS's
+  Prometheus), idle use a tenth of that. Left: GitLab as a second git host
   (decided below, not started); the azure target (last).
   Decided 2026-10-18:
   - **Targets:** `kind (local)`, `gcp`, `aws`, `azure`, `existing`. Cluster
@@ -357,20 +445,24 @@ masking Secret values in logs (suggested: leave it, documented).
   mounted it. Pod Identity doesn't work for a store (it isn't the Pod's
   identity ESO uses); the sample said it did. The Azure samples are after
   the MVP (decided 2026-10-25).
-- [ ] **`vertra` sets up SecretStores on aws** (done 2026-10-27, not yet
-  proven on a cloud): the aws module registers the cluster's OIDC issuer
+- [x] **`vertra` sets up SecretStores on aws** (done 2026-10-27, proven on
+  EKS 2026-11-01: a store signed in by IRSA synced a secret, and one
+  outside the team's prefix was refused by AWS): the aws module registers the cluster's OIDC issuer
   in IAM, the console gets it (the Team page's AWS guide, now marked
   tested), and `externalSecrets: true` has `vertra apply` install External
-  Secrets Operator 2.10.0, pinned. Prove with the next EKS run.
+  Secrets Operator 2.10.0, pinned.
 - [ ] **A first step on a new GKE Autopilot install can time out**: seen on
   both GKE proofs (2026-10-26, 2026-10-27). Fixed (2026-10-27): a step's
   timeout counts from its container's start, and waiting to start has its
   own limit (`scheduler.taskStartTimeoutSeconds`, 10 minutes), past which it
   fails as `TASK_NOT_STARTED` (retryable) instead of a misleading
-  `TASK_TIMEOUT`. Left: why a minimal install had three nodes (one with the
-  platform, one with only a sleeper Job, one empty), whose boot disks
-  (about 146 GB each) filled a new project's 500 GB SSD quota so no node
-  could be added for a step; look on a live cluster.
+  `TASK_TIMEOUT`. Why a minimal install had three nodes (looked at in the
+  billed run): every Vertra Pod was on one; the other two, in other zones,
+  held only GKE's own Pods (DaemonSets, konnectivity-agent spread across
+  zones, balloon Pods). Autopilot bills Pods, so they cost nothing, but
+  their boot disks count against the project's SSD quota: at 500 GB, a
+  step's node couldn't be added at 40 at once. `vertra apply` warns of
+  the quota; a project raising it to 1000 GB was enough.
 - [x] **Let a deployment label step Pods** (I2, done 2026-10-21):
   `scheduler.taskPodLabels` (`TASK_POD_LABELS`), on the step Pod only; the
   scheduler refuses to start with `app` or a `vertra.dev/*` key. Proven on
@@ -630,7 +722,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   GKE's API audience, read from the console's own token. The sample:
   `samples/aws/products/caller-identity` (2026-10-31), AWS from any
   cluster that isn't EKS; seen on kind up to AWS refusing kind's private
-  issuer, a GKE cluster's issuer trusted is for the billed run.
+  issuer, and proven from GKE in the billed run (an IAM OIDC provider for
+  the cluster's issuer, no key).
 - [x] **P1: check inputs and outputs against their schemas (C1)** (done
   2026-10-21). The console checks each step's literal inputs against its
   product's input schema at submit (`INPUT_INVALID`, each problem on its
@@ -743,7 +836,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   webhook when it isn't ready. The cloud samples' checks are built
   (2026-10-30; each gcp and aws product signs in as itself and asks
   `testIamPermissions` or a read-only call, with unit and contract tests),
-  not yet proven on a cloud: left, a billed run of each on GKE and EKS.
+  proven in the billed run: on GKE each gcp product not ready naming its
+  missing roles, then ready once granted; on EKS `s3-bucket` ready as its
+  own role through Pod Identity.
 - [x] **P2: schedules** (done 2026-10-24): a template or action on a cron
   (five fields, an IANA time zone, at most every five minutes), with set
   parameters, for a team, as one of its bots, made from the run form
@@ -918,7 +1013,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
     (the owner's role from `vertra catalog grant`), policy-controller with
     the steps' pull Secret, so its verifier role still reads only its own
     task registry.
-  - (Fixed 2026-10-27, not yet seen on a cloud.) `vertra destroy` stopped
+  - (Fixed 2026-10-27, proven on EKS 2026-11-01: 59 destroyed, two EBS
+    volumes listed.) `vertra destroy` stopped
     when the cluster's API didn't answer (the reader's was torn down with
     `tofu destroy` on its state): it now skips what's inside an unanswering
     cluster, deletes the cloud side, and lists the unattached disks or EBS
@@ -1036,9 +1132,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   them again, the data directory last, and refuses what it can't move
   safely; proven on kind on `local` volumes, which get the fsGroup pass as
   a cloud disk does (a kill mid-move, reruns, refusals, going back to root
-  and moving again). Left: proven on a cloud volume (the billed run, GKE
-  and EBS), and the console chart's own Postgres, which still starts as
-  root.
+  and moving again); proven on a GKE persistent disk and on EBS in the
+  billed run (data identical, a new run after). Left: the console chart's
+  own Postgres, which still starts as root.
 - [x] **Bind the console's Secret rights per team namespace** as teams are
   created, instead of cluster-wide fenced by an admission policy. Decided
   against (2026-10-22): the console would have to create RoleBindings (and
@@ -1065,8 +1161,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   a changed or removed entry is named (the chain misses one whose later
   hashes were rewritten too). The console's identity may now read its
   copies (GCS objectViewer; S3 GetObject and ListBucket). Proven on kind
-  with SeaweedFS. Left: the S3 bucket proven on EKS, and the comparison on
-  GCS and S3 in the billed batch.
+  with SeaweedFS. Proven in the billed run: the comparison on GCS (an entry
+  changed in the database named within the hour) and on S3, and deletes
+  refused by GCS's retention and S3's Object Lock.
 - [x] **Decide who may read a multi-team execution** (decided and done
   2026-10-22, `console/src/core/runView.ts`): a run's owners (admins, its
   submitter, the team a template run was for; a raw DAG's every team) see
@@ -1087,8 +1184,8 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   `serviceAccount` (`gcp-<product>`, `aws-<product>`), and the READMEs grant
   each only what it calls: on GCP straight to its Kubernetes identity
   (Workload Identity Federation, no Google service account or annotation),
-  on AWS by Pod Identity to its own role. Left: proving the gcp grants on a
-  cluster.
+  on AWS by Pod Identity to its own role. The gcp grants proven on GKE in
+  the billed run (2026-10-31).
 - [x] **Catalog: keep pull-request workflows away from secrets and cloud
   identities** (checked 2026-10-22): the cloud identities trust only `main`
   (GCP's `assertion.ref`) or the `catalog-publish` Environment (AWS's
@@ -1255,8 +1352,9 @@ for AKS Workload Identity (Installing), run forms from schemas (Console).
   (Cloud Run, Google ID token) and `aws/apis/orders` (Lambda URL, SigV4),
   the last two validated, not deployed. The gateway's database role reads
   only what it needs and writes only api_traffic (`gatewayAccess.ts`).
-  Left: the gcp and aws samples' API products deployed from a catalog on a
-  cloud (the billed batch; their credential kinds are proven).
+  The gcp and aws samples' API products deployed from a catalog, proven in
+  the billed run: hello-world on Cloud Run from GKE, orders on a Lambda URL
+  from EKS, each refused when not shared or not in its spec.
 
 - [x] **Orders from outside the cluster** (done 2026-10-29; decision 23,
   `docs/assessment.md`, decided 2026-10-27). Through the console's public `/api`, as a bot signed

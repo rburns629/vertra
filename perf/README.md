@@ -99,6 +99,20 @@ DAGs, 50 steps, 5,000 steps in all; over 1,000 needs `-allow-large`). It
 refuses a cluster not named `vertra-perf*`, a console not on this machine,
 and a port-forward to any other cluster's console.
 
+On a cloud cluster (GKE or EKS, a `vertra-*` one only), name its kubectl
+context exactly in place of `-cluster`, with the perf sample published to
+its registry and the forward the driver looks for:
+
+```console
+$ kubectl --context <context> -n vertra-system port-forward svc/console-execution-console 18080:8080 &
+$ go run . -context <context> -image <registry>/perf/noop:latest -scenario burst
+```
+
+Its nodes aren't sampled (the report leaves out the node line); the cloud's
+own monitoring has them. The check is on the context's name, which kubectl
+lets you rename: never name a shared or production cluster's context
+`vertra-*`.
+
 The scheduler and Postgres alone, on the test database (`make test-db`):
 
 ```console
@@ -339,9 +353,45 @@ The moment the kernel gives up moves with the machine: the webhook logs how
 long it held each create, and when the API server gave up on one, so aim
 `DELAY` at the gap between them.
 
+## On GKE and EKS (2026-10-31 and 2026-11-01)
+
+The billed proof run (TODO.md, item 7): released 0.6.0, size `minimal`,
+steps on Spot nodes, `-context` naming each cluster. Every run was correct.
+
+| | GKE Autopilot | EKS standard |
+| --- | ---: | ---: |
+| `baseline` (10 steps), end to end p50 | 110 s | 9.0 s |
+| `baseline`, container start p50 | 13.1 s | 3.0 s |
+| `burst` (100), steps/s | 0.53 | 0.45 |
+| `burst`, container start p50 | 5.4 s | 13.1 s |
+| `burst`, completion lag p50 | 3.2 s | 0.8 s |
+| client throttling lines | 0 | 0 |
+
+**1. The per-team cap is the limit, as it should be.** `minimal` lets a team
+run 5 steps at once, so `burst` ran at about half a step a second on both,
+and its queue wait (100 s p50 on EKS) is that cap. The client limits (50
+and 100 a second) were never approached.
+
+**2. A cold node is most of a small run.** GKE's baseline waited about 100 s
+for Autopilot to add a Spot node, before its steps' Pods were made (container
+start counts from the Pod's creation to its container running); EKS's steps node was already up from
+`burst`. EKS's container start under `burst` is five steps sharing one
+c6a.large.
+
+**3. Raising the cap on GKE met the project's quota first.** With 40 at once
+Autopilot couldn't add nodes (`SSD_TOTAL_GB`, 500 in the project): 0.41
+steps a second, container start p95 146 s, completion lag p50 11.7 s and
+p95 31 s, as Pods waited to be scheduled. `vertra apply` had warned of the
+quota. Nothing alerts on dispatched steps whose Pods can't be scheduled
+(TODO.md), and completion lag rising with them is worth a look.
+
+**4. Losing a Pod retries the step.** A step's Pod evicted through the
+Eviction API (as a Spot reclaim or a drain does) failed its attempt
+`POD_TERMINATED_UNEXPECTEDLY`, retryable; the second attempt succeeded.
+
 ## Next (TODO.md)
 
-On GKE and EKS: the client limits under a real API server, the scheduler's
-throttling log, container start-up on real nodes. Here: nothing left; the
-`perf` workflow (`.github/workflows/perf.yml`) compares each weekly run
-with its last. `perf/`'s own tests run in CI (2026-10-29).
+Completion lag when dispatched Pods can't be scheduled (point 3 above).
+Here: nothing left; the `perf` workflow (`.github/workflows/perf.yml`)
+compares each weekly run with its last. `perf/`'s own tests run in CI
+(2026-10-29).
