@@ -531,7 +531,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `cmd/vertra/backup.go` | `backup`, `backups` and `restore`. |
 | `cmd/vertra/logs.go` | `logs`: the platform's components' logs, or one execution's steps' from their team namespaces. |
 | `cmd/vertra/admin.go` | `admin reset-password`: a lost admin password, reset inside the cluster; where a generated password is saved (`admin-password`, 0600, never printed). |
-| `cmd/vertra/catalog.go` | `catalog create`: creates the catalog repository on GitHub with its first team and starters, sets its registry variables (no console credential; old ones removed and revoked), pushes it, waits for its CI, has the console apply the release, and runs a starter. |
+| `cmd/vertra/catalog.go` | `catalog create`: creates the catalog repository on GitHub with its first team and starters, sets its registry variables (no console credential; old ones removed and revoked), pushes it (or, taking one over from another registry, runs its CI by hand to republish), waits for its CI, has the console apply the release, and runs a starter; the first admin's generated password changed first. |
 | `cmd/vertra/apply_aws.go` | The aws target's part of `apply` and `destroy`: the sign-in and region checks, the module's plan, prices, outputs, Auto Mode's StorageClass and steps' node pool, and what a destroy keeps. |
 | `cmd/vertra/apply_gcp.go` | The gcp target's part of `apply` and `destroy`: the project's checks, the module's plan, prices, outputs, and what a destroy keeps. |
 | `cmd/vertra/tools.go` | `tools`, `config get/set`, and the tools check `init` and `apply` share. |
@@ -550,12 +550,13 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/modules/aws/` | The aws OpenTofu module (embedded): a VPC in two zones (public subnets, no NAT gateway), an EKS Auto Mode cluster, ECR (a template that creates products' repositories on push, and the platform's), Pod Identity roles for the console and the backups, the backup bucket, and the catalog CI's GitHub OIDC role. |
 | `internal/modules/gcp/` | The gcp OpenTofu module (embedded in the binary): network, a GKE Autopilot or Standard cluster, Artifact Registry repositories, the nodes', console's and backups' identities, the backup bucket; `.terraform.lock.hcl` pins the provider's checksums. |
 | `internal/modules/modules.go` | Embeds the modules and writes one into an environment's `tofu/`. |
-| `internal/catalog/` | Assembles a new catalog's first commit from `catalog-template/`: the first team, the starters for its languages, the owners, where it publishes. |
+| `internal/catalog/` | Assembles a new catalog's first commit from `catalog-template/`: the first team, the starters for its languages, the owners, where it publishes; and pins its `./vertra` to a release. |
+| `internal/catalogtemplate/` | `catalog-template/` inside a released vertra: `template.tgz`, empty in git, written by the release workflow (`git archive`) before it builds. |
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
 | `internal/consoleapi/` | The console's API as vertra uses it, over the generated Connect clients: signing in as the admin, revoking the tokens catalogs once held, syncing the catalog, running a DAG and watching it finish. Tested against fake Connect handlers. |
 | `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
 | `internal/backup/` | The databases' backups: the backup Job run now, dumps to and from this machine, the bucket's pairs, the restore (writers stopped, both databases replaced, started again), a managed database's on-demand backups, and moving an install's data into a managed database (`move.go`). |
-| `internal/releases/` | Vertra's releases (GitHub's list, cached a day): the newest, what an upgrade passes over, and whether a version change can be applied. |
+| `internal/releases/` | Vertra's releases (GitHub's list, cached a day): the newest, what an upgrade passes over, whether a version change can be applied, and a release's binaries' checksums. |
 | `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in; `gcp_account.go`: your billing account's prices, when you may read them) and AWS's Price List and Spot price history (with your AWS sign-in), fetched a few calls at a time and each cached a day, and their cost models; `testdata/` holds real price entries. |
 
 ## `catalog-template/`: what a new catalog starts as

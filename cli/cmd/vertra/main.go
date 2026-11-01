@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/prompt"
@@ -110,9 +111,10 @@ func versionCmd() *cobra.Command {
 	}
 }
 
+// isTerminal says whether f is a terminal: not just a character device,
+// which /dev/null is too.
 func isTerminal(f *os.File) bool {
-	info, err := f.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return term.IsTerminal(int(f.Fd()))
 }
 
 // errStopped ends a command the user declined, without an error message.

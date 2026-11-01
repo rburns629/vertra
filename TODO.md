@@ -64,8 +64,8 @@ Azure last.
    Prometheus, the aws sample's API product, products choosing Spot,
    non-root Postgres on EBS, `vertra destroy` with an unanswering cluster,
    the scheduler at scale, size figures.
-8. What the billed run found (below), the password printed by `apply`
-   first.
+8. What the billed run found (below; the password `apply` printed was
+   fixed in #61).
 9. Last: the MCP server, then Azure (its target, its managed Prometheus,
    the Azure sample signing in).
 
@@ -78,32 +78,12 @@ masking Secret values in logs (suggested: leave it, documented).
 Released 0.6.0 on GKE Autopilot and EKS standard. Each item names where
 it was seen.
 
-Security:
-- [ ] **`vertra apply` prints the generated admin password** in its closing
-  line ("Sign in as admin@example.com with …"), so it lands in CI logs and
-  tee'd files (EKS); `vertra admin reset-password` does the same. Write it
-  to a 0600 file in the environment's folder and print the path.
-
 `vertra`:
-- [ ] **A released `vertra` can't make its catalog**: `catalog create`
-  requires `vertra: source` (`cli/cmd/vertra/catalog.go`). Worked around
-  with a temporary source checkout at the tag.
-- [ ] **A release's catalog template pins the previous CLI** (0.6.0's
-  `catalog-template/vertra` pinned 0.5.2; the pin is bumped after a
-  release), so a new catalog's CI runs a `vertra` older than its install.
-- [ ] **`catalog create --take-over` waits on the previous commit's CI**,
-  which published to the old registry, then fails "the console couldn't
-  read the catalog's release: 404". It should start a full republish
-  (`workflow_dispatch`) and wait on that.
-- [ ] **`catalog create` without a terminal** exits 1 saying nothing (stdin
-  closed) or "operation not supported by device": say to set
-  `VERTRA_ADMIN_PASSWORD`. And right after `apply` the console refuses the
-  generated password until it's changed: `apply`'s closing message and
-  `catalog create` should say so, or offer the change.
-- [ ] **The console's port-forward isn't restarted when kubectl's dies**
-  (`cli/internal/platform`): on GKE it dropped within minutes, and `catalog
-  create`'s smoke test reported "didn't finish within 15m" for a run that
-  succeeded in two.
+- [ ] **`catalog-template/vertra` in git pins the previous release** until
+  `pin-vertra.sh` is run after a release (0.6.0's pinned 0.5.2). `vertra
+  catalog create` now pins the release it is; a catalog made from the
+  template by hand needs `pin-vertra.sh`. Worth a release step that opens
+  the pin's pull request.
 - [ ] **External Secrets Operator is installed only with `externalSecrets:
   true`**, and `init` never asks, even for a catalog with SecretStores.
   The console then reports the missing operator as a raw 404 dump; it
@@ -144,6 +124,16 @@ Kernel and alerts:
   it was evicted or disrupted (the Pod's `DisruptionTarget` condition).
 
 Samples and catalog CI:
+- [ ] **A product can't say which installs it's for**: one catalog serves
+  installs on several clouds, so an aws product on a GKE install shows
+  "not ready" (its check can't sign in by EKS Pod Identity) when it was
+  never meant to run there. A product (or team) could declare its targets
+  (`targets: [aws]`, catalog format, both schemas: `tools/` and
+  `cli/internal/catalogtool/schemas/`); the console would list it as "not
+  for this install" on the catalog, Every product and the run form, skip
+  its readiness checks, and refuse to run it there, instead of "not
+  ready". Readiness proves only the identity path on this install; whether
+  a product works stays the platform team's tests and catalog CI's.
 - [ ] **gcp `app-hosting`**: Cloud Run's create needs the deployer to read
   the image's repository (`roles/artifactregistry.reader`), missing from
   its README; its PERMISSION_DENIED was retried three times as

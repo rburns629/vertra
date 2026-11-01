@@ -66,3 +66,20 @@ func TestUpgrade(t *testing.T) {
 		}
 	}
 }
+
+func TestParseChecksums(t *testing.T) {
+	sha := func(c string) string { return strings.Repeat(c, 64) }
+	body := sha("a") + "  vertra-linux-amd64\n" + sha("b") + "  vertra-linux-arm64\n" +
+		sha("c") + "  vertra-darwin-amd64\n" + sha("d") + "  vertra-darwin-arm64\n" +
+		sha("e") + "  vertra-man.tar.gz\n"
+	sums, err := parseChecksums(body, "0.6.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sums) != 4 || sums["darwin-arm64"] != sha("d") || sums["linux-amd64"] != sha("a") {
+		t.Errorf("sums %v", sums)
+	}
+	if _, err := parseChecksums(sha("a")+"  vertra-linux-amd64\n", "0.6.0"); err == nil {
+		t.Error("a release missing platforms was accepted")
+	}
+}

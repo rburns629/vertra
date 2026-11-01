@@ -31,6 +31,10 @@ type fakeConsole struct {
 	// Each watch plays the next script: its states, then how it ends.
 	watches [][]consolev1.ExecutionState
 	ending  []error
+	// mustChange: the session's password was generated; changed: what
+	// ChangePassword was sent.
+	mustChange bool
+	changed    *consolev1.ChangePasswordRequest
 }
 
 func (f *fakeConsole) saw(h http.Header) {
@@ -44,6 +48,18 @@ func (f *fakeConsole) Login(_ context.Context, req *connect.Request[consolev1.Lo
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("Invalid email or password."))
 	}
 	return connect.NewResponse(&consolev1.LoginResponse{Token: "session"}), nil
+}
+
+func (f *fakeConsole) GetMe(_ context.Context, req *connect.Request[consolev1.GetMeRequest]) (*connect.Response[consolev1.GetMeResponse], error) {
+	f.saw(req.Header())
+	return connect.NewResponse(&consolev1.GetMeResponse{MustChangePassword: f.mustChange}), nil
+}
+
+func (f *fakeConsole) ChangePassword(_ context.Context, req *connect.Request[consolev1.ChangePasswordRequest]) (*connect.Response[consolev1.ChangePasswordResponse], error) {
+	f.saw(req.Header())
+	f.changed = req.Msg
+	f.mustChange = false
+	return connect.NewResponse(&consolev1.ChangePasswordResponse{Token: "fresh"}), nil
 }
 
 func (f *fakeConsole) ListAutomationTokens(_ context.Context, req *connect.Request[consolev1.ListAutomationTokensRequest]) (*connect.Response[consolev1.ListAutomationTokensResponse], error) {
@@ -176,5 +192,31 @@ func TestWaitStopsOnARefusal(t *testing.T) {
 	_, err := c.Wait(context.Background(), "e1", time.Minute)
 	if err == nil || !strings.Contains(err.Error(), "Not a member.") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// A generated password is changed, and the session goes on with the token
+// the change returns.
+func TestChangeGeneratedPassword(t *testing.T) {
+	f := &fakeConsole{mustChange: true}
+	c := serve(t, f)
+	ctx := context.Background()
+	if err := c.SignIn(ctx, "admin@example.com", "right"); err != nil {
+		t.Fatal(err)
+	}
+	if must, err := c.MustChangePassword(ctx); err != nil || !must {
+		t.Fatalf("must=%v err=%v", must, err)
+	}
+	if err := c.ChangePassword(ctx, "right", "my own password"); err != nil {
+		t.Fatal(err)
+	}
+	if f.changed.GetCurrentPassword() != "right" || f.changed.GetNewPassword() != "my own password" {
+		t.Errorf("sent %v", f.changed)
+	}
+	if _, err := c.RevokeOthers(ctx, "catalog", ""); err != nil {
+		t.Fatal(err)
+	}
+	if last := f.auth[len(f.auth)-1]; last != "Bearer fresh" {
+		t.Errorf("after the change a call carried %q", last)
 	}
 }

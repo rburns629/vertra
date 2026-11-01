@@ -19,6 +19,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/access"
 	"github.com/rburns629/vertra/cli/internal/awscloud"
 	"github.com/rburns629/vertra/cli/internal/catalog"
+	"github.com/rburns629/vertra/cli/internal/catalogtemplate"
 	"github.com/rburns629/vertra/cli/internal/catalogtool"
 	"github.com/rburns629/vertra/cli/internal/config"
 	"github.com/rburns629/vertra/cli/internal/consoleapi"
@@ -27,6 +28,7 @@ import (
 	"github.com/rburns629/vertra/cli/internal/modules"
 	"github.com/rburns629/vertra/cli/internal/plan"
 	"github.com/rburns629/vertra/cli/internal/platform"
+	"github.com/rburns629/vertra/cli/internal/releases"
 	"github.com/rburns629/vertra/cli/internal/tofu"
 	"github.com/rburns629/vertra/cli/internal/tools"
 )
@@ -126,8 +128,22 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 	if c.Target != "gcp" && c.Target != "aws" {
 		return errors.New("the catalog's CI publishes to the install's registry: a gcp or aws install")
 	}
+	// The template: a checkout's, or this release's own (whose format its
+	// console reads), with ./vertra pinned to this release for its CI.
+	var pinSums map[string]string
 	if c.Vertra != "source" {
-		return errors.New("the catalog template comes from a source checkout until released CLIs embed it (cli/DESIGN.md, step 8)")
+		mine := strings.TrimPrefix(Version, "v")
+		if !catalogtemplate.Embedded() {
+			return errors.New("this vertra was built from a checkout, without the catalog template: use a released vertra, or `vertra config set vertra source` (and source, the checkout)")
+		}
+		if mine != c.Vertra {
+			return fmt.Errorf("this is vertra %s and the install runs %s: make its catalog with vertra %s, whose template its console reads (or upgrade the install first)", mine, c.Vertra, c.Vertra)
+		}
+		sums, err := releases.Checksums(ctx, mine)
+		if err != nil {
+			return err
+		}
+		pinSums = sums
 	}
 	statuses := tools.CheckAll(ctx, tools.ForCatalog())
 	for _, s := range statuses {
@@ -164,6 +180,9 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 	// One that exists but is empty (a run stopped before its push) gets
 	// the push.
 	push := !exists
+	// One that isn't pushed and published elsewhere last (another
+	// registry, after --take-over) is republished by a run by hand.
+	republish := false
 	if exists {
 		if push, err = gh.HasBranches(ctx, cat.Repo()); err != nil {
 			return err
@@ -179,6 +198,7 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 		if err := ownedElsewhere(cat.Repo(), current, setup.registry, takeOver); err != nil {
 			return err
 		}
+		republish = current != setup.registry
 	}
 	// Environments (the publish job's main-only gate, the reviewed image deletion)
 	// need a paid plan on a private repository; on GitHub Free the
@@ -203,7 +223,9 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 		{Label: "Publishes to", Text: setup.registry + ", signing in through federation (main only, no key)"},
 		{Label: "Release", Text: setup.registry + "/catalog-release, which the console reads and applies (no console credential in CI)"},
 	}
-	if exists && !push {
+	if exists && !push && republish {
+		p.Changes = append(p.Changes, plan.Line{Label: "Exists", Text: "the repository is left as it is: its variables are set, and catalog-ci run by hand to republish every product to " + setup.registry})
+	} else if exists && !push {
 		p.Changes = append(p.Changes, plan.Line{Label: "Exists", Text: "the repository is left as it is: only its variables are set"})
 	} else if exists {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will push", Text: fmt.Sprintf("main to the existing, empty repository: the template, teams/%s and its starters", cat.Team)})
@@ -222,7 +244,14 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 	}
 	p.Notes = append(p.Notes, "Team "+cat.Team+" (and its namespace) is made by the console when it applies the first release, not before.")
 	if !noSmoke && len(cat.Languages) > 0 {
-		p.Notes = append(p.Notes, "Then: waits for CI on the push, has the console apply the release, and runs the "+config.Languages[cat.Languages[0]]+" starter as a smoke test.")
+		on := "main's last commit"
+		switch {
+		case push:
+			on = "the push"
+		case republish:
+			on = "the run by hand"
+		}
+		p.Notes = append(p.Notes, "Then: waits for CI on "+on+", has the console apply the release, and runs the "+config.Languages[cat.Languages[0]]+" starter as a smoke test.")
 	}
 	p.Render(out)
 	if planOnly {
@@ -239,17 +268,30 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 	}
 
 	// The console, as the admin, over a port-forward: it needn't be public.
-	password, err := a.ask.Secret("Password of "+c.Admin.Email+" on the console", "VERTRA_ADMIN_PASSWORD")
-	if err != nil {
-		return err
+	// The password apply saved, if it's still there.
+	saved := filepath.Join(dir, "admin-password")
+	password := ""
+	if os.Getenv("VERTRA_ADMIN_PASSWORD") == "" {
+		if b, err := os.ReadFile(saved); err == nil && strings.TrimSpace(string(b)) != "" {
+			password = strings.TrimSpace(string(b))
+			fmt.Fprintln(out, "Signing in with the password in", saved+".")
+		}
 	}
-	fwd, err := platform.ForwardConsole(ctx, c)
+	if password == "" {
+		if password, err = a.ask.Secret("Password of "+c.Admin.Email+" on the console", "VERTRA_ADMIN_PASSWORD"); err != nil {
+			return err
+		}
+	}
+	fwd, err := platform.ForwardConsole(ctx, c, out)
 	if err != nil {
 		return err
 	}
 	defer fwd.Stop()
 	api := consoleapi.New(fwd.URL)
 	if err := api.SignIn(ctx, c.Admin.Email, password); err != nil {
+		return err
+	}
+	if err := a.changeGeneratedPassword(ctx, out, dir, c, api, password); err != nil {
 		return err
 	}
 
@@ -261,12 +303,28 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 			return err
 		}
 		defer os.RemoveAll(work)
+		template := filepath.Join(c.Source, "catalog-template")
+		if pinSums != nil {
+			unpacked, err := os.MkdirTemp("", "vertra-template-*")
+			if err != nil {
+				return err
+			}
+			defer os.RemoveAll(unpacked)
+			if template, err = catalogtemplate.Extract(unpacked); err != nil {
+				return err
+			}
+		}
 		products, err := catalog.Assemble(catalog.Options{
-			Template: filepath.Join(c.Source, "catalog-template"), Team: cat.Team, Owners: owners,
+			Template: template, Team: cat.Team, Owners: owners,
 			Languages: cat.Languages, Registry: setup.registry,
 		}, work)
 		if err != nil {
 			return err
+		}
+		if pinSums != nil {
+			if err := catalog.Pin(filepath.Join(work, "vertra"), c.Vertra, pinSums); err != nil {
+				return err
+			}
 		}
 		fmt.Fprintf(out, "Assembled the catalog: team %s, starters %s.\n", cat.Team, strings.Join(products, ", "))
 		if err := validateCatalog(ctx, work); err != nil {
@@ -362,11 +420,33 @@ func (a *app) catalog(ctx context.Context, out io.Writer, dir string, c *config.
 			return err
 		}
 	}
+	// One that isn't pushed last ran CI with the old variables: a run by
+	// hand republishes every product with these. It's told from the
+	// commit's earlier runs by id, not by time (clocks differ).
+	var by *dispatch
+	if !push && republish {
+		fmt.Fprintln(out, "Republishing every product to", setup.registry, "(catalog-ci, run by hand)...")
+		commit, err := gh.Head(ctx, repo, "main")
+		if err != nil {
+			return err
+		}
+		earlier, err := gh.Runs(ctx, repo, commit)
+		if err != nil {
+			return err
+		}
+		by = &dispatch{commit: commit}
+		for _, r := range earlier {
+			by.after = max(by.after, r.ID)
+		}
+		if err := gh.Dispatch(ctx, repo, "ci.yml", "main"); err != nil {
+			return fmt.Errorf("couldn't run catalog-ci by hand (an older catalog's ci.yml may not allow workflow_dispatch: take it from catalog-template, or push any change to main to publish): %w", err)
+		}
+	}
 	fmt.Fprintf(out, "The catalog is at https://github.com/%s\n", repo)
 	if noSmoke || len(cat.Languages) == 0 {
 		return nil
 	}
-	return a.smokeTest(ctx, out, c, gh, api, setup)
+	return a.smokeTest(ctx, out, c, gh, api, setup, by)
 }
 
 // catalogSetup reads what the install made from the module's outputs.
@@ -446,14 +526,17 @@ func variableNames(vars [][2]string) string {
 // smokeTest waits for CI on the pushed commit, has the console apply the
 // release it pushed, then runs the first starter through the console and
 // reports what it returned.
-func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh *githost.GitHub, api *consoleapi.Client, setup *catalogSetup) error {
+func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh *githost.GitHub, api *consoleapi.Client, setup *catalogSetup, by *dispatch) error {
 	cat := c.Catalog
-	commit, err := gh.Head(ctx, cat.Repo(), "main")
-	if err != nil {
+	var commit string
+	var err error
+	if by != nil {
+		commit = by.commit
+	} else if commit, err = gh.Head(ctx, cat.Repo(), "main"); err != nil {
 		return err
 	}
 	fmt.Fprintln(out, "Waiting for CI on", commit[:7], "...")
-	runs, err := waitForRuns(ctx, gh, cat.Repo(), commit)
+	runs, err := waitForRuns(ctx, gh, cat.Repo(), commit, by)
 	if err != nil {
 		return err
 	}
@@ -466,7 +549,7 @@ func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh
 			}
 		}
 		time.Sleep(10 * time.Second)
-		if runs, err = waitForRuns(ctx, gh, cat.Repo(), commit); err != nil {
+		if runs, err = waitForRuns(ctx, gh, cat.Repo(), commit, by); err != nil {
 			return err
 		}
 	}
@@ -474,7 +557,7 @@ func (a *app) smokeTest(ctx context.Context, out io.Writer, c *config.Config, gh
 		fmt.Fprintf(out, "  %-22s %s\n", r.Workflow, r.Conclusion)
 	}
 	if len(failedRuns(runs)) > 0 {
-		return fmt.Errorf("CI failed on the first push: see the runs at https://github.com/%s/actions", cat.Repo())
+		return fmt.Errorf("CI failed: see the runs at https://github.com/%s/actions", cat.Repo())
 	}
 
 	// Now rather than at the console's next look.
@@ -536,13 +619,35 @@ func scanning(err error) bool {
 }
 
 // waitForRuns waits until every run on commit has completed.
-func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string) ([]githost.Run, error) {
+// dispatch is a run by hand on commit: the runs after the id it had.
+type dispatch struct {
+	commit string
+	after  int64
+}
+
+// waitForRuns waits for a commit's CI runs to finish: with by, only the run
+// started by hand, which must appear within a few minutes.
+func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string, by *dispatch) ([]githost.Run, error) {
 	var runs []githost.Run
+	began := time.Now()
+	failures := 0
 	err := waitFor(ctx, 45*time.Minute, 20*time.Second, func() (bool, error) {
-		var err error
-		runs, err = gh.Runs(ctx, repo, commit)
-		if err != nil || len(runs) == 0 {
-			return false, err
+		all, err := gh.Runs(ctx, repo, commit)
+		// A blip reaching GitHub (a TLS handshake timeout) isn't the end of
+		// a wait this long; three in a row are.
+		if err != nil {
+			if failures++; failures == 3 {
+				return false, err
+			}
+			return false, nil
+		}
+		failures = 0
+		runs = sinceDispatch(all, by)
+		if len(runs) == 0 {
+			if by != nil && time.Since(began) > 5*time.Minute {
+				return false, fmt.Errorf("the run by hand didn't start within 5 minutes: see https://github.com/%s/actions", repo)
+			}
+			return false, nil
 		}
 		for _, r := range runs {
 			if r.Status != "completed" {
@@ -552,6 +657,21 @@ func waitForRuns(ctx context.Context, gh *githost.GitHub, repo, commit string) (
 		return true, nil
 	})
 	return runs, err
+}
+
+// sinceDispatch keeps the runs started by hand after by's, or all of them
+// without one.
+func sinceDispatch(runs []githost.Run, by *dispatch) []githost.Run {
+	if by == nil {
+		return runs
+	}
+	var kept []githost.Run
+	for _, r := range runs {
+		if r.Event == "workflow_dispatch" && r.ID > by.after {
+			kept = append(kept, r)
+		}
+	}
+	return kept
 }
 
 func failedRuns(runs []githost.Run) []githost.Run {
@@ -627,4 +747,40 @@ func (a *app) trustCatalogSubject(ctx context.Context, out io.Writer, dir string
 		return err
 	}
 	return tf.ApplyOnly(ctx, "aws_iam_role.publish[0]")
+}
+
+// changeGeneratedPassword has the admin choose their own password when the
+// console wants it changed before anything else (apply's generated one, or
+// a reset's), as the console's sign-in page would; the saved file, now
+// stale, goes.
+func (a *app) changeGeneratedPassword(ctx context.Context, out io.Writer, dir string, c *config.Config, api *consoleapi.Client, current string) error {
+	must, err := api.MustChangePassword(ctx)
+	if err != nil || !must {
+		return err
+	}
+	if !a.ask.Interactive && os.Getenv("VERTRA_NEW_ADMIN_PASSWORD") == "" {
+		return fmt.Errorf("the console wants %s's password changed first (it was generated): choose your own when you sign in to the console (`vertra console %s`), then run this again with it in VERTRA_ADMIN_PASSWORD, or set VERTRA_NEW_ADMIN_PASSWORD to change it here", c.Admin.Email, envName(dir))
+	}
+	fmt.Fprintln(out, "The console wants this password changed first (it was generated): choose your own, at least 12 characters.")
+	next, err := a.ask.Secret("New password", "VERTRA_NEW_ADMIN_PASSWORD")
+	if err != nil {
+		return err
+	}
+	if os.Getenv("VERTRA_NEW_ADMIN_PASSWORD") == "" {
+		again, err := a.ask.Secret("The new password again", "VERTRA_NEW_ADMIN_PASSWORD")
+		if err != nil {
+			return err
+		}
+		if again != next {
+			return errors.New("the two new passwords differ: nothing was changed")
+		}
+	}
+	if err := api.ChangePassword(ctx, current, next); err != nil {
+		return err
+	}
+	if err := os.Remove(filepath.Join(dir, "admin-password")); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	fmt.Fprintln(out, "Changed: sign in with your own from now on.")
+	return nil
 }

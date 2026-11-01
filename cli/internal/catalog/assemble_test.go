@@ -72,3 +72,37 @@ func TestAssemble(t *testing.T) {
 		t.Error("samples/ should stay")
 	}
 }
+
+// The template's own ./vertra takes the pin, every line of it.
+func TestPin(t *testing.T) {
+	wrapper := filepath.Join(t.TempDir(), "vertra")
+	data, err := os.ReadFile("../../../catalog-template/vertra")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(wrapper, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sums := map[string]string{}
+	for i, p := range []string{"linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64"} {
+		sums[p] = strings.Repeat(string(rune('a'+i)), 64)
+	}
+	if err := Pin(wrapper, "9.8.7", sums); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(wrapper)
+	if !strings.Contains(string(got), "\nversion=\"9.8.7\"\n") {
+		t.Error("version not pinned")
+	}
+	for p, sum := range sums {
+		if !strings.Contains(string(got), "  "+p+") sha256=\""+sum+"\" ;;") {
+			t.Errorf("%s not pinned", p)
+		}
+	}
+	if info, _ := os.Stat(wrapper); info.Mode().Perm()&0o100 == 0 {
+		t.Error("no longer executable")
+	}
+	if err := Pin(wrapper, "1.0.0", map[string]string{"plan9-386": sums["linux-amd64"]}); err == nil {
+		t.Error("an unknown platform was pinned")
+	}
+}

@@ -86,7 +86,10 @@ can't be reached). `vertra sso off` turns it off again.
 
 `vertra catalog create <env>` makes your catalog repository: its CI builds,
 scans and signs your teams' products and releases them to every install that
-reads the catalog. The [catalog's own guide](../catalog-template/README.md)
+reads the catalog. Run it with the `vertra` release your install runs: its
+catalog template is that release's, and the catalog's `./vertra` is pinned
+to it. It signs in to the console with the password `apply` saved, and has
+you choose your own first (`VERTRA_NEW_ADMIN_PASSWORD` without a terminal). The [catalog's own guide](../catalog-template/README.md)
 covers adding teams and products.
 
 ## Day to day

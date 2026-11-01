@@ -196,3 +196,51 @@ func Upgrade(installed, target, cli string, versions []string) ([]string, error)
 	}
 	return notes, nil
 }
+
+// Platforms are those vertra is released for.
+var Platforms = []string{"linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64"}
+
+// Checksums are a release's binaries' SHA-256s by platform, from its
+// vertra-checksums.txt: what a catalog's ./vertra pins.
+func Checksums(ctx context.Context, version string) (map[string]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	url := "https://github.com/" + Repository + "/releases/download/v" + version + "/vertra-checksums.txt"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("reading vertra %s's checksums: %w", version, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("reading vertra %s's checksums (%s): %s", version, url, resp.Status)
+	}
+	return parseChecksums(string(body), version)
+}
+
+var sha256Hex = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// parseChecksums reads sha256sum's lines, "<sha256>  vertra-<platform>",
+// keeping the binaries' (not the manual pages'), and wants every platform.
+func parseChecksums(body, version string) (map[string]string, error) {
+	sums := map[string]string{}
+	for _, line := range strings.Split(body, "\n") {
+		f := strings.Fields(line)
+		if len(f) == 2 && sha256Hex.MatchString(f[0]) && slices.Contains(Platforms, strings.TrimPrefix(f[1], "vertra-")) {
+			sums[strings.TrimPrefix(f[1], "vertra-")] = f[0]
+		}
+	}
+	for _, p := range Platforms {
+		if sums[p] == "" {
+			return nil, fmt.Errorf("vertra %s's checksums have none for %s", version, p)
+		}
+	}
+	return sums, nil
+}

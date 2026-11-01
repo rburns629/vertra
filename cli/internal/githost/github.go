@@ -302,12 +302,13 @@ type Run struct {
 	Status     string `json:"status"`
 	Conclusion string `json:"conclusion"`
 	URL        string `json:"url"`
+	Event      string `json:"event"`
 }
 
 // Runs lists the workflow runs for a commit.
 func (g *GitHub) Runs(ctx context.Context, repo, commit string) ([]Run, error) {
 	out, err := g.r.Output(ctx, "gh", "run", "list", "--repo", repo, "--commit", commit,
-		"--json", "databaseId,workflowName,status,conclusion,url")
+		"--json", "databaseId,workflowName,status,conclusion,url,event")
 	if err != nil {
 		return nil, err
 	}
@@ -316,6 +317,11 @@ func (g *GitHub) Runs(ctx context.Context, repo, commit string) ([]Run, error) {
 		return nil, err
 	}
 	return runs, nil
+}
+
+// Dispatch starts a workflow by hand (its workflow_dispatch) on a branch.
+func (g *GitHub) Dispatch(ctx context.Context, repo, workflow, branch string) error {
+	return g.r.Run(ctx, "gh", "workflow", "run", workflow, "--repo", repo, "--ref", branch)
 }
 
 // Head is a branch's latest commit.
